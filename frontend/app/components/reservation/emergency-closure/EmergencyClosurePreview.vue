@@ -45,12 +45,12 @@ const emit = defineEmits<{
       </p>
 
       <div v-if="items.length > 0" class="overflow-x-auto">
-        <table class="w-full text-sm">
+        <table class="w-full min-w-[22rem] text-sm">
           <thead>
             <tr class="border-b border-surface-200 dark:border-surface-600">
-              <th class="pb-2 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.patient_name') }}</th>
-              <th class="pb-2 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.datetime') }}</th>
-              <th class="pb-2 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.status') }}</th>
+              <th class="whitespace-nowrap pb-2 pr-4 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.patient_name') }}</th>
+              <th class="whitespace-nowrap pb-2 pr-4 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.datetime') }}</th>
+              <th class="whitespace-nowrap pb-2 pr-4 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.status') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -59,11 +59,11 @@ const emit = defineEmits<{
               :key="item.reservationId"
               class="border-b border-surface-100 last:border-0 dark:border-surface-700"
             >
-              <td class="py-2 pr-4">{{ item.userDisplayName }}</td>
-              <td class="py-2 pr-4 text-surface-600 dark:text-surface-300">
+              <td class="whitespace-nowrap py-2 pr-4">{{ item.userFullName || $t('emergency_closure.label.unknown_user') }}</td>
+              <td class="whitespace-nowrap py-2 pr-4 text-surface-600 dark:text-surface-300">
                 {{ formatPreviewDateTime(item.slotDate, item.startTime, item.endTime) }}
               </td>
-              <td class="py-2">
+              <td class="whitespace-nowrap py-2">
                 <Tag :value="statusLabel(item.status)" :severity="statusSeverity(item.status)" />
               </td>
             </tr>

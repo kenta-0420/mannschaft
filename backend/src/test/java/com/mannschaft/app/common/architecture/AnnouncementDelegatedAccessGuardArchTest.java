@@ -53,6 +53,8 @@ class AnnouncementDelegatedAccessGuardArchTest {
     static final String BLOG_PREVIEW = "com.mannschaft.app.cms.service.BlogPostPreviewService";
     static final String BULLETIN_FACADE = "com.mannschaft.app.bulletin.service.BulletinReadFacade";
     static final String BULLETIN_READER = "com.mannschaft.app.bulletin.service.BulletinAnnouncementPreviewReader";
+    static final String FEED_QUERY_SERVICE = "com.mannschaft.app.social.announcement.OrgAnnouncementFeedQueryService";
+    static final String FEED_READABILITY = "com.mannschaft.app.social.announcement.OrgAnnouncementFeedReadability";
     static final String PREVIEW_SOURCE = "com.mannschaft.app.social.announcement.AnnouncementPreviewSourceService";
 
     static final String FEED_SERVICE = "com.mannschaft.app.social.announcement.AnnouncementFeedService";
@@ -221,6 +223,18 @@ class AnnouncementDelegatedAccessGuardArchTest {
             assertThat(access.getMethods()).noneMatch(F04::isTransactional);
             assertThat(edges(production, owner -> owner.getFullName().equals(AUDIENCE_ACCESS), name -> !name.startsWith("<")))
                     .as("呼び出し元（プレビュー・既読判定）").isNotEmpty();
+            // 組織告知の一覧も同じ判定部品を、tx を持たない部品（OrgAnnouncementFeedReadability）と取りまとめ役
+            // （OrgAnnouncementFeedQueryService）経由で呼ぶ（規則が一覧の経路で空振りしていないことの確認）
+            assertThat(production.contain(FEED_READABILITY)).isTrue();
+            assertThat(isTransactional(production.get(FEED_READABILITY))).as("一覧の判定部品はクラスに tx を持たない").isFalse();
+            assertThat(production.get(FEED_READABILITY).getMethods()).noneMatch(F04::isTransactional);
+            assertThat(edges(production, owner -> owner.getFullName().equals(AUDIENCE_ACCESS), name -> !name.startsWith("<")))
+                    .as("一覧の判定部品 → OrgAnnouncementAudienceAccess").anyMatch(edge -> edge.startsWith(FEED_READABILITY + "#"));
+            JavaClass queryService = production.get(FEED_QUERY_SERVICE);
+            assertThat(isTransactional(queryService)).as("一覧の取りまとめ役は tx を持たない").isFalse();
+            assertThat(queryService.getMethods()).noneMatch(F04::isTransactional);
+            assertThat(edges(production, owner -> owner.getFullName().equals(FEED_READABILITY), name -> !name.startsWith("<")))
+                    .as("取りまとめ役 → 一覧の判定部品").anyMatch(edge -> edge.startsWith(FEED_QUERY_SERVICE + "#"));
         }
 
         private static Set<String> violations(JavaClasses classes) {

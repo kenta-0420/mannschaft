@@ -118,7 +118,7 @@ class CorkboardServiceLookupTest {
         }
 
         @Test
-        @DisplayName("PERSONAL: 所有者以外は CORKBOARD_009")
+        @DisplayName("PERSONAL: 所有者以外は CORKBOARD_001（不在と同一・存在秘匿）")
         void PERSONAL_非所有者_例外() {
             CorkboardEntity board = CorkboardEntity.builder()
                     .scopeType("PERSONAL").ownerId(OTHER_USER_ID).name("他人ボード").build();
@@ -127,11 +127,11 @@ class CorkboardServiceLookupTest {
             assertThatThrownBy(() -> service.getBoardDetailByIdOnly(BOARD_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("CORKBOARD_009"));
+                            .isEqualTo("CORKBOARD_001"));
         }
 
         @Test
-        @DisplayName("PERSONAL: ownerId が null なら CORKBOARD_009")
+        @DisplayName("PERSONAL: ownerId が null なら CORKBOARD_001（不在と同一・存在秘匿）")
         void PERSONAL_owner_null_例外() {
             CorkboardEntity board = CorkboardEntity.builder()
                     .scopeType("PERSONAL").ownerId(null).name("孤児ボード").build();
@@ -140,7 +140,7 @@ class CorkboardServiceLookupTest {
             assertThatThrownBy(() -> service.getBoardDetailByIdOnly(BOARD_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("CORKBOARD_009"));
+                            .isEqualTo("CORKBOARD_001"));
         }
 
         @Test
@@ -158,7 +158,7 @@ class CorkboardServiceLookupTest {
         }
 
         @Test
-        @DisplayName("TEAM: 非メンバーは CORKBOARD_009")
+        @DisplayName("TEAM: 非メンバーは CORKBOARD_001（不在と同一・存在秘匿）")
         void TEAM_非メンバー_例外() {
             CorkboardEntity board = CorkboardEntity.builder()
                     .scopeType("TEAM").scopeId(TEAM_ID).name("チームボード").build();
@@ -168,11 +168,11 @@ class CorkboardServiceLookupTest {
             assertThatThrownBy(() -> service.getBoardDetailByIdOnly(BOARD_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("CORKBOARD_009"));
+                            .isEqualTo("CORKBOARD_001"));
         }
 
         @Test
-        @DisplayName("TEAM: scopeId が null なら CORKBOARD_009")
+        @DisplayName("TEAM: scopeId が null なら CORKBOARD_001（不在と同一・存在秘匿）")
         void TEAM_scope_null_例外() {
             CorkboardEntity board = CorkboardEntity.builder()
                     .scopeType("TEAM").scopeId(null).name("孤児チームボード").build();
@@ -181,7 +181,7 @@ class CorkboardServiceLookupTest {
             assertThatThrownBy(() -> service.getBoardDetailByIdOnly(BOARD_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("CORKBOARD_009"));
+                            .isEqualTo("CORKBOARD_001"));
         }
 
         @Test
@@ -199,7 +199,7 @@ class CorkboardServiceLookupTest {
         }
 
         @Test
-        @DisplayName("ORGANIZATION: 非メンバーは CORKBOARD_009")
+        @DisplayName("ORGANIZATION: 非メンバーは CORKBOARD_001（不在と同一・存在秘匿）")
         void ORGANIZATION_非メンバー_例外() {
             CorkboardEntity board = CorkboardEntity.builder()
                     .scopeType("ORGANIZATION").scopeId(ORG_ID).name("組織ボード").build();
@@ -209,7 +209,7 @@ class CorkboardServiceLookupTest {
             assertThatThrownBy(() -> service.getBoardDetailByIdOnly(BOARD_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("CORKBOARD_009"));
+                            .isEqualTo("CORKBOARD_001"));
         }
 
         @Test
@@ -224,7 +224,7 @@ class CorkboardServiceLookupTest {
         }
 
         @Test
-        @DisplayName("未知の scope_type → CORKBOARD_009")
+        @DisplayName("未知の scope_type → CORKBOARD_001")
         void 未知スコープ_例外() {
             CorkboardEntity board = CorkboardEntity.builder()
                     .scopeType("UNKNOWN").name("謎ボード").build();
@@ -233,7 +233,7 @@ class CorkboardServiceLookupTest {
             assertThatThrownBy(() -> service.getBoardDetailByIdOnly(BOARD_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("CORKBOARD_009"));
+                            .isEqualTo("CORKBOARD_001"));
         }
     }
 
@@ -261,7 +261,7 @@ class CorkboardServiceLookupTest {
         }
 
         @Test
-        @DisplayName("異常系: 非所属は CORKBOARD_009")
+        @DisplayName("異常系: 非所属は CORKBOARD_001（不在と同一・存在秘匿）")
         void 非所属_例外() {
             CorkboardEntity board = CorkboardEntity.builder()
                     .scopeType("ORGANIZATION").scopeId(ORG_ID).name("組織ボード").build();
@@ -272,7 +272,7 @@ class CorkboardServiceLookupTest {
             assertThatThrownBy(() -> service.getOrganizationBoardDetail(ORG_ID, BOARD_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("CORKBOARD_009"));
+                            .isEqualTo("CORKBOARD_001"));
         }
 
         @Test

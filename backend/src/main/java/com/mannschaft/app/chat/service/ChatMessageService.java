@@ -143,7 +143,7 @@ public class ChatMessageService {
         } else if (cursor != null) {
             messages = messageRepository.findByChannelIdAndIdLessThan(channelId, cursor, pageable);
         } else {
-            messages = messageRepository.findByChannelIdOrderByCreatedAtDesc(channelId, pageable);
+            messages = messageRepository.findByChannelIdOrderByCreatedAtDescIdDesc(channelId, pageable);
         }
 
         boolean hasNext = messages.size() > effectiveLimit;
@@ -364,7 +364,7 @@ public class ChatMessageService {
         ChatMessageEntity parent = findMessageOrThrow(parentId);
         // F08.7.1: 大会/ディビジョン連絡チャットの返信一覧も canView を通す（メッセージ本文の漏洩防止）。
         checkChannelViewAccess(parent.getChannelId(), userId);
-        List<ChatMessageEntity> replies = messageRepository.findByParentIdOrderByCreatedAtAsc(parentId);
+        List<ChatMessageEntity> replies = messageRepository.findByParentIdOrderByCreatedAtAscIdAsc(parentId);
         return enrichMessages(replies, userId);
     }
 
@@ -387,7 +387,7 @@ public class ChatMessageService {
         Pageable pageable = PageRequest.of(page, effectiveLimit);
 
         Page<ChatMessageEntity> replyPage = messageRepository
-                .findByRootIdAndDeletedAtIsNullOrderByCreatedAtAsc(messageId, pageable);
+                .findByRootIdAndDeletedAtIsNullOrderByCreatedAtAscIdAsc(messageId, pageable);
 
         List<MessageResponse> messages = enrichMessages(replyPage.getContent(), userId);
 
@@ -774,10 +774,26 @@ public class ChatMessageService {
         // N+1 回避: 全メッセージの senderId を集め、表示名・アバターを各 1 クエリで一括解決してから Map で引く
         Map<Long, MessageResponse.SenderDto> resolved = resolveSenders(
                 messages.stream().map(ChatMessageEntity::getSenderId).collect(Collectors.toList()));
+        // CMP-261103-1225: メッセージごとの添付・リアクション取得（N+1）を、それぞれ messageId の IN 句 1 クエリへまとめる。
+        // IN の件数は呼び出し元の取得件数（一覧・検索は最大 MAX_MESSAGE_LIMIT、返信一覧は親 1 件分）と同じで分割しない。
+        // 各メッセージ内の並びは ID 昇順（修正前の findByMessageId の実際の返却順と同じ）。
+        Map<Long, List<ChatMessageAttachmentEntity>> attachmentsByMessage = new HashMap<>();
+        Map<Long, List<ChatMessageReactionEntity>> reactionsByMessage = new HashMap<>();
+        if (!messages.isEmpty()) {
+            List<Long> messageIds = messages.stream().map(ChatMessageEntity::getId).distinct().toList();
+            for (ChatMessageAttachmentEntity a : attachmentRepository.findByMessageIdInOrderByIdAsc(messageIds)) {
+                attachmentsByMessage.computeIfAbsent(a.getMessageId(), k -> new ArrayList<>()).add(a);
+            }
+            for (ChatMessageReactionEntity r : reactionRepository.findByMessageIdInOrderByIdAsc(messageIds)) {
+                reactionsByMessage.computeIfAbsent(r.getMessageId(), k -> new ArrayList<>()).add(r);
+            }
+        }
         List<MessageResponse> responses = new ArrayList<>();
         for (ChatMessageEntity message : messages) {
-            List<ChatMessageAttachmentEntity> attachments = attachmentRepository.findByMessageId(message.getId());
-            List<ChatMessageReactionEntity> reactions = reactionRepository.findByMessageId(message.getId());
+            List<ChatMessageAttachmentEntity> attachments =
+                    attachmentsByMessage.getOrDefault(message.getId(), List.of());
+            List<ChatMessageReactionEntity> reactions =
+                    reactionsByMessage.getOrDefault(message.getId(), List.of());
             MessageResponse response = chatMapper.toMessageResponseWithDetails(
                     message,
                     chatMapper.toAttachmentResponseList(attachments),

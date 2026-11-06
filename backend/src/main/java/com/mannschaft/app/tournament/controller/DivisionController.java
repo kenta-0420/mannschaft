@@ -57,7 +57,7 @@ public class DivisionController {
     @Operation(summary = "ディビジョン一覧")
     public ResponseEntity<ApiResponse<List<DivisionResponse>>> listDivisions(
             @PathVariable Long orgId, @PathVariable Long tId) {
-        tournamentViewAccessGate.verifyViewable(tId, SecurityUtils.getCurrentUserIdOrNull());
+        tournamentViewAccessGate.verifyViewable(orgId, tId, SecurityUtils.getCurrentUserIdOrNull());
         return ResponseEntity.ok(ApiResponse.of(divisionService.listDivisions(tId)));
     }
 
@@ -94,7 +94,7 @@ public class DivisionController {
     @Operation(summary = "参加チーム一覧")
     public ResponseEntity<ApiResponse<List<ParticipantResponse>>> listParticipants(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long divId) {
-        tournamentViewAccessGate.verifyViewable(tId, SecurityUtils.getCurrentUserIdOrNull());
+        tournamentViewAccessGate.verifyViewable(orgId, tId, SecurityUtils.getCurrentUserIdOrNull());
         return ResponseEntity.ok(ApiResponse.of(participantTeamNameEnricher.enrich(orgId, tId, divisionService.listParticipants(tId, divId))));
     }
 

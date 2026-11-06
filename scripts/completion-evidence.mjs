@@ -43,14 +43,17 @@ export function parseTaskList(markdown) {
     if (!/^CMP-(?:\d{6}-\d{4}|\d{3})$/.test(id ?? '')) continue;
     if (cells.length !== 7) throw new Error(`${id} の台帳行は7列ではありません（${lineNumber + 1}行目: ${cells.length}列）`);
     if (byId.has(id)) throw new Error(`docs/task-list.md に ${id} の重複があります`);
-    const row = { id, cells, state: cells[2].replaceAll('**', '').trim(), evidence: cells[5], lineNumber };
+    // 状態セル先頭の優先度 P1〜P5（CMP-261106-0049）は state から分離して priority へ持つ（`**P1 保留**` 形も `**` 除去後に処理）。
+    const rawState = cells[2].replaceAll('**', '').trim();
+    const priorityMatch = /^(P[1-5])\s+/.exec(rawState);
+    const row = { id, cells, state: priorityMatch ? rawState.slice(priorityMatch[0].length) : rawState, priority: priorityMatch ? priorityMatch[1] : null, evidence: cells[5], lineNumber };
     byId.set(id, row);
     rows.push(row);
   }
   return { rows, byId };
 }
 
-function isComplete(state) {
+export function isComplete(state) {
   return /^完了(?:$|[\s（(])/.test(state);
 }
 
