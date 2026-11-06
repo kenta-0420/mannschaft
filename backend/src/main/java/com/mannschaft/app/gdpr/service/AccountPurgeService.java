@@ -237,7 +237,9 @@ public class AccountPurgeService {
                 "contact", "user", "appearance", "navsettings", "gamification",
                 "reflection", "timetable.personal", "cms", "chat", "knowledgebase",
                 "favorite", "membership", "weather", "inbox", "timetable.notes",
-                "seal", "schedule", "visibility", "ranch", "diagnosis");
+                "seal", "schedule", "visibility", "ranch", "diagnosis",
+                // CMP-260822-1243 第2陣: 個人に属する残表（村 pin/nickname を含む）の強消去
+                "shift", "parking", "advertising", "property", "village");
         LocalDateTime purgeAttemptedAt = LocalDateTime.now();
         purgeTargetDomains.forEach(domain -> {
             AccountPurgeCompletionStatusEntity pending = new AccountPurgeCompletionStatusEntity();

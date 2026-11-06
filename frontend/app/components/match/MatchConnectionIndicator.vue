@@ -56,6 +56,13 @@ const indicator = computed<Indicator>(() => {
         label: t('match.live.spectator.connection.denied'),
         pulse: false,
       }
+    case 'UNAUTHENTICATED':
+      return {
+        icon: 'pi pi-sign-in',
+        cls: 'bg-surface-200 text-surface-700',
+        label: t('match.live.spectator.connection.unauthenticated'),
+        pulse: false,
+      }
   }
   return {
     icon: 'pi pi-circle',

@@ -36,6 +36,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 
@@ -203,22 +204,20 @@ class VillageFeedServiceTest {
                 .willReturn(List.of(vId1, vId2));
         given(villageRepository.findAllById(any(Iterable.class))).willReturn(List.of(v1, v2));
 
-        given(timelinePostRepository.findLatestByVillageId(eq(vId1), any()))
-                .willReturn(List.of(timelinePost(10L, vId1, "東の投稿", t(10))));
-        given(timelinePostRepository.findLatestByVillageId(eq(vId2), any()))
-                .willReturn(List.of(timelinePost(20L, vId2, "西の投稿", t(8))));
-        given(bulletinThreadRepository.findLatestByVillageId(any(), any()))
+        given(timelinePostRepository.findLatestByVillageIds(any(), anyInt()))
+                .willReturn(List.of(
+                        timelinePost(10L, vId1, "東の投稿", t(10)),
+                        timelinePost(20L, vId2, "西の投稿", t(8))));
+        given(bulletinThreadRepository.findLatestByVillageIds(any(), anyInt()))
                 .willReturn(List.of());
 
-        given(chatChannelRepository.findByVillageIdAndChannelType(vId1, ChannelType.VILLAGE_LOBBY))
-                .willReturn(Optional.of(lobby(vId1, 1001L)));
-        given(chatChannelRepository.findByVillageIdAndChannelType(vId2, ChannelType.VILLAGE_LOBBY))
-                .willReturn(Optional.of(lobby(vId2, 1002L)));
+        given(chatChannelRepository.findByVillageIdInAndChannelTypeOrderByIdAsc(any(), eq(ChannelType.VILLAGE_LOBBY)))
+                .willReturn(List.of(lobby(vId1, 1001L), lobby(vId2, 1002L)));
 
-        given(chatMessageRepository.findLatestRootMessagesByChannelId(eq(1001L), any()))
-                .willReturn(List.of(chatMessage(30L, 1001L, "東のおはよう", t(11))));
-        given(chatMessageRepository.findLatestRootMessagesByChannelId(eq(1002L), any()))
-                .willReturn(List.of(chatMessage(40L, 1002L, "西のおはよう", t(9))));
+        given(chatMessageRepository.findLatestRootMessagesByChannelIds(any(), anyInt()))
+                .willReturn(List.of(
+                        chatMessage(30L, 1001L, "東のおはよう", t(11)),
+                        chatMessage(40L, 1002L, "西のおはよう", t(9))));
 
         VillageFeedResponse res = service.build(USER_ID, 10);
 
@@ -245,16 +244,16 @@ class VillageFeedServiceTest {
                 .willReturn(List.of(pin(vId, 0L)));
         given(postingIdentityService.getActiveVillageIdsByUser(USER_ID)).willReturn(List.of(vId));
         given(villageRepository.findAllById(any(Iterable.class))).willReturn(List.of(v));
-        given(timelinePostRepository.findLatestByVillageId(eq(vId), any()))
+        given(timelinePostRepository.findLatestByVillageIds(any(), anyInt()))
                 .willReturn(List.of(
                         timelinePost(1L, vId, "1", t(1)),
                         timelinePost(2L, vId, "2", t(2)),
                         timelinePost(3L, vId, "3", t(3))
                 ));
-        given(bulletinThreadRepository.findLatestByVillageId(eq(vId), any()))
+        given(bulletinThreadRepository.findLatestByVillageIds(any(), anyInt()))
                 .willReturn(List.of());
-        given(chatChannelRepository.findByVillageIdAndChannelType(vId, ChannelType.VILLAGE_LOBBY))
-                .willReturn(Optional.empty());
+        given(chatChannelRepository.findByVillageIdInAndChannelTypeOrderByIdAsc(any(), eq(ChannelType.VILLAGE_LOBBY)))
+                .willReturn(List.of());
 
         VillageFeedResponse res = service.build(USER_ID, 2);
 
@@ -273,12 +272,12 @@ class VillageFeedServiceTest {
         given(postingIdentityService.getActiveVillageIdsByUser(USER_ID)).willReturn(List.of(vId));
         given(villageRepository.findAllById(any(Iterable.class)))
                 .willReturn(List.of(activeVillage(vId, "新規村")));
-        given(timelinePostRepository.findLatestByVillageId(eq(vId), any()))
+        given(timelinePostRepository.findLatestByVillageIds(any(), anyInt()))
                 .willReturn(List.of(timelinePost(1L, vId, "投稿だけ", t(5))));
-        given(bulletinThreadRepository.findLatestByVillageId(eq(vId), any()))
+        given(bulletinThreadRepository.findLatestByVillageIds(any(), anyInt()))
                 .willReturn(List.of());
-        given(chatChannelRepository.findByVillageIdAndChannelType(vId, ChannelType.VILLAGE_LOBBY))
-                .willReturn(Optional.empty());
+        given(chatChannelRepository.findByVillageIdInAndChannelTypeOrderByIdAsc(any(), eq(ChannelType.VILLAGE_LOBBY)))
+                .willReturn(List.of());
 
         VillageFeedResponse res = service.build(USER_ID, 20);
 
@@ -295,7 +294,7 @@ class VillageFeedServiceTest {
         given(postingIdentityService.getActiveVillageIdsByUser(USER_ID)).willReturn(List.of(vId));
         given(villageRepository.findAllById(any(Iterable.class)))
                 .willReturn(List.of(activeVillage(vId, "板の村")));
-        given(timelinePostRepository.findLatestByVillageId(eq(vId), any()))
+        given(timelinePostRepository.findLatestByVillageIds(any(), anyInt()))
                 .willReturn(List.of());
         BulletinThreadEntity t = BulletinThreadEntity.builder()
                 .categoryId(1L)
@@ -304,10 +303,10 @@ class VillageFeedServiceTest {
                 .title("回覧板タイトル").body("本文").build();
         VillageSearchServiceTest.setBaseEntityId(t, 7L);
         VillageSearchServiceTest.setBaseEntityCreatedAt(t, t(12));
-        given(bulletinThreadRepository.findLatestByVillageId(eq(vId), any()))
+        given(bulletinThreadRepository.findLatestByVillageIds(any(), anyInt()))
                 .willReturn(List.of(t));
-        given(chatChannelRepository.findByVillageIdAndChannelType(vId, ChannelType.VILLAGE_LOBBY))
-                .willReturn(Optional.empty());
+        given(chatChannelRepository.findByVillageIdInAndChannelTypeOrderByIdAsc(any(), eq(ChannelType.VILLAGE_LOBBY)))
+                .willReturn(List.of());
 
         VillageFeedResponse res = service.build(USER_ID, 20);
 

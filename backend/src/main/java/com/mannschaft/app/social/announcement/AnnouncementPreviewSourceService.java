@@ -104,12 +104,21 @@ public class AnnouncementPreviewSourceService {
     }
 
     private void assertProvisionedScope(AnnouncementFeedEntity feed) {
+        if (isScopeDenied(feed)) throw notFound();
+    }
+
+    /**
+     * 告知の所有スコープが本文を読ませない状態か（準備中、または論理削除された非アクティブな組織）。管理者・システム管理者も同じ。
+     * プレビューの本文取得前の確認であり、組織告知の一覧も同じ判定を使って、プレビューが 404 になる組織の告知を出さない
+     * （組織単位で 1 回の判定。告知の件数に比例しない）。
+     */
+    boolean isScopeDenied(AnnouncementFeedEntity feed) {
         if ((feed.getScopeType() == AnnouncementScopeType.TEAM && teamService.isProvisioned(feed.getScopeId()))
                 || (feed.getScopeType() == AnnouncementScopeType.ORGANIZATION
-                    && organizationService.isProvisioned(feed.getScopeId()))) throw notFound();
+                    && organizationService.isProvisioned(feed.getScopeId()))) return true;
         // 論理削除された（非アクティブな）組織の告知は、委任経路でも直属経路でも読ませない
-        if (feed.getScopeType() == AnnouncementScopeType.ORGANIZATION
-                && !organizationService.isActiveOrganization(feed.getScopeId())) throw notFound();
+        return feed.getScopeType() == AnnouncementScopeType.ORGANIZATION
+                && !organizationService.isActiveOrganization(feed.getScopeId());
     }
 
     private static void assertScope(AnnouncementFeedEntity feed, String type, Long id) {

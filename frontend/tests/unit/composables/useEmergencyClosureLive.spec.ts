@@ -23,7 +23,7 @@ import type { ClosureConfirmationItem } from '~/composables/useEmergencyClosureA
 function item(userId: number, confirmed: boolean): ClosureConfirmationItem {
   return {
     userId,
-    userDisplayName: `User ${userId}`,
+    userFullName: `User ${userId}`,
     userEmail: `u${userId}@example.com`,
     appointmentAt: '2026-06-20T09:00:00',
     confirmed,

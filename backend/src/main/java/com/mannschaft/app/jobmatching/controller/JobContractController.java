@@ -12,6 +12,7 @@ import com.mannschaft.app.jobmatching.controller.dto.ReportCompletionRequest;
 import com.mannschaft.app.jobmatching.entity.JobContractEntity;
 import com.mannschaft.app.jobmatching.mapper.JobMapper;
 import com.mannschaft.app.jobmatching.service.JobContractService;
+import com.mannschaft.app.jobmatching.service.JobContractViewAccessGuard;
 import com.mannschaft.app.jobmatching.service.command.ReportCompletionCommand;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -56,6 +57,8 @@ public class JobContractController {
 
     private final JobContractService contractService;
     private final JobMapper jobMapper;
+    /** 契約の閲覧可否の門（当事者でない者には不在と同一応答。CMP-260821-1027）。 */
+    private final JobContractViewAccessGuard contractViewGuard;
 
     // ========================================
     // 一覧・詳細
@@ -126,7 +129,9 @@ public class JobContractController {
             @Valid @RequestBody(required = false) ReportCompletionRequest req) {
         String message = req != null ? req.message() : null;
         ReportCompletionCommand cmd = new ReportCompletionCommand(message);
-        JobContractEntity entity = contractService.reportCompletion(id, cmd, SecurityUtils.getCurrentUserId());
+        Long userId = SecurityUtils.getCurrentUserId();
+        contractViewGuard.requireVisible(id, userId);
+        JobContractEntity entity = contractService.reportCompletion(id, cmd, userId);
         return ResponseEntity.ok(ApiResponse.of(jobMapper.toContractResponse(entity)));
     }
 
@@ -144,7 +149,9 @@ public class JobContractController {
     @Operation(summary = "完了承認（Requester）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "承認成功")
     public ResponseEntity<ApiResponse<JobContractResponse>> approveCompletion(@PathVariable Long id) {
-        JobContractEntity entity = contractService.approveCompletion(id, SecurityUtils.getCurrentUserId());
+        Long userId = SecurityUtils.getCurrentUserId();
+        contractViewGuard.requireVisible(id, userId);
+        JobContractEntity entity = contractService.approveCompletion(id, userId);
         return ResponseEntity.ok(ApiResponse.of(jobMapper.toContractResponse(entity)));
     }
 
@@ -165,7 +172,9 @@ public class JobContractController {
     public ResponseEntity<ApiResponse<JobContractResponse>> rejectCompletion(
             @PathVariable Long id,
             @Valid @RequestBody RejectCompletionRequest req) {
-        JobContractEntity entity = contractService.rejectCompletion(id, req.reason(), SecurityUtils.getCurrentUserId());
+        Long userId = SecurityUtils.getCurrentUserId();
+        contractViewGuard.requireVisible(id, userId);
+        JobContractEntity entity = contractService.rejectCompletion(id, req.reason(), userId);
         return ResponseEntity.ok(ApiResponse.of(jobMapper.toContractResponse(entity)));
     }
 
@@ -190,7 +199,9 @@ public class JobContractController {
             @PathVariable Long id,
             @Valid @RequestBody(required = false) CancelContractRequest req) {
         String reason = req != null ? req.reason() : null;
-        JobContractEntity entity = contractService.cancelContract(id, SecurityUtils.getCurrentUserId(), reason);
+        Long userId = SecurityUtils.getCurrentUserId();
+        contractViewGuard.requireVisible(id, userId);
+        JobContractEntity entity = contractService.cancelContract(id, userId, reason);
         return ResponseEntity.ok(ApiResponse.of(jobMapper.toContractResponse(entity)));
     }
 }

@@ -132,8 +132,11 @@ public class GlobalSearchService {
         List<Long> shiftAdminTeamIds = toSafeIds(teamIds.stream()
                 .filter(id -> id > 0 && accessControlService.isAdminOrAbove(userId, id, "TEAM"))
                 .toList());
+        // D-2127-3: SUPPORTER は shift API が全ステータス 403（ShiftScheduleFacade）のため、
+        // 検索でも母集団から外す（API と検索で可視性を食い違わせない）。
         List<Long> shiftMemberTeamIds = toSafeIds(teamIds.stream()
-                .filter(id -> id > 0 && !shiftAdminTeamIds.contains(id))
+                .filter(id -> id > 0 && !shiftAdminTeamIds.contains(id)
+                        && !accessControlService.isSupporter(userId, id, "TEAM"))
                 .toList());
         var shifts = shiftScheduleRepository.searchByKeyword(
                 query, shiftAdminTeamIds, shiftMemberTeamIds, limit);

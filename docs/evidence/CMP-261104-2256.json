@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261104-2256",
+  "scope": "test-only",
+  "implementation": {
+    "pr": 4298,
+    "sha": "b16855dac4f7b71456111adf621ff75f0624e130"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "複数（2本・3本）の自己参照が「自己参照」表に全件並ぶ",
+      "tests": [
+        { "name": "自己参照の節", "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramRendererTest.java" }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "自己参照0件のドメインでは節を出さない",
+      "tests": [
+        { "name": "自己参照ゼロなら節なし", "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramRendererTest.java" }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "並びはテーブル名→列名で決定的",
+      "tests": [
+        { "name": "自己参照の節", "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramRendererTest.java" }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "README 凡例に自己参照表を正とする旨がある",
+      "tests": [
+        { "name": "自己参照の凡例", "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramRendererTest.java" }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "コミット済み docs/architecture/er/ が実スキーマからの生成結果と一致する",
+      "tests": [
+        { "name": "ER Diagram Drift Check", "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/41934082771" }
+      ]
+    }
+  ],
+  "ci": [
+    { "runId": 41934082657 },
+    { "runId": 41934082771 },
+    { "runId": 41934082778 }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4298",
+      "note": "Codex検分。修正を要する指摘なし。"
+    },
+    "real": {
+      "status": "not-applicable",
+      "scope": "test-only",
+      "reason": "生成器(testソース)と生成ドキュメントのみの変更で画面・APIの挙動を変えない。なお mermaid 11.17.2 で全113図を実描画し自己参照欠落を確認済み"
+    },
+    "exploratory": {
+      "status": "not-applicable",
+      "scope": "test-only",
+      "reason": "導線を変えない"
+    }
+  },
+  "regressions": []
+}

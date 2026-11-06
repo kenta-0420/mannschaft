@@ -72,6 +72,22 @@ beforeEach(() => {
 })
 
 describe('ReservationList.vue（mine モード）', () => {
+  it('R3: 日跨ぎ枠は終了時刻を翌日表記で示し、日を跨がない枠は従来表示のまま', async () => {
+    mockListMyReservations.mockResolvedValue({ data: [
+      { id: 301, slot: { slotDate: '2026-11-03', endDate: '2026-11-04', startTime: '23:00:00', endTime: '01:00:00', lineName: '日跨ぎ' }, status: { status: 'CONFIRMED' } },
+      { id: 302, slot: { slotDate: '2026-11-03', endDate: '2026-11-03', startTime: '10:00:00', endTime: '11:00:00', lineName: '同日' }, status: { status: 'CONFIRMED' } },
+    ] })
+    const wrapper = await mountSuspended(ReservationList, {
+      props: { teamId: 'team-slug', canManage: false, mode: 'mine' as const },
+    })
+    await new Promise(r => setTimeout(r, 0))
+
+    const text = wrapper.text()
+    expect(text).toContain('23:00:00 - Next day 01:00:00')
+    expect(text).not.toContain('23:00:00 - 01:00:00')
+    expect(text).toContain('10:00:00 - 11:00:00')
+  })
+
   it('AC-3: グループ末尾が不明なら単枠終了時刻へ短縮せず不明と示す', async () => {
     mockListMyReservations.mockResolvedValue({ data: [{
       id: 93,

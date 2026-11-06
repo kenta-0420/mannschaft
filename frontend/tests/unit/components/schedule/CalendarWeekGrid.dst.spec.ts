@@ -1,6 +1,6 @@
 import { defineComponent, h } from 'vue'
 import dayjs from 'dayjs'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import CalendarWeekGrid from '~/components/schedule/CalendarWeekGrid.vue'
 import type { CalendarEventItem } from '~/composables/useCalendarEvents'
@@ -53,6 +53,7 @@ function pointerEvent(type: string, init: { clientX: number; clientY: number }):
 
 const mountedWrappers: Array<{ unmount: () => void }> = []
 afterEach(() => {
+  vi.useRealTimers()
   while (mountedWrappers.length > 0) mountedWrappers.pop()?.unmount()
 })
 
@@ -197,6 +198,29 @@ describe('CalendarWeekGrid — 夏時間の切替日（§6.6.5 / R16）', () => 
     // オフセットが EDT → EST へ切り替わっている（重複日であることの裏取り）
     expect(across[0].slice(-6)).toBe('-04:00')
     expect(across[1].slice(-6)).toBe('-05:00')
+  })
+
+  /**
+   * 重複時刻の解決は**実行した日時に依存してはならない**（CMP-261101-1404）。
+   *
+   * dayjs.tz は重複時刻の解決に「現在時刻のオフセット」を使うため、切替の前（EDT）に実行すると
+   * 先の側、切替の後（EST）に実行すると後の側を返す。2026-11-01 の UTC 06:00 を境に
+   * 上の試験が `expected 30 to be 90` で落ちた原因である。日時を固定した上で、
+   * 切替前・切替当日・切替後のどの「今日」でも先に来る側（EDT）が選ばれることを確かめる。
+   */
+  it.each([
+    ['切替前（2026-10-30）', '2026-10-30T12:00:00Z'],
+    ['切替当日の切替前（2026-11-01 03:00Z = EDT）', '2026-11-01T03:00:00Z'],
+    ['切替当日の切替後（2026-11-01 07:00Z = EST）', '2026-11-01T07:00:00Z'],
+    ['切替後（2026-11-03）', '2026-11-03T12:00:00Z'],
+  ])('[秋の重複] 実行日が %s でも 01:30–02:00 は先の側（EDT）から数えて 90分', async (_label, now) => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(now))
+
+    const across = await dragOn(await mountWeek('2026-11-01'), 90, 120)
+    expect(across[0].slice(-6)).toBe('-04:00')
+    expect(across[1].slice(-6)).toBe('-05:00')
+    expect((dayjs(across[1]).valueOf() - dayjs(across[0]).valueOf()) / 60_000).toBe(90)
   })
 
   it('24:00 まで選ぶと翌日 0:00 として emit される（23:60 のような不正時刻を作らない）', async () => {

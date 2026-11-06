@@ -6,6 +6,7 @@ import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.jobmatching.controller.dto.CheckInResponse;
 import com.mannschaft.app.jobmatching.controller.dto.RecordCheckInRequest;
 import com.mannschaft.app.jobmatching.service.JobCheckInService;
+import com.mannschaft.app.jobmatching.service.JobContractViewAccessGuard;
 import com.mannschaft.app.jobmatching.service.command.CheckInCommand;
 import com.mannschaft.app.jobmatching.service.command.CheckInResult;
 import io.swagger.v3.oas.annotations.Operation;
@@ -43,6 +44,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class JobCheckInController {
 
     private final JobCheckInService checkInService;
+    /** 契約の閲覧可否の門（当事者でない者には不在と同一応答。行ロック・トークン検証より前。CMP-260821-1027）。 */
+    private final JobContractViewAccessGuard contractViewGuard;
 
     /**
      * QR チェックイン／アウトを記録する。
@@ -62,6 +65,9 @@ public class JobCheckInController {
      * @return 記録結果（生成 ID・遷移後ステータス・業務時間など）
      */
     /*
+     * 存在秘匿: まず JobContractViewAccessGuard が、契約の当事者でない者を契約不存在と同一の
+     * JOB_CONTRACT_NOT_FOUND（404）で拒否する。契約行の悲観ロックとトークン検証より前に判定するため、
+     * 非当事者はロック待ちにも入らない（CMP-260821-1027）。
      * 認可の所在: JobCheckInService#recordCheckIn（jobmatching/service/JobCheckInService.java:109）が
      * 対象契約を実体としてロードし、JobPolicy#canRecordCheckIn で契約の worker_user_id と
      * 認証主体の一致（およびステータス整合）を検証する。不一致は JOB_QR_TOKEN_WRONG_WORKER（403）。
@@ -80,6 +86,7 @@ public class JobCheckInController {
     public ResponseEntity<ApiResponse<CheckInResponse>> recordCheckIn(
             @Valid @RequestBody RecordCheckInRequest req) {
         Long workerUserId = SecurityUtils.getCurrentUserId();
+        contractViewGuard.requireVisible(req.contractId(), workerUserId);
 
         CheckInCommand cmd = new CheckInCommand(
                 req.contractId(),

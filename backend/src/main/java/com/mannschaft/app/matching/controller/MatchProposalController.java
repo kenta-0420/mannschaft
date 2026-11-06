@@ -14,6 +14,8 @@ import com.mannschaft.app.matching.dto.ProposalResponse;
 import com.mannschaft.app.matching.dto.ProposalStatusResponse;
 import com.mannschaft.app.matching.dto.StatusReasonRequest;
 import com.mannschaft.app.matching.service.MatchProposalService;
+import com.mannschaft.app.matching.service.MatchProposalViewAccessGuard;
+import com.mannschaft.app.matching.service.MatchRequestViewAccessGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -41,6 +43,10 @@ import com.mannschaft.app.common.SecurityUtils;
 public class MatchProposalController {
 
     private final MatchProposalService proposalService;
+    /** 募集の閲覧可否の門（閲覧できない者には不在と同一応答。CMP-260821-1027）。 */
+    private final MatchRequestViewAccessGuard requestViewGuard;
+    /** 応募の閲覧可否の門（閲覧できない者には不在と同一応答。TX・行ロックより前に判定する。CMP-260821-1027）。 */
+    private final MatchProposalViewAccessGuard proposalViewGuard;
 
 
     /**
@@ -54,6 +60,7 @@ public class MatchProposalController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody CreateProposalRequest request) {
+        requestViewGuard.requireVisible(id, SecurityUtils.getCurrentUserId());
         ProposalCreateResponse response = proposalService.createProposal(teamId, id, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
@@ -71,6 +78,7 @@ public class MatchProposalController {
         // 応募者一覧は募集を出したチームの私的情報。path に teamId が無いため、対象募集のチームに対する
         // 所属判定を Service 内で行う（非所属は存在秘匿のため 404）。
         Long currentUserId = SecurityUtils.getCurrentUserId();
+        requestViewGuard.requireVisible(id, currentUserId);
         Page<ProposalResponse> result = proposalService.listProposals(id, currentUserId, PageRequest.of(page, Math.min(size, 50)));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
@@ -87,6 +95,7 @@ public class MatchProposalController {
             @PathVariable Long id,
             @RequestBody(required = false) AcceptProposalRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
+        proposalViewGuard.requireVisible(id, currentUserId);
         AcceptProposalResponse response = proposalService.acceptProposal(id, currentUserId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -102,6 +111,7 @@ public class MatchProposalController {
             @RequestBody(required = false) StatusReasonRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         String reason = request != null ? request.getStatusReason() : null;
+        proposalViewGuard.requireVisible(id, currentUserId);
         ProposalStatusResponse response = proposalService.rejectProposal(id, currentUserId, reason);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -117,6 +127,7 @@ public class MatchProposalController {
             @RequestBody(required = false) StatusReasonRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         String reason = request != null ? request.getStatusReason() : null;
+        proposalViewGuard.requireVisible(id, currentUserId);
         ProposalStatusResponse response = proposalService.withdrawProposal(id, currentUserId, reason);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
