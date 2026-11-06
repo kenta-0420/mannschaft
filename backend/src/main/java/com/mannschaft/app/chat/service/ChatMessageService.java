@@ -143,7 +143,7 @@ public class ChatMessageService {
         } else if (cursor != null) {
             messages = messageRepository.findByChannelIdAndIdLessThan(channelId, cursor, pageable);
         } else {
-            messages = messageRepository.findByChannelIdOrderByCreatedAtDesc(channelId, pageable);
+            messages = messageRepository.findByChannelIdOrderByCreatedAtDescIdDesc(channelId, pageable);
         }
 
         boolean hasNext = messages.size() > effectiveLimit;
@@ -364,7 +364,7 @@ public class ChatMessageService {
         ChatMessageEntity parent = findMessageOrThrow(parentId);
         // F08.7.1: 大会/ディビジョン連絡チャットの返信一覧も canView を通す（メッセージ本文の漏洩防止）。
         checkChannelViewAccess(parent.getChannelId(), userId);
-        List<ChatMessageEntity> replies = messageRepository.findByParentIdOrderByCreatedAtAsc(parentId);
+        List<ChatMessageEntity> replies = messageRepository.findByParentIdOrderByCreatedAtAscIdAsc(parentId);
         return enrichMessages(replies, userId);
     }
 
@@ -387,7 +387,7 @@ public class ChatMessageService {
         Pageable pageable = PageRequest.of(page, effectiveLimit);
 
         Page<ChatMessageEntity> replyPage = messageRepository
-                .findByRootIdAndDeletedAtIsNullOrderByCreatedAtAsc(messageId, pageable);
+                .findByRootIdAndDeletedAtIsNullOrderByCreatedAtAscIdAsc(messageId, pageable);
 
         List<MessageResponse> messages = enrichMessages(replyPage.getContent(), userId);
 
