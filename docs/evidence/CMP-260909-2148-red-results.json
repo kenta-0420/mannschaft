@@ -1,0 +1,30 @@
+{
+  "cmpId": "CMP-260909-2148",
+  "stage": "red",
+  "sourceHead": "40eaf2dc77678f6fe4a5b9b799ed691ddc48769f",
+  "testCommit": "f04959212cec34b98fa537d222dc6f7f39e9f502",
+  "testClass": "com.mannschaft.app.shift.ShiftAutoAssignCurrentSourceContractIT",
+  "testFile": "backend/src/test/java/com/mannschaft/app/shift/ShiftAutoAssignCurrentSourceContractIT.java",
+  "runner": "scripts/verification-run.mjs -> backend/scripts/gradle-turnstile.sh -> bash gradlew test",
+  "excludedTasksForTargetedRedOnly": ["archUnitTest", "archUnitFreezeStoreIntegrityTest"],
+  "counts": { "tests": 8, "passed": 3, "failures": 5, "errors": 0, "skipped": 0 },
+  "gradleExitCode": 1,
+  "xmlSha256": "675230bdd5a572b0c27cee0290478d69f67ec4e551be79f17259cba447e250b7",
+  "logSha256": "bf7f209f6294eafc4de845685d48988274e406d5e709288fe1981a5974b29ea7",
+  "receiptSha256": "19bbad8b0265b968d24c0d2f37f1bc41fe2c243181d2abdacfe22a51ac5af03d",
+  "cleanup": "removed",
+  "failureType": "AssertionFailedError: 実MySQLの保存JSONをflush/clear後に再読して比較",
+  "savedValueDifferences": [
+    { "ac": "AC-1", "scenario": "PROPOSED A/B、正規手動A、Bだけ実確定", "expected": ["A", "B"], "actual": ["B"] },
+    { "ac": "AC-2", "scenario": "履歴なしJSON-only Aへ今回Bを確定", "expected": ["A", "B"], "actual": ["B"] },
+    { "ac": "AC-3", "scenario": "JSON A・古いCONFIRMED Cへ今回Bを確定", "expected": ["A", "B"], "actual": ["C", "B"] },
+    { "ac": "AC-4", "scenario": "JSON AでREVOKED Bだけを選択", "expected": ["A"], "actual": [] },
+    { "ac": "AC-5", "scenario": "JSON D/AへA/Bを確定", "expected": ["D", "A", "B"], "actual": ["A", "B"] }
+  ],
+  "existingContractsPassed": ["内部の空選択は更新しない", "反復確定で重複しない", "サマリーはJSONを数える"],
+  "earlierPreparationAttempts": [
+    { "attempt": "r1", "result": "未実行", "reason": "WindowsからWSLへの引用で証跡変数が外側展開され、ログ作成が拒否された", "cleanup": "removed" },
+    { "attempt": "r2", "result": "未実行", "reason": "archive内gradlewの非実行属性でexit 126。bash経由へ修正した", "cleanup": "removed" }
+  ],
+  "limits": ["認可・実HTTP・AFTER_COMMIT通知の検査ではない", "全CI・実機・探索の合格を示さない", "raw XML・ログ・認証情報・個人状態は公開せず、担当者記号とdigestだけを保存"]
+}
