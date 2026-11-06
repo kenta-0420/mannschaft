@@ -14,5 +14,6 @@ public class UpdateTermRequest {
     private final LocalDate startDate;
     private final LocalDate endDate;
     private final Integer academicYear;
+    @jakarta.validation.constraints.Min(0) @jakarta.validation.constraints.Max(255)
     private final Integer sortOrder;
 }

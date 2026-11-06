@@ -73,7 +73,8 @@
       "connecting": "연결 중…",
       "reconnecting": "재연결 중…",
       "offline": "오프라인",
-      "denied": "열람 권한이 없습니다"
+      "denied": "열람 권한이 없습니다",
+      "unauthenticated": "로그인이 필요합니다"
     },
     "dialog": {
       "title": "전송 확인",
