@@ -105,7 +105,7 @@ describe('シフト枠削除 — 警告と明示確認（CMP-260909-2153）', ()
     const pending = confirmation!.accept()
     await confirmation!.accept()
     expect(deleteSlot).toHaveBeenCalledExactlyOnceWith(301)
-    expect(wrapper.findAllComponents(Button).find(button => button.props('icon') === 'pi pi-trash')!.props('disabled')).toBe(true)
+    expect(wrapper.findAllComponents(Button).find(button => button.props('icon') === 'pi pi-trash')!.attributes('disabled')).toBeDefined()
     finish()
     await pending
   })
@@ -123,7 +123,7 @@ describe('シフト枠削除 — 警告と明示確認（CMP-260909-2153）', ()
     expect(notifySuccess).not.toHaveBeenCalled()
     const button = wrapper.findAllComponents(Button).find(button => button.props('icon') === 'pi pi-trash')!
     expect(button.exists()).toBe(true)
-    expect(button.props('disabled')).toBe(false)
+    expect(button.attributes('disabled')).toBeUndefined()
   })
 
   it('MEMBERには既存どおり枠削除の操作を表示しない', async () => {
