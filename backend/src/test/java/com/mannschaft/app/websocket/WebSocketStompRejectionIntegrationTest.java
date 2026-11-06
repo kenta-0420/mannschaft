@@ -19,6 +19,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.event.EventListener;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.lang.NonNull;
+import org.springframework.messaging.MessageDeliveryException;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
@@ -124,12 +125,35 @@ class WebSocketStompRejectionIntegrationTest extends AbstractMySqlIntegrationTes
             }
             StompSession session = future.join();
             if (session.isConnected()) {
-                session.disconnect();
+                disconnectUnlessServerAlreadyClosed(connection, session);
             }
         }
         connections.clear();
         clients.forEach(WebSocketStompClient::stop);
         clients.clear();
+    }
+
+    /**
+     * DISCONNECT する。ただしサーバがすでに閉じた（閉じつつある）セッションは後片付けの対象外として許容する。
+     *
+     * <p>拒否 ERROR 後のサーバ切断は非同期のため、{@code isConnected()} が true を返した直後に閉じられ、
+     * {@code disconnect()} が閉じたセッションへ書いて {@link MessageDeliveryException} になる競合がある（確認と実行の間）。
+     * 例外は握りつぶさず、クライアントの切断通知を待った後に {@code isConnected()} が false（＝本当に閉じていた）
+     * ときだけ許容する。まだ接続中なら本物の失敗として再送出する。</p>
+     */
+    private static void disconnectUnlessServerAlreadyClosed(Connection connection, StompSession session) {
+        try {
+            session.disconnect();
+        } catch (MessageDeliveryException e) {
+            try {
+                connection.handler().closed.get(10, TimeUnit.SECONDS);
+            } catch (Exception ignored) {
+                // 切断通知が来なければ下の isConnected 判定で本物の失敗として扱う
+            }
+            if (session.isConnected()) {
+                throw e;
+            }
+        }
     }
 
     /**
