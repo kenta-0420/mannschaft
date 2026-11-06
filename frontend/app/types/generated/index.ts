@@ -63200,6 +63200,14 @@ export interface components {
             startTime?: string;
             subject?: string;
         };
+        CommonErrorDetail: {
+            code?: string;
+            fieldErrors?: components["schemas"]["FieldError"][];
+            message?: string;
+        };
+        ErrorResponse: {
+            error?: components["schemas"]["CommonErrorDetail"];
+        };
         ApiResponseEmergencyClosureResponse: {
             data?: components["schemas"]["EmergencyClosureResponse"];
         };
@@ -77124,14 +77132,6 @@ export interface components {
             sourceTeamId: number;
             sourceTeamName: string | null;
             sourceTeamSlug: string | null;
-        };
-        CommonErrorDetail: {
-            code?: string;
-            fieldErrors?: components["schemas"]["FieldError"][];
-            message?: string;
-        };
-        ErrorResponse: {
-            error?: components["schemas"]["CommonErrorDetail"];
         };
         FriendFeedForwardStatus: {
             /** Format: int64 */
@@ -115083,13 +115083,22 @@ export interface operations {
                     "*/*": components["schemas"]["ApiResponseEmergencyClosureResponse"];
                 };
             };
+            /** @description Idempotency-Key の形式が不正（RESERVATION_056） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description 同じ Idempotency-Key で内容が異なる（RESERVATION_055） */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseEmergencyClosureResponse"];
+                    "*/*": components["schemas"]["ErrorResponse"];
                 };
             };
         };

@@ -77,7 +77,15 @@ public class TeamEmergencyClosureController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
             description = "同じ Idempotency-Key・同じ内容の再送。新規作成せず先の送信結果を返す")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409",
-            description = "同じ Idempotency-Key で内容が異なる（RESERVATION_055）")
+            description = "同じ Idempotency-Key で内容が異なる（RESERVATION_055）",
+            content = @io.swagger.v3.oas.annotations.media.Content(
+                    schema = @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = com.mannschaft.app.common.ErrorResponse.class)))
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400",
+            description = "Idempotency-Key の形式が不正（RESERVATION_056）",
+            content = @io.swagger.v3.oas.annotations.media.Content(
+                    schema = @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = com.mannschaft.app.common.ErrorResponse.class)))
     @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<EmergencyClosureResponse>> sendClosure(
             @PathVariable Long teamId,

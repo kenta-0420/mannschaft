@@ -55,6 +55,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -96,6 +97,7 @@ class EmergencyClosureIdempotencyIT extends AbstractMySqlIntegrationTest {
     @Autowired private ReservationSlotRepository slots;
     @Autowired private PlatformTransactionManager transactionManager;
     @Autowired private EmailOutboxService emailOutboxService;
+    @Autowired private com.mannschaft.app.reservation.repository.EmergencyClosureConfirmationRepository confirmationRepository;
     @Autowired private com.mannschaft.app.reservation.service.EmergencyClosureService closureService;
     @Autowired @Qualifier("event-pool") private ThreadPoolTaskExecutor eventPool;
 
@@ -321,18 +323,25 @@ class EmergencyClosureIdempotencyIT extends AbstractMySqlIntegrationTest {
     @DisplayName("0334-10: 送信途中の失敗は全rollback（休業行・取消・メール・確認行）し、同キー再送で成功・副作用1回分")
     void 途中失敗は全rollbackし同キー再送で成功する() throws Exception {
         String key = UUID.randomUUID().toString();
+        // 休業行・予約取消・枠減算・outbox・通知イベント発行・確認行（1件目）まで実処理を進めた後、
+        // TX 内で最後に呼ばれる確認行の保存を 2 件目で失敗させる（commit 前の途中失敗）。
+        AtomicInteger saveCalls = new AtomicInteger();
         AtomicBoolean failOnce = new AtomicBoolean(true);
-        advise(emailOutboxService, "enqueue", invocation -> {
-            if (failOnce.getAndSet(false)) {
-                throw new IllegalStateException("CMP0334 試練: outbox 投入の途中失敗");
+        advise(confirmationRepository, "save", invocation -> {
+            Object saved = invocation.proceed();
+            if (saveCalls.incrementAndGet() >= 2 && failOnce.getAndSet(false)) {
+                throw new IllegalStateException("CMP0334 試練: 確認行作成の途中失敗（副作用作成後・commit 前）");
             }
-            return invocation.proceed();
+            return saved;
         });
 
         MockHttpServletResponse failed = send(adminA, teamA, body(true, "途中失敗"), key);
         assertSoftly(soft -> {
+            soft.assertThat(saveCalls.get()).as("確認行まで実処理が進んでから失敗している").isGreaterThanOrEqualTo(2);
             soft.assertThat(failed.getStatus()).isEqualTo(500);
             soft.assertThat(closures(teamA)).as("休業行は巻き戻る").isZero();
+            soft.assertThat(outbox(teamA)).as("outbox は巻き戻る").isZero();
+            soft.assertThat(confirmations(teamA)).as("確認行は巻き戻る").isZero();
             soft.assertThat(activeReservations()).as("取消は巻き戻る").isEqualTo(2);
             soft.assertThat(bookedCount()).isEqualTo(2);
             soft.assertThat(deliveredNotifications()).isZero();

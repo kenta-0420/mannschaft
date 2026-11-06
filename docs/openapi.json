@@ -50427,7 +50427,17 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseEmergencyClosureResponse"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Idempotency-Key の形式が不正（RESERVATION_056）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -192812,6 +192822,31 @@
           "startDate"
         ]
       },
+      "CommonErrorDetail": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "fieldErrors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldError"
+            }
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/CommonErrorDetail"
+          }
+        }
+      },
       "ApiResponseEmergencyClosureResponse": {
         "type": "object",
         "properties": {
@@ -231365,31 +231400,6 @@
           "sourceTeamName",
           "sourceTeamSlug"
         ]
-      },
-      "CommonErrorDetail": {
-        "type": "object",
-        "properties": {
-          "code": {
-            "type": "string"
-          },
-          "fieldErrors": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/FieldError"
-            }
-          },
-          "message": {
-            "type": "string"
-          }
-        }
-      },
-      "ErrorResponse": {
-        "type": "object",
-        "properties": {
-          "error": {
-            "$ref": "#/components/schemas/CommonErrorDetail"
-          }
-        }
       },
       "FriendFeedForwardStatus": {
         "type": "object",
