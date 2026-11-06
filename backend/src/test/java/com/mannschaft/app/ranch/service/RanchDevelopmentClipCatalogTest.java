@@ -28,7 +28,8 @@ class RanchDevelopmentClipCatalogTest {
         for (Habitat habitat : Habitat.values()) {
             assertThat(catalog.candidates(habitat)).extracting(RanchDevelopmentClipCatalog.Candidate::speciesKey)
                     .containsExactlyInAnyOrderElementsOf(EXPECTED.get(habitat.name()).stream()
-                            .map(key -> "DEV_CLIP_" + key).toList());
+                            .flatMap(key -> java.util.stream.IntStream.range(0, 4)
+                                    .mapToObj(i -> "DEV_CLIP_" + key)).toList());
             for (String species : EXPECTED.get(habitat.name())) {
                 for (DinosaurStage stage : List.of(DinosaurStage.BABY, DinosaurStage.JUVENILE,
                         DinosaurStage.ADULT)) {
@@ -49,7 +50,7 @@ class RanchDevelopmentClipCatalogTest {
     @Test
     void 明示optinと許可profileが揃う場合だけ候補を返す() {
         for (String allowed : List.of("dev", "test", "ranch-isolated")) {
-            assertThat(catalog(true, allowed).candidates(Habitat.LAND)).hasSize(12);
+            assertThat(catalog(true, allowed).candidates(Habitat.LAND)).hasSize(48);
             assertThat(catalog(false, allowed).candidates(Habitat.LAND)).isEmpty();
         }
         for (String[] blocked : List.of(new String[]{}, new String[]{"staging"},

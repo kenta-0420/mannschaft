@@ -54,11 +54,11 @@ public class RanchVerifiedAssignmentResolver implements RanchAssignmentResolver 
             var careRule = rules.currentCareRule(Instant.now(clock)).orElseThrow(this::unavailable);
             var candidate = candidates.get(random.nextInt(candidates.size()));
             String basis = "HABITAT_RANDOM|" + candidate.habitat()
-                    + "|" + RanchDevelopmentClipCatalog.CATALOG_VERSION
-                    + "|" + candidate.speciesKey() + "|" + RanchDevelopmentClipCatalog.VARIANT_KEY;
+                    + "|" + candidate.catalogVersion()
+                    + "|" + candidate.speciesKey() + "|" + candidate.variantKey();
             return new Selection(AssignmentMethod.HABITAT_RANDOM, candidate.habitat(),
-                    candidate.speciesKey(), RanchDevelopmentClipCatalog.VARIANT_KEY,
-                    RanchDevelopmentClipCatalog.CATALOG_VERSION, careRule.ruleVersion(), null, sha256(basis));
+                    candidate.speciesKey(), candidate.variantKey(),
+                    candidate.catalogVersion(), careRule.ruleVersion(), null, sha256(basis));
         }
         if (request.method() != AssignmentMethod.HABITAT_RANDOM
                 || request.habitat() != Habitat.LAND) throw unavailable();

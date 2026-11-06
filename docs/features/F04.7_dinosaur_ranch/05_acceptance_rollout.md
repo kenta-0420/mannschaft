@@ -254,3 +254,9 @@ v26/stage17は親がactual BE/FE所有関係とHEAD/JARを採択。新人工本�
 実機E2Eはモックなしのアプリで、本人・別の本人・匿名の自然導線と直URL、実保存ACK後の給餌／TOUCHとreload、両style・成長段階、非表示／折畳み／viewport外／背景tab、低動作／静止を確認する。所属やtenant権限を要求しない本人専用機能なので、所属なし利用者も自分の牧場を利用でき、別本人の結果を取得できない境界を確認する。390px幅、200% zoom、keyboard、darkで利用でき、横溢れがないことも確認する。実機E2Eの後に独立3住民の探索を行い、導線欠落を含むfindingの処置と必要な再検証を記録する。未実行・失敗・検証限界を成功へ読み替えない。
 
 実装PRは [#4025](https://github.com/kenta-0420/mannschaft/pull/4025)。実行中の結果は作業領域の `outputs/clip-integration-20261021-current.json` に集約する。最終検分・実機E2E・3住民探索と最終headのCIが成立し、実装PRがmergeされるまで台帳を完了にしない。完了登録は別PRで `docs/evidence/CMP-261021-1347.json` とrepo内の検分／実機／探索記録を追加し、[完了証拠ゲート](../../development/completion-evidence.md) に従って実装PRの最終head SHA・ACごとの実テスト・CI run・各工程の証跡を対応付ける。本戦役の完了をPhase 1全73ACの合格に拡大しない。
+
+## 2026-11-07 承認済み4外見の開発統合
+
+隔離開発catalog v4では16種×4外見×孵化後3段階×2画風を登録し、各4動作と同一組のidle A fallbackを開発時に配信する。旧v3保存identityは変更せず、同種・段階・画風のv4外見1へ描画上だけ対応付ける。v2と正式64/81対応、production 512 gateは変更しない。careの接地影、尾線、海空の揺れとwalkの床は承認済み原本に従う。walkの影は既存アプリの固定影を維持する。実機・性能・認可確認の結果は別途記録し、単体試験をその代用にしない。
+
+配布量の静的比較で外見間1.5倍を超えた2 atlasは、画像を変えずPNGのlossless圧縮設定を見直した。変更した8セルは承認原本とdecoded RGBAを再照合している。転送量と描画性能の実測は別途行う。
