@@ -3203,5 +3203,28 @@
     "supporter_label": "Mostrar {feature} a seguidores",
     "save_success": "Visibilidad guardada",
     "nav": "Navegación"
+  },
+  "secret_token": {
+    "issued_dialog": {
+      "title": "Enlace emitido",
+      "once_warning": "Este enlace solo se muestra ahora. Al cerrar este cuadro no volverá a mostrarse. Compártalo con quien lo necesite antes de cerrar.",
+      "url_label": "Enlace emitido",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "copy_failed": "No se pudo copiar. Seleccione el enlace y cópielo manualmente",
+      "qr_label": "Código QR",
+      "close": "Cerrar",
+      "pdf_download": "Guardar el código QR como PDF"
+    },
+    "list": {
+      "not_shown_hint": "Por seguridad, los enlaces emitidos no vuelven a mostrarse. Si lo necesita, emita uno nuevo.",
+      "revoked_by_migration": "Revocado por una mejora de seguridad",
+      "reissue": "Volver a emitir",
+      "reissue_hint": "Al volver a emitir se crea un enlace nuevo y el anterior deja de funcionar.",
+      "label_with_id": "Enlace #{id}",
+      "created_at": "Emitido el",
+      "expires_at": "Caduca el",
+      "used_count": "Veces usado"
+    }
   }
 }

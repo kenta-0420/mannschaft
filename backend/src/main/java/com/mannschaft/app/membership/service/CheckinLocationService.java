@@ -25,6 +25,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
+import com.mannschaft.app.common.token.PlaintextSecretRequired;
 
 /**
  * セルフチェックイン拠点サービス。拠点のCRUD・QRトークン発行を担当する。
@@ -136,6 +137,7 @@ public class CheckinLocationService {
      * @param userId    作成者ユーザーID
      * @return 作成された拠点
      */
+    @PlaintextSecretRequired(reason = "チェックイン拠点の QR を管理者に何度でも見せるため平文で保持する。署名付き短命 QR への移行は別 CMP")
     @Transactional
     public ApiResponse<CheckinLocationResponse> createLocation(
             ScopeType scopeType, Long scopeId,

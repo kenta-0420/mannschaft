@@ -16,7 +16,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerMapping;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * リクエストごとに MDC へ requestId / traceId を設定し、レスポンス完了時に
@@ -32,6 +35,11 @@ import java.util.UUID;
  *   <li>2000ms 以上 10000ms 未満は WARN</li>
  *   <li>10000ms 以上は ERROR</li>
  * </ul>
+ *
+ * <p>CMP-260826-1457: MDC {@code path} と Slack 通知・error_reports の path には生の URI を使わず、
+ * ルート テンプレート（解決できないときはセグメントを固定記号に置換した値）だけを使う。
+ * 招待トークン等の平文の秘密がログに残るのを、正規表現の列挙ではなく構造で塞ぐ。数値 ID の path 変数だけ別項目
+ * {@code pathIds} に積む。</p>
  *
  * <p>具体的な Slack 通知連携は Phase 10-β（F10.6 ErrorReportNotifier 連携）で実装する。
  * 本フェーズではログ出力までを責務とする。</p>
@@ -49,6 +57,17 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
     private static final String MDC_PATH = "path";
     private static final String MDC_STATUS = "status";
     private static final String MDC_SLOW_FLAG = "slow";
+    /** 秘密でない path 変数（数値の ID）だけを積む MDC 項目。障害調査でログから個別リソースを追う手段を残す。 */
+    private static final String MDC_PATH_IDS = "pathIds";
+
+    /** 秘密でない path 変数の許可リスト: 変数名が {@code id} または {@code *Id}。{@code {token}} などは数字だけでも積まない。 */
+    private static final Pattern ID_VARIABLE_NAME = Pattern.compile("(?:id|[a-z][A-Za-z0-9]*Id)");
+
+    /** ルート テンプレートが無いとき、パスの各セグメントを置き換える固定記号。 */
+    static final String UNRESOLVED_SEGMENT = "{segment}";
+
+    /** 数値だけの path 変数の値。トークン（hex/Base64URL/UUID）は数字のみにならないので、これだけを「秘密でない」と判定する。 */
+    private static final Pattern NUMERIC_VALUE = Pattern.compile("[0-9]{1,19}");
 
     /** 500ms 以上で slow フラグを立てる閾値（INFO + slow=true） */
     static final long SLOW_THRESHOLD_MS = 500L;
@@ -119,7 +138,10 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
         } finally {
             long durationMs = (System.nanoTime() - startNanos) / 1_000_000L;
             String method = request.getMethod();
-            String path = request.getRequestURI();
+            // 生の URI には /invite/{token} などの平文の秘密が含まれうるため、ログ・通知にはルート テンプレートだけを使う
+            // （CMP-260826-1457 §2-2 の 7.）。
+            String path = resolveTemplatePath(request, request.getRequestURI());
+            String pathIds = numericPathVariables(request);
             String requestId = MDC.get(MDC_REQUEST_ID);
 
             long warnMs = properties.getRequest().getWarnMs();
@@ -131,6 +153,9 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
                 MDC.put(MDC_METHOD, method);
                 // クエリ文字列は PII リーク防止のため記録しない（設計書 §6.2）
                 MDC.put(MDC_PATH, path);
+                if (!pathIds.isEmpty()) {
+                    MDC.put(MDC_PATH_IDS, pathIds);
+                }
                 MDC.put(MDC_STATUS, Integer.toString(response.getStatus()));
 
                 if (durationMs >= errorMs) {
@@ -153,26 +178,57 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
                 // F10.5 Phase 10-β 後続-②: Slow リクエストのクールダウンキー / error_reports.page_url
                 // を URI テンプレート化（/api/v1/users/{id}）してから notifier / service に渡す。
                 // これにより同一エンドポイントが ID 違いで連続発生しても 1 分間にアラートが氾濫しない。
-                String templatePath = resolveTemplatePath(request, path);
-                fireSlowRequestAlert(method, templatePath, durationMs, requestId, request);
+                fireSlowRequestAlert(method, path, durationMs, requestId, request);
             }
         }
     }
 
     /**
-     * F10.5 Phase 10-β 後続-②: Spring MVC の {@code BEST_MATCHING_PATTERN_ATTRIBUTE} 属性から
-     * URI テンプレート（{@code /api/v1/users/{id}}）を取り出す。フィルターは MVC 処理後に finally で
-     * 走るため通常は属性がセット済みだが、handler 解決前にレスポンスが書かれた場合や 404 等の
-     * static resource 経路では属性が無いため raw path にフォールバックする。
+     * Spring MVC の {@code BEST_MATCHING_PATTERN_ATTRIBUTE} 属性から URI テンプレート
+     * （{@code /api/v1/users/{id}}）を取り出す。フィルターは MVC 処理後に finally で走るため
+     * 通常は属性がセット済みである。
+     *
+     * <p>handler 解決前にレスポンスが書かれた場合や 404 等の静的リソース経路では属性が無い。
+     * そのとき生の URI をそのまま返すと、パスに含まれる平文の秘密（招待トークン等）がログや通知へ残るため、
+     * 各セグメントを固定記号 {@link #UNRESOLVED_SEGMENT} に置き換えた値を返す（深さだけが残る）。</p>
      */
     static String resolveTemplatePath(HttpServletRequest request, String rawPath) {
         Object attr = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
         if (attr instanceof String s && !s.isBlank()) {
             return s;
         }
-        // フォールバック: raw path のまま使う（404 / 静的リソース等のケース）
-        log.debug("BEST_MATCHING_PATTERN_ATTRIBUTE 未セット、raw path にフォールバック: {}", rawPath);
-        return rawPath;
+        return maskSegments(rawPath);
+    }
+
+    /** パスの各セグメントを {@link #UNRESOLVED_SEGMENT} に置き換える。先頭の {@code /} と区切りは保つ。 */
+    static String maskSegments(String rawPath) {
+        if (rawPath == null || rawPath.isBlank() || "/".equals(rawPath)) {
+            return "/";
+        }
+        StringBuilder masked = new StringBuilder();
+        for (String segment : rawPath.split("/")) {
+            if (!segment.isEmpty()) {
+                masked.append('/').append(UNRESOLVED_SEGMENT);
+            }
+        }
+        return masked.length() == 0 ? "/" : masked.toString();
+    }
+
+    /**
+     * path 変数のうち変数名が id／*Id で、値が数字だけのもの（数値 ID）を {@code name=value} のカンマ区切りで返す。
+     * トークンなど文字を含む値は積まない。ハンドラ未解決のときは空。
+     */
+    @SuppressWarnings("unchecked")
+    static String numericPathVariables(HttpServletRequest request) {
+        Object attr = request.getAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
+        if (!(attr instanceof Map<?, ?> variables)) {
+            return "";
+        }
+        return ((Map<String, String>) variables).entrySet().stream()
+                .filter(entry -> ID_VARIABLE_NAME.matcher(entry.getKey()).matches())
+                .filter(entry -> entry.getValue() != null && NUMERIC_VALUE.matcher(entry.getValue()).matches())
+                .map(entry -> entry.getKey() + "=" + entry.getValue())
+                .collect(Collectors.joining(","));
     }
 
     /**

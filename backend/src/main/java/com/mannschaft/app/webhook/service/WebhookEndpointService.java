@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
+import com.mannschaft.app.common.token.PlaintextSecretRequired;
 
 /**
  * Webhookエンドポイント管理サービス。
@@ -119,6 +120,7 @@ public class WebhookEndpointService {
      * @param req       作成リクエスト
      * @return 作成されたエンドポイント（signingSecret含む）
      */
+    @PlaintextSecretRequired(reason = "送信 Webhook の HMAC 署名に平文の鍵が要るため。暗号化保管の棚卸しは別 CMP で扱う")
     @Transactional
     public ApiResponse<WebhookEndpointCreatedResponse> createEndpoint(Long createdBy, CreateWebhookEndpointRequest req) {
         // 認可: 作成先スコープの ADMIN/DEPUTY_ADMIN のみ作成可能

@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 import java.time.LocalDateTime;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /** 共有招待のrole専属writer。親状態は読まず、親TXとtoken更新TXを物理的に分ける。 */
 @Service
@@ -22,6 +23,7 @@ public class SharedInviteTokenIssuer {
     private final InviteTokenRepository tokens;
     private final ApplicationEventPublisher events;
 
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Transactional
     public InviteTokenResponse issue(SharedInviteTokenCommand command) {
         var builder = InviteTokenEntity.builder().token(UUID.randomUUID().toString())

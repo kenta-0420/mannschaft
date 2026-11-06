@@ -14,6 +14,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import com.mannschaft.app.common.token.PlaintextSecretRequired;
 
 /**
  * イベントチケットエンティティ。発行されたチケットの状態を管理する。
@@ -34,6 +35,7 @@ public class EventTicketEntity extends BaseEntity {
     @Column(nullable = false)
     private Long ticketTypeId;
 
+    @PlaintextSecretRequired(reason = "保有者本人にチケットの QR を何度でも見せる機能の本質のため平文で保持する。署名付き短命 QR への移行は別 CMP")
     @Column(nullable = false, length = 36)
     private String qrToken;
 
