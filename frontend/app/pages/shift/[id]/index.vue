@@ -30,6 +30,8 @@ const scheduleId = computed(() => Number(route.params.id))
 const schedule = ref<ShiftScheduleResponse | null>(null)
 const slots = ref<ShiftSlotResponse[]>([])
 const loading = ref(false)
+const loadError = ref<unknown>(undefined)
+const hasLoadError = ref(false)
 
 const canManage = computed(() => {
   if (!schedule.value) return false
@@ -42,21 +44,24 @@ const canManage = computed(() => {
 
 async function load() {
   loading.value = true
+  loadError.value = undefined
+  hasLoadError.value = false
   try {
+    const teamsResult = await teamStore.fetchMyTeamsWithResult()
+    if (!teamsResult.ok) throw teamsResult.error
     const [s, sl] = await Promise.all([getSchedule(scheduleId.value), listSlots(scheduleId.value)])
     schedule.value = s
     slots.value = sl
   } catch (error) {
+    loadError.value = error
+    hasLoadError.value = true
     handleApiError(error)
   } finally {
     loading.value = false
   }
 }
 
-onMounted(async () => {
-  await teamStore.fetchMyTeams()
-  await load()
-})
+onMounted(load)
 
 // =====================================================
 // ステータス遷移
@@ -250,6 +255,13 @@ const tabs = computed(() => {
 <template>
   <div class="mx-auto max-w-7xl px-4 py-6">
     <PageLoading v-if="loading" />
+
+    <DashboardErrorState
+      v-else-if="hasLoadError"
+      :error="loadError"
+      :show-retry="true"
+      @retry="load"
+    />
 
     <template v-else-if="schedule">
       <!-- ヘッダー -->
