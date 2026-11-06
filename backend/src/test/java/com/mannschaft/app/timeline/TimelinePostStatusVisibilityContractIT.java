@@ -107,8 +107,8 @@ class TimelinePostStatusVisibilityContractIT extends AbstractMySqlIntegrationTes
             MembershipTestHelper.insertUserRole(em, ADMIN, "SYSTEM_ADMIN", null, null);
             VillageEntity village = villages.save(VillageEntity.builder()
                     .slug("cmp1517-" + UUID.randomUUID().toString().substring(0, 12))
-                    .name("公開状態契約の村").villageType(VillageType.COMMUNITY)
-                    .joinPolicy(VillageJoinPolicy.OPEN).visibility(VillageVisibility.PUBLIC)
+                    .name("公開状態契約の村").type(VillageType.COMMUNITY)
+                    .joinPolicy(VillageJoinPolicy.FREE).visibility(VillageVisibility.PUBLIC)
                     .bulletinVisibility(VillageBulletinVisibility.MEMBERS_ONLY).build());
             villageId = village.getId();
             for (long actor : List.of(OWNER, PEER, ADMIN)) {
