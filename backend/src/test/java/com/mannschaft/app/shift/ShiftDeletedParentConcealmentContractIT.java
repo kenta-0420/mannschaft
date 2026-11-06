@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.AuthTokenService;
+import com.mannschaft.app.common.visibility.perf.SqlIntentCounter;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
@@ -103,9 +104,15 @@ class ShiftDeletedParentConcealmentContractIT extends AbstractMySqlIntegrationTe
     private final List<Long> organizationIds = new ArrayList<>();
     private final Map<String, Long> actors = new LinkedHashMap<>();
     private Long teamId;
+    private Boolean previousFlagEnabled;
+    private Long previousFlagUpdatedBy;
 
     @BeforeEach
     void fixtureをcommitする() {
+        flags.findByFlagKey("FEATURE_SHIFT_AUTO_ASSIGN_ENABLED").ifPresent(flag -> {
+            previousFlagEnabled = flag.getIsEnabled();
+            previousFlagUpdatedBy = flag.getUpdatedBy();
+        });
         FeatureFlagTestSupport.enable(flags, caches, "FEATURE_SHIFT_AUTO_ASSIGN_ENABLED");
         inTx(() -> {
             teamId = team("対象");
@@ -137,12 +144,26 @@ class ShiftDeletedParentConcealmentContractIT extends AbstractMySqlIntegrationTe
             actors.put("OTHER_TENANT_ADMIN", tenantOutsider);
             MembershipTestHelper.insertMembership(em, tenantOutsider, ScopeType.TEAM, otherTenantTeam, RoleKind.MEMBER);
             MembershipTestHelper.insertUserRole(em, tenantOutsider, "ADMIN", otherTenantTeam, null);
+            Long ghostAdmin = user("GHOST_ADMIN");
+            actors.put("GHOST_ADMIN", ghostAdmin);
+            MembershipTestHelper.insertUserRole(em, ghostAdmin, "ADMIN", teamId, null);
             return null;
         });
     }
 
     @AfterEach
     void 所有fixtureだけを削除する() {
+        inTx(() -> {
+            flags.findByFlagKey("FEATURE_SHIFT_AUTO_ASSIGN_ENABLED").ifPresent(flag -> {
+                if (previousFlagEnabled == null) {
+                    flags.delete(flag);
+                } else {
+                    flag.updateFlag(previousFlagEnabled, previousFlagUpdatedBy);
+                }
+            });
+            return null;
+        });
+        FeatureFlagTestSupport.clearFlagCaches(caches);
         inTx(() -> {
             if (!scheduleIds.isEmpty()) {
                 em.createNativeQuery("DELETE FROM shift_swap_requests WHERE slot_id IN "
@@ -255,6 +276,61 @@ class ShiftDeletedParentConcealmentContractIT extends AbstractMySqlIntegrationTe
             callRun(null, operation, scheduleId, Long.MAX_VALUE).andExpect(status().isUnauthorized());
         }
         assertThat(snapshot()).isEqualTo(before);
+    }
+
+    @Test
+    void 生存親の許可主体と所属不足403と一覧403を維持する() throws Exception {
+        Long slotId = slot(ShiftScheduleStatus.PUBLISHED, "[]");
+        Long swapId = swap(slotId);
+        for (String role : List.of("ADMIN", "DEPUTY_ADMIN", "GHOST_ADMIN", "SYSTEM_ADMIN")) {
+            Long cancellable = swap(slotId);
+            callSwap(role, "cancel", cancellable).andExpect(status().isNoContent());
+            Long resolvable = swap(slotId);
+            inTx(() -> { swaps.findById(resolvable).orElseThrow().accept(actors.get("ADMIN")); return null; });
+            callSwap(role, "REJECT", resolvable).andExpect(status().isOk());
+        }
+        for (String role : List.of("ADMIN", "DEPUTY_ADMIN", "SYSTEM_ADMIN")) {
+            Long acceptable = swap(slotId);
+            SqlIntentCounter.reset();
+            callSwap(role, "accept", acceptable).andExpect(status().isOk());
+            assertParentSelectCount("shift_slots", 2);
+            assertParentSelectCount("shift_schedules", 2);
+        }
+        for (String role : List.of("MEMBER", "SUPPORTER")) {
+            callSwap(role, "REJECT", swapId).andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+        }
+        callSwap("GHOST_ADMIN", "accept", swapId).andExpect(status().isForbidden());
+        for (Long requestedTeam : List.of(teamId, Long.MAX_VALUE)) {
+            perform("OTHER_TEAM_ADMIN", get("/api/v1/shifts/swap-requests").param("teamId", requestedTeam.toString()))
+                    .andExpect(status().isForbidden()).andExpect(jsonPath("$.error.code").value("COMMON_002"));
+        }
+    }
+
+    @Test
+    void runの生存親と空提案は正当管理者ghostAdminとSAに許可し同scope一般メンバーは403() throws Exception {
+        Long slotId = slot(ShiftScheduleStatus.PUBLISHED, "[]");
+        Long scheduleId = inTx(() -> slots.findById(slotId).orElseThrow().getScheduleId());
+        for (String role : List.of("ADMIN", "DEPUTY_ADMIN", "GHOST_ADMIN", "SYSTEM_ADMIN")) {
+            Long runId = run(scheduleId);
+            callRun(role, "detail", scheduleId, runId).andExpect(status().isOk());
+            SqlIntentCounter.reset();
+            callRun(role, "confirm", scheduleId, runId).andExpect(status().isOk());
+            assertParentSelectCount("shift_schedules", 2);
+            callRun(role, "revoke", scheduleId, runId).andExpect(status().isNoContent());
+        }
+        Long runId = run(scheduleId);
+        for (String operation : List.of("confirm", "revoke", "detail", "visual")) {
+            Map<String, String> before = snapshot();
+            callRun("MEMBER", operation, scheduleId, runId).andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+            assertThat(snapshot()).isEqualTo(before);
+        }
+    }
+
+    private static void assertParentSelectCount(String table, long count) {
+        assertThat(SqlIntentCounter.capturedSqls().stream()
+                .filter(sql -> sql.contains("from " + table + " ")).count()).isEqualTo(count);
     }
 
     private static void assertCode(Runnable operation, ShiftErrorCode code) {
