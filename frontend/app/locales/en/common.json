@@ -317,6 +317,8 @@
     "add_term": "Add Term",
     "term_success": "Term created",
     "term_error": "Failed to create term",
+    "term_academic_year_required": "Enter the academic year",
+    "term_has_timetables": "This term cannot be deleted because timetables still exist under it. Remove them first",
     "no_period": "No periods defined",
     "no_term": "No terms defined",
     "current_week": "This Week",

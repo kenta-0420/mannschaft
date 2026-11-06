@@ -317,6 +317,8 @@
     "add_term": "학기 추가",
     "term_success": "학기를 작성했습니다",
     "term_error": "학기 작성에 실패했습니다",
+    "term_academic_year_required": "학년도를 입력해 주세요",
+    "term_has_timetables": "이 학기에 시간표가 남아 있어 삭제할 수 없습니다. 먼저 시간표를 정리해 주세요",
     "no_period": "교시가 정의되지 않았습니다",
     "no_term": "학기가 정의되지 않았습니다",
     "current_week": "이번 주",

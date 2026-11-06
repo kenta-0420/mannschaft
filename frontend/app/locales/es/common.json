@@ -317,6 +317,8 @@
     "add_term": "Agregar Trimestre",
     "term_success": "Trimestre creado",
     "term_error": "Error al crear el trimestre",
+    "term_academic_year_required": "Introduzca el año académico",
+    "term_has_timetables": "No se puede eliminar este período porque aún tiene horarios. Elimínelos primero",
     "no_period": "No hay períodos definidos",
     "no_term": "No hay trimestres definidos",
     "current_week": "Esta Semana",
