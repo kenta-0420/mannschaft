@@ -130,16 +130,14 @@ public class SignageScreenService {
     }
 
     /**
-     * 認証ユーザー向けに指定IDの画面を取得する（メンバーシップ必須）。
+     * 認証ユーザー向けに指定IDの画面を取得する。
      *
-     * <p>認可根治戦役 Wave7: 認証ユーザー向けの管理画面入口として
-     * {@link AccessControlService#checkMembership} でスコープの会員に限定する。
-     * 兄弟の {@link #createScreen}/{@link #updateScreen} は ADMIN 限定だが、参照は会員であれば
-     * 可とする（読取＝会員・変更＝ADMINの通例）。</p>
+     * <p>組織では一覧と同じ管理者認可を適用し、ID直接指定で管理画面設定を取得させない。
+     * TEAMの会員閲覧、および別メソッドを使う端末のトークン認証経路は維持する。</p>
      */
     public SignageScreenResponse getScreenForActor(Long id, Long actor) {
         SignageScreenEntity entity = findScreenOrThrow(id);
-        accessControlService.checkMembership(actor, entity.getScopeId(), entity.getScopeType());
+        checkReadAccess(entity.getScopeType(), entity.getScopeId(), actor);
         return toResponse(entity);
     }
 
@@ -175,12 +173,17 @@ public class SignageScreenService {
      * 引き続き認可なしのまま維持する。</p>
      */
     public List<SignageScreenResponse> listScreensForActor(String scopeType, Long scopeId, Long actor) {
+        checkReadAccess(scopeType, scopeId, actor);
+        return listScreens(scopeType, scopeId);
+    }
+
+    /** 組織の管理用一覧・詳細だけを管理者以上へ揃え、TEAM会員の既存閲覧を維持する。 */
+    private void checkReadAccess(String scopeType, Long scopeId, Long actor) {
         if ("ORGANIZATION".equals(scopeType)) {
             accessControlService.checkAdminOrAbove(actor, scopeId, scopeType);
         } else {
             accessControlService.checkMembership(actor, scopeId, scopeType);
         }
-        return listScreens(scopeType, scopeId);
     }
 
     /**

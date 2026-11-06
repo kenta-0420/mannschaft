@@ -487,7 +487,7 @@ public class ReceiptService {
 
     /**
      * 領収書詳細を取得する（ADMIN用）。
-     * 認可: 領収書が実在するスコープ（entity由来）のメンバーのみ閲覧可能。
+     * 認可: entity由来の組織スコープは管理者以上。TEAMは従来の会員閲覧を維持する。
      *
      * @param scopeType     スコープ種別
      * @param scopeId       スコープID
@@ -497,7 +497,7 @@ public class ReceiptService {
      */
     public ReceiptResponse getReceipt(ReceiptScopeType scopeType, Long scopeId, Long receiptId, Long actorUserId) {
         ReceiptEntity receipt = findReceiptOrThrow(scopeType, scopeId, receiptId);
-        accessControlService.checkMembership(actorUserId, receipt.getScopeId(), receipt.getScopeType().name());
+        checkManagementReadAccess(receipt, actorUserId);
         List<ReceiptLineItemEntity> lineItems = lineItemRepository.findByReceiptIdOrderBySortOrderAsc(receiptId);
         return buildReceiptResponse(receipt, lineItems, Collections.emptyList());
     }
@@ -534,7 +534,8 @@ public class ReceiptService {
 
     /**
      * 領収書 PDF のバイト配列を取得する。
-     * 認可: 領収書が実在するスコープ（entity由来）のメンバーのみダウンロード可能（受領者PII含む）。
+     * 認可: entity由来の組織スコープは管理者以上。本人の取得はReceiptMyServiceが別途担う。
+     * TEAMは従来の会員閲覧を維持する。
      *
      * @param scopeType     スコープ種別
      * @param scopeId       スコープID
@@ -561,12 +562,24 @@ public class ReceiptService {
     public byte[] getReceiptPdf(ReceiptScopeType scopeType, Long scopeId, Long receiptId, Long actorUserId,
                                  ReceiptArchiveKind kind) {
         ReceiptEntity receipt = findReceiptOrThrow(scopeType, scopeId, receiptId);
-        accessControlService.checkMembership(actorUserId, receipt.getScopeId(), receipt.getScopeType().name());
+        checkManagementReadAccess(receipt, actorUserId);
         List<ReceiptLineItemEntity> lineItems = lineItemRepository.findByReceiptIdOrderBySortOrderAsc(receiptId);
 
         byte[] pdf = pdfArchiveService.getOrArchive(receipt, lineItems, kind);
         receiptRepository.save(receipt);
         return pdf;
+    }
+
+    /**
+     * 組織の一覧制限を詳細/PDFから迂回させない。本人用・TEAMの既存契約は変更しない。
+     * 呼出元で先に領収書と入力scopeを照合し、不一致・不在の既存応答を維持する。
+     */
+    private void checkManagementReadAccess(ReceiptEntity receipt, Long actorUserId) {
+        if (receipt.getScopeType() == ReceiptScopeType.ORGANIZATION) {
+            accessControlService.checkAdminOrAbove(actorUserId, receipt.getScopeId(), receipt.getScopeType().name());
+        } else {
+            accessControlService.checkMembership(actorUserId, receipt.getScopeId(), receipt.getScopeType().name());
+        }
     }
 
     /**
