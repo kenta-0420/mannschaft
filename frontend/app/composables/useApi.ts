@@ -259,6 +259,20 @@ export function parseRetryAfterSeconds(headerValue: string | null): number | nul
   return Math.max(0, Math.ceil((dateMs - Date.now()) / 1000))
 }
 
+/**
+ * 429 が基盤のレート制限（AbstractRateLimitFilter 等）由来かを、応答本文から判定する。
+ *
+ * 基盤のフィルタは error.code を持たない文字列本文 {"error":"Too many requests"} を返す
+ * （本文なしの 429 もある）。業務固有の 429 は {"error":{"code":"VILLAGE_012",...}} 形で、
+ * 呼び出し側が固有の表示を担う。したがって error.code（非空文字列）が無いものを基盤とみなす。
+ */
+export function isInfrastructureRateLimit(data: unknown): boolean {
+  const error = (data as { error?: unknown } | null | undefined)?.error
+  if (error === null || typeof error !== 'object') return true
+  const code = (error as { code?: unknown }).code
+  return !(typeof code === 'string' && code !== '')
+}
+
 // 短時間に複数の 5xx が発生した場合のトースト集約
 let _errorBatchTimer: ReturnType<typeof setTimeout> | null = null
 let _errorBatchCount = 0
@@ -417,7 +431,11 @@ export function useApi() {
       // 提示の型は同じ関数内の 5xx 分岐（$toast + summary/detail/life）に揃えている。
       // 集約はしない — レート制限は「連打した本人が今この操作で弾かれた」ことを
       // 即座に知る必要があり、500ms の集約待ちを挟むと因果が伝わりにくくなるため。
-      if (response.status === 429) {
+      //
+      // 適用条件（CMP-260827-1808 V1）: error.code を持たない 429（基盤フィルタの文字列本文・本文なし）だけ。
+      // 業務固有コード（VILLAGE_009〜012 / RESERVATION_053 など）を持つ 429 は、呼び出し側が
+      // 固有のエラー文を出すため、ここで重ねると 1 操作で 2 枚（連打で N 倍）になる。
+      if (response.status === 429 && isInfrastructureRateLimit(response._data)) {
         const toast = nuxtApp.$toast as
           | { add: (opts: Record<string, unknown>) => void }
           | undefined
