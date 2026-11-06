@@ -25,6 +25,11 @@ test('production artifact rejects matching PNG bytes and development paths', () 
   }
 })
 
+function removeLink(link) {
+  if (process.platform === 'win32') fs.rmdirSync(link)
+  else fs.unlinkSync(link)
+}
+
 test('inventory permits internal links and rejects external links and cycles', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ranch-links-'))
   const inner = path.join(dir, 'inner')
@@ -38,11 +43,11 @@ test('inventory permits internal links and rejects external links and cycles', (
     assert.equal(inspectArtifact(dir, new Set(), []), 1)
     fs.symlinkSync(os.tmpdir(), outside, 'junction')
     assert.throws(() => inspectArtifact(dir, new Set(), []))
-    fs.rmdirSync(outside)
+    removeLink(outside)
     fs.symlinkSync(dir, loop, 'junction')
     assert.throws(() => inspectArtifact(dir, new Set(), []))
   } finally {
-    for (const link of [inside, outside, loop]) if (fs.existsSync(link)) fs.rmdirSync(link)
+    for (const link of [inside, outside, loop]) if (fs.existsSync(link)) removeLink(link)
     fs.unlinkSync(path.join(inner, 'file'))
     fs.rmdirSync(inner)
     fs.rmdirSync(dir)
