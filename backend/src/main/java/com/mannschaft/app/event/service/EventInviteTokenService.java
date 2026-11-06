@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * イベント招待トークンサービス。ゲスト招待トークンの作成・照会・無効化を担当する。
@@ -46,6 +47,7 @@ public class EventInviteTokenService {
      * @param request 作成リクエスト
      * @return 作成された招待トークンレスポンス
      */
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Transactional
     public InviteTokenResponse createToken(Long eventId, Long userId, CreateInviteTokenRequest request) {
         EventGuestInviteTokenEntity entity = EventGuestInviteTokenEntity.builder()
