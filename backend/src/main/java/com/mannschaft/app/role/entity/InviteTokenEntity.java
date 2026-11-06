@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * 招待トークンエンティティ。チーム・組織への招待リンクを管理する。
@@ -28,6 +29,7 @@ public class InviteTokenEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Column(nullable = false, unique = true, length = 36)
     private String token;
 
