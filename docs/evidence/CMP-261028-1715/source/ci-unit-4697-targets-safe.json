@@ -1,0 +1,33 @@
+{
+  "sourceHead": "4697a0f99045a2218dbfe6eb8c7e1d894962d8d0",
+  "runId": 40704724285,
+  "jobId": 122873636066,
+  "conclusion": "success",
+  "targets": [
+    {
+      "spec": "GlobalNavItem.spec.ts",
+      "skipped": 0,
+      "passed": 2
+    },
+    {
+      "spec": "WidgetMyCalendar.spec.ts",
+      "skipped": 0,
+      "passed": 5
+    },
+    {
+      "spec": "useMyCalendarData.initialization.spec.ts",
+      "skipped": 0,
+      "passed": 8
+    }
+  ],
+  "targetPassed": 15,
+  "targetSkipped": 0,
+  "existingSkipped": {
+    "spec": "app/plugins/appearance.spec.ts",
+    "reason": "SSR-only describe.skipIf(!import.meta.server) in client environment",
+    "count": 5
+  },
+  "localTargetedTestsExecuted": false,
+  "localReceiptCleanup": "retained",
+  "rawLogPrinted": false
+}

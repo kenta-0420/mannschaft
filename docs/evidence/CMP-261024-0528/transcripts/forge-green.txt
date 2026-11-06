@@ -1,0 +1,115 @@
+✔ 指摘0件と閾値未満の指摘は例外を使わず通る (2.7231ms)
+
+✔ 許可GHSAだけを通し、実npmレポートのNuxt循環参照を解決する (0.7677ms)
+
+✔ 別のhigh advisory混在は拒否する (1.0617ms)
+
+✔ 別のcritical advisory混在は拒否する (0.4275ms)
+
+✔ braces GHSA は名指しで通り、期限・lock版・範囲・消費者を検証する (2.7191ms)
+
+✔ braces 除外は node-forge の消費者名を流用できず、逆も拒否する (0.6186ms)
+
+✔ 実監査の2advisory混在19件は循環とforge専用辺を含めて通る (2.8495ms)
+
+✔ braces既知消費者名でも未知node・末端の別nodeは拒否する (1.2008ms)
+
+✔ 既知名間のbraces経路付替え・未知の循環辺は拒否する (1.0098ms)
+
+✔ 同じGHSAでもcritical・別package・別range・直接依存・別versionは拒否する (1.4376ms)
+
+✔ forgeは旧期限後もUTC10月30日末まで通り、新期限一致・直後は拒否する (1.0554ms)
+
+✔ braces単独・混在は旧期限を維持し、forge延長期間でも拒否する (2.0294ms)
+
+✔ forge既知消費者名でも未知node・末端の別nodeは拒否する (2.549ms)
+
+✔ forge既知名間の経路付替え・未知の循環辺は拒否する (0.797ms)
+
+✔ 不正JSON・構造欠落・error・npm異常終了は拒否する (2.2325ms)
+
+✔ 参照欠落・末端のない循環・空via・unknown severityを拒否する (0.6197ms)
+
+✔ レポート集計と依存情報の不一致を拒否する (0.2491ms)
+
+✔ 同じ許可GHSAへの参照でも新しいhigh消費者は拒否する (0.2895ms)
+
+✔ high advisoryへの未知消費者をmoderateと報告しても拒否する (0.2547ms)
+
+✔ A1/A2: 低severityの間接参照も混在循環の全highを既存例外で検証する (1.0906ms)
+
+✔ A3: 許可packageでも直接advisoryの深刻度を過小報告すると拒否する (0.2811ms)
+
+✔ A4/A6: 低severityの間接参照でも未知highとcriticalを拒否する (0.6053ms)
+
+✔ A5: 低severityの既知消費者も未知node・依存辺・循環辺を拒否する (0.622ms)
+
+✔ A7: 低severityの間接参照でも末端range・直接化・lock版を検証する (0.7118ms)
+
+✔ A8: 低severityの間接参照でも期限直前のみ通し一致・直後・非有限時刻を拒否する (1.1918ms)
+
+node:fs:561
+
+  return binding.open(
+
+                 ^
+
+
+
+Error: ENOENT: no such file or directory, open 'C:\Claude\mannschaft\.claude\worktrees\agent-dashboard-calendar-sparse-261024-0528\frontend\node_modules\@nuxt\devtools\dist\chunks\module-main.mjs'
+
+    at Object.openSync (node:fs:561:18)
+
+    at readFileSync (node:fs:445:35)
+
+    at file:///C:/Claude/mannschaft/.claude/worktrees/agent-dashboard-calendar-sparse-261024-0528/frontend/scripts/patch-nuxt-devtools-simple-git.test.mjs:8:17
+
+    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+
+    at async node:internal/modules/esm/loader:639:26
+
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+
+  errno: -4058,
+
+  code: 'ENOENT',
+
+  syscall: 'open',
+
+  path: 'C:\\Claude\\mannschaft\\.claude\\worktrees\\agent-dashboard-calendar-sparse-261024-0528\\frontend\\node_modules\\@nuxt\\devtools\\dist\\chunks\\module-main.mjs'
+
+}
+
+
+
+Node.js v24.15.0
+
+✖ frontend\scripts\patch-nuxt-devtools-simple-git.test.mjs (1025.888ms)
+
+ℹ tests 26
+
+ℹ suites 0
+
+ℹ pass 25
+
+ℹ fail 1
+
+ℹ cancelled 0
+
+ℹ skipped 0
+
+ℹ todo 0
+
+ℹ duration_ms 1426.1949
+
+
+
+✖ failing tests:
+
+
+
+test at frontend\scripts\patch-nuxt-devtools-simple-git.test.mjs:1:1
+
+✖ frontend\scripts\patch-nuxt-devtools-simple-git.test.mjs (1025.888ms)
+
+  'test failed'

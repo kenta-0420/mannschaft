@@ -11,7 +11,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * F10.6 §5.6 — エラー発生回数を {@code error_hash} 単位で集約するインメモリバッファ。
@@ -84,30 +86,28 @@ public class ErrorReportAggregator {
             return AggregationResult.BUFFER_FULL;
         }
         Instant now = Instant.now();
-        AggregatedEntry existing = aggregationBuffer.getIfPresent(errorHash);
-        if (existing == null) {
-            // 初回 → 即時通知扱いでバッファには新規 entry を作成（occurrence=1 で次回以降を BUFFERED 扱いにする）
-            AggregatedEntry created = new AggregatedEntry(errorHash, message, severity, now);
-            aggregationBuffer.put(errorHash, created);
-            return AggregationResult.FIRST_OCCURRENCE;
-        }
-        // 2 通目以降
-        long current = existing.count.get();
-        if (current >= maxOccurrencesPerHash) {
-            // OOM 防止のため上限到達時は捨てる（log warn のみ）
-            log.warn("ErrorReportAggregator: errorHash={} の蓄積上限 {} 到達。以降の追加を無視します。",
-                    errorHash, maxOccurrencesPerHash);
-            return AggregationResult.BUFFER_FULL;
-        }
-        existing.recordOccurrence(now);
-        return AggregationResult.BUFFERED;
+        AtomicReference<AggregationResult> result = new AtomicReference<>();
+        aggregationBuffer.asMap().compute(errorHash, (key, existing) -> {
+            if (existing == null) {
+                result.set(AggregationResult.FIRST_OCCURRENCE);
+                return new AggregatedEntry(key, message, severity, now);
+            }
+            if (existing.count.get() >= maxOccurrencesPerHash) {
+                result.set(AggregationResult.BUFFER_FULL);
+            } else {
+                existing.recordOccurrence(now);
+                result.set(AggregationResult.BUFFERED);
+            }
+            return existing;
+        });
+        return result.get();
     }
 
     /**
      * 現在のバッファをドレイン（取り出し＆クリア）する。
      *
      * <p>{@link ErrorAggregationFlushBatch} が 5 分毎に呼び、返却された Map を Slack に集約サマリとして送信する。
-     * 戻り値の Map は呼び出し側の独立コピー（バッファ自身は invalidateAll 済み）。</p>
+     * key ごとの remove は compute と排他的で、返却後の entry への追加を防ぐ。</p>
      *
      * <p>注意: occurrence==1 の entry も含まれる（FIRST_OCCURRENCE 時点で entry 化されるため）。
      * バッチ側で「2 通以上発生したもののみサマリに載せる」と判断する。</p>
@@ -115,8 +115,11 @@ public class ErrorReportAggregator {
      * @return error_hash → AggregatedEntry の不変スナップショット Map
      */
     public Map<String, AggregatedEntry> drainAndClear() {
-        Map<String, AggregatedEntry> snapshot = new HashMap<>(aggregationBuffer.asMap());
-        aggregationBuffer.invalidateAll();
+        Map<String, AggregatedEntry> snapshot = new HashMap<>();
+        for (String key : List.copyOf(aggregationBuffer.asMap().keySet())) {
+            AggregatedEntry removed = aggregationBuffer.asMap().remove(key);
+            if (removed != null) snapshot.put(key, removed);
+        }
         return snapshot;
     }
 

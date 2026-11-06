@@ -237,8 +237,9 @@ jobs:
     name: Test (shard ${{ matrix.shard }})
     needs: detect
     runs-on: ubuntu-latest
-    # PR CI と同じテスト量を実行するため、後処理を含む実測 60m21s に余裕を持たせる。
-    timeout-minutes: 75
+    # PR CI と同じ実行設定。migration 込みは120分、それ以外は100分を観測用上限とする。
+    # test step は105/85分。setup＋compileが15分を超えると後処理の余裕は保証しない。
+    timeout-minutes: ${{ needs.detect.outputs.migrations_changed == 'true' && 120 || 100 }}
     concurrency:
       group: backend-main-test-${{ github.ref }}-shard-${{ matrix.shard }}
       cancel-in-progress: false
@@ -256,7 +257,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Java ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
@@ -265,6 +266,10 @@ jobs:
 
       - name: Grant Gradle wrapper execute permission
         run: chmod +x gradlew
+
+      # PR CIと同じくコンパイルを先行し、85/105分のtest stepでのコンパイル時間消費を避ける。
+      - name: Compile
+        run: ./gradlew compileJava compileTestJava --no-daemon --build-cache
 
       # このシャードに割り当てられたテストクラスのみ実行する（backend-ci.yml と同じ方式）。
       # Testcontainers pulls docker images on first run; the Docker daemon is
@@ -276,11 +281,13 @@ jobs:
       # まで短縮する。判定不能時は detect 側が既に true（フル実行）に倒して
       # いるため、ここでは受け取った値をそのまま使うだけでよい。
       - name: Run tests (shard ${{ matrix.shard }} / ${{ env.SHARD_TOTAL }})
+        timeout-minutes: ${{ needs.detect.outputs.migrations_changed == 'true' && 105 || 85 }}
         run: >-
-          ./gradlew test --no-daemon --continue
+          ./gradlew test --no-daemon --continue --build-cache
           -Pshard.total=${{ env.SHARD_TOTAL }}
           -Pshard.index=${{ matrix.shard }}
           -PexcludeMigrationTests=${{ needs.detect.outputs.migrations_changed == 'true' && 'false' || 'true' }}
+          -Pspring.test.context.cache.maxSize=5
         env:
           # Testcontainers host resolution inside GitHub Actions
           TESTCONTAINERS_RYUK_DISABLED: "false"
@@ -291,7 +298,7 @@ jobs:
       # 詳細な経緯・設計判断は backend-ci.yml の同名ステップのコメントを参照）。
       - name: ヒープダンプ（OOM調査用）をアップロード
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: heap-dump-main-${{ github.run_id }}-shard-${{ matrix.shard }}
           path: backend/build/heap-dumps/*.hprof
@@ -301,7 +308,7 @@ jobs:
       # test-results の XML（JUnit 形式）。backend-ci.yml と同じ方式に揃える。
       - name: テスト結果XML（JUnit）をアップロード
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-xml-main-${{ github.run_id }}-shard-${{ matrix.shard }}
           path: backend/build/test-results/test/
@@ -313,7 +320,7 @@ jobs:
       #  "No files were found" で何もアップロードされていなかった）。
       - name: テスト結果レポートをアップロード
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-reports-shard-${{ matrix.shard }}
           path: backend/build/reports/tests/
@@ -342,7 +349,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Java ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
@@ -356,7 +363,7 @@ jobs:
 
       - name: ヒープダンプ（OOM調査用）をアップロード
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: heap-dump-main-${{ github.run_id }}-archtest
           path: backend/build/heap-dumps/*.hprof
@@ -366,7 +373,7 @@ jobs:
       # artifact 名は "test-results-xml-" で始めない（shard 重み表の材料に混ぜないため）。
       - name: テスト結果XML（JUnit）をアップロード
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: archtest-results-xml-main-${{ github.run_id }}
           path: backend/build/test-results/archTest/
@@ -374,7 +381,7 @@ jobs:
 
       - name: テスト結果レポートをアップロード
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: archtest-reports-main-${{ github.run_id }}
           path: backend/build/reports/tests/archTest/
@@ -424,7 +431,7 @@ jobs:
 
       - name: Set up Java ${{ env.JAVA_VERSION }}
         if: steps.aws-check.outputs.skip != 'true'
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin

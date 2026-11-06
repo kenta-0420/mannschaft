@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260827-1152",
+  "runId": "alicization-cmp1152-run-20261028",
+  "sourceHead": "dae9f24a922cd9b06d87e4ec4d46e4f55ab65004",
+  "baseHead": "d3e0d74f2d",
+  "registrationSource": "actual-resident-artifacts",
+  "trusted": false,
+  "status": "observed-unverified",
+  "note": "アリシゼーション run-20261028 の公開用選択観測。画像実体は含めず、private 原本への path 参照のみ。全観測は未実証。確定2件は台帳行を付記。",
+  "confirmedDefects": [
+    {
+      "ledgerId": "CMP-261028-2328",
+      "label": "ALIC-1"
+    },
+    {
+      "ledgerId": "CMP-261028-2329",
+      "label": "ALIC-2"
+    }
+  ],
+  "residents": [
+    {
+      "personaId": "ALIC-CMP1152-R1",
+      "archetype": "ADHD傾向×中断・放棄（チーム ADMIN）",
+      "purpose": "チーム ADMIN として、チーム作成・アンケート作成・督促・確認通知・緊急休業・ログインを、途中で中断・放棄・戻る操作をしながら一通り試す",
+      "privateEvidencePath": ".claude/worktrees/agent-a7d0f0151e64065b2/frontend/test-results/alicization/run-20261028/resident1/",
+      "insights": [
+        {
+          "id": "ALIC-CMP1152-R1-01",
+          "title": "チーム作成ダイアログをEscで閉じると入力が消える",
+          "detail": "チーム作成ダイアログに入力した後にEscで閉じると、入力内容がすべて消える。誤って閉じたときに復元できない。"
+        },
+        {
+          "id": "ALIC-CMP1152-R1-02",
+          "title": "アンケートの選択肢が空のエラーがダイアログ下部にしか出ず、押した位置から見えない",
+          "detail": "選択肢が空のまま作成を押したときのエラー文言がダイアログ下部にしか表示されず、押した位置からは気づけない。"
+        },
+        {
+          "id": "ALIC-CMP1152-R1-03",
+          "title": "アンケート作成の途中で戻ると、入力が消えて /dashboard に飛ぶ",
+          "detail": "アンケート作成の途中でブラウザの戻る操作をすると、入力が消え、/dashboard へ遷移する。"
+        },
+        {
+          "id": "ALIC-CMP1152-R1-04",
+          "title": "下書きの詳細が「設問がありません」と表示され、設問を追加して公開すると同じ設問が2つ並ぶ",
+          "detail": "下書きの詳細が「設問がありません」と表示される。設問を追加して公開すると、同じ設問が2つ並ぶ。"
+        },
+        {
+          "id": "ALIC-CMP1152-R1-05",
+          "title": "督促の送信後に、成功表示も残り回数の変化も出ない",
+          "detail": "督促を送信した後、成功の表示も残り回数の変化も画面に出ず、送れたか判断できない。"
+        },
+        {
+          "id": "ALIC-CMP1152-R1-06",
+          "title": "確認通知のフォームは、離脱して戻ると入力が消える",
+          "detail": "確認通知のフォームに入力した後で離脱して戻ると、入力が消える。"
+        },
+        {
+          "id": "ALIC-CMP1152-R1-07",
+          "title": "緊急休業の一括送信の結果が「 件に送信しました」と件数が空になり、送信履歴が「undefined件」になる",
+          "detail": "緊急休業の一括送信後の結果表示で件数が空になり、送信履歴は「undefined件」と表示される。BE は sentCount を返すが FE は notifiedCount を読んでいる。確定不具合として台帳 CMP-261028-2329（ALIC-2）に起票。住民観測としては未実証ラベルを維持する。"
+        },
+        {
+          "id": "ALIC-CMP1152-R1-08",
+          "title": "ログイン画面で Enter を押しても送信されない",
+          "detail": "ログイン画面の入力欄で Enter を押してもログインが送信されない。"
+        }
+      ]
+    },
+    {
+      "personaId": "ALIC-CMP1152-R2",
+      "archetype": "一般×隙間狙い（部外者）",
+      "purpose": "所属しないチームの部外者として、URL 直打ちで権限外の画面・操作に入れないかを確かめる",
+      "privateEvidencePath": ".claude/worktrees/agent-a7d0f0151e64065b2/frontend/test-results/alicization/run-20261028/resident2/",
+      "insights": [
+        {
+          "id": "ALIC-CMP1152-R2-01",
+          "title": "情報の漏洩や、権限外の操作の成功はなかった",
+          "detail": "部外者として複数の画面・操作を直打ちで試したが、情報の漏洩や権限外の操作の成功は観測されなかった。"
+        },
+        {
+          "id": "ALIC-CMP1152-R2-02",
+          "title": "一部の画面の直打ちで、拒否画面が出ずに45秒タイムアウトする、または loading のまま止まる",
+          "detail": "一部の画面を直打ちすると、拒否画面が出ずに45秒でタイムアウトする、または loading のまま止まる。dev サーバー固有の可能性があり、production では未確認。"
+        },
+        {
+          "id": "ALIC-CMP1152-R2-03",
+          "title": "id=1538 について、/teams/1538 系は 404 TEAM_001、timetables・reservations・timeline-digest は 403 COMMON_002 と応答の種類が異なる",
+          "detail": "id=1538 に対し /teams/1538 系は 404 TEAM_001、timetables・reservations・timeline-digest は 403 COMMON_002 を返し、応答の種類が異なる。チームの実在は 2026-08-04 に非機密と判断済みのため、存在オラクルの新規指摘とはしない。観測の記録にとどめる。"
+        }
+      ]
+    },
+    {
+      "personaId": "ALIC-CMP1152-R3",
+      "archetype": "スマホ片手×表示崩れ（MEMBER、390・360）",
+      "purpose": "MEMBER としてスマホ幅（390・360）で片手操作し、通知から予約画面などへ進み、表示崩れや詰まりを探す",
+      "privateEvidencePath": ".claude/worktrees/agent-a7d0f0151e64065b2/frontend/test-results/alicization/run-20261028/resident3/",
+      "insights": [
+        {
+          "id": "ALIC-CMP1152-R3-01",
+          "title": "予約通知から開くと「チームが見つかりません」になり予約画面に到達できない",
+          "detail": "予約通知の actionUrl が /teams/{数値teamId}/reservations で、FE の slug ルートでは「チームが見つかりません」になる。確定不具合として台帳 CMP-261028-2328（ALIC-1）に起票。住民観測としては未実証ラベルを維持する。"
+        },
+        {
+          "id": "ALIC-CMP1152-R3-02",
+          "title": "エラー時にトーストが2枚重なり、その閉じるボタンが 28x28px",
+          "detail": "エラー時にトーストが2枚重なって表示され、閉じるボタンが 28x28px で片手では押しにくい。"
+        },
+        {
+          "id": "ALIC-CMP1152-R3-03",
+          "title": "エラー表示の下に loading スピナーが残る",
+          "detail": "エラー表示の下に loading スピナーが残り続け、処理中なのか失敗したのか判断しにくい。"
+        },
+        {
+          "id": "ALIC-CMP1152-R3-04",
+          "title": "確認済みにした後も、再送された通知に「確認する」ボタンが残る",
+          "detail": "確認済みにした後でも、再送された通知に「確認する」ボタンが残る。"
+        },
+        {
+          "id": "ALIC-CMP1152-R3-05",
+          "title": "スヌーズ・既読のアイコンが薄灰で判別しづらい",
+          "detail": "スヌーズ・既読のアイコンが薄灰で、どちらがどちらか判別しづらい。"
+        }
+      ]
+    },
+    {
+      "personaId": "ALIC-CMP1152-R4",
+      "archetype": "一般×連打（SYSTEM_ADMIN）",
+      "purpose": "SYSTEM_ADMIN として管理バッチ実行などの操作を連打し、二重実行や通知一覧の見え方を確かめる",
+      "privateEvidencePath": ".claude/worktrees/agent-a7d0f0151e64065b2/frontend/test-results/alicization/run-20261028/resident4/",
+      "insights": [
+        {
+          "id": "ALIC-CMP1152-R4-01",
+          "title": "間隔を空けた連打は、すべて受理される（一気押しは1回に畳まれる）",
+          "detail": "間隔を空けて連打すると、すべての押下が受理される。一気に押した場合は1回に畳まれる。"
+        },
+        {
+          "id": "ALIC-CMP1152-R4-02",
+          "title": "SYSTEM_ADMIN の通知一覧は毎分の定期バッチの完了通知に埋もれ、自分の実行分が約10分で上位400件から消える",
+          "detail": "SYSTEM_ADMIN の通知一覧は毎分の定期バッチの完了通知に埋もれ、自分が実行した分が約10分で上位400件から消える。"
+        },
+        {
+          "id": "ALIC-CMP1152-R4-03",
+          "title": "ad-campaign-delivery が「Query requires transaction be in progress」で失敗する",
+          "detail": "ad-campaign-delivery が「Query requires transaction be in progress」で失敗する。既存の CMP-261009-0010 で起票済みであり、新規の台帳行は作らない。"
+        }
+      ]
+    }
+  ]
+}

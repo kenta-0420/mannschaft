@@ -1,5 +1,9 @@
 package com.mannschaft.app.notification;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
@@ -7,6 +11,7 @@ import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDispatchService;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.notification.service.NotificationService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -17,18 +22,25 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.slf4j.LoggerFactory;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * {@link NotificationHelper} の単体テスト。
@@ -137,6 +149,108 @@ class NotificationHelperTest {
     // ========================================
     // notify (優先度指定)
     // ========================================
+
+    @Nested
+    @DisplayName("notifyAfterCommitのDB作成と配信投入の境界")
+    class NotifyAfterCommit {
+        @AfterEach
+        void 同期状態を残さない() {
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.clearSynchronization();
+            }
+            TransactionSynchronizationManager.setActualTransactionActive(false);
+        }
+
+        private void beginSynchronization() {
+            assertThat(TransactionSynchronizationManager.isSynchronizationActive()).isFalse();
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            TransactionSynchronizationManager.initSynchronization();
+            TransactionSynchronizationManager.setActualTransactionActive(true);
+        }
+
+        private NotificationEntity stubNotification() {
+            var entity = createNotificationEntity();
+            given(notificationService.createNotification(USER_ID, NOTIFICATION_TYPE, NotificationPriority.NORMAL,
+                    TITLE, BODY, SOURCE_TYPE, SOURCE_ID, NotificationScopeType.TEAM, SCOPE_ID, ACTION_URL, ACTOR_ID))
+                    .willReturn(entity);
+            return entity;
+        }
+
+        private void notifyAfterCommit() {
+            notificationHelper.notifyAfterCommit(USER_ID, NOTIFICATION_TYPE, TITLE, BODY,
+                    SOURCE_TYPE, SOURCE_ID, NotificationScopeType.TEAM, SCOPE_ID, ACTION_URL, ACTOR_ID);
+        }
+
+        @Test
+        void 実TXなしは同じ引数で即配信する() {
+            var entity = stubNotification();
+            notifyAfterCommit();
+            verify(dispatchService).dispatch(entity);
+        }
+
+        @Test
+        void commit前は配信せずcommit成立後に一度投入する() {
+            var entity = stubNotification();
+            beginSynchronization();
+            notifyAfterCommit();
+            verifyNoInteractions(dispatchService);
+            var synchronizations = TransactionSynchronizationManager.getSynchronizations();
+            assertThat(synchronizations).hasSize(1);
+            synchronizations.forEach(TransactionSynchronization::afterCommit);
+            verify(dispatchService, times(1)).dispatch(entity);
+        }
+
+        @Test
+        void rollbackでは配信を投入しない() {
+            stubNotification();
+            beginSynchronization();
+            notifyAfterCommit();
+            TransactionSynchronizationManager.getSynchronizations().forEach(
+                    sync -> sync.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
+            verifyNoInteractions(dispatchService);
+        }
+
+        @Test
+        void visibility拒否では同期登録も配信もしない() {
+            beginSynchronization();
+            notifyAfterCommit();
+            assertThat(TransactionSynchronizationManager.getSynchronizations()).isEmpty();
+            verifyNoInteractions(dispatchService);
+        }
+
+        @Test
+        void 実TXがあるのに同期がなければDB作成前に拒否する() {
+            TransactionSynchronizationManager.setActualTransactionActive(true);
+            assertThatThrownBy(this::notifyAfterCommit).isInstanceOf(IllegalStateException.class)
+                    .hasMessage("notification transaction synchronization is required");
+            verifyNoInteractions(notificationService, dispatchService);
+        }
+
+        @Test
+        void commit後投入失敗は原因付きERRORを残し再throwしない() {
+            var entity = stubNotification();
+            var failure = new java.util.concurrent.RejectedExecutionException("owned dispatch rejection");
+            doThrow(failure).when(dispatchService).dispatch(entity);
+            Logger logger = (Logger) LoggerFactory.getLogger(NotificationHelper.class);
+            var appender = new ListAppender<ILoggingEvent>();
+            appender.start();
+            logger.addAppender(appender);
+            try {
+                beginSynchronization();
+                notifyAfterCommit();
+                assertThatCode(() -> TransactionSynchronizationManager.getSynchronizations()
+                        .forEach(TransactionSynchronization::afterCommit)).doesNotThrowAnyException();
+                assertThat(appender.list).anySatisfy(event -> {
+                    assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+                    assertThat(event.getFormattedMessage()).contains("notificationId=", "userId=1", NOTIFICATION_TYPE);
+                    assertThat(event.getThrowableProxy().getClassName()).isEqualTo(failure.getClass().getName());
+                });
+            } finally {
+                logger.detachAppender(appender);
+                appender.stop();
+            }
+        }
+    }
 
     @Nested
     @DisplayName("notify (優先度指定)")

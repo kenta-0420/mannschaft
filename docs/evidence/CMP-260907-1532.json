@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260907-1532",
+  "scope": "app",
+  "implementation": {
+    "pr": 3797,
+    "sha": "b2938105a6437352be1bf8b663677f97fe709ce7"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "byState 等が欠落・null・配列など契約違反のサマリ応答でも TypeError にならず、エラーとして記録される",
+      "tests": [
+        {
+          "name": "契約違反のサマリ応答（%s）でもゲッターが TypeError にならず、エラーとして記録される",
+          "evidence": "frontend/tests/unit/stores/useInboxStore.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "不正な応答が来ても取得済みの件数を壊さない",
+      "tests": [
+        {
+          "name": "不正なサマリ応答は取得済みの件数を壊さない",
+          "evidence": "frontend/tests/unit/stores/useInboxStore.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "サマリ未取得時は件数 0 を返す（型が常に在ると偽らない）",
+      "tests": [
+        {
+          "name": "サマリ未取得時は 0 を返す",
+          "evidence": "frontend/tests/unit/stores/useInboxStore.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 38183187980
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/3797"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260907-1532.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260907-1532.md"
+    }
+  },
+  "regressions": []
+}

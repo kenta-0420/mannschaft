@@ -35,33 +35,28 @@ public class ActivityScheduleFacade {
     private final ScheduleActivitySourceService sources;
     private final ScheduleService schedules;
     private final ActivityScheduleSyncService synchronization;
-    private final ActivityDetailService details;
-    private final ActivityResultService activities;
-    private final ActivityMapper mapper;
+    private final ActivityScheduleCreationFacade creation;
+    private final com.mannschaft.app.activity.service.AutomaticActivityListService automaticLists;
+    private final AutomaticScheduleCompletionFacade completion;
 
     @Transactional
     public ActivityDetailResponse draft(Long scheduleId, String scopeType, Long scopeId, Long userId) {
-        if (!java.util.Set.of("TEAM", "ORGANIZATION").contains(scopeType)) {
-            throw new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_001);
-        }
-        var source = sources.requireSource(scheduleId, scopeType, scopeId, userId, true);
-        Long id = synchronization.createDraft(source, userId);
-        return details.getDetail(id, userId);
+        return creation.draft(scheduleId, scopeType, scopeId, userId);
     }
 
     /** 従来作成経路も同じ予定ロックを共有し、別スコープの任意ID関連付けを防ぐ。 */
     @Transactional
     public ActivityRecordResponse create(ActivityScopeType type, Long scopeId, Long userId, CreateActivityRequest request) {
-        if (request.getScheduleId() != null) {
-            var source = sources.requireSource(request.getScheduleId(), type.name(), scopeId, userId, true);
-            synchronization.rejectExistingLink(source);
-        }
-        return mapper.toActivityRecordResponse(activities.createActivity(userId, type, scopeId, request));
+        return creation.create(type, scopeId, userId, request);
     }
 
     @Transactional(readOnly = true)
     public List<ActivityRecordResponse> linked(Long scheduleId, String type, Long scopeId, Long userId) {
-        return synchronization.linked(sources.requireSource(scheduleId, type, scopeId, userId, false), userId);
+        var source = sources.requireSource(scheduleId, type, scopeId, userId, false);
+        var records = new java.util.LinkedHashMap<Long, ActivityRecordResponse>();
+        synchronization.linked(source, userId).forEach(a -> records.put(a.getId(), a));
+        automaticLists.linkedMetadata(source, userId).forEach(a -> records.putIfAbsent(a.getId(), a));
+        return List.copyOf(records.values());
     }
 
     @Transactional
@@ -100,6 +95,14 @@ public class ActivityScheduleFacade {
         synchronization.validateConfirmation(activityChanges, confirmation == null ? null : confirmation.activities());
         ScheduleResponse response = schedules.updateSchedule(scheduleId, request, updateScope, userId);
         synchronization.apply(projected, userId, activityChanges, confirmation == null ? null : confirmation.activities());
+        completion.reopenFuture(projected.stream().map(ScheduleActivitySource::id).toList());
+        // helperのflush/rowlock再確認後のstatusを、保存前に組み立てられたDTOへ反映する。
+        var latest = sources.currentSources(List.of(scheduleId), false).getFirst();
+        if (!Objects.equals(response.getContent().status(), latest.status())) {
+            var content = response.getContent();
+            response = response.toBuilder().content(new ScheduleResponse.ScheduleContentDto(content.title(),
+                    latest.status(), content.eventType(), content.location(), content.attendanceRequired())).build();
+        }
         return response;
     }
 

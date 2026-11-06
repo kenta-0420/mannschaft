@@ -69,8 +69,8 @@
         "domain": "SHIFT_REQUEST",
         "pending_count": 3,
         "degraded": false,
-        "list_route": "/teams/dev-team/admin/shifts?tab=requests",
-        "items": [ { "id": "88", "title": "6/22 早番 交代希望", "requested_by": "佐藤花子", "requested_at": "2026-06-16T18:00:00+09:00", "detail_route": "/teams/dev-team/admin/shifts/swap/88" } ]
+        "list_route": "/teams/dev-team/shifts",
+        "items": [ { "id": "88", "title": "6/22 早番 交代希望", "requested_by": "佐藤花子", "requested_at": "2026-06-16T18:00:00+09:00", "detail_route": "/teams/dev-team/shifts?tab=swaps" } ]
       },
       {
         "domain": "MATCHING",
@@ -109,9 +109,9 @@
 - `domains[]`: 当該スコープで有効なドメインのみ（§3.2）。`pending_count` が 0 のドメインも、有効でありさえすれば配列に含める（FE が枠を描画できる）。無効ドメインは含めない。
 - `domain`: enum（`RESERVATION` / `SHIFT_REQUEST` / `MATCHING` / `PAYMENT`）。
 - `degraded`: boolean（camelCase ではなく snake_case の `degraded`。API は snake_case 規約・§3.5）。当該ドメインの集計が**一時障害（DB 接続断・タイムアウト）で取得できなかった**場合のみ `true`。FE は当該ドメインを「集計失敗（再試行可）」として 0 件と区別して表示する（§4.3）。認可エラー・プログラミングエラーでは `degraded` は立たず、API 全体が当該ステータスを返す（握りつぶさない・§4.3）。
-- `list_route`（DomainSection 単位）: FE が遷移する**一覧ルート**文字列（status / tab 付き）。当該ドメインの承認待ち一覧へ飛ぶ。**BE がスラッグを解決して返す**（FE が ID から再構築しない）。スラッグ解決は他ドメイン Entity を直接参照せず `TeamService.getSlugsByIds(ids): Map<Long,String>` 等のプリミティブ返却 Service メソッド経由（ArchUnit 越境依存 D-1 を避ける。メモリ `project_slug_e2e_open_issues` の教訓）。ルートは §01.4 の実在ルートに整合させる（例: team のシフト承認待ちは `/teams/{slug}/admin/shifts?tab=requests`）。
-- `detail_route`（PreviewItem 単位）: その**1 件の個別遷移先**ルート文字列。`list_route` と**別物**で、status 等のクエリではなく**主キー（id）をパスに含めて**個別画面に飛ぶ（例 `/teams/{slug}/admin/reservations/{id}`・`/teams/{slug}/admin/matching/{id}`・`/organizations/{slug}/admin/payments/{id}`）。`list_route` 同様に BE がスラッグ・主キーを解決して返す。
-- `items[]`: `preview_size` 件までのプレビュー。`id` は対象ドメインの主キーを**文字列化**して返す（BIGINT/UUID を JSON 数値ではなく文字列で統一）。**合成 id（`change:{id}` 等の種別接頭辞付き）は使わない**。同一ドメイン内に複数種別があるシフトドメインでは、`id` は各種別テーブルの主キー文字列とし、**種別（変更依頼／交代申請）の判別は `detail_route` のパスで吸収する**（変更依頼 → `/teams/{slug}/admin/shifts/change/{id}`、交代申請 → `/teams/{slug}/admin/shifts/swap/{id}`）。これにより id 契約（=主キー文字列）を保ったまま種別ごとの個別遷移を成立させる。
+- `list_route`（DomainSection 単位）: FE が遷移する**一覧ルート**文字列（status / tab 付き）。当該ドメインの承認待ち一覧へ飛ぶ。**BE がスラッグを解決して返す**（FE が ID から再構築しない）。スラッグ解決は他ドメイン Entity を直接参照せず `TeamService.getSlugsByIds(ids): Map<Long,String>` 等のプリミティブ返却 Service メソッド経由（ArchUnit 越境依存 D-1 を避ける。メモリ `project_slug_e2e_open_issues` の教訓）。ルートは §01.4 の実在ルートに整合させる（例: team のシフト承認待ちは `/teams/{slug}/shifts`）。
+- `detail_route`（PreviewItem 単位）: その依頼を扱う**個別画面またはコンテキスト一覧**のルート文字列。`list_route` と**別物**で、**主キー（id）をパスに含める**個別画面、または既存の対象一覧に飛ぶ（例 `/teams/{slug}/admin/reservations/{id}`・`/teams/{slug}/admin/matching/{id}`・`/organizations/{slug}/admin/payments/{id}`）。`list_route` 同様に BE がスラッグ・必要な識別子を解決して返す。シフト変更依頼は `/teams/{slug}/shifts/{scheduleId}/change-requests`、交代申請は `/teams/{slug}/shifts?tab=swaps` を使う。対象依頼への自動定位は行わない。
+- `items[]`: `preview_size` 件までのプレビュー。`id` は対象ドメインの主キーを**文字列化**して返す（BIGINT/UUID を JSON 数値ではなく文字列で統一）。**合成 id（`change:{id}` 等の種別接頭辞付き）は使わない**。同一ドメイン内に複数種別があるシフトドメインでは、`id` は各種別テーブルの主キー文字列とし、**種別（変更依頼／交代申請）の判別は `detail_route` のパスで吸収する**（変更依頼 → `/teams/{slug}/shifts/{scheduleId}/change-requests`、交代申請 → `/teams/{slug}/shifts?tab=swaps`）。これにより id 契約（=主キー文字列）を保ったまま種別ごとの既存一覧への遷移を成立させる。交換タブは `tab=swaps` の初期値と同一ページでの query 更新に追従し、未知値・複数値・未指定はシフト表タブを選ぶ。
 
 ### 3.4 各ドメインの「承認待ち」の定義（実コード準拠）
 

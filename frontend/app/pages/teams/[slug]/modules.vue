@@ -14,13 +14,13 @@ definePageMeta({
 const route = useRoute()
 const teamSlug = computed(() => String(route.params.slug))
 
-const { isAdmin, roleName } = useTeamShellContext()
+const { isAdmin, roleResolved, roleLoadFailed } = useTeamShellContext()
 
 // 直リンク防御: 権限が確定した時点で管理者でなければ戻す。
 watch(
-  [roleName, isAdmin],
+  [roleResolved, roleLoadFailed, isAdmin],
   () => {
-    if (roleName.value && !isAdmin.value) {
+    if (roleResolved.value && !roleLoadFailed.value && !isAdmin.value) {
       navigateTo(`/teams/${teamSlug.value}`)
     }
   },

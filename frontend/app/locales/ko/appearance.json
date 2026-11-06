@@ -1,5 +1,8 @@
 {
   "appearance": {
+    "themeLabel": "테마",
+    "themeLightLabel": "라이트",
+    "themeDarkLabel": "다크",
     "bgColorLabel": "배경색",
     "darkBgColorLabel": "다크 배경색",
     "color": {

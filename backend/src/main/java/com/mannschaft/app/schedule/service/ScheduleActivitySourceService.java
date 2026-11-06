@@ -85,6 +85,11 @@ public class ScheduleActivitySourceService {
                 .map(s -> toSource(s, false)).toList();
     }
 
+    /** 共通削除TXからsource→activity順でロックする。hard-missing sourceはactual保存を妨げない。 */
+    public void lockStoredSource(Long id) {
+        if (id != null) scheduleRepository.lockStoredActivitySourceId(id);
+    }
+
     private ScheduleEntity findSource(Long id) {
         return scheduleRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));

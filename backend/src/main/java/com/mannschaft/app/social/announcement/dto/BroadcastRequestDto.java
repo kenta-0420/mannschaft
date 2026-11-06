@@ -2,6 +2,9 @@ package com.mannschaft.app.social.announcement.dto;
 
 import com.mannschaft.app.social.announcement.AnnouncementChannel;
 import com.mannschaft.app.social.announcement.AnnouncementContentRequest;
+import com.mannschaft.app.social.announcement.audience.BroadcastAudienceSpec;
+import com.mannschaft.app.social.announcement.audience.TargetGroupRange;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -12,6 +15,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * F02.8 告知ウィザード実行リクエスト DTO。
@@ -39,10 +43,26 @@ public class BroadcastRequestDto {
     private String targetRole;
 
     /**
-     * 組織告知でのチーム絞り込み対象 ID リスト。
-     * null = 全チーム対象。
+     * 組織告知でのチーム絞り込み（チームの URL 識別子（slug。{@code GET /organizations/{slug}/teams} の {@code id} と同じ値））。
+     * null = 全チーム対象。存在しない・他組織・未加盟のチームは区別せず 400 {@code BROADCAST_002}。
      */
-    private List<Long> targetTeamIds;
+    @Schema(description = "組織告知でのチーム絞り込み（チームの slug。組織所属チーム一覧の id と同じ値）。null は全チーム")
+    private List<String> targetTeamIds;
+
+    /**
+     * 「チームグループで選ぶ」の個別チェック（F01.2.1 §8.1。組織告知のみ。targetTeamIds とは併用不可）。
+     */
+    private List<UUID> targetGroupIds;
+
+    /**
+     * 「チームグループで選ぶ」の範囲（並び順で開始〜終了。F01.2.1 §8.1）。
+     */
+    private TargetGroupRange targetGroupRange;
+
+    /**
+     * 未分類のチームも宛先に含めるか（F01.2.1 §8.1）。
+     */
+    private Boolean includeUnassigned;
 
     /**
      * 範囲テンプレート ID（省略可）。
@@ -66,4 +86,10 @@ public class BroadcastRequestDto {
     @NotNull
     @Valid
     private AnnouncementContentRequest content;
+
+    /** 宛先項目だけを取り出す。 */
+    public BroadcastAudienceSpec toAudienceSpec() {
+        return new BroadcastAudienceSpec(
+                targetTeamIds, targetGroupIds, targetGroupRange, includeUnassigned, templateId, targetRole);
+    }
 }

@@ -1,0 +1,398 @@
+{
+  "kind": "pending-adoption-docs-only",
+  "runtimeArtifactSourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+  "specOnlyBridgeHead": "4697a0f99045a2218dbfe6eb8c7e1d894962d8d0",
+  "baseHead": "2f524c7a19f8b928b0086ad700fe527e2d631843",
+  "privateValueIndicatorsPresent": false,
+  "originalsChanged": false,
+  "candidates": [
+    {
+      "sourceAlias": "review-static-safe.md",
+      "inputSha256": "c51e81734ae8ae660b34a69c132923c3879916e75d32aaedf76a4a6a353f5a64",
+      "trackedPath": "docs/evidence/CMP-261028-1715/review-static-safe.md",
+      "adoptedSha256": "dc73317eb1ec6ee1c63cfc7566db5eab59a6214adc3070c514a39f9ccc296927",
+      "referenceRewritten": true,
+      "previousInputSha256": "9e08e350bfb740c752071ff7ef43c9038297575ed66f8fe9d1ea043d2fcdbb31",
+      "rootUpdatedAfterInitialSelection": true
+    },
+    {
+      "sourceAlias": "formal-calendar-ui6-acceptance-safe.json",
+      "inputSha256": "f912fe5dfaca58c6fba87ffce3775921cc8682096f9adec9f18997062b904dad",
+      "trackedPath": "docs/evidence/CMP-261028-1715/formal/formal-calendar-ui6-acceptance-safe.json",
+      "adoptedSha256": "18022a07f18796a87653868d792c482349bc1ec2f22c1218f6bff8b2d7a1304f",
+      "referenceRewritten": true
+    },
+    {
+      "sourceAlias": "formal-calendar-desktop6-safe.json",
+      "inputSha256": "7575893b5b5353e94616d3ae1c9b6cec8d213c34756309a27b1ce7fdbc756268",
+      "trackedPath": "docs/evidence/CMP-261028-1715/formal/formal-calendar-desktop6-safe.json",
+      "adoptedSha256": "9918eb02bed4a03b63a2f0976d1cacc3292086600c4e1ce8942ce0a1d4c025f4",
+      "referenceRewritten": true
+    },
+    {
+      "sourceAlias": "formal-calendar-mobile6-safe.json",
+      "inputSha256": "6d328d95eeff8f1b1b1b29834fe7c84cc872555fcc143b3ea31260176fb7e947",
+      "trackedPath": "docs/evidence/CMP-261028-1715/formal/formal-calendar-mobile6-safe.json",
+      "adoptedSha256": "61b33a954b24f2ab53463f12627d83a74e72fbc606f4365ef7a4308a1d12f82e",
+      "referenceRewritten": true
+    },
+    {
+      "sourceAlias": "formal-calendar-ui6-visual-supplement-safe.json",
+      "inputSha256": "c359e86619e4b11bb9cde1a877be6cf56596a5f6114fc3734a7653852cb26699",
+      "trackedPath": "docs/evidence/CMP-261028-1715/formal/formal-calendar-ui6-visual-supplement-safe.json",
+      "adoptedSha256": "2fc197da52020c268bb6b7daa1cc37547478e25cb60b6ae468757747e7451b8d",
+      "referenceRewritten": true
+    },
+    {
+      "sourceAlias": "formal-calendar-corrected-images1-safe.json",
+      "inputSha256": "69e52e25b9cd4291b0cb2526d3a6008a144718b458ea341f4f643ffd8ad561cb",
+      "trackedPath": "docs/evidence/CMP-261028-1715/formal/formal-calendar-corrected-images1-safe.json",
+      "adoptedSha256": "9e2964b1baf0867f8888f7fe7f4e8fff8119fee6b3c3d2caabc69d118647fef2",
+      "referenceRewritten": true
+    },
+    {
+      "sourceAlias": "formal-calendar-corrected-images2-safe.json",
+      "inputSha256": "16d6754f44598d3764e26e66b756bdf6a1ab19eb48ba59d881c67337beed03e6",
+      "trackedPath": "docs/evidence/CMP-261028-1715/formal/formal-calendar-corrected-images2-safe.json",
+      "adoptedSha256": "bc3808068490dd4e0a11e254d4ffd0617f1ab2cced69a4b649bf66004346670d",
+      "referenceRewritten": true
+    },
+    {
+      "sourceAlias": "formal-calendar-desktop-widget-corrected2-masked.png",
+      "inputSha256": "0f70bf1eb38afa6a369958edadbafa967e665842518de3fddccd73a846db0cd3",
+      "trackedPath": "docs/evidence/CMP-261028-1715/images/formal-calendar-desktop-widget-corrected2-masked.png",
+      "adoptedSha256": "0f70bf1eb38afa6a369958edadbafa967e665842518de3fddccd73a846db0cd3",
+      "referenceRewritten": false
+    },
+    {
+      "sourceAlias": "formal-calendar-mobile-agenda-corrected1-masked.png",
+      "inputSha256": "195620db6a46e5e9afdcb0c3ab0a228369da0e7cc487c09567a12b55215af029",
+      "trackedPath": "docs/evidence/CMP-261028-1715/images/formal-calendar-mobile-agenda-corrected1-masked.png",
+      "adoptedSha256": "195620db6a46e5e9afdcb0c3ab0a228369da0e7cc487c09567a12b55215af029",
+      "referenceRewritten": false
+    },
+    {
+      "sourceAlias": "formal-calendar-outsider-denial-v6-masked.png",
+      "inputSha256": "6c933e4ee56c556ddcf50db6c07ad5f6c03473f0fdd7503ed94afc7f047c3111",
+      "trackedPath": "docs/evidence/CMP-261028-1715/images/formal-calendar-outsider-denial-v6-masked.png",
+      "adoptedSha256": "6c933e4ee56c556ddcf50db6c07ad5f6c03473f0fdd7503ed94afc7f047c3111",
+      "referenceRewritten": false
+    },
+    {
+      "sourceAlias": "production-calendar-six-sample-comparison-safe.json",
+      "inputSha256": "418d00369575068f518a355d557b9d33d98ef56b8b46af4f5f90b84f74d90dd8",
+      "trackedPath": "docs/evidence/CMP-261028-1715/performance/production-calendar-six-sample-comparison-safe.json",
+      "adoptedSha256": "c88e5c8cab653083107fddf5f6180b6555d89e8e9b1f0794dfe4003f0fcf259c",
+      "referenceRewritten": true
+    },
+    {
+      "sourceAlias": "nav-fixed-performance-conditions-safe.json",
+      "inputSha256": "f8f2639e71d547cb99d05f14557b2192754c67943165dfb96408ccbefc8f4a95",
+      "trackedPath": "docs/evidence/CMP-261028-1715/performance/nav-fixed-performance-conditions-safe.json",
+      "adoptedSha256": "51b8d7a3e310a233468348936ee48f47183ded6f07682111b8e5858ecebffaf1",
+      "referenceRewritten": true
+    },
+    {
+      "sourceAlias": "nav-fixed-production-detailed-intervals-safe.json",
+      "inputSha256": "f6c5df309ebe38fcb48a421a47e8a50846eaccc1204ce55a3f2c7634d32591f9",
+      "trackedPath": "docs/evidence/CMP-261028-1715/performance/nav-fixed-production-detailed-intervals-safe.json",
+      "adoptedSha256": "d56e95de50de5bd3e357f477103eb31da001046484b80c6c9e641eee3457c599",
+      "referenceRewritten": true
+    },
+    {
+      "sourceAlias": "visible-nav-prefetch-hook-probe3-safe.json",
+      "inputSha256": "577808111304874b80653aa0e31a34505de01560c4749bcbd802ea476c4f06b9",
+      "trackedPath": "docs/evidence/CMP-261028-1715/performance/visible-nav-prefetch-hook-probe3-safe.json",
+      "adoptedSha256": "577808111304874b80653aa0e31a34505de01560c4749bcbd802ea476c4f06b9",
+      "referenceRewritten": false
+    },
+    {
+      "sourceAlias": "nav-native-api-diagnostic-summary-safe.json",
+      "inputSha256": "043ec74de38ee67e8092d403796574a4294770037d607437d4994e8f69352ad5",
+      "trackedPath": "docs/evidence/CMP-261028-1715/performance/nav-native-api-diagnostic-summary-safe.json",
+      "adoptedSha256": "d332a1f7eb885a9e8e54fc5127a33f436abca29abc5569bd87dc7a8f4a284ba9",
+      "referenceRewritten": true
+    },
+    {
+      "sourceAlias": "resident-plain/journey.jsonl",
+      "inputSha256": "fede0a94254bc76279c5a4e5d4bf4ef16a289357ebbef7865c6563d0e31a4d5b",
+      "trackedPath": "docs/evidence/CMP-261028-1715/residents/plain/journey.jsonl",
+      "adoptedSha256": "00792ee1ef301147f48604a560b15452ed530fa4435d2381094056c704673a21",
+      "referenceRewritten": true
+    },
+    {
+      "sourceAlias": "resident-return/observation.safe.json",
+      "inputSha256": "251781dd9163af0166e223a8d6b9930d196fd6e8c7527782656db590ee714e96",
+      "trackedPath": "docs/evidence/CMP-261028-1715/residents/return/observation.safe.json",
+      "adoptedSha256": "c0a7281b68dd873d5bbb90dc4368103f7e1d91e1b0beb72364488115759f1973",
+      "referenceRewritten": true
+    },
+    {
+      "sourceAlias": "resident-mobile/report.json",
+      "inputSha256": "c0232e74a20558102caf588dc0cfbfce18f77f4e85a5b423cce7dddbe11252d0",
+      "trackedPath": "docs/evidence/CMP-261028-1715/residents/mobile/report.json",
+      "adoptedSha256": "2a21ef579594c4a7927d686afe4ff8d46bc63303563fb93c9f32253d25b7ecc0",
+      "referenceRewritten": true
+    },
+    {
+      "sourceAlias": "resident-mobile/07-week-end-390.png",
+      "inputSha256": "b8baa978ed827b445d8320fb94e3cc6b591ce80e2a370057d7a70313b0a59602",
+      "trackedPath": "docs/evidence/CMP-261028-1715/residents/mobile/07-week-end-390.png",
+      "adoptedSha256": "b8baa978ed827b445d8320fb94e3cc6b591ce80e2a370057d7a70313b0a59602",
+      "referenceRewritten": false
+    },
+    {
+      "sourceAlias": "resident-mobile/09-calendar-top-360.png",
+      "inputSha256": "02db4a470776119c2b788a85b7ab029a3699efd4832a87c590df2f2263a4d432",
+      "trackedPath": "docs/evidence/CMP-261028-1715/residents/mobile/09-calendar-top-360.png",
+      "adoptedSha256": "02db4a470776119c2b788a85b7ab029a3699efd4832a87c590df2f2263a4d432",
+      "referenceRewritten": false
+    },
+    {
+      "sourceAlias": "resident-mobile/10-next-month-360.png",
+      "inputSha256": "ba46b98468640e8e84383932519508c12d744d4a8b3d6a31fa972e6ef507d007",
+      "trackedPath": "docs/evidence/CMP-261028-1715/residents/mobile/10-next-month-360.png",
+      "adoptedSha256": "ba46b98468640e8e84383932519508c12d744d4a8b3d6a31fa972e6ef507d007",
+      "referenceRewritten": false
+    },
+    {
+      "sourceAlias": "resident-mobile/11-calendar-top-390.png",
+      "inputSha256": "2d277dba6e685c1952a4a7e47326df7413df36296ae1115840f7af7800a7dfa3",
+      "trackedPath": "docs/evidence/CMP-261028-1715/residents/mobile/11-calendar-top-390.png",
+      "adoptedSha256": "2d277dba6e685c1952a4a7e47326df7413df36296ae1115840f7af7800a7dfa3",
+      "referenceRewritten": false
+    },
+    {
+      "sourceAlias": "formal-calendar-desktop1-safe.json",
+      "inputSha256": "c455564e0532689f49b1d78fd98ef0621cae53e66cb87995a64549d7861f11ee",
+      "trackedPath": "docs/evidence/CMP-261028-1715/history/formal-calendar-desktop1-safe.json",
+      "adoptedSha256": "c455564e0532689f49b1d78fd98ef0621cae53e66cb87995a64549d7861f11ee",
+      "referenceRewritten": false
+    },
+    {
+      "sourceAlias": "formal-calendar-desktop2-safe.json",
+      "inputSha256": "0fbb448eaaf95d9cd6af8d3900ad0aa10843308a44f4982ca11bfd8bca6bbdff",
+      "trackedPath": "docs/evidence/CMP-261028-1715/history/formal-calendar-desktop2-safe.json",
+      "adoptedSha256": "0fbb448eaaf95d9cd6af8d3900ad0aa10843308a44f4982ca11bfd8bca6bbdff",
+      "referenceRewritten": false
+    },
+    {
+      "sourceAlias": "formal-calendar-desktop3-safe.json",
+      "inputSha256": "3fa36cc0ff4e6ebd961f62b25e23bdb7d36b9320c45f1797db7f3deba3848115",
+      "trackedPath": "docs/evidence/CMP-261028-1715/history/formal-calendar-desktop3-safe.json",
+      "adoptedSha256": "3fa36cc0ff4e6ebd961f62b25e23bdb7d36b9320c45f1797db7f3deba3848115",
+      "referenceRewritten": false
+    },
+    {
+      "sourceAlias": "formal-calendar-desktop4-safe.json",
+      "inputSha256": "b3b702757e8a2a2f250a9de006c86ce3ea41997cb9aa68a3834239f9ecf308c4",
+      "trackedPath": "docs/evidence/CMP-261028-1715/history/formal-calendar-desktop4-safe.json",
+      "adoptedSha256": "0e63f09c546c1d5d912af3ce6d369584c47059d735c253efb146e2dd12143348",
+      "referenceRewritten": true
+    },
+    {
+      "sourceAlias": "visible-nav-prefetch-hook-probe2-safe.json",
+      "inputSha256": "61c36d23d0d7dbfb183569c13f587a332da1ce255bf38a766d169391e658039d",
+      "trackedPath": "docs/evidence/CMP-261028-1715/history/visible-nav-prefetch-hook-probe2-safe.json",
+      "adoptedSha256": "61c36d23d0d7dbfb183569c13f587a332da1ce255bf38a766d169391e658039d",
+      "referenceRewritten": false
+    },
+    {
+      "sourceAlias": "resident-plain/agenda-november.png",
+      "inputSha256": "c52ec737b0356ea95fcca12cb2ebbfd04e412d29b2045385350e4f20857ce3f1",
+      "trackedPath": "docs/evidence/CMP-261028-1715/residents/plain/agenda-november.png",
+      "adoptedSha256": "c52ec737b0356ea95fcca12cb2ebbfd04e412d29b2045385350e4f20857ce3f1",
+      "referenceRewritten": false
+    },
+    {
+      "sourceAlias": "resident-return/06-return-list.png",
+      "inputSha256": "6bb642d5847822cdc1a1cdf1e501d11362916e67358adc1c0168b6de25aee5fe",
+      "trackedPath": "docs/evidence/CMP-261028-1715/residents/return/06-return-list.png",
+      "adoptedSha256": "6bb642d5847822cdc1a1cdf1e501d11362916e67358adc1c0168b6de25aee5fe",
+      "referenceRewritten": false
+    },
+    {
+      "sourceAlias": "final-implementation-checks-safe.json",
+      "inputSha256": "46f06272159115ca1d4955be75060696dac235ea2ad2e5050ed6432637e872af",
+      "trackedPath": "docs/evidence/CMP-261028-1715/source/final-implementation-checks-safe.json",
+      "adoptedSha256": "81a9a902e3dfa34669ef481a8d0194d8757d0a36f8735c4b93904edeb5b4b254",
+      "referenceRewritten": false
+    },
+    {
+      "sourceAlias": "nav-green-linux2-cleanup-after-root-audit-safe.json",
+      "inputSha256": "215c98f19f32d2de231ef88d9a8be4ff7e236bf9d8e7890f0e3cc72ef2a5039f",
+      "trackedPath": "docs/evidence/CMP-261028-1715/source/nav-green-linux2-cleanup-after-root-audit-safe.json",
+      "adoptedSha256": "215c98f19f32d2de231ef88d9a8be4ff7e236bf9d8e7890f0e3cc72ef2a5039f",
+      "referenceRewritten": false
+    },
+    {
+      "sourceAlias": "nav-green-linux2-interruption-cleanup-summary-safe.json",
+      "inputSha256": "332486266b6b0b5e535adc8094a48c6e82c7e867a3d3edc752646a31f4cef476",
+      "trackedPath": "docs/evidence/CMP-261028-1715/source/nav-green-linux2-interruption-cleanup-summary-safe.json",
+      "adoptedSha256": "1b3597532379f26666380d9af23189117913eed6aeb7ac827ca745a176fb8d6d",
+      "referenceRewritten": false
+    },
+    {
+      "sourceAlias": "main-adoption-safe.json",
+      "inputSha256": "d724ebd19f79632851eac88d3ad7b27fe17aef0b75c6835ecf9fdcff5b437986",
+      "trackedPath": "docs/evidence/CMP-261028-1715/source/main-adoption-safe.json",
+      "adoptedSha256": "c3bf94728eec6e103d77cb290ea7d52fad4bb1124983932d9ba303ad128eb482",
+      "referenceRewritten": false
+    },
+    {
+      "sourceAlias": "nav-fixed-owned-nitro1-stop-safe.json",
+      "inputSha256": "47dc827da8674dea3e513a22b6a2194dd341adbc3de0bea3eefd75e0d609c18a",
+      "trackedPath": "docs/evidence/CMP-261028-1715/source/nav-fixed-owned-nitro1-stop-safe.json",
+      "adoptedSha256": "25a7d487dda5e22e9ef4439cf46dea1b925cb88c3bb9bbb533e56a9bbb0e4857",
+      "referenceRewritten": false
+    },
+    {
+      "sourceAlias": "completion-cli1-interrupted-safe.json",
+      "inputSha256": "a84704ba059cbcb63fb35be98ea57609342b97c5211d620b46e44903b59d0faa",
+      "trackedPath": "docs/evidence/CMP-261028-1715/validation/completion-cli1-interrupted-safe.json",
+      "adoptedSha256": "00008146d66391bdeafabb8c5cd2ad28d6139a2fa25d3601f72beef5180c2789",
+      "referenceRewritten": false
+    }
+  ],
+  "derivedProjection": true,
+  "omittedLocalImageReferenceCount": 15,
+  "originalSourcesHashed": true,
+  "overlay": {
+    "baseSha256": "de10d80723a3ac6bb90f41346f96d1f7f25dc3be37128d742d70bfd1bce0c57c",
+    "baselineCommit": "1d56fdd21f08262c310da2de3936bc8516c0a33a",
+    "priorCounts": [
+      26,
+      26,
+      55
+    ],
+    "newCounts": [
+      29,
+      29,
+      56
+    ],
+    "priorDeclarationsAndEnvironmentUnchanged": true,
+    "baselineGitBlobByteSha256": "bdbbfa3238dce10ca83bf480805847a1de102dcb9041796772e0cdba547deee7",
+    "baselineWorktreeSha256": "de10d80723a3ac6bb90f41346f96d1f7f25dc3be37128d742d70bfd1bce0c57c",
+    "allOriginalTopLevelFieldsDeepEqual": true,
+    "featureKey": "village-events-calendar-view",
+    "featureDetail": "統合カレンダー閲覧",
+    "generatedOverlayOnlyAdopted": true,
+    "otherDataFieldsDeepEqual": true,
+    "rootAssignedOriginalPurposesPreserved": true
+  },
+  "completedCampaignJsonCreated": true,
+  "taskListChanged": true,
+  "finalCI": "root-verified-17-success-7-skip-failure-and-active-zero",
+  "codePr4205": "merged",
+  "stillPending": [
+    "docs-final-review-and-PR-CI",
+    "owned-artifact-and-WT-cleanup"
+  ],
+  "implementationHead": "4697a0f99045a2218dbfe6eb8c7e1d894962d8d0",
+  "implementationMergeCommit": "2f524c7a19f8b928b0086ad700fe527e2d631843",
+  "cleanup": {
+    "localInterruptedScratch": "removed-with-root-readonly-audit-and-uid1000-mutation",
+    "ownNavRuntime": "root-strict-stop-completed-artifact-retained",
+    "mainAndForeignRuntimes": "unchanged"
+  },
+  "localCompletionCli": {
+    "status": "interrupted-unverified",
+    "passed": false,
+    "finalHeadRemoteGateRequired": true
+  },
+  "latestMainIntegration": {
+    "latestMainHead": "8b8c563e44d593301fac8e25b7cc6ec8d70b6089",
+    "priorDocsHead": "3b15d50fdb936b04437a15cb2cb4359b4eeacf1b",
+    "mainOverlayGitBlobSha256": "86df7b1caa57f8f9237a3ca62048d2700986088bd0ec9c49350664343748bcba",
+    "latestMainCounts": [
+      30,
+      30,
+      74
+    ],
+    "mergedCounts": [
+      33,
+      33,
+      75
+    ],
+    "ownAdditions": [
+      3,
+      3,
+      1
+    ],
+    "allLatestMainOverlayFieldsDeepEqualAfterRemovingOwnAdditions": true,
+    "allLatestMainTaskListLinesPreservedExceptOwnOneRow": true,
+    "automaticTableMergeMatchedExpected": true,
+    "pastCMP260827EvidenceLinkPreservedExactly": true,
+    "ownOriginalPurposesAndPartialOutcomeRetained": true,
+    "newPrivatePayloadIntroduced": false,
+    "otherMainChangesAlreadyPublic": true,
+    "canonicalGeneratorExit": 0,
+    "overlayExactExistingFunctionPassed": true,
+    "generatedOverlaySourceDataEqual": true,
+    "otherDataFieldsDeepEqual": true,
+    "htmlChanged": false,
+    "originalRootAssignedPurposesExactlyPreserved": true,
+    "mobilePartialOutcomePreserved": true,
+    "completionGuard": {
+      "trustedSourceSha256": "6827e0432fa58bb8db240f8fa6f76ac239146e97fdae56aa06b3ed559fbfe244",
+      "selectEvidencePathsPassed": true,
+      "selectedEvidenceCount": 1,
+      "validateCompletionChangesPassed": true,
+      "pastEvidenceBlobExactlyLatestMain": true,
+      "standardCliExecuted": false,
+      "githubApiVerifiedLocally": false,
+      "finalHeadGitHubGateRequired": true
+    }
+  },
+  "docsTaskListGateHistory": {
+    "firstDocsHead": "3b15d50fdb936b04437a15cb2cb4359b4eeacf1b",
+    "firstFailureRun": 40790021709,
+    "firstFailure": "CMP-260827-1152の過去完了証拠リンク欠落。最新main追従前の台帳が原因。",
+    "guardRelaxed": false,
+    "finalHeadCIRequired": true
+  },
+  "localReceiptProvenance": [
+    {
+      "name": "CMP-261028-1715-fe-baseline1",
+      "sourceHead": "b7e4bcd07e2bb93899ea761736bdd6a413e41780",
+      "receiptSha256": "624a8de6eec467f9a5bed639ecd7b5cb3aa2cfe376bce8fa2df9a873de7d2f00",
+      "purpose": "比較元production build"
+    },
+    {
+      "name": "CMP-261028-1715-fe-fixed1",
+      "sourceHead": "c7879b0244b617ab363927122ab88f801413ecc1",
+      "receiptSha256": "52a3857fac8cc2889940e59d970af875a1107e3d48294b2cb3a234349a3a28e4",
+      "purpose": "カレンダー並列化production build"
+    },
+    {
+      "name": "CMP-261028-1715-fe-nav-fixed1",
+      "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+      "receiptSha256": "a0cb9edcd2e6dd2feb48e000f23f4a6fa77d3373c0a2a27a8f77594f19816d84",
+      "purpose": "Nav変更production build"
+    },
+    {
+      "name": "CMP-261028-1715-fe-green-linux1",
+      "sourceHead": "c7879b0244b617ab363927122ab88f801413ecc1",
+      "receiptSha256": "faa5d4344f8bc76626eecb3c3901b9f10bc97c7340ea5689496415a9acaed749",
+      "purpose": "カレンダー必要2spec green"
+    },
+    {
+      "name": "CMP-261028-1715-fe-red-linux1",
+      "sourceHead": "b027c4babd3007c0b41fcba08f4f3997756a5fbe",
+      "receiptSha256": "2ac286053c8ec32e1da52a8ba97d6d9f9921e8b3a1a0037235aa20a8990da95f",
+      "purpose": "カレンダー契約red"
+    },
+    {
+      "name": "CMP-261028-1715-nav-red-linux1",
+      "sourceHead": "1569a6b80aae2f2c1560b00f4c5ef6f025907135",
+      "receiptSha256": "3a602450e762449b25c6a1d3b1f810226afa1ca74483400ba8cbcd623eeae5e9",
+      "purpose": "Nav先読み契約red"
+    },
+    {
+      "name": "CMP-261028-1715-nav-green-linux2",
+      "sourceHead": "4697a0f99045a2218dbfe6eb8c7e1d894962d8d0",
+      "receiptSha256": "945ad668d8d4706fd0976b5e392b7c3cf6d82909c44bd7871329a057d89ed688",
+      "purpose": "最終CI同等検証へ移行し中断・試験未実行のlocal runner"
+    }
+  ]
+}

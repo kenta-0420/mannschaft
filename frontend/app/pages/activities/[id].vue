@@ -11,13 +11,18 @@ const { handleApiError } = useErrorHandler()
 const notification = useNotification()
 const { renderMarkdown } = useMarkdownRenderer()
 const record = ref<ActivityDetailResponse | null>(null)
+const { deleting, requestDelete } = useActivityDeletion(record)
 const loading = ref(true)
 const error = shallowRef<unknown>(null)
 const showEdit = ref(false)
 const publishing = ref(false)
 const files = ref<Array<{ id: number; name: string; disabled: boolean }>>([])
-const fields = computed(() => (record.value ? activityDisplayFields(record.value) : []))
-const descriptionHtml = computed(() => renderMarkdown(record.value?.description ?? ''))
+const fields = computed(() =>
+  record.value && !record.value.metadataOnly ? activityDisplayFields(record.value) : [],
+)
+const descriptionHtml = computed(() =>
+  renderMarkdown(record.value?.metadataOnly ? '' : (record.value?.description ?? '')),
+)
 let loadGeneration = 0
 useHead(() => ({ title: record.value?.title ?? t('activity.pageTitle') }))
 
@@ -31,8 +36,8 @@ async function load(): Promise<void> {
     const id = Number(route.params.id)
     if (!Number.isSafeInteger(id) || id <= 0) throw createError({ statusCode: 404 })
     const result = (await getActivity(id)).data
-    activityDisplayFields(result)
-    const ids = activityFileIds(result.attachments)
+    if (!result.metadataOnly) activityDisplayFields(result)
+    const ids = result.metadataOnly ? [] : activityFileIds(result.attachments)
     if (generation !== loadGeneration) return
     record.value = result
     // 添付自体の認可も既存storage APIに委ねる。失敗は本文取得と区別して通知する。
@@ -72,9 +77,11 @@ async function download(id: number): Promise<void> {
   }
 }
 async function publish(): Promise<void> {
-  if (!record.value?.canPublish || publishing.value) return
+  if (!record.value?.canPublish || record.value.metadataOnly || publishing.value || deleting.value)
+    return
   publishing.value = true
   try {
+    if (record.value.version === null) throw new Error('活動記録の更新版を取得できません')
     await publishActivity(record.value.id, record.value.version)
     notification.success(t('activity.publish.success'))
     await load()
@@ -107,25 +114,46 @@ watch(() => route.params.id, load)
         "
       />
       <div class="flex flex-wrap items-center gap-3">
-        <Tag :value="t(`activity.statusLabel.${record.status}`)" />
+        <ActivityStatusBadges :record="record" />
         <Button
-          v-if="record.canEdit && record.status === 'DRAFT'"
+          v-if="record.canEdit && !record.metadataOnly && record.status === 'DRAFT'"
           class="min-h-11 min-w-11"
-          :label="t('activity.list.editDraft')"
+          :label="t('activity.detail.edit')"
           icon="pi pi-pencil"
           data-testid="activity-edit-draft"
+          :disabled="deleting || publishing"
           @click="showEdit = true"
         />
         <Button
-          v-if="record.canPublish && record.status === 'DRAFT'"
+          v-if="record.canPublish && !record.metadataOnly && record.status === 'DRAFT'"
           class="min-h-11 min-w-11"
           :label="t('activity.detail.publish')"
           icon="pi pi-send"
           :loading="publishing"
           data-testid="activity-publish"
+          :disabled="deleting"
           @click="publish"
         />
+        <Button
+          v-if="record.canDelete && !record.metadataOnly"
+          class="min-h-11 min-w-11"
+          :label="t('activity.delete.action')"
+          icon="pi pi-trash"
+          severity="danger"
+          outlined
+          :loading="deleting"
+          :disabled="publishing"
+          data-testid="activity-delete"
+          @click="requestDelete"
+        />
       </div>
+      <p
+        v-if="record.metadataOnly"
+        class="text-sm text-surface-500"
+        data-testid="activity-metadata-only"
+      >
+        {{ t('activity.metadataOnly') }}
+      </p>
       <SectionCard>
         <p data-testid="activity-datetime">
           {{ record.activityDate }} {{ record.activityTimeStart }}
@@ -136,20 +164,24 @@ watch(() => route.params.id, load)
         <!-- 既存rendererはDOMPurifyでHTMLをsanitizeしてから返す。 -->
         <!-- eslint-disable vue/no-v-html -- 既存sanitize済みMarkdown描画 -->
         <div
-          v-if="record.description"
+          v-if="!record.metadataOnly && record.description"
           class="prose mt-3 max-w-none overflow-x-auto break-words dark:prose-invert"
           data-testid="activity-description"
           v-html="descriptionHtml"
         />
         <!-- eslint-enable vue/no-v-html -->
-        <dl class="mt-4 space-y-2" data-testid="activity-template-fields">
+        <dl
+          v-if="!record.metadataOnly"
+          class="mt-4 space-y-2"
+          data-testid="activity-template-fields"
+        >
           <div v-for="field in fields" :key="field.key">
             <dt class="text-sm text-surface-500">{{ field.label }}</dt>
             <dd class="whitespace-pre-wrap break-words">{{ field.value }} {{ field.unit }}</dd>
           </div>
         </dl>
       </SectionCard>
-      <SectionCard :title="t('activity.detail.participants')">
+      <SectionCard v-if="!record.metadataOnly" :title="t('activity.detail.participants')">
         <ul v-if="record.participants.length" class="space-y-2" data-testid="activity-participants">
           <li v-for="participant in record.participants" :key="participant.userId">
             {{ participant.displayName }}
@@ -162,7 +194,10 @@ watch(() => route.params.id, load)
           :message="t('activity.detail.noParticipants')"
         />
       </SectionCard>
-      <SectionCard v-if="files.length" :title="t('activity.detail.attachments')">
+      <SectionCard
+        v-if="!record.metadataOnly && files.length"
+        :title="t('activity.detail.attachments')"
+      >
         <Button
           v-for="file in files"
           :key="file.id"
@@ -187,7 +222,12 @@ watch(() => route.params.id, load)
           {{ t('activity.detail.scheduleCancelled') }}
         </p>
       </SectionCard>
-      <ActivityEditDialog v-model:visible="showEdit" :record="record" @saved="load" />
+      <ActivityEditDialog
+        v-if="record.canEdit && !record.metadataOnly && record.status === 'DRAFT'"
+        v-model:visible="showEdit"
+        :record="record"
+        @saved="load"
+      />
     </template>
   </div>
 </template>

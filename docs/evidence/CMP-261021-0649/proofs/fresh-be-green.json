@@ -1,0 +1,153 @@
+{
+  "sourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+  "sourceEvidencePath": ".claude/campaigns/cmp0649-next-20261026/evidence-green-24ceb0588e2d-01/green-be-summary.json",
+  "sourceSha256": "c492ed30ede5113616565e7459b076ea6a65ed8258f184fc3143291865273552",
+  "fresh": true,
+  "target": "com.mannschaft.app.shift.ShiftSwapCreationDuplicateContractIT",
+  "gradleExitCode": 0,
+  "classification": "green",
+  "xml": {
+    "xmlFiles": 1,
+    "xmlSha256": "796e82719ab2fa17e5c7b14615fc6b9cd11b29b3be91213d2a795b4e8e88b11c",
+    "suites": 1,
+    "tests": 25,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "assertionFailures": 0,
+    "otherFailures": 0,
+    "targetSuite": true,
+    "cases": [
+      {
+        "name": "AC10_実保存後rollbackした先行要求を待機側は未決と数えず201()",
+        "className": "com.mannschaft.app.shift.ShiftSwapCreationDuplicateContractIT",
+        "status": "passed"
+      },
+      {
+        "name": "AC06_承認後の元担当は403で正当に再割当された後は201()",
+        "className": "com.mannschaft.app.shift.ShiftSwapCreationDuplicateContractIT",
+        "status": "passed"
+      },
+      {
+        "name": "AC10_実DB保存失敗で中途行を残さず次の正常HTTP要求は201()",
+        "className": "com.mannschaft.app.shift.ShiftSwapCreationDuplicateContractIT",
+        "status": "passed"
+      },
+      {
+        "name": "AC13_不正JSON必須slot理由超過と空宛先は400で全列不変()",
+        "className": "com.mannschaft.app.shift.ShiftSwapCreationDuplicateContractIT",
+        "status": "passed"
+      },
+      {
+        "name": "AC16_成功応答後に通信断を想定して再送しても新規行を増やさない()",
+        "className": "com.mannschaft.app.shift.ShiftSwapCreationDuplicateContractIT",
+        "status": "passed"
+      },
+      {
+        "name": "[1] state=PENDING, existingOpenCall=false",
+        "className": "com.mannschaft.app.shift.ShiftSwapCreationDuplicateContractIT",
+        "status": "passed"
+      },
+      {
+        "name": "[2] state=PENDING, existingOpenCall=true",
+        "className": "com.mannschaft.app.shift.ShiftSwapCreationDuplicateContractIT",
+        "status": "passed"
+      },
+      {
+        "name": "[3] state=ACCEPTED, existingOpenCall=false",
+        "className": "com.mannschaft.app.shift.ShiftSwapCreationDuplicateContractIT",
+        "status": "passed"
+      },
+      {
+        "name": "[4] state=ACCEPTED, existingOpenCall=true",
+        "className": "com.mannschaft.app.shift.ShiftSwapCreationDuplicateContractIT",
+        "status": "passed"
+      },
+      {
+        "name": "AC11_許可ロール全員が本人担当でも重複409()",
+        "className": "com.mannschaft.app.shift.ShiftSwapCreationDuplicateContractIT",
+        "status": "passed"
+      },
+      {
+        "name": "[1] length=null",
+        "className": "com.mannschaft.app.shift.ShiftSwapCreationDuplicateContractIT",
+        "status": "passed"
+      },
+      {
+        "name": "[2] length=0",
+        "className": "com.mannschaft.app.shift.ShiftSwapCreationDuplicateContractIT",
+        "status": "passed"
+      },
+      {
+        "name": "[3] length=500",
+        "className": "com.mannschaft.app.shift.ShiftSwapCreationDuplicateContractIT",
+        "status": "passed"
+      },
+      {
+        "name": "AC18_履歴が多くても重複判定は非lockingで上限一行一SQL()",
+        "className": "com.mannschaft.app.shift.ShiftSwapCreationDuplicateContractIT",
+        "status": "passed"
+      },
+      {
+        "name": "AC12_重複があっても認可失敗は追加lockや重複照会へ到達しない()",
+        "className": "com.mannschaft.app.shift.ShiftSwapCreationDuplicateContractIT",
+        "status": "passed"
+      },
+      {
+        "name": "AC09_同枠別担当者の同時依頼は両方201()",
+        "className": "com.mannschaft.app.shift.ShiftSwapCreationDuplicateContractIT",
+        "status": "passed"
+      },
+      {
+        "name": "[1] state=APPROVED",
+        "className": "com.mannschaft.app.shift.ShiftSwapCreationDuplicateContractIT",
+        "status": "passed"
+      },
+      {
+        "name": "[2] state=REJECTED",
+        "className": "com.mannschaft.app.shift.ShiftSwapCreationDuplicateContractIT",
+        "status": "passed"
+      },
+      {
+        "name": "[3] state=CANCELLED",
+        "className": "com.mannschaft.app.shift.ShiftSwapCreationDuplicateContractIT",
+        "status": "passed"
+      },
+      {
+        "name": "AC09_別scheduleの親lock保持中も他方を作成できる()",
+        "className": "com.mannschaft.app.shift.ShiftSwapCreationDuplicateContractIT",
+        "status": "passed"
+      },
+      {
+        "name": "AC09_別scheduleの同時新規依頼は両方201で各一行commitする()",
+        "className": "com.mannschaft.app.shift.ShiftSwapCreationDuplicateContractIT",
+        "status": "passed"
+      },
+      {
+        "name": "AC05_同枠の別担当者と同一担当の別枠は201()",
+        "className": "com.mannschaft.app.shift.ShiftSwapCreationDuplicateContractIT",
+        "status": "passed"
+      },
+      {
+        "name": "AC08_親lock待機前に枠を読取済みでも201と409が各一回()",
+        "className": "com.mannschaft.app.shift.ShiftSwapCreationDuplicateContractIT",
+        "status": "passed"
+      },
+      {
+        "name": "AC11_未決があっても非公開と非本人担当は資格エラーを優先する()",
+        "className": "com.mannschaft.app.shift.ShiftSwapCreationDuplicateContractIT",
+        "status": "passed"
+      },
+      {
+        "name": "AC07_既存未決が複数でも修復せず新規だけ409()",
+        "className": "com.mannschaft.app.shift.ShiftSwapCreationDuplicateContractIT",
+        "status": "passed"
+      }
+    ],
+    "failedCases": []
+  },
+  "storeUnchanged": true,
+  "allTargetPassed": true,
+  "guardsPassed": true,
+  "limits": "旧headの対象25件新規実行結果。後続headのcacheを新規実行へ変えない。"
+}

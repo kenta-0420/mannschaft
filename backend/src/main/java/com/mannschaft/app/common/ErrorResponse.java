@@ -1,5 +1,6 @@
 package com.mannschaft.app.common;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -38,6 +39,7 @@ public class ErrorResponse {
      */
     @Getter
     @RequiredArgsConstructor
+    @Schema(name = "CommonErrorDetail")
     public static class ErrorDetail {
         private final String code;
         private final String message;

@@ -1602,17 +1602,14 @@ class GlobalExceptionHandlerTest {
         }
 
         @Test
-        @DisplayName("意図的な集約でも集約先ステータスは文脈依存: SKILL_003は404・SIGNAGE_002は400")
+        @DisplayName("集約先ステータスは文脈依存: SKILL_003（非推奨・写像のみ残置）は404・SIGNAGE_002は400")
         void 意図的に畳んだコードの集約先ステータスは対比対象の有無で決まる() {
-            // SKILL_003（越境アクセス・権限拒否の集約）は、対比される「不在」側が
-            // SKILL_001/SKILL_002で404を返す。集約先を400のままにすると、不在（404）と
-            // 越境（400）でステータスが割れ、応答の違いだけで対象IDが他スコープに実在するかを
-            // 判別できる存在オラクルになる。そのため集約先も404に揃えた
-            // （PARKING_020を起点とする「越境は存在秘匿で404」の流儀に統一）。
-            // 「複数の理由を1コードに畳めば秘匿できる」は誤りで、畳んだ先のステータスが
-            // 不在側と一致して初めて秘匿が成立する。
+            // SKILL_003 は非推奨・未使用（CMP-261010-2226 で資格 API の拒否を COMMON_002（同チーム権限不足）と
+            // SKILL_002（越境＝不在と完全一致）に統一した）。写像（404）は互換のため残している。
+            // 注意: 「複数の理由を1コードに畳み、status だけ不在側に揃えれば秘匿できる」は誤りで、
+            // 秘匿には error.code・error.message まで不在時と一致している必要がある。
             assertThat(globalExceptionHandler.resolveHttpStatus(SkillErrorCode.SKILL_003))
-                    .as("越境アクセス・権限拒否の集約。不在側（SKILL_001/002）と同じ404に揃えて秘匿する")
+                    .as("非推奨・未使用だが写像は互換のため残す（不在側 SKILL_001/002 と同じ404）")
                     .isEqualTo(HttpStatus.NOT_FOUND);
 
             // SIGNAGE_002は『不在／無効化済み／期限切れ』を集約しているが、この3者はそもそも
@@ -1860,6 +1857,65 @@ class GlobalExceptionHandlerTest {
             assertThat(resp.getBody().getError().getCode()).isEqualTo("COMMON_001");
             verify(service, never()).recordBackendException(any(), any(HttpServletRequest.class), any());
             verify(service, never()).recordBackendException(any(), anyString(), anyString(), anyString(), anyString(), any());
+        }
+
+        @Test
+        @DisplayName("本人APIのメソッド検証は入力由来の詳細を取得せず固定400を返す")
+        void handlerMethodValidation_privateSelfInputDoesNotExposeDetails() throws Exception {
+            ErrorReportService service = mock(ErrorReportService.class);
+            ErrorReportNotifier notifier = mock(ErrorReportNotifier.class);
+            GlobalExceptionHandler handler = newHandlerWith(service, notifier);
+            String marker = "SYNTHETIC_PRIVATE_PARAMETER_MARKER";
+            String privateField = "syntheticPrivateBirthField";
+
+            // 早期拒否では取得されない詳細も用意し、通常経路への漏れを検出する。
+            org.springframework.core.MethodParameter bodyParam = mock(
+                    org.springframework.core.MethodParameter.class, invocation ->
+                            invocation.getMethod().getName().equals("getParameterName")
+                                    ? "request" : org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation));
+            org.springframework.validation.method.ParameterErrors bodyErrors = mock(
+                    org.springframework.validation.method.ParameterErrors.class, invocation -> {
+                        return switch (invocation.getMethod().getName()) {
+                            case "getMethodParameter" -> bodyParam;
+                            case "getFieldErrors" -> List.of(new FieldError("request", privateField, marker));
+                            case "getGlobalErrors" -> List.of();
+                            default -> org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation);
+                        };
+                    });
+            HandlerMethodValidationException ex = mock(HandlerMethodValidationException.class, invocation -> {
+                return switch (invocation.getMethod().getName()) {
+                    case "getParameterValidationResults" -> List.of(bodyErrors);
+                    case "getMessage" -> marker;
+                    default -> org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation);
+                };
+            });
+            org.springframework.web.context.request.RequestAttributes original =
+                    org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+            org.springframework.mock.web.MockHttpServletRequest request =
+                    new org.springframework.mock.web.MockHttpServletRequest("PUT", "/api/v1/me/birth-profile");
+            try {
+                org.springframework.web.context.request.RequestContextHolder.setRequestAttributes(
+                        new org.springframework.web.context.request.ServletRequestAttributes(request));
+
+                ResponseEntity<ErrorResponse> response = handler.handleHandlerMethodValidation(ex);
+
+                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                assertThat(response.getHeaders().getFirst(HttpHeaders.CACHE_CONTROL)).isEqualTo("no-store");
+                assertThat(response.getBody()).isNotNull();
+                assertThat(response.getBody().getError().getCode()).isEqualTo("COMMON_001");
+                assertThat(response.getBody().getError().getMessage()).isEqualTo(CommonErrorCode.COMMON_001.getMessage());
+                assertThat(response.getBody().getError().getFieldErrors()).isEmpty();
+                assertThat(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(response.getBody()))
+                        .doesNotContain(marker, privateField);
+                verify(ex, never()).getParameterValidationResults();
+                verify(ex, never()).getMessage();
+                org.mockito.Mockito.verifyNoInteractions(service, notifier);
+            } finally {
+                org.springframework.web.context.request.RequestContextHolder.resetRequestAttributes();
+                if (original != null) {
+                    org.springframework.web.context.request.RequestContextHolder.setRequestAttributes(original);
+                }
+            }
         }
 
         @Test

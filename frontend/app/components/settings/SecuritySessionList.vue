@@ -45,14 +45,14 @@ function formatDate(dateStr: string | null): string {
         <div>
           <p class="text-sm font-medium">
             {{ session.userAgent || '不明なデバイス' }}
-            <Tag v-if="session.isCurrent" value="現在" severity="success" class="ml-2" />
+            <Tag v-if="session.current" value="現在" severity="success" class="ml-2" />
           </p>
           <p class="text-xs text-surface-500">
             IP: {{ session.ipAddress || '-' }} / {{ formatDate(session.createdAt) }}
           </p>
         </div>
         <Button
-          v-if="!session.isCurrent"
+          v-if="!session.current"
           icon="pi pi-times"
           severity="danger"
           text

@@ -8,6 +8,7 @@ import com.mannschaft.app.jobmatching.entity.JobContractEntity;
 import com.mannschaft.app.jobmatching.entity.JobPostingEntity;
 import com.mannschaft.app.jobmatching.enums.JobCheckInType;
 import com.mannschaft.app.jobmatching.enums.JobContractStatus;
+import com.mannschaft.app.jobmatching.event.JobNotificationEvent;
 import com.mannschaft.app.jobmatching.exception.JobmatchingErrorCode;
 import com.mannschaft.app.jobmatching.policy.JobPolicy;
 import com.mannschaft.app.jobmatching.repository.JobCheckInRepository;
@@ -18,6 +19,7 @@ import com.mannschaft.app.jobmatching.service.command.CheckInResult;
 import com.mannschaft.app.jobmatching.state.JobContractStateMachine;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,7 +47,7 @@ import java.util.Optional;
  *   <li>トークン検証（{@link JobQrTokenService} へ委譲）</li>
  *   <li>Geolocation 乖離判定（{@link GeolocationService} と業務場所の緯度経度を照合）</li>
  *   <li>{@link JobCheckInEntity} INSERT + 契約ステータス遷移（IN は CHECKED_IN→IN_PROGRESS の二段）</li>
- *   <li>通知発火（{@link JobNotificationService#notifyCheckedIn} ほか）</li>
+ *   <li>通知イベント発行（実通知は {@code JobNotificationListener} が AFTER_COMMIT で行う）</li>
  * </ul>
  *
  * <h3>トランザクション方針</h3>
@@ -58,8 +60,8 @@ import java.util.Optional;
  * 持つが、検証・消費は Service 層で同一スレッド内に直列で呼ぶため、外側の契約ロックと合わせて
  * リプレイ防止が成立する（nonce の UNIQUE も DB 側で担保）。</p>
  *
- * <p>通知送信は try/catch で呑み込み、業務トランザクションの整合性を優先する
- * （{@link JobContractService} の既存パターンと整合）。</p>
+ * <p>通知は業務TX内ではイベント発行のみ行い、実通知はコミット後に非同期で配送する
+ * （Issue #2997。通知の失敗は業務トランザクションへ波及しない）。</p>
  */
 @Slf4j
 @Service
@@ -81,7 +83,7 @@ public class JobCheckInService {
     private final GeolocationService geolocationService;
     private final JobContractStateMachine stateMachine;
     private final JobPolicy jobPolicy;
-    private final JobNotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
     private final QrSigningProperties qrProperties;
     private final Clock clock;
 
@@ -204,8 +206,8 @@ public class JobCheckInService {
         JobContractStatus newStatus = applyStatusTransition(contract, cmd);
         JobContractEntity savedContract = contractRepository.save(contract);
 
-        // 11. 通知発火（失敗時はログのみ、業務 Tx は継続）。
-        fireNotifications(savedContract, cmd, geoAnomaly, distanceOrNull(contract, cmd));
+        // 11. 通知イベント発行（実通知は AFTER_COMMIT のリスナーが行う。Issue #2997）。
+        publishNotificationEvents(savedContract, cmd, geoAnomaly, distanceOrNull(contract, cmd));
 
         log.info("QR チェックイン記録: contractId={}, workerId={}, type={}, newStatus={}, "
                         + "offlineSubmitted={}, manualCodeFallback={}, geoAnomaly={}",
@@ -322,29 +324,19 @@ public class JobCheckInService {
     }
 
     /**
-     * 通知発火。IN 成立時は JOB_CHECKED_IN、OUT 成立時は JOB_CHECKED_OUT、
-     * geo_anomaly が立っていれば JOB_GEO_ANOMALY も併送する。
+     * 通知イベントを発行する。IN 成立時は JOB_CHECKED_IN、OUT 成立時は JOB_CHECKED_OUT、
+     * geo_anomaly が立っていれば JOB_GEO_ANOMALY も併送する（イベントは別個＝配送も独立）。
      */
-    private void fireNotifications(JobContractEntity contract, CheckInCommand cmd,
-                                   boolean geoAnomaly, Double distance) {
-        try {
-            if (cmd.type() == JobCheckInType.IN) {
-                notificationService.notifyCheckedIn(contract.getId());
-            } else {
-                notificationService.notifyCheckedOut(contract.getId());
-            }
-        } catch (Exception e) {
-            log.warn("チェックイン/アウト通知失敗: contractId={}, type={}, error={}",
-                    contract.getId(), cmd.type(), e.getMessage());
+    private void publishNotificationEvents(JobContractEntity contract, CheckInCommand cmd,
+                                           boolean geoAnomaly, Double distance) {
+        if (cmd.type() == JobCheckInType.IN) {
+            eventPublisher.publishEvent(JobNotificationEvent.checkedIn(contract.getId()));
+        } else {
+            eventPublisher.publishEvent(JobNotificationEvent.checkedOut(contract.getId()));
         }
         if (geoAnomaly) {
-            try {
-                notificationService.notifyGeoAnomaly(contract.getId(),
-                        distance != null ? distance : -1.0);
-            } catch (Exception e) {
-                log.warn("Geolocation 乖離通知失敗: contractId={}, error={}",
-                        contract.getId(), e.getMessage());
-            }
+            eventPublisher.publishEvent(JobNotificationEvent.geoAnomaly(
+                    contract.getId(), distance != null ? distance : -1.0));
         }
     }
 

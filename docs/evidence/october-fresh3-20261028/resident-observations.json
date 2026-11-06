@@ -1,0 +1,307 @@
+{
+  "registrationSource": "actual-resident-artifacts",
+  "trusted": false,
+  "status": "observed-unverified",
+  "scope": "fresh3独立探索のみ。fresh1/fresh2を転用しない。固定追試・root診断と分離。",
+  "privacyFilter": "認証情報・HTTP本文・DOM/HAR/trace・画像実体は含めない。テスト組織slugと委員会名をplaceholder化。private原本はpathとSHA256参照。",
+  "sourceHeads": {
+    "frontend": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+    "backend": "1a10ca038ffb4a215d4b1b44242ff4ef68275607"
+  },
+  "actualRuntime": "new independent recovery-build5 production; exact same source heads; whole output byte equivalence not claimed",
+  "rootAdjudication": {
+    "sourcePath": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/root-fresh3-exploration-adjudication-v1.json",
+    "sha256": "c86890666193fd7af5128cf97f3fb6e498486780e7fd7077d1defcf5a0660c69",
+    "kind": "independent-exploration-completed-with-partial-goals",
+    "allGoalsAchieved": false
+  },
+  "residents": [
+    {
+      "actor": 3,
+      "originalPersonaId": 1,
+      "personaArchetype": "一般×素直",
+      "journeyId": "fresh3-resident-3-20261028-final",
+      "runId": "fresh3-resident-3-20261028-final",
+      "sourceHeads": {
+        "frontend": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+        "backend": "1a10ca038ffb4a215d4b1b44242ff4ef68275607"
+      },
+      "sourceObservationPath": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/fresh3-resident-3-observations.json",
+      "sourceObservationSHA256": "80c417d2e171af735cfbfd6aa7f8917c8a929a94023faf12fd7ea3df1e1fb5db",
+      "sourceSessionPath": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/resident-fresh3-resident-3-20261028-final-3.json",
+      "sourceSessionSHA256": "7ccbe661c43c20cebfb13f3619175cf4c49ef34259df0755f0cccde3172c8655",
+      "session": {
+        "status": "closed",
+        "contextsCreated": 1,
+        "contextsClosed": 1,
+        "browserClosed": true,
+        "unexpectedBusinessWrites": 0,
+        "pageErrors": 0,
+        "runtimeUnchangedAtClose": true
+      },
+      "executionCompleted": true,
+      "allGoalsAchieved": false,
+      "achieved": [
+        "組織ダッシュボードへ到達",
+        "メニュー・機能設定・管理者表示を観測"
+      ],
+      "unachieved": [
+        "委員会一覧の発見",
+        "委員会詳細と伝達履歴の確認",
+        "一覧へ戻って探索継続"
+      ],
+      "observations": [
+        {
+          "at": "2026-10-27T19:58:59.718Z",
+          "selected": "組織",
+          "url": "http://localhost:3004/dashboard",
+          "fact": "ダッシュボード上に組織ボタンを発見",
+          "hesitation": "委員会への入口はまだ見えない",
+          "error": null
+        },
+        {
+          "at": "2026-10-27T19:59:36.040Z",
+          "selected": "組織→対象組織",
+          "url": "http://localhost:3004/organizations/:test-organization",
+          "fact": "組織ダッシュボードへ到達。組織ナビに基本情報・メンバー・所属チーム・下位組織・招待・権限グループ・参加申請・機能設定を確認したが委員会リンクは見当たらない",
+          "hesitation": "委員会は機能設定の中か、折りたたみ内か迷う",
+          "error": "組織ボタンが2個あり初回の自動操作が一意に選べなかった。画面の最初の組織ボタンで続行"
+        },
+        {
+          "at": "2026-10-27T20:01:27.117Z",
+          "selected": "メニュー",
+          "url": "http://localhost:3004/organizations/:test-organization",
+          "fact": "メニューからタイムライン・チャット・掲示板・回覧板・クイック確認・メンバー一覧・メンバー紹介・招待・権限グループ・オンボーディングを確認した。委員会は見当たらない",
+          "hesitation": "委員会と伝達履歴の入口を発見できず、画面にある機能設定を確認する",
+          "error": "画面上の機能設定リンクと設定ボタンのclickがTimeoutError"
+        },
+        {
+          "at": "2026-10-27T20:01:45.785Z",
+          "selected": "機能設定（画面内href）",
+          "url": "http://localhost:3004/organizations/:test-organization/modules",
+          "fact": "一般機能の表示という見出しを確認。委員会へのリンクは見当たらない",
+          "hesitation": "設定保存せず一覧への別入口を探す",
+          "error": null
+        },
+        {
+          "at": "2026-10-27T20:02:14.644Z",
+          "selected": "ダッシュボード",
+          "url": "http://localhost:3004/dashboard",
+          "fact": "ダッシュボードリンクで個人ダッシュボードへ戻った",
+          "hesitation": "組織内へ戻るつもりだったが個人画面だった",
+          "error": "管理者ボタンは個人画面に存在せずTimeoutError"
+        },
+        {
+          "at": "2026-10-27T20:02:50.808Z",
+          "selected": "管理者→メニュー→閉じる",
+          "url": "http://localhost:3004/organizations/:test-organization",
+          "fact": "管理者表示と組織メニューも確認したが委員会・伝達履歴の入口を発見できなかった",
+          "hesitation": "どの項目から委員会を見渡せるか判断できないまま探索を終了",
+          "error": null
+        }
+      ]
+    },
+    {
+      "actor": 4,
+      "originalPersonaId": 2,
+      "personaArchetype": "高齢低リテラシー×素直",
+      "journeyId": "fresh3-resident-4-20261028-final",
+      "runId": "fresh3-resident-4-20261028-final",
+      "sourceHeads": {
+        "frontend": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+        "backend": "1a10ca038ffb4a215d4b1b44242ff4ef68275607"
+      },
+      "sourceObservationPath": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/fresh3-resident-4-observations.json",
+      "sourceObservationSHA256": "5f12a9213aa1d352f843d36227e317af12f6666316c9b3402f078f6de3fef481",
+      "sourceSessionPath": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/resident-fresh3-resident-4-20261028-final-4.json",
+      "sourceSessionSHA256": "d083e21222b8eb4c5c01be87d29c61a8e4da6d1278691f126fd723573ac220a0",
+      "session": {
+        "status": "closed",
+        "contextsCreated": 1,
+        "contextsClosed": 1,
+        "browserClosed": true,
+        "unexpectedBusinessWrites": 0,
+        "pageErrors": 0,
+        "runtimeUnchangedAtClose": true
+      },
+      "executionCompleted": true,
+      "allGoalsAchieved": false,
+      "achieved": [
+        "利用者一覧への入口発見・到達",
+        "メール送信キューへの入口発見・到達",
+        "クリア操作"
+      ],
+      "unachieved": [
+        "必要情報の絞り込み。入力ラベル・選択肢は観測許可範囲外のため未操作",
+        "一覧の個別情報・送信状態の確認は観測上限により未実施"
+      ],
+      "observations": [
+        {
+          "time": "2026-10-27T19:59:27.547Z",
+          "element": "管理メニュー",
+          "url": "http://localhost:3004/system-admin",
+          "fact": "ユーザー管理とメール送信キューのリンクを発見",
+          "hesitation": "管理項目が多く、利用者一覧に相当する名前を探した",
+          "error": ""
+        },
+        {
+          "time": "2026-10-27T20:00:16.051Z",
+          "element": "ユーザー管理",
+          "url": "http://localhost:3004/system-admin",
+          "fact": "名前によるクリックで30秒待機後タイムアウト",
+          "hesitation": "",
+          "error": "TimeoutError"
+        },
+        {
+          "time": "2026-10-27T20:00:36.721Z",
+          "element": "ユーザー管理",
+          "url": "http://localhost:3004/admin/users",
+          "fact": "見出しがユーザー管理の一覧画面へ到達。違反履歴とページ番号のボタンがある",
+          "hesitation": "",
+          "error": ""
+        },
+        {
+          "time": "2026-10-27T20:01:17.059Z",
+          "element": "戻る",
+          "url": "http://localhost:3004/admin/users",
+          "fact": "名前完全一致による戻る操作が30秒後タイムアウト",
+          "hesitation": "",
+          "error": "TimeoutError"
+        },
+        {
+          "time": "2026-10-27T20:01:46.445Z",
+          "element": "メール送信キュー",
+          "url": "http://localhost:3004/system-admin/email-outbox",
+          "fact": "管理メニューのリンクから一覧に到達。適用・クリア・一覧へ戻ると、行ごとのキャンセルが並ぶ",
+          "hesitation": "送信状態を変えないようキャンセルには触れなかった",
+          "error": ""
+        },
+        {
+          "time": "2026-10-27T20:02:08.137Z",
+          "element": "クリア",
+          "url": "http://localhost:3004/system-admin/email-outbox",
+          "fact": "クリアを押した後もメール送信キュー見出しを表示",
+          "hesitation": "",
+          "error": ""
+        },
+        {
+          "time": "2026-10-27T20:02:49.392Z",
+          "element": "一覧へ戻る",
+          "url": "http://localhost:3004/system-admin/email-outbox",
+          "fact": "クリックはタイムアウト。ボタンは無効で操作できなかった",
+          "hesitation": "この一覧にいる状態では戻る操作の用途が分からなかった",
+          "error": "TimeoutError（disabled）"
+        }
+      ]
+    },
+    {
+      "actor": 5,
+      "originalPersonaId": 3,
+      "personaArchetype": "ADHD傾向×中断放棄",
+      "journeyId": "fresh3-resident-5-20261028-final",
+      "runId": "fresh3-resident-5-20261028-final",
+      "sourceHeads": {
+        "frontend": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+        "backend": "1a10ca038ffb4a215d4b1b44242ff4ef68275607"
+      },
+      "sourceObservationPath": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/fresh3-resident-5-observations.json",
+      "sourceObservationSHA256": "0a97808f5fdfb8b0f4dc83cdc949c37e7a090ad41987026d328c8f54c1779fe9",
+      "sourceSessionPath": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/resident-fresh3-resident-5-20261028-final-5.json",
+      "sourceSessionSHA256": "87146560a1e82b09f2e143c23a16a671c56ac3603113f7324d1c565353f32def",
+      "session": {
+        "status": "closed",
+        "contextsCreated": 1,
+        "contextsClosed": 1,
+        "browserClosed": true,
+        "unexpectedBusinessWrites": 0,
+        "pageErrors": 0,
+        "runtimeUnchangedAtClose": true
+      },
+      "executionCompleted": true,
+      "allGoalsAchieved": false,
+      "achieved": [
+        "所属組織の委員会一覧へUI経由で到達",
+        "寄り道から戻って探索再開",
+        "自分が関わる委員会の伝達履歴へ到達し空状態を確認"
+      ],
+      "unachieved": [
+        "別委員会の伝達履歴確認",
+        "明示的な権限不足案内の確認"
+      ],
+      "observations": [
+        {
+          "time": "2026-10-27T20:00:00.588Z",
+          "url": "http://localhost:3004/dashboard",
+          "element": "組織 → 対象組織ボタン",
+          "fact": "ボタンを選んでもダッシュボードに留まり、委員会リンクは見えていない",
+          "confusion": "組織へ入れたか分からず、一覧を探す",
+          "error": null
+        },
+        {
+          "time": "2026-10-27T20:01:12.109Z",
+          "url": "http://localhost:3004/organizations/:test-organization",
+          "element": "組織メニューの対象組織",
+          "fact": "組織ダッシュボードへ到達。基本情報・メンバー・所属チームが見えるが委員会のリンクは見えない",
+          "confusion": "連絡履歴なので連絡・共有を開いてみる",
+          "error": null
+        },
+        {
+          "time": "2026-10-27T20:02:08.952Z",
+          "url": "http://localhost:3004/organizations/:test-organization/info",
+          "element": "基本情報",
+          "fact": "別画面へ寄り道。基本情報見出しが表示された",
+          "confusion": "委員会の続きを探すためダッシュボードへ戻る",
+          "error": null
+        },
+        {
+          "time": "2026-10-27T20:02:21.892Z",
+          "url": "http://localhost:3004/organizations/:test-organization",
+          "element": "ダッシュボードへ戻る",
+          "fact": "戻ると連絡・共有は閉じており、直前に展開した内容が見えない",
+          "confusion": "探していた続きの場所を再度選び直す",
+          "error": null
+        },
+        {
+          "time": "2026-10-27T20:03:10.474Z",
+          "url": "http://localhost:3004/organizations/:test-organization",
+          "element": "メニュー → 業務・運用 → 委員会",
+          "fact": "メニューボタンから業務・運用を展開して初めて委員会リンクが見つかった",
+          "confusion": "連絡・共有側ではなく業務・運用にあった",
+          "error": null
+        },
+        {
+          "time": "2026-10-27T20:03:53.746Z",
+          "url": "http://localhost:3004/organizations/:test-organization/committees",
+          "element": "委員会一覧",
+          "fact": "委員会一覧見出し、戻る、1ページ・2ページ・次のページ・前のページが見える。見出し・ボタン・リンク範囲では委員会名や伝達履歴入口が見えていない",
+          "confusion": "一覧まで来たが、どこから自分の関わる委員会へ入るのか判断できない",
+          "error": null
+        },
+        {
+          "time": "2026-10-27T20:05:22.979Z",
+          "url": "http://localhost:3004/committees/3",
+          "element": ":own-committee",
+          "fact": "1ページへ戻ると委員会名称が表示された。対象名称を選んで詳細へ到達し、伝達履歴リンクとメンバー（1）見出しが見える",
+          "confusion": "2ページでは名称が見つからず、1ページへ戻って発見",
+          "error": null
+        },
+        {
+          "time": "2026-10-27T20:05:40.146Z",
+          "url": "http://localhost:3004/committees/3/distributions",
+          "element": "伝達履歴",
+          "fact": "自分が関わる委員会の伝達履歴画面へ到達し、伝達履歴はありませんと表示",
+          "confusion": null,
+          "error": null
+        },
+        {
+          "time": "2026-10-27T20:06:34.178Z",
+          "url": "http://localhost:3004/committees/1",
+          "element": ":name-only-committee",
+          "fact": "一覧の名称をクリックすると詳細URLへ移動したが、見出しと伝達履歴リンクがなく、再試行ボタンだけが見える。許可範囲の抽出では明示的な権限不足文言を確認できなかった",
+          "confusion": "なぜ見られないか分からず、履歴に進めない",
+          "error": "再試行表示。原因は断定しない"
+        }
+      ]
+    }
+  ]
+}

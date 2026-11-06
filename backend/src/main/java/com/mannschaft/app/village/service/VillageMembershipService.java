@@ -1,7 +1,7 @@
 package com.mannschaft.app.village.service;
 
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.dto.MembershipBanRequest;
 import com.mannschaft.app.village.dto.MembershipJoinRequest;
@@ -20,6 +20,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -41,10 +42,10 @@ import java.util.UUID;
  *
  * <p>アーキテクチャ原則:</p>
  * <ul>
- *   <li>原則1: TeamMember/OrganizationMember 相当の {@link UserRoleRepository} は Read-only で呼ぶ。
+ *   <li>原則1/5: チーム/組織の代表権限は {@link VillageSubjectAuthorizationGuard} が取引の外で判定し、取引には判定結果だけを渡す。
  *       subject_id に FK は張らない（B1 で対応済み）。</li>
  *   <li>原則5: {@code @Transactional} は village ドメインに閉じる。
- *       UserRoleRepository は読取のみで呼び、書き込みは行わない。</li>
+ *       入村は村ドメインのUSER単位ロック行で同一TX内に直列化する。</li>
  * </ul>
  *
  * <p>HEADMAN 引き継ぎ仕様:</p>
@@ -59,15 +60,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class VillageMembershipService {
 
-    /** 1 主体がアクティブメンバーとして所属できる村数のハードリミット。 */
-    static final int PARTICIPATION_HARD_LIMIT = 100;
-
-    /** ソフト警告閾値（30 村超過でレスポンスに warn フラグを立てる）。 */
-    static final int PARTICIPATION_SOFT_WARN_THRESHOLD = 30;
-
     private final VillageMembershipRepository membershipRepository;
-    /** Read-only: チーム/組織の ADMIN 権限検証用（原則1 FK 不在）。 */
-    private final UserRoleRepository userRoleRepository;
+    private final VillageMembershipSlotService slotService;
     private final VillageAccessGate accessGate;
 
     // ========================================================================
@@ -80,47 +74,37 @@ public class VillageMembershipService {
      * @param villageId  対象村
      * @param actorUserId リクエストユーザー
      * @param request    参加リクエスト
+     * @param authorization 取引の外で判定した主体の権限（{@link VillageSubjectAuthorizationGuard#judge}）
      * @return 作成された（または再参加で再生成された）メンバーシップ
      */
-    @Transactional
-    public MembershipResponse join(UUID villageId, Long actorUserId, MembershipJoinRequest request) {
-        VillageEntity village = loadActiveVillage(villageId, actorUserId);
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public MembershipResponse join(UUID villageId, Long actorUserId, MembershipJoinRequest request,
+                                   VillageSubjectAuthorization authorization) {
+        VillageEntity village = accessGate.loadActiveVillage(
+                villageId, actorUserId, VillageSubjectAuthorization.actorIsSystemAdmin(authorization, actorUserId));
 
         if (village.getJoinPolicy() != VillageJoinPolicy.FREE) {
             throw new BusinessException(VillageErrorCode.VILLAGE_JOIN_REQUIRES_APPROVAL);
         }
 
-        // 主体検証（IDOR / 代表権限）
-        validateSubjectAuthorization(actorUserId, request.subjectType(), request.subjectId());
+        // 主体検証（IDOR / 代表権限）。判定は取引の外で済ませ、ここでは一致と許可だけを確かめる
+        VillageSubjectAuthorization.require(authorization, actorUserId, request.subjectType(), request.subjectId());
 
-        // 既存の現役メンバーシップを検出
-        Optional<VillageMembershipEntity> existing = membershipRepository
-                .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
-                        villageId, request.subjectType(), request.subjectId());
-        if (existing.isPresent()) {
-            VillageMembershipEntity m = existing.get();
-            if (m.getBannedAt() != null) {
-                throw new BusinessException(VillageErrorCode.MEMBER_BANNED);
-            }
-            throw new BusinessException(VillageErrorCode.ALREADY_MEMBER);
+        boolean userSubject = request.subjectType() == VillageSubjectType.USER;
+        if (userSubject && !slotService.lockUser(request.subjectId())) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
         }
-
-        // 参加上限（USER のみ。TEAM/ORG は別管理）
-        if (request.subjectType() == VillageSubjectType.USER) {
-            int activeCount = membershipRepository
-                    .findBySubjectTypeAndSubjectIdAndLeftAtIsNull(VillageSubjectType.USER, request.subjectId())
-                    .size();
-            if (activeCount >= PARTICIPATION_HARD_LIMIT) {
-                throw new BusinessException(VillageErrorCode.PARTICIPATION_LIMIT_EXCEEDED);
-            }
-        }
+        slotService.ensureNotCurrentMember(villageId, request.subjectType(), request.subjectId());
+        VillageMembershipSlotService.Allocation allocation = userSubject
+                ? slotService.allocate(request.subjectId()) : null;
 
         // 退村中レコードがあれば履歴として残し、新規行で再参加（B1 設計の UNIQUE に準拠）
-        VillageMembershipEntity created = membershipRepository.save(
+        VillageMembershipEntity created = slotService.admit(
                 VillageMembershipEntity.builder()
                         .villageId(villageId)
                         .subjectType(request.subjectType())
                         .subjectId(request.subjectId())
+                        .userSlot(allocation == null ? null : allocation.slot())
                         .role(VillageRole.VILLAGER)
                         .joinedAt(LocalDateTime.now())
                         .build()
@@ -128,10 +112,7 @@ public class VillageMembershipService {
         log.info("Village joined: villageId={} subjectType={} subjectId={} membershipId={}",
                 villageId, request.subjectType(), request.subjectId(), created.getId());
 
-        boolean warn = request.subjectType() == VillageSubjectType.USER
-                && (membershipRepository
-                        .findBySubjectTypeAndSubjectIdAndLeftAtIsNull(VillageSubjectType.USER, request.subjectId())
-                        .size() > PARTICIPATION_SOFT_WARN_THRESHOLD);
+        boolean warn = allocation != null && allocation.joinedCount() > VillageParticipationLimits.SOFT_WARN_THRESHOLD;
         return MembershipResponse.ofJoined(created, resolveDisplayName(created), warn);
     }
 
@@ -144,8 +125,10 @@ public class VillageMembershipService {
      * HEADMAN が退出する場合は村内 ELDER → VILLAGER 最古参を自動昇格する。
      */
     @Transactional
-    public void leave(UUID villageId, UUID membershipId, Long actorUserId) {
-        VillageEntity village = loadActiveVillage(villageId, actorUserId);
+    public void leave(UUID villageId, UUID membershipId, Long actorUserId,
+                      VillageSubjectAuthorization authorization) {
+        VillageEntity village = accessGate.loadActiveVillage(
+                villageId, actorUserId, VillageSubjectAuthorization.actorIsSystemAdmin(authorization, actorUserId));
 
         VillageMembershipEntity membership = membershipRepository.findById(membershipId)
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.NOT_MEMBER));
@@ -159,7 +142,8 @@ public class VillageMembershipService {
         }
 
         // 退出は本人（USER）または当該チーム/組織 ADMIN（TEAM/ORG）のみ
-        validateSubjectAuthorization(actorUserId, membership.getSubjectType(), membership.getSubjectId());
+        VillageSubjectAuthorization.require(
+                authorization, actorUserId, membership.getSubjectType(), membership.getSubjectId());
 
         // HEADMAN 引き継ぎ
         if (membership.getRole() == VillageRole.HEADMAN) {
@@ -185,7 +169,7 @@ public class VillageMembershipService {
         UUID villageId = village.getId();
 
         Optional<VillageMembershipEntity> elder = membershipRepository
-                .findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(villageId, VillageRole.ELDER);
+                .findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(villageId, VillageRole.ELDER);
         if (elder.isPresent() && !elder.get().getId().equals(leavingHeadman.getId())) {
             VillageMembershipEntity succ = elder.get();
             succ.setRole(VillageRole.HEADMAN);
@@ -196,7 +180,7 @@ public class VillageMembershipService {
         }
 
         Optional<VillageMembershipEntity> villager = membershipRepository
-                .findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(villageId, VillageRole.VILLAGER);
+                .findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(villageId, VillageRole.VILLAGER);
         if (villager.isPresent() && !villager.get().getId().equals(leavingHeadman.getId())) {
             VillageMembershipEntity succ = villager.get();
             succ.setRole(VillageRole.HEADMAN);
@@ -258,9 +242,9 @@ public class VillageMembershipService {
                                          RoleChangeRequest request) {
         loadActiveVillage(villageId, actorUserId);
 
-        // 実行者が HEADMAN であること
+        // 実行者が現役 HEADMAN であること（退村・BAN 済みは除外）
         VillageMembershipEntity actor = membershipRepository
-                .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+                .findActiveByVillageIdAndSubject(
                         villageId, VillageSubjectType.USER, actorUserId)
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN));
         if (actor.getRole() != VillageRole.HEADMAN) {
@@ -273,13 +257,13 @@ public class VillageMembershipService {
             throw new BusinessException(VillageErrorCode.NOT_MEMBER);
         }
 
-        // 自身を HEADMAN から降格する場合、他に HEADMAN/ELDER が居ることを必須
+        // 自身を HEADMAN から降格する場合、他に現役 HEADMAN/ELDER が居ることを必須
         if (target.getId().equals(actor.getId()) && request.role() != VillageRole.HEADMAN) {
             long otherHeadman = membershipRepository
-                    .countByVillageIdAndRoleAndLeftAtIsNull(villageId, VillageRole.HEADMAN);
+                    .countByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNull(villageId, VillageRole.HEADMAN);
             long elders = membershipRepository
-                    .countByVillageIdAndRoleAndLeftAtIsNull(villageId, VillageRole.ELDER);
-            // 自分以外の HEADMAN または ELDER が居なければ降格不可
+                    .countByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNull(villageId, VillageRole.ELDER);
+            // 自分以外の現役 HEADMAN または ELDER が居なければ降格不可
             if (otherHeadman <= 1 && elders == 0) {
                 throw new BusinessException(VillageErrorCode.HEADMAN_CANNOT_LEAVE);
             }
@@ -298,8 +282,8 @@ public class VillageMembershipService {
 
     /**
      * 村メンバーを BAN する。HEADMAN のみ実行可。
-     * 設計書では HEADMAN/ELDER 共に可だが、出陣指示書 B3 § 仕様で「HEADMAN 権限」に絞られているため
-     * 本 Phase は HEADMAN のみ。後続 Phase で ELDER 拡張する場合は設計再確認の上で開放する。
+     * 出陣指示書 B3 § 仕様に従い、本 Phase は現役 HEADMAN のみ。
+     * 後続 Phase で ELDER 拡張する場合は設計再確認の上で開放する。
      */
     @Transactional
     public MembershipResponse ban(UUID villageId,
@@ -309,7 +293,7 @@ public class VillageMembershipService {
         loadActiveVillage(villageId, actorUserId);
 
         VillageMembershipEntity actor = membershipRepository
-                .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+                .findActiveByVillageIdAndSubject(
                         villageId, VillageSubjectType.USER, actorUserId)
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN));
         if (actor.getRole() != VillageRole.HEADMAN) {
@@ -350,38 +334,6 @@ public class VillageMembershipService {
      */
     private VillageEntity loadActiveVillage(UUID villageId, Long actorUserId) {
         return accessGate.loadActiveVillage(villageId, actorUserId);
-    }
-
-    /**
-     * 主体権限の検証（IDOR / 代表権限）。
-     *
-     * <ul>
-     *   <li>USER: subjectId が actorUserId 本人と一致すること（IDOR 対策）</li>
-     *   <li>TEAM: actorUserId が当該チームの ADMIN/DEPUTY_ADMIN であること</li>
-     *   <li>ORGANIZATION: actorUserId が当該組織の ADMIN/DEPUTY_ADMIN であること</li>
-     * </ul>
-     */
-    void validateSubjectAuthorization(Long actorUserId, VillageSubjectType subjectType, Long subjectId) {
-        switch (subjectType) {
-            case USER -> {
-                if (!actorUserId.equals(subjectId)) {
-                    throw new BusinessException(VillageErrorCode.REPRESENT_FORBIDDEN);
-                }
-            }
-            case TEAM -> {
-                long count = userRoleRepository.countTeamAdminByUserIdAndTeamId(actorUserId, subjectId);
-                if (count == 0) {
-                    throw new BusinessException(VillageErrorCode.REPRESENT_FORBIDDEN);
-                }
-            }
-            case ORGANIZATION -> {
-                List<Long> admins = userRoleRepository.findAdminUserIdsByOrganizationId(subjectId);
-                if (!admins.contains(actorUserId)) {
-                    throw new BusinessException(VillageErrorCode.REPRESENT_FORBIDDEN);
-                }
-            }
-            default -> throw new BusinessException(VillageErrorCode.REPRESENT_FORBIDDEN);
-        }
     }
 
     /** 当該ユーザーが対象村の現役 USER 主体メンバーであるか。 */

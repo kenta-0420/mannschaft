@@ -1,0 +1,221 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261027-1353",
+  "scope": "app",
+  "implementation": {
+    "pr": 4166,
+    "sha": "f157e033bb650205dc4ba94d0772f9b1a0be7d15"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "個人カレンダーの日時・所属順・scope内順・多重度・可視性・色を保持して所属数比例SQLを除去する。",
+      "tests": [
+        {
+          "name": "CalendarBatchQueryIT",
+          "evidence": "backend/src/test/java/com/mannschaft/app/schedule/CalendarBatchQueryIT.java"
+        },
+        {
+          "name": "CalendarBatchOrderTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/schedule/service/CalendarBatchOrderTest.java"
+        },
+        {
+          "name": "CalendarColorResolutionTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/schedule/service/CalendarColorResolutionTest.java"
+        },
+        {
+          "name": "ScheduleQueryServiceTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/schedule/service/ScheduleQueryServiceTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "要対応とInboxの本人認可・順序・件数・空/1000境界・途中失敗fallbackを保ち空scope fanoutを除去する。",
+      "tests": [
+        {
+          "name": "PersonalActionRequiredBatchQueryIT",
+          "evidence": "backend/src/test/java/com/mannschaft/app/dashboard/service/PersonalActionRequiredBatchQueryIT.java"
+        },
+        {
+          "name": "ActionRequiredCandidateQueryIT",
+          "evidence": "backend/src/test/java/com/mannschaft/app/dashboard/service/ActionRequiredCandidateQueryIT.java"
+        },
+        {
+          "name": "ActionRequiredCandidateTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/dashboard/service/ActionRequiredCandidateTest.java"
+        },
+        {
+          "name": "AnnouncementInboxRoleBatchIT",
+          "evidence": "backend/src/test/java/com/mannschaft/app/inbox/AnnouncementInboxRoleBatchIT.java"
+        },
+        {
+          "name": "AnnouncementInboxAdapterTest.java",
+          "evidence": "backend/src/test/java/com/mannschaft/app/inbox/service/adapter/AnnouncementInboxAdapterTest.java"
+        },
+        {
+          "name": "PersonalActionRequiredServiceTest.java",
+          "evidence": "backend/src/test/java/com/mannschaft/app/dashboard/service/PersonalActionRequiredServiceTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "初期非表示body・閉じたdialog・巨大theme設定の不要初期処理を削減し、初回動作・訪問後保持・touch cancelを保つ。",
+      "tests": [
+        {
+          "name": "DashboardScopeCarousel",
+          "evidence": "frontend/app/components/dashboard/DashboardScopeCarousel.spec.ts"
+        },
+        {
+          "name": "DashboardSwipeWidgetGrid lazy",
+          "evidence": "frontend/app/components/dashboard/DashboardSwipeWidgetGrid.lazy.spec.ts"
+        },
+        {
+          "name": "PrimeVue theme",
+          "evidence": "frontend/tests/unit/build/primevue-theme.spec.ts"
+        },
+        {
+          "name": "production UI observations",
+          "evidence": "docs/evidence/CMP-261027-1353/validation.md"
+        },
+        {
+          "name": "WidgetMyCalendar.spec.ts",
+          "evidence": "frontend/app/components/widgets/WidgetMyCalendar.spec.ts"
+        },
+        {
+          "name": "ScheduleEventFormInitialDateTime.spec.ts",
+          "evidence": "frontend/tests/unit/components/schedule/ScheduleEventFormInitialDateTime.spec.ts"
+        },
+        {
+          "name": "DashboardConfigDialog.spec.ts",
+          "evidence": "frontend/app/components/DashboardConfigDialog.spec.ts"
+        },
+        {
+          "name": "EntityCreateDialog.spec.ts",
+          "evidence": "frontend/app/components/EntityCreateDialog.spec.ts"
+        },
+        {
+          "name": "QuickMemoCaptureModal.spec.ts",
+          "evidence": "frontend/app/components/quick-memo/QuickMemoCaptureModal.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "canonical IDとslugを分離し所属feed200・非所属403を保ち、拒否時Formを表示せず遅延旧応答を無効化する。",
+      "tests": [
+        {
+          "name": "TimelineFeed access",
+          "evidence": "frontend/tests/unit/components/timeline/TimelineFeed.access.spec.ts"
+        },
+        {
+          "name": "timeline scope access",
+          "evidence": "frontend/tests/unit/pages/timeline-scope-access.spec.ts"
+        },
+        {
+          "name": "formal7cases",
+          "evidence": "docs/evidence/CMP-261027-1353/final-feed-ui-runtime1.json"
+        },
+        {
+          "name": "five supplemental observations",
+          "evidence": "docs/evidence/CMP-261027-1353/final-feed-ui-complement1.json"
+        },
+        {
+          "name": "timeline.spec.ts",
+          "evidence": "frontend/app/pages/teams/[slug]/timeline.spec.ts"
+        },
+        {
+          "name": "timeline.spec.ts",
+          "evidence": "frontend/app/pages/organizations/[slug]/timeline.spec.ts"
+        },
+        {
+          "name": "useScopeDashboardStore.spec.ts",
+          "evidence": "frontend/tests/unit/stores/useScopeDashboardStore.spec.ts"
+        },
+        {
+          "name": "TimelinePostForm.scope-id.spec.ts",
+          "evidence": "frontend/app/components/timeline/TimelinePostForm.scope-id.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "実productionビルドの条件別性能・ロール横断実機・3目的探索と本陣反映を確認する。",
+      "tests": [
+        {
+          "name": "conditioned production performance",
+          "evidence": "docs/evidence/CMP-261027-1353/performance-summary.json"
+        },
+        {
+          "name": "three objective explorations",
+          "evidence": "docs/evidence/CMP-261027-1353/explorations-summary.json"
+        },
+        {
+          "name": "main adoption",
+          "evidence": "docs/evidence/CMP-261027-1353/main-adoption-summary.json"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 40540339113
+    },
+    {
+      "runId": 40540339178
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4166"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261027-1353/validation.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261027-1353/explorations-summary.json"
+    }
+  },
+  "regressions": [
+    {
+      "description": "所属数比例のcalendar SQL",
+      "test": "CalendarBatchQueryIT",
+      "redEvidence": "docs/evidence/CMP-261027-1353/official-run-receipts-summary.json",
+      "greenEvidence": "docs/evidence/CMP-261027-1353/source-bridge.json"
+    },
+    {
+      "description": "要対応・Inboxの空scope fanout",
+      "test": "PersonalActionRequiredBatchQueryIT / AnnouncementInboxRoleBatchIT",
+      "redEvidence": "docs/evidence/CMP-261027-1353/official-run-receipts-summary.json",
+      "greenEvidence": "docs/evidence/CMP-261027-1353/source-bridge.json"
+    },
+    {
+      "description": "閉じたdialogとtheme設定の初期処理",
+      "test": "Dashboard dialog lazy / PrimeVue theme",
+      "redEvidence": "docs/evidence/CMP-261027-1353/official-run-receipts-summary.json",
+      "greenEvidence": "docs/evidence/CMP-261027-1353/source-bridge.json"
+    },
+    {
+      "description": "非表示Carousel bodyの初期発火",
+      "test": "DashboardScopeCarousel",
+      "redEvidence": "docs/evidence/CMP-261027-1353/official-run-receipts-summary.json",
+      "greenEvidence": "docs/evidence/CMP-261027-1353/source-bridge.json"
+    },
+    {
+      "description": "数字slugと内部ID混同・旧scope選択移行",
+      "test": "timeline-scope-access / useScopeDashboardStore",
+      "redEvidence": "docs/evidence/CMP-261027-1353/official-run-receipts-summary.json",
+      "greenEvidence": "docs/evidence/CMP-261027-1353/source-bridge.json"
+    },
+    {
+      "description": "退会scopeでcomposerが残る",
+      "test": "TimelineFeed.access / timeline scope access",
+      "redEvidence": "docs/evidence/CMP-261027-1353/official-run-receipts-summary.json",
+      "greenEvidence": "docs/evidence/CMP-261027-1353/source-bridge.json"
+    }
+  ]
+}

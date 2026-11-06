@@ -8,7 +8,7 @@ interface SectionDefinition {
   icon: string
   widgetKeys: readonly string[]
 }
-const props = defineProps<{ widgets: WidgetDefinition[]; collapsedKeys: Set<string> }>()
+const props = withDefaults(defineProps<{ widgets: WidgetDefinition[]; collapsedKeys: Set<string>; active?: boolean }>(), { active: true })
 const emit = defineEmits<{ 'toggle-collapse': [key: string]; configure: [] }>()
 const { t } = useI18n()
 const sections: readonly SectionDefinition[] = [
@@ -47,6 +47,7 @@ const sections: readonly SectionDefinition[] = [
     labelKey: 'dashboard.personal_accordion.content_affiliation',
     icon: '🗂️',
     widgetKeys: [
+      'dinosaur-ranch',
       'quick-memo',
       'my-blog',
       'my-corkboard',
@@ -102,6 +103,7 @@ function badgeLabel(count: number): string {
     <DashboardPersonalWidgetGrid
       v-if="nowWidgets.length > 0"
       :widgets="nowWidgets"
+      :active="active"
       :collapsed-keys="collapsedKeys"
       class="mb-4 grid grid-cols-[repeat(auto-fit,minmax(230px,1fr))] gap-4"
       @toggle-collapse="emit('toggle-collapse', $event)"
@@ -168,6 +170,7 @@ function badgeLabel(count: number): string {
                 <DashboardPersonalWidgetGrid
                   v-if="(sectionWidgets.get(section.key)?.length ?? 0) > 0"
                   :widgets="sectionWidgets.get(section.key) ?? []"
+                  :active="active && isExpanded(section.key)"
                   :collapsed-keys="collapsedKeys"
                   class="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4"
                   @toggle-collapse="emit('toggle-collapse', $event)"

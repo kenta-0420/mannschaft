@@ -225,10 +225,10 @@ function onPopoverHide() {
       @hide="onPopoverHide"
     >
       <div class="flex max-h-[calc(100dvh-16px)] flex-col" style="width: min(520px, calc(100vw - 16px)); max-width: calc(100vw - 16px)">
-        <!-- メインコンテンツ: 2カラムレイアウト -->
-        <div class="flex min-h-0 flex-1 gap-0 divide-x divide-surface-200 overflow-y-auto dark:divide-surface-700">
+        <!-- メインコンテンツ: モバイルは縦積み、デスクトップは2カラム -->
+        <div class="flex min-h-0 flex-1 flex-col gap-0 divide-y divide-surface-200 overflow-y-auto dark:divide-surface-700 md:flex-row md:divide-x md:divide-y-0">
           <!-- 左カラム: フォルダ一覧 -->
-          <div class="flex-1 min-w-0 py-2">
+          <div class="min-w-0 shrink-0 py-2 md:flex-1">
             <div class="px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-surface-400">
               {{ t('scopeFolder.nav.foldersSection') }}
             </div>
@@ -396,7 +396,7 @@ function onPopoverHide() {
           </div>
 
           <!-- 右カラム: 直接ジャンプ（スコープが存在する場合のみ表示） -->
-          <div v-if="myScopes.length > 0" class="flex-1 min-w-0 py-2">
+          <div v-if="myScopes.length > 0" class="min-w-0 shrink-0 py-2 md:flex-1">
             <div class="px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-surface-400">
               {{ t('scopeFolder.nav.quickJumpSection') }}
             </div>

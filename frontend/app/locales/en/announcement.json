@@ -10,7 +10,8 @@
       "load_failed": "Unable to load content",
       "locked": "You need access to view this content",
       "image_failed": "Unable to display image",
-      "read_failed": "Unable to mark as read"
+      "read_failed": "Unable to mark as read",
+      "delegated_source_note": "The original page and attachments can be opened only by organization members."
     },
     "widget_title": "Announcements",
     "all_announcements": "All Announcements",
@@ -28,7 +29,13 @@
       "BULLETIN_THREAD": "Bulletin",
       "TIMELINE_POST": "Timeline",
       "CIRCULATION": "Circular",
-      "SURVEY": "Survey"
+      "CIRCULATION_DOCUMENT": "Circular",
+      "SURVEY": "Survey",
+      "TODO": "Task",
+      "SCHEDULE": "Schedule",
+      "COMMITTEE_DECISION": "Committee decision",
+      "COMMITTEE_MINUTES": "Committee minutes",
+      "ADVERTISER_CAMPAIGN": "Advertiser campaign"
     },
     "mark_all_read": "Mark All as Read",
     "remove_from_announcements": "Remove from Announcements",
@@ -98,7 +105,8 @@
         "body": "Decide who gets to see the announcement (the first step).",
         "steps": {
           "step1": "Choose the audience: Members only / Supporters and above / Everyone (Public)",
-          "step2": "(Organization announcements only) Choose \"All teams\" or select specific teams"
+          "step2": "(Organization announcements only) Choose \"All teams\" or select specific teams",
+          "step3": "(Organization announcements only) With \"Select by team group\", pick groups or a range (up to / from) at once. The number of matching teams is shown on screen"
         }
       },
       "template": {
@@ -114,7 +122,7 @@
         "body": "Pick one destination from Bulletin, Timeline, Blog, TODO, Schedule and Survey.",
         "steps": {
           "step1": "Choose one of the 6 cards",
-          "step2": "Click \"Next\". Note: if the template has a default channel, this screen is skipped"
+          "step2": "Review or change the template's default channel here, then click \"Next\" to enter the content"
         }
       },
       "content": {
@@ -162,6 +170,11 @@
     "dynamic_display_note": "Visibility is judged by current affiliation (for deleted groups, by the teams targeted at send time)",
     "template_deleted_groups_removed": "Deleted team groups were removed from the template",
     "template_range_invalid": "The template range includes a deleted team group. Please choose the range again",
-    "audience_summary": "Audience: {label} ({count} teams at send time)"
+    "audience_summary": "Audience: {label} ({count} teams at send time)",
+    "groups_load_failed": "Could not load the team groups",
+    "target_range_pick_group": "Select a group",
+    "preview_loading": "Checking recipients…",
+    "preview_failed": "Could not check the recipients",
+    "broadcast_done_title": "Announcement sent"
   }
 }

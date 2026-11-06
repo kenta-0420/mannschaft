@@ -2,6 +2,7 @@
  * F02.6 お知らせウィジェット — 型定義
  */
 import type { components } from '~/types/generated'
+import type { BroadcastTargetAudience } from '~/types/announcement_broadcast'
 
 export type AnnouncementFeedDto = components['schemas']['AnnouncementFeedItemDto']
 
@@ -11,10 +12,15 @@ export type AnnouncementSourceType =
   | 'BLOG_POST'
   | 'BULLETIN_THREAD'
   | 'TIMELINE_POST'
+  | 'CIRCULATION_DOCUMENT'
+  /** 旧クライアント表示との互換用。BEの返却値はCIRCULATION_DOCUMENT。 */
   | 'CIRCULATION'
   | 'SURVEY'
   | 'TODO'
   | 'SCHEDULE'
+  | 'COMMITTEE_DECISION'
+  | 'COMMITTEE_MINUTES'
+  | 'ADVERTISER_CAMPAIGN'
 
 export type AnnouncementPriority = 'URGENT' | 'IMPORTANT' | 'NORMAL'
 
@@ -64,6 +70,8 @@ export interface AnnouncementFeedItem {
   visibility: AnnouncementVisibility
   author: AnnouncementAuthor | null
   sourceMeta: AnnouncementSourceMeta | null
+  /** 送信時の宛先指定の記録（チームグループ宛ての告知のみ。F01.2.1 AC-H17） */
+  targetAudience?: BroadcastTargetAudience | null
   isRead: boolean
   startsAt: string | null
   expiresAt: string | null
@@ -136,6 +144,16 @@ export interface MarkAllReadResponse {
    * 未読が残っているか。true のとき「未読 0」と表示してはならない（#2530 ①）。
    */
   hasMoreUnread: boolean
+}
+
+/** POST /api/v1/organizations/{orgId}/announcements/read-batch の要求（feedIds は 1〜50 件）。 */
+export interface ReadBatchRequest {
+  feedIds: number[]
+}
+
+/** read-batch の応答。宛先外などで通らなかった ID は黙って飛ばされ、件数だけが返る。 */
+export interface ReadBatchResponse {
+  markedCount: number
 }
 
 export interface AnnouncementFeedParams {

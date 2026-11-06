@@ -11,19 +11,23 @@
       "confirmations": "确认状态"
     },
     "label": {
+      "unknown_user": "未知用户",
       "start_date": "开始日期",
       "end_date": "结束日期",
       "partial_time": "仅在当天部分时段内休业",
       "start_time": "开始时间",
       "end_time": "结束时间",
+      "range_separator": "至",
       "target_period": "目标期间",
       "subject": "主题",
+      "reason": "休业原因",
       "body": "正文",
       "cancel_reservations": "取消受影响的预约"
     },
     "placeholder": {
       "select": "请选择",
       "subject": "请输入主题",
+      "reason": "请输入休业原因",
       "body": "请输入正文"
     },
     "hint": {
@@ -45,6 +49,7 @@
       "sent_at": "发送时间",
       "reason": "原因",
       "count": "件数",
+      "count_value": "{count}条",
       "confirmation_status": "确认状态",
       "appointment_at": "预约日期/时间",
       "confirmed_header": "已确认",
@@ -68,14 +73,16 @@
       "connecting": "连接中…",
       "reconnecting": "重新连接中…",
       "offline": "离线",
-      "denied": "无查看权限"
+      "denied": "无查看权限",
+      "unauthenticated": "需要登录"
     },
     "dialog": {
       "title": "确认发送",
       "confirm_message": "是否以以下内容批量发送？",
       "cancel_warning": "※ 受影响的预约将被取消",
       "label_period": "目标期间",
-      "label_subject": "主题"
+      "label_subject": "主题",
+      "label_reason": "休业原因"
     },
     "error": {
       "time_range_required": "请选择开始和结束时间",
@@ -84,7 +91,10 @@
       "preview_failed": "预览加载失败",
       "subject_required": "请输入主题",
       "body_required": "请输入正文",
+      "reason_required": "请输入休业原因",
+      "history_failed": "发送记录加载失败，请重新加载",
       "send_failed": "发送失败",
+      "idempotency_conflict": "同一发送操作的内容与之前提交的不一致。请确认内容后重试。",
       "confirmations_failed": "确认状态加载失败",
       "info_missing": "通知信息缺失"
     },
@@ -168,7 +178,7 @@
       "list": "预约列表",
       "my_reservations": "我的预约",
       "line_manage": "{resourceName}管理",
-      "emergency_closure": "緊急休業",
+      "emergency_closure": "紧急休业",
       "team_page": "预约"
     },
     "management": {
@@ -182,6 +192,11 @@
         "exception_day": { "title": "例外日期", "description": "调整指定日期" },
         "advanced": { "title": "详细设置", "description": "设置公开范围和通知" }
       }
+    },
+    "history": {
+      "date_unavailable": "日期未知",
+      "time_unavailable": "时间未知",
+      "line_unavailable": "预约对象未知"
     },
     "column": {
       "datetime": "日期时间",
@@ -605,12 +620,12 @@
       "need_business_hours_hint": "请先设置营业时间",
       "generated_zero_hint": "未创建任何时段（因不在营业时间内或为定休日）。请确认营业时间设置",
       "grid": {
-        "title": "ドラッグで枠を作成",
-        "hint": "グリッドをなぞると、その範囲の枠をまとめて作成できます（左右にまたげば複数曜日を一度に）。スマートフォンやキーボードでは、始点のセルと終点のセルを順にタップ／Enterしてください。Escで取り消せます",
-        "legend_existing": "登録済み",
-        "legend_selected": "選択中",
-        "blocked": "選択した範囲に登録済みの枠が含まれています。空いている範囲を選んでください",
-        "confirm_title": "枠を作成",
+        "title": "拖动创建时段",
+        "hint": "在网格上拖动，即可一次性创建该范围内的时段（左右跨列拖动可一次覆盖多个星期几）。在手机或使用键盘时，请依次点按或按 Enter 选择起始单元格和结束单元格。按 Esc 可取消",
+        "legend_existing": "已登记",
+        "legend_selected": "选择中",
+        "blocked": "所选范围包含已登记的时段，请选择空闲范围",
+        "confirm_title": "创建时段",
         "create": "作成"
       }
     },

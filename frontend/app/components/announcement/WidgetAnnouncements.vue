@@ -34,6 +34,7 @@ const {
   deleteAnnouncement,
   markAsReadBeforeOpen,
   markAllAsRead,
+  markOrganizationItemsRead,
   setReadLocally,
   removeFromFeedLocally,
   setFeedItemsLocally,
@@ -112,8 +113,19 @@ async function onMarkAllRead() {
   try {
     if (props.initialItems === undefined) await markAllAsRead()
     else {
-      const scopes = new Set(feed.value.map(item => `${item.scopeType === 'TEAM' ? 'teams' : 'organizations'}/${item.scopeId}`))
-      await Promise.all([...scopes].map(scope => api(`/api/v1/${scope}/announcements/read-all`, { method: 'POST' })))
+      // チーム項目は従来どおり team read-all。組織項目は取得済み一覧の未読だけを組織ごとに read-batch へ送る
+      // （組織の read-all は表示していない告知まで既読にしてしまうため呼ばない）。
+      const teamScopes = new Set(feed.value.filter(item => item.scopeType === 'TEAM').map(item => item.scopeId))
+      const unreadByOrganization = new Map<string, number[]>()
+      for (const item of feed.value) {
+        if (item.scopeType !== 'ORGANIZATION' || item.isRead) continue
+        const key = String(item.scopeId)
+        unreadByOrganization.set(key, [...(unreadByOrganization.get(key) ?? []), item.id])
+      }
+      await Promise.all([
+        ...[...teamScopes].map(teamId => api(`/api/v1/teams/${teamId}/announcements/read-all`, { method: 'POST' })),
+        ...[...unreadByOrganization].map(([organizationId, ids]) => markOrganizationItemsRead(organizationId, ids)),
+      ])
       emit('refresh')
     }
   } catch (error) { handleApiError(error) }
@@ -121,28 +133,32 @@ async function onMarkAllRead() {
 </script>
 
 <template>
-  <DashboardWidgetCard data-announcement-list>
+  <!-- 高さ上限（既定 15rem）はインライン style のためスマホ幅だけ !important で外す。
+       スマホ幅は見出しが2段になり、上限のままだと一覧が1件ぶんに潰れる -->
+  <DashboardWidgetCard data-announcement-list class="max-sm:!max-h-none">
     <!-- ヘッダー -->
     <template #header>
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <span tabindex="-1" data-announcement-heading class="font-semibold text-surface-700 dark:text-surface-200">
+      <!-- 狭い幅（スマホ等）では見出し群とボタン群が2段に折り返す。各ラベルは語の途中で折らない -->
+      <div data-announcement-header-row class="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+        <div data-announcement-title-group class="flex flex-wrap items-center gap-2">
+          <h3 tabindex="-1" data-announcement-heading class="whitespace-nowrap font-semibold text-surface-700 dark:text-surface-200">
             {{ t('announcement.widget_title') }}
-          </span>
+          </h3>
           <span
             v-if="unreadCount > 0"
-            class="rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-white"
+            data-announcement-unread-badge
+            class="whitespace-nowrap rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-white"
           >
             {{ t('announcement.unread_count', { count: unreadCount }) }}
           </span>
         </div>
-        <div class="flex items-center gap-1">
+        <div data-announcement-actions class="flex flex-wrap items-center gap-1">
           <Button
             v-if="unreadCount > 0"
             :label="t('announcement.mark_all_read')"
             size="small"
             text
-            class="text-xs"
+            class="min-h-11 whitespace-nowrap text-xs sm:min-h-0"
             @click="onMarkAllRead"
           />
           <Button
@@ -154,14 +170,14 @@ async function onMarkAllRead() {
             :title="t('button.loading')"
             @click="refresh"
           />
-          <NuxtLink v-if="allAnnouncementsPath" :to="allAnnouncementsPath">
+          <NuxtLink v-if="allAnnouncementsPath" :to="allAnnouncementsPath" class="whitespace-nowrap max-sm:hidden">
             <Button
               :label="t('announcement.all_announcements')"
               icon="pi pi-arrow-right"
               icon-pos="right"
               size="small"
               text
-              class="text-xs"
+              class="min-h-11 whitespace-nowrap text-xs sm:min-h-0"
             />
           </NuxtLink>
         </div>
@@ -192,6 +208,20 @@ async function onMarkAllRead() {
         @pin="onTogglePin"
         @delete="onDelete"
       />
+    </div>
+
+    <!-- スマホ幅では「すべてのお知らせ」を一覧の後ろへ移し、見出しを2段に抑える -->
+    <div v-if="allAnnouncementsPath" data-announcement-footer-link class="mt-2 flex justify-end sm:hidden">
+      <NuxtLink :to="allAnnouncementsPath" class="whitespace-nowrap">
+        <Button
+          :label="t('announcement.all_announcements')"
+          icon="pi pi-arrow-right"
+          icon-pos="right"
+          size="small"
+          text
+          class="min-h-11 whitespace-nowrap text-xs"
+        />
+      </NuxtLink>
     </div>
   </DashboardWidgetCard>
   <AnnouncementDetailModal

@@ -1,6 +1,6 @@
 {
   "market": {
-    "title": "市（いち）",
+    "title": "Ichi (Marketplace)",
     "listing": {
       "label": "Listing",
       "count": "{count} listings",
@@ -297,67 +297,67 @@
       }
     },
     "market_guide": {
-      "page_title": "市の使い方",
+      "page_title": "How to Use Ichi",
       "what": {
-        "title": "市とは？",
-        "body": "市は、個人・チーム・組織が公開する活動や参加者募集の札を探せる場所です。",
+        "title": "What is Ichi?",
+        "body": "Ichi is a place where you can browse listings published by individuals, teams, and organizations for activities and participant recruitment.",
         "steps": {
-          "step1": "札の内容を確認し、自分に合う活動や募集を探します",
-          "step2": "気になる札を開いて、応募または札の作成へ進みます"
+          "step1": "Check the contents of the listings and find activities or recruitment that suit you",
+          "step2": "Open a listing that interests you and proceed to apply or create a listing"
         }
       },
       "search": {
-        "title": "絞り込み検索",
-        "body": "都道府県・市区町村・ジャンル・札主・キーワードで条件を絞り込めます。",
+        "title": "Filtered Search",
+        "body": "You can narrow down results by prefecture, city, genre, poster, and keyword.",
         "steps": {
-          "step1": "都道府県を選び、市区町村を選択します",
-          "step2": "ジャンル、札主、自由入力キーワードを設定します",
-          "step3": "締切が近い順または遠い順を選びます",
-          "step4": "検索ボタンを押して条件に合う札を表示します",
-          "step5": "絞り込み条件はURLに保存されるため、リンクで共有・ブックマークが可能です"
+          "step1": "Select a prefecture, then select a city",
+          "step2": "Set the genre, poster, and free-text keyword",
+          "step3": "Choose to sort by nearest or furthest deadline",
+          "step4": "Press the search button to display matching listings",
+          "step5": "Filter conditions are saved in the URL, so you can share or bookmark them via a link"
         }
       },
       "apply": {
-        "title": "札に応じる（応募する）",
-        "body": "気になる札をクリックして内容を確認し、OPENの札へ応募できます。応募にはログインが必要です。",
+        "title": "Respond to a Listing (Apply)",
+        "body": "Click a listing that interests you to review its details, then apply to OPEN listings. You need to be logged in to apply.",
         "steps": {
-          "step1": "一覧から気になる札をクリックして詳細ページを開く",
-          "step2": "開催日時・開催場所・応募締切・定員・地域を確認する",
-          "step3": "チーム募集では応募するチームを選び、「札に応じる」を押します。応募済みの札には再応募できません"
+          "step1": "Click a listing in the list to open its detail page",
+          "step2": "Check the date and time, venue, application deadline, capacity, and area",
+          "step3": "For team recruitment, select the team that will apply and press \"Respond to listing\". You cannot apply again to a listing you have already applied to"
         }
       },
       "personal_create": {
-        "title": "個人札を下書きから公開する",
-        "body": "個人の札は、まず非公開の下書きとして作成し、内容を編集してから公開します。",
+        "title": "Publish a Personal Listing from a Draft",
+        "body": "A personal listing is first created as a private draft, and published after you edit its contents.",
         "steps": {
-          "step1": "マイ市で必要な内容を入力し、下書きを作成します",
-          "step2": "タイトル、開催日時、必須の開催場所などを確認して編集します",
-          "step3": "公開範囲を選び、内容を確認して公開します"
+          "step1": "Enter the required details in My Ichi and create a draft",
+          "step2": "Check and edit the title, date and time, and the required venue",
+          "step3": "Choose the visibility, review the contents, and publish"
         }
       },
       "visibility": {
-        "title": "公開範囲と表示名",
-        "body": "個人札では公開範囲を選べます。下書きは公開されません。",
+        "title": "Visibility and Display Name",
+        "body": "For personal listings you can choose the visibility. Drafts are not published.",
         "steps": {
-          "step1": "所属チーム・組織のメンバーには登録済みの実名が表示されます",
-          "step2": "それ以外の人にはニックネームが表示されます",
-          "step3": "公開、選択したチーム・組織への公開、下書きの非公開を使い分けます"
+          "step1": "Members of your teams and organizations see your registered real name",
+          "step2": "Everyone else sees your nickname",
+          "step3": "Use public, public to selected teams and organizations, and private drafts as needed"
         }
       },
       "team_organization": {
-        "title": "チーム・組織の札作成と応募者管理",
-        "body": "チーム・組織の札の作成と応募者の管理には、対象の管理権限が必要です。",
+        "title": "Creating Team/Organization Listings and Managing Applicants",
+        "body": "Creating listings for a team or organization and managing applicants requires management permission for that team or organization.",
         "steps": {
-          "step1": "チームまたは組織の画面から札を作成します",
-          "step2": "公開後は応募者を確認し、必要に応じて参加状況を管理します"
+          "step1": "Create a listing from the team or organization screen",
+          "step2": "After publishing, review applicants and manage participation status as needed"
         }
       },
       "cancellation": {
-        "title": "成立と取消",
-        "body": "札の成立状況を確認し、不要になった札は取り消せます。",
+        "title": "Confirmation and Cancellation",
+        "body": "You can check whether a listing has been confirmed, and cancel listings you no longer need.",
         "steps": {
-          "step1": "応募状況と定員を確認して、成立に必要な対応を行います",
-          "step2": "公開済みの札を取り消すと、応募者に影響するため内容を確認してから実行します"
+          "step1": "Check the applications and capacity, and take the actions required for confirmation",
+          "step2": "Cancelling a published listing affects applicants, so review the contents before proceeding"
         }
       }
     }

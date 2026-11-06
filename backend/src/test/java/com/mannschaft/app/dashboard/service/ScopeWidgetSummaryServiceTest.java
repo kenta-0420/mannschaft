@@ -27,6 +27,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -60,6 +61,10 @@ class ScopeWidgetSummaryServiceTest {
     @Mock
     private ContentVisibilityChecker contentVisibilityChecker;
 
+    @Mock
+    private com.mannschaft.app.bulletin.service.BulletinUnreadQueryService bulletinUnreadQueryService;
+    @Mock
+    private com.mannschaft.app.chat.service.ChatMemberBatchQueryService chatMemberBatchQueryService;
     @InjectMocks
     private ScopeWidgetSummaryService service;
 
@@ -82,7 +87,7 @@ class ScopeWidgetSummaryServiceTest {
         @DisplayName("TEAM: 直近公開記事を author 名解決つきで返す")
         void team_blog() {
             BlogPostEntity post = BlogPostEntity.builder()
-                    .teamId(10L).authorId(99L).title("お知らせ")
+                    .teamId(10L).authorId(99L).title("お知らせ").slug("team-news")
                     .status(PostStatus.PUBLISHED).publishedAt(LocalDateTime.now()).build();
             Page<BlogPostEntity> page = new PageImpl<>(List.of(post));
             given(blogPostRepository.findByTeamIdAndStatusOrderByPinnedDescPublishedAtDesc(
@@ -94,6 +99,7 @@ class ScopeWidgetSummaryServiceTest {
 
             assertThat(result).hasSize(1);
             assertThat(result.get(0).get("title")).isEqualTo("お知らせ");
+            assertThat(result.get(0).get("slug")).isEqualTo("team-news");
             assertThat(result.get(0).get("author")).isEqualTo("山田太郎");
             assertThat(result.get(0)).containsKey("published_at");
         }
@@ -229,8 +235,9 @@ class ScopeWidgetSummaryServiceTest {
             given(bulletinThreadRepository.findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc(
                     eq(com.mannschaft.app.bulletin.ScopeType.ORGANIZATION), eq(20L), any(Pageable.class)))
                     .willReturn(new PageImpl<>(List.of(t1, t2)));
-            given(bulletinReadStatusRepository.existsByThreadIdAndUserId(eq(1L), eq(7L))).willReturn(false);
-            given(bulletinReadStatusRepository.existsByThreadIdAndUserId(eq(2L), eq(7L))).willReturn(true);
+            // CMP-261103-1225: 既読判定はスレッドごとではなく既読 ID の一括取得 1 回
+            given(bulletinUnreadQueryService.findReadThreadIds(eq(List.of(1L, 2L)), eq(7L)))
+                    .willReturn(new java.util.HashSet<>(Set.of(2L)));
             // チャンネルなし（未読チャット 0）
             given(chatChannelRepository.findByOrganizationIdAndIsArchivedFalseOrderByLastMessageAtDesc(20L))
                     .willReturn(List.of());
@@ -257,7 +264,7 @@ class ScopeWidgetSummaryServiceTest {
             given(bulletinThreadRepository.findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc(
                     eq(com.mannschaft.app.bulletin.ScopeType.TEAM), eq(10L), any(Pageable.class)))
                     .willReturn(new PageImpl<>(List.of(pinned, newest, mid)));
-            given(bulletinReadStatusRepository.existsByThreadIdAndUserId(anyLong(), eq(7L))).willReturn(false);
+            given(bulletinUnreadQueryService.findReadThreadIds(any(), eq(7L))).willReturn(new java.util.HashSet<>());
 
             List<Map<String, Object>> result = service.buildThreadListForScope("TEAM", 10L, 7L);
 

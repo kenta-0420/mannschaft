@@ -25,11 +25,20 @@ public class BusinessException extends RuntimeException {
      */
     private final HttpStatus httpStatusOverride;
 
+    /**
+     * メッセージのプレースホルダ（{@code {0}} など、{@link java.text.MessageFormat} 形式）へ差し込む値（任意）。
+     *
+     * <p>上限値のように運用で変わる数値を、ErrorCode の固定文言へ直書きしないために使う。
+     * 空のときは従来どおり固定文言のまま返す。</p>
+     */
+    private final Object[] messageArgs;
+
     public BusinessException(ErrorCode errorCode) {
         super(errorCode.getMessage());
         this.errorCode = errorCode;
         this.fieldErrors = List.of();
         this.httpStatusOverride = null;
+        this.messageArgs = new Object[0];
     }
 
     public BusinessException(ErrorCode errorCode, Throwable cause) {
@@ -37,6 +46,7 @@ public class BusinessException extends RuntimeException {
         this.errorCode = errorCode;
         this.fieldErrors = List.of();
         this.httpStatusOverride = null;
+        this.messageArgs = new Object[0];
     }
 
     public BusinessException(ErrorCode errorCode, List<ErrorResponse.FieldError> fieldErrors) {
@@ -44,6 +54,7 @@ public class BusinessException extends RuntimeException {
         this.errorCode = errorCode;
         this.fieldErrors = fieldErrors != null ? fieldErrors : List.of();
         this.httpStatusOverride = null;
+        this.messageArgs = new Object[0];
     }
 
     /**
@@ -58,5 +69,30 @@ public class BusinessException extends RuntimeException {
         this.errorCode = errorCode;
         this.fieldErrors = List.of();
         this.httpStatusOverride = httpStatusOverride;
+        this.messageArgs = new Object[0];
+    }
+
+    private BusinessException(ErrorCode errorCode, Throwable cause, Object[] messageArgs) {
+        super(java.text.MessageFormat.format(errorCode.getMessage(), messageArgs), cause);
+        this.errorCode = errorCode;
+        this.fieldErrors = List.of();
+        this.httpStatusOverride = null;
+        this.messageArgs = messageArgs.clone();
+    }
+
+    /**
+     * 文言のプレースホルダへ値を差し込む業務例外を作る。
+     *
+     * @param errorCode   エラーコード（文言に {@code {0}} 等のプレースホルダを持つ）
+     * @param cause       原因（無ければ null）
+     * @param messageArgs 差し込む値
+     */
+    public static BusinessException withMessageArgs(ErrorCode errorCode, Throwable cause, Object... messageArgs) {
+        return new BusinessException(errorCode, cause, messageArgs == null ? new Object[0] : messageArgs);
+    }
+
+    /** 差し込む値（防御的コピー）。 */
+    public Object[] getMessageArgs() {
+        return messageArgs.clone();
     }
 }

@@ -29,7 +29,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
  *
  * <h2>検査対象</h2>
  * <p>{@code org.springframework.transaction.annotation.Transactional} が
- * <b>クラスまたはメソッド</b>に付いているクラスを発生元とみなす。Spring の
+ * <b>クラスまたはメソッド</b>に付いているクラス（合成注釈のメタ注釈を含む）を発生元とみなす。Spring の
  * {@code @Transactional} はクラス付与がメソッドへ継承される点を考慮し、
  * 「クラスに付いている」場合もそのクラスを対象にする。
  *
@@ -72,7 +72,7 @@ class CrossDomainTransactionalArchTest {
     // ヘルパー
     // ------------------------------------------------------------------
 
-    private static ArchCondition<JavaClass> notDependOnOtherDomainRepositories() {
+    static ArchCondition<JavaClass> notDependOnOtherDomainRepositories() {
         return new ArchCondition<>("not depend on other-domain repositories within @Transactional") {
             @Override
             public void check(JavaClass clazz, ConditionEvents events) {
@@ -83,7 +83,8 @@ class CrossDomainTransactionalArchTest {
                 if (!isTransactional(clazz)) {
                     return;
                 }
-                for (Dependency dep : clazz.getDirectDependenciesFromSelf()) {
+                DependencyFreezeMessages messages = new DependencyFreezeMessages();
+                for (Dependency dep : DependencyFreezeMessages.sorted(clazz.getDirectDependenciesFromSelf())) {
                     JavaClass target = dep.getTargetClass();
                     String targetPkg = target.getPackageName();
                     if (!isRepositoryPackage(targetPkg)) {
@@ -100,19 +101,19 @@ class CrossDomainTransactionalArchTest {
                             + "%s (domain '%s')",
                         clazz.getName(), sourceDomain,
                         target.getName(), targetDomain);
-                    events.add(SimpleConditionEvent.violated(dep, message));
+                    events.add(SimpleConditionEvent.violated(dep, messages.format(message, dep)));
                 }
             }
         };
     }
 
-    /** クラス自身、または任意のメソッドに Spring {@code @Transactional} が付いているか。 */
+    /** クラス自身、または任意のメソッドに直接または合成注釈経由で Spring {@code @Transactional} が付いているか。 */
     private static boolean isTransactional(JavaClass clazz) {
-        if (clazz.isAnnotatedWith(Transactional.class)) {
+        if (clazz.isAnnotatedWith(Transactional.class) || clazz.isMetaAnnotatedWith(Transactional.class)) {
             return true;
         }
         for (JavaMethod method : clazz.getMethods()) {
-            if (method.isAnnotatedWith(Transactional.class)) {
+            if (method.isAnnotatedWith(Transactional.class) || method.isMetaAnnotatedWith(Transactional.class)) {
                 return true;
             }
         }

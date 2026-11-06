@@ -43,7 +43,6 @@ async function submit() {
     const res = await createMyPost({
       title: form.value.title.trim(),
       body: '.',
-      status: 'DRAFT',
       scopeType: form.value.scopeType,
       scopeId: form.value.scopeId,
     })

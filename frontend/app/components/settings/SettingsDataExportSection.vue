@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { DataExportResponse } from '~/composables/useGdprApi'
+import { getApiErrorCode } from '~/utils/loadError'
 
 const { requestDataExport, getExportStatus, getExportDownloadUrl } = useGdprApi()
 const notification = useNotification()
@@ -8,15 +9,15 @@ const { t } = useI18n()
 
 const exportStatus = ref<DataExportResponse | null>(null)
 const exporting = ref(false)
-let pollInterval: ReturnType<typeof setInterval> | null = null
+const fetching = ref(false)
+const fetchError = shallowRef<unknown>(null)
+let pollTimer: ReturnType<typeof setTimeout> | null = null
+let disposed = false
 
 function getStatusLabel(status: DataExportResponse): string {
-  const step = status.currentStep?.toLowerCase() ?? ''
-  if (step === 'completed' || status.progressPercent === 100) {
+  if (isFailed(status)) return t('data_export.step_failed')
+  if (isCompleted(status)) {
     return t('data_export.step_completed', { expiry: formatExpiry(status.expiresAt) })
-  }
-  if (step === 'failed') {
-    return t('data_export.step_failed')
   }
   if (status.progressPercent > 0) {
     return t('data_export.step_processing')
@@ -29,57 +30,61 @@ function getProgressValue(status: DataExportResponse): number {
 }
 
 function isCompleted(status: DataExportResponse): boolean {
-  return (
-    status.currentStep?.toLowerCase() === 'completed' || status.progressPercent === 100
-  )
+  return status.status === 'COMPLETED'
 }
 
 function isFailed(status: DataExportResponse): boolean {
-  return status.currentStep?.toLowerCase() === 'failed'
+  return status.status === 'FAILED'
 }
 
 function isFinished(status: DataExportResponse): boolean {
   return isCompleted(status) || isFailed(status)
 }
 
-function formatExpiry(dateStr: string): string {
+function formatExpiry(dateStr: string | null): string {
   if (!dateStr) return '-'
   return formatDateTime(dateStr)
 }
 
 async function pollStatus() {
+  if (disposed || fetching.value) return
+  stopPolling()
+  fetching.value = true
+  fetchError.value = null
   try {
     const res = await getExportStatus()
-    exportStatus.value = res?.data ?? null
-    if (exportStatus.value && isFinished(exportStatus.value)) {
-      stopPolling()
-    }
-  } catch {
-    stopPolling()
-    notification.error(t('data_export.fetch_error'))
+    if (disposed) return
+    if (!res?.data) throw new Error('Missing export status')
+    exportStatus.value = res.data
+    if (!isFinished(res.data)) pollTimer = setTimeout(pollStatus, 10000)
+  } catch (error) {
+    if (!disposed && getApiErrorCode(error) !== 'GDPR_003') fetchError.value = error
+  } finally {
+    fetching.value = false
   }
 }
 
 function stopPolling() {
-  if (pollInterval !== null) {
-    clearInterval(pollInterval)
-    pollInterval = null
+  if (pollTimer !== null) {
+    clearTimeout(pollTimer)
+    pollTimer = null
   }
 }
 
 async function startExport() {
-  if (exporting.value) return
+  if (disposed || exporting.value || fetching.value) return
   exporting.value = true
-  exportStatus.value = null
   stopPolling()
   try {
     await requestDataExport({})
-    await pollStatus()
-    if (exportStatus.value && !isFinished(exportStatus.value)) {
-      pollInterval = setInterval(pollStatus, 10000)
-    }
-  } catch {
-    notification.error(t('data_export.fetch_error'))
+    if (!disposed) await pollStatus()
+  } catch (error) {
+    if (disposed) return
+    const code = getApiErrorCode(error)
+    const key = code === 'GDPR_001' ? 'request_daily_limit'
+      : code === 'GDPR_002' ? 'request_in_progress' : 'request_error'
+    notification.error(t(`data_export.${key}`))
+    if (code === 'GDPR_002') await pollStatus()
   } finally {
     exporting.value = false
   }
@@ -92,14 +97,19 @@ async function downloadExport() {
     if (url) {
       window.open(url, '_blank')
     } else {
-      notification.error(t('data_export.fetch_error'))
+      notification.error(t('data_export.download_error'))
     }
-  } catch {
-    notification.error(t('data_export.fetch_error'))
+  } catch (error) {
+    const code = getApiErrorCode(error)
+    const key = code === 'GDPR_009' ? 'download_not_ready'
+      : code === 'GDPR_010' ? 'download_expired' : 'download_error'
+    notification.error(t(`data_export.${key}`))
   }
 }
 
+onMounted(pollStatus)
 onUnmounted(() => {
+  disposed = true
   stopPolling()
 })
 </script>
@@ -115,9 +125,19 @@ onUnmounted(() => {
         translate="no"
         :label="$t('data_export.export_button')"
         icon="pi pi-download"
+        class="min-h-11 min-w-11"
         :loading="exporting"
-        :disabled="exporting || (exportStatus !== null && !isFinished(exportStatus))"
+        :disabled="exporting || fetching || (exportStatus !== null && !isFinished(exportStatus))"
         @click="startExport"
+      />
+
+      <DashboardErrorState
+        v-if="fetchError"
+        :error="fetchError"
+        :message="$t('data_export.fetch_error')"
+        :show-retry="true"
+        class="[&_button]:min-h-11 [&_button]:min-w-11"
+        @retry="pollStatus"
       />
 
       <div v-if="exportStatus" class="space-y-3">
@@ -159,6 +179,7 @@ onUnmounted(() => {
               :label="$t('data_export.download_button')"
               icon="pi pi-file-export"
               size="small"
+              class="min-h-11 min-w-11"
               @click="downloadExport"
             />
           </div>

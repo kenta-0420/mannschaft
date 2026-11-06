@@ -72,20 +72,20 @@ public class ShiftRequestAdminQueryService {
 
         // 2 種別を作成日時降順でマージし、上位 previewSize 件に丸める。
         // id は対象ドメインの主キー文字列（設計書 03 §3.3）。種別（変更依頼/交代申請）は
-        // detail_route のパス（/shifts/change/{id} と /shifts/swap/{id}）で区別する（合成 id を使わない）。
+        // detail_route は変更依頼一覧 / 交代申請タブの実在画面へ結ぶ（合成 id を使わない）。
         List<Holder> merged = new ArrayList<>();
         changes.forEach(c -> merged.add(new Holder(
                 String.valueOf(c.getId()),
                 "シフト変更依頼",
                 names.getOrDefault(c.getRequestedBy(), "不明なユーザー"),
                 c.getCreatedAt(),
-                "/teams/" + teamSlug + "/admin/shifts/change/" + c.getId())));
+                "/teams/" + teamSlug + "/shifts/" + c.getScheduleId() + "/change-requests")));
         swaps.forEach(s -> merged.add(new Holder(
                 String.valueOf(s.getId()),
                 "シフト交代申請",
                 names.getOrDefault(s.getRequesterId(), "不明なユーザー"),
                 s.getCreatedAt(),
-                "/teams/" + teamSlug + "/admin/shifts/swap/" + s.getId())));
+                "/teams/" + teamSlug + "/shifts?tab=swaps")));
         merged.sort(Comparator.comparing(
                 Holder::requestedAt, Comparator.nullsLast(Comparator.reverseOrder())));
 

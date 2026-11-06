@@ -1,5 +1,7 @@
 package com.mannschaft.app.auth.service;
 
+import com.mannschaft.app.auth.service.UserRowLockService;
+
 import com.mannschaft.app.auth.dto.UserProfileResponse;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.OAuthAccountRepository;
@@ -54,6 +56,9 @@ class UserServiceProfilePostalCodeTest {
     private com.mannschaft.app.common.timezone.UserTimezoneCache userTimezoneCache;
     @Mock
     private com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
+
+    // Existing isolated unit fixture only; real locking acceptance uses MySQL IT.
+    @Mock private UserRowLockService userRowLockService;
 
     @InjectMocks
     private UserService userService;

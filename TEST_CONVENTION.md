@@ -455,6 +455,8 @@ src/test/java/com/mannschaft/app/
 
 ## 7. Gradle タスク定義
 
+現行の共通Test・番人・perf・shard・JaCoCo設定は `backend/build-logic/src/main/kotlin/mannschaft.backend-conventions.gradle.kts` に置き、rootの `backend/build.gradle.kts` から適用する。shard実行フィルタとcoverage検証は `ShardAssignment.kt` の同一述語を直接使う。以下の分離例は方針の例であり、新しい恒久タスクの追加指示ではない。
+
 単体テストと結合テストを分離実行できるようにする。
 
 ```kotlin
@@ -499,6 +501,10 @@ class AuthControllerIntegrationTest extends AbstractIntegrationTest {
 ```
 
 ### 7.1 ArchUnit テストの別 JVM 実行（`archTest` / `archUnitTest`・CMP-261002-1606）
+
+`AuthzTxFacadeRegistryScanningLogicTest` は、総称メソッドの override で javac が生成する bridge の実在も検証する。
+R3 の有効公開入口は、bridge を親宣言の遮蔽判定へ残してから結果から除き、子の具体型メソッドだけを検査する。
+認可付きの子を誤検出しない陰性対照と、認可なしの子を検出する陽性対照を対で維持する。
 
 ArchUnit を使うテストクラス（ArchUnit または `ProductionClasses` を参照するもの）は必ずタグを付け、
 Spring のテストコンテキストを使わない。通常の `test` はタグ `archunit` を除外する。タグ付きテストは

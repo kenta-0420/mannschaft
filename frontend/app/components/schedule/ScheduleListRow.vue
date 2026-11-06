@@ -20,7 +20,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{ open: [id: number]; responded: [] }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { responding, respond } = useAttendanceResponder(props.scopeType, props.scopeId)
 const { userTimezone, formatTime } = useDatetime()
 
@@ -28,11 +28,11 @@ const { userTimezone, formatTime } = useDatetime()
 const localStatus = ref<string | null>(props.event.myAttendance ?? null)
 
 // status は BE 正準（ATTENDING/ABSENT/UNDECIDED）と完全一致させる。ラベルは i18n キーのまま不変。
-const attendanceButtons = [
+const attendanceButtons = computed(() => [
   { status: 'ATTENDING', label: t('schedule.attendance.yes'), on: 'bg-green-600 text-white border-green-600' },
   { status: 'ABSENT', label: t('schedule.attendance.no'), on: 'bg-red-600 text-white border-red-600' },
   { status: 'UNDECIDED', label: t('schedule.attendance.maybe'), on: 'bg-amber-500 text-white border-amber-500' },
-] as const
+] as const)
 
 async function onRespond(status: string) {
   const ok = await respond(props.event.id, status)
@@ -45,7 +45,11 @@ async function onRespond(status: string) {
 
 const dateLabel = computed(() => {
   if (!props.event.startAt) return ''
-  return dayjs(props.event.startAt).tz(userTimezone.value).format('M/D (ddd)')
+  const date = dayjs(props.event.startAt).tz(userTimezone.value)
+  const weekday = new Intl.DateTimeFormat(locale.value, {
+    weekday: 'short', timeZone: userTimezone.value,
+  }).format(date.toDate())
+  return `${date.format('M/D')} (${weekday})`
 })
 
 const timeLabel = computed(() => {

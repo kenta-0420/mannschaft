@@ -69,6 +69,7 @@ class TeamServiceTest {
     @Mock private ScopeMemberCalendarSettingService scopeMemberCalendarSettingService;
     @Mock private AdminRoleMutationLockService adminRoleMutationLockService;
     @Mock private DuplicateNameGuardService duplicateNameGuardService;
+    @Mock private com.mannschaft.app.team.service.TeamOrgLifecycleCleanupService teamOrgLifecycleCleanupService;
     @InjectMocks private TeamService service;
 
     private static final Long USER_ID = 1L;
@@ -324,13 +325,97 @@ class TeamServiceTest {
             TeamEntity team = TeamEntity.builder().name("テスト").template("sports")
                     .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE).build();
             team.archive(); // archivedAtをセット
-            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
+            given(teamRepository.findByIdForUpdate(TEAM_ID)).willReturn(Optional.of(team));
 
             // When / Then
             assertThatThrownBy(() -> service.archiveTeam(TEAM_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TEAM_002"));
+        }
+
+        @Test
+        @DisplayName("F01.2.1 2-D: 他ドメインの tx からのアーカイブは、加盟の片付けを持ち込まず TeamArchivedEvent を発行する")
+        void 他ドメインからのアーカイブはイベントを発行する() {
+            TeamEntity team = TeamEntity.builder().name("テスト").template("sports")
+                    .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE).build();
+            given(teamRepository.findByIdForUpdate(TEAM_ID)).willReturn(Optional.of(team));
+
+            service.archiveTeamDeferringAffiliationCleanup(TEAM_ID);
+
+            assertThat(team.getArchivedAt()).isNotNull();
+            org.mockito.ArgumentCaptor<Object> event = org.mockito.ArgumentCaptor.forClass(Object.class);
+            org.mockito.Mockito.verify(eventPublisher, org.mockito.Mockito.times(2)).publishEvent(event.capture());
+            assertThat(event.getAllValues()).filteredOn(value -> value instanceof com.mannschaft.app.team.event.TeamArchivedEvent)
+                    .singleElement().isInstanceOfSatisfying(
+                    com.mannschaft.app.team.event.TeamArchivedEvent.class,
+                    e -> assertThat(e.getTeamId()).isEqualTo(TEAM_ID));
+            assertThat(event.getAllValues()).filteredOn(value -> value instanceof com.mannschaft.app.common.event.PersonalInviteScopeClosedEvent)
+                    .singleElement().isInstanceOfSatisfying(com.mannschaft.app.common.event.PersonalInviteScopeClosedEvent.class,
+                            e -> {
+                                assertThat(e.getScopeType()).isEqualTo("TEAM");
+                                assertThat(e.getScopeId()).isEqualTo(TEAM_ID);
+                                assertThat(e.getClosureGeneration()).isEqualTo(1);
+                            });
+        }
+    }
+
+    @Nested
+    @DisplayName("unarchiveTeam")
+    class UnarchiveTeam {
+
+        @Test
+        @DisplayName("F01.2.1 2-D・§4.5: 片付けの前に解除されても、チーム行をロックして残った PENDING を同じ tx で片付ける（復元しない）。"
+                + "片付けの削除は永続化コンテキストをクリアするので、解除は片付けより前に済ませる（検分3巡目 High 1）")
+        void 解除の前に残ったPENDINGを片付ける() {
+            TeamEntity team = TeamEntity.builder().name("テスト").template("sports")
+                    .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE).build();
+            team.archive();
+            given(teamRepository.findByIdForUpdate(TEAM_ID)).willReturn(Optional.of(team));
+            given(teamOrgLifecycleCleanupService.cancelPendingOfArchivedTeam(any(), eq("テスト")))
+                    .willAnswer(inv -> {
+                        // 片付けの前に解除が済んでいること（片付けの後の Entity の変更は detached で保存されない）
+                        assertThat(team.getArchivedAt()).isNull();
+                        return 1;
+                    });
+
+            service.unarchiveTeam(TEAM_ID);
+
+            assertThat(team.getArchivedAt()).isNull();
+            verify(teamOrgLifecycleCleanupService).cancelPendingOfArchivedTeam(any(), eq("テスト"));
+        }
+
+        @Test
+        @DisplayName("アーカイブされていないチームの解除では片付けを呼ばない")
+        void 未アーカイブなら片付けを呼ばない() {
+            TeamEntity team = TeamEntity.builder().name("テスト").template("sports")
+                    .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE).build();
+            given(teamRepository.findByIdForUpdate(TEAM_ID)).willReturn(Optional.of(team));
+
+            service.unarchiveTeam(TEAM_ID);
+
+            org.mockito.Mockito.verifyNoInteractions(teamOrgLifecycleCleanupService);
+        }
+
+        @Test
+        @DisplayName("F01.2.1 2-D D-3T: 他ドメインの tx からの解除は、加盟の片付けを持ち込まず TeamUnarchivedEvent を発行する")
+        void 他ドメインからの解除はイベントを発行する() {
+            TeamEntity team = TeamEntity.builder().name("テスト").template("sports")
+                    .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE).build();
+            team.archive();
+            assertThat(team.getClosureGeneration()).as("アーカイブ（閉鎖）で閉鎖の世代が進む").isEqualTo(1L);
+            given(teamRepository.findByIdForUpdate(TEAM_ID)).willReturn(Optional.of(team));
+
+            service.unarchiveTeamDeferringAffiliationCleanup(TEAM_ID);
+
+            assertThat(team.getArchivedAt()).isNull();
+            assertThat(team.getClosureGeneration()).as("閉鎖の世代は解除しても戻らない").isEqualTo(1L);
+            org.mockito.Mockito.verifyNoInteractions(teamOrgLifecycleCleanupService);
+            org.mockito.ArgumentCaptor<Object> event = org.mockito.ArgumentCaptor.forClass(Object.class);
+            org.mockito.Mockito.verify(eventPublisher).publishEvent(event.capture());
+            assertThat(event.getValue()).isInstanceOfSatisfying(
+                    com.mannschaft.app.team.event.TeamUnarchivedEvent.class,
+                    e -> assertThat(e.getTeamId()).isEqualTo(TEAM_ID));
         }
     }
 

@@ -48,6 +48,7 @@ public class ActivityResultVisibilityResolver
 
     /** 機能側 Repository（実存確認込み Projection 取得用、SQL 1）。 */
     private final ActivityResultRepository activityResultRepository;
+    private final com.mannschaft.app.common.activityschedule.AutomaticActivityActualPolicy automaticPolicy;
 
     /**
      * Spring DI コンストラクタ。
@@ -68,10 +69,12 @@ public class ActivityResultVisibilityResolver
             VisibilityTemplateEvaluator templateEvaluator,
             VisibilityMetrics visibilityMetrics,
             @Autowired(required = false) FollowBatchService followBatchService,
-            @Autowired(required = false) AuditLogService auditLogService) {
+            @Autowired(required = false) AuditLogService auditLogService,
+            com.mannschaft.app.common.activityschedule.AutomaticActivityActualPolicy automaticPolicy) {
         super(membershipBatchQueryService, templateEvaluator, visibilityMetrics,
                 followBatchService, auditLogService);
         this.activityResultRepository = activityResultRepository;
+        this.automaticPolicy = automaticPolicy;
     }
 
     @Override
@@ -82,6 +85,12 @@ public class ActivityResultVisibilityResolver
     @Override
     protected List<ActivityResultVisibilityProjection> loadProjections(Collection<Long> ids) {
         return activityResultRepository.findVisibilityProjectionsByIdIn(ids);
+    }
+
+    /** autoは作者/SystemAdmin短絡の前に判定する。metadata閲覧例外はF00 actualへ入れない。 */
+    @Override
+    protected List<ActivityResultVisibilityProjection> loadProjections(Collection<Long> ids, Long viewerUserId) {
+        return automaticPolicy.filterEligible(loadProjections(ids), viewerUserId);
     }
 
     @Override

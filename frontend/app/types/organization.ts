@@ -117,6 +117,22 @@ export interface OrgTeam {
   iconUrl: string | null
   template: string
   memberCount: number
+  /**
+   * 所属するチームグループ（F01.2.1）。グループ機能 off・未分類・閲覧者が組織の MEMBER 以上でない場合は null / 未設定。
+   */
+  teamGroup?: { id: string, name: string, sortOrder: number } | null
+}
+
+/**
+ * 権限グループ一覧（OrgPermissionGroupList）が表示に使う最小の形。組織・チームで共用する。
+ * チームの権限グループは対象ロール（targetRole）を持つ。
+ */
+export interface PermissionGroupListItem {
+  id: number
+  name: string
+  description?: string | null
+  permissions: string[]
+  targetRole?: string
 }
 
 export interface OrgPermissionGroup {

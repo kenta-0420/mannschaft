@@ -6,6 +6,7 @@ import com.mannschaft.app.reservation.entity.ReservationEntity;
 import com.mannschaft.app.reservation.entity.ReservationPolicyEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
 import com.mannschaft.app.reservation.entity.ReservationWaitlistEntryEntity;
+import com.mannschaft.app.reservation.repository.ReservationPendingExpireScanStateRepository;
 import com.mannschaft.app.reservation.repository.ReservationPolicyRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
@@ -17,12 +18,15 @@ import jakarta.persistence.EntityManagerFactory;
 import org.awaitility.Awaitility;
 import org.hibernate.SessionFactory;
 import org.hibernate.stat.Statistics;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -55,6 +59,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("仮押さえ自動失効 永続化結合テスト（実MySQL・F03.4.5 §6.3）")
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class ReservationPendingExpirePersistenceIntegrationTest extends AbstractMySqlIntegrationTest {
+
+    @Autowired private ReservationPendingExpireScanStateRepository scanStates;
+    private UUID ownedStateId;
+
+    @BeforeEach
+    void 所有進捗行を保存する() {
+        assertThat(scanStates.count()).as("既存進捗を上書きしない").isZero();
+        ownedStateId = scanStates.saveAndFlush(
+                ReservationPendingExpireTestFixture.minimumValidState(Instant.now())).getId();
+    }
+
+    @AfterEach
+    void 所有進捗行を片付ける() {
+        if (ownedStateId != null) scanStates.deleteById(ownedStateId);
+    }
 
     @Autowired
     private ReservationPendingExpireBatchService batchService;
@@ -279,6 +298,65 @@ class ReservationPendingExpirePersistenceIntegrationTest extends AbstractMySqlIn
         batchService.expirePendingReservations();
 
         assertThat(reload(pending.getId()).getStatus()).isEqualTo(ReservationStatus.PENDING);
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // D-1730-1: 論理削除済みの枠に残った PENDING は1周期で終状態にし、再処理しない
+    // ────────────────────────────────────────────────────────────
+
+    private void softDeleteSlot(ReservationSlotEntity slot) {
+        slot.softDelete();
+        slotRepository.saveAndFlush(slot);
+    }
+
+    @Test
+    @DisplayName("D-1730-1: 論理削除済み枠のPENDINGは1周期でCANCELLED/SYSTEMになり、次周期で再処理されず通知も1通のみ")
+    void 削除済み枠のPENDINGは1周期で終状態になり再処理されない() {
+        Long teamId = nextId();
+        Long userId = nextId();
+        seedPolicy(teamId, 24);
+        ReservationSlotEntity slot = seedSlot(teamId, FUTURE, LocalTime.of(19, 0), SlotStatus.FULL, 1, 1);
+        ReservationEntity pending = seedPending(
+                teamId, userId, slot.getId(), LocalDateTime.now().minusHours(25), null, true);
+        softDeleteSlot(slot);
+
+        batchService.expirePendingReservations();
+
+        ReservationEntity after = reload(pending.getId());
+        assertThat(after.getStatus()).as("1周期で終状態へ遷移する").isEqualTo(ReservationStatus.CANCELLED);
+        assertThat(after.getCancelledBy()).isEqualTo(CancelledBy.SYSTEM);
+        assertThat(scanStates.findById(ownedStateId).orElseThrow().getRetryPrimaryIds())
+                .as("失敗扱いでretryに残さない").doesNotContain(pending.getId());
+        assertThat(notificationsOf(userId)).as("申込者へ失効通知が1通").hasSize(1);
+
+        batchService.expirePendingReservations();
+
+        assertThat(reload(pending.getId()).getStatus()).isEqualTo(ReservationStatus.CANCELLED);
+        assertThat(notificationsOf(userId)).as("次周期で再処理・再通知されない").hasSize(1);
+    }
+
+    @Test
+    @DisplayName("D-1730-1(グループ): 代表行の枠だけ削除済みでも全行CANCELLED。生きている兄弟枠は復帰する")
+    void グループの一部の枠が削除済みでも全行が失効し生存枠は復帰する() {
+        Long teamId = nextId();
+        Long userId = nextId();
+        seedPolicy(teamId, 24);
+        UUID groupId = UUID.randomUUID();
+        LocalDateTime bookedAt = LocalDateTime.now().minusHours(25);
+        ReservationSlotEntity deleted = seedSlot(teamId, FUTURE, LocalTime.of(20, 0), SlotStatus.FULL, 1, 1);
+        ReservationSlotEntity alive = seedSlot(teamId, FUTURE, LocalTime.of(20, 30), SlotStatus.FULL, 1, 1);
+        ReservationEntity primary = seedPending(teamId, userId, deleted.getId(), bookedAt, groupId, true);
+        ReservationEntity sibling = seedPending(teamId, userId, alive.getId(), bookedAt, groupId, false);
+        softDeleteSlot(deleted);
+
+        batchService.expirePendingReservations();
+
+        assertThat(List.of(primary.getId(), sibling.getId()))
+                .allSatisfy(id -> assertThat(reload(id).getStatus()).isEqualTo(ReservationStatus.CANCELLED));
+        ReservationSlotEntity aliveAfter = slotRepository.findById(alive.getId()).orElseThrow();
+        assertThat(aliveAfter.getBookedCount()).as("生きている枠は予約数が戻る").isZero();
+        assertThat(aliveAfter.getSlotStatus()).isEqualTo(SlotStatus.AVAILABLE);
+        assertThat(notificationsOf(userId)).as("グループにつき1通").hasSize(1);
     }
 
     // ────────────────────────────────────────────────────────────

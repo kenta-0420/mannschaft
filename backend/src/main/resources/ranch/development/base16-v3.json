@@ -1,0 +1,87 @@
+{
+  "catalogVersion": 3,
+  "variantKey": "DEV_BASE_16_CLIPS_V1",
+  "manifestSha256": "bcc001841b2efaf75678376112303af216e0ae805781619bafc522a145efa28c",
+  "species": [
+    {
+      "speciesKey": "DEV_CLIP_ALLOSAURUS",
+      "sourceSpeciesKey": "allosaurus",
+      "habitat": "LAND"
+    },
+    {
+      "speciesKey": "DEV_CLIP_TRICERATOPS",
+      "sourceSpeciesKey": "triceratops",
+      "habitat": "LAND"
+    },
+    {
+      "speciesKey": "DEV_CLIP_PLESIOSAURUS",
+      "sourceSpeciesKey": "plesiosaurus",
+      "habitat": "SEA"
+    },
+    {
+      "speciesKey": "DEV_CLIP_ARCHELON",
+      "sourceSpeciesKey": "archelon",
+      "habitat": "SEA"
+    },
+    {
+      "speciesKey": "DEV_CLIP_SPINOSAURUS",
+      "sourceSpeciesKey": "spinosaurus",
+      "habitat": "LAND"
+    },
+    {
+      "speciesKey": "DEV_CLIP_LONGNECK_SPIKES",
+      "sourceSpeciesKey": "longneck-spikes",
+      "habitat": "LAND"
+    },
+    {
+      "speciesKey": "DEV_CLIP_PTERANODON",
+      "sourceSpeciesKey": "pteranodon",
+      "habitat": "AIR"
+    },
+    {
+      "speciesKey": "DEV_CLIP_MARINE_LONGJAW",
+      "sourceSpeciesKey": "marine-longjaw",
+      "habitat": "SEA"
+    },
+    {
+      "speciesKey": "DEV_CLIP_STEGOSAURUS",
+      "sourceSpeciesKey": "stegosaurus",
+      "habitat": "LAND"
+    },
+    {
+      "speciesKey": "DEV_CLIP_BRACHIOSAURUS",
+      "sourceSpeciesKey": "brachiosaurus",
+      "habitat": "LAND"
+    },
+    {
+      "speciesKey": "DEV_CLIP_PINACOSAURUS",
+      "sourceSpeciesKey": "pinacosaurus",
+      "habitat": "LAND"
+    },
+    {
+      "speciesKey": "DEV_CLIP_TYRANNOSAURUS",
+      "sourceSpeciesKey": "tyrannosaurus",
+      "habitat": "LAND"
+    },
+    {
+      "speciesKey": "DEV_CLIP_GIGANOTOSAURUS",
+      "sourceSpeciesKey": "giganotosaurus",
+      "habitat": "LAND"
+    },
+    {
+      "speciesKey": "DEV_CLIP_IGUANODON",
+      "sourceSpeciesKey": "iguanodon",
+      "habitat": "LAND"
+    },
+    {
+      "speciesKey": "DEV_CLIP_ANKYLOSAURUS",
+      "sourceSpeciesKey": "ankylosaurus",
+      "habitat": "LAND"
+    },
+    {
+      "speciesKey": "DEV_CLIP_PARASAUROLOPHUS",
+      "sourceSpeciesKey": "parasaurolophus",
+      "habitat": "LAND"
+    }
+  ]
+}

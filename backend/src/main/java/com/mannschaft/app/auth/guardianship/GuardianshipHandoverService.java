@@ -7,6 +7,7 @@ import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.auth.service.AuthPasswordResetService;
 import com.mannschaft.app.auth.service.ParentalConsentService;
+import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.family.service.CareLinkService;
 import com.mannschaft.app.payment.MembershipBillingErrorCode;
@@ -65,6 +66,7 @@ public class GuardianshipHandoverService {
     private final ParentalConsentService parentalConsentService;
     private final CareLinkService careLinkService;
     private final UserRepository userRepository;
+    private final UserRowLockService userRowLockService;
     private final AuthPasswordResetService authPasswordResetService;
     private final AuthenticationCriticalOperationGuard authenticationCriticalOperationGuard;
     private final AuditLogService auditLogService;
@@ -82,6 +84,8 @@ public class GuardianshipHandoverService {
     public void initiateHandover(Long guardianUserId, Long childUserId, String childEmail, String ipAddress) {
         // 1. acting-as（後見切替セッション）中は拒否。本操作は保護者本人の権原で行う。
         authenticationCriticalOperationGuard.assertNotActingAs();
+        // 複数usersをID昇順で先にlockし、旧managed/detachedプロフィールを後から保存しない。
+        userRowLockService.lockAll(guardianUserId, childUserId);
 
         // 2. 有効な保護者リンク検証（IDOR 防止）。リンクなし／他人の子は 403。
         boolean linked = guardianUserId != null && childUserId != null
@@ -94,7 +98,7 @@ public class GuardianshipHandoverService {
         }
 
         UserEntity child = userRepository.findById(childUserId).orElse(null);
-        if (child == null) {
+        if (child == null || child.getDeletedAt() != null) {
             // リンクはあるが子が存在しない不整合 → 情報を漏らさず 403。
             log.warn("引き継ぎ開始拒否: 子ユーザー不在 childUserId={}", childUserId);
             throw new BusinessException(MembershipBillingErrorCode.GUARDIANSHIP_LINK_NOT_FOUND);
@@ -121,8 +125,9 @@ public class GuardianshipHandoverService {
             if (userRepository.existsByEmail(requestedEmail)) {
                 throw new BusinessException(AuthErrorCode.AUTH_013);
             }
-            // users.email へ登録（既存のメール登録パターンに従い toBuilder で差し替え保存）。
-            userRepository.save(child.toBuilder().email(requestedEmail).build());
+            // lock取得後のmanaged entityを変更し、出生原入力と版をdetached mergeで巻き戻さない。
+            child.updateEmail(requestedEmail);
+            userRepository.save(child);
             targetEmail = requestedEmail;
             registeredNewEmail = true;
         }

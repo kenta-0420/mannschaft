@@ -6,12 +6,12 @@ import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.ShiftScheduleStatus;
 import com.mannschaft.app.shift.dto.ManualRemindResponse;
+import com.mannschaft.app.shift.event.ShiftPreferenceReminderKind;
+import com.mannschaft.app.shift.event.ShiftPreferenceReminderNotificationEvent;
 import com.mannschaft.app.shift.entity.ShiftRequestEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
@@ -21,7 +21,7 @@ import com.mannschaft.app.team.repository.TeamShiftSettingsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.springframework.context.MessageSource;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -37,6 +37,15 @@ import java.util.stream.Collectors;
 /**
  * シフト希望提出リマインドバッチサービス。
  * 提出期限の 48h 前・24h 前に未提出メンバーへ通知を送信する。
+ *
+ * <h2>通知のトランザクション境界（Issue #2997 / CMP-260827-1152 G6）</h2>
+ * <p>定期バッチ {@link #processReminders} は<b>非トランザクションのオーケストレータ</b>で、スケジュール 1 件ごとに
+ * {@link ShiftPreferenceReminderRunner#remindOne}（{@code REQUIRES_NEW}）で配送要求を publish する。
+ * 実通知は {@code AFTER_COMMIT} の {@code ShiftPreferenceReminderNotificationListener} が行い、
+ * 配送の前に送信済みフラグを条件付き UPDATE で先取りして重複配送を排他し、全員失敗ならフラグを戻す
+ * （次回再送）。{@code @SchedulerLock} は publish までしか守らないため、非同期配送中の再実行による重複はこの先取りで防ぐ。
+ * 通知の失敗が他スケジュールの状態を巻き戻すことはない。手動リマインド {@link #triggerManualReminder} も
+ * 業務TX内では publish のみを行う。</p>
  * TODO: Phase 4-1 で低提出率アラート（isLowSubmissionAlerted）を実装
  */
 @Slf4j
@@ -47,12 +56,13 @@ public class ShiftPreferenceReminderBatchService {
     private final ShiftScheduleRepository scheduleRepository;
     private final ShiftRequestRepository requestRepository;
     private final UserRoleRepository userRoleRepository;
-    private final NotificationHelper notificationHelper;
     private final TeamShiftSettingsRepository teamShiftSettingsRepository;
     private final AuditLogService auditLogService;
     private final StringRedisTemplate redisTemplate;
-    /** Issue #2715 CMP-055 ロットC-4: 受信者 locale に応じた通知本文の組み立て。 */
-    private final MessageSource messageSource;
+    /** 1 スケジュールぶんの項目TX（フラグ確定 + 配送要求の publish）。 */
+    private final ShiftPreferenceReminderRunner reminderRunner;
+    /** 手動リマインドの配送要求の publish 用（手動は呼び出し元TXの中で publish する）。 */
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 手動リマインド二重起動防止用 Valkey ロックの設定値。
@@ -74,7 +84,6 @@ public class ShiftPreferenceReminderBatchService {
     @BatchEndpoint(name = "shift-preference-reminder", description = "シフト希望提出 48h・24h 前のリマインドを 10 分毎に送信する")
     @Scheduled(cron = "0 */10 * * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "shift_preference_reminder", lockAtMostFor = "15m", lockAtLeastFor = "2m")
-    @Transactional
     public void processReminders() {
         LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Tokyo"));
         int sent48h = process48hReminders(now);
@@ -96,18 +105,12 @@ public class ShiftPreferenceReminderBatchService {
                     log.info("48hリマインド無効のためスキップ: teamId={}", schedule.getTeamId());
                     continue;
                 }
-                sendReminderToUnsubmittedMembers(schedule,
-                        "SHIFT_REQUEST_REMINDER_48H",
-                        "notification.shift.reminder48h.title",
-                        "シフト希望の提出期限 48 時間前です",
-                        "notification.shift.reminder48h.body",
-                        "シフト「" + schedule.getTitle() + "」の提出期限が 48 時間以内です。まだ提出していない場合はお早めに。",
-                        new Object[]{schedule.getTitle()});
-                schedule.markReminderSent48h();
-                scheduleRepository.save(schedule);
-                count++;
+                if (reminderRunner.remindOne(schedule.getId(), ShiftPreferenceReminderKind.REMINDER_48H,
+                        resolveUnsubmittedUserIds(schedule))) {
+                    count++;
+                }
             } catch (Exception e) {
-                // フラグをセットせず次回バッチで再試行
+                // 項目TXがロールバックされフラグは立たない。次回バッチで再試行（他スケジュールには影響しない）
                 log.error("48h リマインド送信失敗（スキップ）: scheduleId={}", schedule.getId(), e);
             }
         }
@@ -128,46 +131,15 @@ public class ShiftPreferenceReminderBatchService {
                     log.info("24hリマインド無効のためスキップ: teamId={}", schedule.getTeamId());
                     continue;
                 }
-                sendReminderToUnsubmittedMembers(schedule,
-                        "SHIFT_REQUEST_REMINDER",
-                        "notification.shift.reminder24h.title",
-                        "シフト希望の提出期限が明日までです",
-                        "notification.shift.reminder24h.body",
-                        "シフト「" + schedule.getTitle() + "」の提出期限は明日までです。まだ提出していない場合は今すぐご対応ください。",
-                        new Object[]{schedule.getTitle()});
-                schedule.markReminderSent();
-                scheduleRepository.save(schedule);
-                count++;
+                if (reminderRunner.remindOne(schedule.getId(), ShiftPreferenceReminderKind.REMINDER_24H,
+                        resolveUnsubmittedUserIds(schedule))) {
+                    count++;
+                }
             } catch (Exception e) {
                 log.error("24h リマインド送信失敗（スキップ）: scheduleId={}", schedule.getId(), e);
             }
         }
         return count;
-    }
-
-    /**
-     * Issue #2715 CMP-055 ロットC-4: 受信者 locale に応じて件名・本文を組み立てる。
-     * 受信者ごとの locale 一括解決（N+1 防止）は {@link NotificationHelper#notifyAllLocalized}
-     * 内部の {@code UserLocaleCache} が担う。
-     */
-    private void sendReminderToUnsubmittedMembers(ShiftScheduleEntity schedule,
-            String notificationType,
-            String titleKey, String titleDefault,
-            String bodyKey, String bodyDefault, Object[] bodyArgs) {
-        List<Long> unsubmitted = resolveUnsubmittedUserIds(schedule);
-        if (unsubmitted.isEmpty()) return;
-
-        notificationHelper.notifyAllLocalized(
-                unsubmitted, notificationType,
-                "SHIFT_SCHEDULE", schedule.getId(),
-                NotificationScopeType.TEAM, schedule.getTeamId(),
-                preferenceActionUrl(schedule), null,
-                (userId, locale) -> new NotificationHelper.LocalizedMessage(
-                        messageSource.getMessage(titleKey, null, titleDefault, locale),
-                        messageSource.getMessage(bodyKey, bodyArgs, bodyDefault, locale)));
-
-        log.info("シフト希望リマインド送信: type={}, scheduleId={}, 未提出人数={}",
-                notificationType, schedule.getId(), unsubmitted.size());
     }
 
     /**
@@ -187,11 +159,6 @@ public class ShiftPreferenceReminderBatchService {
                 .stream()
                 .filter(uid -> !submittedUserIds.contains(uid))
                 .toList();
-    }
-
-    private String preferenceActionUrl(ShiftScheduleEntity schedule) {
-        return "/my/shift-request?teamId=" + schedule.getTeamId()
-                + "&scheduleId=" + schedule.getId();
     }
 
     /**
@@ -244,23 +211,11 @@ public class ShiftPreferenceReminderBatchService {
         List<Long> unsubmitted = resolveUnsubmittedUserIds(schedule);
 
         if (!unsubmitted.isEmpty()) {
-            // Issue #2715 CMP-055 ロットC-4: 受信者 locale に応じて件名・本文を組み立てる
-            // （locale 一括解決は notifyAllLocalized 内部の UserLocaleCache が担う）。
-            notificationHelper.notifyAllLocalized(
-                    unsubmitted,
-                    "SHIFT_REQUEST_REMINDER_MANUAL",
-                    "SHIFT_SCHEDULE", schedule.getId(),
-                    NotificationScopeType.TEAM, schedule.getTeamId(),
-                    preferenceActionUrl(schedule), null,
-                    (recipientId, locale) -> new NotificationHelper.LocalizedMessage(
-                            messageSource.getMessage(
-                                    "notification.shift.manualReminder.title", null,
-                                    "シフト希望提出のリマインド", locale),
-                            messageSource.getMessage(
-                                    "notification.shift.manualReminder.body",
-                                    new Object[]{schedule.getTitle()},
-                                    "シフト「" + schedule.getTitle() + "」の希望提出のお願いです。提出期限までにご対応ください。",
-                                    locale)));
+            // 業務TX内では配送要求の publish のみ。実通知は AFTER_COMMIT の
+            // ShiftPreferenceReminderNotificationListener が行う（Issue #2997 G6）。
+            eventPublisher.publishEvent(new ShiftPreferenceReminderNotificationEvent(
+                    ShiftPreferenceReminderKind.MANUAL, schedule.getId(), schedule.getTeamId(),
+                    schedule.getTitle(), List.copyOf(unsubmitted)));
         }
 
         // 監査ログ: MANUAL_REMINDER（操作者・スケジュール・チーム・送信件数を記録）

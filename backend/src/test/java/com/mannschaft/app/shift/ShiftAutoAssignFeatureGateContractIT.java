@@ -131,6 +131,9 @@ class ShiftAutoAssignFeatureGateContractIT extends AbstractMySqlIntegrationTest 
 
     @BeforeEach
     void setUp() {
+        // transition はシフト表コントローラ経由のため、親機能フラグ（CMP-260909-2151 で全経路ゲート化）を開けておく。
+        // 本テストが固定するのは自動割当フラグの停止契約であり、親機能の停止ではない。
+        FeatureFlagTestSupport.enable(featureFlagRepository, cacheManager, "FEATURE_SHIFT_ENABLED");
         teamId = insertTeam("B1 自動割当停止 チーム");
 
         adminId = insertUser("b1-gate-admin@example.com");

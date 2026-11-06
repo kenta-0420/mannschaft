@@ -51,10 +51,29 @@ export interface TeamShellContext {
   displayName: ComputedRef<string>
   /** 自分の実効ロール名（取得失敗/未所属時は null）。 */
   roleName: Ref<string | null>
+  /**
+   * ロール解決が完了したか（成功・失敗とも true）。roleName=null は読込中・未所属・取得失敗で
+   * 同じになるため、「解決済みかつ null＝未所属」を判定する用（CMP-261013-1226）。
+   */
+  roleResolved: Ref<boolean>
+  /** ロール取得に失敗したか（roleResolved=true かつ true のときエラー表示を出す）。 */
+  roleLoadFailed: Ref<boolean>
   /** 管理権限（ADMIN / SYSTEM_ADMIN）を持つか。 */
   isAdmin: ComputedRef<boolean>
   /** 管理者または副管理者か。 */
   isAdminOrDeputy: ComputedRef<boolean>
+  /**
+   * チームの加盟操作者か（F01.2.1 8-D。ADMIN、または MANAGE_ORG_AFFILIATION を付与された者。管理者レンズ ON のときだけ）。
+   * 「所属組織」タブの表示・子ページの描画・管理 API の呼び出し可否に使う。
+   */
+  canManageOrgAffiliation: ComputedRef<boolean>
+  /** 権限グループの画面・メンバー一覧の割当を出してよいか（F01.2.1 8-D。チーム ADMIN・管理者レンズ ON のとき）。 */
+  canManagePermissionGroups: ComputedRef<boolean>
+  /**
+   * ADMIN 専用権限（MANAGE_ORG_AFFILIATION 等）を含む権限グループを作成・更新・割当できるか（BE の checkScopeAdminOnly と同じ結果）。
+   * SYSTEM_ADMIN とチーム ADMIN の兼任者は false（画面は出るが、ADMIN 専用権限が絡む操作は理由つきで不可にする）。
+   */
+  canGrantAdminOnlyPermissions: ComputedRef<boolean>
   /**
    * ScopeDashboard に渡す実効 viewerRole。
    * 管理者レンズ OFF 時は 'MEMBER'、ON 時は roleName（未確定は 'PUBLIC'）。

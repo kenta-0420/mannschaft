@@ -1,0 +1,53 @@
+{
+  "sourceHeads": {
+    "frontend": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+    "backend": "1a10ca038ffb4a215d4b1b44242ff4ef68275607"
+  },
+  "executionCompleted": true,
+  "allGoalsAchieved": false,
+  "sessions": [
+    {
+      "actor": 3,
+      "contextsCreated": 1,
+      "contextsClosed": 1,
+      "pageErrors": 0,
+      "unexpectedBusinessWrites": 0,
+      "status": "closed"
+    },
+    {
+      "actor": 4,
+      "contextsCreated": 1,
+      "contextsClosed": 1,
+      "pageErrors": 0,
+      "unexpectedBusinessWrites": 0,
+      "status": "closed"
+    },
+    {
+      "actor": 5,
+      "contextsCreated": 1,
+      "contextsClosed": 1,
+      "pageErrors": 0,
+      "unexpectedBusinessWrites": 0,
+      "status": "closed"
+    }
+  ],
+  "b0PR": 4188,
+  "b0Head": "bdf1d63866de8b7a678eb44b59084393db00fdca",
+  "b0Adopted": true,
+  "cumulative": {
+    "personas": 25,
+    "journeys": 25,
+    "observations": 54
+  },
+  "globalValidator": {
+    "passed": false,
+    "line": 46,
+    "cause": "既存GitHub snapshot参照集合不一致"
+  },
+  "overlayLimitedValidation": "passed",
+  "separateExistingDefect": "CMP-261028-0513",
+  "detailUsabilityPassedClaimed": false,
+  "coveragePassed": false,
+  "acceptedScope": "0660の独立探索実施完了。全目的達成とは区別。",
+  "publicEvidence": "docs/evidence/october-fresh3-20261028/resident-observations.json"
+}

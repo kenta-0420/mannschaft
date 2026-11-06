@@ -1,0 +1,65 @@
+{
+  "sourceHead": "22844f91b189ab22596e41ee0a5d767418b8e3b2",
+  "status": "observed-unverified",
+  "trusted": false,
+  "independentLoginCount": 1,
+  "freshDomUsed": true,
+  "actualImagesViewedByResident": true,
+  "closeRpcSucceeded": true,
+  "osProcessExitIndependentlyVerified": false,
+  "rootFinalAdjudication": "exploration-performed-with-limits",
+  "sourceClassification": "既存UIの観測。今回FE/DTO差分はなく0648新規回帰とは断定しない。",
+  "personaArchetype": "隙間を探す一般管理者",
+  "purpose": "担当が変わった依頼と成立可能な依頼を処理し、同僚を壊さず結果を判断する",
+  "purposeOutcome": "partial-achieved",
+  "performed": [
+    "不整合の依頼を1回承認しHTTP409・状態/担当不変を確認",
+    "成立可能な依頼を1回承認しHTTP200・申請者から受諾者への置換と同僚保持を確認",
+    "一覧とboardをfresh DOM・実画像で再表示"
+  ],
+  "notExecuted": [
+    "拒否理由を画面だけで確定すること",
+    "追加の承認・却下再試行"
+  ],
+  "resolveResults": [
+    {
+      "displayTime": "13:00",
+      "semanticCase": "stale-current-assignment",
+      "httpStatus": 409,
+      "stateAndAssignmentUnchanged": true
+    },
+    {
+      "displayTime": "15:00",
+      "semanticCase": "valid-replacement",
+      "httpStatus": 200,
+      "requesterReplacedByAccepter": true,
+      "coworkerRetained": true
+    }
+  ],
+  "measurements": {
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "approveButton": {
+      "widthPx": 72,
+      "heightPx": 35
+    },
+    "horizontalOverflowObserved": false
+  },
+  "observations": [
+    "一覧に日時・氏名・現在担当・boardへの直接リンクがなく、fixture対応情報で照合した。",
+    "409の表示は「処理に失敗しました」で、元担当変更の説明や再確認先を判断できなかった。",
+    "desktop承認高さ35px。氏名ellipsisは意図的省略の可能性があり不具合断定しない。"
+  ],
+  "limitations": [
+    "409 alertはDOM時点では存在し画像取得時には消失。",
+    "DBでの全対象不変証明は住民報告の射程外。"
+  ],
+  "browserContextClosureIndependentlyVerified": true,
+  "remainingDedicatedBrowserProcesses": 0,
+  "processLimit": "browser/context閉鎖とbrowser process不存在を確認。各bridge/node processの終了とは同一視しない。",
+  "publicImages": [
+    "docs/evidence/CMP-261021-0648/images/resident-admin-after-board.png"
+  ]
+}

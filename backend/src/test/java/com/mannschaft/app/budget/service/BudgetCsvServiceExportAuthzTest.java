@@ -96,7 +96,7 @@ class BudgetCsvServiceExportAuthzTest {
         given(fiscalYearService.findById(FISCAL_YEAR_ID)).willReturn(fiscalYear());
         doNothing().when(accessControlService).checkAdminOrAbove(eq(ACTOR_ID), eq(SCOPE_ID), eq(SCOPE_TYPE));
         given(transactionRepository.findByFiscalYearId(FISCAL_YEAR_ID)).willReturn(Collections.emptyList());
-        given(categoryService.listFlatByFiscalYear(FISCAL_YEAR_ID)).willReturn(Collections.emptyList());
+        given(categoryService.listHistoricalByFiscalYear(FISCAL_YEAR_ID)).willReturn(Collections.emptyList());
 
         assertThatCode(() -> service.export(FISCAL_YEAR_ID)).doesNotThrowAnyException();
     }

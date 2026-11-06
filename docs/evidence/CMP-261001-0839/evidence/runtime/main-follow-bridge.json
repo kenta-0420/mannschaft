@@ -1,0 +1,172 @@
+{
+    "cmp":  "CMP-261001-0839",
+    "pr":  4127,
+    "verifiedSource":  "d969c21a5ef184112bdd50957e20d6e7f73f4b1a",
+    "followedSource":  "819bfcdbeadcc0d13d3c246f7de5fea60c796a56",
+    "mergedMain":  "d65e6e0b69b564df010732fc750ef34ab270a9fe",
+    "mainBranchPoint":  "cd14cf155f90e78d8709135bb08765f9bb450478",
+    "conflicts":  [
+
+                  ],
+    "objects":  [
+                    {
+                        "path":  "backend",
+                        "before":  "7040e7e33604c171831ffb4932ead6952fae88a0",
+                        "after":  "7040e7e33604c171831ffb4932ead6952fae88a0",
+                        "unchanged":  true
+                    },
+                    {
+                        "path":  ".github/workflows",
+                        "before":  "7bf380b86e06374ab2b8508a785bd88576e8fbe1",
+                        "after":  "7bf380b86e06374ab2b8508a785bd88576e8fbe1",
+                        "unchanged":  true
+                    },
+                    {
+                        "path":  "backend/build.gradle.kts",
+                        "before":  "57ecdd6cf700c07a2faef9601fb51519ad9ec229",
+                        "after":  "57ecdd6cf700c07a2faef9601fb51519ad9ec229",
+                        "unchanged":  true
+                    },
+                    {
+                        "path":  "backend/settings.gradle.kts",
+                        "before":  "b1870e72efaad03c379b37f3180fe34b84799315",
+                        "after":  "b1870e72efaad03c379b37f3180fe34b84799315",
+                        "unchanged":  true
+                    },
+                    {
+                        "path":  "backend/gradle/wrapper/gradle-wrapper.properties",
+                        "before":  "aaaabb3cb9fe5724e930d5a7f25f84afb29cfb37",
+                        "after":  "aaaabb3cb9fe5724e930d5a7f25f84afb29cfb37",
+                        "unchanged":  true
+                    },
+                    {
+                        "path":  "backend/gradlew",
+                        "before":  "b5955f089916209e68b2d6dc5e1ed23d4607d642",
+                        "after":  "b5955f089916209e68b2d6dc5e1ed23d4607d642",
+                        "unchanged":  true
+                    },
+                    {
+                        "path":  "frontend/package.json",
+                        "before":  "51ce19ab6534054c8441e60c0e109e5dd6161bbe",
+                        "after":  "51ce19ab6534054c8441e60c0e109e5dd6161bbe",
+                        "unchanged":  true
+                    },
+                    {
+                        "path":  "frontend/package-lock.json",
+                        "before":  "01d6dfb363d9b14d0be109f666fbd9abc5e2b856",
+                        "after":  "01d6dfb363d9b14d0be109f666fbd9abc5e2b856",
+                        "unchanged":  true
+                    },
+                    {
+                        "path":  "frontend/nuxt.config.ts",
+                        "before":  "3410e49e6be77b7c54b1be3878e44c4d36dd63f9",
+                        "after":  "3410e49e6be77b7c54b1be3878e44c4d36dd63f9",
+                        "unchanged":  true
+                    },
+                    {
+                        "path":  "backend/src/main/java/com/mannschaft/app/cspreport/controller/CspReportController.java",
+                        "before":  "27f5b1df95925d7ac570745c324e6a4345a409f2",
+                        "after":  "27f5b1df95925d7ac570745c324e6a4345a409f2",
+                        "unchanged":  true
+                    },
+                    {
+                        "path":  "backend/src/test/java/com/mannschaft/app/cspreport/CspReportContentTypeContractIT.java",
+                        "before":  "8fad419586fee127d6c30e4ef1688caed5802994",
+                        "after":  "8fad419586fee127d6c30e4ef1688caed5802994",
+                        "unchanged":  true
+                    },
+                    {
+                        "path":  "frontend/tests/e2e/real/csp-report-content-types-real.spec.ts",
+                        "before":  "744d7bf1f772c04286c9e14bc338abea530f35aa",
+                        "after":  "744d7bf1f772c04286c9e14bc338abea530f35aa",
+                        "unchanged":  true
+                    }
+                ],
+    "allInputsUnchanged":  true,
+    "deltaPaths":  [
+                       "docs/evidence/CMP-261021-0648.json",
+                       "docs/evidence/CMP-261021-0648.md",
+                       "docs/evidence/CMP-261021-0648/automated-summary.json",
+                       "docs/evidence/CMP-261021-0648/ci-summary.json",
+                       "docs/evidence/CMP-261021-0648/completion-gate-validation.json",
+                       "docs/evidence/CMP-261021-0648/exploratory-summary.json",
+                       "docs/evidence/CMP-261021-0648/images/resident-accepter-mobile360.png",
+                       "docs/evidence/CMP-261021-0648/images/resident-accepter-mobile390.png",
+                       "docs/evidence/CMP-261021-0648/images/resident-admin-after-board.png",
+                       "docs/evidence/CMP-261021-0648/images/resident-requester-card.png",
+                       "docs/evidence/CMP-261021-0648/images/resident-requester-form.png",
+                       "docs/evidence/CMP-261021-0648/real-summary.json",
+                       "docs/evidence/CMP-261021-0648/red-green-summary.json",
+                       "docs/evidence/CMP-261021-0648/resident-accepter-summary.json",
+                       "docs/evidence/CMP-261021-0648/resident-admin-summary.json",
+                       "docs/evidence/CMP-261021-0648/resident-observations.overlay.json",
+                       "docs/evidence/CMP-261021-0648/resident-requester-summary.json",
+                       "docs/evidence/CMP-261021-0648/review-summary.json",
+                       "docs/evidence/CMP-261021-0648/source-evidence-manifest.json",
+                       "docs/evidence/CMP-261022-0338.json",
+                       "docs/evidence/CMP-261022-0338/b0-indexeddb-integration.json",
+                       "docs/evidence/CMP-261022-0338/b0-indexeddb-integration.md",
+                       "docs/evidence/CMP-261022-0338/b0-insights-stage-b0.png",
+                       "docs/evidence/CMP-261022-0338/b0-insights-stage-b2.png",
+                       "docs/evidence/CMP-261022-0338/e202/limited/360.png",
+                       "docs/evidence/CMP-261022-0338/e202/limited/390.png",
+                       "docs/evidence/CMP-261022-0338/e202/limited/green.stderr.log",
+                       "docs/evidence/CMP-261022-0338/e202/limited/green.stdout.log",
+                       "docs/evidence/CMP-261022-0338/e202/limited/red.stderr.log",
+                       "docs/evidence/CMP-261022-0338/e202/limited/red.stdout.log",
+                       "docs/evidence/CMP-261022-0338/e202/limited/restoration.json",
+                       "docs/evidence/CMP-261022-0338/e202/main-follow.json",
+                       "docs/evidence/CMP-261022-0338/e202/manifest.json",
+                       "docs/evidence/CMP-261022-0338/e202/real-execution.json",
+                       "docs/evidence/CMP-261022-0338/e202/real.stderr.log",
+                       "docs/evidence/CMP-261022-0338/e202/real.stdout.log",
+                       "docs/evidence/CMP-261022-0338/e202/real/ASCII2000-360.png",
+                       "docs/evidence/CMP-261022-0338/e202/real/URL2000-360.png",
+                       "docs/evidence/CMP-261022-0338/e202/real/tail-metrics.json",
+                       "docs/evidence/CMP-261022-0338/e202/real/改行空行-360.png",
+                       "docs/evidence/CMP-261022-0338/e202/runtime.json",
+                       "docs/evidence/CMP-261022-0338/e202/summary.json",
+                       "docs/evidence/CMP-261022-0338/e202/tail-ready.stderr.log",
+                       "docs/evidence/CMP-261022-0338/e202/tail-ready.stdout.log",
+                       "docs/evidence/CMP-261022-0338/e202/warmup-readiness.json",
+                       "docs/evidence/CMP-261022-0338/existing-overlay-archive.json",
+                       "docs/evidence/CMP-261022-0338/overlay-validation.md",
+                       "docs/evidence/CMP-261022-0338/real-03be.md",
+                       "docs/evidence/CMP-261022-0338/real.md",
+                       "docs/evidence/CMP-261022-0338/real/ASCII-tail-360.png",
+                       "docs/evidence/CMP-261022-0338/real/ASCII2000-360.png",
+                       "docs/evidence/CMP-261022-0338/real/URL2000-360.png",
+                       "docs/evidence/CMP-261022-0338/real/tail-metrics.json",
+                       "docs/evidence/CMP-261022-0338/regressions.md",
+                       "docs/evidence/CMP-261022-0338/resident-overlay.json",
+                       "docs/evidence/CMP-261022-0338/residents/admin.md",
+                       "docs/evidence/CMP-261022-0338/residents/member.md",
+                       "docs/evidence/CMP-261022-0338/residents/organization-admin.md",
+                       "docs/evidence/CMP-261022-0338/residents/overview.md",
+                       "docs/evidence/CMP-261022-0338/residents/screenshots/admin-08-memo-form-360.png",
+                       "docs/evidence/CMP-261022-0338/residents/screenshots/admin-11-memo-history-360.png",
+                       "docs/evidence/CMP-261022-0338/residents/screenshots/member-16-csp-public-current.png",
+                       "docs/evidence/CMP-261022-0338/residents/screenshots/org-08-org-360.png",
+                       "docs/evidence/CMP-261022-0338/selected-artifacts.json",
+                       "docs/features/F12.5_frontend_error_tracking.md",
+                       "docs/prototypes/beta-inventory-board-data.js",
+                       "docs/prototypes/beta-inventory-board-github-status.json",
+                       "docs/prototypes/beta-inventory-board-github.json",
+                       "docs/task-list.md",
+                       "frontend/app/components/systemAdmin/errorReport/ErrorReportTimelineView.vue",
+                       "frontend/scripts/verify-error-report-timeline-wrap.mjs",
+                       "frontend/tests/e2e/real/admin/error-report-timeline-wrap.real.spec.ts"
+                   ],
+    "validation":  {
+                       "gitDiffCheck":  "pass",
+                       "localRebuild":  "実施せず。backend全tree・workflow・build input・CSP IT/spec object一致により既存d969の証跡を橋渡し",
+                       "ci":  "d969 required 3チェック成功を殿が独立確認。新head CIは別監視",
+                       "real":  "既存d969 BEとe202 FEの専有実機4+1成功は殿確認。main側T CSS変更はT戦役証跡に対応、CSP target spec不変"
+                   },
+    "artifact":  {
+                     "source":  "d969c21a5ef184112bdd50957e20d6e7f73f4b1a",
+                     "sha256":  "906d0e6a8a6bf758d5544972b60bb005c8f0e2b03e85e698cef36243dfae498d",
+                     "receipt":  "/tmp/cmp2610010839-latestmain-bootjar-20261026/receipt.json"
+                 },
+    "runtime":  "停止済み、復旧・再buildは行わない"
+}

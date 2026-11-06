@@ -317,7 +317,7 @@ class TournamentEntryTemplateServiceTest {
 
             UUID templateId = UUID.randomUUID();
             TournamentEntryTemplateEntity template = buildTemplate(TEAM_ID, "適用テンプレート");
-            given(templateRepository.findById(templateId)).willReturn(Optional.of(template));
+            given(templateRepository.findByIdAndTeamIdAndDeletedAtIsNull(templateId, TEAM_ID)).willReturn(Optional.of(template));
 
             // テンプレートメンバー: 20名
             List<TournamentEntryTemplateMemberEntity> templateMembers = new java.util.ArrayList<>();
@@ -367,7 +367,7 @@ class TournamentEntryTemplateServiceTest {
 
             UUID templateId = UUID.randomUUID();
             TournamentEntryTemplateEntity template = buildTemplate(TEAM_ID, "冪等テンプレート");
-            given(templateRepository.findById(templateId)).willReturn(Optional.of(template));
+            given(templateRepository.findByIdAndTeamIdAndDeletedAtIsNull(templateId, TEAM_ID)).willReturn(Optional.of(template));
 
             TournamentEntryTemplateMemberEntity member = TournamentEntryTemplateMemberEntity.builder()
                     .templateId(templateId).userId(USER_ID).sortOrder((short) 0).build();
@@ -406,7 +406,8 @@ class TournamentEntryTemplateServiceTest {
             given(tournamentRepository.findById(TOURNAMENT_ID)).willReturn(Optional.of(tournament));
 
             UUID templateId = UUID.randomUUID();
-            given(templateRepository.findById(templateId)).willReturn(Optional.empty());
+            given(templateRepository.findByIdAndTeamIdAndDeletedAtIsNull(templateId, TEAM_ID))
+                    .willReturn(Optional.empty());
 
             ApplyTemplateRequest req = ApplyTemplateRequest.builder()
                     .templateId(templateId)
@@ -421,28 +422,32 @@ class TournamentEntryTemplateServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 別チームのテンプレートを apply → TOUR_028")
-        void 別チームのテンプレートをapplyはエラー() {
+        @DisplayName("異常系: 別チームのテンプレートを apply → 存在しない場合と同じ ENTRY_TEMPLATE_NOT_FOUND（存在オラクル防止）")
+        void 別チームのテンプレートをapplyは存在しない場合と同じエラー() {
             // given
             TournamentEntity tournament = buildTournament(TournamentStatus.OPEN);
             setupIDORMocksForApply(tournament);
             given(tournamentRepository.findById(TOURNAMENT_ID)).willReturn(Optional.of(tournament));
 
             UUID templateId = UUID.randomUUID();
-            // テンプレートは別チーム（TEAM_ID + 1）のもの
+            // テンプレートは別チーム（TEAM_ID + 1）のものとして実在する。
+            // 旧実装（findById → チーム不一致で 403 TOUR_028）だとここで MISMATCH になり red。
             TournamentEntryTemplateEntity wrongTeamTemplate = buildTemplate(TEAM_ID + 1L, "他チームテンプレート");
-            given(templateRepository.findById(templateId)).willReturn(Optional.of(wrongTeamTemplate));
+            lenient().when(templateRepository.findById(templateId)).thenReturn(Optional.of(wrongTeamTemplate));
+            // 新実装は参加チームで束縛して引くため、他チームのテンプレートは「存在しない」と同じ結果になる
+            given(templateRepository.findByIdAndTeamIdAndDeletedAtIsNull(templateId, TEAM_ID))
+                    .willReturn(Optional.empty());
 
             ApplyTemplateRequest req = ApplyTemplateRequest.builder()
                     .templateId(templateId)
                     .build();
 
-            // when & then
+            // when & then: ステータスだけでなくエラーコードも不在時と同一（TOUR_024）
             assertThatThrownBy(() -> service.applyTemplate(
                     ORG_ID, TOURNAMENT_ID, DIVISION_ID, PARTICIPANT_ID, req, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(TournamentErrorCode.TEMPLATE_TEAM_MISMATCH);
+                    .isEqualTo(TournamentErrorCode.ENTRY_TEMPLATE_NOT_FOUND);
         }
 
         @Test
@@ -476,7 +481,7 @@ class TournamentEntryTemplateServiceTest {
 
             UUID templateId = UUID.randomUUID();
             TournamentEntryTemplateEntity template = buildTemplate(TEAM_ID, "テンプレート");
-            given(templateRepository.findById(templateId)).willReturn(Optional.of(template));
+            given(templateRepository.findByIdAndTeamIdAndDeletedAtIsNull(templateId, TEAM_ID)).willReturn(Optional.of(template));
 
             // テンプレートには2名（USER_ID と 999L）
             List<TournamentEntryTemplateMemberEntity> templateMembers = List.of(

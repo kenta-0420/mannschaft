@@ -1,0 +1,635 @@
+{
+  "reviewedAtUtc": "2026-10-29T01:57:33.9538104Z",
+  "owner": "cmp2116r-e2fea90be1",
+  "sourceHead": "ac49b5af784b79bade786ac0c82b9bb3822289f3",
+  "evidence": "/home/kenta/verification-evidence/CMP-260908-2116-revalidation-20261029-08",
+  "fixedUiPassed": true,
+  "newConsultationCreated": true,
+  "acceptHttp": 200,
+  "approveHttp": 200,
+  "approvedAssignedAliases": [
+    "B",
+    "C"
+  ],
+  "requesterAAbsent": true,
+  "threeActorMyShiftReloadPassesEach": 2,
+  "rejectAndCancelSlotHistoryHashesUnchanged": true,
+  "uiBoundaryRows": 8,
+  "negativeApiSupplementRows": 8,
+  "boundaryFourTablesUnchanged": true,
+  "reasonLeaks": 0,
+  "uiBoundaryWrites": 0,
+  "fixedOwnedDescendantsRemaining": 0,
+  "anonymousScheduleUiGet": "no-ui-get-observed",
+  "anonymousApi401": "separate-api-status-only-body-non-json",
+  "known0651UxUnfixed": true,
+  "independentResidentExecutionClaimed": false,
+  "wholeRunPassedClaimed": false,
+  "startupErrorHistory": "Gateway設定1件・RequestLoggingFilter処理時間閾値ERROR1件・SQL制約7件・TodoListener1件。実duration/statusと親影響は未判定",
+  "visualInspection": "rootが新run08採取の承認後ボード(B/CありAなし)と他チームgeneric error非露出2PNGを目視",
+  "originalResultsUnchanged": true,
+  "selectedPngSha256": {
+    "boundary-X-team.png": "463a4571592edabee2f2bc5a37a25468202cfc6b8a7e98663f737c05c56ee7e4",
+    "approved-board-reload.png": "23d0a4d911617d14c95673385ca0060ad60f6cbe398c3695cd34c30ad8d34cf1"
+  },
+  "actualSafeObservation": {
+    "sourcePrivatePath": "/home/kenta/verification-evidence/CMP-260908-2116-revalidation-20261029-08/fixed-ui-safe.json",
+    "sourceSha256": "6d2e3fa0e1071a8f0c71663615769f64ac8d79e6ad5157b594b3f1756a59905d",
+    "owner": "cmp2116r-e2fea90be1",
+    "sourceHead": "ac49b5af784b79bade786ac0c82b9bb3822289f3",
+    "passed": true,
+    "steps": [
+      {
+        "actor": "B",
+        "operation": "accept",
+        "selector": "swap-accept-1",
+        "httpStatus": 200,
+        "status": "ACCEPTED"
+      },
+      {
+        "actor": "D",
+        "operation": "approve",
+        "selector": "swap-approve-1",
+        "httpStatus": 200,
+        "status": "APPROVED"
+      },
+      {
+        "actor": "D",
+        "operation": "board-confirm-resident-slot-B-C-A-absent",
+        "slotId": 6,
+        "date": "2026/10/30",
+        "time": "18:00:00〜19:00:00",
+        "rowCount": 1,
+        "BVisible": true,
+        "CVisible": true,
+        "AAbsent": true,
+        "uiVerified": true
+      },
+      {
+        "actor": "A",
+        "operation": "my-shift-reload",
+        "slotId": 6,
+        "uiVerified": true,
+        "expectedPresent": false,
+        "passes": 2
+      },
+      {
+        "actor": "B",
+        "operation": "my-shift-reload",
+        "slotId": 6,
+        "uiVerified": true,
+        "expectedPresent": true,
+        "passes": 2
+      },
+      {
+        "actor": "C",
+        "operation": "my-shift-reload",
+        "slotId": 6,
+        "uiVerified": true,
+        "expectedPresent": true,
+        "passes": 2
+      },
+      {
+        "actor": "B",
+        "operation": "accept",
+        "selector": "swap-accept-2",
+        "httpStatus": 200,
+        "status": "ACCEPTED"
+      },
+      {
+        "actor": "D",
+        "operation": "reject",
+        "selector": "swap-reject-2",
+        "httpStatus": 200,
+        "status": "REJECTED"
+      },
+      {
+        "actor": "A",
+        "operation": "cancel",
+        "httpStatus": 204,
+        "uiVerified": true
+      }
+    ],
+    "submissions": [
+      {
+        "count": 1,
+        "slotId": 6,
+        "recipientMode": "SPECIFIC",
+        "defaultModeVerified": true,
+        "exactReasonVerified": true
+      },
+      {
+        "count": 1,
+        "slotId": 1,
+        "recipientMode": "SPECIFIC",
+        "defaultModeVerified": true,
+        "exactReasonVerified": true
+      },
+      {
+        "count": 1,
+        "slotId": 2,
+        "recipientMode": "SPECIFIC",
+        "defaultModeVerified": true,
+        "exactReasonVerified": true
+      }
+    ],
+    "databaseBefore": {
+      "requests": [
+        {
+          "id": 1,
+          "slotId": 6,
+          "status": "PENDING",
+          "requesterId": 3,
+          "accepterId": null,
+          "resolvedBy": null,
+          "recipientMode": "SPECIFIC",
+          "isOpenCall": 0
+        }
+      ],
+      "assignedIds": [
+        3,
+        5
+      ],
+      "assignmentHistoryRowCount": 2
+    },
+    "databaseAfter": {
+      "requests": [
+        {
+          "id": 1,
+          "slotId": 6,
+          "status": "APPROVED",
+          "requesterId": 3,
+          "accepterId": 4,
+          "resolvedBy": 6,
+          "recipientMode": "SPECIFIC",
+          "isOpenCall": 0
+        }
+      ],
+      "assignedIds": [
+        4,
+        5
+      ],
+      "assignmentHistoryRowCount": 3
+    },
+    "preservedC": true,
+    "actorHistoryBeforeSha256": "5a7b2c727b30e2d1d3f516c39cffcc4fe9b9b595c1b71c53cff473e7ce3a9fdf",
+    "actorHistoryAfterSha256": "f4c6ee6289f0b0fe3e81aff1da8fea132b2c0ee6ea7953b10f0e028143fab6cd",
+    "unrelatedBeforeHashes": {
+      "slots": "1b13601c9c21b3accd830fe5fabd4c9abcc5307feec5e31e4281ef62ac207f73",
+      "assignments": "97fb0a1db7ce3779f68c79aaa092e03233c54bfd8f5b71bff9425b313631b599"
+    },
+    "unrelatedAfterHashes": {
+      "slots": "1b13601c9c21b3accd830fe5fabd4c9abcc5307feec5e31e4281ef62ac207f73",
+      "assignments": "97fb0a1db7ce3779f68c79aaa092e03233c54bfd8f5b71bff9425b313631b599"
+    },
+    "changeReviewHashBefore": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "changeReviewHashAfter": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "terminalCases": [
+      {
+        "operation": "reject",
+        "requestId": 2,
+        "slotId": 1,
+        "status": "REJECTED",
+        "slotBeforeSha256": "660931db267264bb354e459d20d81a5f6b44acc132293b0ddd730117bcdc2b31",
+        "slotAfterSha256": "660931db267264bb354e459d20d81a5f6b44acc132293b0ddd730117bcdc2b31",
+        "historyBeforeSha256": "19eb4b685f33f865135fbbd23578bdbc33064e1858d735a60f6a20ef6f81e8e4",
+        "historyAfterSha256": "19eb4b685f33f865135fbbd23578bdbc33064e1858d735a60f6a20ef6f81e8e4",
+        "unchanged": true
+      },
+      {
+        "operation": "cancel",
+        "requestId": 3,
+        "slotId": 2,
+        "status": "CANCELLED",
+        "slotBeforeSha256": "6ad1b162f823ae3b71bce433eb9445556a98e4b691579bdeeeece72d734144a2",
+        "slotAfterSha256": "6ad1b162f823ae3b71bce433eb9445556a98e4b691579bdeeeece72d734144a2",
+        "historyBeforeSha256": "1f555e34d6e678c6420baf4efd1817eacbbcd46300aa831697dffba53bd3f67c",
+        "historyAfterSha256": "1f555e34d6e678c6420baf4efd1817eacbbcd46300aa831697dffba53bd3f67c",
+        "unchanged": true
+      }
+    ],
+    "uiBoundaryRows": [
+      {
+        "actor": "C",
+        "routeKind": "team",
+        "url": "/teams/cmp2116r-e2fea90be1-primary/shifts",
+        "finalPath": "/teams/cmp2116r-e2fea90be1-primary/shifts",
+        "uiOutcome": "explicit-empty-list",
+        "loadingGoneAfterUiResponses": false,
+        "detailBodyHidden": null,
+        "permanentRejectionVisible": false,
+        "toastObserved": false,
+        "toastObservationWindow": "after-navigation-and-loading",
+        "toastHistoryComplete": false,
+        "blankDetail": false,
+        "known0651UxUnfixed": true,
+        "uxImprovementClaimed": false,
+        "reasonLeakCount": 0,
+        "swapControlCount": 0,
+        "uiWriteCount": 0,
+        "uiVerified": true,
+        "uiReads": null,
+        "documentHttpStatus": null,
+        "documentHttpStatusMeasured": false,
+        "literalDomMessageCaptured": false
+      },
+      {
+        "actor": "C",
+        "routeKind": "schedule",
+        "url": "/shift/1",
+        "finalPath": "/shift/1",
+        "uiOutcome": "allowed-schedule-no-swap-controls",
+        "loadingGoneAfterUiResponses": true,
+        "detailBodyHidden": null,
+        "permanentRejectionVisible": false,
+        "toastObserved": false,
+        "toastObservationWindow": "after-navigation-and-loading",
+        "toastHistoryComplete": false,
+        "blankDetail": false,
+        "known0651UxUnfixed": true,
+        "uxImprovementClaimed": false,
+        "reasonLeakCount": 0,
+        "swapControlCount": 0,
+        "uiWriteCount": 0,
+        "uiVerified": true,
+        "uiReads": {
+          "measurement": "ui-response-observed",
+          "responses": [
+            {
+              "kind": "schedule",
+              "status": 200,
+              "bodyCompleted": true,
+              "code": null
+            },
+            {
+              "kind": "slots",
+              "status": 200,
+              "bodyCompleted": true,
+              "code": null
+            }
+          ]
+        },
+        "documentHttpStatus": null,
+        "documentHttpStatusMeasured": false,
+        "literalDomMessageCaptured": false
+      },
+      {
+        "actor": "S3",
+        "routeKind": "team",
+        "url": "/teams/cmp2116r-e2fea90be1-primary/shifts",
+        "finalPath": "/teams/cmp2116r-e2fea90be1-primary/shifts",
+        "uiOutcome": "error-page",
+        "loadingGoneAfterUiResponses": false,
+        "detailBodyHidden": null,
+        "permanentRejectionVisible": true,
+        "toastObserved": false,
+        "toastObservationWindow": "after-navigation-and-loading",
+        "toastHistoryComplete": false,
+        "blankDetail": false,
+        "known0651UxUnfixed": true,
+        "uxImprovementClaimed": false,
+        "reasonLeakCount": 0,
+        "swapControlCount": 0,
+        "uiWriteCount": 0,
+        "uiVerified": true,
+        "uiReads": null,
+        "documentHttpStatus": null,
+        "documentHttpStatusMeasured": false,
+        "literalDomMessageCaptured": false
+      },
+      {
+        "actor": "S3",
+        "routeKind": "schedule",
+        "url": "/shift/1",
+        "finalPath": "/shift/1",
+        "uiOutcome": "detail-hidden-no-permanent-rejection",
+        "loadingGoneAfterUiResponses": true,
+        "detailBodyHidden": true,
+        "permanentRejectionVisible": false,
+        "toastObserved": true,
+        "toastObservationWindow": "after-navigation-and-loading",
+        "toastHistoryComplete": false,
+        "blankDetail": true,
+        "known0651UxUnfixed": true,
+        "uxImprovementClaimed": false,
+        "reasonLeakCount": 0,
+        "swapControlCount": 0,
+        "uiWriteCount": 0,
+        "uiVerified": true,
+        "uiReads": {
+          "measurement": "ui-response-observed",
+          "responses": [
+            {
+              "kind": "slots",
+              "status": 404,
+              "bodyCompleted": true,
+              "code": "SHIFT_001"
+            },
+            {
+              "kind": "schedule",
+              "status": 404,
+              "bodyCompleted": true,
+              "code": "SHIFT_001"
+            }
+          ]
+        },
+        "documentHttpStatus": null,
+        "documentHttpStatusMeasured": false,
+        "literalDomMessageCaptured": false
+      },
+      {
+        "actor": "X",
+        "routeKind": "team",
+        "url": "/teams/cmp2116r-e2fea90be1-primary/shifts",
+        "finalPath": "/teams/cmp2116r-e2fea90be1-primary/shifts",
+        "uiOutcome": "error-page",
+        "loadingGoneAfterUiResponses": false,
+        "detailBodyHidden": null,
+        "permanentRejectionVisible": true,
+        "toastObserved": false,
+        "toastObservationWindow": "after-navigation-and-loading",
+        "toastHistoryComplete": false,
+        "blankDetail": false,
+        "known0651UxUnfixed": true,
+        "uxImprovementClaimed": false,
+        "reasonLeakCount": 0,
+        "swapControlCount": 0,
+        "uiWriteCount": 0,
+        "uiVerified": true,
+        "uiReads": null,
+        "documentHttpStatus": null,
+        "documentHttpStatusMeasured": false,
+        "literalDomMessageCaptured": false
+      },
+      {
+        "actor": "X",
+        "routeKind": "schedule",
+        "url": "/shift/1",
+        "finalPath": "/shift/1",
+        "uiOutcome": "detail-hidden-no-permanent-rejection",
+        "loadingGoneAfterUiResponses": true,
+        "detailBodyHidden": true,
+        "permanentRejectionVisible": false,
+        "toastObserved": true,
+        "toastObservationWindow": "after-navigation-and-loading",
+        "toastHistoryComplete": false,
+        "blankDetail": true,
+        "known0651UxUnfixed": true,
+        "uxImprovementClaimed": false,
+        "reasonLeakCount": 0,
+        "swapControlCount": 0,
+        "uiWriteCount": 0,
+        "uiVerified": true,
+        "uiReads": {
+          "measurement": "ui-response-observed",
+          "responses": [
+            {
+              "kind": "slots",
+              "status": 404,
+              "bodyCompleted": true,
+              "code": "SHIFT_001"
+            },
+            {
+              "kind": "schedule",
+              "status": 404,
+              "bodyCompleted": true,
+              "code": "SHIFT_001"
+            }
+          ]
+        },
+        "documentHttpStatus": null,
+        "documentHttpStatusMeasured": false,
+        "literalDomMessageCaptured": false
+      },
+      {
+        "actor": "anonymous",
+        "routeKind": "team",
+        "url": "/teams/cmp2116r-e2fea90be1-primary/shifts",
+        "finalPath": "/login",
+        "uiOutcome": "login-redirect",
+        "loadingGoneAfterUiResponses": false,
+        "detailBodyHidden": null,
+        "permanentRejectionVisible": false,
+        "toastObserved": false,
+        "toastObservationWindow": "after-navigation-and-loading",
+        "toastHistoryComplete": false,
+        "blankDetail": false,
+        "known0651UxUnfixed": true,
+        "uxImprovementClaimed": false,
+        "reasonLeakCount": 0,
+        "swapControlCount": 0,
+        "uiWriteCount": 0,
+        "uiVerified": true,
+        "uiReads": null,
+        "documentHttpStatus": null,
+        "documentHttpStatusMeasured": false,
+        "literalDomMessageCaptured": false
+      },
+      {
+        "actor": "anonymous",
+        "routeKind": "schedule",
+        "url": "/shift/1",
+        "finalPath": "/login",
+        "uiOutcome": "login-redirect",
+        "loadingGoneAfterUiResponses": false,
+        "detailBodyHidden": null,
+        "permanentRejectionVisible": false,
+        "toastObserved": false,
+        "toastObservationWindow": "after-navigation-and-loading",
+        "toastHistoryComplete": false,
+        "blankDetail": false,
+        "known0651UxUnfixed": true,
+        "uxImprovementClaimed": false,
+        "reasonLeakCount": 0,
+        "swapControlCount": 0,
+        "uiWriteCount": 0,
+        "uiVerified": true,
+        "uiReads": {
+          "measurement": "no-ui-get-observed",
+          "responses": []
+        },
+        "documentHttpStatus": null,
+        "documentHttpStatusMeasured": false,
+        "literalDomMessageCaptured": false
+      }
+    ],
+    "negativeApiRows": [
+      {
+        "actor": "C",
+        "operation": "list",
+        "status": 200,
+        "code": null,
+        "codeClassification": "absent",
+        "bodyCompleted": true,
+        "bodyJsonValid": true,
+        "dataIsEmptyArray": true,
+        "reasonLeakCount": 0,
+        "validated": true,
+        "uiOperation": false,
+        "codeValidation": "strict-source-contract"
+      },
+      {
+        "actor": "C",
+        "operation": "resolve",
+        "status": 403,
+        "code": "COMMON_002",
+        "codeClassification": "known",
+        "bodyCompleted": true,
+        "bodyJsonValid": true,
+        "dataIsEmptyArray": false,
+        "reasonLeakCount": 0,
+        "validated": true,
+        "uiOperation": false,
+        "codeValidation": "strict-source-contract"
+      },
+      {
+        "actor": "S3",
+        "operation": "list",
+        "status": 403,
+        "code": "COMMON_002",
+        "codeClassification": "known",
+        "bodyCompleted": true,
+        "bodyJsonValid": true,
+        "dataIsEmptyArray": false,
+        "reasonLeakCount": 0,
+        "validated": true,
+        "uiOperation": false,
+        "codeValidation": "strict-source-contract"
+      },
+      {
+        "actor": "S3",
+        "operation": "resolve",
+        "status": 404,
+        "code": "SHIFT_005",
+        "codeClassification": "known",
+        "bodyCompleted": true,
+        "bodyJsonValid": true,
+        "dataIsEmptyArray": false,
+        "reasonLeakCount": 0,
+        "validated": true,
+        "uiOperation": false,
+        "codeValidation": "strict-source-contract"
+      },
+      {
+        "actor": "X",
+        "operation": "list",
+        "status": 403,
+        "code": "COMMON_002",
+        "codeClassification": "known",
+        "bodyCompleted": true,
+        "bodyJsonValid": true,
+        "dataIsEmptyArray": false,
+        "reasonLeakCount": 0,
+        "validated": true,
+        "uiOperation": false,
+        "codeValidation": "strict-source-contract"
+      },
+      {
+        "actor": "X",
+        "operation": "resolve",
+        "status": 404,
+        "code": "SHIFT_005",
+        "codeClassification": "known",
+        "bodyCompleted": true,
+        "bodyJsonValid": true,
+        "dataIsEmptyArray": false,
+        "reasonLeakCount": 0,
+        "validated": true,
+        "uiOperation": false,
+        "codeValidation": "strict-source-contract"
+      },
+      {
+        "actor": "anonymous",
+        "operation": "list",
+        "status": 401,
+        "code": null,
+        "codeClassification": "unavailable",
+        "bodyCompleted": true,
+        "bodyJsonValid": false,
+        "dataIsEmptyArray": null,
+        "reasonLeakCount": 0,
+        "validated": true,
+        "uiOperation": false,
+        "codeValidation": "not-contracted-for-401"
+      },
+      {
+        "actor": "anonymous",
+        "operation": "resolve",
+        "status": 401,
+        "code": null,
+        "codeClassification": "unavailable",
+        "bodyCompleted": true,
+        "bodyJsonValid": false,
+        "dataIsEmptyArray": null,
+        "reasonLeakCount": 0,
+        "validated": true,
+        "uiOperation": false,
+        "codeValidation": "not-contracted-for-401"
+      }
+    ],
+    "readOnlyBoundaryHashesBefore": {
+      "shift_swap_requests": "60d9f518d1d1af27519e725003c3fc41fcbb1120c9137e317e821ce1cdb91484",
+      "shift_slots": "c1b402cdc0e608a44d72d3659dcab7747b6fa76cdf0be74022d833347c31def6",
+      "shift_assignments": "f9e7afc3618fee23fa16994f2b4828e540b7fbfe20a9783f5e525b0e632b7b3b",
+      "shift_change_requests": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "readOnlyBoundaryHashesAfter": {
+      "shift_swap_requests": "60d9f518d1d1af27519e725003c3fc41fcbb1120c9137e317e821ce1cdb91484",
+      "shift_slots": "c1b402cdc0e608a44d72d3659dcab7747b6fa76cdf0be74022d833347c31def6",
+      "shift_assignments": "f9e7afc3618fee23fa16994f2b4828e540b7fbfe20a9783f5e525b0e632b7b3b",
+      "shift_change_requests": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "readOnlyBoundaryUnchanged": true,
+    "rawSqlOrCredentialsCopied": false,
+    "limits": [
+      "document HTTP status/DOM本文文字列そのものはsafeへ未採取。uiOutcomeとscript assertionの対応を区別する。",
+      "新規UI作成の実HTTP status値はsafe未記録。scriptは200又は201を検査し、提出payload一致と1回送信をsafeへ記録した。"
+    ]
+  },
+  "scriptProcedureAndExpectations": {
+    "sourcePrivatePath": ".claude/campaigns/cmp2116-revalidation-20261028/package-prepared-v5/fixed-ui.mjs",
+    "sourceSha256": "09326546200d84a1c1831599f4fa938980e887c4e3912c0be9cccd2520ee85c7",
+    "sourceLines": {
+      "loginAndList": "120-122",
+      "create": "123-133",
+      "approveAndReadbacks": "137-144",
+      "terminal": "149-153",
+      "uiBoundary": "160-191",
+      "negativeApi": "194-206"
+    },
+    "localeSourceHead": "ac49b5af784b79bade786ac0c82b9bb3822289f3",
+    "localePath": "frontend/app/locales/ja/shift.json",
+    "localeSha256": "2ced0d76d695fe2e0f7d6181c94fde1b8678acca366c6c8a80369635db3197f6",
+    "expectedLabels": {
+      "myShift": "マイシフト",
+      "create": "交代依頼を作成",
+      "submit": "提出",
+      "tab": "シフト交換",
+      "empty": "交換リクエストはありません",
+      "loadFailed": "交換リクエストの取得に失敗しました",
+      "calendar": "カレンダー表示",
+      "statusAccepted": "承認待ち",
+      "statusApproved": "承認済み",
+      "statusRejected": "却下",
+      "statusCancelled": "取り下げ"
+    },
+    "expectedReason": "18時の担当をお願いできますか。途中で離れますが、戻って状況を確認します。",
+    "entryUrls": {
+      "myShift": "/my/shift",
+      "teamShift": "/teams/cmp2116r-e2fea90be1-primary/shifts",
+      "schedule": "/shift/1",
+      "boardPattern": "/teams/cmp2116r-e2fea90be1-primary/shifts/{scheduleId}/board"
+    },
+    "primaryOperation": "A: マイシフト→2026年10月→30日→18時枠の交代依頼を作成→既定SPECIFICのB checkbox→理由textarea→提出。B/D: teamシフト交換tab→swap-accept/approve testid。Dはboard reload、A/B/Cはmy-shift reload。",
+    "terminalOperation": "別8時: A提出/B受諾/D swap-reject。別10時: 本人swap-cancel。終端でaccept/approve/reject/cancelの全testid0。",
+    "boundaryExpectation": "C teamは空状態文言、C scheduleはカレンダー見出し/GET2件200。S3/X teamはerror-page、scheduleはGET2件404 SHIFT_001/body完了後loading消失。匿名はlogin redirect、UI GET0ならHTTP未測定。全rowで理由/相談行/操作非露出・write0。",
+    "apiUses": {
+      "login": "actor別のAPI login補助。業務操作の成功証拠へ換算しない。",
+      "fixture": "合成actor/team/slot等のnormal API前提作成。依頼提出/受諾/承認/却下/取消はUI。",
+      "readback": "SQL SELECT/SHOWによる永続化・hash照合。writeSQLなし。",
+      "cleanup": "ownerの専有process/container/volume/scratch撤去。UI成果と別判定。",
+      "negativeSupplement": "各actorのlist/resolve拒否HTTP/codeをpage.requestで別測定。UI操作代替ではない。"
+    },
+    "sourceDistinction": "この項目はsealed scriptと固定localeの手順・期待。actualSafeObservationは実run採取値。DOM本文文字列やdocument HTTPはsafe未採取なので補完しない。"
+  }
+}

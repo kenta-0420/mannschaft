@@ -1,0 +1,8 @@
+{
+  "checkedAt": "2026-10-23T09:47:14.6375087+09:00",
+  "status": 200,
+  "healthStatus": "UP",
+  "profiles": "local,e2e",
+  "jarSource": "2bd9d74983",
+  "jarSha256": "D489F48AF320F1C3711E3E854B0A5E07321986DF12F59BEE8FC35F4354537D20"
+}

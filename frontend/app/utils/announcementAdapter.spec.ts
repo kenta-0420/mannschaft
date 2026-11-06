@@ -50,4 +50,26 @@ describe('本文プレビューの一覧・元リンク契約', () => {
     expect(parseAnnouncementRouteId('31')).toBe(31)
     expect(parseAnnouncementRouteId(undefined)).toBeUndefined()
   })
+
+  it('AC-H17: 送信時の宛先の記録を一覧アイテムへ引き継ぎ、LOCKED では秘匿する', () => {
+    const audience = { mode: 'GROUPS', groups: [{ id: 'g1', name: '平成18年度' }], includeUnassigned: false, teamCount: 3 }
+    const full = toAnnouncementItem({ id: 1, scopeType: 'ORGANIZATION', scopeId: 7, targetAudience: audience })
+    expect(full.targetAudience).toEqual(audience)
+    expect(toAnnouncementItem({ id: 1, scopeType: 'ORGANIZATION', scopeId: 7 }).targetAudience).toBeNull()
+    const locked = toAnnouncementItem({ id: 1, scopeType: 'ORGANIZATION', scopeId: 7, accessState: 'LOCKED', targetAudience: audience })
+    expect(locked.targetAudience).toBeNull()
+  })
+
+  it('AC-H17（実機E2E #4009 D-2）: ダッシュボードの snake_case 集約でも送信時の宛先の記録を引き継ぐ', () => {
+    const audience = { mode: 'GROUPS', groups: [{ id: 'g1', name: '平成18年度' }], includeUnassigned: false, teamCount: 3 }
+    const item = toDashboardAnnouncementItem({
+      id: 21, scope_type: 'ORGANIZATION', scope_id: 7, title_cache: '組織連絡', target_audience: audience,
+    })
+    expect(item.targetAudience).toEqual(audience)
+    expect(toDashboardAnnouncementItem({ id: 22, scope_type: 'ORGANIZATION', scope_id: 7 }).targetAudience).toBeNull()
+    const locked = toDashboardAnnouncementItem({
+      id: 23, scope_type: 'ORGANIZATION', scope_id: 7, access_state: 'LOCKED', target_audience: audience,
+    })
+    expect(locked.targetAudience).toBeNull()
+  })
 })

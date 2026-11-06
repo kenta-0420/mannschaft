@@ -83,6 +83,7 @@ public class ScheduleService {
     private static final ZoneId STORAGE_ZONE = UserZoneLocalDateTimeParser.SERVER_ZONE;
 
     private final ScheduleRepository scheduleRepository;
+    private final ScheduleCreationWriter creationWriter;
     private final EventSurveyService eventSurveyService;
     private final ScheduleReminderService reminderService;
     private final ApplicationEventPublisher eventPublisher;
@@ -225,7 +226,7 @@ public class ScheduleService {
 
         ScheduleEntity schedule = buildScheduleEntity(req, scopeId, scopeType, userId,
                 startAtJst, endAtJst, deadlineJst);
-        schedule = scheduleRepository.save(schedule);
+        schedule = creationWriter.saveNew(schedule);
         scheduleTargetService.replaceForCreate(
                 schedule, scopeType, scopeId, req.getTargetMode(), req.getTargetUserIds());
 
@@ -599,7 +600,7 @@ public class ScheduleService {
                 .build();
 
         // BaseEntity の id, createdAt, updatedAt は @PrePersist で再設定される
-        duplicate = scheduleRepository.save(duplicate);
+        duplicate = creationWriter.saveNew(duplicate);
         scheduleTargetService.copyTargets(source.getId(), duplicate.getId());
 
         // F03.18 §5.1: 複製は新規作成扱いのため SCHEDULE_CREATED を発行する（AC-01・AC-07）
@@ -632,7 +633,7 @@ public class ScheduleService {
                 .targetMode(ScheduleTargetMode.ALL_MEMBERS)
                 .createdBy(userId)
                 .build();
-        return scheduleRepository.save(duplicate);
+        return creationWriter.saveNew(duplicate);
     }
 
     /** 対象者名簿は同一スコープのアクティブメンバーにだけ返す。 */
@@ -926,6 +927,10 @@ public class ScheduleService {
                 .status(ScheduleStatus.SCHEDULED)
                 .attendanceStatus(AttendanceGenerationStatus.READY)
                 .attendanceRequired(req.getAttendanceRequired())
+                .allowProxyAttendance(!SCOPE_TYPE_PERSONAL.equals(scopeType)
+                        && Boolean.TRUE.equals(req.getAllowProxyAttendance()))
+                .isProxyAutoAccept(!SCOPE_TYPE_PERSONAL.equals(scopeType)
+                        && Boolean.TRUE.equals(req.getIsProxyAutoAccept()))
                 .includeSupporters(req.getIncludeSupporters() != null
                         ? req.getIncludeSupporters() : false)
                 .teamBreakdownEnabled(req.getTeamBreakdownEnabled() != null
@@ -989,6 +994,10 @@ public class ScheduleService {
                     MinResponseRole.class, req.getMinResponseRole(), "minResponseRole"));
         }
         if (req.getAttendanceRequired() != null) builder.attendanceRequired(req.getAttendanceRequired());
+        if (!schedule.isPersonal()) {
+            if (req.getAllowProxyAttendance() != null) builder.allowProxyAttendance(req.getAllowProxyAttendance());
+            if (req.getIsProxyAutoAccept() != null) builder.isProxyAutoAccept(req.getIsProxyAutoAccept());
+        }
         if (req.getAttendanceDeadline() != null) builder.attendanceDeadline(toJst(req.getAttendanceDeadline()));
         if (req.getCommentOption() != null) {
             builder.commentOption(EnumInputParser.parse(CommentOption.class, req.getCommentOption(), "commentOption"));
@@ -1139,6 +1148,8 @@ public class ScheduleService {
                         List.of()));
         return ScheduleResponse.builder()
                 .id(entity.getId())
+                .allowProxyAttendance(entity.getAllowProxyAttendance())
+                .isProxyAutoAccept(entity.getIsProxyAutoAccept())
                 .content(new ScheduleResponse.ScheduleContentDto(
                         entity.getTitle(),
                         entity.getStatus().name(),

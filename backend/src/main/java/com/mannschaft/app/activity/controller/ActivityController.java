@@ -47,8 +47,10 @@ public class ActivityController {
     private final ActivityResultService activityService;
     private final ActivityMapper activityMapper;
     private final com.mannschaft.app.activity.service.ActivityDetailService activityDetails;
+    private final com.mannschaft.app.activity.service.AutomaticActivityListService automaticActivityLists;
     private final com.mannschaft.app.common.activityschedule.ActivityScheduleFacade activitySchedules;
     private final com.mannschaft.app.common.activityschedule.ActivityMutationFacade activityMutations;
+    private final com.mannschaft.app.common.activityschedule.ActivityScheduleCreationFacade activityCreation;
 
 
     /**
@@ -72,28 +74,25 @@ public class ActivityController {
      * どちらの検証機構も働かなくなり、{@code @Min} 制約が素通りして 500 に戻ってしまう
      * （検分差し戻しで実際に踏んだ事故）。次に善意で {@code @Validated} を付け直さないこと。</p>
      *
-     * <p><b>総件数は上界近似</b>: レスポンスの {@code data} 件数および将来 {@code meta} を追加する場合の
-     * 総件数は、{@link com.mannschaft.app.activity.service.ActivityResultService#listActivities}
-     * の Javadoc が明記するとおり「SQL で 1 ページ取得後に F00 可視性でメモリフィルタする」実装のため、
-     * <b>ページ内に歯抜けが残り得る</b>（他人の DRAFT 等が多いページでは要求件数より少ない件数しか
-     * 返らない）。この歯抜けの根治には F00 に「閲覧可能な可視性集合を返す API」を新設し SQL の
-     * {@code IN} 述語へ翻訳する必要があり、設計変更を伴うため本エンドポイントの修正範囲外である
-     * （後続戦役の対象。詳細は {@link com.mannschaft.app.activity.service.ActivityResultService#listActivities}
-     * の Javadoc を参照）。</p>
+     * <p>autoの元予定ACLをbulk判定し、活動ACLとの積をSQLのページ取得とCOUNTの同一述語へ適用する。
+     * {@code data} 配列を維持し、{@code meta} に可視行だけの総件数とページ情報を追加する。
+     * 一般読者のauto DRAFTは取得後にmetadataへ投影するが、行の後段除外は行わない。</p>
      */
     @GetMapping
     @Operation(summary = "活動記録一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<List<ActivityRecordResponse>>> listActivities(
+    public ResponseEntity<com.mannschaft.app.common.PagedResponse<ActivityRecordResponse>> listActivities(
             @RequestParam("scope_type") String scopeType,
             @RequestParam("scope_id") Long scopeId,
             @RequestParam(value = "template_id", required = false) Long templateId,
             @RequestParam(defaultValue = "20") @Min(1) int limit,
             @RequestParam(defaultValue = "0") @Min(0) int page) {
-        Page<ActivityResultEntity> result = activityService.listActivities(
+        Page<ActivityRecordResponse> result = automaticActivityLists.list(
                 SecurityUtils.getCurrentUserId(),
                 ActivityScopeType.valueOf(scopeType), scopeId, templateId, PageRequest.of(page, limit));
-        return ResponseEntity.ok(ApiResponse.of(activityMapper.toActivityRecordResponseList(result.getContent())));
+        return ResponseEntity.ok(com.mannschaft.app.common.PagedResponse.of(result.getContent(),
+                new com.mannschaft.app.common.PagedResponse.PageMeta(result.getTotalElements(),
+                        result.getNumber(), result.getSize(), result.getTotalPages())));
     }
 
     /**
@@ -116,7 +115,7 @@ public class ActivityController {
             @RequestParam("scope_type") String scopeType,
             @RequestParam("scope_id") Long scopeId,
             @Valid @RequestBody CreateActivityRequest request) {
-        ActivityRecordResponse response = activitySchedules.create(
+        ActivityRecordResponse response = activityCreation.create(
                 ActivityScopeType.valueOf(scopeType), scopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
@@ -127,7 +126,7 @@ public class ActivityController {
     public ResponseEntity<ApiResponse<com.mannschaft.app.activity.dto.ActivityDetailResponse>> draftFromSchedule(
             @RequestParam("scope_type") String scopeType, @RequestParam("scope_id") Long scopeId,
             @Valid @RequestBody com.mannschaft.app.activity.dto.CreateDraftFromScheduleRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(activitySchedules.draft(request.scheduleId(), scopeType, scopeId,
+        return ResponseEntity.ok(ApiResponse.of(activityCreation.draft(request.scheduleId(), scopeType, scopeId,
                 SecurityUtils.getCurrentUserId())));
     }
 
@@ -186,7 +185,7 @@ public class ActivityController {
     @Operation(summary = "活動記録削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteActivity(@PathVariable Long id) {
-        activityService.deleteActivity(id, SecurityUtils.getCurrentUserId());
+        activityMutations.delete(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -199,8 +198,8 @@ public class ActivityController {
     public ResponseEntity<ApiResponse<ActivityRecordResponse>> duplicateActivity(
             @PathVariable Long id,
             @Valid @RequestBody(required = false) DuplicateActivityRequest request) {
-        ActivityResultEntity response = activityService.duplicateActivity(id, SecurityUtils.getCurrentUserId(), request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(activityMapper.toActivityRecordResponse(response)));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(
+                activityMutations.duplicate(id, SecurityUtils.getCurrentUserId(), request)));
     }
 
     /**

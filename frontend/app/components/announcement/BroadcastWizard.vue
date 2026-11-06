@@ -12,6 +12,7 @@ import type {
   ScheduleContent,
   SurveyContent,
 } from '~/types/announcement_broadcast'
+import { buildAudienceFields } from '~/utils/broadcastAudience'
 
 const props = defineProps<{
   visible: boolean
@@ -31,14 +32,18 @@ const { broadcast, broadcasting, broadcastError } = useAnnouncementBroadcast(pro
 
 const currentStep = ref<WizardStep>(1)
 
-/** 使い方ガイドの展開状態（②インライン折りたたみ式） */
+/** 使い方モーダルの表示状態 */
 const showHelp = ref(false)
-const guidePanelId = `broadcast-guide-panel-${useId()}`
 
 const initialFormState: WizardFormState = {
   step: 1,
   targetRole: 'MEMBERS_AND_ABOVE',
+  targetMode: 'ALL',
   targetTeamIds: null,
+  targetGroupIds: [],
+  targetGroupRange: null,
+  includeUnassigned: false,
+  templateEmptied: false,
   selectedChannel: null,
   templateId: null,
   priority: 'NORMAL',
@@ -48,8 +53,15 @@ const initialFormState: WizardFormState = {
 
 const formState = ref<WizardFormState>({ ...initialFormState })
 
+/**
+ * 送信結果（宛先を絞った告知のときだけ保持する）。
+ * 「宛先: …（送信時 N チーム）」と表示判定の注記を見せるため、送信後すぐには閉じない（F01.2.1 §8.2・AC-H17）。
+ */
+const sentResult = ref<BroadcastResponse | null>(null)
+
 /** 何かしら入力されているかどうかの判定 */
 const isDirty = computed(() => {
+  if (sentResult.value) return false
   const c = formState.value.content as Record<string, unknown>
   const hasTitle = typeof c.title === 'string' && c.title.trim().length > 0
   const hasBody = typeof c.body === 'string' && c.body.trim().length > 0
@@ -57,6 +69,7 @@ const isDirty = computed(() => {
 })
 
 const stepTitle = computed(() => {
+  if (sentResult.value) return t('announcement.broadcast_done_title')
   const stepLabels: Record<WizardStep, string> = {
     1: t('announcement.step1_title'),
     2: t('announcement.step2_title'),
@@ -67,6 +80,8 @@ const stepTitle = computed(() => {
 })
 
 function resetWizard() {
+  showHelp.value = false
+  sentResult.value = null
   currentStep.value = 1
   formState.value = { ...initialFormState }
 }
@@ -99,13 +114,14 @@ function onBack() {
 }
 
 async function handleSubmit() {
-  const { selectedChannel, targetRole, targetTeamIds, templateId, priority, expiresAt, content } = formState.value
+  const { selectedChannel, targetRole, templateId, priority, expiresAt, content } = formState.value
   if (!selectedChannel) return
 
   const request: BroadcastRequest = {
     channel: selectedChannel,
     targetRole,
-    targetTeamIds: targetTeamIds ?? null,
+    // 宛先: すべて / チームを選ぶ / チームグループで選ぶ（選んでいないモードの項目は送らない）
+    ...buildAudienceFields(formState.value),
     templateId: templateId ?? null,
     priority,
     expiresAt: expiresAt ?? null,
@@ -116,6 +132,14 @@ async function handleSubmit() {
     const result = await broadcast(request)
     notification.success(t('announcement.broadcast_success'))
     emit('success', result)
+    if ((result.warnings ?? []).some(w => w.startsWith('TEMPLATE_GROUPS_REMOVED'))) {
+      notification.warn(t('announcement.template_deleted_groups_removed'))
+    }
+    if (result.targetAudience) {
+      // 宛先を絞った告知: 送信時の宛先と注記を見せてから閉じる
+      sentResult.value = result
+      return
+    }
     resetWizard()
     emit('update:visible', false)
   } catch {
@@ -175,17 +199,6 @@ function buildChannelContent(
   } as SurveyContent
 }
 
-// preferred_channel がある場合ステップ2をスキップする
-function goToNextStep() {
-  if (currentStep.value === 1 && formState.value.selectedChannel !== null) {
-    // テンプレートで preferred_channel が設定されていればステップ3へ
-    currentStep.value = 3
-    formState.value = { ...formState.value, step: 3 }
-  } else {
-    onNext()
-  }
-}
-
 // visible が false になった際にウィザードをリセット
 watch(
   () => props.visible,
@@ -201,46 +214,50 @@ watch(
     :header="stepTitle"
     :modal="true"
     :closable="true"
+    :close-on-escape="!showHelp"
     :style="{ width: '560px', maxWidth: '95vw' }"
     :draggable="false"
     @update:visible="handleClose"
   >
     <div class="py-2">
-      <!-- 使い方トグル（本文先頭・右寄せ・全ステップ共通） -->
+      <!-- 使い方モーダルを開く（全ステップ共通） -->
       <div class="mb-2 flex justify-end">
         <Button
           :label="$t('announcement.broadcast_guide.toggle')"
-          :icon="showHelp ? 'pi pi-chevron-up' : 'pi pi-question-circle'"
+          icon="pi pi-question-circle"
           text
           size="small"
-          :aria-expanded="showHelp"
-          :aria-controls="guidePanelId"
+          class="min-h-11 min-w-11"
+          aria-haspopup="dialog"
           data-testid="broadcast-guide-toggle"
-          @click="showHelp = !showHelp"
+          @click="showHelp = true"
         />
       </div>
 
-      <!-- 使い方ガイド展開領域（フェード＋高さスムーズ伸縮・同一モーダル内・重ねない） -->
+      <!-- 送信完了（宛先を絞った告知のみ）: 送信履歴と同じ「宛先: …（送信時 N チーム）」を見せる -->
       <div
-        :id="guidePanelId"
-        class="grid transition-all duration-300 ease-in-out motion-reduce:transition-none"
-        :class="showHelp ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'"
-        data-testid="broadcast-guide-panel"
+        v-if="sentResult"
+        class="flex flex-col gap-4"
+        data-testid="broadcast-sent-panel"
       >
-        <div class="overflow-hidden">
-          <div class="mb-4 rounded-lg border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800">
-            <BroadcastGuideContent />
-          </div>
+        <BroadcastAudienceSummary :audience="sentResult.targetAudience" />
+        <div class="flex justify-end">
+          <Button
+            :label="$t('button.close')"
+            icon="pi pi-check"
+            data-testid="broadcast-sent-close"
+            @click="handleClose"
+          />
         </div>
       </div>
 
       <BroadcastStep1Audience
-        v-if="currentStep === 1"
+        v-else-if="currentStep === 1"
         v-model="formState"
         :scope-type="scopeType"
         :scope-id="scopeId"
         :is-admin="isAdmin"
-        @next="goToNextStep"
+        @next="onNext"
       />
       <BroadcastStep2Channel
         v-else-if="currentStep === 2"
@@ -260,4 +277,5 @@ watch(
       />
     </div>
   </Dialog>
+  <BroadcastGuideModal v-model:visible="showHelp" />
 </template>

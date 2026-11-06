@@ -1,18 +1,25 @@
 package com.mannschaft.app.organization.teamgroup;
 
+import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.teamgroup.entity.OrgTeamGroupEntity;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -43,6 +50,11 @@ class OrgTeamGroupAssignmentRateLimitWiringIT extends AbstractOrgTeamGroupAssign
 
     private static final int LIMIT = 20;
 
+    @Autowired
+    private ValkeyRateLimiter rateLimiter;
+
+    private Clock originalClock;
+
     /** Valkey の代役（zone+key ごとの固定ウィンドウカウンタ）。 */
     private final Map<String, AtomicLong> counters = new ConcurrentHashMap<>();
 
@@ -52,11 +64,20 @@ class OrgTeamGroupAssignmentRateLimitWiringIT extends AbstractOrgTeamGroupAssign
 
     @BeforeEach
     void setUp() {
+        originalClock = (Clock) ReflectionTestUtils.getField(rateLimiter, "clock");
+        assertThat(originalClock).isNotNull();
+        ReflectionTestUtils.invokeMethod(rateLimiter, "setClock",
+                Clock.fixed(Instant.parse("2026-10-08T00:35:30Z"), ZoneOffset.UTC));
         counters.clear();
         willAnswer(invocation -> {
             List<?> keys = invocation.getArgument(1);
             String redisKey = String.valueOf(keys.get(0));
-            return counters.computeIfAbsent(redisKey, k -> new AtomicLong()).incrementAndGet();
+            // 時刻依存フレークの根治: redisKey は mannschaft:rate:{zone}:{key}:{windowStart}（壁時計の分）。
+            // 21回のリクエスト中に分の境界をまたぐと windowStart が変わりカウントが1に戻って
+            // X-RateLimit-Remaining が割れる。本テストはフィルタ結線とヘッダ値の検証が責務であり、
+            // 固定ウィンドウ境界の挙動は ValkeyRateLimiterTest の責務なので、windowStart を落として集計する。
+            String counterKey = redisKey.substring(0, redisKey.lastIndexOf(':'));
+            return counters.computeIfAbsent(counterKey, k -> new AtomicLong()).incrementAndGet();
         }).given(redisTemplate).execute(any(RedisScript.class), anyList(), any());
 
         org = newOrg(true);
@@ -66,6 +87,13 @@ class OrgTeamGroupAssignmentRateLimitWiringIT extends AbstractOrgTeamGroupAssign
         em.flush();
         em.clear();
         bulkPath = "/api/v1/organizations/" + org.getSlug() + "/team-group-assignments";
+    }
+
+    @AfterEach
+    void restoreClock() {
+        if (originalClock != null) {
+            ReflectionTestUtils.invokeMethod(rateLimiter, "setClock", originalClock);
+        }
     }
 
     @Test

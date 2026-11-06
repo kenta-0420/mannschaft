@@ -1,0 +1,186 @@
+{
+    "campaign":  "CMP-261027-1353",
+    "pr":  4166,
+    "runId":  40523313140,
+    "head":  "3db393c2e4e5608e0e168d59baba85e68342ae78",
+    "kind":  "selected-JUnit-XML-only-no-log-body",
+    "totals":  [
+                   {
+                       "class":  "com.mannschaft.app.role.RoleMembershipLeaveContractIT",
+                       "suites":  3,
+                       "tests":  11,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "class":  "com.mannschaft.app.role.repository.UserRoleFlatMembershipActiveGuardTest",
+                       "suites":  1,
+                       "tests":  12,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "class":  "com.mannschaft.app.dashboard.service.PersonalActionRequiredBatchQueryIT",
+                       "suites":  1,
+                       "tests":  1,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   }
+               ],
+    "suites":  [
+                   {
+                       "class":  "com.mannschaft.app.dashboard.service.PersonalActionRequiredBatchQueryIT",
+                       "target":  "com.mannschaft.app.dashboard.service.PersonalActionRequiredBatchQueryIT",
+                       "shard":  0,
+                       "tests":  1,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "cases":  [
+                                     {
+                                         "name":  "非空2scopeを保ち空所属が42さらに417へ増えてもSQL件数を増やさない()",
+                                         "status":  "passed"
+                                     }
+                                 ]
+                   },
+                   {
+                       "class":  "leaveScope（自主退会）",
+                       "target":  "com.mannschaft.app.role.RoleMembershipLeaveContractIT",
+                       "shard":  0,
+                       "tests":  5,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "cases":  [
+                                     {
+                                         "name":  "AC3-org: 自主退会後は在籍列挙から消え leave_reason=SELF が記録される",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "AC7-org: user_roles無しのMEMBERも自主退会できる",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "AC7-team: user_roles無しのMEMBERも自主退会でき、別チームは在籍のまま",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "AC3-team: 自主退会後は在籍列挙から消え leave_reason=SELF が記録される",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "AC8: user_roles無しのSUPPORTERは会員退会経路を使えない（CMP-261001-0835 でROLE_015/422へ仕様変更）",
+                                         "status":  "passed"
+                                     }
+                                 ]
+                   },
+                   {
+                       "class":  "removeMemberWithoutAdminCheck（退会者 purge 経路）",
+                       "target":  "com.mannschaft.app.role.RoleMembershipLeaveContractIT",
+                       "shard":  0,
+                       "tests":  2,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "cases":  [
+                                     {
+                                         "name":  "AC4-team: purge 経路でも在籍列挙から消える",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "AC4-org: 最後の ADMIN でも purge 経路は在籍を終了できる（ADMIN 保護に阻まれない）",
+                                         "status":  "passed"
+                                     }
+                                 ]
+                   },
+                   {
+                       "class":  "removeMember（管理者による除名）",
+                       "target":  "com.mannschaft.app.role.RoleMembershipLeaveContractIT",
+                       "shard":  0,
+                       "tests":  4,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "cases":  [
+                                     {
+                                         "name":  "AC1/AC2-org: 除名された利用者は在籍列挙から消え leave_reason=REMOVED が記録される",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "AC5-team: 除名されていない在籍者は在籍列挙に残り続ける（締め出し退行の防止）",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "AC1/AC2-team: 除名された利用者は在籍列挙から消え leave_reason=REMOVED が記録される",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "AC5-org: 別スコープの在籍は除名の影響を受けない",
+                                         "status":  "passed"
+                                     }
+                                 ]
+                   },
+                   {
+                       "class":  "CMP-050: 在籍プリミティブ4本が非ACTIVEユーザーを所属扱いしない",
+                       "target":  "com.mannschaft.app.role.repository.UserRoleFlatMembershipActiveGuardTest",
+                       "shard":  0,
+                       "tests":  12,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "cases":  [
+                                     {
+                                         "name":  "AC-11: existsAnyStatusByUserIdAndTeamIdはFROZENユーザーの在籍行をtrueとする（両系統）",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "AC-9: ARCHIVED（非FROZEN・非ACTIVE）ユーザーも4メソッドすべて非所属",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "AC-12: existsAnyStatusByUserIdAndTeamIdはleft_at非NULLのmembershipしか持たない者にfalse",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "AC-6【陽性対照】: ACTIVEユーザーは4メソッドが従来どおり所属を返す（user_roles専属/memberships専属/両方持ち）",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "AC-3: FROZENユーザーはexistsByUserIdAndOrganizationIdがfalse（user_roles枝・memberships枝の個別検証）",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "AC-4: FROZENユーザーはfindTeamIdsByUserIdが空リスト（両枝に行があっても）",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "AC-1: user_rolesにADMIN行を持つFROZENユーザーはexistsByUserIdAndTeamIdがfalse",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "AC-7: 両系統保有のACTIVEユーザーでfindTeamIdsByUserIdに同一team_idが1件だけ",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "AC-8: 論理削除済み（deleted_at非NULL・statusはACTIVE）で4メソッドすべて非所属",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "AC-2: memberships専属のFROZENユーザーはexistsByUserIdAndTeamIdがfalse",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "AC-5: FROZENユーザーはfindOrganizationIdsByUserIdが空リスト（両枝に行があっても）",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "AC-10: left_at非NULLのmembershipしか持たないACTIVEユーザーは従来どおり非所属",
+                                         "status":  "passed"
+                                     }
+                                 ]
+                   }
+               ]
+}

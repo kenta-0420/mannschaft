@@ -136,6 +136,7 @@ Service メソッド内でビジネスルールを検証し、違反時は `Busi
 - **カスタムバリデーションアノテーション（`@UniqueEmail` 等）は作成しない**。DB アクセスを伴うチェックは Service の責務であり、アノテーション化すると追跡が困難になるため。
 - **グループバリデーション（`groups`）は使わない**。Create / Update で DTO を分離するため不要（`.claudecode.md` §19 参照）。
 - **`GlobalExceptionHandler` は `@RequestBody` の `MethodArgumentNotValidException` に加え、`@RequestParam` / `@PathVariable` の `@Min` / `@Max` 等（Spring 6.1 以降の `HandlerMethodValidationException`）でも 400 `COMMON_001` + `fieldErrors` を返す**。パラメータ検証の違反を 500 や `fieldErrors` 空にしないこと（CMP-261001-0630 で追加。F03.13 の `periodNumber` 1〜15 等）。
+- 本人の出生情報・診断・恐竜への命名など、私的入力の非露出契約を持つ経路では、入力由来の違反メッセージや `fieldErrors` を返さず、既存の `privateInputRejected` による固定400と `Cache-Control: no-store` を返す。一般の入力検証では上記のフィールド別応答を維持する。
 
 ### Request DTO にコンストラクタを 2 本目以降足すときは `@JsonCreator` 必須（番人 D-7）
 
@@ -608,9 +609,8 @@ CI/CD パイプラインの詳細設定（ワークフロー YAML、JaCoCo 集�
 * **制限値の目安**:
     * 認証系: 同一IPにつき「1分間に10回まで」等の厳格な制限。
     * 一般API: サービスの特性に応じた妥当なバースト許容値を設定。
-    * **`POST /error-reports`（エラーレポート送信）**: 認証不要の公開エンドポイントのため以下の二段階制限を適用する。
-        * 短期制限: 同一IPにつき **1分間に5回まで**（バースト的な連送を防止）
-        * 日次制限: 同一IPにつき **1日50回まで**（持続的な悪用・DoSを防止）
+    * **`POST /error-reports`（エラーレポート送信）**: 認証不要の公開エンドポイントのため以下の制限を適用する。
+        * 同一IPにつき **1分間に10回まで**（実装: ErrorReportRateLimitFilter、F12.5 §5.6）。
         * 制限超過時は `429 Too Many Requests` を返し、`Retry-After` ヘッダーで再試行可能時刻を通知する
 * **レスポンス**: 制限超過時は、HTTPステータス `429 Too Many Requests` を返却すること。
 

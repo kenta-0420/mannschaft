@@ -1,0 +1,98 @@
+{
+    "campaign":  "CMP-261027-1353",
+    "implementationSource":  "f157e033bb650205dc4ba94d0772f9b1a0be7d15",
+    "observationSource":  "3db393c2e4e5608e0e168d59baba85e68342ae78",
+    "sourceBridge":  "f157-docs-only-source-bridge-safe.json",
+    "allGoalsAchieved":  true,
+    "newProductFindings":  0,
+    "rootReviewedAll":  true,
+    "fixedScenarioRunnerUsedAsExploration":  false,
+    "businessDataMutation":  0,
+    "allDatabaseDmlZeroClaimed":  false,
+    "performanceSample":  false,
+    "journeys":  [
+                     {
+                         "label":  "⚔️足軽1",
+                         "runId":  "CMP1353-resident1-3db",
+                         "persona":  "スマホ片手操作",
+                         "approach":  "表示崩れ",
+                         "goalAchieved":  true,
+                         "goalEvidence":  [
+                                              "既存予定の詳細を開きCompleted状態・予定属性を確認",
+                                              "所属先フィルタを選択し連絡カード本文の表示を確認",
+                                              "ホームへ復帰"
+                                          ],
+                         "limits":  [
+                                        "未完了予定は未検証",
+                                        "所属先フィルタの種別は未照合",
+                                        "touch対応mobile contextでclickを使用、物理片手操作の証明ではない"
+                                    ],
+                         "instrumentationNotes":  [
+                                                      "旧Backボタン仮定のtimeoutを製品不備に数えない",
+                                                      "Drawer遷移中画像と背景maskによる覆いは安定画像・要素画像で補完"
+                                                  ],
+                         "logoutStatus":  200,
+                         "closed":  true,
+                         "pageErrors":  0,
+                         "image":  "resident1-home-returned-360-masked.png"
+                     },
+                     {
+                         "label":  "⚔️足軽2",
+                         "runId":  "resident2-3db-exploration1",
+                         "persona":  "高齢・低リテラシー",
+                         "approach":  "素直",
+                         "goalAchieved":  true,
+                         "journey":  [
+                                         "正常SYSTEM_ADMIN landing",
+                                         "運営ダッシュボードの警告・未対応通報0を把握",
+                                         "警告詳細は別originリンクと確認し外部遷移なし",
+                                         "スクロールしてバッチ失敗ありを把握",
+                                         "左ナビのダッシュボードからホームへ戻る"
+                                     ],
+                         "observations":  [
+                                              "赤い警告と成功/失敗の色分けで要確認事項の存在を把握できた",
+                                              "管理項目が多く専門語もあり、低リテラシー利用者が具体的な対処を判断するには案内の読み取りが必要",
+                                              "行動を妨げる新規製品不具合は確認しなかった。運営既存の警告/失敗を今回の回帰とは扱わない"
+                                          ],
+                         "limits":  [
+                                        "未存在distro指定はブラウザ起動前のCLI失敗。UI不具合へ計上しない",
+                                        "role=linkの仮定により1回locator timeout。実DOMのテキストで分類を修正、アプリ失敗ではない",
+                                        "長文overflow/動的挨拶の画像mask不足を補強し該当画像を上書き再撮影・実見した"
+                                    ],
+                         "guardOrderDeviation":  "認証前でなく最初のlanding後に再照合。再loginなし",
+                         "runtimeGuardAllMatch":  true,
+                         "logoutStatus":  200,
+                         "contextClosed":  true,
+                         "browserClosed":  true,
+                         "pageErrors":  0,
+                         "elapsedSeconds":  553.736,
+                         "performanceSample":  false,
+                         "images":  [
+                                        "resident2-operations-masked.png",
+                                        "resident2-home-returned-masked.png"
+                                    ]
+                     },
+                     {
+                         "label":  "⚔️足軽3",
+                         "runId":  "resident3-3db-runtime1",
+                         "persona":  "一般",
+                         "approach":  "隙間狙い",
+                         "goalAchieved":  true,
+                         "journey":  [
+                                         "所属SUPPORTER feed200空状態",
+                                         "検索から非所属public TEAM紹介へ",
+                                         "timeline403/拒否/post0/composer0",
+                                         "dashboard帰還"
+                                     ],
+                         "limits":  [
+                                        "menu/検索待ちtimeoutはselector/transitionを含み原因未特定",
+                                        "完全tenant祖先分離は未証明"
+                                    ],
+                         "logoutStatus":  200,
+                         "contextClosed":  true,
+                         "browserClosed":  true,
+                         "newProductFindings":  0,
+                         "image":  "resident3-nonmember-timeline-denied.png"
+                     }
+                 ]
+}

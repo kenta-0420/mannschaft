@@ -13,6 +13,7 @@ import com.mannschaft.app.jobmatching.enums.JobCheckInType;
 import com.mannschaft.app.jobmatching.exception.JobmatchingErrorCode;
 import com.mannschaft.app.jobmatching.policy.JobPolicy;
 import com.mannschaft.app.jobmatching.repository.JobContractRepository;
+import com.mannschaft.app.jobmatching.service.JobContractViewAccessGuard;
 import com.mannschaft.app.jobmatching.service.JobQrTokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -75,6 +76,10 @@ class JobQrTokenControllerTest {
 
     @MockitoBean
     private JobPolicy jobPolicy;
+
+    /** 契約の閲覧ガード（CMP-260821-1027）。当事者判定の本体は契約IT側で検証し、ここでは素通しの mock とする。 */
+    @MockitoBean
+    private JobContractViewAccessGuard contractViewGuard;
 
     // JwtAuthenticationFilter の依存解決用
     @MockitoBean

@@ -1,13 +1,9 @@
 package com.mannschaft.app.reservation.service;
 
-import com.mannschaft.app.auth.entity.UserEntity;
-import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.auth.service.UserService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
 import com.mannschaft.app.mail.outbox.EmailOutboxService;
-import com.mannschaft.app.notification.NotificationPriority;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.reservation.CancelledBy;
 import com.mannschaft.app.reservation.ReservationErrorCode;
 import com.mannschaft.app.reservation.ReservationStatus;
@@ -24,6 +20,7 @@ import com.mannschaft.app.reservation.repository.EmergencyClosureRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import com.mannschaft.app.reservation.EmergencyClosureConfirmedEvent;
+import com.mannschaft.app.reservation.event.EmergencyClosureNotificationEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -50,14 +47,11 @@ public class EmergencyClosureService {
     private static final List<ReservationStatus> ACTIVE_STATUSES =
             List.of(ReservationStatus.PENDING, ReservationStatus.CONFIRMED);
 
-    private static final String NOTIFICATION_TYPE = "EMERGENCY_CLOSURE";
-    private static final String SOURCE_TYPE = "EMERGENCY_CLOSURE";
-
     private final ReservationSlotRepository slotRepository;
     private final ReservationRepository reservationRepository;
-    private final UserRepository userRepository;
+    /** 氏名・メールの取得は auth ドメインの Service 経由（D-5: 他ドメインの Repository / Entity を直接使わない）。 */
+    private final UserService userService;
     private final EmailOutboxService emailOutboxService;
-    private final NotificationHelper notificationHelper;
     private final EmergencyClosureRepository emergencyClosureRepository;
     private final ReservationSlotService slotService;
     private final EmergencyClosureConfirmationRepository confirmationRepository;
@@ -106,8 +100,18 @@ public class EmergencyClosureService {
         validateDateRange(request.getStartDate(), request.getEndDate());
         validateTimeRange(request.getStartTime(), request.getEndTime());
 
-        List<ReservationEntity> activeReservations =
-                findActiveReservations(
+        // CMP-260822-1730 AC-1730-6 / 検分 r2 P1: 一括取消するときは対象行を id 昇順で一括ロックし、
+        // ロック後の最新状態で active なものだけを取消・枠減算する。非ロック読取のままだと、読取後に
+        // 仮押さえ失効バッチが同じ PENDING を取消・枠減算して commit したとき、こちらも同じ予約で
+        // 枠を再減算し（二重減算＝過剰予約）、失効済みの利用者へ休業通知まで重ねて送る。
+        List<ReservationEntity> activeReservations = request.isCancelReservations()
+                ? lockActiveReservations(
+                        teamId,
+                        request.getStartDate(),
+                        request.getEndDate(),
+                        request.getStartTime(),
+                        request.getEndTime())
+                : findActiveReservations(
                         teamId,
                         request.getStartDate(),
                         request.getEndDate(),
@@ -121,13 +125,14 @@ public class EmergencyClosureService {
 
         // 予約キャンセル処理
         if (request.isCancelReservations()) {
+            List<ReservationSlotEntity> slotsToReopen = new java.util.ArrayList<>();
             for (ReservationEntity reservation : activeReservations) {
                 reservation.cancel("臨時休業のためキャンセル", CancelledBy.ADMIN);
                 reservationRepository.save(reservation);
-
-                ReservationSlotEntity slot = slotService.getSlotEntity(reservation.getReservationSlotId());
-                slotService.decrementAndReopen(slot);
+                slotsToReopen.add(slotService.getSlotEntity(reservation.getReservationSlotId()));
             }
+            // 枠 ID 昇順で減算する（AC-1730-6 / 検分 r3 P2・失効バッチと枠ロックの取得順を揃える）。
+            SlotLockOrder.byIdAsc(slotsToReopen).forEach(slotService::decrementAndReopen);
             log.info("臨時休業: 予約キャンセル完了 teamId={}, 件数={}", teamId, activeReservations.size());
         }
 
@@ -152,12 +157,13 @@ public class EmergencyClosureService {
 
         // F09.18 Phase 18-b: メール送信は EmailOutboxService.enqueue() 経由に移行
         // (1 record = 1 宛先展開、テンプレ未整備のため RESERVATION_EMERGENCY_CLOSURE はスルー方式)
+        Map<Long, UserService.FullNameAndEmail> contacts = userService.getFullNamesAndEmails(targetUserIds);
         for (Long userId : targetUserIds) {
-            userRepository.findById(userId).ifPresent(user ->
+            java.util.Optional.ofNullable(contacts.get(userId)).ifPresent(user ->
                 emailOutboxService.enqueue(new EmailOutboxRequest(
                         "RESERVATION_EMERGENCY_CLOSURE",
                         "ja",
-                        user.getEmail(),
+                        user.email(),
                         Map.of(
                                 "subject", request.getSubject(),
                                 "body", request.getMessageBody()
@@ -171,20 +177,12 @@ public class EmergencyClosureService {
             );
         }
 
-        // アプリ内通知（WebSocket + PWA Push）— メールと二重で確実に届ける
-        notificationHelper.notifyAll(
-                targetUserIds,
-                NOTIFICATION_TYPE,
-                NotificationPriority.URGENT,
-                request.getSubject(),
-                request.getReason(),
-                SOURCE_TYPE,
-                saved.getId(),
-                NotificationScopeType.TEAM,
-                teamId,
-                null,
-                operatorUserId
-        );
+        // アプリ内通知（WebSocket + PWA Push）— メールと二重で確実に届ける。
+        // 業務TX内では配送要求の publish だけを行い、実配送は EmergencyClosureNotificationListener が
+        // AFTER_COMMIT で行う（Issue #2997 G3: 通知の失敗で休業・キャンセル・確認行を巻き戻さない）。
+        if (!targetUserIds.isEmpty()) {
+            eventPublisher.publishEvent(new EmergencyClosureNotificationEvent(saved.getId(), targetUserIds));
+        }
 
         // 確認追跡レコード作成
         Map<Long, ReservationSlotEntity> slotMap2 = slotRepository
@@ -269,13 +267,21 @@ public class EmergencyClosureService {
                 .filter(c -> c.getTeamId().equals(teamId))
                 .orElseThrow(() -> new BusinessException(ReservationErrorCode.CLOSURE_NOT_FOUND));
 
-        return confirmationRepository.findByEmergencyClosureId(closureId).stream()
+        List<EmergencyClosureConfirmationEntity> confirmations =
+                confirmationRepository.findByEmergencyClosureId(closureId);
+        // N+1 回避: 対象ユーザーを1回で取得する（退会者は @SQLRestriction で取れず、氏名・メールは "" で返す）
+        List<Long> userIds = confirmations.stream()
+                .map(EmergencyClosureConfirmationEntity::getUserId).distinct().collect(Collectors.toList());
+        Map<Long, UserService.FullNameAndEmail> userMap =
+                userIds.isEmpty() ? Map.of() : userService.getFullNamesAndEmails(userIds);
+
+        return confirmations.stream()
                 .map(c -> {
-                    UserEntity user = userRepository.findById(c.getUserId()).orElse(null);
+                    UserService.FullNameAndEmail user = userMap.get(c.getUserId());
                     return EmergencyClosureConfirmationResponse.builder()
                             .userId(c.getUserId())
-                            .userFullName(user != null ? user.getLastName() + " " + user.getFirstName() : "")
-                            .userEmail(user != null ? user.getEmail() : "")
+                            .userFullName(user != null ? user.fullName() : "")
+                            .userEmail(user != null ? user.email() : "")
                             .appointmentAt(c.getAppointmentAt())
                             .confirmed(c.isConfirmed())
                             .confirmedAt(c.getConfirmedAt())
@@ -294,6 +300,41 @@ public class EmergencyClosureService {
      * 重複判定は {@code slot.startTime < endTime AND slot.endTime > startTime}（境界は含まない）。
      */
     private List<ReservationEntity> findActiveReservations(
+            Long teamId, LocalDate startDate, LocalDate endDate, LocalTime startTime, LocalTime endTime) {
+        List<Long> slotIds = findTargetSlotIds(teamId, startDate, endDate, startTime, endTime);
+        if (slotIds.isEmpty()) {
+            return List.of();
+        }
+        return reservationRepository.findByReservationSlotIdInAndStatusIn(slotIds, ACTIVE_STATUSES);
+    }
+
+    /**
+     * 一括取消の対象予約を行ロック付きで取得する（CMP-260822-1730 AC-1730-6）。
+     *
+     * <p>対象 id 集合をスカラー問い合わせで確定してから {@code findByIdInForUpdate} で id 昇順に一括ロックする。
+     * エンティティを非ロックで先読みしないのは、永続化コンテキストに古い状態が残り行ロック取得後も
+     * 最新状態を読めなくなるため。ロック待ちの間に失効バッチ等が終端状態へ遷移させた行は、
+     * ロック後に読む最新状態で除外する（二重取消・枠の二重減算・通知の重複を作らない）。</p>
+     */
+    private List<ReservationEntity> lockActiveReservations(
+            Long teamId, LocalDate startDate, LocalDate endDate, LocalTime startTime, LocalTime endTime) {
+        List<Long> slotIds = findTargetSlotIds(teamId, startDate, endDate, startTime, endTime);
+        if (slotIds.isEmpty()) {
+            return List.of();
+        }
+        List<Long> ids = reservationRepository.findIdsByReservationSlotIdInAndStatusIn(slotIds, ACTIVE_STATUSES);
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        return reservationRepository.findByIdInForUpdate(ids).stream()
+                .filter(r -> ACTIVE_STATUSES.contains(r.getStatus()))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 休業期間（部分時間帯休業なら時間帯 overlap も）に該当するチーム枠の ID を列挙する。
+     */
+    private List<Long> findTargetSlotIds(
             Long teamId, LocalDate startDate, LocalDate endDate, LocalTime startTime, LocalTime endTime) {
         List<ReservationSlotEntity> slots =
                 slotRepository.findByTeamIdAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
@@ -315,11 +356,9 @@ public class EmergencyClosureService {
             }
         }
 
-        List<Long> slotIds = slots.stream()
+        return slots.stream()
                 .map(ReservationSlotEntity::getId)
                 .collect(Collectors.toList());
-
-        return reservationRepository.findByReservationSlotIdInAndStatusIn(slotIds, ACTIVE_STATUSES);
     }
 
     /**
@@ -375,13 +414,18 @@ public class EmergencyClosureService {
         Map<Long, ReservationSlotEntity> slotMap = slotRepository.findAllById(slotIds).stream()
                 .collect(Collectors.toMap(ReservationSlotEntity::getId, s -> s));
 
+        // N+1 回避: 対象ユーザーを1回で取得する（見つからないユーザーは氏名・メール "" のまま行を残す）
+        List<Long> userIds = reservations.stream()
+                .map(ReservationEntity::getUserId).distinct().collect(Collectors.toList());
+        Map<Long, UserService.FullNameAndEmail> userMap = userService.getFullNamesAndEmails(userIds);
+
         List<EmergencyClosurePreviewResponse.AffectedReservation> result = new ArrayList<>();
         for (ReservationEntity reservation : reservations) {
             ReservationSlotEntity slot = slotMap.get(reservation.getReservationSlotId());
-            UserEntity user = userRepository.findById(reservation.getUserId()).orElse(null);
+            UserService.FullNameAndEmail user = userMap.get(reservation.getUserId());
 
-            String fullName = user != null ? user.getLastName() + " " + user.getFirstName() : "";
-            String email = user != null ? user.getEmail() : "";
+            String fullName = user != null ? user.fullName() : "";
+            String email = user != null ? user.email() : "";
 
             EmergencyClosurePreviewResponse.AffectedReservation affected =
                     EmergencyClosurePreviewResponse.AffectedReservation.builder()

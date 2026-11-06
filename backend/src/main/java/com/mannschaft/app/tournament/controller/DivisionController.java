@@ -9,6 +9,9 @@ import com.mannschaft.app.tournament.dto.ParticipantResponse;
 import com.mannschaft.app.tournament.dto.UpdateDivisionRequest;
 import com.mannschaft.app.tournament.dto.UpdateParticipantRequest;
 import com.mannschaft.app.tournament.service.DivisionService;
+import com.mannschaft.app.tournament.service.ParticipantRegistrationFacade;
+import com.mannschaft.app.tournament.service.ParticipantTeamNameEnricher;
+import com.mannschaft.app.tournament.service.TournamentViewAccessGate;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -32,7 +35,7 @@ import java.util.List;
  *
  * <p>認可根治戦役 Wave2 トランシェ2C: 従来は認可が完全欠落しており、認証さえあれば他組織の
  * 大会にディビジョン・参加チームを作成/更新/削除できる IDOR/BOLA の穴だった。閲覧系は親大会
- * （tId）の F00 可視性判定（{@link DivisionService}）に委譲し、不可視は 404（IDOR 秘匿）。
+ * （tId）の F00 可視性判定（{@link TournamentViewAccessGate}）を公開入口で行い、不可視は 404（IDOR 秘匿）。
  * 変更系は tId が path orgId 配下であることを検証した上で主催組織 ADMIN/DEPUTY_ADMIN を要求する。</p>
  */
 @RestController
@@ -42,6 +45,11 @@ import java.util.List;
 public class DivisionController {
 
     private final DivisionService divisionService;
+    /** 参加チームへのチーム名付与（非トランザクション。D-3T のため Service 外で team ドメインを引く）。 */
+    private final ParticipantTeamNameEnricher participantTeamNameEnricher;
+    /** 参加登録の入口（認可 → 主催組織加盟チームの検証 → 登録）。 */
+    private final ParticipantRegistrationFacade participantRegistrationFacade;
+    private final TournamentViewAccessGate tournamentViewAccessGate;
 
     // ===== Division =====
 
@@ -49,8 +57,8 @@ public class DivisionController {
     @Operation(summary = "ディビジョン一覧")
     public ResponseEntity<ApiResponse<List<DivisionResponse>>> listDivisions(
             @PathVariable Long orgId, @PathVariable Long tId) {
-        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
-        return ResponseEntity.ok(ApiResponse.of(divisionService.listDivisions(tId, viewerUserId)));
+        tournamentViewAccessGate.verifyViewable(orgId, tId, SecurityUtils.getCurrentUserIdOrNull());
+        return ResponseEntity.ok(ApiResponse.of(divisionService.listDivisions(tId)));
     }
 
     @PostMapping("/divisions")
@@ -86,8 +94,8 @@ public class DivisionController {
     @Operation(summary = "参加チーム一覧")
     public ResponseEntity<ApiResponse<List<ParticipantResponse>>> listParticipants(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long divId) {
-        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
-        return ResponseEntity.ok(ApiResponse.of(divisionService.listParticipants(tId, divId, viewerUserId)));
+        tournamentViewAccessGate.verifyViewable(orgId, tId, SecurityUtils.getCurrentUserIdOrNull());
+        return ResponseEntity.ok(ApiResponse.of(participantTeamNameEnricher.enrich(orgId, tId, divisionService.listParticipants(tId, divId))));
     }
 
     @PostMapping("/divisions/{divId}/participants")
@@ -96,8 +104,8 @@ public class DivisionController {
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long divId,
             @Valid @RequestBody CreateParticipantRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.of(divisionService.addParticipant(
-                        orgId, tId, divId, SecurityUtils.getCurrentUserId(), request)));
+                .body(ApiResponse.of(participantTeamNameEnricher.enrich(orgId, tId, participantRegistrationFacade.addParticipant(
+                        orgId, tId, divId, SecurityUtils.getCurrentUserId(), request))));
     }
 
     @PatchMapping("/divisions/{divId}/participants/{pId}")
@@ -106,8 +114,8 @@ public class DivisionController {
             @PathVariable Long orgId, @PathVariable Long tId,
             @PathVariable Long divId, @PathVariable Long pId,
             @Valid @RequestBody UpdateParticipantRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(divisionService.updateParticipant(
-                orgId, tId, divId, pId, SecurityUtils.getCurrentUserId(), request)));
+        return ResponseEntity.ok(ApiResponse.of(participantTeamNameEnricher.enrich(orgId, tId, divisionService.updateParticipant(
+                orgId, tId, divId, pId, SecurityUtils.getCurrentUserId(), request))));
     }
 
     @DeleteMapping("/divisions/{divId}/participants/{pId}")

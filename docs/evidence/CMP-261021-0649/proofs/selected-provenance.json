@@ -1,0 +1,226 @@
+{
+  "formalStage": "passed",
+  "privateOriginalsRetained": true,
+  "wholeRawOrProcessListsCopied": false,
+  "sources": [
+    {
+      "id": "plan",
+      "sourcePath": ".claude/campaigns/cmp0649-next-20261026/approved-plan.md",
+      "sha256": "5cf70237d745502f5f649c954ad9794671f04343971a2c542422eca68e40bd3b"
+    },
+    {
+      "id": "ac-trace-dd41",
+      "sourcePath": ".claude/campaigns/cmp0649-next-20261026/ac-trace-root-dd41.json",
+      "sha256": "34a367dbddc7b9aa1573f37ef5c6258e37739373a44fa9153a7a7574a6544de2"
+    },
+    {
+      "id": "ac-test-evidence",
+      "sourcePath": ".claude/campaigns/cmp0649-next-20261026/ac-test-evidence-24ceb.json",
+      "sha256": "8465c7a70dc336043a928753478c99879b81c13263a9c83ddd4f75c780e8b2dc"
+    },
+    {
+      "id": "fe-assertions",
+      "sourcePath": ".claude/campaigns/cmp0649-next-20261026/fe-assertion-trace-33a90.json",
+      "sha256": "04db43cd3ebd442119a48b166057508d3530fb49177592f02d235d3f90924042"
+    },
+    {
+      "id": "review-dd41",
+      "sourcePath": ".claude/campaigns/cmp0649-next-20261026/review-root-dd41.md",
+      "sha256": "ec31b4836dccb22b83fe020822e50311e91ed7f841b200d801282d2df1f6d329"
+    },
+    {
+      "id": "red-summary",
+      "sourcePath": ".claude/campaigns/cmp0649-next-20261026/evidence-red-51ee0a14e375-02/red-be-summary.json",
+      "sha256": "7ba3d885340fcdb8bd640963c0de0cfd1982d5b01da62ddd21b13ec51e83a965"
+    },
+    {
+      "id": "red-adjudication",
+      "sourcePath": ".claude/campaigns/cmp0649-next-20261026/evidence-red-51ee0a14e375-02/classification-adjudication.json",
+      "sha256": "ea726242aaf55b96b0a1ef269a3bfcf0134fccfff9cb08a07aa10534c3b31530"
+    },
+    {
+      "id": "fresh-be-green",
+      "sourcePath": ".claude/campaigns/cmp0649-next-20261026/evidence-green-24ceb0588e2d-01/green-be-summary.json",
+      "sha256": "c492ed30ede5113616565e7459b076ea6a65ed8258f184fc3143291865273552"
+    },
+    {
+      "id": "source24-33",
+      "sourcePath": ".claude/campaigns/cmp0649-next-20261026/source-equivalence-24ceb-33a90.json",
+      "sha256": "032bb8f1ec956168bc950287791e40acd2a389a76b7dc4a311fc28a7290fe347"
+    },
+    {
+      "id": "source33-dd",
+      "sourcePath": ".claude/campaigns/cmp0649-next-20261026/source-equivalence-33a90-retry02.json",
+      "sha256": "7c57ebfa706679dbcefbcf24aa39a6f39ee9bd9a7c0f780124d3dd490ea55fcf"
+    },
+    {
+      "id": "fe-ci33",
+      "sourcePath": ".claude/campaigns/cmp0649-next-20261026/implementation-ci-33a90.json",
+      "sha256": "7576ce48b173ff991aa22c9ae6d96be12ed0ee073e64a026159aebe080cbd095"
+    },
+    {
+      "id": "ci-dd",
+      "sourcePath": ".claude/campaigns/cmp0649-next-20261026/implementation-ci-dd41.json",
+      "sha256": "fbb70d1ab34591c2030ce83b47cd9e420fb072c46a32cfb8c1d127c3087f09a1"
+    },
+    {
+      "id": "old-core",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/evidence-continuation-0d5e-01/real-safe.json",
+      "sha256": "4112f2e85c9d35a48239affeee28f4fe6b6b49f5f0aa19fe69054f8a0ee26d9f"
+    },
+    {
+      "id": "old-boundary",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/evidence-continuation-0d5e-01/boundary-safe.json",
+      "sha256": "6dba0c630b8358e32e9cbee52987e96f3aed3899b86f8f98021df5a92d04e6b7"
+    },
+    {
+      "id": "old-sql",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/evidence-continuation-0d5e-01/sql-plan-safe.json",
+      "sha256": "f6f5061ae9ee787b62568ab4db03d83cffb8a0236380e0e291e61453a493bd49"
+    },
+    {
+      "id": "old-nav",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/evidence-continuation-0d5e-03/navigation-safe.json",
+      "sha256": "d181f4e8c687892213ad626ac39b9dcbd436147d4f82768bf3214b3eb6ced309"
+    },
+    {
+      "id": "old-change-review",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/evidence-continuation-0d5e-03/change-review-safe.json",
+      "sha256": "f076bcb38e49fbe2058168692681c3105259e3fdc136b8e8f26ac3218ff5fbef"
+    },
+    {
+      "id": "old-I03-root",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-root-adjudication-i03.json",
+      "sha256": "cfd6add270260b6cb6844673c21cef284da0498b3ec9eadbe04cb14b6d1ab6ce"
+    },
+    {
+      "id": "old-I03-purpose",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-purpose-contract.json",
+      "sha256": "376fe8f1dfffcac4fe6cd64c3478e2d48709c8b9636b14c2d3ba1a0a2b78d3e0"
+    },
+    {
+      "id": "old-I03-A",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-A-safe.json",
+      "sha256": "7ce372bbcd10efd9490b72723ec9efc0dfbea03e800c1af06ff7445bd3c76a91"
+    },
+    {
+      "id": "old-I03-B",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-B-safe.json",
+      "sha256": "372c4684e2c2fb0362ae78c35919727cbbc5fd10230b050fea9718dccf62ad1d"
+    },
+    {
+      "id": "old-I03-D",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-D-safe.json",
+      "sha256": "010a2b55f4fb4ca4a6d3e1216eb68c14aa5b405a8607efae6eff3fce355fb922"
+    },
+    {
+      "id": "five-core-bridge",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/cmp0649-five-file-source-bridge-root.json",
+      "sha256": "8d2c191c5287ca5e62f06b5a3d07cad81a9c25d2b8357c2d466ddfd68dc0eadf"
+    },
+    {
+      "id": "actual-e711-bridge",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/cmp0649-actual-e711-source-bridge-root.json",
+      "sha256": "5f69ce594b2f5830860c0abbd2c3d91a908d24efada5568b8efc7c8a0b76bf1c"
+    },
+    {
+      "id": "review84-preliminary",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/cmp0649-review-root-84c8-preliminary.json",
+      "sha256": "ce561e9d1a7281ec43c2b2abeae8107bf350769e60c2e178be30f9992375ae0f"
+    },
+    {
+      "id": "old0d-84-bridge",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/source-bridge-0d5e-main-follow.json",
+      "sha256": "49f735b8a1ca55965b08ed53233584cf9fc72b2b6dac2e40708ebf8d884df0a2"
+    },
+    {
+      "id": "third-harness-manifest",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/standard-fixed-third-prepared/manifest.json",
+      "sha256": "ce54587be88072efa9698bba569d769ffa7562ed76e52aa34c6cbd5546b8431b"
+    },
+    {
+      "id": "actual-114-bridge",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/cmp0649-actual-114-source-bridge-root.json",
+      "sha256": "89326115973a0b4a85f85ca474adf806d28ef11e94977bc98afe623a8d6e4d03"
+    },
+    {
+      "id": "third-fixed",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/evidence-standard-fixed-84c8-03/fixed-ui-safe.json",
+      "sha256": "bf96813465fad80e98a1d99f66c3659e70716fcf0e6e3195a6508552d9cec1d0"
+    },
+    {
+      "id": "third-standard-receipt",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/evidence-standard-fixed-84c8-03/receipt.json",
+      "sha256": "21bdaefb0ecae21b428d884e2bc37a14d87c0c42f13fc18f18bf0132f52b1f38"
+    },
+    {
+      "id": "third-runtime",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/evidence-standard-fixed-84c8-03/runtime-safe.json",
+      "sha256": "9889ddaa1f3ab684539ca735b63ff8febea9c6b175fc276d66f2851b56272d55"
+    },
+    {
+      "id": "third-D-resident",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/evidence-standard-fixed-84c8-03/independent-D-resident-safe.json",
+      "sha256": "cd7077fcf5e055b1c29618726709226a06e5004f29dd859f43932d37d7252927"
+    },
+    {
+      "id": "third-D-register",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/evidence-standard-fixed-84c8-03/independent-D-process-register.json",
+      "sha256": "426a52dfb2466123b5c29dec0aa32ae85caf47a6487060f95d885baff5176b62"
+    },
+    {
+      "id": "third-D-root-adjudication",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/third-D-root-adjudication.json",
+      "sha256": "0dd5316d9fccbcf090dfa9c2dc02c13ce2c231cbe72b77c9857ea8007634ab78"
+    },
+    {
+      "id": "third-D-external-audit",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/third-D-external-audit-root.json",
+      "sha256": "0929d40dbc5caaebc53d6ed5fc40063e5575c120f9d5eba717f0c44d9415ef86"
+    },
+    {
+      "id": "third-cleanup-audit",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/run3-cleanup-external-safe.json",
+      "sha256": "8a74c8611f099703b7b5cc312661fc7c1e4a6e547287041d0642c6c7ba16d571"
+    },
+    {
+      "id": "third-windows-ports",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/run3-windows-ports-safe.json",
+      "sha256": "48f315cf21d5a325bcb9b18bf917c4e43d80a18bb4178b5162829c300f9d2d8a"
+    },
+    {
+      "id": "root-scope-assessment",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/cmp0649-final-scope-assessment-root.json",
+      "sha256": "856033fb0d438e4dd75d6eb34cb6e85f015e89a3cf3a9d7fc8cd8708d7d5bb6d"
+    },
+    {
+      "id": "actual-1eaa-bridge",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/cmp0649-actual-1eaa-source-bridge-root.json",
+      "sha256": "85602c451f4988e5c8766db98ccf16e9de20d4596bec70634ffa9278434f5f18"
+    },
+    {
+      "id": "root-final-premerge",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/cmp0649-final-premerge-root.json",
+      "sha256": "08e4f574bd53fc760af8223de24178dd8e6f6621c5f5155dd247ed9eec11a570"
+    },
+    {
+      "id": "root-scope-assessment-1eaa",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/cmp0649-final-scope-assessment-root-1eaa.json",
+      "sha256": "58c353453a9882ec34c4334847ad462140df19b25b1823a0382c75047e90eae4"
+    }
+  ],
+  "publicProofFiles": [
+    "docs/evidence/CMP-261021-0649/proofs/fe-assertion-trace.json",
+    "docs/evidence/CMP-261021-0649/proofs/final-ci-merge.json",
+    "docs/evidence/CMP-261021-0649/proofs/fresh-be-green.json",
+    "docs/evidence/CMP-261021-0649/proofs/observation-registration.json",
+    "docs/evidence/CMP-261021-0649/proofs/regression-provenance.json",
+    "docs/evidence/CMP-261021-0649/proofs/selected-provenance.json",
+    "docs/evidence/CMP-261021-0649/proofs/source-correspondence.json",
+    "docs/evidence/CMP-261021-0649/proofs/supporting-contracts.json",
+    "docs/evidence/CMP-261021-0649/proofs/third-D-observations.json",
+    "docs/evidence/CMP-261021-0649/proofs/third-run-summary.json"
+  ],
+  "note": "原本の所在/SHAを保持し、公開記録には検分に必要な選別だけを置く。資格情報・GO・raw全量・process一覧は複製しない。",
+  "original38SourceHashesUnchanged": true
+}

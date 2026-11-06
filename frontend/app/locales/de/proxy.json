@@ -16,7 +16,8 @@
         "pending": "Genehmigung ausstehend",
         "active": "Aktiv",
         "expired": "Abgelaufen",
-        "revoked": "Widerrufen"
+        "revoked": "Widerrufen",
+        "scheduled": "Noch nicht wirksam"
       },
       "effectiveFrom": "Gültig ab",
       "effectiveUntil": "Gültig bis",
@@ -229,6 +230,25 @@
         "not_allowed": "Stellvertretende Teilnahme ist für diesen Zeitplan/dieses Ereignis nicht erlaubt",
         "rate_limit": "Zu viele Anfragen. Bitte versuchen Sie es in 1 Minute erneut"
       }
+    },
+    "admin": {
+      "consentsTitle": "Einwilligungen zur stellvertretenden Eingabe verwalten",
+      "description": "Prüfen, genehmigen oder widerrufen Sie Einwilligungen zur stellvertretenden Eingabe und sehen Sie die Eingabehistorie Ihrer Organisation ein.",
+      "organization": "Verwaltete Organisation",
+      "proxyUserId": "ID der Vertretung",
+      "status": "Status",
+      "actions": "Aktionen",
+      "approve": "Genehmigen",
+      "revoke": "Widerrufen",
+      "approveConfirm": "Einwilligung #{id} genehmigen. Bitte bestätigen Sie den Vorgang.",
+      "approved": "Einwilligung genehmigt.",
+      "revoked": "Einwilligung widerrufen.",
+      "selfApprovalDenied": "Sie können keine Einwilligung genehmigen, die Sie selbst als Vertretung benennt.",
+      "noConsents": "Keine Einwilligungen vorhanden.",
+      "noRecords": "Keine stellvertretenden Eingaben vorhanden.",
+      "none": "Keine",
+      "recordId": "Eintrags-ID",
+      "targetType": "Zieltyp"
     }
   }
 }

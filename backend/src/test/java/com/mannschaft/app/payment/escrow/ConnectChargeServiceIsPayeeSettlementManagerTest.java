@@ -1,8 +1,6 @@
 package com.mannschaft.app.payment.escrow;
 
 import com.mannschaft.app.common.AccessControlService;
-import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.payment.PaymentFeeCalculator;
 import com.mannschaft.app.payment.connect.ConnectAccountEntity;
 import com.mannschaft.app.payment.connect.ConnectAccountRepository;
@@ -22,8 +20,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.willDoNothing;
-import static org.mockito.BDDMockito.willThrow;
 
 /**
  * F03.11.1 受取先側の精算管理者判定（{@link ConnectChargeService#isPayeeSettlementManager}）の試練。
@@ -95,8 +91,7 @@ class ConnectChargeServiceIsPayeeSettlementManagerTest {
     void ac27_teamPayee_managerOfThatTeamIsAccepted() {
         ConnectChargeService svc = service();
         givenPayee(ScopeKind.TEAM, PAYEE_SCOPE_ID);
-        willDoNothing().given(accessControlService)
-                .checkPermission(eq(ACTOR_ID), eq(PAYEE_SCOPE_ID), anyString(), anyString());
+        given(accessControlService.hasPermission(eq(ACTOR_ID), eq(PAYEE_SCOPE_ID), anyString(), anyString())).willReturn(true);
 
         assertThat(judge(svc, ACTOR_ID)).isTrue();
     }
@@ -106,8 +101,7 @@ class ConnectChargeServiceIsPayeeSettlementManagerTest {
     void ac27_teamPayee_managerOfOtherTeamIsRejected() {
         ConnectChargeService svc = service();
         givenPayee(ScopeKind.TEAM, PAYEE_SCOPE_ID);
-        willThrow(new BusinessException(CommonErrorCode.COMMON_002)).given(accessControlService)
-                .checkPermission(eq(ACTOR_ID), eq(PAYEE_SCOPE_ID), anyString(), anyString());
+        given(accessControlService.hasPermission(eq(ACTOR_ID), eq(PAYEE_SCOPE_ID), anyString(), anyString())).willReturn(false);
 
         assertThat(judge(svc, ACTOR_ID)).isFalse();
     }
@@ -117,8 +111,7 @@ class ConnectChargeServiceIsPayeeSettlementManagerTest {
     void ac20_orgPayee_adminOfThatOrgIsAccepted() {
         ConnectChargeService svc = service();
         givenPayee(ScopeKind.ORG, PAYEE_SCOPE_ID);
-        willDoNothing().given(accessControlService)
-                .checkAdminOrHasPermission(eq(ACTOR_ID), eq(PAYEE_SCOPE_ID), anyString(), anyString());
+        given(accessControlService.hasAdminOrPermissionInScope(eq(ACTOR_ID), eq(PAYEE_SCOPE_ID), anyString(), anyString())).willReturn(true);
 
         assertThat(judge(svc, ACTOR_ID)).isTrue();
     }
@@ -128,8 +121,7 @@ class ConnectChargeServiceIsPayeeSettlementManagerTest {
     void ac20_orgPayee_adminOfOtherTenantIsRejected() {
         ConnectChargeService svc = service();
         givenPayee(ScopeKind.ORG, PAYEE_SCOPE_ID);
-        willThrow(new BusinessException(CommonErrorCode.COMMON_002)).given(accessControlService)
-                .checkAdminOrHasPermission(eq(ACTOR_ID), eq(PAYEE_SCOPE_ID), anyString(), anyString());
+        given(accessControlService.hasAdminOrPermissionInScope(eq(ACTOR_ID), eq(PAYEE_SCOPE_ID), anyString(), anyString())).willReturn(false);
 
         assertThat(judge(svc, ACTOR_ID)).isFalse();
     }

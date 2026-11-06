@@ -65,7 +65,7 @@ public class BudgetCsvService {
         List<BudgetTransactionEntity> transactions = transactionRepository.findByFiscalYearId(fiscalYearId);
 
         // カテゴリ名マップ
-        Map<Long, String> categoryNames = categoryService.listFlatByFiscalYear(fiscalYearId)
+        Map<Long, String> categoryNames = categoryService.listHistoricalByFiscalYear(fiscalYearId)
                 .stream()
                 .collect(Collectors.toMap(c -> c.id(), c -> c.name()));
 

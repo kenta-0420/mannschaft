@@ -149,7 +149,7 @@ class PersonalScheduleColorTest {
     }
 
     private void givenSchedules(ScheduleEntity... entities) {
-        when(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(ME), any(), any()))
+        when(scheduleRepository.findCalendarByUserId(eq(ME), any(), any()))
                 .thenReturn(List.of(entities));
     }
 

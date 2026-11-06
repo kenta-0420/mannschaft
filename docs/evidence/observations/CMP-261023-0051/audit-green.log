@@ -1,0 +1,32 @@
+✔ 指摘0件と閾値未満の指摘は例外を使わず通る (4.1198ms)
+✔ 許可GHSAだけを通し、実npmレポートのNuxt循環参照を解決する (1.7214ms)
+✔ 別のhigh advisory混在は拒否する (1.7301ms)
+✔ 別のcritical advisory混在は拒否する (0.6059ms)
+✔ braces GHSA は名指しで通り、期限・lock版・範囲・消費者を検証する (2.0815ms)
+✔ braces 除外は node-forge の消費者名を流用できず、逆も拒否する (1.1959ms)
+✔ 実監査の2advisory混在19件は循環とforge専用辺を含めて通る (2.6771ms)
+✔ braces既知消費者名でも未知node・末端の別nodeは拒否する (2.1763ms)
+✔ 既知名間のbraces経路付替え・未知の循環辺は拒否する (2.3532ms)
+✔ 同じGHSAでもcritical・別package・別range・直接依存・別versionは拒否する (2.2249ms)
+✔ 両GHSA単独・混在でUTC10月23日末まで通り、24日0時以降は拒否する (4.0452ms)
+✔ forge既知消費者名でも未知node・末端の別nodeは拒否する (5.5322ms)
+✔ forge既知名間の経路付替え・未知の循環辺は拒否する (1.8667ms)
+✔ 不正JSON・構造欠落・error・npm異常終了は拒否する (1.4105ms)
+✔ 参照欠落・末端のない循環・空via・unknown severityを拒否する (0.82ms)
+✔ レポート集計と依存情報の不一致を拒否する (0.3858ms)
+✔ 同じ許可GHSAへの参照でも新しいhigh消費者は拒否する (0.4859ms)
+✔ high advisoryへの未知消費者をmoderateと報告しても拒否する (0.6809ms)
+✔ A1/A2: 低severityの間接参照も混在循環の全highを既存例外で検証する (2.3157ms)
+✔ A3: 許可packageでも直接advisoryの深刻度を過小報告すると拒否する (0.7569ms)
+✔ A4/A6: 低severityの間接参照でも未知highとcriticalを拒否する (1.2843ms)
+✔ A5: 低severityの既知消費者も未知node・依存辺・循環辺を拒否する (2.713ms)
+✔ A7: 低severityの間接参照でも末端range・直接化・lock版を検証する (2.6654ms)
+✔ A8: 低severityの間接参照でも期限直前のみ通し一致・直後・非有限時刻を拒否する (2.74ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 508.527

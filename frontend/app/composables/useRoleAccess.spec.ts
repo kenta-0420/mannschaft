@@ -1,10 +1,21 @@
-import { nextTick, ref } from 'vue'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+// @vitest-environment happy-dom
+import { mockNuxtImport } from '@nuxt/test-utils/runtime'
+import { effectScope, reactive, nextTick, ref, type EffectScope } from 'vue'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const apiMock = vi.fn()
 vi.mock('~/composables/useApi', () => ({ useApi: () => apiMock }))
 
-const { useRoleAccess } = await import('./useRoleAccess')
+const auth = reactive({ user: null as { id: string } | null, isAuthenticated: false, loadFromStorage: vi.fn() })
+mockNuxtImport('useAuthStore', () => () => auth)
+const { useRoleAccess: createRoleAccess } = await import('./useRoleAccess')
+const scopes: EffectScope[] = []
+function useRoleAccess(...args: Parameters<typeof createRoleAccess>) {
+  const scope = effectScope()
+  scopes.push(scope)
+  return scope.run(() => createRoleAccess(...args))!
+}
+afterEach(() => { for (const scope of scopes.splice(0)) scope.stop() })
 
 function deferred<T = unknown>() {
   let resolve: (value: T) => void = () => {}
@@ -24,6 +35,7 @@ function perms(roleName: string) {
  */
 describe('useRoleAccess.loadPermissions（最後の要求が勝つ）', () => {
   beforeEach(() => {
+    auth.user = null
     apiMock.mockReset()
   })
 
@@ -36,6 +48,53 @@ describe('useRoleAccess.loadPermissions（最後の要求が勝つ）', () => {
     expect(roleName.value).toBe('ADMIN')
     expect(permissions.value).toEqual(['perm.ADMIN'])
     expect(apiMock).toHaveBeenCalledWith('/api/v1/teams/team-a/me/permissions')
+  })
+
+  it('一連取得を呼び出し元で管理するときはスコープ変更による自動取得を止められる', async () => {
+    apiMock.mockResolvedValue(perms('ADMIN'))
+    const slug = ref('team-a')
+    const { loadPermissions } = useRoleAccess('team', slug, { watchScope: false })
+    await loadPermissions()
+    slug.value = 'team-b'
+    await nextTick()
+    expect(apiMock).toHaveBeenCalledTimes(1)
+    await loadPermissions()
+    expect(apiMock).toHaveBeenLastCalledWith('/api/v1/teams/team-b/me/permissions')
+  })
+
+  it('scope切替直後に旧ADMIN権限を消し、新scope取得失敗でも復活しない', async () => {
+    const next = deferred<ReturnType<typeof perms>>()
+    apiMock.mockResolvedValueOnce(perms('ADMIN')).mockReturnValueOnce(next.promise)
+    const slug = ref('team-a')
+    const access = useRoleAccess('team', slug)
+    await access.loadPermissions()
+    expect(access.isAdmin.value).toBe(true)
+    slug.value = 'team-b'
+    expect(access.roleName.value).toBeNull()
+    expect(access.permissions.value).toEqual([])
+    expect(access.roleResolved.value).toBe(false)
+    next.reject(new Error('new scope failed'))
+    await vi.waitFor(() => expect(access.roleLoadFailed.value).toBe(true))
+    expect(access.isAdmin.value).toBe(false)
+  })
+
+  it('本人切替で旧応答と権限を破棄しログアウト時は再取得しない', async () => {
+    auth.user = { id: 'viewer-a' }
+    const old = deferred<ReturnType<typeof perms>>()
+    const current = deferred<ReturnType<typeof perms>>()
+    apiMock.mockReturnValueOnce(old.promise).mockReturnValueOnce(current.promise)
+    const access = useRoleAccess('team', 'team-a')
+    const first = access.loadPermissions()
+    auth.user = { id: 'viewer-b' }
+    expect(access.roleName.value).toBeNull()
+    current.resolve(perms('SUPPORTER'))
+    await vi.waitFor(() => expect(access.roleName.value).toBe('SUPPORTER'))
+    old.resolve(perms('ADMIN'))
+    await first
+    expect(access.roleName.value).toBe('SUPPORTER')
+    auth.user = null
+    expect(access.roleName.value).toBeNull()
+    expect(apiMock).toHaveBeenCalledTimes(2)
   })
 
   it('失敗すると roleName=null・ok: false を返す（後方互換）', async () => {

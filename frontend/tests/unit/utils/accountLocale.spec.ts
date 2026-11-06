@@ -70,7 +70,6 @@ describe('言語同期の入口は applyAccountLocale に一本化されてい�
   const appRoot = resolve(process.cwd(), 'app')
   const callers = [
     'pages/settings/language.vue',
-    'pages/login.vue',
     'pages/2fa-verify.vue',
     'pages/auth/oauth/callback.vue',
     'composables/useAccountProfile.ts',
@@ -82,6 +81,17 @@ describe('言語同期の入口は applyAccountLocale に一本化されてい�
       expect(source).not.toMatch(/\bsetLocale\(/)
     })
   }
+
+  it('ログイン画面は共通の成功処理を使い、その処理が applyAccountLocale で言語を揃える', () => {
+    const page = readFileSync(resolve(appRoot, 'pages/login.vue'), 'utf8')
+    expect(page).toMatch(/const\s*\{\s*completeLogin\s*\}\s*=\s*useLoginSession\(\)/)
+    expect(page).toContain('await completeLogin(')
+    expect(page).not.toMatch(/\bsetLocale\(/)
+
+    const session = readFileSync(resolve(appRoot, 'composables/useLoginSession.ts'), 'utf8')
+    expect(session).toContain('applyAccountLocale(')
+    expect(session).not.toMatch(/\bsetLocale\(/)
+  })
 
   it('起動時プラグインも同じ applyAccountLocaleTo を使う', () => {
     const source = readFileSync(resolve(appRoot, 'plugins/locale.client.ts'), 'utf8')

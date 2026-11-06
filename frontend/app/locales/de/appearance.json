@@ -1,5 +1,8 @@
 {
   "appearance": {
+    "themeLabel": "Design",
+    "themeLightLabel": "Hell",
+    "themeDarkLabel": "Dunkel",
     "bgColorLabel": "Hintergrundfarbe",
     "darkBgColorLabel": "Dunkle Hintergrundfarbe",
     "color": {

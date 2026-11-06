@@ -2,6 +2,7 @@ package com.mannschaft.app.auth;
 
 import com.mannschaft.app.auth.event.AuthAnonymizationEventListener;
 import com.mannschaft.app.auth.event.UserAnonymizedEvent;
+import com.mannschaft.app.auth.service.BirthProfilePurgeService;
 import com.mannschaft.app.auth.repository.OAuthAccountRepository;
 import com.mannschaft.app.auth.repository.TwoFactorAuthRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -25,6 +26,9 @@ class AuthAnonymizationEventListenerTest {
 
     @Mock
     private TwoFactorAuthRepository twoFactorAuthRepository;
+
+    @Mock
+    private BirthProfilePurgeService birthProfilePurgeService;
 
     @InjectMocks
     private AuthAnonymizationEventListener listener;

@@ -43,6 +43,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -306,7 +307,7 @@ class SuccessionCovenantServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 他人が撤回しようとすると COVENANT_FORBIDDEN")
+        @DisplayName("異常系: 他人の撤回は不在と同じNOT_FOUNDで副作用がない")
         void revoke_forbidden_for_other_user() {
             UUID id = UUID.randomUUID();
             SuccessionCovenantEntity entity = SuccessionCovenantEntity.builder()
@@ -327,7 +328,26 @@ class SuccessionCovenantServiceTest {
             assertThatThrownBy(() -> service.revokeCovenant(id, OTHER_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
-                    .isEqualTo(SuccessionErrorCode.COVENANT_FORBIDDEN);
+                    .isEqualTo(SuccessionErrorCode.COVENANT_NOT_FOUND);
+
+            assertThat(entity.getRevokedAt()).isNull();
+            verify(covenantRepository, never()).save(any(SuccessionCovenantEntity.class));
+            verifyNoInteractions(auditLogService);
+        }
+
+        @Test
+        @DisplayName("不在の誓約撤回はNOT_FOUNDで保存も監査も行わない")
+        void 不在の誓約撤回は保存も監査も行わない() {
+            UUID id = UUID.randomUUID();
+            when(covenantRepository.findById(id)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.revokeCovenant(id, SIGNER_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(SuccessionErrorCode.COVENANT_NOT_FOUND);
+
+            verify(covenantRepository, never()).save(any(SuccessionCovenantEntity.class));
+            verifyNoInteractions(auditLogService);
         }
 
         @Test
@@ -376,7 +396,7 @@ class SuccessionCovenantServiceTest {
         }
 
         @Test
-        @DisplayName("他人かつ非 ADMIN なら COVENANT_FORBIDDEN")
+        @DisplayName("他人かつ非ADMINなら不在と同じNOT_FOUNDで副作用がない")
         void other_non_admin_forbidden() {
             UUID id = UUID.randomUUID();
             SuccessionCovenantEntity entity = buildEntity(id);
@@ -388,7 +408,10 @@ class SuccessionCovenantServiceTest {
             assertThatThrownBy(() -> service.getCovenant(id, ORG_ID, OTHER_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
-                    .isEqualTo(SuccessionErrorCode.COVENANT_FORBIDDEN);
+                    .isEqualTo(SuccessionErrorCode.COVENANT_NOT_FOUND);
+
+            verify(covenantRepository, never()).save(any(SuccessionCovenantEntity.class));
+            verifyNoInteractions(auditLogService);
         }
 
         @Test

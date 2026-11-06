@@ -1,0 +1,381 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261024-2051",
+  "scope": "app",
+  "implementation": {
+    "pr": 4106,
+    "sha": "4fd2c79aaf9ecc66267ba1556b03d226db15f857",
+    "mergeSha": "38d234363531593850493ff48259db33bdcc4bcf",
+    "mergedAt": "2026-10-25T08:07:52Z",
+    "state": "MERGED",
+    "url": "https://github.com/kenta-0420/mannschaft/pull/4106"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "FR-01",
+      "description": "Aの実効権限者が /teams/A/nav から申請を開く → 元Aの名前/slugが固定され、名前検索またはslugで先Bを指定できる。確認A→BでAの数値IDに既存POST。別所属へは送らない（FE契約＋実機）",
+      "tests": [
+        {
+          "name": "選択→元から先の確認→送信の順だけで数値元pathへPOSTしcommentを送らない",
+          "evidence": "frontend/app/components/friends/FriendFollowDialog.spec.ts"
+        },
+        {
+          "name": "FR実装関数・全境界green対応表（FR12 OR後者/FR15性能制限を含む）",
+          "evidence": "docs/evidence/CMP-261024-2051-validation.md"
+        },
+        {
+          "name": "取得済みgreenと限界の選別証拠",
+          "evidence": "docs/evidence/CMP-261024-2051/new2aac/green44-desktop-selected.json"
+        }
+      ]
+    },
+    {
+      "id": "FR-02",
+      "description": "/public/teams/B と閲覧認可された /teams/B/info を各々直打ちし、プロフィール操作群から開く。候補が0/1/2件以上 → 0は説明＋送信不可、1は名前明示＋選択省略、複数は初期未選択＋必須選択。自己B除外後総数を使用（API境界＋FE＋実機）",
+      "tests": [
+        {
+          "name": "FR02_本人の有効権限チームだけ返し相手自身を除外する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/social/FriendRequestSourceTeamContractIT.java"
+        },
+        {
+          "name": "FR実装関数・全境界green対応表（FR12 OR後者/FR15性能制限を含む）",
+          "evidence": "docs/evidence/CMP-261024-2051-validation.md"
+        },
+        {
+          "name": "取得済みgreenと限界の選別証拠",
+          "evidence": "docs/evidence/CMP-261024-2051/backend-red-green-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "FR-03",
+      "description": "候補が21件あり2ページ目の所属を選ぶ → filtered totalElements=21、hasNextと次ページが正しく、最初の1行を1件と誤認しない。ページを戻しても選択を保持し選択元だけにPOST。Bで取得中に閉じCで開いた際の遅いB応答は破棄し、C→Cを確定しない。21→1件減少でpage1空成功ならpage0を1回再取得し、実データ取得前は送信不可。範囲外page/総数0も検証（DB契約＋FE）",
+      "tests": [
+        {
+          "name": "21→1の空成功だけpage0へ1回補正する／相手変更・閉じて再度開く世代の遅延応答を捨てる",
+          "evidence": "frontend/app/composables/useFriendRequestSources.spec.ts"
+        },
+        {
+          "name": "FR実装関数・全境界green対応表（FR12 OR後者/FR15性能制限を含む）",
+          "evidence": "docs/evidence/CMP-261024-2051-validation.md"
+        },
+        {
+          "name": "取得済みgreenと限界の選別証拠",
+          "evidence": "docs/evidence/CMP-261024-2051/frontend-red-green-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "FR-04",
+      "description": "ADMIN、委任MEMBER、非委任DEPUTY/MEMBER、SUPPORTER、非所属、SYSTEM_ADMIN単独で候補/POST/incomingを使う → 許可は現在の実効権限と同値。権限なし元・別チームIDへの直HTTPは403、未認証401。ロール名/FE非表示だけで保護しない（認可契約＋ロール横断実機）",
+      "tests": [
+        {
+          "name": "FR04_実効権限を既存resolverと同値に解決する（21例）",
+          "evidence": "backend/src/test/java/com/mannschaft/app/social/FriendRequestSourceTeamPermissionContractIT.java"
+        },
+        {
+          "name": "FR実装関数・全境界green対応表（FR12 OR後者/FR15性能制限を含む）",
+          "evidence": "docs/evidence/CMP-261024-2051-validation.md"
+        },
+        {
+          "name": "取得済みgreenと限界の選別証拠",
+          "evidence": "docs/evidence/CMP-261024-2051/backend-red-green-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "FR-05",
+      "description": "選択後に元の権限剥奪/所属喪失/アーカイブ/削除/PROVISIONED化が起きる → POSTが403で書込なし。入力を保持して再取得/再選択でき、他の候補を自動送信しない（DB契約＋実機）",
+      "tests": [
+        {
+          "name": "FR05_元の現在状態を両POST形式で検証し失効なら書込ゼロ（12例）",
+          "evidence": "backend/src/test/java/com/mannschaft/app/social/TeamFriendRequestSourceValidityContractIT.java"
+        },
+        {
+          "name": "FR実装関数・全境界green対応表（FR12 OR後者/FR15性能制限を含む）",
+          "evidence": "docs/evidence/CMP-261024-2051-validation.md"
+        },
+        {
+          "name": "取得済みgreenと限界の選別証拠",
+          "evidence": "docs/evidence/CMP-261024-2051/backend-red-green-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "FR-06",
+      "description": "検索にtrim後1/2文字、同名候補、0件、通信失敗、古い応答を与える → 1文字は呼出0、2文字は300ms後に検索。名前＋slugで区別し、失敗は0件と区別し再試行可能。古い応答が新しい選択を上書きしない（既存FE契約維持）",
+      "tests": [
+        {
+          "name": "FR06: 旧検索の成功応答が後着しても最新候補・選択方向・POST先を維持する／FR06: 旧検索の失敗応答が後着しても最新候補・選択方向・POST先を維持する",
+          "evidence": "frontend/tests/unit/components/friends/FriendFollowDialog.spec.ts"
+        },
+        {
+          "name": "FR実装関数・全境界green対応表（FR12 OR後者/FR15性能制限を含む）",
+          "evidence": "docs/evidence/CMP-261024-2051-validation.md"
+        },
+        {
+          "name": "取得済みgreenと限界の選別証拠",
+          "evidence": "docs/evidence/CMP-261024-2051/fr06-name-response-characterization.json"
+        }
+      ]
+    },
+    {
+      "id": "FR-07",
+      "description": "PUBLIC/PRIVATE・ACTIVE/PROVISIONED・削除/アーカイブの相手を検索/slug送信する → 検索は公開有効だけ。PRIVATEの既知slug送信互換は維持、無効/不在は404 SOCIAL_104。/public/teams/B はPUBLIC限定を維持し、非PUBLICの /teams/B/info は既存閲覧認可がある場合だけ入口表示。閲覧不可の直打ちでプロフィール/非公開名を開示しない（API契約＋実機）",
+      "tests": [
+        {
+          "name": "FR-07: PRIVATEプロフィールの入口は非表示でも既知slugから実UI申請でき、受信元を本人が確認できる",
+          "evidence": "frontend/tests/e2e/real/team-friend-request-flow.spec.ts"
+        },
+        {
+          "name": "FR実装関数・全境界green対応表（FR12 OR後者/FR15性能制限を含む）",
+          "evidence": "docs/evidence/CMP-261024-2051-validation.md"
+        },
+        {
+          "name": "取得済みgreenと限界の選別証拠",
+          "evidence": "docs/evidence/CMP-261024-2051/new2aac/green44-desktop-selected.json"
+        }
+      ]
+    },
+    {
+      "id": "FR-08",
+      "description": "送信前にキャンセル、連打、候補/先を変更する → キャンセルはPOST0、同一tick連打も重複送信を止める。確認表示の元・先と実際のpath/bodyが一致（FE＋実機）",
+      "tests": [
+        {
+          "name": "disabledと同一tick連打を送信入口でも拒否する",
+          "evidence": "frontend/app/components/friends/TeamFriendFollowButton.spec.ts"
+        },
+        {
+          "name": "FR実装関数・全境界green対応表（FR12 OR後者/FR15性能制限を含む）",
+          "evidence": "docs/evidence/CMP-261024-2051-validation.md"
+        },
+        {
+          "name": "取得済みgreenと限界の選別証拠",
+          "evidence": "docs/evidence/CMP-261024-2051/frontend-red-green-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "FR-09",
+      "description": "A→B成功後Bの権限者が受信一覧を開きフォロー返し → A→Bの申請元明示、B→Aの確認、201 mutual=true後の両未成立一覧除外と成立一覧反映を実API/DBで観測。個人USER followは変化しない（統合＋モックなし実機）",
+      "tests": [
+        {
+          "name": "FR09_受信だけを表示し成立後に除外する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/social/TeamFriendIncomingFollowContractIT.java"
+        },
+        {
+          "name": "FR実装関数・全境界green対応表（FR12 OR後者/FR15性能制限を含む）",
+          "evidence": "docs/evidence/CMP-261024-2051-validation.md"
+        },
+        {
+          "name": "取得済みgreenと限界の選別証拠",
+          "evidence": "docs/evidence/CMP-261024-2051/backend-red-green-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "FR-10",
+      "description": "非開示状態の受信元に閲覧者が所属する場合と、公開有効な受信元に所属する/しない場合を比較する → 非公開/無効/削除済みの行/総数は保持し、sourceTeamName/Slug=null・nameHidden=true。閲覧者が所属していても開示せずリンク/フォロー返しなし。公開有効なら所属の有無によらず名前/slugを表示。同一followを送受信一覧で読むとUTC+9の日時も同一Instant/Z付きとなる。別チームのincoming直打ちは403（API/FE認可契約）",
+      "tests": [
+        {
+          "name": "FR10_無効非公開元は所属していても名前を伏せ行を保持する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/social/TeamFriendIncomingFollowContractIT.java"
+        },
+        {
+          "name": "FR実装関数・全境界green対応表（FR12 OR後者/FR15性能制限を含む）",
+          "evidence": "docs/evidence/CMP-261024-2051-validation.md"
+        },
+        {
+          "name": "取得済みgreenと限界の選別証拠",
+          "evidence": "docs/evidence/CMP-261024-2051/backend-red-green-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "FR-11",
+      "description": "既存申請への409、202（followId非nullも含む）、途中通信失敗を受ける → 409は情報表示＋再取得、202は未確定。上限3回で自動待機終了、手動再取得可。成立未確認の成功表示・無限再送を起こさず、失敗時は入力保持（契約＋障害注入FE）",
+      "tests": [
+        {
+          "name": "followId非nullの202でも成功を出さず3回まで再送し手動再取得を提供する／retryAfterSeconds=0でも未確定として扱い1秒以上待機する",
+          "evidence": "frontend/app/components/friends/TeamFriendFollowButton.spec.ts"
+        },
+        {
+          "name": "FR実装関数・全境界green対応表（FR12 OR後者/FR15性能制限を含む）",
+          "evidence": "docs/evidence/CMP-261024-2051-validation.md"
+        },
+        {
+          "name": "取得済みgreenと限界の選別証拠",
+          "evidence": "docs/evidence/CMP-261024-2051/frontend-red-green-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "FR-12",
+      "description": "A取消とBフォロー返しが競合、または一覧表示後に成立する場合、次回取得が実状態と一致する。既存DELETEが成立関係も解消し得る確認を維持する。今回の実証はOR後者を既存ITのHTTP interleavingと実機flow1で検証した範囲で、並列TXストレスは未実施。",
+      "tests": [
+        {
+          "name": "AC24_一覧取得後に成立した相互関係の取消は自フォローとフレンドだけを消す",
+          "evidence": "backend/src/test/java/com/mannschaft/app/social/TeamFriendPendingFollowContractIT.java"
+        },
+        {
+          "name": "FR実装関数・全境界green対応表（FR12 OR後者/FR15性能制限を含む）",
+          "evidence": "docs/evidence/CMP-261024-2051-validation.md"
+        },
+        {
+          "name": "取得済みgreenと限界の選別証拠",
+          "evidence": "docs/evidence/CMP-261024-2051/backend-red-green-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "FR-13",
+      "description": "comment省略/null/300/301文字、ID/slug両方/両なし/不正slugを直POSTする → 互換の0〜300受理、301/不正組合せ400 COMMON_001。APIが受理しても配送保証を表示しない（DTO/Controller契約）",
+      "tests": [
+        {
+          "name": "コメントの既存HTTP境界を保つ（slug/数値×省略/null/空/300/301）",
+          "evidence": "backend/src/test/java/com/mannschaft/app/social/controller/TeamFriendsControllerFollowSlugTest.java"
+        },
+        {
+          "name": "FR実装関数・全境界green対応表（FR12 OR後者/FR15性能制限を含む）",
+          "evidence": "docs/evidence/CMP-261024-2051-validation.md"
+        },
+        {
+          "name": "取得済みgreenと限界の選別証拠",
+          "evidence": "docs/evidence/CMP-261024-2051/backend-red-green-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "FR-14",
+      "description": "6言語、360/390px、キーボードで二つの入口を操作する → 両プロフィールルートと管理画面で元→先と名前/slug・説明・エラー・送信ボタンが欠けず横パンなし。未認証の公開プロフィール入口→安全なログイン復帰→再認可→候補選択→申請を実機確認し、SSRの候補取得0・本人所属埋込0・自動送信0を確認。label/フォーカス順/送信中無効化/読み上げ可能なエラー。日本語直書きなし、既存ガイドもコメント入力を案内しない（i18n番人＋実機）",
+      "tests": [
+        {
+          "name": "FR-14: 6言語・360/390pxで両プロフィール入口と管理画面の方向確認・横パンなし・操作領域44px",
+          "evidence": "frontend/tests/e2e/real/team-friend-request-flow.spec.ts"
+        },
+        {
+          "name": "FR実装関数・全境界green対応表（FR12 OR後者/FR15性能制限を含む）",
+          "evidence": "docs/evidence/CMP-261024-2051-validation.md"
+        },
+        {
+          "name": "取得済みgreenと限界の選別証拠",
+          "evidence": "docs/evidence/CMP-261024-2051/new2aac/coordinator-final-qa.json"
+        }
+      ]
+    },
+    {
+      "id": "FR-15",
+      "description": "候補100件ページ/多所属・受信一覧多件を取得する → 所属全件ロード/FE権限N+1/行ごとのチームqueryなし。filtered COUNT・安定sort・最大100を契約/クエリ計数で確認（実DB性能試験）",
+      "tests": [
+        {
+          "name": "FR15_候補百件の実SQLは一覧COUNT二本で全所属ロードをしない／FR15_受信百件も一覧COUNTと公開概要一括の三本で取得する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/social/FriendRequestQueryPerformanceContractIT.java"
+        },
+        {
+          "name": "FR実装関数・全境界green対応表（FR12 OR後者/FR15性能制限を含む）",
+          "evidence": "docs/evidence/CMP-261024-2051-validation.md"
+        },
+        {
+          "name": "取得済みgreenと限界の選別証拠",
+          "evidence": "docs/evidence/CMP-261024-2051/incoming-index-regression-summary.json"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 40173954489
+    },
+    {
+      "runId": 40173813797
+    },
+    {
+      "runId": 40173813800
+    },
+    {
+      "runId": 40173813780
+    },
+    {
+      "runId": 40173813831
+    },
+    {
+      "runId": 40173813768
+    },
+    {
+      "runId": 40173813788
+    },
+    {
+      "runId": 40173813796
+    },
+    {
+      "runId": 40173813779
+    },
+    {
+      "runId": 40173813776
+    },
+    {
+      "runId": 40173813778
+    },
+    {
+      "runId": 40173813806
+    },
+    {
+      "runId": 40173811566
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261024-2051/final-ci-merge-metadata.json"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261024-2051/new2aac/green44-desktop-selected.json"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261024-2051/residents/exploration-registration-summary.json"
+    }
+  },
+  "regressions": [
+    {
+      "description": "一般エラーと既存同名確認schemaの衝突を分離し既存OpenAPI契約を維持",
+      "test": "ErrorResponseOpenApiContractTestの契約2件、Arch37/freeze2",
+      "redEvidence": "docs/evidence/CMP-261024-2051/schema-regression-red-green-summary.json",
+      "greenEvidence": "docs/evidence/CMP-261024-2051/schema-regression-red-green-summary.json"
+    },
+    {
+      "description": "宛先先頭の索引不足をmigration1本で是正し自然planで対象受信100行へ絞る",
+      "test": "FriendIncomingIndexMigrationITの実DDL列/自然index計画契約",
+      "redEvidence": "docs/evidence/CMP-261024-2051/incoming-index-regression-summary.json",
+      "greenEvidence": "docs/evidence/CMP-261024-2051/incoming-index-regression-summary.json"
+    },
+    {
+      "description": "モバイルtabsの文字切れと44px下限をコンテナ内scroll/最小高で是正",
+      "test": "FR-LAYOUT-TABS（6locale×360/390px）",
+      "redEvidence": "docs/evidence/CMP-261024-2051/layout-regression-summary.json",
+      "greenEvidence": "docs/evidence/CMP-261024-2051/new2aac/green44-desktop-selected.json"
+    },
+    {
+      "description": "長い名前/slug検索候補のviewport外はみ出しを折返しで是正",
+      "test": "FR-LAYOUT-CANDIDATE（6locale×360/390px）",
+      "redEvidence": "docs/evidence/CMP-261024-2051/layout-regression-summary.json",
+      "greenEvidence": "docs/evidence/CMP-261024-2051/new2aac/green44-desktop-selected.json"
+    },
+    {
+      "description": "モバイル申請元Selectの42pxを44px下限へ是正",
+      "test": "FR-LAYOUT-SOURCE（6locale×360/390px）",
+      "redEvidence": "docs/evidence/CMP-261024-2051/layout-regression-summary.json",
+      "greenEvidence": "docs/evidence/CMP-261024-2051/new2aac/green44-desktop-selected.json"
+    }
+  ],
+  "finalTraceVerified": true,
+  "limitations": [
+    "B0 fullvalidatorは既存snapshotの140参照不足により不合格のまま。正規targetoverlayと独立originの既存UI/IndexedDB統合は成功。元ユーザーの箱へ書き込んだとはしない。",
+    "FR12の真の並列TXストレスは未実施。OR条件の後者（一覧取得後に成立）を既存ITのHTTP interleavingと実機flow1で検証。",
+    "10M実負荷と本人所属先行planは未実証。小表で本人履歴が多いsourceplanの偏りを記録。",
+    "本番公開・本番AWSデプロイは対象外。",
+    "Redis DB13の所有不明18keys/reservationと旧共有3306のfailed schemaは保持。",
+    "全体の陣払い事前checkは既存75WT中stale68、dirty/locked/protected/index.lock/junction等によりexit1。本戦役所有5WTはrecentで、他資産を保全して削除していない。所有5WTの最終片付けは別receiptで追記予定。"
+  ]
+}

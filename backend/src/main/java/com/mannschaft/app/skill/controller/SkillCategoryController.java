@@ -39,14 +39,14 @@ public class SkillCategoryController {
 
     /**
      * スキルカテゴリ一覧を取得する。
-     * 認可: MEMBER以上（全員）
+     * 認可: MEMBER以上（ADMIN・DEPUTY_ADMIN・MEMBER。SUPPORTER・GUEST は不可。CMP-261012-0313）
      */
     @GetMapping("/teams/{teamId}/skill-categories")
     public ApiResponse<List<SkillCategoryResponse>> listCategories(
             @PathVariable Long teamId,
             @RequestParam(defaultValue = "false") boolean includeInactive) {
         Long userId = SecurityUtils.getCurrentUserId();
-        accessControlService.checkMembership(userId, teamId, "TEAM");
+        accessControlService.checkRegularMemberOrAbove(userId, teamId, "TEAM");
         return ApiResponse.of(
                 skillMapper.toCategoryResponseList(
                         skillCategoryService.getCategories("TEAM", teamId, includeInactive).getData()

@@ -1,17 +1,18 @@
 <script setup lang="ts">
-import type { CheckinRecord } from '~/types/member-card'
+import type { CheckinHistoryRecord } from '~/types/member-card'
 
 const props = defineProps<{
   cardId: number
 }>()
 
 const memberCardApi = useMemberCardApi()
-const notification = useNotification()
+const loadError = shallowRef<unknown>(null)
 const { formatRelative } = useRelativeTime()
 
-const checkins = ref<CheckinRecord[]>([])
+const checkins = ref<CheckinHistoryRecord[]>([])
 const loading = ref(true)
 const size = 20
+const { t } = useI18n()
 
 /**
  * チェックイン履歴を読み込む。
@@ -23,26 +24,30 @@ const size = 20
  */
 async function loadCheckins() {
   loading.value = true
+  loadError.value = null
   try {
     const res = await memberCardApi.getCheckins(props.cardId)
     checkins.value = res.data
-  } catch {
-    notification.error('チェックイン履歴の取得に失敗しました')
+  } catch (error) {
+    loadError.value = error
   } finally {
     loading.value = false
   }
 }
 
 const checkinTypeLabel = (type: string) => {
-  return type === 'STAFF_SCAN' ? 'スタッフスキャン' : 'セルフ'
+  return t(type === 'STAFF_SCAN' ? 'memberCardAdmin.historyColumns.scan' : 'memberCardAdmin.historyColumns.self')
 }
 
+watch(() => props.cardId, loadCheckins)
 onMounted(loadCheckins)
 </script>
 
 <template>
   <div>
+    <DashboardErrorState v-if="loadError" :error="loadError" @retry="loadCheckins" />
     <DataTable
+      v-else
       :value="checkins"
       :loading="loading"
       :paginator="true"
@@ -51,26 +56,26 @@ onMounted(loadCheckins)
       striped-rows
     >
       <template #empty>
-        <div class="py-8 text-center text-surface-500">チェックイン履歴がありません</div>
+        <div class="py-8 text-center text-surface-500">{{ $t('memberCardAdmin.historyColumns.empty') }}</div>
       </template>
-      <Column header="日時">
+      <Column :header="$t('memberCardAdmin.historyColumns.time')">
         <template #body="{ data }">
           {{ formatRelative(data.checkedInAt) }}
         </template>
       </Column>
-      <Column header="タイプ">
+      <Column :header="$t('memberCardAdmin.historyColumns.type')">
         <template #body="{ data }">
           <Badge :value="checkinTypeLabel(data.checkinType)" :severity="data.checkinType === 'SELF' ? 'info' : 'success'" />
         </template>
       </Column>
-      <Column header="場所">
+      <Column :header="$t('memberCardAdmin.historyColumns.location')">
         <template #body="{ data }">
           {{ data.location ?? '-' }}
         </template>
       </Column>
-      <Column header="対応スタッフ">
+      <Column :header="$t('memberCardAdmin.historyColumns.staff')">
         <template #body="{ data }">
-          {{ data.checkedInBy?.displayName ?? '-' }}
+          {{ data.checkedInByName ?? '-' }}
         </template>
       </Column>
     </DataTable>

@@ -19,6 +19,7 @@ import com.mannschaft.app.payment.dto.GateCheckResponse;
 import com.mannschaft.app.payment.service.PaymentGateService;
 import com.mannschaft.app.payment.spi.ContentGateTarget;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -69,12 +70,29 @@ class AnnouncementInboxAdapterTest {
             mock(AnnouncementReadStatusRepository.class);
     private final InboxPriorityNormalizer normalizer = new InboxPriorityNormalizer();
     private final PaymentGateService paymentGateService = mock(PaymentGateService.class);
+    @org.mockito.Captor
+    private org.mockito.ArgumentCaptor<List<Long>> historyChunks;
 
     private final AnnouncementInboxAdapter adapter = new AnnouncementInboxAdapter(
             membershipScopeQueryService, roleResolver, feedQueryRepository, feedRepository,
             readStatusRepository, normalizer,
             new com.mannschaft.app.inbox.service.InboxDedupeKeyResolver(), paymentGateService);
 
+    @BeforeEach
+    void 既存表示認可契約は履歴候補を元scope全件として通す() {
+        given(feedQueryRepository.findScopeIdsWithHistory(any(), any()))
+                .willAnswer(invocation -> invocation.getArgument(1));
+    }
+
+
+    private final Map<com.mannschaft.app.common.visibility.ScopeKey, ViewerRole> freshRoles =
+            new java.util.LinkedHashMap<>();
+
+    private void givenFreshRole(String type, Long scopeId, ViewerRole role) {
+        freshRoles.put(new com.mannschaft.app.common.visibility.ScopeKey(type, scopeId), role);
+        given(roleResolver.resolveViewerRolesFresh(eq(USER_ID), any()))
+                .willAnswer(invocation -> new java.util.LinkedHashMap<>(freshRoles));
+    }
 
     private AnnouncementFeedEntity feed(Long id, AnnouncementScopeType scopeType, Long scopeId,
                                         String priority, String visibility, String titleCache,
@@ -127,6 +145,43 @@ class AnnouncementInboxAdapterTest {
     }
 
     @Test
+    void 非空履歴の型付きscopeだけ従来のwindowと可視性取得へ渡す() {
+        List<Long> teams = java.util.stream.LongStream.rangeClosed(1, 21).boxed().toList();
+        given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(teams);
+        given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of(10L));
+        givenFreshRole("TEAM", 10L, ViewerRole.MEMBER);
+        givenFreshRole("ORGANIZATION", 10L, ViewerRole.MEMBER);
+        given(feedQueryRepository.findScopeIdsWithHistory(eq(AnnouncementScopeType.TEAM), any())).willReturn(List.of(10L));
+        given(feedQueryRepository.findScopeIdsWithHistory(eq(AnnouncementScopeType.ORGANIZATION), any())).willReturn(List.of(10L));
+        var teamFeed = feed(801L, AnnouncementScopeType.TEAM, 10L, "NORMAL", "MEMBERS_AND_ABOVE", "チーム", null,
+                LocalDateTime.now(), null, null);
+        var orgFeed = feed(802L, AnnouncementScopeType.ORGANIZATION, 10L, "NORMAL", "MEMBERS_AND_ABOVE", "組織", null,
+                LocalDateTime.now(), null, null);
+        given(feedQueryRepository.findByScope(eq(AnnouncementScopeType.TEAM), eq(10L), any(), any(), eq(500)))
+                .willReturn(List.of(teamFeed));
+        given(feedQueryRepository.findByScope(eq(AnnouncementScopeType.ORGANIZATION), eq(10L), any(), any(), eq(500)))
+                .willReturn(List.of(orgFeed));
+        givenFullGateBatch(801L, 802L);
+        assertThat(adapter.fetch(USER_ID, 500)).extracting(InboxItemDto::sourceId).containsExactly(801L, 802L);
+        verify(feedQueryRepository, org.mockito.Mockito.times(2)).findByScope(any(), any(), any(), any(), eq(500));
+    }
+
+    @Test
+    void 履歴候補の後続chunk失敗は組織も含む元scope全件へ戻す() {
+        List<Long> teams = java.util.stream.LongStream.rangeClosed(1, 1001).boxed().toList();
+        given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(teams);
+        given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of(1L));
+        given(feedQueryRepository.findScopeIdsWithHistory(eq(AnnouncementScopeType.TEAM), any()))
+                .willReturn(List.of(1L)).willThrow(new IllegalStateException("履歴候補DB障害"));
+        assertThat(adapter.fetch(USER_ID, 500)).isEmpty();
+        verify(feedQueryRepository, org.mockito.Mockito.times(2))
+                .findScopeIdsWithHistory(eq(AnnouncementScopeType.TEAM), historyChunks.capture());
+        assertThat(historyChunks.getAllValues()).extracting(List::size).containsExactly(1000, 1);
+        assertThat(historyChunks.getAllValues().stream().flatMap(List::stream).toList()).containsExactlyElementsOf(teams);
+        verify(feedQueryRepository, org.mockito.Mockito.times(1002)).findByScope(any(), any(), any(), any(), eq(500));
+    }
+
+    @Test
     @DisplayName("sourceType は ANNOUNCEMENT を返す")
     void sourceTypeIsAnnouncement() {
         assertThat(adapter.sourceType()).isEqualTo(InboxSourceType.ANNOUNCEMENT);
@@ -147,7 +202,7 @@ class AnnouncementInboxAdapterTest {
                     "MEMBERS_AND_ABOVE", "full", "excerpt", LocalDateTime.now(), null, null);
             given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of(TEAM_ID));
             given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
-            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
+            givenFreshRole("TEAM", TEAM_ID, ViewerRole.MEMBER);
             given(feedQueryRepository.findByScope(eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(), any(), anyInt()))
                     .willReturn(List.of(hidden, locked, full));
             given(paymentGateService.checkAccessBatch(
@@ -186,7 +241,7 @@ class AnnouncementInboxAdapterTest {
             given(membershipScopeQueryService.findActiveTeamIds(USER_ID))
                     .willReturn(List.of(TEAM_ID));
             given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
-            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
+            givenFreshRole("TEAM", TEAM_ID, ViewerRole.MEMBER);
             given(feedQueryRepository.findByScope(
                     eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(), any(), anyInt()))
                     .willReturn(List.of(f));
@@ -222,7 +277,7 @@ class AnnouncementInboxAdapterTest {
             given(membershipScopeQueryService.findActiveTeamIds(USER_ID))
                     .willReturn(List.of(TEAM_ID));
             given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
-            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
+            givenFreshRole("TEAM", TEAM_ID, ViewerRole.MEMBER);
             given(feedQueryRepository.findByScope(
                     eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(), any(), anyInt()))
                     .willReturn(List.of(u, i, n));
@@ -251,7 +306,7 @@ class AnnouncementInboxAdapterTest {
             given(membershipScopeQueryService.findActiveTeamIds(USER_ID))
                     .willReturn(List.of(TEAM_ID));
             given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
-            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
+            givenFreshRole("TEAM", TEAM_ID, ViewerRole.MEMBER);
             given(feedQueryRepository.findByScope(
                     eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(), any(), anyInt()))
                     .willReturn(List.of(read, unread));
@@ -279,8 +334,8 @@ class AnnouncementInboxAdapterTest {
                     .willReturn(List.of(TEAM_ID));
             given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID))
                     .willReturn(List.of(ORG_ID));
-            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
-            given(roleResolver.resolveViewerRole(USER_ID, "ORGANIZATION", ORG_ID)).willReturn(ViewerRole.MEMBER);
+            givenFreshRole("TEAM", TEAM_ID, ViewerRole.MEMBER);
+            givenFreshRole("ORGANIZATION", ORG_ID, ViewerRole.MEMBER);
             given(feedQueryRepository.findByScope(
                     eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(), any(), anyInt()))
                     .willReturn(List.of(teamFeed));
@@ -313,7 +368,7 @@ class AnnouncementInboxAdapterTest {
             given(feedRepository.findById(91L)).willReturn(Optional.of(locked));
             given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of(TEAM_ID));
             given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
-            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
+            givenFreshRole("TEAM", TEAM_ID, ViewerRole.MEMBER);
             given(paymentGateService.checkAccess(
                     eq(ContentGateType.ANNOUNCEMENT), eq(90L), eq(USER_ID), any(ContentGateTarget.class)))
                     .willReturn(new GateCheckResponse(false, true, List.of()));
@@ -334,7 +389,7 @@ class AnnouncementInboxAdapterTest {
             given(membershipScopeQueryService.findActiveTeamIds(USER_ID))
                     .willReturn(List.of(TEAM_ID));
             given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
-            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
+            givenFreshRole("TEAM", TEAM_ID, ViewerRole.MEMBER);
             givenFullGate(60L);
 
             assertThat(adapter.isVisibleTo(USER_ID, 60L)).isTrue();
@@ -349,7 +404,7 @@ class AnnouncementInboxAdapterTest {
             given(membershipScopeQueryService.findActiveTeamIds(USER_ID))
                     .willReturn(List.of(TEAM_ID));
             given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
-            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
+            givenFreshRole("TEAM", TEAM_ID, ViewerRole.MEMBER);
 
             assertThat(adapter.isVisibleTo(USER_ID, 61L)).isFalse();
         }
@@ -365,7 +420,7 @@ class AnnouncementInboxAdapterTest {
             given(membershipScopeQueryService.findActiveTeamIds(USER_ID))
                     .willReturn(List.of(TEAM_ID));
             given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
-            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.SUPPORTER);
+            givenFreshRole("TEAM", TEAM_ID, ViewerRole.SUPPORTER);
 
             assertThat(adapter.isVisibleTo(USER_ID, 62L)).isFalse();
         }
@@ -382,7 +437,7 @@ class AnnouncementInboxAdapterTest {
             given(membershipScopeQueryService.findActiveTeamIds(USER_ID))
                     .willReturn(List.of(TEAM_ID));
             given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
-            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.SUPPORTER);
+            givenFreshRole("TEAM", TEAM_ID, ViewerRole.SUPPORTER);
             givenFullGate(66L, 67L);
 
             assertThat(adapter.isVisibleTo(USER_ID, 66L)).isTrue();
@@ -404,7 +459,7 @@ class AnnouncementInboxAdapterTest {
             given(membershipScopeQueryService.findActiveTeamIds(USER_ID))
                     .willReturn(List.of(TEAM_ID));
             given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
-            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
+            givenFreshRole("TEAM", TEAM_ID, ViewerRole.MEMBER);
             givenFullGate(70L, 71L, 72L);
 
             assertThat(adapter.isVisibleTo(USER_ID, 70L)).isTrue();

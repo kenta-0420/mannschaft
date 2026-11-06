@@ -78,7 +78,7 @@ class AuthSessionServiceTest {
             // Given
             String refreshTokenHash = "hashed-refresh-token";
             String jti = "jti-123";
-            long expEpoch = LocalDateTime.now().plusHours(1).toEpochSecond(java.time.ZoneOffset.UTC);
+            long expEpoch = java.time.Instant.now().plusSeconds(900).getEpochSecond();
 
             RefreshTokenEntity token = RefreshTokenEntity.builder()
                     .userId(1L)
@@ -86,11 +86,11 @@ class AuthSessionServiceTest {
                     .rememberMe(false)
                     .expiresAt(LocalDateTime.now().plusDays(7))
                     .build();
-            given(refreshTokenRepository.findByTokenHash(refreshTokenHash))
+            given(refreshTokenRepository.findByTokenHashAndUserId(refreshTokenHash, 1L))
                     .willReturn(Optional.of(token));
 
             // When
-            authSessionService.logout(refreshTokenHash, jti, expEpoch);
+            authSessionService.logout(1L, refreshTokenHash, jti, expEpoch);
 
             // Then
             assertThat(token.getRevokedAt()).isNotNull();
@@ -102,13 +102,34 @@ class AuthSessionServiceTest {
         @DisplayName("正常系: 存在しないRefreshTokenの場合は何もしない")
         void logout_トークン不在_何もしない() {
             // Given
-            given(refreshTokenRepository.findByTokenHash("nonexistent"))
+            given(refreshTokenRepository.findByTokenHashAndUserId("nonexistent", 1L))
                     .willReturn(Optional.empty());
 
             // When
-            authSessionService.logout("nonexistent", "jti", 0L);
+            authSessionService.logout(1L, "nonexistent", "jti", 0L);
 
             // Then
+            verify(authTokenService, never()).addJtiToBlacklist(any(), anyLong());
+            verify(eventPublisher, never()).publish(any());
+        }
+
+        @Test
+        void logout_トークン不在でも本人の有効JTIを失効する() {
+            given(refreshTokenRepository.findByTokenHashAndUserId("nonexistent", 1L)).willReturn(Optional.empty());
+
+            authSessionService.logout(1L, "nonexistent", "current-jti", java.time.Instant.now().plusSeconds(900).getEpochSecond());
+
+            verify(authTokenService).addJtiToBlacklist(eq("current-jti"), anyLong());
+            verify(eventPublisher, never()).publish(any());
+        }
+
+        @Test
+        void logout_DB検索障害を成功として握りつぶさない() {
+            given(refreshTokenRepository.findByTokenHashAndUserId("hash", 1L))
+                    .willThrow(new org.springframework.dao.DataAccessResourceFailureException("意図したDB障害"));
+
+            assertThatThrownBy(() -> authSessionService.logout(1L, "hash", "jti", java.time.Instant.now().plusSeconds(900).getEpochSecond()))
+                    .isInstanceOf(org.springframework.dao.DataAccessResourceFailureException.class);
             verify(authTokenService, never()).addJtiToBlacklist(any(), anyLong());
             verify(eventPublisher, never()).publish(any());
         }

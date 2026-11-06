@@ -1,0 +1,42 @@
+✔ 台帳をエスケープ済み縦棒込みで7列に分解しCMP重複を検出する (4.5866ms)
+✔ 証拠列のMarkdown destinationを相対pathとして解決し、外部URL内の文字列を誤認しない (3.6975ms)
+✔ 未完了から完了への遷移に証拠が必要 (2.244ms)
+✔ 既存完了行の移動・注記変更は免責だが証拠JSON改変は再検査する (1.685ms)
+✔ JSONの空・null・AC重複・実装SHA差・CI失敗を拒否する (7.3911ms)
+✔ review必須passed、実機UIでは実機と探索passed、成功stageは証拠必須 (1.1966ms)
+✔ 過去完了の証拠link削除・差替えを拒否する (5.0567ms)
+✔ 実装PRのアプリ変更はapp必須、既知の基盤変更だけtoolingにできる (3.8549ms)
+✔ 検証対象の証拠だけを選び、数百件の無関係な完了証拠をAPI対象にしない (14.1581ms)
+✔ pull_request_targetはbase trusted validatorだけを実行しPR headを実行しない (4.554ms)
+✔ AC-9: workflowはfilter all・paginate・世代判定・previous_filename・changed_files照合で実装PRを集める (2.5534ms)
+✔ CLIはgit show経由の正例を通し、過去完了JSON削除を拒否する (9370.2189ms)
+✔ AC-1: #3841の4ファイルはtest-onlyで、real/exploratoryをtest-onlyのn/aにすれば通る (8.1466ms)
+✔ AC-2: 同居spec・frontend/testsだけはtest-only、scriptsとテストの混在もtest-only、scriptsだけはtooling (0.5338ms)
+✔ AC-3: test-onlyのPRはapp申告なら通り、tooling申告は拒否、既存docs/evidence全件は新validatorを通る (1326.3709ms)
+✔ AC-4: files空はthrow、null・数値・filename欠落はapp、check0件とmergedAt欠落は拒否 (13.2548ms)
+✔ AC-5: completed_atがmergedAtと同時刻なら含め+1秒なら除外し、境界外のパスはapp (1.7499ms)
+✔ AC-6: 混在・大文字・正規化差・絶対パス・バックスラッシュ・main→testリネーム・main削除・テスト設定はapp、stage.scope不一致とreason空は拒否 (8.7073ms)
+✔ AC-7: マージ時点の世代でcheckを判定し、#3847の重複PRによるマージ後failureを採らない (8.9292ms)
+✔ AC-8: files 3000件の分類が100ms未満 (168.3371ms)
+✔ 全Vue数・追跡数・未検査数を数え、index.vueを親routeへ変換する (552.006ms)
+✔ 未追跡routeはdefault要約に留め、JSONで詳細を返す (983.7665ms)
+✔ 台帳の不存在route・重複・不正schemaは非0になる (2002.7112ms)
+✔ 複数Vueが同一routeへ変換される場合はschema違反にせずcollisionとして数える (1164.743ms)
+✔ 最小スキーマを検証し、各caseを独立集計する (6.8774ms)
+✔ runなしは率null、費用未測定はnullのまま確定総額を出さない (0.843ms)
+✔ 未完了runも率・欠陥・介入・時間・費用の母数に含め、成功数にだけ含めない (0.4746ms)
+✔ case/AC/runの重複、空配列、SHA不正、未知AC、override、不正値を拒否する (2.6273ms)
+✔ CLIはJSONを集計して出力し、空case入力を非0で拒否する (959.3783ms)
+✔ 既定実行は読み取り専用で、秘密の環境変数値を出力しない (8347.3193ms)
+✔ ツール実行失敗を欠損とtimeoutに分け、出力本文を公開しない (37.5424ms)
+✔ Node/npm/Javaの実versionを期待値と比較し、hooksPath config originを保持する (5256.5408ms)
+✔ 既存の独自pre-commitを上書きせず、再導入は冪等 (23359.3713ms)
+✔ linked worktreeから共有pre-commitの実行bitを変更しない (8533.662ms)
+ℹ tests 34
+ℹ suites 0
+ℹ pass 34
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 46471.9982

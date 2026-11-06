@@ -5,6 +5,7 @@ import type {
   TimelineMute,
   TimelineMutedType,
 } from '~/types/timeline'
+import { getLoadErrorHttpStatus } from '~/utils/loadError'
 
 const props = defineProps<{
   /**
@@ -26,6 +27,10 @@ const props = defineProps<{
    * 指定時は追加ロードを無効化し、一覧ページ側へ委譲する。
    */
   limit?: number
+}>()
+
+const emit = defineEmits<{
+  'read-access': [allowed: boolean, scopeType: TimelineScopeType | undefined, scopeId: string | number | undefined]
 }>()
 
 // 投稿カード本体クリックは各カード内の返信アコーディオン開閉に統一済み。
@@ -79,24 +84,36 @@ const loadMoreTarget = ref<HTMLElement | null>(null)
 const loadMoreFailed = ref(false)
 const intersectionObserverAvailable = ref(true)
 let loadMoreObserver: IntersectionObserver | null = null
+const accessError = shallowRef<unknown>()
+// 後続の拒否を古い成功が取り消さないよう、全取得経路で共通の世代を使う。
+let feedRequestSeq = 0
 
 // --- リポスト確認 ---
 const repostTargetId = ref<number | null>(null)
 const repostSubmitting = ref(false)
 
 async function loadFeed(cursor?: number) {
+  const requestSeq = ++feedRequestSeq
+  const scopeType = props.scopeType
+  const scopeId = props.scopeId
+  const myFeed = props.myFeed
+  const isCurrentRequest = () => requestSeq === feedRequestSeq
+    && scopeType === props.scopeType && scopeId === props.scopeId && myFeed === props.myFeed
   loading.value = true
   loadMoreFailed.value = false
   try {
     // myFeed モード: 所属 TEAM/ORGANIZATION/VILLAGE 横断の個人集約タイムライン（pinned は常に空）。
     // 単一スコープモード: 従来通り scopeType/scopeId でフィード取得。
     const res = props.myFeed
-      ? await getMyTimeline(cursor)
+      ? await getMyTimeline(cursor, props.limit)
       : await getFeed({
           scopeType: props.scopeType ?? 'PUBLIC',
           scopeId: props.scopeId,
           cursor,
+          ...(props.limit != null ? { limit: props.limit } : {}),
         })
+    if (!isCurrentRequest()) return
+    accessError.value = undefined
     if (!cursor) {
       pinnedPosts.value = res.data.pinned
       posts.value = res.data.posts
@@ -106,11 +123,24 @@ async function loadFeed(cursor?: number) {
     nextCursor.value = res.meta.nextCursor
     hasNext.value = res.meta.hasNext
     initialLoaded.value = true
-  } catch {
+    emit('read-access', true, scopeType, scopeId)
+  } catch (error) {
+    if (!isCurrentRequest()) return
+    const status = getLoadErrorHttpStatus(error)
+    if (status === 403 || status === 404) {
+      accessError.value = error
+      pinnedPosts.value = []
+      posts.value = []
+      nextCursor.value = null
+      hasNext.value = false
+      initialLoaded.value = false
+      emit('read-access', false, scopeType, scopeId)
+      return
+    }
     showError('タイムラインの取得に失敗しました')
     if (cursor != null) loadMoreFailed.value = true
   } finally {
-    loading.value = false
+    if (isCurrentRequest()) loading.value = false
   }
 }
 
@@ -272,6 +302,12 @@ function openMutedList() {
   mutedListVisible.value = true
 }
 
+/** 手動更新だけを抑止し、投稿後など既存の内部更新要求は維持する。 */
+function refreshManually() {
+  if (loading.value) return
+  refresh()
+}
+
 function refresh() {
   loadFeed()
 }
@@ -284,6 +320,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  feedRequestSeq++
   loadMoreObserver?.disconnect()
 })
 
@@ -291,10 +328,24 @@ defineExpose({ refresh })
 </script>
 
 <template>
-  <div class="flex flex-col gap-3" data-testid="timeline-feed" :data-loaded="initialLoaded">
-    <!-- 非表示中チップ（個人集約フィードのみ・0件のときは出さない） -->
-    <div v-if="showMutedChip" class="flex justify-end">
+  <DashboardErrorState v-if="accessError" :error="accessError" testid="timeline-access-error" />
+  <div v-else class="flex flex-col gap-3" data-testid="timeline-feed" :data-loaded="initialLoaded">
+    <!-- フィードだけを更新。非表示中チップは個人集約フィードのミュートがあるときだけ表示。 -->
+    <div class="flex flex-wrap items-center justify-end gap-2">
+      <Button
+        type="button"
+        :label="t('timeline.refresh')"
+        icon="pi pi-refresh"
+        severity="secondary"
+        text
+        class="min-h-11 min-w-11"
+        :loading="loading"
+        :disabled="loading"
+        data-testid="timeline-refresh"
+        @click="refreshManually"
+      />
       <button
+        v-if="showMutedChip"
         type="button"
         class="inline-flex min-h-11 items-center gap-1 rounded-full bg-surface-100 px-3 text-xs font-medium text-surface-600 hover:bg-surface-200 dark:bg-surface-700 dark:text-surface-200"
         data-testid="timeline-muted-chip"
@@ -318,6 +369,7 @@ defineExpose({ refresh })
       @bookmark="onBookmark"
       @pin="onPin"
       @delete="onDelete"
+      @edited="loadFeed()"
       @repost="onRepost"
       @mute="onMute"
     />
@@ -335,6 +387,7 @@ defineExpose({ refresh })
       @bookmark="onBookmark"
       @pin="onPin"
       @delete="onDelete"
+      @edited="loadFeed()"
       @repost="onRepost"
       @mute="onMute"
     />

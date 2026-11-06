@@ -22,7 +22,7 @@ export interface AuthSessionResponse {
   userAgent: string
   lastActivityAt: string
   createdAt: string
-  isCurrent: boolean
+  current: boolean
 }
 
 // === WebAuthn ===

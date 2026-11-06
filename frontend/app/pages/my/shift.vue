@@ -302,7 +302,7 @@ const showGuide = ref(false)
       </span>
       <button
         type="button"
-        class="min-h-[32px] rounded-full px-3 py-1 text-xs font-medium transition-colors"
+        class="min-h-[32px] max-md:min-h-11 max-md:min-w-11 rounded-full px-3 py-1 text-xs font-medium transition-colors"
         :class="
           selectedTeamId === null
             ? 'bg-primary text-white'
@@ -316,7 +316,7 @@ const showGuide = ref(false)
         v-for="team in teamOptions"
         :key="team.id"
         type="button"
-        class="min-h-[32px] rounded-full px-3 py-1 text-xs font-medium transition-colors"
+        class="min-h-[32px] max-md:min-h-11 max-md:min-w-11 rounded-full px-3 py-1 text-xs font-medium transition-colors"
         :class="
           selectedTeamId === team.id
             ? 'bg-primary text-white'
@@ -513,7 +513,8 @@ const showGuide = ref(false)
               </h3>
               <button
                 type="button"
-                class="flex h-8 w-8 items-center justify-center rounded-full text-surface-400 transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
+                class="flex h-8 w-8 max-md:min-h-11 max-md:min-w-11 items-center justify-center rounded-full text-surface-400 transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
+                :aria-label="t('button.close')"
                 @click="selectedDate = null"
               >
                 <i class="pi pi-times text-xs" />

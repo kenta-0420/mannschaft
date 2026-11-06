@@ -1,5 +1,7 @@
 package com.mannschaft.app.auth.guardianship;
 
+import com.mannschaft.app.auth.service.UserRowLockService;
+
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.AuthErrorCode;
 import com.mannschaft.app.auth.entity.UserEntity;
@@ -61,12 +63,15 @@ class GuardianshipHandoverServiceTest {
     @Mock private AuthenticationCriticalOperationGuard authenticationCriticalOperationGuard;
     @Mock private AuditLogService auditLogService;
 
+    // Existing isolated unit fixture only; real locking acceptance uses MySQL IT.
+    @Mock private UserRowLockService userRowLockService;
+
     private GuardianshipHandoverService service;
 
     @BeforeEach
     void setUp() {
         service = new GuardianshipHandoverService(
-                parentalConsentService, careLinkService, userRepository,
+                parentalConsentService, careLinkService, userRepository, userRowLockService,
                 authPasswordResetService, authenticationCriticalOperationGuard, auditLogService);
     }
 

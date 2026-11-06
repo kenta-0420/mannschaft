@@ -62,7 +62,7 @@ public class PersonalScheduleController {
      */
     @SelfScopedEndpoint("検索条件が認証主体の userId に束縛される"
             + "（PersonalScheduleService#listPersonalSchedules が "
-            + "ScheduleRepository#findByUserIdAndStartAtBetweenOrderByStartAtAsc のみで引き、"
+            + "ScheduleRepository#findCalendarByUserId のみで引き、"
             + "後段の絞り込みはキーワード・種別・カーソルのみ。リクエストはスケジュール ID を受け取らない）")
     @GetMapping
     @Operation(summary = "個人スケジュール一覧")

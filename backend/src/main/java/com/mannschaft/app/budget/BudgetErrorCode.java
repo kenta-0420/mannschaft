@@ -72,7 +72,10 @@ public enum BudgetErrorCode implements ErrorCode {
     BUDGET_020("BUDGET_020", "取引が存在するため年度を削除できません", Severity.WARN),
 
     /** 添付ファイルが見つからない */
-    BUDGET_021("BUDGET_021", "指定された添付ファイルが見つかりません", Severity.WARN);
+    BUDGET_021("BUDGET_021", "指定された添付ファイルが見つかりません", Severity.WARN),
+
+    /** 生存する子費目があるため削除不可 */
+    BUDGET_022("BUDGET_022", "子費目が存在するため削除できません", Severity.WARN);
 
     private final String code;
     private final String message;

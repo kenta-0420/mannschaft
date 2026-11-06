@@ -12,6 +12,7 @@ import com.mannschaft.app.role.RoleErrorCode;
 import com.mannschaft.app.role.dto.InvitableScopesResponse;
 import com.mannschaft.app.role.dto.InviteCardData;
 import com.mannschaft.app.role.dto.MembershipInviteIssuedToken;
+import com.mannschaft.app.role.dto.MembershipInviteTokenCommand;
 import com.mannschaft.app.role.dto.MembershipInviteRequest;
 import com.mannschaft.app.role.dto.MembershipInviteResponse;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
@@ -42,8 +43,8 @@ import java.util.Set;
  * <p><strong>越境トランザクション方針（原則5・§5）:</strong> 発行は role ドメイン（トークン発行=
  * {@link MembershipInviteTokenIssuer}）と chat ドメイン（カード投稿=
  * {@link ChatMembershipInviteCardService}）をそれぞれ独立した {@code @Transactional} に閉じる。
- * 本メソッド自身は {@link Propagation#SUPPORTS} で、周囲に tx があれば参加（契約テスト＝同一 tx で可視）、
- * なければ非 tx で走り各ドメイン書込が独立コミットする Saga を成す。カード投稿失敗時はトークンを
+ * 本メソッド自身は {@link Propagation#NOT_SUPPORTED} で、周囲のtxを停止し、
+ * 各ドメイン書込を独立コミットする Saga を成す。カード投稿失敗時はトークンを
  * 補償失効して宙に浮いた PENDING を残さない。</p>
  */
 @Service
@@ -76,6 +77,7 @@ public class MembershipInviteService {
     private final MembershipInviteTokenIssuer tokenIssuer;
     private final ChatMembershipInviteCardService cardService;
     private final AuditLogService auditLogService;
+    private final InviteScopeStateService scopeStates;
 
     /**
      * DM 相手を指定スコープへ招待する（宛先付きトークン発行 ＋ 招待カード投稿）。
@@ -85,7 +87,7 @@ public class MembershipInviteService {
      * @param actorUserId 実行ユーザー ID
      * @return 発行結果
      */
-    @Transactional(propagation = Propagation.SUPPORTS)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public MembershipInviteResponse issueMembershipInvite(
             Long channelId, MembershipInviteRequest request, Long actorUserId) {
         String scopeType = normalizeScopeType(request.scopeType());
@@ -107,6 +109,7 @@ public class MembershipInviteService {
         if (!canIssue(actorUserId, scopeId, scopeType)) {
             throw scopeAdminForbidden(scopeType);
         }
+        var scope = scopeStates.requireAvailable(scopeType, scopeId);
 
         // 6. 【既メンバー】宛先が既に scope メンバーなら発行不可（409）。
         if (accessControlService.isMember(targetUserId, scopeId, scopeType)) {
@@ -114,7 +117,7 @@ public class MembershipInviteService {
         }
 
         // 7. 【重複 PENDING】同一宛先 × 同一スコープの有効 PENDING が既存なら発行不可（409 ROLE_003・③）。
-        if (hasActivePendingInvite(targetUserId, scopeType, scopeId)) {
+        if (hasActivePendingInvite(targetUserId, scopeType, scopeId, scope.closureGeneration())) {
             throw new BusinessException(RoleErrorCode.ROLE_003, HttpStatus.CONFLICT);
         }
 
@@ -122,8 +125,25 @@ public class MembershipInviteService {
         LocalDateTime expiresAt = utcNow().plusDays(expiresInDays)
                 .atZoneSameInstant(UserZoneLocalDateTimeParser.SERVER_ZONE)
                 .toLocalDateTime();
-        MembershipInviteIssuedToken token = tokenIssuer.issue(
-                scopeType, scopeId, roleId, targetUserId, actorUserId, expiresAt);
+        MembershipInviteIssuedToken token = tokenIssuer.issue(new MembershipInviteTokenCommand(
+                scopeType, scopeId, roleId, targetUserId, actorUserId,
+                expiresAt.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant(), scope.closureGeneration()));
+        // roleの発行commit後だけ親共有lockで再確認する。失敗時はcardを作らず補償失効する。
+        boolean stillCurrent;
+        try {
+            stillCurrent = scopeStates.recheckIssued(scopeType, scopeId, scope.closureGeneration());
+        } catch (RuntimeException failure) {
+            try {
+                tokenIssuer.revokeForCompensation(token.id());
+            } catch (RuntimeException compensationFailure) {
+                failure.addSuppressed(compensationFailure);
+            }
+            throw failure;
+        }
+        if (!stillCurrent) {
+            tokenIssuer.revokeForCompensation(token.id());
+            throw new BusinessException(RoleErrorCode.ROLE_002);
+        }
 
         // 9. 【chat ドメイン tx】DM に INVITE_CARD を投稿。失敗時はトークンを補償失効して再送出（Saga 補償）。
         Long cardMessageId;
@@ -155,7 +175,7 @@ public class MembershipInviteService {
      */
     @Transactional
     public void revokeMembershipInvite(Long channelId, Long tokenId, Long actorUserId) {
-        InviteTokenEntity token = inviteTokenRepository.findById(tokenId)
+        InviteTokenEntity token = inviteTokenRepository.findByIdForUpdate(tokenId)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
 
         // URL の channelId と tokenId を実カードで束縛する。宛先なしの共有リンク型トークンや、
@@ -250,7 +270,8 @@ public class MembershipInviteService {
         if (targetUserId != null && accessControlService.isMember(targetUserId, scopeId, scopeType)) {
             return "JOINED";
         }
-        if (token.getRevokedAt() != null) {
+        if (token.getRevokedAt() != null
+                || !scopeStates.isCurrent(scopeType, scopeId, token.getScopeClosureGeneration())) {
             return "REVOKED";
         }
         LocalDateTime expiresAt = token.getExpiresAt();
@@ -291,6 +312,9 @@ public class MembershipInviteService {
         for (Long scopeId : accessControlService.findAdminOrAboveScopeIds(userId, scopeType)) {
             String roleName = accessControlService.getRoleName(userId, scopeId, scopeType);
             if (!canIssueWithRole(userId, scopeId, scopeType, roleName)) {
+                continue;
+            }
+            if (scopeStates.read(scopeType, scopeId).filter(state -> state.available()).isEmpty()) {
                 continue;
             }
             String name = resolveScopeName(scopeType, scopeId);
@@ -377,11 +401,13 @@ public class MembershipInviteService {
                 .map(OrganizationService.OrganizationSummary::name).orElse(null);
     }
 
-    private boolean hasActivePendingInvite(Long targetUserId, String scopeType, Long scopeId) {
+    private boolean hasActivePendingInvite(Long targetUserId, String scopeType, Long scopeId, long currentGeneration) {
         List<InviteTokenEntity> candidates = "TEAM".equals(scopeType)
                 ? inviteTokenRepository.findByTargetUserIdAndTeamIdAndRevokedAtIsNull(targetUserId, scopeId)
                 : inviteTokenRepository.findByTargetUserIdAndOrganizationIdAndRevokedAtIsNull(targetUserId, scopeId);
-        return candidates.stream().anyMatch(InviteTokenEntity::isValid);
+        // 親snapshotは発行前に1回取得済み。同scopeの候補ごとに親へN+1読取しない。
+        return candidates.stream().anyMatch(token -> token.isValid()
+                && token.getScopeClosureGeneration() == currentGeneration);
     }
 
     private String normalizeScopeType(String scopeType) {

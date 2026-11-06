@@ -1,0 +1,35 @@
+{
+  "reviewedAt": "2026-10-25T03:55:07.272Z",
+  "head": "82d8682768de515d72827e868eac65c11d2d1324",
+  "run": 40158601318,
+  "rootDirectApiConclusion": "success",
+  "allSixShardJobsConclusion": "success",
+  "currentTestExecution": "FROM-CACHE all6; zero fresh measurements",
+  "raw": {
+    "cacheHit": true,
+    "completed": false,
+    "testStepExitCode": null,
+    "commandExitCode": 0,
+    "shellExitCode": 0,
+    "taskOutcome": "success"
+  },
+  "backendTree": "9790002753834502d8680e7d641a5905049f6ccd",
+  "historicalFresh": {
+    "head": "a38b62efc5f20a214caf1d01faff31a536eb50ab",
+    "run": 40150974359,
+    "sameBackendTree": true,
+    "all6FreshSuccess": true,
+    "normalizedTopLevelUnion": 3085,
+    "crossShardDuplicates": 0,
+    "weightedObserved": 3083,
+    "freshUnweighted": 2,
+    "stale": 0
+  },
+  "limits": [
+    "task output cache key not exposed; null",
+    "original MFA latency root cause unresolved",
+    "this is current head backend CI success, not whole current CI or whole campaign completion"
+  ],
+  "agentMdClarification": "assessment.mdの「PR最新headの判定に代用しない」は全CI/全戦役判定には代用しない意味で適用。82d BE個別run成功は現headの実結果。",
+  "mergeAllowed": false
+}

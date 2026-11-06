@@ -5,6 +5,7 @@ import com.mannschaft.app.bulletin.ScopeType;
 import com.mannschaft.app.bulletin.dto.AttachmentDownloadUrlResponse;
 import com.mannschaft.app.bulletin.dto.AttachmentResponse;
 import com.mannschaft.app.bulletin.dto.ThreadResponse;
+import com.mannschaft.app.bulletin.visibility.BulletinThreadVisibilityResolver;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
@@ -29,6 +30,8 @@ public class BulletinReadFacade {
     private final ContentVisibilityChecker visibilityChecker;
     private final TeamService teamService;
     private final OrganizationService organizationService;
+    private final BulletinThreadVisibilityResolver threadVisibilityResolver;
+    private final BulletinAnnouncementPreviewReader announcementPreviewReader;
 
     public ThreadResponse getThread(ScopeType type, Long scopeId, Long threadId, Long viewer) {
         var metadata = threadService.getReadMetadata(threadId);
@@ -47,6 +50,29 @@ public class BulletinReadFacade {
         if (!isManaged(metadata)) throw notFound();
         assertReadable(metadata, viewer);
         return metadata;
+    }
+
+    /**
+     * 組織告知の本文プレビューの委任版（宛先チームのメンバーへの委任。ALIC-1 §2.3）。組織の掲示板への所属チェックは行わず、
+     * 所有スコープでの役割を委任役割（"MEMBER" / "SUPPORTER"）に差し替えて F00 を評価する。準備中の組織・チームは 404。
+     * 呼び出しは {@code AnnouncementPreviewSourceService} に限る（ArchUnit F02）。通常の閲覧 API へ流用しない。
+     */
+    public BulletinThreadService.PreviewMetadata getPreviewMetadataDelegated(Long threadId, Long viewer,
+                                                                            String delegatedRole) {
+        var metadata = threadService.getReadMetadata(threadId);
+        if (!isManaged(metadata)) throw notFound();
+        assertReadableDelegated(metadata, viewer, delegatedRole);
+        return metadata;
+    }
+
+    /** {@link #getPreviewMetadataDelegated} で認可した上で本文を返す。添付は返さない（組織のメンバーだけが開ける）。 */
+    public ThreadResponse getThreadDelegated(ScopeType type, Long scopeId, Long threadId, Long viewer,
+                                             String delegatedRole) {
+        var metadata = threadService.getReadMetadata(threadId);
+        if (!isManaged(metadata) || !metadata.scopeType().equals(type.name())
+                || !Objects.equals(metadata.scopeId(), scopeId)) throw notFound();
+        assertReadableDelegated(metadata, viewer, delegatedRole);
+        return announcementPreviewReader.readThread(type, scopeId, threadId, viewer);
     }
 
     public List<AttachmentResponse> listThreadAttachments(Long threadId, Long viewer) {
@@ -72,6 +98,20 @@ public class BulletinReadFacade {
             if ((type == ScopeType.TEAM && teamService.isProvisioned(metadata.scopeId()))
                     || (type == ScopeType.ORGANIZATION && organizationService.isProvisioned(metadata.scopeId()))) throw notFound();
             visibilityChecker.assertCanView(ReferenceType.BULLETIN_THREAD, metadata.threadId(), viewer);
+        } catch (BusinessException e) {
+            String code = e.getErrorCode().getCode();
+            if (code.equals("COMMON_002") || code.equals("VISIBILITY_001") || code.equals("VISIBILITY_004")) throw notFound();
+            throw e;
+        }
+    }
+
+    private void assertReadableDelegated(BulletinThreadService.PreviewMetadata metadata, Long viewer,
+                                         String delegatedRole) {
+        ScopeType type = ScopeType.valueOf(metadata.scopeType());
+        try {
+            if ((type == ScopeType.TEAM && teamService.isProvisioned(metadata.scopeId()))
+                    || (type == ScopeType.ORGANIZATION && organizationService.isProvisioned(metadata.scopeId()))) throw notFound();
+            threadVisibilityResolver.assertCanViewDelegated(metadata.threadId(), viewer, delegatedRole);
         } catch (BusinessException e) {
             String code = e.getErrorCode().getCode();
             if (code.equals("COMMON_002") || code.equals("VISIBILITY_001") || code.equals("VISIBILITY_004")) throw notFound();

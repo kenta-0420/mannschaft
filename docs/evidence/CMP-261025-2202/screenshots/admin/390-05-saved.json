@@ -1,0 +1,1000 @@
+{
+  "url": "http://localhost:3001/teams/teams-1792955080937/modules",
+  "locale": "ja",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "scrollWidth": 390,
+  "clientWidth": 390,
+  "controls": [
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "text": "メニューを開く",
+      "box": {
+        "x": 8,
+        "y": 9.5,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "text": "通知",
+      "box": {
+        "x": 338,
+        "y": 9.5,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "hidden",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "inline-flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "ギャラリーをメンバーに表示",
+      "box": {
+        "x": 145,
+        "y": -1,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-gallery-member",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 167,
+        "y": -1,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "ギャラリーをサポータに表示",
+      "box": {
+        "x": 241,
+        "y": -1,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-gallery-supporter",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 263,
+        "y": -1,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "シフトをメンバーに表示",
+      "box": {
+        "x": 145,
+        "y": 60,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-shifts-member",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 167,
+        "y": 60,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "シフトをサポータに表示",
+      "box": {
+        "x": 241,
+        "y": 60,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-shifts-supporter",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 263,
+        "y": 60,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "当番をメンバーに表示",
+      "box": {
+        "x": 145,
+        "y": 121,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-duties-member",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 167,
+        "y": 121,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "当番をサポータに表示",
+      "box": {
+        "x": 241,
+        "y": 121,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-duties-supporter",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 263,
+        "y": 121,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "試合記録をメンバーに表示",
+      "box": {
+        "x": 145,
+        "y": 182,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-matches-member",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 167,
+        "y": 182,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "試合記録をサポータに表示",
+      "box": {
+        "x": 241,
+        "y": 182,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-matches-supporter",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 263,
+        "y": 182,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "試合分析をメンバーに表示",
+      "box": {
+        "x": 145,
+        "y": 243,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-match-analytics-member",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 167,
+        "y": 243,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "試合分析をサポータに表示",
+      "box": {
+        "x": 241,
+        "y": 243,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-match-analytics-supporter",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 263,
+        "y": 243,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "スキル・資格をメンバーに表示",
+      "box": {
+        "x": 145,
+        "y": 304,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-skills-member",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 167,
+        "y": 304,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "スキル・資格をサポータに表示",
+      "box": {
+        "x": 241,
+        "y": 304,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-skills-supporter",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 263,
+        "y": 304,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "修繕計画をメンバーに表示",
+      "box": {
+        "x": 145,
+        "y": 365,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-repair-plan-member",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 167,
+        "y": 365,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "修繕計画をサポータに表示",
+      "box": {
+        "x": 241,
+        "y": 365,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-repair-plan-supporter",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 263,
+        "y": 365,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "分析をメンバーに表示",
+      "box": {
+        "x": 145,
+        "y": 426,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-analytics-member",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 167,
+        "y": 426,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "分析をサポータに表示",
+      "box": {
+        "x": 241,
+        "y": 426,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-analytics-supporter",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 263,
+        "y": 426,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "リーグ移籍をメンバーに表示",
+      "box": {
+        "x": 145,
+        "y": 487,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-league-transfers-member",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 167,
+        "y": 487,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "リーグ移籍をサポータに表示",
+      "box": {
+        "x": 241,
+        "y": 487,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-league-transfers-supporter",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 263,
+        "y": 487,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "予約をメンバーに表示",
+      "box": {
+        "x": 145,
+        "y": 548,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-reservations-member",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 167,
+        "y": 548,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "予約をサポータに表示",
+      "box": {
+        "x": 241,
+        "y": 548,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-reservations-supporter",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 263,
+        "y": 548,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "ナビをメンバーに表示",
+      "box": {
+        "x": 145,
+        "y": 609,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-nav-member",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 167,
+        "y": 609,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "ナビをサポータに表示",
+      "box": {
+        "x": 241,
+        "y": 609,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-nav-supporter",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 263,
+        "y": 609,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "メンバー情報をメンバーに表示",
+      "box": {
+        "x": 145,
+        "y": 670,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-member-info-member",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 167,
+        "y": 670,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "role": null,
+      "text": "メンバー情報をサポータに表示",
+      "box": {
+        "x": 241,
+        "y": 670,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "INPUT",
+      "id": "feature-display-member-info-supporter",
+      "role": "switch",
+      "text": "checkbox",
+      "box": {
+        "x": 263,
+        "y": 670,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "block"
+      },
+      "checked": "true"
+    },
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "text": "保存",
+      "box": {
+        "x": 247,
+        "y": 739,
+        "width": 82,
+        "height": 44
+      },
+      "style": {
+        "overflow": "hidden",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "text": "閉じる",
+      "box": {
+        "x": 340,
+        "y": 26,
+        "width": 28,
+        "height": 28
+      },
+      "style": {
+        "overflow": "hidden",
+        "whiteSpace": "pre-line",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    }
+  ]
+}

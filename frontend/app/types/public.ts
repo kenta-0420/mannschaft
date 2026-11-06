@@ -124,9 +124,16 @@ export interface PublicEventResponse {
  * エンドポイント: PATCH /api/v1/admin/teams/{teamId}/public-settings
  *                PATCH /api/v1/admin/organizations/{orgId}/public-settings
  */
+/** 管理認可済みの公開設定。公開閲覧用DTOとは分離する。 */
+export interface PublicSettingsResponse {
+  numericId: number
+  timelinePostsPublic: boolean
+  publicEventsEnabled: boolean
+}
+
 export interface UpdatePublicSettingsRequest {
-  timelinePostsPublic?: boolean
-  publicEventsEnabled?: boolean
+  timelinePostsPublic: boolean
+  publicEventsEnabled: boolean
 }
 
 /** F19.1 公開投稿一覧用の summary DTO。 */
@@ -189,6 +196,8 @@ export interface PublicOrganizationSearchResult {
   iconUrl: string | null
   memberCount: number
   lastPostDate: string | null
+  /** F01.2.1: チームからの加盟申請を受け付けているか（公開検索のカードにバッジを出す）。 */
+  acceptingTeamApplications?: boolean
 }
 
 // ─── F19.1 Phase 2: Admin 向け supporter_name_disclosure 切替 API 型 ───

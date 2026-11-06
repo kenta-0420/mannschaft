@@ -1,5 +1,8 @@
 {
   "appearance": {
+    "themeLabel": "主题",
+    "themeLightLabel": "浅色",
+    "themeDarkLabel": "深色",
     "bgColorLabel": "背景颜色",
     "darkBgColorLabel": "深色背景颜色",
     "color": {

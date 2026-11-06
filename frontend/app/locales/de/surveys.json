@@ -168,7 +168,7 @@
       "remindHint": "Erinnerung an {count} Nicht-Befragte senden (max. 3 Mal)",
       "remindButton": "Erinnerung senden",
       "remindAutoNotice": "Eine automatische Erinnerung wird 24 Stunden vor Ablauf gesendet",
-      "remindSuccess": "Erinnerung an {count} Mitglied(er) gesendet",
+      "remindSuccess": "Versand der Erinnerung an {count} Mitglied(er) ohne Antwort entgegengenommen",
       "remindRemaining": "Verbleibende Sendungen: {count}",
       "remindFailed": "Erinnerung konnte nicht gesendet werden",
       "remindFailedDetail": "Bitte Sendelimit, Cooldown und Berechtigungen prüfen",

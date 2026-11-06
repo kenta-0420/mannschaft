@@ -4,10 +4,10 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.survey.event.SurveyPublishedEvent;
+import com.mannschaft.app.survey.event.SurveyReminderNotificationEvent;
 import com.mannschaft.app.survey.dto.CreateSurveyRequest;
 import com.mannschaft.app.survey.dto.DuplicateSurveyRequest;
 import com.mannschaft.app.survey.dto.SurveyResponse;
@@ -89,9 +89,6 @@ class SurveyServiceTest {
 
     @Mock
     private UserRoleRepository userRoleRepository;
-
-    @Mock
-    private NotificationHelper notificationHelper;
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -218,7 +215,7 @@ class SurveyServiceTest {
             given(surveyMapper.toSurveyResponse(entity)).willReturn(response);
 
             // When
-            surveyService.publishSurvey(SCOPE_TYPE, SCOPE_ID, SURVEY_ID);
+            surveyService.publishSurvey(SCOPE_TYPE, SCOPE_ID, SURVEY_ID, false);
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(SurveyStatus.PUBLISHED);
@@ -239,7 +236,7 @@ class SurveyServiceTest {
             given(surveyMapper.toSurveyResponse(entity)).willReturn(response);
 
             // When
-            surveyService.publishSurvey(SCOPE_TYPE, SCOPE_ID, SURVEY_ID);
+            surveyService.publishSurvey(SCOPE_TYPE, SCOPE_ID, SURVEY_ID, false);
 
             // Then: 公開時通知は AFTER_COMMIT・非同期化のため、ここでは SurveyPublishedEvent の
             // 発火のみを検証する（母集団解決・notifyAll はリスナー側）。
@@ -264,7 +261,7 @@ class SurveyServiceTest {
                     .willReturn(Optional.of(entity));
 
             // When & Then
-            assertThatThrownBy(() -> surveyService.publishSurvey(SCOPE_TYPE, SCOPE_ID, SURVEY_ID))
+            assertThatThrownBy(() -> surveyService.publishSurvey(SCOPE_TYPE, SCOPE_ID, SURVEY_ID, false))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(SurveyErrorCode.INVALID_SURVEY_STATUS));
@@ -281,7 +278,7 @@ class SurveyServiceTest {
             given(questionRepository.countBySurveyId(SURVEY_ID)).willReturn(0L);
 
             // When & Then
-            assertThatThrownBy(() -> surveyService.publishSurvey(SCOPE_TYPE, SCOPE_ID, SURVEY_ID))
+            assertThatThrownBy(() -> surveyService.publishSurvey(SCOPE_TYPE, SCOPE_ID, SURVEY_ID, false))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(SurveyErrorCode.NO_QUESTIONS));
@@ -450,30 +447,19 @@ class SurveyServiceTest {
 
             // Then: 組織配下展開の窓口経由で母集団を解決し、findUserIdsByScope は使わない
             verify(organizationMembershipService).resolveOrgDistributionUserIds(SCOPE_ID, false);
-            // (B) レグ番人: 締切延長通知も publish/remind と同形に notifyAllPreAuthorized で送られ、
-            // canView 絞り込みを通さない（配下/直属一般メンバーへ誤 deny で届かないことを担保）。
-            verify(notificationHelper).notifyAllPreAuthorizedLocalized(
-                    org.mockito.ArgumentMatchers.eq(java.util.List.of(11L, 22L, 33L)),
-                    org.mockito.ArgumentMatchers.anyString(),
-                    org.mockito.ArgumentMatchers.anyString(),
-                    org.mockito.ArgumentMatchers.eq(SURVEY_ID),
-                    org.mockito.ArgumentMatchers.any(),
-                    org.mockito.ArgumentMatchers.eq(SCOPE_ID),
-                    org.mockito.ArgumentMatchers.anyString(),
-                    org.mockito.ArgumentMatchers.eq(USER_ID),
-                    any());
-            // 旧 canView ゲート付き notifyAll は使わないことも明示（取りこぼし非回帰）。
-            verify(notificationHelper, org.mockito.Mockito.never()).notifyAll(
-                    org.mockito.ArgumentMatchers.anyList(),
-                    org.mockito.ArgumentMatchers.anyString(),
-                    org.mockito.ArgumentMatchers.anyString(),
-                    org.mockito.ArgumentMatchers.anyString(),
-                    org.mockito.ArgumentMatchers.anyString(),
-                    org.mockito.ArgumentMatchers.any(),
-                    org.mockito.ArgumentMatchers.any(),
-                    org.mockito.ArgumentMatchers.any(),
-                    org.mockito.ArgumentMatchers.anyString(),
-                    org.mockito.ArgumentMatchers.any());
+            // (B) レグ番人: 締切延長通知の受信者は配信母集団として事前認可済みの集合を業務TX内で確定し、
+            // 配送は AFTER_COMMIT リスナー（事前認可バルク経路）へ委ねる（Issue #2997 G5）。
+            ArgumentCaptor<SurveyReminderNotificationEvent> captor =
+                    ArgumentCaptor.forClass(SurveyReminderNotificationEvent.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            SurveyReminderNotificationEvent event = captor.getValue();
+            assertThat(event.kind()).isEqualTo(SurveyReminderNotificationEvent.Kind.DEADLINE_EXTENDED);
+            assertThat(event.recipientUserIds()).containsExactly(11L, 22L, 33L);
+            assertThat(event.surveyId()).isEqualTo(SURVEY_ID);
+            assertThat(event.scopeType()).isEqualTo(orgScopeType);
+            assertThat(event.scopeId()).isEqualTo(SCOPE_ID);
+            assertThat(event.actorId()).isEqualTo(USER_ID);
+            assertThat(event.newDeadline()).isEqualTo(newDeadline.atZone(com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant());
         }
 
         @Test

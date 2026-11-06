@@ -1,6 +1,7 @@
 package com.mannschaft.app.recruitment.dto;
 
 import com.mannschaft.app.recruitment.PenaltyApplyScope;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.Getter;
@@ -13,7 +14,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class UpsertPenaltySettingRequest {
 
-    private boolean isEnabled = true;
+    /**
+     * 有効フラグ。JSON キーは画面・API 契約どおり {@code isEnabled}。
+     * Lombok の getter は {@code isEnabled()} となり Jackson は暗黙名を {@code enabled} と解釈するため、
+     * フィールド名を {@code enabled} に揃えたうえで {@link JsonProperty} で JSON 名を明示する。
+     */
+    @JsonProperty("isEnabled")
+    private boolean enabled = true;
 
     @Min(1)
     @Max(10)

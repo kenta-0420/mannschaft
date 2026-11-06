@@ -1,0 +1,20 @@
+{
+  "box": {
+    "left": 175,
+    "right": 351,
+    "width": 176,
+    "height": 44
+  },
+  "clientWidth": 175,
+  "scrollWidth": 175,
+  "fragments": [
+    {
+      "text": "Incoming requests",
+      "left": 191,
+      "right": 334,
+      "top": 731,
+      "bottom": 755
+    }
+  ],
+  "clipped": []
+}

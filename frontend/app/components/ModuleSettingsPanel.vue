@@ -189,6 +189,8 @@ onMounted(fetchCatalog)
       </div>
     </div>
 
+    <FeatureDisplaySettingsPanel :key="scopeType + scopeId" :scope-type="scopeType" :scope-id="scopeId" />
+
     <ModuleSettingsGuideModal v-model:visible="showGuide" />
   </div>
 </template>

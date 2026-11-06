@@ -4,12 +4,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.admin.dto.AdminBusinessAlertSummaryResponse;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.event.InquiryChannelChangedEvent;
-import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
+import com.mannschaft.app.chat.service.ChatMemberBatchQueryService;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.service.PermissionScopeQueryService;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.template.service.ModuleService;
@@ -28,6 +29,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -58,7 +60,8 @@ public class AdminBusinessAlertService {
     private final UserRoleRepository userRoleRepository;
     private final ReservationRepository reservationRepository;
     private final ChatChannelRepository chatChannelRepository;
-    private final ChatChannelMemberRepository chatChannelMemberRepository;
+    private final ChatMemberBatchQueryService chatMemberBatchQueryService;
+    private final PermissionScopeQueryService permissionScopeQueryService;
     private final TeamRepository teamRepository;
     private final ModuleService moduleService;
     private final StringRedisTemplate redisTemplate;
@@ -148,22 +151,22 @@ public class AdminBusinessAlertService {
         // 2. 予約カウント対象チームを絞り込む
         //    ADMIN のチームは無条件対象
         //    DEPUTY_ADMIN のチームは MANAGE_RESERVATIONS 権限保有時のみ
-        // N+1 になるが管理チーム数は通常少ない（< 10 チーム）ため許容する。
-        // TODO: チーム群一括判定クエリを追加して最適化する候補
-        Set<Long> reservationTargetTeamIds = allAdminTeamIds.stream()
-                .filter(teamId -> isReservationTarget(userId, teamId))
-                .collect(Collectors.toSet());
+        //    CMP-261103-1225: チームごとの判定（N+1）を、チーム群まとめての 2 クエリへ置き換える
+        //    判定条件は旧 isReservationTarget（チームごとに findAdminUserIdsByTeamId /
+        //    findDeputyAdminUserIdsByTeamIdAndPermission を呼んでいた）と同一。role ドメインの照会 Service を経由する。
+        Set<Long> reservationTargetTeamIds =
+                new HashSet<>(permissionScopeQueryService.findAdminTeamIds(userId, allAdminTeamIds));
+        reservationTargetTeamIds.addAll(permissionScopeQueryService.findPermittedTeamIds(
+                userId, allAdminTeamIds, MANAGE_RESERVATIONS_PERMISSION));
 
         // 3. チームエンティティ取得（名前の解決用）
         List<TeamEntity> teams = teamRepository.findAllById(allAdminTeamIds);
         Map<Long, TeamEntity> teamMap = teams.stream()
                 .collect(Collectors.toMap(TeamEntity::getId, t -> t));
 
-        // 4. 予約モジュール有効状態をチームごとに取得
-        Map<Long, Boolean> moduleEnabledMap = new HashMap<>();
-        for (Long teamId : allAdminTeamIds) {
-            moduleEnabledMap.put(teamId, moduleService.isModuleEnabledForTeam(RESERVATION_MODULE_SLUG, teamId));
-        }
+        // 4. 予約モジュール有効状態をチーム群まとめて取得（CMP-261103-1225: チームごとの判定を一括化）
+        Map<Long, Boolean> moduleEnabledMap =
+                moduleService.isModuleEnabledForTeams(RESERVATION_MODULE_SLUG, allAdminTeamIds);
 
         // 5. 予約件数を一括集計（予約モジュール有効 かつ 予約カウント対象チームのみ）
         List<Long> reservationCountTargetIds = allAdminTeamIds.stream()
@@ -208,17 +211,13 @@ public class AdminBusinessAlertService {
             List<Long> channelIds = inquiryChannels.stream()
                     .map(ChatChannelEntity::getId)
                     .collect(Collectors.toList());
-            int totalUnread = chatChannelMemberRepository
-                    .sumUnreadCountByUserIdAndChannelIds(userId, channelIds);
-            // チャンネルごとの内訳を取得するには個別クエリが必要だが、
-            // 設計書 §5.1 では「チャンネルごとの個別クエリは避け、N+1 を回避」とある。
-            // 一括集計値をチャンネル数で等分するのではなく、
-            // 各チャンネルの未読数を個別に取得することで正確な表示を実現する。
-            // チャンネル数は通常少ない（各チーム最大1本）ため個別取得のオーバーヘッドは許容できる。
+            // 設計書 §5.1「チャンネルごとの個別クエリは避け、N+1 を回避」に従い、
+            // 自分のメンバー行を chat ドメインの Service 経由で 1 クエリにまとめて引く（CMP-261103-1225）。
+            // 参加していないチャンネルは行が無いため、修正前の COALESCE(SUM) と同じく 0 になる。
+            Map<Long, Integer> unreadByChannelId =
+                    chatMemberBatchQueryService.findUnreadCountByChannelForMember(userId, channelIds);
             for (ChatChannelEntity channel : inquiryChannels) {
-                int channelUnread = chatChannelMemberRepository
-                        .sumUnreadCountByUserIdAndChannelIds(userId, List.of(channel.getId()));
-                unreadInquiriesMap.put(channel.getTeamId(), channelUnread);
+                unreadInquiriesMap.put(channel.getTeamId(), unreadByChannelId.getOrDefault(channel.getId(), 0));
             }
         }
 
@@ -268,22 +267,6 @@ public class AdminBusinessAlertService {
                         .totalPending(totalPending)
                         .build())
                 .build();
-    }
-
-    /**
-     * 指定ユーザーが指定チームで予約カウント対象かを判定する。
-     *
-     * <p>ADMIN は無条件対象。DEPUTY_ADMIN は MANAGE_RESERVATIONS 権限保有時のみ対象。</p>
-     */
-    private boolean isReservationTarget(Long userId, Long teamId) {
-        List<Long> adminUserIds = userRoleRepository.findAdminUserIdsByTeamId(teamId);
-        if (adminUserIds.contains(userId)) {
-            return true;
-        }
-        // DEPUTY_ADMIN で MANAGE_RESERVATIONS 権限を持つかを確認
-        List<Long> deputyWithPermission = userRoleRepository
-                .findDeputyAdminUserIdsByTeamIdAndPermission(teamId, MANAGE_RESERVATIONS_PERMISSION);
-        return deputyWithPermission.contains(userId);
     }
 
     private AdminBusinessAlertSummaryResponse emptyResponse() {

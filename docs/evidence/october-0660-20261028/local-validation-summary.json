@@ -1,0 +1,133 @@
+{
+  "sourceHead": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+  "sourceTree": "54b5487d3c199bb1a018a88eb8d3cf1008431be5",
+  "frontendTree": "b16f398a3cb2c56c5d7e19af3d946c958758cbe1",
+  "lockSHA256": "7384f7f465f56cae36394cf4e65b108fab668ff5401ea766e2918fd3308eaa55",
+  "nuxtConfigSHA256": "cafb6a2aafaccefc4c3965069e7cb8419d73dbc9ed573358bfd0ac219ee84aae",
+  "nodeVersion": "v22.23.2",
+  "npmVersion": "10.9.8",
+  "runtime": {
+    "origin": "local",
+    "sourceHead": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+    "expectedTests": 76,
+    "expectedSuites": 8,
+    "targets": [
+      {
+        "path": "app/composables/springPage.boundaries.spec.ts",
+        "expected": 14,
+        "suites": 1,
+        "actual": 14,
+        "allPassed": true
+      },
+      {
+        "path": "app/pages/pageEnvelope.spec.ts",
+        "expected": 44,
+        "suites": 1,
+        "actual": 44,
+        "allPassed": true
+      },
+      {
+        "path": "app/components/system-admin/SystemAdminQuickLinks.spec.ts",
+        "expected": 1,
+        "suites": 1,
+        "actual": 1,
+        "allPassed": true
+      },
+      {
+        "path": "app/types/springPage.coverage.spec.ts",
+        "expected": 3,
+        "suites": 1,
+        "actual": 3,
+        "allPassed": true
+      },
+      {
+        "path": "app/types/pageMeta.contract.spec.ts",
+        "expected": 7,
+        "suites": 1,
+        "actual": 7,
+        "allPassed": true
+      },
+      {
+        "path": "tests/unit/pages/committees/committees-list.spec.ts",
+        "expected": 3,
+        "suites": 1,
+        "actual": 3,
+        "allPassed": true
+      },
+      {
+        "path": "tests/unit/pages/committees/committee-distributions.spec.ts",
+        "expected": 3,
+        "suites": 1,
+        "actual": 3,
+        "allPassed": true
+      },
+      {
+        "path": "tests/unit/build/primevue-theme.spec.ts",
+        "expected": 1,
+        "suites": 1,
+        "actual": 1,
+        "allPassed": true
+      }
+    ],
+    "success": true,
+    "total": 76,
+    "passed": 76,
+    "failed": 0,
+    "pending": 0,
+    "todo": 0,
+    "exact76AllPassed": true
+  },
+  "commands": [
+    {
+      "name": "npm-version.log",
+      "exitCode": 0,
+      "signal": null,
+      "logSHA256": "7eeb2f42ee0d10d4e00355252af2e7468bbff992af43b511355feb76da5c7cfb"
+    },
+    {
+      "name": "install.log",
+      "exitCode": 0,
+      "signal": null,
+      "logSHA256": "aff15ab4b9a019d88cb47afd2a86e8a8ec960081e28885b018bd580ad89116af"
+    },
+    {
+      "name": "typecheck.log",
+      "exitCode": 0,
+      "signal": null,
+      "logSHA256": "7fa1364e37b0ad6fb99d594a70e91710909f2d0d74e9d0e3f897d9da80070fdb"
+    },
+    {
+      "name": "vitest.log",
+      "exitCode": 0,
+      "signal": null,
+      "logSHA256": "b26b9efd467ec2a8b06b925e7eda886d3bc77400cb22634d77bcae8059a6a5fb"
+    },
+    {
+      "name": "eslint.log",
+      "exitCode": 0,
+      "signal": null,
+      "logSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "build.log",
+      "exitCode": 0,
+      "signal": null,
+      "logSHA256": "a3ec3f5c499fad689e7e5f11ac252c5784b7e170e75a37620470db105c64023b"
+    }
+  ],
+  "countCorrection": "実記録は8spec76件。0660対象7spec75件＋primevue-theme1件。7spec76件とは記載しない。",
+  "laterTermination": {
+    "signal": "SIGHUP",
+    "workerExit": 1,
+    "cleanup": "removed",
+    "checkpointUnchanged": true,
+    "wholeRunNormalExitClaimed": false
+  },
+  "recovery": {
+    "canonicalInstallBuildExit": 0,
+    "canonicalCleanup": "removed",
+    "fileCount": 4484,
+    "wholeOutputByteIdenticalClaimed": false,
+    "validationRerun": false
+  }
+}

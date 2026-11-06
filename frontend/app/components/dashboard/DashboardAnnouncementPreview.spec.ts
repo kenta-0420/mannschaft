@@ -1,11 +1,20 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
-import { defineComponent, reactive } from 'vue'
+import { defineComponent, reactive, ref } from 'vue'
 import TeamPanel from './DashboardTeamPanel.vue'
 import OrgPanel from './DashboardOrgPanel.vue'
 
 const mocks = vi.hoisted(() => ({ dashboard: vi.fn(), store: null as unknown }))
+mockNuxtImport('useAuthStore', () => () => ({ user: { id: 1 } }))
+// 配信設定・取得世代の検証では、表示方針を取得済みの全表示として固定する。
+mockNuxtImport('useScopeFeatureVisibility', () => () => ({
+  ready: ref(true),
+  error: ref(undefined),
+  refresh: vi.fn(),
+  isVisible: () => true,
+}))
 vi.mock('~/stores/useScopeDashboardStore', () => ({ useScopeDashboardStore: () => mocks.store }))
 vi.mock('~/composables/useDashboardApi', () => ({ useDashboardApi: () => ({ getTeamDashboard: mocks.dashboard, getOrganizationDashboard: mocks.dashboard }) }))
 const Announcements = defineComponent({ name: 'DashboardAnnouncements', props: ['items', 'scopeId'], emits: ['refresh', 'unavailable'], template: '<div />' })
@@ -31,6 +40,49 @@ describe.each([
   ['TEAM', TeamPanel, 'teamNotices', 'selectedTeamId'],
   ['ORGANIZATION', OrgPanel, 'orgNotices', 'selectedOrgId'],
 ] as const)('%s のお知らせ接続', (_scope, component, field, selected) => {
+  it('FEED-SCOPE-9: 公開slugが別scopeの内部IDと同値でも選択対象を取得する', async () => {
+    const store = mocks.store as {
+      [key: string]: unknown
+      tabPages: Record<'TEAM' | 'ORGANIZATION', { items: { slug: string | null; scopeId: string }[] }>
+    }
+    store[selected] = '7'
+    store.tabPages[_scope] = { items: [{ slug: '7', scopeId: '21' }, { slug: 'other', scopeId: '7' }] }
+    mocks.dashboard.mockResolvedValue({ data: { [field]: [] } })
+    const view = render(component)
+    await flushPromises()
+    expect(mocks.dashboard).toHaveBeenCalledWith('7')
+    const grid = view.findComponent({ name: 'DashboardSwipeWidgetGrid' })
+    expect(grid.props('scopeId')).toBe('7')
+    expect(grid.props('numericScopeId')).toBe('21')
+  })
+
+  it.each(['a', null])('FEED-SCOPE-10: 公開slug未確定の旧内部IDは移行待ちを維持する(%s)', async slug => {
+    const store = mocks.store as {
+      [key: string]: unknown
+      tabPages: Record<'TEAM' | 'ORGANIZATION', { items: { slug: string | null; scopeId: string }[] }>
+    }
+    store[selected] = '7'
+    store.tabPages[_scope] = { items: [{ slug, scopeId: '7' }] }
+    const view = render(component)
+    await flushPromises()
+    expect(mocks.dashboard).not.toHaveBeenCalled()
+    expect(view.findComponent({ name: 'DashboardSwipeWidgetGrid' }).exists()).toBe(false)
+  })
+
+  it('FEED-SCOPE-11: タグ未取得の数値選択は取得完了まで待機する', async () => {
+    const store = mocks.store as {
+      [key: string]: unknown
+      tabPages: Partial<Record<'TEAM' | 'ORGANIZATION', unknown>>
+    }
+    store[selected] = '7'
+    store.tabPages[_scope] = undefined
+    store.loadTabs = vi.fn().mockResolvedValue(undefined)
+    const view = render(component)
+    await flushPromises()
+    expect(mocks.dashboard).not.toHaveBeenCalled()
+    expect(view.findComponent({ name: 'DashboardSwipeWidgetGrid' }).exists()).toBe(false)
+  })
+
   it('PREVIEW-12: 親refreshで子が再生成されても取得不可カードを復活させない', async () => {
     mocks.dashboard.mockResolvedValue({ data: { [field]: [{ id: 12 }] } })
     const view = render(component)

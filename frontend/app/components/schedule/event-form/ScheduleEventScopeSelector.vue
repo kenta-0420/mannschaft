@@ -18,7 +18,7 @@ const selectedScopeKey = defineModel<string>('selectedScopeKey', { required: tru
 
 <template>
   <div v-if="scopeOptions && scopeOptions.length > 1" class="mb-4">
-    <label class="mb-2 block text-sm font-medium text-surface-600 dark:text-surface-300">作成先</label>
+    <label class="mb-2 block text-sm font-medium text-surface-600 dark:text-surface-300">{{ $t('schedule.form.scope') }}</label>
 
     <!-- ≤5件: 横並びボタン -->
     <div v-if="scopeOptions.length <= SCOPE_OVERFLOW" class="flex flex-wrap gap-2">

@@ -1,0 +1,47 @@
+{
+    "campaign":  "CMP-261016-1009",
+    "status":  "完了",
+    "sourceHead":  "25ece9b77159e117c631ddb82e88311bc7665570",
+    "implementationPr":  3923,
+    "implementationPrState":  "MERGED",
+    "mergeCommit":  "2e60b15a39d05733c51d1912a03abdb03d92eadb",
+    "mergedAt":  "2026-10-16T08:37:05Z",
+    "mergeMethod":  "通常squash",
+    "ci":  {
+               "filesPassed":  609,
+               "conclusion":  "success",
+               "runId":  38867635983,
+               "testsPassed":  5991,
+               "sidebarTestsPassed":  18
+           },
+    "review":  "final-release-review-25ece9b771.json: finding0",
+    "regressions":  "regressions-final.json: 6欠陥、追加Orgは0/7→7/0",
+    "ui":  {
+               "browser":  "Playwright Chromium mobile/touch。物理スマートフォンではない",
+               "original":  "manual-final-report.json: root11ケース",
+               "finalMember":  "root-final-routes/member-final-summary.json",
+               "finalAdmin":  "root-final-admin-routes/admin-final-summary.json"
+           },
+    "residents":  {
+                      "triage":  "resident-triage.json / resident-root-triage.json",
+                      "r2":  "旧tab導線を発見、root実証・red→green・実画面green",
+                      "r3":  "自テナント到達、他テナント403、復帰",
+                      "count":  3,
+                      "r1":  "原探索のOrg一覧安定未確認は履歴保持、root最終実画面で補完"
+                  },
+    "insightBox":  {
+                       "fullValidator":  "既存生成447戦役対現正本498戦役で未合格。全面同期は未実施",
+                       "normalImport":  "board-import/summary.json: PASS",
+                       "observations":  12,
+                       "overlayOnly":  true
+                   },
+    "causalLimit":  "最初のADMIN200後空Drawerの初期例外stackは未保存。実証済み取得状態・スコープ更新・旧tab導線のみ根拠。",
+    "history":  "過去の環境失敗・timeout・未確認と当時のpendingを上書きしない",
+    "documentation":  "この完了証跡/対象台帳1行/overlay限定を最新main派生の文書PRへ収録",
+    "cleanup":  {
+                    "worktrees":  "他作業資産保全、check-only exit2、削除0",
+                    "status":  "データcleanupのみ未完了・承認待ち",
+                    "evidence":  "data-cleanup-status.json",
+                    "servers":  "専用FE/BE/REPL停止済み"
+                }
+}

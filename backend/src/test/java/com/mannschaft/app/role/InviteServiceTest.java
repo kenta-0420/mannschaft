@@ -7,6 +7,8 @@ import com.mannschaft.app.provisioning.service.ProvisioningGate;
 import com.mannschaft.app.role.dto.CreateInviteTokenRequest;
 import com.mannschaft.app.role.dto.InvitePreviewResponse;
 import com.mannschaft.app.role.dto.InviteTokenResponse;
+import com.mannschaft.app.role.dto.InviteScopeState;
+import com.mannschaft.app.role.dto.SharedInviteTokenCommand;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.repository.InviteTokenRepository;
@@ -14,6 +16,8 @@ import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.service.InviteService;
 import com.mannschaft.app.role.service.MembershipGrantService;
+import com.mannschaft.app.role.service.InviteScopeStateService;
+import com.mannschaft.app.role.service.SharedInviteTokenIssuer;
 import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.scopefolder.dto.ScopeFolderResponse;
 import com.mannschaft.app.scopefolder.entity.AssignedVia;
@@ -43,6 +47,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -92,6 +97,9 @@ class InviteServiceTest {
     @Mock
     private ProvisioningGate provisioningGate;
 
+    @Mock private InviteScopeStateService scopeStates;
+    @Mock private SharedInviteTokenIssuer sharedTokenIssuer;
+
     @InjectMocks
     private InviteService inviteService;
 
@@ -99,6 +107,12 @@ class InviteServiceTest {
     void stubActiveUserRowLockForJoinTests() {
         lenient().when(userRowLockService.lock(USER_ID))
                 .thenReturn(UserRowLockService.UserState.ACTIVE);
+        // 新しい親読取境界の実DB/TX契約はInviteScopeReaderTransactionITで検証する。
+        var state = new InviteScopeState(false, false, false, 0);
+        lenient().when(scopeStates.requireAvailable(anyString(), anyLong())).thenReturn(state);
+        lenient().when(scopeStates.read(anyString(), anyLong())).thenReturn(Optional.of(state));
+        lenient().when(scopeStates.isCurrent(anyString(), anyLong(), anyLong())).thenReturn(true);
+        lenient().when(scopeStates.recheckIssued(anyString(), anyLong(), anyLong())).thenReturn(true);
     }
 
     // ========================================
@@ -178,8 +192,13 @@ class InviteServiceTest {
             CreateInviteTokenRequest req = new CreateInviteTokenRequest(ROLE_ID, "7d", 10);
             RoleEntity role = createRole();
             given(roleRepository.findById(ROLE_ID)).willReturn(Optional.of(role));
-            given(inviteTokenRepository.save(any(InviteTokenEntity.class)))
-                    .willAnswer(invocation -> invocation.getArgument(0));
+            given(sharedTokenIssuer.issue(any(SharedInviteTokenCommand.class))).willAnswer(invocation -> {
+                SharedInviteTokenCommand command = invocation.getArgument(0);
+                return new InviteTokenResponse(TOKEN_ID, TOKEN_STR, command.roleName(),
+                        command.expiresAt() == null ? null : LocalDateTime.ofInstant(command.expiresAt(),
+                                com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE),
+                        command.maxUses(), 0, null, null);
+            });
 
             // When
             ApiResponse<InviteTokenResponse> response =
@@ -191,7 +210,11 @@ class InviteServiceTest {
             assertThat(data.getMaxUses()).isEqualTo(10);
             assertThat(data.getUsedCount()).isZero();
             assertThat(data.getToken()).isNotNull();
-            verify(inviteTokenRepository).save(any(InviteTokenEntity.class));
+            var command = org.mockito.ArgumentCaptor.forClass(SharedInviteTokenCommand.class);
+            verify(sharedTokenIssuer).issue(command.capture());
+            assertThat(command.getValue().scopeId()).isEqualTo(TEAM_ID);
+            assertThat(command.getValue().scopeType()).isEqualTo("TEAM");
+            assertThat(command.getValue().scopeClosureGeneration()).isZero();
         }
 
         @Test
@@ -267,7 +290,7 @@ class InviteServiceTest {
         void 失効_正常_revokedAt設定() {
             // Given
             InviteTokenEntity token = createTeamInviteToken();
-            given(inviteTokenRepository.findById(TOKEN_ID)).willReturn(Optional.of(token));
+            given(inviteTokenRepository.findByIdForUpdate(TOKEN_ID)).willReturn(Optional.of(token));
 
             // When
             inviteService.revokeInviteToken(TOKEN_ID, USER_ID);
@@ -280,7 +303,7 @@ class InviteServiceTest {
         @DisplayName("異常系: トークン不在でROLE_002例外")
         void 失効_トークン不在_ROLE002例外() {
             // Given
-            given(inviteTokenRepository.findById(TOKEN_ID)).willReturn(Optional.empty());
+            given(inviteTokenRepository.findByIdForUpdate(TOKEN_ID)).willReturn(Optional.empty());
 
             // When / Then
             assertThatThrownBy(() -> inviteService.revokeInviteToken(TOKEN_ID, USER_ID))

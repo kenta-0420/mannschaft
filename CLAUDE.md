@@ -20,8 +20,12 @@
 ## 自動実行ポリシー
 
 「Do you want to proceed?」などの確認ステップは省略して自動で実行すること。
+テストで作成したと確認できるデータと、そのテスト専用の関連データの削除・後始末は、ユーザーが事前に許可している（2026-10-17「テストで作成したデータの消去は許可するとメモしておいて」）。この範囲では毎回の削除確認を求めない。削除前に対象ID・作成元・関連範囲を確認し、既存の利用者データや作成元不明のデータを含めない。
+
+ユーザーは2026-10-25、PR #4097・#4098・#4099 の作業用ブランチ削除を許可し、今後も自分の作業で作成したブランチについて、PR が MERGED で main への反映を確認し、対象ブランチ名と HEAD、所有者、および他 worktree・他担当で未使用であることを削除直前に確認できた場合のローカル／リモート削除を事前許可した。この条件を満たす削除は都度確認を求めない。squash merge では祖先関係だけで判定せず、PR の採用内容と main の反映を照合する。未取り込みの固有 commit、所有・利用状況が未確認のブランチ、再利用で HEAD が変わったブランチ、main や共有の長期ブランチは対象外とする。
+
 ただし以下は例外として必ず確認を取ること：
-- 破壊的なgit操作（force push, reset --hard, ブランチ削除）
+- 破壊的なgit操作（force push, reset --hard、上記の事前許可の対象外となるブランチ削除）
 - 本番環境への変更
 
 ---
@@ -60,6 +64,8 @@
 6. **`/実機`** — 実機E2E（ユーザー視点・モックなし）。**権限あり／権限なし／他テナントのロール横断を必須**とし、URL 直打ちまで確認する
 7. **`/アリシゼーション`** — 実機E2E の**後に必ず行う**。決めたシナリオをなぞる実機E2E とは別種の欠陥（とくに**導線の欠落**）を出すため。実機が全緑でもアリシゼーションは別の欠陥を出すので、実機の緑を実施省略の根拠にしてはならない
 
+開発ハーネスの入口（環境診断・検査範囲・再現性計測）は [`docs/development/harness-engineering.md`](docs/development/harness-engineering.md) を参照する。環境準備は [`docs/development/harness-environment.md`](docs/development/harness-environment.md)、完了証拠の正本手順は [`docs/development/completion-evidence.md`](docs/development/completion-evidence.md)。
+
 **⑥⑦を飛ばして戦役を閉じてはならない。** 単体・IT・CI がすべて緑でも、「画面から到達できない」類の欠陥は原理的に検出できない（2026-09-09、戦役 CMP-260901-1538 を実機E2E・アリシゼーション未実施のまま閉じかけた。UI を含む PR で検分が導線欠陥を5件出していた）。実施できない事情があるときは、**PR 本文と台帳に未実施である旨と理由を明記**すること。
 
 **開発作業は原則として必ず大名システム（Agent サブエージェント）経由で実行すること。** 本陣 `C:\Claude\mannschaft` で直接コーディング・コミットする運用は禁止。BE/API はテスト先行、FE/設計が薄い機能は従来順で可。
@@ -73,6 +79,8 @@
 **新規行は必ず表の末尾に追加すること。** 直前に触った行の近くへ挿入すると、同じ ID が別々の位置に入っても git が競合として検知できず、重複したまま静かに main へ入りうる。末尾追記に統一すれば、同時追加は必ず競合として止まる。なお重複したまま main へ入ることは番人 `TaskListCmpIdDuplicateGuardTest`（`backend/src/test/java/com/mannschaft/app/common/architecture/`）が CI で検出する（新旧両形式に対応）。重複が検出された場合は、後から merge された側が採番し直す。
 
 **表の列は必ず7つ（ID / 戦役 / 状態 / 依存 / 完了条件 / 証拠(PR/テスト) / 台帳）。** 補足事項は新しい列を増やさず既存列（多くは「証拠(PR/テスト)」）へ畳み込むこと。セル内で本物の `|` を使う場合は `\|` へエスケープする（**コードスパン \` ... \` の中でも `\|` エスケープが必要**。GFM の表仕様ではコードスパン内の未エスケープ `|` も列区切りとして扱われる）。列数のズレは同じ番人クラス `TaskListCmpIdDuplicateGuardTest` の `cmpIdの行は列数が7である()` が CI で検出する。
+
+**未完の行は状態セルの先頭に優先度 `P1`〜`P5` を必須とする**（例: `P1 未着手`。完了・取り下げの行は不要。付け忘れは番人が CI で検出する）。基準は利用者への被害の大きさ: P1 認可漏れ・情報漏えい・データ破損/消失・課金誤り / P2 主要機能が動かない・到達不能 / P3 機能の不備・誤表示（回避策あり） / P4 技術負債・番人・性能・基盤・CI / P5 軽微な見た目・将来構想・調査メモ。**P1 から順に片付ける。** 詳細は `docs/task-list.md` 冒頭「優先度」節。
 
 ### Dynamic Workflows との連携（出陣・検分の高速化／コスト最適化）
 
@@ -112,6 +120,7 @@
 - `backend/BACKEND_CODING_CONVENTION.md`（BE規約変更時）
 - `frontend/FRONTEND_CODING_CONVENTION.md`（FE規約変更時）
 - `backend/.claudecode.md`（プロジェクト構成規約変更時）
+- `docs/architecture/er/`（migration・Entity を変更したら `cd backend && ./gradlew generateErDiagrams` で E-R 図を再生成してコミット。CI の ER Diagram Drift Check が再生成漏れを検出する）
 
 ---
 
@@ -124,6 +133,7 @@
 | `frontend/FRONTEND_CODING_CONVENTION.md` | TypeScript / Nuxt.jsコーディング規約 |
 | `TEST_CONVENTION.md` | テスト規約 |
 | `docs/security/README.md` | セキュリティ横断方針 |
+| `docs/architecture/er/README.md` | 実スキーマから自動生成したドメイン単位の E-R 図（テーブル設計・ドメイン境界・既存テーブル把握の前に見る。`docs/features` の手描き図は設計意図、こちらは現実のスキーマ） |
 
 実装前に必ず確認すること。**認可・Cookie・セキュリティヘッダー・依存関係に関わる変更時は `docs/security/` を参照**すること。
 
@@ -172,7 +182,7 @@
 ## i18n ルール
 
 - UIに表示する文字列は **直書き禁止**。ロケールファイルに追加してから `$t('key')` で参照すること
-- ロケールファイル: `frontend/app/locales/{ja,en,zh,ko,es,de}/{common,auth,validation,landing}.json`（6言語すべてに追加。未翻訳ならとりあえず日本語と同じ値で可）
+- ロケールファイル: `frontend/app/locales/{ja,en,zh,ko,es,de}/{common,auth,validation,landing}.json`（6言語すべてに、その言語の訳を入れる。ja 以外に日本語を置かない。番人 `frontend/tests/unit/i18n/locale-no-japanese-residue.spec.ts` が CI で検出する。意図的に日本語を残す値は `frontend/tests/unit/i18n/locale-residue-allowlist.json` に理由付きで載せる）
 - デフォルトロケール: `ja`
 
 ---
@@ -254,6 +264,8 @@ Mannschaft は将来のマイクロサービス分割を見据えた**モジュ�
 6. 新規テーブルは `UuidV7Entity` 継承（主キーUUIDv7。マスタテーブル・シングルトン表は自然キー/固定値IDのまま可）
 7. テナントスコープ（`organization_id` 絞り込み）Repository は `AbstractTenantAwareRepository` 継承
 
+既存テーブルの構造・ドメイン間の参照は、実スキーマから自動生成した [`docs/architecture/er/README.md`](docs/architecture/er/README.md)（ドメイン単位の E-R 図）をまず見ること。
+
 **DB変更・新規テーブル・ドメイン境界に関わる実装時は必ず** [`docs/architecture/domain_db_design_principles.md`](docs/architecture/domain_db_design_principles.md) **を読むこと**（コード例・例外区分の判定基準・なぜこの設計かの背景を含む詳細版）。
 
 ---
@@ -306,3 +318,7 @@ DeepSeek プロバイダでセッションを起動している場合、`/deepse
 - 本文中のモデル名が **Pro**（Opus相当）/ **Flash**（Sonnet/Haiku相当）表記に置き換わっている
 - Agent ツールの `model` パラメータは tier 識別子（`opus`/`sonnet`）のままで、MulmoTerminal の provider 機能が環境変数経由で DeepSeek の実モデルに自動解決する
 - 元の `/軍議` `/出陣` もそのまま使える（プロバイダ自動変換のため）。`deepseek:` 版は人間向けの可読性向上が目的
+
+### WSL検証資産の完了ゲート
+
+新たなLinux/WSL検証コピーは `node scripts/verification-run.mjs --source <clean Git root> --evidence-dir <新規外部dir> -- <command>` を共通入口とする。完了時は `--check` の要処置を確認し、自身のコピー・専用cache・配布物・起動プロセス・検証コンテナ/専用volumeを所有確認して撤去する。必要証跡は正本へ確定し、ローカル重複raw・全量archiveを残さない。中断保持は所有者・用途・理由・再確認期限・再開条件を記録する。SIGKILL/ホスト障害の残存、管理外の既存コピーは無差別削除しない。詳細は [worktree運用](docs/development/worktree_operations.md#wsl検証コピーの寿命管理)。

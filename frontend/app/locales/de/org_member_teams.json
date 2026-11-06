@@ -1,0 +1,125 @@
+{
+  "orgMemberTeams": {
+    "remove": {
+      "title": "Dieses Team ausschließen?",
+      "error": {
+        "generic": "Das Team konnte nicht ausgeschlossen werden. Versuchen Sie es später erneut.",
+        "missing": "Dieses Team ist nicht mehr Mitglied. Laden Sie die Teamliste neu.",
+        "forbidden": "Sie dürfen Teams aus dieser Organisation nicht ausschließen. Prüfen Sie Ihre Berechtigungen."
+      },
+      "success": "Das Team wurde ausgeschlossen"
+    },
+
+    "switcher_label": "Ansicht wechseln",
+    "count_error": "Die Anzahl offener Anträge konnte nicht geladen werden",
+    "groups_load_error": "Die Teamgruppen konnten nicht geladen werden. Bitte später erneut versuchen.",
+    "teams_load_error": "Die Teamliste konnte nicht geladen werden. Bitte versuchen Sie es später erneut.",
+    "groups": {
+      "retry": "Neu laden",
+      "open_settings": "Teamgruppen in den Beitrittseinstellungen aktivieren",
+      "renamed": "Gruppe aktualisiert",
+      "created": "Gruppe erstellt",
+      "deleted": "Gruppe gelöscht",
+      "limit_reached": "Es sind höchstens {limit} Teamgruppen möglich",
+      "move_up": "Nach oben",
+      "move_down": "Nach unten",
+      "rename": "Bearbeiten",
+      "rename_title": "Gruppe bearbeiten",
+      "delete_title": "Diese Gruppe löschen?",
+      "empty": "Es gibt noch keine Teamgruppen. Fügen Sie eine mit „Teamgruppe erstellen“ hinzu.",
+      "assign_hint": "Teams werden in der Liste „Teams“ zugewiesen (auch mehrere angekreuzt gesammelt möglich)",
+      "error": {
+        "ORG_065": "Eine Gruppe mit diesem Namen existiert bereits",
+        "ORG_066": "Das Gruppenlimit ist erreicht",
+        "ORG_067": "Teamgruppen sind deaktiviert. Die Ansicht wurde aktualisiert",
+        "ORG_064": "Diese Gruppe wurde nicht gefunden (evtl. gelöscht). Die Ansicht wurde aktualisiert",
+        "ORG_068": "Jemand hat die Gruppen geändert, die Reihenfolge konnte nicht gespeichert werden. Die aktuelle Liste wird angezeigt",
+        "generic": "Der Vorgang ist fehlgeschlagen. Bitte versuchen Sie es später erneut."
+      },
+      "assign_title": "Gruppen der beigetretenen Teams",
+      "filter_label": "Nach Gruppe filtern",
+      "assigned": "Gruppe geändert",
+      "bulk_assigned": "Gruppe von {count} Teams geändert",
+      "select_all": "Alle angezeigten Teams auswählen",
+      "selected_count": "{count} Teams ausgewählt",
+      "assign_error": {
+        "generic": "Die Gruppe konnte nicht geändert werden. Bitte versuchen Sie es später erneut.",
+        "rate-limited": "Zu viele Anfragen. Bitte etwa eine Minute warten und erneut versuchen.",
+        "group-missing": "Die gewählte Gruppe wurde nicht gefunden. Die aktuelle Liste wird angezeigt",
+        "team-missing": "Ein Zielteam gehört nicht mehr zur Organisation. Die aktuelle Liste wird angezeigt",
+        "too-many": "Es können höchstens {max} Teams gleichzeitig zugewiesen werden"
+      },
+      "assign_empty": "Keine passenden beigetretenen Teams"
+    },
+    "pager": {
+      "prev": "Zurück",
+      "next": "Weiter",
+      "info": "Seite {page} / {total}"
+    },
+    "applications": {
+      "load_error": "Die Beitrittsanträge konnten nicht geladen werden. Bitte später erneut versuchen.",
+      "empty": "Es gibt keine offenen Beitrittsanträge",
+      "requested_by": "Antragsteller: {name}",
+      "requested_group": "Gewünschte Gruppe: {group}",
+      "requested_at": "Beantragt am: {date}"
+    },
+    "approve": {
+      "error": "Die Genehmigung ist fehlgeschlagen. Bitte später erneut versuchen."
+    },
+    "reject": {
+      "title": "Antrag von {team} ablehnen",
+      "hint": "Nach der Ablehnung kann dieses Team 30 Tage lang keinen Antrag an diese Organisation stellen. Mit „Künftig nicht mehr annehmen“ gilt die Sperre unbefristet (später unter „Antragssperren“ aufhebbar).",
+      "error": "Die Ablehnung ist fehlgeschlagen. Bitte später erneut versuchen."
+    },
+    "invites": {
+      "load_error": "Die gesendeten Einladungen konnten nicht geladen werden. Bitte später erneut versuchen.",
+      "empty": "Es gibt keine Einladungen, die auf eine Antwort warten",
+      "group": "Gruppe: {group}",
+      "invited_at": "Eingeladen am: {date}",
+      "expires_at": "Wird automatisch zurückgezogen, wenn bis {date} keine Antwort kommt",
+      "cancelled": "Einladung zurückgezogen",
+      "cancel_confirm_title": "Einladung zurückziehen?",
+      "cancel_confirm": "Die Einladung an „{team}“ wird zurückgezogen und verschwindet aus den empfangenen Einladungen des Teams.",
+      "cancel_error": "Die Einladung konnte nicht zurückgezogen werden. Bitte später erneut versuchen."
+    },
+    "invite_dialog": {
+      "title": "Team zum Beitritt einladen",
+      "search_label": "Öffentliches Team suchen",
+      "search_placeholder": "Nach Teamname suchen",
+      "search": "Suchen",
+      "search_error": "Die Suche ist fehlgeschlagen. Bitte später erneut versuchen.",
+      "no_results": "Keine passenden öffentlichen Teams gefunden",
+      "member_count": "{count} Mitglieder",
+      "group": "Teamgruppe (optional)",
+      "submit": "Einladen",
+      "success": "Einladung gesendet",
+      "error": "Die Einladung ist fehlgeschlagen. Das Team ist möglicherweise bereits eingeladen oder angeschlossen oder kann derzeit nicht eingeladen werden."
+    },
+    "restrictions": {
+      "load_error": "Die Antragssperren konnten nicht geladen werden. Bitte später erneut versuchen.",
+      "empty": "Es gibt keine Teams mit Antragssperre",
+      "lifted": "Sperre aufgehoben",
+      "lift_error": "Die Sperre konnte nicht aufgehoben werden. Bitte später erneut versuchen."
+    },
+    "guide": {
+      "title": "Anträge, Einladungen und Sperren verwenden",
+      "description": "In der Ansicht der angeschlossenen Teams bearbeiten Sie Beitrittsanträge, laden Teams ein und verwalten Antragssperren.",
+      "applications": {
+        "title": "Anträge bearbeiten",
+        "body": "Unter „Beitrittsanträge“ erscheinen die Anträge der Teams. „Genehmigen“ bestätigt die Gruppe und nimmt das Team auf, „Ablehnen“ lehnt mit optionaler Begründung ab. Die Anzahl wird als Badge am Umschalter angezeigt."
+      },
+      "invites": {
+        "title": "Team einladen",
+        "body": "Über „Team einladen“ unter „Gesendete Einladungen“ suchen Sie öffentliche Teams und senden eine Einladung. Unbeantwortete Einladungen können Sie hier zurückziehen."
+      },
+      "restrictions": {
+        "title": "Antragssperre aufheben",
+        "body": "Ein abgelehntes Team kann 30 Tage lang oder bei Blockierung unbefristet keinen Antrag stellen. Unter „Antragssperren“ können Sie die Sperre jederzeit aufheben."
+      },
+      "groups": {
+        "title": "Teamgruppen verwalten",
+        "body": "Unter „Teamgruppen“ können Sie Gruppen erstellen, umbenennen, sortieren und löschen. Teams einer gelöschten Gruppe kommen zurück zu „Nicht zugeordnet“. Die Zuweisung erfolgt in der Liste „Teams“, einzeln oder angekreuzt gesammelt."
+      }
+    }
+  }
+}

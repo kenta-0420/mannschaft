@@ -1,0 +1,313 @@
+{
+  "repo": "kenta-0420/mannschaft",
+  "headSha": "6d0b8ec4f6c98fe014bd79a20ac96b402d78b0a4",
+  "runs": [
+    {
+      "runId": 39750789775,
+      "category": "Frontend",
+      "headSha": "6d0b8ec4f6c98fe014bd79a20ac96b402d78b0a4",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/kenta-0420/mannschaft/actions/runs/39750789775",
+      "jobs": [
+        {
+          "name": "Install",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-10-22T08:50:38Z",
+          "completedAt": "2026-10-22T09:08:01Z"
+        },
+        {
+          "name": "Docker ビルド検証（main push のみ）",
+          "status": "completed",
+          "conclusion": "skipped",
+          "startedAt": "2026-10-22T08:50:37Z",
+          "completedAt": "2026-10-22T08:50:36Z"
+        }
+      ]
+    },
+    {
+      "runId": 39750790040,
+      "category": "Backend",
+      "headSha": "6d0b8ec4f6c98fe014bd79a20ac96b402d78b0a4",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/kenta-0420/mannschaft/actions/runs/39750790040",
+      "jobs": [
+        {
+          "name": "Detect changes",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-10-22T08:50:39Z",
+          "completedAt": "2026-10-22T08:50:59Z"
+        },
+        {
+          "name": "Lint (D-5 @Builder guard)",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-10-22T08:51:01Z",
+          "completedAt": "2026-10-22T08:51:14Z"
+        },
+        {
+          "name": "Shard coverage guard",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-10-22T08:51:02Z",
+          "completedAt": "2026-10-22T08:52:27Z"
+        },
+        {
+          "name": "Non-JST timezone contract",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-10-22T08:51:01Z",
+          "completedAt": "2026-10-22T08:54:43Z"
+        },
+        {
+          "name": "ArchUnit tests (separate JVM)",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-10-22T08:51:01Z",
+          "completedAt": "2026-10-22T08:53:22Z"
+        },
+        {
+          "name": "Test (shard 1)",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-10-22T08:51:02Z",
+          "completedAt": "2026-10-22T10:06:06Z"
+        },
+        {
+          "name": "Test (shard 0)",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-10-22T08:51:02Z",
+          "completedAt": "2026-10-22T10:07:39Z"
+        },
+        {
+          "name": "Test (shard 2)",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-10-22T08:51:01Z",
+          "completedAt": "2026-10-22T08:53:03Z"
+        },
+        {
+          "name": "Test (shard 5)",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-10-22T08:51:02Z",
+          "completedAt": "2026-10-22T08:53:17Z"
+        },
+        {
+          "name": "Test (shard 3)",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-10-22T08:51:01Z",
+          "completedAt": "2026-10-22T09:48:31Z"
+        },
+        {
+          "name": "Test (shard 4)",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-10-22T08:51:01Z",
+          "completedAt": "2026-10-22T09:53:39Z"
+        },
+        {
+          "name": "Compile & Test",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-10-22T10:07:41Z",
+          "completedAt": "2026-10-22T10:07:44Z"
+        }
+      ]
+    },
+    {
+      "runId": 39750789723,
+      "category": "E2E",
+      "headSha": "6d0b8ec4f6c98fe014bd79a20ac96b402d78b0a4",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/kenta-0420/mannschaft/actions/runs/39750789723",
+      "jobs": [
+        {
+          "name": "Smoke E2E (F15.4 + F22.1 + 拡大予定)",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-10-22T08:50:38Z",
+          "completedAt": "2026-10-22T09:04:43Z"
+        }
+      ]
+    }
+  ],
+  "mergeTimeChecks": [
+    {
+      "name": "Compile & Test",
+      "state": "SUCCESS",
+      "startedAt": "2026-10-22T10:07:41+00:00",
+      "completedAt": "2026-10-22T10:07:44+00:00"
+    },
+    {
+      "name": "lockfile の内容検査（base 比較）",
+      "state": "SUCCESS",
+      "startedAt": "2026-10-22T08:51:02+00:00",
+      "completedAt": "2026-10-22T08:51:27+00:00"
+    },
+    {
+      "name": "npm ci（Ubuntu / glibc）",
+      "state": "SUCCESS",
+      "startedAt": "2026-10-22T08:51:03+00:00",
+      "completedAt": "2026-10-22T08:51:36+00:00"
+    },
+    {
+      "name": "npm ci（Alpine / musl）",
+      "state": "SUCCESS",
+      "startedAt": "2026-10-22T08:51:03+00:00",
+      "completedAt": "2026-10-22T08:51:51+00:00"
+    },
+    {
+      "name": "Test (shard 4)",
+      "state": "SUCCESS",
+      "startedAt": "2026-10-22T08:51:01+00:00",
+      "completedAt": "2026-10-22T09:53:39+00:00"
+    },
+    {
+      "name": "Test (shard 3)",
+      "state": "SUCCESS",
+      "startedAt": "2026-10-22T08:51:01+00:00",
+      "completedAt": "2026-10-22T09:48:31+00:00"
+    },
+    {
+      "name": "Test (shard 5)",
+      "state": "SUCCESS",
+      "startedAt": "2026-10-22T08:51:02+00:00",
+      "completedAt": "2026-10-22T08:53:17+00:00"
+    },
+    {
+      "name": "Test (shard 2)",
+      "state": "SUCCESS",
+      "startedAt": "2026-10-22T08:51:01+00:00",
+      "completedAt": "2026-10-22T08:53:03+00:00"
+    },
+    {
+      "name": "Test (shard 0)",
+      "state": "SUCCESS",
+      "startedAt": "2026-10-22T08:51:02+00:00",
+      "completedAt": "2026-10-22T10:07:39+00:00"
+    },
+    {
+      "name": "Test (shard 1)",
+      "state": "SUCCESS",
+      "startedAt": "2026-10-22T08:51:02+00:00",
+      "completedAt": "2026-10-22T10:06:06+00:00"
+    },
+    {
+      "name": "ArchUnit tests (separate JVM)",
+      "state": "SUCCESS",
+      "startedAt": "2026-10-22T08:51:01+00:00",
+      "completedAt": "2026-10-22T08:53:22+00:00"
+    },
+    {
+      "name": "Non-JST timezone contract",
+      "state": "SUCCESS",
+      "startedAt": "2026-10-22T08:51:01+00:00",
+      "completedAt": "2026-10-22T08:54:43+00:00"
+    },
+    {
+      "name": "Shard coverage guard",
+      "state": "SUCCESS",
+      "startedAt": "2026-10-22T08:51:02+00:00",
+      "completedAt": "2026-10-22T08:52:27+00:00"
+    },
+    {
+      "name": "Lint (D-5 @Builder guard)",
+      "state": "SUCCESS",
+      "startedAt": "2026-10-22T08:51:01+00:00",
+      "completedAt": "2026-10-22T08:51:14+00:00"
+    },
+    {
+      "name": "Docker ビルド検証（main push のみ）",
+      "state": "SKIPPED",
+      "startedAt": "2026-10-22T08:50:37+00:00",
+      "completedAt": "2026-10-22T08:50:36+00:00"
+    },
+    {
+      "name": "フル履歴スキャン（週次）",
+      "state": "SKIPPED",
+      "startedAt": "2026-10-22T08:50:37+00:00",
+      "completedAt": "2026-10-22T08:50:36+00:00"
+    },
+    {
+      "name": "Detect changes",
+      "state": "SUCCESS",
+      "startedAt": "2026-10-22T08:50:39+00:00",
+      "completedAt": "2026-10-22T08:50:59+00:00"
+    },
+    {
+      "name": "Lighthouse パフォーマンスチェック",
+      "state": "SUCCESS",
+      "startedAt": "2026-10-22T08:50:39+00:00",
+      "completedAt": "2026-10-22T08:55:50+00:00"
+    },
+    {
+      "name": "Worktree cleanup guard",
+      "state": "SUCCESS",
+      "startedAt": "2026-10-22T08:50:39+00:00",
+      "completedAt": "2026-10-22T08:50:53+00:00"
+    },
+    {
+      "name": "generate:types 差分チェック",
+      "state": "SUCCESS",
+      "startedAt": "2026-10-22T08:50:38+00:00",
+      "completedAt": "2026-10-22T08:51:23+00:00"
+    },
+    {
+      "name": "Install",
+      "state": "SUCCESS",
+      "startedAt": "2026-10-22T08:50:38+00:00",
+      "completedAt": "2026-10-22T09:08:01+00:00"
+    },
+    {
+      "name": "harness-tests",
+      "state": "SUCCESS",
+      "startedAt": "2026-10-22T08:50:39+00:00",
+      "completedAt": "2026-10-22T08:50:58+00:00"
+    },
+    {
+      "name": "Scan & Comment",
+      "state": "SUCCESS",
+      "startedAt": "2026-10-22T08:50:38+00:00",
+      "completedAt": "2026-10-22T08:51:02+00:00"
+    },
+    {
+      "name": "OpenAPI Drift Check",
+      "state": "SUCCESS",
+      "startedAt": "2026-10-22T08:50:40+00:00",
+      "completedAt": "2026-10-22T08:50:59+00:00"
+    },
+    {
+      "name": "PR差分スキャン",
+      "state": "SUCCESS",
+      "startedAt": "2026-10-22T08:50:39+00:00",
+      "completedAt": "2026-10-22T08:51:03+00:00"
+    },
+    {
+      "name": "Smoke E2E (F15.4 + F22.1 + 拡大予定)",
+      "state": "SUCCESS",
+      "startedAt": "2026-10-22T08:50:38+00:00",
+      "completedAt": "2026-10-22T09:04:43+00:00"
+    },
+    {
+      "name": "lockfile 変更の有無",
+      "state": "SUCCESS",
+      "startedAt": "2026-10-22T08:50:38+00:00",
+      "completedAt": "2026-10-22T08:51:00+00:00"
+    },
+    {
+      "name": "Task-List PR Gate",
+      "state": "SUCCESS",
+      "startedAt": "2026-10-22T08:50:38+00:00",
+      "completedAt": "2026-10-22T08:50:56+00:00"
+    }
+  ],
+  "mergeTimeStatuses": [],
+  "allChecksAndStatusesCollected": true
+}

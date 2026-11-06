@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * 委員会招集サービス。招集状の送付・一覧・取り下げ・受諾・辞退を提供する。
@@ -64,6 +65,7 @@ public class CommitteeInvitationService {
      * 既に現役メンバーの場合はスキップ（エラーにせずメタ情報で報告）。
      * 既に未解決招集がある場合はスキップ（重複招集を防ぐ）。
      */
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Transactional
     public SendInvitationsResult sendInvitations(Long committeeId, CommitteeInviteRequest request,
                                                   Long currentUserId) {

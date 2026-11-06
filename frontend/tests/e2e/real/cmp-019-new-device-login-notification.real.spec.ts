@@ -127,7 +127,7 @@ test.describe('CMP-019 Wave2: 新規端末ログイン通知', () => {
         return hit
       }, { timeout: 60_000, intervals: [500, 1_000, 2_000] }).toBeTruthy()
 
-      expect(hit?.actionUrl, '新規端末通知のアクション先').toBe('/account/sessions')
+      expect(hit?.actionUrl, '新規端末通知のアクション先').toBe('/settings/security')
       expect(hit?.body ?? '', '通知本文にIPを含めない').not.toMatch(/(?:\d{1,3}\.){3}\d{1,3}|::1|0:0:0:0/)
       expect(hit?.body ?? '', '通知本文にテストfingerprintを含めない').not.toContain(NEW_FINGERPRINT)
 

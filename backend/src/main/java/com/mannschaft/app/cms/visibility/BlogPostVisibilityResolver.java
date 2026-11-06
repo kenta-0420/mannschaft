@@ -57,6 +57,24 @@ public class BlogPostVisibilityResolver
         }
     }
 
+    /** 一覧用: preview と同じ strict 課金結果を複数記事ぶんまとめて渡す（記事ごとに課金 SQL を再発行しない）。 */
+    private record PreviewGatesContext(Map<Long, GateCheckResponse> gates) {
+        private PreviewGatesContext {
+            java.util.Objects.requireNonNull(gates);
+        }
+    }
+
+    /**
+     * 組織告知の一覧が、プレビュー（{@link #assertCanViewForPreview}）と同じ可否を一括で判定するための入口。
+     * 呼び出し側が先に取った strict 課金結果を全記事に渡し、課金 HIDDEN（タイトルも隠す）の除外は呼び出し側で済ませている前提。
+     * 通常の {@code filterAccessible} は変えない。
+     */
+    public java.util.Set<Long> filterAccessibleForPreview(java.util.Collection<Long> contentIds, Long viewerUserId,
+                                                          Map<Long, GateCheckResponse> strictGates) {
+        return filterAccessibleWithAdditionalAxisLoader(contentIds, viewerUserId,
+                (rows, viewer) -> new PreviewGatesContext(strictGates));
+    }
+
     /** 通常 F00 と同じ判定本体に strict 結果を渡し、課金を lenient に再評価しない。 */
     public void assertCanViewForPreview(Long contentId, Long viewerUserId, GateCheckResponse strictGate) {
         PreviewGateContext context = new PreviewGateContext(contentId, strictGate);
@@ -69,9 +87,32 @@ public class BlogPostVisibilityResolver
         }
     }
 
+    /**
+     * 組織告知の宛先チームのメンバーへの本文プレビュー委任（ALIC-1 §2.3）。{@link #assertCanViewForPreview} と同じ本体を、
+     * 記事の所有スコープでの役割を委任役割（"MEMBER" / "SUPPORTER"）に差し替えて評価する。strict 課金結果は呼び出し側が事前に評価して渡す。
+     * 呼び出しは {@code BlogPostPreviewService}（組織告知の本文プレビューの正規経路）に限る。
+     */
+    public void assertCanViewForPreviewDelegated(Long contentId, Long viewerUserId, GateCheckResponse strictGate,
+                                                 String delegatedRole) {
+        PreviewGateContext context = new PreviewGateContext(contentId, strictGate);
+        var decision = decideDelegatedWithAdditionalAxisLoader(contentId, viewerUserId, delegatedRole,
+                (rows, viewer) -> context);
+        if (!decision.allowed()) {
+            throw new com.mannschaft.app.common.BusinessException(
+                    decision.denyReason() == com.mannschaft.app.common.visibility.DenyReason.NOT_FOUND
+                            ? com.mannschaft.app.common.visibility.VisibilityErrorCode.VISIBILITY_004
+                            : com.mannschaft.app.common.visibility.VisibilityErrorCode.VISIBILITY_001);
+        }
+    }
+
     @Override
     protected boolean evaluateCustom(BlogPostVisibilityProjection row, Long viewerUserId,
                                      UserScopeRoleSnapshot snapshot, Object additionalAxisContext) {
+        if (additionalAxisContext instanceof PreviewGatesContext context) {
+            GateCheckResponse gate = row == null ? null : context.gates().get(row.id());
+            // 結果にない記事は評価不能として fail-closed。CUSTOM の購入条件は本文可否（preview と同じ基準）
+            return viewerUserId != null && gate != null && (gate.isAccessible() || !gate.isTitleHidden());
+        }
         if (additionalAxisContext instanceof PreviewGateContext context) {
             if (!context.contentId().equals(row.id())) {
                 throw new IllegalStateException("preview 課金結果の参照が一致しません");
@@ -149,6 +190,9 @@ public class BlogPostVisibilityResolver
     protected boolean visibleByAdditionalAxis(
             BlogPostVisibilityProjection row, Long viewerUserId, UserScopeRoleSnapshot snapshot,
             StandardVisibility level, Object additionalAxisContext) {
+        if (additionalAxisContext instanceof PreviewGatesContext context) {
+            additionalAxisContext = context.gates();
+        }
         if (additionalAxisContext instanceof PreviewGateContext context) {
             if (row == null || !context.contentId().equals(row.id())) {
                 throw new IllegalStateException("preview 課金結果の参照が一致しません");

@@ -15,6 +15,9 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.common.security.IntentionallyPublic;
 import com.mannschaft.app.common.security.SelfScopedEndpoint;
+import com.mannschaft.app.common.security.VerifiedAccessToken;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -231,25 +234,30 @@ public class AuthLoginController {
      * access_token Cookie を削除する。
      *
      * <p><b>認可方式（{@link com.mannschaft.app.common.security.SelfScopedEndpoint} メソッド付与）</b>:
-     * 対象セッションは呼出者自身の {@code HttpOnly} な {@code refresh_token_hash} / {@code refresh_token}
-     * Cookie の値のみから解決され、リクエストに他人のセッションを指す ID を渡す余地が無い。
-     * Cookie は同一オリジンのブラウザにのみ保持され、クロスオリジンから読めない。</p>
+     * JWT署名検証直後の所有者とCookieハッシュの組を
+     * {@code AuthSessionService#logout} の {@code findByTokenHashAndUserId} 検索条件に束縛する。
+     * 管理者変身中も署名済み本人を対象とし、別人や他端末を指定するqueryは失効対象に使用しない。</p>
      *
      * <p>認可根治戦役 Wave5 監査済。</p>
      */
     @SelfScopedEndpoint(
-            "refresh_token_hash Cookie の値のみで対象セッションを解決し、userId 等のリクエストパラメータは使用しない"
+            "署名検証済みJWTのuserIdとCookieハッシュの組だけでAuthSessionService.logoutの対象を検索し、別人へ到達しない"
                     + "（AuthLoginController#logout）")
     @PostMapping("/logout")
     @Operation(summary = "ログアウト")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "ログアウト成功")
     public ResponseEntity<Void> logout(
+            @CookieValue(name = "refresh_token", required = false) String rawRefreshToken,
             @CookieValue(name = "refresh_token_hash", required = false) String refreshTokenHash,
-            @RequestParam(required = false) String jti,
-            @RequestParam(required = false, defaultValue = "0") long exp,
+            HttpServletRequest request,
             HttpServletResponse response) {
 
-        authService.logout(refreshTokenHash, jti, exp);
+        if (!(request.getAttribute(VerifiedAccessToken.REQUEST_ATTRIBUTE) instanceof VerifiedAccessToken verified)) {
+            throw new BusinessException(CommonErrorCode.COMMON_000);
+        }
+        // 発行済みraw Cookieを優先する。旧hash Cookieはrawが無い既存クライアントだけに使う。
+        String tokenHash = rawRefreshToken != null ? hashRefreshToken(rawRefreshToken) : refreshTokenHash;
+        authService.logout(verified.userId(), tokenHash, verified.jti(), verified.expiresAtEpochSecond());
         response.addHeader(HttpHeaders.SET_COOKIE, clearAccessTokenCookie().toString());
         // refresh_token Cookie もクリア（発行と属性を揃える）
         response.addHeader(HttpHeaders.SET_COOKIE, clearRefreshTokenCookie().toString());
@@ -377,13 +385,8 @@ public class AuthLoginController {
      * @return ResponseCookie
      */
     private ResponseCookie buildAccessTokenCookie(String token) {
-        return ResponseCookie.from("access_token", token)
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .path("/")
-                .sameSite("Strict")
-                .maxAge(15 * 60)  // 15分（JWT アクセストークンの有効期限に合わせる）
-                .build();
+        return AuthTokenCookies.accessToken(token, cookieSecure,
+                authTokenService.getAccessTokenExpirationSeconds());
     }
 
     /**
@@ -397,13 +400,7 @@ public class AuthLoginController {
      * @return ResponseCookie（maxAge=0）
      */
     private ResponseCookie clearAccessTokenCookie() {
-        return ResponseCookie.from("access_token", "")
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .path("/")
-                .sameSite("Strict")
-                .maxAge(0)
-                .build();
+        return AuthTokenCookies.accessToken("", cookieSecure, 0);
     }
 
     /**
@@ -423,13 +420,8 @@ public class AuthLoginController {
      * @return ResponseCookie
      */
     private ResponseCookie buildRefreshTokenCookie(String token) {
-        return ResponseCookie.from("refresh_token", token)
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .path("/")
-                .sameSite("Strict")
-                .maxAge(authTokenService.getRefreshTokenExpirationSeconds())
-                .build();
+        return AuthTokenCookies.refreshToken(token, cookieSecure,
+                authTokenService.getRefreshTokenExpirationSeconds());
     }
 
     /**
@@ -441,13 +433,7 @@ public class AuthLoginController {
      * @return ResponseCookie（maxAge=0）
      */
     private ResponseCookie clearRefreshTokenCookie() {
-        return ResponseCookie.from("refresh_token", "")
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .path("/")
-                .sameSite("Strict")
-                .maxAge(0)
-                .build();
+        return AuthTokenCookies.refreshToken("", cookieSecure, 0);
     }
 
     /**

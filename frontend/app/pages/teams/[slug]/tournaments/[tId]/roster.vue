@@ -88,8 +88,8 @@ async function loadTemplates() {
     // チームのエントリーテンプレ一覧を取得
     // useTournamentParticipants.getEntryTemplates は orgId/teamSlug が必要
     // ここでは teamSlug を使用してロード
-    const data = await getEntryTemplates(orgId, teamSlug)
-    templates.value = Array.isArray(data) ? data : []
+    const { data } = await getEntryTemplates(orgId, teamSlug)
+    templates.value = data
   } catch {
     // テンプレ取得失敗はサイレント（テンプレなしで手動入力可）
   } finally {

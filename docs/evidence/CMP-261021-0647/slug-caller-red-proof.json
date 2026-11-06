@@ -1,0 +1,33 @@
+{
+  "cmpId": "CMP-261021-0647",
+  "test": "SWAP-001: メンバーが交代依頼を作成すると POST /shifts/swap-requests が飛ぶ",
+  "testPath": "frontend/tests/e2e/shifts/shift-swap-roundtrip.spec.ts",
+  "testSha256": "1a3ef31ecdfb4099a9283c735ed48d45857e00e46883dff81cee8a4b91e95d57",
+  "phase": "red",
+  "file": "red-url.json",
+  "sha256": "7b166d74b3a992d4912df4faadfda6a618b5c9f7d279c910affbf0993eeba857",
+  "runStart": "2026-10-22T01:14:37.174Z",
+  "testStart": "2026-10-22T01:14:41.490Z",
+  "status": "failed",
+  "expected": 0,
+  "unexpected": 1,
+  "skipped": 0,
+  "retry": 0,
+  "expectedUrl": "/api/v1/teams/e2e-swap-team/members/all",
+  "actualUrl": "/api/v1/teams/1/members",
+  "failure": "expect.poll URL一致assert。fixtureは不正URLを404にする",
+  "exitCodeFromReceipt": 1,
+  "originalBytes": 14626,
+  "rawHashIndependentlyMatched": true,
+  "binding": {
+    "receipt": "receipt.json",
+    "receiptSha256FromManifest": "43d5feaca1f3634795efdc97cbbf13b00cf7e910cd1aea734b22006f7d0aca5c",
+    "base": "4868bf34abd3d7ad7fbead6693911a59243426f4",
+    "receiptHead": "22f53dc446b75e1643d15caf8149c19b0a505c47",
+    "exactExecutionCommitPerRun": null,
+    "note": "receiptのbase/headは統合受領情報。各run実行commitの独立記録なし。現在head実行へ昇格しない"
+  },
+  "coverage": "実画面caller/既定SPECIFICのURL・候補選択・POST slotId/targetUserIds/openCall:false・全件API1要求。APIはroute mock。実BE認可/永続化の証拠ではない",
+  "exactExecutionHead": null,
+  "currentHeadExecution": false
+}

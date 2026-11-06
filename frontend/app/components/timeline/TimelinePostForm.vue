@@ -6,6 +6,8 @@ const props = defineProps<{
   scopeType: TimelineScopeType
   /** TEAM/ORGANIZATION は数値ID、VILLAGE は UUID 文字列 */
   scopeId?: string | number
+  /** 組織の権限確認URLに使う公開slug。投稿・添付先の内部IDとは分ける。 */
+  scopeSlug?: string
 }>()
 
 const emit = defineEmits<{
@@ -36,7 +38,9 @@ const isOrganizationScope = computed(() => props.scopeType === 'ORGANIZATION' &&
  * 正典の {@link useRoleAccess} でロールを取得して可視制御する。
  * 取得に失敗した場合は roleName が null のままとなり選択肢は出ない（見せて弾かれるより安全側）。
  */
-const orgScopeIdForRole = computed(() => (isOrganizationScope.value ? String(props.scopeId) : ''))
+const orgScopeIdForRole = computed(() =>
+  isOrganizationScope.value ? (props.scopeSlug ?? String(props.scopeId)) : '',
+)
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgScopeIdForRole)
 
 onMounted(() => {

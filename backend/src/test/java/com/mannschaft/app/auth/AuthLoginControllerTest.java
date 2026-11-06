@@ -471,9 +471,11 @@ class AuthLoginControllerTest {
     @Test
     @DisplayName("POST /logout — 正常系: 200 を返却する")
     void logout_success_returns200() throws Exception {
-        doNothing().when(authService).logout(any(), any(), any(Long.class));
+        doNothing().when(authService).logout(any(), any(), any(), any(Long.class));
 
         mockMvc.perform(post("/api/v1/auth/logout")
+                        .requestAttr(com.mannschaft.app.common.security.VerifiedAccessToken.REQUEST_ATTRIBUTE,
+                                new com.mannschaft.app.common.security.VerifiedAccessToken(1L, "verified-jti", 9999999999L))
                         .cookie(new jakarta.servlet.http.Cookie("refresh_token_hash", "hash-value"))
                         .param("jti", "jti-123")
                         .param("exp", "9999999999"))
@@ -481,11 +483,32 @@ class AuthLoginControllerTest {
     }
 
     @Test
-    @DisplayName("POST /logout — access_token と refresh_token の両方を maxAge=0 でクリアする")
-    void logout_clearsBothCookies() throws Exception {
-        doNothing().when(authService).logout(any(), any(), any(Long.class));
+    void logout_署名検証済み属性なし_401で失効処理しない() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/logout").param("jti", "forged").param("exp", "9999999999"))
+                .andExpect(status().isUnauthorized());
+        org.mockito.Mockito.verify(authService, org.mockito.Mockito.never()).logout(any(), any(), any(), any(Long.class));
+    }
+
+    @Test
+    void logout_DB障害_500でCookieクリアの偽成功を返さない() throws Exception {
+        org.mockito.Mockito.doThrow(new org.springframework.dao.DataAccessResourceFailureException("意図したDB障害"))
+                .when(authService).logout(any(), any(), any(), any(Long.class));
 
         mockMvc.perform(post("/api/v1/auth/logout")
+                        .requestAttr(com.mannschaft.app.common.security.VerifiedAccessToken.REQUEST_ATTRIBUTE,
+                                new com.mannschaft.app.common.security.VerifiedAccessToken(1L, "verified-jti", 9999999999L)))
+                .andExpect(status().isInternalServerError())
+                .andExpect(header().doesNotExist(org.springframework.http.HttpHeaders.SET_COOKIE));
+    }
+
+    @Test
+    @DisplayName("POST /logout — access_token と refresh_token の両方を maxAge=0 でクリアする")
+    void logout_clearsBothCookies() throws Exception {
+        doNothing().when(authService).logout(any(), any(), any(), any(Long.class));
+
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .requestAttr(com.mannschaft.app.common.security.VerifiedAccessToken.REQUEST_ATTRIBUTE,
+                                new com.mannschaft.app.common.security.VerifiedAccessToken(1L, "verified-jti", 9999999999L))
                         .param("jti", "jti-123")
                         .param("exp", "9999999999"))
                 .andExpect(status().isOk())

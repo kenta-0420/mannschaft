@@ -9,7 +9,7 @@
 import type { OperationalCampaign } from '~/composables/useOperationalCampaignApi'
 import type { OperationalCampaignReviewDetail } from '~/composables/useSystemAdminOperationalCampaignApi'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const { t } = useI18n()
 const api = useSystemAdminOperationalCampaignApi()

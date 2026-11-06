@@ -235,8 +235,11 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
+      - name: 重み表再生成の XML 集計対象を検証
+        run: python3 -m unittest scripts/test_regen_shard_weights.py
+
       - name: Set up Java ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
@@ -281,7 +284,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Java ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
@@ -302,7 +305,7 @@ jobs:
 
       - name: ヒープダンプ（OOM調査用）をアップロード
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: heap-dump-pr-${{ github.event.pull_request.number || 'manual' }}-archtest
           path: backend/build/heap-dumps/*.hprof
@@ -313,7 +316,7 @@ jobs:
       # shard 重み表の材料を集めるため。archTest のクラスは通常 test の shard 割当に入れない）。
       - name: テスト結果XML（JUnit）をアップロード
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: archtest-results-xml-pr-${{ github.event.pull_request.number || 'manual' }}
           path: backend/build/test-results/archTest/
@@ -321,7 +324,7 @@ jobs:
 
       - name: テスト結果レポートをアップロード
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: archtest-results-pr-${{ github.event.pull_request.number || 'manual' }}
           path: backend/build/reports/tests/archTest/
@@ -348,7 +351,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Java ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
@@ -370,6 +373,7 @@ jobs:
           -Ptest.timezone=America/Los_Angeles
           -x jacocoTestReport
           --tests "com.mannschaft.app.config.NonJstTimezoneContractTest"
+          --tests "com.mannschaft.app.reservation.service.ReservationPendingExpireServiceClockZoneTest"
           --tests "com.mannschaft.app.config.JacksonTimeTypeSymmetryGuardTest"
           --tests "com.mannschaft.app.schedule.ScheduleAttendanceServiceTest"
           --tests "com.mannschaft.app.shift.service.ShiftRequestServiceTest"
@@ -399,10 +403,10 @@ jobs:
     needs: detect
     if: needs.detect.outputs.backend_changed == 'true'
     runs-on: ubuntu-latest
-    # 通常PRは従来の75分を維持する。Flyway再生が必要なPRでは、CMP-008の
-    # shard 1 が2回とも75分上限でテスト失敗なしにキャンセルされたため、
-    # テストを省略せず後処理まで完了できる105分の枠を確保する。
-    timeout-minutes: ${{ needs.detect.outputs.migrations_changed == 'true' && 105 || 75 }}
+    # 通常PRは100分、migration込みは120分を観測用上限とする（完走・根治の保証ではない）。
+    # test stepは85/105分。setup＋compileが15分を超えると回収余白を保証しない。
+    # workflow自身の変更もmigration-sensitive判定の対象とする。
+    timeout-minutes: ${{ needs.detect.outputs.migrations_changed == 'true' && 120 || 100 }}
     defaults:
       run:
         working-directory: ./backend
@@ -416,7 +420,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Java ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
@@ -458,14 +462,39 @@ jobs:
       #   （65 クラス・計測テスト時間の 72〜88% を占める）を除外する。
       #   migration を触る PR では false となり従来どおり全件実行する。
       #   除外分は backend-nightly-full.yml が毎晩フル実行して担保する。
+      # cache5診断のshard0完走を踏まえcontext保持を5に制限する。
+      # heap/fork・テスト選別は維持し、ローカル既定10は変更しない。
       - name: Run tests (shard ${{ matrix.shard }} / ${{ env.SHARD_TOTAL }})
-        run: >-
-          ./gradlew test --no-daemon --continue --build-cache
-          -Pshard.total=${{ env.SHARD_TOTAL }}
-          -Pshard.index=${{ matrix.shard }}
-          -PexcludeMigrationTests=${{ needs.detect.outputs.migrations_changed == 'true' && 'false' || 'true' }}
+        id: run-tests
+        timeout-minutes: ${{ needs.detect.outputs.migrations_changed == 'true' && 105 || 85 }}
+        run: |
+          bash scripts/run-ci-tests-with-observability.sh ./gradlew test --no-daemon --continue --build-cache \
+            -Pshard.total=${{ env.SHARD_TOTAL }} \
+            -Pshard.index=${{ matrix.shard }} \
+            -PexcludeMigrationTests=${{ needs.detect.outputs.migrations_changed == 'true' && 'false' || 'true' }} \
+            -Pspring.test.context.cache.maxSize=5
         env:
           TESTCONTAINERS_RYUK_DISABLED: "false"
+          CI_SHARD_INDEX: ${{ matrix.shard }}
+          CI_JOB_TIMEOUT_MINUTES: ${{ needs.detect.outputs.migrations_changed == 'true' && 120 || 100 }}
+          CI_TEST_TIMEOUT_MINUTES: ${{ needs.detect.outputs.migrations_changed == 'true' && 105 || 85 }}
+
+      # timeout/cancellationはGHA outcomeも確認し、EXIT trapの0だけを成功にしない。
+      - name: 計測結果にテストstepの実結果を記録
+        if: always()
+        run: bash scripts/run-ci-tests-with-observability.sh --finalize "$TEST_STEP_OUTCOME"
+        env:
+          TEST_STEP_OUTCOME: ${{ steps.run-tests.outcome }}
+
+      - name: 全shardのクラス進捗とJVM診断をアップロード
+        if: always()
+        timeout-minutes: 2
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-runtime-diag-pr-${{ github.event.pull_request.number || 'manual' }}-shard-${{ matrix.shard }}-attempt-${{ github.run_attempt }}
+          path: backend/build/ci-diagnostics/
+          retention-days: 7
+          if-no-files-found: warn
 
       # OOM (OutOfMemoryError) 発生時のみ、-XX:HeapDumpOnOutOfMemoryError で
       # backend/build/heap-dumps/java_pid<PID>.hprof に書き出されるヒープダンプを
@@ -486,7 +515,7 @@ jobs:
       # 正常系であり、これを error にすると本来の失敗原因を覆い隠す形で CI を毎回汚す）。
       - name: ヒープダンプ（OOM調査用）をアップロード
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: heap-dump-pr-${{ github.event.pull_request.number || 'manual' }}-shard-${{ matrix.shard }}
           path: backend/build/heap-dumps/*.hprof
@@ -497,7 +526,7 @@ jobs:
       # 持つため、「Run tests の壁時計」と「Gradle 集計テスト時間」の差を分解できる。
       - name: テスト結果XML（JUnit）をアップロード
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-xml-pr-${{ github.event.pull_request.number || 'manual' }}-shard-${{ matrix.shard }}
           path: |
@@ -507,7 +536,7 @@ jobs:
 
       - name: テスト結果レポートをアップロード
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-pr-${{ github.event.pull_request.number || 'manual' }}-shard-${{ matrix.shard }}
           path: backend/build/reports/tests/
@@ -515,7 +544,7 @@ jobs:
 
       - name: JaCoCo カバレッジレポートをアップロード
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report-pr-${{ github.event.pull_request.number || 'manual' }}-shard-${{ matrix.shard }}
           path: backend/build/reports/jacoco/

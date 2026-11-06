@@ -1,0 +1,341 @@
+{
+  "url": "http://localhost:3001/organizations/organizations-1792955082319",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "text": "Mannschaft\n41\n表示\n表示設定住民探索-organizations-1792955082319\nメンバー\nメンバー 2人\nサポーター 1人\nお気に入り\nダッシュボード\nメンバー\n所属チーム\nウィジェット設定\n予定・活動\n今後の予定 / カレンダー ほか2件\n4\nやること・確認\nプロジェクト / 回覧板 ほか2件\n4\n連絡・共有\n掲示板 / タイムライン ほか3件\n5\n成績・メンバー\n主催大会サマリ / メンバー\n2",
+  "geometry": {
+    "locale": "ja",
+    "width": 390,
+    "client": 390,
+    "scroll": 390,
+    "controls": [
+      {
+        "tag": "BUTTON",
+        "text": "メニューを開く",
+        "selector": "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-900 md:hidden dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-100",
+        "href": null,
+        "bounds": {
+          "x": 8,
+          "y": 9.5,
+          "width": 44,
+          "height": 44
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "normal",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "text": "通知",
+        "selector": "p-button p-component p-button-icon-only p-button-secondary p-button-rounded p-button-text min-h-11 min-w-11",
+        "href": null,
+        "bounds": {
+          "x": 338,
+          "y": 9.5,
+          "width": 44,
+          "height": 44
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "normal",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "text": null,
+        "selector": "p-button p-component p-button-icon-only p-button-rounded p-button-text p-button-sm",
+        "href": null,
+        "bounds": {
+          "x": 108,
+          "y": 152,
+          "width": 44,
+          "height": 44
+        },
+        "style": {
+          "fontSize": "14px",
+          "whiteSpace": "normal",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "text": "お気に入り",
+        "selector": "p-button p-component p-button-secondary p-button-outlined p-button-sm",
+        "href": null,
+        "bounds": {
+          "x": 108,
+          "y": 329,
+          "width": 114,
+          "height": 44
+        },
+        "style": {
+          "fontSize": "14px",
+          "whiteSpace": "normal",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "text": "メニュー",
+        "selector": "p-button p-component p-button-icon-only p-button-secondary p-button-rounded p-button-text p-button-sm",
+        "href": null,
+        "bounds": {
+          "x": 230,
+          "y": 329,
+          "width": 44,
+          "height": 44
+        },
+        "style": {
+          "fontSize": "14px",
+          "whiteSpace": "normal",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      {
+        "tag": "DIV",
+        "text": "ダッシュボード",
+        "selector": "#pv_id_0_28_tab_dashboard",
+        "href": null,
+        "bounds": {
+          "x": 16,
+          "y": 381,
+          "width": 172,
+          "height": 77
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "nowrap",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      {
+        "tag": "A",
+        "text": "ダッシュボード",
+        "selector": "router-link-active router-link-exact-active flex items-center gap-2 min-h-11 no-underline text-inherit",
+        "href": "/organizations/organizations-1792955082319",
+        "bounds": {
+          "x": 34,
+          "y": 397,
+          "width": 136,
+          "height": 44
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "nowrap",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      {
+        "tag": "DIV",
+        "text": "メンバー",
+        "selector": "#pv_id_0_28_tab_members",
+        "href": null,
+        "bounds": {
+          "x": 188,
+          "y": 381,
+          "width": 124,
+          "height": 77
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "nowrap",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      {
+        "tag": "A",
+        "text": "メンバー",
+        "selector": "flex items-center gap-2 min-h-11 no-underline text-inherit",
+        "href": "/organizations/organizations-1792955082319/members",
+        "bounds": {
+          "x": 206,
+          "y": 397,
+          "width": 88,
+          "height": 44
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "nowrap",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      {
+        "tag": "DIV",
+        "text": "所属チーム",
+        "selector": "#pv_id_0_28_tab_member-teams",
+        "href": null,
+        "bounds": {
+          "x": 312,
+          "y": 381,
+          "width": 139.53125,
+          "height": 77
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "nowrap",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      {
+        "tag": "A",
+        "text": "所属チーム",
+        "selector": "flex items-center gap-2 min-h-11 no-underline text-inherit",
+        "href": "/organizations/organizations-1792955082319/member-teams",
+        "bounds": {
+          "x": 330,
+          "y": 397,
+          "width": 103.53125,
+          "height": 44
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "nowrap",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "text": "次へ",
+        "selector": "p-tablist-next-button p-tablist-nav-button min-h-11 min-w-11",
+        "href": null,
+        "bounds": {
+          "x": 330,
+          "y": 381,
+          "width": 44,
+          "height": 77
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "normal",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "text": "メニュー",
+        "selector": "p-button p-component p-button-icon-only p-button-rounded p-button-text p-button-sm min-h-11 min-w-11",
+        "href": null,
+        "bounds": {
+          "x": 20,
+          "y": 458,
+          "width": 44,
+          "height": 44
+        },
+        "style": {
+          "fontSize": "14px",
+          "whiteSpace": "normal",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "text": "ウィジェット設定",
+        "selector": "p-button p-component p-button-text p-button-sm",
+        "href": null,
+        "bounds": {
+          "x": 194,
+          "y": 519,
+          "width": 156,
+          "height": 44
+        },
+        "style": {
+          "fontSize": "14px",
+          "whiteSpace": "normal",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "text": "予定・活動\n今後の予定 / カレンダー ほか2件\n4",
+        "selector": "#scope-dashboard-section-button-schedule-activity",
+        "href": null,
+        "bounds": {
+          "x": 41,
+          "y": 588,
+          "width": 308,
+          "height": 68
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "normal",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "text": "やること・確認\nプロジェクト / 回覧板 ほか2件\n4",
+        "selector": "#scope-dashboard-section-button-tasks-confirmation",
+        "href": null,
+        "bounds": {
+          "x": 41,
+          "y": 670,
+          "width": 308,
+          "height": 68
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "normal",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "text": "連絡・共有\n掲示板 / タイムライン ほか3件\n5",
+        "selector": "#scope-dashboard-section-button-communication",
+        "href": null,
+        "bounds": {
+          "x": 41,
+          "y": 752,
+          "width": 308,
+          "height": 68
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "normal",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "text": "成績・メンバー\n主催大会サマリ / メンバー\n2",
+        "selector": "#scope-dashboard-section-button-results-members",
+        "href": null,
+        "bounds": {
+          "x": 41,
+          "y": 834,
+          "width": 308,
+          "height": 68
+        },
+        "style": {
+          "fontSize": "16px",
+          "whiteSpace": "normal",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        }
+      }
+    ]
+  },
+  "events": []
+}

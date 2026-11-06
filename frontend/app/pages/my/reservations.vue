@@ -56,12 +56,14 @@ onMounted(() => load())
         :key="r.id"
       >
         <div class="flex items-center justify-between">
-          <h3 class="text-sm font-semibold">{{ r.slot?.lineName }}</h3>
+          <h3 class="text-sm font-semibold">{{ r.slot?.lineName || t('reservation.history.line_unavailable') }}</h3>
           <span :class="getStatusClass(r.status?.status ?? '')" class="rounded px-2 py-0.5 text-xs font-medium">{{
             statusLabel(r.status?.status)
           }}</span>
         </div>
-        <p class="mt-1 text-xs text-surface-400">{{ r.slot?.slotDate }} {{ r.slot?.startTime }} - {{ r.slot?.endTime }}</p>
+        <p class="mt-1 text-xs text-surface-400">
+          {{ r.slot?.slotDate || t('reservation.history.date_unavailable') }} {{ r.slot?.startTime || t('reservation.history.time_unavailable') }} - {{ (r.group ? r.group.groupEndTime : r.slot?.endTime) || t('reservation.history.time_unavailable') }}
+        </p>
       </SectionCard>
       <DashboardEmptyState v-if="reservations.length === 0" icon="pi-calendar" :message="t('reservation.empty.no_my_reservations')" />
     </div>

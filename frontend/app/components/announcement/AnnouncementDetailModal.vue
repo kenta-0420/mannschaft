@@ -147,6 +147,9 @@ async function download(id: number | undefined): Promise<void> {
           <p>{{ t('announcement.preview.image_failed') }}</p>
           <Button :label="t('announcement.preview.retry')" class="min-h-11" @click="emit('retry')" />
         </div>
+        <p v-if="!preview.sourceUrl" class="mt-4 text-sm text-surface-500" data-testid="announcement-preview-delegated-note">
+          {{ t('announcement.preview.delegated_source_note') }}
+        </p>
         <ul v-if="preview.attachments.length" class="mt-4 space-y-2">
           <li v-for="attachment in preview.attachments" :key="attachment.id" class="flex min-w-0 items-center gap-2">
             <span class="min-w-0 flex-1 break-all">{{ attachment.originalFilename }}</span>

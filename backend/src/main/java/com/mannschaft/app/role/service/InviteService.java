@@ -16,6 +16,7 @@ import com.mannschaft.app.scopefolder.service.MyScopeFolderService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.provisioning.service.ProvisioningGate;
 import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.common.qr.BrandedQrImageWriter;
@@ -25,10 +26,9 @@ import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.role.dto.CreateInviteTokenRequest;
 import com.mannschaft.app.role.dto.InvitePreviewResponse;
 import com.mannschaft.app.role.dto.InviteTokenResponse;
+import com.mannschaft.app.role.dto.SharedInviteTokenCommand;
 import com.mannschaft.app.team.TeamErrorCode;
 import com.mannschaft.app.team.entity.TeamEntity;
-import com.mannschaft.app.team.event.TeamInviteTokenCreatedEvent;
-import com.mannschaft.app.organization.event.OrganizationInviteTokenCreatedEvent;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.team.repository.TeamBlockRepository;
 import com.mannschaft.app.organization.repository.OrganizationBlockRepository;
@@ -37,11 +37,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * 招待トークンサービス。トークン作成・プレビュー・参加・失効を管理する。
@@ -78,11 +78,13 @@ public class InviteService {
     private final UserRowLockService userRowLockService;
     private final AuditLogService auditLogService;
     private final ProvisioningGate provisioningGate;
+    private final InviteScopeStateService scopeStates;
+    private final SharedInviteTokenIssuer sharedTokenIssuer;
 
     /**
      * 招待トークンを作成する。
      */
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public ApiResponse<InviteTokenResponse> createInviteToken(Long scopeId, String scopeType,
                                                                CreateInviteTokenRequest req, Long createdBy) {
         // 束1 権限昇格根治: 当該スコープの ADMIN/DEPUTY_ADMIN のみ招待トークンを発行できる。
@@ -91,6 +93,7 @@ public class InviteService {
         // 柱②-3 販促プロビジョニングゲート（AC11）: PROVISIONED（承諾前の事前作成状態）スコープへの
         // 招待発行を遮断する。
         provisioningGate.requireActive(scopeId, scopeType);
+        var scope = scopeStates.requireAvailable(scopeType, scopeId);
 
         RoleEntity role = roleRepository.findById(req.getRoleId())
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
@@ -98,30 +101,29 @@ public class InviteService {
         // 有効期限の計算
         LocalDateTime expiresAt = resolveExpiresAt(req.getExpiresIn());
 
-        var inviteBuilder = InviteTokenEntity.builder()
-                .token(UUID.randomUUID().toString())
-                .roleId(req.getRoleId())
-                .createdBy(createdBy)
-                .expiresAt(expiresAt)
-                .maxUses(req.getMaxUses())
-                .usedCount(0);
-        if ("TEAM".equals(scopeType)) {
-            inviteBuilder.teamId(scopeId);
-        } else {
-            inviteBuilder.organizationId(scopeId);
+        // role専属writerから戻る時点でcommit済み。親共有lockはuser/token lock解放後だけ取得する。
+        InviteTokenResponse token = sharedTokenIssuer.issue(new SharedInviteTokenCommand(scopeType, scopeId,
+                role.getId(), role.getName(), createdBy,
+                expiresAt == null ? null : expiresAt.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant(),
+                req.getMaxUses(), scope.closureGeneration()));
+        boolean stillCurrent;
+        try {
+            stillCurrent = scopeStates.recheckIssued(scopeType, scopeId, scope.closureGeneration());
+        } catch (RuntimeException failure) {
+            try {
+                sharedTokenIssuer.revokeForCompensation(token.getId());
+            } catch (RuntimeException compensationFailure) {
+                failure.addSuppressed(compensationFailure);
+            }
+            throw failure;
         }
-        InviteTokenEntity token = inviteBuilder.build();
-        inviteTokenRepository.save(token);
-
-        // 監査ログ用イベント発行
-        if ("TEAM".equals(scopeType)) {
-            eventPublisher.publishEvent(new TeamInviteTokenCreatedEvent(createdBy, scopeId, token.getId()));
-        } else {
-            eventPublisher.publishEvent(new OrganizationInviteTokenCreatedEvent(createdBy, scopeId, token.getId()));
+        if (!stillCurrent) {
+            sharedTokenIssuer.revokeForCompensation(token.getId());
+            throw new BusinessException(RoleErrorCode.ROLE_002);
         }
 
         log.info("招待トークン作成完了: scopeType={}, scopeId={}, roleId={}", scopeType, scopeId, req.getRoleId());
-        return ApiResponse.of(toResponse(token, role.getName()));
+        return ApiResponse.of(token);
     }
 
     /**
@@ -131,6 +133,12 @@ public class InviteService {
         // 束1 権限昇格根治: 招待トークン一覧は当該スコープの ADMIN/DEPUTY_ADMIN のみ閲覧できる。
         accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType);
 
+        var scope = scopeStates.read(scopeType, scopeId);
+        if (scope.isEmpty() || !scope.orElseThrow().available()) {
+            return List.of();
+        }
+        long currentGeneration = scope.orElseThrow().closureGeneration();
+
         List<InviteTokenEntity> tokens;
         if ("TEAM".equals(scopeType)) {
             tokens = inviteTokenRepository.findByTeamIdAndRevokedAtIsNull(scopeId);
@@ -138,6 +146,7 @@ public class InviteService {
             tokens = inviteTokenRepository.findByOrganizationIdAndRevokedAtIsNull(scopeId);
         }
         return tokens.stream()
+                .filter(token -> token.getScopeClosureGeneration() == currentGeneration)
                 .map(token -> {
                     String roleName = roleRepository.findById(token.getRoleId())
                             .map(RoleEntity::getName).orElse(null);
@@ -151,7 +160,7 @@ public class InviteService {
      */
     @Transactional
     public void revokeInviteToken(Long tokenId, Long actorUserId) {
-        InviteTokenEntity token = inviteTokenRepository.findById(tokenId)
+        InviteTokenEntity token = inviteTokenRepository.findByIdForUpdate(tokenId)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
 
         // 束1 BOLA 根治: トークンが属するスコープ（team/org）を entity から導出し、
@@ -223,7 +232,8 @@ public class InviteService {
                 .map(RoleEntity::getName).orElse(null);
 
         return ApiResponse.of(new InvitePreviewResponse(
-                targetName, scopeType, roleName, token.isValid()));
+                targetName, scopeType, roleName, token.isValid()
+                        && scopeStates.isCurrent(scopeType, scopeId, token.getScopeClosureGeneration())));
     }
 
     /**
@@ -284,6 +294,12 @@ public class InviteService {
 
         String scopeType = resolveScopeType(token);
         Long scopeId = resolveScopeId(token);
+
+        // 判定点は親専属のfresh primary nonlocking read。重なる閉鎖には受諾先行が成立しうる。
+        // 親共有lockをここで取ると既存force-unarchiveのscope→user順と循環するため取得しない。
+        if (!scopeStates.isCurrent(scopeType, scopeId, token.getScopeClosureGeneration())) {
+            throw new BusinessException(RoleErrorCode.ROLE_002);
+        }
 
         // ブロックチェック
         checkNotBlocked(userId, scopeId, scopeType);

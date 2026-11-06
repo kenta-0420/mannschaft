@@ -1,0 +1,25 @@
+{"at":"2026-10-28T13:58:49.990Z","step":"runner-error","name":"TypeError"}
+{"at":"2026-10-28T14:00:31.086Z","step":"login","ok":true,"route":"/dashboard"}
+{"at":"2026-10-28T14:00:32.058Z","step":"dashboard","route":"/dashboard","labels":["Calendar"]}
+{"at":"2026-10-28T14:00:53.983Z","step":"calendar-entry","route":"/dashboard"}
+{"at":"2026-10-28T14:01:16.850Z","step":"calendar-link","links":[{"path":"/calendar","hash":false}],"locale":"en"}
+{"at":"2026-10-28T14:02:16.999Z","step":"command-error","name":"TimeoutError"}
+{"at":"2026-10-28T14:02:17.457Z","step":"screenshot","file":"未採用ローカル画像（公開証跡に含めない）","route":"/calendar"}
+{"at":"2026-10-28T14:02:39.310Z","step":"month-overview","route":"/calendar","month":"2026-10","observation":"月表示に到達。ウィジェット全画面ボタンは遷移後に消え、待機がタイムアウト。"}
+{"at":"2026-10-28T14:02:40.756Z","step":"agenda","publicLabels":["Calendar","Previous month","Next month","Month","Week","Agenda","Today"],"dateLabels":["October 2026"]}
+{"at":"2026-10-28T14:02:59.922Z","step":"screenshot","file":"未採用ローカル画像（公開証跡に含めない）"}
+{"at":"2026-10-28T14:03:26.939Z","step":"agenda-date-read","dates":["Mon, Oct 5","Fri, Oct 9","Mon, Oct 12","Mon, Oct 19","Mon, Oct 26"]}
+{"at":"2026-10-28T14:03:29.004Z","step":"screenshot","file":"未採用ローカル画像（公開証跡に含めない）"}
+{"at":"2026-10-28T14:04:02.042Z","step":"nearby-finished","week":"2026-10-25/2026-10-31","observedEventBlocksMonday":6,"observedEventBlocksTodayToSaturday":0}
+{"at":"2026-10-28T14:04:13.148Z","step":"command-error","name":"TimeoutError"}
+{"at":"2026-10-28T14:04:34.500Z","step":"month-controls","known":[{"label":"Calendar","x":281,"y":193,"w":114.53125,"h":32},{"label":"Previous month","x":0,"y":0,"w":0,"h":0},{"label":"Next month","x":0,"y":0,"w":0,"h":0},{"label":"Month","x":296,"y":264,"w":68.453125,"h":28},{"label":"Week","x":368.453125,"y":264,"w":61.46875,"h":28},{"label":"Agenda","x":433.921875,"y":264,"w":75.46875,"h":28},{"label":"Today","x":953.8125,"y":311.5,"w":62.515625,"h":35}],"empty":[{"x":293,"y":307,"w":44,"h":44,"title":false},{"x":462.921875,"y":307,"w":44,"h":44,"title":false},{"x":0,"y":0,"w":0,"h":0,"title":false},{"x":0,"y":0,"w":0,"h":0,"title":false}]}
+{"at":"2026-10-28T14:04:35.617Z","step":"screenshot","file":"未採用ローカル画像（公開証跡に含めない）"}
+{"at":"2026-10-28T14:04:49.763Z","step":"next-month-visual","novemberHeading":2,"observation":"月見出し右側の矢印で来月へ到達"}
+{"at":"2026-10-28T14:04:50.731Z","step":"screenshot","file":"docs/evidence/CMP-261028-1715/residents/plain/agenda-november.png"}
+{"at":"2026-10-28T14:04:50.815Z","step":"november-dates","dates":["Fri, Nov 13","Fri, Nov 20"],"httpErrors":[]}
+{"at":"2026-10-28T14:05:33.414Z","step":"november-timing","times":["19:00 〜 20:00","19:00 〜 20:00","19:00 〜 20:00","19:00 〜 20:00"]}
+{"at":"2026-10-28T14:05:33.891Z","step":"event-open","dialogCount":0,"route":"/calendar","publicLabels":["Calendar","Month","Week","Agenda","Today","Edit","Delete"]}
+{"at":"2026-10-28T14:05:34.275Z","step":"screenshot","file":"未採用ローカル画像（公開証跡に含めない）"}
+{"at":"2026-10-28T14:05:54.948Z","step":"goal-complete","runId":"calendar-residual-20261028","personaId":"resident-plain","journeyId":"nearby-next-month","viewport":{"width":1440,"height":900},"locale":"en","finalDisplay":"Agenda","month":"2026-11","eventCount":2,"days":[13,20],"time":"19:00–20:00","detailPanelOpened":true,"httpErrors":[],"observation":"近日はWeekで確認、来月はAgendaで2件と右側詳細を確認して終了。"}
+{"at":"2026-10-28T14:05:55.530Z","step":"evidence-sanitized","ok":true}
+{"step":"cleanup-confirmed","businessMutations":0,"pageErrorCount":0,"logoutStatus":200,"contextClosed":true,"browserClosed":true,"closed":true,"runtimeGuardPassed":true,"frontendActual3011":true,"apiActual8080":true}

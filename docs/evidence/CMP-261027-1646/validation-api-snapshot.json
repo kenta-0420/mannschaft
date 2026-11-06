@@ -1,0 +1,322 @@
+{
+  "repository": "kenta-0420/mannschaft",
+  "pr": 4169,
+  "mergedAt": "2026-10-28T09:22:13Z",
+  "implementation": {
+    "repository": "kenta-0420/mannschaft",
+    "merged": true,
+    "sha": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+    "checks": [
+      "success",
+      "success",
+      "success",
+      "success",
+      "success",
+      "success",
+      "success",
+      "success",
+      "success",
+      "success",
+      "success",
+      "success",
+      "success",
+      "success",
+      "skipped",
+      "success",
+      "success",
+      "success",
+      "success",
+      "success",
+      "success",
+      "success",
+      "success"
+    ],
+    "files": [
+      {
+        "filename": ".github/scripts/migration-sensitive-paths.regex",
+        "status": "modified"
+      },
+      {
+        "filename": ".github/workflows/common-freeze-graph.yml",
+        "status": "modified"
+      },
+      {
+        "filename": ".github/workflows/openapi-drift-check.yml",
+        "status": "modified"
+      },
+      {
+        "filename": "README.md",
+        "status": "modified"
+      },
+      {
+        "filename": "TEST_CONVENTION.md",
+        "status": "modified"
+      },
+      {
+        "filename": "backend/.claudecode.md",
+        "status": "modified"
+      },
+      {
+        "filename": "backend/build-logic/build.gradle.kts",
+        "status": "added"
+      },
+      {
+        "filename": "backend/build-logic/settings.gradle.kts",
+        "status": "added"
+      },
+      {
+        "filename": "backend/build-logic/src/main/kotlin/ShardAssignment.kt",
+        "status": "added"
+      },
+      {
+        "filename": "backend/build-logic/src/main/kotlin/mannschaft.backend-conventions.gradle.kts",
+        "status": "added"
+      },
+      {
+        "filename": "backend/build.gradle.kts",
+        "status": "modified"
+      },
+      {
+        "filename": "backend/settings.gradle.kts",
+        "status": "modified"
+      },
+      {
+        "filename": "backend/src/test/java/com/mannschaft/app/common/architecture/StripeJavaVersionGuardTest.java",
+        "status": "modified"
+      },
+      {
+        "filename": "backend/src/test/resources/shard-weights.properties",
+        "status": "modified"
+      },
+      {
+        "filename": "docs/architecture/modular_monolith_boundary_debt_repayment.md",
+        "status": "modified"
+      },
+      {
+        "filename": "docs/evidence/CMP-261021-0017-l1b-plan.md",
+        "status": "modified"
+      }
+    ]
+  },
+  "runs": [
+    {
+      "runId": 40662266445,
+      "repository": "kenta-0420/mannschaft",
+      "sha": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+      "conclusion": "success"
+    }
+  ],
+  "checkRuns": [
+    {
+      "id": 122730197547,
+      "name": "Compile & Test",
+      "head_sha": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+      "started_at": "2026-10-28T09:20:39Z",
+      "completed_at": "2026-10-28T09:20:42Z",
+      "conclusion": "success"
+    },
+    {
+      "id": 122728126923,
+      "name": "npm ci（Alpine / musl）",
+      "head_sha": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+      "started_at": "2026-10-28T09:11:53Z",
+      "completed_at": "2026-10-28T09:12:04Z",
+      "conclusion": "success"
+    },
+    {
+      "id": 122728126894,
+      "name": "npm ci（Ubuntu / glibc）",
+      "head_sha": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+      "started_at": "2026-10-28T09:12:53Z",
+      "completed_at": "2026-10-28T09:12:56Z",
+      "conclusion": "success"
+    },
+    {
+      "id": 122728126805,
+      "name": "lockfile の内容検査（base 比較）",
+      "head_sha": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+      "started_at": "2026-10-28T09:12:58Z",
+      "completed_at": "2026-10-28T09:13:02Z",
+      "conclusion": "success"
+    },
+    {
+      "id": 122728122457,
+      "name": "Test (shard 4)",
+      "head_sha": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+      "started_at": "2026-10-28T09:12:26Z",
+      "completed_at": "2026-10-28T09:16:17Z",
+      "conclusion": "success"
+    },
+    {
+      "id": 122728122273,
+      "name": "Test (shard 1)",
+      "head_sha": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+      "started_at": "2026-10-28T09:11:36Z",
+      "completed_at": "2026-10-28T09:15:04Z",
+      "conclusion": "success"
+    },
+    {
+      "id": 122728122218,
+      "name": "Test (shard 0)",
+      "head_sha": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+      "started_at": "2026-10-28T09:11:35Z",
+      "completed_at": "2026-10-28T09:13:55Z",
+      "conclusion": "success"
+    },
+    {
+      "id": 122728122189,
+      "name": "Test (shard 3)",
+      "head_sha": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+      "started_at": "2026-10-28T09:12:06Z",
+      "completed_at": "2026-10-28T09:15:11Z",
+      "conclusion": "success"
+    },
+    {
+      "id": 122728122181,
+      "name": "Test (shard 5)",
+      "head_sha": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+      "started_at": "2026-10-28T09:11:35Z",
+      "completed_at": "2026-10-28T09:14:54Z",
+      "conclusion": "success"
+    },
+    {
+      "id": 122728122180,
+      "name": "Shard coverage guard",
+      "head_sha": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+      "started_at": "2026-10-28T09:13:04Z",
+      "completed_at": "2026-10-28T09:14:15Z",
+      "conclusion": "success"
+    },
+    {
+      "id": 122728122167,
+      "name": "Test (shard 2)",
+      "head_sha": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+      "started_at": "2026-10-28T09:11:35Z",
+      "completed_at": "2026-10-28T09:14:45Z",
+      "conclusion": "success"
+    },
+    {
+      "id": 122728122145,
+      "name": "Lint (D-5 @Builder guard)",
+      "head_sha": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+      "started_at": "2026-10-28T09:11:44Z",
+      "completed_at": "2026-10-28T09:11:51Z",
+      "conclusion": "success"
+    },
+    {
+      "id": 122728122111,
+      "name": "Non-JST timezone contract",
+      "head_sha": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+      "started_at": "2026-10-28T09:11:35Z",
+      "completed_at": "2026-10-28T09:16:21Z",
+      "conclusion": "success"
+    },
+    {
+      "id": 122728122083,
+      "name": "ArchUnit tests (separate JVM)",
+      "head_sha": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+      "started_at": "2026-10-28T09:11:35Z",
+      "completed_at": "2026-10-28T09:12:50Z",
+      "conclusion": "success"
+    },
+    {
+      "id": 122727939202,
+      "name": "フル履歴スキャン（週次）",
+      "head_sha": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+      "started_at": "2026-10-28T09:11:08Z",
+      "completed_at": "2026-10-28T09:11:07Z",
+      "conclusion": "skipped"
+    },
+    {
+      "id": 122727937420,
+      "name": "harness-tests",
+      "head_sha": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+      "started_at": "2026-10-28T09:11:09Z",
+      "completed_at": "2026-10-28T09:11:29Z",
+      "conclusion": "success"
+    },
+    {
+      "id": 122727937392,
+      "name": "Detect changes",
+      "head_sha": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+      "started_at": "2026-10-28T09:11:10Z",
+      "completed_at": "2026-10-28T09:11:33Z",
+      "conclusion": "success"
+    },
+    {
+      "id": 122727937071,
+      "name": "Worktree cleanup guard",
+      "head_sha": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+      "started_at": "2026-10-28T09:11:09Z",
+      "completed_at": "2026-10-28T09:11:27Z",
+      "conclusion": "success"
+    },
+    {
+      "id": 122727937045,
+      "name": "lockfile 変更の有無",
+      "head_sha": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+      "started_at": "2026-10-28T09:11:10Z",
+      "completed_at": "2026-10-28T09:11:34Z",
+      "conclusion": "success"
+    },
+    {
+      "id": 122727937031,
+      "name": "PR差分スキャン",
+      "head_sha": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+      "started_at": "2026-10-28T09:11:09Z",
+      "completed_at": "2026-10-28T09:11:42Z",
+      "conclusion": "success"
+    },
+    {
+      "id": 122727936778,
+      "name": "Finite graph (7 cases)",
+      "head_sha": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+      "started_at": "2026-10-28T09:11:09Z",
+      "completed_at": "2026-10-28T09:12:24Z",
+      "conclusion": "success"
+    },
+    {
+      "id": 122727936481,
+      "name": "OpenAPI Drift Check",
+      "head_sha": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+      "started_at": "2026-10-28T09:11:09Z",
+      "completed_at": "2026-10-28T09:13:16Z",
+      "conclusion": "success"
+    },
+    {
+      "id": 122727930296,
+      "name": "Task-List PR Gate",
+      "head_sha": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+      "started_at": "2026-10-28T09:11:08Z",
+      "completed_at": "2026-10-28T09:11:22Z",
+      "conclusion": "success"
+    }
+  ],
+  "statuses": [],
+  "sourceApiHashes": [
+    {
+      "collectionFilename": "pull-4169.json",
+      "sha256": "2bde83f3b8f131f70ad73929a43d3750743a19192db454195e8715cdc12f1877"
+    },
+    {
+      "collectionFilename": "pull-files-page-1.json",
+      "sha256": "cad5154780245e1661f7d1a489da83e7cee189a046ab32684113e31244bfc3ce"
+    },
+    {
+      "collectionFilename": "checks-page-1.json",
+      "sha256": "47aa10ee611f9729a3351148696e69f55a79ea2a712d4cc75f843f52c12ee114"
+    },
+    {
+      "collectionFilename": "statuses-page-1.json",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "collectionFilename": "run.json",
+      "sha256": "52338165d8237df4c32b88c9940e4dfab89a8084790e407cb494e52fd3a93130"
+    }
+  ],
+  "limits": [
+    "GitHub API snapshot acquired once after final CI/merge; no credentials or raw response bodies copied.",
+    "Merge-generation check summary uses the repository trusted completion validator; later-started checks are not merge-time evidence."
+  ]
+}

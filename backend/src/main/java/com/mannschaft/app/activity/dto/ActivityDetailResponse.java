@@ -14,10 +14,14 @@ public class ActivityDetailResponse {
     @JsonUnwrapped
     private final ActivityRecordResponse record;
     private final String scopePublicId;
+    @io.swagger.v3.oas.annotations.media.Schema(types = {"string", "null"}, format = "date")
     private final LocalDate activityEndDate;
+    @io.swagger.v3.oas.annotations.media.Schema(types = {"integer", "null"}, format = "int64")
     private final Long version;
     private final boolean canEdit;
     private final boolean canPublish;
+    @io.swagger.v3.oas.annotations.media.Schema(requiredMode = io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED)
+    private final boolean canDelete;
     private final ActivitySourceScheduleResponse sourceSchedule;
     private final List<ActivityParticipantResponse> participants;
     private final List<ActivityTemplateResponse.TemplateFieldResponse> templateFields;

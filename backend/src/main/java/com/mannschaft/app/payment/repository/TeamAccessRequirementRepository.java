@@ -16,6 +16,11 @@ public interface TeamAccessRequirementRepository extends JpaRepository<TeamAcces
     List<TeamAccessRequirementEntity> findByTeamId(Long teamId);
 
     /**
+     * 複数チームの支払い要件を一括取得する（N+1 回避）。呼び出し側で空コレクションを渡さないこと。
+     */
+    List<TeamAccessRequirementEntity> findByTeamIdIn(java.util.Collection<Long> teamIds);
+
+    /**
      * チーム ID で全件削除する（一括設定の置換用）。
      */
     void deleteByTeamId(Long teamId);

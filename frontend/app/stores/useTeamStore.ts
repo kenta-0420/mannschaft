@@ -17,6 +17,9 @@ export interface FetchMyTeamsOptions {
 
 export type FetchMyTeamsResult = { ok: true } | { ok: false; error: unknown }
 
+// SSRの別リクエストや別Piniaへ進行中の取得を共有しない。
+const inFlightByStore = new WeakMap<object, { requestId: number, promise: Promise<void> }>()
+
 export const useTeamStore = defineStore('team', {
   state: () => ({
     myTeams: [] as MyTeam[],
@@ -32,7 +35,21 @@ export const useTeamStore = defineStore('team', {
 
   actions: {
     async fetchMyTeams(options: FetchMyTeamsOptions = {}): Promise<void> {
-      await this.fetchMyTeamsWithResult(options)
+      if (!options.signal) {
+        const inFlight = inFlightByStore.get(this)
+        if (inFlight?.requestId === this.fetchRequestId) {
+          await inFlight.promise
+          return
+        }
+      }
+      const request = this.fetchMyTeamsWithResult(options).then(() => {})
+      if (!options.signal) {
+        inFlightByStore.set(this, { requestId: this.fetchRequestId, promise: request })
+        void request.finally(() => {
+          if (inFlightByStore.get(this)?.promise === request) inFlightByStore.delete(this)
+        })
+      }
+      await request
     },
 
     async fetchMyTeamsWithResult(
@@ -57,6 +74,7 @@ export const useTeamStore = defineStore('team', {
 
     clear() {
       this.fetchRequestId++
+      inFlightByStore.delete(this)
       this.myTeams = []
       this.loading = false
     },

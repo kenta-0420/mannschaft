@@ -321,9 +321,9 @@ public class MembershipService {
         PositionEntity p = positionRepository.findById(req.getPositionId())
                 .orElseThrow(() -> new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_POSITION_CATALOG_NOT_FOUND));
 
-        // スコープ越境検証
+        // スコープ越境検証。他スコープの役職の存在を明かさないため、不在と同一のコードで拒否する（CMP-260821-1027）。
         if (p.getScopeType() != m.getScopeType() || !p.getScopeId().equals(m.getScopeId())) {
-            throw new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_POSITION_SCOPE_MISMATCH);
+            throw new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_POSITION_CATALOG_NOT_FOUND);
         }
 
         if (!p.isAlive()) {

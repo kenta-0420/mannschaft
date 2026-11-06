@@ -4,6 +4,8 @@ definePageMeta({ middleware: 'auth' })
 const scopeStore = useScopeStore()
 const scopeType = computed(() => scopeStore.current.type as 'team' | 'organization')
 const scopeId = computed(() => scopeStore.current.id ?? '')
+// 個人スコープは対象外。scopeId が確定せず load() が走らないため、案内を出してスピナー固着を防ぐ（CMP-260903-1358）。
+const isPersonalScope = computed(() => scopeStore.current.type === 'personal')
 // checkAdminOrAbove（DEPUTY_ADMIN 以上）要求。直リンク防御（CMP-260917-1351 課題B）。
 useAdminScopeGuard('DEPUTY_ADMIN')
 const { success, error: showError } = useNotification()
@@ -116,14 +118,15 @@ onMounted(() => { if (scopeId.value) load() })
 
 <template>
   <div class="mx-auto max-w-4xl">
-    <div class="mb-6 flex items-center justify-between">
-      <div>
-        <PageHeader title="SNS設定"><p class="text-sm text-surface-500">Instagram・X のフィード連携を管理します</p></PageHeader>
-      </div>
-      <Button label="アカウントを追加" icon="pi pi-plus" @click="openCreate" />
-    </div>
+    <PageHeader class="md:-mt-1.5" title="SNS設定" subtitle="Instagram・X のフィード連携を管理します">
+      <template #actions>
+        <Button v-if="!isPersonalScope" label="アカウントを追加" icon="pi pi-plus" @click="openCreate" />
+      </template>
+    </PageHeader>
 
-    <PageLoading v-if="loading" />
+    <PersonalScopeUnsupportedNotice v-if="isPersonalScope" />
+
+    <PageLoading v-else-if="loading" />
 
     <DataTable v-else :value="feeds" striped-rows data-key="id">
       <template #empty>

@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261024-2357",
+  "scope": "tooling",
+  "implementation": {
+    "pr": 4100,
+    "sha": "4ed9a8a4857ef528e6f9a9d001c6bb440c3c728f"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "固定HEADの組込みGit archiveを実EOFまで読み、正常payloadと終了値を維持する",
+      "tests": [
+        {
+          "name": "tarはEOAで早期終了せずgit archiveの実EOFまで読み切る",
+          "evidence": "scripts/verification-run.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "展開失敗のpipeline/git/tar結果を役割別の有界receiptへ保存し、非0・信号を失敗とする",
+      "tests": [
+        {
+          "name": "archive診断は正常とpipeline失敗とgit/tar非0を役割別に保存する",
+          "evidence": "scripts/verification-run.test.mjs"
+        },
+        {
+          "name": "git archive非0をreceiptへ識別しscratchを撤去する / 展開失敗でも作成済みscratchを撤去する",
+          "evidence": "scripts/verification-run.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "所有境界・中断・失敗時の既存cleanupを維持し実source検証後の参照と対象processを残さない",
+      "tests": [
+        {
+          "name": "既存SIGTERM/SIGHUP/所有marker/外部symlink fixtureと実guard3",
+          "evidence": "docs/evidence/CMP-261024-2357-runner-eof.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 40105243179
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261024-2357-runner-eof.md"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261024-2357-runner-eof.md"
+    },
+    "exploratory": {
+      "status": "not-applicable",
+      "scope": "tooling",
+      "reason": "共通開発toolの修正のみで製品UI/APIや利用者導線は変更しない。実Linux/WSLのarchive・cleanup確認はrealへ記録した"
+    }
+  },
+  "regressions": [
+    {
+      "description": "EOA後の実EOF遅延で正常git archive/tar0でもNode pipelineが失敗する不具合を再現して修正",
+      "test": "tarはEOAで早期終了せずgit archiveの実EOFまで読み切る",
+      "redEvidence": "docs/evidence/CMP-261024-2357-runner-eof.md",
+      "greenEvidence": "docs/evidence/CMP-261024-2357-runner-eof.md"
+    }
+  ]
+}

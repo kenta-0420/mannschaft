@@ -48,6 +48,8 @@ export const NAV_GROUP_LABEL_KEYS: Record<NavGroupKey, string> = {
 const NAV_ITEM_GROUP_MAP: Record<string, NavGroupKey> = {
   // 固定項目
   dashboard: 'home',
+  'member-qr': 'account',
+  'team-point-requests': 'account',
 
   // nav_features マスタ（V9投入分）
   calendar: 'home',
@@ -75,6 +77,8 @@ const NAV_ITEM_GROUP_MAP: Record<string, NavGroupKey> = {
 
   // 条件付き項目（default.vue 108-131行のロジックを移植した合流先）
   'proxy-desk': 'admin',
+  'proxy-consents': 'admin',
+  'proxy-records': 'admin',
   'system-admin': 'admin',
   sync: 'account',
 }

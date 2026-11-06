@@ -7,6 +7,8 @@ import type {
   CreateAnnouncementRequest,
   MarkAllReadResponse,
   MarkReadResponse,
+  ReadBatchRequest,
+  ReadBatchResponse,
   TogglePinRequest,
   TogglePinResponse,
 } from '~/types/announcement'
@@ -29,6 +31,9 @@ import { toAnnouncementItem } from '~/utils/announcementAdapter'
  * 他の不在エラーと区別するため、**エラーコードで判別する**。
  */
 const ANNOUNCEMENT_GONE_ERROR_CODE = 'ANNOUNCE_001'
+
+/** read-batch が 1 回に受け付ける feedIds の上限（BE 契約: 1〜50 件）。 */
+const READ_BATCH_MAX = 50
 
 /**
  * 「もう見えない（不可視・不在）」エラーかどうかを判定する。
@@ -317,6 +322,20 @@ export function useAnnouncementFeed(scopeType: AnnouncementScopeType, scopeId: s
   }
 
   /**
+   * 組織の告知を ID 指定でまとめて既読にする（POST /organizations/{orgId}/announcements/read-batch）。
+   *
+   * <p>BE は 1 回 1〜50 件までなので 50 件ずつに分割して順に送る。宛先外などで通らなかった ID は
+   * BE が黙って飛ばし件数だけを返す。ID が空なら何も呼ばない。失敗は呼び出し側へ伝える。</p>
+   */
+  async function markOrganizationItemsRead(organizationId: string | number, feedIds: number[]): Promise<void> {
+    for (let start = 0; start < feedIds.length; start += READ_BATCH_MAX) {
+      const body: ReadBatchRequest = { feedIds: feedIds.slice(start, start + READ_BATCH_MAX) }
+      await api<ApiResponse<ReadBatchResponse>>(
+        `/api/v1/organizations/${organizationId}/announcements/read-batch`, { method: 'POST', body })
+    }
+  }
+
+  /**
    * スコープ内の未読お知らせを全件既読にする。
    *
    * <p><b>打ち切りを隠さない（#2530 ①）</b>: BE は 1 リクエストあたり最大 10,000 件
@@ -332,6 +351,12 @@ export function useAnnouncementFeed(scopeType: AnnouncementScopeType, scopeId: s
    * トーストで伝える。</p>
    */
   async function markAllAsRead(): Promise<void> {
+    if (scopeType === 'ORGANIZATION') {
+      // 組織スコープは「取得済み一覧の未読」だけを read-batch で既読にする（組織の read-all は呼ばない）。
+      await markOrganizationItemsRead(unref(scopeId), feed.value.filter(item => !item.isRead).map(item => item.id))
+      await fetchFeed()
+      return
+    }
     const res = await api<ApiResponse<MarkAllReadResponse>>(
       `${basePath()}/read-all`, { method: 'POST' })
     const markedCount = res.data?.markedCount ?? 0
@@ -366,5 +391,6 @@ export function useAnnouncementFeed(scopeType: AnnouncementScopeType, scopeId: s
     setReadLocally,
     setFeedItemsLocally,
     markAllAsRead,
+    markOrganizationItemsRead,
   }
 }

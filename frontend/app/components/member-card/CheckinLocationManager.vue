@@ -7,7 +7,10 @@ const props = defineProps<{
 
 const memberCardApi = useMemberCardApi()
 const notification = useNotification()
+const { t } = useI18n()
+const { handleApiError } = useErrorHandler()
 
+const loadError = shallowRef<unknown>(null)
 const locations = ref<CheckinLocation[]>([])
 const loading = ref(true)
 const showDialog = ref(false)
@@ -20,10 +23,11 @@ const form = ref({
 
 async function loadLocations() {
   loading.value = true
+  loadError.value = null
   try {
     locations.value = await memberCardApi.listLocations(props.teamId)
-  } catch {
-    notification.error('拠点一覧の取得に失敗しました')
+  } catch (error) {
+    loadError.value = error
   } finally {
     loading.value = false
   }
@@ -45,25 +49,25 @@ async function save() {
   try {
     if (editingLocation.value) {
       await memberCardApi.updateLocation(props.teamId, editingLocation.value.id, form.value)
-      notification.success('拠点を更新しました')
+      notification.success(t('checkinLocationManager.updated'))
     } else {
       await memberCardApi.createLocation(props.teamId, form.value)
-      notification.success('拠点を作成しました')
+      notification.success(t('checkinLocationManager.created'))
     }
     showDialog.value = false
     await loadLocations()
-  } catch {
-    notification.error('拠点の保存に失敗しました')
+  } catch (error) {
+    handleApiError(error)
   }
 }
 
 async function deleteLocation(id: number) {
   try {
     await memberCardApi.deleteLocation(props.teamId, id)
-    notification.success('拠点を削除しました')
+    notification.success(t('checkinLocationManager.deleted'))
     await loadLocations()
-  } catch {
-    notification.error('拠点の削除に失敗しました')
+  } catch (error) {
+    handleApiError(error)
   }
 }
 
@@ -73,49 +77,107 @@ onMounted(loadLocations)
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h3 class="text-lg font-semibold">セルフチェックイン拠点</h3>
-      <Button label="拠点を追加" icon="pi pi-plus" size="small" @click="openCreate" />
+      <h3 class="text-lg font-semibold">{{ t('checkinLocationManager.title') }}</h3>
+      <Button
+        :label="t('checkinLocationManager.add')"
+        icon="pi pi-plus"
+        size="small"
+        class="min-h-11"
+        @click="openCreate"
+      />
     </div>
 
-    <DataTable :value="locations" :loading="loading" data-key="id" striped-rows>
+    <DashboardErrorState v-if="loadError" :error="loadError" @retry="loadLocations" />
+    <DataTable v-else :value="locations" :loading="loading" data-key="id" striped-rows>
       <template #empty>
-        <div class="py-8 text-center text-surface-500">拠点が登録されていません</div>
+        <DashboardEmptyState :message="t('checkinLocationManager.empty')" />
       </template>
-      <Column field="name" header="拠点名" />
-      <Column header="ステータス">
+      <Column field="name" :header="t('checkinLocationManager.name')" />
+      <Column :header="t('checkinLocationManager.status')">
         <template #body="{ data }">
-          <Badge :value="data.isActive ? '有効' : '無効'" :severity="data.isActive ? 'success' : 'warn'" />
+          <Badge
+            :value="
+              t(data.isActive ? 'checkinLocationManager.active' : 'checkinLocationManager.inactive')
+            "
+            :severity="data.isActive ? 'success' : 'warn'"
+          />
         </template>
       </Column>
-      <Column header="予約自動完了">
+      <Column :header="t('checkinLocationManager.autoComplete')">
         <template #body="{ data }">
-          <i :class="data.autoCompleteReservation ? 'pi pi-check text-green-500' : 'pi pi-minus text-surface-400'" />
+          <i
+            :class="
+              data.autoCompleteReservation
+                ? 'pi pi-check text-green-500'
+                : 'pi pi-minus text-surface-400'
+            "
+          />
         </template>
       </Column>
-      <Column header="操作" style="width: 120px">
+      <Column :header="t('checkinLocationManager.actions')" style="width: 120px">
         <template #body="{ data }">
           <div class="flex gap-1">
-            <Button icon="pi pi-pencil" severity="secondary" size="small" text @click="openEdit(data)" />
-            <Button icon="pi pi-trash" severity="danger" size="small" text @click="deleteLocation(data.id)" />
+            <Button
+              icon="pi pi-pencil"
+              class="min-h-11 min-w-11 shrink-0"
+              :aria-label="t('checkinLocationManager.edit')"
+              severity="secondary"
+              size="small"
+              text
+              @click="openEdit(data)"
+            />
+            <Button
+              icon="pi pi-trash"
+              class="min-h-11 min-w-11 shrink-0"
+              :aria-label="t('checkinLocationManager.delete')"
+              severity="danger"
+              size="small"
+              text
+              @click="deleteLocation(data.id)"
+            />
           </div>
         </template>
       </Column>
     </DataTable>
 
-    <Dialog v-model:visible="showDialog" :header="editingLocation ? '拠点を編集' : '拠点を追加'" :modal="true" class="w-full max-w-md">
+    <Dialog
+      v-model:visible="showDialog"
+      :header="t(editingLocation ? 'checkinLocationManager.edit' : 'checkinLocationManager.add')"
+      :modal="true"
+      class="w-full max-w-md"
+    >
       <div class="space-y-4">
         <div>
-          <label class="mb-1 block text-sm font-medium">拠点名</label>
-          <InputText v-model="form.name" class="w-full" placeholder="例: 本店受付" />
+          <label class="mb-1 block text-sm font-medium">{{
+            t('checkinLocationManager.name')
+          }}</label>
+          <InputText
+            v-model="form.name"
+            class="w-full"
+            :placeholder="t('checkinLocationManager.placeholder')"
+          />
         </div>
         <div class="flex items-center gap-2">
           <ToggleSwitch v-model="form.autoCompleteReservation" />
-          <label class="text-sm">チェックイン時に予約を自動完了</label>
+          <label class="text-sm">{{ t('checkinLocationManager.autoCompleteHint') }}</label>
         </div>
       </div>
       <template #footer>
-        <Button label="キャンセル" severity="secondary" @click="showDialog = false" />
-        <Button :label="editingLocation ? '更新' : '作成'" icon="pi pi-check" :disabled="!form.name" @click="save" />
+        <Button
+          :label="t('checkinLocationManager.cancel')"
+          class="min-h-11"
+          severity="secondary"
+          @click="showDialog = false"
+        />
+        <Button
+          :label="
+            t(editingLocation ? 'checkinLocationManager.update' : 'checkinLocationManager.create')
+          "
+          icon="pi pi-check"
+          class="min-h-11"
+          :disabled="!form.name"
+          @click="save"
+        />
       </template>
     </Dialog>
   </div>

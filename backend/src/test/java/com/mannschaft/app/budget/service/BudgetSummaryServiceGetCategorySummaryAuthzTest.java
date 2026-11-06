@@ -101,13 +101,8 @@ class BudgetSummaryServiceGetCategorySummaryAuthzTest {
     void admin_isAllowed() {
         given(fiscalYearService.findById(FISCAL_YEAR_ID)).willReturn(fiscalYear());
         doNothing().when(accessControlService).checkAdminOrAbove(eq(ACTOR_ID), eq(SCOPE_ID), eq(SCOPE_TYPE));
-        given(categoryService.findById(CATEGORY_ID)).willReturn(
-                com.mannschaft.app.budget.entity.BudgetCategoryEntity.builder()
-                        .fiscalYearId(FISCAL_YEAR_ID)
-                        .name("L13人件費")
-                        .categoryType(com.mannschaft.app.budget.BudgetCategoryType.EXPENSE)
-                        .sortOrder(0)
-                        .build());
+        given(categoryService.findHistoricalById(FISCAL_YEAR_ID, CATEGORY_ID)).willReturn(
+                new HistoricalBudgetCategory(CATEGORY_ID, "L13人件費", "EXPENSE", false));
         given(transactionRepository.findByFiscalYearId(FISCAL_YEAR_ID)).willReturn(Collections.emptyList());
         given(allocationRepository.findByFiscalYearId(FISCAL_YEAR_ID)).willReturn(Collections.emptyList());
 

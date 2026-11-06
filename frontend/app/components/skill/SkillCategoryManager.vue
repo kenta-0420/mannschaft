@@ -5,6 +5,11 @@ const props = defineProps<{
   teamId: string
 }>()
 
+const emit = defineEmits<{
+  /** 作成・改名・削除が成功した後にだけ発火する（親が登録フォーム・一覧・マトリクスを再取得する） */
+  changed: []
+}>()
+
 const {
   getSkillCategories,
   createSkillCategory,
@@ -12,6 +17,8 @@ const {
   deleteSkillCategory,
 } = useSkillApi()
 const notification = useNotification()
+const { confirmAction } = useConfirmDialog()
+const { t } = useI18n()
 
 const categories = ref<SkillCategoryResponse[]>([])
 const loading = ref(false)
@@ -81,6 +88,7 @@ async function submit() {
     }
     showDialog.value = false
     await loadCategories()
+    emit('changed')
   } catch {
     notification.error('カテゴリの保存に失敗しました')
   } finally {
@@ -88,14 +96,22 @@ async function submit() {
   }
 }
 
-async function handleDelete(cat: SkillCategoryResponse) {
-  try {
-    await deleteSkillCategory(props.teamId, cat.id)
-    notification.success('カテゴリを削除しました')
-    await loadCategories()
-  } catch {
-    notification.error('カテゴリの削除に失敗しました')
-  }
+function handleDelete(cat: SkillCategoryResponse) {
+  confirmAction({
+    message: t('skill.category.deleteConfirm', { name: cat.name }),
+    header: t('skill.category.deleteConfirmHeader'),
+    onAccept: async () => {
+      try {
+        await deleteSkillCategory(props.teamId, cat.id)
+      } catch {
+        notification.error('カテゴリの削除に失敗しました')
+        return
+      }
+      notification.success('カテゴリを削除しました')
+      await loadCategories()
+      emit('changed')
+    },
+  })
 }
 
 onMounted(loadCategories)
@@ -142,12 +158,14 @@ defineExpose({ refresh: loadCategories })
         </div>
         <div class="flex shrink-0 gap-1">
           <Button
+            :aria-label="t('skill.category.actions.edit')"
             icon="pi pi-pencil"
             size="small"
             text
             @click="openEdit(cat)"
           />
           <Button
+            :aria-label="t('skill.category.actions.delete')"
             icon="pi pi-trash"
             size="small"
             text

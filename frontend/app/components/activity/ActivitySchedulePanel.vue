@@ -66,7 +66,8 @@ watch(() => [props.scopeType, props.scopeId, props.scheduleId], load)
     <PageLoading v-if="loading" />
     <DashboardErrorState v-else-if="error" :error="error" @retry="load" />
     <ul v-else class="space-y-2">
-      <li v-for="record in records" :key="record.id">
+      <li v-for="record in records" :key="record.id" class="flex flex-wrap items-center gap-2">
+        <ActivityStatusBadges :record="record" />
         <NuxtLink
           :to="`/activities/${record.id}`"
           class="inline-flex min-h-11 items-center underline"

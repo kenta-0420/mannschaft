@@ -264,7 +264,8 @@ public class EquipmentAssignmentService {
                 .orElseThrow(() -> new BusinessException(EquipmentErrorCode.ASSIGNMENT_NOT_FOUND));
 
         if (!assignment.getEquipmentItemId().equals(item.getId())) {
-            throw new BusinessException(EquipmentErrorCode.SCOPE_MISMATCH);
+            // 他備品の貸出記録の存在を明かさない（不在IDと同一応答。CMP-260821-1027）。
+            throw new BusinessException(EquipmentErrorCode.ASSIGNMENT_NOT_FOUND);
         }
         if (assignment.isReturned()) {
             throw new BusinessException(EquipmentErrorCode.ALREADY_RETURNED);
@@ -379,11 +380,14 @@ public class EquipmentAssignmentService {
                         .orElseThrow(() -> new BusinessException(EquipmentErrorCode.ASSIGNMENT_NOT_FOUND)))
                 .toList();
 
-        // 全 assignment が同一備品であることを検証
+        // 他備品の貸出記録は存在を明かさず、不在と同一の ASSIGNMENT_NOT_FOUND で拒否する（CMP-260821-1027）。
+        // 状態診断（返却済み）より先に全件の所属を検証し、指定順で応答が割れないようにする。
         for (EquipmentAssignmentEntity a : assignments) {
             if (!a.getEquipmentItemId().equals(item.getId())) {
-                throw new BusinessException(EquipmentErrorCode.MIXED_EQUIPMENT_IN_BULK);
+                throw new BusinessException(EquipmentErrorCode.ASSIGNMENT_NOT_FOUND);
             }
+        }
+        for (EquipmentAssignmentEntity a : assignments) {
             if (a.isReturned()) {
                 throw new BusinessException(EquipmentErrorCode.ALREADY_RETURNED);
             }

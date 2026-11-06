@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260930-1933",
+  "scope": "app",
+  "implementation": {
+    "pr": 3796,
+    "sha": "c9a5b99d63fd6d92b0e6e710444985d3e055632d"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "SYSTEM_ADMIN は /system-admin 配下のページを開ける",
+      "tests": [
+        {
+          "name": "(AC-1) SYSTEM_ADMIN は素通りする",
+          "evidence": "frontend/tests/unit/middleware/system-admin.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "SYSTEM_ADMIN 以外（一般会員）は /dashboard へ誘導され、拒否トーストが出る",
+      "tests": [
+        {
+          "name": "(AC-2) 一般会員は /dashboard へ誘導され、error トーストが1回出る",
+          "evidence": "frontend/tests/unit/middleware/system-admin.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "未認証は auth ミドルウェアの担当で、system-admin ミドルウェアは何もしない",
+      "tests": [
+        {
+          "name": "(AC-3) 未認証は auth ミドルウェアの担当のため何もしない",
+          "evidence": "frontend/tests/unit/middleware/system-admin.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "/system-admin 配下の全ページが ['auth','system-admin'] ミドルウェアを指定している（管理メニューが描画されない）",
+      "tests": [
+        {
+          "name": "pages/system-admin 配下が middleware ['auth','system-admin'] を指定している",
+          "evidence": "frontend/tests/unit/middleware/system-admin.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 38183172129
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/3796"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260930-1933.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260930-1933.md"
+    }
+  },
+  "regressions": []
+}

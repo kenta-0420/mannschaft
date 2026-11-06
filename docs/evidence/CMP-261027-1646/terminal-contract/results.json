@@ -1,0 +1,296 @@
+{
+  "sourceHead": "f2817eb94326b413122c69f4b0c409288c8982a6",
+  "sourcePath": "backend/scripts/run-ci-tests-with-observability.sh",
+  "gitBlobOid": "1c430f09be7973a8ac3c17f44c98087d7549b677",
+  "scriptSha256": "6021ce97f5681c324910bccde6b118116fd2219390cb4cf4f33babcf3857202d",
+  "scriptBytes": 8136,
+  "originalBlobUnmodified": true,
+  "scriptLineEndings": "LF",
+  "command": [
+    "/bin/bash",
+    "<owned-temp>/wrapper.sh",
+    "<owned-temp>/producer.py"
+  ],
+  "environment": {
+    "CI_SHARD_INDEX": "0",
+    "RUNNER_TEMP": "<each-owned-case>/runner-temp",
+    "CI_DIAGNOSTIC_DIR": "<each-owned-case>/diagnostic",
+    "PATH": "/usr/bin:/bin"
+  },
+  "scope": "実wrapperの終端契約fixture。実Gradle/Javaは起動せず、公開artifactの欠損再現ではない。producerがsynthetic task-state.logとcommand exitだけを生成。wrapperの判定ロジックは抜粋/再実装しない。",
+  "cases": [
+    {
+      "name": "fresh",
+      "terminal": "skipped=false skipMessage=null upToDate=false noSource=false failed=false",
+      "expected": {
+        "exitCode": 0,
+        "cacheHit": false,
+        "completed": true,
+        "commandExitCode": 0,
+        "shellExitCode": 0,
+        "testStepExitCode": 0
+      },
+      "actual": {
+        "exitCode": 0,
+        "cacheHit": false,
+        "completed": true,
+        "commandExitCode": 0,
+        "shellExitCode": 0,
+        "testStepExitCode": 0
+      },
+      "passed": true,
+      "result": {
+        "testStepExitCode": 0,
+        "commandExitCode": 0,
+        "shellExitCode": 0,
+        "completed": true,
+        "cacheHit": false,
+        "testStepOutcome": null,
+        "startedAtEpoch": 1793171993,
+        "finishedAtEpoch": 1793171993,
+        "finalizedAtEpoch": null,
+        "jobLimitMinutes": null,
+        "testStepLimitMinutes": null,
+        "artifactRecoveryGuaranteed": false
+      },
+      "stdoutBytes": 0,
+      "stderrBytes": 0,
+      "initScriptCreated": true
+    },
+    {
+      "name": "from-cache",
+      "terminal": "skipped=true skipMessage=FROM-CACHE upToDate=false noSource=false failed=false",
+      "expected": {
+        "exitCode": 0,
+        "cacheHit": true,
+        "completed": false,
+        "commandExitCode": 0,
+        "shellExitCode": 0,
+        "testStepExitCode": null
+      },
+      "actual": {
+        "exitCode": 0,
+        "cacheHit": true,
+        "completed": false,
+        "commandExitCode": 0,
+        "shellExitCode": 0,
+        "testStepExitCode": null
+      },
+      "passed": true,
+      "result": {
+        "testStepExitCode": null,
+        "commandExitCode": 0,
+        "shellExitCode": 0,
+        "completed": false,
+        "cacheHit": true,
+        "testStepOutcome": null,
+        "startedAtEpoch": 1793171994,
+        "finishedAtEpoch": 1793171995,
+        "finalizedAtEpoch": null,
+        "jobLimitMinutes": null,
+        "testStepLimitMinutes": null,
+        "artifactRecoveryGuaranteed": false
+      },
+      "stdoutBytes": 0,
+      "stderrBytes": 0,
+      "initScriptCreated": true
+    },
+    {
+      "name": "up-to-date",
+      "terminal": "skipped=true skipMessage=UP-TO-DATE upToDate=true noSource=false failed=false",
+      "expected": {
+        "exitCode": 0,
+        "cacheHit": true,
+        "completed": false,
+        "commandExitCode": 0,
+        "shellExitCode": 0,
+        "testStepExitCode": null
+      },
+      "actual": {
+        "exitCode": 0,
+        "cacheHit": true,
+        "completed": false,
+        "commandExitCode": 0,
+        "shellExitCode": 0,
+        "testStepExitCode": null
+      },
+      "passed": true,
+      "result": {
+        "testStepExitCode": null,
+        "commandExitCode": 0,
+        "shellExitCode": 0,
+        "completed": false,
+        "cacheHit": true,
+        "testStepOutcome": null,
+        "startedAtEpoch": 1793171995,
+        "finishedAtEpoch": 1793171995,
+        "finalizedAtEpoch": null,
+        "jobLimitMinutes": null,
+        "testStepLimitMinutes": null,
+        "artifactRecoveryGuaranteed": false
+      },
+      "stdoutBytes": 0,
+      "stderrBytes": 0,
+      "initScriptCreated": true
+    },
+    {
+      "name": "no-source",
+      "terminal": "skipped=true skipMessage=NO-SOURCE upToDate=false noSource=true failed=false",
+      "expected": {
+        "exitCode": 125,
+        "cacheHit": false,
+        "completed": false,
+        "commandExitCode": 0,
+        "shellExitCode": 125,
+        "testStepExitCode": null
+      },
+      "actual": {
+        "exitCode": 125,
+        "cacheHit": false,
+        "completed": false,
+        "commandExitCode": 0,
+        "shellExitCode": 125,
+        "testStepExitCode": null
+      },
+      "passed": true,
+      "result": {
+        "testStepExitCode": null,
+        "commandExitCode": 0,
+        "shellExitCode": 125,
+        "completed": false,
+        "cacheHit": false,
+        "testStepOutcome": null,
+        "startedAtEpoch": 1793171996,
+        "finishedAtEpoch": 1793171996,
+        "finalizedAtEpoch": null,
+        "jobLimitMinutes": null,
+        "testStepLimitMinutes": null,
+        "artifactRecoveryGuaranteed": false
+      },
+      "stdoutBytes": 0,
+      "stderrBytes": 0,
+      "initScriptCreated": true
+    },
+    {
+      "name": "missing-terminal",
+      "terminal": null,
+      "expected": {
+        "exitCode": 125,
+        "cacheHit": false,
+        "completed": false,
+        "commandExitCode": 0,
+        "shellExitCode": 125,
+        "testStepExitCode": null
+      },
+      "actual": {
+        "exitCode": 125,
+        "cacheHit": false,
+        "completed": false,
+        "commandExitCode": 0,
+        "shellExitCode": 125,
+        "testStepExitCode": null
+      },
+      "passed": true,
+      "result": {
+        "testStepExitCode": null,
+        "commandExitCode": 0,
+        "shellExitCode": 125,
+        "completed": false,
+        "cacheHit": false,
+        "testStepOutcome": null,
+        "startedAtEpoch": 1793171996,
+        "finishedAtEpoch": 1793171996,
+        "finalizedAtEpoch": null,
+        "jobLimitMinutes": null,
+        "testStepLimitMinutes": null,
+        "artifactRecoveryGuaranteed": false
+      },
+      "stdoutBytes": 0,
+      "stderrBytes": 0,
+      "initScriptCreated": true
+    },
+    {
+      "name": "failed-terminal-command-zero",
+      "terminal": "skipped=false skipMessage=null upToDate=false noSource=false failed=true",
+      "expected": {
+        "exitCode": 125,
+        "cacheHit": false,
+        "completed": false,
+        "commandExitCode": 0,
+        "shellExitCode": 125,
+        "testStepExitCode": null
+      },
+      "actual": {
+        "exitCode": 125,
+        "cacheHit": false,
+        "completed": false,
+        "commandExitCode": 0,
+        "shellExitCode": 125,
+        "testStepExitCode": null
+      },
+      "passed": true,
+      "result": {
+        "testStepExitCode": null,
+        "commandExitCode": 0,
+        "shellExitCode": 125,
+        "completed": false,
+        "cacheHit": false,
+        "testStepOutcome": null,
+        "startedAtEpoch": 1793171997,
+        "finishedAtEpoch": 1793171997,
+        "finalizedAtEpoch": null,
+        "jobLimitMinutes": null,
+        "testStepLimitMinutes": null,
+        "artifactRecoveryGuaranteed": false
+      },
+      "stdoutBytes": 0,
+      "stderrBytes": 0,
+      "initScriptCreated": true
+    },
+    {
+      "name": "command-seven",
+      "terminal": "skipped=false skipMessage=null upToDate=false noSource=false failed=true",
+      "expected": {
+        "exitCode": 7,
+        "cacheHit": false,
+        "completed": true,
+        "commandExitCode": 7,
+        "shellExitCode": 7,
+        "testStepExitCode": 7
+      },
+      "actual": {
+        "exitCode": 7,
+        "cacheHit": false,
+        "completed": true,
+        "commandExitCode": 7,
+        "shellExitCode": 7,
+        "testStepExitCode": 7
+      },
+      "passed": true,
+      "result": {
+        "testStepExitCode": 7,
+        "commandExitCode": 7,
+        "shellExitCode": 7,
+        "completed": true,
+        "cacheHit": false,
+        "testStepOutcome": null,
+        "startedAtEpoch": 1793171997,
+        "finishedAtEpoch": 1793171997,
+        "finalizedAtEpoch": null,
+        "jobLimitMinutes": null,
+        "testStepLimitMinutes": null,
+        "artifactRecoveryGuaranteed": false
+      },
+      "stdoutBytes": 0,
+      "stderrBytes": 0,
+      "initScriptCreated": true
+    }
+  ],
+  "passed": true,
+  "cleanup": {
+    "ownedTemp": "/tmp/mannschaft-l1b-terminal-contract-261028-az8j_og7",
+    "uid": 1000,
+    "removed": true
+  },
+  "time": "2026-10-28T07:19:58.160338+00:00"
+}

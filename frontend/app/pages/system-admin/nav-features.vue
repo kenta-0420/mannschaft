@@ -10,7 +10,7 @@ import ToggleSwitch from 'primevue/toggleswitch'
 
 import type { NavFeatureAdminItem, NavFeatureCreateRequest, NavFeatureUpdateRequest } from '~/types/nav'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const { listNavFeatures, createNavFeature, updateNavFeature, deleteNavFeature } = useNavSettingsApi()
 const { showSuccess, showError } = useNotification()

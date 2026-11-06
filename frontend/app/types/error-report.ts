@@ -27,6 +27,8 @@ export type ActivityType =
   | 'GITHUB_ISSUE_CREATED'
   | 'REOPENED'
   | 'RESOLVED'
+  | 'HEALTH_RECOVERED'
+  | 'MERGED_DUPLICATE'
 
 // ===== レスポンス型 =====
 

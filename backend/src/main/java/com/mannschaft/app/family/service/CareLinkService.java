@@ -26,6 +26,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * ケアリンクサービス。F03.12 ケア対象者イベント参加見守り通知システム。
@@ -566,6 +567,7 @@ public class CareLinkService {
     }
 
     /** UUID ベースの招待トークンを生成する。 */
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     private String generateToken() {
         return java.util.UUID.randomUUID().toString().replace("-", "");
     }

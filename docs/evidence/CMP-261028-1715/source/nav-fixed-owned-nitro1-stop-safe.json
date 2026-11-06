@@ -1,0 +1,18 @@
+{
+  "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+  "owner": "root/CMP-261028-1715/residual_frontend",
+  "pid": 1220046,
+  "startTicks": "19438279",
+  "uid": 1000,
+  "strictGuardPassed": true,
+  "signalSent": true,
+  "stopped": true,
+  "loopback3011Released": true,
+  "otherProcessSignals": 0,
+  "artifactDeleted": false,
+  "stage": "completed",
+  "mainApiIdentityVerifiedBefore": true,
+  "mainApiIdentityUnchanged": true,
+  "status": "completed",
+  "finishedAt": "2026-10-28T15:15:53.484635+00:00"
+}

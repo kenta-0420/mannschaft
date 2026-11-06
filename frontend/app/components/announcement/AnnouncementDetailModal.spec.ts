@@ -60,4 +60,22 @@ describe('本文モーダルの描画契約', () => {
     }
     finally { list.remove(); scroll.mockRestore() }
   })
+
+  // ── CMP-261011-0035 ALIC-1 AC-B07（FE）: 委任 FULL は元ページボタンを出さず注記を出す ──
+  it('AC-ALIC1-B07: 委任 FULL（sourceUrl=null）は元ページボタンなし・注記あり', () => {
+    const view = render('FULL', { ...full, sourceUrl: null, blogPost: { id: 3, content: { title: '委任', body: '本文' } } })
+    expect(view.find('[data-testid="announcement-preview-source"]').exists()).toBe(false)
+    const note = view.find('[data-testid="announcement-preview-delegated-note"]')
+    expect(note.exists()).toBe(true)
+    expect(note.text()).toContain('announcement.preview.delegated_source_note')
+  })
+  it('AC-ALIC1-B07: 直属 FULL（sourceUrl あり）は元ページボタンあり・注記なし', () => {
+    const view = render('FULL', { ...full, blogPost: { id: 3, content: { title: '直属', body: '本文' } } })
+    expect(view.find('[data-testid="announcement-preview-source"]').exists()).toBe(true)
+    expect(view.find('[data-testid="announcement-preview-delegated-note"]').exists()).toBe(false)
+  })
+  it.each(['LOCKED', 'ERROR', 'LOADING'] as const)('AC-ALIC1-B07: %s では注記を出さない', (state) => {
+    const view = render(state, null)
+    expect(view.find('[data-testid="announcement-preview-delegated-note"]').exists()).toBe(false)
+  })
 })

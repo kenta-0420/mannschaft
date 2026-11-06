@@ -45,7 +45,13 @@ public enum ErrorReportErrorCode implements ErrorCode {
     ERROR_REPORT_011("ERROR_REPORT_011", "GitHub Issue の作成に失敗しました", Severity.ERROR),
 
     /** GitHub Issue は既に作成済み（二重作成防止・状態競合のため409） */
-    ERROR_REPORT_012("ERROR_REPORT_012", "GitHub Issue は既に作成されています", Severity.WARN);
+    ERROR_REPORT_012("ERROR_REPORT_012", "GitHub Issue は既に作成されています", Severity.WARN),
+
+    /** 同一 hash の非 IGNORED 行と再活性化が競合した。 */
+    ERROR_REPORT_013("ERROR_REPORT_013", "同じエラーの有効なレポートが既に存在します", Severity.WARN),
+
+    /** rollback 後の管理更新を三回試行してもロックを取得できなかった。 */
+    ERROR_REPORT_014("ERROR_REPORT_014", "更新が混み合っています。しばらくして再試行してください", Severity.WARN);
 
     private final String code;
     private final String message;

@@ -1,0 +1,152 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261025-1534",
+  "scope": "tooling",
+  "implementation": {
+    "pr": 4117,
+    "sha": "7606534ed3be06ede166c54fe5dd1ac02db53d45"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "merge時だけ追加した対象をPR/push相当rangeで検出しexit 1",
+      "tests": [
+        {
+          "name": "test_merge_only_addition_in_pr_and_push_range",
+          "evidence": "scripts/test-secret-scan.py"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "同merge対象を全履歴で検出しexit 1",
+      "tests": [
+        {
+          "name": "test_merge_only_addition_in_full_history",
+          "evidence": "scripts/test-secret-scan.py"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "通常commitとside branch追加後merge前削除の履歴検出を維持",
+      "tests": [
+        {
+          "name": "test_ordinary_commit_detection_is_preserved",
+          "evidence": "scripts/test-secret-scan.py"
+        },
+        {
+          "name": "test_side_branch_added_then_removed_value_remains_detectable",
+          "evidence": "scripts/test-secret-scan.py"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "対象なしと空rangeをexit 0で処理",
+      "tests": [
+        {
+          "name": "test_no_detection_and_empty_range_are_successful",
+          "evidence": "scripts/test-secret-scan.py"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "exact path AND exact valueのみ除外し、別path同値と同path別値は検出",
+      "tests": [
+        {
+          "name": "test_exact_allowed_path_and_value_are_excluded",
+          "evidence": "scripts/test-secret-scan.py"
+        },
+        {
+          "name": "test_allowed_value_in_other_path_is_detected",
+          "evidence": "scripts/test-secret-scan.py"
+        },
+        {
+          "name": "test_other_value_in_allowed_path_is_detected",
+          "evidence": "scripts/test-secret-scan.py"
+        }
+      ]
+    },
+    {
+      "id": "AC-6",
+      "description": "不正revisionを本番と同じGit preflightでfail-closedにし値を漏出しない",
+      "tests": [
+        {
+          "name": "test_invalid_revision_fails_closed_without_value_leak",
+          "evidence": "scripts/test-secret-scan.py"
+        }
+      ]
+    },
+    {
+      "id": "AC-7",
+      "description": "生成値を標準出力・標準エラー・SARIFへ未マスクで残さない",
+      "tests": [
+        {
+          "name": "SecretScanRegression.scan: 全scanで生成値の非出力をassert",
+          "evidence": "scripts/test-secret-scan.py"
+        }
+      ]
+    },
+    {
+      "id": "AC-8",
+      "description": "固定版・既存ゲートと走査rangeを維持し実装headの正式CIが成功",
+      "tests": [
+        {
+          "name": "SecretScanRegression.setUpClass: workflow固定版8.28.0照合",
+          "evidence": "scripts/test-secret-scan.py"
+        },
+        {
+          "name": "PR差分スキャン/実Git回帰10試験成功",
+          "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40197838580"
+        }
+      ]
+    },
+    {
+      "id": "AC-9",
+      "description": "3親octopus merge専用追加を全履歴で検出",
+      "tests": [
+        {
+          "name": "test_octopus_merge_addition_in_full_history",
+          "evidence": "scripts/test-secret-scan.py"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 40197838580
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4117"
+    },
+    "real": {
+      "status": "not-applicable",
+      "scope": "tooling",
+      "reason": "CI workflow・開発回帰script・台帳/証拠文書のみでアプリ画面/API/認可/業務データを変更しない。実Git・固定scannerを実行して検証した。"
+    },
+    "exploratory": {
+      "status": "not-applicable",
+      "scope": "tooling",
+      "reason": "アプリのUI導線を変更しないtooling修正。merge/side branch履歴/空range/除外境界/異常終了を実Git回帰で確認した。"
+    }
+  },
+  "regressions": [
+    {
+      "description": "既定走査でmerge専用追加が差分/full/3親mergeの各条件でexit 0となる欠落をred再現し、修正後に検出。",
+      "test": "test_merge_only_addition_in_pr_and_push_range / test_merge_only_addition_in_full_history / test_octopus_merge_addition_in_full_history",
+      "redEvidence": "docs/evidence/CMP-261025-1534-scan-regression.md",
+      "greenEvidence": "docs/evidence/CMP-261025-1534-scan-regression.md"
+    },
+    {
+      "description": "gitleaks8.28.0が不正revisionをexit 0とする挙動をred再現し、Git preflightのexit128で拒否。",
+      "test": "test_invalid_revision_fails_closed_without_value_leak",
+      "redEvidence": "docs/evidence/CMP-261025-1534-scan-regression.md",
+      "greenEvidence": "docs/evidence/CMP-261025-1534-scan-regression.md"
+    }
+  ]
+}

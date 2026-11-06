@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260827-1152",
+  "scope": "app",
+  "implementation": {
+    "pr": 4181,
+    "sha": "6d9503ed3bd332b47899740558b05faa9fd84290"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "業務データの save/update と NotificationHelper#notify 等の通知呼び出しが同一 @Transactional 内に無い。対象は正規形（REQUIRES_NEW の別トランザクション、または Listener/Runner での事後発火）に是正されている。ReservationPendingExpireService#notifyApplicant のみ PR #3721（OPEN）が改変中のため除外し、凍結台帳に未了として残す。",
+      "tests": [
+        { "name": "NotificationTransactionBoundaryGuardTest（番人。凍結台帳の実エントリは PendingExpire の1件のみ）", "evidence": "backend/src/test/java/com/mannschaft/app/common/architecture/NotificationTransactionBoundaryGuardTest.java" },
+        { "name": "notification_tx_boundary_freeze.txt（CENSUS_FLOOR 10 / CLASSIFIED_FLOOR 1）", "evidence": "backend/src/test/resources/notification_guard/notification_tx_boundary_freeze.txt" },
+        { "name": "G1 jobmatching（#3779）", "evidence": "https://github.com/kenta-0420/mannschaft/pull/3779" },
+        { "name": "G8 軽量バッチ群（#3783）", "evidence": "https://github.com/kenta-0420/mannschaft/pull/3783" },
+        { "name": "G2 recruitment（#3792）", "evidence": "https://github.com/kenta-0420/mannschaft/pull/3792" },
+        { "name": "G6 シフトリマインド・チケット期限切れ（#3837）", "evidence": "https://github.com/kenta-0420/mannschaft/pull/3837" },
+        { "name": "G7-a digest・timetable（#3854）", "evidence": "https://github.com/kenta-0420/mannschaft/pull/3854" },
+        { "name": "G3 予約ドメイン（#4001）", "evidence": "https://github.com/kenta-0420/mannschaft/pull/4001" },
+        { "name": "G5 survey 督促・締切延長と role 打診・辞退（#3864）", "evidence": "https://github.com/kenta-0420/mannschaft/pull/3864" },
+        { "name": "G4 バッチ2キー（#3817）", "evidence": "https://github.com/kenta-0420/mannschaft/pull/3817" },
+        { "name": "G7-b 管理バッチ完了・失敗通知（#4177）", "evidence": "https://github.com/kenta-0420/mannschaft/pull/4177" },
+        { "name": "G4-b 確認通知の手動リマインド再送（#4181）", "evidence": "https://github.com/kenta-0420/mannschaft/pull/4181" }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "通知の失敗で業務処理がロールバックされない。実環境では通知失敗を注入できないため、各群 PR の IT（業務TXコミット後に通知が失敗しても業務データが残る）で担保する。",
+      "tests": [
+        { "name": "各群 PR の IT（G2 #3792 / G6 #3837 / G7-a #3854 / G3 #4001 / G5 #3864 / G7-b #4177 / G4-b #4181）", "evidence": "https://github.com/kenta-0420/mannschaft/pull/4181" },
+        { "name": "関連修正（レートリミット結線ITのフレーク根治 #3843）", "evidence": "https://github.com/kenta-0420/mannschaft/pull/3843" }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "通知自体が目的のクラスは除外判定したうえで確定する。番人の下限は実測値で固定する（RAW_CANDIDATE_HITS_MIN 161・STRUCTURAL_NOTIFY_CALLS_MIN 141・NOTIFY_BEARING_FILES_MIN 92）。D-3T 凍結は 7352。",
+      "tests": [
+        { "name": "NotificationTransactionBoundaryGuardTest（下限の実測固定）", "evidence": "backend/src/test/java/com/mannschaft/app/common/architecture/NotificationTransactionBoundaryGuardTest.java" },
+        { "name": "ArchUnitFreezeStoreIntegrityTest（EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7352）", "evidence": "backend/src/test/java/com/mannschaft/app/common/architecture/ArchUnitFreezeStoreIntegrityTest.java" }
+      ]
+    }
+  ],
+  "ci": [
+    { "runId": 40632951797 },
+    { "runId": 40632951796 }
+  ],
+  "stages": {
+    "review": { "status": "passed", "evidence": "https://github.com/kenta-0420/mannschaft/pull/4181" },
+    "real": { "status": "passed", "evidence": "https://github.com/kenta-0420/mannschaft/pull/4208" },
+    "exploratory": { "status": "passed", "evidence": "docs/evidence/CMP-260827-1152/resident-observations.json" }
+  },
+  "regressions": [],
+  "realE2e": {
+    "pr": 4208,
+    "specs": 7,
+    "result": "全導線 PASS",
+    "limitation": "「業務処理が通知の失敗に巻き込まれない」は実環境では注入できず、各群 PR の IT で担保している。PR #4208 は未マージ（OPEN）。"
+  },
+  "exploratory": {
+    "runId": "alicization-cmp1152-run-20261028",
+    "sourceHead": "dae9f24a922cd9b06d87e4ec4d46e4f55ab65004",
+    "residents": ["ALIC-CMP1152-R1", "ALIC-CMP1152-R2", "ALIC-CMP1152-R3", "ALIC-CMP1152-R4"],
+    "observations": 19,
+    "confirmedDefects": 2,
+    "note": "観測はすべて observed-unverified。累積正本 docs/evidence/CMP-261015-1510/resident-overlay.json へ 4 persona / 4 journey / 19 insight を追加（30/30/74）。"
+  },
+  "outOfScopeDefects": [
+    {
+      "ledgerId": "CMP-261028-2328",
+      "label": "ALIC-1",
+      "description": "予約系通知の actionUrl が /teams/{数値teamId}/reservations で、FE の slug ルートでは予約画面に到達できない。2026-05 の #1036・#1681 から既存。本戦役の範囲外。",
+      "regressionPolicy": "別 CMP として起票済み。回帰テストは起票先で先行させる（本戦役の regressions には含めない）"
+    },
+    {
+      "ledgerId": "CMP-261028-2329",
+      "label": "ALIC-2",
+      "description": "緊急休業の一括送信の件数表示が空・undefined になる（BE sentCount と FE notifiedCount の不一致）。2026-04 の #75b06b92df から既存。本戦役の範囲外。",
+      "regressionPolicy": "別 CMP として起票済み。回帰テストは起票先で先行させる（本戦役の regressions には含めない）"
+    }
+  ]
+}

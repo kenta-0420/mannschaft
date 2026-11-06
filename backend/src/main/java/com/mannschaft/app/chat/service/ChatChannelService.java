@@ -359,7 +359,7 @@ public class ChatChannelService {
             chatAttachmentService.releaseChannelIcon(channel, channel.getIconKey());
             domainEventPublisher.publish(new S3ObjectDeleteEvent(channel.getIconKey()));
         }
-        for (ChatMessageEntity message : messageRepository.findByChannelIdOrderByCreatedAtAsc(channelId)) {
+        for (ChatMessageEntity message : messageRepository.findByChannelIdOrderByCreatedAtAscIdAsc(channelId)) {
             for (ChatMessageAttachmentEntity attachment : attachmentRepository.findByMessageId(message.getId())) {
                 chatAttachmentService.releaseMessageAttachment(attachment);
                 if (attachment.getFileKey() != null && !attachment.getFileKey().isBlank()) {
@@ -564,7 +564,7 @@ public class ChatChannelService {
         // 履歴共有: Kabineのトップレベルメッセージを転送コピー
         if (request.isShareHistory()) {
             List<ChatMessageEntity> history =
-                    messageRepository.findByChannelIdOrderByCreatedAtAsc(channelId);
+                    messageRepository.findByChannelIdOrderByCreatedAtAscIdAsc(channelId);
             for (ChatMessageEntity original : history) {
                 if (original.getParentId() != null) {
                     // スレッド返信はスキップ

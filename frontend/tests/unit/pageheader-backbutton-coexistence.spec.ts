@@ -43,7 +43,7 @@ const appDir = join(frontendDir, 'app')
 const ALLOWLIST = new Set<string>([
   'app/components/PageHeader.vue',
   'app/pages/organizations/[slug]/payments.vue',
-  'app/pages/teams/[slug]/payments.vue',
+  'app/pages/teams/[slug]/payments/index.vue',
   'app/pages/teams/[slug]/billing/fee-statements.vue',
   'app/pages/teams/[slug]/friend-feed.vue',
   'app/pages/teams/[slug]/friend-forward-exports.vue',

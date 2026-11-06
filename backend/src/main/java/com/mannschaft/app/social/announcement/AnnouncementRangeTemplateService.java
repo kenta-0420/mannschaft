@@ -22,9 +22,11 @@ public class AnnouncementRangeTemplateService {
 
     private final AnnouncementRangeTemplateRepository templateRepository;
     private final AccessControlService accessControlService;
+    private final AnnouncementRangeTemplateAuthorizer authorizer;
 
     /** 1スコープあたりのテンプレート上限件数 */
     private static final int TEMPLATE_LIMIT = 20;
+
 
     /**
      * スコープ内のテンプレート一覧を取得する（MEMBER 以上）。
@@ -53,9 +55,7 @@ public class AnnouncementRangeTemplateService {
     public AnnouncementRangeTemplateEntity create(
             String scopeType, Long scopeId, Long callerUserId, AnnouncementRangeTemplateRequest req) {
 
-        if (!accessControlService.isAdminOrAbove(callerUserId, scopeId, scopeType)) {
-            throw new BusinessException(AnnouncementErrorCode.ANNOUNCE_009);
-        }
+        authorizer.checkWritable(scopeType, scopeId, callerUserId, req.hasGroupItems());
 
         AnnouncementScopeType scopeTypeEnum = AnnouncementScopeType.valueOf(scopeType);
 
@@ -75,7 +75,10 @@ public class AnnouncementRangeTemplateService {
                 .scopeId(scopeId)
                 .name(req.getName())
                 .targetRole(req.getTargetRole() != null ? req.getTargetRole() : "MEMBERS_AND_ABOVE")
-                .targetTeamIds(req.getTargetTeamIdsJson())
+                .targetTeamIds(req.toStoredTargetTeamIdsJson())
+                .targetGroupIds(req.getTargetGroupIdsJson())
+                .targetGroupRange(req.getTargetGroupRangeJson())
+                .includeUnassigned(Boolean.TRUE.equals(req.getIncludeUnassigned()))
                 .preferredChannel(req.getPreferredChannel())
                 .isDefault(Boolean.TRUE.equals(req.getIsDefault()))
                 .createdBy(callerUserId)
@@ -99,15 +102,18 @@ public class AnnouncementRangeTemplateService {
             String scopeType, Long scopeId, Long id, Long callerUserId,
             AnnouncementRangeTemplateRequest req) {
 
-        if (!accessControlService.isAdminOrAbove(callerUserId, scopeId, scopeType)) {
-            throw new BusinessException(AnnouncementErrorCode.ANNOUNCE_009);
-        }
+        authorizer.checkWritable(scopeType, scopeId, callerUserId, req.hasGroupItems());
 
         AnnouncementScopeType scopeTypeEnum = AnnouncementScopeType.valueOf(scopeType);
 
         AnnouncementRangeTemplateEntity entity = templateRepository.findById(id)
                 .filter(t -> t.getScopeType() == scopeTypeEnum && t.getScopeId().equals(scopeId))
                 .orElseThrow(() -> new BusinessException(AnnouncementErrorCode.ANNOUNCE_008));
+
+        // 既にグループ項目を持つテンプレートの書き換え（項目を消す更新を含む）も MANAGE_CONTENT が要る
+        if (entity.hasGroupItems()) {
+            authorizer.checkWritable(scopeType, scopeId, callerUserId, true);
+        }
 
         boolean newIsDefault = Boolean.TRUE.equals(req.getIsDefault());
 
@@ -116,7 +122,9 @@ public class AnnouncementRangeTemplateService {
             templateRepository.clearDefault(scopeTypeEnum, scopeId);
         }
 
-        entity.update(req.getName(), req.getTargetRole(), req.getTargetTeamIdsJson(),
+        entity.update(req.getName(), req.getTargetRole(), req.toStoredTargetTeamIdsJson(),
+                req.getTargetGroupIdsJson(), req.getTargetGroupRangeJson(),
+                Boolean.TRUE.equals(req.getIncludeUnassigned()),
                 req.getPreferredChannel(), newIsDefault);
 
         return templateRepository.save(entity);

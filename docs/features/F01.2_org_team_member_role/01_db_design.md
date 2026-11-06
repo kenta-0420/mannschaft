@@ -59,6 +59,7 @@
 | `supporter_name_disclosure` | ENUM('DISPLAY_NAME','REAL_NAME') | NO | 'DISPLAY_NAME' | サポーター向け氏名表示モード（**実装: F19.1**）。詳細: `F19.1_public_pages_identity_disclosure.md` §5.1.2 |
 | `map_embed_url` | VARCHAR(2048) | YES | NULL | Google Maps 埋め込み URL（**実装: F19.1**） |
 | `archived_at` | DATETIME | YES | NULL | アーカイブ日時（NULL = アクティブ）|
+| `closure_generation` | BIGINT | NO | 0 | 閉鎖の世代番号。アーカイブ・論理削除のたびに行ロックの下で +1（解除・復元では変えない）。加盟の PENDING が閉鎖前かを判定する（F01.2.1 §4.5。V241）|
 | `deleted_at` | DATETIME | YES | NULL | 論理削除日時 |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
 | `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
@@ -128,6 +129,7 @@ INDEX idx_org_name (name)               -- 検索用
 | `public_events_enabled` | BOOLEAN | NO | FALSE | 公開ページでチームイベント一覧を表示するか（**実装: F19.1**） |
 | `map_embed_url` | VARCHAR(2048) | YES | NULL | Google Maps 埋め込み URL（**実装: F15.4 Phase 5 / F19.1**） |
 | `archived_at` | DATETIME | YES | NULL | アーカイブ日時 |
+| `closure_generation` | BIGINT | NO | 0 | 閉鎖の世代番号。組織と同じ規則（F01.2.1 §4.5。V242）|
 | `deleted_at` | DATETIME | YES | NULL | 論理削除日時 |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
 | `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
@@ -426,7 +428,8 @@ INDEX idx_upg_group_id (group_id)
 | `expires_at` | DATETIME | YES | NULL | 有効期限（NULL = 無期限）|
 | `max_uses` | INT UNSIGNED | YES | NULL | 使用回数上限（NULL = 無制限）|
 | `used_count` | INT UNSIGNED | NO | 0 | 現在の使用回数 |
-| `revoked_at` | DATETIME | YES | NULL | 手動無効化日時（NULL = 有効）|
+| `scope_closure_generation` | BIGINT | NO | 0 | 発行時の招待先自身の閉鎖世代。作成後は変更しない |
+| `revoked_at` | DATETIME | YES | NULL | 失効日時。NULLだけでは有効と判定せず、親の状態・世代も照合する |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
 | `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
 
@@ -442,7 +445,8 @@ INDEX idx_it_organization_id (organization_id)
 - `used_count` インクリメントは `SELECT ... FOR UPDATE` でアトミックに実行（同時参加による上限超過防止）
 - 有効期限の選択肢: 1日 / 7日 / 30日 / 90日 / 無期限
 - **発行者退会時の扱い**: `created_by` は `SET NULL on delete`。発行者が退会してもトークンは自動失効させず有効のままとする。理由: ① 引退・卒業等により発行者が交代しても既存の募集 URL が無効にならないよう運用継続性を保つため ② 招待 URL の管理責任は個人ではなくチーム/組織に帰属するため ③ 必要な場合は他の ADMIN が `revoked_at` を手動設定して失効させることが可能なため
-- **チーム/組織論理削除時の扱い**: 対象エンティティが論理削除された際、紐付くすべてのトークン（`revoked_at IS NULL` のもの）に `revoked_at = NOW()` を一括設定する。存在しないエンティティへの参加導線を残さないため。実装: チーム/組織削除 Service メソッド内でトランザクション内に一括 UPDATE を含める（`WHERE team_id/organization_id = :id AND revoked_at IS NULL`）
+- **休止・論理削除時の扱い**: 親の閉鎖TXで`closure_generation`を進める。親TXではtokenを更新せず、commit後のrole専属TXで、当該scopeかつ`scope_closure_generation < 閉鎖世代 AND revoked_at IS NULL`の全行を失効する（期限切れ・上限到達・無期限・宛先付きも含む）。既失効日時は上書きしない。イベント欠落は日次回復batchが同じstrict条件で拾う。物理失効の遅延中も、親が閉鎖中または世代不一致なら利用不可。解除・復元で世代を戻さず旧tokenを復元しない。組織の閉鎖では所属teamの世代/tokenを変更しない。
+- **既存開発データの列追加**: `NOT NULL DEFAULT 0`のみで行・ID・期限・使用回数・宛先・失効日時を保持する。親現在世代へのbackfillはしない。親世代0の旧tokenは従来条件を維持し、前進済み親の旧tokenは世代不一致として無効にする。
 
 ---
 
@@ -547,7 +551,10 @@ INDEX idx_ob_organization_id (organization_id)
 | `invited_at` | DATETIME | NO | CURRENT_TIMESTAMP | 招待・申請日時 |
 | `responded_at` | DATETIME | YES | NULL | 承諾・承認した日時 |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
-| `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | V2.011 には無く、F01.2.1 の移行で追加する |
+| `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | V2.011 には無く、F01.2.1 の移行（Flyway V232）で追加した |
+| `invite_notified_at` | DATETIME | YES | NULL | 招待（ORG_INVITE）の受信通知を outbox に予約した瞬間（UTC 壁時計）。NULL の招待は相手のチームがまだ知らないので、組織の閉鎖で消えても取消通知を送らない（F01.2.1 §4.5。V240）|
+| `org_closure_generation` | BIGINT | NO | 0 | 作成時点の組織の閉鎖の世代（`organizations.closure_generation`）。組織の世代がこれより進んでいれば閉鎖前の PENDING（F01.2.1 §4.5。V242）|
+| `team_closure_generation` | BIGINT | NO | 0 | 作成時点のチームの閉鎖の世代（`teams.closure_generation`）。判定の規則は上と同じ（V242）|
 
 > クロスドメイン FK（teams / organizations / users）は V62.006〜V62.009 で DROP 済みであり、`ON DELETE CASCADE` も働かない。行の削除はすべてアプリ層で行う（下記「制約・備考」）。
 
