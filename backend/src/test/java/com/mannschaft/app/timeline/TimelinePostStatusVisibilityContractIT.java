@@ -280,6 +280,38 @@ class TimelinePostStatusVisibilityContractIT extends AbstractMySqlIntegrationTes
         assertThat(posts.findById(original.getId()).orElseThrow().getRepostCount()).isZero();
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void 不在と論理削除済みの元投稿への新規リポストは同じ404で保存しない(boolean deleted) throws Exception {
+        long originalId;
+        if (deleted) {
+            originalId = savePost(PostStatus.PUBLISHED, PostScopeType.PUBLIC, OWNER, null).getId();
+            new TransactionTemplate(transactionManager).executeWithoutResult(ignored -> {
+                posts.findById(originalId).orElseThrow().softDelete();
+                em.flush();
+            });
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM timeline_posts WHERE id = ? AND deleted_at IS NOT NULL",
+                    Long.class, originalId)).isEqualTo(1L);
+        } else {
+            originalId = Long.MAX_VALUE;
+            assertThat(posts.findById(originalId)).isEmpty();
+        }
+        long before = posts.count();
+
+        mvc.perform(post("/api/v1/timeline/posts").with(user(Long.toString(PEER)))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"content\":\"CMP1517-消失元リポスト\","
+                                + "\"scopeType\":\"PUBLIC\",\"postedAsType\":\"USER\",\"status\":\"DRAFT\","
+                                + "\"repostOfId\":" + originalId + "}"))
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.error.code").value(NOT_FOUND));
+
+        assertThat(posts.count()).isEqualTo(before);
+        if (deleted) {
+            assertThat(jdbc.queryForObject("SELECT repost_count FROM timeline_posts WHERE id = ?",
+                    Integer.class, originalId)).isZero();
+        }
+    }
+
     private TimelinePollOptionEntity poll(Long postId) {
         TimelinePollEntity poll = polls.save(TimelinePollEntity.builder().timelinePostId(postId)
                 .question("非公開の質問").build());
