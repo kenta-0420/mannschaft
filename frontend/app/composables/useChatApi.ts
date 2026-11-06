@@ -69,5 +69,7 @@ export function useChatApi() {
     subscribeChannelEvents: ws.subscribeChannelEvents,
     unsubscribeChannelEvents: ws.unsubscribeChannelEvents,
     wsConnectionFailed: ws.wsConnectionFailed,
+    wsUnauthenticated: ws.wsUnauthenticated,
+    isChannelDenied: ws.isChannelDenied,
   }
 }
