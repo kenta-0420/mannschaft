@@ -1,6 +1,7 @@
 package com.mannschaft.app.shiftbudget;
 
 import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.shift.ShiftScheduleStatus;
 import com.mannschaft.app.shift.event.ShiftArchivedEvent;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
@@ -32,6 +33,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.time.ZoneOffset;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
@@ -254,7 +256,9 @@ class ShiftBudgetConsumptionCancelRaceIT extends AbstractMySqlIntegrationTest {
         });
         assertThat(status(id)).isEqualTo("CANCELLED");
         assertThat(jdbc.queryForObject("SELECT cancelled_at FROM shift_budget_consumptions WHERE id = ?",
-                java.time.LocalDateTime.class, id)).isEqualTo(cancelledAt);
+                java.time.LocalDateTime.class, id)).as("raw JDBCはUTC壁時計の格納値を返す")
+                .isEqualTo(cancelledAt.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE)
+                        .withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime());
         assertThat(jdbc.queryForObject("SELECT cancel_reason FROM shift_budget_consumptions WHERE id = ?",
                 String.class, id)).isEqualTo("RE_PUBLISHED");
         assertThat(amount()).isEqualByComparingTo(TOTAL.subtract(cancelledAmount));
