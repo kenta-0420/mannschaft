@@ -22,6 +22,7 @@ import org.springframework.lang.NonNull;
 import org.springframework.messaging.MessageDeliveryException;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.messaging.simp.stomp.ConnectionLostException;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
@@ -116,6 +117,8 @@ class WebSocketStompRejectionIntegrationTest extends AbstractMySqlIntegrationTes
     void tearDown() {
         // client.stop() だけでは確立済みの STOMP セッションは閉じず、サーバ側の SimpUserRegistry に
         // 次のテストまで残る（同一 context を共有するため他テストの断定へ混入する）。明示的に DISCONNECT する。
+        // 1件の失敗で後続の切断と clients.stop() が中断しないよう、全件を片付けきってから失敗をまとめて投げる。
+        RuntimeException failure = null;
         for (Connection connection : connections) {
             CompletableFuture<StompSession> future = connection.session();
             // 拒否された CONNECT の接続 Future は、サーバの ERROR→切断で ConnectionLostException により例外完了する。
@@ -125,32 +128,43 @@ class WebSocketStompRejectionIntegrationTest extends AbstractMySqlIntegrationTes
             }
             StompSession session = future.join();
             if (session.isConnected()) {
-                disconnectUnlessServerAlreadyClosed(connection, session);
+                try {
+                    disconnectUnlessServerAlreadyClosed(connection, session);
+                } catch (RuntimeException e) {
+                    if (failure == null) {
+                        failure = e;
+                    } else {
+                        failure.addSuppressed(e);
+                    }
+                }
             }
         }
         connections.clear();
         clients.forEach(WebSocketStompClient::stop);
         clients.clear();
+        if (failure != null) {
+            throw failure;
+        }
     }
 
     /**
      * DISCONNECT する。ただしサーバがすでに閉じた（閉じつつある）セッションは後片付けの対象外として許容する。
      *
-     * <p>拒否 ERROR 後のサーバ切断は非同期のため、{@code isConnected()} が true を返した直後に閉じられ、
-     * {@code disconnect()} が閉じたセッションへ書いて {@link MessageDeliveryException} になる競合がある（確認と実行の間）。
-     * 例外は握りつぶさず、クライアントの切断通知を待った後に {@code isConnected()} が false（＝本当に閉じていた）
-     * ときだけ許容する。まだ接続中なら本物の失敗として再送出する。</p>
+     * <p>拒否 ERROR 後のサーバ切断は非同期のため、{@code isConnected()} が true を返した直後に閉じられる競合がある。
+     * その場合 {@code disconnect()} は {@link MessageDeliveryException}（閉じたセッションへの送信失敗）か
+     * {@link IllegalStateException}（接続がすでに null）を投げる。Spring の {@code disconnect()} は失敗時も
+     * finally で接続をリセットするため、例外後の {@code isConnected()} は判定に使えない。
+     * そこで許容するのは、サーバ切断の積極的な証拠（{@link ConnectionLostException} を handler が受けた）が
+     * 期限内に確認できたときだけとし、確認できなければ元の例外を再送出する。</p>
      */
     private static void disconnectUnlessServerAlreadyClosed(Connection connection, StompSession session) {
         try {
             session.disconnect();
-        } catch (MessageDeliveryException e) {
+        } catch (MessageDeliveryException | IllegalStateException e) {
             try {
-                connection.handler().closed.get(10, TimeUnit.SECONDS);
-            } catch (Exception ignored) {
-                // 切断通知が来なければ下の isConnected 判定で本物の失敗として扱う
-            }
-            if (session.isConnected()) {
+                connection.handler().connectionLost.get(10, TimeUnit.SECONDS);
+            } catch (Exception notConfirmed) {
+                e.addSuppressed(notConfirmed);
                 throw e;
             }
         }
@@ -185,6 +199,8 @@ class WebSocketStompRejectionIntegrationTest extends AbstractMySqlIntegrationTes
     private static final class ErrorCapturingHandler extends StompSessionHandlerAdapter {
         final CompletableFuture<StompHeaders> error = new CompletableFuture<>();
         final CompletableFuture<Throwable> closed = new CompletableFuture<>();
+        /** サーバ切断（{@link ConnectionLostException}）を受けたときだけ完了する。他の transport error では完了しない。 */
+        final CompletableFuture<Throwable> connectionLost = new CompletableFuture<>();
 
         @Override
         public void handleFrame(@NonNull StompHeaders headers, Object payload) {
@@ -196,6 +212,9 @@ class WebSocketStompRejectionIntegrationTest extends AbstractMySqlIntegrationTes
         public void handleTransportError(@NonNull StompSession session, @NonNull Throwable exception) {
             // ERROR 送出後にサーバが接続を閉じると ConnectionLostException 等でここに来る
             closed.complete(exception);
+            if (exception instanceof ConnectionLostException) {
+                connectionLost.complete(exception);
+            }
         }
     }
 
