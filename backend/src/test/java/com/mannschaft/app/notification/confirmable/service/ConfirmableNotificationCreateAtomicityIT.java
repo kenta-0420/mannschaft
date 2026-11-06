@@ -10,12 +10,15 @@ import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotific
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import com.mannschaft.app.notification.confirmable.support.ConfirmableFanoutFixture;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -55,8 +58,13 @@ class ConfirmableNotificationCreateAtomicityIT extends AbstractMySqlIntegrationT
     private ConfirmableNotificationTargetRepository targetRepository;
     @Autowired
     private PlatformTransactionManager transactionManager;
+    @Autowired
+    private JdbcTemplate jdbc;
     @PersistenceContext
     private EntityManager em;
+
+    /** 正常系が確定させた通知 ID（@AfterEach で本体・targets・fanoutジョブを自分の分だけ消す）。 */
+    private Long createdNotificationId;
 
     private TransactionTemplate txTemplate;
     private Long orgId;
@@ -71,6 +79,16 @@ class ConfirmableNotificationCreateAtomicityIT extends AbstractMySqlIntegrationT
         adminUserId = setupTx.execute(status -> insertUser());
     }
 
+    @AfterEach
+    void cleanUp() {
+        if (createdNotificationId != null) {
+            ConfirmableFanoutFixture.deleteFanoutJobsForNotification(jdbc, createdNotificationId);
+            jdbc.update("DELETE FROM confirmable_notification_targets WHERE confirmable_notification_id = ?",
+                    createdNotificationId);
+            jdbc.update("DELETE FROM confirmable_notifications WHERE id = ?", createdNotificationId);
+        }
+    }
+
     @Test
     @DisplayName("AC-22: targetsのINSERTが失敗すると、本体もfanoutジョブも1件も残らない（同一トランザクション）")
     void ac22_targetsInsert失敗で本体もジョブも残らない() {
@@ -82,6 +100,10 @@ class ConfirmableNotificationCreateAtomicityIT extends AbstractMySqlIntegrationT
         // でtargetsのINSERTを失敗させる。
         List<ConfirmableTargetSpec> invalidTargets =
                 List.of(new ConfirmableTargetSpec(ConfirmableTargetType.ORGANIZATION, null));
+
+        // 他テストが commit 済みの CONFIRMABLE_TARGETS ジョブを残していても影響されないよう、
+        // 実行前の件数を基準にし「失敗した呼び出しでジョブが1件も増えない」ことを検証する。
+        long jobCountBefore = countConfirmableTargetsJobs();
 
         assertThatThrownBy(() -> txTemplate.executeWithoutResult(status ->
                 notificationService.createQueuedNotificationWithTargetsAndJob(
@@ -109,10 +131,9 @@ class ConfirmableNotificationCreateAtomicityIT extends AbstractMySqlIntegrationT
         assertThat(targetCount).as("AC-22: 失敗したtargetsは残らない").isZero();
 
         // AC-22: fanoutジョブも1件も残らない（本体が無い以上、scope_refで引ける行があってはならない）。
-        long jobCount = ((Number) em.createNativeQuery(
-                        "SELECT COUNT(*) FROM notification_fanout_jobs WHERE scope_type = 'CONFIRMABLE_TARGETS'")
-                .getSingleResult()).longValue();
-        assertThat(jobCount).as("AC-22: 本体が無い以上、fanoutジョブも孤立して残ってはならない").isZero();
+        assertThat(countConfirmableTargetsJobs())
+                .as("AC-22: 本体が無い以上、fanoutジョブも孤立して増えてはならない（実行前件数と同数）")
+                .isEqualTo(jobCountBefore);
     }
 
     @Test
@@ -128,6 +149,7 @@ class ConfirmableNotificationCreateAtomicityIT extends AbstractMySqlIntegrationT
                         ConfirmableNotificationPriority.NORMAL, null, null, null,
                         UnconfirmedVisibility.CREATOR_AND_ADMIN, adminUserId, validTargets).getId());
 
+        createdNotificationId = notificationId;
         assertThat(notificationRepository.findById(notificationId)).isPresent();
         assertThat(targetRepository.findByConfirmableNotificationId(notificationId)).hasSize(1);
         long jobCount = ((Number) em.createNativeQuery(
@@ -141,6 +163,12 @@ class ConfirmableNotificationCreateAtomicityIT extends AbstractMySqlIntegrationT
     // =====================================================================
     // ヘルパ
     // =====================================================================
+
+    private long countConfirmableTargetsJobs() {
+        return ((Number) em.createNativeQuery(
+                        "SELECT COUNT(*) FROM notification_fanout_jobs WHERE scope_type = 'CONFIRMABLE_TARGETS'")
+                .getSingleResult()).longValue();
+    }
 
     private Long insertUser() {
         int n = SEQ.incrementAndGet();

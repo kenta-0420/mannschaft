@@ -7,8 +7,10 @@ import com.mannschaft.app.reservation.dto.CreateEmergencyClosureRequest;
 import com.mannschaft.app.reservation.dto.EmergencyClosureConfirmationResponse;
 import com.mannschaft.app.reservation.dto.EmergencyClosurePreviewResponse;
 import com.mannschaft.app.reservation.dto.EmergencyClosureResponse;
+import com.mannschaft.app.reservation.service.EmergencyClosureSendService;
 import com.mannschaft.app.reservation.service.EmergencyClosureService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -38,6 +41,7 @@ import java.util.List;
 public class TeamEmergencyClosureController {
 
     private final EmergencyClosureService emergencyClosureService;
+    private final EmergencyClosureSendService emergencyClosureSendService;
 
     /**
      * 臨時休業通知のプレビューを取得する。送信前に影響を受ける予約件数・詳細を確認できる。
@@ -62,18 +66,38 @@ public class TeamEmergencyClosureController {
 
     /**
      * 臨時休業通知を送信する。対象期間の予約者にメールを一括送信し、必要に応じて予約をキャンセルする。
+     *
+     * <p>CMP-261104-0334: {@code Idempotency-Key} ヘッダ（UUID・任意）を付けると、同じキーの再送は新規作成せず
+     * 先の結果を 200 で返す（連打・応答消失後の再送で多重送信しない）。同じキーで内容が違えば 409、
+     * キーの形式不正は 400。ヘッダ無しは従来どおり毎回新規作成する（201）。キーはチーム×送信者で区別する。</p>
      */
     @PostMapping
     @Operation(summary = "臨時休業通知送信")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "送信成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+            description = "同じ Idempotency-Key・同じ内容の再送。新規作成せず先の送信結果を返す")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409",
+            description = "同じ Idempotency-Key で内容が異なる（RESERVATION_055）",
+            content = @io.swagger.v3.oas.annotations.media.Content(
+                    schema = @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = com.mannschaft.app.common.ErrorResponse.class)))
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400",
+            description = "Idempotency-Key の形式が不正（RESERVATION_056）",
+            content = @io.swagger.v3.oas.annotations.media.Content(
+                    schema = @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = com.mannschaft.app.common.ErrorResponse.class)))
     @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<EmergencyClosureResponse>> sendClosure(
             @PathVariable Long teamId,
+            @Parameter(description = "送信の冪等キー（UUID）。同じ送信者・同じチームで同じキーの再送は先の結果を返す。"
+                    + "形式不正は 400（RESERVATION_056）")
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @Valid @RequestBody CreateEmergencyClosureRequest request) {
         Long operatorUserId = SecurityUtils.getCurrentUserId();
-        EmergencyClosureResponse response =
-                emergencyClosureService.sendClosure(teamId, operatorUserId, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+        EmergencyClosureSendService.Outcome outcome =
+                emergencyClosureSendService.send(teamId, operatorUserId, request, idempotencyKey);
+        return ResponseEntity.status(outcome.created() ? HttpStatus.CREATED : HttpStatus.OK)
+                .body(ApiResponse.of(outcome.response()));
     }
 
     /**
