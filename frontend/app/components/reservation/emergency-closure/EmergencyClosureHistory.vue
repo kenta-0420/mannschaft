@@ -111,7 +111,7 @@ const { formatDateTime, formatCalendarDayRange, formatTimeRange } = useDatetime(
                       class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.65rem] font-medium"
                       :class="connectionState === 'LIVE'
                         ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                        : connectionState === 'DENIED'
+                        : connectionState === 'DENIED' || connectionState === 'UNAUTHENTICATED'
                           ? 'bg-surface-200 text-surface-500 dark:bg-surface-700'
                           : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'"
                     >

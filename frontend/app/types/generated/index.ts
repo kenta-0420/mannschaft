@@ -60547,7 +60547,7 @@ export interface components {
         };
         CreateTermRequest: {
             /** Format: int32 */
-            academicYear?: number;
+            academicYear: number;
             /** Format: date */
             endDate: string;
             name?: string;

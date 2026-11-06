@@ -185407,7 +185407,9 @@
         "properties": {
           "academicYear": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "maximum": 2100,
+            "minimum": 2000
           },
           "endDate": {
             "type": "string",
@@ -185420,7 +185422,9 @@
           },
           "sortOrder": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "maximum": 255,
+            "minimum": 0
           },
           "startDate": {
             "type": "string",
@@ -185428,6 +185432,7 @@
           }
         },
         "required": [
+          "academicYear",
           "endDate",
           "startDate"
         ]
@@ -217538,7 +217543,9 @@
           },
           "sortOrder": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "maximum": 255,
+            "minimum": 0
           },
           "startDate": {
             "type": "string",
