@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * 委員会招集状エンティティ。委員会への招集を管理する。
@@ -40,6 +41,7 @@ public class CommitteeInvitationEntity extends BaseEntity {
     private CommitteeRole proposedRole = CommitteeRole.MEMBER;
 
     /** 招集トークン（UUID） */
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Column(nullable = false, unique = true, length = 36)
     private String inviteToken;
 

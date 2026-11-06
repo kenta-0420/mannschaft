@@ -34,6 +34,7 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * メンバー紹介ページサービス。ページのCRUD・公開管理・プレビュートークンを担当する。
@@ -250,6 +251,7 @@ public class TeamPageService {
     /**
      * プレビュートークンを発行する。
      */
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Transactional
     public PreviewTokenResponse issuePreviewToken(Long actorUserId, Long pageId) {
         TeamPageEntity entity = findPageOrThrow(pageId);

@@ -23,6 +23,7 @@ import java.time.ZoneOffset;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * F18 個人ポイントカードウォレット — QR 自動特定 (Phase 3 第二陣 2A) サービス。
@@ -90,6 +91,7 @@ public class PointCardShareTokenService {
      * @throws BusinessException     カードが本人のものでない / 存在しない場合（{@code POINT_CARD_006}）
      * @throws IllegalStateException UUID 衝突という超レアケース（実質発生しない）
      */
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     public ShareTokenResponse generate(Long userId, UUID cardId) {
         // 1. 本人カード確認（IDOR 防止）— PointCardController と同パターン
         cardRepository.findByIdAndUserId(cardId, userId)

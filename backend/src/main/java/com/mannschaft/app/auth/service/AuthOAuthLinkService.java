@@ -18,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * 設定画面（{@code /settings/linked-accounts}）からの Google OAuth 連携フローを担うサービス。
@@ -54,6 +55,7 @@ public class AuthOAuthLinkService {
      * @param userId 連携を要求するユーザーID
      * @return 認可 URL（Google Calendar スコープ付き）
      */
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     public String generateCalendarOnlyAuthUrl(Long userId) {
         String state = UUID.randomUUID().toString();
         String redisKey = STATE_KEY_PREFIX + state;
@@ -72,6 +74,7 @@ public class AuthOAuthLinkService {
      * @throws BusinessException AUTH_028 — サポート外プロバイダ
      * @throws BusinessException AUTH_034 — 既に連携済み
      */
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     public String generateAuthUrl(Long userId, String provider, boolean includeCalendar) {
         // 1. プロバイダ検証（GOOGLE のみサポート）
         OAuthAccountEntity.OAuthProvider oauthProvider = validateProvider(provider);
