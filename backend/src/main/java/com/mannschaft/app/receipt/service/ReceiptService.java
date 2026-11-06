@@ -486,18 +486,15 @@ public class ReceiptService {
     }
 
     /**
-     * 領収書詳細を取得する（ADMIN用）。
-     * 認可: entity由来の組織スコープは管理者以上。TEAMは従来の会員閲覧を維持する。
+     * 領収書詳細を取得する。認可はTX外のReceiptManagementReadFacadeが担う。
      *
      * @param scopeType     スコープ種別
      * @param scopeId       スコープID
      * @param receiptId     領収書ID
-     * @param actorUserId   操作者ユーザーID
      * @return 領収書レスポンス
      */
-    public ReceiptResponse getReceipt(ReceiptScopeType scopeType, Long scopeId, Long receiptId, Long actorUserId) {
+    public ReceiptResponse getReceipt(ReceiptScopeType scopeType, Long scopeId, Long receiptId) {
         ReceiptEntity receipt = findReceiptOrThrow(scopeType, scopeId, receiptId);
-        checkManagementReadAccess(receipt, actorUserId);
         List<ReceiptLineItemEntity> lineItems = lineItemRepository.findByReceiptIdOrderBySortOrderAsc(receiptId);
         return buildReceiptResponse(receipt, lineItems, Collections.emptyList());
     }
@@ -533,22 +530,8 @@ public class ReceiptService {
     }
 
     /**
-     * 領収書 PDF のバイト配列を取得する。
-     * 認可: entity由来の組織スコープは管理者以上。本人の取得はReceiptMyServiceが別途担う。
-     * TEAMは従来の会員閲覧を維持する。
-     *
-     * @param scopeType     スコープ種別
-     * @param scopeId       スコープID
-     * @param receiptId     領収書ID
-     * @param actorUserId   操作者ユーザーID
-     * @return PDF バイト配列
-     */
-    public byte[] getReceiptPdf(ReceiptScopeType scopeType, Long scopeId, Long receiptId, Long actorUserId) {
-        return getReceiptPdf(scopeType, scopeId, receiptId, actorUserId, null);
-    }
-
-    /**
      * 領収書 PDF のバイト配列を取得する（種別指定つき）。
+     * 認可はTX外のReceiptManagementReadFacadeが担い、本メソッドは自TXで再取得する。
      *
      * <p>F08.12 §9 是正: 初回取得時に生成 PDF をストレージへ保存し
      * {@code receipt_pdf_archives} に記録する。2 回目以降は再生成せず保存済みの原本を返す
@@ -559,10 +542,8 @@ public class ReceiptService {
      *             現在の状態（{@code voided_at}）から解決する（設計書 §3.4.1）
      */
     @Transactional
-    public byte[] getReceiptPdf(ReceiptScopeType scopeType, Long scopeId, Long receiptId, Long actorUserId,
-                                 ReceiptArchiveKind kind) {
+    public byte[] getReceiptPdf(ReceiptScopeType scopeType, Long scopeId, Long receiptId, ReceiptArchiveKind kind) {
         ReceiptEntity receipt = findReceiptOrThrow(scopeType, scopeId, receiptId);
-        checkManagementReadAccess(receipt, actorUserId);
         List<ReceiptLineItemEntity> lineItems = lineItemRepository.findByReceiptIdOrderBySortOrderAsc(receiptId);
 
         byte[] pdf = pdfArchiveService.getOrArchive(receipt, lineItems, kind);
@@ -571,16 +552,16 @@ public class ReceiptService {
     }
 
     /**
-     * 組織の一覧制限を詳細/PDFから迂回させない。本人用・TEAMの既存契約は変更しない。
-     * 呼出元で先に領収書と入力scopeを照合し、不一致・不在の既存応答を維持する。
+     * 認可前に領収書と入力scopeを照合する。自ドメインのscalarだけをTX外へ返す。
+     * 不一致・不在の既存404を認可より先に維持し、entityを持ち出さない。
      */
-    private void checkManagementReadAccess(ReceiptEntity receipt, Long actorUserId) {
-        if (receipt.getScopeType() == ReceiptScopeType.ORGANIZATION) {
-            accessControlService.checkAdminOrAbove(actorUserId, receipt.getScopeId(), receipt.getScopeType().name());
-        } else {
-            accessControlService.checkMembership(actorUserId, receipt.getScopeId(), receipt.getScopeType().name());
-        }
+    public ReceiptReadScope resolveManagementReadScope(ReceiptScopeType scopeType, Long scopeId, Long receiptId) {
+        ReceiptEntity receipt = findReceiptOrThrow(scopeType, scopeId, receiptId);
+        return new ReceiptReadScope(receipt.getScopeType(), receipt.getScopeId());
     }
+
+    /** 領収書管理readの認可に必要なscope。 */
+    public record ReceiptReadScope(ReceiptScopeType scopeType, Long scopeId) { }
 
     /**
      * 領収書メールを送信する。

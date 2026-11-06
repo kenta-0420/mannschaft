@@ -20,6 +20,7 @@ import com.mannschaft.app.receipt.dto.SendEmailRequest;
 import com.mannschaft.app.receipt.dto.SendEmailResponse;
 import com.mannschaft.app.receipt.dto.VoidReceiptRequest;
 import com.mannschaft.app.receipt.service.ReceiptExportService;
+import com.mannschaft.app.receipt.service.ReceiptManagementReadFacade;
 import com.mannschaft.app.receipt.service.ReceiptService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -70,6 +71,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class ReceiptAdminController {
 
     private final ReceiptService receiptService;
+    private final ReceiptManagementReadFacade readFacade;
     private final ReceiptExportService exportService;
 
 
@@ -210,7 +212,7 @@ public class ReceiptAdminController {
             @RequestParam Long scopeId,
             @PathVariable Long id) {
         ReceiptScopeType type = ReceiptScopeType.fromTenantScope(scopeType);
-        ReceiptResponse response = receiptService.getReceipt(type, scopeId, id, SecurityUtils.getCurrentUserId());
+        ReceiptResponse response = readFacade.getReceipt(type, scopeId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -227,7 +229,7 @@ public class ReceiptAdminController {
             @RequestParam(required = false) String kind) {
         ReceiptScopeType type = ReceiptScopeType.fromTenantScope(scopeType);
         ReceiptArchiveKind archiveKind = kind == null ? null : ReceiptArchiveKind.valueOf(kind.toUpperCase());
-        byte[] pdf = receiptService.getReceiptPdf(type, scopeId, id, SecurityUtils.getCurrentUserId(), archiveKind);
+        byte[] pdf = readFacade.getReceiptPdf(type, scopeId, id, SecurityUtils.getCurrentUserId(), archiveKind);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"receipt_" + id + ".pdf\"")
                 .contentType(MediaType.APPLICATION_PDF)

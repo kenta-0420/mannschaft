@@ -119,7 +119,7 @@ public class SignageScreenService {
      * <p><b>認可は呼び出し元の責務</b>。サイネージ端末向けの公開表示経路
      * （{@code SignageDisplayController#getDisplayConfig}）はトークン認証済みで
      * ユーザーコンテキストを持たないため、本メソッドには認可を敷かない。
-     * 認証ユーザー向けの管理画面入口は {@link #getScreenForActor} を使うこと。</p>
+     * 認証ユーザー向けの管理画面入口は {@link SignageScreenReadFacade} を使うこと。</p>
      *
      * @param id 画面ID
      * @return 画面レスポンス
@@ -130,16 +130,15 @@ public class SignageScreenService {
     }
 
     /**
-     * 認証ユーザー向けに指定IDの画面を取得する。
-     *
-     * <p>組織では一覧と同じ管理者認可を適用し、ID直接指定で管理画面設定を取得させない。
-     * TEAMの会員閲覧、および別メソッドを使う端末のトークン認証経路は維持する。</p>
+     * 認可前に画面の存在を確認し、自ドメインのscalar scopeだけをTX外へ返す。
      */
-    public SignageScreenResponse getScreenForActor(Long id, Long actor) {
+    public ScreenReadScope resolveManagementReadScope(Long id) {
         SignageScreenEntity entity = findScreenOrThrow(id);
-        checkReadAccess(entity.getScopeType(), entity.getScopeId(), actor);
-        return toResponse(entity);
+        return new ScreenReadScope(entity.getScopeType(), entity.getScopeId());
     }
+
+    /** 画面管理readの認可に必要なscope。 */
+    public record ScreenReadScope(String scopeType, Long scopeId) { }
 
     /**
      * スコープに紐づくアクティブな画面一覧を取得する。
@@ -173,17 +172,12 @@ public class SignageScreenService {
      * 引き続き認可なしのまま維持する。</p>
      */
     public List<SignageScreenResponse> listScreensForActor(String scopeType, Long scopeId, Long actor) {
-        checkReadAccess(scopeType, scopeId, actor);
-        return listScreens(scopeType, scopeId);
-    }
-
-    /** 組織の管理用一覧・詳細だけを管理者以上へ揃え、TEAM会員の既存閲覧を維持する。 */
-    private void checkReadAccess(String scopeType, Long scopeId, Long actor) {
         if ("ORGANIZATION".equals(scopeType)) {
             accessControlService.checkAdminOrAbove(actor, scopeId, scopeType);
         } else {
             accessControlService.checkMembership(actor, scopeId, scopeType);
         }
+        return listScreens(scopeType, scopeId);
     }
 
     /**
