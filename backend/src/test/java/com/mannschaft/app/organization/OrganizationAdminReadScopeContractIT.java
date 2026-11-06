@@ -259,6 +259,11 @@ class OrganizationAdminReadScopeContractIT extends AbstractMySqlIntegrationTest 
         return mvc.perform(get(path).header("Authorization", "Bearer " + tokens.issueAccessToken(actor, List.of("MEMBER"))));
     }
 
+    private String receiptPath(long receiptId, Long scopeId, boolean pdf) {
+        return "/api/v1/admin/receipts/" + receiptId + (pdf ? "/pdf" : "")
+                + "?scopeType=ORGANIZATION&scopeId=" + scopeId;
+    }
+
     private void denied(ResultActions result, Group group) throws Exception {
         result.andExpect(status().is(group == Group.ANALYTICS ? 404 : 403))
                 .andExpect(jsonPath("$.error.code").value(group == Group.ANALYTICS ? "TEAMANALYTICS_001" : "COMMON_002"));
