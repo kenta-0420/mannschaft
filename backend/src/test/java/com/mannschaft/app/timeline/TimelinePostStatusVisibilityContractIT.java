@@ -263,6 +263,23 @@ class TimelinePostStatusVisibilityContractIT extends AbstractMySqlIntegrationTes
                 .userId(author).content(CONTENT).status(state).parentId(parentId).build());
     }
 
+    @ParameterizedTest
+    @EnumSource(value = PostStatus.class, names = {"DRAFT", "SCHEDULED", "HIDDEN"})
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void 他人の非公開投稿はリポストも作成せず元のカウンタを変えない(PostStatus state) throws Exception {
+        TimelinePostEntity original = savePost(state, PostScopeType.PUBLIC, OWNER, null);
+        long before = posts.count();
+
+        mvc.perform(post("/api/v1/timeline/posts").with(user(Long.toString(PEER)))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"content\":\"CMP1517-リポスト\","
+                                + "\"scopeType\":\"PUBLIC\",\"postedAsType\":\"USER\",\"status\":\"DRAFT\","
+                                + "\"repostOfId\":" + original.getId() + "}"))
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.error.code").value(NOT_FOUND));
+
+        assertThat(posts.count()).isEqualTo(before);
+        assertThat(posts.findById(original.getId()).orElseThrow().getRepostCount()).isZero();
+    }
+
     private TimelinePollOptionEntity poll(Long postId) {
         TimelinePollEntity poll = polls.save(TimelinePollEntity.builder().timelinePostId(postId)
                 .question("非公開の質問").build());
