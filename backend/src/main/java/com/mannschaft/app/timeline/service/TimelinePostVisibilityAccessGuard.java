@@ -86,7 +86,7 @@ public class TimelinePostVisibilityAccessGuard {
      * @param userId 呼び出し元ユーザー ID
      * @return 公開状態の条件を満たす場合だけ true
      */
-    boolean isStatusVisible(TimelinePostEntity post, Long userId) {
+    static boolean isStatusVisible(TimelinePostEntity post, Long userId) {
         if (post == null || post.getDeletedAt() != null || post.getStatus() == null) {
             return false;
         }

@@ -930,7 +930,7 @@ public class TimelinePostService {
      * @param userId     呼び出し元ユーザー ID
      */
     private void requireReplyableParent(TimelinePostEntity parentPost, Long userId) {
-        if (!postVisibilityGuard.isStatusVisible(parentPost, userId)) {
+        if (!TimelinePostVisibilityAccessGuard.isStatusVisible(parentPost, userId)) {
             throw new BusinessException(TimelineErrorCode.POST_NOT_FOUND);
         }
         if (parentPost.getScopeType() == PostScopeType.VILLAGE) {
