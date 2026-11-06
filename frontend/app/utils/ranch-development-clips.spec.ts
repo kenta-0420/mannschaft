@@ -30,11 +30,17 @@ const context = { production: false, isolatedDevelopment: true, clipsEnabled: tr
 
 describe('隔離開発v3クリップの完全一致境界', () => {
   it('16種3stage2styleが同個体の4actionとfallbackへ明示解決される', () => {
-    expect(developmentRanchClips).toHaveLength(96)
+    expect(developmentRanchClips).toHaveLength(480)
     expect(new Set(developmentRanchClips.map((entry) => entry.speciesKey)).size).toBe(16)
-    for (const entry of developmentRanchClips) {
+    for (const entry of developmentRanchClips.filter((value) => value.catalogVersion === '4')) {
       const resolved = resolveRanchDevelopmentClip(
-        { ...dinosaur, speciesKey: entry.speciesKey, stage: entry.stage },
+        {
+          ...dinosaur,
+          speciesKey: entry.speciesKey,
+          stage: entry.stage,
+          variantKey: entry.variantKey,
+          speciesCatalogVersion: entry.catalogVersion,
+        },
         entry.renderStyle,
         context,
       )
@@ -132,5 +138,19 @@ describe('隔離開発v3クリップの完全一致境界', () => {
     expect(resolveRanchDevelopmentClip(legacy, 'PIXEL', context)).toBeNull()
     expect(resolveRanchAsset(dinosaur, 'PIXEL', oldContext)).toBeNull()
     expect(productionRanchAssetsRegistered()).toBe(false)
+  })
+})
+
+it('v3 identityを変更せず同種同段階同画風のv4 V1へ描画aliasする', () => {
+  const input = { ...dinosaur }
+  const bound = resolveRanchDevelopmentClip(input, 'PIXEL', context)!
+  expect(input).toEqual(dinosaur)
+  expect(bound.dinosaurId).toBe(input.id)
+  expect(bound.entry).toMatchObject({
+    speciesKey: input.speciesKey,
+    stage: input.stage,
+    renderStyle: 'PIXEL',
+    variantKey: 'DEV_APPEARANCE_1',
+    catalogVersion: '4',
   })
 })
