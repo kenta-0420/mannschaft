@@ -322,8 +322,9 @@ class ShiftDeletedParentConcealmentContractIT extends AbstractMySqlIntegrationTe
         Long runId = run(scheduleId);
         for (String operation : List.of("confirm", "revoke", "detail", "visual")) {
             Map<String, String> before = snapshot();
-            callRun("MEMBER", operation, scheduleId, runId).andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+            boolean concealedDetail = List.of("detail", "visual").contains(operation);
+            callRun("MEMBER", operation, scheduleId, runId).andExpect(status().is(concealedDetail ? 404 : 403))
+                    .andExpect(jsonPath("$.error.code").value(concealedDetail ? "SHIFT_024" : "COMMON_002"));
             assertThat(snapshot()).isEqualTo(before);
         }
     }
