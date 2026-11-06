@@ -102,7 +102,9 @@
       "multiple": "{names}正在输入…"
     },
     "connection": {
-      "failed": "连接已断开。正在尝试重新连接…"
+      "failed": "连接已断开。正在尝试重新连接…",
+      "denied": "您没有查看此频道的权限",
+      "unauthenticated": "登录已过期，实时更新已停止。请重新登录"
     },
     "mobile": {
       "backToList": "返回频道列表",
@@ -1106,6 +1108,9 @@
     }
   },
   "project": {
+    "related_todo_no_due": "无截止日期",
+    "related_todo_no_assignee": "未分配负责人",
+    "related_todo_open": "打开待办详情",
     "milestones": "里程碑",
     "no_milestones": "暂无里程碑",
     "due_date": "截止日期",
@@ -1528,7 +1533,9 @@
     },
     "ws": {
       "disconnected": "连接已断开",
-      "reconnecting": "正在重新连接…"
+      "reconnecting": "正在重新连接…",
+      "denied": "您没有查看此看板的权限，实时更新已停止",
+      "unauthenticated": "登录已过期，实时更新已停止。请重新登录"
     },
     "validation": {
       "required": "此项为必填。",

@@ -45,6 +45,20 @@ test('台帳をエスケープ済み縦棒込みで7列に分解しCMP重複を�
   assert.throws(() => parseTaskList(`${headers}\n| CMP-260101-0101 | x | 完了 | only | 5 |\n`), /7列/);
 });
 
+test('状態先頭の優先度 P1〜P5 を state から除き priority へ分離する（CMP-261106-0049）', () => {
+  const parse = (state) => parseTaskList(`${headers}
+${row(state)}
+`).rows[0];
+  assert.equal(parse('P4 実装中').state, '実装中');
+  assert.equal(parse('P4 実装中').priority, 'P4');
+  assert.equal(parse('**P1 保留**').state, '保留');
+  assert.equal(parse('**P1 保留**').priority, 'P1');
+  assert.equal(parse('実装中').priority, null);
+  assert.equal(parse('P2 完了（PR #1）').state, '完了（PR #1）');
+  assert.equal(validator.isComplete(parse('P2 完了（PR #1）').state), true);
+  assert.equal(validator.isComplete(parse('P3 未着手').state), false);
+});
+
 test('証拠列のMarkdown destinationを相対pathとして解決し、外部URL内の文字列を誤認しない', () => {
   const taskListRelativeLink = `${headers}\n${row('完了', '[証拠](evidence/CMP-260101-0101.json)')}\n`;
   assert.deepEqual(selectEvidencePaths(base, taskListRelativeLink), ['docs/evidence/CMP-260101-0101.json']);

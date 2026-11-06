@@ -980,3 +980,18 @@ CMP-261103-1225 / #4270 P1-B。ダッシュボード・チャットの N+1 解�
 - 新しい依存先の追加は 0。D-1・D-3T・D-1 API 境界・上限定数・UUID・`stored.rules` は変更していない。D-3T は、新しい private 入口を作らないように実装を直して違反 0 にした。
 
 PR の検分でオーナーの裁可を得ること。裁可が無い場合は、本節とストア差分を取り下げる。
+
+## 2026-11-05 CMP-261105-0755 L-SHIME 週次締め
+
+[限定裁可・対象宣言](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6646486176)に基づき、10月29日以降の追加・顕在化記録を今回に限り受け入れる。将来の追加を承認するものではない。
+
+- 先行8件: PR #4277 の `VillageFeedService` grouping getter 7 call occurrence と、PR #4280 の `ProjectService.listProjects` から既存の method-reference 経路が顕在化した D-3T 1件。前者は旧10行のメソッド移動と区別し、後者を新しい業務関係と断定しない。
+- 後続2件: PR #4294 の `OrganizationMembershipService.getAllMembers` から `RoleEntity.getId()` と `UserRoleEntity.getTeamId()` への新規getter呼出。上記8件とは別に裁可された。
+
+固定親 `bb9e81532ee8b6b24445dd50332a8e909110ef23` の全7 storeは AUTHZ 0、D-1 2153、D-2b 569、D-3 1335、D-3T 7352、D-5 1881、ServiceAPI 600。登録・重複・Java自然順を集計し、上限を D-1 2157→2153、D-3 1346→1335、D-3T 7353→7352、D-5 1897→1881（計32）に下げる。store本体・判定は変更しない。
+
+10月29日以降、PR #4247 は直接Repository依存を D-1 7・D-3 5・D-5 5行返済した（D-3T 4行はService経由に残る）。PR #4277 は D-3 3・D-5 3・D-3T 1行を返済し、D-3/D-5/D-3T各4行はメソッド署名の置換。D-1の旧10→新17は旧10の移動と上記getter 7件である。PR #4280 は既存経路のD-3T 1件顕在化と上限7352→7353を行い、今回実測7352へ戻す。
+
+PR #4288 の固定親blobでの D-5 1889→1883・D-3 1338→1337 は、前節およびPR本文の1892→1886・1341→1340と異なる。固定blob値を採る。constructor occurrence 7行（D-5 6・D-3 1）の実減と署名置換25行（D-5 18・D-3 7）を区別する。同じRepositoryに対するField/Method行は残り、class-pairの全解消を意味しない。
+
+PR #4294 は D-1 の旧7行を新3行へ、D-3/D-5の旧9行を新7行へ置換した。D-1はUserEntity getter 4行とTeamEntity.getIdの第2 occurrence 1行の消失、RoleEntity.getNameの参照2→呼出1への統合、新getter 2件。D-3/D-5は各々findById各2→findAllById各1などの一括呼出への置換で、call occurrence減少は越境先の全解消を意味しない。PR本文のD-3 1338→1336・D-5 1889→1887は#4288先行前のsnapshotであり、固定blob比較は1337→1335・1883→1881。詳細と再生成原本の範囲は [締め証拠](../evidence/CMP-261105-0755/summary.md) に記す。
