@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import dayjs from 'dayjs'
 import type { TimetablePeriod, TimetableTerm } from '~/types/timetable'
 
 definePageMeta({ layout: 'organization', middleware: 'auth' })
@@ -10,32 +9,11 @@ const orgSlug = computed(() => String(route.params.slug))
 const timetableApi = useTimetableApi()
 const notification = useNotification()
 const { isAdmin, loadPermissions } = useRoleAccess('organization', orgSlug)
-const { formatDate, userTimezone } = useDatetime()
 
 const periods = ref<TimetablePeriod[]>([])
 const terms = ref<TimetableTerm[]>([])
 const loading = ref(true)
 const activeTab = ref('0')
-
-// 学期追加ダイアログ
-const showTermDialog = ref(false)
-const termSubmitting = ref(false)
-const termForm = ref({
-  name: '',
-  startDate: '',
-  endDate: '',
-  academicYear: dayjs().tz(userTimezone.value).year(),
-  sortOrder: 0,
-})
-
-const termFieldErrors = ref<Record<string, string>>({})
-
-watch(showTermDialog, (v) => {
-  if (v) termFieldErrors.value = {}
-})
-
-// 学期削除
-const deletingTermId = ref<number | null>(null)
 
 async function loadData() {
   loading.value = true
@@ -54,58 +32,11 @@ async function loadData() {
   }
 }
 
-async function submitTerm() {
-  termFieldErrors.value = {}
-  if (termForm.value.academicYear == null) {
-    termFieldErrors.value = { academicYear: t('timetable.term_academic_year_required') }
-    return
-  }
-  if (!termForm.value.name || !termForm.value.startDate || !termForm.value.endDate) return
-  termSubmitting.value = true
+async function reloadTerms() {
   try {
-    await timetableApi.createOrgTerm(orgSlug.value, {
-      name: termForm.value.name,
-      startDate: termForm.value.startDate,
-      endDate: termForm.value.endDate,
-      academicYear: termForm.value.academicYear,
-      sortOrder: termForm.value.sortOrder,
-    })
-    notification.success(t('timetable.term_success'))
-    showTermDialog.value = false
-    termForm.value = {
-      name: '',
-      startDate: '',
-      endDate: '',
-      academicYear: dayjs().tz(userTimezone.value).year(),
-      sortOrder: 0,
-    }
     terms.value = await timetableApi.listTerms('organization', orgSlug.value)
-  } catch (error) {
-    const parsed = parseTermApiError(error)
-    if (Object.keys(parsed.fieldErrors).length > 0) {
-      termFieldErrors.value = parsed.fieldErrors
-    }
-    notification.error(t('timetable.term_error'))
-  } finally {
-    termSubmitting.value = false
-  }
-}
-
-async function deleteTerm(termId: number) {
-  deletingTermId.value = termId
-  try {
-    await timetableApi.deleteTerm(termId)
-    notification.success(t('dialog.success'))
-    terms.value = await timetableApi.listTerms('organization', orgSlug.value)
-  } catch (error) {
-    const parsed = parseTermApiError(error)
-    if (parsed.code === TERM_HAS_TIMETABLES_CODE) {
-      notification.error(t('timetable.term_has_timetables'))
-    } else {
-      notification.error(t('dialog.error'))
-    }
-  } finally {
-    deletingTermId.value = null
+  } catch {
+    notification.error(t('timetable.term_load_error'))
   }
 }
 
@@ -152,118 +83,17 @@ onMounted(loadData)
 
           <!-- 学期テンプレートタブ -->
           <TabPanel value="1">
-            <div class="mb-4 flex items-center justify-between">
-              <p class="text-sm text-surface-500">{{ $t('timetable.term_hint') }}</p>
-              <Button
-                v-if="isAdmin"
-                :label="$t('timetable.add_term')"
-                icon="pi pi-plus"
-                size="small"
-                @click="showTermDialog = true"
-              />
-            </div>
-            <DataTable :value="terms" data-key="id" striped-rows>
-              <template #empty>
-                <div class="py-8 text-center text-surface-500">
-                  {{ $t('timetable.no_term') }}
-                </div>
-              </template>
-              <Column field="academicYear" :header="$t('timetable.term_academic_year')" style="width: 80px" />
-              <Column field="name" :header="$t('timetable.term_name')" />
-              <Column :header="$t('timetable.term_start')">
-                <template #body="{ data }">
-                  {{ formatDate(data.startDate) }}
-                </template>
-              </Column>
-              <Column :header="$t('timetable.term_end')">
-                <template #body="{ data }">
-                  {{ formatDate(data.endDate) }}
-                </template>
-              </Column>
-              <Column
-                v-if="isAdmin"
-                :header="$t('label.actions')"
-                style="width: 80px"
-              >
-                <template #body="{ data }">
-                  <Button
-                    icon="pi pi-trash"
-                    size="small"
-                    text
-                    severity="danger"
-                    :loading="deletingTermId === data.id"
-                    @click="deleteTerm(data.id)"
-                  />
-                </template>
-              </Column>
-            </DataTable>
+            <TimetableTermManager
+              scope-type="organization"
+              :scope-slug="orgSlug"
+              :terms="terms"
+              :can-manage="isAdmin"
+              :hint="$t('timetable.term_hint')"
+              @changed="reloadTerms"
+            />
           </TabPanel>
         </TabPanels>
       </Tabs>
-
-      <!-- 学期追加ダイアログ -->
-      <Dialog
-        v-model:visible="showTermDialog"
-        :header="$t('timetable.add_term')"
-        :modal="true"
-        class="w-full max-w-md"
-      >
-        <div class="space-y-4">
-          <div>
-            <label class="mb-1 block text-sm font-medium" for="term-academic-year">
-              {{ $t('timetable.term_academic_year') }}
-              <span class="text-red-500" aria-hidden="true">*</span>
-            </label>
-            <InputNumber
-              v-model="termForm.academicYear"
-              input-id="term-academic-year"
-              class="w-full"
-              :min="2000"
-              :max="2100"
-              :invalid="!!termFieldErrors.academicYear"
-              :aria-describedby="termFieldErrors.academicYear ? 'term-academic-year-error' : undefined"
-              aria-required="true"
-            />
-            <small
-              v-if="termFieldErrors.academicYear"
-              id="term-academic-year-error"
-              class="mt-1 block text-red-500"
-              role="alert"
-              data-testid="term-academic-year-error"
-            >{{ termFieldErrors.academicYear }}</small>
-          </div>
-          <div>
-            <label class="mb-1 block text-sm font-medium">{{ $t('timetable.term_name') }}</label>
-            <InputText
-              v-model="termForm.name"
-              class="w-full"
-              :placeholder="$t('timetable.term_name_placeholder')"
-            />
-          </div>
-          <div>
-            <label class="mb-1 block text-sm font-medium">{{ $t('timetable.term_start') }}</label>
-            <InputText v-model="termForm.startDate" type="date" class="w-full" />
-          </div>
-          <div>
-            <label class="mb-1 block text-sm font-medium">{{ $t('timetable.term_end') }}</label>
-            <InputText v-model="termForm.endDate" type="date" class="w-full" />
-          </div>
-        </div>
-        <template #footer>
-          <Button
-            :label="$t('button.cancel')"
-            severity="secondary"
-            @click="showTermDialog = false"
-          />
-          <Button
-            :label="$t('timetable.add_term')"
-            icon="pi pi-check"
-            :loading="termSubmitting"
-            :disabled="!termForm.name || !termForm.startDate || !termForm.endDate"
-            @click="submitTerm"
-          />
-        </template>
-      </Dialog>
     </template>
   </div>
 </template>
