@@ -1019,7 +1019,7 @@ class ChatChannelServiceTest {
             given(userRepository.findById(INVITEE_ID))
                     .willReturn(Optional.of(createUser(DmReceiveFrom.ANYONE)));
             given(memberRepository.existsByChannelIdAndUserId(zimmer.getId(), INVITEE_ID)).willReturn(false);
-            given(messageRepository.findByChannelIdOrderByCreatedAtAsc(CHANNEL_ID))
+            given(messageRepository.findByChannelIdOrderByCreatedAtAscIdAsc(CHANNEL_ID))
                     .willReturn(List.of(msg));
             given(messageRepository.save(any(ChatMessageEntity.class)))
                     .willReturn(ChatMessageEntity.builder().channelId(99L).build());
@@ -1029,7 +1029,7 @@ class ChatChannelServiceTest {
             chatChannelService.inviteToZimmer(CHANNEL_ID, USER_ID, buildRequest(true));
 
             // then
-            verify(messageRepository).findByChannelIdOrderByCreatedAtAsc(CHANNEL_ID);
+            verify(messageRepository).findByChannelIdOrderByCreatedAtAscIdAsc(CHANNEL_ID);
             verify(messageRepository).save(any(ChatMessageEntity.class));
         }
 
