@@ -978,7 +978,7 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 
 領収書の管理詳細/PDFと画面詳細は、非TXの認可Facadeで、自ドメインのscope解決→既存ACL→業務TXで再取得の順に処理する。scope解決はscalarだけを返し、入力scope不一致・不在の既存404を認可前に維持する。
 
-組織・TEAMのサイネージ画面はroute slugを所属一覧から数値scopeIdへ解決し、一覧queryと作成bodyへ数値で渡す。未解決時やルート切替中は管理componentを外し、古い解決応答を破棄する。
+組織・TEAMのサイネージ画面はroute slugを既存の正規detail APIのnumericIdへ解決し、一覧queryと作成bodyへ数値で渡す。所属一覧に依存せず、未解決時やルート切替中は管理componentを外し、古い解決応答を破棄する。
 
 全APIプレフィックス: `/api/v1`
 

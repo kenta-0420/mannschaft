@@ -25,8 +25,9 @@ const stubs = {
     template: '<button data-testid="scope-error" @click="$emit(\'retry\')">retry</button>',
   },
 }
-const orgs = { data: [{ id: 42, slug: 'oak-org' }, { id: 84, slug: 'next-org' }] }
-const teams = { data: [{ id: 63, slug: 'oak-team' }] }
+const orgs = { data: { id: 'oak-org', slug: 'oak-org', numericId: 42 } }
+const nextOrg = { data: { id: 'next-org', slug: 'next-org', numericId: 84 } }
+const teams = { data: { id: 'oak-team', slug: 'oak-team', numericId: 63 } }
 
 function deferred<T>() {
   let resolve!: (value: T) => void
@@ -50,14 +51,14 @@ beforeEach(() => {
   mocks.route.params.slug = 'oak-org'
   mocks.api.mockReset()
   mocks.api.mockImplementation((path: string) => Promise.resolve(
-    path === '/api/v1/me/teams' ? teams : orgs,
+    path === '/api/v1/teams/oak-team' ? teams : path === '/api/v1/organizations/next-org' ? nextOrg : orgs,
   ))
 })
 
 describe('サイネージのroute slugとAPI数値scopeIdの境界', () => {
   it.each([
-    { scope: 'ORGANIZATION', slug: 'oak-org', id: 42, page: OrganizationSignagePage, endpoint: '/api/v1/me/organizations' },
-    { scope: 'TEAM', slug: 'oak-team', id: 63, page: TeamSignagePage, endpoint: '/api/v1/me/teams' },
+    { scope: 'ORGANIZATION', slug: 'oak-org', id: 42, page: OrganizationSignagePage, endpoint: '/api/v1/organizations/oak-org' },
+    { scope: 'TEAM', slug: 'oak-team', id: 63, page: TeamSignagePage, endpoint: '/api/v1/teams/oak-team' },
   ])('$scope: 非数値slugを解決しManagerへ数値を渡す', async ({ slug, id, page, endpoint, scope }) => {
     mocks.route.params.slug = slug
     const wrapper = await mountPage(page)
@@ -67,7 +68,7 @@ describe('サイネージのroute slugとAPI数値scopeIdの境界', () => {
   })
 
   it('解決不能時はManagerを出さず、同じ解決処理の再試行で復旧する', async () => {
-    mocks.api.mockResolvedValue({ data: [] })
+    mocks.api.mockRejectedValue(new Error('scope unavailable'))
     const wrapper = await mountPage()
     expect(wrapper.findComponent(SignageManagerStub).exists()).toBe(false)
     expect(wrapper.find('[data-testid="scope-error"]').exists()).toBe(true)
@@ -97,7 +98,7 @@ describe('サイネージのroute slugとAPI数値scopeIdの境界', () => {
     mocks.route.params.slug = 'next-org'
     await nextTick()
     expect(wrapper.findComponent(SignageManagerStub).exists()).toBe(false)
-    pending.resolve(orgs)
+    pending.resolve(nextOrg)
     await flushPromises()
     expect(wrapper.findComponent(SignageManagerStub).props('scopeId')).toBe(84)
   })
@@ -110,7 +111,7 @@ describe('サイネージのroute slugとAPI数値scopeIdの境界', () => {
     expect(wrapper.findComponent(SignageManagerStub).exists()).toBe(false)
     mocks.route.params.slug = 'next-org'
     await nextTick()
-    second.resolve(orgs)
+    second.resolve(nextOrg)
     await flushPromises()
     expect(wrapper.findComponent(SignageManagerStub).props('scopeId')).toBe(84)
     first.resolve(orgs)

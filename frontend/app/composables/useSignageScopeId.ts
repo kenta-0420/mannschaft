@@ -2,7 +2,10 @@ import type { Ref } from 'vue'
 
 /** route slugを数値scopeIdに解決し、切替中や古い応答から管理画面を生成させない。 */
 export function useSignageScopeId(scopeType: 'TEAM' | 'ORGANIZATION', scopeRef: Ref<string>) {
-  const { resolveScopeId } = useActivityScopeId()
+  // 所属一覧に依存せず、SYSを含む既存detail経路でliteral slugを解決する。
+  const getDetail = scopeType === 'TEAM'
+    ? useTeamApi().getTeam
+    : useOrganizationApi().getOrganization
   const scopeId = ref<number | null>(null)
   const resolving = ref(false)
   const failed = ref(false)
@@ -16,9 +19,10 @@ export function useSignageScopeId(scopeType: 'TEAM' | 'ORGANIZATION', scopeRef: 
     resolving.value = true
     failed.value = false
     try {
-      const id = requestedRef ? await resolveScopeId(scopeType, requestedRef) : null
+      const detail = requestedRef ? (await getDetail(requestedRef)).data : null
       if (request !== generation || requestedRef !== scopeRef.value) return
-      if (id !== null && Number.isSafeInteger(id) && id > 0) scopeId.value = id
+      const id = detail?.numericId
+      if (detail?.slug === requestedRef && id !== undefined && Number.isSafeInteger(id) && id > 0) scopeId.value = id
       else failed.value = true
     }
     catch {
