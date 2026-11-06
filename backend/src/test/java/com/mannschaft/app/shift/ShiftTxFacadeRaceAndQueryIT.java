@@ -225,7 +225,8 @@ class ShiftTxFacadeRaceAndQueryIT extends AbstractMySqlIntegrationTest {
     private record Req(Long userId, MockHttpServletRequestBuilder request) { }
 
     /**
-     * 1 経路 = 1 ケース。{@code expected} は是正前の応答（各 Facade の認可表）と同じコード。
+     * 1 経路 = 1 ケース。{@code expected} は各 Facade の認可表と同じコード。
+     * swap/run入力では親削除も子の不在コードへ畳む（CMP-260903-0657）。
      *
      * <p><b>対象外（本人の経路）:</b> swap の本人取消・change の取下げ・本人の change 詳細は、是正前から
      * 親（枠・スケジュール）の存在に依存しない仕様（認可表の「本人以外」注記）なので、親が消えても 404 にならない。
@@ -243,16 +244,16 @@ class ShiftTxFacadeRaceAndQueryIT extends AbstractMySqlIntegrationTest {
         return Stream.of(
                 // --- swap ---
                 new ParentDeletedCase("swap 作成（枠→スケジュール）", Hook.GATE_MEMBER,
-                        ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND,
+                        ShiftErrorCode.SHIFT_SLOT_NOT_FOUND,
                         t -> new Req(t.memberId, t.postJson("/api/v1/shifts/swap-requests",
                                 Map.of("slotId", t.slotId, "openCall", true, "reason", "競合テスト")))),
-                new ParentDeletedCase("swap 承諾", Hook.GATE_MEMBER, ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND,
+                new ParentDeletedCase("swap 承諾", Hook.GATE_MEMBER, ShiftErrorCode.SWAP_REQUEST_NOT_FOUND,
                         t -> new Req(t.member2Id, post("/api/v1/shifts/swap-requests/{id}/accept", t.newSwap()))),
-                new ParentDeletedCase("swap 承認（resolve）", Hook.GATE_ADMIN, ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND,
+                new ParentDeletedCase("swap 承認（resolve）", Hook.GATE_ADMIN, ShiftErrorCode.SWAP_REQUEST_NOT_FOUND,
                         t -> new Req(t.adminId, t.postJson("/api/v1/shifts/swap-requests/" + t.newSwap() + "/resolve",
                                 Map.of("action", "APPROVE", "adminNote", "承認")))),
                 new ParentDeletedCase("swap 管理者による取消（申請者以外）", Hook.GATE_OWNER_OR_ADMIN,
-                        ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND,
+                        ShiftErrorCode.SWAP_REQUEST_NOT_FOUND,
                         t -> new Req(t.adminId, delete("/api/v1/shifts/swap-requests/{id}", t.newSwap()))),
                 // --- change request ---
                 new ParentDeletedCase("change 作成", Hook.GATE_MEMBER, ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND,
@@ -274,14 +275,14 @@ class ShiftTxFacadeRaceAndQueryIT extends AbstractMySqlIntegrationTest {
                 new ParentDeletedCase("auto-assign 実行", Hook.GATE_ADMIN, ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND,
                         t -> new Req(t.adminId, t.postJson("/api/v1/shifts/schedules/" + t.scheduleId + "/auto-assign",
                                 Map.of("strategy", "GREEDY_V1")))),
-                new ParentDeletedCase("auto-assign 確定", Hook.GATE_ADMIN, ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND,
+                new ParentDeletedCase("auto-assign 確定", Hook.GATE_ADMIN, ShiftErrorCode.ASSIGNMENT_RUN_NOT_FOUND,
                         t -> {
                             Long runId = t.newRun(ShiftAssignmentRunStatus.CONFIRMED);
                             return new Req(t.adminId, t.postJson(
                                     "/api/v1/shifts/schedules/" + t.scheduleId + "/auto-assign/confirm",
                                     Map.of("runId", runId, "assignmentIds", List.of(1L), "scheduleVersion", 0)));
                         }),
-                new ParentDeletedCase("auto-assign 破棄", Hook.GATE_ADMIN, ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND,
+                new ParentDeletedCase("auto-assign 破棄", Hook.GATE_ADMIN, ShiftErrorCode.ASSIGNMENT_RUN_NOT_FOUND,
                         t -> new Req(t.adminId, delete("/api/v1/shifts/schedules/{id}/auto-assign", t.scheduleId)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(String.valueOf(t.newRun(ShiftAssignmentRunStatus.SUCCEEDED))))),

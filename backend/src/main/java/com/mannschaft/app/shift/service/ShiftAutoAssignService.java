@@ -359,9 +359,9 @@ public class ShiftAutoAssignService {
      * run 実体から所属チーム ID を解決する。
      *
      * <p>{@code expectedScheduleId} が非 null（パスにスケジュールを持つ確定・破棄）の場合は、run 実体の
-     * scheduleId と突合し、食い違えば存在を秘匿して {@code ASSIGNMENT_RUN_NOT_FOUND}、スケジュールが不在なら
-     * {@code SHIFT_SCHEDULE_NOT_FOUND}。null（パスにスコープを持たない詳細・目視確認）の場合は、
-     * スケジュールが不在でも {@code ASSIGNMENT_RUN_NOT_FOUND}（是正前の応答と同一）。</p>
+     * scheduleId と突合する。食い違い・親スケジュールの不在はいずれも入力runの
+     * {@code ASSIGNMENT_RUN_NOT_FOUND} へ畳む。null（パスにスコープを持たない詳細・目視確認）も
+     * 同じ親生存確認を行い、SYSTEM_ADMINの短絡より前に存在を秘匿する。</p>
      *
      * @param runId              実行ログ ID
      * @param expectedScheduleId パス変数由来のスケジュール ID（突合しない経路は null）
@@ -369,11 +369,10 @@ public class ShiftAutoAssignService {
      */
     public Long resolveRunTeamId(Long runId, Long expectedScheduleId) {
         ShiftAssignmentRunEntity run = findRunOrThrow(runId);
-        if (expectedScheduleId == null) {
-            return traceTeamIdOfRunConcealed(run);
+        if (expectedScheduleId != null) {
+            assertRunBelongsToPathSchedule(run, expectedScheduleId);
         }
-        assertRunBelongsToPathSchedule(run, expectedScheduleId);
-        return findScheduleOrThrow(run.getScheduleId()).getTeamId();
+        return traceTeamIdOfRunConcealed(run);
     }
 
     /**
@@ -393,7 +392,7 @@ public class ShiftAutoAssignService {
     private void lockScheduleOfRun(ShiftAssignmentRunEntity run, Long expectedScheduleId) {
         assertRunBelongsToPathSchedule(run, expectedScheduleId);
         scheduleRepository.findByIdForUpdate(run.getScheduleId())
-                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.ASSIGNMENT_RUN_NOT_FOUND));
     }
 
     /**

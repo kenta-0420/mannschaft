@@ -1,59 +1,39 @@
 package com.mannschaft.app.shift;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.admin.repository.FeatureFlagRepository;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.AuthTokenService;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.visibility.perf.SqlIntentCounter;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
-import com.mannschaft.app.admin.repository.FeatureFlagRepository;
-import com.mannschaft.app.support.test.FeatureFlagTestSupport;
-import com.mannschaft.app.shift.entity.ShiftSwapRequestEntity;
+import com.mannschaft.app.shift.dto.ConfirmAutoAssignRequest;
+import com.mannschaft.app.shift.dto.ResolveSwapRequestRequest;
 import com.mannschaft.app.shift.entity.ShiftAssignmentRunEntity;
-import com.mannschaft.app.shift.repository.ShiftSwapRequestRepository;
+import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
+import com.mannschaft.app.shift.entity.ShiftSlotEntity;
+import com.mannschaft.app.shift.entity.ShiftSwapRequestEntity;
 import com.mannschaft.app.shift.repository.ShiftAssignmentRunRepository;
+import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
+import com.mannschaft.app.shift.repository.ShiftSlotRepository;
+import com.mannschaft.app.shift.repository.ShiftSwapRequestRepository;
+import com.mannschaft.app.shift.service.ShiftAutoAssignService;
 import com.mannschaft.app.shift.service.ShiftScheduleService;
 import com.mannschaft.app.shift.service.ShiftSlotService;
 import com.mannschaft.app.shift.service.ShiftSwapService;
-import com.mannschaft.app.shift.service.ShiftAutoAssignService;
-import com.mannschaft.app.shift.dto.ResolveSwapRequestRequest;
-import com.mannschaft.app.shift.dto.ConfirmAutoAssignRequest;
-import com.mannschaft.app.common.BusinessException;
-import org.springframework.cache.CacheManager;
-import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
-import com.mannschaft.app.shift.entity.ShiftSlotEntity;
-import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
-import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.FeatureFlagTestSupport;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
-import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
+import com.mannschaft.app.team.repository.TeamRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIf;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -64,14 +44,34 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.cache.CacheManager;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * CMP-260903-0657: 親削除後の子ID存在秘匿を実JWT・実Security・実MySQLで固定する。
+ * 親削除の不在コード統一は先行red、正常親の許可・拒否と本人取消例外は既存契約の回帰固定である。
  * fixtureはcommitし、HTTP拒否後の全列を独立TXで比較する。内部Bean・DB・認可のモックは使わない。
  */
 @AutoConfigureMockMvc
@@ -308,7 +308,7 @@ class ShiftDeletedParentConcealmentContractIT extends AbstractMySqlIntegrationTe
     }
 
     @Test
-    void runの生存親と空提案は正当管理者ghostAdminとSAに許可し同scope一般メンバーは403() throws Exception {
+    void runの生存親と空提案の許可主体と同scopeの既存拒否コードを維持する() throws Exception {
         Long slotId = slot(ShiftScheduleStatus.PUBLISHED, "[]");
         Long scheduleId = inTx(() -> slots.findById(slotId).orElseThrow().getScheduleId());
         for (String role : List.of("ADMIN", "DEPUTY_ADMIN", "GHOST_ADMIN", "SYSTEM_ADMIN")) {
