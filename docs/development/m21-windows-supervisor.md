@@ -140,4 +140,18 @@ callerは既存Job/Remaining/M21Child/Register-Child/Captureを用いて、sourc
 
 PS Parser.ParseFile、Node --check、diffの静的確認後、rootの限定GOごとに固定入力のsuiteを1回実行する。過去のprobeでAdd-Type実コンパイル・Win32 Job・host非0伝播まで観測したが、P6では孫の早期exit0によりpipe保持fixtureが不成立だった。P6限定修正版の全10caseは同一固定HEADの実測packetで判定する。正式環境・実UI・Chromium互換は未実施で、dummy成功を正式M21合格へ流用しない。過去のsharing違反やPS admission遅延の原因解消とも扱わない。
 
+### 固定Chromium fixture（実起動は別GO）
+
+`node scripts/m21-windows-supervisor.probe.cjs --chromium-fixture --owner-id 1d767b20-825c-4edc-b397-8d4367036462` は通常10caseを呼ばず、固定2caseだけを同じG420000/R18000内で実行する。`M21_INPUT_COMMIT` はrootの確定40桁HEADを必須とし、PS/probeのSHAを採取、case間に変更があれば停止する。既存private Node22とbundled chromium-1223/chrome-win64/chrome.exeの固定SHAを起動前に検査する。新engine・任意exe/path・native Job・UI操作は追加しない。
+
+Supervisorのhello→Parent exact Job assign→ACKが済んだ後だけ、既存M21Child.Startで3rootを起動する。0budgetは既存Require-Workで停止し、ACK不成立時のChrome spawnは0。新owned run/profiles直下のsystem/admin-de/memberだけを新規作成し、既存path・reparse・範囲外を拒否する。引数はuser-data-dir/no-first-run/no-default-browser-check/new-windowと非秘密nonce+role titleのdata-pageだけ。sandbox/security/breakawayの変更はない。
+
+Parentが固定3候補のowner/nonce/出生/実exe/live/exact自己Jobを保持handleで確認してから、`chromium-ready.json` を一度だけ公開する。probe stdoutの`chromium-sky-ready`が返すexact readyFileをrootだけが限定readし、正規Skyの返却windowをtitleで一意選択する。通常caseではSkyで各自己windowをcloseし、browser各actual0/両EOFをSupervisor、Supervisor actual0/両EOFとJob Active0をParentが記録する。window closeと後続Job.Stopの全tree回収は別事実である。
+
+異常caseでは同じP4のcertified-treeを固定supervisor/system/admin-de/memberの4集合に限定して認定する。rootはSkyで3windowを観測後だけ、返却observedFileへ厳密3key `{owner,nonce,observed:true}` をatomic発行する。Observeがmarkerと4handleの生存を再確認して直接Parentだけをkillし、保持4handleの実exitとParentの採用両EOF、Nodeのlauncher両EOFを記録する。既存dummyの3集合期待値は変えない。
+
+**異常caseの証拠限界:** Parent死亡後はJob handleを閉じるためActive0を照会できず、死亡Supervisorのbrowser pumpのEOFも採取できない。4root exitを未知renderer探索・全tree消滅へ一般化しない。packetのfullAbnormalTreeRecoveryProven/abnormalBrowserEofObserved/abnormalJobActiveZeroObservedは常にfalseであり、case passedは観測可能な固定検査の成功だけを表す。異常全tree回収ACは未証明のままで、正式Run合格に流用しない。
+
+成功時もprofile/rawはrootの証拠確定とexact所有確認まで保持し、retainedにexact baseを返す。途中失敗では後続caseを起動せず、回収不明を記録する。Chrome/Job拒否や取得不能を成功へ読み替えず、未知PID採用・killは行わない。このsliceの静的parser/check成功は実Chromium/Sky互換の証明ではない。
+
 根拠: [Job Objects](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects)、[AssignProcessToJobObject](https://learn.microsoft.com/en-us/windows/win32/api/jobapi2/nf-jobapi2-assignprocesstojobobject)。last handle閉鎖がkill条件であり、CreateProcess系の子は既定でJob継承する。WMI生成やbreakawayは利用しない。

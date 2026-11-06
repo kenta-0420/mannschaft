@@ -1,4 +1,4 @@
-﻿// Windows Job Object の固定dummy専用probe。通常のサーバやブラウザを起動しない。
+﻿// Windows Job Object の固定fixture probe。Chromiumは明示した固定fixtureだけ。
 'use strict';
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -335,6 +335,74 @@ console.log(JSON.stringify({owner:owner.owner,nonce:owner.nonce,pid:process.pid,
     results, notRun: fixtures.filter(f => !results.some(r => r.fixture === f)), cleanupFailure, retained: passed ? null : base }));
   if (!passed) process.exitCode = 1;
 }
+async function chromiumFixtureSuite() {
+  assert.equal(process.platform, 'win32');
+  assert.equal(process.argv.length, 3);
+  assert.equal(OWNER, '1d767b20-825c-4edc-b397-8d4367036462');
+  const inputCommit = process.env.M21_INPUT_COMMIT;
+  assert.match(inputCommit ?? '', /^[a-f0-9]{40}$/);
+  const totalDeadline = performance.now() + LIMIT.total;
+  const workDeadline = totalDeadline - LIMIT.reserve;
+  const script = path.join(__dirname, 'm21-windows-supervisor.ps1');
+  const inputSHA256 = Object.fromEntries([script, __filename].map(file => [path.basename(file), crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')]));
+  const chrome = 'C:/Users/kenta/AppData/Local/ms-playwright/chromium-1223/chrome-win64/chrome.exe';
+  assert.equal(crypto.createHash('sha256').update(fs.readFileSync(chrome)).digest('hex'), '290fa7018fda22c52ada5eddb0113baf3ebc41fd0fde6085eddb19793606c635');
+  assert.equal(crypto.createHash('sha256').update(fs.readFileSync(process.execPath)).digest('hex'), '0d0f5e39f9f3d9587bc19f73eab3c2c9c4903fd02d6dbf9c853dd81b3d95fad4');
+  // 固定2caseだけ。自己runはrootの証拠確定・所有確認まで保持する。
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'm21-chromium-fixture-'));
+  atomic(path.join(base, 'owner.json'), { owner: OWNER });
+  const results = [];
+  for (const fixture of ['chromium-normal', 'chromium-parent-close']) {
+    requireWork(workDeadline);
+    for (const file of [script, __filename]) assert.equal(crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'), inputSHA256[path.basename(file)], 'source変更中の試験禁止');
+    const run = path.join(base, fixture); fs.mkdirSync(run);
+    const nonce = crypto.randomBytes(16).toString('hex');
+    atomic(path.join(run, 'owner.json'), { owner: OWNER, nonce });
+    const abnormal = fixture === 'chromium-parent-close';
+    const p = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', script, '-Mode', abnormal ? 'Observe' : 'Parent', '-TestFixture', fixture,
+      '-Scenario', abnormal ? 'kill-close' : 'normal', '-RunDirectory', run, '-Nonce', nonce, '-OwnerId', OWNER,
+      '-NodePath', process.execPath, '-WorkRemainingMs', String(remaining(workDeadline)), '-TotalRemainingMs', String(remaining(totalDeadline))], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    let exited = false, code = null, launchError = null;
+    p.on('exit', value => { exited = true; code = value; }); p.on('error', error => { launchError = error.name; });
+    const channels = [observeChannel('stdout', p.stdout, fs.createWriteStream(path.join(run, 'launcher.out'), { flags: 'wx' })), observeChannel('stderr', p.stderr, fs.createWriteStream(path.join(run, 'launcher.err'), { flags: 'wx' }))];
+    let failure = null, receipt = null, ready = null;
+    try {
+      await until(() => exited || launchError || fs.existsSync(path.join(run, 'chromium-ready.json')), Infinity, workDeadline);
+      assert.equal(exited, false); assert.equal(launchError, null);
+      ready = read(path.join(run, 'chromium-ready.json'));
+      assert.equal(ready.owner, OWNER); assert.equal(ready.nonce, nonce); assert.equal(ready.fixture, fixture);
+      assert.deepEqual(ready.members.map(m => m.role), ['supervisor', 'system', 'admin-de', 'member']);
+      assert.ok(ready.members.every(m => m.ownedJobVerified === true));
+      console.log(JSON.stringify({ kind: 'chromium-sky-ready', fixture, run, readyFile: path.join(run, 'chromium-ready.json'), observedFile: abnormal ? path.join(run, 'chromium-observed.json') : null, owner: OWNER, nonce, inputCommit, inputSHA256, remainingWorkMs: remaining(workDeadline) }));
+      await until(() => exited || launchError, Infinity, workDeadline);
+      assert.equal(launchError, null);
+      for (const channel of channels) assert.deepEqual(await collectChannel(channel, totalDeadline), []);
+      receipt = read(path.join(run, abnormal ? 'observe-result.json' : 'result.json'));
+      assert.equal(code, 0); assert.equal(receipt.passed, true); assert.equal(receipt.recovered, true);
+      assert.ok(receipt.streams.every(s => s.exited && s.stdoutEof && s.stderrEof));
+      if (abnormal) {
+        assert.equal(receipt.parentKilled, true); assert.equal(receipt.knownExited, 4);
+        assert.equal(receipt.knownExitEvidence.length, 4); assert.ok(receipt.knownExitEvidence.every(e => e.exited));
+      } else {
+        assert.equal(receipt.resourceRecovery.jobEmpty, true);
+        const browsers = receipt.streams.filter(s => s.role === 'chromium-normal-close');
+        assert.equal(browsers.length, 3); assert.ok(browsers.every(s => s.exitCode === 0));
+      }
+    } catch (error) {
+      failure = error.message;
+      if (!exited) p.kill();
+      try { await until(() => exited || launchError, LIMIT.recoveryExit, totalDeadline); } catch { /* 未確認を保持する */ }
+      for (const channel of channels) await recoverChannel(channel, totalDeadline);
+      if (!exited) p.unref();
+    }
+    results.push({ fixture, passed: failure === null, failure, run, nonce, ready, launcherPid: p.pid, launcherExited: exited, launcherExitCode: code, channels: channels.map(c => c.state), receipt, unverifiedOwnedTree: failure !== null });
+    if (failure !== null) break;
+  }
+  const passed = results.length === 2 && results.every(r => r.passed);
+  console.log(JSON.stringify({ kind: 'fixed-chromium-fixture', passed, fullAbnormalTreeRecoveryProven: false, abnormalBrowserEofObserved: false, abnormalJobActiveZeroObserved: false, owner: OWNER, inputCommit, inputSHA256, totalMs: LIMIT.total, reserveMs: LIMIT.reserve, results, retained: base,
+    retentionReason: 'rootによる証拠確定とexact所有確認後のprofile撤去待ち' }));
+  if (!passed) process.exitCode = 1;
+}
 async function suite() {
   assert.equal(process.platform, 'win32', 'Windows専用。非Windowsを合格扱いにしない');
   assert.equal(process.argv.length, 2, '任意commandや出力pathの入力は受け付けない');
@@ -548,6 +616,8 @@ async function suite() {
     await readinessFixtureSuite();
   } else if (process.argv[2] === '--formal-contract-fixture') {
     await readinessFixtureSuite('formal-contract');
+  } else if (process.argv[2] === '--chromium-fixture') {
+    await chromiumFixtureSuite();
   } else {
     await suite();
   }

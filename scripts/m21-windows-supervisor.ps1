@@ -1,8 +1,8 @@
-﻿# M21固定dummy専用Windows Job監督。実サービス/任意commandの起動口は持たない。
+﻿# M21固定fixture用Windows Job監督。実サービス/任意commandの起動口は持たない。
 [CmdletBinding()]
 param(
  [ValidateSet('Parent','Supervisor','Observe','ReadinessFixture')][string]$Mode='Parent',
- [ValidateSet('none','parent-before-certificate','lock-release','lock-held','invalid-json','formal-ms','formal-fe','formal-admission')][string]$TestFixture='none',
+ [ValidateSet('none','parent-before-certificate','lock-release','lock-held','invalid-json','formal-ms','formal-fe','formal-admission','chromium-normal','chromium-parent-close')][string]$TestFixture='none',
  [Parameter(Mandatory=$true)][ValidateSet('normal','pre-ack','wrong-ack','assign-fail','host-fail','stdio-eof','cleanup-fail','save-fail','owner-mismatch','kill-close')][string]$Scenario,
  [Parameter(Mandatory=$true)][string]$RunDirectory,
  [Parameter(Mandatory=$true)][ValidatePattern('^[a-f0-9]{32}$')][string]$Nonce,
@@ -63,6 +63,8 @@ $fixtureLock=$null
 $metadataReadiness=New-Object 'Collections.Generic.List[object]'
 $parentExitEvidence=$null
 $formalContractEvidence=$null
+$chromiumFixture=$TestFixture -in @('chromium-normal','chromium-parent-close')
+$chromiumExe=[IO.Path]::GetFullPath('C:/Users/kenta/AppData/Local/ms-playwright/chromium-1223/chrome-win64/chrome.exe')
 $p6Observations=New-Object 'Collections.Generic.List[object]'
 function Remaining([int]$cap=[int]::MaxValue,[switch]$Recovery) {
  $budget=$WorkRemainingMs;if($Recovery){$budget=$TotalRemainingMs}
@@ -308,6 +310,7 @@ $bootstrapStage='native-bootstrap'
 try {
  if(($TestFixture -eq 'none' -and $Mode -eq 'ReadinessFixture') -or ($TestFixture -eq 'parent-before-certificate' -and ($Mode -notin @('Parent','Observe') -or $Scenario -ne 'kill-close')) -or ($TestFixture -in @('lock-release','lock-held','invalid-json') -and ($Mode -ne 'ReadinessFixture' -or $Scenario -ne 'normal'))){throw '固定fixture組合せ不一致'}
  if($TestFixture -in @('formal-ms','formal-fe','formal-admission') -and ($Mode -notin @('Parent','Supervisor') -or $Scenario -ne 'normal')){throw '固定formal契約fixture組合せ不一致'}
+ if($chromiumFixture -and (($TestFixture -eq 'chromium-normal' -and ($Scenario -ne 'normal' -or $Mode -notin @('Parent','Supervisor'))) -or ($TestFixture -eq 'chromium-parent-close' -and $Scenario -ne 'kill-close'))){throw '固定Chromium組合せ不一致'}
  if($WorkRemainingMs -gt $TotalRemainingMs){Set-Reason 'invalid-budget';throw 'work/total budget不一致'}
  # Supervisorは型compileも子を生み得るものとして、標準Process/JSONのgateだけを先行する。
  # この区間にはcustom型参照/外部command/Process.Startを置かない。
@@ -427,7 +430,7 @@ function New-Supervisor([string]$childMode,[string]$prefix) {
  Require-Work
  $ps=[Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
  $childArguments=@('-NoProfile','-NonInteractive','-File',$PSCommandPath,'-Mode',$childMode,'-Scenario',$Scenario,'-RunDirectory',$run,'-Nonce',$Nonce,'-OwnerId',$owner,'-NodePath',$NodePath,'-WorkRemainingMs',[string](Remaining),'-TotalRemainingMs',[string](Remaining -Recovery))
- if($TestFixture -in @('parent-before-certificate','formal-ms','formal-fe','formal-admission')){$childArguments+=@('-TestFixture',$TestFixture)}
+ if($TestFixture -in @('parent-before-certificate','formal-ms','formal-fe','formal-admission') -or $chromiumFixture){$childArguments+=@('-TestFixture',$TestFixture)}
  Require-Work
  return [M21Child]::Start($ps,$childArguments,$PSScriptRoot,(Join-Path $run $prefix),(Remaining -Recovery),($Scenario -eq 'stdio-eof'))
 }
@@ -491,6 +494,61 @@ function Assert-P6Identity([object]$metadata) {
  foreach($field in $fields){if(@('owner','nonce','pid','creation') -cnotcontains $field){throw 'P6 identity未知field'}}
  if($metadata.owner -isnot [string] -or $metadata.owner -cne $owner -or $metadata.nonce -isnot [string] -or $metadata.nonce -cne $Nonce){throw 'P6 identity owner/nonce不一致'}
  if(($metadata.pid -isnot [int] -and $metadata.pid -isnot [long]) -or $metadata.pid -le 0 -or $metadata.pid -gt [int]::MaxValue -or $metadata.creation -isnot [string] -or $metadata.creation -cnotmatch '^[1-9][0-9]*$'){throw 'P6 identity出生不正'}
+}
+function Invoke-ChromiumFixture {
+ # ACK後だけ。固定bundled実体と自己runの新規3profile以外を受け付けない。
+ Guard-Run;Require-Work
+ if((Get-FileHash -LiteralPath $chromiumExe -Algorithm SHA256).Hash.ToLowerInvariant() -cne '290fa7018fda22c52ada5eddb0113baf3ebc41fd0fde6085eddb19793606c635'){throw 'Chromium SHA不一致'}
+ if((Get-FileHash -LiteralPath $NodePath -Algorithm SHA256).Hash.ToLowerInvariant() -cne '0d0f5e39f9f3d9587bc19f73eab3c2c9c4903fd02d6dbf9c853dd81b3d95fad4'){throw 'Node22 SHA不一致'}
+ $profiles=Join-Path $run 'profiles'
+ if(Test-Path -LiteralPath $profiles){throw 'profile既存'}
+ [IO.Directory]::CreateDirectory($profiles)>$null
+ $environment=New-Object 'Collections.Generic.Dictionary[string,string]' ([StringComparer]::OrdinalIgnoreCase)
+ foreach($key in @('SystemRoot','WINDIR')){$value=[Environment]::GetEnvironmentVariable($key);if($null -ne $value){$environment.Add($key,$value)}}
+ $environment.Add('TEMP',$run);$environment.Add('TMP',$run)
+ $members=New-Object 'Collections.Generic.List[object]'
+ foreach($role in @('system','admin-de','member')){
+  Guard-Run;Require-Work
+  $profile=Join-Path $profiles $role
+  if(Test-Path -LiteralPath $profile){throw 'profile既存'}
+  [IO.Directory]::CreateDirectory($profile)>$null
+  $cursor=Get-Item -LiteralPath $profile
+  while($null -ne $cursor){if($cursor.Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'profile reparse'};$cursor=$cursor.Parent}
+  if(![IO.Path]::GetFullPath($profile).StartsWith($run+'\',[StringComparison]::OrdinalIgnoreCase)){throw 'profile範囲外'}
+  $title='M21-'+$Nonce+'-'+$role
+  $page='data:text/html,'+[Uri]::EscapeDataString('<!doctype html><meta charset="utf-8"><title>'+$title+'</title><h1>'+$title+'</h1>')
+  $child=[M21Child]::Start($chromiumExe,[string[]]@(('--user-data-dir='+$profile),'--no-first-run','--no-default-browser-check','--new-window',$page),$run,(Join-Path $run ('chromium-'+$role)),(Remaining -Recovery),$false,$environment)
+  Register-Child $child ('chromium-'+$role)
+  if($child.Process.WaitForExit(0) -or ![string]::Equals($child.Process.MainModule.FileName,$chromiumExe,[StringComparison]::OrdinalIgnoreCase)){throw 'Chromium実体/生存不一致'}
+  $members.Add(@{role=$role;identity=(Identity $child.Process);profile=$profile;title=$title;exe=$chromiumExe})
+ }
+ Write-Json 'chromium-candidates.json' @{owner=$owner;nonce=$Nonce;members=@($members.ToArray())}
+ if($TestFixture -eq 'chromium-parent-close'){Start-Sleep -Milliseconds (Remaining);throw 'Chromium observer期限超過'}
+ foreach($child in $held){
+  if(!$child.Process.WaitForExit((Remaining))){Set-Reason 'chromium-normal-close-timeout';throw 'Sky close期限超過'}
+  if($child.Process.ExitCode -ne 0){Set-Reason 'chromium-normal-nonzero';throw 'Chrome通常exit非0'}
+  Capture $child 'chromium-normal-close' 500
+ }
+}
+function Certify-Chromium {
+ $candidate=Wait-File 'chromium-candidates.json'
+ if($candidate.owner -cne $owner -or $candidate.nonce -cne $Nonce -or $candidate.members.Count -ne 3){throw 'Chromium候補不一致'}
+ $roles=@($candidate.members|ForEach-Object {$_.role})
+ if(($roles -join ',') -cne 'system,admin-de,member'){throw 'Chromium role集合不一致'}
+ $members=New-Object 'Collections.Generic.List[object]'
+ $members.Add(@{role='supervisor';identity=$identity;ownedJobVerified=$true})
+ foreach($entry in $candidate.members){
+  Assert-P6Identity $entry.identity
+  if($entry.profile -cne (Join-Path (Join-Path $run 'profiles') $entry.role) -or $entry.title -cne ('M21-'+$Nonce+'-'+$entry.role) -or $entry.exe -cne $chromiumExe){throw 'Chromium固定metadata不一致'}
+  $cursor=Get-Item -LiteralPath $entry.profile
+  while($null -ne $cursor){if($cursor.Attributes -band [IO.FileAttributes]::ReparsePoint){throw '認定profile reparse'};$cursor=$cursor.Parent}
+  $verified=Open-Known $entry.identity $job;$certified.Add($verified)
+  if($verified.WaitForExit(0) -or ![string]::Equals($verified.MainModule.FileName,$chromiumExe,[StringComparison]::OrdinalIgnoreCase)){throw 'Chromium認定時実体/生存不一致'}
+  $members.Add(@{role=$entry.role;identity=$entry.identity;ownedJobVerified=$true;profile=$entry.profile;title=$entry.title;exe=$chromiumExe})
+ }
+ if(@($members|ForEach-Object {$_.identity.pid}|Select-Object -Unique).Count -ne 4){throw 'Chromium PID重複'}
+ Write-Json 'chromium-ready.json' @{owner=$owner;nonce=$Nonce;fixture=$TestFixture;certifier=(Identity ([Diagnostics.Process]::GetCurrentProcess()));members=@($members.ToArray())}
+ return ,$members
 }
 function Invoke-FormalContractFixture {
  # 固定test driverだけ。将来の正式adapter関数は本commitでは実装しない。
@@ -585,6 +643,9 @@ try {
  if($Mode -eq 'ReadinessFixture'){
   # テスト本体は固定pathだけ。通常reader/Observeを置換しない。
   . (Join-Path $PSScriptRoot 'm21-windows-supervisor.readiness-fixture.ps1')
+ }elseif($Mode -eq 'Supervisor' -and $chromiumFixture){
+  if(![M21Job]::InJob($self,$null)){throw 'Chromium ACK後Job不在'}
+  Invoke-ChromiumFixture
  }elseif($Mode -eq 'Supervisor' -and $TestFixture -in @('formal-ms','formal-fe','formal-admission')){
   if(![M21Job]::InJob($self,$null)){throw 'formal fixture ACK後Job不在'}
   Invoke-FormalContractFixture
@@ -645,11 +706,18 @@ try {
    $certificate=Wait-File 'certified-tree.json' -ParentCertificate
    Assert-ObserverParentAlive
    $parentIdentity=Identity $parent.Process
-   if($certificate.owner -cne $owner -or $certificate.nonce -cne $Nonce -or $certificate.certifier.owner -cne $owner -or $certificate.certifier.nonce -cne $Nonce -or $certificate.certifier.pid -ne $parentIdentity.pid -or [string]$certificate.certifier.creation -cne $parentIdentity.creation -or $certificate.members.Count -ne 3){throw '親認定metadata不一致'}
+   $expectedCount=3;if($chromiumFixture){$expectedCount=4}
+   if($certificate.owner -cne $owner -or $certificate.nonce -cne $Nonce -or $certificate.certifier.owner -cne $owner -or $certificate.certifier.nonce -cne $Nonce -or $certificate.certifier.pid -ne $parentIdentity.pid -or [string]$certificate.certifier.creation -cne $parentIdentity.creation -or $certificate.members.Count -ne $expectedCount){throw '親認定metadata不一致'}
    $roles=@($certificate.members | ForEach-Object {$_.role})
-   if(($roles -join ',') -cne 'supervisor,child,grandchild'){throw '親認定集合不一致'}
+   $expectedRoles='supervisor,child,grandchild';if($chromiumFixture){$expectedRoles='supervisor,system,admin-de,member'}
+   if(($roles -join ',') -cne $expectedRoles){throw '親認定集合不一致'}
    foreach($member in $certificate.members){if($member.ownedJobVerified -ne $true){throw '親所有Job未認定'};$known.Add((Open-Known $member.identity $null))}
    foreach($p in $known){if($p.HasExited){throw 'RequiredAlive早期終了'}}
+   if($chromiumFixture){
+    $observed=Wait-File 'chromium-observed.json'
+    if(@($observed.PSObject.Properties.Name).Count -ne 3 -or $observed.owner -cne $owner -or $observed.nonce -cne $Nonce -or $observed.observed -isnot [bool] -or !$observed.observed){throw 'root Sky観測marker不一致'}
+    foreach($p in $known){if($p.WaitForExit(0)){throw 'Sky観測後RequiredAlive早期終了'}}
+   }
    Assert-ObserverParentAlive
    $parent.Process.Kill()
    $exitEvidence=New-Object 'Collections.Generic.List[object]'
@@ -691,15 +759,18 @@ try {
   if($Scenario -eq 'kill-close'){
    Set-Operation 'Parent.certify-tree'
    $members=New-Object 'Collections.Generic.List[object]'
+   if($chromiumFixture){$members=Certify-Chromium}else{
    foreach($entry in @(@{role='supervisor';identity=$identity},@{role='child';identity=(Wait-File 'child-candidate.json')},@{role='grandchild';identity=(Wait-File 'grandchild-candidate.json')})){
     $verified=Open-Known $entry.identity $job
     $certified.Add($verified)
     if($verified.HasExited){throw '認定前RequiredAlive終了'}
     $members.Add(@{role=$entry.role;identity=$entry.identity;ownedJobVerified=$true})
    }
+   }
    Write-Json 'certified-tree.json' @{owner=$owner;nonce=$Nonce;certifier=(Identity ([Diagnostics.Process]::GetCurrentProcess()));members=@($members.ToArray());metadataReadiness=@($metadataReadiness.ToArray())}
    Start-Sleep -Milliseconds (Remaining);Set-Reason 'work-budget-exhausted';throw 'observer待機期限超過'
   }
+  if($chromiumFixture -and $Scenario -eq 'normal'){$null=Certify-Chromium}
   if($Scenario -eq 'stdio-eof'){
    Set-Operation 'Parent.p6-certify'
    $childIdentity=Wait-File 'child-candidate.json';Assert-P6Identity $childIdentity
@@ -799,8 +870,9 @@ finally {
  Attempt 'observer-metadata' {
   if($Mode -eq 'Observe' -and (Test-Path -LiteralPath (Join-Path $run 'observer.json'))){
    $candidate=Read-Json 'observer.json'
-   if($candidate.owner -cne $owner -or $candidate.nonce -cne $Nonce -or $candidate.parentKilled -ne $true -or $candidate.knownExited -ne 3){throw 'observer metadata不一致'}
-   if($candidate.exits.Count -ne 3 -or @($candidate.exits | Where-Object {$_.exited -ne $true}).Count -ne 0){throw 'observer actual exit集合不一致'}
+   $expectedCount=3;if($chromiumFixture){$expectedCount=4}
+   if($candidate.owner -cne $owner -or $candidate.nonce -cne $Nonce -or $candidate.parentKilled -ne $true -or $candidate.knownExited -ne $expectedCount){throw 'observer metadata不一致'}
+   if($candidate.exits.Count -ne $expectedCount -or @($candidate.exits | Where-Object {$_.exited -ne $true}).Count -ne 0){throw 'observer actual exit集合不一致'}
    $script:knownExitEvidence=@($candidate.exits)
    $script:observer=$candidate
   }
