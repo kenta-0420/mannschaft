@@ -6,6 +6,7 @@
 
 - 編集・commit は専用 Git worktree で行い、検証前に必要な変更を commit する。`git status --porcelain=v1 --untracked-files=all` が空で、`git rev-parse HEAD` が検証対象 SHA と一致することを確認する。
 - Windows で直接 `gradlew bootRun` を実行しない。WSL/Linux の Node.js 22 以降、Java 21、Git、GNU tar と必要なミドルウェア接続を用意し、WSL 内から `node scripts/harness-doctor.mjs` を実行する。FE の Node/npm 条件は `frontend/package.json` の `engines` に従う。
+- NVM を使う環境で `node` が見つからない場合は、そのシェルで既存の NVM を初期化してインストール済みの適切な Node 22 以降を選び、`node --version`・`npm --version` が上記条件を満たすことを確認する。
 - `/mnt/c` 上の Gradle はファイル I/O や注釈処理が極端に遅くなる場合がある。下記 runner が固定 HEAD を WSL ネイティブの `/var/tmp` に展開するので、検証用の別 clone や build/cache 全量コピーを増やさない。
 - DB・Valkey の接続先、所有者、利用範囲を起動前に確定する。BE は起動時に migration 等を実行しうる。既存利用者 DB を検証用と見なさず、接続が許可された DB だけを使う。共有 BE、コンテナ、volume はこの手順のために再起動・再作成しない。
 
