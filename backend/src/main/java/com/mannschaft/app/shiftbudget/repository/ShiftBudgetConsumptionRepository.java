@@ -1,12 +1,15 @@
 package com.mannschaft.app.shiftbudget.repository;
 
+import com.mannschaft.app.shiftbudget.ShiftBudgetCancelReason;
 import com.mannschaft.app.shiftbudget.ShiftBudgetConsumptionStatus;
 import com.mannschaft.app.shiftbudget.entity.ShiftBudgetConsumptionEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -49,6 +52,23 @@ public interface ShiftBudgetConsumptionRepository
      * 指定シフトに紐付く生存消化レコードを全件取得する（シフトキャンセル hook 用）。
      */
     List<ShiftBudgetConsumptionEntity> findByShiftIdAndDeletedAtIsNull(Long shiftId);
+
+    /** 同一シフトを複数経路が取り消す際も、消化PKを同じ順でclaimする。 */
+    List<ShiftBudgetConsumptionEntity> findByShiftIdAndDeletedAtIsNullOrderByIdAsc(Long shiftId);
+
+    /**
+     * 生存PLANNEDを取消へclaimし、実際に更新できた件数を返す。
+     * 一括更新はライフサイクルコールバックを通らないためupdatedAtも更新し、旧managed entityはclearする。
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE ShiftBudgetConsumptionEntity c "
+            + "SET c.status = com.mannschaft.app.shiftbudget.ShiftBudgetConsumptionStatus.CANCELLED, "
+            + "c.cancelReason = :reason, c.cancelledAt = :cancelledAt, c.updatedAt = :cancelledAt "
+            + "WHERE c.id = :id "
+            + "AND c.status = com.mannschaft.app.shiftbudget.ShiftBudgetConsumptionStatus.PLANNED "
+            + "AND c.deletedAt IS NULL")
+    int cancelPlannedById(@Param("id") Long id, @Param("reason") ShiftBudgetCancelReason reason,
+                          @Param("cancelledAt") LocalDateTime cancelledAt);
 
     /**
      * CMP-260909-1445: 孤児 PLANNED 消化を抱えるシフトを列挙する（整合バッチ用）。

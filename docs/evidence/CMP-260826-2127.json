@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260826-2127",
+  "scope": "app",
+  "implementation": {
+    "pr": 4269,
+    "sha": "4211238e73d40d64dfa507f9572e729142135f94"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "非管理者の一覧・期間一覧から未公開シフト表を除外する",
+      "tests": [
+        {
+          "name": "実機 cmp2127-api.txt（sm 視点）",
+          "evidence": "frontend/tests/e2e/real/shift-unpublished-visibility.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "非管理者の未公開・COLLECTING・ADJUSTING の PDF は 404（team/personal）",
+      "tests": [
+        {
+          "name": "実機 cmp2127-api.txt（sm 視点・PDF）",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/service/ShiftPdfVisibilityFailClosedTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-6",
+      "description": "非管理者のグローバル検索に未公開シフト表が含まれない（title・note）",
+      "tests": [
+        {
+          "name": "実機 cmp2127-api.txt（sm 視点・検索）",
+          "evidence": "backend/src/main/java/com/mannschaft/app/search/service/GlobalSearchService.java"
+        },
+        {
+          "name": "実機再実測 2026-11-04（ssup 検索 0 件・sm は公開系のみ）",
+          "evidence": "backend/src/main/java/com/mannschaft/app/search/service/GlobalSearchService.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-11",
+      "description": "非メンバーの SYSTEM_ADMIN は全ステータスで AC-10 と同じ結果（PDF・検索含む）",
+      "tests": [
+        {
+          "name": "実機 a1 視点: 一覧・詳細・PDF は全量、検索 0 件（D-2127-2 は範囲外裁定で据え置き）",
+          "evidence": "backend/src/main/java/com/mannschaft/app/search/service/GlobalSearchService.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-12",
+      "description": "別 scope ADMIN・SUPPORTER・無所属はステータスに依らず同一応答（存在オラクルなし）",
+      "tests": [
+        {
+          "name": "実機再実測 2026-11-04 cmp2127-api-1104.txt（ssup 全ステータス 403 一律）",
+          "evidence": "backend/src/main/java/com/mannschaft/app/shift/service/ShiftScheduleFacade.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-8",
+      "description": "一般メンバーが COLLECTING の枠取得と POST /shifts/requests で希望提出できる",
+      "tests": [
+        {
+          "name": "実機 req-2127.py（sm/sd2/sd=201, ssup=403, 他チーム=404）",
+          "evidence": "docs/evidence/CMP-260826-2127-real.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-14",
+      "description": "希望提出リマインドがシフト表名を含んで送信される（バッチ経路）",
+      "tests": [
+        {
+          "name": "実機 SHIFT_REQUEST_REMINDER_48H 本文にタイトル含む",
+          "evidence": "docs/evidence/CMP-260826-2127-real.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-15",
+      "description": "ShiftScheduleList が BE の返却分をそのまま表示する",
+      "tests": [
+        {
+          "name": "実機 cmp2127-ui-1104-sm.txt",
+          "evidence": "frontend/app/components/shift/ShiftScheduleList.vue"
+        }
+      ]
+    },
+    {
+      "id": "AC-CR",
+      "description": "変更依頼: SUPPORTER は全ステータス 403、親削除済み依頼は不在依頼と本文一致の 404 SHIFT_030",
+      "tests": [
+        {
+          "name": "実機 cr-2127.py / cr2-2127.py",
+          "evidence": "backend/src/main/java/com/mannschaft/app/shift/service/ShiftChangeRequestFacade.java"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 41676369304
+    },
+    {
+      "runId": 41676369318
+    },
+    {
+      "runId": 41676369485
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4269"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260826-2127-real.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260826-2127-exploratory.md"
+    }
+  },
+  "regressions": []
+}

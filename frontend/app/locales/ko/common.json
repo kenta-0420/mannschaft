@@ -102,7 +102,9 @@
       "multiple": "{names}이(가) 입력 중…"
     },
     "connection": {
-      "failed": "연결이 끊어졌습니다. 재연결을 시도하고 있습니다…"
+      "failed": "연결이 끊어졌습니다. 재연결을 시도하고 있습니다…",
+      "denied": "이 채널을 볼 권한이 없습니다",
+      "unauthenticated": "로그인이 만료되어 실시간 업데이트가 중지되었습니다. 다시 로그인해 주세요"
     },
     "mobile": {
       "backToList": "채널 목록으로 돌아가기",
@@ -1106,6 +1108,9 @@
     }
   },
   "project": {
+    "related_todo_no_due": "기한 없음",
+    "related_todo_no_assignee": "담당자 없음",
+    "related_todo_open": "TODO 상세 열기",
     "milestones": "마일스톤",
     "no_milestones": "마일스톤이 없습니다",
     "due_date": "기한",
@@ -1528,7 +1533,9 @@
     },
     "ws": {
       "disconnected": "연결이 끊어졌습니다",
-      "reconnecting": "재연결 중…"
+      "reconnecting": "재연결 중…",
+      "denied": "이 보드를 볼 권한이 없어 실시간 업데이트가 중지되었습니다",
+      "unauthenticated": "로그인이 만료되어 실시간 업데이트가 중지되었습니다. 다시 로그인해 주세요"
     },
     "validation": {
       "required": "필수 항목입니다.",

@@ -2,6 +2,7 @@ package com.mannschaft.app.reservation.event;
 
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.service.NotificationHelper;
+import com.mannschaft.app.team.service.TeamService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -57,15 +58,21 @@ class ReservationForceCancelNotificationEventListenerContextTest {
         }
 
         @Bean
+        TeamService teamService() {
+            return Mockito.mock(TeamService.class);
+        }
+
+        @Bean
         MessageSource messageSource() {
             return new StaticMessageSource();
         }
 
         @Bean
         ReservationForceCancelNotificationEventListener reservationForceCancelNotificationEventListener(
-                NotificationHelper notificationHelper, UserLocaleCache userLocaleCache, MessageSource messageSource) {
+                NotificationHelper notificationHelper, UserLocaleCache userLocaleCache, MessageSource messageSource,
+                TeamService teamService) {
             return new ReservationForceCancelNotificationEventListener(
-                    notificationHelper, userLocaleCache, messageSource);
+                    notificationHelper, userLocaleCache, messageSource, teamService);
         }
     }
 

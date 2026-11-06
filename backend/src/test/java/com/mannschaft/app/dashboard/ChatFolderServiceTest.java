@@ -86,7 +86,8 @@ class ChatFolderServiceTest {
             // Given
             ChatContactFolderEntity folder = createFolder(USER_ID, "仕事", 0);
             given(folderRepository.findByUserIdOrderBySortOrder(USER_ID)).willReturn(List.of(folder));
-            given(folderItemRepository.findByFolderId(any())).willReturn(List.of());
+            // CMP-261103-1225: フォルダごとではなく全フォルダ分を 1 クエリで一括取得する
+            given(folderItemRepository.findByFolderIdInOrderByIdAsc(any())).willReturn(List.of());
             given(dashboardMapper.toFolderResponse(eq(folder), eq(List.of())))
                     .willReturn(createFolderResponse(FOLDER_ID, "仕事"));
 

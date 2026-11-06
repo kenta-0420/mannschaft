@@ -141,6 +141,26 @@ class ReservationRecurringBlockedTimeForceCancelTest {
             }
             return out;
         });
+        // CMP-260822-1730 AC-1730-6: 強行キャンセルは対象 id をスカラーで確定し、id 昇順で一括ロックする。
+        given(reservationRepository.findGroupIdsByIdIn(anyCollection())).willAnswer(inv -> {
+            java.util.Collection<?> ids = inv.getArgument(0);
+            return reservations.values().stream()
+                    .filter(r -> ids.contains(r.getId()) && r.getGroupId() != null)
+                    .map(ReservationEntity::getGroupId).distinct().toList();
+        });
+        given(reservationRepository.findIdsByGroupIdInAndTeamId(anyCollection(), anyLong())).willAnswer(inv -> {
+            java.util.Collection<?> groupIds = inv.getArgument(0);
+            Long teamId = inv.getArgument(1);
+            return reservations.values().stream()
+                    .filter(r -> groupIds.contains(r.getGroupId()) && teamId.equals(r.getTeamId()))
+                    .map(ReservationEntity::getId).toList();
+        });
+        given(reservationRepository.findByIdInForUpdate(anyCollection())).willAnswer(inv -> {
+            java.util.Collection<?> ids = inv.getArgument(0);
+            return reservations.values().stream()
+                    .filter(r -> ids.contains(r.getId()))
+                    .sorted(java.util.Comparator.comparing(ReservationEntity::getId)).toList();
+        });
         given(slotRepository.findAllById(anyIterable())).willAnswer(inv -> {
             List<ReservationSlotEntity> out = new ArrayList<>();
             for (Object id : (Iterable<?>) inv.getArgument(0)) {
@@ -432,6 +452,47 @@ class ReservationRecurringBlockedTimeForceCancelTest {
         assertThat(already.getCancelledBy())
                 .as("既に CANCELLED の行を上書きしない")
                 .isNull();
+        verify(slotService, never()).decrementAndReopen(any());
+        verify(eventPublisher, never()).publishEvent(any(ReservationForceCancelledByBlockEvent.class));
+    }
+
+    @Test
+    @DisplayName("AC-1730-6: 強行キャンセルは兄弟行を含む対象を id 昇順の1文で行ロックし、非ロック読取をしない")
+    void 強行キャンセルは対象を一括行ロックで読む() {
+        UUID groupId = UUID.fromString("018f0000-0000-7000-8000-0000000000ab");
+        seedSlot(9170L, TUESDAY);
+        seedSlot(9171L, TUESDAY);
+        seedReservation(1201L, APPLICANT_A, 9170L, groupId, true, ReservationStatus.PENDING);
+        seedReservation(1202L, APPLICANT_A, 9171L, groupId, false, ReservationStatus.PENDING);
+        givenOverlapping(row(1201L, APPLICANT_A, 9170L, TUESDAY));
+
+        RecurringBlockedTimeResponse response = service.createRule(TEAM_ID, createRequest(true), ADMIN_ID);
+
+        assertThat(response.getForceCancelledCount()).isEqualTo(2);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<java.util.Collection<Long>> ids = ArgumentCaptor.forClass(java.util.Collection.class);
+        verify(reservationRepository, times(1)).findByIdInForUpdate(ids.capture());
+        assertThat(ids.getValue()).as("兄弟行まで含めて1回でロックする").containsExactlyInAnyOrder(1201L, 1202L);
+        verify(reservationRepository, never()).findAllById(anyIterable());
+        verify(reservationRepository, never()).findByGroupIdAndTeamIdOrderById(any(), anyLong());
+    }
+
+    @Test
+    @DisplayName("AC-1730-6: ロック後に失効済み(CANCELLED)と分かった行は強行取消・枠減算・通知をしない")
+    void ロック後に失効済みの行は取消も減算もしない() {
+        seedSlot(9180L, TUESDAY);
+        ReservationEntity expired = seedReservation(1301L, APPLICANT_A, 9180L, null, true, ReservationStatus.PENDING);
+        givenOverlapping(row(1301L, APPLICANT_A, 9180L, TUESDAY));
+        // 候補抽出後・ロック取得までの間に失効バッチが commit した状況（ロック後の最新状態は CANCELLED）。
+        given(reservationRepository.findByIdInForUpdate(anyCollection())).willAnswer(inv -> {
+            setField(expired, "status", ReservationStatus.CANCELLED);
+            return List.of(expired);
+        });
+
+        RecurringBlockedTimeResponse response = service.createRule(TEAM_ID, createRequest(true), ADMIN_ID);
+
+        assertThat(response.getForceCancelledCount()).isZero();
+        assertThat(expired.getCancelledBy()).as("失効の取消を上書きしない").isNull();
         verify(slotService, never()).decrementAndReopen(any());
         verify(eventPublisher, never()).publishEvent(any(ReservationForceCancelledByBlockEvent.class));
     }

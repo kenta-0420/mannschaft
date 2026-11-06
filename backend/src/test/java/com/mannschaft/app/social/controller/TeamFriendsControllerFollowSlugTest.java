@@ -16,6 +16,7 @@ import com.mannschaft.app.social.SocialErrorCode;
 import com.mannschaft.app.social.dto.FollowTeamResponse;
 import com.mannschaft.app.social.service.TeamFriendFollowBySlugService;
 import com.mannschaft.app.social.service.TeamFriendsService;
+import com.mannschaft.app.social.service.TeamFriendViewAccessGuard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -63,7 +64,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * </ul>
  */
 @WebMvcTest(TeamFriendsController.class)
-@Import(TeamFriendRequestFacade.class)
+@Import({TeamFriendRequestFacade.class, TeamFriendViewAccessGuard.class})
 @AutoConfigureMockMvc(addFilters = false)
 @DisplayName("CMP-261012-0315 TeamFriendsController slug 指定フォロー（試練）")
 class TeamFriendsControllerFollowSlugTest {
@@ -82,6 +83,13 @@ class TeamFriendsControllerFollowSlugTest {
 
     @MockitoBean
     private TeamFriendsService teamFriendsService;
+
+    /**
+     * フレンド関係の閲覧ガード（CMP-260821-1027）は実物を使う。一覧の SUPPORTER 公開限定もこのガードの
+     * {@code listsPublicOnly} が決めるため。依存の Repository だけ mock にする（閲覧判定の本体は契約ITで検証）。
+     */
+    @MockitoBean
+    private com.mannschaft.app.social.repository.TeamFriendRepository teamFriendRepository;
     @MockitoBean
     private TeamFriendFollowBySlugService followBySlugService;
     @MockitoBean

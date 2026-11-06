@@ -1,11 +1,12 @@
 package com.mannschaft.app.reservation.ws;
 
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.websocket.StompErrorCode;
+import com.mannschaft.app.common.websocket.StompRejectedException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
-import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
@@ -23,7 +24,7 @@ import java.util.regex.Pattern;
  * 認可対象とし、<b>当該チームの ADMIN または DEPUTY_ADMIN であること</b>を
  * {@link AccessControlService#isAdminOrAbove}（認可の正準サービス）へ委譲して検証する。
  * ADMIN / DEPUTY_ADMIN でない者（非メンバー・MEMBER・SUPPORTER・他チーム ADMIN・未認証）の購読は
- * {@link MessagingException} をスローして拒否する（ERROR フレーム返却・購読不成立）。</p>
+ * {@link StompRejectedException} をスローして拒否する（ERROR フレーム返却・購読不成立）。</p>
  *
  * <h3>設計上の不変条件</h3>
  * <ul>
@@ -93,7 +94,8 @@ public class EmergencyClosureSubscriptionInterceptor implements ChannelIntercept
             teamId = Long.parseLong(matcher.group(1));
         } catch (NumberFormatException e) {
             // 正規表現を通過しているため通常到達しない（数値オーバーフロー時のみ）。安全側に倒して拒否する。
-            throw new MessagingException("臨時休業の購読先 teamId が不正です: " + destination);
+            throw new StompRejectedException(StompErrorCode.INVALID_DESTINATION,
+                    "臨時休業の購読先 teamId が不正です: " + destination);
         }
 
         Long userId = resolveUserId(accessor);
@@ -101,7 +103,8 @@ public class EmergencyClosureSubscriptionInterceptor implements ChannelIntercept
         // 未認証は ADMIN ではあり得ないため拒否（確認状況一覧はチーム管理者専用）。
         if (userId == null) {
             log.debug("臨時休業確認状況の購読を拒否（未認証）: destination={}", destination);
-            throw new MessagingException("臨時休業確認状況の購読権限がありません");
+            // 未認証は FORBIDDEN と区別する（x-error-code・設計書 §2.3.2）。文言は従来どおり。
+            throw new StompRejectedException(StompErrorCode.UNAUTHENTICATED, "臨時休業確認状況の購読権限がありません");
         }
 
         // 認可の正準（AccessControlService.isAdminOrAbove）へ委譲。
@@ -111,7 +114,7 @@ public class EmergencyClosureSubscriptionInterceptor implements ChannelIntercept
             log.debug("臨時休業確認状況の購読を拒否: userId={}, teamId={}, destination={}",
                     userId, teamId, destination);
             // 購読を不成立にする（ERROR フレームが返り SUBSCRIBE は確立しない）。
-            throw new MessagingException("臨時休業確認状況の購読権限がありません");
+            throw new StompRejectedException(StompErrorCode.FORBIDDEN, "臨時休業確認状況の購読権限がありません");
         }
 
         log.debug("臨時休業確認状況の購読を許可: userId={}, teamId={}", userId, teamId);

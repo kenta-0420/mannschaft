@@ -209,6 +209,15 @@ tasks.withType<Test> {
     // 1 JVM でまとめて走らせる。付け忘れ・Spring との混在は番人 ArchUnitTestTagGuardTest が検出する。
     // =====================================================================
     val isArchTask = name == "archTest"
+    // =====================================================================
+    // @Tag("er-diagram") 運用（CMP-261103-1940・ER 図の自動生成と照合）
+    // ---------------------------------------------------------------------
+    // Flyway 全適用済み MySQL（Testcontainers）の information_schema から docs/architecture/er/ を
+    // 生成・照合するテストは Docker を要し重いため、通常の `test` と `archTest` からはタグ
+    // "er-diagram" を除外し、専用タスク generateErDiagrams（書き出し）/ checkErDiagrams（照合）
+    // だけが実行する。純ロジックの単体テストはタグを付けず通常の `test` で走る。
+    // =====================================================================
+    val isErDiagramTask = name == "generateErDiagrams" || name == "checkErDiagrams"
     // main 側（CMP-261002-1606 以前からの既存機構）: archUnitTest は各 runner で
     // 全 ArchUnit エンジンの番人（@AnalyzeClasses による走査）を Spring テストとは別の JVM で
     // まとめて実行する（includeEngines("archunit") により junit-jupiter 側のテストは含めない）。
@@ -231,10 +240,11 @@ tasks.withType<Test> {
             isPerfTask -> includeTags("perf")
             isArchTask -> {
                 includeTags("archunit")
-                excludeTags("perf")
+                excludeTags("perf", "er-diagram")
             }
             isArchUnitTask -> excludeTags("perf")
-            else -> excludeTags("perf", "archunit")
+            isErDiagramTask -> includeTags("er-diagram")
+            else -> excludeTags("perf", "archunit", "er-diagram")
         }
     }
     // テスト数が 180+ の SpringBootTest を含み、累積でヒープが膨らむ。
@@ -297,14 +307,14 @@ tasks.withType<Test> {
     // perfTask は単一クラスの重量級 IT ゆえ forkEvery=0（1 JVM 共有）で無駄な再 fork を避ける。
     // archTest は取り込み結果を JVM 内で共有することが目的のため forkEvery=0・並列 fork なし（1 JVM）。
     // fork し直すと取り込みが JVM の数だけ繰り返され、並列 fork すると取り込みの複製がワーカー数だけ増える。
-    setForkEvery(if (isPerfTask || isArchTask) 0L else ((project.findProperty("fork.every") as String?)?.toLong() ?: 180L))
+    setForkEvery(if (isPerfTask || isArchTask || isErDiagramTask) 0L else ((project.findProperty("fork.every") as String?)?.toLong() ?: 180L))
     // ローカル（WSL2 Docker）環境では Testcontainers の並列コンテナ起動が WSL2 ポートミラーリングの
     // タイミング問題を引き起こすため、-Pmax.parallel.forks=1 で上書きできるようにする。
     // CI 環境ではデフォルト 2 のまま動作する。
     // perfTask は単一クラスのため並列 fork しない（Testcontainer/測定の相互干渉を避ける）。
     // archUnitTest（main 既存機構・archunit エンジン分離）も main と同様に並列 fork 1 を維持する。
     maxParallelForks =
-        if (isPerfTask || isArchTask || isArchUnitTask) 1 else (
+        if (isPerfTask || isArchTask || isArchUnitTask || isErDiagramTask) 1 else (
             (project.findProperty("max.parallel.forks") as String?)?.toInt() ?: 2
             )
     // GC を明示し OOM 時にヒープダンプを残す（CI で再発時の調査用）
@@ -497,7 +507,7 @@ tasks.withType<Test> {
         // 取り込みが shard 数だけ繰り返されるだけで速くならない）。CI では専用ジョブで 1 回だけ走らせる。
         logger.lifecycle("[archTest] -Pshard.* は archTest には適用しない（全 ArchUnit テストを 1 JVM で実行する）")
     }
-    if (!isArchTask && !isFreezeIntegrityTask && shardTotal != null && shardIndex != null && shardTotal > 1) {
+    if (!isArchTask && !isErDiagramTask && !isFreezeIntegrityTask && shardTotal != null && shardIndex != null && shardTotal > 1) {
         require(shardIndex in 0 until shardTotal) {
             "shard.index ($shardIndex) は 0..${shardTotal - 1} の範囲でなければならない（shard.total=$shardTotal）"
         }
@@ -584,6 +594,9 @@ tasks.withType<Test> {
                 )
             }
         }
+    } else if (isErDiagramTask) {
+        // ER 図の生成・照合はコードカバレッジを取らない（jacoco 終端集計に巻き込まない）。
+        extensions.configure<org.gradle.testing.jacoco.plugins.JacocoTaskExtension> { isEnabled = false }
     } else if (!isArchUnitTask && !isFreezeIntegrityTask) {
         // 先行する ArchUnit 実行（archUnitTest/archUnitFreezeStoreIntegrityTest）では確定せず、
         // 既存の test/perfTest 等の終端集計を維持する。
@@ -698,6 +711,37 @@ val archTest = tasks.register<Test>("archTest") {
 tasks.named("check") {
     dependsOn(archTest)
 }
+
+// =============================================================================
+// generateErDiagrams / checkErDiagrams: ER 図（docs/architecture/er/）の生成と照合（CMP-261103-1940）
+// -----------------------------------------------------------------------------
+// どちらも Flyway 全適用済み MySQL（Testcontainers）を要する @Tag("er-diagram") のテストだけを走らせる。
+// 通常の `test` / `archTest` には含まれない（withType<Test> のタグ分岐）。
+//   generateErDiagrams: er.mode=generate。生成結果で docs/architecture/er/ を（一時dir経由で）置き換える。
+//   checkErDiagrams   : er.mode=check。コミット済み er/ と生成結果が一致しなければ失敗する。
+// -Der.requireDocker=true（CI で指定）なら Docker 不在時に skip ではなく失敗する。
+// 使い方: cd backend && ./gradlew generateErDiagrams   /   ./gradlew checkErDiagrams
+// =============================================================================
+fun registerErDiagramTask(taskName: String, mode: String, desc: String) =
+    tasks.register<Test>(taskName) {
+        group = "verification"
+        description = desc
+        testClassesDirs = sourceSets["test"].output.classesDirs
+        classpath = sourceSets["test"].runtimeClasspath
+        systemProperty("er.mode", mode)
+        systemProperty("er.outputDir", rootProject.layout.projectDirectory.dir("../docs/architecture/er").asFile.absolutePath)
+        System.getProperty("er.requireDocker")?.let { systemProperty("er.requireDocker", it) }
+        // 常に実行する（Docker/スキーマ依存でキャッシュ判定できない）。
+        outputs.upToDateWhen { false }
+    }
+registerErDiagramTask(
+    "generateErDiagrams", "generate",
+    "Flyway 全適用済み MySQL から docs/architecture/er/ の ER 図を再生成する（CMP-261103-1940）"
+)
+registerErDiagramTask(
+    "checkErDiagrams", "check",
+    "コミット済み docs/architecture/er/ が現在のスキーマの生成結果と一致するか照合する（CMP-261103-1940）"
+)
 
 // =============================================================================
 // verifyShardCoverage: CI テストシャード重み付け振り分けの取りこぼし検証タスク

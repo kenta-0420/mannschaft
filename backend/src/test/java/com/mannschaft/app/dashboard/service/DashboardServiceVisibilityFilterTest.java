@@ -201,6 +201,67 @@ class DashboardServiceVisibilityFilterTest {
                 eq(ContentGateType.ANNOUNCEMENT), any(), eq(USER_ID), any(Map.class));
     }
 
+    @Test
+    @DisplayName("CMP-261101-2008 AC1/AC3 FULL の告知応答に target_team_ids を出さず、他の保持キーは従来どおり返す")
+    void FULL告知は他チームID一覧を出さず保持キーを返す() {
+        given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
+        given(widgetVisibilityResolver.resolve("TEAM", TEAM_ID)).willReturn(teamDefaultVisibilityMap());
+        given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+        AnnouncementFeedEntity full = announcement(1L);
+        given(announcementFeedQueryRepository.findByScope(
+                eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(), any(), eq(10)))
+                .willReturn(List.of(full));
+        given(paymentGateService.checkAccessBatch(
+                eq(ContentGateType.ANNOUNCEMENT), any(), eq(USER_ID), any(Map.class)))
+                .willReturn(Map.of(1L, new GateCheckResponse(true, false, List.of())));
+
+        Map<String, Object> item = ((List<Map<String, Object>>) dashboardService
+                .getTeamDashboard(USER_ID, TEAM_ID, "WEEK").getTeamNotices()).get(0);
+
+        assertThat(item).containsEntry("access_state", "FULL")
+                .containsEntry("source_type", "BLOG_POST")
+                .containsEntry("source_id", 901L)
+                .containsEntry("excerpt_cache", "secret-excerpt")
+                .containsKey("target_audience")
+                .doesNotContainKey("target_team_ids");
+    }
+
+    @Test
+    @DisplayName("CMP-261101-2008 AC4 targetTeamIds が null／空の FULL 告知でもキー自体を出さない")
+    void targetTeamIdsがnullや空でもキーを出さない() {
+        given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
+        given(widgetVisibilityResolver.resolve("TEAM", TEAM_ID)).willReturn(teamDefaultVisibilityMap());
+        given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+        AnnouncementFeedEntity nullIds = announcement(1L);
+        given(nullIds.getTargetTeamIds()).willReturn(null);
+        AnnouncementFeedEntity emptyIds = announcement(2L);
+        given(emptyIds.getTargetTeamIds()).willReturn("[]");
+        given(announcementFeedQueryRepository.findByScope(
+                eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(), any(), eq(10)))
+                .willReturn(List.of(nullIds, emptyIds));
+        given(paymentGateService.checkAccessBatch(
+                eq(ContentGateType.ANNOUNCEMENT), any(), eq(USER_ID), any(Map.class)))
+                .willReturn(Map.of(
+                        1L, new GateCheckResponse(true, false, List.of()),
+                        2L, new GateCheckResponse(true, false, List.of())));
+
+        List<Map<String, Object>> notices = (List<Map<String, Object>>) dashboardService
+                .getTeamDashboard(USER_ID, TEAM_ID, "WEEK").getTeamNotices();
+
+        assertThat(notices).hasSize(2);
+        notices.forEach(item -> assertThat(item).doesNotContainKey("target_team_ids"));
+    }
+
+    @Test
+    @DisplayName("CMP-261101-2008 AC4 お知らせ0件は空配列")
+    void お知らせ0件は空配列() {
+        given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
+        given(widgetVisibilityResolver.resolve("TEAM", TEAM_ID)).willReturn(teamDefaultVisibilityMap());
+        given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+
+        assertThat((List<?>) dashboardService.getTeamDashboard(USER_ID, TEAM_ID, "WEEK").getTeamNotices()).isEmpty();
+    }
+
     // ════════════════════════════════════════════════
     // CMP-261011-0035 ALIC-1（試練 red）
     // ════════════════════════════════════════════════
