@@ -132,7 +132,7 @@ async function submit() {
             : undefined,
       })
     }
-    notification.success(t('common.dialog.success'))
+    notification.success(t('dialog.success'))
     emit('created')
   } catch (err: unknown) {
     const status = (err as { status?: number })?.status
@@ -140,7 +140,7 @@ async function submit() {
       errorMessage.value = t('proxy.delegation.errors.rate_limit')
     } else {
       const apiErr = err as { data?: { message?: string } }
-      errorMessage.value = apiErr?.data?.message ?? t('common.dialog.error')
+      errorMessage.value = apiErr?.data?.message ?? t('dialog.error')
     }
   } finally {
     submitting.value = false

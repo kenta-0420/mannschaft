@@ -28,6 +28,12 @@ const termForm = ref({
   sortOrder: 0,
 })
 
+const termFieldErrors = ref<Record<string, string>>({})
+
+watch(showTermDialog, (v) => {
+  if (v) termFieldErrors.value = {}
+})
+
 // 学期削除
 const deletingTermId = ref<number | null>(null)
 
@@ -49,6 +55,11 @@ async function loadData() {
 }
 
 async function submitTerm() {
+  termFieldErrors.value = {}
+  if (termForm.value.academicYear == null) {
+    termFieldErrors.value = { academicYear: t('timetable.term_academic_year_required') }
+    return
+  }
   if (!termForm.value.name || !termForm.value.startDate || !termForm.value.endDate) return
   termSubmitting.value = true
   try {
@@ -69,7 +80,11 @@ async function submitTerm() {
       sortOrder: 0,
     }
     terms.value = await timetableApi.listTerms('organization', orgSlug.value)
-  } catch {
+  } catch (error) {
+    const parsed = parseTermApiError(error)
+    if (Object.keys(parsed.fieldErrors).length > 0) {
+      termFieldErrors.value = parsed.fieldErrors
+    }
     notification.error(t('timetable.term_error'))
   } finally {
     termSubmitting.value = false
@@ -80,10 +95,15 @@ async function deleteTerm(termId: number) {
   deletingTermId.value = termId
   try {
     await timetableApi.deleteTerm(termId)
-    notification.success(t('common.dialog.success'))
+    notification.success(t('dialog.success'))
     terms.value = await timetableApi.listTerms('organization', orgSlug.value)
-  } catch {
-    notification.error(t('common.dialog.error'))
+  } catch (error) {
+    const parsed = parseTermApiError(error)
+    if (parsed.code === TERM_HAS_TIMETABLES_CODE) {
+      notification.error(t('timetable.term_has_timetables'))
+    } else {
+      notification.error(t('dialog.error'))
+    }
   } finally {
     deletingTermId.value = null
   }
@@ -162,7 +182,7 @@ onMounted(loadData)
               </Column>
               <Column
                 v-if="isAdmin"
-                :header="$t('common.label.actions')"
+                :header="$t('label.actions')"
                 style="width: 80px"
               >
                 <template #body="{ data }">
@@ -190,8 +210,27 @@ onMounted(loadData)
       >
         <div class="space-y-4">
           <div>
-            <label class="mb-1 block text-sm font-medium">{{ $t('timetable.term_academic_year') }}</label>
-            <InputNumber v-model="termForm.academicYear" class="w-full" :min="2000" :max="2100" />
+            <label class="mb-1 block text-sm font-medium" for="term-academic-year">
+              {{ $t('timetable.term_academic_year') }}
+              <span class="text-red-500" aria-hidden="true">*</span>
+            </label>
+            <InputNumber
+              v-model="termForm.academicYear"
+              input-id="term-academic-year"
+              class="w-full"
+              :min="2000"
+              :max="2100"
+              :invalid="!!termFieldErrors.academicYear"
+              :aria-describedby="termFieldErrors.academicYear ? 'term-academic-year-error' : undefined"
+              aria-required="true"
+            />
+            <small
+              v-if="termFieldErrors.academicYear"
+              id="term-academic-year-error"
+              class="mt-1 block text-red-500"
+              role="alert"
+              data-testid="term-academic-year-error"
+            >{{ termFieldErrors.academicYear }}</small>
           </div>
           <div>
             <label class="mb-1 block text-sm font-medium">{{ $t('timetable.term_name') }}</label>
