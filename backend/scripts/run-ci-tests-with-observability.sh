@@ -360,7 +360,6 @@ if __name__ == '__main__':
         # 診断自体の失敗はテストのexitを変えない。例外本文は収録しない。
         append('monitor-end reason=diagnostic-failure', final=True)
 MONITOR
-PYTHON
   MONITOR_PID=$!
 fi
 set +e

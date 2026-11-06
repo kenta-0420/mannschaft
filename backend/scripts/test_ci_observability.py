@@ -73,6 +73,47 @@ class WrapperTest(unittest.TestCase):
         self.assertFalse(self.result()['completed'])
         self.assertIsNone(self.result()['testStepExitCode'])
 
+    def test_monitor_shards_execute_wrapper_and_reap_their_monitor(self):
+        # wrapper自体のshard分岐を通す。外部Python monitorだけ短命Bashへ代替する。
+        python = Path(os.sys.executable).as_posix()
+        shim = '''#!/usr/bin/env bash
+if [ "${1:-}" = '-u' ]; then
+  trap 'printf "TERM\\n" > "$RUNNER_TEMP/monitor-ended"; exit 0' TERM
+  printf '%s\\n' "$$" > "$RUNNER_TEMP/monitor-pid"
+  sleep 3
+  printf 'SELF\\n' > "$RUNNER_TEMP/monitor-ended"
+  exit 0
+fi
+exec "''' + python + '''" "$@"
+'''
+        (self.bin / 'python3').write_text(shim, encoding='utf-8')
+        # Git Bashにはpsがない。wrapper自身が起動した子の親を返す外部境界のstub。
+        ps = self.bin / 'ps'
+        ps.write_text('#!/usr/bin/env bash\nIFS= read -r owner < "$RUNNER_TEMP/wrapper-pid"\nprintf "%s\\n" "$owner"\n', encoding='utf-8')
+        ps.chmod(0o755)
+        command = self.folder / 'monitor-command.sh'
+        command.write_text('''#!/usr/bin/env bash
+printf '%s\\n' "$PPID" > "$RUNNER_TEMP/wrapper-pid"
+for ((i=0; i<60; i++)); do
+  [ -f "$RUNNER_TEMP/monitor-pid" ] && break
+  sleep 0.05
+done
+printf '%s\\n' '2026-11-06T00:00:00Z [ci-test-task-state] task=:test skipped=false skipMessage=null upToDate=false noSource=false failed=false' > "$CI_DIAGNOSTIC_DIR/task-state.log"
+exit "$FAKE_EXIT"
+''', encoding='utf-8')
+        for shard in ('3', '5'):
+            for code in (0, 17):
+                with self.subTest(shard=shard, exit=code):
+                    for name in ('monitor-pid', 'monitor-ended'):
+                        (self.folder / name).unlink(missing_ok=True)
+                    self.env.update(CI_SHARD_INDEX=shard, FAKE_EXIT=str(code))
+                    result = self.run_wrapper(BASH, command.as_posix())
+                    self.assertNotIn('PYTHON', result.stderr)
+                    self.assertNotIn('command not found', result.stderr)
+                    self.assertEqual(result.returncode, code, result.stderr)
+                    self.assertEqual(self.result()['commandExitCode'], code)
+                    self.assertEqual((self.folder / 'monitor-ended').read_text().strip(), 'TERM')
+
 
 class MonitorTest(unittest.TestCase):
     def setUp(self):
