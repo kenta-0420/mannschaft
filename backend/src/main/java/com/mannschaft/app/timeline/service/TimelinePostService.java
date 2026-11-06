@@ -538,8 +538,8 @@ public class TimelinePostService {
         TimelinePostEntity repostOriginal = null;
         if (req.getRepostOfId() != null) {
             repostOriginal = postRepository.findById(req.getRepostOfId()).orElse(null);
-            if (enforceScopeAuthorization && repostOriginal != null
-                    && !postVisibilityGuard.isVisible(repostOriginal, userId)) {
+            if (enforceScopeAuthorization
+                    && (repostOriginal == null || !postVisibilityGuard.isVisible(repostOriginal, userId))) {
                 throw new BusinessException(TimelineErrorCode.POST_NOT_FOUND);
             }
         }
