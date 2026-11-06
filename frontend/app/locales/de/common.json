@@ -317,6 +317,8 @@
     "add_term": "Semester hinzufügen",
     "term_success": "Semester erstellt",
     "term_error": "Erstellung des Semesters fehlgeschlagen",
+    "term_academic_year_required": "Bitte das Schuljahr eingeben",
+    "term_has_timetables": "Dieses Semester kann nicht gelöscht werden, da noch Stundenpläne vorhanden sind. Bitte zuerst entfernen",
     "no_period": "Keine Stunden definiert",
     "no_term": "Keine Semester definiert",
     "current_week": "Diese Woche",
