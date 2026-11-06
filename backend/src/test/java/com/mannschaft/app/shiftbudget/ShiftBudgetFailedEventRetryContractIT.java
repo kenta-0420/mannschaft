@@ -2,12 +2,14 @@ package com.mannschaft.app.shiftbudget;
 
 import com.mannschaft.app.admin.repository.FeatureFlagRepository;
 import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.budget.entity.BudgetConfigEntity;
 import com.mannschaft.app.budget.repository.BudgetConfigRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
+import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.shiftbudget.batch.ShiftBudgetRetryBatchJob;
 import com.mannschaft.app.shiftbudget.dto.FailedEventResponse;
 import com.mannschaft.app.shiftbudget.entity.ShiftBudgetFailedEventEntity;
@@ -68,6 +70,8 @@ class ShiftBudgetFailedEventRetryContractIT extends AbstractMySqlIntegrationTest
     @Autowired private CacheManager caches;
     @Autowired private ShiftBudgetProperties properties;
     @Autowired private BudgetConfigRepository configs;
+    @Autowired private UserRepository users;
+    @Autowired private OrganizationRepository organizations;
     @PersistenceContext private EntityManager em;
 
     private final List<Long> events = new ArrayList<>();
@@ -89,7 +93,7 @@ class ShiftBudgetFailedEventRetryContractIT extends AbstractMySqlIntegrationTest
                     .visibility(OrganizationEntity.Visibility.PUBLIC)
                     .hierarchyVisibility(OrganizationEntity.HierarchyVisibility.NONE)
                     .supporterEnabled(true).build();
-            em.persist(organization);
+            organizations.save(organization);
             org = organization.getId();
             actor = createUser();
             member = createUser();
@@ -249,8 +253,7 @@ class ShiftBudgetFailedEventRetryContractIT extends AbstractMySqlIntegrationTest
         UserEntity user = UserEntity.builder().email("retry-" + UUID.randomUUID() + "@example.test")
                 .lastName("試験").firstName("利用者").displayName("再試行契約")
                 .isSearchable(false).locale("ja").timezone("Asia/Tokyo").status(UserEntity.UserStatus.ACTIVE).build();
-        em.persist(user);
-        return user.getId();
+        return users.save(user).getId();
     }
 
     private Long event(ShiftBudgetFailedEventType type, ShiftBudgetFailedEventStatus state, String payload, String diagnostic) {
