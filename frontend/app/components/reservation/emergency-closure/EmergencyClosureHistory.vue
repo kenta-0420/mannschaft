@@ -65,7 +65,7 @@ const { formatDateTime, formatCalendarDayRange, formatTimeRange } = useDatetime(
           <dl class="min-w-0 space-y-2">
             <div>
               <dt class="text-xs font-medium text-surface-500">{{ $t('emergency_closure.section.period') }}</dt>
-              <dd data-field="period" class="break-words [overflow-wrap:anywhere]">
+              <dd data-field="period" class="whitespace-normal break-words [overflow-wrap:anywhere] [line-break:anywhere]">
                 <div>{{ formatCalendarDayRange(item.startDate, item.endDate) }}</div>
                 <div v-if="item.startTime && item.endTime" class="text-xs text-surface-500">
                   {{ formatTimeRange(item.startTime, item.endTime) }}
@@ -74,7 +74,7 @@ const { formatDateTime, formatCalendarDayRange, formatTimeRange } = useDatetime(
             </div>
             <div>
               <dt class="text-xs font-medium text-surface-500">{{ $t('emergency_closure.table.sent_at') }}</dt>
-              <dd data-field="sent-at" class="break-words text-surface-600 [overflow-wrap:anywhere] dark:text-surface-300">{{ formatDateTime(item.createdAt) }}</dd>
+              <dd data-field="sent-at" class="whitespace-normal break-words text-surface-600 [overflow-wrap:anywhere] [line-break:anywhere] dark:text-surface-300">{{ formatDateTime(item.createdAt) }}</dd>
             </div>
             <div>
               <dt class="text-xs font-medium text-surface-500">{{ $t('emergency_closure.table.reason') }}</dt>
