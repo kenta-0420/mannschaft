@@ -3203,5 +3203,28 @@
     "supporter_label": "向支持者显示{feature}",
     "save_success": "显示设置已保存",
     "nav": "导航"
+  },
+  "secret_token": {
+    "issued_dialog": {
+      "title": "链接已生成",
+      "once_warning": "此链接仅在此时显示。关闭后将不会再次显示。请先分享给需要的人，再关闭此窗口。",
+      "url_label": "已生成的链接",
+      "copy": "复制",
+      "copied": "已复制",
+      "copy_failed": "复制失败，请手动选择并复制链接",
+      "qr_label": "二维码",
+      "close": "关闭",
+      "pdf_download": "将二维码保存为 PDF"
+    },
+    "list": {
+      "not_shown_hint": "出于安全考虑，已生成的链接不会再次显示。如有需要，请重新生成。",
+      "revoked_by_migration": "因安全升级已失效",
+      "reissue": "重新生成",
+      "reissue_hint": "重新生成后会创建新链接，旧链接将无法使用。",
+      "label_with_id": "链接 #{id}",
+      "created_at": "生成时间",
+      "expires_at": "有效期限",
+      "used_count": "使用次数"
+    }
   }
 }

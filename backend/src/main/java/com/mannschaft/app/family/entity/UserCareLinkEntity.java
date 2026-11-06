@@ -21,6 +21,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * ユーザーケアリンクエンティティ。
@@ -65,6 +66,7 @@ public class UserCareLinkEntity {
     @Column(nullable = false, length = 20)
     private CareLinkInvitedBy invitedBy;
 
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Column(length = 64)
     private String invitationToken;
 

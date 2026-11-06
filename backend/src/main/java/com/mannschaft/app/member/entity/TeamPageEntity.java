@@ -17,6 +17,7 @@ import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * メンバー紹介ページエンティティ。メインページまたは年度別ページを管理する。
@@ -63,6 +64,7 @@ public class TeamPageEntity extends BaseEntity {
     @Builder.Default
     private PageStatus status = PageStatus.DRAFT;
 
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Column(length = 64)
     private String previewToken;
 

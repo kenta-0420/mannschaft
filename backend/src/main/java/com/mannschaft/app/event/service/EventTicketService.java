@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
+import com.mannschaft.app.common.token.PlaintextSecretRequired;
 
 /**
  * イベントチケットサービス。チケットの発行・照会・キャンセルを担当する。
@@ -103,6 +104,7 @@ public class EventTicketService {
      * @param ticketType   チケット種別エンティティ
      * @param quantity     発行数
      */
+    @PlaintextSecretRequired(reason = "チケットの QR を保有者本人に何度でも見せるため平文で保持する。署名付き短命 QR への移行は別 CMP")
     @Transactional
     public void issueTickets(EventRegistrationEntity registration, EventTicketTypeEntity ticketType, int quantity) {
         for (int i = 0; i < quantity; i++) {
