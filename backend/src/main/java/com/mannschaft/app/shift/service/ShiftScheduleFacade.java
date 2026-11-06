@@ -26,7 +26,7 @@ import java.util.List;
  * Controller は本クラスだけを呼ぶ。名前を {@code *AccessService} / {@code *AccessGate} にしないのは、
  * 呼んだだけで認可シグナル扱いになり本クラス内の認可漏れを AuthzControllerGuard が見逃すのを避けるため。</p>
  *
- * <h3>認可表（是正前の契約から変えていない。ただし remind の越境は不在と同じ 404 へ揃えた）</h3>
+ * <h3>認可表（未公開の詳細・サマリは後述の 404 秘匿を適用）</h3>
  * <pre>
  * 主体＼EP                  一覧(teamId)   詳細(id)         作成(teamId)    更新/削除/遷移/サマリ/複製/remind(id)
  * 部外者(越境)              403 COMMON_002 404 SHIFT_001    403 COMMON_002  404 SHIFT_001（remind も。是正前は 403）
@@ -176,7 +176,7 @@ public class ShiftScheduleFacade {
      */
     public ShiftScheduleSummaryResponse getScheduleSummary(Long id, Long userId) {
         ShiftScheduleScope scope = scheduleService.resolveScope(id);
-        // 管理者限定でも、未公開だけ403だと不在404との差から存在が分かる。SUPPORTERの既存403は維持する。
+        // 管理者限定でも、未公開への403と不在404との差から存在が分かる。SUPPORTERの既存403は維持する。
         if (scope.isHidden() && !isPrivileged(scope.teamId(), userId)
                 && !accessControlService.isSupporter(userId, scope.teamId(), TEAM)) {
             throw new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
