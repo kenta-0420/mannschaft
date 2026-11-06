@@ -11,7 +11,7 @@ export function useSignageApi() {
   const api = useApi()
 
   // === Screens ===
-  async function getScreens(scopeType: string, scopeId: string) {
+  async function getScreens(scopeType: string, scopeId: number) {
     return api<{ data: SignageScreen[] }>(
       `/api/v1/signage/screens?scopeType=${encodeURIComponent(scopeType)}&scopeId=${scopeId}`,
     )

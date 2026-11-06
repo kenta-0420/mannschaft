@@ -9,6 +9,7 @@ import com.mannschaft.app.signage.service.SignageEmergencyService;
 import com.mannschaft.app.signage.service.SignageEmergencyService.BroadcastEmergencyRequest;
 import com.mannschaft.app.signage.service.SignageEmergencyService.EmergencyMessageResponse;
 import com.mannschaft.app.signage.service.SignageScreenService;
+import com.mannschaft.app.signage.service.SignageScreenReadFacade;
 import com.mannschaft.app.signage.service.SignageScreenService.CreateSignageScreenRequest;
 import com.mannschaft.app.signage.service.SignageScreenService.SignageScreenResponse;
 import com.mannschaft.app.signage.service.SignageScreenService.UpdateSignageScreenRequest;
@@ -37,6 +38,7 @@ import java.util.List;
 public class SignageScreenController {
 
     private final SignageScreenService screenService;
+    private final SignageScreenReadFacade readFacade;
     private final SignageAccessTokenService tokenService;
     private final SignageEmergencyService emergencyService;
 
@@ -72,13 +74,13 @@ public class SignageScreenController {
 
     /**
      * 指定IDの画面を取得する。
-     * 認可: 認証済みユーザー（対象画面スコープのメンバーシップ必須）
+     * 認可: ORGANIZATIONは管理者以上、TEAMは従来の会員閲覧を維持
      * レスポンス: 200 OK
      */
     @GetMapping("/{id}")
     public ApiResponse<SignageScreenResponse> getScreen(@PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(screenService.getScreenForActor(id, userId));
+        return ApiResponse.of(readFacade.getScreenForActor(id, userId));
     }
 
     /**

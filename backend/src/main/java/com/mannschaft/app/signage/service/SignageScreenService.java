@@ -119,7 +119,7 @@ public class SignageScreenService {
      * <p><b>認可は呼び出し元の責務</b>。サイネージ端末向けの公開表示経路
      * （{@code SignageDisplayController#getDisplayConfig}）はトークン認証済みで
      * ユーザーコンテキストを持たないため、本メソッドには認可を敷かない。
-     * 認証ユーザー向けの管理画面入口は {@link #getScreenForActor} を使うこと。</p>
+     * 認証ユーザー向けの管理画面入口は {@link SignageScreenReadFacade} を使うこと。</p>
      *
      * @param id 画面ID
      * @return 画面レスポンス
@@ -130,18 +130,15 @@ public class SignageScreenService {
     }
 
     /**
-     * 認証ユーザー向けに指定IDの画面を取得する（メンバーシップ必須）。
-     *
-     * <p>認可根治戦役 Wave7: 認証ユーザー向けの管理画面入口として
-     * {@link AccessControlService#checkMembership} でスコープの会員に限定する。
-     * 兄弟の {@link #createScreen}/{@link #updateScreen} は ADMIN 限定だが、参照は会員であれば
-     * 可とする（読取＝会員・変更＝ADMINの通例）。</p>
+     * 認可前に画面の存在を確認し、自ドメインのscalar scopeだけをTX外へ返す。
      */
-    public SignageScreenResponse getScreenForActor(Long id, Long actor) {
+    public ScreenReadScope resolveManagementReadScope(Long id) {
         SignageScreenEntity entity = findScreenOrThrow(id);
-        accessControlService.checkMembership(actor, entity.getScopeId(), entity.getScopeType());
-        return toResponse(entity);
+        return new ScreenReadScope(entity.getScopeType(), entity.getScopeId());
     }
+
+    /** 画面管理readの認可に必要なscope。 */
+    public record ScreenReadScope(String scopeType, Long scopeId) { }
 
     /**
      * スコープに紐づくアクティブな画面一覧を取得する。

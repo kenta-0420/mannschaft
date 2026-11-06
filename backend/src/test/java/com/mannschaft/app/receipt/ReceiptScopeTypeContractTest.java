@@ -8,6 +8,7 @@ import com.mannschaft.app.receipt.controller.ReceiptMyController;
 import com.mannschaft.app.receipt.controller.ReceiptPresetController;
 import com.mannschaft.app.receipt.controller.ReceiptQueueController;
 import com.mannschaft.app.receipt.service.ReceiptExportService;
+import com.mannschaft.app.receipt.service.ReceiptManagementReadFacade;
 import com.mannschaft.app.receipt.service.ReceiptMyService;
 import com.mannschaft.app.receipt.service.ReceiptPresetService;
 import com.mannschaft.app.receipt.service.ReceiptQueueService;
@@ -71,6 +72,7 @@ class ReceiptScopeTypeContractTest {
     private static final String UNKNOWN = "UNKNOWN_SCOPE";
 
     @Mock private ReceiptService receiptService;
+    @Mock private ReceiptManagementReadFacade readFacade;
     @Mock private ReceiptExportService exportService;
     @Mock private ReceiptQueueService queueService;
     @Mock private ReceiptPresetService presetService;
@@ -84,7 +86,7 @@ class ReceiptScopeTypeContractTest {
 
     @BeforeEach
     void setUp() {
-        adminMvc = build(new ReceiptAdminController(receiptService, exportService));
+        adminMvc = build(new ReceiptAdminController(receiptService, readFacade, exportService));
         queueMvc = build(new ReceiptQueueController(queueService));
         presetMvc = build(new ReceiptPresetController(presetService));
         myMvc = build(new ReceiptMyController(receiptMyService));
@@ -117,7 +119,7 @@ class ReceiptScopeTypeContractTest {
                         .param("scopeId", "1"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("COMMON_001"));
-        verifyNoInteractions(receiptService);
+        verifyNoInteractions(receiptService, readFacade);
     }
 
     @Test
@@ -128,7 +130,7 @@ class ReceiptScopeTypeContractTest {
                         .param("scopeId", "1"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("COMMON_001"));
-        verifyNoInteractions(receiptService);
+        verifyNoInteractions(receiptService, readFacade);
     }
 
     @Test
@@ -142,7 +144,7 @@ class ReceiptScopeTypeContractTest {
                         .param("scopeId", "0"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("COMMON_002"));
-        verifyNoInteractions(receiptService);
+        verifyNoInteractions(receiptService, readFacade);
     }
 
     @Test
