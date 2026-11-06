@@ -999,7 +999,6 @@ public class DashboardService {
             map.put("source_type", feed.getSourceType() != null ? feed.getSourceType().name() : null);
             map.put("source_id", feed.getSourceId());
             map.put("excerpt_cache", feed.getExcerptCache());
-            map.put("target_team_ids", feed.getTargetTeamIds());
             // 値は告知 API（AnnouncementFeedItemDto#targetAudience）と同じ型・同じ読み方
             map.put("target_audience", includeTargetAudience
                     ? com.mannschaft.app.social.announcement.audience.TargetAudience.fromJson(feed.getTargetAudience())
