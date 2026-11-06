@@ -231,7 +231,8 @@ class TimelinePostStatusVisibilityContractIT extends AbstractMySqlIntegrationTes
 
     static Stream<Arguments> 返信条件() {
         return PRIVATE_STATUSES.stream().flatMap(state -> SCOPES.stream()
-                .flatMap(scope -> Stream.of(OWNER, PEER, ADMIN).map(actor -> Arguments.of(state, scope, actor))));
+                .flatMap(scope -> Stream.of(OWNER, PEER, OUTSIDER, ADMIN)
+                        .map(actor -> Arguments.of(state, scope, actor))));
     }
 
     @ParameterizedTest
@@ -273,7 +274,9 @@ class TimelinePostStatusVisibilityContractIT extends AbstractMySqlIntegrationTes
                 count("SELECT COUNT(*) FROM timeline_post_reactions"), count("SELECT COUNT(*) FROM timeline_bookmarks"),
                 jdbc.queryForObject("SELECT reaction_count + reply_count + repost_count FROM timeline_posts WHERE id = ?",
                         Long.class, postId),
-                jdbc.queryForObject("SELECT vote_count FROM timeline_poll_options WHERE id = ?", Long.class, optionId));
+                jdbc.queryForObject("SELECT vote_count FROM timeline_poll_options WHERE id = ?", Long.class, optionId),
+                jdbc.queryForObject("SELECT total_vote_count FROM timeline_polls WHERE timeline_post_id = ?",
+                        Long.class, postId));
     }
 
     private long count(String sql) {
