@@ -33,13 +33,16 @@ const { snapshot, connectionState, hasSnapshot } = spectator
 
 const isDenied = computed(() => connectionState.value === 'DENIED')
 const isOffline = computed(() => connectionState.value === 'OFFLINE')
+const isUnauthenticated = computed(() => connectionState.value === 'UNAUTHENTICATED')
 
 function onOnline(): void {
   void spectator.resync()
 }
 function onOffline(): void {
   // 端末オフライン: 即座に OFFLINE を示す（HTTP も WS も不通になる・§G.17）。
-  if (connectionState.value !== 'DENIED') connectionState.value = 'OFFLINE'
+  if (connectionState.value !== 'DENIED' && connectionState.value !== 'UNAUTHENTICATED') {
+    connectionState.value = 'OFFLINE'
+  }
 }
 
 onMounted(() => {
@@ -87,6 +90,16 @@ onBeforeUnmount(() => {
       >
         <i class="pi pi-exclamation-triangle mt-0.5" />
         <span>{{ t('match.live.spectator.offline_banner') }}</span>
+      </div>
+
+      <!-- 未認証で購読できない（権限なしの DENIED とは区別する。匿名の閲覧者はログアウトさせない） -->
+      <div
+        v-if="isUnauthenticated"
+        class="mb-3 flex items-start gap-2 rounded-lg border border-surface-200 bg-surface-50 p-2 text-xs text-surface-700"
+        role="status"
+      >
+        <i class="pi pi-sign-in mt-0.5" />
+        <span>{{ t('match.live.spectator.unauthenticated_banner') }}</span>
       </div>
 
       <MatchSpectatorScoreboard
