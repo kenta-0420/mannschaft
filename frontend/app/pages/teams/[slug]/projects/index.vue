@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { toProgressPercent } from '~/utils/projectDetail'
 import type { ProjectResponse, CreateProjectRequest } from '~/types/project'
 
 definePageMeta({ middleware: 'auth' })
@@ -135,10 +136,10 @@ onMounted(async () => {
         <div class="mb-2">
           <div class="mb-1 flex justify-between text-xs text-surface-500">
             <span>{{ project.completedTodos }}/{{ project.totalTodos }} タスク</span>
-            <span>{{ Math.round(project.progressRate * 100) }}%</span>
+            <span>{{ toProgressPercent(project.progressRate) }}%</span>
           </div>
           <ProgressBar
-            :value="Math.round(project.progressRate * 100)"
+            :value="toProgressPercent(project.progressRate)"
             :show-value="false"
             style="height: 6px"
           />

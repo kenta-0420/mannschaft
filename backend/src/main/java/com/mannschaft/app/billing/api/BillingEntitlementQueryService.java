@@ -44,6 +44,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * F20.1: 権利サマリ・単一判定 API の読み取りサービス（設計書 02 §2.2 / §2.3 / 03 §2.2）。
@@ -248,6 +249,14 @@ public class BillingEntitlementQueryService {
             byKey.putIfAbsent(e.getFeatureKey(), e);
         }
 
+        // N+1 回避（CMP-261103-1225）: FREE プランの掲載機能キーを1回だけ取得し、キーごとに contains で判定する。
+        // 契約行の無いキーが無ければ問い合わせない（0件でも空 IN を発行しない）。
+        boolean needsFreeKeys = entitledKeys.stream().anyMatch(k -> !byKey.containsKey(k));
+        Set<String> freeKeys = needsFreeKeys
+                ? planFeatureRepository.findByPlanKey(FeatureKeys.PLAN_FREE).stream()
+                        .map(PlanFeatureEntity::getFeatureKey).collect(Collectors.toSet())
+                : Set.of();
+
         List<EntitledFeature> result = new ArrayList<>();
         for (String key : entitledKeys) {
             EntitlementEntity row = byKey.get(key);
@@ -257,7 +266,7 @@ public class BillingEntitlementQueryService {
                         .sourceKind(row.getSourceKind().name())
                         .validUntil(row.getValidUntil())
                         .build());
-            } else if (planFeatureRepository.existsByPlanKeyAndFeatureKey(FeatureKeys.PLAN_FREE, key)) {
+            } else if (freeKeys.contains(key)) {
                 result.add(virtual(key, "FREE"));
             } else {
                 // FREE 掲載でも実行でもない＝非営利無料枠（free_for_nonprofit）由来の virtual。

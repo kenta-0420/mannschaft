@@ -60515,7 +60515,7 @@ export interface components {
         };
         CreateTermRequest: {
             /** Format: int32 */
-            academicYear?: number;
+            academicYear: number;
             /** Format: date */
             endDate: string;
             name?: string;
@@ -61050,6 +61050,8 @@ export interface components {
             status?: string;
         };
         SlotSummaryDto: {
+            /** Format: date */
+            endDate?: string;
             /** @example 14:30:00 */
             endTime?: string;
             lineName?: string;
@@ -136499,15 +136501,6 @@ export interface operations {
                     "*/*": components["schemas"]["ApiResponseQrTokenResponse"];
                 };
             };
-            /** @description 発行権限なし（Requester 本人以外） */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseQrTokenResponse"];
-                };
-            };
             /** @description 契約が見つからない */
             404: {
                 headers: {
@@ -174165,15 +174158,6 @@ export interface operations {
             };
             /** @description 該当トークン無し */
             204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseQrTokenResponse"];
-                };
-            };
-            /** @description 閲覧権限なし */
-            403: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -16,6 +16,13 @@ public interface TimetableSlotRepository extends JpaRepository<TimetableSlotEnti
 
     List<TimetableSlotEntity> findByTimetableIdAndDayOfWeek(Long timetableId, String dayOfWeek);
 
+    /** 時間割 ID 群のスロットを一括取得する（ダッシュボード N+1 解消用。時間割 ID・主キー順）。 */
+    List<TimetableSlotEntity> findByTimetableIdInOrderByTimetableIdAscIdAsc(java.util.Collection<Long> timetableIds);
+
+    /** 時間割 ID 群の指定曜日スロットを一括取得する（ダッシュボード N+1 解消用。時間割 ID・主キー順）。 */
+    List<TimetableSlotEntity> findByTimetableIdInAndDayOfWeekOrderByTimetableIdAscIdAsc(
+            java.util.Collection<Long> timetableIds, String dayOfWeek);
+
     void deleteByTimetableId(Long timetableId);
 
     /**

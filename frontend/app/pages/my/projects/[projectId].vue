@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { normalizeProjectDetail, toProgressPercent } from '~/utils/projectDetail'
 import type {
   ProjectResponse,
   UpdateProjectRequest,
@@ -7,6 +8,7 @@ import type {
   GatesSummaryResponse,
   MilestoneCompletionMode,
 } from '~/types/project'
+import type { TodoResponse } from '~/types/todo'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -19,7 +21,7 @@ const { t } = useI18n()
 
 const project = ref<ProjectResponse | null>(null)
 const milestones = ref<MilestoneResponse[]>([])
-const todos = ref<unknown[]>([])
+const todos = ref<TodoResponse[]>([])
 const gatesSummary = ref<GatesSummaryResponse | null>(null)
 const loading = ref(true)
 const showEditDialog = ref(false)
@@ -67,7 +69,7 @@ async function load() {
         return null
       }),
     ])
-    project.value = pRes.data
+    project.value = normalizeProjectDetail(pRes.data)
     milestones.value = mRes.data
     todos.value = tRes.data
     gatesSummary.value = gRes?.data ?? null
@@ -254,7 +256,7 @@ onMounted(async () => {
         <div class="mb-2 grid gap-4 sm:grid-cols-4">
           <div>
             <p class="text-xs text-surface-400">進捗</p>
-            <p class="text-2xl font-bold">{{ Math.round(project.progressRate * 100) }}%</p>
+            <p class="text-2xl font-bold">{{ toProgressPercent(project.progressRate) }}%</p>
           </div>
           <div>
             <p class="text-xs text-surface-400">タスク</p>
@@ -277,7 +279,7 @@ onMounted(async () => {
           </div>
         </div>
         <ProgressBar
-          :value="Math.round(project.progressRate * 100)"
+          :value="toProgressPercent(project.progressRate)"
           :show-value="false"
           style="height: 8px"
         />
@@ -306,13 +308,7 @@ onMounted(async () => {
           このプロジェクトに関連するタスクはありません
         </div>
         <div v-else class="flex flex-col gap-1">
-          <div
-            v-for="(todo, idx) in todos"
-            :key="idx"
-            class="rounded-lg border border-surface-100 p-3 dark:border-surface-600"
-          >
-            <pre class="text-sm">{{ JSON.stringify(todo, null, 2) }}</pre>
-          </div>
+          <ProjectRelatedTodoRow v-for="todo in todos" :key="todo.id" :todo="todo" />
         </div>
       </div>
     </div>

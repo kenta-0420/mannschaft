@@ -102,7 +102,9 @@
       "multiple": "{names} tippen…"
     },
     "connection": {
-      "failed": "Verbindung unterbrochen. Verbindungsversuch läuft…"
+      "failed": "Verbindung unterbrochen. Verbindungsversuch läuft…",
+      "denied": "Du hast keine Berechtigung, diesen Kanal anzuzeigen",
+      "unauthenticated": "Deine Anmeldung ist abgelaufen, daher wurden die Echtzeit-Updates gestoppt. Bitte melde dich erneut an"
     },
     "mobile": {
       "backToList": "Zurück zur Kanalliste",
@@ -1106,6 +1108,9 @@
     }
   },
   "project": {
+    "related_todo_no_due": "Kein Fälligkeitsdatum",
+    "related_todo_no_assignee": "Nicht zugewiesen",
+    "related_todo_open": "TODO-Details öffnen",
     "milestones": "Meilensteine",
     "no_milestones": "Keine Meilensteine",
     "due_date": "Fälligkeitsdatum",
@@ -1528,7 +1533,9 @@
     },
     "ws": {
       "disconnected": "Verbindung verloren",
-      "reconnecting": "Verbindung wird wiederhergestellt…"
+      "reconnecting": "Verbindung wird wiederhergestellt…",
+      "denied": "Die Echtzeit-Updates wurden gestoppt, weil du keine Berechtigung hast, diese Pinnwand anzuzeigen",
+      "unauthenticated": "Deine Anmeldung ist abgelaufen, daher wurden die Echtzeit-Updates gestoppt. Bitte melde dich erneut an"
     },
     "validation": {
       "required": "Pflichtfeld.",
