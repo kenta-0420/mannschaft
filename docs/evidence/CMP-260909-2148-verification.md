@@ -18,7 +18,7 @@
 
 HTTPのemptyは DTO の `@Size(min=1)` を維持し、公開APIの仕様を変えていない。
 
-先行redは [red-results](CMP-260909-2148-red-results.json) に担当者記号による5保存値差分とdigestを保存した。8件中5失敗・3成功・error/skip 0。修正後は同じ試練blobで新8件と関連127件、合計135件が成功し、failure/error/skip 0、Gradle exit 0。対象7クラスとdigestは [green-results](CMP-260909-2148-green-results.json) に記録した。両runの検証コピーは自然終了後に `cleanup=removed` を確認した。
+先行redは [red-results](CMP-260909-2148/red-results.json) に担当者記号による5保存値差分とdigestを保存した。8件中5失敗・3成功・error/skip 0。修正後は同じ試練blobで新8件と関連127件、合計135件が成功し、failure/error/skip 0、Gradle exit 0。対象7クラスとdigestは [green-results](CMP-260909-2148/green-results.json) に記録した。両runの検証コピーは自然終了後に `cleanup=removed` を確認した。
 
 ## 全読み出しの走査
 
