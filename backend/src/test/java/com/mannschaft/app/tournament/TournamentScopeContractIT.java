@@ -707,7 +707,7 @@ class TournamentScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("不正な orgId（0・負数・Long上限）は404、非数値は400")
+        @DisplayName("不正な orgId（0・負数・Long上限）は404 TOUR_001、非数値は未解決スラッグとして404 COMMON_005")
         void 不正orgIdの挙動を固定() throws Exception {
             clearAuthentication();
             for (long bad : new long[] {0L, -1L, Long.MAX_VALUE}) {
@@ -716,7 +716,8 @@ class TournamentScopeContractIT extends AbstractMySqlIntegrationTest {
                         .andExpect(jsonPath("$.error.code").value("TOUR_001"));
             }
             mockMvc.perform(get("/api/v1/organizations/abc/tournaments/" + tPubA + "/divisions"))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_005"));
         }
     }
 
