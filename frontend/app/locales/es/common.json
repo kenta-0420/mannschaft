@@ -1108,6 +1108,18 @@
     }
   },
   "project": {
+    "back_label": "Lista de proyectos",
+    "delete_aria": "Eliminar {title}",
+    "delete_confirm": "¿Eliminar «{title}»?",
+    "delete_confirm_header": "Confirmar eliminación",
+    "milestone_dialog": {
+      "add_title": "Añadir hito",
+      "edit_title": "Editar hito",
+      "title_label": "Título",
+      "title_placeholder": "Nombre del hito",
+      "due_date_label": "Fecha límite",
+      "add": "Añadir"
+    },
     "related_todo_no_due": "Sin fecha límite",
     "related_todo_no_assignee": "Sin responsable",
     "related_todo_open": "Abrir detalle de la tarea",
@@ -1168,7 +1180,19 @@
       "none": "Ninguno",
       "custom_emoji": "Personalizado",
       "custom_color": "Color personalizado",
-      "current": "Actual"
+      "current": "Actual",
+      "colors": {
+        "blue": "Azul",
+        "red": "Rojo",
+        "green": "Verde",
+        "amber": "Ámbar",
+        "violet": "Violeta",
+        "pink": "Rosa",
+        "cyan": "Cian",
+        "teal": "Verde azulado",
+        "orange": "Naranja",
+        "gray": "Gris"
+      }
     },
     "guide": {
       "button": "Cómo usar",
@@ -1220,7 +1244,10 @@
       "update_failed": "Error al actualizar",
       "delete_failed": "Error al eliminar",
       "status_change_failed": "Error al cambiar el estado",
-      "milestone_save_failed": "Error al guardar el hito"
+      "milestone_save_failed": "Error al guardar el hito",
+      "force_unlock_failed": "No se pudo forzar el desbloqueo",
+      "completion_mode_failed": "No se pudo cambiar el modo de finalización",
+      "gate_init_failed": "No se pudieron inicializar las puertas"
     },
     "status": {
       "active": "Activo",

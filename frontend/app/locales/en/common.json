@@ -1108,6 +1108,18 @@
     }
   },
   "project": {
+    "back_label": "Projects",
+    "delete_aria": "Delete {title}",
+    "delete_confirm": "Delete \"{title}\"?",
+    "delete_confirm_header": "Confirm deletion",
+    "milestone_dialog": {
+      "add_title": "Add milestone",
+      "edit_title": "Edit milestone",
+      "title_label": "Title",
+      "title_placeholder": "Milestone name",
+      "due_date_label": "Due date",
+      "add": "Add"
+    },
     "related_todo_no_due": "No due date",
     "related_todo_no_assignee": "Unassigned",
     "related_todo_open": "Open TODO details",
@@ -1168,7 +1180,19 @@
       "none": "None",
       "custom_emoji": "Custom",
       "custom_color": "Custom color",
-      "current": "Current"
+      "current": "Current",
+      "colors": {
+        "blue": "Blue",
+        "red": "Red",
+        "green": "Green",
+        "amber": "Amber",
+        "violet": "Violet",
+        "pink": "Pink",
+        "cyan": "Cyan",
+        "teal": "Teal",
+        "orange": "Orange",
+        "gray": "Gray"
+      }
     },
     "guide": {
       "button": "How to use",
@@ -1220,7 +1244,10 @@
       "update_failed": "Failed to update",
       "delete_failed": "Failed to delete",
       "status_change_failed": "Failed to change status",
-      "milestone_save_failed": "Failed to save milestone"
+      "milestone_save_failed": "Failed to save milestone",
+      "force_unlock_failed": "Failed to force unlock",
+      "completion_mode_failed": "Failed to change the completion mode",
+      "gate_init_failed": "Failed to initialize the gates"
     },
     "status": {
       "active": "Active",
