@@ -205,6 +205,7 @@ def parse_campaigns(markdown: str) -> list[dict]:
         campaign_id, title, status, prerequisite, acceptance, evidence, refs = cells[:7]
         status_text = status.strip()
         status_key = normalize_campaign_status(status_text)
+        task_priority = split_priority(status_text)[0]
         feature_refs = re.findall(r"[A-Za-z][A-Za-z0-9_-]+", title + " " + acceptance)
         reference_line = re.sub(r"\[[^\]\n]*\]\(https://github\.com/[^/\s)]+/[^/\s)]+/actions/runs/\d+\)", "", line)
         github_refs = sorted({number for value in re.findall(r"(?<![A-Za-z0-9])#(\d+)", reference_line) if (number := int(value)) >= 100})
@@ -217,6 +218,7 @@ def parse_campaigns(markdown: str) -> list[dict]:
                 "statusLabel": status_text or "未設定",
                 "stage": "未設定",
                 "priority": "未設定",
+                "taskPriority": task_priority,
                 "audiences": [],
                 "featureKey": None,
                 "updated": "未設定",
@@ -244,9 +246,18 @@ def campaign_tags(status_key: str) -> list[str]:
     return [labels.get(status_key, "未整理")]
 
 
+def split_priority(status_text: str) -> tuple[str | None, str]:
+    """状態列先頭の優先度 P1〜P5（CMP-261106-0049）を分離する。`**` を除いてから先頭の `P1`〜`P5` と空白を取り除く。"""
+    normalized = status_text.replace("**", "").strip()
+    match = re.match(r"^(P[1-5])\s+", normalized)
+    if match:
+        return match.group(1), normalized[match.end():]
+    return None, normalized
+
+
 def normalize_campaign_status(status_text: str) -> str:
     """状態列の先頭語を進捗へ写像する。未着手・保留は別状態とし、不明な語は保持する。"""
-    normalized = status_text.replace("**", "").strip()
+    normalized = split_priority(status_text)[1]
     if normalized.startswith(("凍結", "停止")):
         return "blocked"
     if normalized.startswith("完了"):

@@ -102,7 +102,9 @@
       "multiple": "{names} are typing…"
     },
     "connection": {
-      "failed": "Connection lost. Attempting to reconnect…"
+      "failed": "Connection lost. Attempting to reconnect…",
+      "denied": "You do not have permission to view this channel",
+      "unauthenticated": "Your login has expired, so real-time updates have stopped. Please log in again"
     },
     "mobile": {
       "backToList": "Back to channel list",
@@ -1531,7 +1533,9 @@
     },
     "ws": {
       "disconnected": "Connection lost",
-      "reconnecting": "Reconnecting…"
+      "reconnecting": "Reconnecting…",
+      "denied": "Real-time updates have stopped because you do not have permission to view this board",
+      "unauthenticated": "Your login has expired, so real-time updates have stopped. Please log in again"
     },
     "validation": {
       "required": "This field is required.",
