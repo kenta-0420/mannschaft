@@ -62,10 +62,10 @@ const { formatDateTime, formatCalendarDayRange, formatTimeRange } = useDatetime(
           data-testid="closure-history-card"
           class="rounded-md border border-surface-200 p-3 text-sm dark:border-surface-700"
         >
-          <dl class="space-y-2">
+          <dl class="min-w-0 space-y-2">
             <div>
               <dt class="text-xs font-medium text-surface-500">{{ $t('emergency_closure.section.period') }}</dt>
-              <dd data-field="period">
+              <dd data-field="period" class="break-words [overflow-wrap:anywhere]">
                 <div>{{ formatCalendarDayRange(item.startDate, item.endDate) }}</div>
                 <div v-if="item.startTime && item.endTime" class="text-xs text-surface-500">
                   {{ formatTimeRange(item.startTime, item.endTime) }}
@@ -74,7 +74,7 @@ const { formatDateTime, formatCalendarDayRange, formatTimeRange } = useDatetime(
             </div>
             <div>
               <dt class="text-xs font-medium text-surface-500">{{ $t('emergency_closure.table.sent_at') }}</dt>
-              <dd data-field="sent-at" class="text-surface-600 dark:text-surface-300">{{ formatDateTime(item.createdAt) }}</dd>
+              <dd data-field="sent-at" class="break-words text-surface-600 [overflow-wrap:anywhere] dark:text-surface-300">{{ formatDateTime(item.createdAt) }}</dd>
             </div>
             <div>
               <dt class="text-xs font-medium text-surface-500">{{ $t('emergency_closure.table.reason') }}</dt>
@@ -82,7 +82,7 @@ const { formatDateTime, formatCalendarDayRange, formatTimeRange } = useDatetime(
             </div>
             <div>
               <dt class="text-xs font-medium text-surface-500">{{ $t('emergency_closure.table.count') }}</dt>
-              <dd data-field="count">
+              <dd data-field="count" class="break-words [overflow-wrap:anywhere]">
                 <Tag :value="$t('emergency_closure.table.count_value', { count: item.sentCount })" severity="info" />
               </dd>
             </div>
