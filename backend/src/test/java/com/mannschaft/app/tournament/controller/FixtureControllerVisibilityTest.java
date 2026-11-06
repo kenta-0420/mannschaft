@@ -39,6 +39,8 @@ class FixtureControllerVisibilityTest {
 
     @Mock
     private FixtureService matchService;
+    @Mock
+    private com.mannschaft.app.tournament.service.TournamentViewAccessGate tournamentViewAccessGate;
 
     @InjectMocks
     private FixtureController controller;
@@ -52,6 +54,7 @@ class FixtureControllerVisibilityTest {
 
             assertThat(controller.listMatchdays(ORG_ID, T_ID, DIV_ID).getStatusCode().is2xxSuccessful()).isTrue();
 
+            verify(tournamentViewAccessGate).verifyViewable(ORG_ID, T_ID, VIEWER);
             verify(matchService).listMatchdays(T_ID, DIV_ID, VIEWER);
         }
     }
@@ -78,6 +81,7 @@ class FixtureControllerVisibilityTest {
 
             controller.getMatch(ORG_ID, T_ID, MATCH_ID);
 
+            verify(tournamentViewAccessGate).verifyViewable(ORG_ID, T_ID, VIEWER);
             verify(matchService).getMatch(T_ID, MATCH_ID, VIEWER);
         }
     }
@@ -91,6 +95,7 @@ class FixtureControllerVisibilityTest {
 
             controller.listRosters(ORG_ID, T_ID, MATCH_ID);
 
+            verify(tournamentViewAccessGate).verifyViewable(ORG_ID, T_ID, VIEWER);
             verify(matchService).listRosters(T_ID, MATCH_ID, VIEWER);
         }
     }
