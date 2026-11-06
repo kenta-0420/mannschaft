@@ -159,6 +159,8 @@
 
 シフトスケジュールを新規作成する。初期状態は `DRAFT`。
 
+対象は必須query `teamId` で指定する。SYSTEM_ADMIN、または対象チームの ADMIN / DEPUTY_ADMIN（user_rolesのみADMINも含む）の既存認可後に、未削除チームの存在を確認する。不在・論理削除済みはSYSTEM_ADMINでも `403 COMMON_002` とし、スケジュールを保存しない。ACTIVE限定などの新条件は設けない。query欠落/空文字は `400 COMMON_001`、文字列 `null` は既存teamId解決の `404 COMMON_005`。
+
 **リクエストボディ**
 ```json
 {
@@ -208,8 +210,8 @@
 | ステータス | 条件 |
 |-----------|------|
 | 400 | バリデーションエラー（期間不正等） |
-| 403 | ADMIN / DEPUTY_ADMIN（MANAGE_SHIFTS）ではない |
-| 404 | `copy_from_schedule_id` に指定されたスケジュールが存在しない / 同一チームではない |
+| 403 | 作成権限がない、または対象チームが不在・論理削除済み（COMMON_002） |
+| 404 | 非数値teamIdの解決失敗（COMMON_005）、または `copy_from_schedule_id` に指定されたスケジュールが存在しない / 同一チームではない |
 
 ---
 

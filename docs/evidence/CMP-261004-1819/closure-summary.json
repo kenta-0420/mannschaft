@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "selection": "root採用の閉鎖・復元証拠から公開可能な状態と出所だけを選択。",
+  "sourceHeads": {
+    "BE": "304db81dc552ba522698320e0b664290175e9dd2",
+    "FE": "8fe2b174fcec9bce0675744cfb752902a3846a89"
+  },
+  "allStoppedVerifiedAt": "2026-10-29T02:08:19.421013+00:00",
+  "allStartedServersStoppedVerified": true,
+  "dedicatedDBStoppedVerified": true,
+  "fourPortsAbsentVerified": true,
+  "windowsFourPortsAbsentVerified": true,
+  "dataRestoredVerified": true,
+  "oldLeasesExtended": false,
+  "ownedScheduleCleanup": "UI作成schedule10は通常API削除後404・一覧不在・論理削除確認。slot0。",
+  "restoration": "membership38離脱、module35=false、invite6無効、JA復元、outbox0、grant不変。既存資産は保全。",
+  "source": {
+    "path": ".claude/runtime/october-fifth-wave-20261027/root-v16-final-phase-closure.json",
+    "sha256": "645af987e7aef161360944b068e4c3efeb30d56f0082f7e1f7b7a69cf6f47a12"
+  },
+  "evidence": {
+    "activation": {
+      "path": "/mnt/c/Claude/mannschaft/.claude/runtime/october-fifth-wave-20261027/root-v16-phase-activation-root-approved.json",
+      "sha256": "79bda3b06a4a4aba8ea83d7f5f487090f420e7297f2222d027bbf88e80d17266"
+    },
+    "physicalClosure": {
+      "path": "/mnt/c/Claude/mannschaft/.claude/runtime/october-fifth-wave-20261027/root-v16-all-six-consumer-closure-root-approved.json",
+      "sha256": "85cc03ca0a0ff772414b528db292cdae102729c3fe26abb73c027d6dee5e4e1b"
+    },
+    "ownedCleanup": {
+      "path": "/mnt/c/Claude/mannschaft/.claude/runtime/october-fifth-wave-20261027/root-v16-owned-ui-cleanup-summary-root-approved.json",
+      "sha256": "123a3d72956aeee3e1c86f43dd2f5f505612b649efe47e8a1fb5314891af95f5"
+    },
+    "normalCleanupAndMeasurement": {
+      "path": "/mnt/c/Claude/mannschaft/.claude/runtime/october-fifth-wave-20261027/root-v16-normal-cleanup-postmeasurement-summary-root-approved.json",
+      "sha256": "fe5e7768191276b8282a83a4dfc94ea5982d6b71810d905f222484d7b827f495"
+    },
+    "FEIndependentStop": {
+      "path": "/mnt/c/Claude/mannschaft/.claude/runtime/october-fifth-wave-20261027/root-FE11-stop-independent-readonly.json",
+      "sha256": "ae56cca0935e8d2bcfd51c75f727629f3319edb2e964e82160ee4c77f39bb1b5"
+    },
+    "BENormalStop": {
+      "path": "/mnt/c/Claude/mannschaft/.claude/runtime/october-fifth-wave-20261027/root-304-runtime-v16-approved/root-start-stop-evidence/phase-stop-one-shot.json",
+      "sha256": "a533554fed870be1355858b3971ce2ee51d958b3398ac5344988743d35b7b14c"
+    },
+    "dedicatedNormalStop": {
+      "path": "/mnt/c/Claude/mannschaft/.claude/runtime/october-fifth-wave-20261027/root-v16-dedicated-stop-result.json",
+      "sha256": "4b384a598cf3a0bcd8460f5b610c9b9d1f55daa2fb2924d2dd4100a7d42507b3"
+    },
+    "linuxIndependent": {
+      "path": "/mnt/c/Claude/mannschaft/.claude/runtime/october-fifth-wave-20261027/root-v16-final-linux-resource-independent.json",
+      "sha256": "eae9ec05c59fc0e38f46b3eb6b0ccc1bc3b6fa36d9e406851abb8bd2021e8f3b"
+    },
+    "windowsIndependent": {
+      "path": "/mnt/c/Claude/mannschaft/.claude/runtime/october-fifth-wave-20261027/root-v16-final-windows-ports-independent.json",
+      "sha256": "abafdd3c4de0892510226e8b2f588a7a79c6ab08d7120b982dae0ecfb18136c9"
+    },
+    "cleanupRejectionRetained": {
+      "path": "/mnt/c/Claude/mannschaft/.claude/runtime/october-fifth-wave-20261027/root-v16-owned-cleanup-auto-review-rejection.json",
+      "sha256": "978f46b86a4682af8e1cf56bd283c0a3fc151fe51254f718bcea520ab88c5a66"
+    },
+    "finalCleanupRejectionRetained": {
+      "path": "/mnt/c/Claude/mannschaft/.claude/runtime/october-fifth-wave-20261027/root-v16-final-normal-cleanup-auto-review-rejection.json",
+      "sha256": "4bb7bd8f583076a08e1aedc08864deb4d7a7ff4f6fbc84f2675a49514edea84e"
+    },
+    "existingCleanupAuthorizationProof": {
+      "path": "/mnt/c/Claude/mannschaft/.claude/runtime/october-fifth-wave-20261027/root-v16-owned-cleanup-existing-authorization-proof.json",
+      "sha256": "2575872b8164b65915ffdbff3b1de2ce8fd0750637162fecba3bd8df77a70b33"
+    },
+    "existingSetupRestorationScopeProof": {
+      "path": "/mnt/c/Claude/mannschaft/.claude/runtime/october-fifth-wave-20261027/root-v16-final-cleanup-existing-authorization-scope-proof.json",
+      "sha256": "84d213313d47948217b9262f27134c1cd622f3d2afa2953785a26c9e8be0987f"
+    }
+  }
+}

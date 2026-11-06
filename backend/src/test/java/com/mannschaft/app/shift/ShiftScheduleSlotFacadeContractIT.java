@@ -372,14 +372,17 @@ class ShiftScheduleSlotFacadeContractIT extends AbstractMySqlIntegrationTest {
 
     @ParameterizedTest(name = "{0}")
     @EnumSource(Ep.class)
-    @DisplayName("不在 ID: 管理者・SYSTEM_ADMIN とも ID 起点の不在コード（teamId 起点は是正前どおり）")
+    @DisplayName("不在 ID: ID 起点は不在コード、teamId 作成は403（1819是正済み）、SA一覧は200")
     void 不在IDは不在コード(Ep ep) throws Exception {
         String missing = String.valueOf(missingId(ep));
         if (ep.kind == Kind.TEAM) {
             assertResponse(perform(Actor.ADMIN_A, ep, missing), ep, Expect.error(403, CommonErrorCode.COMMON_002),
                     "管理者・不在 teamId");
-            // 殿の判断 5: SA は是正前どおり（一覧は空で 200、作成は不在 teamId でも 201 ＝別課題で台帳起票候補）。
-            assertResponse(perform(Actor.SYSTEM_ADMIN, ep, missing), ep, Expect.ok(ep.successStatus),
+            // 1819でSAの不在teamId作成を403へ是正。TEAM一覧の200空の契約は維持する。
+            Expect systemAdminExpect = ep == Ep.S3_CREATE
+                    ? Expect.error(403, CommonErrorCode.COMMON_002)
+                    : Expect.ok(ep.successStatus);
+            assertResponse(perform(Actor.SYSTEM_ADMIN, ep, missing), ep, systemAdminExpect,
                     "SA・不在 teamId");
             return;
         }
