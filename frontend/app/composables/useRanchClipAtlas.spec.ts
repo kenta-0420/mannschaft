@@ -330,3 +330,21 @@ describe('v4 接地影', () => {
     }
   })
 })
+
+it('v4 SEAはplesiosaurusを7度、他種を5度とし承認viewerの軸を使う', () => {
+  const node = document.createElement('canvas')
+  const ctx = context()
+  vi.spyOn(node, 'getContext').mockReturnValue(ctx as unknown as CanvasRenderingContext2D)
+  const image = new TestImage() as unknown as HTMLImageElement
+  const sea = {
+    ...entry,
+    catalogVersion: '4',
+    habitat: 'SEA',
+    sourceSpecies: 'archelon',
+  } as unknown as RanchDevelopmentClipEntry
+  paintRanchClip(node, image, sea, 'happy', 1, 2 / 12, false)
+  expect(ctx.rotate).toHaveBeenLastCalledWith((-5 * Math.PI) / 180)
+  expect(ctx.translate).toHaveBeenCalledWith(-56, -59)
+  paintRanchClip(node, image, { ...sea, sourceSpecies: 'plesiosaurus' }, 'happy', 1, 2 / 12, false)
+  expect(ctx.rotate).toHaveBeenLastCalledWith((-7 * Math.PI) / 180)
+})
