@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260822-1730",
+  "scope": "app",
+  "implementation": {
+    "pr": 4248,
+    "sha": "650d75ac252a305e34637cad1711542dfe048c25"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1730-1",
+      "description": "Tokyo/NY の PENDING を同時に置き、各チームの TZ・ポリシーで独立判定",
+      "tests": [
+        {
+          "name": "ReservationPendingExpireTeamTimezoneIT",
+          "evidence": "backend/src/test/java/com/mannschaft/app/reservation/ReservationPendingExpireTeamTimezoneIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-1730-2",
+      "description": "NY 日跨ぎ枠・終了 Instant 直前は失効しない",
+      "tests": [
+        {
+          "name": "ReservationPendingExpireTeamTimezoneIT",
+          "evidence": "backend/src/test/java/com/mannschaft/app/reservation/ReservationPendingExpireTeamTimezoneIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-1730-5",
+      "description": "途中例外後も cursor から再開・二重失効しない（再起動を挟む実機確認 B10-12 を含む）",
+      "tests": [
+        {
+          "name": "ReservationPendingExpireProgressIT",
+          "evidence": "backend/src/test/java/com/mannschaft/app/reservation/ReservationPendingExpireProgressIntegrationTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-1730-6",
+      "description": "承認とバッチ失効の並行実行で最終状態は一貫する",
+      "tests": [
+        {
+          "name": "ReservationPendingExpireConcurrencyIT",
+          "evidence": "backend/src/test/java/com/mannschaft/app/reservation/ReservationPendingExpireConcurrencyIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-1730-D1",
+      "description": "論理削除済み枠の PENDING が永続 retry せず終状態へ遷移し、物理欠損は従来どおり失敗・retry 保持（D-1730-1 是正 #4275）",
+      "tests": [
+        {
+          "name": "実機再実測 2026-11-04（実残骸14/28/37・制御データ661〜665）",
+          "evidence": "docs/evidence/CMP-260822-1730-real.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 41294153302
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4248"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260822-1730-real.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260822-1730-exploratory.md"
+    }
+  },
+  "regressions": [
+    {
+      "description": "自分の予約一覧が日跨ぎ枠の終了日を出さず、終了が翌日と判別できなかった（R3、PR #4296 で是正）",
+      "test": "backend/src/test/java/com/mannschaft/app/reservation/ReservationMapperTest.java と frontend/tests/unit/components/reservation/ReservationList.spec.ts",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/pull/4296",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/41910604109"
+    }
+  ]
+}

@@ -3,8 +3,8 @@
   "cmpId": "CMP-260826-2127",
   "scope": "app",
   "implementation": {
-    "pr": 3099,
-    "sha": "06b3119285a8075a6761fd113cdb73724c29560c"
+    "pr": 4269,
+    "sha": "4211238e73d40d64dfa507f9572e729142135f94"
   },
   "acceptanceCriteria": [
     {
@@ -104,16 +104,19 @@
   ],
   "ci": [
     {
-      "runId": 33871010616
+      "runId": 41676369304
     },
     {
-      "runId": 33871010615
+      "runId": 41676369318
+    },
+    {
+      "runId": 41676369485
     }
   ],
   "stages": {
     "review": {
       "status": "passed",
-      "evidence": "https://github.com/kenta-0420/mannschaft/pull/3099"
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4269"
     },
     "real": {
       "status": "passed",

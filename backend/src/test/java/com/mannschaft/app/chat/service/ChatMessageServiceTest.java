@@ -513,7 +513,7 @@ class ChatMessageServiceTest {
         @DisplayName("正常系: カーソルなしでメッセージ一覧を取得できる")
         void カーソルなしでメッセージ一覧を取得できる() {
             // given
-            given(messageRepository.findByChannelIdOrderByCreatedAtDesc(eq(CHANNEL_ID), any(Pageable.class)))
+            given(messageRepository.findByChannelIdOrderByCreatedAtDescIdDesc(eq(CHANNEL_ID), any(Pageable.class)))
                     .willReturn(List.of());
 
             // when
@@ -557,7 +557,7 @@ class ChatMessageServiceTest {
             ChatMessageEntity msg1 = createMessage();
             ChatMessageEntity msg2 = createMessage();
             ChatMessageEntity msg3 = createMessage();
-            given(messageRepository.findByChannelIdOrderByCreatedAtDesc(eq(CHANNEL_ID), any(Pageable.class)))
+            given(messageRepository.findByChannelIdOrderByCreatedAtDescIdDesc(eq(CHANNEL_ID), any(Pageable.class)))
                     .willReturn(List.of(msg1, msg2, msg3));
             given(attachmentRepository.findByMessageIdInOrderByIdAsc(any())).willReturn(List.of());
             given(reactionRepository.findByMessageIdInOrderByIdAsc(any())).willReturn(List.of());
@@ -579,7 +579,7 @@ class ChatMessageServiceTest {
         @DisplayName("正常系: limitがnullの場合はデフォルト50件で取得する")
         void limitがnullの場合はデフォルト50件で取得する() {
             // given
-            given(messageRepository.findByChannelIdOrderByCreatedAtDesc(eq(CHANNEL_ID), any(Pageable.class)))
+            given(messageRepository.findByChannelIdOrderByCreatedAtDescIdDesc(eq(CHANNEL_ID), any(Pageable.class)))
                     .willReturn(List.of());
 
             // when
@@ -588,7 +588,7 @@ class ChatMessageServiceTest {
 
             // then
             assertThat(result).isNotNull();
-            verify(messageRepository).findByChannelIdOrderByCreatedAtDesc(eq(CHANNEL_ID),
+            verify(messageRepository).findByChannelIdOrderByCreatedAtDescIdDesc(eq(CHANNEL_ID),
                     eq(org.springframework.data.domain.PageRequest.of(0, 51))); // 50+1
         }
 
@@ -596,14 +596,14 @@ class ChatMessageServiceTest {
         @DisplayName("正常系: limitが100を超える場合は100件にクリップされる")
         void limitが上限を超える場合は上限にクリップされる() {
             // given
-            given(messageRepository.findByChannelIdOrderByCreatedAtDesc(eq(CHANNEL_ID), any(Pageable.class)))
+            given(messageRepository.findByChannelIdOrderByCreatedAtDescIdDesc(eq(CHANNEL_ID), any(Pageable.class)))
                     .willReturn(List.of());
 
             // when
             chatMessageService.listMessages(CHANNEL_ID, SENDER_ID, null, 200);
 
             // then
-            verify(messageRepository).findByChannelIdOrderByCreatedAtDesc(eq(CHANNEL_ID),
+            verify(messageRepository).findByChannelIdOrderByCreatedAtDescIdDesc(eq(CHANNEL_ID),
                     eq(org.springframework.data.domain.PageRequest.of(0, 101))); // 100+1
         }
     }
@@ -626,7 +626,7 @@ class ChatMessageServiceTest {
 
             given(messageRepository.findById(parentId)).willReturn(Optional.of(parent));
             given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(createChannel());
-            given(messageRepository.findByParentIdOrderByCreatedAtAsc(parentId)).willReturn(List.of(reply));
+            given(messageRepository.findByParentIdOrderByCreatedAtAscIdAsc(parentId)).willReturn(List.of(reply));
             given(attachmentRepository.findByMessageIdInOrderByIdAsc(any())).willReturn(List.of());
             given(reactionRepository.findByMessageIdInOrderByIdAsc(any())).willReturn(List.of());
             given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
@@ -934,7 +934,7 @@ class ChatMessageServiceTest {
 
             given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(root));
             given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(createChannel());
-            given(messageRepository.findByRootIdAndDeletedAtIsNullOrderByCreatedAtAsc(
+            given(messageRepository.findByRootIdAndDeletedAtIsNullOrderByCreatedAtAscIdAsc(
                     eq(MESSAGE_ID), any(Pageable.class))).willReturn(replyPage);
             given(attachmentRepository.findByMessageIdInOrderByIdAsc(any())).willReturn(List.of());
             given(reactionRepository.findByMessageIdInOrderByIdAsc(any())).willReturn(List.of());
@@ -1044,7 +1044,7 @@ class ChatMessageServiceTest {
             assertThatThrownBy(() -> chatMessageService.getThread(MESSAGE_ID, null, 10, OTHER_USER_ID))
                     .isInstanceOf(com.mannschaft.app.common.BusinessException.class);
             verify(messageRepository, never())
-                    .findByRootIdAndDeletedAtIsNullOrderByCreatedAtAsc(any(), any());
+                    .findByRootIdAndDeletedAtIsNullOrderByCreatedAtAscIdAsc(any(), any());
         }
 
         @Test

@@ -737,10 +737,8 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     await user.context().close()
   })
 
-  // 既知の欠陥（範囲外・台帳起票待ち）: 部門・参加チームの GET は path の orgId を Service へ渡さず、
-  // 越境パス（org 9 の配下で 専用組織の大会）でも 200 になる。この spec は現状の挙動を正としない。
-  // 修正されたら fixme を外し、404 + TOUR_001 を期待値とする。
-  test.fixme('AC4 [API] 既知の欠陥: 部門一覧・参加チーム一覧が越境パス（org 9 配下の 専用組織の大会）で 404 にならない', async ({ browser }) => {
+  // CMP-261006-0901: 閲覧系 GET も path の orgId と大会の所属を照合し、越境パスは 404 TOUR_001 で不在大会と同じ応答にする。
+  test('AC4 [API] 部門一覧・参加チーム一覧が越境パス（org 9 配下の 専用組織の大会）で 404 TOUR_001 になる', async ({ browser }) => {
     const user = await newPage(browser, userCred)
     const divs = await api(user.request, 'get', `/organizations/${ORG_A}/tournaments/${tIdC}/divisions`)
     expect(divs.status, divs.text).toBe(404)
