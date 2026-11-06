@@ -77,6 +77,19 @@ describe('サイネージのroute slugとAPI数値scopeIdの境界', () => {
     expect(wrapper.findComponent(SignageManagerStub).props('scopeId')).toBe(42)
   })
 
+  it('所属一覧にいないSYSTEM_ADMINも、既存の正規detailから数値IDを解決できる', async () => {
+    mocks.route.params.slug = 'unjoined-org'
+    mocks.api.mockImplementation((path: string) => Promise.resolve(
+      path.startsWith('/api/v1/me/')
+        ? { data: [] }
+        : { data: { id: 'unjoined-org', slug: 'unjoined-org', numericId: 77 } },
+    ))
+    const wrapper = await mountPage()
+    expect(wrapper.findComponent(SignageManagerStub).exists()).toBe(true)
+    expect(wrapper.findComponent(SignageManagerStub).props('scopeId')).toBe(77)
+    expect(mocks.api).toHaveBeenCalledWith('/api/v1/organizations/unjoined-org')
+  })
+
   it('解決済みAからBへの遷移時は旧Managerを即外し、BのIDだけで再生成する', async () => {
     const wrapper = await mountPage()
     const pending = deferred<typeof orgs>()
