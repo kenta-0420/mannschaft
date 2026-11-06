@@ -3205,5 +3205,28 @@
     "supporter_label": "{feature} für Unterstützer anzeigen",
     "save_success": "Sichtbarkeit gespeichert",
     "nav": "Navigation"
+  },
+  "secret_token": {
+    "issued_dialog": {
+      "title": "Link erstellt",
+      "once_warning": "Dieser Link wird nur jetzt angezeigt. Nach dem Schließen wird er nie wieder angezeigt. Geben Sie ihn an die Berechtigten weiter, bevor Sie das Fenster schließen.",
+      "url_label": "Erstellter Link",
+      "copy": "Kopieren",
+      "copied": "Kopiert",
+      "copy_failed": "Kopieren fehlgeschlagen. Bitte markieren Sie den Link und kopieren Sie ihn manuell",
+      "qr_label": "QR-Code",
+      "close": "Schließen",
+      "pdf_download": "QR-Code als PDF speichern"
+    },
+    "list": {
+      "not_shown_hint": "Aus Sicherheitsgründen werden erstellte Links nicht erneut angezeigt. Erstellen Sie bei Bedarf einen neuen.",
+      "revoked_by_migration": "Wegen einer Sicherheitsverbesserung widerrufen",
+      "reissue": "Neu erstellen",
+      "reissue_hint": "Beim Neuerstellen entsteht ein neuer Link, und der alte Link funktioniert nicht mehr.",
+      "label_with_id": "Link #{id}",
+      "created_at": "Erstellt am",
+      "expires_at": "Gültig bis",
+      "used_count": "Anzahl der Nutzungen"
+    }
   }
 }

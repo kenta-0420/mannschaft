@@ -3205,5 +3205,28 @@
     "supporter_label": "서포터에게 {feature} 표시",
     "save_success": "표시 설정을 저장했습니다",
     "nav": "길 안내"
+  },
+  "secret_token": {
+    "issued_dialog": {
+      "title": "링크를 발급했습니다",
+      "once_warning": "이 링크는 지금만 표시됩니다. 닫으면 다시 표시되지 않습니다. 필요한 분께 공유한 뒤에 닫아 주세요.",
+      "url_label": "발급된 링크",
+      "copy": "복사",
+      "copied": "복사했습니다",
+      "copy_failed": "복사하지 못했습니다. 링크를 직접 선택하여 복사해 주세요",
+      "qr_label": "QR 코드",
+      "close": "닫기",
+      "pdf_download": "QR 코드를 PDF로 저장"
+    },
+    "list": {
+      "not_shown_hint": "보안을 위해 발급된 링크는 다시 표시되지 않습니다. 필요하면 다시 발급해 주세요.",
+      "revoked_by_migration": "보안 강화로 인해 만료되었습니다",
+      "reissue": "재발급",
+      "reissue_hint": "재발급하면 새 링크가 만들어지고 이전 링크는 사용할 수 없게 됩니다.",
+      "label_with_id": "링크 #{id}",
+      "created_at": "발급 일시",
+      "expires_at": "유효 기간",
+      "used_count": "사용 횟수"
+    }
   }
 }

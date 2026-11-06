@@ -14,6 +14,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * 異議申立てエンティティ。トークンベースの異議申立てフローを管理する。
@@ -34,6 +35,7 @@ public class ModerationAppealEntity extends BaseEntity {
     @Column(nullable = false)
     private Long actionId;
 
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Column(nullable = false, length = 64, unique = true)
     private String appealToken;
 

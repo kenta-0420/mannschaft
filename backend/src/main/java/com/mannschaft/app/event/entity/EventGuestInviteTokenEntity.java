@@ -11,6 +11,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * イベントゲスト招待トークンエンティティ。ゲスト招待用トークンを管理する。
@@ -25,6 +26,7 @@ public class EventGuestInviteTokenEntity extends BaseEntity {
     @Column(nullable = false)
     private Long eventId;
 
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Column(nullable = false, length = 36)
     private String token;
 
