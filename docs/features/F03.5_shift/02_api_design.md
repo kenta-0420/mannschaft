@@ -18,7 +18,7 @@
 | POST | `/api/v1/shifts/schedules/{id}/slots` | 必要 | スロット作成 |
 | POST | `/api/v1/shifts/schedules/{id}/slots/bulk` | 必要 | スロット一括作成 |
 | PATCH | `/api/v1/shifts/slots/{id}` | 必要 | スロット更新（部分更新、PUT から PATCH へ変更） |
-| DELETE | `/api/v1/shifts/slots/{id}` | 必要 | スロット削除（物理削除） |
+| DELETE | `/api/v1/shifts/slots/{id}` | 必要 | スロット削除（論理削除） |
 | PATCH | `/api/v1/shifts/slots/{id}/assignments` | 必要 | **【v2】D&D UI 用の差分割当 API（個別ユーザー追加・削除）** |
 | POST | `/api/v1/shifts/slots/{id}/assignments/move` | 必要 | **【CMP-261010-1432】枠間移動（1 トランザクションで移動元から外し移動先へ入れる）** |
 | GET | `/api/v1/shifts/requests` | 必要 | 希望一覧取得（管理者用、クエリパラメータ `scheduleId` でスケジュール絞り込み。旧 `GET /shifts/schedules/{id}/requests` を統合） |
@@ -612,7 +612,7 @@ scope は**パス変数でなくスケジュール実体の `team_id` から解�
 
 #### `DELETE /api/v1/shifts/slots/{id}`
 
-スロットを物理削除する。`PUBLISHED` / `ARCHIVED` 状態では削除不可。
+スロットを論理削除し、枠指定希望・割当へ削除日時を連鎖する。希望の行は保持するが、`SLOT_DELETED` の希望は通常一覧・本人履歴には返さない。日単位希望は対象外。枠編集画面はこの影響と通常操作で復元できないことを警告し、明示的な承諾後に本APIを呼ぶ（CMP-260909-2153）。`PUBLISHED` / `ARCHIVED` 状態では削除不可。
 
 **レスポンス（204 No Content）**
 

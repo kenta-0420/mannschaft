@@ -19,6 +19,7 @@ const { listSlots, deleteSlot, bulkCreateSlots } = useShiftSlotApi()
 const { listPositions } = useShiftPositionApi()
 const { handleApiError } = useErrorHandler()
 const { success } = useNotification()
+const confirm = useConfirm()
 
 const scheduleId = computed(() => Number(route.params.id))
 
@@ -85,13 +86,32 @@ function handleSlotSaved(slot: ShiftSlotResponse) {
   slots.value.sort((a, b) => a.time.slotDate.localeCompare(b.time.slotDate) || a.time.startTime.localeCompare(b.time.startTime))
 }
 
+const deletingSlotId = ref<number | null>(null)
+
+function confirmDeleteSlot(slotId: number) {
+  if (!canManage.value || deletingSlotId.value !== null) return
+  confirm.require({
+    message: t('shift.slot.deleteConfirm'),
+    header: t('shift.slot.deleteTitle'),
+    icon: 'pi pi-exclamation-triangle',
+    rejectLabel: t('common.cancel'),
+    acceptLabel: t('shift.action.delete'),
+    acceptClass: 'p-button-danger',
+    accept: () => handleDeleteSlot(slotId),
+  })
+}
+
 async function handleDeleteSlot(slotId: number) {
+  if (!canManage.value || deletingSlotId.value !== null) return
+  deletingSlotId.value = slotId
   try {
     await deleteSlot(slotId)
     slots.value = slots.value.filter((s) => s.id !== slotId)
     success(t('shift.slot.deleteSuccess'))
   } catch (error) {
     handleApiError(error)
+  } finally {
+    deletingSlotId.value = null
   }
 }
 
@@ -315,7 +335,8 @@ function formatDate(dateStr: string): string {
               rounded
               size="small"
               severity="danger"
-              @click="handleDeleteSlot(slot.id)"
+              :disabled="deletingSlotId !== null"
+              @click="confirmDeleteSlot(slot.id)"
             />
           </div>
         </div>

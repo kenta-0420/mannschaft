@@ -129,6 +129,7 @@ INDEX idx_shift_slots_schedule_position (schedule_id, position_id, slot_date)  -
 - `assigned_user_ids` は JSON 配列で管理。正規化テーブルも検討したが、シフト枠あたりの割り当て人数が少数（通常1〜5人）のため JSON で十分。配列内の各 user_id はチームメンバーであることを Service 層で検証する。`GET /shifts/my` での検索（`JSON_CONTAINS`）はインデックスが効かないため、パフォーマンスが課題になった場合は Valkey キャッシュ（`mannschaft:cache:user-shifts:{userId}`、TTL 30分、シフト公開・変更時に無効化）で対応する
 - `position_id`: FK → shift_positions。ポジションマスターから選択。`ON DELETE SET NULL` によりポジション削除時もスロットは保持（ポジション無指定扱いになる）。API レスポンスでは `position` オブジェクト（`{ "id": 1, "name": "ホール" }`）として返却
 - 単独のスロット削除も `deleted_at DATETIME NULL` による論理削除とし、枠に紐づく割当と枠指定希望へ同じ削除日時を連鎖する。日単位希望は巻き込まない。親シフト表の削除時は全子へ親と同じ削除日時を連鎖する。
+- 枠編集画面の削除操作では、提出済みの枠指定希望が希望一覧・本人履歴から非表示になり、通常操作では復元できないことを警告して明示確認を求める。取消時はDELETEを送信せず、承諾後だけ既存APIを呼ぶ。失敗時は枠を一覧に残す（CMP-260909-2153）。
 - `required_count` と `assigned_user_ids` の要素数が一致しない場合は「欠員」として UI で表示する
 - `version`: 楽観的ロック。複数の ADMIN/DEPUTY_ADMIN が同一スロットの `assigned_user_ids` を同時編集する競合を防止。PUT 更新時に競合検出、409 Conflict を返却
 - **既存スロットの移行（v2）**: v1 時点で存在する単一時間帯スロットはそのまま有効。v2 UI は同一日の複数スロットを時間軸に沿ってタイムラインで描画する

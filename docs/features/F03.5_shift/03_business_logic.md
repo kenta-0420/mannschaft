@@ -749,7 +749,7 @@ public record AssignmentResult(
 - **希望提出権限**: MEMBER 以上（SUPPORTER は閲覧のみ）
 - **希望編集可能期間**: `COLLECTING` 状態 かつ `request_deadline` 前のみ。`ADJUSTING` 以降は変更不可。`request_deadline` が過去の場合はステータスが `COLLECTING` でも提出・編集・取り下げ不可（自動遷移バッチ実行前の猶予期間中の操作を防止）
 - **スロット追加可能期間**: `DRAFT` / `COLLECTING` / `ADJUSTING` 状態で可能。`PUBLISHED` / `ARCHIVED` では不可
-- **COLLECTING 中のスロット削除**: FK CASCADE により紐づく `shift_requests` も連動削除される。該当スロットに希望を提出済みのメンバーには通知を送信し、再提出を促す
+- **スロット削除と希望の扱い**: 枠指定希望は `SLOT_DELETED` の論理削除で保全し、通常一覧・本人履歴からは除外する。枠編集画面ではこの影響と通常操作では復元できないことを警告し、明示確認後だけ削除する。取消時は未送信、失敗時は枠の表示を維持する。日単位希望は巻き込まない（CMP-260909-2153、DB設計の削除方針に準拠）
 - **公開の前提条件**: `ADJUSTING` 状態のみ。全スロットの割り当て完了は推奨だが必須ではない（欠員公開可能）
 - **PUBLISHED 後の変更**: `assigned_user_ids` と `note` のみ変更可能。変更時は該当メンバーに再通知
 - **深夜跨ぎスロット**: `end_time < start_time` の場合は翌日跨ぎとして解釈。表示はフロントエンド側で対応
