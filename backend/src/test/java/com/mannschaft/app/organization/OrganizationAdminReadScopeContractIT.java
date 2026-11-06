@@ -35,6 +35,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -67,7 +68,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 認可・取得・JWTはモックせず、外部R2のみ既存ReceiptPdfArchiveContractITと同じ方式で代替する。
  * 保存済みPDF原本を用い、フォント/生成障害を認可のredと混同しない。</p>
  */
-@AutoConfigureMockMvc
+@AutoConfigureMockMvc(print = MockMvcPrint.NONE)
 @Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class OrganizationAdminReadScopeContractIT extends AbstractMySqlIntegrationTest {
@@ -130,7 +131,7 @@ class OrganizationAdminReadScopeContractIT extends AbstractMySqlIntegrationTest 
         teamScreenId = screen("TEAM", teamId);
         for (String scope : List.of("ORGANIZATION", "TEAM")) {
             Long id = "TEAM".equals(scope) ? teamId : orgId;
-            vendors.save(VendorEntity.builder().scopeType(scope).scopeId(id).name("1350検証業者").build());
+            vendors.save(VendorEntity.builder().scopeType(scope).scopeId(id).name("1350検証業者").createdBy(ADMIN).build());
             mails.save(DirectMailLogEntity.builder().scopeType(scope).scopeId(id).senderId(ADMIN)
                     .subject("1350検証下書き").bodyMarkdown("検証").bodyHtml("<p>検証</p>")
                     .recipientType("ALL").build());
