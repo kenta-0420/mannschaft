@@ -1,0 +1,23 @@
+{
+  "cmpId": "CMP-260909-2148",
+  "stage": "targeted-green",
+  "sourceHead": "0ad99bfa1fa10ee348fa2a2d866c7acfe941f052",
+  "testBlobIdenticalToRed": "3dd5d16e7428c3d1259cd7f046830324680f5dab",
+  "counts": { "tests": 135, "passed": 135, "failures": 0, "errors": 0, "skipped": 0 },
+  "classes": [
+    { "name": "ShiftAutoAssignCurrentSourceContractIT", "tests": 8 },
+    { "name": "ShiftAutoAssignScopeContractIT", "tests": 38 },
+    { "name": "ShiftAutoAssignFeatureGateContractIT", "tests": 15 },
+    { "name": "ShiftManualAssignmentSourceContractIT", "tests": 12 },
+    { "name": "ShiftScheduleServiceTest", "tests": 30 },
+    { "name": "ShiftSlotServiceTest", "tests": 22 },
+    { "name": "ShiftBudgetPublishedEventListenerTest", "tests": 10 }
+  ],
+  "gradleExitCode": 0,
+  "newContractXmlSha256": "beaf8579421251d317241d36a015fb955fd1778e1934cb433f22d34028141520",
+  "logSha256": "84c16fd913a7809344acb05ec69f5d12a0cdce1c3be63743c010e12c1d2726a8",
+  "receiptSha256": "635a09b16cef84795af36ffc9980d80c1f5028c2768fc11bfa0cd44ccc8231e9",
+  "cleanup": "removed",
+  "excludedTasksForTargetedRun": ["archUnitTest", "archUnitFreezeStoreIntegrityTest"],
+  "limits": ["全CI・最終検分・実機・探索は別途必要", "認可契約の既存MockMvcはaddFilters=falseであり実JWTの証明ではない", "新8試練は実Serviceと実MySQLの保存値を検査するが、実HTTP・AFTER_COMMIT配送は検査しない", "raw XML・ログ・認証情報・個人状態は公開していない"]
+}

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.shift.AssignmentStrategyType;
+import com.mannschaft.app.shift.ShiftAssignedUserIds;
 import com.mannschaft.app.shift.ShiftAssignmentRunStatus;
 import com.mannschaft.app.shift.ShiftAssignmentStatus;
 import com.mannschaft.app.shift.ShiftErrorCode;
@@ -39,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * シフト自動割当サービス。割当アルゴリズムの実行・確定・取消・履歴管理を担当する。
@@ -414,24 +416,23 @@ public class ShiftAutoAssignService {
     }
 
     /**
-     * スロットの assignedUserIds を確定済み割当から再構築して更新する。
+     * 現在の割当JSONを保持し、今回選択された確定済み担当だけを追加する。
      */
     private void updateSlotAssignedUsers(List<ShiftAssignmentEntity> confirmedAssignments) {
         // slotId → userId リストを集約
         Map<Long, List<Long>> slotUserMap = confirmedAssignments.stream()
+                .filter(a -> a.getStatus() == ShiftAssignmentStatus.CONFIRMED)
                 .collect(Collectors.groupingBy(
                         ShiftAssignmentEntity::getSlotId,
                         Collectors.mapping(ShiftAssignmentEntity::getUserId, Collectors.toList())));
 
         for (Map.Entry<Long, List<Long>> entry : slotUserMap.entrySet()) {
             slotRepository.findById(entry.getKey()).ifPresent(slot -> {
-                // 既存の CONFIRMED 割当ユーザーも含めて再構築
-                List<ShiftAssignmentEntity> allConfirmed = assignmentRepository
-                        .findAllBySlotId(slot.getId()).stream()
-                        .filter(a -> a.getStatus() == ShiftAssignmentStatus.CONFIRMED)
-                        .toList();
-                List<Long> userIds = allConfirmed.stream()
-                        .map(ShiftAssignmentEntity::getUserId)
+                // 現在の正本はJSON。履歴から再構築すると手動担当が消え、過去担当が復活する。
+                // 既存の順序を先に保持し、今回確定した担当だけを重複なく追加する。
+                List<Long> userIds = Stream.concat(
+                                ShiftAssignedUserIds.parse(slot.getAssignedUserIds()).stream(),
+                                entry.getValue().stream())
                         .distinct()
                         .toList();
 

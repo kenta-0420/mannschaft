@@ -348,7 +348,7 @@ INDEX idx_hourly_rates_team (team_id, user_id)                                 -
 
 #### `shift_assignments`【v2 新規】
 
-自動割当の実行結果を保存する監査・差し戻し用のテーブル。`shift_slots.assigned_user_ids` は「現在の割当状態」を示すキャッシュ的な JSON 配列であるのに対し、本テーブルは「誰がいつどの戦略で割り当てたか」を個別レコードとして履歴保持する。手動割当も自動割当も同じテーブルに記録する。
+自動割当の実行結果を保存する監査・差し戻し用のテーブル。`shift_slots.assigned_user_ids` は「現在の割当状態」の正本となる JSON 配列であるのに対し、本テーブルは「誰がいつどの戦略で割り当てたか」を個別レコードとして履歴保持する。手動割当も自動割当も同じテーブルに記録する。
 
 ##### 二表の役割分担（正本はどちらか）— CMP-260908-2117
 
@@ -410,6 +410,7 @@ UNIQUE KEY uq_shift_assignments_slot_user_active (slot_id, user_id, status)  -- 
 **制約・備考**
 - ステータス: `PROPOSED`（自動割当の提案）→ `CONFIRMED`（管理者が確定）/ `REVOKED`（取り消し）
 - `PROPOSED` 状態の割当は `shift_slots.assigned_user_ids` には反映されない。管理者が UI で確認・修正してから「確定」アクションで `CONFIRMED` に遷移し、同時に `shift_slots.assigned_user_ids` を一括更新する
+- 自動割当の部分確定では、現在の JSON の順序を先に保持し、今回選択された `CONFIRMED` の担当だけを一意に追加する。未選択の提案・選択された `REVOKED`・過去の `CONFIRMED` 履歴から現在状態を再構築しない。これにより、履歴のない手動担当も保持し、解除済みの過去担当を復活させない。内部の空選択は更新せず、同じ選択の反復確定も重複を作らない（CMP-260909-2148）
 - `REVOKED` 状態は履歴として残す（監査証跡）。物理削除は行わない
 - `assigned_by_strategy` の列挙値は Java 側の `AssignmentStrategyType` Enum（`MANUAL / GREEDY_V1 / CSP_V1`）と一致させる。CHECK 制約で値を限定
 - `run_id` が NULL の場合は手動割当（D&D 操作・PUT `/slots/{id}` 等）。非 NULL の場合は自動割当バッチ経由

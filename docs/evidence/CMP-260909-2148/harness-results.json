@@ -1,0 +1,27 @@
+{
+  "cmpId": "CMP-260909-2148",
+  "stage": "supplementary-evidence-layout",
+  "sourceHead": "804e4b5a203647ba55dd5b5741244818446a77ba",
+  "sourceTree": "bb450913e720553fd9023269e0a2b35c590f3fa7",
+  "temporarySnapshotTree": "bb450913e720553fd9023269e0a2b35c590f3fa7",
+  "productionBlobUnchanged": "66d449a513454f27abfdb0007f8d3b3fbfe81da3",
+  "testBlobUnchanged": "3dd5d16e7428c3d1259cd7f046830324680f5dab",
+  "command": "node --test scripts/completion-evidence.test.mjs",
+  "counts": { "tests": 22, "passed": 22, "failed": 0, "cancelled": 0, "skipped": 0 },
+  "ac3Passed": true,
+  "nodeExitCode": 0,
+  "environment": "公式verification-runの全Git tree展開先だけに、一時native Git metadataを初期化。元NTFS sourceはinit/add/commitせず、署名・global設定・safe.directoryを変更していない。Gitを必要とする既存CLI fixtureとAC-3のHEAD参照を実行した。",
+  "logSha256": "643fd61065495ddae8b125fdb1d22fec061bc804e9d4c97b8eff0e2118db7eaa",
+  "originalReceiptSha256": "1cd369a1203a3e2c7b92f48e37db53c82c0a3d1ada253d0c60eb47650fdaad14",
+  "manualCleanupSha256": "d371a5f483b63dc629aa2be446e7fa8d95be5d812c83bf74bb819c7090f70234",
+  "cleanup": {
+    "originalReceipt": "retainedを保持",
+    "reason": "一時snapshot commitが起動した短命Git maintenance参照が公式cleanup時に残った",
+    "followup": "記録3 PIDは自然消滅。正本の所有・参照判定でUID/marker/inode一致と全参照0を確認し、所有scratchだけを撤去。別記録を保存した",
+    "processStops": 0,
+    "remainingReferences": 0,
+    "final": "removed"
+  },
+  "earlierAttempt": "r1は20成功/2失敗。archiveに.gitが無くAC-3がHEADを読めないことと、CLI fixtureがWindows Git adapterを拾う環境問題。原記録を保持し、製品失敗や成功へ読み替えない。",
+  "limits": ["正式CI再実行の成功は別途確認が必要", "実機・探索は未完了", "rawログ・原receipt・個人状態は公開せずdigestと安全な要約だけを保存"]
+}
