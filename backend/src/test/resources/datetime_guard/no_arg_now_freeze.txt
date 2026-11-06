@@ -696,7 +696,7 @@ NO_ARG_NOW|com.mannschaft.app.shiftbudget.entity.ShiftBudgetAllocationEntity|1
 NO_ARG_NOW|com.mannschaft.app.shiftbudget.entity.ShiftBudgetConsumptionEntity|2
 NO_ARG_NOW|com.mannschaft.app.shiftbudget.entity.ShiftBudgetFailedEventEntity|1
 NO_ARG_NOW|com.mannschaft.app.shiftbudget.service.HourlyRateAggregationService|2
-NO_ARG_NOW|com.mannschaft.app.shiftbudget.service.ShiftBudgetConsumptionService|3
+NO_ARG_NOW|com.mannschaft.app.shiftbudget.service.ShiftBudgetConsumptionService|2
 NO_ARG_NOW|com.mannschaft.app.shiftbudget.service.ThresholdAlertEvaluationService|1
 NO_ARG_NOW|com.mannschaft.app.signage.entity.SignageAccessTokenEntity|1
 NO_ARG_NOW|com.mannschaft.app.signage.entity.SignageEmergencyMessageEntity|2

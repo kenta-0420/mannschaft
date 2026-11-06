@@ -12,7 +12,6 @@ import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -101,19 +100,16 @@ public class ShiftBudgetConsumptionReconcileBatchService {
             try {
                 // F01.2.1 AC-G125: 監査ログの組織は、チームの親組織を再解決せず、取消対象の消化行が紐づく
                 // 割当の組織（計上時の組織）を使い、組織ごとに出す。取消より前に引く（取消後は PLANNED でなくなる）。
-                Map<Long, Long> plannedByOrg = new LinkedHashMap<>();
-                for (ShiftBudgetConsumptionRepository.PlannedAllocationRow row
-                        : consumptionRepository.findPlannedAllocationRowsByShiftId(shiftId)) {
-                    plannedByOrg.merge(row.getOrganizationId(), row.getPlannedCount(), Long::sum);
-                }
-                int cancelled = consumptionService.cancelAllForShift(shiftId);
+                // 候補選択時の上限を固定する。待機中に再公開された新世代は取り消さない。
+                var result = consumptionService.cancelAllForShift(shiftId, orphan.getPublicationGeneration());
+                int cancelled = result.cancelledCount();
                 if (cancelled == 0) {
                     // 直前に別経路（リスナー・並行実行）が取り消し済み。競合であって異常ではない。
                     log.info("シフト予算消化 整合バッチ: 取消対象なし（他経路が先に収束済み）: shiftId={}", shiftId);
                     continue;
                 }
                 cancelledTotal += cancelled;
-                for (Map.Entry<Long, Long> entry : plannedByOrg.entrySet()) {
+                for (Map.Entry<Long, Long> entry : result.countsByOrganization().entrySet()) {
                     auditLogService.record(
                             "SHIFT_BUDGET_CONSUMPTION_CANCELLED",
                             null, null,

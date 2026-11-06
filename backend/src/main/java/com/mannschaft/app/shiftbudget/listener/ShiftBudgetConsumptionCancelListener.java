@@ -18,9 +18,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -53,7 +51,7 @@ public class ShiftBudgetConsumptionCancelListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onShiftArchived(ShiftArchivedEvent event) {
-        cancelConsumptions(event.getScheduleId(), event.getTeamId(), event.getArchivedByUserId());
+        cancelConsumptions(event.getScheduleId(), event.getTeamId(), event.getArchivedByUserId(), event.getPublicationGeneration());
     }
 
     /**
@@ -68,7 +66,7 @@ public class ShiftBudgetConsumptionCancelListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onShiftScheduleClosed(ShiftScheduleClosedEvent event) {
-        cancelConsumptions(event.getScheduleId(), event.getTeamId(), event.getActorUserId());
+        cancelConsumptions(event.getScheduleId(), event.getTeamId(), event.getActorUserId(), event.getPublicationGeneration());
     }
 
     /**
@@ -79,25 +77,21 @@ public class ShiftBudgetConsumptionCancelListener {
      *
      * @param actorUserId 操作者ID。バッチ等の自動処理では null
      */
-    private void cancelConsumptions(Long scheduleId, Long teamId, Long actorUserId) {
+    private void cancelConsumptions(Long scheduleId, Long teamId, Long actorUserId, long publicationGeneration) {
         // 取消先の組織（F01.2.1 AC-G125 / §9.2 #15）。チームの親組織は再解決しない。
         // チームは複数の組織に加盟しうる上、計上後に加盟先が変わっても取消は計上時の組織で行うべきなので、
         // 取消対象の PLANNED 消化行が紐づく割当（allocation_id）の組織を使い、監査・失敗イベントは組織ごとに出す。
         Map<Long, Long> cancelledPlannedByOrg = new LinkedHashMap<>();
         try {
-            List<ShiftBudgetConsumptionRepository.PlannedAllocationRow> rows =
-                    consumptionRepository.findPlannedAllocationRowsByShiftId(scheduleId);
+            List<ShiftBudgetConsumptionRepository.PlannedCancellationRow> rows =
+                    consumptionRepository.findPlannedCancellationRows(scheduleId, publicationGeneration);
             if (rows.isEmpty()) {
                 log.debug("F08.7 cancel hook: 取消対象の PLANNED 消化が無いためスキップ: scheduleId={}",
                         scheduleId);
                 return;
             }
-            Set<Long> affectedAllocationIds = new LinkedHashSet<>();
-            Map<Long, Long> allocationOrg = new HashMap<>();
-            for (ShiftBudgetConsumptionRepository.PlannedAllocationRow row : rows) {
-                cancelledPlannedByOrg.merge(row.getOrganizationId(), row.getPlannedCount(), Long::sum);
-                affectedAllocationIds.add(row.getAllocationId());
-                allocationOrg.put(row.getAllocationId(), row.getOrganizationId());
+            for (ShiftBudgetConsumptionRepository.PlannedCancellationRow row : rows) {
+                cancelledPlannedByOrg.merge(row.getOrganizationId(), 1L, Long::sum);
             }
 
             // フィーチャーフラグは計上時の組織で判定する。計上先の組織がすべて OFF なら何もしない。
@@ -114,7 +108,11 @@ public class ShiftBudgetConsumptionCancelListener {
                 return;
             }
 
-            int cancelledCount = consumptionService.cancelAllForShift(scheduleId);
+            var result = consumptionService.cancelAllForShift(scheduleId, publicationGeneration);
+            int cancelledCount = result.cancelledCount();
+            cancelledPlannedByOrg = result.countsByOrganization();
+            Set<Long> affectedAllocationIds = result.organizationsByAllocation().keySet();
+            Map<Long, Long> allocationOrg = result.organizationsByAllocation();
 
             if (cancelledCount > 0) {
                 for (Map.Entry<Long, Long> entry : cancelledPlannedByOrg.entrySet()) {
@@ -160,6 +158,7 @@ public class ShiftBudgetConsumptionCancelListener {
                             Map.of(
                                     "shift_schedule_id", scheduleId,
                                     "team_id", teamId,
+                                    "publication_generation", publicationGeneration,
                                     "archived_by_user_id",
                                     actorUserId == null ? -1L : actorUserId
                             ),

@@ -101,9 +101,57 @@ public class ShiftBudgetConsumptionRecordListener {
             List<ShiftSlotEntity> slots =
                     slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(scheduleId);
 
+            // 割当解決を再利用し、旧世代だけに残る組織もフラグ判定へ含める。
+            Map<ShiftSlotEntity, Optional<ShiftBudgetAllocationEntity>> allocationsBySlot = new java.util.IdentityHashMap<>();
+            for (ShiftSlotEntity slot : slots) {
+                Optional<ShiftBudgetAllocationEntity> allocation = resolveAllocationForSlot(teamId, slot);
+                allocationsBySlot.put(slot, allocation);
+                allocation.ifPresent(a -> featureEnabledByOrg.computeIfAbsent(
+                        a.getOrganizationId(), featureService::isEnabled));
+            }
+            for (Long organizationId : consumptionService.findOlderPlannedOrganizationIds(
+                    scheduleId, event.getPublicationGeneration())) {
+                featureEnabledByOrg.computeIfAbsent(organizationId, featureService::isEnabled);
+            }
+            if (!featureEnabledByOrg.isEmpty() && featureEnabledByOrg.values().stream().noneMatch(Boolean::booleanValue)) {
+                return;
+            }
+            for (var entry : featureEnabledByOrg.entrySet()) {
+                if (entry.getValue()) {
+                    tallies.put(entry.getKey(), new OrgTally());
+                }
+            }
+            var cleanup = consumptionService.cancelOldPlannedForPublication(
+                    scheduleId, event.getPublicationGeneration(), Set.copyOf(tallies.keySet()));
+            if (!cleanup.accepted()) {
+                return;
+            }
+            for (var entry : cleanup.cancellation().countsByOrganization().entrySet()) {
+                try {
+                    auditLogService.record("SHIFT_BUDGET_CONSUMPTION_CANCELLED",
+                            event.getTriggeredByUserId(), null, teamId, entry.getKey(), null, null, null,
+                            String.format("{\"shift_schedule_id\":%d,\"cancelled_count\":%d,\"source\":\"RE_PUBLISHED\"}",
+                                    scheduleId, entry.getValue()));
+                } catch (Exception auditEx) {
+                    // 取消はcommit済み。監査のenqueue拒否で新しい計上まで止めない。
+                    log.error("F08.7 hook: 再公開取消の監査投入失敗（記録処理は継続）: "
+                                    + "scheduleId={}, organizationId={}", scheduleId, entry.getKey(), auditEx);
+                }
+            }
+            for (var entry : cleanup.cancellation().organizationsByAllocation().entrySet()) {
+                try {
+                    thresholdAlertEvaluationService.evaluateAndTrigger(entry.getKey());
+                } catch (Exception thresholdEx) {
+                    recordFailureSafe(entry.getValue(), ShiftBudgetFailedEventType.THRESHOLD_ALERT,
+                            entry.getKey(), Map.of("allocation_id", entry.getKey(),
+                                    "shift_schedule_id", scheduleId, "operation", "RE_PUBLISHED"),
+                            thresholdEx);
+                }
+            }
+
             for (ShiftSlotEntity slot : slots) {
                 // 当日の allocation を解決（割当を持つ組織 → その組織の allocation）
-                Optional<ShiftBudgetAllocationEntity> allocOpt = resolveAllocationForSlot(teamId, slot);
+                Optional<ShiftBudgetAllocationEntity> allocOpt = allocationsBySlot.get(slot);
                 if (allocOpt.isEmpty()) {
                     log.warn("F08.7 hook: 該当 allocation 不在または計上先の組織を一意に決められない"
                                     + "（事前作成漏れの可能性）: teamId={}, slotDate={}, slotId={}",
@@ -152,13 +200,17 @@ public class ShiftBudgetConsumptionRecordListener {
                         }
                         BigDecimal hourlyRate = hourlyRateOpt.get();
 
-                        consumptionService.recordSingleConsumption(
+                        boolean recorded = consumptionService.recordSingleConsumption(
                                 allocation.getId(),
                                 scheduleId,
                                 slot.getId(),
                                 userId,
                                 hourlyRate,
-                                hours);
+                                hours,
+                                event.getPublicationGeneration());
+                        if (!recorded) {
+                            continue;
+                        }
                         tally.recorded++;
 
                         // Phase 9-δ 追加: 各 (slot,user) PLANNED INSERT 後に閾値判定を呼ぶ。
@@ -215,6 +267,9 @@ public class ShiftBudgetConsumptionRecordListener {
             for (Map.Entry<Long, OrgTally> entry : tallies.entrySet()) {
                 Long organizationId = entry.getKey();
                 OrgTally tally = entry.getValue();
+                if (tally.recorded == 0 && tally.skipped == 0) {
+                    continue;
+                }
                 log.info("F08.7 hook: シフト公開→消化記録完了: scheduleId={}, organizationId={}, recorded={}, "
                                 + "skipped={}, missingHourlyRateUsers={}",
                         scheduleId, organizationId, tally.recorded, tally.skipped,
@@ -272,6 +327,7 @@ public class ShiftBudgetConsumptionRecordListener {
                             Map.of(
                                     "shift_schedule_id", scheduleId,
                                     "team_id", teamId,
+                                    "publication_generation", event.getPublicationGeneration(),
                                     "triggered_by_user_id",
                                     event.getTriggeredByUserId() == null ? -1L : event.getTriggeredByUserId()
                             ),

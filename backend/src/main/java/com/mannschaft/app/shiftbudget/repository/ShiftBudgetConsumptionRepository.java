@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -86,12 +87,12 @@ public interface ShiftBudgetConsumptionRepository
      * @param limit 1 回の実行で返すシフト件数の上限
      */
     @Query(value =
-            "SELECT s.id AS shiftId, s.team_id AS teamId "
+            "SELECT s.id AS shiftId, s.team_id AS teamId, s.publication_generation AS publicationGeneration "
                     + "FROM shift_budget_consumptions c "
                     + "INNER JOIN shift_schedules s ON s.id = c.shift_id "
                     + "WHERE c.status = 'PLANNED' AND c.deleted_at IS NULL "
                     + "  AND (s.status = 'ARCHIVED' OR s.deleted_at IS NOT NULL) "
-                    + "GROUP BY s.id, s.team_id "
+                    + "GROUP BY s.id, s.team_id, s.publication_generation "
                     + "ORDER BY s.id "
                     + "LIMIT :limit",
             nativeQuery = true)
@@ -116,6 +117,28 @@ public interface ShiftBudgetConsumptionRepository
             nativeQuery = true)
     List<PlannedAllocationRow> findPlannedAllocationRowsByShiftId(@Param("shiftId") Long shiftId);
 
+    /** 世代上限以下の取消候補を、全経路共通の割当ID・消化ID順で一括取得する。 */
+    @Query(value = "SELECT c.id AS consumptionId, c.allocation_id AS allocationId, "
+            + "a.organization_id AS organizationId, c.amount AS amount "
+            + "FROM shift_budget_consumptions c "
+            + "INNER JOIN shift_budget_allocations a ON a.id = c.allocation_id "
+            + "WHERE c.shift_id = :shiftId AND c.status = 'PLANNED' AND c.deleted_at IS NULL "
+            + "AND c.publication_generation <= :generationUpperBound "
+            + "ORDER BY c.allocation_id, c.id", nativeQuery = true)
+    List<PlannedCancellationRow> findPlannedCancellationRows(
+            @Param("shiftId") Long shiftId, @Param("generationUpperBound") long generationUpperBound);
+
+    /** claim前の不変スナップショット。clearAutomaticallyで失効するEntityを持ち回らない。 */
+    interface PlannedCancellationRow {
+        Long getConsumptionId();
+
+        Long getAllocationId();
+
+        Long getOrganizationId();
+
+        BigDecimal getAmount();
+    }
+
     /** {@link #findPlannedAllocationRowsByShiftId(Long)} の射影。 */
     interface PlannedAllocationRow {
         Long getAllocationId();
@@ -130,5 +153,7 @@ public interface ShiftBudgetConsumptionRepository
         Long getShiftId();
 
         Long getTeamId();
+
+        Long getPublicationGeneration();
     }
 }

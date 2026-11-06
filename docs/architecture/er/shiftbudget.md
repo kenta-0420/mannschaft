@@ -143,6 +143,8 @@ erDiagram
 | `updated_at` | `datetime` | NO | `CURRENT_TIMESTAMP` （式） |  |
 | `deleted_at` | `datetime` | YES | NULL |  |
 | `deleted_at_uq` | `datetime` | NO | （なし） |  |
+| `publication_generation` | `bigint` | NO | `0` |  |
+| `active_status` | `varchar(20)` | YES | NULL |  |
 
 ### `shift_budget_failed_events`
 

@@ -71,7 +71,7 @@ public class ShiftAutoArchiveBatchService {
 
                 // Phase 4-γ: ShiftArchivedEvent を発行して紐づく Todo を自動 CANCELLED にする
                 eventPublisher.publishEvent(new ShiftArchivedEvent(
-                        schedule.getId(), schedule.getTeamId(), null));
+                        schedule.getId(), schedule.getTeamId(), null, schedule.getPublicationGeneration()));
                 archived++;
                 log.info("シフト自動アーカイブ: scheduleId={}, endDate={}", schedule.getId(), schedule.getEndDate());
 

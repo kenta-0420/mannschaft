@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -60,21 +61,31 @@ class ShiftBudgetConsumptionServiceTest {
     @Mock
     private ShiftBudgetAllocationRepository allocationRepository;
 
+    @Mock
+    private com.mannschaft.app.shiftbudget.port.ShiftBudgetPublicationPort publicationPort;
+
     private ShiftBudgetConsumptionService service;
 
     @BeforeEach
     void setUp() {
         service = new ShiftBudgetConsumptionService(
-                consumptionRepository, allocationRepository, FIXED_WALL_CLOCK);
+                consumptionRepository, allocationRepository, publicationPort, FIXED_WALL_CLOCK);
     }
 
     @Nested
     @DisplayName("recordSingleConsumption (§11.1 擬似コード)")
     class RecordSingleConsumption {
 
+        @BeforeEach
+        void 公開世代0が有効() {
+            given(publicationPort.lockPublication(SHIFT_ID)).willReturn(Optional.of(
+                    new com.mannschaft.app.shiftbudget.port.ShiftBudgetPublicationPort.PublicationState(0L, true)));
+        }
+
         @Test
         @DisplayName("既存なし → 新規 PLANNED INSERT + アトミック加算")
         void 新規_INSERT() {
+            given(allocationRepository.incrementConsumedAmount(any(), any())).willReturn(1);
             given(consumptionRepository.findBySlotIdAndUserIdAndStatusAndDeletedAtIsNull(
                     SLOT_ID, USER_ID, ShiftBudgetConsumptionStatus.PLANNED))
                     .willReturn(Optional.empty());
@@ -83,7 +94,7 @@ class ShiftBudgetConsumptionServiceTest {
                     .willReturn(Optional.empty());
 
             service.recordSingleConsumption(ALLOCATION_ID, SHIFT_ID, SLOT_ID, USER_ID,
-                    new BigDecimal("1200"), new BigDecimal("4.0"));
+                    new BigDecimal("1200"), new BigDecimal("4.0"), 0L);
 
             ArgumentCaptor<ShiftBudgetConsumptionEntity> capt =
                     ArgumentCaptor.forClass(ShiftBudgetConsumptionEntity.class);
@@ -97,40 +108,16 @@ class ShiftBudgetConsumptionServiceTest {
         }
 
         @Test
-        @DisplayName("既存 PLANNED あり → CANCELLED 遷移 + 減算 → 新規 INSERT + 加算")
-        void 再公開シナリオ_既存_CANCELLED_新規INSERT() {
-            ShiftBudgetConsumptionEntity oldRecord = ShiftBudgetConsumptionEntity.builder()
-                    .allocationId(ALLOCATION_ID)
-                    .shiftId(SHIFT_ID)
-                    .slotId(SLOT_ID)
-                    .userId(USER_ID)
-                    .hourlyRateSnapshot(new BigDecimal("1000"))
-                    .hours(new BigDecimal("4.0"))
-                    .amount(new BigDecimal("4000.00"))
-                    .currency("JPY")
-                    .status(ShiftBudgetConsumptionStatus.PLANNED)
-                    .recordedAt(java.time.LocalDateTime.now())
-                    .build();
-
+        @DisplayName("同世代の既存 PLANNED は取消・再加算せず no-op")
+        void 同世代の再配送は変更しない() {
+            var existing = ShiftBudgetConsumptionEntity.builder().publicationGeneration(0L).build();
             given(consumptionRepository.findBySlotIdAndUserIdAndStatusAndDeletedAtIsNull(
-                    SLOT_ID, USER_ID, ShiftBudgetConsumptionStatus.PLANNED))
-                    .willReturn(Optional.of(oldRecord));
-            given(consumptionRepository.findBySlotIdAndUserIdAndStatusAndDeletedAtIsNull(
-                    SLOT_ID, USER_ID, ShiftBudgetConsumptionStatus.CONFIRMED))
-                    .willReturn(Optional.empty());
-
-            service.recordSingleConsumption(ALLOCATION_ID, SHIFT_ID, SLOT_ID, USER_ID,
-                    new BigDecimal("1200"), new BigDecimal("4.0"));
-
-            // 旧レコードは CANCELLED 遷移
-            assertThat(oldRecord.getStatus()).isEqualTo(ShiftBudgetConsumptionStatus.CANCELLED);
-            assertThat(oldRecord.getCancelReason()).isEqualTo(ShiftBudgetCancelReason.RE_PUBLISHED);
-
-            // 減算 → 加算 の順序を assert
-            verify(allocationRepository).decrementConsumedAmount(eq(ALLOCATION_ID),
-                    eq(new BigDecimal("4000.00")));
-            verify(allocationRepository).incrementConsumedAmount(eq(ALLOCATION_ID),
-                    eq(new BigDecimal("4800.00")));
+                    SLOT_ID, USER_ID, ShiftBudgetConsumptionStatus.PLANNED)).willReturn(Optional.of(existing));
+            assertThat(service.recordSingleConsumption(ALLOCATION_ID, SHIFT_ID, SLOT_ID, USER_ID,
+                    new BigDecimal("1200"), new BigDecimal("4.0"), 0L)).isFalse();
+            verify(consumptionRepository, never()).save(any());
+            verify(allocationRepository, never()).incrementConsumedAmount(any(), any());
+            verify(allocationRepository, never()).decrementConsumedAmount(any(), any());
         }
 
         @Test
@@ -158,7 +145,7 @@ class ShiftBudgetConsumptionServiceTest {
 
             assertThatThrownBy(() -> service.recordSingleConsumption(
                     ALLOCATION_ID, SHIFT_ID, SLOT_ID, USER_ID,
-                    new BigDecimal("1200"), new BigDecimal("4.0")))
+                    new BigDecimal("1200"), new BigDecimal("4.0"), 0L))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("CONFIRMED");
 
@@ -169,6 +156,7 @@ class ShiftBudgetConsumptionServiceTest {
         @Test
         @DisplayName("時給未設定 (rate=null) でも 0 として記録 (設計書 §11)")
         void 時給未設定_amount0で記録() {
+            given(allocationRepository.incrementConsumedAmount(any(), any())).willReturn(1);
             given(consumptionRepository.findBySlotIdAndUserIdAndStatusAndDeletedAtIsNull(
                     SLOT_ID, USER_ID, ShiftBudgetConsumptionStatus.PLANNED))
                     .willReturn(Optional.empty());
@@ -177,13 +165,76 @@ class ShiftBudgetConsumptionServiceTest {
                     .willReturn(Optional.empty());
 
             service.recordSingleConsumption(ALLOCATION_ID, SHIFT_ID, SLOT_ID, USER_ID,
-                    null, new BigDecimal("4.0"));
+                    null, new BigDecimal("4.0"), 0L);
 
             ArgumentCaptor<ShiftBudgetConsumptionEntity> capt =
                     ArgumentCaptor.forClass(ShiftBudgetConsumptionEntity.class);
             verify(consumptionRepository).save(capt.capture());
             assertThat(capt.getValue().getHourlyRateSnapshot()).isEqualByComparingTo(BigDecimal.ZERO);
             assertThat(capt.getValue().getAmount()).isEqualByComparingTo("0.00");
+        }
+    }
+
+    @Nested
+    @DisplayName("再公開前の旧世代清掃")
+    class PublicationCleanup {
+
+        @Test
+        @DisplayName("AC05/10 有効orgだけをclaimしOFF組織の履歴と金額へ触れない")
+        void 有効な組織だけを掃除する() {
+            given(publicationPort.lockPublication(SHIFT_ID)).willReturn(Optional.of(
+                    new com.mannschaft.app.shiftbudget.port.ShiftBudgetPublicationPort.PublicationState(2L, true)));
+            var enabled = org.mockito.Mockito.mock(ShiftBudgetConsumptionRepository.PlannedCancellationRow.class);
+            given(enabled.getOrganizationId()).willReturn(1L);
+            given(enabled.getConsumptionId()).willReturn(1L);
+            given(enabled.getAllocationId()).willReturn(ALLOCATION_ID);
+            given(enabled.getAmount()).willReturn(new BigDecimal("4800.00"));
+            var disabled = org.mockito.Mockito.mock(ShiftBudgetConsumptionRepository.PlannedCancellationRow.class);
+            given(disabled.getOrganizationId()).willReturn(2L);
+            org.mockito.Mockito.lenient().when(disabled.getConsumptionId()).thenReturn(9L);
+            given(consumptionRepository.findPlannedCancellationRows(SHIFT_ID, 1L))
+                    .willReturn(List.of(enabled, disabled));
+            given(consumptionRepository.cancelPlannedById(eq(1L), eq(ShiftBudgetCancelReason.RE_PUBLISHED), any()))
+                    .willReturn(1);
+            given(allocationRepository.decrementConsumedAmount(ALLOCATION_ID, new BigDecimal("4800.00")))
+                    .willReturn(1);
+
+            var result = service.cancelOldPlannedForPublication(SHIFT_ID, 2L, Set.of(1L));
+
+            assertThat(result.accepted()).isTrue();
+            assertThat(result.cancellation().cancelledCount()).isEqualTo(1);
+            assertThat(result.cancellation().countsByOrganization()).containsOnlyKeys(1L);
+            assertThat(result.cancellation().organizationsByAllocation()).containsEntry(ALLOCATION_ID, 1L);
+            verify(consumptionRepository, never()).cancelPlannedById(eq(9L), any(), any());
+            var order = org.mockito.Mockito.inOrder(publicationPort, consumptionRepository);
+            order.verify(publicationPort).lockPublication(SHIFT_ID);
+            order.verify(consumptionRepository).findPlannedCancellationRows(SHIFT_ID, 1L);
+        }
+
+        @Test
+        @DisplayName("AC05/14 有効な公開で対象0件ならacceptedを維持する")
+        void 対象0件は正常な掃除完了() {
+            given(publicationPort.lockPublication(SHIFT_ID)).willReturn(Optional.of(
+                    new com.mannschaft.app.shiftbudget.port.ShiftBudgetPublicationPort.PublicationState(2L, true)));
+            given(consumptionRepository.findPlannedCancellationRows(SHIFT_ID, 1L)).willReturn(List.of());
+
+            var result = service.cancelOldPlannedForPublication(SHIFT_ID, 2L, Set.of(1L));
+
+            assertThat(result.accepted()).isTrue();
+            assertThat(result.cancellation().cancelledCount()).isZero();
+            org.mockito.Mockito.verifyNoInteractions(allocationRepository);
+        }
+
+        @Test
+        @DisplayName("AC03/14 親不在は不受理で掃除も新記録も始めない")
+        void 親不在は不受理() {
+            given(publicationPort.lockPublication(SHIFT_ID)).willReturn(Optional.empty());
+
+            var result = service.cancelOldPlannedForPublication(SHIFT_ID, 2L, Set.of(1L));
+
+            assertThat(result.accepted()).isFalse();
+            assertThat(result.cancellation().cancelledCount()).isZero();
+            org.mockito.Mockito.verifyNoInteractions(consumptionRepository, allocationRepository);
         }
     }
 
@@ -208,8 +259,13 @@ class ShiftBudgetConsumptionServiceTest {
                     .status(ShiftBudgetConsumptionStatus.CONFIRMED)
                     .recordedAt(java.time.LocalDateTime.now())
                     .build();
-            given(consumptionRepository.findByShiftIdAndDeletedAtIsNullOrderByIdAsc(SHIFT_ID))
-                    .willReturn(List.of(planned, confirmed));
+            var row = org.mockito.Mockito.mock(ShiftBudgetConsumptionRepository.PlannedCancellationRow.class);
+            given(row.getConsumptionId()).willReturn(1L);
+            given(row.getAllocationId()).willReturn(ALLOCATION_ID);
+            given(row.getOrganizationId()).willReturn(1L);
+            given(row.getAmount()).willReturn(planned.getAmount());
+            given(consumptionRepository.findPlannedCancellationRows(SHIFT_ID, 0L)).willReturn(List.of(row));
+            given(allocationRepository.decrementConsumedAmount(any(), any())).willReturn(1);
             given(consumptionRepository.cancelPlannedById(eq(1L),
                     eq(ShiftBudgetCancelReason.SHIFT_DELETED), any(java.time.LocalDateTime.class))).willReturn(1);
 
