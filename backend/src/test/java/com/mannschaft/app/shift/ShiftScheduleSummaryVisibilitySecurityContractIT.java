@@ -199,11 +199,16 @@ class ShiftScheduleSummaryVisibilitySecurityContractIT extends AbstractMySqlInte
 
     @ParameterizedTest
     @EnumSource(Actor.class)
-    void 親チーム削除済みなら管理者を含め不在と同じ404(Actor actor) throws Exception {
-        em.createNativeQuery("UPDATE teams SET deleted_at = UTC_TIMESTAMP() WHERE id = :id")
-                .setParameter("id", teamId).executeUpdate();
+    void 対象スケジュール削除済みなら管理者を含め不在と同じ404(Actor actor) throws Exception {
+        Long id = schedules.get(Fixture.DRAFT);
+        scheduleRepository.findById(id).orElseThrow().softDelete();
+        em.flush();
         em.clear();
-        assertError(summary(actor, schedules.get(Fixture.DRAFT)), 404, "SHIFT_001");
+        MvcResult actual = summary(actor, id);
+        assertError(actual, 404, "SHIFT_001");
+        MvcResult absent = summary(actor, ABSENT_ID);
+        assertError(absent, 404, "SHIFT_001");
+        assertThat(error(actual)).isEqualTo(error(absent));
     }
 
     @Test
