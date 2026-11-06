@@ -21,6 +21,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * F04.9 確認通知受信者エンティティ。
@@ -65,6 +66,7 @@ public class ConfirmableNotificationRecipientEntity {
      * URLトークン確認用UUID（36文字）。
      * メール・LINE経由でのトークン確認に使用する。
      */
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Column(nullable = false, length = 36, unique = true)
     private String confirmToken;
 

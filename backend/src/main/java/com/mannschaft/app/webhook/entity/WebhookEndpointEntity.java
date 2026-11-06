@@ -13,6 +13,7 @@ import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
+import com.mannschaft.app.common.token.PlaintextSecretRequired;
 
 /**
  * Webhookエンドポイントエンティティ。
@@ -37,6 +38,7 @@ public class WebhookEndpointEntity extends BaseEntity {
     @Column(nullable = false, length = 1000)
     private String url;
 
+    @PlaintextSecretRequired(reason = "送信 Webhook の HMAC 署名に平文の鍵が要るため。暗号化保管の棚卸しは別 CMP で扱う")
     @Column(nullable = false, length = 64)
     private String signingSecret;
 
