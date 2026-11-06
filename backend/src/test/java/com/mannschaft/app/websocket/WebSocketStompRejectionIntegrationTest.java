@@ -148,26 +148,27 @@ class WebSocketStompRejectionIntegrationTest extends AbstractMySqlIntegrationTes
     }
 
     /**
-     * DISCONNECT する。ただしサーバがすでに閉じた（閉じつつある）セッションは後片付けの対象外として許容する。
+     * DISCONNECT する。ただしサーバがすでに閉じた（閉じつつある）セッションは後片付けの対象外とする。
      *
-     * <p>拒否 ERROR 後のサーバ切断は非同期のため、{@code isConnected()} が true を返した直後に閉じられる競合がある。
-     * その場合 {@code disconnect()} は {@link MessageDeliveryException}（閉じたセッションへの送信失敗）か
-     * {@link IllegalStateException}（接続がすでに null）を投げる。Spring の {@code disconnect()} は失敗時も
-     * finally で接続をリセットするため、例外後の {@code isConnected()} は判定に使えない。
-     * そこで許容するのは、サーバ切断の積極的な証拠（{@link ConnectionLostException} を handler が受けた）が
-     * 期限内に確認できたときだけとし、確認できなければ元の例外を再送出する。</p>
+     * <p>拒否 ERROR の後、サーバは非同期に接続を閉じる。{@code isConnected()} が true のまま {@code disconnect()} を
+     * 呼ぶと、閉じたセッションへの送信失敗（{@link MessageDeliveryException}／{@link IllegalStateException}）になる競合がある。
+     * しかも {@code disconnect()} は先に closing 状態へ入るため、その後はサーバ切断の通知
+     * （{@link ConnectionLostException}）が handler へ届かず、失敗後の {@code isConnected()} も常に false で証拠にならない。
+     * そこで DISCONNECT を送る<strong>前</strong>に、サーバ切断の積極的な証拠で判定する。サーバが ERROR を送っている
+     * 接続に限り、{@link ConnectionLostException} の受信を期限内に確認できたら、サーバが閉じたものとして DISCONNECT しない。
+     * 確認できなければ通常どおり DISCONNECT し、その失敗は握りつぶさず表に出す。</p>
      */
     private static void disconnectUnlessServerAlreadyClosed(Connection connection, StompSession session) {
-        try {
-            session.disconnect();
-        } catch (MessageDeliveryException | IllegalStateException e) {
+        ErrorCapturingHandler handler = connection.handler();
+        if (handler.error.isDone()) {
             try {
-                connection.handler().connectionLost.get(10, TimeUnit.SECONDS);
+                handler.connectionLost.get(10, TimeUnit.SECONDS);
+                return;
             } catch (Exception notConfirmed) {
-                e.addSuppressed(notConfirmed);
-                throw e;
+                // サーバ切断を確認できない。通常どおり DISCONNECT して結果をそのまま表に出す
             }
         }
+        session.disconnect();
     }
 
     /**
