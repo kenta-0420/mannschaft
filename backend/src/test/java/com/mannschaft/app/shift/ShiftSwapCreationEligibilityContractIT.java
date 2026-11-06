@@ -244,8 +244,33 @@ class ShiftSwapCreationEligibilityContractIT extends AbstractMySqlIntegrationTes
         assertConcurrentChangeRejected(ConcurrentChange.DELETE_SLOT, 404, "SHIFT_002");
     }
 
+    @Test
+    void 親スケジュールだけ削除済みでも枠不在と同じ404で全列件数不変() throws Exception {
+        Long slotId = slot(ShiftScheduleStatus.PUBLISHED, "[" + actors.get("MEMBER") + "]");
+        inTx(() -> {
+            schedules.findById(slots.findById(slotId).orElseThrow().getScheduleId()).orElseThrow()
+                    .softDelete(LocalDateTime.now());
+            return null;
+        });
+        for (String role : List.of("MEMBER", "ADMIN", "SYSTEM_ADMIN", "OTHER_TEAM_ADMIN")) {
+            Map<String, String> before = snapshot();
+            var absent = create(actors.get(role), Long.MAX_VALUE).andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_002")).andReturn().getResponse();
+            var deleted = create(actors.get(role), slotId).andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_002")).andReturn().getResponse();
+            assertThat(mapper.readTree(deleted.getContentAsString()).get("error"))
+                    .isEqualTo(mapper.readTree(absent.getContentAsString()).get("error"));
+            assertThat(snapshot()).isEqualTo(before);
+        }
+    }
+
+    @Test
+    void 親削除がロックを先取したらcommit後は枠不在404で申請を保存しない() throws Exception {
+        assertConcurrentChangeRejected(ConcurrentChange.DELETE_SCHEDULE, 404, "SHIFT_002");
+    }
+
     /** 親行を先に確保する既存更新経路との競合の種類。 */
-    private enum ConcurrentChange { ASSIGNMENT, UNPUBLISH, DELETE_SLOT }
+    private enum ConcurrentChange { ASSIGNMENT, UNPUBLISH, DELETE_SLOT, DELETE_SCHEDULE }
 
     private void assertConcurrentChangeRejected(ConcurrentChange change, int expectedStatus, String code) throws Exception {
         Long actor = actors.get("MEMBER");
@@ -256,7 +281,9 @@ class ShiftSwapCreationEligibilityContractIT extends AbstractMySqlIntegrationTes
         try (var executor = Executors.newFixedThreadPool(2)) {
             var writer = executor.submit(() -> inTx(() -> {
                 ShiftScheduleEntity schedule = schedules.findByIdForUpdate(scheduleId).orElseThrow();
-                if (change == ConcurrentChange.UNPUBLISH) {
+                if (change == ConcurrentChange.DELETE_SCHEDULE) {
+                    schedule.softDelete(LocalDateTime.now());
+                } else if (change == ConcurrentChange.UNPUBLISH) {
                     schedule.startAdjusting();
                 } else if (change == ConcurrentChange.DELETE_SLOT) {
                     slots.softDeleteById(slotId);
