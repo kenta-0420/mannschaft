@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
-import { validateMetadata } from './verify-ranch-development-appearances.mjs'
+import { validateInventory, validateMetadata } from './verify-ranch-development-appearances.mjs'
 const manifest = JSON.parse(
   fs.readFileSync(
     new URL('../app/utils/ranch-development-appearances-manifest.json', import.meta.url),
@@ -23,4 +23,14 @@ test('v4 validator rejects count, frame, phase, hash and traversal changes', () 
     mutate(candidate)
     assert.throws(() => validateMetadata(candidate))
   }
+})
+
+test('inventory rejects missing and extra files', () => {
+  const expected = manifest.entries.flatMap((e) => [
+    e.fallback.sourcePath,
+    ...Object.values(e.clips).map((c) => c.sourcePath),
+  ])
+  validateInventory(expected, expected)
+  assert.throws(() => validateInventory(expected, expected.slice(1)))
+  assert.throws(() => validateInventory(expected, [...expected, 'unexpected.png']))
 })

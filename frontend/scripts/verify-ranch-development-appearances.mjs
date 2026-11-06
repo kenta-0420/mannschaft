@@ -83,8 +83,26 @@ export function validateMetadata(data) {
     }
   }
 }
+export function validateInventory(expected, actual) {
+  assert.equal(expected.length, 1920)
+  assert.equal(new Set(expected).size, 1920)
+  assert.deepEqual([...actual].sort(), [...expected].sort())
+}
+function listFiles(dir, prefix = '') {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((item) => {
+    const rel = prefix ? `${prefix}/${item.name}` : item.name
+    if (item.isDirectory()) return listFiles(path.join(dir, item.name), rel)
+    assert.ok(item.isFile(), `通常ファイル以外: ${rel}`)
+    return [rel]
+  })
+}
 export async function verify() {
   validateMetadata(manifest)
+  const expectedPaths = manifest.entries.flatMap((e) => [
+    e.fallback.sourcePath,
+    ...Object.values(e.clips).map((c) => c.sourcePath),
+  ])
+  validateInventory(expectedPaths, listFiles(root))
   assert.equal(
     sha(Buffer.from(manifestBytes.toString('utf8').replace(/\r\n/g, '\n'))),
     '97157f4c2a0110419720d3b218f0d17f46916e8c1d8dbe77782bc8f15227e690',
@@ -127,4 +145,3 @@ export async function verify() {
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url))
   await verify()
-
