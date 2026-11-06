@@ -39,7 +39,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
@@ -53,7 +52,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /** 明示登録する実機専用検体。製品resolver/C・F業務の接続証明ではない。 */
-@TestConfiguration(proxyBeanMethods = false)
 public class ModuleEventRealE2eFixtures {
     public static final String KEY = "m21-real-e2e";
     public static final String FIRST = "m21-real-first";

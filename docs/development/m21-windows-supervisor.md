@@ -4,7 +4,9 @@
 
 `--formal-contract-fixture` はms→fake FE→W後work拒否/実owned marker cleanup/G後拒否の3件。G420秒/R18秒/W402秒を一度だけ設定しcase間resetなし、最大同時5process/Job1、最初の不合格で停止する。局所W/Gは短縮だけで、実OS subms=0は有効、整数vector/表記対照を実OS世代証明にしない。fbcf603947a7b0299909479236775e8221417a09固定で3件＋readiness4＋通常10は合格した。asset準備関数は今回追加の未実行コードであり、この17件の資格をasset生成へ転用しない。期待値・予算は変更していない。
 
-Java登録/envの3境界試練、full productionCP/明示3source JAR、実App/FE、Chrome nested Job/Sky GUI、実Docker cleanupは未実測である。productionCP前に固定HEADのbackend main/resources/build-logic/Gradle設定/依存入力を全materializeしてGit manifestと照合し、focused test前はtest source/resourcesも揃える。test CPをproductionと呼ばず、既存prototype/Java/helperの資格を正式実機へ転用しない。Java innerRun/outerTemp契約は変更しない。
+Java登録/envの3境界試練は9cのCIで通常scan実1/期待0とformal孫の実leaked=true/期待falseのREDを確認した。Fixturesをannotationなしのplain4@Beanにし、formal環境をOS2/元のowned TEMP・TMP/PLAYWRIGHT_BROWSERS_PATHの退避→clear→必要actors/run/BASE_URL/API_BASE_URL再投入へ限定修正したが、変更後の実測はまだない。既存3testsの期待値は不変更、Java innerRun/outerTempの不一致も有効なままである。
+
+full productionCP/明示3source JAR、実App/FE、Chrome nested Job/Sky GUI、実Docker cleanupは未実測である。productionCP前に固定HEADのbackend main/resources/build-logic/Gradle設定/依存入力を全materializeしてGit manifestと照合し、focused test前はtest source/resourcesも揃える。test CPをproductionと呼ばず、既存prototype/Java/helperの資格を正式実機へ転用しない。
 
 過去runの経緯・原本・不足証拠は自隊private result packetに保持する。固定Node22/入力full HEADを記録し、保存dirを事前作成、stdout/stderr/actual exitをpacket整形前にprivate rawへ永続化する。原本はroot解放まで保持し、新tracked runnerは作らない。
 

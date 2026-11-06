@@ -13,6 +13,7 @@ import java.nio.file.WatchService;
 import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
@@ -131,12 +132,20 @@ public final class ModuleEventRealE2eApplication {
         ModuleEventRealE2eFixtures.require(passed, "M21未合格");
     }
 
-    /** 孫環境の境界試練用に既存putだけを抽出。clear/allowlist修正はRED確認後。 */
+    /** formal孫には固定allowlistと生成actorだけを渡す。外側Tempと内側runは別でよい。 */
     private static void configureFormalEnvironment(ProcessBuilder builder, String actors, Path run, String baseUrl) {
-        builder.environment().put("M21_ACTORS_JSON", actors);
-        builder.environment().put("M21_RUN_DIRECTORY", run.toString());
-        builder.environment().put("BASE_URL", baseUrl);
-        builder.environment().put("API_BASE_URL", "http://localhost:8081");
+        Map<String, String> environment = builder.environment();
+        Map<String, String> preserved = new HashMap<>();
+        for (String name : List.of("SystemRoot", "WINDIR", "TEMP", "TMP", "PLAYWRIGHT_BROWSERS_PATH")) {
+            String value = environment.get(name);
+            if (value != null) preserved.put(name, value);
+        }
+        environment.clear();
+        environment.putAll(preserved);
+        environment.put("M21_ACTORS_JSON", actors);
+        environment.put("M21_RUN_DIRECTORY", run.toString());
+        environment.put("BASE_URL", baseUrl);
+        environment.put("API_BASE_URL", "http://localhost:8081");
     }
 
     private static Process startResidentHelper(ObjectMapper json, Path run, Path temporary,
