@@ -346,6 +346,7 @@ watch(isDragging, (dragging, wasDragging) => {
 - **Lazy Loading**: ページ下部の重いコンポーネントは `Lazy` プレフィックスコンポーネント（例: `<LazyHeavyChart />`）として読み込む。
 - **`<ClientOnly>`**: SSR 不要なコンポーネント（チャート、地図、WebSocket 接続 UI 等）は `<ClientOnly>` でラップし、サーバー側レンダリングをスキップする。
 - **SEO メタタグ**: SSR ページでは `useHead` / `useSeoMeta` を使用して `title`, `description`, OGP タグを設定する。SPA ページでも `useHead` で基本的な `title` を設定すること。
+- **STOMP（WebSocket）接続の認証**: CONNECT ヘッダは `~/composables/stomp/stompAuth` の `buildStompConnectHeaders(accessToken)` で組み立てる。`Authorization: Bearer ${token ?? ''}` のような**空 Bearer の直書きは禁止**（トークンが無いときはヘッダを付けず Cookie 認証に任せる）。ERROR フレームは `x-error-code` を `handleStompErrorFrame` / `readStompErrorCode` で読み分け、`FORBIDDEN` / `INVALID_DESTINATION` は再接続を止めて「閲覧権限なし」、`UNAUTHENTICATED` は既存の `performTokenRefresh` で 1 回だけ更新して再接続（失敗時は `handleAuthFailureLogout`）、未知のコードは従来どおり自動再接続とする。匿名で成り立つ接続ではログアウトさせない。詳細: `docs/architecture/websocket_external_broker_valkey.md` §2.3.3。
 
 ## 11. テスト (Testing)
 - **基本ツール**: **Vitest** と **Vue Test Utils** を採用する。
