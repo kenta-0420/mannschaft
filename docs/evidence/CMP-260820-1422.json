@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260820-1422",
+  "scope": "app",
+  "implementation": {
+    "pr": 4246,
+    "sha": "f399bdfcbdd81d4d80829226bbf882742cf54ca0"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC1",
+      "description": "非メンバーが実在/不在 boardId で GET/PUT/DELETE したとき status・error.code・message が同一(404 CORKBOARD_001)",
+      "tests": [
+        {
+          "name": "CorkboardExistenceOracleContractIT",
+          "evidence": "backend/src/test/java/com/mannschaft/app/corkboard/CorkboardExistenceOracleContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC2",
+      "description": "組織ボード・boardId単独・カード/セクション操作も同一",
+      "tests": [
+        {
+          "name": "CorkboardExistenceOracleContractIT",
+          "evidence": "backend/src/test/java/com/mannschaft/app/corkboard/CorkboardExistenceOracleContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC3",
+      "description": "メンバーの権限不足は 403 CORKBOARD_009 を維持",
+      "tests": [
+        {
+          "name": "メンバーの権限不足は403維持",
+          "evidence": "backend/src/test/java/com/mannschaft/app/corkboard/CorkboardExistenceOracleContractIT.java"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 41190266107
+    },
+    {
+      "runId": 41190266082
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4246"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260820-1422-real.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260820-1422-exploratory.md"
+    }
+  },
+  "regressions": []
+}

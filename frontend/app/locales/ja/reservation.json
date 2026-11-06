@@ -17,6 +17,7 @@
       "partial_time": "一日のうち一部の時間帯のみ休業する",
       "start_time": "開始時刻",
       "end_time": "終了時刻",
+      "range_separator": "〜",
       "target_period": "対象期間",
       "subject": "件名",
       "reason": "休業理由",
@@ -72,7 +73,8 @@
       "connecting": "接続中…",
       "reconnecting": "再接続中…",
       "offline": "オフライン",
-      "denied": "閲覧権限がありません"
+      "denied": "閲覧権限がありません",
+      "unauthenticated": "ログインが必要です"
     },
     "dialog": {
       "title": "送信確認",

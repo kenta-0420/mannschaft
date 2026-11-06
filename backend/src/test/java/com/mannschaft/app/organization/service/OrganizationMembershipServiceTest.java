@@ -22,12 +22,16 @@ import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.team.entity.TeamEntity;
+import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import com.mannschaft.app.team.repository.TeamRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -37,14 +41,17 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -112,10 +119,13 @@ class OrganizationMembershipServiceTest {
             given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
 
             // F00.5 Phase 3: MemberQueryDispatcher 経由で memberships 参照
-            MemberDto memberDto = new MemberDto(USER_ID, "yamada", null, "ADMIN",
-                    LocalDateTime.now().minusMonths(1));
-            given(memberQueryDispatcher.queryMembers(ORG_ID, ScopeType.ORGANIZATION, null))
-                    .willReturn(List.of(memberDto));
+            // CMP-261103-1225: identity を切り出してから hydrate で実体化する
+            LocalDateTime joinedAt = LocalDateTime.now().minusMonths(1);
+            MemberDto identity = new MemberDto(USER_ID, null, null, "ADMIN", joinedAt);
+            MemberDto memberDto = new MemberDto(USER_ID, "yamada", null, "ADMIN", joinedAt);
+            given(memberQueryDispatcher.queryMemberIdentities(ORG_ID, ScopeType.ORGANIZATION, null))
+                    .willReturn(List.of(identity));
+            given(memberQueryDispatcher.hydrate(List.of(identity))).willReturn(List.of(memberDto));
 
             Pageable pageable = PageRequest.of(0, 10);
             PagedResponse<MemberResponse> response =
@@ -133,14 +143,43 @@ class OrganizationMembershipServiceTest {
             given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
 
             // Dispatcher が空リストを返す場合
-            given(memberQueryDispatcher.queryMembers(ORG_ID, ScopeType.ORGANIZATION, null))
+            given(memberQueryDispatcher.queryMemberIdentities(ORG_ID, ScopeType.ORGANIZATION, null))
                     .willReturn(List.of());
+            given(memberQueryDispatcher.hydrate(List.of())).willReturn(List.of());
 
             Pageable pageable = PageRequest.of(0, 10);
             PagedResponse<MemberResponse> response =
                     organizationMembershipService.getMembers(ORG_ID, pageable);
 
             assertThat(response.getData()).isEmpty();
+        }
+
+        @ParameterizedTest(name = "page={0}")
+        @CsvSource({"0, 0, 20", "1, 20, 40", "2, 40, 45", "3, 45, 45"})
+        @DisplayName("AC-14: 45人・ページサイズ20で、実体化と色解決の対象がそのページの ID に限られる（先頭・中間・末尾・範囲外）")
+        void 実体化と色解決はページ内のIDに限る(int page, int from, int to) {
+            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(createOrganization()));
+            List<MemberDto> identities = new ArrayList<>();
+            for (long id = 1; id <= 45; id++) {
+                identities.add(new MemberDto(id, null, null, "MEMBER", null));
+            }
+            given(memberQueryDispatcher.queryMemberIdentities(ORG_ID, ScopeType.ORGANIZATION, null))
+                    .willReturn(identities);
+            List<MemberDto> expectedPage = identities.subList(from, to);
+            given(memberQueryDispatcher.hydrate(expectedPage)).willReturn(expectedPage);
+
+            PagedResponse<MemberResponse> res =
+                    organizationMembershipService.getMembers(ORG_ID, PageRequest.of(page, 20));
+
+            List<Long> pageIds = expectedPage.stream().map(MemberDto::userId).toList();
+            verify(memberQueryDispatcher).hydrate(expectedPage);
+            verify(memberQueryDispatcher, never()).queryMembers(any(), any(), any());
+            verify(scopeMemberCalendarSettingService)
+                    .resolveColors(ScopeType.ORGANIZATION, ORG_ID, pageIds);
+            assertThat(res.getData()).extracting(MemberResponse::getUserId).containsExactlyElementsOf(pageIds);
+            assertThat(res.getMeta().getTotal()).isEqualTo(45);
+            assertThat(res.getMeta().getPage()).isEqualTo(page);
+            assertThat(res.getMeta().getTotalPages()).isEqualTo(3);
         }
 
         @Test
@@ -187,10 +226,11 @@ class OrganizationMembershipServiceTest {
                     .avatarUrl("user/1/avatar/raw.png")
                     .build();
             ReflectionTestUtils.setField(user, "id", USER_ID);
-            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            given(userRepository.findAllById(Set.of(USER_ID))).willReturn(List.of(user));
 
             RoleEntity role = RoleEntity.builder().name("MEMBER").build();
-            given(roleRepository.findById(roleId)).willReturn(Optional.of(role));
+            ReflectionTestUtils.setField(role, "id", roleId);
+            given(roleRepository.findAllById(Set.of(roleId))).willReturn(List.of(role));
 
             given(mediaUrlResolver.resolve("user/1/avatar/raw.png"))
                     .willReturn("https://cdn.example.com/signed/avatar.png");
@@ -201,6 +241,78 @@ class OrganizationMembershipServiceTest {
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getIconUrl())
                     .isEqualTo("https://cdn.example.com/signed/avatar.png");
+        }
+
+        @Test
+        @DisplayName("AC-4/AC-5/AC-6: 直属と複数チームの重複は所属ごとに残し、退会者・実体の無いチーム・不明ロールで例外を出さない")
+        void 重複と欠損参照を是正前と同じに扱う() {
+            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(createOrganization()));
+            Long teamA = 501L;
+            Long teamB = 502L;
+            Long danglingTeam = 503L; // 加盟行はあるが teams に返らない（論理削除・参照切れ）
+            Long shared = 1L;
+            Long withdrawn = 2L;      // users に返らない（@SQLRestriction）
+            Long roleMember = 100L;
+            Long unknownRole = 999L;  // roles に無い → ロール名 null（是正前の Optional.map(...).orElse(null) と同じ）
+            given(userRoleRepository.findByOrganizationId(eq(ORG_ID), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of(
+                            userRole(shared, roleMember, null, ORG_ID),
+                            userRole(withdrawn, roleMember, null, ORG_ID))));
+            given(teamOrgMembershipRepository.findByOrganizationIdAndStatus(ORG_ID, TeamOrgMembershipEntity.Status.ACTIVE))
+                    .willReturn(List.of(link(teamA), link(danglingTeam), link(teamB)));
+            given(teamRepository.findAllById(Set.of(teamA, danglingTeam, teamB)))
+                    .willReturn(List.of(team(teamB, "B"), team(teamA, "A")));
+            given(userRoleRepository.findByTeamIdInOrderByTeamIdAscIdAsc(any()))
+                    .willReturn(List.of(
+                            userRole(shared, roleMember, teamA, null),
+                            userRole(shared, unknownRole, teamB, null)));
+            UserEntity user = UserEntity.builder().email("s@example.com").passwordHash("h")
+                    .lastName("山田").firstName("太郎").displayName("yamada").build();
+            ReflectionTestUtils.setField(user, "id", shared);
+            given(userRepository.findAllById(Set.of(shared, withdrawn))).willReturn(List.of(user));
+            RoleEntity member = RoleEntity.builder().name("MEMBER").build();
+            ReflectionTestUtils.setField(member, "id", roleMember);
+            given(roleRepository.findAllById(Set.of(roleMember, unknownRole))).willReturn(List.of(member));
+
+            List<OrgAllMembersResponse> result = organizationMembershipService.getAllMembers(ORG_ID, "INDIVIDUAL");
+
+            assertThat(result).extracting(r -> r.getUserId() + "|" + r.getMemberOf().getType() + "|"
+                            + r.getMemberOf().getId() + "|" + r.getRole())
+                    .containsExactly(
+                            shared + "|ORGANIZATION|null|MEMBER",
+                            shared + "|TEAM|" + teamA + "|MEMBER",
+                            shared + "|TEAM|" + teamB + "|null");
+        }
+
+        @Test
+        @DisplayName("AC-3: 直属0人・加盟チーム0件なら users・roles・teams を引かない（空 IN を投げない）")
+        void 空なら一括取得を呼ばない() {
+            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(createOrganization()));
+            given(userRoleRepository.findByOrganizationId(eq(ORG_ID), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of()));
+            given(teamOrgMembershipRepository.findByOrganizationIdAndStatus(ORG_ID, TeamOrgMembershipEntity.Status.ACTIVE))
+                    .willReturn(List.of());
+
+            assertThat(organizationMembershipService.getAllMembers(ORG_ID, "INDIVIDUAL")).isEmpty();
+            verify(userRepository, never()).findAllById(any());
+            verify(roleRepository, never()).findAllById(any());
+            verify(teamRepository, never()).findAllById(any());
+            verify(userRoleRepository, never()).findByTeamIdInOrderByTeamIdAscIdAsc(any());
+        }
+
+        private UserRoleEntity userRole(Long userId, Long roleId, Long teamId, Long orgId) {
+            return UserRoleEntity.builder().userId(userId).roleId(roleId).teamId(teamId).organizationId(orgId).build();
+        }
+
+        private TeamOrgMembershipEntity link(Long teamId) {
+            return TeamOrgMembershipEntity.builder()
+                    .teamId(teamId).organizationId(ORG_ID).status(TeamOrgMembershipEntity.Status.ACTIVE).build();
+        }
+
+        private TeamEntity team(Long id, String name) {
+            TeamEntity t = TeamEntity.builder().name(name).build();
+            ReflectionTestUtils.setField(t, "id", id);
+            return t;
         }
     }
 

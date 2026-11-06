@@ -68,6 +68,14 @@ erDiagram
 | --- | --- | --- | --- | --- |
 | [safetycheck](safetycheck.md) | `safety_checks` | `bulletin_thread_id` | ID参照 | `bulletin_threads` |
 
+## 自己参照
+
+mermaid は同一テーブルの自己参照を複数描けず 1 本に畳むため、図に線が欠けることがある。自己参照はこの表を正とする。
+
+| テーブル | 列 | 種別 |
+| --- | --- | --- |
+| `bulletin_replies` | `parent_id` | 外部キー |
+
 ## 多態参照（線を引かない）
 
 | テーブル | 種別列 | ID列 |

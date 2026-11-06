@@ -60515,7 +60515,7 @@ export interface components {
         };
         CreateTermRequest: {
             /** Format: int32 */
-            academicYear?: number;
+            academicYear: number;
             /** Format: date */
             endDate: string;
             name?: string;
@@ -61050,6 +61050,8 @@ export interface components {
             status?: string;
         };
         SlotSummaryDto: {
+            /** Format: date */
+            endDate?: string;
             /** @example 14:30:00 */
             endTime?: string;
             lineName?: string;

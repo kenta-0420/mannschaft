@@ -73,6 +73,26 @@ public interface ScheduleRepository extends AbstractTenantAwareRepository<Schedu
             Long orgId, LocalDateTime from, LocalDateTime to);
 
     /**
+     * 複数組織スコープのスケジュールを期間指定で一括取得する（N+1 解消用）。
+     *
+     * <p>{@link #findByTeamIdInAndStartAtBetween} の組織版。個人ダッシュボードの「今後の予定」が
+     * 所属組織ごとに {@link #findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc} を呼んでいたのを 1 クエリにまとめる。
+     * 呼び出し側は {@code orgIds} が空の場合に本メソッドを呼ばないこと。</p>
+     *
+     * @param orgIds 取得対象の組織 ID 集合（空集合で呼ばないこと）
+     * @param from   期間開始
+     * @param to     期間終了
+     * @return 期間内の組織スケジュール（start_at 昇順）
+     */
+    @Query("SELECT s FROM ScheduleEntity s "
+            + "WHERE s.organizationId IN (:orgIds) AND s.startAt BETWEEN :from AND :to "
+            + "ORDER BY s.startAt ASC")
+    List<ScheduleEntity> findByOrganizationIdInAndStartAtBetween(
+            @Param("orgIds") Collection<Long> orgIds,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to);
+
+    /**
      * 個人スコープのスケジュールを期間指定で取得する。
      */
     List<ScheduleEntity> findByUserIdAndStartAtBetweenOrderByStartAtAsc(

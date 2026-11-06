@@ -969,3 +969,29 @@ PR #4070（`28d99fcd06d61810c198ead78f830512d536fb29`）で `ScopeWidgetSummaryS
 CMP-261022-0914 / PR #4049。L1-A再開時のユーザー裁可（移設由来の実測追加に限り、旧全キー・多重度を維持してストア・対応上限・履歴を同期）に基づく。全量Backend CI [run 40194647331](https://github.com/kenta-0420/mannschaft/actions/runs/40194647331)、測定HEAD `a9676a432eadf0cea7063d8292b45958c8d9f4ba` のowner解析XML本文から、D-3はshard2の21件（1325→1346）、D-3Tはshard1の30件（7322→7352）、D-5はshard4の21件（1876→1897）を採取した。各suiteは1case・1failure・error/skip 0で、ヘッダ件数と本文の追加行数は一致する。追加はすべて `role.service.DefaultAccessControlService` の移設由来であり、返済とは扱わない。
 
 旧全キー・occurrenceを含む多重度は全件保持し、削減0。各ownerの解析後8ストア原本は測定前と全行一致し、候補への追加以外の4ストア・UUID・`stored.rules`・他4上限・判定・除外は変更しない。PR #4023の既返済3件とD-3T基準7322を維持する。原本ZIPのdigest・XML・8ストア・追加候補・照合結果は測定用Tempに保存した。Non-JSTジョブの失敗も同じ3番人の21/30/21件であり、通常のtimezone試験には未到達。測定runと同期後HEADの全量CI最終greenは未確定で、未完了・未実行を合格扱いしない。
+
+## 2026-11-04 CMP-261103-1225 N+1解消に伴うコンストラクタ署名の付け替え（要オーナー裁可）
+
+CMP-261103-1225 / #4270 P1-B。ダッシュボード・チャットの N+1 解消では、一括取得を他ドメインの照会 Service（`ChatMemberBatchQueryService`・`BulletinUnreadQueryService`・`ScheduleScopeQueryService`・`PermissionScopeQueryService`）経由にした。その結果、次の 4 クラスでコンストラクタ引数が変わった: `AdminBusinessAlertService`・`DashboardController`・`ChatHubService`・`ScopeWidgetSummaryService`。D-5/D-3 の既存行は `Constructor <…<init>(引数列)> has parameter of type <X>` の形でコンストラクタ署名全体をキーに含むため、依存先 Repository は変わらなくても、署名が変わっただけで新規違反として扱われる。
+
+ストアは手作業で同期した（`archUnitTest` の失敗本文を正規化キー「クラス＋依存先＋コンストラクタ署名を伏せたもの」で旧行と突き合わせた）。
+- D-5（427c445d）: 付け替え 18、削除 6（1892→1886）。削除は、コンストラクタ引数から外れた依存（`DashboardController` の `BulletinThreadRepository`・`BulletinReadStatusRepository`・`OrganizationRepository`、`ScopeWidgetSummaryService` の `ChatChannelMemberRepository`・`BulletinReadStatusRepository`、`AdminBusinessAlertService` の `ChatChannelMemberRepository`）。
+- D-3（f14374b1）: 付け替え 7、削除 1（1341→1340）。
+- 新しい依存先の追加は 0。D-1・D-3T・D-1 API 境界・上限定数・UUID・`stored.rules` は変更していない。D-3T は、新しい private 入口を作らないように実装を直して違反 0 にした。
+
+PR の検分でオーナーの裁可を得ること。裁可が無い場合は、本節とストア差分を取り下げる。
+
+## 2026-11-05 CMP-261105-0755 L-SHIME 週次締め
+
+[限定裁可・対象宣言](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6646486176)に基づき、10月29日以降の追加・顕在化記録を今回に限り受け入れる。将来の追加を承認するものではない。
+
+- 先行8件: PR #4277 の `VillageFeedService` grouping getter 7 call occurrence と、PR #4280 の `ProjectService.listProjects` から既存の method-reference 経路が顕在化した D-3T 1件。前者は旧10行のメソッド移動と区別し、後者を新しい業務関係と断定しない。
+- 後続2件: PR #4294 の `OrganizationMembershipService.getAllMembers` から `RoleEntity.getId()` と `UserRoleEntity.getTeamId()` への新規getter呼出。上記8件とは別に裁可された。
+
+固定親 `bb9e81532ee8b6b24445dd50332a8e909110ef23` の全7 storeは AUTHZ 0、D-1 2153、D-2b 569、D-3 1335、D-3T 7352、D-5 1881、ServiceAPI 600。登録・重複・Java自然順を集計し、上限を D-1 2157→2153、D-3 1346→1335、D-3T 7353→7352、D-5 1897→1881（計32）に下げる。store本体・判定は変更しない。
+
+10月29日以降、PR #4247 は直接Repository依存を D-1 7・D-3 5・D-5 5行返済した（D-3T 4行はService経由に残る）。PR #4277 は D-3 3・D-5 3・D-3T 1行を返済し、D-3/D-5/D-3T各4行はメソッド署名の置換。D-1の旧10→新17は旧10の移動と上記getter 7件である。PR #4280 は既存経路のD-3T 1件顕在化と上限7352→7353を行い、今回実測7352へ戻す。
+
+PR #4288 の固定親blobでの D-5 1889→1883・D-3 1338→1337 は、前節およびPR本文の1892→1886・1341→1340と異なる。固定blob値を採る。constructor occurrence 7行（D-5 6・D-3 1）の実減と署名置換25行（D-5 18・D-3 7）を区別する。同じRepositoryに対するField/Method行は残り、class-pairの全解消を意味しない。
+
+PR #4294 は D-1 の旧7行を新3行へ、D-3/D-5の旧9行を新7行へ置換した。D-1はUserEntity getter 4行とTeamEntity.getIdの第2 occurrence 1行の消失、RoleEntity.getNameの参照2→呼出1への統合、新getter 2件。D-3/D-5は各々findById各2→findAllById各1などの一括呼出への置換で、call occurrence減少は越境先の全解消を意味しない。PR本文のD-3 1338→1336・D-5 1889→1887は#4288先行前のsnapshotであり、固定blob比較は1337→1335・1883→1881。詳細と再生成原本の範囲は [締め証拠](../evidence/CMP-261105-0755/summary.md) に記す。
