@@ -42,4 +42,12 @@ My／Dashboard／サマリー／手動履歴は既存 `ShiftManualAssignmentSour
 
 ## 残る検証
 
+### 補助JSON配置の是正
+
+初回 Harness CI（run `42288011055`）は、top-level の `CMP-*.json` を正式な完了証拠と判定する既存 AC-3 により、補助結果JSONの配置を拒否した。validatorや試験を緩めず、red/green結果を `CMP-260909-2148/` 配下へ内容100%一致で移動し、参照を更新した。最新main `977c3df5` への通常追従も含め、製品・8試練・red/green原本内容は不変である。
+
+公式verification-runの全Git treeコピーで `node --test scripts/completion-evidence.test.mjs` を実行し、実AC-3を含む22件が成功、failure/cancel/skip 0だった。Gitを使う既存検査のため、検証コピー内だけにnative Gitの一時metadataを作成した。一時treeと元source treeの完全一致を確認し、元NTFS sourceは変更していない。検査と後処理の詳細は [harness-results](CMP-260909-2148/harness-results.json) に記録した。
+
+原receiptは短命Git maintenance参照による `retained` を保持する。記録PIDの自然消滅後、正本のUID/marker/inode・全参照0確認を用いて自分の検証コピーだけを撤去し、別の閉鎖記録を保存した。正式CIの再実行成功や実機完了とは区別する。
+
 全CI・最終検分・権限あり／なし／他テナントでの実機・住民探索は未完了。ローカルの選択実行では ArchUnit 2タスクを除外したが、正式CIの必須検査は変更していない。完了台帳への遷移は、殿によるこれらの確認後に行う。
