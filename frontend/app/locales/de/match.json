@@ -252,7 +252,8 @@
           "connecting": "Verbinden…",
           "reconnecting": "Erneut verbinden…",
           "offline": "Offline",
-          "denied": "Kein Zuschauen möglich"
+          "denied": "Kein Zuschauen möglich",
+          "unauthenticated": "Anmeldung erforderlich"
         },
         "status": {
           "SCHEDULED": "Nicht begonnen",
@@ -264,7 +265,8 @@
         "denied": {
           "title": "Dieses Spiel kann nicht angesehen werden",
           "detail": "Der Live-Stream ist nicht verfügbar, da er außerhalb des Sichtbarkeitsbereichs liegt."
-        }
+        },
+        "unauthenticated_banner": "Melde dich an, um Live-Updates zu erhalten."
       }
     },
     "analytics": {

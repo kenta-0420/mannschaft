@@ -252,7 +252,8 @@
           "connecting": "Connecting…",
           "reconnecting": "Reconnecting…",
           "offline": "Offline",
-          "denied": "Cannot spectate"
+          "denied": "Cannot spectate",
+          "unauthenticated": "Login required"
         },
         "status": {
           "SCHEDULED": "Not started",
@@ -264,7 +265,8 @@
         "denied": {
           "title": "This match cannot be spectated",
           "detail": "The live feed is not available because it is outside the visibility scope."
-        }
+        },
+        "unauthenticated_banner": "Log in to receive live updates."
       }
     },
     "analytics": {
