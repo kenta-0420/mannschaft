@@ -99,12 +99,13 @@ function statusLabel(status: string): string {
 
 
 function openRetry(event: FailedEventResponse) {
+  if (!canRetry(event)) return
   retryTarget.value = event
   retryConfirmVisible.value = true
 }
 
 async function confirmRetry() {
-  if (!retryTarget.value || !organizationId.value) return
+  if (!retryTarget.value || !organizationId.value || !canRetry(retryTarget.value)) return
   try {
     await api.retryFailedEvent(organizationId.value, retryTarget.value.id)
     notification.success(t('shiftBudget.failedEvent.retrySuccess'))
@@ -115,6 +116,12 @@ async function confirmRetry() {
   catch {
     notification.error(t('shiftBudget.failedEvent.retryError'))
   }
+}
+
+/** 実際に再実行できる種別だけを提供する。EXHAUSTEDの運用再試行は許可する。 */
+function canRetry(event: FailedEventResponse): boolean {
+  return ['THRESHOLD_ALERT', 'WORKFLOW_START', 'NOTIFICATION_SEND'].includes(event.event_type)
+    && event.status !== 'SUCCEEDED' && event.status !== 'MANUAL_RESOLVED'
 }
 
 function openResolve(event: FailedEventResponse) {
@@ -211,7 +218,7 @@ onMounted(() => {
         <template #body="{ data }: { data: FailedEventResponse }">
           <div class="flex gap-1">
             <Button
-              v-if="data.status !== 'MANUAL_RESOLVED'"
+              v-if="canRetry(data)"
               :label="t('shiftBudget.failedEvent.retry')"
               size="small"
               severity="secondary"

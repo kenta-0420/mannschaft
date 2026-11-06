@@ -71,6 +71,8 @@ class ShiftBudgetFailedEventServiceTest {
     private AuditLogService auditLogService;
     @Mock
     private ShiftBudgetRetryExecutor retryExecutor;
+    @Mock
+    private jakarta.persistence.EntityManager entityManager;
 
     private ShiftBudgetFailedEventService service;
 
@@ -100,7 +102,7 @@ class ShiftBudgetFailedEventServiceTest {
     void setUp() {
         service = new ShiftBudgetFailedEventService(
                 repository, featureService, accessControlService, auditLogService,
-                retryExecutor, new ObjectMapper());
+                retryExecutor, new ObjectMapper(), entityManager);
 
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(USER_ID.toString(), null, List.of()));

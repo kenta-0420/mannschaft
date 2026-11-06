@@ -197,7 +197,7 @@ export function buildFailedEvent(
   return {
     id: FAILED_EVENT_ID,
     organization_id: ORG_ID,
-    event_type: 'NOTIFICATION_FAILED',
+    event_type: 'NOTIFICATION_SEND',
     source_id: ALLOCATION_ID,
     error_message: 'E2E テスト用 失敗イベント',
     retry_count: 0,

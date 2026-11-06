@@ -163,6 +163,35 @@ class ShiftBudgetFailedEventRetryContractIT extends AbstractMySqlIntegrationTest
         assertThat(response.retryCount()).isEqualTo(1);
         assertThat(response.status()).isEqualTo("PENDING");
         assertThat(row(id).get("error_message")).isEqualTo(DIAGNOSIS);
+        assertThat(response).isEqualTo(FailedEventResponse.from(repository.findById(id).orElseThrow()));
+        FailedEventResponse second = service.retry(org, id);
+        assertThat(second.retryCount()).isEqualTo(2);
+        assertThat(second.errorMessage()).isEqualTo(DIAGNOSIS);
+        assertThat(second.lastRetriedAt()).isAfterOrEqualTo(response.lastRetriedAt());
+        assertThat(second).isEqualTo(FailedEventResponse.from(repository.findById(id).orElseThrow()));
+        assertThat(service.retry(org, id).status()).isEqualTo("EXHAUSTED");
+        FailedEventResponse manual = service.retry(org, id);
+        assertThat(manual.retryCount()).isEqualTo(4);
+        assertThat(manual.errorMessage()).isEqualTo(DIAGNOSIS);
+    }
+
+    @Test
+    void 外側失敗でrollbackしても内側の再試行結果を戻さない() {
+        Long id = event(ShiftBudgetFailedEventType.THRESHOLD_ALERT, ShiftBudgetFailedEventStatus.PENDING, "{}", DIAGNOSIS);
+        assertThatThrownBy(() -> transactions.executeWithoutResult(tx -> {
+            service.retry(org, id);
+            throw new IllegalStateException("契約試験で外側だけをrollbackする");
+        })).isInstanceOf(IllegalStateException.class);
+        FailedEventResponse committed = FailedEventResponse.from(repository.findById(id).orElseThrow());
+        assertThat(committed.status()).isEqualTo("SUCCEEDED");
+        assertThat(committed.retryCount()).isEqualTo(1);
+        assertThat(committed.lastRetriedAt()).isNotNull();
+        assertThat(committed.errorMessage()).isEqualTo(DIAGNOSIS);
+        assertThat(committed.updatedAt()).isAfter(OLD_TIME);
+        assertThat(service.list(org, null, 0, 20)).contains(committed);
+        Map<String, Object> before = row(id);
+        assertRejected(id, "SHIFT_BUDGET_031");
+        assertThat(row(id)).isEqualTo(before);
     }
 
     @Test
@@ -175,7 +204,28 @@ class ShiftBudgetFailedEventRetryContractIT extends AbstractMySqlIntegrationTest
         LocalDateTime persisted = jdbc.queryForObject("SELECT updated_at FROM shift_budget_failed_events WHERE id = ?", LocalDateTime.class, id);
         assertThat(response.status()).isEqualTo("SUCCEEDED");
         assertThat(response.errorMessage()).isEqualTo(DIAGNOSIS);
-        assertThat(response.updatedAt()).isAfter(OLD_TIME).isEqualTo(persisted).isEqualTo(next.updatedAt());
+        // HibernateはUTC格納、APIのLocalDateTimeはテスト規約どおりJST。時刻の意味を揃えて比較する。
+        LocalDateTime persistedJst = persisted.atOffset(java.time.ZoneOffset.UTC)
+                .atZoneSameInstant(java.time.ZoneId.of("Asia/Tokyo")).toLocalDateTime();
+        assertThat(response.updatedAt()).isAfter(OLD_TIME).isEqualTo(persistedJst).isEqualTo(next.updatedAt());
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ShiftBudgetFailedEventType.class, names = {"THRESHOLD_ALERT", "WORKFLOW_START", "NOTIFICATION_SEND"})
+    void 対応3種の成功結果と初回診断が保存される(ShiftBudgetFailedEventType type) {
+        String payload = switch (type) {
+            case WORKFLOW_START -> "{\"allocation_id\":999999999}";
+            case NOTIFICATION_SEND -> "{\"user_ids\":[" + actor
+                    + "],\"title\":\"契約\",\"body\":\"再試行\",\"scope_id\":" + org + "}";
+            default -> "{}";
+        };
+        Long id = event(type, ShiftBudgetFailedEventStatus.PENDING, payload, DIAGNOSIS);
+        FailedEventResponse response = service.retry(org, id);
+        assertThat(response.status()).isEqualTo("SUCCEEDED");
+        assertThat(response.retryCount()).isEqualTo(1);
+        assertThat(response.errorMessage()).isEqualTo(DIAGNOSIS);
+        assertThat(response.lastRetriedAt()).isNotNull();
+        assertThat(response).isEqualTo(FailedEventResponse.from(repository.findById(id).orElseThrow()));
     }
 
     @Test
