@@ -105,7 +105,7 @@ export async function verify() {
   validateInventory(expectedPaths, listFiles(root))
   assert.equal(
     sha(Buffer.from(manifestBytes.toString('utf8').replace(/\r\n/g, '\n'))),
-    '97157f4c2a0110419720d3b218f0d17f46916e8c1d8dbe77782bc8f15227e690',
+    '01acc16644bda2fb07539ba0fdb7ed7d7eeee58216d487d74d41fc85c48b20d9',
   )
   assert.equal(snapshot.records.length, 1536)
   assert.ok(!fs.existsSync(path.join(frontend, 'public/dev-fixtures/ranch/appearance64-v4')))

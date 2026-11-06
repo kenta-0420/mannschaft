@@ -41900,7 +41900,7 @@
         "idle": {
           "src": "/dev-fixtures/ranch/appearance64-v4/atlases/iguanodon/juvenile/V1/idle-pixel.png",
           "sourcePath": "atlases/iguanodon/juvenile/V1/idle-pixel.png",
-          "sourceSha256": "7d8e6a1bea540fbff8d8c7e175424f6a52442cfb7dd7d8c21d7b72e0d150970b",
+          "sourceSha256": "1e1250bbe39f82cd74f4d9613638add22167a979d63411fccc7507c65c40ab97",
           "sourceWidth": 384,
           "sourceHeight": 96,
           "action": "idle",
@@ -70338,7 +70338,7 @@
         "feed": {
           "src": "/dev-fixtures/ranch/appearance64-v4/atlases/pinacosaurus/baby/V1/feed-pixel.png",
           "sourcePath": "atlases/pinacosaurus/baby/V1/feed-pixel.png",
-          "sourceSha256": "df2e04119d296fdc784758f842bcbc6eb56e8b1df5c37a79da152ee185ed3539",
+          "sourceSha256": "d3091a2606710cecdf6897f80a1a1473ec09cfd0de5daf87416b529ba39fba74",
           "sourceWidth": 384,
           "sourceHeight": 96,
           "action": "feed",
