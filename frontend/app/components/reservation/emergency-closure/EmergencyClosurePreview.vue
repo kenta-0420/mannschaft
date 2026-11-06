@@ -49,7 +49,7 @@ const emit = defineEmits<{
           v-for="item in items"
           :key="item.reservationId"
           data-testid="closure-preview-card"
-          class="rounded-md border border-surface-200 p-3 text-sm dark:border-surface-700"
+          class="rounded-md border border-surface-200 p-3 text-sm [text-spacing-trim:space-all] dark:border-surface-700"
         >
           <p data-field="name" class="break-words font-medium [overflow-wrap:anywhere]">{{ item.userFullName || $t('emergency_closure.label.unknown_user') }}</p>
           <p data-field="datetime" class="text-surface-600 dark:text-surface-300">{{ formatPreviewDateTime(item.slotDate, item.startTime, item.endTime) }}</p>

@@ -60,7 +60,7 @@ const { formatDateTime, formatCalendarDayRange, formatTimeRange } = useDatetime(
           v-for="item in items"
           :key="item.id"
           data-testid="closure-history-card"
-          class="rounded-md border border-surface-200 p-3 text-sm dark:border-surface-700"
+          class="rounded-md border border-surface-200 p-3 text-sm [text-spacing-trim:space-all] dark:border-surface-700"
         >
           <dl class="min-w-0 space-y-2">
             <div>
