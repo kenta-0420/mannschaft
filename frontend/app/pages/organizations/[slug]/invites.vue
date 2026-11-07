@@ -7,7 +7,7 @@
 import { useOrgShellContext } from '~/composables/useOrgShellContext'
 
 definePageMeta({
-  middleware: 'auth',
+  middleware: ['auth', 'admin-console'],
   layout: 'default',
 })
 

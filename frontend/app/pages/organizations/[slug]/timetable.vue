@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import dayjs from 'dayjs'
 import type { TimetablePeriod, TimetableTerm } from '~/types/timetable'
 
 definePageMeta({ layout: 'organization', middleware: 'auth' })
@@ -10,82 +9,49 @@ const orgSlug = computed(() => String(route.params.slug))
 const timetableApi = useTimetableApi()
 const notification = useNotification()
 const { isAdmin, loadPermissions } = useRoleAccess('organization', orgSlug)
-const { formatDate, userTimezone } = useDatetime()
 
 const periods = ref<TimetablePeriod[]>([])
 const terms = ref<TimetableTerm[]>([])
 const loading = ref(true)
 const activeTab = ref('0')
+/**
+ * 時限・学期それぞれの取得状態。取得失敗を「定義されていません」の空状態と区別するために持つ
+ * （FRONTEND_CODING_CONVENTION の「取得失敗を空状態へフォールバックさせてはならない」）。
+ */
+const periodsLoadState = ref<'loading' | 'error' | 'loaded'>('loading')
+const termsLoadState = ref<'loading' | 'error' | 'loaded'>('loading')
 
-// 学期追加ダイアログ
-const showTermDialog = ref(false)
-const termSubmitting = ref(false)
-const termForm = ref({
-  name: '',
-  startDate: '',
-  endDate: '',
-  academicYear: dayjs().tz(userTimezone.value).year(),
-  sortOrder: 0,
-})
+/** 時限一覧の取得。初回表示と再試行で共通に使う。 */
+async function loadPeriods() {
+  periodsLoadState.value = 'loading'
+  try {
+    periods.value = await timetableApi.listPeriods(orgSlug.value)
+    periodsLoadState.value = 'loaded'
+  } catch {
+    periodsLoadState.value = 'error'
+    notification.error(t('timetable.load_error'))
+  }
+}
 
-// 学期削除
-const deletingTermId = ref<number | null>(null)
+/** 学期一覧の取得。初回表示・再試行・追加削除後の取り直しで共通に使う。 */
+async function loadTerms() {
+  termsLoadState.value = 'loading'
+  try {
+    terms.value = await timetableApi.listTerms('organization', orgSlug.value)
+    termsLoadState.value = 'loaded'
+  } catch {
+    termsLoadState.value = 'error'
+    notification.error(t('timetable.term_load_error'))
+  }
+}
 
 async function loadData() {
   loading.value = true
   try {
     await loadPermissions()
-    const [p, t] = await Promise.all([
-      timetableApi.listPeriods(orgSlug.value),
-      timetableApi.listTerms('organization', orgSlug.value),
-    ])
-    periods.value = p
-    terms.value = t
-  } catch {
-    notification.error(t('timetable.load_error'))
+    await Promise.all([loadPeriods(), loadTerms()])
   } finally {
     loading.value = false
-  }
-}
-
-async function submitTerm() {
-  if (!termForm.value.name || !termForm.value.startDate || !termForm.value.endDate) return
-  termSubmitting.value = true
-  try {
-    await timetableApi.createOrgTerm(orgSlug.value, {
-      name: termForm.value.name,
-      startDate: termForm.value.startDate,
-      endDate: termForm.value.endDate,
-      academicYear: termForm.value.academicYear,
-      sortOrder: termForm.value.sortOrder,
-    })
-    notification.success(t('timetable.term_success'))
-    showTermDialog.value = false
-    termForm.value = {
-      name: '',
-      startDate: '',
-      endDate: '',
-      academicYear: dayjs().tz(userTimezone.value).year(),
-      sortOrder: 0,
-    }
-    terms.value = await timetableApi.listTerms('organization', orgSlug.value)
-  } catch {
-    notification.error(t('timetable.term_error'))
-  } finally {
-    termSubmitting.value = false
-  }
-}
-
-async function deleteTerm(termId: number) {
-  deletingTermId.value = termId
-  try {
-    await timetableApi.deleteTerm(termId)
-    notification.success(t('common.dialog.success'))
-    terms.value = await timetableApi.listTerms('organization', orgSlug.value)
-  } catch {
-    notification.error(t('common.dialog.error'))
-  } finally {
-    deletingTermId.value = null
   }
 }
 
@@ -102,13 +68,19 @@ onMounted(loadData)
       <Tabs v-model:value="activeTab">
         <TabList>
           <Tab value="0">{{ $t('timetable.tab_period') }}</Tab>
-          <Tab value="1">{{ $t('timetable.tab_term') }}</Tab>
+          <Tab value="1" data-testid="org-timetable-tab-term">{{ $t('timetable.tab_term') }}</Tab>
         </TabList>
         <TabPanels>
           <!-- 時限定義タブ -->
           <TabPanel value="0">
             <p class="mb-4 text-sm text-surface-500">{{ $t('timetable.period_hint') }}</p>
-            <DataTable :value="periods" data-key="periodNumber" striped-rows>
+            <DashboardErrorState
+              v-if="periodsLoadState === 'error'"
+              :message="$t('timetable.load_error')"
+              testid="period-load-error-state"
+              @retry="loadPeriods"
+            />
+            <DataTable v-else :value="periods" data-key="periodNumber" striped-rows>
               <template #empty>
                 <div class="py-8 text-center text-surface-500">
                   {{ $t('timetable.no_period') }}
@@ -132,99 +104,19 @@ onMounted(loadData)
 
           <!-- 学期テンプレートタブ -->
           <TabPanel value="1">
-            <div class="mb-4 flex items-center justify-between">
-              <p class="text-sm text-surface-500">{{ $t('timetable.term_hint') }}</p>
-              <Button
-                v-if="isAdmin"
-                :label="$t('timetable.add_term')"
-                icon="pi pi-plus"
-                size="small"
-                @click="showTermDialog = true"
-              />
-            </div>
-            <DataTable :value="terms" data-key="id" striped-rows>
-              <template #empty>
-                <div class="py-8 text-center text-surface-500">
-                  {{ $t('timetable.no_term') }}
-                </div>
-              </template>
-              <Column field="academicYear" :header="$t('timetable.term_academic_year')" style="width: 80px" />
-              <Column field="name" :header="$t('timetable.term_name')" />
-              <Column :header="$t('timetable.term_start')">
-                <template #body="{ data }">
-                  {{ formatDate(data.startDate) }}
-                </template>
-              </Column>
-              <Column :header="$t('timetable.term_end')">
-                <template #body="{ data }">
-                  {{ formatDate(data.endDate) }}
-                </template>
-              </Column>
-              <Column
-                v-if="isAdmin"
-                :header="$t('common.label.actions')"
-                style="width: 80px"
-              >
-                <template #body="{ data }">
-                  <Button
-                    icon="pi pi-trash"
-                    size="small"
-                    text
-                    severity="danger"
-                    :loading="deletingTermId === data.id"
-                    @click="deleteTerm(data.id)"
-                  />
-                </template>
-              </Column>
-            </DataTable>
+            <TimetableTermManager
+              scope-type="organization"
+              :scope-slug="orgSlug"
+              :terms="terms"
+              :can-manage="isAdmin"
+              :hint="$t('timetable.term_hint')"
+              :load-state="termsLoadState"
+              @changed="loadTerms"
+              @retry="loadTerms"
+            />
           </TabPanel>
         </TabPanels>
       </Tabs>
-
-      <!-- 学期追加ダイアログ -->
-      <Dialog
-        v-model:visible="showTermDialog"
-        :header="$t('timetable.add_term')"
-        :modal="true"
-        class="w-full max-w-md"
-      >
-        <div class="space-y-4">
-          <div>
-            <label class="mb-1 block text-sm font-medium">{{ $t('timetable.term_academic_year') }}</label>
-            <InputNumber v-model="termForm.academicYear" class="w-full" :min="2000" :max="2100" />
-          </div>
-          <div>
-            <label class="mb-1 block text-sm font-medium">{{ $t('timetable.term_name') }}</label>
-            <InputText
-              v-model="termForm.name"
-              class="w-full"
-              :placeholder="$t('timetable.term_name_placeholder')"
-            />
-          </div>
-          <div>
-            <label class="mb-1 block text-sm font-medium">{{ $t('timetable.term_start') }}</label>
-            <InputText v-model="termForm.startDate" type="date" class="w-full" />
-          </div>
-          <div>
-            <label class="mb-1 block text-sm font-medium">{{ $t('timetable.term_end') }}</label>
-            <InputText v-model="termForm.endDate" type="date" class="w-full" />
-          </div>
-        </div>
-        <template #footer>
-          <Button
-            :label="$t('button.cancel')"
-            severity="secondary"
-            @click="showTermDialog = false"
-          />
-          <Button
-            :label="$t('timetable.add_term')"
-            icon="pi pi-check"
-            :loading="termSubmitting"
-            :disabled="!termForm.name || !termForm.startDate || !termForm.endDate"
-            @click="submitTerm"
-          />
-        </template>
-      </Dialog>
     </template>
   </div>
 </template>

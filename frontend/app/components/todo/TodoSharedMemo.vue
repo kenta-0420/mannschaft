@@ -39,7 +39,7 @@ async function loadMemos(page: number = 0) {
     currentPage.value = res.meta.page
     totalPages.value = res.meta.totalPages
   } catch {
-    notification.error(t('common.dialog.error'))
+    notification.error(t('dialog.error'))
   } finally {
     loading.value = false
   }
@@ -58,7 +58,7 @@ async function submitMemo() {
     quotedEntry.value = null
     await loadMemos(0)
   } catch {
-    notification.error(t('common.dialog.error'))
+    notification.error(t('dialog.error'))
   } finally {
     submitting.value = false
   }
@@ -95,7 +95,7 @@ async function saveEdit() {
     cancelEdit()
     await loadMemos(currentPage.value)
   } catch {
-    notification.error(t('common.dialog.error'))
+    notification.error(t('dialog.error'))
   }
 }
 
@@ -119,7 +119,7 @@ async function confirmDelete() {
     deletingId.value = null
     await loadMemos(currentPage.value)
   } catch {
-    notification.error(t('common.dialog.error'))
+    notification.error(t('dialog.error'))
   }
 }
 
@@ -298,10 +298,10 @@ onMounted(() => loadMemos())
       >
         <div class="w-full max-w-sm rounded-xl bg-surface-0 p-6 shadow-xl dark:bg-surface-800">
           <h3 class="mb-2 text-base font-semibold text-surface-800 dark:text-surface-100">
-            {{ t('common.dialog.confirm_title') }}
+            {{ t('dialog.confirm_title') }}
           </h3>
           <p class="mb-5 text-sm text-surface-600 dark:text-surface-400">
-            {{ t('common.dialog.confirm_delete') }}
+            {{ t('dialog.confirm_delete') }}
           </p>
           <div class="flex justify-end gap-2">
             <button

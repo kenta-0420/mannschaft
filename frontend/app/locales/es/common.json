@@ -317,6 +317,8 @@
     "add_term": "Agregar Trimestre",
     "term_success": "Trimestre creado",
     "term_error": "Error al crear el trimestre",
+    "term_academic_year_required": "Introduzca el año académico",
+    "term_has_timetables": "No se puede eliminar este período porque aún tiene horarios. Elimínelos primero",
     "no_period": "No hay períodos definidos",
     "no_term": "No hay trimestres definidos",
     "current_week": "Esta Semana",
@@ -331,7 +333,19 @@
     "period_all": "Todos los períodos",
     "period_number_placeholder": "Número de período",
     "period_suffix": "º",
-    "term_name_placeholder": "ej: 1er Trimestre"
+    "term_name_placeholder": "ej: 1er Trimestre",
+    "term_academic_year_range": "Introduzca un año académico entre {min} y {max}",
+    "term_end_before_start": "La fecha de fin debe ser posterior a la fecha de inicio",
+    "term_date_overlap": "Este trimestre se superpone con otro. Revise las fechas de inicio y fin",
+    "term_delete_confirm": "¿Eliminar el trimestre \"{name}\"? Esta acción no se puede deshacer.",
+    "term_delete_success": "Trimestre eliminado",
+    "term_load_error": "No se pudieron cargar los trimestres",
+    "team_term_hint": "Trimestres de este equipo. Al crear un horario, se elige uno de los trimestres añadidos aquí.",
+    "no_term_for_create": "Todavía no hay trimestres. Añada primero un trimestre en la pestaña Trimestre.",
+    "delete_timetable": "Eliminar",
+    "delete_timetable_confirm": "¿Eliminar el horario \"{name}\"? Esta acción no se puede deshacer.",
+    "delete_timetable_success": "Horario eliminado",
+    "delete_timetable_error": "No se pudo eliminar el horario"
   },
   "error": {
     "server": "Se produjo un error del servidor",
@@ -1108,6 +1122,18 @@
     }
   },
   "project": {
+    "back_label": "Lista de proyectos",
+    "delete_aria": "Eliminar {title}",
+    "delete_confirm": "¿Eliminar «{title}»?",
+    "delete_confirm_header": "Confirmar eliminación",
+    "milestone_dialog": {
+      "add_title": "Añadir hito",
+      "edit_title": "Editar hito",
+      "title_label": "Título",
+      "title_placeholder": "Nombre del hito",
+      "due_date_label": "Fecha límite",
+      "add": "Añadir"
+    },
     "related_todo_no_due": "Sin fecha límite",
     "related_todo_no_assignee": "Sin responsable",
     "related_todo_open": "Abrir detalle de la tarea",
@@ -1168,7 +1194,19 @@
       "none": "Ninguno",
       "custom_emoji": "Personalizado",
       "custom_color": "Color personalizado",
-      "current": "Actual"
+      "current": "Actual",
+      "colors": {
+        "blue": "Azul",
+        "red": "Rojo",
+        "green": "Verde",
+        "amber": "Ámbar",
+        "violet": "Violeta",
+        "pink": "Rosa",
+        "cyan": "Cian",
+        "teal": "Verde azulado",
+        "orange": "Naranja",
+        "gray": "Gris"
+      }
     },
     "guide": {
       "button": "Cómo usar",
@@ -1220,7 +1258,10 @@
       "update_failed": "Error al actualizar",
       "delete_failed": "Error al eliminar",
       "status_change_failed": "Error al cambiar el estado",
-      "milestone_save_failed": "Error al guardar el hito"
+      "milestone_save_failed": "Error al guardar el hito",
+      "force_unlock_failed": "No se pudo forzar el desbloqueo",
+      "completion_mode_failed": "No se pudo cambiar el modo de finalización",
+      "gate_init_failed": "No se pudieron inicializar las puertas"
     },
     "status": {
       "active": "Activo",

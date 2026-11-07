@@ -317,6 +317,8 @@
     "add_term": "학기 추가",
     "term_success": "학기를 작성했습니다",
     "term_error": "학기 작성에 실패했습니다",
+    "term_academic_year_required": "학년도를 입력해 주세요",
+    "term_has_timetables": "이 학기에 시간표가 남아 있어 삭제할 수 없습니다. 먼저 시간표를 정리해 주세요",
     "no_period": "교시가 정의되지 않았습니다",
     "no_term": "학기가 정의되지 않았습니다",
     "current_week": "이번 주",
@@ -331,7 +333,19 @@
     "period_all": "전체 교시",
     "period_number_placeholder": "교시 번호",
     "period_suffix": "교시",
-    "term_name_placeholder": "예: 1학기"
+    "term_name_placeholder": "예: 1학기",
+    "term_academic_year_range": "학년도는 {min}~{max} 범위로 입력해 주세요",
+    "term_end_before_start": "종료일은 시작일 이후 날짜로 지정해 주세요",
+    "term_date_overlap": "학기 기간이 다른 학기와 겹칩니다. 시작일과 종료일을 확인해 주세요",
+    "term_delete_confirm": "학기 \"{name}\"을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+    "term_delete_success": "학기를 삭제했습니다",
+    "term_load_error": "학기를 불러오지 못했습니다",
+    "team_term_hint": "이 팀의 학기입니다. 시간표를 만들 때 여기에서 추가한 학기 중에서 선택합니다.",
+    "no_term_for_create": "아직 학기가 없습니다. 먼저 \"학기\" 탭에서 학기를 추가해 주세요.",
+    "delete_timetable": "삭제",
+    "delete_timetable_confirm": "시간표 \"{name}\"을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+    "delete_timetable_success": "시간표를 삭제했습니다",
+    "delete_timetable_error": "시간표를 삭제하지 못했습니다"
   },
   "error": {
     "server": "서버 오류가 발생했습니다",
@@ -1108,6 +1122,18 @@
     }
   },
   "project": {
+    "back_label": "프로젝트 목록",
+    "delete_aria": "{title} 삭제",
+    "delete_confirm": "\"{title}\"을(를) 삭제하시겠습니까?",
+    "delete_confirm_header": "삭제 확인",
+    "milestone_dialog": {
+      "add_title": "마일스톤 추가",
+      "edit_title": "마일스톤 편집",
+      "title_label": "제목",
+      "title_placeholder": "마일스톤 이름",
+      "due_date_label": "마감일",
+      "add": "추가"
+    },
     "related_todo_no_due": "기한 없음",
     "related_todo_no_assignee": "담당자 없음",
     "related_todo_open": "TODO 상세 열기",
@@ -1168,7 +1194,19 @@
       "none": "없음",
       "custom_emoji": "사용자 지정",
       "custom_color": "사용자 지정 색상",
-      "current": "현재 값"
+      "current": "현재 값",
+      "colors": {
+        "blue": "파랑",
+        "red": "빨강",
+        "green": "초록",
+        "amber": "호박색",
+        "violet": "보라",
+        "pink": "분홍",
+        "cyan": "청록",
+        "teal": "틸",
+        "orange": "주황",
+        "gray": "회색"
+      }
     },
     "guide": {
       "button": "사용 방법",
@@ -1220,7 +1258,10 @@
       "update_failed": "업데이트에 실패했습니다",
       "delete_failed": "삭제에 실패했습니다",
       "status_change_failed": "상태 변경에 실패했습니다",
-      "milestone_save_failed": "마일스톤 저장에 실패했습니다"
+      "milestone_save_failed": "마일스톤 저장에 실패했습니다",
+      "force_unlock_failed": "강제 잠금 해제에 실패했습니다",
+      "completion_mode_failed": "완료 모드 변경에 실패했습니다",
+      "gate_init_failed": "게이트 초기화에 실패했습니다"
     },
     "status": {
       "active": "진행 중",
