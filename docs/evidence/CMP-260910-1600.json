@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260910-1600",
+  "scope": "app",
+  "implementation": {"pr": 4382, "sha": "d3ac19621748dbab4395267a8b361ffed2096224"},
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "シフト表の作成成功直後に、F5なしで一覧へ反映する。空一覧・既存行ありの双方で新規行を一意に追加し、既存行を維持する。",
+      "tests": [
+        {"name": "AC-1/2 空の一覧／既存行ありから作成するとF5なしで既存行と新規行を各1件表示する（2件）", "evidence": "frontend/app/pages/teams/[slug]/shifts.create-refresh.spec.ts"},
+        {"name": "通常UIの作成POST201を1回、続くGET200で2件から3件へ即時反映・新規行1件・reload0", "evidence": "docs/evidence/CMP-260910-1600-verification.md"}
+      ]
+    },
+    {
+      "id": "CONTROL-1",
+      "description": "POST失敗と取消で一覧取得や作成POSTを余分に送らない。",
+      "tests": [
+        {"name": "AC-3 POST失敗では既存一覧を維持し成功通知と追加GETを出さない／ダイアログ取消ではPOSTも追加GETも行わない（2件）", "evidence": "frontend/app/pages/teams/[slug]/shifts.create-refresh.spec.ts"}
+      ]
+    },
+    {
+      "id": "CONTROL-2",
+      "description": "作成後GET失敗は既存のエラー・再試行を使い、作成POSTを再送しない。",
+      "tests": [
+        {"name": "AC-4 作成後GET失敗を空状態にせず既存の再試行で復旧しPOSTを再送しない", "evidence": "frontend/app/pages/teams/[slug]/shifts.create-refresh.spec.ts"}
+      ]
+    },
+    {
+      "id": "CONTROL-3",
+      "description": "一般メンバーへの新規作成UI非表示と、対象チーム非メンバーの読取403を維持する。",
+      "tests": [
+        {"name": "AC-5 一般メンバーには新規作成操作を表示しない", "evidence": "frontend/app/pages/teams/[slug]/shifts.create-refresh.spec.ts"},
+        {"name": "通常役割の実機・独立探索でMEMBERの作成UIなし、他所属／対象チーム非メンバーの一覧GET403", "evidence": "docs/evidence/CMP-260910-1600-verification.md"}
+      ]
+    },
+    {
+      "id": "CONTROL-4",
+      "description": "チーム遷移で再mountした後に旧チームのPOST/GET応答が届いても、新チームへ混線させない。",
+      "tests": [
+        {"name": "AC-6 チーム遷移で再mountした後に旧チームのPOST／GET応答が届いても混線しない（2件）", "evidence": "frontend/app/pages/teams/[slug]/shifts.create-refresh.spec.ts"}
+      ]
+    }
+  ],
+  "ci": [{"runId": 42415869813}, {"runId": 42415869806}],
+  "stages": {
+    "review": {"status": "passed", "evidence": "docs/evidence/CMP-260910-1600-verification.md"},
+    "real": {"status": "passed", "evidence": "docs/evidence/CMP-260910-1600-verification.md"},
+    "exploratory": {"status": "passed", "evidence": "docs/evidence/CMP-260910-1600-verification.md"}
+  },
+  "regressions": [],
+  "limitations": [
+    "公開実装head全体と実機の統合source全体の一致は主張しない。対象コンポーネント単位の差分・依存関係を照合して受け入れた。",
+    "独立探索の旧制御失敗2件は失敗のまま保持し、採用3役割で補完した。全5観測を成功へ書き換えていない。",
+    "未知モーダル等の拒否条件は純粋DOM境界33件で検査した。実overlayタイミング試験の成功とは扱わない。",
+    "採用したスマートフォン役の既知CSP report1件は204、未知0件。CSP品質全体の合格は主張しない。",
+    "ポジション管理タブの既知問題は別修正の対象。希望提出画面へ移る際の戸惑いは観測として保持する。"
+  ]
+}
