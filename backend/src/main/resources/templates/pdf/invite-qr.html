@@ -9,13 +9,13 @@
             font-size: 36pt;
             font-weight: bold;
             color: #3B82F6;
-            margin-top: 20mm;
+            margin-top: 2mm;
             letter-spacing: 4px;
         }
         .invite-message-box {
             text-align: center;
-            margin: 10mm 10mm 8mm 10mm;
-            padding: 8mm;
+            margin: 3mm 4mm;
+            padding: 3mm;
             border: 2px solid #3B82F6;
             /* border-radius は Flying Saucer (CSS2.1) 非対応のため使用しない */
         }
@@ -28,11 +28,17 @@
             font-size: 28pt;
             font-weight: bold;
             color: #3B82F6;
-            margin-top: 4mm;
+            margin-top: 2mm;
+            line-height: 1.25;
+            word-wrap: break-word;
+        }
+        /* 100文字の名称も省略せず、QRの印刷サイズを維持したまま一枚に収める。 */
+        .invite-team-name-long {
+            font-size: 18pt;
         }
         .invite-qr-container {
             text-align: center;
-            margin: 8mm auto;
+            margin: 2mm auto;
         }
         .invite-qr-container img {
             width: 350px;
@@ -42,28 +48,28 @@
             text-align: center;
             font-size: 12pt;
             color: #555;
-            margin: 6mm 15mm;
+            margin: 1mm 10mm;
         }
         .invite-meta {
             text-align: center;
             font-size: 10pt;
             color: #777;
-            margin: 4mm 15mm;
-            padding-top: 4mm;
+            margin: 1mm 10mm;
+            padding-top: 1mm;
             border-top: 1px solid #ddd;
         }
         .invite-footer {
             text-align: center;
             font-size: 9pt;
             color: #999;
-            margin-top: 10mm;
+            margin-top: 2mm;
         }
         .invite-invalid-banner {
             text-align: center;
             color: #dc2626;
             font-size: 12pt;
             font-weight: bold;
-            margin: 4mm 0;
+            margin: 2mm 0;
         }
     </style>
 </head>
@@ -72,7 +78,7 @@
 
     <div class="invite-message-box">
         <div class="invite-message-prefix">Mannschaft始めました。</div>
-        <div class="invite-team-name" th:text="${teamName}">チーム名</div>
+        <div class="invite-team-name" th:classappend="${#strings.length(teamName) > 40} ? 'invite-team-name-long' : ''" th:text="${teamName}">チーム名</div>
     </div>
 
     <!-- 無効・期限切れ警告 -->
@@ -91,7 +97,7 @@
         このQRコードをスキャンしてチームに参加してください。
     </div>
 
-    <div class="invite-meta">
+    <div class="invite-meta" th:if="${expiresAt != null or maxUses != null}">
         <span th:if="${expiresAt != null}">
             有効期限: <span th:text="${#temporals.format(expiresAt, 'yyyy年MM月dd日 HH:mm')}"></span>
         </span>

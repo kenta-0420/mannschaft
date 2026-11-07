@@ -6,10 +6,10 @@ import type {
 
 export function useShiftChangeRequestApi() {
   const api = useApi()
-  const BASE = '/api/v1/shifts/schedules'
+  const BASE = '/api/v1/shifts/change-requests'
 
   async function createChangeRequest(payload: CreateChangeRequestPayload): Promise<ChangeRequest> {
-    const res = await api<{ data: ChangeRequest }>(`${BASE}/change-requests`, {
+    const res = await api<{ data: ChangeRequest }>(BASE, {
       method: 'POST',
       body: payload,
     })
@@ -18,13 +18,13 @@ export function useShiftChangeRequestApi() {
 
   async function listChangeRequests(scheduleId: number): Promise<ChangeRequest[]> {
     const res = await api<{ data: ChangeRequest[] }>(
-      `${BASE}/change-requests?scheduleId=${scheduleId}`,
+      `${BASE}?scheduleId=${scheduleId}`,
     )
     return res.data
   }
 
   async function getChangeRequest(id: number): Promise<ChangeRequest> {
-    const res = await api<{ data: ChangeRequest }>(`${BASE}/change-requests/${id}`)
+    const res = await api<{ data: ChangeRequest }>(`${BASE}/${id}`)
     return res.data
   }
 
@@ -32,7 +32,7 @@ export function useShiftChangeRequestApi() {
     id: number,
     payload: ReviewChangeRequestPayload,
   ): Promise<ChangeRequest> {
-    const res = await api<{ data: ChangeRequest }>(`${BASE}/change-requests/${id}/review`, {
+    const res = await api<{ data: ChangeRequest }>(`${BASE}/${id}/review`, {
       method: 'PATCH',
       body: payload,
     })
@@ -40,7 +40,7 @@ export function useShiftChangeRequestApi() {
   }
 
   async function withdrawChangeRequest(id: number): Promise<void> {
-    await api(`${BASE}/change-requests/${id}`, { method: 'DELETE' })
+    await api(`${BASE}/${id}`, { method: 'DELETE' })
   }
 
   return {

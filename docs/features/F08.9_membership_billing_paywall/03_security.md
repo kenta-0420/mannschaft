@@ -17,12 +17,12 @@
 | 後見まとめ支払い | 本人（払い手） | `payable-dues` は自分が払える対象のみ返す |
 | 後見切替開始 | 子の有効保護者 **かつ** 国別ポリシーが切替可（`switchAllowed`） | §3 年齢ゲート |
 | 継続課金 加入/解約/今月スキップ/再開 | 払い手本人 / 後見保護者 | サブスク所有権（payer_user_id）。skip/resume も同所有権（02 §4.3） |
-| 協会請求の立替/精算確認 | 当該チーム ADMIN | `team_payment_advances.team_id` の team ADMIN（案3・02 §7） |
+| 協会請求の立替/精算確認 | 当該チーム ADMIN / DEPUTY_ADMIN | `team_payment_advances.team_id` の team ADMIN / DEPUTY_ADMIN（案3・02 §7） |
 | ペイウォール設定 | チーム/組織 ADMIN | scope 所有権（既存 ContentPaymentGateController） |
 | 集計・CSV・手数料明細 | チーム/組織 ADMIN | scope ADMIN（既存 PaymentSummary） |
 | 領収書取得 | 受益者本人 / 払い手 | 当該支払いの直接関係者のみ。scope ADMIN による個人領収書の閲覧は許可しない |
 | 協会請求 発行/取消/集計 | 組織(協会) ADMIN | org scope ADMIN |
-| 協会請求 支払い | 請求先チームの ADMIN | `payment_requests.payer_scope_id == teamId` かつ team ADMIN |
+| 協会請求 支払い | 請求先チームの ADMIN / DEPUTY_ADMIN | `payment_requests.payer_scope_id == teamId` かつ team ADMIN / DEPUTY_ADMIN |
 | 返金 | 受領側 scope ADMIN（チーム/組織） | F22.1 返金規約（reverse_transfer:true / refund_application_fee:false） |
 
 - `@PreAuthorize` で method-security を効かせる（#1266 で実効化済）。`isAdmin` 常時 true 等の負論理を禁止（[[feedback_visibility_bypass_f00_audit]]）。

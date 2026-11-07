@@ -9,6 +9,7 @@ const { formatDateTime } = useDatetime()
 
 const users = ref<Record<string, unknown>[]>([])
 const loading = ref(true)
+const loadFailed = ref(false)
 const totalRecords = ref(0)
 const page = ref(0)
 const showViolationDialog = ref(false)
@@ -17,11 +18,15 @@ const selectedUserId = ref<number>(0)
 
 async function load() {
   loading.value = true
+  loadFailed.value = false
   try {
     const res = await systemAdminApi.getDashboardUsers({ page: page.value, size: 20 })
     users.value = res.data
-    totalRecords.value = users.value.length
+    totalRecords.value = res.meta.total
   } catch {
+    users.value = []
+    totalRecords.value = 0
+    loadFailed.value = true
     showError('ユーザー一覧の取得に失敗しました')
   } finally {
     loading.value = false
@@ -63,7 +68,9 @@ onMounted(load)
   <div class="mx-auto max-w-6xl">
     <PageHeader title="ユーザー管理" />
 
+    <DashboardErrorState v-if="loadFailed" testid="admin-users-error-state" @retry="load" />
     <DataTable
+      v-else
       :value="users"
       :loading="loading"
       :lazy="true"

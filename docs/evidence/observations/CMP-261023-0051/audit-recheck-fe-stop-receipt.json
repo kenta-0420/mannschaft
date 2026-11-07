@@ -1,0 +1,10 @@
+{
+  "head": "b1cfd1f80997434e539ee5495f29b0a0fcd1ac4b",
+  "time": "2026-10-23T01:10:53.101Z",
+  "method": "所有cp.spawn ChildProcess handleとpid/spawnfile/spawnargsを照合してkill。OSのWin32_Process cmdline再取得はCIM権限拒否。",
+  "killSent": true,
+  "finalObservedAt": "2026-10-23T01:11:10.945Z",
+  "exitSignal": "SIGTERM",
+  "loopback3001TcpConnected": false,
+  "note": "所有ChildProcess handleで停止。OS CIM照合不可という制限を維持。TCP接続拒否とプロセス終了signalを確認。"
+}

@@ -13,8 +13,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
@@ -74,10 +72,10 @@ class NotificationInboxAdapterTest {
     @Test
     @DisplayName("fetch は priority 第一順クエリで INBOX_SNOOZE_REVIVAL 種別を除外する（自己増殖回避＋取りこぼし根治）")
     void fetch_usesPriorityFirstQueryExcludingSnoozeRevivalType() {
-        Page<NotificationEntity> page = new PageImpl<>(List.of(notification(100L, "t")));
+        List<NotificationEntity> notifications = List.of(notification(100L, "t"));
         given(notificationRepository.findInboxByUserIdOrderByPriorityThenCreatedAtDesc(
                 eq(USER_ID), eq(InboxNotificationTypes.INBOX_SNOOZE_REVIVAL), any(Pageable.class)))
-                .willReturn(page);
+                .willReturn(notifications);
 
         List<InboxItemDto> result = adapter.fetch(USER_ID, 50);
 
@@ -100,13 +98,13 @@ class NotificationInboxAdapterTest {
         // アダプタはこの順序を保ったまま DTO 化することを検証する（順序の破壊・並べ替えをしない）。
         LocalDateTime old = LocalDateTime.of(2025, 1, 1, 0, 0);
         LocalDateTime recent = LocalDateTime.of(2026, 6, 1, 0, 0);
-        Page<NotificationEntity> page = new PageImpl<>(List.of(
+        List<NotificationEntity> notifications = List.of(
                 notification(500L, "古いが緊急", NotificationPriority.URGENT, old),
                 notification(600L, "新しいが通常", NotificationPriority.NORMAL, recent),
-                notification(601L, "新しいが通常2", NotificationPriority.NORMAL, recent.minusMinutes(1))));
+                notification(601L, "新しいが通常2", NotificationPriority.NORMAL, recent.minusMinutes(1)));
         given(notificationRepository.findInboxByUserIdOrderByPriorityThenCreatedAtDesc(
                 eq(USER_ID), eq(InboxNotificationTypes.INBOX_SNOOZE_REVIVAL), any(Pageable.class)))
-                .willReturn(page);
+                .willReturn(notifications);
 
         List<InboxItemDto> result = adapter.fetch(USER_ID, 50);
 
@@ -121,10 +119,10 @@ class NotificationInboxAdapterTest {
     @Test
     @DisplayName("fetch は window 件を超えて取得しない（PageRequest size <= window）")
     void fetch_boundsByWindow() {
-        Page<NotificationEntity> page = new PageImpl<>(List.of(notification(100L, "t")));
+        List<NotificationEntity> notifications = List.of(notification(100L, "t"));
         given(notificationRepository.findInboxByUserIdOrderByPriorityThenCreatedAtDesc(
                 eq(USER_ID), eq(InboxNotificationTypes.INBOX_SNOOZE_REVIVAL), any(Pageable.class)))
-                .willReturn(page);
+                .willReturn(notifications);
 
         adapter.fetch(USER_ID, 25);
 

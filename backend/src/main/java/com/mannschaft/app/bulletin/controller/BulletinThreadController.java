@@ -7,6 +7,7 @@ import com.mannschaft.app.bulletin.dto.ThreadResponse;
 import com.mannschaft.app.bulletin.dto.UpdateThreadRequest;
 import com.mannschaft.app.bulletin.service.BulletinScopeIdResolver;
 import com.mannschaft.app.bulletin.service.BulletinThreadService;
+import com.mannschaft.app.bulletin.service.BulletinReadFacade;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 
 /**
  * 掲示板スレッドコントローラー。スレッドのCRUD・検索・状態管理APIを提供する。
@@ -38,6 +40,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class BulletinThreadController {
 
     private final BulletinThreadService threadService;
+    private final BulletinReadFacade readFacade;
     private final BulletinScopeIdResolver scopeIdResolver;
 
 
@@ -73,13 +76,15 @@ public class BulletinThreadController {
     @GetMapping("/{threadId}")
     @Operation(summary = "スレッド詳細")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    // authBasis: 非 TX BulletinReadFacade が最新実 scope/所属/F00/準備中を確認後、旧認可を持つ DTO leaf を読む。
+    @AuthorizedInService
     public ResponseEntity<ApiResponse<ThreadResponse>> getThread(
             @PathVariable String scopeType,
             @PathVariable String scopeId,
             @PathVariable Long threadId) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
         Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
-        ThreadResponse response = threadService.getThread(type, resolvedScopeId, threadId, SecurityUtils.getCurrentUserId());
+        ThreadResponse response = readFacade.getThread(type, resolvedScopeId, threadId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

@@ -1,0 +1,23 @@
+Duplicated imports "OrgTeamGroup", the one from "frontend/app/composables/useBroadcastAudience.ts" has been ignored and "frontend/app/composables/useOrgTeamMembershipApi.ts" is used
+Duplicated imports "isForbiddenError", the one from "frontend/app/composables/useAttendancePermissions.ts" has been ignored and "frontend/app/utils/tournamentScoreEntry.ts" is used
+Duplicated imports "OrgTeamGroup", the one from "frontend/app/composables/useBroadcastAudience.ts" has been ignored and "frontend/app/composables/useOrgTeamMembershipApi.ts" is used
+Duplicated imports "isForbiddenError", the one from "frontend/app/composables/useAttendancePermissions.ts" has been ignored and "frontend/app/utils/tournamentScoreEntry.ts" is used
+
+ RUN  v4.1.11 work/ranch-avatar-clips-finalize-20261021/frontend
+
+ ❯ app/plugins/appearance.spec.ts (0 test)
+ ❯ tests/unit/stores/useAppearanceStore.spec.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  app/plugins/appearance.spec.ts [ app/plugins/appearance.spec.ts ]
+ FAIL  tests/unit/stores/useAppearanceStore.spec.ts [ tests/unit/stores/useAppearanceStore.spec.ts ]
+Error: Cannot find module '/@fs/frontend/node_modules/@nuxt/test-utils/dist/runtime/entry.mjs'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  no tests
+   Start at  00:17:50
+   Duration  7.65s (transform 884ms, setup 0ms, import 0ms, tests 0ms, environment 9.60s)
+

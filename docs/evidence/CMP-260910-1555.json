@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260910-1555",
+  "scope": "app",
+  "implementation": {
+    "pr": 3247,
+    "sha": "681f289be4f6d45454230fb323ce88ea40fcfff3"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "時給を登録・編集できる画面がアプリ内に存在する。",
+      "tests": [
+        {
+          "name": "HR-VAL001〜005（0/負/null/NaN/positive/reason）・HR-UI001〜003（clamp無し/error配線）の入力契約。HTTP全契約ではない。",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/588407f98b2b7aecd99897c26bdd3b6129768a82/frontend/tests/unit/composables/useShiftHourlyRateApi.spec.ts"
+        },
+        {
+          "name": "HRP201/202一括2要求・203人数20倍でも要求数不変・204欠落null・205ID照合・206件数・207URL query・101/102の101/100境界。単体性能で実負荷試験ではない。",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/588407f98b2b7aecd99897c26bdd3b6129768a82/frontend/tests/unit/composables/useHourlyRateMemberPage.spec.ts"
+        },
+        {
+          "name": "aria-describedbyとclear-errorの実打鍵・入力エラー表示。",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/588407f98b2b7aecd99897c26bdd3b6129768a82/frontend/tests/unit/components/shift/HourlyRateAmountInput.spec.ts"
+        },
+        {
+          "name": "時給履歴・同日upsert・別日履歴・認可・0在籍者",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/588407f98b2b7aecd99897c26bdd3b6129768a82/backend/src/test/java/com/mannschaft/app/shift/ShiftHourlyRateServiceTest.java"
+        },
+        {
+          "name": "run11実UI: admin-natural-menu-hourly-empty-history, hourly-calendar-register-1100, hourly-calendar-same-day-correct-1200, hourly-same-day-same-row, hourly-calendar-future-history-1400, hourly-refresh-history-current-future, hourly-invalid-zero, hourly-invalid-negative, hourly-invalid-empty, hourly-empty-date-rejected, hourly-cancel-interrupt-resume, hourly-calendar-unsaved-select-cancel",
+          "evidence": "docs/evidence/CMP-260910-1555-real.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "時給未登録時に0円で黙って成功扱いにせず利用者へ警告する。",
+      "tests": [
+        {
+          "name": "時給欠落skipと警告イベント・設定済み非通知",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/588407f98b2b7aecd99897c26bdd3b6129768a82/backend/src/test/java/com/mannschaft/app/shiftbudget/listener/ShiftBudgetPublishedEventListenerTest.java"
+        },
+        {
+          "name": "受信者/導線・空・個別配送失敗・locale失敗・受信者0",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/588407f98b2b7aecd99897c26bdd3b6129768a82/backend/src/test/java/com/mannschaft/app/shiftbudget/listener/ShiftBudgetHourlyRateMissingNotificationListenerTest.java"
+        },
+        {
+          "name": "run11実UI: missing-ui-publication-warning",
+          "evidence": "docs/evidence/CMP-260910-1555-real.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "画面だけを使う組織でも消化額・閾値警告・月次締めが正しい金額で動く。",
+      "tests": [
+        {
+          "name": "実額乗算・時間計算・既存状態",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/588407f98b2b7aecd99897c26bdd3b6129768a82/backend/src/test/java/com/mannschaft/app/shiftbudget/service/ShiftBudgetConsumptionServiceTest.java"
+        },
+        {
+          "name": "80/100閾値・130%で120超過・重複・0予算",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/588407f98b2b7aecd99897c26bdd3b6129768a82/backend/src/test/java/com/mannschaft/app/shiftbudget/service/ThresholdAlertEvaluationServiceTest.java"
+        },
+        {
+          "name": "初回締め・再締め冪等・部分失敗rollback・同時締め",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/588407f98b2b7aecd99897c26bdd3b6129768a82/backend/src/test/java/com/mannschaft/app/shiftbudget/MonthlyShiftBudgetCloseTransactionIT.java"
+        },
+        {
+          "name": "run11実UI: budget-ui-publish-threshold-80, budget-ui-publish-threshold-100, budget-ui-publish-threshold-120, budget-ui-monthly-close-september",
+          "evidence": "docs/evidence/CMP-260910-1555-real.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 34701282751
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260910-1555-review.md"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260910-1555-real.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260910-1555-exploratory.md"
+    }
+  },
+  "regressions": [],
+  "acceptanceDecision": {
+    "reviewer": "root",
+    "adjudicatedAt": "2026-10-30T01:22:46.268Z",
+    "scope": "台帳の原3AC、現organization方式",
+    "allOriginalThreeAccepted": true,
+    "allResidentGoalsAchieved": false,
+    "productDefectFreeClaim": false,
+    "sourceHead": "588407f98b2b7aecd99897c26bdd3b6129768a82",
+    "runId": "CMP-260910-1555-revalidation-20261030-11",
+    "originalRuntimeRecordsUnchanged": true,
+    "artifactId": "run11-root-parent-adjudication-safe.json",
+    "sha256": "c8774a9b86a82cb620ca9578aaa9ac4b9c2bed9deff9064f08d4c4adfed80291"
+  },
+  "implementationLineage": {
+    "followUpRemediationOfPr": 3230,
+    "original3230FailurePreserved": true,
+    "child4018NotUsedAsImplementationCi": true,
+    "sameTreeRuntimeCiOnlySupplemental": true
+  },
+  "evidenceArtifacts": [
+    {
+      "artifactId": "run11-root-parent-adjudication-safe.json",
+      "sha256": "c8774a9b86a82cb620ca9578aaa9ac4b9c2bed9deff9064f08d4c4adfed80291"
+    },
+    {
+      "artifactId": "run11-root-review-trace-safe.json",
+      "sha256": "b9cf3cd8d64ede5f96f5dd0b83db4a296223c5230b9fb6e97f044769677c3ca8"
+    },
+    {
+      "artifactId": "followup-pr3247-safe.json",
+      "sha256": "5cb03b5349c83a1d091c3f4167ff5a2ecf5e4182aa891479f1317ce1598f935d"
+    },
+    {
+      "artifactId": "run11-root-fixed-gate-safe.json",
+      "sha256": "ac4c72af2069db19fd72cbcb261de24fc9ee9f3ab9107b8412ded18fc70ca8f9"
+    },
+    {
+      "artifactId": "run11-root-financial-projection-safe.json",
+      "sha256": "4824cb812ed53dc7e919b7007b98ab665862cf134f60bbd45de41d8823bdc618"
+    },
+    {
+      "artifactId": "run11-root-monthly-amount-assertions-safe.json",
+      "sha256": "2b59b7fcd9d8ba23fa38621de9d38ab38ecfc26fb385cf97993c126795101976"
+    },
+    {
+      "artifactId": "run11-root-terminal-safe.json",
+      "sha256": "da9bc6381e9032497a9c99c662115b690aad7c7e858527cc3e1246cf0472934d"
+    },
+    {
+      "artifactId": "run11-root-external-cleanup-audit-safe.json",
+      "sha256": "abf0f920c4a53504c1fc41fecaf1b77b9bad907377468f2a39135f98574db199"
+    },
+    {
+      "artifactId": "run11-root-resident-visual-review-safe.json",
+      "sha256": "ab38834714ab7e8a77f3a32a65e5eeacec763032ec3712f4dfcf45d6ecf15ef1"
+    },
+    {
+      "artifactId": "runtime-source-ci-bridge-root.json",
+      "sha256": "d26f088e5e8252db519cbe6a4ae42d6e025afb681c5381fefe87c02c24fc814c"
+    },
+    {
+      "artifactId": "ac6-threshold-existing-tests-safe.json",
+      "sha256": "3d3df215afe5db5632f7185b1e1323d10c69d215645a045769a83d8c08af29b0"
+    },
+    {
+      "artifactId": "worktree-private-asset-loss-incident-safe.json",
+      "sha256": "37db981e36e4a229e1ef2e9a7bcb0bb165dccc75be72449a42495e2cbc547fce"
+    },
+    {
+      "artifactId": "run11-windows-closure-v3-safe.json",
+      "sha256": "e9c7bcfde8348e3a539722fe11721387eb1c95ae000f72a1e96f9f92a5c0f7c2"
+    },
+    {
+      "artifactId": "fixed-ui-safe.json",
+      "sha256": "7b86ea56fd02b40bacb581c2fd8486c3535b9463346faacfbdc063fc659ccb6f"
+    },
+    {
+      "artifactId": "run11-source-to-ledger-base-bridge-safe.json",
+      "sha256": "d4bf49c2b825d00057ecd5b2c172d069f383d69300e209641a7d39a995524728"
+    }
+  ],
+  "limitations": [
+    "CMP-261021-0651の汎用拒否UX、CMP-260907-1038の小さな日付タップ領域、optional副管理者メニュー未達を保持する。SYSTEM_ADMIN/DEPUTY予算UIの観測を一般成功へ拡張しない。",
+    "Bの自分時給導線発見は目的未達。探索passedは独立3人の実探索・機械閉鎖・root裏取り・観測登録を意味し、全目的達成や製品無欠陥ではない。",
+    "固定source588の現organization方式だけを受入対象とする。team-owned v2は設計のみ/未実装で準拠を主張しない。",
+    "閾値N±1の直前/直後境界は未確認。既存120名のテストは入力130%であり、実run11のexact120%と区別する。CI集計成功を個別test XMLの実行証明へ置き換えない。",
+    "小規模合成fixtureの応答/通知時間のみ。負荷・SLA・物理端末/Safariは未試験、125%条件はviewport近似。",
+    "通常board validatorはbaseline同一のCMP/GitHub参照集合不一致で停止し、残global条件未到達。ローカルUIの82→82取込・再読込非重複と分離する。",
+    "既存board importerのstored runIdはoctober-wave2-login-resident-overlay-20261026。originalRunIdPrecisionPassed=falseで、元runはdetail/選別証拠に保持する。",
+    "検証後のworktree切替/sparse操作後、11候補package原本が喪失した。別元3UI scriptは残存・root保全済みだが、v12完全原本による再現は未確認。実行時SHA・外部safe・選別PNGは保持。消失時点/Windows stage同時消失は未確定で、事故を正常cleanupや削除許可済としない。",
+    "旧run失敗・起動前timeout・fixture/UI/harness失敗は履歴として保持し、run11成功で上書きしない。原ownerの既定not-run/campaignAcPassed=false等は書換えず、root別受入記録で原3ACを裁定した。",
+    "実機source588と正式文書base1d9はBE/FE全tree同一ではない。rootは親shift/shiftbudget関連経路の差分なしと変わった二次依存の範囲を確認したが、最新main全体を実機済みとは主張しない。same-tree CI橋渡しは588と4214/4221に限定する。"
+  ],
+  "productionChanges": 0
+}

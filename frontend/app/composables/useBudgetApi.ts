@@ -28,7 +28,7 @@ export function useBudgetApi() {
   async function reverseTransaction(scopeType: 'team' | 'organization', scopeId: string, fyId: number, txId: number, reason: string) { return api(`${base(scopeType, scopeId)}/budget/fiscal-years/${fyId}/transactions/${txId}/reverse`, { method: 'POST', body: { reason } }) }
 
   // === Summary & Report ===
-  async function getSummary(scopeType: 'team' | 'organization', scopeId: string, fyId: number) { return api<{ data: BudgetSummary }>(`${base(scopeType, scopeId)}/budget/fiscal-years/${fyId}/summary`) }
+  async function getSummary(_scopeType: 'team' | 'organization', _scopeId: string, fyId: number) { return api<{ data: BudgetSummary }>(`/api/v1/budget/fiscal-years/${fyId}/summary`) }
   async function generateReport(scopeType: 'team' | 'organization', scopeId: string, fyId: number) { return api(`${base(scopeType, scopeId)}/budget/fiscal-years/${fyId}/reports`, { method: 'POST' }) }
 
   // === Config ===

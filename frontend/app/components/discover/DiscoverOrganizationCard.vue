@@ -45,6 +45,15 @@ function formatDate(isoDate: string | null): string {
           <h3 class="truncate text-base font-bold text-surface-900 dark:text-surface-50">
             {{ organization.name }}
           </h3>
+          <!-- F01.2.1: チーム加盟を受け付けている組織のバッジ -->
+          <span
+            v-if="organization.acceptingTeamApplications"
+            class="mt-1 inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400"
+            data-testid="accepting-badge"
+          >
+            <i class="pi pi-sitemap text-[0.7rem]" aria-hidden="true" />
+            {{ t('teamAffiliation.badge_accepting') }}
+          </span>
           <p class="mt-1 text-sm text-surface-500">
             {{ t('public.discover.card.memberCount', { count: organization.memberCount }) }}
           </p>

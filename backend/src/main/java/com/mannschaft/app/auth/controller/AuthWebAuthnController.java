@@ -1,6 +1,7 @@
 package com.mannschaft.app.auth.controller;
 
 import com.mannschaft.app.auth.service.AuthWebAuthnService;
+import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.auth.dto.MessageResponse;
 import com.mannschaft.app.auth.dto.TokenResponse;
 import com.mannschaft.app.auth.dto.UpdateWebAuthnCredentialRequest;
@@ -22,6 +23,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,6 +37,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.time.Duration;
 import com.mannschaft.app.common.SecurityUtils;
 
 /**
@@ -46,7 +50,14 @@ import com.mannschaft.app.common.SecurityUtils;
 @RequiredArgsConstructor
 public class AuthWebAuthnController {
 
+    private static final int LOGIN_MAX_ATTEMPTS = 10;
+    private static final Duration LOGIN_WINDOW = Duration.ofMinutes(1);
+
     private final AuthWebAuthnService authWebAuthnService;
+    private final AuthTokenService authTokenService;
+
+    @Value("${mannschaft.cookie.secure:false}")
+    private boolean cookieSecure;
 
     /**
      * WebAuthn登録開始。チャレンジを生成して返す。
@@ -119,8 +130,11 @@ public class AuthWebAuthnController {
     @Operation(summary = "WebAuthnログイン開始")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "チャレンジ生成成功")
     public ResponseEntity<ApiResponse<WebAuthnLoginBeginResponse>> beginLogin(
-            @RequestParam String email) {
+            @RequestParam String email, HttpServletRequest request) {
 
+        String ipAddress = com.mannschaft.app.common.IpAddressUtils.getClientIp(request);
+        authTokenService.checkRateLimit("mannschaft:auth:webauthn_login_begin:" + ipAddress,
+                LOGIN_MAX_ATTEMPTS, LOGIN_WINDOW);
         return ResponseEntity.ok(authWebAuthnService.beginLogin(email));
     }
 
@@ -156,7 +170,18 @@ public class AuthWebAuthnController {
 
         String ipAddress = com.mannschaft.app.common.IpAddressUtils.getClientIp(request);
         String userAgent = request.getHeader("User-Agent");
-        return ResponseEntity.ok(authWebAuthnService.completeLogin(req, ipAddress, userAgent));
+        // 開始と完了を別窓にし、一度の認証でレート回数を二重に消費しない。
+        authTokenService.checkRateLimit("mannschaft:auth:webauthn_login_complete:" + ipAddress,
+                LOGIN_MAX_ATTEMPTS, LOGIN_WINDOW);
+        ApiResponse<TokenResponse> response = authWebAuthnService.completeLogin(req, ipAddress, userAgent);
+        TokenResponse tokens = response.getData();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE,
+                        AuthTokenCookies.accessToken(tokens.getAccessToken(), cookieSecure,
+                                authTokenService.getAccessTokenExpirationSeconds()).toString(),
+                        AuthTokenCookies.refreshToken(tokens.getRefreshToken(), cookieSecure,
+                                authTokenService.getRefreshTokenExpirationSeconds()).toString())
+                .body(response);
     }
 
     /**

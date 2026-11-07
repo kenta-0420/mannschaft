@@ -1,0 +1,95 @@
+{
+  "category": "HISTORICAL_4795_BACKEND_NOT_CURRENT_HEAD_CI",
+  "headSha": "4795daa45ba8d1470fb48f6ce9109681ab89f7bb",
+  "status": "completed",
+  "conclusion": "success",
+  "url": "https://github.com/kenta-0420/mannschaft/actions/runs/39706549213",
+  "totalJobs": 12,
+  "testShards": 6,
+  "jobs": [
+    {
+      "name": "Detect changes",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-22T01:35:24Z",
+      "completedAt": "2026-10-22T01:35:50Z"
+    },
+    {
+      "name": "Non-JST timezone contract",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-22T01:46:41Z",
+      "completedAt": "2026-10-22T01:54:48Z"
+    },
+    {
+      "name": "ArchUnit tests (separate JVM)",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-22T02:08:39Z",
+      "completedAt": "2026-10-22T02:10:40Z"
+    },
+    {
+      "name": "Shard coverage guard",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-22T02:02:44Z",
+      "completedAt": "2026-10-22T02:03:57Z"
+    },
+    {
+      "name": "Lint (D-5 @Builder guard)",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-22T01:49:53Z",
+      "completedAt": "2026-10-22T01:50:05Z"
+    },
+    {
+      "name": "Test (shard 1)",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-22T01:36:29Z",
+      "completedAt": "2026-10-22T02:42:52Z"
+    },
+    {
+      "name": "Test (shard 0)",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-22T01:55:07Z",
+      "completedAt": "2026-10-22T03:12:02Z"
+    },
+    {
+      "name": "Test (shard 5)",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-22T02:23:27Z",
+      "completedAt": "2026-10-22T03:35:19Z"
+    },
+    {
+      "name": "Test (shard 3)",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-22T02:10:36Z",
+      "completedAt": "2026-10-22T03:17:44Z"
+    },
+    {
+      "name": "Test (shard 4)",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-22T02:19:45Z",
+      "completedAt": "2026-10-22T03:23:52Z"
+    },
+    {
+      "name": "Test (shard 2)",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-22T02:23:31Z",
+      "completedAt": "2026-10-22T03:45:39Z"
+    },
+    {
+      "name": "Compile & Test",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-22T03:45:42Z",
+      "completedAt": "2026-10-22T03:45:45Z"
+    }
+  ]
+}

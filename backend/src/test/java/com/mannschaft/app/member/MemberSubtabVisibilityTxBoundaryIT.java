@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.NestedExceptionUtils;
+import org.springframework.core.task.TaskRejectedException;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.RequestBuilder;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -185,28 +186,64 @@ class MemberSubtabVisibilityTxBoundaryIT extends MemberTxBoundaryITSupport {
             asyncLogger.addAppender(appender);
 
             CountDownLatch hold = new CountDownLatch(1);
+            AtomicInteger started = new AtomicInteger();
+            AtomicInteger completed = new AtomicInteger();
+            AtomicInteger expired = new AtomicInteger();
+            int accepted = 0;
             try {
                 // 飽和: max 5 + queue 100 = 105 件を latch で止める
                 int capacity = eventPool().getThreadPoolExecutor().getMaximumPoolSize()
                         + eventPool().getThreadPoolExecutor().getQueue().remainingCapacity();
                 assertThat(capacity).as("前提: event-pool は max 5 / queue 100").isEqualTo(105);
-                for (int i = 0; i < capacity; i++) {
-                    eventPool().execute(() -> {
-                        try {
-                            hold.await(120, TimeUnit.SECONDS);
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
+                long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
+                // 再利用された idle worker の queue 取得前の準備拒否だけを期限内に再試行する。
+                while (accepted < capacity) {
+                    assertThat(System.nanoTime() - deadline).as("飽和準備は30秒以内").isNegative();
+                    assertThat(eventPool().getThreadPoolExecutor().isShutdown()).isFalse();
+                    try {
+                        eventPool().execute(() -> {
+                            started.incrementAndGet();
+                            try {
+                                if (!hold.await(120, TimeUnit.SECONDS)) {
+                                    expired.incrementAndGet();
+                                }
+                            } catch (InterruptedException e) {
+                                expired.incrementAndGet();
+                                Thread.currentThread().interrupt();
+                            } finally {
+                                completed.incrementAndGet();
+                            }
+                        });
+                        accepted++;
+                    } catch (TaskRejectedException e) {
+                        if (eventPool().getThreadPoolExecutor().isShutdown()) {
+                            throw e;
                         }
-                    });
+                        TimeUnit.MILLISECONDS.sleep(1);
+                    }
                 }
-                Awaitility.await().atMost(Duration.ofSeconds(30)).until(() ->
-                        eventPool().getActiveCount() == 5
-                                && eventPool().getThreadPoolExecutor().getQueue().size() == 100);
+                while (started.get() != 5 || eventPool().getActiveCount() != 5
+                        || eventPool().getThreadPoolExecutor().getQueue().size() != 100) {
+                    assertThat(System.nanoTime() - deadline).as("飽和準備は30秒以内").isNegative();
+                    assertThat(eventPool().getThreadPoolExecutor().isShutdown()).isFalse();
+                    TimeUnit.MILLISECONDS.sleep(1);
+                }
+                assertThat(System.nanoTime() - deadline).as("飽和準備は30秒以内").isNegative();
+                assertThat(accepted).isEqualTo(105);
+                assertThat(started.get()).isEqualTo(5);
+                assertThat(completed.get()).isZero();
+                assertThat(expired.get()).isZero();
+                assertThat(hold.getCount()).isEqualTo(1);
 
                 setAuth(admId);
+                // 準備拒否のログで SUT の投入拒否検証が偽陽性にならないようにする。
+                appender.list.clear();
                 mockMvc.perform(putSettingsRequest(PROFILES, "PUBLIC"))
                         .andExpect(status().isOk());
 
+                assertThat(hold.getCount()).isEqualTo(1);
+                assertThat(completed.get()).isZero();
+                assertThat(expired.get()).isZero();
                 assertThat(subtabMinRole(PROFILES)).as("DB は確定済み").isEqualTo("PUBLIC");
                 assertThat(appender.list)
                         .as("ERROR ログ「event-pool 投入拒否」が出る")
@@ -217,11 +254,17 @@ class MemberSubtabVisibilityTxBoundaryIT extends MemberTxBoundaryITSupport {
             } finally {
                 // 後始末: latch を必ず解放し、プールが空に戻るまで待つ
                 hold.countDown();
-                awaitEventPoolIdle();
-                asyncLogger.detachAppender(appender);
-                asyncLogger.setLevel(originalLevel);
+                try {
+                    awaitEventPoolIdle();
+                } finally {
+                    asyncLogger.detachAppender(appender);
+                    asyncLogger.setLevel(originalLevel);
+                }
             }
 
+            assertThat(started.get()).as("受付した全blockerを解放済み").isEqualTo(105);
+            assertThat(completed.get()).isEqualTo(105);
+            assertThat(expired.get()).isZero();
             assertThat(countAuditRows())
                     .as("拒否された監査は失われる（プールが空になっても行は増えない）")
                     .isEqualTo(auditBefore);

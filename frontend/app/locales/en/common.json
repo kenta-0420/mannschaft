@@ -1,4 +1,42 @@
 {
+  "skill": {
+    "form": {
+      "noCategoryAdmin": "This team has no active categories yet. Create one in the \"Category management\" tab.",
+      "noCategoryMember": "This team has no active categories yet. Ask a team administrator to create one."
+    },
+    "matrix": {
+      "refresh": "Refresh",
+      "legendPendingNote": "Certifications pending review are shown as not registered"
+    },
+    "list": {
+      "actions": {
+        "search": "Search",
+        "verify": "Approve",
+        "edit": "Edit",
+        "delete": "Delete",
+        "certificate": "View certificate"
+      },
+      "loadDetailFailed": "Failed to load the skill details",
+      "loadCategoriesFailed": "Failed to load the categories",
+      "mineTitle": "My skills and certifications",
+      "deleteConfirm": "Delete \"{name}\"? This cannot be undone.",
+      "deleteConfirmHeader": "Delete certification"
+    },
+    "category": {
+      "actions": {
+        "edit": "Edit",
+        "delete": "Delete"
+      },
+      "deleteConfirm": "Delete the category \"{name}\"?",
+      "deleteConfirmHeader": "Delete category"
+    },
+    "page": {
+      "permissionLoadFailed": "Failed to load your permissions. Please reload later",
+      "forbidden": "Only members of this team can use skills and certifications",
+      "mineTab": "My skills and certifications",
+      "categoriesReloadFailed": "Failed to reload the categories"
+    }
+  },
   "chat": {
     "contextMenu": {
       "replyInThread": "Reply in Thread",
@@ -64,7 +102,9 @@
       "multiple": "{names} are typing…"
     },
     "connection": {
-      "failed": "Connection lost. Attempting to reconnect…"
+      "failed": "Connection lost. Attempting to reconnect…",
+      "denied": "You do not have permission to view this channel",
+      "unauthenticated": "Your login has expired, so real-time updates have stopped. Please log in again"
     },
     "mobile": {
       "backToList": "Back to channel list",
@@ -117,6 +157,7 @@
     "create": "Create",
     "submit": "Submit",
     "close": "Close",
+    "open": "Open",
     "back": "Back",
     "help": "How to use",
     "next": "Next",
@@ -276,6 +317,8 @@
     "add_term": "Add Term",
     "term_success": "Term created",
     "term_error": "Failed to create term",
+    "term_academic_year_required": "Enter the academic year",
+    "term_has_timetables": "This term cannot be deleted because timetables still exist under it. Remove them first",
     "no_period": "No periods defined",
     "no_term": "No terms defined",
     "current_week": "This Week",
@@ -290,7 +333,19 @@
     "period_all": "All Periods",
     "period_number_placeholder": "Period Number",
     "period_suffix": "",
-    "term_name_placeholder": "e.g. 1st Term"
+    "term_name_placeholder": "e.g. 1st Term",
+    "term_academic_year_range": "Enter an academic year between {min} and {max}",
+    "term_end_before_start": "The end date must be after the start date",
+    "term_date_overlap": "This term overlaps another term. Check the start and end dates",
+    "term_delete_confirm": "Delete the term \"{name}\"? This cannot be undone.",
+    "term_delete_success": "Term deleted",
+    "term_load_error": "Failed to load terms",
+    "team_term_hint": "Terms of this team. When you create a timetable, you choose one of the terms added here.",
+    "no_term_for_create": "There are no terms yet. Add a term in the \"Term\" tab first.",
+    "delete_timetable": "Delete",
+    "delete_timetable_confirm": "Delete the timetable \"{name}\"? This cannot be undone.",
+    "delete_timetable_success": "Timetable deleted",
+    "delete_timetable_error": "Failed to delete the timetable"
   },
   "error": {
     "server": "A server error occurred",
@@ -302,6 +357,8 @@
     "unauthorized": "Please log in",
     "section_load_failed": "Failed to load this section. Please reload.",
     "unknown": "An error occurred",
+    "TEAM_001": "Team not found.",
+    "TEAM_006": "This team cannot be restored because it has not been deleted.",
     "COMMON_001": "There are errors in the input",
     "COMMON_002": "You do not have permission to perform this action",
     "COMMON_003": "Updated by another user. Please refresh the page",
@@ -580,7 +637,10 @@
     "group_name": "Group name",
     "targets": "Targets",
     "target_id": "Target ID",
-    "target_type": { "ORGANIZATION": "Organization", "TEAM": "Team" },
+    "target_type": {
+      "ORGANIZATION": "Organization",
+      "TEAM": "Team"
+    },
     "template": "Template",
     "audience": "Audience",
     "current_scope": "This organization or team",
@@ -620,6 +680,20 @@
     }
   },
   "timeline": {
+    "refresh": "Refresh",
+    "detail": {
+      "back": "Back",
+      "loadFailed": "Failed to load the post",
+      "repliesLoadFailed": "Failed to load replies",
+      "replySuccess": "Reply sent",
+      "replyFailed": "Failed to send the reply",
+      "bookmarkFailed": "Failed to update the bookmark",
+      "replyPlaceholder": "Write a reply...",
+      "replySubmit": "Reply",
+      "replyCount": "{count} replies",
+      "loadMoreReplies": "Load more replies",
+      "notFound": "This post was not found or cannot be displayed"
+    },
     "videoProcessing": "Processing video...",
     "videoFailed": "Video unavailable",
     "videoUploadButton": "Attach video",
@@ -738,6 +812,8 @@
       "titlePlaceholder": "Enter a post title",
       "createDialogHint": "The post will be saved as a draft. After entering a title, write the body on the edit page.",
       "loadListFailed": "Failed to load the post list",
+      "loadListErrorHint": "Could not display the post list. Check your connection or permissions and reload.",
+      "reloadList": "Reload",
       "createFailed": "Failed to create the post",
       "archived": "Archived",
       "publishSuccess": "Published",
@@ -769,7 +845,8 @@
       "createFailed": "Failed to create",
       "deleteSuccess": "Tag deleted",
       "deleteFailed": "Failed to delete"
-    }
+    },
+    "pageTitle": "Blog & Announcements"
   },
   "todo": {
     "backToList": "Back to TODO list",
@@ -995,56 +1072,71 @@
       "none": "None"
     },
     "guide": {
-      "title": "通知の使い方",
-      "description": "通知一覧では、予定・チャット・お知らせ・確認依頼・緊急休業など、あなた宛ての知らせをまとめて確認できます。行をタップすると自動で既読になり、関連画面へ移動します。",
+      "title": "How to use notifications",
+      "description": "The notification list brings together everything addressed to you, such as schedules, chat, announcements, confirmation requests and emergency closures. Tap a row to mark it as read automatically and jump to the related screen.",
       "read": {
-        "title": "通知を読む",
-        "body": "通知の行をタップすると既読になり、関連する画面へ移動します。まだ読んでいない通知には青いドットが付きます。",
+        "title": "Reading notifications",
+        "body": "Tap a notification row to mark it as read and go to the related screen. Notifications you have not read yet show a blue dot.",
         "steps": {
-          "step1": "気になる通知の行をタップします",
-          "step2": "自動で既読になり、関連する画面へ移動します",
-          "step3": "未読の通知は左端の青いドットで見分けられます"
+          "step1": "Tap the row of a notification you want to open",
+          "step2": "It is marked as read automatically and you go to the related screen",
+          "step3": "Unread notifications are marked with a blue dot on the left edge"
         }
       },
       "filter": {
-        "title": "絞り込み",
-        "body": "上部の「すべて／未読」の切り替えで、未読の通知だけを表示できます。",
+        "title": "Filtering",
+        "body": "Use the All / Unread switch at the top to show only unread notifications.",
         "steps": {
-          "step1": "画面上部の「すべて／未読」ボタンを押します",
-          "step2": "「未読」を選ぶと、まだ読んでいない通知だけが表示されます",
-          "step3": "「すべて」に戻すと全ての通知が表示されます"
+          "step1": "Press the All / Unread button at the top of the screen",
+          "step2": "Choose Unread to show only the notifications you have not read yet",
+          "step3": "Switch back to All to see every notification"
         }
       },
       "snooze": {
-        "title": "スヌーズ",
-        "body": "今すぐ対応できない通知は、時計アイコンから後回しにできます。指定した時刻に再び表示されます。",
+        "title": "Snooze",
+        "body": "If you cannot deal with a notification right now, postpone it with the clock icon. It shows up again at the time you choose.",
         "steps": {
-          "step1": "通知の右側にある時計アイコンを押します",
-          "step2": "「3時間後／今夜／明朝／来週」から再表示するタイミングを選びます",
-          "step3": "選んだ時刻になると、その通知が再び一覧に表示されます"
+          "step1": "Press the clock icon on the right of the notification",
+          "step2": "Choose when it should reappear: in 3 hours, tonight, tomorrow morning or next week",
+          "step3": "At the time you chose, the notification appears in the list again"
         }
       },
       "confirm": {
-        "title": "確認通知",
-        "body": "「確認する」ボタンが付いた通知は、内容を確認したことを送信元に伝えられます。未確認の人数が表示される場合もあります。",
+        "title": "Confirmation notices",
+        "body": "For notifications with a Confirm button, you can let the sender know that you have seen the content. The number of people who have not confirmed yet may also be shown.",
         "steps": {
-          "step1": "確認通知（背景色が付いた通知）の内容を読みます",
-          "step2": "「確認する」ボタンを押して確認済みにします",
-          "step3": "確認後は「確認済み」ラベルに変わります"
+          "step1": "Read the content of the confirmation notice (the one with a coloured background)",
+          "step2": "Press the Confirm button to mark it as confirmed",
+          "step3": "After confirming, the button changes to a Confirmed label"
         }
       },
       "urgent": {
-        "title": "緊急休業・一括既読",
-        "body": "緊急休業の通知は「確認する」を押して確認します。溜まった通知は右上の「すべて既読にする」でまとめて既読にできます。",
+        "title": "Emergency closures and mark all as read",
+        "body": "Confirm an emergency closure notice by pressing Confirm. To clear a pile of notifications, use Mark all as read at the top right.",
         "steps": {
-          "step1": "緊急休業の通知は「確認する」ボタンで確認します",
-          "step2": "右上の「すべて既読にする」で通知をまとめて既読にできます",
-          "step3": "既読にするとベルのバッジも0になります"
+          "step1": "Confirm an emergency closure notice with the Confirm button",
+          "step2": "Use Mark all as read at the top right to mark all notifications as read at once",
+          "step3": "Once everything is read, the bell badge also goes back to 0"
         }
       }
     }
   },
   "project": {
+    "back_label": "Projects",
+    "delete_aria": "Delete {title}",
+    "delete_confirm": "Delete \"{title}\"?",
+    "delete_confirm_header": "Confirm deletion",
+    "milestone_dialog": {
+      "add_title": "Add milestone",
+      "edit_title": "Edit milestone",
+      "title_label": "Title",
+      "title_placeholder": "Milestone name",
+      "due_date_label": "Due date",
+      "add": "Add"
+    },
+    "related_todo_no_due": "No due date",
+    "related_todo_no_assignee": "Unassigned",
+    "related_todo_open": "Open TODO details",
     "milestones": "Milestones",
     "no_milestones": "No milestones",
     "due_date": "Due date",
@@ -1102,7 +1194,19 @@
       "none": "None",
       "custom_emoji": "Custom",
       "custom_color": "Custom color",
-      "current": "Current"
+      "current": "Current",
+      "colors": {
+        "blue": "Blue",
+        "red": "Red",
+        "green": "Green",
+        "amber": "Amber",
+        "violet": "Violet",
+        "pink": "Pink",
+        "cyan": "Cyan",
+        "teal": "Teal",
+        "orange": "Orange",
+        "gray": "Gray"
+      }
     },
     "guide": {
       "button": "How to use",
@@ -1154,7 +1258,10 @@
       "update_failed": "Failed to update",
       "delete_failed": "Failed to delete",
       "status_change_failed": "Failed to change status",
-      "milestone_save_failed": "Failed to save milestone"
+      "milestone_save_failed": "Failed to save milestone",
+      "force_unlock_failed": "Failed to force unlock",
+      "completion_mode_failed": "Failed to change the completion mode",
+      "gate_init_failed": "Failed to initialize the gates"
     },
     "status": {
       "active": "Active",
@@ -1185,7 +1292,29 @@
   },
   "inviteToken": {
     "printQrPdf": "Print QR PDF",
-    "printQrPdfError": "Failed to print QR PDF"
+    "printQrPdfError": "Failed to print QR PDF",
+    "title": "Invite links",
+    "createNew": "New invite link",
+    "createTitle": "Create invite link",
+    "role": "Role",
+    "expiry": "Expires after",
+    "uses": "Uses",
+    "inviteRole": "Invite role",
+    "maxUses": "Maximum uses (leave blank for unlimited)",
+    "empty": "No invite links yet",
+    "never": "Never",
+    "copy": "Copy invite URL",
+    "revoke": "Revoke invite link",
+    "revokeConfirm": "Revoke this invite link?",
+    "createSuccess": "Invite link created",
+    "createError": "Failed to create invite link",
+    "revokeSuccess": "Invite link revoked",
+    "revokeError": "Failed to revoke invite link",
+    "copied": "Invite URL copied",
+    "oneDay": "1 day",
+    "sevenDays": "7 days",
+    "thirtyDays": "30 days",
+    "ninetyDays": "90 days"
   },
   "visibilityTemplate": {
     "title": "Visibility Templates",
@@ -1445,7 +1574,9 @@
     },
     "ws": {
       "disconnected": "Connection lost",
-      "reconnecting": "Reconnecting…"
+      "reconnecting": "Reconnecting…",
+      "denied": "Real-time updates have stopped because you do not have permission to view this board",
+      "unauthenticated": "Your login has expired, so real-time updates have stopped. Please log in again"
     },
     "validation": {
       "required": "This field is required.",
@@ -1568,7 +1699,9 @@
       "more": "+{count} more",
       "today": "Today",
       "dayDetail": {
-        "title": "Events on {date}"
+        "title": "Events on {date}",
+        "empty": "No events on this day",
+        "create": "Add event on this day"
       },
       "empty": "No events in this period",
       "view": {
@@ -1756,20 +1889,32 @@
       "downloadLabel": "Download {format} ({type})"
     },
     "menu": "Menu",
+    "moreActions": "More actions",
+    "openNavigation": "Open navigation",
     "scopeShell": {
+      "memberCount": "{count} member | {count} members",
+      "supporterCount": "{count} supporter | {count} supporters",
       "supporter_cancel_confirm_title": "Stop supporting?",
       "supporter_cancel_confirm_body": "Stop supporting {name}. Are you sure?",
       "supporter_cancel_action": "Stop",
       "supporter_registered": "Registered as a supporter",
       "supporter_applied": "Supporter application sent",
       "supporter_canceled": "Stopped supporting",
+      "follow_approved_badge": "You're supporting",
+      "follow_unfollow_aria": "Stop supporting",
+      "follow_pending_label": "Application pending",
+      "follow_pending_cancel_button": "Cancel",
+      "follow_apply_button": "Become a supporter",
       "leave_action": "Leave",
       "load_error_title": "Could not load information",
       "load_error_body": "Please try again later. It may be hidden if you do not have permission.",
       "back_to_dashboard": "Back to dashboard",
       "retry": "Retry",
       "slow_loading": "Loading is taking longer than expected",
-      "join_request_applied": "参加申請を送信しました"
+      "join_request_applied": "Join request sent",
+      "follow_fetch_error": "Could not get follow status",
+      "follow_permission_sync_error_title": "Failed to refresh permissions",
+      "follow_permission_sync_error_body": "You stopped following, but refreshing your permissions failed. Please retry."
     },
     "unsavedChanges": {
       "title": "Unsaved changes",
@@ -2078,6 +2223,58 @@
         "public_desc": "Anyone with the link can view it. A share button appears in the list for easy external sharing.",
         "note": "The default visibility is determined by the template's settings."
       }
+    },
+    "detail": {
+      "open": "View details",
+      "publish": "Publish",
+      "saved": "Draft saved",
+      "participants": "Participants",
+      "participantsHint": "Select the members who actually took part",
+      "participantsRequired": "This template requires participants before it can be published",
+      "noParticipants": "No participants have been registered",
+      "attachments": "Attachments",
+      "attachment": "Attachment {id}",
+      "sourceSchedule": "Original event",
+      "openSchedule": "Open event",
+      "scheduleUnavailable": "The original event cannot be viewed",
+      "scheduleCancelled": "The original event has been cancelled",
+      "endDate": "End date (for multi-day events)",
+      "startTime": "Start time",
+      "endTime": "End time",
+      "edit": "Edit",
+      "save": "Save",
+      "updated": "Activity record saved"
+    },
+    "sync": {
+      "title": "Review changes to the event and activity record",
+      "description": "Choose which changes to the event should be carried over to the activity record. Items marked as automatic are also left unchanged if you choose “Save event only”.",
+      "record": "Activity record {id}",
+      "automatic": "Applied automatically",
+      "current": "Current record",
+      "updated": "Event after the change",
+      "scheduleOnly": "Save event only",
+      "apply": "Apply selected items and save",
+      "fields": {
+        "title": "Title",
+        "activityDate": "Activity date",
+        "activityEndDate": "End date",
+        "activityTimeStart": "Start time",
+        "activityTimeEnd": "End time"
+      }
+    },
+    "schedule": {
+      "create": "Create an activity record for this event",
+      "records": "Activity records",
+      "loadError": "Failed to load the activity records"
+    },
+    "planned": "Planned",
+    "unpublished": "Unpublished",
+    "metadataOnly": "Activity content is unpublished. Only the source schedule information is shown here.",
+    "delete": {
+      "title": "Delete activity record",
+      "action": "Delete",
+      "confirm": "Delete this activity record. The source schedule will remain.",
+      "success": "Activity record deleted"
     }
   },
   "dashboard": {
@@ -2298,65 +2495,88 @@
     "SUPPORTERS_AND_ABOVE": "Supporters and above",
     "MEMBERS_AND_ABOVE": "Members and above"
   },
+  "organization_visibility": {
+    "PUBLIC": "Public",
+    "PRIVATE": "Restricted"
+  },
+  "entity_create": {
+    "error_heading": "Please check your input",
+    "supporter_label": "Enable supporter feature"
+  },
   "module_settings": {
-    "enabled_count": "有効な機能: {count} / {limit}",
-    "fetch_error": "機能一覧の取得に失敗しました",
-    "empty": "現在このスコープで利用できる追加機能はありません",
-    "toggle_success_on": "{name} を有効にしました",
-    "toggle_success_off": "{name} を無効にしました",
+    "enabled_count": "Enabled features: {count} / {limit}",
+    "fetch_error": "Failed to load the feature list",
+    "empty": "There are no additional features available for this scope right now",
+    "toggle_success_on": "{name} has been enabled",
+    "toggle_success_off": "{name} has been disabled",
     "badge": {
-      "level_unavailable": "このレベルでは利用できません",
-      "paid_plan": "有料プラン",
-      "limit_reached": "上限（{limit}）に達しています"
+      "level_unavailable": "Not available at this level",
+      "paid_plan": "Paid plan",
+      "limit_reached": "Limit ({limit}) reached"
     },
     "error": {
-      "paid_required": "この機能は有料プランが必要です",
-      "limit_reached": "無料プランで有効化できる機能の上限（10個）に達しています",
-      "level_unavailable": "このレベルではこの機能を利用できません",
-      "generic": "機能の切替に失敗しました"
+      "paid_required": "This feature requires a paid plan",
+      "limit_reached": "You have reached the limit (10) of features that can be enabled on the free plan",
+      "level_unavailable": "This feature is not available at this level",
+      "generic": "Failed to switch the feature"
     }
   },
   "module_settings_guide": {
-    "title": "機能設定の使い方",
-    "help_button": "使い方",
-    "description": "「機能設定」では、このチーム・組織で使える機能を一覧から探して、スイッチで ON / OFF できます。ここで ON にした機能だけが、メンバーの画面に表示され利用できるようになります。",
+    "title": "How to use feature settings",
+    "help_button": "How to use",
+    "description": "In Feature settings, you can look through the list of features available to this team or organization and turn them ON or OFF with a switch. Only the features you turn ON here appear on members’ screens and become available to them.",
     "what": {
-      "title": "機能設定とは",
-      "body": "チーム・組織で使える機能（モジュール）の一覧です。利用できる機能がすべてカードで並び、各機能を ON にするとメンバーが使えるようになり、OFF にすると画面から隠れて使えなくなります。必要な機能だけを選んで、画面をすっきり保てます。"
+      "title": "What are feature settings?",
+      "body": "This is the list of features (modules) that your team or organization can use. All available features appear as cards. Turn a feature ON to let members use it, or OFF to hide it from their screens. Choose only the features you need to keep the screens uncluttered."
     },
     "toggle": {
-      "title": "機能を ON / OFF する",
-      "body": "使いたい機能を一覧から探して、カード右のスイッチを ON にするだけです。保存ボタンは不要で、押すとすぐに反映されます。",
+      "title": "Turning a feature ON / OFF",
+      "body": "Find the feature you want in the list and turn on the switch on the right of its card. There is no Save button; the change takes effect as soon as you press the switch.",
       "steps": {
-        "step1": "一覧から使いたい機能のカードを探す",
-        "step2": "カード右のスイッチを押して ON にする（もう一度押すと OFF）",
-        "step3": "「有効にしました」または「無効にしました」と通知が出れば完了（保存操作は不要）",
-        "step4": "切り替え中はそのスイッチが一時的に押せなくなります（二重操作を防ぐためです）"
+        "step1": "Find the card of the feature you want to use in the list",
+        "step2": "Press the switch on the right of the card to turn it ON (press again to turn it OFF)",
+        "step3": "You are done when a notice says the feature was enabled or disabled (no need to save)",
+        "step4": "While a switch is changing, it cannot be pressed for a moment (this prevents double operations)"
       }
     },
     "count": {
-      "title": "今いくつ使えるかを確認する",
-      "body": "画面の上部に「有効な機能: 2 / 10」のように、ON にしている数と有効化できる上限の数が表示されます。右の更新ボタン（回転する矢印）を押すと、最新の状態を取得し直せます。"
+      "title": "Checking how many you can use",
+      "body": "At the top of the screen, a line such as “Enabled features: 2 / 10” shows how many features are ON and the maximum you can enable. Press the refresh button on the right (the rotating arrow) to fetch the latest status."
     },
     "restrictions": {
-      "title": "使えないスイッチがあるとき",
-      "body": "スイッチが押せない（グレーアウトしている）機能には、理由を示すバッジが付きます。",
+      "title": "When a switch cannot be used",
+      "body": "Features whose switch cannot be pressed (greyed out) show a badge explaining why.",
       "items": {
-        "paid": "「有料プラン」… 有料プランに加入すると使える機能です。",
-        "limit": "「上限（10）に達しています」… 無料プランで同時に ON にできる機能の数が上限に達しています。ほかの機能を OFF にすると新しく ON にできます。",
-        "level": "「このレベルでは利用できません」… このチーム・組織の種別では使えない機能です。"
+        "paid": "“Paid plan”: a feature you can use after subscribing to a paid plan.",
+        "limit": "“Limit (10) reached”: the number of features that can be ON at the same time on the free plan has reached its limit. Turn another feature OFF to turn a new one ON.",
+        "level": "“Not available at this level”: a feature that cannot be used with this type of team or organization."
       }
     },
     "empty": {
-      "title": "機能が表示されないとき",
-      "body": "「現在このスコープで利用できる追加機能はありません」と出る場合は、いまのところこのチーム・組織で追加できる機能がありません。"
+      "title": "When no features are shown",
+      "body": "If you see “There are no additional features available for this scope right now”, there are currently no features that can be added to this team or organization."
     },
     "permission": {
-      "title": "設定できる人",
-      "body": "機能設定はチーム・組織の管理者だけが開けます。管理者でも、画面右上の表示切り替えが「メンバー表示」になっているとこのタブは隠れます。設定したいときは「管理者表示」に切り替えてください。"
+      "title": "Who can change settings",
+      "body": "Only administrators of the team or organization can open Feature settings. Even for administrators, this tab is hidden when the view switch at the top right of the screen is set to Member view. To change settings, switch to Administrator view."
     }
   },
   "teamShell": {
+    "archive": {
+      "syncError": "The change is complete, but the list could not be synchronized. Reload it.",
+      "archive": "Archive team",
+      "unarchive": "Restore team",
+      "archiveConfirm": "Archive this team? Pending affiliation requests and invitations will be canceled. Active affiliations will remain. Team details will no longer be accessible. You can restore it from Archived teams in the team list.",
+      "unarchiveConfirm": "Restore this team? Canceled affiliation requests and invitations, including expired invitation links, will not be restored.",
+      "archived": "Team archived",
+      "unarchived": "Team restored",
+      "changed": "The team status or your permission has changed. Reload the list.",
+      "listTitle": "Archived teams",
+      "showList": "Show archived teams",
+      "hideList": "Close list",
+      "fetchError": "Could not load archived teams.",
+      "empty": "No archived teams."
+    },
     "tab": {
       "affiliations": "Affiliated organizations",
       "permissionGroups": "Permission groups",
@@ -2366,12 +2586,13 @@
       "invites": "Invites",
       "supporters": "Supporter Management",
       "modules": "Features",
-      "joinRequests": "参加申請"
+      "joinRequests": "Join request"
     },
     "action": {
       "leave_confirm_title": "Leave team",
       "leave_confirm_body": "Are you sure you want to leave this team? This cannot be undone.",
-      "left": "Left the team"
+      "left": "Left the team",
+      "leave_button": "Leave team"
     }
   },
   "orgShell": {
@@ -2384,12 +2605,13 @@
       "permission_groups": "Permission Groups",
       "supporters": "Supporter Management",
       "modules": "Features",
-      "joinRequests": "参加申請"
+      "joinRequests": "Join request"
     },
     "action": {
       "leave_confirm_title": "Leave organization",
       "leave_confirm_body": "Are you sure you want to leave this organization? This cannot be undone.",
-      "left": "Left the organization"
+      "left": "Left the organization",
+      "leave_button": "Leave organization"
     }
   },
   "blog_guide": {
@@ -2544,28 +2766,29 @@
   "scopeSwitch": {
     "hint": "To switch, open a team or organization from the \"Teams\" / \"Organizations\" menu at the top of the screen. Whichever you open becomes the current scope.",
     "goTeams": "Choose a team",
-    "goOrganizations": "Choose an organization"
+    "goOrganizations": "Choose an organization",
+    "personalUnsupported": "This setting is only available in a team or organization scope. It cannot be shown in your personal scope."
   },
   "joinRequest": {
-    "apply": "参加申請",
-    "pending": "申請中（承認待ち）",
-    "approved": "承認済み",
-    "rejected": "却下されました",
-    "fetchError": "取得に失敗しました",
-    "retry": "再試行",
+    "apply": "Join request",
+    "pending": "Request pending (awaiting approval)",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "fetchError": "Failed to load",
+    "retry": "Retry",
     "admin": {
-      "pendingTitle": "承認待ちの参加申請",
-      "empty": "承認待ちの参加申請はありません",
-      "requesterLabel": "ユーザーID: {userId}",
-      "requestedAt": "申請日",
-      "approve": "承認",
-      "reject": "却下",
-      "fetchError": "一覧の取得に失敗しました",
-      "retry": "再試行",
-      "loadMore": "さらに読み込む",
-      "loadMoreError": "追加読み込みに失敗しました",
-      "approveSuccess": "参加申請を承認しました",
-      "rejectSuccess": "参加申請を却下しました"
+      "pendingTitle": "Join requests awaiting approval",
+      "empty": "There are no join requests awaiting approval",
+      "requesterLabel": "User ID: {userId}",
+      "requestedAt": "Requested on",
+      "approve": "Approve",
+      "reject": "Reject",
+      "fetchError": "Failed to load the list",
+      "retry": "Retry",
+      "loadMore": "Load more",
+      "loadMoreError": "Failed to load more",
+      "approveSuccess": "Join request approved",
+      "rejectSuccess": "Join request rejected"
     }
   },
   "myPage": {
@@ -2781,6 +3004,268 @@
       "GUESTS_AND_ABOVE": "Guests and above",
       "SUPPORTERS_AND_ABOVE": "Supporters and above",
       "MEMBERS_AND_ABOVE": "Members and above"
+    }
+  },
+  "relativeTime": {
+    "justNow": "Just now",
+    "minutesAgo": "{count} minute ago | {count} minutes ago",
+    "hoursAgo": "{count} hour ago | {count} hours ago",
+    "daysAgo": "{count} day ago | {count} days ago"
+  },
+  "error_page": {
+    "not_found_title": "This page could not be found",
+    "not_found_description": "The page you are looking for does not exist, or it may have been moved or removed.",
+    "generic_title": "Something went wrong",
+    "generic_description": "Please try again in a moment. If the problem continues, contact your administrator.",
+    "back_home": "Back to home"
+  },
+  "loyalty": {
+    "memberQr": {
+      "title": "Member QR",
+      "expiresIn": "Valid for {seconds} seconds",
+      "expired": "Refresh your QR",
+      "disabled": "This member card is suspended or revoked. It will not be reissued automatically."
+    },
+    "wallet": {
+      "title": "Team points",
+      "empty": "No team points yet"
+    },
+    "balance": "{points} points",
+    "remaining": "{points} more points needed",
+    "lifetime": "Total earned: {points} points",
+    "refresh": "Refresh",
+    "more": "Continue",
+    "confirm": "Confirm these details",
+    "retrySame": "Retry the same request",
+    "save": "Save",
+    "saved": "Saved",
+    "cancel": "Back",
+    "name": "Name",
+    "description": "Description (optional)",
+    "active": "Active",
+    "externalCards": "Start using external point cards",
+    "history": {
+      "title": "Points history",
+      "award": "Earn points",
+      "redeem": "Redeem reward",
+      "empty": "No history yet"
+    },
+    "audience": {
+      "title": "Who can earn points",
+      "allAuthenticated": "All signed-in individuals (including non-members)",
+      "supportersAndAbove": "Supporters and above",
+      "membersAndAbove": "Members and above"
+    },
+    "rule": {
+      "title": "Earning rule",
+      "amount": "Points per visit",
+      "points": "{points} points per visit",
+      "frequency": "Frequency",
+      "frequencyDaily": "Once per day (JST)",
+      "frequencyStaff": "Each staff confirmation",
+      "selfEnabled": "Allow self-service reception QR",
+      "selfDailyOnly": "Self-service requires the daily rule"
+    },
+    "reward": {
+      "title": "Rewards",
+      "add": "Add reward",
+      "amount": "Required points",
+      "required": "Redeem for {points} points",
+      "confirm": "Use {points} points for {reward}"
+    },
+    "scan": {
+      "title": "Points reception",
+      "camera": "Scan member QR with camera",
+      "cameraDenied": "Camera unavailable. Check browser camera permission and retry.",
+      "confirmAward": "Add {points} points at {team}",
+      "success": "Points operation completed",
+      "next": "Start next reception"
+    },
+    "self": {
+      "confirm": "Confirm reception details",
+      "rescan": "Please scan the reception QR again"
+    },
+    "error": {
+      "uncertain": "Result unknown. Retry the same request to recover the result.",
+      "alreadyAwarded": "Already awarded today",
+      "ineligible": "Currently not eligible to earn points",
+      "changed": "Details changed. Review them again.",
+      "insufficient": "Insufficient points"
+    },
+    "program": {
+      "disabled": "Points program is disabled",
+      "closedTeam": "Closed team"
+    },
+    "settings": {
+      "title": "Team points settings",
+      "enabled": "Enable points program"
+    },
+    "mode": {
+      "title": "Self-service mode",
+      "staffApproval": "Staff approval (no points until approved)",
+      "auto": "Automatic points",
+      "autoWarning": "A fixed QR can be photographed and reused remotely. A daily limit does not prove a visit."
+    },
+    "reception": {
+      "title": "Points reception QR",
+      "location": "Reception location",
+      "newLocation": "New reception location name",
+      "create": "Create reception location",
+      "preview": "Preview QR",
+      "print": "Print or share",
+      "stop": "Disable reception location",
+      "sharedLocationStopWarning": "Disabling this location also stops check-in here. Disable the points program to stop points only.",
+      "printTitle": "Points reception",
+      "printInstructions": "Scan, sign in, review the details, then confirm. Once per day (JST)."
+    },
+    "requests": {
+      "title": "Reception requests",
+      "empty": "No reception requests",
+      "submitted": "Request submitted (points not yet added)",
+      "code": "Verification code: {code}",
+      "expiresAt": "Expires: {datetime} (shortened at JST midnight)",
+      "showStaff": "Show your screen to staff for verification",
+      "approve": "Approve and add points",
+      "reject": "Reject",
+      "cancel": "Cancel request",
+      "compareBeforeApprove": "Compare the name and code with the applicant's screen before approving",
+      "enterCode": "Code from applicant's screen",
+      "moreCandidates": "No valid requests in this range. Continue.",
+      "selfApprovalForbidden": "You cannot approve this request. Show your own request to another staff member.",
+      "all": "All statuses",
+      "deletedUser": "Former user",
+      "closedLocation": "Closed reception",
+      "reapply": "Review current details and apply again",
+      "status": {
+        "pending": "Pending",
+        "approved": "Approved",
+        "cancelled": "Cancelled",
+        "rejected": "Rejected",
+        "expired": "Expired",
+        "invalidated": "Invalidated",
+        "superseded": "Awarded through another channel"
+      },
+      "reason": {
+        "userCancelled": "Cancelled by applicant",
+        "staffRejected": "Rejected by staff",
+        "ttlExpired": "Request expired",
+        "dayChanged": "The JST date changed",
+        "versionChanged": "Settings or rule changed",
+        "locationInactive": "Reception location disabled",
+        "teamInactive": "Team is inactive",
+        "userInactive": "User is inactive",
+        "ineligible": "No longer eligible",
+        "dailyAwarded": "Already awarded today",
+        "pointLimit": "Points limit reached"
+      }
+    }
+  },
+  "budget_accounting": {
+    "title": "Budget and accounting",
+    "add_year": "Add fiscal year",
+    "fiscal_year": "Fiscal year",
+    "default_name": "Fiscal year {year}",
+    "name": "Fiscal year name (required)",
+    "name_placeholder": "e.g. Fiscal year 2026",
+    "start_date": "Start date (required)",
+    "end_date": "End date (required)",
+    "add": "Add",
+    "created": "Fiscal year added",
+    "empty_years": "No fiscal years",
+    "empty_years_hint": "Select “Add fiscal year” to register the period you want to summarize.",
+    "totalIncome": "Income",
+    "totalExpense": "Expenses",
+    "balance": "Balance",
+    "categories": "Budget and actual amounts by category",
+    "empty_categories": "No categories for this fiscal year",
+    "budget_amount": "Budget {amount}",
+    "actual_amount": "Actual {amount}",
+    "execution_rate": "Budget utilization {rate}%",
+    "validation": {
+      "name_required": "Enter a fiscal year name.",
+      "name_max": "Enter a fiscal year name of 100 characters or fewer.",
+      "date_required": "Enter a date.",
+      "date_order": "The end date must be after the start date."
+    }
+  },
+  "budget_guide": {
+    "title": "How to use budget and accounting",
+    "description": "Select a fiscal year to review income, expenses, and budgets by category for that period. This page is for administrators, deputy administrators, and other users with viewing permission. Regular members cannot view it. Contact an administrator if you need access.",
+    "what": {
+      "title": "What is a fiscal year?",
+      "body": "A period for reviewing income and expenses together. You can choose start and end dates that suit your team’s activities; the period does not have to run from April to the following March.",
+      "steps": {
+        "step1": "First, check the fiscal year list at the top of the page for the period you want to view."
+      }
+    },
+    "create": {
+      "title": "Add a fiscal year",
+      "body": "Administrators and deputy administrators can do this. You are adding a fiscal year for summarizing income and expenses, rather than a category.",
+      "steps": {
+        "step1": "Select “Add fiscal year”.",
+        "step2": "Enter a fiscal year name (1–100 characters, not just whitespace), a start date, and an end date. The end date must be after the start date.",
+        "step3": "Select “Add”. On success, the new fiscal year is selected. If no income, expenses, or categories have been registered, totals show 0 yen and categories show as unregistered."
+      }
+    },
+    "switch": {
+      "title": "Switch fiscal years",
+      "body": "Select a fiscal year name at the top of the page to view its totals.",
+      "steps": {
+        "step1": "Select the fiscal year name you want to view.",
+        "step2": "After loading finishes, review the income, expenses, balance, and categories."
+      }
+    },
+    "summary": {
+      "title": "Read totals and categories",
+      "body": "Income is money received, expenses are money spent, and the balance is income minus expenses. Categories group money by its purpose.",
+      "steps": {
+        "step1": "For each category, “Budget” is the planned amount and “Actual” is the recorded amount.",
+        "step2": "“Budget utilization” is the actual amount as a percentage of the budget. Values over 100% appear in red.",
+        "step3": "You can add fiscal years on this page. Creating categories and entering income or expenses directly are not available here."
+      }
+    },
+    "trouble": {
+      "title": "Troubleshooting",
+      "body": "No data and a loading failure have different displays.",
+      "steps": {
+        "step1": "If you see “No fiscal years”, select “Add fiscal year” to register the first period.",
+        "step2": "For a connection error, select “Retry”. For a permission error, contact your team administrator.",
+        "step3": "Your input is retained if adding fails. Check the displayed reason and your input, then select “Add” again."
+      }
+    }
+  },
+  "feature_display": {
+    "title": "General feature visibility",
+    "description": "Organize navigation and home displays. Direct URLs and API permissions stay the same. Administrators retain their normal view.",
+    "feature": "Feature",
+    "member": "Show to members",
+    "supporter": "Show to supporters",
+    "member_label": "Show {feature} to members",
+    "supporter_label": "Show {feature} to supporters",
+    "save_success": "Visibility settings saved",
+    "nav": "Navigation"
+  },
+  "secret_token": {
+    "issued_dialog": {
+      "title": "Link issued",
+      "once_warning": "This link is shown only now. Once you close this dialog it will never be shown again. Share it with the people who need it before closing.",
+      "url_label": "Issued link",
+      "copy": "Copy",
+      "copied": "Copied",
+      "copy_failed": "Could not copy. Please select the link and copy it manually",
+      "qr_label": "QR code",
+      "close": "Close",
+      "pdf_download": "Save QR code as PDF"
+    },
+    "list": {
+      "not_shown_hint": "For security, issued links are never shown again. Reissue one if you need it.",
+      "revoked_by_migration": "Revoked as part of a security upgrade",
+      "reissue": "Reissue",
+      "reissue_hint": "Reissuing creates a new link and the old link stops working.",
+      "label_with_id": "Link #{id}",
+      "created_at": "Issued at",
+      "expires_at": "Expires at",
+      "used_count": "Times used"
     }
   }
 }

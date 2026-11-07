@@ -280,7 +280,7 @@ class RoleSuccessionServiceTest {
     class Ac8ArchiveWhenNoCandidate {
 
         @Test
-        @DisplayName("AC8: 候補資格者が1人もいない場合はarchiveScope経由でteamService.archiveTeamが呼ばれる")
+        @DisplayName("AC8: 候補資格者が1人もいない場合はarchiveScope経由でteamService.archiveTeamDeferringAffiliationCleanupが呼ばれる（加盟の片付けはteamのコミット後）")
         void 候補ゼロならarchiveされる() {
             given(adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(SCOPE_ID, "TEAM"))
                     .willReturn(List.of(WITHDRAWING_USER_ID));
@@ -289,7 +289,7 @@ class RoleSuccessionServiceTest {
 
             service.forceTransferForPurge(SCOPE_ID, "TEAM", WITHDRAWING_USER_ID, UUID.randomUUID());
 
-            verify(teamService).archiveTeam(SCOPE_ID);
+            verify(teamService).archiveTeamDeferringAffiliationCleanup(SCOPE_ID);
             verify(userRoleRepository, never()).save(any());
         }
         // AC8 の force-unarchive 拒否本体は SystemAdminScopeForceUnarchiveControllerTest で検証する。
@@ -438,7 +438,7 @@ class RoleSuccessionServiceTest {
                     service.forceTransferForPurge(SCOPE_ID, "TEAM", WITHDRAWING_USER_ID, UUID.randomUUID());
 
             assertThat(result).isEqualTo(RoleSuccessionService.PurgeSuccessionResult.ARCHIVED);
-            verify(teamService).archiveTeam(SCOPE_ID);
+            verify(teamService).archiveTeamDeferringAffiliationCleanup(SCOPE_ID);
             verify(userRoleRepository, never()).save(any());
             verify(userRowLockService, times(1)).lockAll(WITHDRAWING_USER_ID, 11L, 12L, 13L, 14L, 15L);
         }
@@ -466,7 +466,7 @@ class RoleSuccessionServiceTest {
             // Codex第4巡P1-a: 戻り値がRETRY_LATERであること自体が、呼び出し元
             // （RolePurgeScopeExecutor）にremoveMemberWithoutAdminCheckを実行させない契約の核心。
             assertThat(result).isEqualTo(RoleSuccessionService.PurgeSuccessionResult.RETRY_LATER);
-            verify(teamService, never()).archiveTeam(any());
+            verify(teamService, never()).archiveTeamDeferringAffiliationCleanup(any());
             verify(organizationService, never()).archiveOrganization(any());
             verify(userRoleRepository, never()).save(any());
             verify(userRowLockService, times(1)).lockAll(WITHDRAWING_USER_ID, 21L, 22L, 23L, 24L, 25L);
@@ -506,7 +506,7 @@ class RoleSuccessionServiceTest {
             // ユニーク候補はちょうど5件で他に候補は存在しない→moreExist=false→ARCHIVED。
             // 重複排除せず生の件数（deputies2+members4=6>5）で誤判定していればRETRY_LATERになる。
             assertThat(result).isEqualTo(RoleSuccessionService.BatchSuccessionResult.ARCHIVED);
-            verify(teamService).archiveTeam(SCOPE_ID);
+            verify(teamService).archiveTeamDeferringAffiliationCleanup(SCOPE_ID);
             verify(userRowLockService, times(1)).lockAll(d1, d2, m1, m2, m3);
         }
 
@@ -536,7 +536,7 @@ class RoleSuccessionServiceTest {
             RoleSuccessionService.BatchSuccessionResult result = service.promoteForBatchSuccession(SCOPE_ID, "TEAM");
 
             assertThat(result).isEqualTo(RoleSuccessionService.BatchSuccessionResult.RETRY_LATER);
-            verify(teamService, never()).archiveTeam(any());
+            verify(teamService, never()).archiveTeamDeferringAffiliationCleanup(any());
             // 6件目（m4）を含む追加のロック取得（＝リトライ）は行わない。
             verify(userRowLockService, times(1)).lockAll(d1, d2, m1, m2, m3);
         }

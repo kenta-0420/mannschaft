@@ -10,7 +10,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -20,9 +19,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p>実 MySQL（Testcontainers）に対し最小限の seed を投入し、
  * {@link ContentVisibilityChecker} 経由で TEAM の可視性評価を包括的に検証する。</p>
- *
- * <p>{@link SpringBootTest#properties()} で {@code feature.visibility-resolver.team=true}
- * を設定し、{@link TeamVisibilityResolver} Bean を有効化している。</p>
  *
  * <p>{@code SurveyVisibilityResolverIntegrationTest} の方式を踏襲し、
  * {@code @Transactional} ロールバック方式 + {@code em.createNativeQuery}
@@ -34,7 +30,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   <li>MEMBERS_AND_ABOVE → MEMBERS_AND_ABOVE（正規メンバー以上のみ可視）のシナリオを検証</li>
  * </ul>
  */
-@SpringBootTest(properties = {"feature.visibility-resolver.team=true"})
 @Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("TeamVisibilityResolver 結合テスト")

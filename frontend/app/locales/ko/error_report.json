@@ -99,7 +99,9 @@
         "AI_ANALYZED": "AI 분석",
         "GITHUB_ISSUE_CREATED": "GitHub Issue 생성",
         "REOPENED": "재오픈",
-        "RESOLVED": "해결"
+        "RESOLVED": "해결",
+        "HEALTH_RECOVERED": "상태 복구",
+        "MERGED_DUPLICATE": "중복 보고서 병합"
       }
     },
     "messages": {

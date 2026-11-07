@@ -1,0 +1,77 @@
+{
+  "checkedAt": "2026-10-25T02:11:15.927Z",
+  "versions": [
+    {
+      "sha": "7f924ae77888926463b34145aeeda7e77183b7fc",
+      "versions": {
+        "vue": "3.5.43",
+        "@vue/runtime-core": "3.5.43",
+        "@vue/runtime-dom": "3.5.43",
+        "nuxt": "3.21.11",
+        "primevue": "4.5.5",
+        "ofetch": "1.5.1",
+        "@nuxtjs/i18n": "10.4.0",
+        "vue-i18n": "11.4.13",
+        "zod": "3.25.76",
+        "vee-validate": "4.15.1",
+        "@vee-validate/zod": "4.15.1"
+      }
+    },
+    {
+      "sha": "a38b62efc5f20a214caf1d01faff31a536eb50ab",
+      "versions": {
+        "vue": "3.5.43",
+        "@vue/runtime-core": "3.5.43",
+        "@vue/runtime-dom": "3.5.43",
+        "nuxt": "3.21.11",
+        "primevue": "4.5.5",
+        "ofetch": "1.5.1",
+        "@nuxtjs/i18n": "10.4.0",
+        "vue-i18n": "11.4.13",
+        "zod": "4.6.7",
+        "vee-validate": "4.15.1",
+        "@vee-validate/zod": null
+      }
+    }
+  ],
+  "changedPackages": [
+    {
+      "path": "node_modules/@vee-validate/zod",
+      "from": "4.15.1",
+      "to": null,
+      "fromDev": false,
+      "toDev": false
+    },
+    {
+      "path": "node_modules/dompurify",
+      "from": "3.4.16",
+      "to": "3.4.17",
+      "fromDev": false,
+      "toDev": false
+    },
+    {
+      "path": "node_modules/happy-dom",
+      "from": "20.9.0",
+      "to": "21.0.4",
+      "fromDev": true,
+      "toDev": true
+    },
+    {
+      "path": "node_modules/zod",
+      "from": "3.25.76",
+      "to": "4.6.7",
+      "fromDev": false,
+      "toDev": false
+    },
+    {
+      "path": "node_modules/buffer-image-size",
+      "from": null,
+      "to": "0.6.4",
+      "fromDev": false,
+      "toDev": true
+    }
+  ],
+  "formUsesZod": false,
+  "sourceForm": "frontend/app/components/shift/ShiftSwapRequestFormDialog.vue",
+  "note": "dependency versions only; no fresh submission execution claimed"
+}

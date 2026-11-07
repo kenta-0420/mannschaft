@@ -37,7 +37,7 @@ public class MemberPaymentReceiptPdfService {
             throw new BusinessException(PaymentErrorCode.MEMBER_PAYMENT_NOT_FOUND);
         }
         if (!requesterUserId.equals(payment.getUserId()) && !requesterUserId.equals(payment.getPayerUserId())) {
-            throw new BusinessException(PaymentErrorCode.PAYMENT_ACCESS_DENIED);
+            throw new BusinessException(PaymentErrorCode.MEMBER_PAYMENT_NOT_FOUND);
         }
         PaymentItemReceiptContext item = paymentItemRepository.findReceiptContextById(payment.getPaymentItemId())
                 .orElseThrow(() -> new BusinessException(PaymentErrorCode.MEMBER_PAYMENT_NOT_FOUND));

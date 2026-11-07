@@ -1,0 +1,18 @@
+{
+  "taskState": "2026-10-27T09:40:33.669998962Z [ci-test-task-state] task=:archUnitTest skipped=false skipMessage=null upToDate=false noSource=false failed=false\n2026-10-27T09:40:35.881713295Z [ci-test-task-state] task=:archUnitFreezeStoreIntegrityTest skipped=false skipMessage=null upToDate=false noSource=false failed=false\n2026-10-27T11:24:11.718831983Z [ci-test-task-state] task=:test skipped=false skipMessage=null upToDate=false noSource=false failed=false\n",
+  "active": [],
+  "lastEnds": [
+    "2026-10-27T11:17:59.462917521Z [ci-class-end] task=:test class=com.mannschaft.app.village.VillageAffinityRateLimitFilterTest$AffinityLimit elapsedMs=35 result=SUCCESS",
+    "2026-10-27T11:17:59.463133775Z [ci-class-end] task=:test class=com.mannschaft.app.village.VillageAffinityRateLimitFilterTest elapsedMs=372 result=SUCCESS",
+    "2026-10-27T11:18:01.912953878Z [ci-class-end] task=:test class=com.mannschaft.app.village.controller.VillageFeedControllerTest elapsedMs=2447 result=SUCCESS",
+    "2026-10-27T11:18:06.578985610Z [ci-class-end] task=:test class=com.mannschaft.app.village.controller.VillageMembershipControllerTest elapsedMs=4666 result=SUCCESS",
+    "2026-10-27T11:19:06.693554526Z [ci-class-end] task=:test class=com.mannschaft.app.village.controller.VillageMembershipModeratorScopeContractIT elapsedMs=60114 result=SUCCESS",
+    "2026-10-27T11:19:07.665935463Z [ci-class-end] task=:test class=com.mannschaft.app.village.service.PostingIdentityServiceTest elapsedMs=970 result=SUCCESS",
+    "2026-10-27T11:19:08.727978751Z [ci-class-end] task=:test class=com.mannschaft.app.village.service.VillageFeedServiceTest elapsedMs=1060 result=SUCCESS",
+    "2026-10-27T11:20:04.244419068Z [ci-class-end] task=:test class=com.mannschaft.app.village.service.VillageNewsletterDispatchIntegrationTest elapsedMs=55516 result=SUCCESS",
+    "2026-10-27T11:20:04.402000854Z [ci-class-end] task=:test class=com.mannschaft.app.village.service.VillagePilgrimageServiceTest elapsedMs=157 result=SUCCESS",
+    "2026-10-27T11:20:04.840263651Z [ci-class-end] task=:test class=com.mannschaft.app.weather.client.WeatherApiClientTest elapsedMs=438 result=SUCCESS",
+    "2026-10-27T11:23:06.533179607Z [ci-class-end] task=:test class=com.mannschaft.app.websocket.relay.WebSocketRelayFailOpenIntegrationTest elapsedMs=181692 result=SUCCESS",
+    "2026-10-27T11:23:06.676903927Z [ci-class-end] task=:test class=com.mannschaft.app.workflow.controller.WorkflowRequestMyControllerTest elapsedMs=140 result=SUCCESS"
+  ]
+}

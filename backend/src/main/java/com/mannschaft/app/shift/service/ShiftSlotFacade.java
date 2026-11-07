@@ -8,6 +8,8 @@ import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.dto.BulkCreateShiftSlotRequest;
 import com.mannschaft.app.shift.dto.CreateShiftSlotRequest;
 import com.mannschaft.app.shift.dto.ShiftSlotResponse;
+import com.mannschaft.app.shift.dto.SlotAssignmentMoveRequest;
+import com.mannschaft.app.shift.dto.SlotAssignmentMoveResponse;
 import com.mannschaft.app.shift.dto.SlotAssignmentPatchRequest;
 import com.mannschaft.app.shift.dto.UpdateShiftSlotRequest;
 import lombok.RequiredArgsConstructor;
@@ -33,11 +35,13 @@ import java.util.List;
  * チーム ADMIN/DEPUTY_ADMIN 200                 201                        200/204
  * user_roles のみの ADMIN   200                 201                        200/204
  * SYSTEM_ADMIN(非/メンバー) 200                 201                        200/204
+ * （枠間移動 POST /slots/{slotId}/assignments/move は「更新/割当/削除」列と同じ。移動先の不在・別シフト表・
+ *  別チームも 404 SHIFT_002。CMP-261010-1432）
  * 対象不在                  404 SHIFT_001       404 SHIFT_001              404 SHIFT_002
  * 親だけ削除済み            404 SHIFT_001       404 SHIFT_001              404 SHIFT_002（是正前は SHIFT_001）
  * </pre>
- * <p>枠一覧の未公開（DRAFT・ARCHIVED で publishedAt なし）は、管理者側以外へは認可結果より先に 404 SHIFT_001、
- * COLLECTING・ADJUSTING は割当だけ伏せる。</p>
+ * <p>枠一覧の未公開（DRAFT・ARCHIVED で publishedAt なし）は、一般メンバーには 404 SHIFT_001
+ * （越境・SUPPORTER の判定の後。SUPPORTER は公開状態に依らず 403）、COLLECTING・ADJUSTING は割当だけ伏せる。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -61,14 +65,16 @@ public class ShiftSlotFacade {
         boolean privileged = accessControlService.isSystemAdmin(userId)
                 || accessControlService.isAdminOrAbove(userId, scope.teamId(), TEAM);
         if (!privileged) {
-            if (scope.isHidden()) {
-                throw new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
-            }
+            // 越境は不在と同じ 404、SUPPORTER は公開状態に依らず一律 403、未公開の 404 はその後
+            // （SUPPORTER に 404/403 の差で公開状態を読ませない。CMP-260826-2127 D-2127-1）。
             if (!accessControlService.isMember(userId, scope.teamId(), TEAM)) {
                 throw new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
             }
             if (accessControlService.isSupporter(userId, scope.teamId(), TEAM)) {
                 throw new BusinessException(CommonErrorCode.COMMON_002);
+            }
+            if (scope.isHidden()) {
+                throw new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
             }
         }
         return slotService.listSlots(scheduleId, privileged);
@@ -124,6 +130,23 @@ public class ShiftSlotFacade {
     public ShiftSlotResponse patchSlotAssignments(Long slotId, SlotAssignmentPatchRequest request, Long userId) {
         requireSlotAdmin(slotId, userId);
         return slotService.patchSlotAssignments(slotId, request, userId);
+    }
+
+    /**
+     * 割当メンバーを同じシフト表の別の枠へ 1 トランザクションで移す（CMP-261010-1432 P）。
+     *
+     * <p>認可は移動元の枠に対して {@link #patchSlotAssignments} と同じ（越境・不在は {@code SHIFT_002}、
+     * 同チームの非管理者は 403）。移動先の所属照合は認可の後に tx 本体で行う（不在・別シフト表・別チームは
+     * いずれも {@code SHIFT_002}）。</p>
+     *
+     * @param slotId  移動元の枠 ID
+     * @param request 移動リクエスト
+     * @param userId  操作者ユーザー ID
+     * @return 両枠の更新後の状態
+     */
+    public SlotAssignmentMoveResponse moveAssignment(Long slotId, SlotAssignmentMoveRequest request, Long userId) {
+        requireSlotAdmin(slotId, userId);
+        return slotService.moveAssignment(slotId, request, userId);
     }
 
     /**

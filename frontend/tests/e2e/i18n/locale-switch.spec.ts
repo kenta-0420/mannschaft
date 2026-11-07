@@ -61,4 +61,35 @@ test.describe('I18N-001〜003: 多言語対応', () => {
     await expect(page.getByRole('button', { name: '保存' })).toBeVisible()
     await expect(page.getByRole('button', { name: '保存' })).toBeEnabled()
   })
+
+  test('I18N-004: 英語CookieをSSR・hydrate・reload後も同一URLで保持する', async ({ page, baseURL }) => {
+    if (!baseURL) throw new Error('locale Cookie試験には既存baseURLが必要です')
+    const failures: string[] = []
+    page.on('pageerror', (error) => failures.push(error.message))
+    page.on('console', (message) => {
+      if (['error', 'warning'].includes(message.type()) && /i18n|locale|hydration/i.test(message.text())) {
+        failures.push(message.text())
+      }
+    })
+    await page.context().addCookies([
+      { name: 'i18n_locale', value: 'en', url: new URL('/', baseURL).href, sameSite: 'Lax' },
+    ])
+
+    const response = await page.goto('/login')
+    if (!response) throw new Error('ログイン画面のSSR responseがありません')
+    expect(response.status()).toBe(200)
+    expect(await response.text()).toMatch(/<label\b[^>]*\bfor="email"[^>]*>\s*Email address\s*<\/label>/)
+    await waitForHydration(page)
+    await expect(page.locator('label[for="email"]')).toHaveText('Email address')
+    await expect(page.getByRole('button', { name: 'Login', exact: true })).toBeVisible()
+    expect(new URL(page.url()).pathname).toBe('/login')
+
+    await page.reload()
+    await waitForHydration(page)
+    await expect(page.locator('label[for="email"]')).toHaveText('Email address')
+    expect(new URL(page.url()).pathname).toBe('/login')
+    const localeCookies = (await page.context().cookies()).filter((cookie) => cookie.name === 'i18n_locale')
+    expect(localeCookies.map((cookie) => cookie.value)).toEqual(['en'])
+    expect(failures).toEqual([])
+  })
 })

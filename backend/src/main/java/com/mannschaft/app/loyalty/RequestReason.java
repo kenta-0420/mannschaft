@@ -1,0 +1,6 @@
+package com.mannschaft.app.loyalty;
+
+/** チームポイントの業務契約。 */
+public enum RequestReason {
+    USER_CANCELLED, STAFF_REJECTED, TTL_EXPIRED, DAY_CHANGED, VERSION_CHANGED, LOCATION_INACTIVE, TEAM_INACTIVE, USER_INACTIVE, INELIGIBLE, DAILY_AWARDED, POINT_LIMIT
+}

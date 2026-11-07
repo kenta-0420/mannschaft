@@ -1,0 +1,1241 @@
+{
+  "schemaVersion": 1,
+  "repository": "kenta-0420/mannschaft",
+  "runId": 40648568860,
+  "head": "f2817eb94326b413122c69f4b0c409288c8982a6",
+  "attempt": 1,
+  "collectedAt": "2026-10-28T09:07:37.710286+00:00",
+  "status": "completed",
+  "conclusion": "success",
+  "allHeadChecks": [
+    {
+      "id": 122724627398,
+      "name": "Compile & Test",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T09:03:25Z",
+      "completedAt": "2026-10-28T09:03:28Z"
+    },
+    {
+      "id": 122700805544,
+      "name": "Task-List PR Gate",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T08:03:24Z",
+      "completedAt": "2026-10-28T08:03:39Z"
+    },
+    {
+      "id": 122683865906,
+      "name": "Task-List PR Gate",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:15:58Z",
+      "completedAt": "2026-10-28T07:16:14Z"
+    },
+    {
+      "id": 122683237851,
+      "name": "lockfile の内容検査（base 比較）",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:22:28Z",
+      "completedAt": "2026-10-28T07:22:32Z"
+    },
+    {
+      "id": 122683237810,
+      "name": "npm ci（Alpine / musl）",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:22:31Z",
+      "completedAt": "2026-10-28T07:22:39Z"
+    },
+    {
+      "id": 122683237805,
+      "name": "npm ci（Ubuntu / glibc）",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:22:27Z",
+      "completedAt": "2026-10-28T07:22:29Z"
+    },
+    {
+      "id": 122683170984,
+      "name": "Test (shard 4)",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:19:27Z",
+      "completedAt": "2026-10-28T08:53:25Z"
+    },
+    {
+      "id": 122683170981,
+      "name": "Test (shard 1)",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:16:05Z",
+      "completedAt": "2026-10-28T08:58:29Z"
+    },
+    {
+      "id": 122683170975,
+      "name": "Test (shard 0)",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:12:47Z",
+      "completedAt": "2026-10-28T08:20:43Z"
+    },
+    {
+      "id": 122683170969,
+      "name": "ArchUnit tests (separate JVM)",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:19:07Z",
+      "completedAt": "2026-10-28T07:22:25Z"
+    },
+    {
+      "id": 122683170952,
+      "name": "Test (shard 5)",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:13:40Z",
+      "completedAt": "2026-10-28T09:03:23Z"
+    },
+    {
+      "id": 122683170951,
+      "name": "Shard coverage guard",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:16:16Z",
+      "completedAt": "2026-10-28T07:22:26Z"
+    },
+    {
+      "id": 122683170938,
+      "name": "Test (shard 3)",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:13:22Z",
+      "completedAt": "2026-10-28T08:16:16Z"
+    },
+    {
+      "id": 122683170923,
+      "name": "Test (shard 2)",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:13:00Z",
+      "completedAt": "2026-10-28T08:34:38Z"
+    },
+    {
+      "id": 122683170895,
+      "name": "Non-JST timezone contract",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:12:59Z",
+      "completedAt": "2026-10-28T07:22:33Z"
+    },
+    {
+      "id": 122683170888,
+      "name": "Lint (D-5 @Builder guard)",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:12:48Z",
+      "completedAt": "2026-10-28T07:13:01Z"
+    },
+    {
+      "id": 122683030814,
+      "name": "フル履歴スキャン（週次）",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "skipped",
+      "startedAt": "2026-10-28T07:12:21Z",
+      "completedAt": "2026-10-28T07:12:20Z"
+    },
+    {
+      "id": 122683030018,
+      "name": "OpenAPI Drift Check",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:12:45Z",
+      "completedAt": "2026-10-28T07:19:05Z"
+    },
+    {
+      "id": 122683029378,
+      "name": "lockfile 変更の有無",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:12:36Z",
+      "completedAt": "2026-10-28T07:12:58Z"
+    },
+    {
+      "id": 122683029282,
+      "name": "Worktree cleanup guard",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:12:23Z",
+      "completedAt": "2026-10-28T07:12:43Z"
+    },
+    {
+      "id": 122683029123,
+      "name": "harness-tests",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:12:23Z",
+      "completedAt": "2026-10-28T07:12:43Z"
+    },
+    {
+      "id": 122683029094,
+      "name": "Detect changes",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:12:23Z",
+      "completedAt": "2026-10-28T07:12:45Z"
+    },
+    {
+      "id": 122683029076,
+      "name": "PR差分スキャン",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:12:23Z",
+      "completedAt": "2026-10-28T07:12:46Z"
+    },
+    {
+      "id": 122683028811,
+      "name": "Finite graph (7 cases)",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:12:22Z",
+      "completedAt": "2026-10-28T07:13:39Z"
+    },
+    {
+      "id": 122683013624,
+      "name": "Task-List PR Gate",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:12:20Z",
+      "completedAt": "2026-10-28T07:12:34Z"
+    }
+  ],
+  "latestHeadChecks": [
+    {
+      "id": 122700805544,
+      "name": "Task-List PR Gate",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T08:03:24Z",
+      "completedAt": "2026-10-28T08:03:39Z"
+    },
+    {
+      "id": 122683030814,
+      "name": "フル履歴スキャン（週次）",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "skipped",
+      "startedAt": "2026-10-28T07:12:21Z",
+      "completedAt": "2026-10-28T07:12:20Z"
+    },
+    {
+      "id": 122683028811,
+      "name": "Finite graph (7 cases)",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:12:22Z",
+      "completedAt": "2026-10-28T07:13:39Z"
+    },
+    {
+      "id": 122683029076,
+      "name": "PR差分スキャン",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:12:23Z",
+      "completedAt": "2026-10-28T07:12:46Z"
+    },
+    {
+      "id": 122683029094,
+      "name": "Detect changes",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:12:23Z",
+      "completedAt": "2026-10-28T07:12:45Z"
+    },
+    {
+      "id": 122683029123,
+      "name": "harness-tests",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:12:23Z",
+      "completedAt": "2026-10-28T07:12:43Z"
+    },
+    {
+      "id": 122683029282,
+      "name": "Worktree cleanup guard",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:12:23Z",
+      "completedAt": "2026-10-28T07:12:43Z"
+    },
+    {
+      "id": 122683029378,
+      "name": "lockfile 変更の有無",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:12:36Z",
+      "completedAt": "2026-10-28T07:12:58Z"
+    },
+    {
+      "id": 122683030018,
+      "name": "OpenAPI Drift Check",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:12:45Z",
+      "completedAt": "2026-10-28T07:19:05Z"
+    },
+    {
+      "id": 122683170975,
+      "name": "Test (shard 0)",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:12:47Z",
+      "completedAt": "2026-10-28T08:20:43Z"
+    },
+    {
+      "id": 122683170888,
+      "name": "Lint (D-5 @Builder guard)",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:12:48Z",
+      "completedAt": "2026-10-28T07:13:01Z"
+    },
+    {
+      "id": 122683170895,
+      "name": "Non-JST timezone contract",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:12:59Z",
+      "completedAt": "2026-10-28T07:22:33Z"
+    },
+    {
+      "id": 122683170923,
+      "name": "Test (shard 2)",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:13:00Z",
+      "completedAt": "2026-10-28T08:34:38Z"
+    },
+    {
+      "id": 122683170938,
+      "name": "Test (shard 3)",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:13:22Z",
+      "completedAt": "2026-10-28T08:16:16Z"
+    },
+    {
+      "id": 122683170952,
+      "name": "Test (shard 5)",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:13:40Z",
+      "completedAt": "2026-10-28T09:03:23Z"
+    },
+    {
+      "id": 122683170981,
+      "name": "Test (shard 1)",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:16:05Z",
+      "completedAt": "2026-10-28T08:58:29Z"
+    },
+    {
+      "id": 122683170951,
+      "name": "Shard coverage guard",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:16:16Z",
+      "completedAt": "2026-10-28T07:22:26Z"
+    },
+    {
+      "id": 122683170969,
+      "name": "ArchUnit tests (separate JVM)",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:19:07Z",
+      "completedAt": "2026-10-28T07:22:25Z"
+    },
+    {
+      "id": 122683170984,
+      "name": "Test (shard 4)",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:19:27Z",
+      "completedAt": "2026-10-28T08:53:25Z"
+    },
+    {
+      "id": 122683237805,
+      "name": "npm ci（Ubuntu / glibc）",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:22:27Z",
+      "completedAt": "2026-10-28T07:22:29Z"
+    },
+    {
+      "id": 122683237851,
+      "name": "lockfile の内容検査（base 比較）",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:22:28Z",
+      "completedAt": "2026-10-28T07:22:32Z"
+    },
+    {
+      "id": 122683237810,
+      "name": "npm ci（Alpine / musl）",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T07:22:31Z",
+      "completedAt": "2026-10-28T07:22:39Z"
+    },
+    {
+      "id": 122724627398,
+      "name": "Compile & Test",
+      "headSha": "f2817eb94326b413122c69f4b0c409288c8982a6",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-28T09:03:25Z",
+      "completedAt": "2026-10-28T09:03:28Z"
+    }
+  ],
+  "latestCommitStatuses": [],
+  "allLatestHeadChecksAcceptable": true,
+  "jobs": [
+    {
+      "id": 122683029094,
+      "name": "Detect changes",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122683170888,
+      "name": "Lint (D-5 @Builder guard)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122683170895,
+      "name": "Non-JST timezone contract",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122683170923,
+      "name": "Test (shard 2)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122683170938,
+      "name": "Test (shard 3)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122683170951,
+      "name": "Shard coverage guard",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122683170952,
+      "name": "Test (shard 5)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122683170969,
+      "name": "ArchUnit tests (separate JVM)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122683170975,
+      "name": "Test (shard 0)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122683170981,
+      "name": "Test (shard 1)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122683170984,
+      "name": "Test (shard 4)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122724627398,
+      "name": "Compile & Test",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "shards": [
+    {
+      "shard": 0,
+      "jobId": 122683170975,
+      "jobConclusion": "success",
+      "cacheHit": false,
+      "freshMainTest": true,
+      "wrapperResult": {
+        "completed": true,
+        "testStepOutcome": "success",
+        "testStepExitCode": 0,
+        "commandExitCode": 0,
+        "shellExitCode": 0
+      },
+      "mainTestTerminal": "2026-10-28T08:19:43.887024651Z [ci-test-task-state] task=:test skipped=false skipMessage=null upToDate=false noSource=false failed=false",
+      "tasksObserved": {
+        "archUnitTest": {
+          "jvms": 9,
+          "forkEvery": 180,
+          "maxParallelForks": 1,
+          "heapMiB": [
+            4096
+          ],
+          "heapMarkerCount": 9,
+          "uniqueHeapPidCount": 9,
+          "uniqueWorkerCount": 9,
+          "tests": 6,
+          "success": 6,
+          "failed": 0,
+          "skipped": 0
+        },
+        "archUnitFreezeStoreIntegrityTest": {
+          "jvms": 1,
+          "forkEvery": 0,
+          "maxParallelForks": 1,
+          "heapMiB": [
+            128
+          ],
+          "heapMarkerCount": 1,
+          "uniqueHeapPidCount": 1,
+          "uniqueWorkerCount": 1,
+          "tests": 2,
+          "success": 2,
+          "failed": 0,
+          "skipped": 0
+        },
+        "test": {
+          "jvms": 10,
+          "forkEvery": 180,
+          "maxParallelForks": 2,
+          "heapMiB": [
+            4096
+          ],
+          "heapMarkerCount": 10,
+          "uniqueHeapPidCount": 10,
+          "uniqueWorkerCount": 10,
+          "tests": 5111,
+          "success": 5110,
+          "failed": 0,
+          "skipped": 1
+        }
+      },
+      "contextCacheCap5Observed": true,
+      "jobLimitMinutesObserved": [
+        120
+      ],
+      "testStepLimitMinutesObserved": [
+        105
+      ],
+      "wrapperWallSeconds": 3808,
+      "jobWallSeconds": 4076,
+      "testStepWallSeconds": 3808,
+      "classEndEvents": 1395,
+      "classProgressPresent": true,
+      "timeoutErrorPatternOccurrences": 0,
+      "oomErrorPatternOccurrences": 0,
+      "anomalies": [],
+      "runtimeArtifact": {
+        "id": 12801562441,
+        "bytes": 51868,
+        "sha256": "d917511dd3e5855f7c3b443c0edba2b026bcbf085ccbcfae8742c444ead95df9",
+        "members": [
+          {
+            "name": "result.json",
+            "bytes": 319,
+            "sha256": "aaa48663a42b7bfe3cb4340a3b4a799b785e741f25a64ff011ad8b483b552613"
+          },
+          {
+            "name": "task-state.log",
+            "bytes": 447,
+            "sha256": "ba49ce8387ad3f4ff6502f31adcc5057bc2ebeff2ff4a3416493bb17bd11f4a5"
+          },
+          {
+            "name": "class-progress.log",
+            "bytes": 423408,
+            "sha256": "68e17be9b8d8b67b52ac91a43f99d5f8b7325b804954490acf2712420ba2f1b2"
+          }
+        ]
+      },
+      "jobLog": {
+        "bytes": 737224,
+        "sha256": "aa9286fa59991a8a52b2db68789b9992afa1837362f077851d191b0f6dc227bc"
+      }
+    },
+    {
+      "shard": 1,
+      "jobId": 122683170981,
+      "jobConclusion": "success",
+      "cacheHit": false,
+      "freshMainTest": true,
+      "wrapperResult": {
+        "completed": true,
+        "testStepOutcome": "success",
+        "testStepExitCode": 0,
+        "commandExitCode": 0,
+        "shellExitCode": 0
+      },
+      "mainTestTerminal": "2026-10-28T08:56:52.245658473Z [ci-test-task-state] task=:test skipped=false skipMessage=null upToDate=false noSource=false failed=false",
+      "tasksObserved": {
+        "archUnitTest": {
+          "jvms": 9,
+          "forkEvery": 180,
+          "maxParallelForks": 1,
+          "heapMiB": [
+            4096
+          ],
+          "heapMarkerCount": 9,
+          "uniqueHeapPidCount": 9,
+          "uniqueWorkerCount": 9,
+          "tests": 1,
+          "success": 1,
+          "failed": 0,
+          "skipped": 0
+        },
+        "archUnitFreezeStoreIntegrityTest": {
+          "jvms": 1,
+          "forkEvery": 0,
+          "maxParallelForks": 1,
+          "heapMiB": [
+            128
+          ],
+          "heapMarkerCount": 1,
+          "uniqueHeapPidCount": 1,
+          "uniqueWorkerCount": 1,
+          "tests": 2,
+          "success": 2,
+          "failed": 0,
+          "skipped": 0
+        },
+        "test": {
+          "jvms": 10,
+          "forkEvery": 180,
+          "maxParallelForks": 2,
+          "heapMiB": [
+            4096
+          ],
+          "heapMarkerCount": 10,
+          "uniqueHeapPidCount": 10,
+          "uniqueWorkerCount": 10,
+          "tests": 5308,
+          "success": 5305,
+          "failed": 0,
+          "skipped": 3
+        }
+      },
+      "contextCacheCap5Observed": true,
+      "jobLimitMinutesObserved": [
+        120
+      ],
+      "testStepLimitMinutesObserved": [
+        105
+      ],
+      "wrapperWallSeconds": 5762,
+      "jobWallSeconds": 6144,
+      "testStepWallSeconds": 5762,
+      "classEndEvents": 1338,
+      "classProgressPresent": true,
+      "timeoutErrorPatternOccurrences": 0,
+      "oomErrorPatternOccurrences": 0,
+      "anomalies": [],
+      "runtimeArtifact": {
+        "id": 12803024323,
+        "bytes": 50431,
+        "sha256": "74cfbeb7075842a76b1fa52b3c657bd1ec954217804d8e4d5f024528777a3021",
+        "members": [
+          {
+            "name": "result.json",
+            "bytes": 319,
+            "sha256": "dc8a97c32c034d7795b354f11c99be450ec4cf9ba53ca2a5b48e3a5fc28808d8"
+          },
+          {
+            "name": "task-state.log",
+            "bytes": 447,
+            "sha256": "e39b1c084999aa4a1be1468183487f42da09f5cfa24ea2efcd90ab47a0bd451c"
+          },
+          {
+            "name": "class-progress.log",
+            "bytes": 401904,
+            "sha256": "e62255e62e495aadb1fba07c56a1e7e01be664b060baf340d640499aee46b0d3"
+          }
+        ]
+      },
+      "jobLog": {
+        "bytes": 667301,
+        "sha256": "0738837498ca6698a565c1de66c3910563bf006dac948ca82598411adc302d2e"
+      }
+    },
+    {
+      "shard": 2,
+      "jobId": 122683170923,
+      "jobConclusion": "success",
+      "cacheHit": false,
+      "freshMainTest": true,
+      "wrapperResult": {
+        "completed": true,
+        "testStepOutcome": "success",
+        "testStepExitCode": 0,
+        "commandExitCode": 0,
+        "shellExitCode": 0
+      },
+      "mainTestTerminal": "2026-10-28T08:33:30.864893221Z [ci-test-task-state] task=:test skipped=false skipMessage=null upToDate=false noSource=false failed=false",
+      "tasksObserved": {
+        "archUnitTest": {
+          "jvms": 9,
+          "forkEvery": 180,
+          "maxParallelForks": 1,
+          "heapMiB": [
+            4096
+          ],
+          "heapMarkerCount": 9,
+          "uniqueHeapPidCount": 9,
+          "uniqueWorkerCount": 9,
+          "tests": 5,
+          "success": 5,
+          "failed": 0,
+          "skipped": 0
+        },
+        "archUnitFreezeStoreIntegrityTest": {
+          "jvms": 1,
+          "forkEvery": 0,
+          "maxParallelForks": 1,
+          "heapMiB": [
+            128
+          ],
+          "heapMarkerCount": 1,
+          "uniqueHeapPidCount": 1,
+          "uniqueWorkerCount": 1,
+          "tests": 2,
+          "success": 2,
+          "failed": 0,
+          "skipped": 0
+        },
+        "test": {
+          "jvms": 10,
+          "forkEvery": 180,
+          "maxParallelForks": 2,
+          "heapMiB": [
+            4096
+          ],
+          "heapMarkerCount": 10,
+          "uniqueHeapPidCount": 10,
+          "uniqueWorkerCount": 10,
+          "tests": 5556,
+          "success": 5554,
+          "failed": 0,
+          "skipped": 2
+        }
+      },
+      "contextCacheCap5Observed": true,
+      "jobLimitMinutesObserved": [
+        120
+      ],
+      "testStepLimitMinutesObserved": [
+        105
+      ],
+      "wrapperWallSeconds": 4585,
+      "jobWallSeconds": 4898,
+      "testStepWallSeconds": 4585,
+      "classEndEvents": 1410,
+      "classProgressPresent": true,
+      "timeoutErrorPatternOccurrences": 0,
+      "oomErrorPatternOccurrences": 0,
+      "anomalies": [],
+      "runtimeArtifact": {
+        "id": 12801944497,
+        "bytes": 53082,
+        "sha256": "4bc297979ae186042a0839648a9a4f21c880c6a8129824fc4915f9677ba72f15",
+        "members": [
+          {
+            "name": "result.json",
+            "bytes": 319,
+            "sha256": "4b897e77c465478c2b8b749e855a43425803e552374f2c8e52f4b8a665c335e0"
+          },
+          {
+            "name": "task-state.log",
+            "bytes": 447,
+            "sha256": "98404bec662c00f1ab90ee4d362655eab327122de1e9055f7e5f326fa93d75b4"
+          },
+          {
+            "name": "class-progress.log",
+            "bytes": 423589,
+            "sha256": "a389b6638420aa95c6815de895b755506faf6b213f393db6dfee816ff94c4420"
+          }
+        ]
+      },
+      "jobLog": {
+        "bytes": 649694,
+        "sha256": "a6372a8cbce853408efd7b8b4a8a68eb34e23ef701e9c2c1146681c3fff9b5f3"
+      }
+    },
+    {
+      "shard": 3,
+      "jobId": 122683170938,
+      "jobConclusion": "success",
+      "cacheHit": false,
+      "freshMainTest": true,
+      "wrapperResult": {
+        "completed": true,
+        "testStepOutcome": "success",
+        "testStepExitCode": 0,
+        "commandExitCode": 0,
+        "shellExitCode": 0
+      },
+      "mainTestTerminal": "2026-10-28T08:15:25.889952969Z [ci-test-task-state] task=:test skipped=false skipMessage=null upToDate=false noSource=false failed=false",
+      "tasksObserved": {
+        "archUnitTest": {
+          "jvms": 9,
+          "forkEvery": 180,
+          "maxParallelForks": 1,
+          "heapMiB": [
+            4096
+          ],
+          "heapMarkerCount": 9,
+          "uniqueHeapPidCount": 9,
+          "uniqueWorkerCount": 9,
+          "tests": 1,
+          "success": 1,
+          "failed": 0,
+          "skipped": 0
+        },
+        "archUnitFreezeStoreIntegrityTest": {
+          "jvms": 1,
+          "forkEvery": 0,
+          "maxParallelForks": 1,
+          "heapMiB": [
+            128
+          ],
+          "heapMarkerCount": 1,
+          "uniqueHeapPidCount": 1,
+          "uniqueWorkerCount": 1,
+          "tests": 2,
+          "success": 2,
+          "failed": 0,
+          "skipped": 0
+        },
+        "test": {
+          "jvms": 10,
+          "forkEvery": 180,
+          "maxParallelForks": 2,
+          "heapMiB": [
+            4096
+          ],
+          "heapMarkerCount": 10,
+          "uniqueHeapPidCount": 10,
+          "uniqueWorkerCount": 10,
+          "tests": 5343,
+          "success": 5337,
+          "failed": 0,
+          "skipped": 6
+        }
+      },
+      "contextCacheCap5Observed": true,
+      "jobLimitMinutesObserved": [
+        120
+      ],
+      "testStepLimitMinutesObserved": [
+        105
+      ],
+      "wrapperWallSeconds": 3529,
+      "jobWallSeconds": 3774,
+      "testStepWallSeconds": 3529,
+      "classEndEvents": 1385,
+      "classProgressPresent": true,
+      "timeoutErrorPatternOccurrences": 0,
+      "oomErrorPatternOccurrences": 0,
+      "anomalies": [],
+      "runtimeArtifact": {
+        "id": 12802100344,
+        "bytes": 52429,
+        "sha256": "ac2217a9dec1b87f646bd4260f19ad3999851c76754233a70bdc3cbbc0fdef0d",
+        "members": [
+          {
+            "name": "result.json",
+            "bytes": 319,
+            "sha256": "883f3926edb7411e7a0e442bde0e646a245eac4ce6e91488262d56ec6636a8f9"
+          },
+          {
+            "name": "task-state.log",
+            "bytes": 447,
+            "sha256": "e43cabdaf19af6a441db292c532298fb8709a60ae8fabe72b5550291bf2d4afb"
+          },
+          {
+            "name": "class-progress.log",
+            "bytes": 419937,
+            "sha256": "0dfd98a116accae59636e7e71dab46236bf27de3118852e81cf3696e5bad2261"
+          }
+        ]
+      },
+      "jobLog": {
+        "bytes": 793507,
+        "sha256": "34da8b1aaa82d8ce5b56ba31c72831bb2baa4fcfe73f1f91889e4935cac408a4"
+      }
+    },
+    {
+      "shard": 4,
+      "jobId": 122683170984,
+      "jobConclusion": "success",
+      "cacheHit": false,
+      "freshMainTest": true,
+      "wrapperResult": {
+        "completed": true,
+        "testStepOutcome": "success",
+        "testStepExitCode": 0,
+        "commandExitCode": 0,
+        "shellExitCode": 0
+      },
+      "mainTestTerminal": "2026-10-28T08:52:02.267326077Z [ci-test-task-state] task=:test skipped=false skipMessage=null upToDate=false noSource=false failed=false",
+      "tasksObserved": {
+        "archUnitTest": {
+          "jvms": 9,
+          "forkEvery": 180,
+          "maxParallelForks": 1,
+          "heapMiB": [
+            4096
+          ],
+          "heapMarkerCount": 9,
+          "uniqueHeapPidCount": 9,
+          "uniqueWorkerCount": 9,
+          "tests": 13,
+          "success": 13,
+          "failed": 0,
+          "skipped": 0
+        },
+        "archUnitFreezeStoreIntegrityTest": {
+          "jvms": 1,
+          "forkEvery": 0,
+          "maxParallelForks": 1,
+          "heapMiB": [
+            128
+          ],
+          "heapMarkerCount": 1,
+          "uniqueHeapPidCount": 1,
+          "uniqueWorkerCount": 1,
+          "tests": 2,
+          "success": 2,
+          "failed": 0,
+          "skipped": 0
+        },
+        "test": {
+          "jvms": 10,
+          "forkEvery": 180,
+          "maxParallelForks": 2,
+          "heapMiB": [
+            4096
+          ],
+          "heapMarkerCount": 10,
+          "uniqueHeapPidCount": 10,
+          "uniqueWorkerCount": 10,
+          "tests": 5497,
+          "success": 5497,
+          "failed": 0,
+          "skipped": 0
+        }
+      },
+      "contextCacheCap5Observed": true,
+      "jobLimitMinutesObserved": [
+        120
+      ],
+      "testStepLimitMinutesObserved": [
+        105
+      ],
+      "wrapperWallSeconds": 5429,
+      "jobWallSeconds": 5638,
+      "testStepWallSeconds": 5429,
+      "classEndEvents": 1326,
+      "classProgressPresent": true,
+      "timeoutErrorPatternOccurrences": 0,
+      "oomErrorPatternOccurrences": 0,
+      "anomalies": [],
+      "runtimeArtifact": {
+        "id": 12802339091,
+        "bytes": 50199,
+        "sha256": "e92c1c6b98d5635712f01c93b2e58da1c13b432ed1a13f6e7dddedd5de60ebc9",
+        "members": [
+          {
+            "name": "result.json",
+            "bytes": 319,
+            "sha256": "aedb89c9a285374991ae686c9e82efcc36f5a1007bfbff2289a514680db5fca3"
+          },
+          {
+            "name": "task-state.log",
+            "bytes": 447,
+            "sha256": "139e27680a49a0d1edc4638ecebc6457b7034efb477847cab73928321b418384"
+          },
+          {
+            "name": "class-progress.log",
+            "bytes": 404306,
+            "sha256": "079c9b84a513733ba2b564f51840a482c847fbf3756920d2957ea7529c3e3240"
+          }
+        ]
+      },
+      "jobLog": {
+        "bytes": 602533,
+        "sha256": "270ee0f6dab1eb1b207a3baadac15b467354fbb1c4f25674ca0c0395b9697b77"
+      }
+    },
+    {
+      "shard": 5,
+      "jobId": 122683170952,
+      "jobConclusion": "success",
+      "cacheHit": false,
+      "freshMainTest": true,
+      "wrapperResult": {
+        "completed": true,
+        "testStepOutcome": "success",
+        "testStepExitCode": 0,
+        "commandExitCode": 0,
+        "shellExitCode": 0
+      },
+      "mainTestTerminal": "2026-10-28T09:02:22.779826705Z [ci-test-task-state] task=:test skipped=false skipMessage=null upToDate=false noSource=false failed=false",
+      "tasksObserved": {
+        "archUnitTest": {
+          "jvms": 10,
+          "forkEvery": 180,
+          "maxParallelForks": 1,
+          "heapMiB": [
+            4096
+          ],
+          "heapMarkerCount": 10,
+          "uniqueHeapPidCount": 10,
+          "uniqueWorkerCount": 10,
+          "tests": 11,
+          "success": 11,
+          "failed": 0,
+          "skipped": 0
+        },
+        "archUnitFreezeStoreIntegrityTest": {
+          "jvms": 1,
+          "forkEvery": 0,
+          "maxParallelForks": 1,
+          "heapMiB": [
+            128
+          ],
+          "heapMarkerCount": 1,
+          "uniqueHeapPidCount": 1,
+          "uniqueWorkerCount": 1,
+          "tests": 2,
+          "success": 2,
+          "failed": 0,
+          "skipped": 0
+        },
+        "test": {
+          "jvms": 10,
+          "forkEvery": 180,
+          "maxParallelForks": 2,
+          "heapMiB": [
+            4096
+          ],
+          "heapMarkerCount": 10,
+          "uniqueHeapPidCount": 10,
+          "uniqueWorkerCount": 10,
+          "tests": 5488,
+          "success": 5483,
+          "failed": 0,
+          "skipped": 5
+        }
+      },
+      "contextCacheCap5Observed": true,
+      "jobLimitMinutesObserved": [
+        120
+      ],
+      "testStepLimitMinutesObserved": [
+        105
+      ],
+      "wrapperWallSeconds": 6217,
+      "jobWallSeconds": 6583,
+      "testStepWallSeconds": 6217,
+      "classEndEvents": 1488,
+      "classProgressPresent": true,
+      "timeoutErrorPatternOccurrences": 0,
+      "oomErrorPatternOccurrences": 0,
+      "anomalies": [],
+      "runtimeArtifact": {
+        "id": 12804775036,
+        "bytes": 55545,
+        "sha256": "de0f1053c48773bcbdeb3383eacfb6222b7ba6e7b3ab9c5899e8873b1f8928a0",
+        "members": [
+          {
+            "name": "result.json",
+            "bytes": 319,
+            "sha256": "e2f5396f4e1e6db2d3e2df08db5927baebcc10d8c84a2af8cbbe87def798ef3f"
+          },
+          {
+            "name": "task-state.log",
+            "bytes": 447,
+            "sha256": "0a23855028e1be3b5b4d318c90dd464b77f130e7b4da6a73f1861e008a340c53"
+          },
+          {
+            "name": "class-progress.log",
+            "bytes": 452479,
+            "sha256": "a1b43e9d78ba1bdf3f4c326ac1ed8c8dd542539d4a2ed7b139512fad37fd142c"
+          }
+        ]
+      },
+      "jobLog": {
+        "bytes": 802343,
+        "sha256": "08ce59bb737aaff80043fa8b43a543f6209a59ec381136304f753e2b8f6c6d21"
+      }
+    }
+  ],
+  "freshMainTestCount": 6,
+  "cacheHitMainTestCount": 0,
+  "allSixShardDiagnosticsCollected": true,
+  "noObservedAnomalies": true,
+  "rawSourceIndex": [
+    {
+      "collectionPath": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-support\\integration-ci-40648568860\\raw\\artifacts-page-1.json",
+      "bytes": 18926,
+      "sha256": "d9fb185a3e67c06bda48e1ea8fc2ebe83062a801fb943425a31a93fbc8450d07"
+    },
+    {
+      "collectionPath": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-support\\integration-ci-40648568860\\raw\\checks-page-1.json",
+      "bytes": 88718,
+      "sha256": "a0087fd69b61289d673227b72158a7c0e9d4f4f13fb5ab13fc943c4edce9d3e3"
+    },
+    {
+      "collectionPath": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-support\\integration-ci-40648568860\\raw\\job-shard-0.log",
+      "bytes": 737224,
+      "sha256": "aa9286fa59991a8a52b2db68789b9992afa1837362f077851d191b0f6dc227bc"
+    },
+    {
+      "collectionPath": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-support\\integration-ci-40648568860\\raw\\job-shard-1.log",
+      "bytes": 667301,
+      "sha256": "0738837498ca6698a565c1de66c3910563bf006dac948ca82598411adc302d2e"
+    },
+    {
+      "collectionPath": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-support\\integration-ci-40648568860\\raw\\job-shard-2.log",
+      "bytes": 649694,
+      "sha256": "a6372a8cbce853408efd7b8b4a8a68eb34e23ef701e9c2c1146681c3fff9b5f3"
+    },
+    {
+      "collectionPath": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-support\\integration-ci-40648568860\\raw\\job-shard-3.log",
+      "bytes": 793507,
+      "sha256": "34da8b1aaa82d8ce5b56ba31c72831bb2baa4fcfe73f1f91889e4935cac408a4"
+    },
+    {
+      "collectionPath": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-support\\integration-ci-40648568860\\raw\\job-shard-4.log",
+      "bytes": 602533,
+      "sha256": "270ee0f6dab1eb1b207a3baadac15b467354fbb1c4f25674ca0c0395b9697b77"
+    },
+    {
+      "collectionPath": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-support\\integration-ci-40648568860\\raw\\job-shard-5.log",
+      "bytes": 802343,
+      "sha256": "08ce59bb737aaff80043fa8b43a543f6209a59ec381136304f753e2b8f6c6d21"
+    },
+    {
+      "collectionPath": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-support\\integration-ci-40648568860\\raw\\jobs-page-1.json",
+      "bytes": 37392,
+      "sha256": "d516d2e06114cba504d8a103b054c0ce23d8f36521b24e76400e13772ce9d037"
+    },
+    {
+      "collectionPath": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-support\\integration-ci-40648568860\\raw\\run.json",
+      "bytes": 12812,
+      "sha256": "c59fdfed5f23b340d11244bda77c1337e8bf21531dfbf5e02e3a9b4423489f3b"
+    },
+    {
+      "collectionPath": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-support\\integration-ci-40648568860\\raw\\shard-0-runtime.zip",
+      "bytes": 51868,
+      "sha256": "d917511dd3e5855f7c3b443c0edba2b026bcbf085ccbcfae8742c444ead95df9"
+    },
+    {
+      "collectionPath": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-support\\integration-ci-40648568860\\raw\\shard-1-runtime.zip",
+      "bytes": 50431,
+      "sha256": "74cfbeb7075842a76b1fa52b3c657bd1ec954217804d8e4d5f024528777a3021"
+    },
+    {
+      "collectionPath": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-support\\integration-ci-40648568860\\raw\\shard-2-runtime.zip",
+      "bytes": 53082,
+      "sha256": "4bc297979ae186042a0839648a9a4f21c880c6a8129824fc4915f9677ba72f15"
+    },
+    {
+      "collectionPath": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-support\\integration-ci-40648568860\\raw\\shard-3-runtime.zip",
+      "bytes": 52429,
+      "sha256": "ac2217a9dec1b87f646bd4260f19ad3999851c76754233a70bdc3cbbc0fdef0d"
+    },
+    {
+      "collectionPath": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-support\\integration-ci-40648568860\\raw\\shard-4-runtime.zip",
+      "bytes": 50199,
+      "sha256": "e92c1c6b98d5635712f01c93b2e58da1c13b432ed1a13f6e7dddedd5de60ebc9"
+    },
+    {
+      "collectionPath": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-support\\integration-ci-40648568860\\raw\\shard-5-runtime.zip",
+      "bytes": 55545,
+      "sha256": "de0f1053c48773bcbdeb3383eacfb6222b7ba6e7b3ab9c5899e8873b1f8928a0"
+    },
+    {
+      "collectionPath": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-support\\integration-ci-40648568860\\raw\\statuses-page-1.json",
+      "bytes": 2,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    }
+  ],
+  "limits": [
+    "Integrated-head CI only. Prior a8b comparison/real/exploratory evidence remains tied to its original source.",
+    "No real UI rerun at f281 is claimed. No local Gradle/Java is run by this collector.",
+    "Cache-hit main Test JVM/heap/test counts are not inferred from old fresh runs. completed=false/testStepExitCode=null on cache hit is separate from command/shell exit.",
+    "Public artifact collection after success does not prove missing-artifact gate rejection; Issue4200 remains separate.",
+    "All-head checks are a collection-time API snapshot, not a claim about branch-protection configuration or merge-time checks.",
+    "Raw paths are collection-time locations, not permanent retention. Raw ZIP/log/API bodies are not Git evidence and are owned cleanup targets after safe summary/hash evidence is finalized."
+  ]
+}

@@ -52,7 +52,7 @@ import com.mannschaft.app.common.security.AccessGuard;
  *   <li>PUT エントリー全置換 → 200 OK</li>
  *   <li>DELETE エントリー個別削除 → 204 No Content</li>
  *   <li>POST apply-template → 200 OK</li>
- *   <li>POST apply-template → 403（別チームテンプレート: TOUR_028）</li>
+ *   <li>POST apply-template → 404（別チームテンプレート: 存在しない場合と同じ TOUR_024）</li>
  *   <li>POST load-from-team → 409（エントリーロック中: TOUR_020）</li>
  * </ul>
  */
@@ -302,11 +302,11 @@ class TournamentEntryMemberControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("403_別チームのテンプレート_TOUR_028")
-        void POST_applyTemplate_403_別チームテンプレート() throws Exception {
+        @DisplayName("404_別チームのテンプレート_存在しない場合と同じTOUR_024")
+        void POST_applyTemplate_404_別チームテンプレート() throws Exception {
             UUID templateId = UUID.randomUUID();
 
-            willThrow(new BusinessException(TournamentErrorCode.TEMPLATE_TEAM_MISMATCH))
+            willThrow(new BusinessException(TournamentErrorCode.ENTRY_TEMPLATE_NOT_FOUND))
                     .given(entryTemplateService).applyTemplate(
                             eq(ORG_ID), eq(TOURNAMENT_ID), eq(DIVISION_ID), eq(PARTICIPANT_ID),
                             any(), any());
@@ -319,8 +319,8 @@ class TournamentEntryMemberControllerIntegrationTest {
             mockMvc.perform(post(BASE_URL + "/apply-template")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("TOUR_028"));
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("TOUR_024"));
         }
     }
 }

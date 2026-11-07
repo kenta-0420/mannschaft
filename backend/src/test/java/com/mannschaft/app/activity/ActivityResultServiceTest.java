@@ -47,6 +47,8 @@ class ActivityResultServiceTest {
     @Mock private ActivityTemplateService templateService;
     @Mock private ActivityMapper activityMapper;
     @Mock private ObjectMapper objectMapper;
+    @Mock private jakarta.persistence.EntityManager entityManager;
+    @Mock private com.mannschaft.app.activity.service.ActivityScheduleSyncService scheduleSynchronization;
     @Mock private ContentVisibilityChecker contentVisibilityChecker;
     @Mock private com.mannschaft.app.activity.service.ActivityScopeAccessGuard scopeAccessGuard;
     /** CMP-028 Phase B: 可視レベル解決に用いる F00 メンバーシップ照会サービスのモック。 */
@@ -293,7 +295,7 @@ class ActivityResultServiceTest {
         @DisplayName("AC-9 正常系: DRAFT を publish すると PUBLISHED になる")
         void 公開_DRAFTからPUBLISHED() {
             ActivityResultEntity draft = ActivityResultEntity.builder()
-                    .scopeType(ActivityScopeType.TEAM).scopeId(SCOPE_ID).title("下書き")
+                    .scopeType(ActivityScopeType.TEAM).scopeId(SCOPE_ID).title("下書き").activityDate(LocalDate.now())
                     .status(ActivityStatus.DRAFT).createdBy(USER_ID).build();
             given(resultRepository.findById(ACTIVITY_ID)).willReturn(Optional.of(draft));
             given(resultRepository.save(any())).willAnswer(inv -> inv.getArgument(0));

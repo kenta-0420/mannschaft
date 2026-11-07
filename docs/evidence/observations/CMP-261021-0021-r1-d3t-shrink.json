@@ -1,0 +1,40 @@
+{
+  "head": "e2bca21996e3fa6d5066eee1ea2a1bb8b79b4c07",
+  "store": "backend/src/test/resources/archunit_store/296295dd-06cf-4f7b-bf82-315ba12ff501",
+  "current_sha256": "f0e1011668b8002e194ecf58d1408f160608968427a70bdb6875c3aa38aabad3",
+  "git_blob_sha1": "55e035aa86a0bfb902d08b75afef035060d07c8f",
+  "current_lines": 7099,
+  "proposed_lines": 7096,
+  "proposed_sha256": "c6bb18cd94374dded3d94abd7c12da78c15eed1ea94a9fb6cb7dbf7c7264fb3d",
+  "delete_only": [
+    {
+      "line": 1892,
+      "text": "@Transactional entry com.mannschaft.app.errorreport.service.ErrorReportService.createOrAggregate(com.mannschaft.app.errorreport.dto.ErrorReportRequest, java.lang.String) (domain 'errorreport') reaches other-domain repository com.mannschaft.app.auth.repository.UserRepository (domain 'auth') [D-3T]"
+    },
+    {
+      "line": 1893,
+      "text": "@Transactional entry com.mannschaft.app.errorreport.service.ErrorReportService.createOrAggregate(com.mannschaft.app.errorreport.dto.ErrorReportRequest, java.lang.String) (domain 'errorreport') reaches other-domain repository com.mannschaft.app.notification.repository.NotificationRepository (domain 'notification') [D-3T]"
+    },
+    {
+      "line": 1894,
+      "text": "@Transactional entry com.mannschaft.app.errorreport.service.ErrorReportService.createOrAggregate(com.mannschaft.app.errorreport.dto.ErrorReportRequest, java.lang.String) (domain 'errorreport') reaches other-domain repository com.mannschaft.app.role.repository.UserRoleRepository (domain 'role') [D-3T]"
+    }
+  ],
+  "constant": {
+    "path": "backend/src/test/java/com/mannschaft/app/common/architecture/ArchUnitFreezeStoreIntegrityTest.java",
+    "line": 893,
+    "name": "EXPECTED_LINES_CROSS_DOMAIN_TX_D3T",
+    "before": 7099,
+    "after": 7096
+  },
+  "ci": {
+    "run": 39615989767,
+    "head": "e2bca21996e3fa6d5066eee1ea2a1bb8b79b4c07",
+    "full_arch_pass": 37,
+    "full_arch_skip": 0,
+    "non_jst_job": 119277950497,
+    "d3t_xml_sha256": "20a6ec1cfa37b1fc43384fde27ef117a64094b8c17215b108d52a0987c12fc41",
+    "integrity_xml_sha256": "2031cff53ef86b5795b8bf46a2dcbf2af73871af7c190bf1d73d976ac34519b2"
+  },
+  "instruction": "ArchUnitFreezeStoreIntegrityTest explicitly requires reviewer verification of intended reduction and updating the expected count together with the reduced store."
+}

@@ -13,6 +13,7 @@
  */
 import dayjs from 'dayjs'
 import type { Dayjs } from 'dayjs'
+import { parseWallClockInTz } from '~/utils/wallClock'
 import type { CalendarEventItem } from '~/composables/useCalendarEvents'
 import { MINUTES_PER_DAY, dateToOrdinal, eventDayOccupancy, ordinalToDate, todayInTimezone } from '~/utils/calendarWeek'
 import type { GridPoint } from '~/composables/useGridRangeSelect'
@@ -411,7 +412,7 @@ function toUserTzMoment(dayIndex: number, minutes: number): Dayjs {
   const withinDay = minutes - dayCarry * MINUTES_PER_DAY
   const dateStr = dayCarry === 0 ? day.dateStr : ordinalToDate(day.ord + dayCarry)
   const timeStr = `${pad(Math.floor(withinDay / 60))}:${pad(withinDay % 60)}:00`
-  return dayjs.tz(`${dateStr}T${timeStr}`, userTimezone.value)
+  return parseWallClockInTz(`${dateStr}T${timeStr}`, userTimezone.value)
 }
 
 /**

@@ -1,5 +1,5 @@
 /**
- * チーム内告知（F02.8 告知ウィザード = BroadcastWizard）の実機 E2E。
+ * チームに告知を送る（F02.8 告知ウィザード = BroadcastWizard）の実機 E2E。
  *
  * このテストは API モックを使わない実機テストです。
  * バックエンド http://localhost:8080 / フロントエンド http://localhost:3000 が起動済みの状態で実行してください。
@@ -31,6 +31,7 @@
  */
 
 import { test, expect, type Page, type APIRequestContext } from '@playwright/test'
+import { loginViaApi } from '../fixtures/auth'
 import { waitForHydration } from '../helpers/wait'
 
 // ---------------------------------------------------------------------------
@@ -49,7 +50,7 @@ const TEAM_SLUG = 'fc-u-18'
 
 // UI 文字列（i18n ja/announcement.json・common.json と一致）
 const TXT = {
-  broadcastButton: 'チーム内告知',
+  broadcastButton: 'チームに告知を送る',
   submitButton: '告知を送る',
   success: '告知を送信しました',
   guideToggleTestId: 'broadcast-guide-toggle',
@@ -205,22 +206,7 @@ function findFeedItem(feed: FeedResponse | null, feedId: number): FeedItem | nul
 // ヘルパー: ログイン（UI 用・page.request 直叩きで確実に認証）
 // ---------------------------------------------------------------------------
 async function loginUi(page: Page, email: string, password: string): Promise<void> {
-  const loginRes = await page.request.post(`${BACKEND_URL}/api/v1/auth/login`, {
-    data: { email, password },
-  })
-  if (!loginRes.ok()) throw new Error(`UI ログイン失敗 (${email}): ${loginRes.status()}`)
-  const meRes = await page.request.get(`${BACKEND_URL}/api/v1/users/me`)
-  const me = (await meRes.json()).data as {
-    id: number; email: string; lastName: string; firstName: string
-    avatarUrl: string | null; systemRole: string | null; timezone: string | null
-  }
-  await page.goto(FRONTEND_URL)
-  await page.evaluate((user) => {
-    localStorage.setItem('currentUser', JSON.stringify(user))
-  }, {
-    id: me.id, email: me.email, fullName: `${me.lastName} ${me.firstName}`,
-    profileImageUrl: me.avatarUrl, systemRole: me.systemRole ?? undefined, timezone: me.timezone ?? undefined,
-  })
+  await loginViaApi(page, { email, password }, { apiBaseUrl: BACKEND_URL })
 }
 
 async function settle(page: Page): Promise<void> {
@@ -228,7 +214,7 @@ async function settle(page: Page): Promise<void> {
   await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
 }
 
-/** 告知ウィザードを開く（/teams/{slug} の「チーム内告知」ボタン）。
+/** 告知ウィザードを開く（/teams/{slug} の「チームに告知を送る」ボタン）。
  * ボタンは v-if="roleName && roleName!=='SUPPORTER'" のため、権限解決（/me/permissions）完了が前提。
  * チーム詳細ページは SSR が重く描画に時間がかかるため十分なタイムアウトを取る。 */
 async function openWizard(page: Page): Promise<void> {
@@ -241,7 +227,7 @@ async function openWizard(page: Page): Promise<void> {
 // ---------------------------------------------------------------------------
 // テスト本体（serial・共有状態を 1 つの afterAll でまとめて掃除）
 // ---------------------------------------------------------------------------
-test.describe('チーム内告知（F02.8 告知ウィザード）実機 E2E', () => {
+test.describe('チームに告知を送る（F02.8 告知ウィザード）実機 E2E', () => {
   test.describe.configure({ mode: 'serial' })
 
   let adminToken: string | null = null
@@ -672,7 +658,7 @@ test.describe('チーム内告知（F02.8 告知ウィザード）実機 E2E', (
     if (!frontendAlive) test.skip(true, 'フロントエンド未起動のためスキップ')
   }
 
-  test('ANNC-UI-001: MEMBER が /teams/1 で「チーム内告知」ボタン → ウィザード（Dialog）が開く', async ({ page }) => {
+  test('ANNC-UI-001: MEMBER が /teams/1 で「チームに告知を送る」ボタン → ウィザード（Dialog）が開く', async ({ page }) => {
     ensureUiReady()
     await loginUi(page, E2E_USER.email, E2E_USER.password)
     await page.goto(`${FRONTEND_URL}/teams/${TEAM_SLUG}`)
@@ -682,21 +668,36 @@ test.describe('チーム内告知（F02.8 告知ウィザード）実機 E2E', (
     await expect(page.locator('#target_role_MEMBERS_AND_ABOVE')).toBeAttached({ timeout: 10_000 })
   })
 
-  test('ANNC-UI-002: 使い方ガイドのトグルで内容が展開表示される', async ({ page }) => {
+  test('ANNC-UI-002: 使い方ガイドをモーダルで開閉できる', async ({ page }) => {
     ensureUiReady()
     await loginUi(page, E2E_USER.email, E2E_USER.password)
     await page.goto(`${FRONTEND_URL}/teams/${TEAM_SLUG}`)
     await settle(page)
     await openWizard(page)
+    await page.setViewportSize({ width: 390, height: 844 })
 
-    // グリッド折りたたみ（grid-rows-[0fr]＋opacity-0）は Playwright 上は visible 判定になるため、
-    // 展開状態はトグルの aria-expanded で判定する（描画上の真の状態シグナル）。
+    await page.getByRole('dialog').getByRole('button', { name: TXT.next }).click()
+
     const toggle = page.getByTestId(TXT.guideToggleTestId)
-    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    const guide = page.getByTestId('broadcast-guide-modal')
+    await expect(guide).toBeHidden()
     await toggle.click()
-    await expect(toggle).toHaveAttribute('aria-expanded', 'true')
-    // 展開後はガイド見出しが表示される
-    await expect(page.getByText(TXT.guideAudienceTitle)).toBeVisible({ timeout: 5_000 })
+    await expect(guide).toBeVisible()
+    await expect(guide.getByText(TXT.guideAudienceTitle)).toBeVisible({ timeout: 5_000 })
+    const close = guide.locator('.p-dialog-footer').getByRole('button', { name: '閉じる', exact: true })
+    for (const { name, button } of [
+      { name: '使い方を開く', button: toggle },
+      { name: 'ガイドを閉じる', button: close },
+      { name: 'ガイド右上の閉じる', button: guide.locator('.p-dialog-header-actions button') },
+    ]) {
+      const box = await button.boundingBox()
+      expect(box, name).not.toBeNull()
+      expect(box!.width, `${name}の幅`).toBeGreaterThanOrEqual(44)
+      expect(box!.height, `${name}の高さ`).toBeGreaterThanOrEqual(44)
+    }
+    await close.click()
+    await expect(guide).toBeHidden()
+    await expect(toggle).toBeVisible()
   })
 
   test('ANNC-UI-005: MEMBER の Step3 では優先度セレクトが表示されない', async ({ page }) => {
@@ -712,8 +713,7 @@ test.describe('チーム内告知（F02.8 告知ウィザード）実機 E2E', (
     // Step2 → タイムライン選択 → 次へ
     await dialog.getByRole('button', { name: TXT.channelTimeline }).click()
     await dialog.getByRole('button', { name: TXT.next }).click()
-    // Step3 到達確認（送信ボタンが出る）。使い方ガイドは常時 DOM 上に存在するため、
-    // フォーム要素は <label> 要素に限定して判定する（ガイドは h2/li/p のみで label を持たない）。
+    // Step3 到達確認（送信ボタンが出る）。フォームのラベルを確認する。
     await expect(dialog.getByRole('button', { name: TXT.submitButton })).toBeVisible({ timeout: 10_000 })
     await expect(dialog.locator('label', { hasText: TXT.expiresLabel })).toBeVisible()
     // 優先度セレクトの label は ADMIN のみ描画される（MEMBER は 0 件）

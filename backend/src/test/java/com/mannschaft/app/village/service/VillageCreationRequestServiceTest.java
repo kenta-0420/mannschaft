@@ -1,7 +1,8 @@
 package com.mannschaft.app.village.service;
 
+import com.mannschaft.app.village.repository.VillageUserAdmissionLockRepository;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.dto.VillageCreationRequestCreateRequest;
 import com.mannschaft.app.village.dto.VillageCreationRequestResponse;
@@ -20,8 +21,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import jakarta.persistence.EntityManager;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -63,15 +64,19 @@ import static org.mockito.Mockito.verify;
 class VillageCreationRequestServiceTest {
 
     @Mock
+    private VillageUserAdmissionLockRepository admissionLockRepository;
+    @Mock
+    private EntityManager entityManager;
+
+    @Mock
     private VillageCreationRequestRepository requestRepository;
     @Mock
     private VillageRepository villageRepository;
     @Mock
     private VillageMembershipRepository membershipRepository;
     @Mock
-    private UserRoleRepository userRoleRepository;
+    private AccessControlService accessControlService;
 
-    @InjectMocks
     private VillageCreationRequestService service;
 
     private static final Long REQUESTER_ID = 100L;
@@ -90,8 +95,15 @@ class VillageCreationRequestServiceTest {
     }
 
     @BeforeEach
+    void wireRealAdmissionSlots() {
+        VillageMembershipSlotService slots = new VillageMembershipSlotService(admissionLockRepository, membershipRepository, new VillageParticipationLimitProvider(null));
+        service = new VillageCreationRequestService(requestRepository, villageRepository, membershipRepository, slots, entityManager, accessControlService);
+    }
+
+    @BeforeEach
     void setup() {
-        // テストごとに必要分だけ stubbing
+        org.mockito.Mockito.lenient().when(requestRepository.findAdmissionRequesterId(any()))
+                .thenReturn(Optional.of(REQUESTER_ID));
     }
 
     // ---------------------------------------------------------------
@@ -217,7 +229,7 @@ class VillageCreationRequestServiceTest {
                 .build();
         ReflectionTestUtils.setField(pending, "id", requestId);
 
-        given(requestRepository.findById(requestId)).willReturn(Optional.of(pending));
+        given(requestRepository.findByIdForUpdate(requestId)).willReturn(Optional.of(pending));
         given(villageRepository.existsBySlug("casual-baseball")).willReturn(false);
         given(villageRepository.save(any())).willAnswer(inv -> {
             VillageEntity v = inv.getArgument(0);
@@ -281,7 +293,7 @@ class VillageCreationRequestServiceTest {
                 .build();
         ReflectionTestUtils.setField(pending, "id", requestId);
 
-        given(requestRepository.findById(requestId)).willReturn(Optional.of(pending));
+        given(requestRepository.findByIdForUpdate(requestId)).willReturn(Optional.of(pending));
         given(requestRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         VillageCreationRequestResponse res = service.reject(
@@ -307,7 +319,7 @@ class VillageCreationRequestServiceTest {
                 .status(VillageRequestStatus.APPROVED)
                 .build();
         ReflectionTestUtils.setField(approved, "id", requestId);
-        given(requestRepository.findById(requestId)).willReturn(Optional.of(approved));
+        given(requestRepository.findByIdForUpdate(requestId)).willReturn(Optional.of(approved));
 
         assertThatThrownBy(() -> service.approve(requestId, ADMIN_ID,
                 new VillageCreationRequestReviewRequest("再審査")))
@@ -330,7 +342,7 @@ class VillageCreationRequestServiceTest {
                 .status(VillageRequestStatus.REJECTED)
                 .build();
         ReflectionTestUtils.setField(rejected, "id", requestId);
-        given(requestRepository.findById(requestId)).willReturn(Optional.of(rejected));
+        given(requestRepository.findByIdForUpdate(requestId)).willReturn(Optional.of(rejected));
 
         assertThatThrownBy(() -> service.approve(requestId, ADMIN_ID,
                 new VillageCreationRequestReviewRequest("コメ")))
@@ -355,7 +367,7 @@ class VillageCreationRequestServiceTest {
                 .build();
         ReflectionTestUtils.setField(pending, "id", requestId);
 
-        given(requestRepository.findById(requestId)).willReturn(Optional.of(pending));
+        given(requestRepository.findByIdForUpdate(requestId)).willReturn(Optional.of(pending));
         given(requestRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         VillageCreationRequestResponse res = service.withdraw(requestId, REQUESTER_ID);
@@ -382,8 +394,8 @@ class VillageCreationRequestServiceTest {
         ReflectionTestUtils.setField(pending, "id", requestId);
 
         Long otherUserId = 200L;
-        given(requestRepository.findById(requestId)).willReturn(Optional.of(pending));
-        given(userRoleRepository.existsSystemAdminByUserId(otherUserId)).willReturn(0L);
+        given(requestRepository.findByIdForUpdate(requestId)).willReturn(Optional.of(pending));
+        given(accessControlService.isSystemAdmin(otherUserId)).willReturn(false);
 
         assertThatThrownBy(() -> service.withdraw(requestId, otherUserId))
                 .isInstanceOf(BusinessException.class);
@@ -401,7 +413,7 @@ class VillageCreationRequestServiceTest {
                 "公式村", "official-slug", null, "p",
                 OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(5),
                 VillageType.OFFICIAL, null);
-        given(userRoleRepository.existsSystemAdminByUserId(REQUESTER_ID)).willReturn(0L);
+        given(accessControlService.isSystemAdmin(REQUESTER_ID)).willReturn(false);
 
         assertThatThrownBy(() -> service.createRequest(REQUESTER_ID, req))
                 .isInstanceOf(BusinessException.class)

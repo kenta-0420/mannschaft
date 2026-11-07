@@ -9,6 +9,8 @@ import com.mannschaft.app.village.dto.MembershipListResponse;
 import com.mannschaft.app.village.dto.MembershipResponse;
 import com.mannschaft.app.village.dto.RoleChangeRequest;
 import com.mannschaft.app.village.service.VillageMembershipService;
+import com.mannschaft.app.village.service.VillageSubjectAuthorization;
+import com.mannschaft.app.village.service.VillageSubjectAuthorizationGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -48,6 +50,8 @@ import java.util.UUID;
 public class VillageMembershipController {
 
     private final VillageMembershipService membershipService;
+    /** 主体の代表権限を取引の外で判定する（村の取引を role ドメインへ越境させないため。D-3T）。 */
+    private final VillageSubjectAuthorizationGuard subjectAuthorizationGuard;
 
     @PostMapping
     @Operation(summary = "村に参加する（FREE 村のみ即時参加可）")
@@ -55,7 +59,9 @@ public class VillageMembershipController {
             @PathVariable("villageId") UUID villageId,
             @Valid @RequestBody MembershipJoinRequest request) {
         Long actorUserId = SecurityUtils.getCurrentUserId();
-        MembershipResponse response = membershipService.join(villageId, actorUserId, request);
+        VillageSubjectAuthorization authorization =
+                subjectAuthorizationGuard.judge(actorUserId, request.subjectType(), request.subjectId());
+        MembershipResponse response = membershipService.join(villageId, actorUserId, request, authorization);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -65,7 +71,9 @@ public class VillageMembershipController {
             @PathVariable("villageId") UUID villageId,
             @PathVariable("membershipId") UUID membershipId) {
         Long actorUserId = SecurityUtils.getCurrentUserId();
-        membershipService.leave(villageId, membershipId, actorUserId);
+        VillageSubjectAuthorization authorization =
+                subjectAuthorizationGuard.judgeMembership(actorUserId, membershipId);
+        membershipService.leave(villageId, membershipId, actorUserId, authorization);
         return ResponseEntity.noContent().build();
     }
 

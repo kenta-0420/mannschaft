@@ -23,6 +23,12 @@ public interface ScheduleAttendanceRepository extends JpaRepository<ScheduleAtte
      */
     Optional<ScheduleAttendanceEntity> findByScheduleIdAndUserId(Long scheduleId, Long userId);
 
+    /** 回答更新の初load前に現在行をロックする。読取APIのqueryは変更しない。 */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT a FROM ScheduleAttendanceEntity a WHERE a.scheduleId=:scheduleId AND a.userId=:userId")
+    Optional<ScheduleAttendanceEntity> findForResponseUpdate(@Param("scheduleId") Long scheduleId,
+            @Param("userId") Long userId);
+
     /**
      * スケジュールIDで出欠一覧を取得する。
      */
@@ -125,4 +131,28 @@ public interface ScheduleAttendanceRepository extends JpaRepository<ScheduleAtte
             @Param("organizationId") Long organizationId,
             @Param("userId") Long userId,
             @Param("now") LocalDateTime now);
+
+    /** 時刻を絞らない保守的候補。最終取得の現在時刻・順序・認可は既存経路を使う。 */
+    @Query("""
+            SELECT DISTINCT s.teamId FROM ScheduleAttendanceEntity a
+            JOIN ScheduleEntity s ON s.id = a.scheduleId
+            WHERE a.userId = :userId
+              AND a.status = com.mannschaft.app.schedule.AttendanceStatus.UNDECIDED
+              AND a.respondedAt IS NULL
+              AND s.teamId IN :scopeIds
+              AND s.attendanceRequired = true
+            """)
+    List<Long> findUnansweredTeamScopeIds(@Param("scopeIds") List<Long> scopeIds, @Param("userId") Long userId);
+
+    @Query("""
+            SELECT DISTINCT s.organizationId FROM ScheduleAttendanceEntity a
+            JOIN ScheduleEntity s ON s.id = a.scheduleId
+            WHERE a.userId = :userId
+              AND a.status = com.mannschaft.app.schedule.AttendanceStatus.UNDECIDED
+              AND a.respondedAt IS NULL
+              AND s.organizationId IN :scopeIds
+              AND s.attendanceRequired = true
+            """)
+    List<Long> findUnansweredOrganizationScopeIds(@Param("scopeIds") List<Long> scopeIds,
+            @Param("userId") Long userId);
 }

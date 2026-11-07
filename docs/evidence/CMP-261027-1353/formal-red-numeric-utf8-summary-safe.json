@@ -1,0 +1,50 @@
+[
+  {
+    "evidenceDir": "CMP-261027-1353-modal-red1",
+    "total": 58,
+    "pass": 50,
+    "fail": 8,
+    "skip": 0,
+    "failedAssertions": 8,
+    "failedSuitesWithoutAssertions": 0,
+    "runtimeErrorSuites": null,
+    "allFailedAssertionsHaveAssertionError": true,
+    "newTestExecuted": false
+  },
+  {
+    "evidenceDir": "CMP-261027-1353-theme-red1",
+    "total": 1,
+    "pass": 0,
+    "fail": 1,
+    "skip": 0,
+    "failedAssertions": 1,
+    "failedSuitesWithoutAssertions": 0,
+    "runtimeErrorSuites": null,
+    "allFailedAssertionsHaveAssertionError": true,
+    "newTestExecuted": false
+  },
+  {
+    "evidenceDir": "CMP-261027-1353-carousel-red1",
+    "total": 11,
+    "pass": 2,
+    "fail": 9,
+    "skip": 0,
+    "failedAssertions": 9,
+    "failedSuitesWithoutAssertions": 0,
+    "runtimeErrorSuites": null,
+    "allFailedAssertionsHaveAssertionError": true,
+    "newTestExecuted": false
+  },
+  {
+    "evidenceDir": "CMP-261027-1353-timeline-access-red2",
+    "total": 12,
+    "pass": 0,
+    "fail": 12,
+    "skip": 0,
+    "failedAssertions": 12,
+    "failedSuitesWithoutAssertions": 0,
+    "runtimeErrorSuites": null,
+    "allFailedAssertionsHaveAssertionError": true,
+    "newTestExecuted": false
+  }
+]

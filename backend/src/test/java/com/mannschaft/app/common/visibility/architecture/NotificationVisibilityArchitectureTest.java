@@ -1,6 +1,8 @@
 package com.mannschaft.app.common.visibility.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClass;
+import com.mannschaft.app.common.architecture.ArchUnitTestTag;
+import com.tngtech.archunit.junit.ArchTag;
 import com.tngtech.archunit.core.domain.JavaMethodCall;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
@@ -48,6 +50,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
     packages = "com.mannschaft.app",
     importOptions = ImportOption.DoNotIncludeTests.class
 )
+@ArchTag(ArchUnitTestTag.ARCHUNIT)
 class NotificationVisibilityArchitectureTest {
 
     /** 本基盤で対象とする {@code NotificationRepository} の完全修飾名. */

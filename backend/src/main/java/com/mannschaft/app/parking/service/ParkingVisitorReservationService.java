@@ -88,6 +88,8 @@ public class ParkingVisitorReservationService {
     @Transactional
     public VisitorReservationResponse create(String scopeType, Long scopeId, Long userId,
                                               CreateVisitorReservationRequest request) {
+        ParkingSpaceEntity space = spaceRepository.findByIdAndScopeTypeAndScopeId(request.getSpaceId(), scopeType, scopeId)
+                .orElseThrow(() -> new BusinessException(ParkingErrorCode.SPACE_NOT_FOUND));
         ParkingSettingsEntity settings = settingsRepository.findByScopeTypeAndScopeId(scopeType, scopeId)
                 .orElseGet(() -> ParkingSettingsEntity.builder().scopeType(scopeType).scopeId(scopeId).build());
 
@@ -122,7 +124,7 @@ public class ParkingVisitorReservationService {
                 : VisitorReservationStatus.CONFIRMED;
 
         ParkingVisitorReservationEntity entity = ParkingVisitorReservationEntity.builder()
-                .spaceId(request.getSpaceId())
+                .spaceId(space.getId())
                 .reservedBy(userId)
                 .visitorName(request.getVisitorName())
                 .visitorPlateNumber(request.getVisitorPlateNumber())

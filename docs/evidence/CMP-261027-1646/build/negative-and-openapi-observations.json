@@ -1,0 +1,26 @@
+{
+  "sourceHead": "a8b7d8b999973d2c138ffecce2fbe2233f6bb09a",
+  "archZero": {
+    "exitNonzero": true,
+    "expectedReason": "ArchUnit テストが 1 件も実行されなかった"
+  },
+  "freezeMissing": {
+    "exitNonzero": true,
+    "expectedReason": "凍結番人class欠損",
+    "stacktraceRequired": true,
+    "classBytesRestored": true
+  },
+  "controlledArchFailure": {
+    "exitNonzero": true,
+    "expectedReason": "L1B controlled archUnit task failure",
+    "freezeTaskExecuted": true,
+    "condition": "test --continue; not a claim for no-continue"
+  },
+  "openapi": {
+    "exitCode": 0,
+    "beforeAfterBytesEqual": true,
+    "bytes": 6378658,
+    "sha256": "03ebfc14e16829cb1866e4c8d17aa3140e9ad1bd3dab047f45a6b069db9a34a0",
+    "samePort": 18072
+  }
+}

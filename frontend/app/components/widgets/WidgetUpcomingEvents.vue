@@ -133,7 +133,7 @@ onMounted(load)
             <span class="text-xs text-surface-500">{{ event.scope_name }}</span>
           </div>
         </div>
-        <Tag v-if="event.all_day" value="終日" severity="secondary" rounded />
+        <Tag v-if="event.all_day" :value="t('dashboard.widgets.common.allDay')" severity="secondary" rounded />
       </div>
       <div class="flex justify-end pt-1">
         <NuxtLink to="/calendar" class="text-sm text-primary hover:underline">

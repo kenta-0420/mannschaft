@@ -2,6 +2,7 @@ package com.mannschaft.app.gdpr.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.mannschaft.app.gdpr.dto.PrefetchedPersonalData;
 import com.mannschaft.app.actionmemo.entity.ActionMemoEntity;
 import com.mannschaft.app.actionmemo.entity.ActionMemoTagEntity;
 import com.mannschaft.app.actionmemo.entity.ActionMemoTagLinkEntity;
@@ -12,7 +13,6 @@ import com.mannschaft.app.actionmemo.repository.ActionMemoTagRepository;
 import com.mannschaft.app.actionmemo.repository.UserActionMemoSettingsRepository;
 import com.mannschaft.app.auth.entity.OAuthAccountEntity;
 import com.mannschaft.app.auth.entity.UserEntity;
-import com.mannschaft.app.auth.repository.AuditLogRepository;
 import com.mannschaft.app.auth.repository.OAuthAccountRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
@@ -42,6 +42,7 @@ import com.mannschaft.app.pointcard.repository.PointCardGroupItemRepository;
 import com.mannschaft.app.pointcard.repository.PointCardGroupRepository;
 import com.mannschaft.app.pointcard.repository.PointCardUserSettingsRepository;
 import com.mannschaft.app.pointcard.repository.UserPointCardRepository;
+import com.mannschaft.app.ranch.service.RanchPersonalDataExportService;
 import com.mannschaft.app.resume.entity.ResumeCareerEntity;
 import com.mannschaft.app.resume.entity.ResumeEducationEntity;
 import com.mannschaft.app.resume.entity.ResumeEntity;
@@ -85,7 +86,6 @@ public class PersonalDataCollector {
     private final MemberPaymentRepository memberPaymentRepository;
     private final ChartRecordRepository chartRecordRepository;
     private final TimelinePostRepository timelinePostRepository;
-    private final AuditLogRepository auditLogRepository;
     private final NotificationRepository notificationRepository;
     private final ActionMemoRepository actionMemoRepository;
     private final ActionMemoTagRepository actionMemoTagRepository;
@@ -118,6 +118,7 @@ public class PersonalDataCollector {
     // 追加しない。ArchUnit D-1（CrossDomainEntityImportArchTest）に抵触しないよう、
     // ScheduleCommentEntity を直接参照せず ScheduleCommentService 経由で DTO を受け取る。
     private final ScheduleCommentService scheduleCommentService;
+    private final RanchPersonalDataExportService ranchPersonalDataExportService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -156,7 +157,8 @@ public class PersonalDataCollector {
             // AC-35 は collect() の戻り Map のキーが category 文字列そのものであることを検証するため
             // （他カテゴリの慣例は snake_case ファイル名だが、本カテゴリはキー＝ファイル名を一致させる）、
             // ファイル名も category と同一文字列にする。
-            Map.entry("scheduleComments", "scheduleComments")
+            Map.entry("scheduleComments", "scheduleComments"),
+            Map.entry("ranch", "ranch.json")
     );
 
     /**
@@ -167,13 +169,31 @@ public class PersonalDataCollector {
     }
 
     /**
-     * 指定ユーザーの個人データをカテゴリ別に収集する。
+     * 指定ユーザーの個人データをカテゴリ別に収集する（事前取得なし）。
+     *
+     * <p>事前取得の要るカテゴリ（{@code memberships}）を対象に含めると（{@code categories} が null・空の全カテゴリを含む）、
+     * {@link IllegalStateException} で失敗する。そのカテゴリを収集するときは
+     * {@link #collect(Long, Set, PrefetchedPersonalData)} に事前取得の結果を渡すこと。</p>
      *
      * @param userId     対象ユーザーID
      * @param categories 収集対象カテゴリ（nullまたは空=全カテゴリ）
      * @return ファイル名 → JSON文字列のマップ
+     * @throws IllegalStateException 事前取得の要るカテゴリが対象に含まれるとき
      */
     public Map<String, String> collect(Long userId, Set<String> categories) {
+        return collect(userId, categories, PrefetchedPersonalData.none());
+    }
+
+    /**
+     * 指定ユーザーの個人データをカテゴリ別に収集する。エクスポートのトランザクションの外で事前取得した
+     * 他ドメインの個人データ（{@link PrefetchedPersonalData}。{@link PersonalDataPrefetcher}）を合わせて書き出す。
+     *
+     * @param userId     対象ユーザーID
+     * @param categories 収集対象カテゴリ（nullまたは空=全カテゴリ）
+     * @param prefetched 事前取得した個人データ
+     * @return ファイル名 → JSON文字列のマップ
+     */
+    public Map<String, String> collect(Long userId, Set<String> categories, PrefetchedPersonalData prefetched) {
         Set<String> targets = (categories == null || categories.isEmpty())
                 ? CATEGORY_FILES.keySet()
                 : categories;
@@ -182,9 +202,15 @@ public class PersonalDataCollector {
         for (String category : targets) {
             String fileName = CATEGORY_FILES.get(category);
             if (fileName == null) continue;
+            if (Set.of(PersonalDataPrefetcher.MEMBERSHIPS, PersonalDataPrefetcher.CHAT_MESSAGES,
+                    PersonalDataPrefetcher.AUDIT_LOGS).contains(category)) {
+                // 事前取得の欠落は「0 件」ではなく収集の失敗。"[]" に畳むと実データ 0 件と区別できず、欠けた ZIP が
+                // COMPLETED になる。握らずに伝播させ、エクスポートを FAILED にする（DataExportService#processExportAsync）
+                data.put(fileName, collectPrefetched(category, prefetched));
+                continue;
+            }
             try {
-                String json = collectByCategory(userId, category);
-                data.put(fileName, json);
+                data.put(fileName, collectByCategory(userId, category));
             } catch (Exception e) {
                 log.warn("カテゴリ収集失敗: category={}, userId={}", category, userId, e);
                 data.put(fileName, "[]");
@@ -197,13 +223,10 @@ public class PersonalDataCollector {
         return switch (category) {
             case "account" -> collectAccount(userId);
             case "oauth" -> collectOAuth(userId);
-            case "memberships" -> collectMemberships(userId);
             case "profiles" -> collectProfiles(userId);
             case "payments" -> collectPayments(userId);
             case "charts" -> collectCharts(userId);
-            case "chat_messages" -> collectChatMessages(userId);
             case "timeline" -> collectTimeline(userId);
-            case "audit_logs" -> collectAuditLogs(userId);
             case "notifications" -> collectNotifications(userId);
             case "action_memos" -> collectActionMemos(userId);
             case "error_reports" -> collectErrorReports(userId);
@@ -214,6 +237,7 @@ public class PersonalDataCollector {
             case "resumes" -> collectResumes(userId);
             case "inbox" -> collectInbox(userId);
             case "scheduleComments" -> collectScheduleComments(userId);
+            case "ranch" -> ranchPersonalDataExportService.exportUser(userId);
             default -> "[]";
         };
     }
@@ -492,10 +516,22 @@ public class PersonalDataCollector {
         }).toList());
     }
 
-    private String collectMemberships(Long userId) throws Exception {
-        // team_org_membershipsはTeamOrgMembershipEntityであり、userId検索メソッドが存在しない
-        log.warn("リポジトリ未実装: category=memberships (userId単独検索メソッドなし)");
-        return "[]";
+    private String collectPrefetched(String category, PrefetchedPersonalData prefetched) {
+        // ドメイン内の読取 TX で得た値だけを書き出す。欠落・直列化失敗を 0 件へ変えない（D-3T）。
+        List<Map<String, Object>> values = prefetched == null ? null : switch (category) {
+            case PersonalDataPrefetcher.MEMBERSHIPS -> prefetched.teamOrgMemberships();
+            case PersonalDataPrefetcher.CHAT_MESSAGES -> prefetched.chatMessages();
+            case PersonalDataPrefetcher.AUDIT_LOGS -> prefetched.auditLogs();
+            default -> throw new IllegalArgumentException("事前取得対象外のカテゴリ: " + category);
+        };
+        if (values == null) {
+            throw new IllegalStateException(category + " は PersonalDataPrefetcher による事前取得が必要");
+        }
+        try {
+            return OBJECT_MAPPER.writeValueAsString(values);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalStateException(category + " の書き出しに失敗した", e);
+        }
     }
 
     private String collectProfiles(Long userId) throws Exception {
@@ -514,21 +550,9 @@ public class PersonalDataCollector {
                         userId, Pageable.unpaged()).getContent());
     }
 
-    private String collectChatMessages(Long userId) throws Exception {
-        // ChatMessageRepositoryはchannelId検索のみ対応、userId検索メソッドが存在しない
-        log.warn("リポジトリ未実装: category=chat_messages (userId検索メソッドなし)");
-        return "[]";
-    }
-
     private String collectTimeline(Long userId) throws Exception {
         return OBJECT_MAPPER.writeValueAsString(
                 timelinePostRepository.findByUserIdOrderByCreatedAtDesc(userId, Pageable.unpaged()));
-    }
-
-    private String collectAuditLogs(Long userId) throws Exception {
-        // AuditLogRepositoryはJpaRepositoryのみ継承、userId検索メソッドが存在しない
-        log.warn("リポジトリ未実装: category=audit_logs (userId検索メソッドなし)");
-        return "[]";
     }
 
     private String collectNotifications(Long userId) throws Exception {

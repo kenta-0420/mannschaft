@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * Google カレンダー Webhook チャンネル管理エンティティ。
@@ -33,6 +34,7 @@ public class GoogleCalendarWebhookChannelEntity extends UuidV7Entity {
     @Column(name = "resource_id", nullable = false, length = 255)
     private String resourceId;
 
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Column(name = "channel_token", nullable = false, length = 64)
     private String channelToken;
 

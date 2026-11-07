@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="com.mannschaft.app.common.architecture.ArchUnitFreezeStoreIntegrityTest" tests="2" skipped="0" failures="0" errors="0" time="0.667"><testcase name="stored.rulesのルール説明→ストアファイルUUID対応がずれていない（UUID取り違え検知）" classname="com.mannschaft.app.common.architecture.ArchUnitFreezeStoreIntegrityTest" time="0.136" /><testcase name="七つの凍結ストアは上限以内で重複・整列崩れ・形式不正がない" classname="com.mannschaft.app.common.architecture.ArchUnitFreezeStoreIntegrityTest" time="0.515" /></testsuite>

@@ -1,0 +1,25 @@
+# TEST_ONLY配送/P2測定候補
+
+測定専用contextの新2testfilesだけを追加する。既P>=4共有試験・製品コードは変更しない。固定基準6d0c29122d6385a92009a5dbd54fecff275a459f、候補未commit/未compile/未実行。実MySQLは既AbstractMySqlIntegrationTestのown Testcontainers、アプリruntime DB06へ接続しない。
+
+## 再利用と限界
+
+RanchDevelopmentPolicyITのTEST_ONLY登録・DEV_ACTIVITY_UI政策・本人限定後片付けを参照。四源fixtureはprivate helperなので継承/全体複製しない。Timeline/Blog/Schedule/Reflectionの既TransportRepository.insertQualifiedを合成transport前提に利用する。TL/Blogは実fingerprint serviceを使用、耐久witness/outbox受付は既repositoryによる。手書きINSERT/モック追加0。本体投稿・公開・回答・想起完了を作っていないのでnativeQualificationProven=false、実UI/本体資格証拠ではない。
+
+P2 maximum=2/minIdle=0/replicaOFF/connectionTimeout3秒、schedulerOFF/4source queueOFF、test+ranch-isolated。暫定配送10/30/3/1/60のmin=max一点、TEST_ONLY_NOT_MEASURED。正式master/resource承認を登録せずDEV fixture gateを維持。空政策/空source outbox条件が不成立なら拒否し、他fixtureを消去しない。
+
+## 実宣言method
+
+- RanchDeliveryPoolTwoMeasurementIT#fourRealSourcesHaveBoundedDeliveryTimingAndOneFiniteWeeklyCap: warmup2+測定12round、各round4源のreal drain/ACKをassert。総56events、policy globalcap5、ledger5。AspectのLEASE/CONSUMER/WRITER/ACK件数も全4源で要求し、観測不発を成功にしない。
+- #savedDecisionSurvivesLostAckAndRealLeaseReclaimWithoutSecondCredit: 四源それぞれ実consume commit後ACKを送らず、自分のtoken行だけ期限CASを過去にする。古tokenACK拒否、新lease/replay同結果/decision数・wallet不変、新ACK成功。実ACK DB障害を注入した証拠とは区別。
+- #fullAdmissionDefersWithoutAttemptAndPermitReturnsAfterRealPoolTimeout: authだけ1接続を保持し受付G=1を飽和、real drainはsource取引を残る1接続で完了しconsumer受付をDEFER。attempt0/decision0/balance0/overflow callback0。別probeでauth1+独立TX1を実保持し第三接続要求が3秒timeout、意図的callback例外rollback後のpermit復帰、四源retry再配送ACKをassert。
+
+## 観測と出力
+
+test-only Aspectは実Beanを差替えずメソッド時間と入口TXフラグだけ観測。advisor順序/connectionIDはNOT_OBSERVED。追加観測SQL/接続0。Hikari active/waiterを1msでsampleしmax2をassert、最大2接続構成はsamplingで第三TX不在を完全証明したものとは呼ばない。第三接続timeoutはPOOL_PROBE/intentionalThirdConnectionTimeoutsに分離。通常四源drainはfailed/retried/deferred0およびAspect failed0をassert。
+
+COMMIT_TO_CONFIRMED_ACKは合成transport TX終了からreal drain完了後freshDB ACK再読までの上限遅延。ACK advice内返却をDB commit時刻と仮定しない。各source測定12sampleの分位は少数負荷の観測値で本番p95保証0。失敗sampleを分位から隠さない。意図的容量DEFERのconsumer例外sampleを通常成功latencyへ混ぜずcase別出力。
+
+固定出力backend/build/reports/ranch-delivery-measurement/{four_sources,ack_reclaim,defer_admission}.json。既出力があれば上書き拒否、再測定はfresh owned build/proofを用意。本文/ユーザーID/token/key/credential/SQL/例外本文出力0。安全enum/件数/nanos/TX bool/gauge/公開JVM情報だけ。RANCH_MEASUREMENT_SOURCE_HEADは40hexだけを受理し未提供はNOT_PROVIDED。root runnerがactualHEAD/JARではなくTest実classbytes・test結果・MySQL/driver/CPU/RAM・終了code/cleanup/artifactSHAを外側manifestへ固定する。ケースJSONのみで採択しない。
+
+Docker unavailableなら既EnabledIfによりJUnit skipになり得る。skipは測定済み/greenでなく欠落。rootは3method全実行/0failure/0skipとactualproofを要求する。measuredVersion/adoptedRangesは常にnull、fullGreen/native/UI/SLO=false。測定artifact/head/条件をrootが照合してからmemoryへ実測版一点範囲を別採択。毒payload/全poison matrix・全4nativeUI・worker scheduler・広い配送範囲・1000万user SLOはこの候補の証拠外。

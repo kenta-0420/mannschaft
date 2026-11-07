@@ -1,0 +1,143 @@
+{
+  "probe": "nuxt-link-prefetch-hook-only",
+  "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+  "bootstrapShaVerified": true,
+  "manifestShaVerified": true,
+  "businessMutations": 0,
+  "trace": false,
+  "video": false,
+  "routeValuesSaved": false,
+  "rawDOMSaved": false,
+  "rawStacksSaved": false,
+  "networkRequestCountMeasured": false,
+  "routeSpecificChunkAcquisitionProven": false,
+  "queueCausalityProven": false,
+  "readyMeaning": "CSS rendered personal calendar with month heading, 42 cells, and no skeleton; viewport intersection and paint are not guaranteed; 50ms sampling is not a performance comparison",
+  "publicShape": {
+    "vueAppAvailable": true,
+    "nuxtAppAvailable": true,
+    "hookFunction": true,
+    "removeHookFunction": true,
+    "probeSlotUnused": true
+  },
+  "hookInstalled": true,
+  "observation": {
+    "initialCalendarDOM": true,
+    "initialPersonalPanel": true,
+    "stayedDashboard": true,
+    "visitedDestinationCount": 2,
+    "visibleNavDestinationCount": 15,
+    "visibleGlobalNavDestinationCount": 0,
+    "visibleGlobalNavUnvisitedBeforeInitialDOM": {
+      "hookCount": 0,
+      "uniqueDestinationCount": 0,
+      "visibleNavMatchHookCount": 0,
+      "unvisitedDestinationHookCount": 0,
+      "firstHookMs": null,
+      "lastHookMs": null
+    },
+    "postDOMObservationMs": 1118,
+    "all": {
+      "hookCount": 5,
+      "uniqueDestinationCount": 5,
+      "visibleNavMatchHookCount": 1,
+      "unvisitedDestinationHookCount": 5,
+      "firstHookMs": 2070,
+      "lastHookMs": 7962
+    },
+    "beforeInitialDOM": {
+      "hookCount": 5,
+      "uniqueDestinationCount": 5,
+      "visibleNavMatchHookCount": 1,
+      "unvisitedDestinationHookCount": 5,
+      "firstHookMs": 2070,
+      "lastHookMs": 7962
+    },
+    "afterInitialDOM": {
+      "hookCount": 0,
+      "uniqueDestinationCount": 0,
+      "visibleNavMatchHookCount": 0,
+      "unvisitedDestinationHookCount": 0,
+      "firstHookMs": null,
+      "lastHookMs": null
+    },
+    "categories": [
+      {
+        "category": "current-dashboard",
+        "beforeInitialDOM": {
+          "hookCount": 0,
+          "uniqueDestinationCount": 0,
+          "visibleNavMatchHookCount": 0,
+          "unvisitedDestinationHookCount": 0,
+          "firstHookMs": null,
+          "lastHookMs": null
+        },
+        "afterInitialDOM": {
+          "hookCount": 0,
+          "uniqueDestinationCount": 0,
+          "visibleNavMatchHookCount": 0,
+          "unvisitedDestinationHookCount": 0,
+          "firstHookMs": null,
+          "lastHookMs": null
+        }
+      },
+      {
+        "category": "visible-nav-unvisited-route",
+        "beforeInitialDOM": {
+          "hookCount": 1,
+          "uniqueDestinationCount": 1,
+          "visibleNavMatchHookCount": 1,
+          "unvisitedDestinationHookCount": 1,
+          "firstHookMs": 2070,
+          "lastHookMs": 2070
+        },
+        "afterInitialDOM": {
+          "hookCount": 0,
+          "uniqueDestinationCount": 0,
+          "visibleNavMatchHookCount": 0,
+          "unvisitedDestinationHookCount": 0,
+          "firstHookMs": null,
+          "lastHookMs": null
+        }
+      },
+      {
+        "category": "other",
+        "beforeInitialDOM": {
+          "hookCount": 4,
+          "uniqueDestinationCount": 4,
+          "visibleNavMatchHookCount": 0,
+          "unvisitedDestinationHookCount": 4,
+          "firstHookMs": 4809,
+          "lastHookMs": 7962
+        },
+        "afterInitialDOM": {
+          "hookCount": 0,
+          "uniqueDestinationCount": 0,
+          "visibleNavMatchHookCount": 0,
+          "unvisitedDestinationHookCount": 0,
+          "firstHookMs": null,
+          "lastHookMs": null
+        }
+      }
+    ]
+  },
+  "failed": true,
+  "failurePhase": "safe-aggregate",
+  "errorClass": "precondition-or-driver",
+  "hookRemoved": true,
+  "session": {
+    "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+    "frontend200": true,
+    "frontendActual3011": true,
+    "apiHealth200": true,
+    "apiActual8080": true,
+    "publicRuntimeApiExpected": true,
+    "credentialsRead": true,
+    "loginDashboardReached": true,
+    "logoutStatus": 200,
+    "contextClosed": true,
+    "browserClosed": true,
+    "closed": true
+  },
+  "limitation": "Counts existing NuxtLink link:prefetch hook invocations only. The hook shares a Promise.all branch with preloadRouteComponents, but no network-request count, route-specific chunk acquisition, queue causality, or total-time comparison is established."
+}

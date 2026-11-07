@@ -1,5 +1,9 @@
 package com.mannschaft.app.social.controller;
 
+import com.mannschaft.app.role.service.FriendRequestSourceTeamQueryService;
+import com.mannschaft.app.social.service.TeamFriendRequestFacade;
+import org.springframework.context.annotation.Import;
+
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
@@ -11,7 +15,9 @@ import com.mannschaft.app.social.dto.FollowTeamResponse;
 import com.mannschaft.app.social.dto.PastForwardHandling;
 import com.mannschaft.app.social.dto.TeamFriendListResponse;
 import com.mannschaft.app.social.dto.TeamFriendView;
+import com.mannschaft.app.social.service.TeamFriendFollowBySlugService;
 import com.mannschaft.app.social.service.TeamFriendsService;
+import com.mannschaft.app.social.service.TeamFriendViewAccessGuard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -59,6 +65,7 @@ import com.mannschaft.app.common.security.AccessGuard;
  * </p>
  */
 @WebMvcTest(TeamFriendsController.class)
+@Import({TeamFriendRequestFacade.class, TeamFriendViewAccessGuard.class})
 @AutoConfigureMockMvc(addFilters = false)
 @DisplayName("TeamFriendsController 結合テスト")
 class TeamFriendsControllerTest {
@@ -71,7 +78,20 @@ class TeamFriendsControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
+    private FriendRequestSourceTeamQueryService sourceQueryService;
+
+    @MockitoBean
     private TeamFriendsService teamFriendsService;
+
+    /**
+     * フレンド関係の閲覧ガード（CMP-260821-1027）は実物を使う。一覧の SUPPORTER 公開限定もこのガードの
+     * {@code listsPublicOnly} が決めるため。依存の Repository だけ mock にする（閲覧判定の本体は契約ITで検証）。
+     */
+    @MockitoBean
+    private com.mannschaft.app.social.repository.TeamFriendRepository teamFriendRepository;
+
+    @MockitoBean
+    private TeamFriendFollowBySlugService teamFriendFollowBySlugService;
 
     @MockitoBean
     private AccessControlService accessControlService;
@@ -96,6 +116,7 @@ class TeamFriendsControllerTest {
 
     @BeforeEach
     void setUpSecurityContext() {
+        given(sourceQueryService.isEligibleSource(USER_ID, TEAM_ID)).willReturn(true);
         UsernamePasswordAuthenticationToken auth =
                 new UsernamePasswordAuthenticationToken(USER_ID.toString(), null, List.of());
         SecurityContextHolder.getContext().setAuthentication(auth);

@@ -158,6 +158,16 @@ public class BulletinThreadService {
         return enrichSingle(entity, userId);
     }
 
+    /** 非 TX 読取 Facade が最新 scope を認可するための own Repository projection。本文を返さない。 */
+    public PreviewMetadata getReadMetadata(Long threadId) {
+        BulletinThreadEntity entity = threadRepository.findById(threadId)
+                .orElseThrow(() -> new BusinessException(BulletinErrorCode.THREAD_NOT_FOUND));
+        return new PreviewMetadata(threadId, entity.getScopeType().name(), entity.getScopeId());
+    }
+
+    public record PreviewMetadata(Long threadId, String scopeType, Long scopeId) {
+    }
+
     /**
      * 村スコープのスレッド一覧をページング取得する（F17.1 村掲示板グローバル方式）。
      *

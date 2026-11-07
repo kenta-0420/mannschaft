@@ -215,113 +215,9 @@ class TeamOrgInviteIT extends TeamOrgInviteItSupport {
     // =====================================================================
     // AC-D02・G103c・G104(ACTIVE 化) 承諾
     // =====================================================================
-
-    @Test
-    @DisplayName("AC-D02 TA が承諾すると 200 で ACTIVE になり、招待時に指定したグループに所属する（message は NULL に戻る）")
-    void 承諾すると招待時のグループに所属する() throws Exception {
-        OrgFx grouped = newOrg(true, true, "OPTIONAL", "PUBLIC");
-        long groupedAdmin = newUser();
-        makeOrgAdmin(groupedAdmin, grouped.id());
-        UUID g1 = newGroup(grouped.id(), "G1", false);
-        em.flush();
-
-        MvcResult invited = invite(groupedAdmin, grouped.slug(), team.slug(), g1, "添え書き")
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.teamGroup.id").value(g1.toString()))
-                .andReturn();
-        long membershipId = json(invited).get("data").get("id").asLong();
-
-        accept(ta, team.slug(), membershipId)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("ACTIVE"))
-                .andExpect(jsonPath("$.data.direction").value("ORG_INVITE"))
-                .andExpect(jsonPath("$.data.teamGroup.id").value(g1.toString()))
-                .andExpect(jsonPath("$.data.teamGroup.name").value("G1"))
-                .andExpect(jsonPath("$.data.respondedAt").isNotEmpty())
-                .andExpect(jsonPath("$.data.message").doesNotExist());
-
-        Object[] row = membershipRow(membershipId);
-        assertThat(row[0]).isEqualTo("ACTIVE");
-        assertThat(uuidOf(row[2])).isEqualTo(g1);
-        assertThat(row[3]).as("ACTIVE になると添え書きは NULL に戻る（AC-G104）").isNull();
-        assertThat(((Number) row[4]).longValue()).as("responded_by").isEqualTo(ta);
-        listReceived(ta, team.slug()).andExpect(jsonPath("$.data.length()").value(0));
-    }
-
-    @Test
-    @DisplayName("AC-G103c 承諾すると TEAM_ORG_MEMBERSHIP_CREATED（via=ORG_INVITE）が audit_logs に1行残る")
-    void 承諾の監査ログが残る() throws Exception {
-        long membershipId = inviteAndGetId(xa, org.slug(), team.slug(), null);
-
-        accept(ta, team.slug(), membershipId).andExpect(status().isOk());
-
-        List<?> rows = auditRows("TEAM_ORG_MEMBERSHIP_CREATED");
-        assertThat(rows).hasSize(1);
-        Object[] audit = (Object[]) rows.get(0);
-        assertThat(((Number) audit[0]).longValue()).isEqualTo(ta);
-        assertThat(((Number) audit[2]).longValue()).isEqualTo(org.id());
-        JsonNode metadata = objectMapper.readTree(String.valueOf(audit[3]));
-        assertThat(metadata.get("via").asText()).isEqualTo("ORG_INVITE");
-        assertThat(metadata.get("membership_id").asLong()).isEqualTo(membershipId);
-    }
-
-    @Test
-    @DisplayName("AC-D08 移行前からある PENDING 招待（invited_by なし）を TA が承諾でき、ORG_INVITE として扱われる")
-    void 移行前の招待を承諾できる() throws Exception {
-        long legacyId = insertMembershipRow(team.id(), org.id(), "PENDING", "ORG_INVITE", null,
-                LocalDateTime.of(2026, 1, 10, 9, 0));
-        em.flush();
-
-        listReceived(ta, team.slug()).andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].direction").value("ORG_INVITE"))
-                .andExpect(jsonPath("$.data[0].requestedBy").doesNotExist());
-        accept(ta, team.slug(), legacyId)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("ACTIVE"))
-                .andExpect(jsonPath("$.data.direction").value("ORG_INVITE"));
-        assertThat(membershipRow(legacyId)[0]).isEqualTo("ACTIVE");
-    }
-
-    @Test
-    @DisplayName("AC-D11 招待で指定したグループが承諾の前に削除されたら、承諾は 200 で未分類（group_id=NULL）のまま ACTIVE")
-    void 削除済みグループの招待は未分類で承諾される() throws Exception {
-        OrgFx grouped = newOrg(true, true, "OPTIONAL", "PUBLIC");
-        long groupedAdmin = newUser();
-        makeOrgAdmin(groupedAdmin, grouped.id());
-        UUID g1 = newGroup(grouped.id(), "消えるグループ", false);
-        em.flush();
-        long membershipId = inviteAndGetId(groupedAdmin, grouped.slug(), team.slug(), null, g1);
-
-        softDeleteGroup(g1);
-        em.flush();
-
-        accept(ta, team.slug(), membershipId)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("ACTIVE"))
-                .andExpect(jsonPath("$.data.teamGroup").doesNotExist());
-        assertThat(membershipRow(membershipId)[2]).as("未分類で加盟が成立する").isNull();
-    }
-
-    @Test
-    @DisplayName("承諾の時点でグループ機能が off なら group_id は NULL で ACTIVE になる")
-    void グループ機能offなら承諾は未分類() throws Exception {
-        OrgFx grouped = newOrg(true, true, "OPTIONAL", "PUBLIC");
-        long groupedAdmin = newUser();
-        makeOrgAdmin(groupedAdmin, grouped.id());
-        UUID g1 = newGroup(grouped.id(), "G1", false);
-        em.flush();
-        long membershipId = inviteAndGetId(groupedAdmin, grouped.slug(), team.slug(), null, g1);
-        em.createNativeQuery("UPDATE organizations SET team_groups_enabled = 0 WHERE id = :id")
-                .setParameter("id", grouped.id()).executeUpdate();
-        // 招待の時に読み込んだ組織 Entity が同じテストトランザクションの永続化コンテキストに残っていると、
-        // ロック付きの読み取りでもキャッシュ済みの（機能 on の）値が返る。本番はリクエストごとに別トランザクションなので、
-        // ここでも「別のリクエストで off にされた」状態を再現するためにコンテキストを捨てる
-        em.flush();
-        em.clear();
-
-        accept(ta, team.slug(), membershipId).andExpect(status().isOk());
-        assertThat(membershipRow(membershipId)[2]).isNull();
-    }
+    // 承諾が<b>成立する</b>経路（AC-D02・G103c・D08・D11・グループ off・P04）は TeamOrgInviteAcceptCommittedIT に移した。
+    // 承諾は加盟行のロックの後に組織の最新のコミット済みの状態を新しい tx（REQUIRES_NEW・プライマリ）で読み直すので（§4.5）、
+    // 本クラスのロールバック型の tx では未コミットのフィクスチャの組織が見えず、本番と前提が食い違うため（2-D 検分5巡目）
 
     // =====================================================================
     // AC-D03・G103e 辞退 / AC-D04 チーム側の解除
@@ -496,15 +392,6 @@ class TeamOrgInviteIT extends TeamOrgInviteItSupport {
         }
         assertThat(membershipRow(membershipId)[0]).isEqualTo("PENDING");
         assertThat(countRestrictions(otherOrg.id(), team.id())).as("403 では解除されない").isEqualTo(1);
-    }
-
-    @Test
-    @DisplayName("AC-P04 MEMBER 向けの権限グループで付与された TG は承諾できる")
-    void 付与されたメンバーは承諾できる() throws Exception {
-        long membershipId = inviteAndGetId(xa, org.slug(), team.slug(), null);
-
-        listReceived(tg, team.slug()).andExpect(status().isOk());
-        accept(tg, team.slug(), membershipId).andExpect(status().isOk());
     }
 
     @Test

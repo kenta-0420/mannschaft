@@ -15,6 +15,9 @@ import java.util.List;
  */
 public interface AuditLogRepository extends JpaRepository<AuditLogEntity, Long> {
 
+    /** GDPR 本人エクスポート用。対象者ではなく行為者本人に限定して全件取得する。 */
+    List<AuditLogEntity> findByUserIdOrderByCreatedAtDescIdDesc(Long userId);
+
     /**
      * 指定日時より前に作成された監査ログのうち、最も古い {@code createdAt} を返す
      * （アーカイブバッチの走査開始月の決定用）。

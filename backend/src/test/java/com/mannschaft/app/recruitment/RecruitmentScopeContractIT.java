@@ -161,6 +161,10 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long adminAId;
     /** teamA の非管理者メンバー。 */
     private Long memberAId;
+    /** teamA の user_roles にだけ ADMIN を持つ主体（memberships の在籍行なし）。 */
+    private Long urAdminAId;
+    /** teamA の user_roles にだけ DEPUTY_ADMIN を持つ主体（memberships の在籍行なし）。 */
+    private Long urDeputyAId;
     /** teamB の ADMIN（越境攻撃者役）。 */
     private Long adminBId;
     /** どこにも所属しない完全な部外者。 */
@@ -192,6 +196,8 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
 
         adminAId = insertUser("rcrtsib-admin-a@example.com");
         memberAId = insertUser("rcrtsib-member-a@example.com");
+        urAdminAId = insertUser("rcrtsib-ur-admin-a@example.com");
+        urDeputyAId = insertUser("rcrtsib-ur-deputy-a@example.com");
         adminBId = insertUser("rcrtsib-admin-b@example.com");
         outsiderId = insertUser("rcrtsib-outsider@example.com");
 
@@ -199,6 +205,9 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
         MembershipTestHelper.insertMembership(em, adminAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminAId, "ADMIN", teamAId, null);
         MembershipTestHelper.insertMembership(em, memberAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+        // user_roles だけの管理者（memberships の行は作らない。是正後も 404 に化けず管理者として通ること）
+        MembershipTestHelper.insertUserRole(em, urAdminAId, "ADMIN", teamAId, null);
+        MembershipTestHelper.insertUserRole(em, urDeputyAId, "DEPUTY_ADMIN", teamAId, null);
         MembershipTestHelper.insertMembership(em, adminBId, ScopeType.TEAM, teamBId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminBId, "ADMIN", teamBId, null);
 
@@ -398,6 +407,23 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(jsonPath("$.error.code")
                             .value(RecruitmentErrorCode.LISTING_NOT_FOUND.getCode()));
         }
+
+        /** 是正の契約: user_roles だけの ADMIN / DEPUTY_ADMIN も、memberships の管理者と同じく 200（404 に化けない）。 */
+        @Test
+        @DisplayName("CMP-260923-0954: user_rolesのみのADMIN・DEPUTY_ADMINの申込確定は200（既存ADMINと同じ・404に化けない）")
+        void userRolesOnly管理者は200() throws Exception {
+            for (Long actor : List.of(urAdminAId, urDeputyAId)) {
+                Long applicantId = insertUser("rcrtsib-applicant-" + actor + "@example.com");
+                Long participantId = insertParticipant(listingAId, applicantId, RecruitmentParticipantStatus.APPLIED);
+                em.flush();
+                em.clear();
+
+                setAuth(actor);
+                mockMvc.perform(post("/api/v1/recruitment-listings/{listingId}/participants/{participantId}/confirm",
+                                listingAId, participantId))
+                        .andExpect(status().isOk());
+            }
+        }
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -504,6 +530,24 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
             em.clear();
             assertThat(penaltyRepository.findById(globalPenaltyId).orElseThrow().getLiftReason())
                     .isEqualTo(PenaltyLiftReason.ADMIN_MANUAL);
+        }
+
+        /** 是正の契約: user_roles だけの ADMIN / DEPUTY_ADMIN も、memberships の管理者と同じく 200（404 に化けない）。 */
+        @Test
+        @DisplayName("CMP-260923-0954: user_rolesのみのADMIN・DEPUTY_ADMINのペナルティ解除は200（既存ADMINと同じ・404に化けない）")
+        void userRolesOnly管理者は200() throws Exception {
+            for (Long actor : List.of(urAdminAId, urDeputyAId)) {
+                Long targetPenaltyId = insertPenalty(memberAId, teamAId);
+                em.flush();
+                em.clear();
+
+                setAuth(actor);
+                mockMvc.perform(post("/api/v1/scopes/{scopeType}/{scopeId}/penalties/{penaltyId}/lift",
+                                "TEAM", teamAId, targetPenaltyId)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(liftBody())))
+                        .andExpect(status().isOk());
+            }
         }
 
         @Test

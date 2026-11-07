@@ -14,7 +14,7 @@ import type { PersonalActionItem } from '~/composables/usePersonalActionRequired
  *  - 各タブ右上に未読件数バッジ（0 は非表示）
  *  - タブクリック時、TEAM/ORGANIZATION の通知集計を `useScopeFoldersStore`
  *    から取得し、フォルダ別の通知一覧は `/api/v1/notifications?folderId=` で取得
- *  - 既存「全て既読」「すべて表示」リンクの責務は維持
+ *  - 既存「全て既読」「{{ t('dashboard.widgets.common.viewAll') }}」リンクの責務は維持
  *
  * 設計書 §7.5 に準拠。フォルダタブと種別タブの二軸混在は混乱招くため、
  * 本フェーズはフォルダタブのみとする（plan §⑤）。
@@ -250,7 +250,7 @@ async function onMarkAllRead() {
   notices.value.forEach((n) => {
     n.isRead = true
   })
-  notification.success('全て既読にしました')
+  notification.success(t('dashboard.widgets.notices.markedAllRead'))
 }
 
 const unreadCount = computed(() => notices.value.filter(n => !n.isRead).length)
@@ -448,7 +448,7 @@ onMounted(async () => {
 
 <template>
   <DashboardWidgetCard
-    title="お知らせ"
+    :title="t('dashboard.widgets.notices.title')"
     icon="pi pi-bell"
     to="/notifications"
     :loading="loading"
@@ -492,7 +492,7 @@ onMounted(async () => {
       <div v-if="notices.length > 0">
         <div class="mb-2 flex items-center justify-between">
           <Badge v-if="unreadCount > 0" :value="unreadCount" severity="danger" />
-          <Button v-if="unreadCount > 0" label="全て既読" text size="small" @click="onMarkAllRead" />
+          <Button v-if="unreadCount > 0" :label="t('dashboard.widgets.notices.markAllRead')" text size="small" @click="onMarkAllRead" />
         </div>
         <div class="divide-y divide-surface-300 dark:divide-surface-600">
           <div
@@ -527,10 +527,10 @@ onMounted(async () => {
           :to="moreLink"
           class="mt-2 block text-center text-xs text-primary hover:underline"
         >
-          すべて表示
+          {{ t('dashboard.widgets.common.viewAll') }}
         </NuxtLink>
       </div>
-      <DashboardEmptyState v-else icon="pi pi-bell-slash" message="お知らせはありません" />
+      <DashboardEmptyState v-else icon="pi pi-bell-slash" :message="t('dashboard.widgets.notices.empty')" />
     </template>
 
     <!-- 運営お知らせタブ -->

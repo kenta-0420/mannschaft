@@ -1,15 +1,9 @@
 package com.mannschaft.app.social.announcement;
 
 import com.mannschaft.app.common.AccessControlService;
-import com.mannschaft.app.dashboard.ViewerRole;
-import com.mannschaft.app.dashboard.service.RoleResolver;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
-import com.mannschaft.app.payment.constant.ContentGateType;
-import com.mannschaft.app.payment.dto.GateCheckResponse;
-import com.mannschaft.app.payment.service.PaymentGateService;
-import com.mannschaft.app.payment.spi.ContentGateTarget;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -24,7 +18,6 @@ import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -34,6 +27,9 @@ import static org.mockito.Mockito.verify;
 /**
  * {@link AnnouncementReadService#markAsRead} の代理確認ロジック単体テスト。
  * 通常既読・代理確認の2パターンを検証する。
+ *
+ * <p>可視性・宛先・課金の判定は {@link AnnouncementReadCommandService}（トランザクションなし）が行うため、
+ * ここでは扱わない（ALIC-1 §2.5。HIDDEN の単件既読の拒否は {@code AnnouncementReadCommandServiceTest}）。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AnnouncementReadService 代理確認テスト")
@@ -60,13 +56,6 @@ class AnnouncementReadProxyInputTest {
 
     @Mock
     private AccessControlService accessControlService;
-
-    /** 既読の可視性ゲートが使う閲覧者ロール解決（一覧側と同一の正準経路）。 */
-    @Mock
-    private RoleResolver roleResolver;
-
-    @Mock
-    private PaymentGateService paymentGateService;
 
     // AnnouncementCreationService のモック（AnnouncementReadService が buildAndSaveAnnouncementProxyRecord を呼ぶ）
     @InjectMocks
@@ -108,10 +97,6 @@ class AnnouncementReadProxyInputTest {
 
     @BeforeEach
     void setUp() {
-        lenient().when(paymentGateService.checkAccess(
-                eq(ContentGateType.ANNOUNCEMENT), eq(ANNOUNCEMENT_ID), eq(USER_ID),
-                any(ContentGateTarget.class)))
-                .thenReturn(new GateCheckResponse(true, false, List.of()));
         // AnnouncementReadService に creationService を注入
         try {
             java.lang.reflect.Field f = AnnouncementReadService.class.getDeclaredField("creationService");
@@ -146,27 +131,10 @@ class AnnouncementReadProxyInputTest {
     class NormalRead {
 
         @Test
-        @DisplayName("HIDDENの単件既読は拒否し、既読行を作成しない")
-        void hiddenAnnouncementIsNotMarkedRead() {
-            given(feedRepository.findById(ANNOUNCEMENT_ID)).willReturn(Optional.of(buildScopedFeed()));
-            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
-            given(paymentGateService.checkAccess(
-                    eq(ContentGateType.ANNOUNCEMENT), eq(ANNOUNCEMENT_ID), eq(USER_ID),
-                    any(ContentGateTarget.class)))
-                    .willReturn(new GateCheckResponse(false, true, List.of()));
-
-            org.assertj.core.api.Assertions.assertThatThrownBy(() -> announcementReadService.markAsRead(
-                    AnnouncementScopeType.TEAM, TEAM_ID, ANNOUNCEMENT_ID, USER_ID))
-                    .isInstanceOf(com.mannschaft.app.common.BusinessException.class);
-            verify(readStatusRepository, never()).insertReadStatusesIgnoringExisting(anyLong(), any());
-        }
-
-        @Test
         @DisplayName("通常既読時_冪等UPSERTで1行作られ代理記録は作られない")
         void 通常既読時_冪等UPSERTで1行作られ代理記録は作られない() {
             // Given
             given(feedRepository.findById(ANNOUNCEMENT_ID)).willReturn(Optional.of(buildScopedFeed()));
-            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(readStatusRepository.findByAnnouncementFeedIdAndUserId(ANNOUNCEMENT_ID, USER_ID))
                     .willReturn(Optional.empty());
             given(proxyInputContext.isProxy()).willReturn(false);
@@ -187,7 +155,6 @@ class AnnouncementReadProxyInputTest {
         void 素のsaveは使わない() {
             // Given
             given(feedRepository.findById(ANNOUNCEMENT_ID)).willReturn(Optional.of(buildScopedFeed()));
-            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(readStatusRepository.findByAnnouncementFeedIdAndUserId(ANNOUNCEMENT_ID, USER_ID))
                     .willReturn(Optional.empty());
             given(proxyInputContext.isProxy()).willReturn(false);
@@ -209,7 +176,6 @@ class AnnouncementReadProxyInputTest {
             AnnouncementReadStatusEntity existingStatus = createSavedStatus();
 
             given(feedRepository.findById(ANNOUNCEMENT_ID)).willReturn(Optional.of(buildScopedFeed()));
-            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(readStatusRepository.findByAnnouncementFeedIdAndUserId(ANNOUNCEMENT_ID, USER_ID))
                     .willReturn(Optional.of(existingStatus));
 
@@ -264,7 +230,6 @@ class AnnouncementReadProxyInputTest {
             }
 
             given(feedRepository.findById(ANNOUNCEMENT_ID)).willReturn(Optional.of(buildScopedFeed()));
-            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(readStatusRepository.findByAnnouncementFeedIdAndUserId(ANNOUNCEMENT_ID, USER_ID))
                     .willReturn(Optional.empty());
             given(proxyInputRecordRepository.findByProxyInputConsentIdAndTargetEntityTypeAndTargetEntityId(
@@ -307,7 +272,6 @@ class AnnouncementReadProxyInputTest {
             }
 
             given(feedRepository.findById(ANNOUNCEMENT_ID)).willReturn(Optional.of(buildScopedFeed()));
-            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(readStatusRepository.findByAnnouncementFeedIdAndUserId(ANNOUNCEMENT_ID, USER_ID))
                     .willReturn(Optional.empty());
             // 冪等性チェック: 既存レコードが見つかる

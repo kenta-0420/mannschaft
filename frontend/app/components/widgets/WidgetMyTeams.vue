@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const { t } = useI18n()
 const teamStore = useTeamStore()
 const moduleApi = useModuleApi()
 const reservationEnabledTeamIds = ref<number[]>([])
@@ -23,7 +24,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <DashboardWidgetCard title="Links：チーム" icon="pi pi-users" to="/teams">
+  <DashboardWidgetCard :title="t('dashboard.widgets.myTeams.title')" icon="pi pi-users" to="/teams">
     <template v-if="teamStore.myTeams.length > 0">
       <div class="flex flex-wrap gap-2">
         <div
@@ -41,8 +42,8 @@ onMounted(async () => {
           </NuxtLink>
           <NuxtLink
             v-if="reservationEnabledTeamIds.includes(team.id) && team.slug"
-            :to="`/teams/${team.slug}/reservations`"
             v-tooltip.top="$t('dashboard.team_reservation_link')"
+            :to="`/teams/${team.slug}/reservations`"
             class="border-l border-surface-400 px-3 py-2 text-primary transition-colors hover:bg-surface-100 dark:border-surface-600 dark:hover:bg-surface-600"
           >
             <i class="pi pi-calendar text-sm" />
@@ -50,9 +51,9 @@ onMounted(async () => {
         </div>
       </div>
       <div class="mt-3 flex justify-end">
-        <NuxtLink to="/teams" class="text-sm text-primary hover:underline">すべて表示</NuxtLink>
+        <NuxtLink to="/teams" class="text-sm text-primary hover:underline">{{ t('dashboard.widgets.common.viewAll') }}</NuxtLink>
       </div>
     </template>
-    <DashboardEmptyState v-else icon="pi pi-users" message="まだチームに参加していません" />
+    <DashboardEmptyState v-else icon="pi pi-users" :message="t('dashboard.widgets.myTeams.empty')" />
   </DashboardWidgetCard>
 </template>

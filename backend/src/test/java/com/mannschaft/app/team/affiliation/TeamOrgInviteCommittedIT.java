@@ -2,10 +2,15 @@ package com.mannschaft.app.team.affiliation;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.notification.NotificationType;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJob;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobRepository;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobStatus;
 import com.mannschaft.app.notification.fanout.NotificationFanoutWorker;
+import com.mannschaft.app.notification.outbox.NotificationOutboxIngestService;
+import com.mannschaft.app.notification.outbox.NotificationOutboxRelay;
+import com.mannschaft.app.team.service.TeamAffiliationNotifier;
+import com.mannschaft.app.team.service.TeamAffiliationOrganizationPort;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,6 +18,7 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.test.util.AopTestUtils;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
@@ -20,14 +26,15 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import com.mannschaft.app.team.service.FanoutTeamAffiliationNotifier;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -37,6 +44,8 @@ import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -55,6 +64,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  *   <li>AC-G117e: 承諾の通知は、組織 ADMIN 全員にだけ届く</li>
  *   <li>並行: 同じ (チーム, 組織) への招待と申請が同時に来ても、行は1件だけ（チーム行 → 組織行の固定順ロック）</li>
  *   <li>並行: 承諾と取消が同時に来ても、ちょうど一方だけが成功し、判定表どおりの応答になる</li>
+ * </ul>
+ *
+ * <h2>通知 outbox（docs/architecture/notification_outbox.md・陣立て書 2026-10-10 P1）</h2>
+ * <p>招待・承諾の通知は team の outbox に書き、通知ドメインの relay が取り込んで fan-out ジョブを作る。
+ * 試験プロファイルでは起こしを止めてあるので、ジョブを見る前に {@link NotificationOutboxRelay#drainAll()} を挟む（OB21）。</p>
+ * <ul>
+ *   <li>OB13a: 招待のコミット後の読み直しで組織の閉鎖を見つけたら、招待は消え、outbox もジョブも作られない</li>
+ *   <li>OB13b: 正常な招待は、読み直しの後に outbox へ1行。relay が失敗しても招待と監査は残る（旧 :189 の置換）</li>
+ *   <li>OB13c: 読み直しから outbox の書き込みまでの間に招待が取り消されたら、何も書かない</li>
+ *   <li>OB14: 承諾の通知は承諾の tx と同時に outbox に確定する（outbox の書き込みが失敗すれば承諾も巻き戻る）</li>
  * </ul>
  */
 @AutoConfigureMockMvc
@@ -80,13 +99,52 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
     @Autowired
     private NotificationFanoutWorker worker;
 
-    /** 通知の登録失敗を起こすために差し替える（既定は実物を呼ぶ）。 */
+    @Autowired
+    private NotificationOutboxRelay relay;
+
+    /** 2-D: イベント（OrganizationArchivedEvent）を出す本物の組織のアーカイブを差し込むために使う。 */
+    @Autowired
+    private com.mannschaft.app.organization.service.OrganizationService organizationService;
+
+    /** relay の取り込みの失敗を起こすために差し替える（既定は実物を呼ぶ）。 */
     @MockitoSpyBean
-    private FanoutTeamAffiliationNotifier notifier;
+    private NotificationOutboxIngestService ingestSpy;
+
+    /** outbox の書き込みの失敗を起こすために差し替える（既定は実物を呼ぶ）。 */
+    @MockitoSpyBean
+    private TeamAffiliationNotifier notifierSpy;
+
+    /** 招待のコミット後の読み直しの前後に、組織の閉鎖・招待の取消を差し込むために差し替える（既定は実物を呼ぶ）。 */
+    @MockitoSpyBean
+    private TeamAffiliationOrganizationPort organizationPortSpy;
 
     @AfterEach
     void cleanUp() {
         deleteCommittedFixtures(jdbc);
+    }
+
+    /**
+     * スタブを置く先（AOP プロキシの内側の spy）。プロキシ越しに {@code when(spy).method(...)} を呼ぶと
+     * スタブの登録の呼び出しにも tx の境界が掛かる（{@code MANDATORY} は tx の外で落ちて未完了のスタブが後続を汚染し、
+     * {@code readOnly} は読み取り専用の tx を無駄に張る）ので、内側の spy に直接置く。
+     */
+    private TeamAffiliationNotifier notifierTarget() {
+        return AopTestUtils.getUltimateTargetObject(notifierSpy);
+    }
+
+    private TeamAffiliationOrganizationPort organizationPortTarget() {
+        return AopTestUtils.getUltimateTargetObject(organizationPortSpy);
+    }
+
+    /**
+     * 「別の操作がコミットした」状況を、別スレッド（= 別のコネクション・tx 文脈なし）の自動コミットで作る。
+     *
+     * <p>差し込みの呼び出し元は組織ドメインの読み取り専用 tx（{@code recheckAffiliationStateLocked} の tx。2-D 以前は {@code findAffiliationState} の {@code readOnly}）の中なので、
+     * そこで書くと {@code Connection is read-only} で落ちる。同じ tx で先に読むと REPEATABLE READ のスナップショットが
+     * 確定して後のコミットが見えなくなるため、存在の確認も含めて別スレッドで行う。</p>
+     */
+    private void commitByAnotherSession(Runnable action) {
+        CompletableFuture.runAsync(action).join();
     }
 
     // =====================================================================
@@ -116,6 +174,7 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
 
         Result invited = invite(users[0], org.slug(), team.slug());
         assertThat(invited.status()).isEqualTo(201);
+        relay.drainAll(); // OB21: outbox → fan-out ジョブ
 
         UUID jobId = jobIdOf(invited.id(), "TEAM_ORG_INVITE_RECEIVED");
         NotificationFanoutJob job = jobRepository.findById(jobId).orElseThrow();
@@ -164,6 +223,7 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
         Result accepted = perform(post("/api/v1/teams/{teamSlug}/org-invites/{id}/accept", team.slug(), invited.id())
                 .with(user(String.valueOf(users[3]))));
         assertThat(accepted.status()).isEqualTo(200);
+        relay.drainAll(); // OB21: outbox → fan-out ジョブ
 
         UUID jobId = jobIdOf(invited.id(), "TEAM_ORG_INVITE_ACCEPTED");
         Map<String, Object> jobRow = jobRow(jobId);
@@ -182,12 +242,12 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
     }
 
     // =====================================================================
-    // 通知の登録が失敗しても、確定した操作と監査は残る（TX の分離の回帰防止）
+    // OB13b 招待の通知は読み直しの後に outbox へ。relay の失敗で招待と監査は巻き戻らない（旧 :189 の置換）
     // =====================================================================
 
     @Test
-    @DisplayName("通知の登録が失敗しても、招待の行と TEAM_ORG_INVITE_SENT の監査は残る（通知が書き込み・監査と別のトランザクションである証跡）")
-    void 通知が失敗しても招待と監査は残る() throws Exception {
+    @DisplayName("OB13b 正常な招待は読み直しの後に outbox へ PENDING 1行（relay 前はジョブなし）。relay の取り込みが失敗しても、招待の行と TEAM_ORG_INVITE_SENT の監査は残り、outbox は再試行待ち")
+    void ob13b_招待の通知はoutboxに書かれrelayが失敗しても招待と監査は残る() throws Exception {
         TeamFx team = inTx(this::newTeam);
         OrgFx org = inTx(this::newOrg);
         long xa = inTx(() -> {
@@ -196,22 +256,225 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
             makeOrgAdmin(id, org.id());
             return id;
         });
-        doThrow(new IllegalStateException("通知の登録失敗（テスト）")).when(notifier).enqueueAfterCommit(any());
 
-        try {
-            perform(post("/api/v1/organizations/{slug}/team-invites", org.slug())
-                    .with(user(String.valueOf(xa)))
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(Map.of("teamSlug", team.slug()))));
-        } catch (Exception expected) {
-            // 通知の失敗は呼び出し元へ伝わる（握り潰さない）。応答の形ではなく、残ったものを検証する
-        }
+        Result invited = invite(xa, org.slug(), team.slug());
+        assertThat(invited.status()).isEqualTo(201);
+        UUID key = idempotencyKeyOf(NotificationType.TEAM_ORG_INVITE_RECEIVED, invited.id());
+        assertThat(outboxStatus(key)).as("招待の通知は outbox に書かれている").isEqualTo("PENDING");
+        assertThat(jobCountByKey(key)).as("relay の前はジョブが無い").isZero();
+
+        doThrow(new IllegalStateException("取り込みの失敗（テスト）")).when(ingestSpy).ingest(any());
+        relay.drainAll();
 
         assertThat(membershipCount(team.id(), org.id())).as("招待の行は巻き戻らない").isEqualTo(1);
         Long audits = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM audit_logs WHERE event_type = 'TEAM_ORG_INVITE_SENT' AND team_id = ?",
                 Long.class, team.id());
-        assertThat(audits).as("通知より先に記録した監査は、通知が失敗しても残る").isEqualTo(1L);
+        assertThat(audits).as("監査は relay の失敗と無関係に残る").isEqualTo(1L);
+        assertThat(outboxStatus(key)).as("取り込みの失敗は outbox 側で再試行待ちになる").isEqualTo("PENDING");
+        assertThat(jobCountByKey(key)).isZero();
+    }
+
+    // =====================================================================
+    // OB13a 読み直しで組織の閉鎖を見つけたら、招待も通知も残さない
+    // =====================================================================
+
+    @Test
+    @DisplayName("OB13a 招待のコミット後の読み直しで組織のアーカイブを見つけると、招待は取り下げられ、outbox も fan-out ジョブも作られない")
+    void ob13a_読み直しで閉鎖を見つけたら招待もoutboxも残さない() throws Exception {
+        TeamFx team = inTx(this::newTeam);
+        OrgFx org = inTx(this::newOrg);
+        long xa = inTx(() -> {
+            seedAffiliationPermission();
+            long id = newUser();
+            makeOrgAdmin(id, org.id());
+            return id;
+        });
+        // 招待の行がコミットされた後の読み直しの直前に、組織をアーカイブする（別の操作のコミットとして差し込む）
+        Injection injection = new Injection();
+        doAnswer(invocation -> {
+            commitByAnotherSession(() -> {
+                String row = membershipRowState(team.id(), org.id());
+                if (row != null) {
+                    injection.observedRows.add(row);
+                    injection.affectedRows.add(jdbc.update(
+                            "UPDATE organizations SET archived_at = UTC_TIMESTAMP() WHERE id = ?", org.id()));
+                }
+            });
+            return invocation.callRealMethod();
+        }).when(organizationPortTarget()).recheckAffiliationStateLocked(any());
+
+        Result invited = invite(xa, org.slug(), team.slug());
+        relay.drainAll();
+
+        // 差し込みが「招待の行（PENDING / ORG_INVITE）ができた後」にちょうど1回成立したこと（招待前の 403・404 で
+        // 終わって差し込みが走らないまま通る偽 green を塞ぐ）
+        assertThat(injection.observedRows).as("差し込みの時点の招待の行").containsExactly("PENDING/ORG_INVITE");
+        assertThat(injection.affectedRows).as("アーカイブの UPDATE の影響行数").containsExactly(1);
+        assertThat(invited.status()).isNotEqualTo(201);
+        assertThat(invited.errorCode()).as("読み直しでアーカイブを見つけた").isEqualTo("ORG_003");
+        assertThat(membershipCount(team.id(), org.id())).as("作った招待は取り下げられる").isZero();
+        assertThat(outboxCountByOrganization(org.id())).as("outbox に書かない").isZero();
+        assertThat(jobCountByOrganization(org.id())).as("fan-out ジョブも作られない").isZero();
+    }
+
+    @Test
+    @DisplayName("OB13a（2-D・イベント経由のアーカイブ）: 招待のコミット後・読み直しの前に、組織のアーカイブ API がコミットされ、"
+            + "そのリスナー（OrganizationArchivedEvent）の片付けが招待の取り下げより先に招待の行を消しても、"
+            + "チームの知らない招待なので取消の通知を予約しない。招待は ORG_003 で拒否され、outbox もジョブも0件")
+    void ob13a_イベント経由のアーカイブの片付けが先に走っても取消を通知しない() throws Exception {
+        TeamFx team = inTx(this::newTeam);
+        OrgFx org = inTx(this::newOrg);
+        long xa = inTx(() -> {
+            seedAffiliationPermission();
+            long id = newUser();
+            makeOrgAdmin(id, org.id());
+            return id;
+        });
+        // 招待の行がコミットされた後の読み直しの直前に、本物の組織のアーカイブ（イベントを出す）をコミットし、
+        // その AFTER_COMMIT のリスナーが招待の行を消し終えるまで待つ（招待の側の取り下げより片付けが先になる順序）
+        Injection injection = new Injection();
+        doAnswer(invocation -> {
+            commitByAnotherSession(() -> {
+                String row = membershipRowState(team.id(), org.id());
+                if (row != null) {
+                    injection.observedRows.add(row);
+                    new TransactionTemplate(transactionManager).executeWithoutResult(
+                            status -> organizationService.archiveOrganization(org.id()));
+                    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
+                    while (membershipCount(team.id(), org.id()) != 0 && System.nanoTime() < deadline) {
+                        try {
+                            Thread.sleep(100);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            throw new IllegalStateException(e);
+                        }
+                    }
+                    injection.affectedRows.add((int) membershipCount(team.id(), org.id()));
+                }
+            });
+            return invocation.callRealMethod();
+        }).when(organizationPortTarget()).recheckAffiliationStateLocked(any());
+
+        Result invited = invite(xa, org.slug(), team.slug());
+        relay.drainAll();
+
+        assertThat(injection.observedRows).as("差し込みの時点の招待の行").containsExactly("PENDING/ORG_INVITE");
+        assertThat(injection.affectedRows).as("リスナーの片付けが招待の行を消し終えていた（残りの行数）").containsExactly(0);
+        assertThat(invited.status()).isNotEqualTo(201);
+        assertThat(invited.errorCode()).as("読み直しでアーカイブを見つけた").isEqualTo("ORG_003");
+        assertThat(membershipCount(team.id(), org.id())).isZero();
+        assertThat(outboxCountByOrganization(org.id()))
+                .as("招待の受信通知も、チームの知らない招待の取消も outbox に書かない").isZero();
+        assertThat(jobCountByOrganization(org.id())).as("fan-out ジョブも作られない").isZero();
+    }
+
+    // =====================================================================
+    // OB13c 読み直しから書き込みまでの間の取消
+    // =====================================================================
+
+    @Test
+    @DisplayName("OB13c 読み直しから outbox の書き込みまでの間に招待が取り消されていたら、outbox にも fan-out ジョブにも何も書かない")
+    void ob13c_読み直しの後に取り消された招待の通知は書かない() throws Exception {
+        TeamFx team = inTx(this::newTeam);
+        OrgFx org = inTx(this::newOrg);
+        long xa = inTx(() -> {
+            seedAffiliationPermission();
+            long id = newUser();
+            makeOrgAdmin(id, org.id());
+            return id;
+        });
+        // 読み直し（組織は生存）を通過した直後に、別の操作が招待を取り消してコミットした状況を作る
+        Injection injection = new Injection();
+        doAnswer(invocation -> {
+            Object state = invocation.callRealMethod();
+            commitByAnotherSession(() -> {
+                String row = membershipRowState(team.id(), org.id());
+                if (row != null) {
+                    injection.observedRows.add(row);
+                    injection.affectedRows.add(jdbc.update(
+                            "DELETE FROM team_org_memberships WHERE team_id = ? AND organization_id = ?",
+                            team.id(), org.id()));
+                }
+            });
+            return state;
+        }).when(organizationPortTarget()).recheckAffiliationStateLocked(any());
+
+        Result invited = invite(xa, org.slug(), team.slug());
+        relay.drainAll();
+
+        // 差し込みが「招待の行（PENDING / ORG_INVITE）ができ、読み直しを通過した後」にちょうど1回成立したこと
+        assertThat(injection.observedRows).as("差し込みの時点の招待の行").containsExactly("PENDING/ORG_INVITE");
+        assertThat(injection.affectedRows).as("取消の DELETE の影響行数").containsExactly(1);
+        // 現実装: 読み直し（組織は生存）を通過しているので招待作成の応答は 201。通知の予約だけが取消を見て書かない
+        assertThat(invited.status()).isEqualTo(201);
+        assertThat(membershipCount(team.id(), org.id())).as("加盟行は取消で消えたまま").isZero();
+        assertThat(outboxCountByOrganization(org.id()))
+                .as("招待の行が PENDING のまま残っていることを FOR UPDATE で確かめてから書く").isZero();
+        assertThat(jobCountByOrganization(org.id())).isZero();
+    }
+
+    // =====================================================================
+    // OB14 承諾の通知は承諾の tx と同時に確定
+    // =====================================================================
+
+    @Test
+    @DisplayName("OB14 承諾がコミットされた時点で TEAM_ORG_INVITE_ACCEPTED の outbox が PENDING で1行あり（relay 前はジョブなし）、drain でジョブが1件できる")
+    void ob14_承諾の通知は承諾と同時にoutboxに確定する() throws Exception {
+        TeamFx team = inTx(this::newTeam);
+        OrgFx org = inTx(this::newOrg);
+        long[] users = inTx(() -> {
+            seedAffiliationPermission();
+            long xa = newUser();
+            long ta = newUser();
+            makeOrgAdmin(xa, org.id());
+            makeTeamAdmin(ta, team.id());
+            return new long[]{xa, ta};
+        });
+        Result invited = invite(users[0], org.slug(), team.slug());
+        assertThat(invited.status()).isEqualTo(201);
+
+        Result accepted = perform(post("/api/v1/teams/{teamSlug}/org-invites/{id}/accept", team.slug(), invited.id())
+                .with(user(String.valueOf(users[1]))));
+        assertThat(accepted.status()).isEqualTo(200);
+
+        UUID key = idempotencyKeyOf(NotificationType.TEAM_ORG_INVITE_ACCEPTED, invited.id());
+        assertThat(outboxStatus(key)).isEqualTo("PENDING");
+        assertThat(jobCountByKey(key)).isZero();
+        relay.drainAll();
+        assertThat(jobCountByKey(key)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("OB14 承諾の outbox の書き込みが失敗すると、承諾も巻き戻り、招待は PENDING のまま残る")
+    void ob14_承諾のoutbox書き込みが失敗すると承諾も巻き戻る() throws Exception {
+        TeamFx team = inTx(this::newTeam);
+        OrgFx org = inTx(this::newOrg);
+        long[] users = inTx(() -> {
+            seedAffiliationPermission();
+            long xa = newUser();
+            long ta = newUser();
+            makeOrgAdmin(xa, org.id());
+            makeTeamAdmin(ta, team.id());
+            return new long[]{xa, ta};
+        });
+        Result invited = invite(users[0], org.slug(), team.slug());
+        assertThat(invited.status()).isEqualTo(201);
+        doThrow(new IllegalStateException("outbox の書き込み失敗（テスト）")).when(notifierTarget())
+                .enqueue(argThat(n -> n != null && n.notificationType() == NotificationType.TEAM_ORG_INVITE_ACCEPTED));
+
+        int status;
+        try {
+            status = perform(post("/api/v1/teams/{teamSlug}/org-invites/{id}/accept", team.slug(), invited.id())
+                    .with(user(String.valueOf(users[1])))).status();
+        } catch (Exception propagated) {
+            status = 500;
+        }
+
+        assertThat(status).isNotEqualTo(200);
+        assertThat(jdbc.queryForObject("SELECT status FROM team_org_memberships WHERE id = ?", String.class,
+                invited.id())).as("承諾は巻き戻り、招待のまま").isEqualTo("PENDING");
+        assertThat(outboxStatus(idempotencyKeyOf(NotificationType.TEAM_ORG_INVITE_ACCEPTED, invited.id()))).isNull();
     }
 
     // =====================================================================
@@ -348,6 +611,23 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
         return new TransactionTemplate(transactionManager).execute(status -> action.get());
     }
 
+    /** 別の操作の差し込みで観測した加盟行（{@code status/direction}）と、差し込んだ更新の影響行数。 */
+    private static final class Injection {
+        private final List<String> observedRows = new java.util.concurrent.CopyOnWriteArrayList<>();
+        private final List<Integer> affectedRows = new java.util.concurrent.CopyOnWriteArrayList<>();
+    }
+
+    /** チームと組織の加盟行の {@code status/direction}（無ければ null。2行以上あれば失敗）。 */
+    private String membershipRowState(long teamId, long orgId) {
+        List<String> rows = jdbc.queryForList(
+                "SELECT CONCAT(status, '/', direction) FROM team_org_memberships WHERE team_id = ? AND organization_id = ?",
+                String.class, teamId, orgId);
+        if (rows.size() > 1) {
+            throw new IllegalStateException("加盟行が2行以上ある: " + rows);
+        }
+        return rows.isEmpty() ? null : rows.get(0);
+    }
+
     private long membershipCount(long teamId, long orgId) {
         Long count = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM team_org_memberships WHERE team_id = ? AND organization_id = ?",
@@ -366,6 +646,38 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
         return jdbc.queryForMap(
                 "SELECT scope_type, scope_ref, organization_id, source_id FROM notification_fanout_jobs WHERE id = ?",
                 uuidBytes(jobId));
+    }
+
+    /** 冪等キー（F01.2.1 §6.7: {@code F01.2.1:<type>:<membershipId>}）。 */
+    private static UUID idempotencyKeyOf(NotificationType type, long membershipId) {
+        return UUID.nameUUIDFromBytes(("F01.2.1:" + type.name() + ":" + membershipId)
+                .getBytes(StandardCharsets.UTF_8));
+    }
+
+    /** 冪等キーで引いた outbox の行の状態（無ければ null）。 */
+    private String outboxStatus(UUID key) {
+        List<String> rows = jdbc.queryForList(
+                "SELECT status FROM team_notification_outbox WHERE idempotency_key = ?", String.class, uuidBytes(key));
+        return rows.isEmpty() ? null : rows.get(0);
+    }
+
+    private long outboxCountByOrganization(long orgId) {
+        Long count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM team_notification_outbox WHERE organization_id = ?", Long.class, orgId);
+        return count == null ? 0 : count;
+    }
+
+    private long jobCountByKey(UUID key) {
+        Long count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM notification_fanout_jobs WHERE source_event_uuid = ?", Long.class,
+                uuidBytes(key));
+        return count == null ? 0 : count;
+    }
+
+    private long jobCountByOrganization(long orgId) {
+        Long count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM notification_fanout_jobs WHERE organization_id = ?", Long.class, orgId);
+        return count == null ? 0 : count;
     }
 
     private static byte[] uuidBytes(UUID id) {

@@ -132,7 +132,7 @@ function isItemActive(path: string): boolean {
       <button
         type="button"
         data-testid="feedback-open-button"
-        class="flex items-center gap-3 rounded-lg px-2.5 py-2 text-left text-sm text-surface-600 transition-colors hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800"
+        class="flex min-h-11 items-center gap-3 rounded-lg px-2.5 py-2 text-left text-sm text-surface-600 transition-colors hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800"
         @click="emit('open-feedback')"
       >
         <i class="pi pi-box text-base text-surface-500 dark:text-surface-400" aria-hidden="true" />
@@ -142,7 +142,7 @@ function isItemActive(path: string): boolean {
       <!-- F04.11: 受信箱への導線（MSH-03: ドロワー経由で到達可能にする） -->
       <NuxtLink
         to="/inbox"
-        class="flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm text-surface-600 transition-colors hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800"
+        class="flex min-h-11 items-center gap-3 rounded-lg px-2.5 py-2 text-sm text-surface-600 transition-colors hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800"
       >
         <i class="pi pi-inbox text-base text-surface-500 dark:text-surface-400" aria-hidden="true" />
         <span class="flex-1">{{ t('inbox.tab.inbox') }}</span>
@@ -156,7 +156,7 @@ function isItemActive(path: string): boolean {
       <button
         v-if="showPwaInstallBtn"
         type="button"
-        class="flex items-center gap-3 rounded-lg px-2.5 py-2 text-left text-sm text-surface-600 transition-colors hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800"
+        class="flex min-h-11 items-center gap-3 rounded-lg px-2.5 py-2 text-left text-sm text-surface-600 transition-colors hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800"
         @click="handlePwaInstall"
       >
         <i class="pi pi-download text-base text-surface-500 dark:text-surface-400" aria-hidden="true" />
@@ -165,7 +165,7 @@ function isItemActive(path: string): boolean {
 
       <button
         type="button"
-        class="flex items-center gap-3 rounded-lg px-2.5 py-2 text-left text-sm text-surface-600 transition-colors hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800"
+        class="flex min-h-11 items-center gap-3 rounded-lg px-2.5 py-2 text-left text-sm text-surface-600 transition-colors hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800"
         @click="authStore.serverLogout()"
       >
         <i class="pi pi-sign-out text-base text-surface-500 dark:text-surface-400" aria-hidden="true" />

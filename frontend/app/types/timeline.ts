@@ -183,6 +183,12 @@ export interface PostStatsDto {
   editCount: number
 }
 
+/** 詳細APIでは「みたよ！」の状態と件数が stats に含まれる。 */
+export interface PostDetailStatsDto extends PostStatsDto {
+  mitayo: boolean
+  mitayoCount: number
+}
+
 export interface PostAuditDto {
   createdAt: string
   updatedAt: string
@@ -227,7 +233,8 @@ export interface TimelineFeedResponse {
 }
 
 export interface TimelinePostDetailResponse {
-  data: TimelinePostResponse & {
+  data: Omit<TimelinePostResponse, 'stats' | 'mitayo' | 'mitayoCount'> & {
+    stats: PostDetailStatsDto
     recentReplies: TimelinePostResponse[]
   }
 }

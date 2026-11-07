@@ -1,4 +1,11 @@
-export type BlogPostStatus = 'DRAFT' | 'PUBLISHED' | 'SCHEDULED' | 'ARCHIVED'
+export type BlogPostStatus =
+  | 'DRAFT'
+  | 'PUBLISHED'
+  | 'SCHEDULED'
+  | 'PENDING_REVIEW'
+  | 'PENDING_SELF_REVIEW'
+  | 'REJECTED'
+  | 'ARCHIVED'
 export type BlogPostScope = 'TEAM' | 'ORGANIZATION' | 'PUBLIC' | 'PERSONAL'
 
 export interface BlogPostContent {
@@ -27,6 +34,7 @@ export interface BlogPostScope2 {
   teamId: number | null
   organizationId: number | null
   userId: number | null
+  authorId?: number | null
 }
 
 export interface BlogPostStats {
@@ -43,7 +51,8 @@ export interface BlogPostResponse {
   audit?: BlogPostAudit
   scope?: BlogPostScope2
   stats?: BlogPostStats
-  author: { id: number; displayName: string; avatarUrl: string | null }
+  /** @deprecated 現行APIの著者IDは scope.authorId。旧レスポンスの表示情報のみ。 */
+  author?: { id: number; displayName: string; avatarUrl: string | null }
   tags: BlogTag[]
   seriesId: number | null
   seriesName: string | null

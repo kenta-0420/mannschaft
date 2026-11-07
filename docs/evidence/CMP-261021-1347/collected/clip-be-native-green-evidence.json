@@ -1,0 +1,123 @@
+{
+  "phase": "green",
+  "exitCode": 0,
+  "sourceCommit": "2bd44c9b4e6d6de9f4dfc615c200ea2253f8d538",
+  "repositoryTree": "e3a7132eec3b6127aaf5a91fbb076d3a250219ef",
+  "sourceTree": "447a8505b76e9f9f0a4beb6fa8324d4cd8edd484",
+  "suites": [
+    {
+      "name": "com.mannschaft.app.ranch.RanchAssignmentWriterIT",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "com.mannschaft.app.ranch.RanchDevelopmentClipAssignmentIT",
+      "tests": "5",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "com.mannschaft.app.ranch.RanchDevelopmentFixturePolicyGateTest",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "com.mannschaft.app.ranch.service.RanchDevelopmentClipCatalogTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "com.mannschaft.app.ranch.service.RanchDevelopmentVisualCatalogTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "com.mannschaft.app.ranch.service.RanchProductionMasterRegistryTest",
+      "tests": "6",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "com.mannschaft.app.ranch.service.RanchPublicationDiagnosisVersionTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    }
+  ],
+  "totals": {
+    "tests": 24,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "integrationExecution": [
+    {
+      "name": "com.mannschaft.app.ranch.RanchDevelopmentClipAssignmentIT",
+      "dockerAvailable": null,
+      "dockerAvailabilityObservation": "NOT_OBSERVED_IN_JUNIT_OUTPUT",
+      "tests": 5,
+      "skipped": 0,
+      "realDbAssertions": [
+        {
+          "test": "v3有効でもcare規則なしなら選定できない()",
+          "status": "PASSED"
+        },
+        {
+          "test": "v3無効なら旧v2のLAND選定だけを維持する()",
+          "status": "PASSED"
+        },
+        {
+          "test": "既存ランダム選定が各生息地のv3を保存し再送は元ACKを返す()",
+          "status": "PASSED"
+        },
+        {
+          "test": "v3有効でも正式masterなしの診断出生選定は拒否する()",
+          "status": "PASSED"
+        },
+        {
+          "test": "v3有効でも既存v2選定済み卵と孵化個体を再割当せず元ACKを保持する()",
+          "status": "PASSED"
+        }
+      ]
+    },
+    {
+      "name": "com.mannschaft.app.ranch.RanchAssignmentWriterIT",
+      "dockerAvailable": null,
+      "dockerAvailabilityObservation": "NOT_OBSERVED_IN_JUNIT_OUTPUT",
+      "tests": 3,
+      "skipped": 0,
+      "realDbAssertions": [
+        {
+          "test": "invalidShapeAndSecondSelectionLeaveCurrentEggAndCommandsUntouched()",
+          "status": "PASSED"
+        },
+        {
+          "test": "selectedEggPersistsOnceAndSavedReplayNeedsNoLiveSelection()",
+          "status": "PASSED"
+        },
+        {
+          "test": "verifiedDiagnosisAndBirthSelectionsPersistFrozenCatalogAndReplay()",
+          "status": "PASSED"
+        }
+      ]
+    }
+  ],
+  "dockerReadOnlyObservation": {
+    "observedUtc": "2026-10-21T16:17:57.16298+09:00",
+    "serverVersion": "29.4.1",
+    "containerEvidencePath": "outputs/clip-be-native-green-docker-observed.json",
+    "containerEvidenceSha256": "4236f3523faa792b739df5c3d212215971d48b84364284a4c9f3d9d75da359d9"
+  },
+  "junitXmlPath": "outputs/clip-be-green-junit"
+}

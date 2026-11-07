@@ -13,7 +13,7 @@ onMounted(async () => {
 <template>
   <div>
     <div class="mb-4">
-      <PageHeader title="ブログ・お知らせ" />
+      <PageHeader :title="$t('blog.pageTitle')" />
     </div>
     <BlogPostList scope-type="ORGANIZATION" :scope-id="orgId" :can-create="isMember" :can-manage="isAdminOrDeputy" />
   </div>

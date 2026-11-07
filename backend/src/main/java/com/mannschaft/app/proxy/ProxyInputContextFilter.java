@@ -19,7 +19,12 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Optional;
 
@@ -39,6 +44,8 @@ public class ProxyInputContextFilter extends OncePerRequestFilter {
     static final String HEADER_PROXY_CONSENT = "X-Proxy-Consent-Id";
     static final String HEADER_PROXY_SOURCE = "X-Proxy-Input-Source";
     static final String HEADER_PROXY_STORAGE = "X-Proxy-Original-Storage";
+    static final String HEADER_PROXY_STORAGE_ENCODING = "X-Proxy-Original-Storage-Encoding";
+    private static final int MAX_ORIGINAL_STORAGE_LENGTH = 255;
 
     /**
      * 後見切替（GUARDIANSHIP_SWITCH）で activate する際の {@code originalStorageLocation} 固定値。
@@ -102,6 +109,16 @@ public class ProxyInputContextFilter extends OncePerRequestFilter {
             return;
         }
 
+        String originalStorageLocation;
+        try {
+            originalStorageLocation = normalizeOriginalStorage(storageHeader,
+                    request.getHeader(HEADER_PROXY_STORAGE_ENCODING));
+        } catch (IllegalArgumentException e) {
+            sendError(response, HttpServletResponse.SC_BAD_REQUEST,
+                    "X-Proxy-Original-Storage の転送形式または原本保管場所が不正です。");
+            return;
+        }
+
         // 数値パース
         Long subjectUserId;
         Long consentId;
@@ -158,7 +175,7 @@ public class ProxyInputContextFilter extends OncePerRequestFilter {
                 .collect(java.util.stream.Collectors.toSet());
 
         // 検証OK: ProxyInputContext をアクティブ化
-        proxyInputContext.activate(subjectUserId, consentId, inputSourceHeader.trim(), storageHeader.trim(),
+        proxyInputContext.activate(subjectUserId, consentId, inputSourceHeader.trim(), originalStorageLocation,
                 grantedScopes);
         log.debug("代理入力モード有効化: proxyUserId={}, subjectUserId={}, consentId={}",
                 proxyUserId, subjectUserId, consentId);
@@ -227,6 +244,60 @@ public class ProxyInputContextFilter extends OncePerRequestFilter {
                 log.debug("後見切替モード有効化: guardianUserId={}, childUserId={}", guardianUserId, childUserId);
                 chain.doFilter(request, response);
             }
+        }
+    }
+
+    /** マーカーなしの既存値は復号せず、明示されたUTF-8転送だけを一度復号する。 */
+    private String normalizeOriginalStorage(String storage, String encoding) {
+        String decoded = storage;
+        if (encoding != null) {
+            if (!"uri-component".equals(encoding)) {
+                throw new IllegalArgumentException("原本保管場所の転送マーカーが不正です。");
+            }
+            decoded = decodeOriginalStorage(storage);
+        }
+        // trimで前後のCR/LFを消す前に、監査値へ制御文字が入ることを拒否する。
+        if (decoded.chars().anyMatch(value -> value < 0x20)) {
+            throw new IllegalArgumentException("原本保管場所に制御文字は使用できません。");
+        }
+        String normalized = decoded.trim();
+        if (normalized.isBlank() || normalized.length() > MAX_ORIGINAL_STORAGE_LENGTH) {
+            throw new IllegalArgumentException("原本保管場所は1文字以上255文字以内で指定してください。");
+        }
+        return normalized;
+    }
+
+    /** URLフォーム復号を使わず、literal '+'と二重エスケープをそのまま保持する。 */
+    private String decodeOriginalStorage(String storage) {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream(storage.length());
+        for (int index = 0; index < storage.length(); index++) {
+            char value = storage.charAt(index);
+            if (value > 0x7f) {
+                throw new IllegalArgumentException("転送値はASCIIで指定してください。");
+            }
+            if (value == '%') {
+                if (index + 2 >= storage.length()) {
+                    throw new IllegalArgumentException("パーセントエスケープが不完全です。");
+                }
+                char highChar = storage.charAt(++index);
+                char lowChar = storage.charAt(++index);
+                int high = highChar <= 0x7f ? Character.digit(highChar, 16) : -1;
+                int low = lowChar <= 0x7f ? Character.digit(lowChar, 16) : -1;
+                if (high < 0 || low < 0) {
+                    throw new IllegalArgumentException("パーセントエスケープが不正です。");
+                }
+                bytes.write((high << 4) | low);
+            } else {
+                bytes.write(value);
+            }
+        }
+        try {
+            return StandardCharsets.UTF_8.newDecoder()
+                    .onMalformedInput(CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(CodingErrorAction.REPORT)
+                    .decode(ByteBuffer.wrap(bytes.toByteArray())).toString();
+        } catch (CharacterCodingException e) {
+            throw new IllegalArgumentException("原本保管場所のUTF-8が不正です。", e);
         }
     }
 

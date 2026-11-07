@@ -1,5 +1,6 @@
 package com.mannschaft.app.schedule.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
@@ -104,6 +105,47 @@ public class UpdateScheduleRequest {
     @Valid
     private final ScheduledAttendanceRequest scheduledAttendance;
 
+    /** 予定更新と活動基本項目同期を同じトランザクションで確定する確認内容。 */
+    @Valid
+    private final com.mannschaft.app.activity.dto.ActivitySyncConfirmation syncConfirmation;
+
+    /** null は現状維持。個人予定では使用しない。 */
+    @JsonAlias("allow_proxy_attendance")
+    private final Boolean allowProxyAttendance;
+
+    /** null は現状維持。明示 false で自動受諾を解除する。 */
+    @JsonAlias("is_proxy_auto_accept")
+    private final Boolean isProxyAutoAccept;
+
+    /** 代理設定追加以前のJava呼び出し元との互換性を保つ。 */
+    public UpdateScheduleRequest(String title, String description, String location,
+            OffsetDateTime startAt, OffsetDateTime endAt, Boolean allDay,
+            String eventType, String visibility, String minViewRole, String minResponseRole,
+            String targetMode, List<Long> targetUserIds, Boolean attendanceRequired,
+            OffsetDateTime attendanceDeadline, String commentOption, Long eventCategoryId,
+            Integer academicYear, String updateScope, List<UpdateReminderRequest> reminders,
+            List<ScheduledSurveyRequest> scheduledSurveys, ScheduledAttendanceRequest scheduledAttendance,
+            com.mannschaft.app.activity.dto.ActivitySyncConfirmation syncConfirmation) {
+        this(title, description, location, startAt, endAt, allDay, eventType, visibility, minViewRole,
+                minResponseRole, targetMode, targetUserIds, attendanceRequired, attendanceDeadline,
+                commentOption, eventCategoryId, academicYear, updateScope, reminders, scheduledSurveys,
+                scheduledAttendance, syncConfirmation, null, null);
+    }
+
+    /** 確認同期追加以前のJava呼び出し元との互換性を保つ。 */
+    public UpdateScheduleRequest(String title, String description, String location,
+            OffsetDateTime startAt, OffsetDateTime endAt, Boolean allDay,
+            String eventType, String visibility, String minViewRole, String minResponseRole,
+            String targetMode, List<Long> targetUserIds, Boolean attendanceRequired,
+            OffsetDateTime attendanceDeadline, String commentOption, Long eventCategoryId,
+            Integer academicYear, String updateScope, List<UpdateReminderRequest> reminders,
+            List<ScheduledSurveyRequest> scheduledSurveys, ScheduledAttendanceRequest scheduledAttendance) {
+        this(title, description, location, startAt, endAt, allDay, eventType, visibility, minViewRole,
+                minResponseRole, targetMode, targetUserIds, attendanceRequired, attendanceDeadline,
+                commentOption, eventCategoryId, academicYear, updateScope, reminders, scheduledSurveys,
+                scheduledAttendance, null);
+    }
+
     /** 対象者機能追加以前のJava呼び出し元向け。対象者項目は未変更（null）として扱う。 */
     public UpdateScheduleRequest(
             String title, String description, String location,
@@ -125,6 +167,7 @@ public class UpdateScheduleRequest {
         return new UpdateScheduleRequest(title, description, location, startAt, endAt, allDay,
                 eventType, visibility, minViewRole, minResponseRole, targetMode, targetUserIds,
                 attendanceRequired, attendanceDeadline, commentOption, eventCategoryId,
-                academicYear, updateScope, reminders, scheduledSurveys, scheduledAttendance);
+                academicYear, updateScope, reminders, scheduledSurveys, scheduledAttendance, syncConfirmation,
+                allowProxyAttendance, isProxyAutoAccept);
     }
 }

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { toProgressPercent } from '~/utils/projectDetail'
 import type { ProjectResponse, CreateProjectRequest } from '~/types/project'
 
 definePageMeta({ middleware: 'auth' })
@@ -10,6 +11,7 @@ const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSl
 const projectApi = useProjectApi()
 const { showError } = useNotification()
 const { t } = useI18n()
+const confirmDialog = useConfirm()
 
 const projects = ref<ProjectResponse[]>([])
 const loading = ref(true)
@@ -55,14 +57,23 @@ function openProject(project: ProjectResponse) {
   router.push(`/organizations/${orgSlug}/projects/${project.id}`)
 }
 
-async function remove(project: ProjectResponse) {
-  if (!confirm(`「${project.title}」を削除しますか？`)) return
-  try {
-    await projectApi.deleteOrgProject(orgSlug, project.id)
-    await load()
-  } catch {
-    showError(t('project.error.delete_failed'))
-  }
+function remove(project: ProjectResponse) {
+  confirmDialog.require({
+    message: t('project.delete_confirm', { title: project.title }),
+    header: t('project.delete_confirm_header'),
+    icon: 'pi pi-exclamation-triangle',
+    acceptClass: 'p-button-danger',
+    acceptLabel: t('button.delete'),
+    rejectLabel: t('button.cancel'),
+    accept: async () => {
+      try {
+        await projectApi.deleteOrgProject(orgSlug, project.id)
+        await load()
+      } catch {
+        showError(t('project.error.delete_failed'))
+      }
+    },
+  })
 }
 
 function statusSeverity(status: string) {
@@ -133,10 +144,10 @@ onMounted(async () => {
         <div class="mb-2">
           <div class="mb-1 flex justify-between text-xs text-surface-500">
             <span>{{ project.completedTodos }}/{{ project.totalTodos }} {{ $t('project.task_unit') }}</span>
-            <span>{{ Math.round(project.progressRate * 100) }}%</span>
+            <span>{{ toProgressPercent(project.progressRate) }}%</span>
           </div>
           <ProgressBar
-            :value="Math.round(project.progressRate * 100)"
+            :value="toProgressPercent(project.progressRate)"
             :show-value="false"
             style="height: 6px"
           />

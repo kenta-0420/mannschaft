@@ -4,12 +4,19 @@ import type {
   CommitteeMember,
   CommitteeDistributionLog,
 } from '~/types/committee'
+import type { SpringPage } from '~/types/api'
+import { toPagedResponse } from '~/utils/toPagedResponse'
+
+export type CommitteeListResponse = { data: SpringPage<CommitteeSummary> }
+export type CommitteeDistributionsResponse = { data: SpringPage<CommitteeDistributionLog> }
 
 export function useCommitteeApi() {
   const api = useApi()
 
-  async function listCommittees(orgId: string) {
-    return api<{ data: CommitteeSummary[] }>(`/api/v1/organizations/${orgId}/committees`)
+  async function listCommittees(orgId: string, params?: { page?: number; size?: number }) {
+    const query = new URLSearchParams({ page: String(params?.page ?? 0), size: String(params?.size ?? 20) })
+    const res = await api<CommitteeListResponse>(`/api/v1/organizations/${orgId}/committees?${query}`)
+    return toPagedResponse(res.data)
   }
 
   async function createCommittee(orgId: string, body: Record<string, unknown>) {
@@ -49,10 +56,12 @@ export function useCommitteeApi() {
     return api(`/api/v1/committees/${committeeId}/leave`, { method: 'POST' })
   }
 
-  async function listDistributions(committeeId: number) {
-    return api<{ data: CommitteeDistributionLog[] }>(
-      `/api/v1/committees/${committeeId}/distributions`,
+  async function listDistributions(committeeId: number, params?: { page?: number; size?: number }) {
+    const query = new URLSearchParams({ page: String(params?.page ?? 0), size: String(params?.size ?? 20) })
+    const res = await api<CommitteeDistributionsResponse>(
+      `/api/v1/committees/${committeeId}/distributions?${query}`,
     )
+    return toPagedResponse(res.data)
   }
 
   return {

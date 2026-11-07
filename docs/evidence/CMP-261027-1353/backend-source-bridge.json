@@ -1,0 +1,44 @@
+﻿[
+    {
+        "path":  "backend/src/main/java/com/mannschaft/app/schedule/repository/ScheduleRepository.java",
+        "green1Blob":  "af14093a5f7c07947a6f5958c39b598aa42e399f",
+        "green2Blob":  "af14093a5f7c07947a6f5958c39b598aa42e399f",
+        "integratedBlob":  "af14093a5f7c07947a6f5958c39b598aa42e399f",
+        "green2MatchesIntegration":  true
+    },
+    {
+        "path":  "backend/src/main/java/com/mannschaft/app/schedule/service/ScheduleQueryService.java",
+        "green1Blob":  "1147e965d74c6bb1eea25393bca19419e48658f0",
+        "green2Blob":  "1147e965d74c6bb1eea25393bca19419e48658f0",
+        "integratedBlob":  "1147e965d74c6bb1eea25393bca19419e48658f0",
+        "green2MatchesIntegration":  true
+    },
+    {
+        "path":  "backend/src/test/java/com/mannschaft/app/schedule/CalendarBatchQueryIT.java",
+        "green1Blob":  "dd421e91b265240999970b6bc1a9bff0b496f7fd",
+        "green2Blob":  "dd421e91b265240999970b6bc1a9bff0b496f7fd",
+        "integratedBlob":  "dd421e91b265240999970b6bc1a9bff0b496f7fd",
+        "green2MatchesIntegration":  true
+    },
+    {
+        "path":  "backend/src/test/java/com/mannschaft/app/schedule/service/CalendarBatchOrderTest.java",
+        "green1Blob":  "feadb82a406cf3aeadc493295e28367db82d5deb",
+        "green2Blob":  "feadb82a406cf3aeadc493295e28367db82d5deb",
+        "integratedBlob":  "feadb82a406cf3aeadc493295e28367db82d5deb",
+        "green2MatchesIntegration":  true
+    },
+    {
+        "path":  "backend/src/test/java/com/mannschaft/app/schedule/service/CalendarColorResolutionTest.java",
+        "green1Blob":  "3421f64c36ac287257cfd1c0d1039e2eecf56a2a",
+        "green2Blob":  "3421f64c36ac287257cfd1c0d1039e2eecf56a2a",
+        "integratedBlob":  "3421f64c36ac287257cfd1c0d1039e2eecf56a2a",
+        "green2MatchesIntegration":  true
+    },
+    {
+        "path":  "backend/src/test/java/com/mannschaft/app/schedule/service/ScheduleQueryServiceTest.java",
+        "green1Blob":  "47a440d29288cd1d8eee9b1b447dd90e018fd30d",
+        "green2Blob":  "eddab904beb83d14cd1e5e4f84550fe84a491e42",
+        "integratedBlob":  "eddab904beb83d14cd1e5e4f84550fe84a491e42",
+        "green2MatchesIntegration":  true
+    }
+]

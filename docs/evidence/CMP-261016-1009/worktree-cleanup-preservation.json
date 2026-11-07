@@ -1,0 +1,7 @@
+{
+    "recordedAt":  "2026-10-16T17:39:47.9978574+09:00",
+    "exitCode":  2,
+    "mode":  "check-only",
+    "deleted":  0,
+    "reason":  "共有の他作業worktreeにdirty/locked/junction/稼働中資産があり、他者分は保持。自戦役の3 worktreeのみマージ・停止後に撤去する。"
+}

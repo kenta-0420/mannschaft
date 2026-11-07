@@ -6,6 +6,9 @@ import com.mannschaft.app.auth.SystemAdminUserSummaryMapper;
 import com.mannschaft.app.auth.dto.SystemAdminUserSummaryResponse;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import com.mannschaft.app.organization.SystemAdminOrganizationSummaryMapper;
 import com.mannschaft.app.organization.dto.SystemAdminOrganizationSummaryResponse;
@@ -13,12 +16,15 @@ import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.team.SystemAdminTeamSummaryMapper;
 import com.mannschaft.app.team.dto.SystemAdminTeamSummaryResponse;
+import com.mannschaft.app.team.dto.DeletedTeamSummaryResponse;
 import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.service.TeamService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -51,6 +57,7 @@ public class SystemAdminDashboardController {
     private final SystemAdminDashboardService dashboardService;
     private final OrganizationRepository organizationRepository;
     private final TeamRepository teamRepository;
+    private final TeamService teamService;
     private final UserRepository userRepository;
     private final OrganizationService organizationService;
     private final SystemAdminUserSummaryMapper userSummaryMapper;
@@ -90,6 +97,17 @@ public class SystemAdminDashboardController {
         Page<SystemAdminTeamSummaryResponse> page =
                 teamRepository.findAll(pageable).map(teamSummaryMapper::toSummary);
         return ResponseEntity.ok(ApiResponse.of(page));
+    }
+
+    /** 復元する削除済みチームだけを固定順・ページ単位で取得する。 */
+    @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
+            reason = "SYSTEM_ADMINによる削除済みチームの復元管理をGate状態にかかわらず継続するため")
+    @GetMapping("/teams/deleted")
+    @Operation(summary = "削除済みチームの復元対象一覧取得",
+            description = "削除日時・IDの降順に固定してDBページングする。size上限は100。外部sort指定は無視する。")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<PagedResponse<DeletedTeamSummaryResponse>> getDeletedTeams(@ParameterObject Pageable pageable) {
+        return ResponseEntity.ok(teamService.getDeletedTeamsForSystemAdmin(pageable));
     }
 
     /**

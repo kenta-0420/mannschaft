@@ -4,7 +4,6 @@ import com.mannschaft.app.actionmemo.repository.ActionMemoRepository;
 import com.mannschaft.app.actionmemo.repository.ActionMemoTagLinkRepository;
 import com.mannschaft.app.actionmemo.repository.ActionMemoTagRepository;
 import com.mannschaft.app.actionmemo.repository.UserActionMemoSettingsRepository;
-import com.mannschaft.app.auth.repository.AuditLogRepository;
 import com.mannschaft.app.auth.repository.OAuthAccountRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
@@ -76,8 +75,6 @@ class PersonalDataCollectorTest {
     @Mock
     private TimelinePostRepository timelinePostRepository;
     @Mock
-    private AuditLogRepository auditLogRepository;
-    @Mock
     private NotificationRepository notificationRepository;
     @Mock
     private ActionMemoRepository actionMemoRepository;
@@ -129,6 +126,8 @@ class PersonalDataCollectorTest {
     // F03.16 予定コメントスレッド（AC-35）
     @Mock
     private ScheduleCommentService scheduleCommentService;
+    @Mock
+    private com.mannschaft.app.ranch.service.RanchPersonalDataExportService ranchPersonalDataExportService;
 
     @InjectMocks
     private PersonalDataCollector collector;
@@ -138,7 +137,7 @@ class PersonalDataCollectorTest {
     class Collect {
 
         @Test
-        @DisplayName("正常系: nullカテゴリで全カテゴリが収集される（19カテゴリ）")
+        @DisplayName("正常系: nullカテゴリで全カテゴリが収集される（20カテゴリ）")
         void 正常_nullカテゴリ_全カテゴリ収集() {
             given(userRepository.findById(anyLong())).willReturn(Optional.empty());
             given(oAuthAccountRepository.findByUserId(anyLong())).willReturn(List.of());
@@ -185,16 +184,20 @@ class PersonalDataCollectorTest {
             // F03.16 予定コメントスレッド（AC-35）
             given(scheduleCommentService.collectPersonalDataForGdpr(anyLong())).willReturn(List.of());
 
-            Map<String, String> result = collector.collect(1L, null);
+            given(ranchPersonalDataExportService.exportUser(anyLong())).willReturn("{}");
 
-            assertThat(result).hasSize(19);
+            // memberships は事前取得が必要（F01.2.1 2-D）。0 件の事前取得を渡す
+            Map<String, String> result = collector.collect(1L, null,
+                    new com.mannschaft.app.gdpr.dto.PrefetchedPersonalData(List.of(), List.of(), List.of()));
+
+            assertThat(result).hasSize(20);
             assertThat(result.keySet()).containsExactlyInAnyOrder(
                     "account.json", "oauth_accounts.json", "memberships.json", "profiles.json",
                     "payments.json", "charts.json", "chat_messages.json", "timeline_posts.json",
                     "audit_logs.json", "notifications.json", "action_memos.json",
                     "error_reports.json", "proxy_input_consents.json", "proxy_input_records.json",
                     "weather_locations.json", "point_cards.json", "resumes.json", "inbox.json",
-                    "scheduleComments"
+                    "scheduleComments", "ranch.json"
             );
             assertThat(result).as("F03.16 予定コメントスレッド（AC-35）が全カテゴリ収集に含まれること")
                     .containsKey("scheduleComments");
@@ -210,6 +213,32 @@ class PersonalDataCollectorTest {
 
             assertThat(result).hasSize(2);
             assertThat(result.keySet()).containsExactlyInAnyOrder("account.json", "payments.json");
+        }
+
+        @Test
+        @DisplayName("異常系: memberships の事前取得が欠けていたら \"[]\" に畳まず失敗を伝播する（F01.2.1 2-D・AC-G127）")
+        void 異常_memberships事前取得欠落_失敗を伝播() {
+            org.assertj.core.api.Assertions.assertThatThrownBy(() -> collector.collect(1L, Set.of("memberships"),
+                            com.mannschaft.app.gdpr.dto.PrefetchedPersonalData.none()))
+                    .isInstanceOf(IllegalStateException.class);
+            org.assertj.core.api.Assertions.assertThatThrownBy(() -> collector.collect(1L, Set.of("memberships"), null))
+                    .isInstanceOf(IllegalStateException.class);
+        }
+
+        @Test
+        @DisplayName("異常系: 事前取得なしの2引数版で memberships を要求したら失敗する（全カテゴリ指定を含む）")
+        void 異常_2引数版でmemberships要求_失敗() {
+            org.assertj.core.api.Assertions.assertThatThrownBy(() -> collector.collect(1L, Set.of("memberships")))
+                    .isInstanceOf(IllegalStateException.class);
+        }
+
+        @Test
+        @DisplayName("正常系: memberships の事前取得が 0 件なら \"[]\" を書き出す（欠落とは区別する）")
+        void 正常_memberships事前取得0件_空配列() {
+            Map<String, String> result = collector.collect(1L, Set.of("memberships"),
+                    new com.mannschaft.app.gdpr.dto.PrefetchedPersonalData(List.of()));
+
+            assertThat(result).containsEntry("memberships.json", "[]");
         }
 
         @Test
@@ -229,16 +258,16 @@ class PersonalDataCollectorTest {
     class GetCategoryKeys {
 
         @Test
-        @DisplayName("正常系: 19カテゴリキーが返る")
-        void 正常_19カテゴリキー返却() {
+        @DisplayName("正常系: 20カテゴリキーが返る")
+        void 正常_20カテゴリキー返却() {
             Set<String> keys = collector.getCategoryKeys();
 
-            assertThat(keys).hasSize(19);
+            assertThat(keys).hasSize(20);
             assertThat(keys).containsExactlyInAnyOrder(
                     "account", "oauth", "memberships", "profiles", "payments",
                     "charts", "chat_messages", "timeline", "audit_logs", "notifications",
                     "action_memos", "error_reports", "proxy_consents", "proxy_records",
-                    "location_preference", "point_cards", "resumes", "inbox", "scheduleComments"
+                    "location_preference", "point_cards", "resumes", "inbox", "scheduleComments", "ranch"
             );
             assertThat(keys).as("F03.16 予定コメントスレッド（AC-35）のカテゴリキーが含まれること")
                     .contains("scheduleComments");

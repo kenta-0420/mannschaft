@@ -25,6 +25,8 @@ import com.mannschaft.app.matching.dto.TemplateCreateResponse;
 import com.mannschaft.app.matching.dto.TemplateResponse;
 import com.mannschaft.app.matching.service.MatchNotificationService;
 import com.mannschaft.app.matching.service.MatchProposalService;
+import com.mannschaft.app.matching.service.MatchProposalViewAccessGuard;
+import com.mannschaft.app.matching.service.MatchRequestViewAccessGuard;
 import com.mannschaft.app.matching.service.MatchRequestService;
 import com.mannschaft.app.matching.service.MatchReviewService;
 import com.mannschaft.app.matching.service.MatchTemplateService;
@@ -267,6 +269,13 @@ class MatchingAuthorizationEnforcementTest {
 
     @MockitoBean
     private MatchProposalService matchProposalService;
+
+    /** 書込前の閲覧ガード（CMP-260821-1027）。本テストは認可ゲートの発火を見るため素通しの mock とする。 */
+    @MockitoBean
+    private MatchRequestViewAccessGuard matchRequestViewAccessGuard;
+
+    @MockitoBean
+    private MatchProposalViewAccessGuard matchProposalViewAccessGuard;
 
     @MockitoBean
     private NgTeamService ngTeamService;

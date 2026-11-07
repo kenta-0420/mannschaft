@@ -1,0 +1,277 @@
+{
+  "schemaVersion": 1,
+  "campaign": "CMP-260908-2116",
+  "registrationSource": "actual-resident-artifacts",
+  "trusted": false,
+  "status": "observed-unverified",
+  "originalRunId": "CMP-260908-2116-revalidation-20261029-08",
+  "sourceHead": "ac49b5af784b79bade786ac0c82b9bb3822289f3",
+  "owner": "cmp2116r-e2fea90be1",
+  "originalStandardRun": {
+    "exitCode": 1,
+    "finishCreated": false,
+    "wholeRunPassed": false,
+    "note": "元run08の失敗・strict close超過・全goalsReached=falseを保持。固定機能の個別裁定とは別。"
+  },
+  "residents": [
+    {
+      "id": "CMP2116-R08-A",
+      "originalResidentId": "A",
+      "personaArchetype": "申請者・公開募集と離席復帰",
+      "purpose": "12〜13時の公開募集を提出し、離席後も相談状態を確かめたい",
+      "executionCompleted": true,
+      "goalsReached": false,
+      "contextsCreated": 1,
+      "contextsClosed": 1,
+      "browserContextsClosed": true,
+      "requiredSwitchGoalsReached": null,
+      "sourceArtifact": "independent-residents/A-resident-safe.json",
+      "sourceSha256": "af5217e649a3cc9c4fbb4498a74be769b600d05f160dd6d9a1cc855432e7d69d",
+      "selectedObservations": [
+        {
+          "id": "CMP2116-R08-A-01",
+          "title": "公開募集の提出後、戻った画面で相談状態を確認できなかった",
+          "detail": "元run: CMP-260908-2116-revalidation-20261029-08（標準run exit1・finish未作成）。sourceHead: ac49b5af784b79bade786ac0c82b9bb3822289f3。提出後にモーダルが閉じ成功表示を確認した。戻った自分のシフトには「交代依頼を作成」が残り、現在の相談状態を見つけられなかった。一覧件数変化の原因は未確認であり、製品不備の確定とは扱わない。 A/B/DのgoalsReachedは全てfalse。未検証の観測であり、修正完了・B0coverage達成を主張しない。"
+        }
+      ],
+      "screenshotProvenance": "元safeに画像pathなし。固定シナリオ画像を住民画像として代用しない。"
+    },
+    {
+      "id": "CMP2116-R08-B",
+      "originalResidentId": "B",
+      "personaArchetype": "受諾候補・自分宛相談の導線探索",
+      "purpose": "14〜15時の自分宛相談を見つけて受諾したい",
+      "executionCompleted": true,
+      "goalsReached": false,
+      "contextsCreated": 1,
+      "contextsClosed": 1,
+      "browserContextsClosed": true,
+      "requiredSwitchGoalsReached": null,
+      "sourceArtifact": "independent-residents/B-resident-safe.json",
+      "sourceSha256": "7c9b7875ed2ec5b16e6bff433c8bcc85e751b9c93b682603f76b4a2415ae1eac",
+      "selectedObservations": [
+        {
+          "id": "CMP2116-R08-B-01",
+          "title": "自分宛の交代相談を探したが受諾入口に到達できなかった",
+          "detail": "元run: CMP-260908-2116-revalidation-20261029-08（標準run exit1・finish未作成）。sourceHead: ac49b5af784b79bade786ac0c82b9bb3822289f3。ホーム、自分のシフト、通知、チャット、シフト管理、マイページを探索したが、14〜15時の相談の受諾入口に到達せず、受諾操作は0回だった。ACCEPTEDになる前の割当や相談状態を画面で確認できていない。 A/B/DのgoalsReachedは全てfalse。未検証の観測であり、修正完了・B0coverage達成を主張しない。"
+        }
+      ],
+      "screenshotProvenance": "元safeに画像pathなし。固定シナリオ画像を住民画像として代用しない。"
+    },
+    {
+      "id": "CMP2116-R08-D",
+      "originalResidentId": "D",
+      "personaArchetype": "チーム管理者・承認と権限切替",
+      "purpose": "16〜17時の相談を承認し、権限なし・別チームでも境界を確かめたい",
+      "executionCompleted": true,
+      "goalsReached": false,
+      "contextsCreated": 2,
+      "contextsClosed": 2,
+      "browserContextsClosed": true,
+      "requiredSwitchGoalsReached": {
+        "unauthorized": false,
+        "crossTenant": false
+      },
+      "sourceArtifact": "independent-residents/D-resident-safe.json",
+      "sourceSha256": "445e98cc739294f0985e97435ee3b3bd25570651a772433c18cceebbf14d4ab6",
+      "selectedObservations": [
+        {
+          "id": "CMP2116-R08-D-01",
+          "title": "承認待ち相談カードに数値IDが表示され日時・氏名はなかった",
+          "detail": "元run: CMP-260908-2116-revalidation-20261029-08（標準run exit1・finish未作成）。sourceHead: ac49b5af784b79bade786ac0c82b9bb3822289f3。承認待ちカードでは申請者・相手が数値IDで表示され、日時と氏名はなかった。承認操作後のAPPROVED表示と16〜17時のB+C割当は住民が画面で確認した。表示原因は未確認であり、既知0650の観測と独立した新不具合には数えない。 A/B/DのgoalsReachedは全てfalse。未検証の観測であり、修正完了・B0coverage達成を主張しない。"
+        },
+        {
+          "id": "CMP2116-R08-D-02",
+          "title": "権限なし切替後のローディングで相談境界の確認を終えられなかった",
+          "detail": "元run: CMP-260908-2116-revalidation-20261029-08（標準run exit1・finish未作成）。sourceHead: ac49b5af784b79bade786ac0c82b9bb3822289f3。権限なし利用者へ切り替え、自力で見つけた相談URLを開いた後、networkidle後もローディング表示だった。非漏洩の確認を終えられず、別チームの切替は未実施。固定試験の境界合格でこの住民の未達を置き換えない。 A/B/DのgoalsReachedは全てfalse。未検証の観測であり、修正完了・B0coverage達成を主張しない。"
+        }
+      ],
+      "screenshotProvenance": "元safeに画像pathなし。固定シナリオ画像を住民画像として代用しない。"
+    }
+  ],
+  "rootCorroboration": {
+    "residentReportsAreNotDefectConfirmation": true,
+    "fixedUiIsSeparateScenario": true,
+    "fixedUi": {
+      "fixedUiPassed": true,
+      "acceptHttp": 200,
+      "approveHttp": 200,
+      "approvedAssignedAliases": [
+        "B",
+        "C"
+      ],
+      "requesterAAbsent": true,
+      "threeActorMyShiftReloadPassesEach": 2,
+      "rejectAndCancelSlotHistoryHashesUnchanged": true,
+      "uiBoundaryRows": 8,
+      "negativeApiSupplementRows": 8,
+      "boundaryFourTablesUnchanged": true,
+      "reasonLeaks": 0,
+      "uiBoundaryWrites": 0,
+      "anonymousScheduleUiGet": "no-ui-get-observed",
+      "anonymousApi401": "separate-api-status-only-body-non-json",
+      "known0651UxUnfixed": true,
+      "wholeRunPassedClaimed": false
+    },
+    "after": {
+      "objectiveConditionsMet": true,
+      "conditions": {
+        "snapshotRead": true,
+        "mysqlExactIdOwnerLabel": true,
+        "knownNonServiceGenerationsExited": true,
+        "externalRuntimeReferencesZero": true,
+        "unknownInaccessibleZero": true,
+        "sharedGenerationsPreserved": true,
+        "residentExecutionCompleted": true,
+        "unrelatedScopeUnchanged": true,
+        "CAllHistoryUnchanged": true
+      },
+      "goalsAdjudicated": false
+    },
+    "cleanup": {
+      "cleanupAuditPassed": true,
+      "cleanupConditions": {
+        "allKnownGenerationsExited": true,
+        "scratchRuntimeBrowserAbsent": true,
+        "runtimeBrowserReferencesZero": true,
+        "unknownInaccessibleZero": true,
+        "exactContainersAbsent": true,
+        "exactVolumeAbsent": true,
+        "sharedBaselinePreserved": true,
+        "actualWindowsFourPortsFree": true,
+        "actualWslFourPortsFree": true,
+        "residentSixFileManifestMatches": true
+      },
+      "uniqueOwnedGenerationsCount": 237,
+      "sameGenerationLiveCount": 0,
+      "references": {
+        "references": [],
+        "unknownInaccessible": [],
+        "baselineInaccessible": [
+          {
+            "pid": 240,
+            "starttime": "67575",
+            "errorNumber": 13
+          },
+          {
+            "pid": 245,
+            "starttime": "67580",
+            "errorNumber": 13
+          }
+        ],
+        "protectedLiveExcluded": [],
+        "sameUidScanned": 18,
+        "auditPidExcluded": 1434484
+      },
+      "environmentStringsMeasured": false,
+      "runPassedClaimed": false
+    },
+    "interpretation": "root裏取りのDB比較はAのPENDING公開募集、Bの未変更、DのAPPROVEDとB+C割当を補助確認する。住民自身の未到達・未確認を成功へ変更しない。"
+  },
+  "provenance": [
+    {
+      "basename": "run08-resident-preserved-root.json",
+      "sha256": "37c5533bec3a16c9766ec4ce6ed92458bac105d5dbac7c2cd3553ac41790d688"
+    },
+    {
+      "basename": "run08-fixed-ui-root-review.json",
+      "sha256": "a9125837c3dbd094c1b78cdd52af3f25458ddb8ef305014fe19f0d9eb574e7e5"
+    },
+    {
+      "basename": "independent-after-run08-root-02.json",
+      "sha256": "5ec9a596ad0622f9439d02ffa1051d225a82d08ae6589abca5ba246c658641b1"
+    },
+    {
+      "basename": "run08-external-cleanup-audit-safe.json",
+      "sha256": "88f8a8b74c35a6fd6e211ee185cb92c26b9afa3ff5d1359a1918fba85700e0f6"
+    },
+    {
+      "basename": "cmp2116-observations-board-b4-safe.json",
+      "sha256": "e0cca540e6e524285b7dfd384a4d7e390c272a74389a01fa070f6925921e633e"
+    },
+    {
+      "basename": "cmp2116-observations-board-b4-identity-safe.json",
+      "sha256": "a1e89742477eefdfc048d1b9d00001ee99c92f8ea512163067d82bfa7915b96e"
+    },
+    {
+      "basename": "cmp2116-observations-board-b4-cleanup-safe.json",
+      "sha256": "50c9159c1f1ac495dd9eb68243ceae5af5233246a8dd757f564b6b7daea09591"
+    },
+    {
+      "basename": "cmp2116-observations-selected-generated-safe.json",
+      "sha256": "2ede5b49821e0c489c17917e92f55e0175f6a6fa96790e1f745ab0e625abe88b"
+    }
+  ],
+  "sourceArtifacts": [
+    {
+      "persona": "A",
+      "name": "A-resident-safe.json",
+      "sha256": "af5217e649a3cc9c4fbb4498a74be769b600d05f160dd6d9a1cc855432e7d69d"
+    },
+    {
+      "persona": "A",
+      "name": "A-process-register.json",
+      "sha256": "83ded72eaba4d87c82a39652ec04343e5c25716db2ec2d69eda87b1885ff3e10"
+    },
+    {
+      "persona": "B",
+      "name": "B-resident-safe.json",
+      "sha256": "7c9b7875ed2ec5b16e6bff433c8bcc85e751b9c93b682603f76b4a2415ae1eac"
+    },
+    {
+      "persona": "B",
+      "name": "B-process-register.json",
+      "sha256": "d949a8b55687c9268bed0b778a7dda0e059827764d82d7df80df93d30f5e1fcd"
+    },
+    {
+      "persona": "D",
+      "name": "D-resident-safe.json",
+      "sha256": "445e98cc739294f0985e97435ee3b3bd25570651a772433c18cceebbf14d4ab6"
+    },
+    {
+      "persona": "D",
+      "name": "D-process-register.json",
+      "sha256": "15d6d5c4acde2db8be5a9d737a33d65dabb053edde87755b6bbd87df16b2c638"
+    }
+  ],
+  "packageManifestSha256": "95cc43fb34ea3574ce2e6a5012a78687312b6f17b1cae964bcafe139a8a729ab",
+  "limitations": [
+    "全住民goalsReached=falseを保持。D権限なし・別チーム目標未達。",
+    "A/Dは終了目標時刻（closeby）を超過しroot停止。閉鎖自体はlease期限前。元標準runのfinish期限失敗は別に保持し、exit1/finish未作成を変更しない。",
+    "root IPC中継とページ操作失敗を含む。独立操作の制約は元safeに残す。",
+    "観測登録だけで製品修正、B0coverage、正式親完了を主張しない。"
+  ],
+  "boardVerification": {
+    "passed": true,
+    "existingDecisionStage": "B4",
+    "initialVisibleB4": 17,
+    "newVisible": 4,
+    "reloadVisibleB4": 17,
+    "reloadNewVisible": 4,
+    "sourceLabelsValid": true,
+    "originalRunVisible": true,
+    "sourceHeadVisible": true,
+    "reimportMechanism": "existing autoload-on-reload stable-ID deduplication",
+    "globalOverlayCount": 79,
+    "newContextOnly": true,
+    "cleanup": {
+      "directChildCount": 0,
+      "browserClosed": true,
+      "contextClosed": true,
+      "processExited": true,
+      "rootPidAbsent": true,
+      "checkedUtc": "2026-10-29T03:19:11.3071566Z",
+      "profileAbsent": true,
+      "serverClosed": true
+    },
+    "priorFailedAttemptsPreserved": true,
+    "cleanupTiming": {
+      "completed": true,
+      "plannedReserveSeconds": 60,
+      "actualSeconds": 74.024,
+      "reserveExceeded": true,
+      "fullElapsedSeconds": 102.758,
+      "upperBoundComplianceClaimed": false
+    }
+  }
+}

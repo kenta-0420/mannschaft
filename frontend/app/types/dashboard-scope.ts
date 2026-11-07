@@ -128,6 +128,7 @@ export interface ScopeUpcomingEventItem {
 /** ④ ブログ直近記事エントリ（teamLatestBlogPosts / orgLatestBlogPosts の要素）。 */
 export interface ScopeBlogPostItem {
   id: number
+  slug?: string
   title: string
   author: string | null
   published_at: string | null

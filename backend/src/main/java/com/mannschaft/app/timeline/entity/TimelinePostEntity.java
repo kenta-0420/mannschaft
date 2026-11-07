@@ -88,6 +88,25 @@ public class TimelinePostEntity extends BaseEntity {
     @Column(name = "source_event_uuid", columnDefinition = "BINARY(16)")
     private UUID sourceEventUuid;
 
+    /** rollout後native生成だけ既知。過去記事から資格を推測しない。 */
+    @Column(name="is_ranch_origin_known",nullable=false)
+    @org.hibernate.annotations.ColumnDefault("0")
+    private boolean ranchOriginKnown;
+    @Column(name="ranch_qualified_at",columnDefinition="DATETIME(6)")
+    private java.time.Instant ranchQualifiedAt;
+    @Column(name="ranch_qualified_user_id",columnDefinition="BIGINT UNSIGNED")
+    private Long ranchQualifiedUserId;
+    @jakarta.persistence.PrePersist
+    private void recordRanchNativeOrigin() { ranchOriginKnown=true; }
+    /** 新規保存前の本人通常投稿だけに時点証拠を固定する。資格認可は外側authが行う。 */
+    public void freezeRanchOriginalMetadata(java.time.Instant at,Long actor) {
+        if(getId()!=null || at==null || actor==null || !actor.equals(userId)
+                || status!=PostStatus.PUBLISHED || parentId!=null || repostOfId!=null
+                || postedAsType!=PostedAsType.USER || systemPostType!=null)
+            throw new IllegalStateException("通常新規投稿の時点証拠を固定できません");
+        ranchOriginKnown=true;ranchQualifiedAt=at;ranchQualifiedUserId=actor;
+    }
+
     private Long socialProfileId;
 
     @Enumerated(EnumType.STRING)

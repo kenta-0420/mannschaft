@@ -1,0 +1,215 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261018-1443",
+  "scope": "app",
+  "implementation": {
+    "pr": 3973,
+    "sha": "67c6a9bbb0c2c178aae5ab938930c799ed84ad13"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "本人履歴の論理削除済み参照を解決する",
+      "tests": [
+        {
+          "name": "ReservationHistoryScopeContractIT.java",
+          "evidence": "backend/src/test/java/com/mannschaft/app/reservation/ReservationHistoryScopeContractIT.java"
+        },
+        {
+          "name": "reservation-history-tab-real.spec.ts",
+          "evidence": "frontend/tests/e2e/real/reservation-history-tab-real.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "グループ枠数と末尾時刻を保持する",
+      "tests": [
+        {
+          "name": "ReservationHistoryScopeContractIT.java",
+          "evidence": "backend/src/test/java/com/mannschaft/app/reservation/ReservationHistoryScopeContractIT.java"
+        },
+        {
+          "name": "reservations.spec.ts",
+          "evidence": "frontend/app/pages/my/reservations.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "孤児のnull契約と6言語の欠損説明を維持する",
+      "tests": [
+        {
+          "name": "ReservationHistoryScopeContractIT.java",
+          "evidence": "backend/src/test/java/com/mannschaft/app/reservation/ReservationHistoryScopeContractIT.java"
+        },
+        {
+          "name": "ReservationList.spec.ts",
+          "evidence": "frontend/tests/unit/components/reservation/ReservationList.spec.ts"
+        },
+        {
+          "name": "reservations.spec.ts",
+          "evidence": "frontend/app/pages/my/reservations.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "本人と関連team帰属の境界を維持する",
+      "tests": [
+        {
+          "name": "ReservationHistoryScopeContractIT.java",
+          "evidence": "backend/src/test/java/com/mannschaft/app/reservation/ReservationHistoryScopeContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "通常経路の除外と一括取得を維持する",
+      "tests": [
+        {
+          "name": "ReservationHistoryScopeContractIT.java",
+          "evidence": "backend/src/test/java/com/mannschaft/app/reservation/ReservationHistoryScopeContractIT.java"
+        },
+        {
+          "name": "ReservationServiceTest.java",
+          "evidence": "backend/src/test/java/com/mannschaft/app/reservation/ReservationServiceTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-6",
+      "description": "通常・独立管理ページの有効タブをURLから復元する",
+      "tests": [
+        {
+          "name": "useReservationTab.spec.ts",
+          "evidence": "frontend/app/composables/useReservationTab.spec.ts"
+        },
+        {
+          "name": "reservation-history-tab-real.spec.ts",
+          "evidence": "frontend/tests/e2e/real/reservation-history-tab-real.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-7",
+      "description": "無効query・権限未確定・失効・管理レンズを安全に扱う",
+      "tests": [
+        {
+          "name": "useReservationTab.spec.ts",
+          "evidence": "frontend/app/composables/useReservationTab.spec.ts"
+        },
+        {
+          "name": "TeamReservationsPanel.spec.ts",
+          "evidence": "frontend/tests/unit/components/reservation/TeamReservationsPanel.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-8",
+      "description": "遷移先への書戻し・余分な取得・refresh退行を防ぐ",
+      "tests": [
+        {
+          "name": "useReservationTab.navigation.spec.ts",
+          "evidence": "frontend/app/composables/useReservationTab.navigation.spec.ts"
+        },
+        {
+          "name": "TeamReservationsPanel.spec.ts",
+          "evidence": "frontend/tests/unit/components/reservation/TeamReservationsPanel.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-9",
+      "description": "実機で利用者・管理者・権限境界を検証する",
+      "tests": [
+        {
+          "name": "reservation-history-tab-real.spec.ts",
+          "evidence": "frontend/tests/e2e/real/reservation-history-tab-real.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-10",
+      "description": "実機後の独立探索と検分で結果を確認する",
+      "tests": [
+        {
+          "name": "実機後の独立探索passed・最終コード検分とAC照合指摘0",
+          "evidence": "docs/evidence/CMP-261018-1443.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 39114726492
+    },
+    {
+      "runId": 39114726486
+    },
+    {
+      "runId": 39114726418
+    },
+    {
+      "runId": 39114726444
+    },
+    {
+      "runId": 39114726457
+    },
+    {
+      "runId": 39114726441
+    },
+    {
+      "runId": 39114726389
+    },
+    {
+      "runId": 39114726481
+    },
+    {
+      "runId": 39114726642
+    },
+    {
+      "runId": 39114726571
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261018-1443.md"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261018-1443.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261018-1443.md"
+    }
+  },
+  "regressions": [
+    {
+      "description": "CHAR変換によるグループ終了時刻の退行をTIME型保持で解消",
+      "test": "履歴ITと既存グループテストのREDからGREEN",
+      "redEvidence": "docs/evidence/CMP-261018-1443.md",
+      "greenEvidence": "docs/evidence/CMP-261018-1443.md"
+    },
+    {
+      "description": "履歴helperのD3T越境を既存入口のMap受渡しで解消",
+      "test": "D3T実assertion REDから全ArchUnit・integrity GREEN、freeze不変",
+      "redEvidence": "docs/evidence/CMP-261018-1443.md",
+      "greenEvidence": "docs/evidence/CMP-261018-1443.md"
+    },
+    {
+      "description": "タブ遷移と管理レンズの選択競合を解消",
+      "test": "navigation・Panel対象単体のREDからGREEN",
+      "redEvidence": "docs/evidence/CMP-261018-1443.md",
+      "greenEvidence": "docs/evidence/CMP-261018-1443.md"
+    },
+    {
+      "description": "既存MyPage callerの欠損説明・未知group非短縮・既知終端優先の未補完を解消。新規導入とは断定しない",
+      "test": "MyPage対象単体の実assertion REDからGREEN・lint成功",
+      "redEvidence": "docs/evidence/CMP-261018-1443.md",
+      "greenEvidence": "docs/evidence/CMP-261018-1443.md"
+    }
+  ]
+}

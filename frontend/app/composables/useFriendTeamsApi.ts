@@ -1,8 +1,11 @@
 import type {
+  FriendRequestSourceTeamListResponse,
+  IncomingTeamFollowListResponse,
   FollowTeamRequest,
   FollowTeamResponse,
   SetVisibilityRequest,
   TeamFriendListResponse,
+  PendingTeamFollowListResponse,
   UnfollowRequest,
 } from '~/types/friends'
 
@@ -35,7 +38,7 @@ export function useFriendTeamsApi() {
    * フレンド関係が同時に生成される。
    *
    * @param teamId 自チーム ID
-   * @param req    フォローリクエスト
+   * @param req    フォローリクエスト（フォロー先は targetTeamSlug か targetTeamId のちょうど一方）
    * @returns フォロー結果
    */
   async function follow(teamId: string, req: FollowTeamRequest): Promise<FollowTeamResponse> {
@@ -81,6 +84,16 @@ export function useFriendTeamsApi() {
     )
   }
 
+  /** 相互成立前のフォローを取得する（MANAGE_FRIEND_TEAMS実効権限が必要）。 */
+  async function listPendingFollows(
+    teamId: string,
+    params?: { page?: number; size?: number },
+  ): Promise<PendingTeamFollowListResponse> {
+    return api<PendingTeamFollowListResponse>(
+      `/api/v1/teams/${teamId}/friends/pending${buildQuery(params)}`,
+    )
+  }
+
   /**
    * フレンド関係の公開設定を変更する（ADMIN のみ）。
    *
@@ -99,10 +112,21 @@ export function useFriendTeamsApi() {
     })
   }
 
+  async function listSourceTeams(targetTeamSlug: string, params: { page: number; size: number }): Promise<FriendRequestSourceTeamListResponse> {
+    return api<FriendRequestSourceTeamListResponse>('/api/v1/me/friend-request-source-teams' + buildQuery({ targetTeamSlug, ...params }))
+  }
+
+  async function listIncomingFollows(teamId: string, params: { page: number; size: number }): Promise<IncomingTeamFollowListResponse> {
+    return api<IncomingTeamFollowListResponse>(`/api/v1/teams/${teamId}/friends/incoming${buildQuery(params)}`)
+  }
+
   return {
+    listSourceTeams,
+    listIncomingFollows,
     follow,
     unfollow,
     listFriends,
+    listPendingFollows,
     setVisibility,
   }
 }

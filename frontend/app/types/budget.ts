@@ -53,13 +53,19 @@ export interface BudgetSummary {
   totalIncome: number
   totalExpense: number
   balance: number
-  byCategory: Array<{
+  fiscalYearName: string
+  totalBudget: number
+  executionRate: number
+  warningLevel: string
+  categories: Array<{
     categoryId: number
     categoryName: string
     categoryType: BudgetCategoryType
-    allocated: number
-    actual: number
-    burnPercent: number
+    budgetAmount: number
+    actualAmount: number
+    remainingAmount: number
+    executionRate: number
+    warningLevel: string
   }>
 }
 

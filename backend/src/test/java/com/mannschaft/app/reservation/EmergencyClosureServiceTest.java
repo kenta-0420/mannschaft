@@ -1,10 +1,13 @@
 package com.mannschaft.app.reservation;
 
-import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.auth.service.UserService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
 import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import com.mannschaft.app.notification.service.NotificationHelper;
+import com.mannschaft.app.reservation.dto.CreateEmergencyClosureRequest;
 import com.mannschaft.app.reservation.dto.EmergencyClosurePreviewResponse;
+import com.mannschaft.app.reservation.dto.EmergencyClosureResponse;
 import com.mannschaft.app.reservation.entity.EmergencyClosureConfirmationEntity;
 import com.mannschaft.app.reservation.entity.EmergencyClosureEntity;
 import com.mannschaft.app.reservation.entity.ReservationEntity;
@@ -29,7 +32,11 @@ import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,7 +45,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.assertj.core.groups.Tuple.tuple;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -60,7 +69,7 @@ class EmergencyClosureServiceTest {
     private ReservationRepository reservationRepository;
 
     @Mock
-    private UserRepository userRepository;
+    private UserService userService;
 
     @Mock
     private EmailOutboxService emailOutboxService;
@@ -464,6 +473,74 @@ class EmergencyClosureServiceTest {
     }
 
     // ========================================
+    // sendClosure の一括取消（CMP-260822-1730 AC-1730-6）
+    // ========================================
+
+    @Nested
+    @DisplayName("sendClosure の一括取消は行ロック後の最新状態で判定する（AC-1730-6）")
+    class SendClosureLocking {
+
+        private com.mannschaft.app.reservation.dto.CreateEmergencyClosureRequest request(boolean cancel) {
+            com.mannschaft.app.reservation.dto.CreateEmergencyClosureRequest r =
+                    new com.mannschaft.app.reservation.dto.CreateEmergencyClosureRequest();
+            r.setStartDate(TARGET_DATE);
+            r.setEndDate(TARGET_DATE);
+            r.setReason("休業");
+            r.setSubject("休業");
+            r.setMessageBody("休業");
+            r.setCancelReservations(cancel);
+            return r;
+        }
+
+        @Test
+        @DisplayName("一括取消は対象idを行ロックで取り、ロック後にCANCELLEDの行は取消・枠減算・通知対象から外す")
+        void ロック後に失効済みの行は取消も減算もしない() {
+            ReservationSlotEntity s = slot(401L, LocalTime.of(10, 0), LocalTime.of(11, 0));
+            given(slotRepository.findByTeamIdAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
+                    eq(TEAM_ID), any(), any())).willReturn(List.of(s));
+            ReservationEntity active = reservationFor(401L);
+            injectId(active, 9001L);
+            ReservationEntity expired = ReservationEntity.builder().reservationSlotId(401L).lineId(1L)
+                    .teamId(TEAM_ID).userId(777L).status(ReservationStatus.CANCELLED).build();
+            injectId(expired, 9002L);
+            given(reservationRepository.findIdsByReservationSlotIdInAndStatusIn(any(), any()))
+                    .willReturn(List.of(9001L, 9002L));
+            given(reservationRepository.findByIdInForUpdate(List.of(9001L, 9002L)))
+                    .willReturn(List.of(active, expired));
+            given(slotService.getSlotEntity(401L)).willReturn(s);
+            given(emergencyClosureRepository.save(any())).willAnswer(inv -> {
+                EmergencyClosureEntity e = inv.getArgument(0);
+                injectId(e, 1L);
+                return e;
+            });
+
+            var response = service.sendClosure(TEAM_ID, 1L, request(true));
+
+            assertThat(active.getStatus()).isEqualTo(ReservationStatus.CANCELLED);
+            assertThat(expired.getCancelReason()).as("失効の取消を上書きしない").isNull();
+            verify(slotService, org.mockito.Mockito.times(1)).decrementAndReopen(s);
+            assertThat(response.getSentCount()).as("失効済みの利用者へ休業通知を重ねない").isEqualTo(1);
+            verify(reservationRepository, never()).findByReservationSlotIdInAndStatusIn(any(), any());
+        }
+
+        @Test
+        @DisplayName("取消しない通知のみの送信は行ロックを取らない")
+        void 通知のみは行ロックを取らない() {
+            ReservationSlotEntity s = slot(402L, LocalTime.of(10, 0), LocalTime.of(11, 0));
+            given(slotRepository.findByTeamIdAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
+                    eq(TEAM_ID), any(), any())).willReturn(List.of(s));
+            given(reservationRepository.findByReservationSlotIdInAndStatusIn(any(), any()))
+                    .willReturn(List.of(reservationFor(402L)));
+            given(emergencyClosureRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+            service.sendClosure(TEAM_ID, 1L, request(false));
+
+            verify(reservationRepository, never()).findByIdInForUpdate(any());
+            verify(slotService, never()).decrementAndReopen(any());
+        }
+    }
+
+    // ========================================
     // confirmClosure / 患者確認イベント発火
     // ========================================
 
@@ -529,6 +606,273 @@ class EmergencyClosureServiceTest {
             // Then: 二重確認は副作用なし
             verify(confirmationRepository, never()).save(any());
             verify(eventPublisher, never()).publishEvent(any());
+        }
+    }
+
+    // ========================================
+    // 氏名解決（CMP-261030-0650）: auth の UserService 経由の一括取得（N+1 解消・越境依存の解消）
+    // ========================================
+
+    private static UserService.FullNameAndEmail contact(long id, String fullName) {
+        return new UserService.FullNameAndEmail(fullName, "u" + id + "@example.com");
+    }
+
+    private ReservationEntity reservationOf(long slotId, long userId) {
+        return ReservationEntity.builder()
+                .reservationSlotId(slotId)
+                .lineId(1L)
+                .teamId(TEAM_ID)
+                .userId(userId)
+                .build();
+    }
+
+    private void givenSlotsAndReservations(List<ReservationEntity> reservations) {
+        given(slotRepository.findByTeamIdAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
+                eq(TEAM_ID), any(), any()))
+                .willReturn(List.of(slot(300L, LocalTime.of(9, 0), LocalTime.of(10, 0))));
+        given(reservationRepository.findByReservationSlotIdInAndStatusIn(any(), any()))
+                .willReturn(reservations);
+        // preview では使うが sendClosure では使わないため lenient にする
+        org.mockito.Mockito.lenient().when(slotRepository.findAllById(any()))
+                .thenReturn(List.of(slot(300L, LocalTime.of(9, 0), LocalTime.of(10, 0))));
+    }
+
+    private EmergencyClosureConfirmationEntity confirmationOf(long userId) {
+        return EmergencyClosureConfirmationEntity.builder()
+                .emergencyClosureId(700L)
+                .userId(userId)
+                .reservationId(900L + userId)
+                .appointmentAt(LocalDateTime.of(2026, 4, 8, 10, 0))
+                .build();
+    }
+
+    /** 一括取得の引数（取得対象 userId の集合）を捕まえる。モックの戻り値は引数に依存させる。 */
+    @SuppressWarnings("unchecked")
+    private ArgumentCaptor<Collection<Long>> idsCaptor() {
+        return ArgumentCaptor.forClass(Collection.class);
+    }
+
+    /** 引数と無関係に固定の一覧を返さず、渡された ID のうち known に含まれるものだけを返す。 */
+    private void givenUsers(Map<Long, UserService.FullNameAndEmail> known) {
+        given(userService.getFullNamesAndEmails(any())).willAnswer(inv -> {
+            Collection<Long> ids = inv.getArgument(0);
+            Map<Long, UserService.FullNameAndEmail> result = new LinkedHashMap<>();
+            // 逆順で返して、呼び出し側が順序でなく userId で対応づけることを確かめる
+            List<Long> reversed = new ArrayList<>(known.keySet());
+            java.util.Collections.reverse(reversed);
+            for (Long id : reversed) {
+                if (ids.contains(id)) {
+                    result.put(id, known.get(id));
+                }
+            }
+            return result;
+        });
+    }
+
+    @Nested
+    @DisplayName("previewClosure / 氏名の一括解決")
+    class PreviewNames {
+
+        @Test
+        @DisplayName("AC-11: 一括取得は重複排除済みの対象 userId 集合で1回だけ呼ぶ")
+        void 一括取得は対象IDで1回だけ() {
+            givenSlotsAndReservations(List.of(
+                    reservationOf(300L, 1L), reservationOf(300L, 2L), reservationOf(300L, 1L)));
+            givenUsers(Map.of(1L, contact(1L, "山田 太郎"), 2L, contact(2L, "鈴木 花子")));
+
+            service.previewClosure(TEAM_ID, TARGET_DATE, TARGET_DATE, null, null);
+
+            ArgumentCaptor<Collection<Long>> captor = idsCaptor();
+            verify(userService, times(1)).getFullNamesAndEmails(captor.capture());
+            assertThat(captor.getValue()).containsExactlyInAnyOrder(1L, 2L);
+        }
+
+        @Test
+        @DisplayName("AC-11: 対象0件のとき氏名取得は0回")
+        void 対象0件なら取得しない() {
+            given(slotRepository.findByTeamIdAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
+                    eq(TEAM_ID), any(), any())).willReturn(List.of());
+
+            EmergencyClosurePreviewResponse res = service.previewClosure(TEAM_ID, TARGET_DATE, TARGET_DATE, null, null);
+
+            assertThat(res.getAffectedReservations()).isEmpty();
+            verify(userService, never()).getFullNamesAndEmails(any());
+        }
+
+        @Test
+        @DisplayName("AC-11: 一括取得の結果が逆順でも userId で氏名が対応する")
+        void 逆順でも氏名が正しく対応する() {
+            givenSlotsAndReservations(List.of(reservationOf(300L, 1L), reservationOf(300L, 2L)));
+            givenUsers(Map.of(1L, contact(1L, "山田 太郎"), 2L, contact(2L, "鈴木 花子")));
+
+            EmergencyClosurePreviewResponse res = service.previewClosure(TEAM_ID, TARGET_DATE, TARGET_DATE, null, null);
+
+            assertThat(res.getAffectedReservations()).extracting("userId", "userFullName", "userEmail")
+                    .containsExactly(
+                            tuple(1L, "山田 太郎", "u1@example.com"),
+                            tuple(2L, "鈴木 花子", "u2@example.com"));
+        }
+
+        @Test
+        @DisplayName("AC-11: 同一ユーザーの予約が複数あっても行数を維持する")
+        void 同一ユーザー複数予約でも行数を維持() {
+            givenSlotsAndReservations(List.of(
+                    reservationOf(300L, 1L), reservationOf(300L, 1L), reservationOf(300L, 1L)));
+            givenUsers(Map.of(1L, contact(1L, "山田 太郎")));
+
+            EmergencyClosurePreviewResponse res = service.previewClosure(TEAM_ID, TARGET_DATE, TARGET_DATE, null, null);
+
+            assertThat(res.getAffectedReservations()).hasSize(3);
+            assertThat(res.getAffectedReservations()).allMatch(a -> "山田 太郎".equals(a.getUserFullName()));
+        }
+
+        @Test
+        @DisplayName("AC-10d/AC-11: 見つからないユーザーも行を落とさず氏名・メールは空文字、他の行は取り違えない")
+        void 見つからないユーザーは空文字で行を維持() {
+            givenSlotsAndReservations(List.of(
+                    reservationOf(300L, 1L), reservationOf(300L, 99L), reservationOf(300L, 2L)));
+            givenUsers(Map.of(1L, contact(1L, "山田 太郎"), 2L, contact(2L, "鈴木 花子")));
+
+            EmergencyClosurePreviewResponse res = service.previewClosure(TEAM_ID, TARGET_DATE, TARGET_DATE, null, null);
+
+            assertThat(res.getAffectedReservations()).extracting("userId", "userFullName", "userEmail")
+                    .containsExactly(
+                            tuple(1L, "山田 太郎", "u1@example.com"),
+                            tuple(99L, "", ""),
+                            tuple(2L, "鈴木 花子", "u2@example.com"));
+        }
+    }
+
+    @Nested
+    @DisplayName("getConfirmations / 氏名の一括解決")
+    class ConfirmationNames {
+
+        private void givenClosure() {
+            given(emergencyClosureRepository.findById(700L))
+                    .willReturn(Optional.of(EmergencyClosureEntity.builder().teamId(TEAM_ID).build()));
+        }
+
+        @Test
+        @DisplayName("AC-11: 一括取得は重複排除済みの対象 userId 集合で1回だけ呼ぶ")
+        void 一括取得は対象IDで1回だけ() {
+            givenClosure();
+            given(confirmationRepository.findByEmergencyClosureId(700L))
+                    .willReturn(List.of(confirmationOf(1L), confirmationOf(2L), confirmationOf(1L)));
+            givenUsers(Map.of(1L, contact(1L, "山田 太郎"), 2L, contact(2L, "鈴木 花子")));
+
+            service.getConfirmations(TEAM_ID, 700L);
+
+            ArgumentCaptor<Collection<Long>> captor = idsCaptor();
+            verify(userService, times(1)).getFullNamesAndEmails(captor.capture());
+            assertThat(captor.getValue()).containsExactlyInAnyOrder(1L, 2L);
+        }
+
+        @Test
+        @DisplayName("AC-11: 対象0件のとき氏名取得は0回")
+        void 対象0件なら取得しない() {
+            givenClosure();
+            given(confirmationRepository.findByEmergencyClosureId(700L)).willReturn(List.of());
+
+            assertThat(service.getConfirmations(TEAM_ID, 700L)).isEmpty();
+
+            verify(userService, never()).getFullNamesAndEmails(any());
+        }
+
+        @Test
+        @DisplayName("AC-11: 一括取得の結果が逆順でも userId で氏名が対応する")
+        void 逆順でも氏名が正しく対応する() {
+            givenClosure();
+            given(confirmationRepository.findByEmergencyClosureId(700L))
+                    .willReturn(List.of(confirmationOf(1L), confirmationOf(2L)));
+            givenUsers(Map.of(1L, contact(1L, "山田 太郎"), 2L, contact(2L, "鈴木 花子")));
+
+            var res = service.getConfirmations(TEAM_ID, 700L);
+
+            assertThat(res).extracting("userId", "userFullName", "userEmail")
+                    .containsExactly(
+                            tuple(1L, "山田 太郎", "u1@example.com"),
+                            tuple(2L, "鈴木 花子", "u2@example.com"));
+        }
+
+        @Test
+        @DisplayName("AC-11: 同一ユーザーの確認行が複数あっても行数を維持する")
+        void 同一ユーザー複数行でも行数を維持() {
+            givenClosure();
+            given(confirmationRepository.findByEmergencyClosureId(700L))
+                    .willReturn(List.of(confirmationOf(1L), confirmationOf(1L)));
+            givenUsers(Map.of(1L, contact(1L, "山田 太郎")));
+
+            assertThat(service.getConfirmations(TEAM_ID, 700L)).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("AC-10d/AC-11: 見つからないユーザーも行を落とさず空文字、他の行は取り違えない")
+        void 見つからないユーザーは空文字で行を維持() {
+            givenClosure();
+            given(confirmationRepository.findByEmergencyClosureId(700L))
+                    .willReturn(List.of(confirmationOf(1L), confirmationOf(99L), confirmationOf(2L)));
+            givenUsers(Map.of(1L, contact(1L, "山田 太郎"), 2L, contact(2L, "鈴木 花子")));
+
+            var res = service.getConfirmations(TEAM_ID, 700L);
+
+            assertThat(res).extracting("userId", "userFullName", "userEmail")
+                    .containsExactly(
+                            tuple(1L, "山田 太郎", "u1@example.com"),
+                            tuple(99L, "", ""),
+                            tuple(2L, "鈴木 花子", "u2@example.com"));
+        }
+    }
+
+    @Nested
+    @DisplayName("sendClosure / メール送信経路の氏名・宛先解決")
+    class SendClosureMail {
+
+        private CreateEmergencyClosureRequest request() {
+            CreateEmergencyClosureRequest r = new CreateEmergencyClosureRequest();
+            r.setStartDate(TARGET_DATE);
+            r.setEndDate(TARGET_DATE);
+            r.setReason("設備点検");
+            r.setSubject("臨時休業のお知らせ");
+            r.setMessageBody("本文");
+            r.setCancelReservations(false);
+            return r;
+        }
+
+        @Test
+        @DisplayName("重複予約と見つからないユーザーが混ざっても、取得ID集合・宛先・enqueue件数・sentCountが正しい")
+        void 重複と欠損が混ざる送信() {
+            // ユーザー1は予約2件（重複）、ユーザー2は1件、ユーザー99は退会等で見つからない
+            givenSlotsAndReservations(List.of(
+                    reservationOf(300L, 1L), reservationOf(300L, 1L),
+                    reservationOf(300L, 99L), reservationOf(300L, 2L)));
+            givenUsers(Map.of(1L, contact(1L, "山田 太郎"), 2L, contact(2L, "鈴木 花子")));
+            given(emergencyClosureRepository.save(any())).willAnswer(inv -> {
+                EmergencyClosureEntity e = inv.getArgument(0);
+                injectId(e, 700L);
+                return e;
+            });
+
+            EmergencyClosureResponse response = service.sendClosure(TEAM_ID, 5L, request());
+
+            // 取得対象は重複排除済みの {1, 99, 2}
+            ArgumentCaptor<Collection<Long>> idsCaptor = idsCaptor();
+            verify(userService, times(1)).getFullNamesAndEmails(idsCaptor.capture());
+            assertThat(idsCaptor.getValue()).containsExactlyInAnyOrder(1L, 99L, 2L);
+
+            // メールは見つかったユーザー2人にだけ、ユーザーごとに1通
+            ArgumentCaptor<EmailOutboxRequest> mailCaptor = ArgumentCaptor.forClass(EmailOutboxRequest.class);
+            verify(emailOutboxService, times(2)).enqueue(mailCaptor.capture());
+            assertThat(mailCaptor.getAllValues())
+                    .extracting(EmailOutboxRequest::userId, EmailOutboxRequest::toAddress)
+                    .containsExactlyInAnyOrder(
+                            tuple(1L, "u1@example.com"),
+                            tuple(2L, "u2@example.com"));
+
+            // 従来どおり、送信件数は見つからないユーザーも含む重複排除済みの対象数（3）
+            assertThat(response.getSentCount()).isEqualTo(3);
+            ArgumentCaptor<EmergencyClosureEntity> savedCaptor = ArgumentCaptor.forClass(EmergencyClosureEntity.class);
+            verify(emergencyClosureRepository).save(savedCaptor.capture());
+            assertThat(savedCaptor.getValue().getSentCount()).isEqualTo(3);
         }
     }
 }

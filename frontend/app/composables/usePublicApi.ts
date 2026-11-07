@@ -7,6 +7,7 @@ import type {
   PublicPostDetail,
   PublicPostSummary,
   PublicTeamResponse,
+  PublicSettingsResponse,
   PublicTeamSearchResult,
   PublicTimelinePostResponse,
   PublicUserPostSummary,
@@ -120,12 +121,15 @@ export function usePublicApi() {
   async function searchPublicOrganizations(params: {
     keyword?: string
     prefecture?: string
+    /** F01.2.1: true のとき、チームからの加盟申請を受け付けている組織だけに絞る。 */
+    acceptingTeamApplications?: boolean
     page?: number
     size?: number
   }): Promise<SpringPage<PublicOrganizationSearchResult>> {
     const query = new URLSearchParams()
     if (params.keyword) query.set('keyword', params.keyword)
     if (params.prefecture) query.set('prefecture', params.prefecture)
+    if (params.acceptingTeamApplications) query.set('acceptingTeamApplications', 'true')
     if (params.page !== undefined) query.set('page', String(params.page))
     if (params.size !== undefined) query.set('size', String(params.size))
     return api<SpringPage<PublicOrganizationSearchResult>>(
@@ -208,6 +212,22 @@ export function usePublicApi() {
     )
   }
 
+  /** 公開範囲に依存せず、管理権限を確認してチーム設定を取得する。 */
+  async function fetchTeamPublicSettings(slug: string): Promise<PublicSettingsResponse> {
+    const response = await api<{ data: PublicSettingsResponse }>(
+      `/api/v1/admin/teams/${encodeURIComponent(slug)}/public-settings`,
+    )
+    return response.data
+  }
+
+  /** 公開範囲に依存せず、管理権限を確認して組織設定を取得する。 */
+  async function fetchOrgPublicSettings(slug: string): Promise<PublicSettingsResponse> {
+    const response = await api<{ data: PublicSettingsResponse }>(
+      `/api/v1/admin/organizations/${encodeURIComponent(slug)}/public-settings`,
+    )
+    return response.data
+  }
+
   // ─── F19.1 Phase 7: Admin 向け 公開設定 PATCH API ───
 
   /**
@@ -216,7 +236,7 @@ export function usePublicApi() {
    * エンドポイント: PATCH /api/v1/admin/teams/{teamId}/public-settings
    */
   async function updateTeamPublicSettings(
-    teamId: string,
+    teamId: number,
     req: UpdatePublicSettingsRequest,
   ): Promise<void> {
     await api(`/api/v1/admin/teams/${teamId}/public-settings`, {
@@ -231,7 +251,7 @@ export function usePublicApi() {
    * エンドポイント: PATCH /api/v1/admin/organizations/{orgId}/public-settings
    */
   async function updateOrgPublicSettings(
-    orgId: string,
+    orgId: number,
     req: UpdatePublicSettingsRequest,
   ): Promise<void> {
     await api(`/api/v1/admin/organizations/${orgId}/public-settings`, {
@@ -405,6 +425,8 @@ export function usePublicApi() {
     fetchPublicOrgTimelinePosts,
     fetchPublicTeamEvents,
     fetchPublicOrgEvents,
+    fetchTeamPublicSettings,
+    fetchOrgPublicSettings,
     updateTeamPublicSettings,
     updateOrgPublicSettings,
   }

@@ -15,9 +15,25 @@ interface StudentEntry extends DailyRollCallEntry {
 const route = useRoute()
 const teamSlug = computed(() => String(route.params.slug))
 
-const { records, loading, submitting, lastSummary, loadRecords, submitRollCall } =
+const { records, loading, submitting, lastSummary, forbidden, loadRecords, submitRollCall } =
   useDailyRollCall(teamSlug)
 const { userTimezone } = useDatetime()
+const {
+  forbidden: permissionsForbidden,
+  loadFailed: permissionsFailed,
+  ready: permissionsReady,
+  canView,
+  canRecordDaily,
+  loadPermissions,
+} = useAttendancePermissions(teamSlug)
+
+// 判定は BE の権限判定 API のみ。403 は握りつぶさず「権限がありません」を明示する（AC-18）
+const denied = computed(
+  () => permissionsForbidden.value || forbidden.value || (permissionsReady.value && !canView.value),
+)
+
+// 一覧取得・操作は「照会完了かつ閲覧権限 true」のときだけ許可する（fail-closed）
+const canQuery = computed(() => permissionsReady.value && !denied.value && canView.value)
 
 const today = dayjs().tz(userTimezone.value).format('YYYY-MM-DD')
 const selectedDate = ref(today)
@@ -41,6 +57,7 @@ function initEntries(): void {
 }
 
 async function onDateChange(): Promise<void> {
+  if (!canQuery.value) return
   await loadRecords(selectedDate.value)
   initEntries()
   showSummary.value = false
@@ -58,10 +75,14 @@ async function onSubmit(): Promise<void> {
   }
 }
 
-onMounted(async () => {
+async function loadPage(): Promise<void> {
+  await loadPermissions()
+  if (!canQuery.value) return
   await loadRecords(selectedDate.value)
   initEntries()
-})
+}
+
+onMounted(loadPage)
 </script>
 
 <template>
@@ -73,7 +94,17 @@ onMounted(async () => {
       </h1>
     </header>
 
-    <main class="flex-1 p-4 max-w-2xl mx-auto w-full">
+    <DashboardErrorState
+      v-if="permissionsFailed"
+      :title="$t('school.attendance.permissionError.title')"
+      :message="$t('school.attendance.permissionError.message')"
+      testid="school-attendance-permission-error"
+      @retry="loadPage"
+    />
+
+    <SchoolAttendanceForbidden v-else-if="denied" />
+
+    <main v-else class="flex-1 p-4 max-w-2xl mx-auto w-full">
       <div class="mb-4">
         <label class="text-sm text-surface-500 mb-1 block">
           {{ $t('school.attendance.dailyRollCall.date') }}
@@ -82,6 +113,7 @@ onMounted(async () => {
           v-model="selectedDate"
           type="date"
           class="w-full"
+          :disabled="!canQuery"
           data-testid="daily-roll-call-date"
           @change="onDateChange"
         />
@@ -128,7 +160,7 @@ onMounted(async () => {
           <Button
             :label="$t('school.attendance.dailyRollCall.submit')"
             :loading="submitting"
-            :disabled="entries.length === 0 || submitting"
+            :disabled="!canRecordDaily || entries.length === 0 || submitting"
             class="w-full"
             data-testid="daily-roll-call-submit"
             @click="onSubmit"

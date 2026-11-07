@@ -3,6 +3,7 @@ package com.mannschaft.app.common.architecture;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.mannschaft.app.common.architecture.JsonRequestBodyCreatorArchTest.PayloadBoundTypes;
+import org.junit.jupiter.api.Tag;
 import com.mannschaft.app.common.architecture.fixtures.D7ArrayElementBrokenItem;
 import com.mannschaft.app.common.architecture.fixtures.D7ContentDeserializeBrokenRequest;
 import com.mannschaft.app.common.architecture.fixtures.D7CustomDeserializerRequest;
@@ -29,6 +30,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 
 /**
  * D-7 番人（{@link JsonRequestBodyCreatorArchTest}）の検出ロジックが
@@ -107,26 +109,17 @@ import org.junit.jupiter.api.Test;
  * ため、fixture は素の Java で書いている。
  */
 @DisplayName("D-7 番人 バインダ実体生成可能性 検出ロジックの偽陰性ゼロ・偽陽性ゼロ証明（メタテスト）")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class JsonRequestBodyCreatorConditionTest {
 
     private static final String FIXTURES_PACKAGE =
         "com.mannschaft.app.common.architecture.fixtures";
 
-    /** Lombok 生成物の実測固定・既知の良い例の裏取りに使う main 側 DTO パッケージ。 */
-    private static final String[] PRODUCTION_DTO_PACKAGES = {
-        "com.mannschaft.app.chat.dto",
-        "com.mannschaft.app.bulletin.dto",
-        "com.mannschaft.app.timeline.dto",
-        "com.mannschaft.app.todo.dto",
-        "com.mannschaft.app.activity.dto",
-        "com.mannschaft.app.cspreport.dto",
-        "com.mannschaft.app.village.dto",
-        "com.mannschaft.app.recruitment.dto",
-    };
+    private JavaClasses fixtureClasses;
 
-    private static JavaClasses fixtureClasses;
-
-    private static JavaClasses productionClasses;
+    /** Lombok 生成物の実測固定・既知の良い例の裏取りに使う main 側 DTO（本番全体の共有ホルダから引く）。 */
+    private final JavaClasses productionClasses = ProductionClasses.get();
 
     /** fixture Controller の JSON 経路（{@code @RequestBody}/{@code @RequestPart}）到達型。 */
     private static List<String> jsonBoundNames;
@@ -135,9 +128,8 @@ class JsonRequestBodyCreatorConditionTest {
     private static List<String> formBoundNames;
 
     @BeforeAll
-    static void importFixtures() {
+    void importFixtures() {
         fixtureClasses = new ClassFileImporter().importPackages(FIXTURES_PACKAGE);
-        productionClasses = new ClassFileImporter().importPackages(PRODUCTION_DTO_PACKAGES);
         PayloadBoundTypes bound =
             JsonRequestBodyCreatorArchTest.requestPayloadBoundTypes(fixtureClasses);
         jsonBoundNames = bound.jsonBound().stream().map(JavaClass::getName).toList();
@@ -457,13 +449,13 @@ class JsonRequestBodyCreatorConditionTest {
     // ------------------------------------------------------------------
 
     /** fixture クラスが JSON 経路の D-7 違反（Jackson から実体生成不能）と判定されるか。 */
-    private static boolean violatesJson(Class<?> clazz) {
+    private boolean violatesJson(Class<?> clazz) {
         return JsonRequestBodyCreatorArchTest.lacksUsableJacksonCreator(
             fixtureClasses.get(clazz));
     }
 
     /** main の実クラスが JSON 経路の D-7 違反と判定されるか。 */
-    private static boolean violatesJsonInProduction(Class<?> clazz) {
+    private boolean violatesJsonInProduction(Class<?> clazz) {
         return JsonRequestBodyCreatorArchTest.lacksUsableJacksonCreator(
             productionClasses.get(clazz));
     }

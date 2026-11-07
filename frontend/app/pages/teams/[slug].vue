@@ -24,6 +24,11 @@ import type { ScopeTab } from '~/types/scopeShell'
 import type { TeamResponse } from '~/types/team'
 import TeamSidebar from '~/components/TeamSidebar.vue'
 import { provideTeamShellContext } from '~/composables/useTeamShellContext'
+import {
+  canManageOrgAffiliation as resolveCanManageOrgAffiliation,
+  canManagePermissionGroups as resolveCanManagePermissionGroups,
+  shouldLeaveGuardedTeamTab,
+} from '~/utils/teamAffiliationAccess'
 import { resolveSlugRedirectPath } from '~/utils/slugRedirect'
 
 definePageMeta({
@@ -45,9 +50,14 @@ const teamSlug = computed(() => String(route.params.slug))
 
 const {
   roleName,
+  roleResolved,
+  roleLoadFailed,
+  permissions,
   loading: roleLoading,
   loadPermissions,
   isAdmin,
+  isScopeAdmin,
+  canGrantAdminOnlyPermissions,
   isAdminOrDeputy,
 } = useRoleAccess('team', teamSlug)
 
@@ -71,58 +81,31 @@ async function fetchReservationEnabled() {
 }
 
 // =============================================================================
-// サポーターフォロー
+// サポーターフォロー（CMP-261001-0835: 共通 composable に一本化。
+// 詳細は useFollowSelfStatus.ts のコメントを参照。
+// 旧実装は `if (roleName.value) return` で SUPPORTER ロール自身の状態を
+// 一度も取得しない fail-open、取得失敗を NONE に潰す fail-open を抱えていた）。
 // =============================================================================
-const followStatus = ref<'NONE' | 'PENDING' | 'APPROVED'>('NONE')
-const followLoading = ref(false)
-const showCancelSupporterConfirm = ref(false)
-
-async function fetchFollowStatus() {
-  if (roleName.value) return
-  try {
-    const res = await teamApi.getFollowStatus(teamSlug.value)
-    followStatus.value = res.data.status
-  }
-  catch {
-    followStatus.value = 'NONE'
-  }
-}
-
-async function applySupporter() {
-  followLoading.value = true
-  try {
-    await teamApi.followTeam(teamSlug.value)
-    const res = await teamApi.getFollowStatus(teamSlug.value)
-    followStatus.value = res.data.status
-    notification.success(
-      followStatus.value === 'APPROVED'
-        ? t('common.scopeShell.supporter_registered')
-        : t('common.scopeShell.supporter_applied'),
-    )
-  }
-  catch (error) {
-    handleApiError(error, 'サポーター申請')
-  }
-  finally {
-    followLoading.value = false
-  }
-}
-
-async function cancelSupporter() {
-  followLoading.value = true
-  try {
-    await teamApi.unfollowTeam(teamSlug.value)
-    followStatus.value = 'NONE'
-    showCancelSupporterConfirm.value = false
-    notification.success(t('common.scopeShell.supporter_canceled'))
-  }
-  catch (error) {
-    handleApiError(error, 'サポーター解除')
-  }
-  finally {
-    followLoading.value = false
-  }
-}
+const {
+  followStatus,
+  followLoading,
+  followPermissionSyncError,
+  showCancelSupporterConfirm,
+  fetchFollowStatus,
+  applySupporter,
+  cancelSupporter,
+  retryFollowStatus,
+  retryFollowPermissionSync,
+} = useScopeFollowWiring({
+  scopeSlug: teamSlug,
+  api: {
+    follow: teamApi.followTeam,
+    unfollow: teamApi.unfollowTeam,
+    getStatus: teamApi.getFollowStatus,
+  },
+  roleAccess: { roleName, loadPermissions },
+  refreshDetail: fetchTeam,
+})
 
 // =============================================================================
 // MEMBER 参加申請（柱③-A・CMP-260901-1538）
@@ -164,7 +147,7 @@ const showLeaveConfirm = ref(false)
 const adminLens = ref(true)
 
 const effectiveViewerRole = computed<ViewerRole>(() =>
-  adminLens.value ? ((roleName.value as ViewerRole | null) ?? 'PUBLIC') : 'MEMBER',
+  !adminLens.value && isAdminOrDeputy.value ? 'MEMBER' : ((roleName.value as ViewerRole | null) ?? 'PUBLIC'),
 )
 
 // SUPPORTER/GUEST/未所属は TeamSidebar が項目を表示しないため、
@@ -179,32 +162,63 @@ const displayName = computed(
   () => team.value?.basicInfo?.nickname1 || team.value?.basicInfo?.name || '',
 )
 
+/**
+ * チーム詳細の取得（CMP-261004-1942/1943）。
+ *
+ * - 静かな再取得: 既に team が取得済み（null でない）なら `loading` を立てない。
+ *   応援・解除後の人数取り直しで全画面スピナーを出し、ヘッダ・確認ダイアログを
+ *   一瞬消さないため（AC-1）。
+ * - 世代ガード: 「最後に発行した要求」かつ「slug が要求時と同じ」応答だけを反映する（AC-5）。
+ *   slug 一致だけでは、同一スコープの取り直しが逆順に返ると古い人数で上書きされ、A→B→A でも
+ *   古い A の応答が新しい A を上書きする。403 で閉じた詳細を、それより前の要求の遅延 200 が
+ *   再表示することも防ぐ（連番は useRoleAccess・useOrgDetail と同じ作法）。
+ * - AC-11: 取得失敗が 403（権限喪失）のときは team を null にして保護された詳細表示を閉じる。
+ */
+let fetchTeamSeq = 0
 async function fetchTeam() {
-  loading.value = true
+  const seq = ++fetchTeamSeq
+  const requestedSlug = teamSlug.value
+  const isCurrent = () => seq === fetchTeamSeq && teamSlug.value === requestedSlug
+  const quiet = team.value !== null
+  if (!quiet) loading.value = true
   try {
-    const result = await teamApi.getTeam(teamSlug.value)
+    const result = await teamApi.getTeam(requestedSlug)
+    if (!isCurrent()) return
     team.value = result.data
   }
   catch (error) {
+    if (!isCurrent()) return
     // 404 のときは「旧 slug → 新 slug の 301 移動」かもしれないので解決を試みる（村方式・BE #1542）。
-    if ((error as FetchError)?.response?.status === 404 && await tryRedirectMovedSlug()) {
-      return
+    // 解決は非同期（await）のため、待機中に後発の要求が成功している／別スコープへ
+    // 移動している可能性がある。解決後は isCurrent() を再確認し、古い 404 由来の
+    // 通知・遷移が後発の結果を踏みつけないようにする（検分修繕2・CMP-261004-1942）。
+    if ((error as FetchError)?.response?.status === 404) {
+      const redirected = await tryRedirectMovedSlug(isCurrent)
+      if (!isCurrent()) return
+      if (redirected) return
     }
+    const status = (error as FetchError)?.response?.status
+    if (status === 403) team.value = null
     handleApiError(error, 'チーム詳細取得')
   }
   finally {
-    loading.value = false
+    // 後発の要求が無いときだけ解く（後発がある場合はその要求の完了で解く）
+    if (seq === fetchTeamSeq) loading.value = false
   }
 }
 
 /**
  * 現 slug が旧 slug（MOVED）なら新 slug の同一パスへ 301 遷移する。
  * 遷移した場合は true を返す（呼び出し元はそれ以上のエラー表示を行わない）。
+ *
+ * `isCurrent` が渡された場合、解決待ち（await）の間に後発の要求が成功済み／
+ * 別スコープへ移動済みなら、古い 404 由来の遷移を行わない（検分修繕2・CMP-261004-1942）。
  */
-async function tryRedirectMovedSlug(): Promise<boolean> {
+async function tryRedirectMovedSlug(isCurrent?: () => boolean): Promise<boolean> {
   const { resolveSlug } = useSlugRedirect()
   const target = await resolveSlugRedirectPath(useRoute().path, resolveSlug)
   if (!target) return false
+  if (isCurrent && !isCurrent()) return false
   await navigateTo(
     { path: target, query: useRoute().query, hash: useRoute().hash },
     { redirectCode: 301, replace: true },
@@ -240,6 +254,8 @@ async function refresh() {
 const SEGMENT_TO_TAB: Record<string, string> = {
   info: 'info',
   members: 'members',
+  affiliations: 'affiliations',
+  'permission-groups': 'permission-groups',
   invites: 'invites',
   supporters: 'supporters',
   'join-requests': 'join-requests',
@@ -273,6 +289,8 @@ const SHELL_SEGMENTS = new Set([
   'supporters',
   'join-requests',
   'modules',
+  'affiliations',
+  'permission-groups',
   'reservations',
   'nav',
   'guide',
@@ -310,6 +328,8 @@ const pathSegments = computed<string[]>(() =>
  *  slug セグメントがヒットして activeTab が誤る。slice(2) で slug を照合から外す。
  */
 const matchedShellSegment = computed<string | null>(() => {
+  // 管理コンソールは独立ページ。末尾に予約などのタブ名があってもshellで包まない。
+  if (pathSegments.value[2] === 'admin') return null
   for (const seg of pathSegments.value.slice(2)) {
     if (SHELL_SEGMENTS.has(seg)) return seg
   }
@@ -391,7 +411,11 @@ function retryShellData() {
   void loadShellData()
 }
 
-onBeforeUnmount(clearShellWatchdog)
+onBeforeUnmount(() => {
+  // 破棄されたインスタンスの解決待ち応答を失効させる。
+  ++fetchTeamSeq
+  clearShellWatchdog()
+})
 
 // シェル対象ルート（8 タブ）に居るときだけデータをロードする。
 // 非シェルルート（schedule / chat 等 約 100 ページ）ではロードしない＝従来と同じ挙動。
@@ -410,11 +434,27 @@ watch(isShellRoute, (shell) => {
 watch(teamSlug, () => {
   teamLoaded.value = false
   team.value = null
-  followStatus.value = 'NONE'
+  // followStatus の初期化は useScopeFollowWiring が slug 変更時に同期的に行う。
   joinRequestStatus.value = 'UNKNOWN'
   reservationEnabled.value = false
   if (isShellRoute.value) void loadShellData()
 })
+
+/**
+ * チームの加盟操作者か（F01.2.1 8-D）。ADMIN 割当（scopeAdmin。SYSTEM_ADMIN 単独は不可）か、
+ * MANAGE_ORG_AFFILIATION を付与された者で、管理者レンズ ON のとき。
+ */
+const canManageOrgAffiliation = computed(() => resolveCanManageOrgAffiliation({
+  adminLens: adminLens.value,
+  isScopeAdmin: isScopeAdmin.value,
+  permissions: permissions.value,
+}))
+
+/** 権限グループの画面・メンバー一覧の割当を出してよいか（チーム ADMIN 割当・管理者レンズ ON。SYSTEM_ADMIN のみは不可）。 */
+const canManagePermissionGroups = computed(() => resolveCanManagePermissionGroups({
+  adminLens: adminLens.value,
+  isScopeAdmin: isScopeAdmin.value,
+}))
 
 /** 管理系タブ key（レンズ OFF・非管理者では滞在させない）。 */
 const ADMIN_ONLY_SEGMENTS = new Set(['invites', 'supporters', 'join-requests', 'modules'])
@@ -429,9 +469,31 @@ watch([adminLens, isAdminOrDeputy, () => route.path], () => {
   }
 })
 
+/**
+ * 「所属組織」「権限グループ」タブ（F01.2.1 8-D）の滞在ガード。
+ * 権限の取得が終わってから、レンズ OFF・権限なし・権限剥奪（AC-P05）のときダッシュボードへ戻す。
+ * 取得前は戻さない（管理者を取得前に誤って追い返さない）。権限が無いまま子ページが管理 API を呼ばないよう、
+ * 子ページ側も canManage* が false の間は描画しない。
+ */
+watch(
+  [adminLens, canManageOrgAffiliation, canManagePermissionGroups, roleLoading, teamLoaded, () => route.path],
+  () => {
+    if (shouldLeaveGuardedTeamTab({
+      tab: activeTab.value,
+      ready: teamLoaded.value && !roleLoading.value,
+      canAffiliate: canManageOrgAffiliation.value,
+      canGroups: canManagePermissionGroups.value,
+    })) {
+      navigateTo(`/teams/${teamSlug.value}`)
+    }
+  },
+)
+
 // =============================================================================
 // タブ定義（権限出し分けは visible に移植）
 // =============================================================================
+const featureVisibility = useScopeFeatureVisibility('team', teamSlug, roleName, () => !adminLens.value)
+
 const tabs = computed<ScopeTab[]>(() => {
   const base = `/teams/${teamSlug.value}`
   return [
@@ -446,12 +508,14 @@ const tabs = computed<ScopeTab[]>(() => {
       to: `${base}/info`,
       icon: 'pi pi-info-circle',
       labelKey: 'teamShell.tab.info',
+      visible: featureVisibility.isVisible('info'),
     },
     {
       key: 'members',
       to: `${base}/members`,
       icon: 'pi pi-users',
       labelKey: 'teamShell.tab.members',
+      visible: featureVisibility.isVisible('members'),
     },
     {
       key: 'invites',
@@ -482,18 +546,32 @@ const tabs = computed<ScopeTab[]>(() => {
       visible: isAdmin.value && adminLens.value,
     },
     {
+      key: 'affiliations',
+      to: `${base}/affiliations`,
+      icon: 'pi pi-sitemap',
+      labelKey: 'teamShell.tab.affiliations',
+      visible: canManageOrgAffiliation.value,
+    },
+    {
+      key: 'permission-groups',
+      to: `${base}/permission-groups`,
+      icon: 'pi pi-shield',
+      labelKey: 'teamShell.tab.permissionGroups',
+      visible: canManagePermissionGroups.value,
+    },
+    {
       key: 'reservations',
       to: `${base}/reservations`,
       icon: 'pi pi-calendar-clock',
       labelKey: 'reservation.tab.team_page',
-      visible: !!roleName.value && reservationEnabled.value,
+      visible: (!!roleName.value && reservationEnabled.value) && featureVisibility.isVisible('reservations'),
     },
     {
       key: 'nav',
       to: `${base}/nav`,
       icon: 'pi pi-compass',
       labelKey: 'nav.tab',
-      visible: !!roleName.value,
+      visible: (!!roleName.value) && featureVisibility.isVisible('nav'),
     },
   ]
 })
@@ -525,8 +603,13 @@ provideTeamShellContext({
   team: computed(() => team.value),
   displayName,
   roleName,
+  roleResolved,
+  roleLoadFailed,
   isAdmin,
   isAdminOrDeputy,
+  canManageOrgAffiliation,
+  canManagePermissionGroups,
+  canGrantAdminOnlyPermissions,
   effectiveViewerRole,
   adminLens,
   widgetVisibilitySettings,
@@ -571,7 +654,7 @@ provideTeamShellContext({
         :tabs="tabs"
         :active-tab="activeTab"
         :sidebar="TeamSidebar"
-        :sidebar-props="{ teamId: teamSlug }"
+        :sidebar-props="{ teamId: teamSlug, memberLensActive: !adminLens }"
         :show-sidebar="showSidebar"
         :show-lens="isAdminOrDeputy"
         :lens="adminLens"
@@ -586,12 +669,15 @@ provideTeamShellContext({
             :is-admin-or-deputy="isAdminOrDeputy"
             :follow-status="followStatus"
             :follow-loading="followLoading"
+            :follow-permission-sync-error="followPermissionSyncError"
             :join-request-status="joinRequestStatus"
             :join-request-loading="joinRequestLoading"
             :template-label="templateLabel"
             @back="navigateTo('/dashboard')"
             @apply-supporter="applySupporter"
             @cancel-supporter="cancelSupporter"
+            @retry-follow-status="retryFollowStatus"
+            @retry-follow-permission-sync="retryFollowPermissionSync"
             @apply-join-request="applyJoinRequest"
             @retry-join-request-status="fetchJoinRequestStatus"
             @show-cancel-confirm="showCancelSupporterConfirm = true"
@@ -602,6 +688,7 @@ provideTeamShellContext({
         </template>
 
         <!-- タブ本体（子）— 永続シェル下で差し替え -->
+        <DashboardErrorState v-if="featureVisibility.error.value" :error="featureVisibility.error.value" @retry="featureVisibility.refresh(true)" />
         <NuxtPage />
       </ScopePageShell>
 
@@ -621,9 +708,10 @@ provideTeamShellContext({
           <Button
             :label="t('common.scopeShell.retry')"
             icon="pi pi-refresh"
+            class="min-h-11 min-w-11"
             @click="retryShellData"
           />
-          <NuxtLink to="/dashboard" class="inline-block text-primary-600 hover:underline">
+          <NuxtLink to="/dashboard" class="inline-flex min-h-11 items-center text-primary-600 hover:underline">
             <i class="pi pi-arrow-left mr-1" />
             {{ t('common.scopeShell.back_to_dashboard') }}
           </NuxtLink>

@@ -1,0 +1,91 @@
+{
+  "formal": true,
+  "heads": {
+    "red": "51ee0a14e375e13c44549c6bf1006162936e98a0",
+    "be": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+    "fe": "33a90ea9ca354bb234adac2aca62455803668ceb",
+    "review": "dd41b081219c1e8bb127b07f4086e2d104903a11",
+    "runtimeOld": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+    "runtimeNew": "84c8c2fa422bab8dec5fe01e81a695e92db9911d",
+    "candidate": "1eaafc2cd843e198abcc4d414c4f250ecd05bd77",
+    "previousCandidate": "e7115911c7d260b1f9044372d72f99d18c0ba4f8",
+    "reviewed114": "1143887d5251fdab860701fe47d8b7278655b342"
+  },
+  "bridges": [
+    ".claude/campaigns/cmp0649-next-20261026/source-equivalence-24ceb-33a90.json",
+    ".claude/campaigns/cmp0649-next-20261026/source-equivalence-33a90-retry02.json",
+    ".claude/campaigns/cmp1432a-approved-20261027/cmp0649-five-file-source-bridge-root.json",
+    ".claude/campaigns/cmp1432a-approved-20261027/cmp0649-actual-e711-source-bridge-root.json",
+    ".claude/campaigns/cmp1432a-approved-20261027/cmp0649-actual-114-source-bridge-root.json",
+    ".claude/campaigns/cmp1432a-approved-20261027/cmp0649-actual-1eaa-source-bridge-root.json"
+  ],
+  "fiveCoreFiles": [
+    {
+      "path": "backend/src/main/java/com/mannschaft/app/shift/service/ShiftSwapService.java",
+      "finalCandidateBlob": "2f67ac3db6dffad861acce2fa309bd58c40c3645",
+      "runtime84c8Blob": "2f67ac3db6dffad861acce2fa309bd58c40c3645",
+      "identical": true
+    },
+    {
+      "path": "backend/src/main/java/com/mannschaft/app/shift/repository/ShiftSwapRequestRepository.java",
+      "finalCandidateBlob": "2e41e309d9955c02a5beea419a25f514238b24b4",
+      "runtime84c8Blob": "2e41e309d9955c02a5beea419a25f514238b24b4",
+      "identical": true
+    },
+    {
+      "path": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+      "finalCandidateBlob": "704545afb3d7b31f45e1148b3ed7616c3191f482",
+      "runtime84c8Blob": "704545afb3d7b31f45e1148b3ed7616c3191f482",
+      "identical": true
+    },
+    {
+      "path": "frontend/app/components/shift/ShiftSwapRequestFormDialog.vue",
+      "finalCandidateBlob": "f7c97062ee8056cad32c8cb9a373327dc1a334b2",
+      "runtime84c8Blob": "f7c97062ee8056cad32c8cb9a373327dc1a334b2",
+      "identical": true
+    },
+    {
+      "path": "frontend/app/components/shift/ShiftSwapRequestFormDialog.spec.ts",
+      "finalCandidateBlob": "924db7c52fbcb71808592bf188b593f32a87f2f0",
+      "runtime84c8Blob": "924db7c52fbcb71808592bf188b593f32a87f2f0",
+      "identical": true
+    }
+  ],
+  "wholeTreeIdentical": false,
+  "upstream82FilesIdentical": false,
+  "actualRuntimeHeadReassigned": false,
+  "limits": [
+    "5core blob対応に限定。upstream announcement/team等は別検分であり全tree一致ではない。",
+    "0d5e→84c8にはuseModuleApi未使用toggle/旧spec削除差。",
+    "最終mainが移動すればfresh差分・source対応再確認が必要。",
+    "BE既存資格/scope支援suiteは最終headの全6shard CI成功とroot検分も併用する。過去の個別実行headは変更しない。",
+    "main761の共有61pathは全tree同一ではない。source84c8の実機結果を114全treeへ付け替えない。"
+  ],
+  "upstream61FilesIdentical": false,
+  "mainParent": "7dd793916526111903964e11e86d24b47dced84e",
+  "actualCandidateTree": "45d0a9aa064a38cfa36ab577ab7dbc3296605352",
+  "upstreamSharedScope": {
+    "pathsChanged": 61,
+    "receipt": ".claude/campaigns/cmp1432a-approved-20261027/cmp0649-main-follow-recheck-7610007-safe.json",
+    "rootInspected": [
+      "default layoutの未使用modal初回遅延",
+      "dashboard未訪問panel/preview遅延",
+      "TeamPanel公開slug優先",
+      "PrimeVueテーマ同値optionのimportTheme移設"
+    ],
+    "limit": "共有layout/dashboard/テーマ等の差分を限定検分したもので、source84c8でmain761を含む新全treeを実機試験したという意味ではない。",
+    "shiftRoutesComponentsApiServiceRepositoryUnchanged": true,
+    "authMigrationDependenciesUnchanged": true
+  },
+  "previousMainParent": "7610007cd8301e6f293db80e6902f3991c0e4c70",
+  "previousCandidateTree": "beb184ae85506699d3e4323fe085358c906ae190",
+  "additionalDocsOnlyMainFollow": {
+    "previousCandidateHead": "1143887d5251fdab860701fe47d8b7278655b342",
+    "finalImplementationHead": "1eaafc2cd843e198abcc4d414c4f250ecd05bd77",
+    "mainHead": "7dd793916526111903964e11e86d24b47dced84e",
+    "upstreamDocsPaths": 34,
+    "backendFrontendTreesIdenticalTo114": true,
+    "allNineFeatureBlobsUnchanged": true,
+    "wholeRuntimeTreeIdentical": false
+  }
+}

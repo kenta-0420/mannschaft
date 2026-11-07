@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261002-0743",
+  "scope": "app",
+  "implementation": {
+    "pr": 4143,
+    "sha": "89f8a436354113d7e1affe101af0d06e86c10e68"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "T1",
+      "description": "BE TOUR_019〜028の意味と申込・テンプレート6言語が1対1対応する",
+      "tests": [
+        {
+          "name": "BE enumと6localeの固定期待値契約",
+          "evidence": "frontend/tests/unit/helpers/tournamentErrorContract.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "T2",
+      "description": "実handleApiError経路で対象コードを利用言語へ解決する",
+      "tests": [
+        {
+          "name": "実handlerの6locale×10code",
+          "evidence": "frontend/app/composables/useErrorHandler.tournament.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "T3",
+      "description": "対象外・未登録キー・空コードの既存fallbackを保持する",
+      "tests": [
+        {
+          "name": "handler fallback契約",
+          "evidence": "frontend/app/composables/useErrorHandler.tournament.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "T4",
+      "description": "実画面で失敗理由を理解でき、失敗後に保存・成功通知へ進まない",
+      "tests": [
+        {
+          "name": "実Vueの申込/テンプレート失敗クリック",
+          "evidence": "frontend/app/components/TournamentEntryModal.errors.spec.ts"
+        },
+        {
+          "name": "最終実機15件の手動再試行成功・初回失敗履歴を含む殿の判定",
+          "evidence": "docs/evidence/CMP-261002-0743-real.md"
+        }
+      ]
+    },
+    {
+      "id": "T5",
+      "description": "未認証・権限なし・他テナント拒否を保持する",
+      "tests": [
+        {
+          "name": "最終実機15件の手動再試行成功・初回失敗履歴を含む殿の判定",
+          "evidence": "docs/evidence/CMP-261002-0743-real.md"
+        }
+      ]
+    },
+    {
+      "id": "T6",
+      "description": "BE enum単独変更でもFE契約試験がCI対象になる",
+      "tests": [
+        {
+          "name": "Frontend CI paths契約",
+          "evidence": "frontend/tests/unit/helpers/tournamentErrorContract.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 40434525496
+    },
+    {
+      "runId": 40434525520
+    },
+    {
+      "runId": 40435673624
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261002-0743-review.md"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261002-0743-real.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261002-0743-exploratory.md"
+    }
+  },
+  "regressions": [
+    {
+      "description": "対象コードが日本語BE messageへfallbackし、modalの通常4xxでは通知へ配線されていなかった",
+      "test": "契約/handler/CI paths red68、modal red3→green87",
+      "redEvidence": "docs/evidence/CMP-261002-0743-review.md",
+      "greenEvidence": "docs/evidence/CMP-261002-0743-review.md"
+    }
+  ]
+}

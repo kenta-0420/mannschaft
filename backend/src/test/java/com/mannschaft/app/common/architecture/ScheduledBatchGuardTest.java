@@ -1,6 +1,7 @@
 package com.mannschaft.app.common.architecture;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.tngtech.archunit.junit.ArchTag;
 import com.mannschaft.app.common.batch.BatchEndpointExempt;
 import com.mannschaft.app.common.batch.PodLocalScheduled;
 import com.tngtech.archunit.base.DescribedPredicate;
@@ -127,6 +128,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
     packages = "com.mannschaft.app",
     importOptions = ImportOption.DoNotIncludeTests.class
 )
+@ArchTag(ArchUnitTestTag.ARCHUNIT)
 class ScheduledBatchGuardTest {
 
     // ------------------------------------------------------------------

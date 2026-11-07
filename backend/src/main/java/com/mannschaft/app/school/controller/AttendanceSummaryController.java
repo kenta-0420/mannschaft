@@ -6,7 +6,7 @@ import com.mannschaft.app.school.dto.ClassSummaryListResponse;
 import com.mannschaft.app.school.dto.RecalculateSummaryRequest;
 import com.mannschaft.app.school.dto.RecalculateSummaryResponse;
 import com.mannschaft.app.school.dto.StudentSummaryResponse;
-import com.mannschaft.app.school.service.AttendanceSummaryService;
+import com.mannschaft.app.school.service.AttendanceSummaryFacade;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class AttendanceSummaryController {
 
-    private final AttendanceSummaryService summaryService;
+    private final AttendanceSummaryFacade summaryFacade;
 
     /**
      * 生徒の出席集計を取得する。
@@ -51,7 +51,7 @@ public class AttendanceSummaryController {
             @RequestParam(required = false) Long termId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         return ApiResponse.of(
-                summaryService.getStudentSummary(studentId, teamId, academicYear, termId, currentUserId));
+                summaryFacade.getStudentSummary(studentId, teamId, academicYear, termId, currentUserId));
     }
 
     /**
@@ -72,7 +72,7 @@ public class AttendanceSummaryController {
             @RequestParam short academicYear,
             @RequestParam(required = false) Long termId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(summaryService.getClassSummaries(teamId, academicYear, termId, currentUserId));
+        return ApiResponse.of(summaryFacade.getClassSummaries(teamId, academicYear, termId, currentUserId));
     }
 
     /**
@@ -92,6 +92,6 @@ public class AttendanceSummaryController {
             @PathVariable Long studentId,
             @RequestBody @Valid RecalculateSummaryRequest req) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(summaryService.recalculate(studentId, req, currentUserId));
+        return ApiResponse.of(summaryFacade.recalculate(studentId, req, currentUserId));
     }
 }

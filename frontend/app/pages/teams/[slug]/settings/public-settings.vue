@@ -1,66 +1,75 @@
 <script setup lang="ts">
-import type { UpdatePublicSettingsRequest } from '~/types/public'
+import type { PublicSettingsResponse, UpdatePublicSettingsRequest } from '~/types/public'
 
-/**
- * F19.1 Phase 7: チーム公開設定ページ。
- *
- * - timelinePostsPublic: タイムライン投稿の公開設定
- * - 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §8.2 / Phase 7
- */
+/** 非公開のチームも、公開閲覧APIを使わず管理認可済みの設定を編集する。 */
 definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const teamSlug = String(route.params.slug)
-const toast = useToast()
-
-const { fetchPublicTeam, updateTeamPublicSettings } = usePublicApi()
-
-// slug 変更（リネーム）は ADMIN/DEPUTY のみ表示・操作する。
+const teamSlug = computed(() => String(route.params.slug))
+const { fetchTeamPublicSettings, updateTeamPublicSettings } = usePublicApi()
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
+const { handleApiError } = useErrorHandler()
+const { success } = useNotification()
+const settings = shallowRef<PublicSettingsResponse | null>(null)
+const timelinePostsPublic = ref(false)
+const publicEventsEnabled = ref(false)
+const loading = ref(true)
+const saving = ref(false)
+const loadError = shallowRef<unknown>(null)
 
-/**
- * slug リネーム成功時: slug が変わったので新 slug の設定ページへ置換遷移する。
- * 旧 URL は BE 側で 301 解決用に履歴予約される。
- */
 async function onSlugRenamed(newSlug: string) {
   await navigateTo(`/teams/${newSlug}/settings/public-settings`, { replace: true })
 }
 
-const timelinePostsPublic = ref(false)
-const loading = ref(false)
-const saving = ref(false)
-
+let loadSequence = 0
 async function loadSettings() {
+  const sequence = ++loadSequence
+  const requestedSlug = teamSlug.value
+  const isCurrent = () => sequence === loadSequence && requestedSlug === teamSlug.value
   loading.value = true
+  loadError.value = null
+  settings.value = null
   try {
-    const team = await fetchPublicTeam(teamSlug)
-    timelinePostsPublic.value = team.timelinePostsPublic
-  }
-  finally {
-    loading.value = false
+    const result = await loadPermissions()
+    if (!isCurrent()) return
+    if (!result.ok) throw result.error
+    if (!isAdminOrDeputy.value) throw createError({ statusCode: 403 })
+    const response = await fetchTeamPublicSettings(requestedSlug)
+    if (!isCurrent()) return
+    settings.value = response
+    timelinePostsPublic.value = response.timelinePostsPublic
+    publicEventsEnabled.value = response.publicEventsEnabled
+  } catch (error) {
+    if (isCurrent()) {
+      loadError.value = error
+      handleApiError(error)
+    }
+  } finally {
+    if (isCurrent()) loading.value = false
   }
 }
 
 async function save() {
+  if (!settings.value || loading.value || loadError.value || saving.value) return
   saving.value = true
   try {
+    // チームでは非表示のイベント公開設定も、取得値を保持して両必須値を送る。
     const req: UpdatePublicSettingsRequest = {
       timelinePostsPublic: timelinePostsPublic.value,
+      publicEventsEnabled: publicEventsEnabled.value,
     }
-    await updateTeamPublicSettings(teamSlug, req)
-    toast.add({ severity: 'success', summary: t('public.publicSettings.saved'), life: 3000 })
-  }
-  catch {
-    toast.add({ severity: 'error', summary: t('public.publicSettings.saveError'), life: 5000 })
-  }
-  finally {
+    await updateTeamPublicSettings(settings.value.numericId, req)
+    success(t('public.publicSettings.saved'))
+  } catch (error) {
+    handleApiError(error)
+  } finally {
     saving.value = false
   }
 }
 
-await loadSettings()
-await loadPermissions()
+onMounted(loadSettings)
+watch(teamSlug, loadSettings)
 </script>
 
 <template>
@@ -69,22 +78,21 @@ await loadPermissions()
       {{ t('public.publicSettings.title') }}
     </h1>
 
-    <div
-      v-if="loading"
-      class="flex items-center justify-center py-10"
-    >
+    <div v-if="loading" class="flex items-center justify-center py-10">
       <ProgressSpinner />
     </div>
 
+    <DashboardErrorState v-if="!loading && loadError" :error="loadError" @retry="loadSettings" />
+
     <SlugRenameField
-      v-if="!loading && isAdminOrDeputy"
+      v-if="!loading && !loadError && settings && isAdminOrDeputy"
       entity-type="team"
       :current-slug="teamSlug"
       @renamed="onSlugRenamed"
     />
 
     <form
-      v-if="!loading"
+      v-if="!loading && !loadError && settings && isAdminOrDeputy"
       data-testid="team-public-settings-form"
       class="space-y-6 rounded-lg border border-surface-200 p-6 dark:border-surface-700"
       @submit.prevent="save"
@@ -108,6 +116,7 @@ await loadPermissions()
       <div class="flex justify-end">
         <Button
           type="submit"
+          class="min-h-11"
           :loading="saving"
           :label="t('common.save')"
           data-testid="save-public-settings"

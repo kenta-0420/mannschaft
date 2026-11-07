@@ -1,0 +1,171 @@
+{
+    "numTotalTestSuites":  2,
+    "numPassedTestSuites":  2,
+    "numFailedTestSuites":  0,
+    "numPendingTestSuites":  0,
+    "numTotalTests":  7,
+    "numPassedTests":  7,
+    "numFailedTests":  0,
+    "numPendingTests":  0,
+    "numTodoTests":  0,
+    "snapshot":  {
+                     "added":  0,
+                     "failure":  false,
+                     "filesAdded":  0,
+                     "filesRemoved":  0,
+                     "filesRemovedList":  [
+
+                                          ],
+                     "filesUnmatched":  0,
+                     "filesUpdated":  0,
+                     "matched":  0,
+                     "total":  0,
+                     "unchecked":  0,
+                     "uncheckedKeysByFile":  [
+
+                                             ],
+                     "unmatched":  0,
+                     "updated":  0,
+                     "didUpdate":  false
+                 },
+    "startTime":  1792135673429,
+    "success":  true,
+    "testResults":  [
+                        {
+                            "assertionResults":  [
+                                                     {
+                                                         "ancestorTitles":  [
+                                                                                "組織4導線の実コンポーネント診断（Nuxt起動を除外）"
+                                                                            ],
+                                                         "fullName":  "組織4導線の実コンポーネント診断（Nuxt起動を除外） 組織のmembers項目は実際の子ルートへのリンクを描画する",
+                                                         "status":  "passed",
+                                                         "title":  "組織のmembers項目は実際の子ルートへのリンクを描画する",
+                                                         "duration":  1249.3345000000008,
+                                                         "failureMessages":  [
+
+                                                                             ],
+                                                         "meta":  {
+
+                                                                  },
+                                                         "tags":  [
+
+                                                                  ]
+                                                     },
+                                                     {
+                                                         "ancestorTitles":  [
+                                                                                "組織4導線の実コンポーネント診断（Nuxt起動を除外）"
+                                                                            ],
+                                                         "fullName":  "組織4導線の実コンポーネント診断（Nuxt起動を除外） 組織のinvites項目は実際の子ルートへのリンクを描画する",
+                                                         "status":  "passed",
+                                                         "title":  "組織のinvites項目は実際の子ルートへのリンクを描画する",
+                                                         "duration":  216.8810999999987,
+                                                         "failureMessages":  [
+
+                                                                             ],
+                                                         "meta":  {
+
+                                                                  },
+                                                         "tags":  [
+
+                                                                  ]
+                                                     },
+                                                     {
+                                                         "ancestorTitles":  [
+                                                                                "組織4導線の実コンポーネント診断（Nuxt起動を除外）"
+                                                                            ],
+                                                         "fullName":  "組織4導線の実コンポーネント診断（Nuxt起動を除外） 組織のpermission-groups項目は実際の子ルートへのリンクを描画する",
+                                                         "status":  "passed",
+                                                         "title":  "組織のpermission-groups項目は実際の子ルートへのリンクを描画する",
+                                                         "duration":  169.19770000000062,
+                                                         "failureMessages":  [
+
+                                                                             ],
+                                                         "meta":  {
+
+                                                                  },
+                                                         "tags":  [
+
+                                                                  ]
+                                                     },
+                                                     {
+                                                         "ancestorTitles":  [
+                                                                                "組織4導線の実コンポーネント診断（Nuxt起動を除外）"
+                                                                            ],
+                                                         "fullName":  "組織4導線の実コンポーネント診断（Nuxt起動を除外） 組織のmodules項目は実際の子ルートへのリンクを描画する",
+                                                         "status":  "passed",
+                                                         "title":  "組織のmodules項目は実際の子ルートへのリンクを描画する",
+                                                         "duration":  266.0079000000005,
+                                                         "failureMessages":  [
+
+                                                                             ],
+                                                         "meta":  {
+
+                                                                  },
+                                                         "tags":  [
+
+                                                                  ]
+                                                     },
+                                                     {
+                                                         "ancestorTitles":  [
+                                                                                "組織4導線の実コンポーネント診断（Nuxt起動を除外）"
+                                                                            ],
+                                                         "fullName":  "組織4導線の実コンポーネント診断（Nuxt起動を除外） 組織の子ルートリンクはMEMBERの表示権限を維持する",
+                                                         "status":  "passed",
+                                                         "title":  "組織の子ルートリンクはMEMBERの表示権限を維持する",
+                                                         "duration":  148.90049999999974,
+                                                         "failureMessages":  [
+
+                                                                             ],
+                                                         "meta":  {
+
+                                                                  },
+                                                         "tags":  [
+
+                                                                  ]
+                                                     },
+                                                     {
+                                                         "ancestorTitles":  [
+                                                                                "組織4導線の実コンポーネント診断（Nuxt起動を除外）"
+                                                                            ],
+                                                         "fullName":  "組織4導線の実コンポーネント診断（Nuxt起動を除外） 組織の子ルートリンクはDEPUTY_ADMINの表示権限を維持する",
+                                                         "status":  "passed",
+                                                         "title":  "組織の子ルートリンクはDEPUTY_ADMINの表示権限を維持する",
+                                                         "duration":  191.11260000000038,
+                                                         "failureMessages":  [
+
+                                                                             ],
+                                                         "meta":  {
+
+                                                                  },
+                                                         "tags":  [
+
+                                                                  ]
+                                                     },
+                                                     {
+                                                         "ancestorTitles":  [
+                                                                                "組織4導線の実コンポーネント診断（Nuxt起動を除外）"
+                                                                            ],
+                                                         "fullName":  "組織4導線の実コンポーネント診断（Nuxt起動を除外） 組織の子ルートリンクはADMINの表示権限を維持する",
+                                                         "status":  "passed",
+                                                         "title":  "組織の子ルートリンクはADMINの表示権限を維持する",
+                                                         "duration":  340.9877000000015,
+                                                         "failureMessages":  [
+
+                                                                             ],
+                                                         "meta":  {
+
+                                                                  },
+                                                         "tags":  [
+
+                                                                  ]
+                                                     }
+                                                 ],
+                            "startTime":  1792135693270,
+                            "endTime":  1792135695857.9878,
+                            "status":  "passed",
+                            "message":  "",
+                            "name":  "frontend/app/components/OrganizationSidebar.temporary-diagnostic.spec.ts"
+                        }
+                    ],
+    "publicationNote":  "元Vitest JSONから絶対パスとstack frameを除去。実assertを保持。"
+}

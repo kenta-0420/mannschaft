@@ -1,0 +1,23 @@
+[
+  {
+    "sourceEvidencePath": ".claude/runtime/october-fourth-wave-20261027/module-real/evidence-run2/module-settings-restored.png",
+    "path": "docs/evidence/october-fourth-wave-20261027/module-settings-restored.png",
+    "sha256": "e4d21b0b1716799898587446662d8902c5e6906e4b99e38b54cf169b4d0dee22",
+    "width": 1280,
+    "height": 5135
+  },
+  {
+    "sourceEvidencePath": ".claude/runtime/october-fourth-wave-20261027/residents/R1/08-modules-1280x720.png",
+    "path": "docs/evidence/october-fourth-wave-20261027/resident-r1-modules-de.png",
+    "sha256": "de50e40ae6ef139d5b6c0af965057a1f08efec0f9544fcefec827a0acf23621b",
+    "width": 1280,
+    "height": 720
+  },
+  {
+    "sourceEvidencePath": ".claude/runtime/october-fourth-wave-20261027/residents/R2/16-booking-ready.png",
+    "path": "docs/evidence/october-fourth-wave-20261027/resident-r2-booking.png",
+    "sha256": "1416158200a89606615a9b0c5e351f3f88fe1b7f83438448212ab075bd11ea23",
+    "width": 360,
+    "height": 800
+  }
+]

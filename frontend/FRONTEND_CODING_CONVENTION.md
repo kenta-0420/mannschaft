@@ -63,6 +63,8 @@
   - デスクトップの視覚密度を崩さない範囲であればブレークポイント指定なしで適用してよい。タブバーの「＋」ボタンのようにチュラム（chrome）自体の高さが変わり密度が崩れる場合のみ `max-md:` を付けてモバイル限定にする。
 - **横スクロール（横パン）禁止**: 390px 幅（iPhone SE 相当）でページ全体が横に伸びてはならない。flex の子要素には `min-w-0` を付けて縮小可能にし、本来横に伸びる要素（テーブル・タブ列・コード表示等）は自コンテナ内に `overflow-x-auto` を付けて横スクロールを閉じ込める。
 - **ブレークポイント境界**: `md`（768px）を FE のモバイル/デスクトップの正の境界とする。レイアウト切り替え（サイドバーの折りたたみ等）の判定はこれに揃える。
+  - 共通PrimeVue Button/InputText/Paginator/ToggleSwitchの操作領域は `main.css` の `screen`・767px以下で44pxを下限とし、768px以上と印刷には適用しない。ToggleSwitchは透明inputの領域を広げ、既存slider/handleの視覚サイズとchecked位置を維持する。領収書一覧の見出しと操作群は同じ境界で縦積みにし、長い翻訳と操作領域の合算による横はみ出しを防ぐ。
+  - 寸法と通常操作の回帰は `tests/e2e/mobile/common-controls.spec.ts` を既存Smoke E2Eで検証する。API境界をstubしたviewport・mouse/keyboardの試験であり、モックなしの認可・自然導線・実タッチ確認は別途行う。
 - **入力要素のフォントサイズは 16px 以上**: `<input>` / `<textarea>` 等の `font-size` が 16px 未満だと iOS Safari がフォーカス時に自動ズームする。Tailwind の `text-sm`（デフォルト14px）を入力欄に直接使わず、`text-base` 以上を使うか、`tailwind.config.ts` の `fontSize.xs` のように明示的に上書きされたスケールを使うこと。
 
 ## 4. ディレクトリ構成と責務 (Directory Structure)
@@ -344,6 +346,7 @@ watch(isDragging, (dragging, wasDragging) => {
 - **Lazy Loading**: ページ下部の重いコンポーネントは `Lazy` プレフィックスコンポーネント（例: `<LazyHeavyChart />`）として読み込む。
 - **`<ClientOnly>`**: SSR 不要なコンポーネント（チャート、地図、WebSocket 接続 UI 等）は `<ClientOnly>` でラップし、サーバー側レンダリングをスキップする。
 - **SEO メタタグ**: SSR ページでは `useHead` / `useSeoMeta` を使用して `title`, `description`, OGP タグを設定する。SPA ページでも `useHead` で基本的な `title` を設定すること。
+- **STOMP（WebSocket）接続の認証**: CONNECT ヘッダは `~/composables/stomp/stompAuth` の `buildStompConnectHeaders(accessToken)` で組み立てる。`Authorization: Bearer ${token ?? ''}` のような**空 Bearer の直書きは禁止**（トークンが無いときはヘッダを付けず Cookie 認証に任せる）。ERROR フレームは `x-error-code` を `handleStompErrorFrame` / `readStompErrorCode` で読み分け、`FORBIDDEN` / `INVALID_DESTINATION` は再接続を止めて「閲覧権限なし」、`UNAUTHENTICATED` は既存の `performTokenRefresh` で 1 回だけ更新して再接続（失敗時は `handleAuthFailureLogout`）、未知のコードは従来どおり自動再接続とする。匿名で成り立つ接続ではログアウトさせない。詳細: `docs/architecture/websocket_external_broker_valkey.md` §2.3.3。
 
 ## 11. テスト (Testing)
 - **基本ツール**: **Vitest** と **Vue Test Utils** を採用する。
@@ -413,17 +416,16 @@ export default defineNuxtPlugin((nuxtApp) => {
 
 **`composables/useErrorReport.ts`** に実装する。
 
-- **`capture(error, meta?)`**: エラーを受け取り、エラーレポートモーダル（`ErrorReportModal.vue`）を表示状態にする。自動収集情報（エラーメッセージ・スタックトレース・URL・UA・タイムスタンプ）を内部 state に保持する。
-- **`submit(userComment?)`**: バックエンドの公開エンドポイント `POST /api/v1/error-reports` へ送信する。認証不要のため `$fetch` のベースURLのみ使用し、JWT は付与しない。送信後はモーダルを「送信完了」状態に切り替え、お礼メッセージを表示する。
-- **エラー連鎖の防止**: `capture` 内でさらにエラーが発生した場合は `console.error` に留め、再帰的なモーダル表示を行わない。
+- **`capture(error, meta?)`**: エラーを受け取り、エラー報告バッジ（`ErrorReportDialog.vue`）を表示状態にする。詳細は自動展開せず、利用者が選択した場合だけ展開する（CMP-260920-1042）。自動収集情報（エラーメッセージ・スタックトレース・URL・UA・タイムスタンプ）を内部 state に保持する。
+- **`submitComment(userComment)`**: 利用者が詳細パネルで入力した任意の追加コメントを `POST /api/v1/error-reports` へ送信する。エラー情報は `capture` 時に自動報告し、追加コメントの送信後は詳細パネルにお礼を表示して閉じる。
+- **エラー連鎖の防止**: `capture` 内でさらにエラーが発生した場合は `console.error` に留め、再帰的なパネル表示を行わない。
 
-### `ErrorReportModal.vue` コンポーネント
+### `ErrorReportDialog.vue` コンポーネント
 
-- 通常のページ遷移をブロックしない **モーダル（オーバーレイ）** として実装する。`Teleport` を利用して `<body>` 直下に描画する。
-- **表示状態**:
-  1. **入力画面**: エラー発生の旨を伝えるメッセージ + 任意のコメント入力欄 + 「送信する」ボタン + 「閉じる」リンク
-  2. **送信中**: ボタンをローディング状態にし、二重送信を防止する。
-  3. **完了画面**: 「ご報告ありがとうございます。開発チームが確認します。」とお礼を表示し、数秒後に自動クローズ。
+- **`app.vue` の `<ClientOnly>` 内に単一インスタンスを配置する**。layoutにも置くと二重表示になり、default layoutだけに置くと認証・公開ページで報告UIが欠落する。
+- エラー発生時は右上の44x44pxバッジだけを表示し、利用者が選択した場合のみ詳細パネルを展開する（CMP-260920-1042）。画面全体を覆うモーダルや自動展開で主要操作を塞がない。
+- `Teleport` で `<body>` 直下に描画する。バッジと詳細パネルは右上（`top-20 right-4`）に置き、右下の操作領域を避ける。
+- 自動報告と任意の追加コメント送信を維持する。エラー報告状態は `useErrorReport` が保持し、layoutの切替で報告UIを重複させない。
 - エラーの技術的詳細（スタックトレース等）はユーザーに表示しない。
 
 ### 送信データ仕様
@@ -440,7 +442,6 @@ export default defineNuxtPlugin((nuxtApp) => {
 
 ### 注意事項
 - エラーレポートの送信エンドポイントは認証不要（`POST /api/v1/error-reports` は公開）。ただしレート制限をバックエンドで実施する。
-- 開発環境（`NODE_ENV === 'development'`）では `console.error` へのフォールスルーのみとし、モーダルを表示しないオプションを設ける（開発中の誤送信防止）。
 - **バックエンド設計書**: `docs/features/F12.5_frontend_error_tracking.md` を参照。レート制限（IP単位10回/分）、エラーメッセージ正規化による重複集約、リグレッション検知（RESOLVED→REOPENED）、既知の不具合バナーAPI（`GET /api/v1/active-incidents`）、X-Request-Id 相関などの仕様が定義されている。
 
 ## 14. メール送信フィードバック (Email Send Feedback)
@@ -521,6 +522,8 @@ onUnmounted(() => {
 
 UI に表示する文字列は **直書き禁止**。必ずロケールファイル（`app/locales/{ja,en,zh,ko,es,de}/*.json`）に追加してから `$t('key')` / `t('key')` で参照する。デフォルトロケールは `ja`。対応言語は日本語・英語・中国語（簡体）・韓国語・スペイン語・ドイツ語の 6 言語。
 
+**PrimeVue 既定文言**（aria-label・日付・ページ送り等）は `app/utils/primevueLocales.ts` で 6 言語の完全辞書として管理し、`plugins/primevue-locale.ts` が `i18n.locale` に追従させる（SSR 対応）。`app/error.vue` の文言は `common.json` の `error_page.*`。
+
 ### ロケール別フォーマット関数を呼ぶ際の注意
 
 `toLocaleDateString` / `toLocaleString` / `Intl.DateTimeFormat` 等にロケールを渡す場合、`useI18n()` から取り出した `locale` は `WritableComputedRef<string>` なので、**必ず `locale.value` を渡すこと**。`locale` をそのまま渡すと実行時に `Ref` オブジェクトが toString されて `[object Object]` となる、または `RangeError: Invalid language tag` を投げる恐れがある。
@@ -537,13 +540,26 @@ date.toLocaleDateString(locale.value, { weekday: 'short' })
 
 また、`'ja-JP'` などロケールをハードコードしないこと。ユーザーの言語設定に追従させるため、必ず `locale.value` を使用する。
 
+### 日時の表示整形は共通関数を使う（自前で整形しない）**【必須】**
+
+画面に出す日付・時刻・期間の整形は **`useDatetime()`**（`app/composables/useDatetime.ts`）と純関数群 `app/utils/localDate.ts` に一本化する。両者は現在の UI ロケールとユーザーTZ（`authStore.user.timezone`）に従う。**曜日配列・`m月d日`・`YYYY/MM/DD` 文字列の組み立て・「〜」の直書きを画面側に書いてはならない**（ロケールごとの書式が二重管理になり、ja 以外で日本語が残る。緊急休業 CMP-261104-0335 の実例）。
+
+| 用途 | 使うもの |
+|---|---|
+| 瞬間（ISO-8601）の日付／日時／時刻 | `formatDate` / `formatDateTime` / `formatTime`（ja は `YYYY/MM/DD`・`YYYY/MM/DD HH:mm`・`HH:mm`、他言語は各言語の数値書式） |
+| 暦日（`yyyy-MM-dd`）の曜日付き表示・範囲 | `formatCalendarDay` / `formatCalendarDayRange`（UTC 暦日として扱うので西側TZでも前日にならない。`new Date('YYYY-MM-DD')` を直接読まない） |
+| 時刻（`HH:mm[:ss]`）の範囲（秒は出さない） | `formatTimeRange` |
+| 範囲の区切りを画面で出す必要がある場合 | i18n キー（例: `emergency_closure.label.range_separator`）。直書きしない |
+
+足りない書式は画面に自前実装せず、共通側（`utils/localDate.ts` の純関数 + `useDatetime` の薄いラッパ）に足す。
+
 ### i18n ファイル追加時のガードレール
 
 新規ロケール JSON（例: `app/locales/ja/xxx.json`）を追加した際は、**必ず `nuxt.config.ts` の `i18n.locales[*].files` 配列にも登録すること**。登録漏れがあると `@nuxtjs/i18n` の lazy loading 機構が該当ファイルを一切ロードせず、UI にはキー文字列そのまま（例: `shift.index.title`）が表示される。この不具合は lint / unit test / backend CI では検出されない性質のため、機械的なチェックが効かない。
 
 新規追加時の確認手順:
 
-1. **6 言語すべて**（ja/en/zh/ko/es/de）に同じファイル名で JSON を配置する（未翻訳ならひとまず日本語と同じ値で可、後で翻訳でもよい）。
+1. **6 言語すべて**（ja/en/zh/ko/es/de）に同じファイル名で JSON を配置し、各言語にその言語の訳を入れる（ja 以外に日本語を置かない。キー集合・プレースホルダ・複数形区切りも ja と揃える）。番人 `tests/unit/i18n/locale-no-japanese-residue.spec.ts` が CI で日本語の残存と構造の不一致を検出する。意図的に日本語を残す値（例: API へ日本語のまま送る入力例）は `tests/unit/i18n/locale-residue-allowlist.json` に理由付きで載せる。
 2. `nuxt.config.ts` の各ロケール定義の `files:` 配列にファイル名を追加する（6 箇所）。
 3. `npm run dev` で該当画面を目視し、キーが実テキストに解決されていることを確認する。
 

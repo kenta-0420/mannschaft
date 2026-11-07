@@ -1,13 +1,9 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.ratelimit.RateLimitResult;
 import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
 import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
-import com.mannschaft.app.notification.NotificationPriority;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.reservation.ReservationErrorCode;
 import com.mannschaft.app.reservation.SlotStatus;
 import com.mannschaft.app.reservation.ReservationStatus;
@@ -26,7 +22,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.support.ReloadableResourceBundleMessageSource;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Clock;
@@ -59,7 +54,7 @@ import static org.mockito.Mockito.when;
  * {@link ReservationWaitlistService} の単体テスト（F03.4.5 §6.1・受け入れ条件 W-1/W-2 の中核）。
  *
  * <p>登録（満席のみ）・満席でない枠 400・重複 409・上限・本人取消・IDOR 404・
- * 予約成立時の CONVERTED 消し込み・空き復帰時の一斉通知（60 分抑制・非 AVAILABLE スキップ）・
+ * 予約成立時の CONVERTED 消し込み（空き復帰時の一斉通知は ReservationWaitlistNotificationEventListenerTest）・
  * 失効クリーンアップ・レートリミット 429 を検証する。</p>
  */
 @ExtendWith(MockitoExtension.class)
@@ -82,33 +77,16 @@ class ReservationWaitlistServiceTest {
     @Mock
     private ValkeyRateLimiter rateLimiter;
     @Mock
-    private NotificationHelper notificationHelper;
-    @Mock
-    private UserLocaleCache userLocaleCache;
-    @Mock
     private TeamTimezoneResolver teamTimezoneResolver;
-
-    /** 実プロパティファイル（messages*.properties）を読む実体（i18n の locale 分岐を実データで検証するため）。 */
-    private final ReloadableResourceBundleMessageSource messageSource = realMessageSource();
 
     private final Clock clock = Clock.fixed(Instant.parse("2026-07-08T00:00:00Z"), ZoneOffset.UTC);
 
     private ReservationWaitlistService service;
 
-    private static ReloadableResourceBundleMessageSource realMessageSource() {
-        ReloadableResourceBundleMessageSource source = new ReloadableResourceBundleMessageSource();
-        source.setBasenames("classpath:messages");
-        source.setDefaultEncoding("UTF-8");
-        return source;
-    }
-
     @BeforeEach
     void setUp() {
-        // 既定 locale は ja（未スタブのテストで NPE にならないよう lenient で用意）。
-        org.mockito.Mockito.lenient().when(userLocaleCache.getLocale(anyLong())).thenReturn("ja");
         service = new ReservationWaitlistService(
-                waitlistRepository, slotRepository, reservationRepository, viewAccessGuard, rateLimiter, notificationHelper,
-                userLocaleCache, messageSource, clock);
+                waitlistRepository, slotRepository, reservationRepository, viewAccessGuard, rateLimiter, clock);
     }
 
     /**
@@ -117,8 +95,7 @@ class ReservationWaitlistServiceTest {
      */
     private void reinitServiceWithClock(Clock injectedClock) {
         service = new ReservationWaitlistService(
-                waitlistRepository, slotRepository, reservationRepository, viewAccessGuard, rateLimiter, notificationHelper,
-                userLocaleCache, messageSource, injectedClock);
+                waitlistRepository, slotRepository, reservationRepository, viewAccessGuard, rateLimiter, injectedClock);
     }
 
     private ReservationSlotEntity slot(SlotStatus status) {
@@ -376,89 +353,10 @@ class ReservationWaitlistServiceTest {
     }
 
     // ────────────────────────────────────────────────────────────
-    // 空き復帰時の一斉通知（W-2）
+    // 空き復帰時の一斉通知（W-2）は ReservationWaitlistNotificationEventListener（AFTER_COMMIT・行ごとの条件付き claim）へ
+    // 移した（Issue #2997 G3）。検証は ReservationWaitlistNotificationEventListenerTest（単体）と
+    // ReservationNotificationTransactionIT（実 DB）を参照。
     // ────────────────────────────────────────────────────────────
-
-    @Test
-    @DisplayName("W-2: 空き復帰で WAITING 全員へ HIGH 通知し notified_at を更新する")
-    void 空き復帰で全員通知() {
-        when(slotRepository.findById(SLOT_ID)).thenReturn(Optional.of(slot(SlotStatus.AVAILABLE)));
-        ReservationWaitlistEntryEntity e1 = ReservationWaitlistEntryEntity.builder()
-                .teamId(TEAM_ID).slotId(SLOT_ID).userId(901L).status(WaitlistStatus.WAITING).build();
-        ReservationWaitlistEntryEntity e2 = ReservationWaitlistEntryEntity.builder()
-                .teamId(TEAM_ID).slotId(SLOT_ID).userId(902L).status(WaitlistStatus.WAITING).build();
-        when(waitlistRepository.findBySlotIdAndStatusForUpdate(SLOT_ID, WaitlistStatus.WAITING)).thenReturn(List.of(e1, e2));
-
-        service.notifySlotReopened(TEAM_ID, SLOT_ID);
-
-        verify(notificationHelper).notify(eq(901L), eq("RESERVATION_WAITLIST_OPENING"),
-                eq(NotificationPriority.HIGH), anyString(), anyString(),
-                eq("RESERVATION"), eq(SLOT_ID), eq(NotificationScopeType.TEAM), eq(TEAM_ID), anyString(), eq(null));
-        verify(notificationHelper).notify(eq(902L), eq("RESERVATION_WAITLIST_OPENING"),
-                eq(NotificationPriority.HIGH), anyString(), anyString(),
-                eq("RESERVATION"), eq(SLOT_ID), eq(NotificationScopeType.TEAM), eq(TEAM_ID), anyString(), eq(null));
-        assertThat(e1.getNotifiedAt()).isNotNull();
-        assertThat(e2.getNotifiedAt()).isNotNull();
-    }
-
-    @Test
-    @DisplayName("i18n: 受信者の locale が en の場合、通知本文が英語で組み立てられる")
-    void 空き復帰通知は受信者localeで組み立てられる() {
-        when(slotRepository.findById(SLOT_ID)).thenReturn(Optional.of(slot(SlotStatus.AVAILABLE)));
-        ReservationWaitlistEntryEntity jaEntry = ReservationWaitlistEntryEntity.builder()
-                .teamId(TEAM_ID).slotId(SLOT_ID).userId(901L).status(WaitlistStatus.WAITING).build();
-        ReservationWaitlistEntryEntity enEntry = ReservationWaitlistEntryEntity.builder()
-                .teamId(TEAM_ID).slotId(SLOT_ID).userId(902L).status(WaitlistStatus.WAITING).build();
-        when(waitlistRepository.findBySlotIdAndStatusForUpdate(SLOT_ID, WaitlistStatus.WAITING))
-                .thenReturn(List.of(jaEntry, enEntry));
-        when(userLocaleCache.getLocale(901L)).thenReturn("ja");
-        when(userLocaleCache.getLocale(902L)).thenReturn("en");
-
-        service.notifySlotReopened(TEAM_ID, SLOT_ID);
-
-        ArgumentCaptor<String> jaBody = ArgumentCaptor.forClass(String.class);
-        verify(notificationHelper).notify(eq(901L), anyString(), any(NotificationPriority.class),
-                anyString(), jaBody.capture(), anyString(), anyLong(), any(), anyLong(), anyString(), any());
-        ArgumentCaptor<String> enBody = ArgumentCaptor.forClass(String.class);
-        verify(notificationHelper).notify(eq(902L), anyString(), any(NotificationPriority.class),
-                anyString(), enBody.capture(), anyString(), anyLong(), any(), anyLong(), anyString(), any());
-
-        assertThat(jaBody.getValue()).contains("空きが出ました");
-        assertThat(enBody.getValue()).contains("slot has opened up");
-        assertThat(jaBody.getValue()).isNotEqualTo(enBody.getValue());
-    }
-
-    @Test
-    @DisplayName("W-2: 60 分以内に通知済みのエントリには再送しない")
-    void 再通知抑制60分() {
-        when(slotRepository.findById(SLOT_ID)).thenReturn(Optional.of(slot(SlotStatus.AVAILABLE)));
-        LocalDateTime now = LocalDateTime.now(clock);
-        ReservationWaitlistEntryEntity recent = ReservationWaitlistEntryEntity.builder()
-                .teamId(TEAM_ID).slotId(SLOT_ID).userId(901L).status(WaitlistStatus.WAITING)
-                .notifiedAt(now.minusMinutes(30)).build();
-        ReservationWaitlistEntryEntity stale = ReservationWaitlistEntryEntity.builder()
-                .teamId(TEAM_ID).slotId(SLOT_ID).userId(902L).status(WaitlistStatus.WAITING)
-                .notifiedAt(now.minusMinutes(90)).build();
-        when(waitlistRepository.findBySlotIdAndStatusForUpdate(SLOT_ID, WaitlistStatus.WAITING))
-                .thenReturn(List.of(recent, stale));
-
-        service.notifySlotReopened(TEAM_ID, SLOT_ID);
-
-        verify(notificationHelper, never()).notify(eq(901L), anyString(), any(NotificationPriority.class),
-                anyString(), anyString(), anyString(), anyLong(), any(), anyLong(), anyString(), any());
-        verify(notificationHelper, times(1)).notify(eq(902L), anyString(), any(NotificationPriority.class),
-                anyString(), anyString(), anyString(), anyLong(), any(), anyLong(), anyString(), any());
-    }
-
-    @Test
-    @DisplayName("W-2: 枠がまだ AVAILABLE でない（CLOSED 化された等）場合は通知しない")
-    void 非AVAILABLEはスキップ() {
-        when(slotRepository.findById(SLOT_ID)).thenReturn(Optional.of(slot(SlotStatus.CLOSED)));
-        service.notifySlotReopened(TEAM_ID, SLOT_ID);
-        verify(notificationHelper, never()).notify(anyLong(), anyString(), any(NotificationPriority.class),
-                anyString(), anyString(), anyString(), anyLong(), any(), anyLong(), anyString(), any());
-        verify(waitlistRepository, never()).findBySlotIdAndStatusForUpdate(anyLong(), any());
-    }
 
     // ────────────────────────────────────────────────────────────
     // 失効クリーンアップ

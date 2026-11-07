@@ -118,7 +118,7 @@ class BudgetFlatWriteScopeContractIT extends AbstractMySqlIntegrationTest {
      * 具象型でモックすれば interface 消費者(budget)・具象型消費者(migration)の双方を満たす。
      */
     @MockitoBean
-    private R2StorageService storageService;
+    private R2StorageService r2StorageService;
 
     @PersistenceContext
     private EntityManager em;
@@ -226,9 +226,9 @@ class BudgetFlatWriteScopeContractIT extends AbstractMySqlIntegrationTest {
                 .expiresAt(Instant.now().plusSeconds(3600))
                 .build());
 
-        given(storageService.generateUploadUrl(anyString(), anyString(), any(Duration.class)))
+        given(r2StorageService.generateUploadUrl(anyString(), anyString(), any(Duration.class)))
                 .willReturn(new PresignedUploadResult("https://mock-upload.example/put", "budget/attachments/mock.pdf", 900));
-        given(storageService.generateDownloadUrl(anyString(), any(Duration.class)))
+        given(r2StorageService.generateDownloadUrl(anyString(), any(Duration.class)))
                 .willReturn("https://mock-download.example/get");
 
         em.flush();

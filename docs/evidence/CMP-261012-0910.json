@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261012-0910",
+  "scope": "app",
+  "implementation": {
+    "pr": 3838,
+    "sha": "77358f79b35c339cb4f9debe1a3d65845468f789"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "TOTP有効化確定UI・ログイン時バックアップコード・ログイン中の無効化・メールOTP方式・リカバリー導線が実機で動作する（実機シナリオ S1〜S7）。",
+      "tests": [
+        {
+          "name": "実機E2E S1〜S7 PASS",
+          "evidence": "docs/evidence/CMP-261012-0910.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    { "runId": 39532107682, "note": "実装PR head一致の Backend CI（成功）。" },
+    { "runId": 39532107596, "note": "実装PR head一致の Frontend CI（成功）。" },
+    { "runId": 39532107588, "note": "実装PR head一致の Frontend E2E（成功）。" }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/3838",
+      "note": "実装PR: #3838"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261012-0910.md",
+      "note": "実機E2E S1〜S7 PASS。ロール横断とURL直打ちを確認。"
+    },
+    "exploratory": {
+      "status": "passed",
+      "kind": "alicization",
+      "evidence": "docs/evidence/CMP-261012-0910.md",
+      "note": "アリシゼーション ALIC-1〜4 再確認 PASS。"
+    }
+  },
+  "regressions": []
+}

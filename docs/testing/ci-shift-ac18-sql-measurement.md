@@ -1,0 +1,17 @@
+# AC-18 SQL測定範囲の修正と限定検証
+
+自然CI run38049654507のCREATE_SLOTは認可baseline同数assertionで失敗した。SQL計測器のglobal捕捉には別thread SQLが混入し得るが、自然CIでの発生源・増減方向は未立証。
+
+## 修正と保持する契約
+
+SqlIntentCounterは既存global API・複数instance共有・跨thread捕捉を維持し、inspect/reset/readを同一class monitorで保護する。明示CurrentThreadCaptureだけを現在threadへ限定し、scopeをtry-with-resourcesで解放する。baselineのwarm後と要求全体の双方に明示scopeを使い、認可呼出し前後のcount/indexとscope/FOR UPDATEのsnapshotは同じscopeから読む。他threadの共有spy呼出しは実処理だけを通す。
+
+既存assertion・期待クエリ数・HTTP201・scope読取1・FOR UPDATEの認可前0/認可後1を保持する。試練は別thread・実MySQL SELECT 1を認可測定窓へ一度挿入し、10秒上限のFuture完了待ちで時機を固定する。sleep/skip/retry/業務API mock/期待値緩和は追加しない。既存ITのaddFilters=falseは保持しており、Security filter/E2Eの証明ではない。
+
+## 実REDと限定GREEN
+
+hosted RED run38071508710、artifact11676763264、実Gradle exit1、対象1case/failure1/error0/skip0。exact DisplayNameとAssertionFailedError・AUTHZ_BASELINElabelを有限classifierで確認した（root-ac18-hosted-red-outcome-20261011.json）。compile/timeout/fixture失敗ではなくsemantic REDを取得後に修正を適用した。
+
+検分済みsource commit626975682d35527703f11f5202291cef61c11473（tree c42dbc83c18b044eb29cbcb018917593dcd126c5）のhosted GREENは実Gradle exit0、ShiftScheduleSlotFacadeRaceAndQueryIT45件＋SqlIntentCounterTest7件＝52件PASS、failure/error/skip0。root-ac18-hosted-green-outcome-20261011.jsonにexact XML digest pinsとsource provenanceを保存した。final featureへのtest2filesはこのsource commitとLF bytesで同一。
+
+限定実行ではarchUnitTest/archUnitFreezeStoreIntegrityTestを除外した。通常CI設定は変更せず、final featureの全CI回帰はpending。製品全回帰・自然CI原因確定・Security filter・E2E完了とは扱わない。temporary hosted workflow・hosted専用運用文書はfinal featureへ移さない。

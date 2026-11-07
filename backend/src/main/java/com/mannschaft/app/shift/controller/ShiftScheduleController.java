@@ -63,6 +63,7 @@ public class ShiftScheduleController {
     @GetMapping("/{scheduleId}")
     @Operation(summary = "シフトスケジュール詳細")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @RequireFeature("FEATURE_SHIFT_ENABLED")
     public ResponseEntity<ApiResponse<ShiftScheduleResponse>> getSchedule(
             @PathVariable Long scheduleId) {
         ShiftScheduleResponse response = scheduleFacade.getSchedule(scheduleId, SecurityUtils.getCurrentUserId());
@@ -75,6 +76,7 @@ public class ShiftScheduleController {
     @PostMapping
     @Operation(summary = "シフトスケジュール作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
+    @RequireFeature("FEATURE_SHIFT_ENABLED")
     public ResponseEntity<ApiResponse<ShiftScheduleResponse>> createSchedule(
             @RequestParam Long teamId,
             @Valid @RequestBody CreateShiftScheduleRequest request) {
@@ -88,6 +90,7 @@ public class ShiftScheduleController {
     @PatchMapping("/{scheduleId}")
     @Operation(summary = "シフトスケジュール更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    @RequireFeature("FEATURE_SHIFT_ENABLED")
     public ResponseEntity<ApiResponse<ShiftScheduleResponse>> updateSchedule(
             @PathVariable Long scheduleId,
             @Valid @RequestBody UpdateShiftScheduleRequest request) {
@@ -102,6 +105,7 @@ public class ShiftScheduleController {
     @DeleteMapping("/{scheduleId}")
     @Operation(summary = "シフトスケジュール削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
+    @RequireFeature("FEATURE_SHIFT_ENABLED")
     public ResponseEntity<Void> deleteSchedule(
             @PathVariable Long scheduleId) {
         scheduleFacade.deleteSchedule(scheduleId, SecurityUtils.getCurrentUserId());
@@ -114,6 +118,7 @@ public class ShiftScheduleController {
     @PostMapping("/{scheduleId}/transition")
     @Operation(summary = "シフトスケジュールステータス遷移")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "遷移成功")
+    @RequireFeature("FEATURE_SHIFT_ENABLED")
     public ResponseEntity<ApiResponse<ShiftScheduleResponse>> transitionStatus(
             @PathVariable Long scheduleId,
             @RequestParam String status) {
@@ -137,6 +142,7 @@ public class ShiftScheduleController {
     @Operation(summary = "シフト充足状況サマリ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     @PreAuthorize("isAuthenticated()")
+    @RequireFeature("FEATURE_SHIFT_ENABLED")
     public ResponseEntity<ApiResponse<ShiftScheduleSummaryResponse>> getScheduleSummary(
             @PathVariable Long scheduleId) {
         ShiftScheduleSummaryResponse response =
@@ -160,6 +166,7 @@ public class ShiftScheduleController {
     @Operation(summary = "シフト希望未提出者への手動リマインド送信")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "送信成功")
     @PreAuthorize("isAuthenticated()")
+    @RequireFeature("FEATURE_SHIFT_ENABLED")
     public ResponseEntity<ApiResponse<ManualRemindResponse>> remindUnsubmitted(
             @PathVariable Long scheduleId) {
         ManualRemindResponse response = scheduleFacade
@@ -173,6 +180,7 @@ public class ShiftScheduleController {
     @PostMapping("/{scheduleId}/duplicate")
     @Operation(summary = "シフトスケジュール複製")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "複製成功")
+    @RequireFeature("FEATURE_SHIFT_ENABLED")
     public ResponseEntity<ApiResponse<ShiftScheduleResponse>> duplicateSchedule(
             @PathVariable Long scheduleId) {
         ShiftScheduleResponse response = scheduleFacade.duplicateSchedule(scheduleId, SecurityUtils.getCurrentUserId());

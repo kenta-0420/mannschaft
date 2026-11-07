@@ -23,7 +23,8 @@ const badgeText = computed(() => {
   <div class="group relative">
     <NuxtLink
       :to="item.path"
-      class="relative flex items-center gap-3 rounded-lg py-2 text-sm font-medium transition-colors"
+      prefetch-on="interaction"
+      class="relative flex min-h-11 items-center gap-3 rounded-lg py-2 text-sm font-medium transition-colors"
       :class="[
         rail ? 'justify-center px-0 py-2.5' : 'px-3',
         active

@@ -40,6 +40,11 @@ public class OrganizationResponse {
      * 受付状況は組織を閲覧できる人なら誰でも見てよい情報（§3.1「受付状況の閲覧」）。
      */
     private TeamApplicationDto teamApplication;
+    /**
+     * CMP-261004-1942: 組織のソーシャル情報（ヘッダの「サポーター ◯人」）。
+     * チーム詳細の {@code social} と同形。サポーターが 0 人でも 0 を返す（null・欠落にしない）。
+     */
+    private OrgSocialDto social;
 
     /** 組織基本情報：名称・読み仮名・ニックネーム。 */
     public record OrgBasicInfoDto(
@@ -75,6 +80,10 @@ public class OrganizationResponse {
     public record OrgTimestampsDto(
             LocalDateTime archivedAt,
             LocalDateTime createdAt) {}
+
+    /** 組織のソーシャル情報：アクティブな（退会していない）SUPPORTER 所属の人数。 */
+    public record OrgSocialDto(
+            long supporterCount) {}
 
     /** チーム加盟の受付状況：受付中か。 */
     public record TeamApplicationDto(

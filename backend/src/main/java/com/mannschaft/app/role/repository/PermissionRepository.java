@@ -12,6 +12,8 @@ public interface PermissionRepository extends JpaRepository<PermissionEntity, Lo
 
     List<PermissionEntity> findByScope(PermissionEntity.Scope scope);
 
+    List<PermissionEntity> findByScopeIn(java.util.Collection<PermissionEntity.Scope> scopes);
+
     List<PermissionEntity> findByIdIn(List<Long> ids);
 
     List<PermissionEntity> findByNameIn(List<String> names);

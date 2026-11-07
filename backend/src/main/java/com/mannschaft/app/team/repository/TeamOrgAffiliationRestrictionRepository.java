@@ -175,4 +175,57 @@ public interface TeamOrgAffiliationRestrictionRepository
                           @Param("teamId") Long teamId,
                           @Param("direction") TeamOrgAffiliationDirection direction,
                           @Param("reason") com.mannschaft.app.team.entity.TeamOrgAffiliationRestrictionReason reason);
+
+    /**
+     * 組織の論理削除の片付け: その組織の制限を向き・種別を問わずすべて物理削除する（F01.2.1 §4.5・2-D）。
+     *
+     * @return 削除した行数
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM TeamOrgAffiliationRestrictionEntity r WHERE r.organizationId = :organizationId")
+    int deleteAllByOrganizationId(@Param("organizationId") Long organizationId);
+
+    /**
+     * チームの論理削除の片付け: そのチームの制限を向き・種別を問わずすべて物理削除する（F01.2.1 §4.5・2-D）。
+     *
+     * @return 削除した行数
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM TeamOrgAffiliationRestrictionEntity r WHERE r.teamId = :teamId")
+    int deleteAllByTeamId(@Param("teamId") Long teamId);
+
+    /**
+     * 期限切れバッチ（F01.2.1 §5.4・§6.8・7-A）の候補: 期限の過ぎた COOLDOWN の ID を返す（ロックしない）。BLOCK は対象外。
+     */
+    @Query("SELECT r.id FROM TeamOrgAffiliationRestrictionEntity r "
+            + "WHERE r.kind = com.mannschaft.app.team.entity.TeamOrgAffiliationRestrictionKind.COOLDOWN "
+            + "AND r.restrictedUntil < :now")
+    java.util.List<UUID> findExpiredCooldownIds(@Param("now") Instant now);
+
+    /**
+     * 期限の過ぎた COOLDOWN を1行消す（条件付き DELETE。候補を選んだ後に期限が延びた・BLOCK に変わった行は条件で外れて残る）。
+     *
+     * @return 削除した行数（0 または 1）
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM TeamOrgAffiliationRestrictionEntity r WHERE r.id = :id "
+            + "AND r.kind = com.mannschaft.app.team.entity.TeamOrgAffiliationRestrictionKind.COOLDOWN "
+            + "AND r.restrictedUntil < :now")
+    int deleteExpiredCooldown(@Param("id") UUID id, @Param("now") Instant now);
+
+    /**
+     * 片付けの回復バッチ（{@code TeamOrgLifecycleCleanupBatch}）: 制限の行がある組織の ID を昇順に返す
+     * （組織の状態は organization ドメインのポートで確かめる。組織の表は team ドメインから JOIN しない）。
+     */
+    @Query("SELECT DISTINCT r.organizationId FROM TeamOrgAffiliationRestrictionEntity r ORDER BY r.organizationId")
+    java.util.List<Long> findDistinctOrganizationIds();
+
+    /**
+     * 片付けの回復バッチ: 論理削除済み（または行の無い）チームの制限が残っているチームの ID を昇順に返す
+     * （チームの表は同じ team ドメイン。{@code @SQLRestriction} を通さず削除済みを見るためネイティブで読む）。
+     */
+    @Query(value = "SELECT DISTINCT r.team_id FROM team_org_affiliation_restrictions r "
+            + "LEFT JOIN teams t ON t.id = r.team_id "
+            + "WHERE t.id IS NULL OR t.deleted_at IS NOT NULL ORDER BY r.team_id", nativeQuery = true)
+    java.util.List<Number> findTeamIdsOfClosedTeams();
 }

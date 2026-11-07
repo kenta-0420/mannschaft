@@ -1,0 +1,85 @@
+{
+  "campaign": "CMP-261014-2035",
+  "baseCommit": "c7cd45baf29f466224e023a339fd127b69aa13ae",
+  "kind": "移行前ソース観測（red実行結果・スクショ証拠とは別）",
+  "screenCount": 9,
+  "defaultSlotSubtitleViolationCount": 8,
+  "screens": [
+    {
+      "path": "pages/teams/[slug]/friend-forward-exports.vue",
+      "violations": [
+        {
+          "line": 55,
+          "source": "<span class=\"text-sm text-surface-400\">{{ t('forward_exports.subtitle') }}</span>"
+        }
+      ]
+    },
+    {
+      "path": "pages/teams/[slug]/friend-feed.vue",
+      "violations": [
+        {
+          "line": 82,
+          "source": "<span class=\"text-sm text-surface-400\">{{ t('friend_feed.subtitle') }}</span>"
+        }
+      ]
+    },
+    {
+      "path": "pages/teams/[slug]/friend-folders.vue",
+      "violations": []
+    },
+    {
+      "path": "pages/teams/[slug]/announcements.vue",
+      "violations": [
+        {
+          "line": 214,
+          "source": "<span class=\"text-sm text-surface-400\">{{ t('announcement.all_announcements') }}</span>"
+        }
+      ]
+    },
+    {
+      "path": "pages/admin/line-settings.vue",
+      "violations": [
+        {
+          "line": 105,
+          "source": "<p class=\"text-sm text-surface-500\">LINE Messaging API との連携設定</p>"
+        }
+      ]
+    },
+    {
+      "path": "pages/admin/member-permissions.vue",
+      "violations": [
+        {
+          "line": 147,
+          "source": "<p class=\"text-sm text-surface-500\">{{ t('memberPermissions.description') }}</p>"
+        }
+      ]
+    },
+    {
+      "path": "pages/admin/receipt-settings.vue",
+      "violations": [
+        {
+          "line": 297,
+          "source": "<p class=\"text-sm text-surface-500\">{{ t('receipt.settings.description') }}</p>"
+        }
+      ]
+    },
+    {
+      "path": "pages/admin/sns-settings.vue",
+      "violations": [
+        {
+          "line": 123,
+          "source": "<p class=\"text-sm text-surface-500\">Instagram・X のフィード連携を管理します</p>"
+        }
+      ]
+    },
+    {
+      "path": "components/ScopeGuideContent.vue",
+      "violations": [
+        {
+          "line": 72,
+          "source": "<p class=\"text-sm text-surface-600 dark:text-surface-300\">\r\n        {{ t(`scopeGuide.${scopeKey}.intro`) }}\r\n      </p>"
+        }
+      ]
+    }
+  ]
+}

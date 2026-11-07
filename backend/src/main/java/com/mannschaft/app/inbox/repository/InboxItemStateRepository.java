@@ -35,6 +35,10 @@ public interface InboxItemStateRepository
     List<InboxItemStateEntity> findByUserIdAndSourceTypeIn(
             Long userId, Collection<InboxSourceType> sourceTypes);
 
+    /** 出現した通知だけの状態を読む。呼び出し側で空集合を除き、ID数を分割する。 */
+    List<InboxItemStateEntity> findByUserIdAndSourceTypeAndSourceIdIn(
+            Long userId, InboxSourceType sourceType, Collection<Long> sourceIds);
+
     /**
      * ユーザーの全 triage 状態を削除する（退会時の物理削除用）。
      */

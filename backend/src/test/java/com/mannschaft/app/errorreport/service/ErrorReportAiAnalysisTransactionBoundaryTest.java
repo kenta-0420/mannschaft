@@ -1,12 +1,12 @@
 package com.mannschaft.app.errorreport.service;
 
+import com.mannschaft.app.common.architecture.ProductionClasses;
+import com.mannschaft.app.common.architecture.ArchUnitTestTag;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaCodeUnit;
 import com.tngtech.archunit.core.domain.JavaMethod;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.annotation.Propagation;
@@ -58,17 +58,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>これらは単体テストのモックでは現れない（モックが TX の実体を消す）ため、宣言そのものを検体にする。</p>
  */
 @DisplayName("Issue #2990 L4: AI 分析のトランザクション境界")
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class ErrorReportAiAnalysisTransactionBoundaryTest {
 
     /** 本番用バイトコード（テストクラスは除外）。 */
-    private static JavaClasses productionClasses;
-
-    @BeforeAll
-    static void importProductionClasses() {
-        productionClasses = new ClassFileImporter()
-                .withImportOption(new ImportOption.DoNotIncludeTests())
-                .importPackages("com.mannschaft.app");
-    }
+    private final JavaClasses productionClasses = ProductionClasses.get();
 
     private static Method method(Class<?> type, String name) {
         return Arrays.stream(type.getDeclaredMethods())

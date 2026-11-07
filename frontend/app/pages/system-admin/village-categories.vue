@@ -23,7 +23,7 @@ import Tag from 'primevue/tag'
 
 import type { VillageCategoryRequest, VillageCategoryResponse } from '~/types/villageCategory'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const { t } = useI18n()
 const authStore = useAuthStore()

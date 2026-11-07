@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261028-2329",
+  "scope": "app",
+  "implementation": {
+    "pr": 4221,
+    "sha": "5c8a43c943b84f69162ce3f0e1e385c47fa18560"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "緊急休業の一括送信後の結果表示（トースト・画面）が BE の sentCount に合わせた正しい送信件数になる。",
+      "tests": [
+        {
+          "name": "EmergencyClosureForm.spec.ts",
+          "evidence": "frontend/tests/unit/components/reservation/EmergencyClosureForm.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "送信履歴の件数が「undefined件」にならず、正しい件数で表示される。",
+      "tests": [
+        {
+          "name": "EmergencyClosureHistory.spec.ts",
+          "evidence": "frontend/tests/unit/components/reservation/emergency-closure/EmergencyClosureHistory.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 40825637574
+    },
+    {
+      "runId": 40825637478
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4221"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4237"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261028-2328/resident-observations.json"
+    }
+  },
+  "regressions": [
+    {
+      "description": "修正前は結果表示が「Sent to  recipient(s)」となり件数が入らない（red）。修正後は BE の sentCount どおりの件数が入る（green）。",
+      "test": "frontend/tests/unit/components/reservation/EmergencyClosureForm.spec.ts",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/pull/4221",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/pull/4221"
+    },
+    {
+      "description": "修正前は送信履歴が「undefined件」と表示される（red）。修正後は正しい件数が表示される（green）。",
+      "test": "frontend/tests/unit/components/reservation/emergency-closure/EmergencyClosureHistory.spec.ts",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/pull/4221",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/pull/4221"
+    }
+  ],
+  "realE2e": {
+    "pr": 4237,
+    "result": "E2E-2329-1 / E2E-2329-2 が PASS",
+    "note": "トースト・画面・履歴の3か所すべてが「2件」と表示されることを確認。"
+  },
+  "exploratory": {
+    "runId": "alicization-cmp2328-run-20261030",
+    "observations": "docs/evidence/CMP-261028-2328/resident-observations.json",
+    "note": "件数表示（トースト・画面・履歴の3か所すべてが「2件」）を住民2の観測で確認。観測はすべて observed-unverified。"
+  }
+}

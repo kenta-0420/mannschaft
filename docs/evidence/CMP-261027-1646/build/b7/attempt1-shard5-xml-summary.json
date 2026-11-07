@@ -1,0 +1,30 @@
+{
+  "artifactId": 12730133845,
+  "bytes": 33824434,
+  "sha256": "49c6bd4cdba599b7f977692eadba2bba0c9303af172514dabcb837560a76bc37",
+  "xmlSuites": 1310,
+  "byTask": {
+    "test": {
+      "suites": 1303,
+      "tests": 5439,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 5
+    },
+    "archUnitTest": {
+      "suites": 6,
+      "tests": 11,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "archUnitFreezeStoreIntegrityTest": {
+      "suites": 1,
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "nonzeroSuites": []
+}

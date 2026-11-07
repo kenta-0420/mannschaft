@@ -1,0 +1,209 @@
+{
+  "formal": true,
+  "owner": "cmp1432f-e48ca45535",
+  "sourceHead": "84c8c2fa422bab8dec5fe01e81a695e92db9911d",
+  "runId": "evidence-standard-fixed-84c8-03",
+  "provenance": [
+    {
+      "id": "third-fixed",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/evidence-standard-fixed-84c8-03/fixed-ui-safe.json",
+      "sha256": "bf96813465fad80e98a1d99f66c3659e70716fcf0e6e3195a6508552d9cec1d0"
+    },
+    {
+      "id": "third-standard-receipt",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/evidence-standard-fixed-84c8-03/receipt.json",
+      "sha256": "21bdaefb0ecae21b428d884e2bc37a14d87c0c42f13fc18f18bf0132f52b1f38"
+    },
+    {
+      "id": "third-runtime",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/evidence-standard-fixed-84c8-03/runtime-safe.json",
+      "sha256": "9889ddaa1f3ab684539ca735b63ff8febea9c6b175fc276d66f2851b56272d55"
+    },
+    {
+      "id": "third-D-resident",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/evidence-standard-fixed-84c8-03/independent-D-resident-safe.json",
+      "sha256": "cd7077fcf5e055b1c29618726709226a06e5004f29dd859f43932d37d7252927"
+    },
+    {
+      "id": "third-D-register",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/evidence-standard-fixed-84c8-03/independent-D-process-register.json",
+      "sha256": "426a52dfb2466123b5c29dec0aa32ae85caf47a6487060f95d885baff5176b62"
+    },
+    {
+      "id": "third-D-root-adjudication",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/third-D-root-adjudication.json",
+      "sha256": "0dd5316d9fccbcf090dfa9c2dc02c13ce2c231cbe72b77c9857ea8007634ab78"
+    },
+    {
+      "id": "third-D-external-audit",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/third-D-external-audit-root.json",
+      "sha256": "0929d40dbc5caaebc53d6ed5fc40063e5575c120f9d5eba717f0c44d9415ef86"
+    },
+    {
+      "id": "third-cleanup-audit",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/run3-cleanup-external-safe.json",
+      "sha256": "8a74c8611f099703b7b5cc312661fc7c1e4a6e547287041d0642c6c7ba16d571"
+    },
+    {
+      "id": "third-windows-ports",
+      "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/run3-windows-ports-safe.json",
+      "sha256": "48f315cf21d5a325bcb9b18bf917c4e43d80a18bb4178b5162829c300f9d2d8a"
+    }
+  ],
+  "standard": {
+    "exitCode": 1,
+    "cleanup": "removed"
+  },
+  "runtime": {
+    "runOutcome": "D-supplement-unmet",
+    "cleanup": "owned-resources-removed",
+    "ownDescendantsRemaining": 0,
+    "campaignAcPassed": false
+  },
+  "fixed": {
+    "passed": true,
+    "submissionCount": 1,
+    "recipientMode": "SPECIFIC",
+    "exactReasonVerified": true,
+    "Baccept": {
+      "actor": "B",
+      "operation": "accept",
+      "selector": "swap-accept-1",
+      "httpStatus": 200,
+      "status": "ACCEPTED"
+    },
+    "Dapprove": {
+      "actor": "D",
+      "operation": "approve",
+      "selector": "swap-approve-1",
+      "httpStatus": 200,
+      "status": "APPROVED"
+    },
+    "board": {
+      "actor": "D",
+      "operation": "board-confirm-resident-slot-B-C-A-absent",
+      "slotId": 5,
+      "date": "2026/10/29",
+      "time": "18:00:00〜19:00:00",
+      "rowCount": 1,
+      "BVisible": true,
+      "CVisible": true,
+      "AAbsent": true,
+      "uiVerified": true
+    },
+    "preservedC": true,
+    "unrelatedTableHashesUnchanged": true,
+    "changeReviewUnchanged": true,
+    "readOnlyBoundarySupplement": {
+      "performed": true,
+      "observations": [
+        {
+          "actor": "S3",
+          "url": "/teams/cmp1432f-e48ca45535-primary/shifts",
+          "statuses": [
+            403
+          ],
+          "reasonLeakCount": 0,
+          "approvalControlCount": 0
+        },
+        {
+          "actor": "S3",
+          "url": "/shift/1",
+          "statuses": [
+            404,
+            404
+          ],
+          "reasonLeakCount": 0,
+          "approvalControlCount": 0
+        },
+        {
+          "actor": "X",
+          "url": "/teams/cmp1432f-e48ca45535-primary/shifts",
+          "statuses": [
+            403
+          ],
+          "reasonLeakCount": 0,
+          "approvalControlCount": 0
+        },
+        {
+          "actor": "X",
+          "url": "/shift/1",
+          "statuses": [
+            404,
+            404
+          ],
+          "reasonLeakCount": 0,
+          "approvalControlCount": 0
+        }
+      ],
+      "hashesBefore": {
+        "shift_swap_requests": "c376e5e5b9c1d6f7a3a4c98c20533e0cd025faef5f5643cb004cbdbd520e3fb8",
+        "shift_slots": "ddb9689d2b51089e23cea785e27d7267ab88113f46cb0796c78062c5e734da4c",
+        "shift_assignments": "0ae48cce953b80628e2c64bead89f10e9c473387cb1e735b2ed423ff3edeb0d9",
+        "shift_change_requests": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "hashesAfter": {
+        "shift_swap_requests": "c376e5e5b9c1d6f7a3a4c98c20533e0cd025faef5f5643cb004cbdbd520e3fb8",
+        "shift_slots": "ddb9689d2b51089e23cea785e27d7267ab88113f46cb0796c78062c5e734da4c",
+        "shift_assignments": "0ae48cce953b80628e2c64bead89f10e9c473387cb1e735b2ed423ff3edeb0d9",
+        "shift_change_requests": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "unchanged": true
+    },
+    "ownDescendantsRemaining": 0
+  },
+  "independentD": {
+    "executionCompleted": true,
+    "goalsReached": false,
+    "requiredSwitchGoalsReached": {
+      "unauthorized": false,
+      "crossTenant": false
+    },
+    "rootReason": "Dは予定へ到達・再訪したが相談状態と担当者名は未達。S3/Xの予定API404と管理操作非表示は観測済み、相談個別画面の漏洩確認は未達。",
+    "contextsCreated": 3,
+    "contextsClosed": 3,
+    "registeredExitCount": 14,
+    "allRegisteredExited": true,
+    "allAuditConditionsPassed": true,
+    "fourTableHashesUnchanged": true,
+    "limitation": "初期の短命Node補助CLIはPID/start未記録。登録14世代は全終了、同UIDのD/browser参照は前後とも0、未知の読取不能0。"
+  },
+  "cleanup": {
+    "auditPassed": true,
+    "recordedIdentityCount": 128,
+    "allKnownExited": true,
+    "scratchAbsent": true,
+    "ownerContainers": 0,
+    "ownerVolumes": 0,
+    "references": 0,
+    "unknownInaccessible": 0,
+    "sharedGenerationsPreserved": true,
+    "windowsPortsFree": true,
+    "wslPortsFree": true,
+    "identityCoverage": "recorded-identities-only"
+  },
+  "stageAdjudication": {
+    "review": "passed",
+    "real": "passed",
+    "exploratory": "passed",
+    "exploratoryMeaning": "探索protocol実施と欠落記録。原目標false/第三run exit1を保持。",
+    "coveragePromoted": false
+  },
+  "limits": [
+    "run全体exit1/D-supplement-unmetを成功へ書き換えない。固定passedと独立D目的未達を分離。",
+    "探索AC20は欠落を記録する条件。目標達成boolとAC/stage裁定を同一視しない。rootは探索protocol実施と欠落記録としてstage passedと裁定。",
+    "source84c8の実測であり最終実装1eaaの全tree実機ではない。",
+    "短命Node補助CLIのPID/start未登録。記録済み14D世代/128全体世代と現在snapshot監査の範囲を保持。"
+  ],
+  "rootScopeAssessment": {
+    "sourcePath": ".claude/campaigns/cmp1432a-approved-20261027/cmp0649-final-scope-assessment-root.json",
+    "sha256": "856033fb0d438e4dd75d6eb34cb6e85f015e89a3cf3a9d7fc8cd8708d7d5bb6d",
+    "finalShipmentApproved": false,
+    "explorationProtocolCompleted": true,
+    "confirmedScopedDefectsUnresolved": [],
+    "independentGoalsReached": false,
+    "switchConsultationSpecificGoalsReached": false,
+    "historical": true,
+    "note": "CI/merge前の限定裁定のfalseを原値で保持。正式stage判定はstageAdjudicationへ分離。"
+  }
+}

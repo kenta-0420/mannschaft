@@ -1,15 +1,13 @@
 package com.mannschaft.app.common.architecture;
 
 import com.mannschaft.app.common.security.AuthorizedInService;
+import org.junit.jupiter.api.Tag;
 import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.domain.JavaMethodCall;
 import com.tngtech.archunit.core.domain.JavaModifier;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -57,6 +55,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 合成クラスの陽性・陰性対照で示す。</p>
  */
 @DisplayName("認可ファサード型（W1〜W6a）の横断の番人（登録表）")
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class AuthzTxFacadeRegistryArchTest {
 
     static final String ACCESS_CONTROL = "com.mannschaft.app.common.AccessControlService";
@@ -66,6 +65,7 @@ class AuthzTxFacadeRegistryArchTest {
     private static final String REC = "com.mannschaft.app.recruitment.";
     private static final String RSV = "com.mannschaft.app.reservation.";
     private static final String CNF = "com.mannschaft.app.notification.confirmable.";
+    private static final String SKL = "com.mannschaft.app.skill.";
 
     /** 登録表の 1 行（Controller#メソッド → 呼ぶべき Facade）。 */
     record Entry(String wave, String controller, String method, String facade) {
@@ -164,8 +164,12 @@ class AuthzTxFacadeRegistryArchTest {
                 "listSchedules", "getSchedule", "createSchedule", "updateSchedule", "deleteSchedule", "transitionStatus",
                 "getScheduleSummary", "remindUnsubmitted", "duplicateSchedule");
         add(list, "W6a", SHIFT + "controller.ShiftSlotController", SHIFT + "service.ShiftSlotFacade",
-                "listSlots", "createSlot", "bulkCreateSlots", "updateSlot", "deleteSlot", "patchSlotAssignments");
+                "listSlots", "createSlot", "bulkCreateSlots", "updateSlot", "deleteSlot", "patchSlotAssignments",
+                "moveSlotAssignment"); // moveSlotAssignment: CMP-261010-1432 枠間移動
         add(list, "W6a", SHIFT + "controller.ShiftPdfController", SHIFT + "service.ShiftPdfFacade", "exportPdf");
+        // W7: 資格 API（個別 ID の取得・更新・削除・証明書 URL。CMP-261010-2226）
+        add(list, "W7", SKL + "controller.SkillController", SKL + "service.MemberSkillFacade",
+                "getSkill", "updateSkill", "deleteSkill", "getCertificateUrl");
         return List.copyOf(list);
     }
 
@@ -206,6 +210,10 @@ class AuthzTxFacadeRegistryArchTest {
         map.put(SHIFT + "service.ShiftPdfFacade", List.of(
                 cls(SHIFT + "service.ShiftScheduleService"),
                 cls(SHIFT + "service.ShiftPdfService")));
+        // SkillCategoryService は Facade がカテゴリ名の解決に使う認可を持たない参照（同ドメインの未登録 Service を禁じる R4 のため登録）
+        map.put(SKL + "service.MemberSkillFacade", List.of(
+                cls(SKL + "service.MemberSkillService"),
+                cls(SKL + "service.SkillCategoryService")));
         return map;
     }
 
@@ -248,14 +256,7 @@ class AuthzTxFacadeRegistryArchTest {
     static final Rules RULES = new Rules(ENTRIES, TX_BODIES, Set.of(ACCESS_CONTROL, GATE), ACCESS_CONTROL,
             THROW_FORM_ALLOWLIST, UNREGISTERED_FACADE_CALLERS);
 
-    private static JavaClasses classes;
-
-    @BeforeAll
-    static void importClasses() {
-        classes = new ClassFileImporter()
-                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                .importPackages("com.mannschaft.app");
-    }
+    private final JavaClasses classes = ProductionClasses.get();
 
     // ═════════════════════════════════════════════════════════════════════
     // テスト
@@ -267,9 +268,9 @@ class AuthzTxFacadeRegistryArchTest {
         Map<String, Long> byWave = ENTRIES.stream()
                 .collect(Collectors.groupingBy(Entry::wave, TreeMap::new, Collectors.counting()));
         assertThat(byWave).containsExactlyInAnyOrderEntriesOf(Map.of(
-                "W1", 9L, "W2", 16L, "W3a", 1L, "W3b", 2L, "W4", 6L, "W5", 11L, "W5周辺", 1L, "W6a", 16L));
-        assertThat(ENTRIES).hasSize(62);
-        assertThat(ENTRIES.stream().map(Entry::key).distinct().count()).as("登録表に重複が無い").isEqualTo(62);
+                "W1", 9L, "W2", 16L, "W3a", 1L, "W3b", 2L, "W4", 6L, "W5", 11L, "W5周辺", 1L, "W6a", 17L, "W7", 4L)); // W6a: CMP-261010-1432 枠間移動で +1
+        assertThat(ENTRIES).hasSize(67); // CMP-261010-1432 枠間移動で +1
+        assertThat(ENTRIES.stream().map(Entry::key).distinct().count()).as("登録表に重複が無い").isEqualTo(67);
         assertThat(ENTRIES.stream().map(Entry::facade).collect(Collectors.toSet()))
                 .as("登録表の Facade と tx 本体の表の Facade が一致する").isEqualTo(TX_BODIES.keySet());
     }
@@ -684,13 +685,13 @@ class AuthzTxFacadeRegistryArchTest {
     /**
      * Facade が外へ公開する public メソッドのうち、シグネチャ（名前＋引数型）ごとに継承階層で最も子側の
      * 有効な実装だけを返す。子がオーバーライド済みの親クラス・interface の宣言は呼ばれないので除外する。
-     * Object 由来・合成は除き、選んだ結果が抽象のものも除く。
+     * Object 由来と、選んだ結果が抽象・合成のものは除く。総称 override の bridge は親の消去後シグネチャを
+     * 隠すため、合成メソッドも遮蔽判定には残し、返す結果からだけ除く。
      */
     static List<JavaMethod> effectivePublicMethods(JavaClass facade) {
         Map<String, List<JavaMethod>> bySignature = new LinkedHashMap<>();
         for (JavaMethod m : facade.getAllMethods()) {
             if (!m.getModifiers().contains(JavaModifier.PUBLIC)
-                    || m.getModifiers().contains(JavaModifier.SYNTHETIC)
                     || m.getOwner().isEquivalentTo(Object.class)) {
                 continue;
             }
@@ -710,7 +711,8 @@ class AuthzTxFacadeRegistryArchTest {
                 boolean hidden = pool.stream().anyMatch(o -> o != m
                         && !o.getOwner().equals(m.getOwner())
                         && o.getOwner().isAssignableTo(m.getOwner().getName()));
-                if (!hidden && !m.getModifiers().contains(JavaModifier.ABSTRACT)) {
+                if (!hidden && !m.getModifiers().contains(JavaModifier.ABSTRACT)
+                        && !m.getModifiers().contains(JavaModifier.SYNTHETIC)) {
                     result.add(m);
                 }
             }

@@ -1,0 +1,65 @@
+{
+  "head": "82d8682768de515d72827e868eac65c11d2d1324",
+  "observedAt": "2026-10-25T04:06:10.950Z",
+  "source": "アリシゼーションテスト",
+  "persona": "スマホ片手操作×表示崩れ",
+  "runId": "cmp0647-82d8682768-runtime-20261025-0334",
+  "journeyId": "mobile-my-shift-filter",
+  "url": "/my/shift",
+  "viewport": [
+    390,
+    844
+  ],
+  "locale": "ja",
+  "rootCommands": [
+    7,
+    8
+  ],
+  "actualImageViewed": true,
+  "image": "image-8.png",
+  "sha256": "260515c443760ac60cbaa9a774a06df939396fe0c1004aa326f2faa6ce629f1f",
+  "rects": [
+    {
+      "text": "すべてのチーム",
+      "x": 123,
+      "y": 404,
+      "width": 102,
+      "height": 32
+    },
+    {
+      "text": "合成検証チームa",
+      "x": 233,
+      "y": 404,
+      "width": 121,
+      "height": 32
+    }
+  ],
+  "cause": "my/shift.vue:305/319 native button min-h-[32px]; common44px media rule targets .p-button, not these native chips",
+  "computedStyleCaptured": false,
+  "pageBlobCurrentAndMain": "8fc655d65c691350602e7ace82f2c746be2297c9",
+  "cssBlobCurrentAndMain": "6eac4b1d5ca965e6f4ef07e3c7c28d97f4804aa4",
+  "introducedByCurrentPr": false,
+  "classification": "既存myshift nativeチップ2個＋日別詳細を閉じるのモバイル44px未満。別件登録対象、修正未裁可/未着手。CMP0647差分ではない",
+  "priority": "P3",
+  "implementationApproved": false,
+  "implementationExecuted": false,
+  "desktopObservation": "35/40px desktop is established density; mobile rule explicitly limited to <=767px",
+  "action": "記録して本来の探索を再開。正本への登録はworktree/PRで行う",
+  "additional": {
+    "rootCommands": [
+      16,
+      17
+    ],
+    "image": "image-17.png",
+    "sha256": "588d462c1c876ea72f43b4e8287f04e66da55670863c876dd6b07eac8f17084b",
+    "rect": {
+      "description": "日別詳細を閉じるnative button",
+      "x": 305,
+      "y": 859,
+      "width": 32,
+      "height": 32
+    },
+    "cause": "my/shift.vue:516 h-8 w-8; @click selectedDate=null",
+    "introducedByCurrentPr": false
+  }
+}

@@ -13,7 +13,7 @@ const MOCK_SESSIONS = {
       id: 1,
       ipAddress: '192.168.1.1',
       userAgent: REAL_UA,
-      isCurrent: true,
+      current: true,
       createdAt: '2026-03-01T10:00:00Z',
       lastActiveAt: '2026-04-04T10:00:00Z',
     },
@@ -233,7 +233,7 @@ test.describe('SET-006〜008: セキュリティ設定', () => {
     await mockSecurityApis(page)
     await page.goto('/settings/security')
     await waitForHydration(page)
-    await expect(page.getByRole('heading', { name: 'セキュリティ' })).toBeVisible({
+    await expect(page.getByRole('heading', { name: 'セキュリティ', exact: true })).toBeVisible({
       timeout: 10_000,
     })
   })
@@ -242,7 +242,7 @@ test.describe('SET-006〜008: セキュリティ設定', () => {
     await mockSecurityApis(page)
     await page.goto('/settings/security')
     await waitForHydration(page)
-    await expect(page.getByRole('heading', { name: 'セキュリティ' })).toBeVisible({
+    await expect(page.getByRole('heading', { name: 'セキュリティ', exact: true })).toBeVisible({
       timeout: 10_000,
     })
     // parseUserAgent(REAL_UA) → browser='Chrome', os='Windows'
@@ -256,11 +256,90 @@ test.describe('SET-006〜008: セキュリティ設定', () => {
     await mockSecurityApis(page)
     await page.goto('/settings/security')
     await waitForHydration(page)
-    await expect(page.getByRole('heading', { name: 'セキュリティ' })).toBeVisible({
+    await expect(page.getByRole('heading', { name: 'セキュリティ', exact: true })).toBeVisible({
       timeout: 10_000,
     })
     await expect(page.getByRole('button', { name: '2FAをセットアップ' })).toBeVisible({
       timeout: 10_000,
     })
   })
+})
+
+test.describe('未解析セッションのモバイル折返し', () => {
+  const longUa = `UnknownDevice-${'x'.repeat(260)} session detail with spaces`
+  for (const width of [360, 390, 1280]) {
+    for (const path of ['/settings/security', '/settings/account']) {
+      test(`${path} ${width}pxで全文と操作領域を画面内に保つ`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 })
+        await mockSecurityApis(page)
+        let revoked = 0
+        await page.route('**/api/v1/auth/sessions**', async route => {
+          if (route.request().method() === 'DELETE') {
+            expect(route.request().url()).toMatch(/\/auth\/sessions\/2$/)
+            revoked++
+            await route.fulfill({ json: { data: {} } })
+            return
+          }
+          await route.fulfill({ json: { data: [
+            ...MOCK_SESSIONS.data,
+            { ...MOCK_SESSIONS.data[0], id: 2, userAgent: longUa, current: false },
+            { ...MOCK_SESSIONS.data[0], id: 3, userAgent: null, current: true },
+          ] } })
+        })
+        await page.route('**/api/v1/users/me/login-history**', route => route.fulfill({ json: {
+          data: [{ id: 1, eventType: 'LOGIN_SUCCESS', method: 'PASSWORD', userAgent: longUa,
+            ipAddress: '192.0.2.3', createdAt: '2026-10-17T03:45:00Z' }],
+          meta: { hasNext: false, nextCursor: null },
+        } }))
+        await page.goto(path)
+        await waitForHydration(page)
+        const label = page.getByText(longUa, { exact: true }).first()
+        await expect(label).toBeVisible()
+        await expect(page.getByText(/^Windows の Chrome/)).toBeVisible()
+        const current = page.getByText(/^Windows の Chrome/).locator('../..')
+        await expect(current.getByText('現在', { exact: true })).toBeVisible()
+        await expect(current.getByRole('button')).toHaveCount(0)
+        await expect(page.getByText(/^不明なデバイス/)).toBeVisible()
+        const row = label.locator('../..')
+        const revoke = row.getByRole('button')
+        await expect(revoke).toBeVisible()
+        const box = await revoke.boundingBox()
+        expect(box).not.toBeNull()
+        expect(box!.width).toBeGreaterThanOrEqual(44)
+        expect(box!.height).toBeGreaterThanOrEqual(44)
+        expect(box!.x).toBeGreaterThanOrEqual(0)
+        expect(box!.x + box!.width).toBeLessThanOrEqual(width)
+        const bulk = await page.getByRole('button', { name: '全てログアウト', exact: true }).boundingBox()
+        expect(bulk).not.toBeNull()
+        expect(bulk!.width).toBeGreaterThanOrEqual(44)
+        expect(bulk!.height).toBeGreaterThanOrEqual(44)
+        expect(bulk!.x + bulk!.width).toBeLessThanOrEqual(width)
+        const textLayout = await label.evaluate(el => {
+          const style = getComputedStyle(el)
+          const range = document.createRange()
+          range.selectNodeContents(el)
+          return { text: el.textContent, height: el.getBoundingClientRect().height,
+            lineHeight: parseFloat(style.lineHeight),
+            rects: [...range.getClientRects()].map(rect => ({ left: rect.left, right: rect.right })),
+            clamp: style.webkitLineClamp }
+        })
+        expect(textLayout.text).toContain(longUa)
+        expect(textLayout.clamp).not.toBe('1')
+        if (width < 768) expect(textLayout.height).toBeGreaterThan(textLayout.lineHeight)
+        expect(textLayout.rects.every(rect => rect.left >= 0 && rect.right <= width)).toBe(true)
+        if (path.endsWith('account')) {
+          const historyUa = page.getByText(longUa, { exact: true }).last()
+          expect(await historyUa.evaluate(el => getComputedStyle(el).webkitLineClamp)).toBe('1')
+          const historyDate = page.getByText('2026/10/17 12:45', { exact: true })
+          await expect(historyDate).toBeVisible()
+          const dateBox = await historyDate.boundingBox()
+          expect(dateBox!.x + dateBox!.width).toBeLessThanOrEqual(width)
+        }
+        expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0)
+        await revoke.click()
+        await expect.poll(() => revoked).toBe(1)
+        await expect(page.getByText(longUa, { exact: true })).toHaveCount(path.endsWith('account') ? 1 : 0)
+      })
+    }
+  }
 })

@@ -1,0 +1,42 @@
+{
+  "cmpId": "CMP-261009-0616",
+  "kind": "historical journal limited excerpt; not original JUnit or full CI logs",
+  "journalSource": ".claude/campaigns/2026-10-02-august-cmp-completion.md",
+  "journalSourceSha256": "1704a71146b594a90793612f6cd78d23c847762b7c8b6f6a78477715ac0d0d98",
+  "privateExcerptSha256": "22926f2801757be2bce595255e14c214f7d1952736fbea82766fb7dcd0d96d85",
+  "lines": [
+    {
+      "line": 2240,
+      "text": "- test-only Draft3741 HEAD221ea97af1dcbbc6247a1229c225cb6c3d65f885。正式FE run37846521205/job113548648041で対象4caseの2semanticFAIL（swaps初期/query更新、expected1/actual0）+2PASS（未知/複数値）、全4220の他4218PASS。Root target-excerpt全文確認。実checkout0aa47933c55016b856ab8d233aa035cb10a18762は同wholeTree。BE2unitのsemantic REDはまだ未確定、BE本体0。FE7行watchだけ適用し限定4casegreen化を担当実走中。Vitest each配列展開のRoot懸念は実versionの有限probeで不成立、棄却。probe失敗を製品REDへ計上していない。"
+    },
+    {
+      "line": 2282,
+      "text": "- Dashboard導線 Draft3741 remote221ea97/localFE修正1c948、registration3739 MERGEDbf270。FE semantic RED2件→selected4GREEN。BE Facade semantic RED取得済、QueryService job113548816247は21:30:45開始/22:32頃まだIN_PROGRESSで正常待ち。BE2files+docの実装0。Query RED後にRoot確認済の3URL修正/docだけapply→同PRpush→正式CI→新Jar→実機→3住民Ali。旧equipment担当Solはcapacity2回error、現在dashboard_route_delivery_luna (gpt-6-luna/low)が定型範囲を担当。5分以上単発poll、gh watch禁止。"
+    },
+    {
+      "line": 2300,
+      "text": "- Draft3741はQueryService正式semantic RED取得後、BE2+doc3filesの9insert9deleteをcommit d90f240fcc803871f1bf7cacea10ac9a3ffd4431でpush済。Root git show全文でapproved proposal一致/finding0確認。FE routewatch1c948も含む。新正式Backend37854822169/Frontend37854822161/E2E37854822175、開始2026-10-09 07:39頃。完了部分success/全6shards進行中、Draft/MERGEABLE/BEHIND。新Jar未取得/BE起動0。Lunaが5分以上単発CI確認、既専有FEへroutewatch1VueだけHMR反映するprivate候補の独立prepareを追加担当（Rootレビュー前nativewrite0/installrestart0）。"
+    }
+  ],
+  "frontend": {
+    "head": "221ea97af1dcbbc6247a1229c225cb6c3d65f885",
+    "runId": 37846521205,
+    "jobId": 113548648041,
+    "semanticRed": 2,
+    "existingPass": 2,
+    "note": "swaps初期選択/query更新はexpected1 actual0。未知/複数値PASS。有限probe失敗を製品REDに含めない"
+  },
+  "backend": {
+    "evidenceLevel": "historical journal only",
+    "note": "journal2282はFacade semantic RED取得済・Query待ち、2300はQueryService正式semantic RED取得後d90f240のpushを記録。原JUnit/全joblogは含まずassert数やfresh実行を捏造しない"
+  },
+  "green": {
+    "head": "f972720bc85a664df16d578c54061c2106c4bf31",
+    "backendRunId": 40489132356,
+    "frontendRunId": 40489132303,
+    "frontendJobId": 122138705727,
+    "frontendTargetPassed": 4,
+    "evidence": "docs/evidence/CMP-261009-0616-review.md",
+    "note": "BE全6shard成功。キャッシュ利用をfresh実行とはしない。FE対象4caseは公式logのroot限定抽出で確認"
+  }
+}

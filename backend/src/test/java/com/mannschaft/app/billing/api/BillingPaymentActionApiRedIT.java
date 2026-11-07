@@ -177,8 +177,11 @@ class BillingPaymentActionApiRedIT extends AbstractBillingPaymentActionApiIT {
                 .as("404 の本文に clientSecret を載せない").doesNotContain(CLIENT_SECRET);
         assertThat(rawSetCookie(result, PAYMENT_ACTION_COOKIE)).as("cookie を発行しない").isNull();
         assertThat(gatewayInvocations()).as("Stripe retrieve は 0 回").isZero();
-        assertThat(countRows("SELECT COUNT(*) FROM billing_api_idempotencies"))
-                .as("認可判定より先に冪等台帳へ書かない").isZero();
+        assertThat(countRows(
+                        "SELECT COUNT(*) FROM billing_api_idempotencies WHERE actor_id = " + userId))
+                .as("認可判定より先に冪等台帳へ書かない（表全体ではなく本検体の actor に限定。"
+                        + "同一 JVM・同一 DB で先行した他テストの残存行を拾わないため）")
+                .isZero();
 
     }
 

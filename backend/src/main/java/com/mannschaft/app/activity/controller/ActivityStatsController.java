@@ -30,6 +30,7 @@ public class ActivityStatsController {
 
     private final ActivityStatsService statsService;
     private final ActivityScopeAccessGuard scopeAccessGuard;
+    private final com.mannschaft.app.activity.service.AutomaticActivityListService automaticAccess;
 
     /**
      * 統計・エクスポートAPIの認可ゲート。対象スコープの会員のみ実行可（非会員は 403 = COMMON_002）。
@@ -56,8 +57,9 @@ public class ActivityStatsController {
             @RequestParam(value = "date_to", required = false) LocalDate dateTo) {
         ActivityScopeType scope = ActivityScopeType.valueOf(scopeType);
         checkScopeMembership(scope, scopeId);
-        ActivityStatsResponse response = statsService.getStats(
-                scope, scopeId, templateId, period, dateFrom, dateTo);
+        ActivityStatsResponse response = statsService.getStatsWithAutomaticAccess(
+                scope, scopeId, templateId, period, dateFrom, dateTo,
+                automaticAccess.actualIds(SecurityUtils.getCurrentUserId(), scope, scopeId));
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -95,7 +97,8 @@ public class ActivityStatsController {
             HttpServletResponse response) {
         ActivityScopeType scope = ActivityScopeType.valueOf(scopeType);
         checkScopeMembership(scope, scopeId);
-        statsService.exportCsv(
-                scope, scopeId, templateId, dateFrom, dateTo, response);
+        statsService.exportCsvWithAutomaticAccess(
+                scope, scopeId, templateId, dateFrom, dateTo, response,
+                automaticAccess.actualIds(SecurityUtils.getCurrentUserId(), scope, scopeId));
     }
 }

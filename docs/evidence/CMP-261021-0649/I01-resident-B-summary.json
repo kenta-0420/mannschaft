@@ -1,0 +1,32 @@
+{
+  "runId": "CMP0616-I01-cmp0649-a875668f1796",
+  "sourceHead": "d383c4494d5e6debb5cdb833f654fa5e5ae0430b",
+  "personaId": "CMP0616-I01-B-discover",
+  "journeyId": "CMP0616-I01-B-discover-journey",
+  "personaArchetype": "一般×素直",
+  "purpose": "普段の画面から18時の相談を探し、受諾後の状態と自分の予定を確認する",
+  "registrationSource": "actual-resident-artifacts",
+  "status": "observed-unverified",
+  "trusted": false,
+  "result": {
+    "status": "partial",
+    "existingAssignmentsObserved": true,
+    "returnedToOwnSchedule": true,
+    "consultationDiscoveryVerified": false,
+    "accepted": false,
+    "establishedStateVerified": false,
+    "dependsOnUnsentAConsultation": true,
+    "httpStatusObserved": false
+  },
+  "observation": "普段の画面から18時相談を探索し、既存勤務と自分の予定への復帰を確認した。今回Aの相談は未送信のため、相談発見・受諾・受諾後状態確認は未検証。受信データ消失や導線不存在とは断定しない。 原runId: CMP0616-I01-cmp0649-a875668f1796。sourceHead: d383c4494d5e6debb5cdb833f654fa5e5ae0430b。未実証の住民観測。DOM探索のみ、画像視覚確認なし。",
+  "observedAt": "2026-10-27T02:38:26.403Z",
+  "page": "/my/shift",
+  "visualConfirmation": false,
+  "coveragePassed": false,
+  "goalsReached": false,
+  "originalRunPassed": false,
+  "separateContinuation": true,
+  "privateEvidencePath": ".claude/campaigns/cmp0616-takeover-20261027/resident-B-safe.json",
+  "privateEvidenceSha256": "c38beb5b4b68b7ebac572a9dbfcebbf32b953df1755ef3ac49e4355327335856",
+  "note": "原報告の巨大DOM・資格情報・全rawは公開しない。実施3人と目的達成を区別し、製品不具合や正式探索合格に昇格しない。"
+}

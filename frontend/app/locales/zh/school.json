@@ -1,6 +1,14 @@
 {
   "school": {
     "attendance": {
+      "forbidden": {
+        "title": "没有权限",
+        "description": "您没有查看或操作此学校考勤页面的权限。请向班主任或管理员确认。"
+      },
+      "permissionError": {
+        "title": "权限确认失败",
+        "message": "由于无法确认权限，已停止操作和列表获取。请检查网络后重试。"
+      },
       "status": {
         "ATTENDING": "出席",
         "PARTIAL": "部分出席",

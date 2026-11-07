@@ -331,7 +331,16 @@ public class ReservationService {
     @Transactional
     public ReservationResponse confirmReservation(
             Long teamId, Long reservationId, ReservationConfirmScope scope) {
-        ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
+        // AC-1730-6 / 検分 r2 P2: series 操作は起点を含む series 全行を id 昇順で一括ロックする。
+        // 起点だけを先にロックしてから series を取ると、同じ series の別行を起点にした同時操作と
+        // 互いの起点行を待ち合う循環（デッドロック）になるため、起点の個別先取りをしない。
+        List<ReservationEntity> lockedSeries = scope == ReservationConfirmScope.SERIES
+                ? reservationRepository.findRecurringSeriesIdByIdAndTeamId(reservationId, teamId)
+                        .map(seriesId -> reservationRepository.findByRecurringSeriesIdAndTeamIdForUpdate(seriesId, teamId))
+                        .orElse(List.of())
+                : List.of();
+        ReservationEntity entity = findLockedBase(lockedSeries, reservationId)
+                .orElseGet(() -> findReservationForUpdateOrThrow(teamId, reservationId));
         assertNotGroupRow(entity);
 
         if (!entity.isConfirmable()) {
@@ -367,7 +376,7 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse cancelByAdmin(Long teamId, Long reservationId, CancelReservationRequest request) {
-        ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
+        ReservationEntity entity = findReservationForUpdateOrThrow(teamId, reservationId);
         assertNotGroupRow(entity);
 
         if (!entity.isCancellable()) {
@@ -394,8 +403,18 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse cancelByUser(Long userId, Long reservationId, CancelReservationRequest request) {
-        ReservationEntity entity = reservationRepository.findByIdAndUserId(reservationId, userId)
-                .orElseThrow(() -> new BusinessException(ReservationErrorCode.RESERVATION_NOT_FOUND));
+        // AC-1730-6: 失効バッチ・管理者操作と同じ行ロックで直列化してから状態を判定する。
+        // 「以降すべて」は起点を含む series 全行を id 昇順で一括ロックする（検分 r2 P2・起点の個別先取り禁止）。
+        List<ReservationEntity> lockedSeries =
+                request.getScope() == ReservationCancelScope.THIS_AND_FOLLOWING
+                        ? reservationRepository.findRecurringSeriesIdByIdAndUserId(reservationId, userId)
+                                .map(seriesId -> reservationRepository
+                                        .findByRecurringSeriesIdAndUserIdForUpdate(seriesId, userId))
+                                .orElse(List.of())
+                        : List.of();
+        ReservationEntity entity = findLockedBase(lockedSeries, reservationId)
+                .orElseGet(() -> reservationRepository.findByIdAndUserIdForUpdate(reservationId, userId)
+                        .orElseThrow(() -> new BusinessException(ReservationErrorCode.RESERVATION_NOT_FOUND)));
         assertNotGroupRow(entity);
 
         if (!entity.isCancellable()) {
@@ -499,8 +518,10 @@ public class ReservationService {
 
         // IDOR（AC-5-8）: series ID は「知っていれば操作できる鍵」ではない。userId をクエリ条件に含めた
         // finder 以外から series を引かないことで、他人の行に触れる経路を構造的に消す。
+        // AC-1730-6: 呼び出し元が起点を含む series 全行を id 昇順で一括ロック済み。同じ tx で同じ行を
+        // 再取得するだけなので新たなロック待ちは生じない（同一インスタンスが返る）。
         List<ReservationEntity> siblings = reservationRepository
-                .findByRecurringSeriesIdAndUserIdOrderById(seriesId, base.getUserId()).stream()
+                .findByRecurringSeriesIdAndUserIdForUpdate(seriesId, base.getUserId()).stream()
                 .filter(r -> !r.getId().equals(base.getId()))
                 .toList();
 
@@ -571,7 +592,8 @@ public class ReservationService {
         if (!toSave.isEmpty()) {
             reservationRepository.saveAll(toSave);
             // 枠復帰は decrementAndReopen を必ず経由する（§6.1 キャンセル待ち通知の唯一の統合点）。
-            slotsToReopen.forEach(slotService::decrementAndReopen);
+            // 枠 ID 昇順で減算する（AC-1730-6 / 検分 r3 P2・失効バッチと枠ロックの取得順を揃える）。
+            SlotLockOrder.byIdAsc(slotsToReopen).forEach(slotService::decrementAndReopen);
         }
 
         // 会員キャンセル通知は「起点回が実際にキャンセルされたとき」だけ従来どおり 1 回発行する
@@ -614,8 +636,10 @@ public class ReservationService {
         java.util.UUID seriesId = base.getRecurringSeriesId();
 
         // 認可（AC-5-9）: teamId をクエシー条件に含めた finder のみを使い、当該チームの行しか掴めないようにする。
+        // AC-1730-6: 呼び出し元が起点を含む series 全行を id 昇順で一括ロック済み。同じ tx で同じ行を
+        // 再取得するだけなので新たなロック待ちは生じない（同一インスタンスが返る）。
         List<ReservationEntity> siblings = reservationRepository
-                .findByRecurringSeriesIdAndTeamIdOrderById(seriesId, teamId).stream()
+                .findByRecurringSeriesIdAndTeamIdForUpdate(seriesId, teamId).stream()
                 .filter(r -> !r.getId().equals(base.getId()))
                 .toList();
 
@@ -690,7 +714,10 @@ public class ReservationService {
      */
     @Transactional
     public void clearRecurringSeries(Long reservationId) {
-        reservationRepository.findById(reservationId).ifPresent(entity -> {
+        // AC-1730-6 / 検分 r2 P1: ReservationEntity は @Version・@DynamicUpdate を持たず、series 解除だけの
+        // 更新でも状態列を書き戻す。非ロック読取だと、その間に commit された取消・失効を古い PENDING で
+        // 上書きして復活させるため、失効バッチ・取消と同じ行ロックで読む。
+        reservationRepository.findByIdForUpdate(reservationId).ifPresent(entity -> {
             entity.clearRecurringSeries();
             reservationRepository.save(entity);
         });
@@ -705,8 +732,10 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse completeReservation(Long teamId, Long reservationId) {
-        ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
+        ReservationEntity entity = findReservationForUpdateOrThrow(teamId, reservationId);
         assertNotGroupRow(entity);
+        // AC-1730-6 / 検分 r3 P1: 行ロック後の最新状態で遷移元を検査する（失効・取消済みを上書きしない）。
+        assertTransitionAllowed(entity.isAttendanceRecordable());
         entity.complete();
         ReservationEntity saved = reservationRepository.save(entity);
         log.info("予約完了: teamId={}, reservationId={}", teamId, reservationId);
@@ -722,8 +751,10 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse markNoShow(Long teamId, Long reservationId) {
-        ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
+        ReservationEntity entity = findReservationForUpdateOrThrow(teamId, reservationId);
         assertNotGroupRow(entity);
+        // AC-1730-6 / 検分 r3 P1: 行ロック後の最新状態で遷移元を検査する（失効・取消済みを上書きしない）。
+        assertTransitionAllowed(entity.isAttendanceRecordable());
         entity.noShow();
         ReservationEntity saved = reservationRepository.save(entity);
         log.info("予約ノーショー: teamId={}, reservationId={}", teamId, reservationId);
@@ -740,8 +771,15 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse rescheduleReservation(Long teamId, Long reservationId, RescheduleRequest request) {
-        ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
+        ReservationEntity entity = findReservationForUpdateOrThrow(teamId, reservationId);
         assertNotGroupRow(entity);
+        // AC-1730-6 / 検分 r3 P1: 行ロック後の最新状態で遷移元を検査してから旧枠を減算する。
+        // 失効バッチが先に取消・枠減算を commit した予約を受け入れると、旧枠を二重減算し PENDING へ戻してしまう。
+        assertTransitionAllowed(entity.isReschedulable());
+
+        // AC-1730-6 / 検分 r3 P2: 旧枠（減算）と新枠（加算）の行ロックを枠 ID 昇順で先に取る。
+        // 旧枠→新枠の呼び出し順のまま更新すると、失効バッチ（ORDER BY id）や逆向きのリスケと循環しうる。
+        lockSlotsInIdOrder(entity.getReservationSlotId(), request.getNewSlotId());
 
         // oldSlot: entity は findReservationOrThrow で既に teamId 検証済みのため、その reservationSlotId は
         // 自チームの枠であることが保証されている（teamId スコープ不要）。
@@ -773,7 +811,7 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse updateAdminNote(Long teamId, Long reservationId, AdminNoteRequest request) {
-        ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
+        ReservationEntity entity = findReservationForUpdateOrThrow(teamId, reservationId);
         // F03.4.3 §4: 非代表行のメモは一覧（代表行のみ返す）に浮上せず事実上消失するため 400=042 で拒否する。
         // 代表行への更新は許可（グループのメモは代表行に集約）。
         if (entity.getGroupId() != null && !Boolean.TRUE.equals(entity.getIsGroupPrimary())) {
@@ -807,7 +845,13 @@ public class ReservationService {
         // F03.4.3 §5.6 #10: グループは代表行 1 件に折りたたむ。
         List<ReservationEntity> reservations =
                 reservationRepository.findByUserIdAndIsGroupPrimaryTrueOrderByBookedAtDesc(userId);
-        return enrichList(reservations);
+        if (reservations.isEmpty()) {
+            return List.of();
+        }
+        // 氏名の他ドメイン参照は既存の一覧入口に留め、履歴サマリ解決には解決結果だけを渡す。
+        Set<Long> userIds = reservations.stream().map(ReservationEntity::getUserId).collect(Collectors.toSet());
+        Map<Long, String> userNames = nameResolverService.resolveUserFullNames(userIds);
+        return enrichHistoryList(reservations, userId, userNames);
     }
 
     /**
@@ -920,6 +964,51 @@ public class ReservationService {
         findReservationOrThrow(teamId, reservationId);
     }
 
+    /** 行ロック後の状態で遷移元を検査する。許されない遷移は既存の {@code INVALID_RESERVATION_STATUS}（400）。 */
+    private static void assertTransitionAllowed(boolean allowed) {
+        if (!allowed) {
+            throw new BusinessException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
+        }
+    }
+
+    /** リスケで触る 2 枠を枠 ID 昇順で行ロックする（null・同一枠は除く）。 */
+    private void lockSlotsInIdOrder(Long oldSlotId, Long newSlotId) {
+        java.util.TreeSet<Long> ids = new java.util.TreeSet<>();
+        if (oldSlotId != null) {
+            ids.add(oldSlotId);
+        }
+        if (newSlotId != null) {
+            ids.add(newSlotId);
+        }
+        if (!ids.isEmpty()) {
+            slotRepository.findByIdInForUpdate(ids);
+        }
+    }
+
+    /**
+     * id 昇順で一括ロック済みの series 行から起点行を取り出す（検分 r2 P2）。
+     *
+     * <p>起点が集合に無い（series 未所属・ID 読取後に series が解除された）ときは空を返し、
+     * 呼び出し側が単票の行ロック取得へ落とす。</p>
+     */
+    private static java.util.Optional<ReservationEntity> findLockedBase(
+            List<ReservationEntity> lockedSeries, Long reservationId) {
+        return lockedSeries.stream().filter(r -> reservationId.equals(r.getId())).findFirst();
+    }
+
+    /**
+     * 状態遷移用に予約を行ロック付きで取得する（CMP-260822-1730 AC-1730-6）。
+     *
+     * <p>仮押さえ失効バッチは同じ行を {@code PESSIMISTIC_WRITE} で取得してから取消・枠減算する。
+     * 承認・取消等もロックなしで読むと、バッチ commit 前の PENDING を読んで CONFIRMED で上書きし
+     * 「確定なのに枠減算済み」（過剰予約）を作る。同じ行ロックで直列化し、後続は commit 済みの
+     * 状態を読んで既存の状態検証（{@code INVALID_RESERVATION_STATUS}）で負けを返す。</p>
+     */
+    private ReservationEntity findReservationForUpdateOrThrow(Long teamId, Long reservationId) {
+        return reservationRepository.findByIdAndTeamIdForUpdate(reservationId, teamId)
+                .orElseThrow(() -> new BusinessException(ReservationErrorCode.RESERVATION_NOT_FOUND));
+    }
+
     /**
      * 予約を取得する。存在しない場合は例外をスローする。
      */
@@ -964,6 +1053,47 @@ public class ReservationService {
                                 userNames.getOrDefault(e.getUserId(), "不明なユーザー")),
                         groupSummaryFor(groupSummaries, e)))
                 .toList();
+    }
+
+    /**
+     * 本人履歴では保管中の削除済み枠・対象名も解決する（既存G-14の履歴解決と同じ方針）。
+     * 予約時点のsnapshotではなく、参照行に残る最終値を返す。
+     */
+    private List<ReservationResponse> enrichHistoryList(List<ReservationEntity> entities, Long userId,
+            Map<Long, String> userNames) {
+        if (entities.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> slotIds = entities.stream().map(ReservationEntity::getReservationSlotId)
+                .collect(Collectors.toSet());
+        Set<Long> lineIds = entities.stream().map(ReservationEntity::getLineId)
+                .collect(Collectors.toSet());
+        Map<Long, ReservationSlotEntity> slots = slotRepository.findAllByIdIncludingDeletedForHistory(slotIds)
+                .stream().collect(Collectors.toMap(ReservationSlotEntity::getId, slot -> slot));
+        Map<Long, ReservationLineEntity> lines = lineRepository.findAllByIdIncludingDeletedForHistory(lineIds)
+                .stream().collect(Collectors.toMap(ReservationLineEntity::getId, line -> line));
+        Map<Long, ReservationResponse.GroupSummaryDto> groupSummaries =
+                groupSummaryResolver.resolveForHistory(entities, userId);
+        return entities.stream()
+                .map(e -> withGroupSummary(
+                        withUserName(
+                                reservationMapper.toReservationResponse(
+                                        e, slotInReservationTeam(e, slots.get(e.getReservationSlotId())),
+                                        lineInReservationTeam(e, lines.get(e.getLineId()))),
+                                e.getUserId(),
+                                userNames.getOrDefault(e.getUserId(), "不明なユーザー")),
+                        groupSummaryFor(groupSummaries, e)))
+                .toList();
+    }
+
+    /** 不整合な参照IDから別チームの元情報を返さない。 */
+    private ReservationSlotEntity slotInReservationTeam(ReservationEntity reservation, ReservationSlotEntity slot) {
+        return slot != null && reservation.getTeamId().equals(slot.getTeamId()) ? slot : null;
+    }
+
+    /** 共通枠の選択ラインも予約のチームに帰属する場合だけ表示する。 */
+    private ReservationLineEntity lineInReservationTeam(ReservationEntity reservation, ReservationLineEntity line) {
+        return line != null && reservation.getTeamId().equals(line.getTeamId()) ? line : null;
     }
 
     /**

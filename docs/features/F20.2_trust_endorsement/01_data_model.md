@@ -292,6 +292,8 @@ public interface TrustEndorsementRepository
 
 ## 7. ER 図
 
+> 現在のスキーマは [docs/architecture/er/](../../architecture/er/README.md) を参照（本機能のテーブルは現時点で実スキーマに未作成のため該当ドメインなし）。この図は設計時点の意図。
+
 ```mermaid
 erDiagram
     trust_certifications {

@@ -3,8 +3,8 @@
  * F22.1 横スワイプ・スコープカルーセル。
  *
  * 設計書: docs/features/F22.1_swipe_scope_dashboard/03_security_ux.md §2.6 / §3
- * - 3 パネル（個人/チーム/組織）を同時マウント。常に [prev, center, next] の循環順に並べ、
- *   transform: translateX で中央（-100%）を表示する。再描画なし（v-show 不使用・常時 DOM 上に存在）。
+ * - 3 sectionを常設し、常に [prev, center, next] の循環順で中央（-100%）を表示する。
+ *   bodyは初回選択で読み込み、訪問後はsectionの固定keyとともに保持する。未訪問はPageLoading。
  * - 自前 touch ハンドラ（swiper ライブラリ不使用）。
  *   閾値 = 画面幅 20% かつ |Δx| > |Δy| * 1.5。慣性（フリック速度）対応。閾値未満はばね戻し。
  * - 無限循環: 個人↔チーム↔組織↔個人 を常に「隣へ 1 枚だけ」スライド。1 ステップ後に transition を
@@ -38,6 +38,8 @@ const activeIndex = computed<number>({
     if (target) store.setActivePanel(target.panel)
   },
 })
+/** 初期復元先と選択済みbodyを保持し、非表示へ戻っても再マウントしない。 */
+const activatedPanels = ref<ActivePanel[]>([store.activePanel])
 
 /**
  * レイアウト上の「中央スロット」に置くパネル。
@@ -190,6 +192,8 @@ function prev() {
 watch(
   activeIndex,
   (v) => {
+    const panel = PANELS[v]?.panel
+    if (panel && !activatedPanels.value.includes(panel)) activatedPanels.value.push(panel)
     if (suppressActiveWatch || v === centerIndex.value) return
     // 外部変更: キューを破棄して即センタリング。
     pendingDirs = []
@@ -276,6 +280,16 @@ function onTouchEnd() {
   // 閾値未満は dragOffsetPx を 0 に戻すことでばね戻し（transition で復帰）。
 }
 
+/** OSによる取消では、閾値を超えていても選択を確定せずdragだけを戻す。 */
+function onTouchCancel() {
+  if (!pointerActive) return
+  pointerActive = false
+  transitionEnabled.value = true
+  dragOffsetPx.value = 0
+  isDragging.value = false
+  directionLocked = null
+}
+
 // --- キーボード ---
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
@@ -340,14 +354,15 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="flex flex-col" data-testid="scope-carousel">
-    <!-- PC: 上部セグメントトグル + 左右矢印 -->
-    <div class="mb-4 flex items-center justify-center gap-7">
+  <div class="flex min-w-0 flex-col" data-testid="scope-carousel">
+    <!-- モバイルはタブを全幅にし、矢印を次の行へ配置する。 -->
+    <div class="mb-4 flex flex-wrap items-center justify-center gap-2 md:flex-nowrap md:gap-7">
       <Button
         icon="pi pi-chevron-left"
         text
         rounded
         data-testid="scope-prev"
+        class="!min-h-11 !min-w-11 shrink-0"
         :aria-label="$t('scopeDashboard.prevPanel')"
         @click="prev"
       />
@@ -356,7 +371,7 @@ onBeforeUnmount(() => {
         role="tablist"
         data-testid="scope-segment-tablist"
         :aria-label="$t('scopeDashboard.tabs.personal')"
-        class="field-bordered border-2 flex items-center gap-1 rounded-full bg-surface-100 p-1 dark:bg-surface-800"
+        class="field-bordered order-first flex w-full flex-wrap items-center justify-center gap-1 rounded-3xl border-2 bg-surface-100 p-1 dark:bg-surface-800 md:order-none md:w-auto md:rounded-full"
       >
         <button
           v-for="(p, idx) in PANELS"
@@ -367,7 +382,7 @@ onBeforeUnmount(() => {
           :data-testid="`scope-segment-${p.panel}`"
           :aria-selected="idx === activeIndex"
           :aria-controls="`scope-panel-${p.panel}`"
-          class="flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
+          class="flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium transition-colors md:px-4"
           :class="
             idx === activeIndex
               ? 'bg-primary text-primary-contrast'
@@ -389,12 +404,13 @@ onBeforeUnmount(() => {
         text
         rounded
         data-testid="scope-next"
+        class="!min-h-11 !min-w-11 shrink-0"
         :aria-label="$t('scopeDashboard.nextPanel')"
         @click="next"
       />
     </div>
 
-    <!-- カルーセル本体（3 パネル同時マウント） -->
+    <!-- カルーセル本体（3 section常設、bodyは初回選択で生成して保持） -->
     <DashboardStorageSummary />
 
     <div
@@ -402,7 +418,7 @@ onBeforeUnmount(() => {
       @touchstart.passive="onTouchStart"
       @touchmove="onTouchMove"
       @touchend="onTouchEnd"
-      @touchcancel="onTouchEnd"
+      @touchcancel="onTouchCancel"
     >
       <div
         ref="trackEl"
@@ -411,7 +427,7 @@ onBeforeUnmount(() => {
       >
         <!--
           循環順 [prev, center, next] の 3 スロットを描画。:key はパネル固定なので
-          slots の並び替え時も DOM/コンポーネントは再マウントされず移動するだけ（二重 fetch なし）。
+          slots の並び替え時も、選択済みbodyは再マウントされず移動するだけ（二重 fetch なし）。
         -->
         <section
           v-for="slot in slots"
@@ -422,9 +438,12 @@ onBeforeUnmount(() => {
           :aria-hidden="slot.index !== activeIndex"
           class="w-full shrink-0 grow-0 basis-full"
         >
-          <DashboardPersonalPanel v-if="slot.panel === 'PERSONAL'" />
-          <DashboardTeamPanel v-else-if="slot.panel === 'TEAM'" />
-          <DashboardOrgPanel v-else />
+          <template v-if="activatedPanels.includes(slot.panel)">
+            <LazyDashboardPersonalPanel v-if="slot.panel === 'PERSONAL'" :active="slot.index === activeIndex" />
+            <LazyDashboardTeamPanel v-else-if="slot.panel === 'TEAM'" />
+            <LazyDashboardOrgPanel v-else />
+          </template>
+          <PageLoading v-else />
         </section>
       </div>
     </div>
@@ -435,12 +454,17 @@ onBeforeUnmount(() => {
         v-for="(p, idx) in PANELS"
         :key="`dot-${p.panel}`"
         type="button"
-        class="h-2.5 w-2.5 rounded-full transition-colors"
-        :class="idx === activeIndex ? 'bg-primary' : 'bg-surface-300 dark:bg-surface-600'"
+        class="flex min-h-11 min-w-11 items-center justify-center rounded-full"
         :aria-label="$t(p.labelKey)"
         :aria-current="idx === activeIndex ? 'true' : undefined"
         @click="goTo(idx)"
-      />
+      >
+        <span
+          aria-hidden="true"
+          class="h-2.5 w-2.5 rounded-full transition-colors"
+          :class="idx === activeIndex ? 'bg-primary' : 'bg-surface-300 dark:bg-surface-600'"
+        />
+      </button>
     </div>
 
     <!-- スクリーンリーダー向けライブ通知 -->

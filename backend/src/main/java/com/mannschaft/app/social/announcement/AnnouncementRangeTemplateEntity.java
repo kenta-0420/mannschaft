@@ -95,12 +95,21 @@ public class AnnouncementRangeTemplateEntity extends BaseEntity {
     @Column
     private Long createdBy;
 
+    /** グループ項目（個別・範囲・未分類）を1つでも持つか。 */
+    public boolean hasGroupItems() {
+        return targetGroupIds != null || targetGroupRange != null || Boolean.TRUE.equals(includeUnassigned);
+    }
+
     /** テンプレートを更新する。 */
     public void update(String name, String targetRole, String targetTeamIds,
+                       String targetGroupIds, String targetGroupRange, boolean includeUnassigned,
                        String preferredChannel, boolean isDefault) {
         this.name = name;
         this.targetRole = targetRole;
         this.targetTeamIds = targetTeamIds;
+        this.targetGroupIds = targetGroupIds;
+        this.targetGroupRange = targetGroupRange;
+        this.includeUnassigned = includeUnassigned;
         this.preferredChannel = preferredChannel;
         this.isDefault = isDefault;
     }

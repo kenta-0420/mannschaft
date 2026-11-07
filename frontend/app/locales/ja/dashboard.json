@@ -1,5 +1,6 @@
 {
   "dashboard": {
+    "widget_detail_link": "詳細",
     "widget_settings": {
       "dialog_header": "ウィジェット設定",
       "config_button": "ウィジェット設定",
@@ -37,6 +38,7 @@
       "save_success": "ウィジェットの公開設定を保存しました",
       "save_error": "設定の保存に失敗しました。再度お試しください",
       "public_viewer_hint": "あなたはこのチームのメンバーではないため、一部のウィジェットは非表示になっています",
+      "public_viewer_hint_organization": "あなたはこの組織のメンバーではないため、一部のウィジェットは非表示になっています",
       "public_viewer_hint_dismiss": "閉じる",
       "join_request_link": "メンバーシップを申請する"
     },
@@ -256,9 +258,180 @@
       "detail_status": "ステータス",
       "detail_description_changed": "詳細が更新されました",
       "unknown": "アクションしました"
+    },
+    "recent_content": {
+      "blogAnnouncements": "ブログ・お知らせ",
+      "latestPosts": "最新記事",
+      "viewAll": "すべて見る",
+      "noPublishedPosts": "公開済みの記事はまだありません",
+      "noFollowedPosts": "フォロー中のブログ記事はありません",
+      "bulletinAnnouncements": "掲示板・お知らせ",
+      "noThreads": "掲示板のスレッドはまだありません",
+      "priority": {
+        "critical": "緊急",
+        "important": "重要",
+        "warning": "注意",
+        "info": "通知",
+        "low": "低"
+      }
+    },
+    "attendance_results": {
+      "listTitle": "出席確認一覧",
+      "detailTitle": "出席確認の詳細",
+      "previousRange": "前の期間",
+      "nextRange": "次の期間",
+      "refresh": "更新",
+      "noDate": "日付未設定",
+      "untitled": "無題の予定",
+      "countHint": "出席は一部出席を含み、未定は未回答を含みます。",
+      "unknownMember": "メンバー {number}",
+      "recentRange": "直近30日 ± のイベント",
+      "empty": "対象のイベントがありません",
+      "noData": "出欠データがありません",
+      "memberTotal": "/ {total}名",
+      "status": {
+        "partial": "一部出席",
+        "yes": "出席",
+        "no": "欠席",
+        "maybe": "未定",
+        "pending": "未回答"
+      }
+    },
+    "widgets": {
+      "common": {
+        "viewAll": "すべて表示",
+        "allDay": "終日",
+        "middleDot": "・"
+      },
+      "priority": {
+        "critical": "緊急",
+        "important": "重要",
+        "warning": "注意",
+        "info": "通知",
+        "low": "低"
+      },
+      "familyHub": {
+        "title": "家族",
+        "noFamilyTeam": "家族チームに参加していません",
+        "announcements": "お知らせ",
+        "noAnnouncements": "お知らせはありません",
+        "noOpenTodos": "未完了のTODOはありません"
+      },
+      "memberInfo": {
+        "fieldsNotConfigured": "{fieldList}のフィールドがまだ設定されていません",
+        "countWithLabel": "{label}: {count}件",
+        "totalFields": "全{count}フィールド"
+      },
+      "myBlog": {
+        "title": "マイブログ",
+        "create": "新規作成",
+        "empty": "まだ記事がありません",
+        "status": {
+          "draft": "下書き",
+          "published": "公開",
+          "scheduled": "予約"
+        }
+      },
+      "myCalendar": {
+        "title": "マイカレンダー",
+        "openFullScreen": "全画面で開く",
+        "show": "表示:",
+        "scopePlaceholder": "表示するスコープを選択",
+        "selectedCount": "{n}件選択中",
+        "legendPersonal": "個人",
+        "legendTeamOrg": "チーム/組織"
+      },
+      "myOrganizations": {
+        "title": "Links：組織",
+        "nonprofit": "非営利",
+        "forProfit": "営利",
+        "empty": "まだ組織に参加していません"
+      },
+      "myTeams": {
+        "title": "Links：チーム",
+        "empty": "まだチームに参加していません"
+      },
+      "notices": {
+        "title": "お知らせ",
+        "markAllRead": "全て既読",
+        "markedAllRead": "全て既読にしました",
+        "empty": "お知らせはありません"
+      },
+      "orgAnnouncements": {
+        "title": "組織のお知らせ",
+        "noOrg": "組織に参加していません",
+        "empty": "組織からのお知らせはありません"
+      },
+      "teamAnnouncements": {
+        "title": "チームのお知らせ",
+        "noTeam": "チームに参加していません",
+        "empty": "チームからのお知らせはありません"
+      },
+      "personalTodo": {
+        "teamFallback": "チーム",
+        "orgFallback": "組織",
+        "completed": "TODO完了！",
+        "updateFailed": "更新に失敗しました",
+        "overdue": "期限切れ: {count}件",
+        "withDue": "期限あり",
+        "noDue": "期限なし",
+        "allDone": "TODOはすべて完了しています"
+      },
+      "recentActivity": {
+        "title": "最近のアクティビティ",
+        "empty": "まだアクティビティはありません"
+      },
+      "surveyResults": {
+        "count": "{count}件のアンケート",
+        "open": "受付中",
+        "closed": "締切",
+        "responseUnit": "件",
+        "noResponses": "まだ回答がありません",
+        "resultsUnavailable": "結果を表示できません",
+        "empty": "アンケートがありません"
+      },
+      "todoCountdown": {
+        "title": "TODOカウントダウン",
+        "empty": "期限付きTODOはありません",
+        "hours": "{h}時間",
+        "overdue": "{hours}{minutes}分 超過",
+        "daysHours": "{days}日 {hours}時間"
+      },
+      "unreadThreads": {
+        "title": "未読",
+        "boardTitle": "掲示板・お知らせ",
+        "boardDesc": "チーム・組織の未読スレッド",
+        "chatTitle": "チャット",
+        "chatDesc": "未読メッセージ",
+        "empty": "未読はありません"
+      }
     }
   },
   "swipeWidgets": {
+    "preview": {
+      "title": "詳細",
+      "close": "閉じる",
+      "openSource": "所属先のページを開く",
+      "loadFailed": "詳細を取得できませんでした",
+      "emptyBody": "本文・説明はありません",
+      "noDue": "期限なし",
+      "start": "開始",
+      "end": "終了",
+      "location": "場所",
+      "due": "期限",
+      "author": "投稿者",
+      "updated": "更新日時",
+      "published": "公開日時",
+      "members": "メンバー数",
+      "lastMessage": "最新メッセージ",
+      "eventsToday": "今日の予定件数",
+      "eventsThisWeek": "今週の予定件数",
+      "nextEvent": "次の予定",
+      "attendance": "出欠回答",
+      "required": "必要",
+      "notRequired": "不要",
+      "targetCount": "対象人数"
+    },
     "upcoming": "今後の予定",
     "timeline": "タイムライン",
     "bulletin": "掲示板",

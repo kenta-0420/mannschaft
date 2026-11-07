@@ -1,3 +1,5 @@
+import { safeLoyaltyReportUrl } from '~/utils/loyaltyReceptionToken'
+
 export interface ErrorReportState {
   visible: boolean
   // true: 詳細パネルを展開表示。false: 右上の小さいバッジのみ（操作要素を塞がないための既定値）。
@@ -64,7 +66,7 @@ export const useErrorReport = () => {
       commentSent: false,
       errorMessage,
       stackTrace: (err.stack ?? '').slice(0, 2000),
-      pageUrl: typeof window !== 'undefined' ? window.location.href : '',
+      pageUrl: typeof window !== 'undefined' ? safeLoyaltyReportUrl(window.location.href) : '',
       userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
       requestId: meta?.requestId ?? '',
       context: meta?.context ?? '',
@@ -144,7 +146,7 @@ export const useErrorReport = () => {
       body: {
         errorMessage: err.message.slice(0, 1000),
         stackTrace: err.stack?.slice(0, 2000) || undefined,
-        pageUrl: typeof window !== 'undefined' ? window.location.href : '',
+        pageUrl: typeof window !== 'undefined' ? safeLoyaltyReportUrl(window.location.href) : '',
         userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
         userId: authStore.currentUser?.id ?? undefined,
         occurredAt: new Date().toISOString(),

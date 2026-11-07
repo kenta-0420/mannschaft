@@ -2,6 +2,7 @@ package com.mannschaft.app.organization;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.event.PersonalInviteScopeClosedEvent;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.duplicatename.DuplicateNameCandidate;
@@ -23,9 +24,7 @@ import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.organization.service.OrganizationHierarchyService;
 import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.organization.service.OrganizationService;
-import com.mannschaft.app.role.entity.InviteTokenEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
-import com.mannschaft.app.role.repository.InviteTokenRepository;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.service.AdminRoleMutationLockService;
@@ -53,6 +52,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
@@ -85,9 +85,6 @@ class OrganizationServiceTest {
     private RoleRepository roleRepository;
 
     @Mock
-    private InviteTokenRepository inviteTokenRepository;
-
-    @Mock
     private ApplicationEventPublisher eventPublisher;
 
     @Mock
@@ -108,8 +105,18 @@ class OrganizationServiceTest {
     @Mock
     private DuplicateNameGuardService duplicateNameGuardService;
 
+    /** F01.2.1 2-D: 組織の論理削除でチームグループを同じ tx で論理削除する。 */
+    @Mock
+    private com.mannschaft.app.organization.teamgroup.repository.OrgTeamGroupRepository orgTeamGroupRepository;
+
     @InjectMocks
     private OrganizationService organizationService;
+
+    @BeforeEach
+    void injectClock() {
+        // Clock は Mockito で作れない（abstract の JDK 型を spy しない）ので、実時計を差し込む
+        ReflectionTestUtils.setField(organizationService, "clock", java.time.Clock.systemUTC());
+    }
 
     /**
      * 検分 P1-2 是正: {@code checkForCreateAndRun} は「候補判定→createAction 実行」を
@@ -519,26 +526,25 @@ class OrganizationServiceTest {
     class DeleteOrganization {
 
         @Test
-        @DisplayName("正常削除_論理削除と招待トークン失効が実行される")
+        @DisplayName("正常削除_論理削除と個人招待の閉鎖世代通知が実行される")
         void 正常削除_論理削除と招待トークン失効が実行される() {
             OrganizationEntity org = createOrganization();
-            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
-
-            InviteTokenEntity token = InviteTokenEntity.builder()
-                    .id(1L).token("abc").organizationId(ORG_ID).roleId(1L).usedCount(0).build();
-            given(inviteTokenRepository.findByOrganizationIdAndRevokedAtIsNull(ORG_ID))
-                    .willReturn(List.of(token));
+            given(organizationRepository.findByIdForUpdate(ORG_ID)).willReturn(Optional.of(org));
 
             organizationService.deleteOrganization(ORG_ID, USER_ID);
 
             assertThat(org.getDeletedAt()).isNotNull();
-            assertThat(token.getRevokedAt()).isNotNull();
+            assertThat(org.getClosureGeneration()).as("F01.2.1 §4.5: 論理削除（閉鎖）で閉鎖の世代が進む").isEqualTo(1L);
+            // 実失効/rollbackはInviteGenerationLifecycleITのcommit済みMySQL契約で検証する。
+            verify(eventPublisher).publishEvent(argThat((Object event) -> event instanceof PersonalInviteScopeClosedEvent closed
+                    && "ORGANIZATION".equals(closed.getScopeType()) && ORG_ID.equals(closed.getScopeId())
+                    && closed.getClosureGeneration() == 1));
         }
 
         @Test
         @DisplayName("組織不在_ORG_001例外")
         void 組織不在_ORG_001例外() {
-            given(organizationRepository.findById(999L)).willReturn(Optional.empty());
+            given(organizationRepository.findByIdForUpdate(999L)).willReturn(Optional.empty());
 
             assertThatThrownBy(() -> organizationService.deleteOrganization(999L, USER_ID))
                     .isInstanceOf(BusinessException.class)
@@ -550,10 +556,7 @@ class OrganizationServiceTest {
         @DisplayName("正常系: 招待トークンなしでも正常に削除される")
         void 招待トークンなし_正常削除() {
             OrganizationEntity org = createOrganization();
-            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
-            given(inviteTokenRepository.findByOrganizationIdAndRevokedAtIsNull(ORG_ID))
-                    .willReturn(List.of());
-
+            given(organizationRepository.findByIdForUpdate(ORG_ID)).willReturn(Optional.of(org));
             organizationService.deleteOrganization(ORG_ID, USER_ID);
 
             assertThat(org.getDeletedAt()).isNotNull();
@@ -572,18 +575,19 @@ class OrganizationServiceTest {
         @DisplayName("正常アーカイブ_archivedAtが設定される")
         void 正常アーカイブ_archivedAtが設定される() {
             OrganizationEntity org = createOrganization();
-            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
+            given(organizationRepository.findByIdForUpdate(ORG_ID)).willReturn(Optional.of(org));
 
             organizationService.archiveOrganization(ORG_ID);
 
             assertThat(org.getArchivedAt()).isNotNull();
+            assertThat(org.getClosureGeneration()).as("F01.2.1 §4.5: アーカイブ（閉鎖）で閉鎖の世代が進む").isEqualTo(1L);
         }
 
         @Test
         @DisplayName("既にアーカイブ済み_ORG_003例外")
         void 既にアーカイブ済み_ORG_003例外() {
             OrganizationEntity org = createArchivedOrganization();
-            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
+            given(organizationRepository.findByIdForUpdate(ORG_ID)).willReturn(Optional.of(org));
 
             assertThatThrownBy(() -> organizationService.archiveOrganization(ORG_ID))
                     .isInstanceOf(BusinessException.class)
@@ -594,7 +598,7 @@ class OrganizationServiceTest {
         @Test
         @DisplayName("組織不在_ORG_001例外")
         void 組織不在_ORG_001例外() {
-            given(organizationRepository.findById(999L)).willReturn(Optional.empty());
+            given(organizationRepository.findByIdForUpdate(999L)).willReturn(Optional.empty());
 
             assertThatThrownBy(() -> organizationService.archiveOrganization(999L))
                     .isInstanceOf(BusinessException.class)
@@ -612,10 +616,12 @@ class OrganizationServiceTest {
         void 正常アーカイブ解除_archivedAtがnullになる() {
             OrganizationEntity org = createArchivedOrganization();
             given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
+            long generation = org.getClosureGeneration();
 
             organizationService.unarchiveOrganization(ORG_ID);
 
             assertThat(org.getArchivedAt()).isNull();
+            assertThat(org.getClosureGeneration()).as("F01.2.1 §4.5: 解除では閉鎖の世代を戻さない").isEqualTo(generation);
         }
 
         @Test

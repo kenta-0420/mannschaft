@@ -1,0 +1,45 @@
+{
+  "campaign": "CMP-261016-1009",
+  "sourceHead": "25ece9b77159e117c631ddb82e88311bc7665570",
+  "recordedAt": "2026-10-16T17:36:03.6849933+09:00",
+  "reviewer": "root Codex",
+  "findings": [],
+  "result": "最終検分合格",
+  "ci": {
+    "tests": 5991,
+    "run": 38867635983,
+    "files": 609,
+    "sidebarTests": 18,
+    "allRequiredChecks": "SUCCESS"
+  },
+  "actualUI": {
+    "mobileWidths": [
+      360,
+      390
+    ],
+    "originalCases": "manual-final-report.json、manual-api-summary.json",
+    "loadingFailureRetry": "manual/admin-team360-menu-loading/error/recovered",
+    "guide": "管理画面からQR会員証一覧・使い方の表示/スクロール/閉鎖",
+    "browser": "Chromium mobile/touch、物理端末ではない",
+    "finalMember": "root-final-routes/member-final-summary.json",
+    "roles": [
+      "ADMIN",
+      "MEMBER",
+      "他テナントADMIN",
+      "未認証"
+    ],
+    "finalAdmin": "root-final-admin-routes/admin-final-summary.json"
+  },
+  "residents": {
+    "R2": "旧tab導線を裏取り・red先行・修正・実画面green",
+    "R3": "自テナント到達、他テナント拒否確認",
+    "count": 3,
+    "R1": "一部Org一覧の安定表示は未達。root最終ソースの360/390実画面で補完"
+  },
+  "limitations": [
+    "最初のADMIN200後の空Drawerの例外stack未保存。実証した取得状態・スコープ更新・旧tabリンクの欠陥を修正",
+    "既存の小さいタップ領域と狭幅表は別戦役CMP-261016-0955",
+    "過去の環境タイムアウト/503/Java21障害は成功試験に数えない"
+  ],
+  "release": "最終CI成功、実画面再検証完了。通常マージ可能"
+}

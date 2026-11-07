@@ -1,0 +1,32 @@
+{
+    "campaign":  "CMP-261027-1353",
+    "runId":  40523312994,
+    "jobId":  122255987282,
+    "head":  "3db393c2e4e5608e0e168d59baba85e68342ae78",
+    "conclusion":  "success",
+    "main":  {
+                 "filesPassed":  725,
+                 "durationSeconds":  1104.45,
+                 "testsSkipped":  5,
+                 "testsPassed":  7191
+             },
+    "ranch":  {
+                  "filesPassed":  2,
+                  "durationSeconds":  2.16,
+                  "testsSkipped":  0,
+                  "testsPassed":  27
+              },
+    "testsPassedTotal":  7218,
+    "testsSkippedTotal":  5,
+    "skip":  {
+                 "testsSkipped":  5,
+                 "blob":  "ec3324b2b914d0ddedeef4bb57a5715d280ff098",
+                 "complement":  "production SSR/theme light-dark actual UI checks",
+                 "testsPassed":  3,
+                 "path":  "frontend/app/plugins/appearance.spec.ts",
+                 "sameBlobAsPreviousArtifact":  true,
+                 "condition":  "existing describe.skipIf(!import.meta.server) in client test environment",
+                 "notWholeSuiteSkipZero":  true
+             },
+    "summaryLines":  "head3db-frontend-ci-summary-lines.txt"
+}

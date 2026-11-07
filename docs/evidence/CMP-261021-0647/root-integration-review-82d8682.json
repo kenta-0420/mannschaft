@@ -1,0 +1,17 @@
+{
+  "head": "82d8682768de515d72827e868eac65c11d2d1324",
+  "parents": [
+    "0671633318f7f9bac534bf6d20aa2da2101be9b7",
+    "eeebae7ec30518e56ba84ff541e62c35ac349572"
+  ],
+  "reviewedAt": "2026-10-25T03:33:09.949Z",
+  "sourceObservedDirectly": true,
+  "scope": "main docs only 3 paths; own copy fix reviewed separately",
+  "backendTree": "9790002753834502d8680e7d641a5905049f6ccd",
+  "frontendTree": "c566b4d27ddf180f90e4970aba9b424abc26fd8b",
+  "appTreesMatch067": true,
+  "findings": [],
+  "needsCurrentHeadCiAndRealUi": true,
+  "productionForbidden": true,
+  "mergeAllowed": false
+}

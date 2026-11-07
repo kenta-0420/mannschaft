@@ -73,11 +73,22 @@ class EquipmentItemServiceTest {
         @Test
         @DisplayName("異常系: 備品不在でEQUIPMENT_001例外")
         void 取得_不在_例外() {
+            given(accessControlService.isMember(ACTOR_USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(itemRepository.findByIdAndTeamId(ITEM_ID, TEAM_ID)).willReturn(Optional.empty());
             assertThatThrownBy(() -> service.getByTeam(TEAM_ID, ITEM_ID, ACTOR_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("EQUIPMENT_001"));
+        }
+        @Test
+        @DisplayName("非所属は子lookupとmapperを呼ばずEQUIPMENT_001")
+        void 取得_非所属_子未参照() {
+            given(accessControlService.isMember(ACTOR_USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+            assertThatThrownBy(() -> service.getByTeam(TEAM_ID, ITEM_ID, ACTOR_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("EQUIPMENT_001"));
+            org.mockito.Mockito.verifyNoInteractions(itemRepository, equipmentMapper);
         }
     }
 

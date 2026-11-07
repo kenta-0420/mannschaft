@@ -8,26 +8,28 @@ const MAX_POLL_ATTEMPTS = 20
 
 const route = useRoute()
 const { t, locale } = useI18n()
-const { isAdminOrDeputy } = useTeamShellContext()
-const { resolveScopeId } = useActivityScopeId()
 const paymentRequestApi = usePaymentRequestApi()
 const notification = useNotification()
 const { handleApiError } = useErrorHandler()
 
 const teamSlug = computed(() => String(route.params.slug))
 const requestId = computed(() => String(route.params.id))
-const teamId = ref<number | null>(null)
-const request = ref<PaymentRequestResponse | null>(null)
-const loading = ref(true)
+const { data: request, teamId, loading, isAdminOrDeputy, state, loadError, load, fail } = useTeamPaymentPage(
+  teamSlug,
+  async (id) => (await paymentRequestApi.getTeamPaymentRequest(id, requestId.value)).data,
+  () => null as PaymentRequestResponse | null,
+  requestId,
+)
 const startingPayment = ref(false)
 const polling = ref(false)
 const clientSecret = ref<string | null>(null)
 const paymentDialogVisible = ref(false)
 let pollTimer: ReturnType<typeof setTimeout> | null = null
 let unmounted = false
+let paymentGeneration = 0
 
 const returnUrl = computed(() => import.meta.client ? window.location.href : '')
-const canPay = computed(() => ['SENT', 'VIEWED', 'OVERDUE'].includes(request.value?.status ?? ''))
+const canPay = computed(() => isAdminOrDeputy.value && ['SENT', 'VIEWED', 'OVERDUE'].includes(request.value?.status ?? ''))
 
 function amountLabel(): string {
   return new Intl.NumberFormat(locale.value, {
@@ -59,29 +61,24 @@ function stopPolling(): void {
   polling.value = false
 }
 
-async function fetchDetail(reportError = true): Promise<PaymentRequestResponse | null> {
-  if (!teamId.value) return null
+async function fetchDetail(): Promise<PaymentRequestResponse | null> {
+  if (!teamId.value || !isAdminOrDeputy.value) return null
+  const id = teamId.value
+  const slug = teamSlug.value
+  const detailId = requestId.value
+  const generation = paymentGeneration
+  const isCurrent = () => generation === paymentGeneration && !unmounted && slug === teamSlug.value && detailId === requestId.value && id === teamId.value
   try {
-    const response = await paymentRequestApi.getTeamPaymentRequest(teamId.value, requestId.value)
+    const response = await paymentRequestApi.getTeamPaymentRequest(id, detailId)
+    if (!isCurrent()) return null
     request.value = response.data
     return response.data
   } catch (error: unknown) {
-    if (reportError) handleApiError(error, 'payment-request.team.detail')
-    return null
-  }
-}
-
-async function load(): Promise<void> {
-  loading.value = true
-  try {
-    clearStripeReturnQuery()
-    teamId.value = await resolveScopeId('TEAM', teamSlug.value)
-    if (teamId.value !== null) {
-      const detail = await fetchDetail()
-      if (detail?.status === 'PROCESSING') startPolling()
+    if (isCurrent()) {
+      fail(error)
+      stopPolling()
     }
-  } finally {
-    loading.value = false
+    return null
   }
 }
 
@@ -96,36 +93,53 @@ function clearStripeReturnQuery(): void {
 
 async function startPayment(): Promise<void> {
   if (!teamId.value || !canPay.value || startingPayment.value) return
+  if (!isAdminOrDeputy.value) return
+  const slug = teamSlug.value
+  const detailId = requestId.value
+  const id = teamId.value
+  const generation = paymentGeneration
+  const isCurrent = () => generation === paymentGeneration && !unmounted && slug === teamSlug.value && detailId === requestId.value && id === teamId.value
   startingPayment.value = true
   try {
-    const response = await paymentRequestApi.payPaymentRequest(teamId.value, requestId.value)
+    const response = await paymentRequestApi.payPaymentRequest(id, detailId)
+    if (!isCurrent()) return
     if (!response.data.clientSecret) throw new Error('payment request client secret is missing')
     clientSecret.value = response.data.clientSecret
     if (request.value) request.value = { ...request.value, status: 'PROCESSING' }
     paymentDialogVisible.value = true
   } catch (error: unknown) {
-    const detail = await fetchDetail(false)
+    if (!isCurrent()) return
+    const detail = await fetchDetail()
+    if (!isCurrent()) return
     if (teamId.value && detail && detail.status !== 'PROCESSING') {
       paymentRequestApi.clearPaymentRequestIdempotencyKey(teamId.value, requestId.value)
     }
     handleApiError(error, 'payment-request.team.pay')
   } finally {
-    startingPayment.value = false
+    if (isCurrent()) startingPayment.value = false
   }
 }
 
 async function resumePayment(): Promise<void> {
   if (!teamId.value || request.value?.status !== 'PROCESSING' || startingPayment.value) return
+  if (!isAdminOrDeputy.value) return
+  const slug = teamSlug.value
+  const detailId = requestId.value
+  const id = teamId.value
+  const generation = paymentGeneration
+  const isCurrent = () => generation === paymentGeneration && !unmounted && slug === teamSlug.value && detailId === requestId.value && id === teamId.value
   startingPayment.value = true
   try {
-    const response = await paymentRequestApi.payPaymentRequest(teamId.value, requestId.value)
+    const response = await paymentRequestApi.payPaymentRequest(id, detailId)
+    if (!isCurrent()) return
     if (!response.data.clientSecret) throw new Error('payment request client secret is missing')
     clientSecret.value = response.data.clientSecret
     paymentDialogVisible.value = true
   } catch (error: unknown) {
-    handleApiError(error, 'payment-request.team.resume')
+    if (!isCurrent()) return
+    fail(error)
   } finally {
-    startingPayment.value = false
+    if (isCurrent()) startingPayment.value = false
   }
 }
 
@@ -136,8 +150,9 @@ function onPaymentDialogVisible(visible: boolean): void {
 
 async function pollPaymentStatus(attempt = 1): Promise<void> {
   if (unmounted || !polling.value) return
-  const updated = await fetchDetail(false)
-  if (unmounted || !polling.value) return
+  const generation = paymentGeneration
+  const updated = await fetchDetail()
+  if (unmounted || !polling.value || generation !== paymentGeneration) return
   if (updated?.status === 'PAID') {
     stopPolling()
     if (teamId.value) paymentRequestApi.clearPaymentRequestIdempotencyKey(teamId.value, requestId.value)
@@ -164,9 +179,24 @@ function startPolling(): void {
   void pollPaymentStatus()
 }
 
-onMounted(load)
+watch(() => [teamSlug.value, requestId.value], () => {
+  paymentGeneration += 1
+  stopPolling()
+  paymentDialogVisible.value = false
+  clientSecret.value = null
+  startingPayment.value = false
+}, { flush: 'sync' })
+watch([loading, request], ([isLoading, detail]) => {
+  if (isLoading || !detail) {
+    stopPolling()
+    paymentDialogVisible.value = false
+    clientSecret.value = null
+  } else if (detail.status === 'PROCESSING') startPolling()
+})
+onMounted(clearStripeReturnQuery)
 onUnmounted(() => {
   unmounted = true
+  paymentGeneration += 1
   stopPolling()
 })
 </script>
@@ -175,12 +205,11 @@ onUnmounted(() => {
   <div class="space-y-4 p-4 md:p-6">
     <PageHeader :title="request?.title || t('payment.membership.paymentRequest.title')" />
     <PageLoading v-if="loading" />
-    <Message v-else-if="!isAdminOrDeputy" severity="error" :closable="false">
+    <DashboardErrorState v-else-if="state === 'error'" :error="loadError" :show-retry="true" @retry="load" />
+    <Message v-else-if="state === 'denied'" severity="error" :closable="false">
       {{ t('payment.admin.permissionDenied') }}
     </Message>
-    <Message v-else-if="!request" severity="error" :closable="false">
-      {{ t('payment.membership.paymentRequest.loadError') }}
-    </Message>
+    <DashboardErrorState v-else-if="!request" :message="t('payment.membership.paymentRequest.loadError')" @retry="load" />
     <SectionCard v-else :title="request.title || '-'">
       <div class="flex flex-col gap-4">
         <div class="flex items-center justify-between gap-3">
@@ -216,6 +245,7 @@ onUnmounted(() => {
       </div>
     </SectionCard>
     <PaymentRequestPaymentDialog
+      v-if="isAdminOrDeputy"
       :visible="paymentDialogVisible"
       :client-secret="clientSecret"
       :return-url="returnUrl"

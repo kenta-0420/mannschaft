@@ -1,0 +1,385 @@
+{
+  "total_count": 19,
+  "artifacts": [
+    {
+      "id": 12699442187,
+      "node_id": "MDg6QXJ0aWZhY3QxMjY5OTQ0MjE4Nw==",
+      "name": "nightly-test-results-shard-0",
+      "size_in_bytes": 47038566,
+      "url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12699442187",
+      "archive_download_url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12699442187/zip",
+      "expired": false,
+      "digest": "sha256:e22d46eb974d7b4633cbe829435d26b26ed5b49e1ad5d4c64ae6062ab179ba22",
+      "created_at": "2026-10-27T00:09:07Z",
+      "updated_at": "2026-10-27T00:09:07Z",
+      "expires_at": "2026-11-10T00:08:55Z",
+      "workflow_run": {
+        "id": 40413233675,
+        "repository_id": 1201857623,
+        "head_repository_id": 1201857623,
+        "head_branch": "main",
+        "head_sha": "ef1e9e2ad2de973efba29f5ee380d03a8b60196e"
+      }
+    },
+    {
+      "id": 12699442157,
+      "node_id": "MDg6QXJ0aWZhY3QxMjY5OTQ0MjE1Nw==",
+      "name": "nightly-test-results-xml-shard-0",
+      "size_in_bytes": 45760185,
+      "url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12699442157",
+      "archive_download_url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12699442157/zip",
+      "expired": false,
+      "digest": "sha256:5857eeb781139b1fd85a9c63194f6d87ba37986828d3472d260222589782e5a8",
+      "created_at": "2026-10-27T00:08:55Z",
+      "updated_at": "2026-10-27T00:08:55Z",
+      "expires_at": "2026-11-10T00:08:43Z",
+      "workflow_run": {
+        "id": 40413233675,
+        "repository_id": 1201857623,
+        "head_repository_id": 1201857623,
+        "head_branch": "main",
+        "head_sha": "ef1e9e2ad2de973efba29f5ee380d03a8b60196e"
+      }
+    },
+    {
+      "id": 12699366095,
+      "node_id": "MDg6QXJ0aWZhY3QxMjY5OTM2NjA5NQ==",
+      "name": "nightly-test-results-xml-shard-2",
+      "size_in_bytes": 8233383,
+      "url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12699366095",
+      "archive_download_url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12699366095/zip",
+      "expired": false,
+      "digest": "sha256:f027519822f7e5af6517e9dc005900b8c3d5187190ae5645b17c2363edc14db5",
+      "created_at": "2026-10-26T23:55:41Z",
+      "updated_at": "2026-10-26T23:55:41Z",
+      "expires_at": "2026-11-09T23:55:37Z",
+      "workflow_run": {
+        "id": 40413233675,
+        "repository_id": 1201857623,
+        "head_repository_id": 1201857623,
+        "head_branch": "main",
+        "head_sha": "ef1e9e2ad2de973efba29f5ee380d03a8b60196e"
+      }
+    },
+    {
+      "id": 12699233215,
+      "node_id": "MDg6QXJ0aWZhY3QxMjY5OTIzMzIxNQ==",
+      "name": "nightly-test-results-shard-5",
+      "size_in_bytes": 21719770,
+      "url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12699233215",
+      "archive_download_url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12699233215/zip",
+      "expired": false,
+      "digest": "sha256:05172508c898818b691afe64387b5da1271a3100db2c2ef92ef59c56fd32b437",
+      "created_at": "2026-10-27T00:10:49Z",
+      "updated_at": "2026-10-27T00:10:49Z",
+      "expires_at": "2026-11-10T00:10:43Z",
+      "workflow_run": {
+        "id": 40413233675,
+        "repository_id": 1201857623,
+        "head_repository_id": 1201857623,
+        "head_branch": "main",
+        "head_sha": "ef1e9e2ad2de973efba29f5ee380d03a8b60196e"
+      }
+    },
+    {
+      "id": 12699213347,
+      "node_id": "MDg6QXJ0aWZhY3QxMjY5OTIxMzM0Nw==",
+      "name": "nightly-test-results-xml-shard-5",
+      "size_in_bytes": 20525609,
+      "url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12699213347",
+      "archive_download_url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12699213347/zip",
+      "expired": false,
+      "digest": "sha256:881a4db6801b2bc1ad84748625cdc85e293e6c4f168b38d55fa234cae1232eac",
+      "created_at": "2026-10-27T00:10:42Z",
+      "updated_at": "2026-10-27T00:10:42Z",
+      "expires_at": "2026-11-10T00:10:35Z",
+      "workflow_run": {
+        "id": 40413233675,
+        "repository_id": 1201857623,
+        "head_repository_id": 1201857623,
+        "head_branch": "main",
+        "head_sha": "ef1e9e2ad2de973efba29f5ee380d03a8b60196e"
+      }
+    },
+    {
+      "id": 12699126308,
+      "node_id": "MDg6QXJ0aWZhY3QxMjY5OTEyNjMwOA==",
+      "name": "nightly-test-results-shard-2",
+      "size_in_bytes": 9330063,
+      "url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12699126308",
+      "archive_download_url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12699126308/zip",
+      "expired": false,
+      "digest": "sha256:2a4b489af115d610685718e110c92c27d5aed786a9d51515430fede843d5bbae",
+      "created_at": "2026-10-26T23:55:45Z",
+      "updated_at": "2026-10-26T23:55:45Z",
+      "expires_at": "2026-11-09T23:55:42Z",
+      "workflow_run": {
+        "id": 40413233675,
+        "repository_id": 1201857623,
+        "head_repository_id": 1201857623,
+        "head_branch": "main",
+        "head_sha": "ef1e9e2ad2de973efba29f5ee380d03a8b60196e"
+      }
+    },
+    {
+      "id": 12699027594,
+      "node_id": "MDg6QXJ0aWZhY3QxMjY5OTAyNzU5NA==",
+      "name": "nightly-runtime-diag-shard-3-attempt-1",
+      "size_in_bytes": 53495,
+      "url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12699027594",
+      "archive_download_url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12699027594/zip",
+      "expired": false,
+      "digest": "sha256:a01c8e18431011b3f1495a14a8bfee363397ddcaf039ce1b5601a166a6ec66dc",
+      "created_at": "2026-10-27T00:03:21Z",
+      "updated_at": "2026-10-27T00:03:21Z",
+      "expires_at": "2026-11-03T00:03:20Z",
+      "workflow_run": {
+        "id": 40413233675,
+        "repository_id": 1201857623,
+        "head_repository_id": 1201857623,
+        "head_branch": "main",
+        "head_sha": "ef1e9e2ad2de973efba29f5ee380d03a8b60196e"
+      }
+    },
+    {
+      "id": 12698612118,
+      "node_id": "MDg6QXJ0aWZhY3QxMjY5ODYxMjExOA==",
+      "name": "nightly-test-results-xml-shard-3",
+      "size_in_bytes": 22583185,
+      "url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12698612118",
+      "archive_download_url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12698612118/zip",
+      "expired": false,
+      "digest": "sha256:cdf0a39c3c0db605011d7b46e6157c52da9adc01c11bd207f25807cf608b92b0",
+      "created_at": "2026-10-27T00:03:28Z",
+      "updated_at": "2026-10-27T00:03:28Z",
+      "expires_at": "2026-11-10T00:03:22Z",
+      "workflow_run": {
+        "id": 40413233675,
+        "repository_id": 1201857623,
+        "head_repository_id": 1201857623,
+        "head_branch": "main",
+        "head_sha": "ef1e9e2ad2de973efba29f5ee380d03a8b60196e"
+      }
+    },
+    {
+      "id": 12698587070,
+      "node_id": "MDg6QXJ0aWZhY3QxMjY5ODU4NzA3MA==",
+      "name": "nightly-test-results-shard-3",
+      "size_in_bytes": 23750088,
+      "url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12698587070",
+      "archive_download_url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12698587070/zip",
+      "expired": false,
+      "digest": "sha256:06e7f9b63e1832c1241f7ba35271f463b091576b41004d9b58444f4d9dd95125",
+      "created_at": "2026-10-27T00:03:35Z",
+      "updated_at": "2026-10-27T00:03:35Z",
+      "expires_at": "2026-11-10T00:03:29Z",
+      "workflow_run": {
+        "id": 40413233675,
+        "repository_id": 1201857623,
+        "head_repository_id": 1201857623,
+        "head_branch": "main",
+        "head_sha": "ef1e9e2ad2de973efba29f5ee380d03a8b60196e"
+      }
+    },
+    {
+      "id": 12698413999,
+      "node_id": "MDg6QXJ0aWZhY3QxMjY5ODQxMzk5OQ==",
+      "name": "nightly-runtime-diag-shard-5-attempt-1",
+      "size_in_bytes": 50975,
+      "url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12698413999",
+      "archive_download_url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12698413999/zip",
+      "expired": false,
+      "digest": "sha256:3699c1edbe2c7c6acd8a9232f607e601bed49761201f6bcbb5e195b2d7c08ccb",
+      "created_at": "2026-10-27T00:10:35Z",
+      "updated_at": "2026-10-27T00:10:35Z",
+      "expires_at": "2026-11-03T00:10:33Z",
+      "workflow_run": {
+        "id": 40413233675,
+        "repository_id": 1201857623,
+        "head_repository_id": 1201857623,
+        "head_branch": "main",
+        "head_sha": "ef1e9e2ad2de973efba29f5ee380d03a8b60196e"
+      }
+    },
+    {
+      "id": 12698387842,
+      "node_id": "MDg6QXJ0aWZhY3QxMjY5ODM4Nzg0Mg==",
+      "name": "nightly-runtime-diag-shard-0-attempt-1",
+      "size_in_bytes": 51611,
+      "url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12698387842",
+      "archive_download_url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12698387842/zip",
+      "expired": false,
+      "digest": "sha256:681294c6e9180ebe1662647ab7c00a49e5d0c560544e491dc19f5f8bb66f9e36",
+      "created_at": "2026-10-27T00:08:43Z",
+      "updated_at": "2026-10-27T00:08:43Z",
+      "expires_at": "2026-11-03T00:08:42Z",
+      "workflow_run": {
+        "id": 40413233675,
+        "repository_id": 1201857623,
+        "head_repository_id": 1201857623,
+        "head_branch": "main",
+        "head_sha": "ef1e9e2ad2de973efba29f5ee380d03a8b60196e"
+      }
+    },
+    {
+      "id": 12698297186,
+      "node_id": "MDg6QXJ0aWZhY3QxMjY5ODI5NzE4Ng==",
+      "name": "nightly-runtime-diag-shard-2-attempt-1",
+      "size_in_bytes": 51714,
+      "url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12698297186",
+      "archive_download_url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12698297186/zip",
+      "expired": false,
+      "digest": "sha256:f6835e74fba4c6d7a03e16d2223fbc21c5214b43d3ecc61872a37301c97df119",
+      "created_at": "2026-10-26T23:55:37Z",
+      "updated_at": "2026-10-26T23:55:37Z",
+      "expires_at": "2026-11-02T23:55:36Z",
+      "workflow_run": {
+        "id": 40413233675,
+        "repository_id": 1201857623,
+        "head_repository_id": 1201857623,
+        "head_branch": "main",
+        "head_sha": "ef1e9e2ad2de973efba29f5ee380d03a8b60196e"
+      }
+    },
+    {
+      "id": 12697308448,
+      "node_id": "MDg6QXJ0aWZhY3QxMjY5NzMwODQ0OA==",
+      "name": "nightly-test-results-xml-shard-1",
+      "size_in_bytes": 53569513,
+      "url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12697308448",
+      "archive_download_url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12697308448/zip",
+      "expired": false,
+      "digest": "sha256:06391f874935a3209ebe7c9c544f58fb9241869cfd764a1798369e6fee44ec2d",
+      "created_at": "2026-10-26T23:41:22Z",
+      "updated_at": "2026-10-26T23:41:22Z",
+      "expires_at": "2026-11-09T23:41:11Z",
+      "workflow_run": {
+        "id": 40413233675,
+        "repository_id": 1201857623,
+        "head_repository_id": 1201857623,
+        "head_branch": "main",
+        "head_sha": "ef1e9e2ad2de973efba29f5ee380d03a8b60196e"
+      }
+    },
+    {
+      "id": 12697307748,
+      "node_id": "MDg6QXJ0aWZhY3QxMjY5NzMwNzc0OA==",
+      "name": "nightly-test-results-xml-shard-4",
+      "size_in_bytes": 35774823,
+      "url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12697307748",
+      "archive_download_url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12697307748/zip",
+      "expired": false,
+      "digest": "sha256:03ccc5817150ebaede894e492f8186581cd2cf0a861f462da29df3ecfaf21a5f",
+      "created_at": "2026-10-26T23:35:59Z",
+      "updated_at": "2026-10-26T23:35:59Z",
+      "expires_at": "2026-11-09T23:35:54Z",
+      "workflow_run": {
+        "id": 40413233675,
+        "repository_id": 1201857623,
+        "head_repository_id": 1201857623,
+        "head_branch": "main",
+        "head_sha": "ef1e9e2ad2de973efba29f5ee380d03a8b60196e"
+      }
+    },
+    {
+      "id": 12697307739,
+      "node_id": "MDg6QXJ0aWZhY3QxMjY5NzMwNzczOQ==",
+      "name": "nightly-runtime-diag-shard-4-attempt-1",
+      "size_in_bytes": 51388,
+      "url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12697307739",
+      "archive_download_url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12697307739/zip",
+      "expired": false,
+      "digest": "sha256:b14ec412ac46e634c179543e604a46673b8304866fd5c0d4b33d1f5fbf241076",
+      "created_at": "2026-10-26T23:35:53Z",
+      "updated_at": "2026-10-26T23:35:53Z",
+      "expires_at": "2026-11-02T23:35:52Z",
+      "workflow_run": {
+        "id": 40413233675,
+        "repository_id": 1201857623,
+        "head_repository_id": 1201857623,
+        "head_branch": "main",
+        "head_sha": "ef1e9e2ad2de973efba29f5ee380d03a8b60196e"
+      }
+    },
+    {
+      "id": 12696418435,
+      "node_id": "MDg6QXJ0aWZhY3QxMjY5NjQxODQzNQ==",
+      "name": "nightly-test-results-shard-4",
+      "size_in_bytes": 36992564,
+      "url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12696418435",
+      "archive_download_url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12696418435/zip",
+      "expired": false,
+      "digest": "sha256:d1a9e7ac649ee79e8db9bffe14acb36dbb0e0d0c80102ccc60a32f0462ee1ed6",
+      "created_at": "2026-10-26T23:36:05Z",
+      "updated_at": "2026-10-26T23:36:05Z",
+      "expires_at": "2026-11-09T23:36:00Z",
+      "workflow_run": {
+        "id": 40413233675,
+        "repository_id": 1201857623,
+        "head_repository_id": 1201857623,
+        "head_branch": "main",
+        "head_sha": "ef1e9e2ad2de973efba29f5ee380d03a8b60196e"
+      }
+    },
+    {
+      "id": 12696254153,
+      "node_id": "MDg6QXJ0aWZhY3QxMjY5NjI1NDE1Mw==",
+      "name": "nightly-runtime-diag-shard-1-attempt-1",
+      "size_in_bytes": 53645,
+      "url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12696254153",
+      "archive_download_url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12696254153/zip",
+      "expired": false,
+      "digest": "sha256:916556799ed6e753ca6a6fbea7159088b9a804a2e02a9cc49cb90ff27378a528",
+      "created_at": "2026-10-26T23:41:10Z",
+      "updated_at": "2026-10-26T23:41:10Z",
+      "expires_at": "2026-11-02T23:41:10Z",
+      "workflow_run": {
+        "id": 40413233675,
+        "repository_id": 1201857623,
+        "head_repository_id": 1201857623,
+        "head_branch": "main",
+        "head_sha": "ef1e9e2ad2de973efba29f5ee380d03a8b60196e"
+      }
+    },
+    {
+      "id": 12696199527,
+      "node_id": "MDg6QXJ0aWZhY3QxMjY5NjE5OTUyNw==",
+      "name": "nightly-test-results-shard-1",
+      "size_in_bytes": 54956823,
+      "url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12696199527",
+      "archive_download_url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12696199527/zip",
+      "expired": false,
+      "digest": "sha256:db3bc5723a6cb5938370a1b214386e35c57c789843856bd13f6105596e89271e",
+      "created_at": "2026-10-26T23:41:33Z",
+      "updated_at": "2026-10-26T23:41:33Z",
+      "expires_at": "2026-11-09T23:41:22Z",
+      "workflow_run": {
+        "id": 40413233675,
+        "repository_id": 1201857623,
+        "head_repository_id": 1201857623,
+        "head_branch": "main",
+        "head_sha": "ef1e9e2ad2de973efba29f5ee380d03a8b60196e"
+      }
+    },
+    {
+      "id": 12694660760,
+      "node_id": "MDg6QXJ0aWZhY3QxMjY5NDY2MDc2MA==",
+      "name": "nightly-archtest-results-xml",
+      "size_in_bytes": 68715,
+      "url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12694660760",
+      "archive_download_url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/12694660760/zip",
+      "expired": false,
+      "digest": "sha256:d4c43f46d16fb2fc1933252c2cee70d450781f1374a424acafa768f2b384680b",
+      "created_at": "2026-10-26T22:37:11Z",
+      "updated_at": "2026-10-26T22:37:11Z",
+      "expires_at": "2026-11-09T22:37:10Z",
+      "workflow_run": {
+        "id": 40413233675,
+        "repository_id": 1201857623,
+        "head_repository_id": 1201857623,
+        "head_branch": "main",
+        "head_sha": "ef1e9e2ad2de973efba29f5ee380d03a8b60196e"
+      }
+    }
+  ]
+}

@@ -17,6 +17,9 @@ public interface UserPermissionGroupRepository extends JpaRepository<UserPermiss
 
     List<UserPermissionGroupEntity> findByUserId(Long userId);
 
+    /** 複数ユーザーの割当を 1 クエリで取得する（メンバー一覧の permission_groups 用。N+1 回避）。 */
+    List<UserPermissionGroupEntity> findByUserIdIn(java.util.Collection<Long> userIds);
+
     void deleteByUserIdAndGroupIdIn(Long userId, List<Long> groupIds);
 
     void deleteByGroupId(Long groupId);

@@ -25,6 +25,8 @@ public class ScheduleResponse {
     String             targetMode;
     Integer            targetCount;
     List<ScheduleTargetResponse.TargetMember> targets;
+    Boolean allowProxyAttendance;
+    Boolean isProxyAutoAccept;
 
     /**
      * リマインダー一覧（機能55 第三陣）。詳細 GET のみ populate し、一覧 GET では null。

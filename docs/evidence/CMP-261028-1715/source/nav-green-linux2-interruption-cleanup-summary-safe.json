@@ -1,0 +1,10 @@
+{
+  "sourceHead": "4697a0f99045a2218dbfe6eb8c7e1d894962d8d0",
+  "signal": "SIGTERM",
+  "exitCode": null,
+  "initialCleanup": "retained",
+  "localTestsExecuted": false,
+  "derivedCleanup": "removed",
+  "originalReceiptUnchanged": true,
+  "cleanupSafeSha256": "215c98f19f32d2de231ef88d9a8be4ff7e236bf9d8e7890f0e3cc72ef2a5039f"
+}

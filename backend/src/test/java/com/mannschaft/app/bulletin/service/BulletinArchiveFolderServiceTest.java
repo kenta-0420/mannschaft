@@ -194,7 +194,7 @@ class BulletinArchiveFolderServiceTest {
             assertThatThrownBy(() -> service.createFolder(SCOPE, SCOPE_ID, USER_ID, req))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(BulletinErrorCode.ARCHIVE_FOLDER_SCOPE_MISMATCH));
+                            .isEqualTo(BulletinErrorCode.ARCHIVE_FOLDER_NOT_FOUND));
         }
 
         @Test
@@ -408,7 +408,7 @@ class BulletinArchiveFolderServiceTest {
             assertThatThrownBy(() -> service.validateFolderInScope(SCOPE, SCOPE_ID, id))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(BulletinErrorCode.ARCHIVE_FOLDER_SCOPE_MISMATCH));
+                            .isEqualTo(BulletinErrorCode.ARCHIVE_FOLDER_NOT_FOUND));
         }
     }
 }

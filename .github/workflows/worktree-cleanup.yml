@@ -26,3 +26,8 @@ jobs:
         run: node --check scripts/worktree-cleanup.mjs
       - name: Run safety fixtures
         run: node --test scripts/worktree-cleanup.test.mjs
+
+      - name: Verify verification runner syntax
+        run: node --check scripts/verification-run.mjs
+      - name: Verify Linux copy lifecycle
+        run: node --test scripts/verification-run.test.mjs

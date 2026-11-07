@@ -32,6 +32,7 @@ import java.util.List;
 public class BlogScheduledPublishBatchService {
 
     private final BlogScheduledPublishService scheduledPublishService;
+    private final BlogRanchScheduledOperationFacade ranchScheduled;
     /** 業務ローカル時刻の壁時計（{@code ClockConfig#wallClock}）。published_at と同一の時間基準。 */
     @Qualifier("wallClock")
     private final Clock wallClock;
@@ -78,7 +79,7 @@ public class BlogScheduledPublishBatchService {
         int failedCount = 0;
         for (Long postId : duePostIds) {
             try {
-                if (scheduledPublishService.publishScheduledPost(postId, baseTime)) {
+                if (ranchScheduled.publish(postId,baseTime).orElseGet(() -> scheduledPublishService.publishScheduledPost(postId,baseTime))) {
                     publishedCount++;
                 }
             } catch (Exception e) {

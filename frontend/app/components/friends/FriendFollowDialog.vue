@@ -1,126 +1,122 @@
 <script setup lang="ts">
-/**
- * F01.5 フォロー追加ダイアログ。
- *
- * Phase 1 の仕様:
- * - 対象チーム ID を直接入力（Phase 2 以降でチーム検索 UI を追加予定）
- * - 挨拶コメント（任意、最大 300 文字）
- * - 実行は {@link TeamFriendFollowButton} に委譲し、NOWAIT 自動リトライの恩恵を受ける。
- *
- * Props:
- *   teamId       — 自チーム ID
- *   modelValue   — 表示状態（v-model）
- *
- * Emits:
- *   update:modelValue — 表示状態の変更
- *   success           — フォロー成功時（一覧の再取得要求）
- */
-import type { FollowTeamResponse } from '~/types/friends'
+import type { FollowTeamResponse, FriendRequestSource, FriendRequestTarget } from '~/types/friends'
 
 const props = defineProps<{
   teamId: string
   modelValue: boolean
+  initialSlug?: string
+  sourceTeam?: FriendRequestSource
+  targetTeam?: FriendRequestTarget
 }>()
-
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
   'success': [response: FollowTeamResponse]
+  'alreadyFollowing': []
+  'refresh': []
 }>()
-
 const { t } = useI18n()
+const friendApi = useFriendTeamsApi()
+const statusError = shallowRef<unknown>(null)
+const refreshedCounts = ref<{ friends: number; pending: number; incoming: number } | null>(null)
+let statusSequence = 0
+const visible = computed({ get: () => props.modelValue, set: value => emit('update:modelValue', value) })
+const chosenTarget = ref<FriendRequestTarget | null>(null)
+const target = computed(() => props.targetTeam ?? chosenTarget.value)
+const candidateTarget = computed(() => props.targetTeam?.teamSlug ?? '')
+const needsSource = computed(() => !!props.targetTeam && !props.sourceTeam)
+const candidateOpen = computed(() => props.modelValue && needsSource.value)
+const sources = useFriendRequestSources(candidateTarget, candidateOpen)
+const { candidates, selected, loading, error, page, rows, totalRecords } = sources
+const source = computed(() => needsSource.value ? selected.value : props.sourceTeam)
+const busy = ref(false)
+const sourceRevoked = ref(false)
+const confirmed = ref(false)
+const isSelf = computed(() => source.value?.teamSlug === target.value?.teamSlug)
+const canSubmit = computed(() => !!source.value && !!target.value && !isSelf.value && !loading.value && !error.value && !sourceRevoked.value)
+const sourceId = computed(() => source.value ? String(source.value.teamId) : props.teamId)
 
-const COMMENT_MAX = 300
-
-const targetTeamId = ref<number | null>(null)
-const comment = ref<string>('')
-
-const visible = computed({
-  get: () => props.modelValue,
-  set: (value) => emit('update:modelValue', value),
-})
-
-const canSubmit = computed(
-  () => typeof targetTeamId.value === 'number'
-    && Number.isFinite(targetTeamId.value)
-    && targetTeamId.value > 0
-    && String(targetTeamId.value) !== props.teamId
-    && (comment.value?.length ?? 0) <= COMMENT_MAX,
-)
-
-const commentRemaining = computed(() => COMMENT_MAX - (comment.value?.length ?? 0))
-
-function resetForm() {
-  targetTeamId.value = null
-  comment.value = ''
+watch([() => source.value?.teamId, () => target.value?.teamSlug], () => {
+  refreshedCounts.value = null
+  statusError.value = null
+  statusSequence += 1
+  if (!busy.value) confirmed.value = false
+}, { flush: 'sync' })
+watch(visible, value => { if (!value) { sourceRevoked.value = false; refreshedCounts.value = null; statusError.value = null; statusSequence += 1; chosenTarget.value = null; confirmed.value = false } })
+async function onPage(event: { page: number }) {
+  if (busy.value) return
+  page.value = event.page
+  await sources.load()
 }
-
-// 開閉に合わせてフォームをリセット（閉じた瞬間にクリア）
-watch(visible, (next) => {
-  if (!next) resetForm()
-})
-
-function onFollowed(response: FollowTeamResponse) {
-  emit('success', response)
-  visible.value = false
+function onSourceChange(value: FriendRequestSource | null) {
+  if (!busy.value) selected.value = value
 }
+async function onForbidden() {
+  busy.value = false
+  confirmed.value = false
+  if (needsSource.value) { selected.value = null; await sources.load(false, false) }
+  else sourceRevoked.value = true
+}
+function onFollowed(response: FollowTeamResponse) { emit('success', response); visible.value = false }
+function onAlreadyFollowing() {
+  busy.value = false
+  emit('alreadyFollowing')
+  confirmed.value = false
+  // 固定元の一覧更新は親のalreadyFollowingに任せ、二重取得を避ける。
+  if (needsSource.value) void refreshState()
+}
+async function refreshState() {
+  emit('refresh')
+  if (!needsSource.value || !source.value) return
+  const id = String(source.value.teamId)
+  const current = ++statusSequence
+  const valid = () => current === statusSequence && props.modelValue && sourceId.value === id
+  statusError.value = null
+  try {
+    const [friends, pending, incoming] = await Promise.all([friendApi.listFriends(id, { page: 0, size: 1 }), friendApi.listPendingFollows(id, { page: 0, size: 1 }), friendApi.listIncomingFollows(id, { page: 0, size: 1 })])
+    if (valid()) refreshedCounts.value = { friends: friends.pagination.totalElements, pending: pending.pagination?.totalElements ?? 0, incoming: incoming.pagination.totalElements }
+  }
+  catch (cause) { if (valid()) statusError.value = cause }
+}
+onBeforeUnmount(() => { statusSequence += 1 })
 </script>
 
 <template>
-  <Dialog
-    v-model:visible="visible"
-    :header="t('friends.actions.follow')"
-    modal
-    class="w-full max-w-md"
-  >
-    <div class="flex flex-col gap-4">
-      <div>
-        <label class="mb-1 block text-sm font-medium" for="friend-follow-target">
-          {{ t('friends.list.target_team_id') }}
-        </label>
-        <InputNumber
-          id="friend-follow-target"
-          v-model="targetTeamId"
-          :min="1"
-          :use-grouping="false"
-          class="w-full"
-        />
-        <p
-          v-if="targetTeamId !== null && String(targetTeamId) === teamId"
-          class="mt-1 text-sm text-red-500"
-        >
-          {{ t('friends.errors.self_follow') }}
-        </p>
-      </div>
-      <div>
-        <label class="mb-1 block text-sm font-medium" for="friend-follow-comment">
-          {{ t('friends.list.comment_label') }}
-        </label>
-        <Textarea
-          id="friend-follow-comment"
-          v-model="comment"
-          :maxlength="COMMENT_MAX"
-          rows="3"
-          class="w-full"
-        />
-        <p class="mt-1 text-right text-xs text-surface-500">
-          {{ commentRemaining }}
-        </p>
-      </div>
+  <Dialog v-model:visible="visible" :header="t('friends.request.title')" modal class="w-full max-w-lg" :closable="!busy" :close-on-escape="!busy">
+    <div class="flex min-w-0 flex-col gap-4">
+      <template v-if="needsSource && targetTeam">
+        <p class="break-words">{{ t('friends.request.target') }}: {{ targetTeam.teamName }} ({{ targetTeam.teamSlug }})</p>
+        <PageLoading v-if="loading" />
+        <DashboardErrorState v-else-if="error" :error="error" testid="friend-source-error" @retry="sources.load()" />
+        <DashboardEmptyState v-else-if="totalRecords === 0" :message="t('friends.request.no_source')" />
+        <template v-else>
+          <label for="friend-request-source">{{ t('friends.request.source') }}</label>
+          <Select input-id="friend-request-source" :model-value="selected" :options="candidates" option-label="teamName" :disabled="busy" class="w-full max-md:min-h-11" data-testid="friend-request-source" @update:model-value="onSourceChange">
+            <template #option="{ option }"><span class="break-words">{{ option.teamName }} ({{ option.teamSlug }})</span></template>
+            <template #value><span v-if="selected" class="break-words">{{ selected.teamName }} ({{ selected.teamSlug }})</span><span v-else>{{ t('friends.request.choose_source') }}</span></template>
+          </Select>
+          <p v-if="totalRecords === 1 && selected" data-testid="friend-source-auto">{{ t('friends.request.single_source') }}</p>
+          <fieldset v-if="totalRecords > rows" :disabled="busy" class="min-w-0">
+            <Paginator :first="page * rows" :rows="rows" :total-records="totalRecords" @page="onPage" />
+          </fieldset>
+        </template>
+      </template>
+      <template v-else>
+        <p class="break-words" data-testid="friend-request-fixed-source">{{ t('friends.request.source') }}: {{ sourceTeam?.teamName ?? teamId }} ({{ sourceTeam?.teamSlug ?? teamId }})</p>
+        <p v-if="targetTeam" class="break-words">{{ t('friends.request.target') }}: {{ targetTeam.teamName }} ({{ targetTeam.teamSlug }})</p>
+        <FriendTargetPicker v-else :key="visible ? 'open' : 'closed'" v-model="chosenTarget" :team-id="sourceTeam?.teamSlug ?? teamId" :initial-slug="initialSlug" :disabled="busy" />
+      </template>
+      <p v-if="sourceRevoked" role="alert">{{ t('friends.errors.permission_denied') }}</p>
+      <p v-if="isSelf" role="alert">{{ t('friends.errors.self_follow') }}</p>
+      <p v-if="canSubmit" class="break-words" data-testid="friend-request-direction">{{ source?.teamName }} ({{ source?.teamSlug }}) → {{ target?.teamName }} ({{ target?.teamSlug }})</p>
+      <DashboardErrorState v-if="statusError" :error="statusError" @retry="refreshState" />
+      <p v-if="refreshedCounts" role="status">{{ t('friends.request.status_counts', refreshedCounts) }}</p>
+      <NuxtLink v-if="refreshedCounts && source" :to="'/teams/' + source.teamSlug + '/nav'" class="inline-flex min-h-11 items-center text-primary">{{ t('friends.request.open_lists') }}</NuxtLink>
+      <p v-if="confirmed" role="status">{{ t('friends.request.confirm') }}</p>
     </div>
-
     <template #footer>
-      <Button
-        :label="t('friend_feed.forward.cancel')"
-        text
-        @click="visible = false"
-      />
-      <TeamFriendFollowButton
-        :team-id="teamId"
-        :target-team-id="targetTeamId ?? 0"
-        :comment="comment || undefined"
-        :disabled="!canSubmit"
-        @followed="onFollowed"
-      />
+      <Button :label="t('friend_feed.forward.cancel')" text :disabled="busy" class="min-h-11" @click="visible = false" />
+      <Button v-if="!confirmed" :label="t('friends.request.review')" :disabled="!canSubmit || busy" class="min-h-11" data-testid="friend-request-review" @click="confirmed = true" />
+      <TeamFriendFollowButton v-else :team-id="sourceId" :target-team-slug="target?.teamSlug ?? ''" :disabled="!canSubmit" class="min-h-11" data-testid="friend-follow-submit" @busy="busy = $event" @followed="onFollowed" @forbidden="onForbidden" @refresh="refreshState" @already-following="onAlreadyFollowing" />
     </template>
   </Dialog>
 </template>

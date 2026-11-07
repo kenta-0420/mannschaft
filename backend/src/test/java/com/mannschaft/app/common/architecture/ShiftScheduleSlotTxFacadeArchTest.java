@@ -1,12 +1,10 @@
 package com.mannschaft.app.common.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClass;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.domain.JavaModifier;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -47,6 +45,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * </ol>
  */
 @DisplayName("shift の認可ファサード型（W6a: schedules・slots・remind・PDF）の ArchUnit 固定")
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class ShiftScheduleSlotTxFacadeArchTest {
 
     private static final String PKG = "com.mannschaft.app.shift";
@@ -92,7 +91,7 @@ class ShiftScheduleSlotTxFacadeArchTest {
         map.put(SCHEDULE_CONTROLLER, schedule);
         Map<String, String> slot = new LinkedHashMap<>();
         for (String m : List.of("listSlots", "createSlot", "bulkCreateSlots", "updateSlot", "deleteSlot",
-                "patchSlotAssignments")) {
+                "patchSlotAssignments", "moveSlotAssignment")) { // moveSlotAssignment: CMP-261010-1432 枠間移動
             slot.put(m, SLOT_FACADE);
         }
         map.put(SLOT_CONTROLLER, slot);
@@ -111,21 +110,14 @@ class ShiftScheduleSlotTxFacadeArchTest {
             "findScheduleForUpdateOrThrow", "java.lang.Long->" + PKG + ".entity.ShiftScheduleEntity",
             "findExistingScheduleIds", Collection.class.getName() + "->" + Set.class.getName());
 
-    private static JavaClasses classesUnderTest;
-
-    @BeforeAll
-    static void importClasses() {
-        classesUnderTest = new ClassFileImporter()
-                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                .importPackages("com.mannschaft.app");
-    }
+    private final JavaClasses classesUnderTest = ProductionClasses.get();
 
     private static String facadeOf(String serviceFqn) {
         assertThat(serviceFqn).endsWith("Service");
         return serviceFqn.substring(0, serviceFqn.length() - "Service".length()) + "Facade";
     }
 
-    private static Optional<JavaClass> find(String fqn) {
+    private Optional<JavaClass> find(String fqn) {
         return classesUnderTest.contain(fqn) ? Optional.of(classesUnderTest.get(fqn)) : Optional.empty();
     }
 
@@ -159,7 +151,7 @@ class ShiftScheduleSlotTxFacadeArchTest {
             total += entry.getValue().size();
         }
         // schedules 9 本・slots 6 本・PDF 1 本（ep_tables_w6.md §3.1）。
-        assertThat(total).as("W6a の対象 Controller メソッドの本数").isEqualTo(16);
+        assertThat(total).as("W6a の対象 Controller メソッドの本数").isEqualTo(17); // CMP-261010-1432 枠間移動で +1
     }
 
     // ═════════════════════════════════════════════════════════════════════

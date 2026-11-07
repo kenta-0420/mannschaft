@@ -40,7 +40,7 @@ public enum AnnouncementErrorCode implements ErrorCode {
     /** target_team_ids に無効なチームIDが含まれています（400） */
     BROADCAST_002("BROADCAST_002", "target_team_idsに無効なチームIDが含まれています", Severity.WARN),
 
-    /** テンプレートが見つかりません（404） */
+    /** テンプレートが見つかりません（400。F01.2.1 §8.6。他スコープ・不在を区別しない） */
     BROADCAST_003("BROADCAST_003", "テンプレートが見つかりません", Severity.WARN),
 
     /** 指定されたチャネルアダプターが登録されていません（500） */
@@ -59,6 +59,9 @@ public enum AnnouncementErrorCode implements ErrorCode {
 
     /** テンプレート上限超過（409） */
     ANNOUNCE_010("ANNOUNCE_010", "テンプレートの上限（20件）に達しました", Severity.WARN),
+
+    /** 一覧の続きの位置を保存・読み出しできません（503。Valkey 障害。続きを黙って隠さず失敗させる） */
+    ANNOUNCE_011("ANNOUNCE_011", "お知らせ一覧の続きを一時的に取得できません。しばらくしてからやり直してください", Severity.WARN),
 
     /** 指定したチームグループは選択できません（400） */
     BROADCAST_006("BROADCAST_006", "指定したチームグループは選択できません", Severity.WARN),

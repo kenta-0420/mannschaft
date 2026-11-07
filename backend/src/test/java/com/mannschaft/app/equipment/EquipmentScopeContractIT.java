@@ -166,7 +166,7 @@ class EquipmentScopeContractIT extends AbstractMySqlIntegrationTest {
                 .build());
         assignmentTeamAId2 = assignmentTeamA2.getId();
 
-        // EQUIPMENT_009（SCOPE_MISMATCH・越境存在秘匿）検証用: 同一チーム内の「別備品」に対する貸出記録。
+        // 他備品の貸出記録（EQUIPMENT_002・不在と同一本文）検証用: 同一チーム内の「別備品」に対する貸出記録。
         EquipmentItemEntity itemTeamAOther = itemRepository.save(EquipmentItemEntity.builder()
                 .teamId(teamAId).name("EQAUTHZ ビブス").category("スポーツ用品")
                 .quantity(5).assignedQuantity(1).status(EquipmentStatus.AVAILABLE)
@@ -281,19 +281,19 @@ class EquipmentScopeContractIT extends AbstractMySqlIntegrationTest {
     class GetEquipment {
 
         @Test
-        @DisplayName("非メンバーは403")
-        void 非メンバーは403() throws Exception {
+        @DisplayName("非メンバーは404")
+        void 非メンバーは404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(get("/api/v1/teams/{teamId}/equipment/{id}", teamAId, itemTeamAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
         }
 
         @Test
-        @DisplayName("別scope ADMIN（teamBのADMINがteamAのURLを叩く越境）は403")
-        void 別scopeADMINは403() throws Exception {
+        @DisplayName("別scope ADMIN（teamBのADMINがteamAのURLを叩く越境）は404")
+        void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(get("/api/v1/teams/{teamId}/equipment/{id}", teamAId, itemTeamAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
         }
 
         @Test
@@ -460,13 +460,13 @@ class EquipmentScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("正当ADMINでも他備品の貸出記録IDを指定すると404（EQUIPMENT_009・越境は存在秘匿）")
+        @DisplayName("正当ADMINでも他備品の貸出記録IDを指定すると404（EQUIPMENT_002・不在と同一本文）")
         void 正当ADMINでも他備品の貸出記録IDなら404() throws Exception {
             setAuth(adminTeamAId);
             // itemTeamAId・itemTeamAOtherId は同一チーム内の「別々の備品」。
             // assignmentTeamAOtherId は itemTeamAOtherId 側の貸出記録であり、
             // path の itemTeamAId に対して指定すると EquipmentAssignmentService.doReturn() の
-            // 「assignment.getEquipmentItemId().equals(item.getId())」検証（EQUIPMENT_009）に落ちる。
+            // 「assignment.getEquipmentItemId().equals(item.getId())」検証（EQUIPMENT_002・不在と同一）に落ちる。
             // ここは itemService.findTeamItemOrThrow() の ITEM_NOT_FOUND とは別経路であることが要点。
             mockMvc.perform(patch("/api/v1/teams/{teamId}/equipment/{id}/return", teamAId, itemTeamAId)
                             .contentType(MediaType.APPLICATION_JSON)

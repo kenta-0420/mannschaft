@@ -1,0 +1,26 @@
+{
+    "implementationSource":  "f157e033bb650205dc4ba94d0772f9b1a0be7d15",
+    "artifactSource":  "3db393c2e4e5608e0e168d59baba85e68342ae78",
+    "sourceBridge":  "f157-docs-only-source-bridge-safe.json",
+    "api":  {
+                "officialRun":  "CMP-261027-1353-api-fixed4",
+                "sha256":  "e171aad842ae4f6fe564b67862dcf366b315c9d700f8fa4e312bdcd801b59ab9",
+                "bytes":  221133261,
+                "exit":  0,
+                "error":  null,
+                "cleanup":  "removed"
+            },
+    "frontend":  {
+                     "officialRun":  "CMP-261027-1353-final-integrated-build3",
+                     "entrySha256":  "18e809c677f4f24beb452d934e90488864fcfd1e4a825f19bdf3c6674d846a62",
+                     "exit":  0,
+                     "error":  null,
+                     "cleanup":  "removed"
+                 },
+    "previewGuard":  {
+                         "ownerUidPidTicksCwdAndEntryHashMatch":  true,
+                         "expectedListenerOwned":  true,
+                         "rawArgvEnvironmentSaved":  false
+                     },
+    "mainAdoption":  "pending"
+}

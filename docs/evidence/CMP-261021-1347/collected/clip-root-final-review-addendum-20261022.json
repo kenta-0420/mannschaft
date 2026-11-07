@@ -1,0 +1,57 @@
+{
+  "kind": "ROOT_FINAL_ADDITIONAL_REVIEW_AND_EXPLORATORY_ADOPTION",
+  "head": "317dd3e224c35c04efd07e9b78f28f6a349d39ea",
+  "reviewer": "Root Sol/high",
+  "externalReview": "Claude review auto-review rejected in prior phase; Codex Root review fallback, no further source upload attempted",
+  "baseReview": "docs/evidence/CMP-261021-1347/collected/clip-root-static-review-20261021.json",
+  "regressions": [
+    {
+      "id": "CLIP-VISIBILITY-01",
+      "resolution": "Real own source B38 repaired hide/reload/show; appearance source40437 recheck same ID/style, actual PUT200 and reload completed",
+      "evidence": "docs/evidence/CMP-261021-1347/real/root-approved-recheck.safe.json"
+    },
+    {
+      "id": "DARK-BACKGROUND-01",
+      "resolution": "SSR-only initial head registration; default DARK actual ranch/dashboard/client return/reload and mobile independently preserved saved #18181b; real-Unhead original product still fails same color assertions",
+      "evidence": "docs/evidence/CMP-261021-1347/collected/clip-root-theme-real-green-20261022.json"
+    }
+  ],
+  "ciHarnessRepair": {
+    "commit": "a9a25a4ebc",
+    "finding": "Nuxt UnheadImportsPlugin rewrote static useHead import into own mocked module, causing real CI recursion; actual Nuxt transform reproduced and vi.importActual dynamic import fixed it without changing product/assertions/cases. Official new head CI pending."
+  },
+  "exploratory": {
+    "personas": 3,
+    "desktop": "docs/evidence/CMP-261021-1347/exploratory/desktop-initial/report-safe.json",
+    "mobile": "docs/evidence/CMP-261021-1347/exploratory/mobile-approved/report.json",
+    "interruption": "docs/evidence/CMP-261021-1347/exploratory/interruption-approved/report.json",
+    "rootDirectImages": [
+      "desktop Root actual repaired ranch/navigation images",
+      "Root dashboard restored screenshot",
+      "mobile-approved30-status-revisit-360.png",
+      "interruption-approved18-reload-persisted.png"
+    ],
+    "adoption": "Three distinct personas completed naturally in separate contexts/accounts. First desktop handed to Root; subsequent absence separately verified, not falsely normal-close. Mobile and air approved rechecks normal close/driver exit0. Actual tab hidden is covered by separate real E2E default-context evidence, not by air resident who observed hidden=false."
+  },
+  "nonBlockingObservations": [
+    {
+      "observation": "Narrow dashboard care labels wrap on multiple lines",
+      "basis": "Root 1024 viewport actual geometry/screenshot: all labels visible, no overflow and primary buttons>=44; not new blocker. No forced nowrap/scope expansion."
+    },
+    {
+      "observation": "Common widget title link28px / shared settings fields42px",
+      "basis": "Supplementary targets, main care/status alternatives>=44; existing shared components; no failed task/overflow observed. Keep as possible later UI improvement, not assert nonexistent44px everywhere contract."
+    },
+    {
+      "observation": "air resident body text briefly assetPreparing after STOPPED save",
+      "basis": "No corresponding scene image captured at that instant. DinosaurScene.vue shows preparation text while atlas/fallback is not loaded as well as failed; stable return/reload showed correct static same dinosaur. Source behavior explains possible loading text but timing cause unproven; do not label confirmed defect or erase observation."
+    }
+  ],
+  "blockingProductFindingsRemaining": [],
+  "limits": [
+    "CI failure on57368 preserved; final317dd3 official CI must succeed before merge.",
+    "Full production build was executed earlier exact source and narrowly adopted protected assets/config; not claimed rerun on final shipping tree.",
+    "Unit-only timing/cancellation/decode and complete384-image matrix remain separated from representative real UI.",
+    "No full Phase1/73AC or formal64/512 public completion claim."
+  ]
+}

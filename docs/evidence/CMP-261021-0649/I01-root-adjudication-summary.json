@@ -1,0 +1,71 @@
+{
+  "runId": "CMP0616-I01-cmp0649-a875668f1796",
+  "sourceHead": "d383c4494d5e6debb5cdb833f654fa5e5ae0430b",
+  "registrationSource": "actual-resident-artifacts",
+  "trusted": false,
+  "status": "observed-unverified",
+  "reviewer": "root direct",
+  "independentResidents": 3,
+  "explorationExecuted": true,
+  "goalsReached": false,
+  "campaignAcPassed": false,
+  "formalExploratoryCertified": false,
+  "reason": "全3目的はpartial。新相談提出は自動承認審査で2回拒否され未送信、受諾・承認・変更後照合は未実施。実施人数と目的達成を区別する。",
+  "residents": [
+    {
+      "personaId": "CMP0616-I01-A-return",
+      "journeyId": "CMP0616-I01-A-return-journey",
+      "result": "partial",
+      "goalsReached": false,
+      "observation": "担当/B候補/理由入力と中断後担当再発見。提出は自動審査2回拒否で未送信。再読込後未提出入力空は未実証観測"
+    },
+    {
+      "personaId": "CMP0616-I01-B-discover",
+      "journeyId": "CMP0616-I01-B-discover-journey",
+      "result": "partial",
+      "goalsReached": false,
+      "observation": "既存勤務と通常画面復帰。新18時相談はA未送信依存で受諾/成立確認未実施。欠落や消失と断定しない"
+    },
+    {
+      "personaId": "CMP0616-I01-D-boundary",
+      "journeyId": "CMP0616-I01-D-boundary-journey",
+      "result": "partial",
+      "goalsReached": false,
+      "observation": "既存変更依頼/交換一覧/現在割当/戻りを確認。新18時処理と変更後照合はA未送信依存。S3/X拒否とauxPUBLIC閲覧を区別"
+    }
+  ],
+  "rootSeparateNavigationV2": {
+    "successfulWithinMeasuredRouteScope": true,
+    "originalStandardRunPassed": false,
+    "doesNotReplaceUnexecutedResidentGoals": true
+  },
+  "knownDependency": {
+    "campaign": "CMP-261010-1432-A",
+    "pr": 3832,
+    "reviewControlsAbsentConfirmedByRoot": true,
+    "authorizedOrFixedInThisWork": false
+  },
+  "rootExitAndStateAudit": {
+    "ownedResidentsAndBrowsersAbsent": true,
+    "businessTableHashesUnchanged": true,
+    "tables": [
+      "shift_assignments",
+      "shift_change_requests",
+      "shift_slots",
+      "shift_swap_requests"
+    ]
+  },
+  "confirmedScopedDefectsUnresolved": [],
+  "newBlockersOrCampaignsCreated": false,
+  "dismissedBugInterpretations": [
+    "未送信に依存する相談未発見は保存/受信不具合の証拠でない",
+    "S3/Xの403/404は既存認可の正常拒否",
+    "再読込後未提出入力空はautosave仕様/欠陥を未実証、blockerへ昇格しない"
+  ],
+  "productionTouched": false,
+  "originalRunPassed": false,
+  "privateEvidenceReferences": [
+    ".claude/campaigns/cmp0616-takeover-20261027/resident-root-adjudication.json",
+    ".claude/campaigns/cmp0616-takeover-20261027/resident-exit-and-state-audit-safe.json"
+  ]
+}

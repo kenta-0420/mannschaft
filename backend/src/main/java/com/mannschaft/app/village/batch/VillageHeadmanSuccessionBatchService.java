@@ -153,7 +153,7 @@ public class VillageHeadmanSuccessionBatchService {
     private SuccessionResult promoteOrArchive(java.util.UUID villageId) {
         // 1. 最古参 ELDER を昇格
         Optional<VillageMembershipEntity> elder = membershipRepository
-                .findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(villageId, VillageRole.ELDER);
+                .findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(villageId, VillageRole.ELDER);
         if (elder.isPresent()) {
             promote(villageId, elder.get(), VillageRole.ELDER);
             return SuccessionResult.PROMOTED;
@@ -161,7 +161,7 @@ public class VillageHeadmanSuccessionBatchService {
 
         // 2. 最古参 VILLAGER を昇格
         Optional<VillageMembershipEntity> villager = membershipRepository
-                .findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(villageId, VillageRole.VILLAGER);
+                .findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(villageId, VillageRole.VILLAGER);
         if (villager.isPresent()) {
             promote(villageId, villager.get(), VillageRole.VILLAGER);
             return SuccessionResult.PROMOTED;

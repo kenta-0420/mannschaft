@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const { t } = useI18n()
 const { getUnreadThreads } = useDashboardApi()
 const { captureQuiet } = useErrorReport()
 
@@ -28,7 +29,7 @@ onMounted(load)
 
 <template>
   <DashboardWidgetCard
-    title="未読"
+    :title="t('dashboard.widgets.unreadThreads.title')"
     icon="pi pi-envelope"
     to="/chat"
     :loading="loading"
@@ -46,8 +47,8 @@ onMounted(load)
       >
         <i class="pi pi-file-edit text-surface-400" />
         <div class="min-w-0 flex-1">
-          <p class="text-sm font-medium">掲示板・お知らせ</p>
-          <p class="text-xs text-surface-400">チーム・組織の未読スレッド</p>
+          <p class="text-sm font-medium">{{ t('dashboard.widgets.unreadThreads.boardTitle') }}</p>
+          <p class="text-xs text-surface-400">{{ t('dashboard.widgets.unreadThreads.boardDesc') }}</p>
         </div>
         <Badge :value="totalBulletin" severity="danger" />
       </div>
@@ -58,12 +59,12 @@ onMounted(load)
       >
         <i class="pi pi-comments text-surface-400" />
         <div class="min-w-0 flex-1">
-          <p class="text-sm font-medium">チャット</p>
-          <p class="text-xs text-surface-400">未読メッセージ</p>
+          <p class="text-sm font-medium">{{ t('dashboard.widgets.unreadThreads.chatTitle') }}</p>
+          <p class="text-xs text-surface-400">{{ t('dashboard.widgets.unreadThreads.chatDesc') }}</p>
         </div>
         <Badge :value="totalChat" severity="danger" />
       </div>
     </div>
-    <DashboardEmptyState v-else icon="pi pi-check-circle" message="未読はありません" />
+    <DashboardEmptyState v-else icon="pi pi-check-circle" :message="t('dashboard.widgets.unreadThreads.empty')" />
   </DashboardWidgetCard>
 </template>
