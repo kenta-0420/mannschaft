@@ -516,18 +516,42 @@ class AdmissionSlotTests(unittest.TestCase):
 
 @unittest.skipUnless(sys.platform=='linux','Linux回収継続の実子試験')
 class RecoveryContinuationFiniteTests(unittest.TestCase):
-    def test_expired_work_and_one_role_failure_preserve_other_recovery(self):
-        import json,os,select,signal,struct,tempfile,time
+    def recovery_case(self,cancel_when='after',invalid_cancel=None):
+        import hashlib,json,os,select,signal,socket,struct,tempfile,threading,time
         from unittest.mock import patch
         owner=SELF_OWNER; run='11111111-1111-4111-8111-111111111111'
         descriptor={'daemon_id':'fixture-daemon','mysql_image_id':'sha256:'+'a'*64,'valkey_image_id':'sha256:'+'b'*64}
+        listener=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+        listener.bind(('127.0.0.1',0)); listener.listen(1); listener.settimeout(2)
+        port=listener.getsockname()[1]
+        received=threading.Event(); release=threading.Event(); server_errors=[]
+        def server():
+            try:
+                connection,_=listener.accept()
+                with connection:
+                    connection.settimeout(2)
+                    command=bytearray()
+                    while len(command)<26:
+                        part=connection.recv(26-len(command))
+                        if not part: raise AssertionError('fixture INFO truncated')
+                        command.extend(part)
+                    if command!=b'*2\r\n$4\r\nINFO\r\n$6\r\nserver\r\n': raise AssertionError('fixture INFO command')
+                    received.set()
+                    if not release.wait(2): raise AssertionError('fixture response release')
+                    connection.sendall(b'$50\r\nx'); connection.shutdown(socket.SHUT_WR)
+                    while connection.recv(256): pass
+            except BaseException as error: server_errors.append(type(error).__name__)
+            finally: listener.close()
         original_init=b.DockerBoundary.__init__; original_command=b.DockerBoundary.command
         def seeded(boundary,*args,**kwargs):
             original_init(boundary,*args,**kwargs)
             boundary.inspected[('volume','mysql')]={'name':b.resource_name(run,'mysql')+'-data'}
         def command(boundary,operation,role,secrets=None):
             _,env=original_command(boundary,operation,role,secrets)
-            if operation=='volume-inspect' and role=='mysql': code='raise SystemExit(1)'
+            if operation=='container-inspect':
+                value={'id':'c'*64,'labels':{'m21.owner':owner,'m21.run':run,'m21.purpose':'valkey'},'image':'sha256:'+'b'*64,'ports':{'6379/tcp':[{'HostIp':'127.0.0.1','HostPort':str(port)}]},'bindings':{'6379/tcp':[{'HostIp':'127.0.0.1','HostPort':''}]},'mounts':[{'Type':'volume','Name':b.resource_name(run,'valkey')+'-data','Destination':'/data','RW':True}],'running':True}
+                code='print('+repr(json.dumps(value))+')'
+            elif operation=='volume-inspect' and role=='mysql': code='import time; time.sleep(60)' if invalid_cancel=='other-active' else 'raise SystemExit(1)'
             elif operation=='volume-inspect':
                 value={'name':b.resource_name(run,role)+'-data','labels':{'m21.owner':owner,'m21.run':run,'m21.purpose':role}}
                 code='print('+repr(json.dumps(value))+')'
@@ -537,6 +561,7 @@ class RecoveryContinuationFiniteTests(unittest.TestCase):
             dfd=os.open(directory,os.O_RDONLY|os.O_DIRECTORY); r,w=os.pipe2(os.O_CLOEXEC)
             pid=os.fork()
             if pid==0:
+                listener.close()
                 os.close(w); os.dup2(r,0); os.close(r)
                 try:
                     with patch.object(b,'runtime_identity',return_value={'boot_id':'fixture','pid_namespace':'pid:[fixture]','socket_dev':1,'socket_ino':1}),patch.object(b.Path,'read_bytes',return_value=b'fixture-tool'),patch.object(b,'preflight',return_value=descriptor),patch.object(b.DockerBoundary,'__init__',seeded),patch.object(b.DockerBoundary,'command',command):
@@ -544,6 +569,7 @@ class RecoveryContinuationFiniteTests(unittest.TestCase):
                     os._exit(result)
                 except BaseException: os._exit(92)
             os.close(r); os.close(dfd); pidfd=os.pidfd_open(pid)
+            thread=threading.Thread(target=server); thread.start()
             limit=time.monotonic()+6
             def wait_file(name):
                 path=pathlib.Path(directory)/name
@@ -558,27 +584,70 @@ class RecoveryContinuationFiniteTests(unittest.TestCase):
                 send(dict(type='init',owner=owner,run=run,global_offset_ms=6000,work_offset_ms=5000))
                 wait_file('initialized.json')
                 send(dict(type='bind',owner=owner,run=run,descriptor=descriptor)); wait_file('bound.json')
-                def request(index,operation,role,phase='cleanup',expired=False):
+                def request(index,operation,role,phase='cleanup',expired=False,wait=True):
                     elapsed=(time.monotonic_ns()-ready['t0_ns'])//1000000
                     send(dict(type='request',owner=owner,run=run,request_id=index,phase=phase,operation=operation,resource=role,deadline_offset_ms=1 if expired else elapsed+1000))
-                    return wait_file('request-%05d-observed.json'%index)
+                    return wait_file('request-%05d-observed.json'%index) if wait else None
                 denied=request(1,'daemon-info','daemon',phase='work',expired=True)
                 self.assertTrue(denied['not_spawned']); self.assertFalse(denied['green']); self.assertIsNone(denied['childproof'])
-                bad=request(2,'volume-inspect','mysql'); self.assertFalse(bad['green'])
-                denied=request(3,'volume-remove','mysql')
+                request(2,'container-inspect','valkey',phase='work',wait=False)
+                self.assertTrue(received.wait(2))
+                if cancel_when=='before': send(dict(type='cancel',owner=owner,run=run,request_id=2))
+                release.set()
+                observed=wait_file('request-00002-observed.json')
+                cli=wait_file('request-00002.json')['linux']
+                self.assertTrue(cli['green'])
+                self.assertFalse(observed['green'])
+                self.assertFalse(observed['result']['socket_proof']['green'])
+                self.assertTrue(observed['result']['socket_proof']['socket_closed'])
+                self.assertNotIn('run_id',observed['result'])
+                completed=(pathlib.Path(directory)/'request-00002-observed.json').read_bytes()
+                if invalid_cancel=='other-active':
+                    request(3,'volume-inspect','mysql',wait=False)
+                    wait_file('request-00003-started.json')
+                    send(dict(type='cancel',owner=owner,run=run,request_id=2))
+                elif invalid_cancel not in (None,'replay'):
+                    value={'unknown':99,'old':1,'new':3,'bool':True}[invalid_cancel]
+                    send(dict(type='cancel',owner=owner,run=run,request_id=value))
+                else:
+                    if cancel_when=='after': send(dict(type='cancel',owner=owner,run=run,request_id=2))
+                    ack=wait_file('request-00002-late-cancel.json')
+                    self.assertFalse(ack['green']); self.assertTrue(ack['late_cancel']); self.assertTrue(ack['no_signal'])
+                    self.assertEqual(ack['signal_count'],0); self.assertFalse(ack['cli_spawned'])
+                    self.assertIsNone(ack['childproof']); self.assertFalse(ack['deadline_reset'])
+                    self.assertEqual(ack['deadline_ns'],observed['deadline_ns'])
+                    self.assertEqual((pathlib.Path(directory)/'request-00002-observed.json').read_bytes(),completed)
+                    if invalid_cancel=='replay': send(dict(type='cancel',owner=owner,run=run,request_id=2))
+                if invalid_cancel is not None:
+                    exited=wait_file('bridge-exit.json')
+                    self.assertFalse(exited['green'])
+                    if invalid_cancel=='other-active':
+                        active=wait_file('request-00003.json')['linux']
+                        self.assertTrue(active['children_reaped']); self.assertTrue(active['stdout_eof'] and active['stderr_eof'])
+                    return
+                bad=request(3,'volume-inspect','mysql'); self.assertFalse(bad['green'])
+                denied=request(4,'volume-remove','mysql')
                 self.assertTrue(denied['not_spawned']); self.assertIsNone(denied['childproof'])
                 self.assertEqual(denied['code'],'ownership-unverified')
-                self.assertTrue(request(4,'volume-inspect','valkey')['green'])
-                last=request(5,'volume-remove','valkey'); self.assertTrue(last['green'])
+                self.assertTrue(request(5,'volume-inspect','valkey')['green'])
+                last=request(6,'volume-remove','valkey'); self.assertTrue(last['green'])
                 self.assertEqual(last['cleanup_request_slots'],4)
                 self.assertEqual(last['cleanup_cli_spawn_upper_bound'],3)
             finally:
+                release.set()
                 try: send(dict(type='shutdown',owner=owner,run=run))
                 except BrokenPipeError: pass
                 os.close(w)
                 if not select.select([pidfd],[],[],7)[0]: signal.pidfd_send_signal(pidfd,signal.SIGKILL)
                 os.waitpid(pid,0); os.close(pidfd)
+                thread.join(2); listener.close()
+                self.assertFalse(thread.is_alive()); self.assertFalse(server_errors)
 
+    def test_expired_work_and_one_role_failure_preserve_other_recovery(self): self.recovery_case()
+    def test_cancel_before_socket_completion_preserves_recovery(self): self.recovery_case(cancel_when='before')
+    def test_invalid_or_replayed_cancel_is_terminal(self):
+        for kind in ('unknown','old','new','bool','replay','other-active'):
+            with self.subTest(kind=kind): self.recovery_case(invalid_cancel=kind)
 
 
 @unittest.skipUnless(sys.platform=='linux','Linux fork後faultの実子試験')
@@ -663,6 +732,146 @@ class WorkRecoveryBudgetTests(unittest.TestCase):
         self.assertEqual((p.work_deadline,p.global_deadline),original_deadlines)
         with self.assertRaises(b.Rejected): p.request(dict(type='request',owner=SELF_OWNER,run=p.run,request_id=27,phase='cleanup',operation='daemon-info',resource='daemon',deadline_offset_ms=1000),100)
         self.assertEqual(p.next_request,27)
+
+
+
+class ValkeyInfoFrameTests(unittest.TestCase):
+    @staticmethod
+    def frame(payload): return b'$'+str(len(payload)).encode()+b'\r\n'+payload+b'\r\n'
+
+    def test_only_single_run_id_is_returned(self):
+        payload=b'# Server\r\nos:OWNED_PRIVATE_OS_SENTINEL\r\nrun_id:'+b'a'*40+b'\r\n'
+        result=b.parse_valkey_info_frame(self.frame(payload))
+        self.assertEqual(result,'a'*40)
+        self.assertNotIn('OWNED_PRIVATE_OS_SENTINEL',result)
+
+    def test_incomplete_header_and_bulk_stay_incomplete(self):
+        wire=self.frame(b'run_id:'+b'a'*40+b'\r\n')
+        for size in (0,1,3,len(wire)-1):
+            self.assertIsNone(b.parse_valkey_info_frame(wire[:size]))
+
+    def test_missing_duplicate_or_noncanonical_id_is_rejected(self):
+        for payload in (b'# Server\r\n',b'run_id:'+b'a'*39+b'\r\n',b'run_id:'+b'A'*40+b'\r\n',b'run_id:'+b'a'*40+b'\r\nrun_id:'+b'b'*40+b'\r\n'):
+            with self.assertRaises(b.Rejected): b.parse_valkey_info_frame(self.frame(payload))
+
+    def test_resp_error_extra_bad_crlf_and_oversize_are_rejected(self):
+        wire=self.frame(b'run_id:'+b'a'*40+b'\r\n')
+        for malformed in (b'-ERR private\r\n',b'$-1\r\n',b'$16384\r\n',wire+b'+EXTRA\r\n',wire[:-2]+b'xx'):
+            with self.assertRaises(b.Rejected): b.parse_valkey_info_frame(malformed)
+
+    def test_prestart_cleanup_and_mysql_do_not_add_socket_work(self):
+        from unittest.mock import patch
+        d=b.DockerBoundary('11111111-1111-4111-8111-111111111111','/owned/config',{'daemon_id':'fixture','mysql_image_id':'sha256:'+'a'*64,'valkey_image_id':'sha256:'+'b'*64},SELF_OWNER)
+        d.inspected[('container','valkey')]={'running':False}
+        adopted={'ownership_inspected':True}
+        for request in ({'phase':'work','operation':'container-inspect','resource':'valkey'}, {'phase':'cleanup','operation':'container-inspect','resource':'valkey'}, {'phase':'work','operation':'container-inspect','resource':'mysql'}):
+            with patch.object(b,'read_owned_valkey_identity',side_effect=AssertionError('unexpected socket work')):
+                result,green=b.with_valkey_identity(d,request,adopted,1)
+            self.assertIs(result,adopted); self.assertTrue(green)
+
+
+    def test_exact_total_limit_and_split_largest_header(self):
+        base=b'run_id:'+b'a'*40+b'\r\n'
+        payload=base+b'x'*(16374-len(base))
+        self.assertEqual(len(self.frame(payload)),b.MAX_FRAME)
+        self.assertEqual(b.parse_valkey_info_frame(self.frame(payload)),'a'*40)
+        self.assertIsNone(b.parse_valkey_info_frame(b'$16374\r'))
+        with self.assertRaises(b.Rejected): b.parse_valkey_info_frame(self.frame(payload+b'x'))
+
+    def test_failed_refresh_never_reuses_old_identity_or_socket_proof(self):
+        from unittest.mock import patch
+        d=b.DockerBoundary('11111111-1111-4111-8111-111111111111','/owned/config',{'daemon_id':'fixture','mysql_image_id':'sha256:'+'a'*64,'valkey_image_id':'sha256:'+'b'*64},SELF_OWNER)
+        d.inspected[('container','valkey')]={'running':True}
+        old={'ownership_inspected':True,'run_id':'a'*40,'socket_proof':{'green':True}}
+        failed={'green':False,'reason':'timeout'}
+        with patch.object(b,'read_owned_valkey_identity',return_value=(None,failed)):
+            result,green=b.with_valkey_identity(d,{'phase':'work','operation':'container-inspect','resource':'valkey'},old,1)
+        self.assertFalse(green); self.assertNotIn('run_id',result)
+        self.assertIs(result['socket_proof'],failed)
+        self.assertNotIn('run_id',d.inspected[('container','valkey')])
+
+
+class OwnedValkeySocketTests(unittest.TestCase):
+    @staticmethod
+    def boundary(port):
+        import json
+        run='11111111-1111-4111-8111-111111111111'
+        d=b.DockerBoundary(run,'/owned/config',{'daemon_id':'fixture','mysql_image_id':'sha256:'+'a'*64,'valkey_image_id':'sha256:'+'b'*64},SELF_OWNER)
+        d.daemon_confirmed=True
+        value={'id':'c'*64,'labels':{'m21.owner':SELF_OWNER,'m21.run':run,'m21.purpose':'valkey'},'image':'sha256:'+'b'*64,'ports':{'6379/tcp':[{'HostIp':'127.0.0.1','HostPort':str(port)}]},'bindings':{'6379/tcp':[{'HostIp':'127.0.0.1','HostPort':''}]},'mounts':[{'Type':'volume','Name':b.resource_name(run,'valkey')+'-data','Destination':'/data','RW':True}],'running':True}
+        d.adopt('container-inspect','valkey',0,json.dumps(value).encode())
+        return d
+
+    def exchange(self,response,deadline_ms=1000,partial=False):
+        import socket,threading,time
+        listener=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+        listener.bind(('127.0.0.1',0)); listener.listen(1); listener.settimeout(1)
+        port=listener.getsockname()[1]
+        received=[]; errors=[]; peer_closed=threading.Event()
+        def server():
+            try:
+                connection,_=listener.accept()
+                with connection:
+                    connection.settimeout(1)
+                    received.append(connection.recv(256))
+                    if response is not None:
+                        if partial:
+                            connection.sendall(response[:3]); connection.sendall(response[3:])
+                        else: connection.sendall(response)
+                    if response is not None and len(response)<10: connection.shutdown(socket.SHUT_WR)
+                    while connection.recv(256): pass
+                    peer_closed.set()
+            except (BrokenPipeError,ConnectionResetError): peer_closed.set()
+            except BaseException as error: errors.append(type(error).__name__)
+            finally: listener.close()
+        thread=threading.Thread(target=server)
+        thread.start()
+        try:
+            deadline=time.monotonic_ns()+deadline_ms*1000000
+            result,proof=b.read_owned_valkey_identity(self.boundary(port),deadline)
+        finally:
+            thread.join(2)
+            listener.close()
+        self.assertFalse(thread.is_alive())
+        self.assertFalse(errors)
+        self.assertEqual(received,[b'*2\r\n$4\r\nINFO\r\n$6\r\nserver\r\n'])
+        self.assertTrue(peer_closed.is_set())
+        self.assertTrue(proof['socket_closed'])
+        self.assertFalse(proof['cli_spawned']); self.assertIsNone(proof['childproof'])
+        return result,proof
+
+    def test_owned_endpoint_complete_identity_closes_and_hides_info(self):
+        import json
+        payload=b'# Server\r\nos:OWNED_PRIVATE_OS_SENTINEL\r\nrun_id:'+b'a'*40+b'\r\n'
+        result,proof=self.exchange(ValkeyInfoFrameTests.frame(payload),partial=True)
+        self.assertEqual(result['run_id'],'a'*40)
+        self.assertTrue(proof['green']); self.assertTrue(proof['response_complete']); self.assertTrue(proof['within_deadline'])
+        self.assertNotIn('OWNED_PRIVATE_OS_SENTINEL',json.dumps(result|proof))
+
+    def test_partial_extra_oversize_and_duplicate_are_non_green(self):
+        valid=ValkeyInfoFrameTests.frame(b'run_id:'+b'a'*40+b'\r\n')
+        for response in (b'$50\r\nx',valid+b'+EXTRA\r\n',b'$16384\r\n',ValkeyInfoFrameTests.frame(b'run_id:'+b'a'*40+b'\r\nrun_id:'+b'b'*40+b'\r\n')):
+            result,proof=self.exchange(response)
+            self.assertIsNone(result); self.assertFalse(proof['green'])
+
+    def test_timeout_uses_existing_deadline_and_closes(self):
+        result,proof=self.exchange(None,deadline_ms=50)
+        self.assertIsNone(result); self.assertFalse(proof['green']); self.assertFalse(proof['within_deadline'])
+
+    def test_expired_or_unverified_cache_never_opens_socket(self):
+        import time
+        from unittest.mock import patch
+        for mutation in ('expired','daemon','stopped','label','wrong-port'):
+            d=self.boundary(45123)
+            deadline=time.monotonic_ns()+100000000
+            if mutation=='expired': deadline=time.monotonic_ns()-1
+            elif mutation=='daemon': d.daemon_confirmed=False
+            elif mutation=='stopped': d.inspected[('container','valkey')]['running']=False
+            elif mutation=='label': d.inspected[('container','valkey')]['labels']['m21.owner']='wrong'
+            else: d.ports['valkey']={'HostIp':'127.0.0.1','HostPort':'45124'}
+            with patch.object(b.socket,'socket',side_effect=AssertionError('unverified endpoint opened')):
+                result,proof=b.read_owned_valkey_identity(d,deadline)
+            self.assertIsNone(result); self.assertFalse(proof['green']); self.assertIsNone(proof['socket_closed'])
 
 if __name__ == '__main__':
     if '--relay-fixture' in sys.argv: raise SystemExit(relay_fixture())

@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import select
 import signal
+import socket
 import struct
 import sys
 import time
@@ -537,6 +538,118 @@ class DockerBoundary:
             return {'ownership_inspected':True,'identity':value.get('id',value.get('name')),'loopback_port':self.ports.get(role)}
         return {'command_completed':True,'absent':False}
 
+def parse_valkey_info_frame(data):
+    """??RESP bulk??????INFO????????"""
+    import re
+    if len(data)>MAX_FRAME: raise Rejected('info-size')
+    if not data: return None
+    if data[0]!=ord('$'): raise Rejected('info-framing')
+    header_end=data.find(b'\r\n')
+    if header_end<0:
+        if len(data)>7: raise Rejected('info-framing')
+        return None
+    header=re.fullmatch(rb'\$(0|[1-9][0-9]{0,4})',bytes(data[:header_end]))
+    if header is None: raise Rejected('info-framing')
+    payload_start=header_end+2
+    payload_length=int(header.group(1))
+    expected=payload_start+payload_length+2
+    if expected>MAX_FRAME: raise Rejected('info-size')
+    if len(data)<expected: return None
+    if len(data)!=expected: raise Rejected('info-extra')
+    if data[-2:]!=b'\r\n': raise Rejected('info-framing')
+    fields=[line for line in bytes(data[payload_start:-2]).split(b'\r\n') if line.startswith(b'run_id:')]
+    if len(fields)!=1: raise Rejected('info-run-id')
+    match=re.fullmatch(rb'run_id:([0-9a-f]{40})',fields[0])
+    if match is None: raise Rejected('info-run-id')
+    return match.group(1).decode('ascii')
+
+
+def read_owned_valkey_identity(boundary, deadline, clock_delta=None):
+    """fresh inspect?owned port?????INFO?1?????/CLI???"""
+    import re
+    proof={'transport':'owned-loopback-info','response_complete':False,'socket_closed':None,
+           'within_deadline':False,'cli_spawned':False,'childproof':None,'green':False,
+           'reason':'info-unavailable','response_bytes':0,'response_completed_ns':None,'observed_ns':None,'deadline_ns':deadline}
+    connection=None
+    identity=None
+    def admitted():
+        return time.monotonic_ns()<deadline and (clock_delta is None or abs((time.clock_gettime_ns(time.CLOCK_BOOTTIME)-time.monotonic_ns())-clock_delta)<=100000000)
+    def wait_for(writing):
+        if not admitted(): raise Rejected('timeout')
+        remaining=max(0,(deadline-time.monotonic_ns())/1e9)
+        readable,writable,exceptional=select.select([] if writing else [connection],[connection] if writing else [],[connection],remaining)
+        if not admitted(): raise Rejected('timeout')
+        if exceptional: raise Rejected('info-socket-error')
+        if not (writable if writing else readable): raise Rejected('timeout')
+    try:
+        container=boundary.inspected.get(('container','valkey'))
+        port=boundary.ports.get('valkey')
+        labels={'m21.owner':boundary.owner,'m21.run':boundary.run,'m21.purpose':'valkey'}
+        if boundary.daemon_confirmed is not True or type(container) is not dict or container.get('running') is not True or container.get('image')!=boundary.descriptor['valkey_image_id'] or type(container.get('id')) is not str or not re.fullmatch('[0-9a-f]{64}',container['id']) or type(container.get('labels')) is not dict or any(container['labels'].get(k)!=v for k,v in labels.items()):
+            raise Rejected('info-owner-unverified')
+        if type(port) is not dict or set(port)!={'HostIp','HostPort'} or port['HostIp']!='127.0.0.1' or type(port['HostPort']) is not str or not re.fullmatch('[0-9]{1,5}',port['HostPort']) or not 1<=int(port['HostPort'])<=65535 or type(container.get('ports')) is not dict or container['ports'].get('6379/tcp')!=[port]:
+            raise Rejected('info-owner-unverified')
+        if not admitted(): raise Rejected('timeout')
+        connection=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+        connection.setblocking(False)
+        status=connection.connect_ex(('127.0.0.1',int(port['HostPort'])))
+        if status not in (0,errno.EISCONN):
+            if status not in (errno.EINPROGRESS,errno.EALREADY,errno.EWOULDBLOCK): raise Rejected('info-socket-error')
+            wait_for(True)
+            if connection.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)!=0: raise Rejected('info-socket-error')
+        command=b'*2\r\n$4\r\nINFO\r\n$6\r\nserver\r\n'
+        offset=0
+        while offset<len(command):
+            wait_for(True)
+            try: sent=connection.send(command[offset:])
+            except BlockingIOError: continue
+            if sent==0: raise Rejected('info-socket-error')
+            offset+=sent
+        response=bytearray()
+        while True:
+            wait_for(False)
+            try: chunk=connection.recv(min(4096,MAX_FRAME+1-len(response)))
+            except BlockingIOError: continue
+            if not chunk: raise Rejected('info-partial')
+            response.extend(chunk); proof['response_bytes']=len(response)
+            run_id=parse_valkey_info_frame(response)
+            if run_id is not None:
+                # ???????bytes??????????????/??queued extra????
+                if select.select([connection],[],[],0)[0] and connection.recv(1): raise Rejected('info-extra')
+                proof['response_complete']=True
+                proof['response_completed_ns']=time.monotonic_ns()
+                identity={'run_id':run_id,'loopback_port':port.copy()}
+                proof['reason']='ok'
+                break
+    except Rejected as rejected:
+        proof['reason']=rejected.args[0]
+    except OSError:
+        proof['reason']='info-socket-error'
+    finally:
+        if connection is not None:
+            try: connection.close(); proof['socket_closed']=True
+            except OSError: proof['socket_closed']=False; proof['reason']='info-close'
+        proof['observed_ns']=time.monotonic_ns()
+        proof['within_deadline']=proof['response_complete'] and proof['response_completed_ns'] is not None and proof['response_completed_ns']<deadline and (clock_delta is None or abs((time.clock_gettime_ns(time.CLOCK_BOOTTIME)-time.monotonic_ns())-clock_delta)<=100000000)
+    proof['green']=identity is not None and proof['response_complete'] and proof['socket_closed'] is True and proof['within_deadline'] and proof['observed_ns']<deadline
+    if identity is not None and (not proof['within_deadline'] or proof['observed_ns']>=deadline): proof['reason']='timeout'
+    return (identity if proof['green'] else None),proof
+
+
+def with_valkey_identity(boundary, request, adopted, deadline, clock_delta=None):
+    if adopted is None or request['phase']!='work' or request['operation']!='container-inspect' or request['resource']!='valkey':
+        return adopted,True
+    container=boundary.inspected.get(('container','valkey'))
+    if type(container) is not dict or container.get('running') is not True:
+        return adopted,True
+    identity,proof=read_owned_valkey_identity(boundary,deadline,clock_delta)
+    result=adopted.copy()
+    result.pop('run_id',None); result.pop('socket_proof',None)
+    result['socket_proof']=proof
+    if identity is not None: result.update(identity)
+    return result,proof['green']
+
+
 TEMP_ROOT = Path('/mnt/c/Users/kenta/AppData/Local/Temp')
 
 def read_owned_json(dfd, name):
@@ -687,6 +800,9 @@ def bridge_loop(dfd, directory, owner, run, nonce, input_commit):
     overall_green=True
     terminal_watchdog=None
     cleanup_spawn_upper_bound=0
+    last_completed_id=None
+    last_completed_deadline=None
+    cancelled_ids=set()
     try:
         frame=read_frame(0,t0+2000000000)
         if type(frame) is not dict or set(frame)!={'type','owner','run','global_offset_ms','work_offset_ms'}:
@@ -731,7 +847,10 @@ def bridge_loop(dfd, directory, owner, run, nonce, input_commit):
                     if waited and os.waitstatus_to_exitcode(status)==0 and result is not None and (result.get('linux',{}).get('green') is True or (request['operation']=='resources-absent' and result.get('linux',{}).get('physical_completed') is True and result['linux'].get('cli_exit')==1)):
                         try: adopted=boundary.adopt(request['operation'],request['resource'],result['linux']['cli_exit'],bytes.fromhex(result['stdout_hex']),bytes.fromhex(result['stderr_hex']))
                         except (Rejected,ValueError,UnicodeError): pass
-                    green=adopted is not None and not active['cancelled']
+                    socket_green=True
+                    if not active['cancelled']:
+                        adopted,socket_green=with_valkey_identity(boundary,request,adopted,min(active['deadline'],protocol.work_deadline,protocol.global_deadline),common['clock_delta'])
+                    green=adopted is not None and not active['cancelled'] and socket_green
                     overall_green=overall_green and green
                     publish(dfd,'request-%05d-observed.json'%request['request_id'],common|{'type':'observed','request_id':request['request_id'],
                             'operation':request['operation'],'resource':request['resource'],'deadline_ns':active['deadline'],
@@ -741,6 +860,9 @@ def bridge_loop(dfd, directory, owner, run, nonce, input_commit):
                     if active['pidfd'] is not None: os.close(active['pidfd'])
                     close_active_control(active)
                     if not waited: raise Rejected('watchdog-retained')
+                    if result is not None and type(result.get('linux')) is dict and result['linux'].get('cli_exit') is not None and result['linux'].get('children_reaped') is True:
+                        last_completed_id=request['request_id']
+                        last_completed_deadline=active['deadline']
                     active=None
             if 0 in ready:
                 frame=read_frame(0,min(protocol.global_deadline,time.monotonic_ns()+1000000000))
@@ -751,11 +873,24 @@ def bridge_loop(dfd, directory, owner, run, nonce, input_commit):
                     break
                 if frame.get('type')=='cancel':
                     protocol.check(frame,('type','owner','run','request_id'))
-                    if not active or active['cancelled'] or frame['request_id']!=active['request']['request_id']: raise Rejected('cancel')
+                    cancel_id=integer(frame['request_id'],1,65535)
+                    if cancel_id in cancelled_ids: raise Rejected('cancel')
+                    if active is None:
+                        if cancel_id!=last_completed_id: raise Rejected('cancel')
+                        cancelled_ids.add(cancel_id)
+                        overall_green=False
+                        publish(dfd,'request-%05d-late-cancel.json'%cancel_id,common|{'type':'late-cancel-ack','request_id':cancel_id,
+                                'deadline_ns':last_completed_deadline,'green':False,'late_cancel':True,'no_signal':True,
+                                'signal_count':0,'cli_spawned':False,'childproof':None,'deadline_reset':False})
+                        continue
+                    if active['cancelled'] or cancel_id!=active['request']['request_id']: raise Rejected('cancel')
+                    cancelled_ids.add(cancel_id)
                     close_active_control(active)
                     overall_green=False
                     continue
                 if active: raise Rejected('concurrent-request')
+                last_completed_id=None
+                last_completed_deadline=None
                 try:
                     operation,deadline=protocol.request(frame,time.monotonic_ns())
                 except RequestDenied as denied:
