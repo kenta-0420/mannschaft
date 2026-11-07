@@ -53,7 +53,7 @@ function Assert-M21FormalBridgeDocument([object]$Document,[string]$Type) {
 }
 
 function Wait-M21FormalBridgeFile([string]$Name,[int]$CapMs,[switch]$Recovery) {
- if($Name -cnotmatch '^(ready|initialized|bound|bridge-exit|request-[0-9]{5}(-observed)?|preflight-[123](-observed)?)\.json$'){throw 'bridge固定receipt名不一致'}
+ if($Name -cnotmatch '^(ready|initialized|bound|bridge-exit|request-[0-9]{5}(-observed|-started)?|preflight-[123](-observed)?)\.json$'){throw 'bridge固定receipt名不一致'}
  $end=$localClock.ElapsedMilliseconds+(Remaining $CapMs -Recovery:$Recovery)
  while($localClock.ElapsedMilliseconds -lt $end -and (Remaining -Recovery:$Recovery) -gt 0){
   if(Test-Path -LiteralPath (Join-Path $run ('bridge/'+$Name))){return (Read-Json ('bridge/'+$Name))}
@@ -184,6 +184,7 @@ function Invoke-M21WslRelayLossFixture {
  $identity=Identity $relay.Process
  $script:fixtureEvidence.windows=@{identity=$identity;exe=$relay.Process.MainModule.FileName;exeSha256=$wslSha;killIssued=$false;actualExited=$false;exitCode=$null;stdoutEof=$false;stderrEof=$false}
  if(Test-Path -LiteralPath (Join-Path $directory 'request-00001.json')){throw 'relay kill前にCLI回収完了済み'}
+ if(([long]$localClock.ElapsedTicks-[long]$script:m21BridgeOriginTicks)*1000 -ge $offset*[long][Diagnostics.Stopwatch]::Frequency){throw 'relay kill前に固定期限到達'}
  # 保存済みの同じProcessだけ。Windows relay終了をLinux CLI終了へ読み替えない。
  $relay.Process.Kill()
  $script:fixtureEvidence.windows.killIssued=$true
