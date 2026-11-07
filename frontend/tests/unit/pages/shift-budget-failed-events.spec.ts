@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import FailedEvents from '~/pages/admin/shift-budget/failed-events.vue'
-import type { FailedEventResponse } from '~/types/shiftBudget'
+import type { FailedEventResponse, FailedEventStatus } from '~/types/shiftBudget'
 
 const state = vi.hoisted(() => ({
   admin: true,
@@ -25,9 +25,9 @@ vi.mock('~/composables/shift/useShiftBudgetAdminAccess', () => ({
   useShiftBudgetAdminAccess: () => ({ canManageBudget: computed(() => state.admin), ensureLoaded: vi.fn() }),
 }))
 
-function event(id: number, type: string, status = 'PENDING'): FailedEventResponse {
+function event(id: number, type: string, status: FailedEventStatus = 'PENDING'): FailedEventResponse {
   return {
-    id, organization_id: 42, event_type: type, status: status as FailedEventResponse['status'],
+    id, organization_id: 42, event_type: type, status,
     source_id: null, error_message: '元の診断', retry_count: 0, last_retried_at: null,
     created_at: '2026-01-01T00:00:00', updated_at: '2026-01-01T00:00:00',
   }
@@ -57,6 +57,10 @@ describe('CMP-260910-1606 失敗イベントの操作導線', () => {
       const id = Number(row.find('td').text())
       const retries = row.findAll('button').filter(button => button.text() === 'shiftBudget.failedEvent.retry')
       expect(retries, `ID:${id}: ${row.html()}`).toHaveLength(id <= 1003 ? 1 : 0)
+      if (id === 1008) {
+        expect(row.text()).toContain('shiftBudget.failedEvent.statusValue.SUCCEEDED')
+        expect(row.find('.p-tag').classes()).toContain('p-tag-success')
+      }
       if (id === 1004 || id === 1005) {
         expect(row.text()).toContain('元の診断')
         expect(row.findAll('button').some(button => button.text() === 'shiftBudget.failedEvent.resolve')).toBe(true)

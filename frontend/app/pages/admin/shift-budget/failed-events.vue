@@ -84,6 +84,7 @@ function statusSeverity(status: string): 'info' | 'warn' | 'danger' | 'success' 
       return 'warn'
     case 'EXHAUSTED':
       return 'danger'
+    case 'SUCCEEDED':
     case 'MANUAL_RESOLVED':
       return 'success'
     default:

@@ -160,6 +160,7 @@
       "statusValue": {
         "PENDING": "미처리",
         "RETRYING": "재시도 중",
+        "SUCCEEDED": "재시도 성공",
         "EXHAUSTED": "재시도 상한 도달",
         "MANUAL_RESOLVED": "수동 보정 완료"
       }
