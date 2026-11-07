@@ -1110,6 +1110,18 @@
     }
   },
   "project": {
+    "back_label": "Projektliste",
+    "delete_aria": "{title} löschen",
+    "delete_confirm": "„{title}“ löschen?",
+    "delete_confirm_header": "Löschen bestätigen",
+    "milestone_dialog": {
+      "add_title": "Meilenstein hinzufügen",
+      "edit_title": "Meilenstein bearbeiten",
+      "title_label": "Titel",
+      "title_placeholder": "Name des Meilensteins",
+      "due_date_label": "Fällig am",
+      "add": "Hinzufügen"
+    },
     "related_todo_no_due": "Kein Fälligkeitsdatum",
     "related_todo_no_assignee": "Nicht zugewiesen",
     "related_todo_open": "TODO-Details öffnen",
@@ -1170,7 +1182,19 @@
       "none": "Keines",
       "custom_emoji": "Benutzerdefiniert",
       "custom_color": "Benutzerdefinierte Farbe",
-      "current": "Aktuell"
+      "current": "Aktuell",
+      "colors": {
+        "blue": "Blau",
+        "red": "Rot",
+        "green": "Grün",
+        "amber": "Bernstein",
+        "violet": "Violett",
+        "pink": "Rosa",
+        "cyan": "Cyan",
+        "teal": "Petrol",
+        "orange": "Orange",
+        "gray": "Grau"
+      }
     },
     "guide": {
       "button": "Anleitung",
@@ -1222,7 +1246,10 @@
       "update_failed": "Aktualisierung fehlgeschlagen",
       "delete_failed": "Löschen fehlgeschlagen",
       "status_change_failed": "Statusänderung fehlgeschlagen",
-      "milestone_save_failed": "Meilenstein konnte nicht gespeichert werden"
+      "milestone_save_failed": "Meilenstein konnte nicht gespeichert werden",
+      "force_unlock_failed": "Erzwungenes Entsperren fehlgeschlagen",
+      "completion_mode_failed": "Abschlussmodus konnte nicht geändert werden",
+      "gate_init_failed": "Gates konnten nicht initialisiert werden"
     },
     "status": {
       "active": "Aktiv",
