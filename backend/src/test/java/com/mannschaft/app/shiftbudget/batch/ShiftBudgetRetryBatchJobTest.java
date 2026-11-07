@@ -13,8 +13,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
 
-import java.util.List;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -125,7 +125,7 @@ class ShiftBudgetRetryBatchJobTest {
     void run_unsupportedHundredThenSupported() {
         LocalDateTime previousAttempt = LocalDateTime.of(2026, 1, 1, 0, 0);
         List<ShiftBudgetFailedEventEntity> unsupported = IntStream.range(0, 100)
-                .mapToObj(index -> entity(0, ShiftBudgetFailedEventStatus.PENDING).toBuilder()
+                .<ShiftBudgetFailedEventEntity>mapToObj(index -> entity(0, ShiftBudgetFailedEventStatus.PENDING).toBuilder()
                         .id((long) index + 1)
                         .eventType(index % 2 == 0 ? ShiftBudgetFailedEventType.CONSUMPTION_RECORD
                                 : ShiftBudgetFailedEventType.CONSUMPTION_CANCEL)
@@ -161,7 +161,7 @@ class ShiftBudgetRetryBatchJobTest {
             assertThat(event.getLastRetriedAt()).isEqualTo(previousAttempt);
         }
         List<ShiftBudgetFailedEventEntity> firstRun = unsupported.stream()
-                .map(event -> event.toBuilder().build()).toList();
+                .<ShiftBudgetFailedEventEntity>map(event -> event.toBuilder().build()).toList();
 
         job.run();
 
