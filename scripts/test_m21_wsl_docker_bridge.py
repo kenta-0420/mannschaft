@@ -392,6 +392,23 @@ class InspectContractTests(unittest.TestCase):
 
 
 
+def readonly_diagnostic_child(argv,env,body_deadline,global_deadline,control_r,control_w,result_r,result_w):
+    """移管controlはsuperviseが閉じる。子はcleanup異常でも親処理へ戻さない。"""
+    import os
+    code=1
+    try:
+        os.close(control_w); os.close(result_r)
+        result=b.supervise(argv,env,body_deadline,control_r,global_deadline)
+        if b.send_private(result_w,result,global_deadline): code=0
+    except BaseException:
+        # 子境界での失敗は必ず非0。例外をunittestへ再送しない。
+        code=1
+    finally:
+        try: os.close(result_w)
+        except BaseException: code=1
+        finally: os._exit(code)
+
+
 def collect_readonly_result(pid,result_r,control_w,body_deadline,global_deadline):
     """readonly診断の保持forkだけを同一G内で観測し、未確認を保持する。"""
     import hashlib,json,os,select,time
@@ -448,6 +465,51 @@ def collect_readonly_result(pid,result_r,control_w,body_deadline,global_deadline
 
 @unittest.skipUnless(sys.platform=='linux','Linux所有forkの有限診断受信試験')
 class ReadonlyDiagnosticTransportTests(unittest.TestCase):
+    def test_actual_child_branch_closes_transferred_fd_without_fallthrough(self):
+        import errno,json,os,select,signal,time
+        from unittest.mock import patch
+        for close_failure in (False,True):
+            with self.subTest(result_close_failure=close_failure):
+                control_r,control_w=os.pipe2(os.O_CLOEXEC); result_r,result_w=os.pipe2(os.O_CLOEXEC)
+                sentinel_r,sentinel_w=os.pipe2(os.O_CLOEXEC)
+                close=os.close; began=time.monotonic_ns(); deadline=began+500000000
+                def supervise(argv,env,body,control,global_end):
+                    close(control)
+                    return {'children_reaped':True,'physical_completed':True,'cli_exit':0}
+                def closing(fd):
+                    if close_failure and fd==result_w: raise OSError(errno.EIO,'fixed cleanup fault')
+                    close(fd)
+                pid=os.fork()
+                if pid==0:
+                    close(sentinel_r)
+                    try:
+                        with patch.object(b,'supervise',side_effect=supervise),patch.object(os,'close',side_effect=closing):
+                            readonly_diagnostic_child([],{},began+300000000,deadline,control_r,control_w,result_r,result_w)
+                        os.write(sentinel_w,b'child-returned')
+                    except BaseException:
+                        os.write(sentinel_w,b'child-fallthrough')
+                    finally: os._exit(93)
+                close(control_r); close(result_w); close(sentinel_w)
+                observed=None
+                try:
+                    observed=collect_readonly_result(pid,result_r,control_w,began+300000000,deadline)
+                    self.assertTrue(observed['result_complete']); self.assertTrue(observed['result_eof'])
+                    self.assertTrue(observed['supervisor_reaped'])
+                    os.set_blocking(sentinel_r,False)
+                    self.assertEqual(os.read(sentinel_r,64),b'')
+                    self.assertEqual(observed['supervisor_actual_exit'],1 if close_failure else 0)
+                    self.assertEqual(observed['transport_green'],not close_failure)
+                finally:
+                    close(sentinel_r)
+                    if not observed or not observed['supervisor_reaped']:
+                        os.kill(pid,signal.SIGKILL)
+                        limit=time.monotonic_ns()+500000000; reaped=False
+                        while time.monotonic_ns()<limit:
+                            waited,_=os.waitpid(pid,os.WNOHANG)
+                            if waited: reaped=True; break
+                            select.select([],[],[],.001)
+                        self.assertTrue(reaped,'owned branch fixture cleanup unconfirmed')
+
     def transport_case(self,partial):
         import json,os,select,signal,time,uuid
         collector=collect_readonly_result
@@ -546,15 +608,7 @@ class RealDaemonAbsenceFiniteTests(unittest.TestCase):
                 began=time.monotonic_ns(); body_deadline=began+3000000000; global_deadline=began+5000000000
                 pid=os.fork()
                 if pid==0:
-                    os.close(control_w); os.close(result_r)
-                    code=1
-                    try:
-                        result=b.supervise(argv,env,body_deadline,control_r,global_deadline)
-                        if b.send_private(result_w,result,global_deadline): code=0
-                    except (b.Rejected,OSError,ValueError): pass
-                    finally:
-                        os.close(control_r); os.close(result_w)
-                    os._exit(code)
+                    readonly_diagnostic_child(argv,env,body_deadline,global_deadline,control_r,control_w,result_r,result_w)
                 os.close(control_r); os.close(result_w)
                 record={'operation':operation,'argv':argv,'supervisor_pid':pid,'began_ns':began,
                         'result':None,'result_complete':False,'result_eof':False,
@@ -591,7 +645,7 @@ class RealDaemonAbsenceFiniteTests(unittest.TestCase):
             evidence['cli_records']=[public_record(record) for record in records]
             evidence['cli_attempt_count']=len(records)
             evidence['cli_spawn_count_upper_bound']=len(records)
-            safe_cleanup=guarded and all(record['supervisor_reaped'] and record['result_eof'] and record['result_complete'] and record['cli_children_reaped'] is True for record in records)
+            safe_cleanup=guarded and all(record['transport_green'] and record['supervisor_reaped'] and record['result_eof'] and record['result_complete'] and record['cli_children_reaped'] is True for record in records)
             evidence['temp_retained']=not safe_cleanup
             out=pathlib.Path(__file__).resolve().parent.parent/'.claude'/'campaigns'
             out.mkdir(parents=True,exist_ok=True)
