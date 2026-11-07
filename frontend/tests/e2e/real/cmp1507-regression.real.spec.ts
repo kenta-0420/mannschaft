@@ -99,8 +99,15 @@ test('①⑤⑥ プロジェクト 他テナント: 他組織利用者には一�
 // ───────────────────────── #4311 チャット（②）─────────────────────────
 
 test('② チャット: 続けて投稿したメッセージが画面で投稿順に並ぶ（再読込後の履歴も）（MEMBER）', async ({ browser }) => {
-  const count = 8
-  const texts = Array.from({ length: count }, (_, i) => `C1507順${String(i + 1).padStart(2, '0')} ${w.tag}`)
+  // 同じ秒の投稿が実際に起きたことを合格の条件にする（起きるまで最大 40 件まで続けて投稿する）
+  const texts: string[] = []
+  const nextText = () => {
+    const text = `C1507順${String(texts.length + 1).padStart(2, '0')} ${w.tag}`
+    texts.push(text)
+    return text
+  }
+  const secondsOf = (created: string[]) => created.map((c) => c.slice(0, 19))
+  const sameSecondPairs = (created: string[]) => created.length - new Set(secondsOf(created)).size
   await withPage(browser, w.member, undefined, async (page) => {
     const created: string[] = []
     page.on('response', async (response) => {
@@ -114,17 +121,18 @@ test('② チャット: 続けて投稿したメッセージが画面で投稿�
     expect((await history).status()).toBe(200)
     const input = page.getByTestId('team-chat-input')
     await expect(input).toBeVisible({ timeout: 60_000 })
-    // 画面から続けて投稿する（送信完了を待たずに次を打ち込めるよう、Enter 送信を連続で行う）
-    for (const text of texts) {
-      await input.fill(text)
+    // 画面から続けて投稿する。表示の確認を待たず、送信が済んで入力欄が空になったら直ちに次を送る
+    while (texts.length < 8 || (sameSecondPairs(created) === 0 && texts.length < 40)) {
+      await input.fill(nextText())
       await input.press('Enter')
-      // 送信が済むと入力欄が空になる（送信中の Enter は無視されるため、空になるのを待ってから次を打つ）
       await expect(input).toHaveValue('', { timeout: 30_000 })
-      await expect(page.getByTestId('chat-message').filter({ hasText: text })).toHaveCount(1, { timeout: 30_000 })
+      await expect.poll(() => created.length, { timeout: 30_000 }).toBe(texts.length)
     }
-    const seconds = created.map((c) => c.slice(0, 19))
-    const sameSecond = seconds.length - new Set(seconds).size
-    console.log(`[cmp1507] ② 投稿 ${created.length} 件。同じ秒に重なった件数=${sameSecond}（createdAt 秒: ${seconds.join(' ')}）`)
+    for (const text of texts) await expect(page.getByTestId('chat-message').filter({ hasText: text })).toHaveCount(1, { timeout: 30_000 })
+    const sameSecond = sameSecondPairs(created)
+    console.log(`[cmp1507] ② 投稿 ${created.length} 件。同じ秒に重なった件数=${sameSecond}（createdAt 秒: ${secondsOf(created).join(' ')}）`)
+    // 守りたい不具合（同じ秒の並び）が実際に起きた場合だけ合格にする
+    expect(sameSecond, '同じ秒の投稿が1組も起きていない（不具合を再現できていない）').toBeGreaterThan(0)
 
     const order = async () => {
       const all = await page.getByTestId('chat-message').allInnerTexts()
@@ -142,7 +150,7 @@ test('② チャット: 続けて投稿したメッセージが画面で投稿�
     const again = responseOf(page, new RegExp(`/api/v1/chat/channels/${w.channel.id}/messages$`))
     await page.reload()
     expect((await again).status()).toBe(200)
-    await expect(page.getByTestId('chat-message').filter({ hasText: texts[count - 1]! })).toHaveCount(1, { timeout: 60_000 })
+    await expect(page.getByTestId('chat-message').filter({ hasText: texts[texts.length - 1]! })).toHaveCount(1, { timeout: 60_000 })
     const reloaded = await order()
     expect(reloaded.every((i) => i >= 0)).toBe(true)
     const asc2 = reloaded.every((v, i) => i === 0 || v === reloaded[i - 1]! + 1)
@@ -306,6 +314,14 @@ test('④ 学期削除: 時間割が残る学期（論理削除済みを含む�
 })
 
 test('③④ 学期 権限なし（MEMBER）: 追加・削除の導線が出ない／他テナント: 一覧が見えない', async ({ browser }) => {
+  // このテスト専用の前提（他のテストが作る学期に頼らない）。時間割は付けないので後始末で消せる
+  const term = await must(w.admin, 'POST', `/api/v1/organizations/${w.orgA.slug}/timetable-terms`, {
+    name: `C1507学期M ${w.tag}`,
+    startDate: '2034-04-01',
+    endDate: '2034-09-30',
+    academicYear: 2034,
+  })
+  recordAsset(`term ${term.data.id}`, `/api/v1/timetable-terms/${term.data.id}`, w.admin)
   await withPage(browser, w.member, undefined, async (page) => {
     const terms = responseOf(page, /\/organizations\/[^/]+\/timetable-terms$/)
     await gotoAndHydrate(page, TERM_PAGE(w.orgA.slug))
