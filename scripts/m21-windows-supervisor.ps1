@@ -191,7 +191,9 @@ public sealed class M21Child : IDisposable {
   return StartCore("C:/Windows/System32/wsl.exe",args,cwd,prefix,recoveryMs,false,environment,true);
  }
  static string BridgeArguments(string[] args) {
-  if(args==null||args.Length<6||args[0]!="-d"||args[1]!="Ubuntu-24.04"||args[2]!="--exec"||args[3]!="/usr/bin/python3"||args[4]!="-I")throw new InvalidDataException("固定WSL prefix不一致");
+  if(args==null||(args.Length!=16&&args.Length!=17)||args[0]!="-d"||args[1]!="Ubuntu-24.04"||args[2]!="--exec"||args[3]!="/usr/bin/python3"||args[4]!="-I")throw new InvalidDataException("固定WSL prefix不一致");
+  bool fixture=args.Length==17;int offset=fixture?7:6;
+  if((fixture&&args[6]!="--relay-fixture")||!args[5].EndsWith(fixture?"/test_m21_wsl_docker_bridge.py":"/m21-wsl-docker-bridge.py",StringComparison.Ordinal)||args[offset]!="--run-directory"||args[offset+2]!="--owner"||args[offset+4]!="--run"||args[offset+6]!="--nonce"||args[offset+8]!="--input-commit")throw new InvalidDataException("固定WSL metadata引数不一致");
   // WSLの先頭optionはliteral。--exec後のsource/metadata値には既存Quoteを使う。
   StringBuilder a=new StringBuilder("-d Ubuntu-24.04 --exec /usr/bin/python3 -I");
   for(int i=5;i<args.Length;i++){a.Append(' ');a.Append(Quote(args[i]));}return a.ToString();
