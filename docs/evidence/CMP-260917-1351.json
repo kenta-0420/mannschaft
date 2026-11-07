@@ -1,0 +1,170 @@
+{
+    "schemaVersion":  1,
+    "cmpId":  "CMP-260917-1351",
+    "scope":  "app",
+    "implementation":  {
+                           "pr":  4368,
+                           "sha":  "838be3334e162c6e684b8fc9c31aad468c8d8ad2"
+                       },
+    "acceptanceCriteria":  [
+                               {
+                                   "id":  "AC-1",
+                                   "description":  "管理者がメンバープレビューへ切り替えたとき、サイドバーがレンズに追従する。",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "実機r3 AC1-admin-lens：Signage入口1→0→1、R8 ADMINの通常レンズ切替観測",
+                                                     "evidence":  "docs/evidence/CMP-260917-1351-verification.md"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "AC-2",
+                                   "description":  "MEMBERが管理者ページ16枚を直接URLで開くとFEガードで組織トップへ退避する。正常解決した未所属nullも招待・権限グループから退避し、既存許可範囲と取得失敗503の区別を維持する。",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "実機r3 MEMBER16管理ページ直URL、実機r6 foreign4経路の組織トップ到達",
+                                                     "evidence":  "docs/evidence/CMP-260917-1351-verification.md"
+                                                 },
+                                                 {
+                                                     "name":  "admin-tabs-access.spec.ts：ページ宣言guard結線、ADMIN/DEPUTY_ADMIN/MEMBER、取得前null、取得失敗503の12件",
+                                                     "evidence":  "https://github.com/kenta-0420/mannschaft/blob/f48f83dea0b33e6240110d7b42f5785370238420/frontend/app/pages/organizations/%5Bslug%5D/admin-tabs-access.spec.ts"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "AC-3",
+                                   "description":  "Webhookページのscope-idへslug文字列ではなく解決した数値IDを渡す。",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "実機r3 Webhook OrgA/OrgB：各3件のUI発行GET200と数値scopeId照合",
+                                                     "evidence":  "docs/evidence/CMP-260917-1351-verification.md"
+                                                 }
+                                             ]
+                               }
+                           ],
+    "ci":  [
+               {
+                   "runId":  42379474193
+               }
+           ],
+    "stages":  {
+                   "review":  {
+                                  "status":  "passed",
+                                  "evidence":  "docs/evidence/CMP-260917-1351-verification.md"
+                              },
+                   "real":  {
+                                "status":  "passed",
+                                "evidence":  "docs/evidence/CMP-260917-1351-verification.md"
+                            },
+                   "exploratory":  {
+                                       "status":  "passed",
+                                       "evidence":  "docs/evidence/CMP-260917-1351-verification.md"
+                                   }
+               },
+    "regressions":  [
+                        {
+                            "description":  "HTTP200で正常解決したroleName=nullをtruthy条件が無視し、未所属利用者が招待・権限グループに留まる境界を既存middleware結線で修正した。",
+                            "test":  "invites / permission-groups：正常に解決した未所属 null を、ページに結線されたガードが組織トップへ戻す",
+                            "redEvidence":  "docs/evidence/CMP-260917-1351-verification.md",
+                            "greenEvidence":  "docs/evidence/CMP-260917-1351-verification.md"
+                        }
+                    ],
+    "limitations":  [
+                        "実装PR4368はhead838で通常merge済み、CI42379474193はexact838でsuccess。Phase7気づき箱metadata補正r2と専用profile cleanupを確認済み。既存Windows DBは未操作。",
+                        "旧実機r3はFE2a18c86d、修正後r6/R8はFE7de2005eを使用した。旧0f9から現838まで追加修正4pathsは同一だが、公開実装head全体・最新main全体を実機済みとは主張しない。",
+                        "原PR3319のレンズ・16ページguard・Webhook実装を再利用し、PR4368は招待/権限グループのnull境界だけを追加修正した。AC1/AC3の自動単体試験を新設したとは主張しない。",
+                        "SignageのDEPUTY表示は既存ADMIN-only FE契約を維持し、BE読取許可との差を権限拡張で解消していない。",
+                        "Archive初期previewは自動承認審査がcommand設置前に拒否し、未送信・迂回0。AC外であり成功へ換算しない。旧14観測・6PNGの公開は対象外。",
+                        "DP予算widget403、TeamDashboard no-op、TeamSearch label等は別scopeの未確定観測。1351の完了根拠に含めず、1606/1609の完了も主張しない。",
+                        "実機r1/r2の初期モーダル前提不成立、r4の非同期診断harness失敗、unit初回のENOENTは有効な製品red/greenとして扱わない。",
+                        "R8のcommandFailureCountはADMIN/MEMBERが0、DEPUTYが1（geometry必須name欠落後、次操作成功）。foreground終了codeはADMIN/MEMBER0・DEPUTY1で、全操作成功としない。formal3とsmoke2の全5 Node不在はrootが独立確認した。",
+                        "R8の既知CSP eventはMEMBER/DEPUTY各1件、productCspQualityPass=false。探索passedやappRuntimeErrors0からCSP無欠陥を主張しない。"
+                    ],
+    "productionChanges":  0,
+    "evidenceReuse":  {
+                          "originalPrivateRecordsUnchanged":  true,
+                          "originalImplementationPr":  3319,
+                          "publicHead":  "838be3334e162c6e684b8fc9c31aad468c8d8ad2",
+                          "implementationPathsUnchanged":  [
+                                                               {
+                                                                   "blob":  "67c8afe5d8b5c2dcee64d9deb5c9248ba63d5dec",
+                                                                   "path":  "docs/features/F10.1.1_team_org_admin_console/04_security_authorization.md"
+                                                               },
+                                                               {
+                                                                   "blob":  "cdb402f01d0dea4e7b911b0dcf536ee9eabdf86b",
+                                                                   "path":  "frontend/app/pages/organizations/[slug]/admin-tabs-access.spec.ts"
+                                                               },
+                                                               {
+                                                                   "blob":  "105e22ca152939f0fc9fc5cda8766421b850f15c",
+                                                                   "path":  "frontend/app/pages/organizations/[slug]/invites.vue"
+                                                               },
+                                                               {
+                                                                   "blob":  "7389b5caa0317585ae7acc8a7a2741ea14c3c62a",
+                                                                   "path":  "frontend/app/pages/organizations/[slug]/permission-groups.vue"
+                                                               }
+                                                           ],
+                          "runtimeBe":  "83c98637f0e75f293d5640b35707b26d3848896a",
+                          "runtimeUnchangedPaths":  32,
+                          "wholeTreeEqualityClaimed":  false,
+                          "runtimeChangedMetaPaths":  [
+                                                          "frontend/app/pages/organizations/[slug]/invites.vue",
+                                                          "frontend/app/pages/organizations/[slug]/permission-groups.vue"
+                                                      ],
+                          "fixSource":  "0f9e473d2d7ec1c12fe0041704156ee048bdad9f",
+                          "acceptanceReviewer":  "root",
+                          "legacyRuntimeFe":  "2a18c86dc1a36541bf49cb50752c15ef3a944fbe",
+                          "mergedHeadRuntimeClaimed":  false,
+                          "runtime1351TrackedPaths":  34,
+                          "postfixRuntimeFe":  "7de2005ec90237da4bf560742156f78a18fda703",
+                          "originalImplementationMerge":  "86434de78516faf03fa16e1339a591359e2c74da",
+                          "previousPublicHead":  "f48f83dea0b33e6240110d7b42f5785370238420",
+                          "finalHeadDelta":  [
+                                                 "backend/src/test/java/com/mannschaft/app/loyalty/LoyaltyPointsWriterIT.java",
+                                                 "docs/task-list.md"
+                                             ],
+                          "headHistory":  [
+                                              "0f9e473d2d7ec1c12fe0041704156ee048bdad9f",
+                                              "f48f83dea0b33e6240110d7b42f5785370238420",
+                                              "ffc49732d9ace292ff3d3c2ae5982e72cffdf87f",
+                                              "838be3334e162c6e684b8fc9c31aad468c8d8ad2"
+                                          ],
+                          "implementationMerge":  {
+                                                      "sha":  "af2dc66cd2f925193f67fd7161541aef267ae9d1",
+                                                      "mergedAt":  "2026-11-07T14:25:33Z"
+                                                  }
+                      },
+    "phase7FindingsBox":  {
+                              "unverifiedSeparateScope":  true,
+                              "windowsToolKernelAssetsFailure":  true,
+                              "localSourceSaved":  true,
+                              "finalR2ProofSha256":  "35db51eaa89ced5838fc21d032d266593a1a90262b296f1c24f569c3a8785ff0",
+                              "blockersPromoted":  0,
+                              "anonymousCount":  4,
+                              "linuxIndependentBoardUiR1Passed":  true,
+                              "metadataCorrectionR2":  "passed",
+                              "existingWindowsDbModified":  false,
+                              "canonicalOverlaySha256":  "b376080b910e1f8d381c725ec2ccbd917032922503841da94acf0ef400378494",
+                              "finalUi":  {
+                                              "visibleCards":  4,
+                                              "trusted":  false,
+                                              "download":  0,
+                                              "pdf":  0,
+                                              "reloadAdded":  0,
+                                              "observedUnverified":  true,
+                                              "apiWrites":  0,
+                                              "pageErrors":  0,
+                                              "consoleErrors":  0,
+                                              "sourceFieldsExact":  true,
+                                              "network":  0,
+                                              "allChromeGone":  true
+                                          },
+                              "profileCleanup":  {
+                                                     "ownedProfilesRemoved":  true,
+                                                     "r1ReceiptSha256":  "33034f9ff6fd2c9ba9af27d27dbd7f9504a8bee677b78aac613348d984b566e4",
+                                                     "unresolvedErrors":  0,
+                                                     "sharedFeBeRetainedForOtherVerification":  true,
+                                                     "originalResultsUnchanged":  true,
+                                                     "r2ReceiptSha256":  "6ddd9b5a8e62d6df707a319210a3737ed485fb6f4fae9e98e1ca0f85dea3d165"
+                                                 }
+                          }
+}
