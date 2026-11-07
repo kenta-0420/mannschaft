@@ -1,0 +1,35 @@
+{
+  "status": "OWNED_RUNTIME_CLEANUP_ACCEPTED",
+  "source": "outputs/ranch-approved64-r17-cleanup-review.json",
+  "sourceSha256": "d41843853218eedfc82ae4ae13c5a3161aa2285a83c785a1858e327cd6dab84b",
+  "runId": "ranch64-3fe7b1454ec1c5086db2c581",
+  "sourceHead": "4ce3aa26785871ee363c90b0a514f023ca20723a",
+  "originalResult": "FAIL",
+  "receipt": {
+    "exitCode": 0,
+    "cleanup": "removed",
+    "launcherTrimmedSha256": "27508e5afd2c0a718c4749a9c85ff89ab832ea221ea64566b5130bbe5e96caa6",
+    "rawFileSha256": "79730b0a946847f66538027224590dad25488fe0e25be8877eb200f8945416a5",
+    "note": "Launcher hashes UTF-8 stdout after trim; raw file includes trailing whitespace."
+  },
+  "composeProjectLabelCounts": {
+    "containers": 0,
+    "volumes": 0,
+    "networks": 0
+  },
+  "linuxPrivateDirExists": false,
+  "linuxExactRunCommandMatches": 0,
+  "ownedJavaPidPresent": false,
+  "windows": {
+    "frontendPid": 47616,
+    "frontendPidPresent": false,
+    "coordinatorPid": 46412,
+    "coordinatorPidPresent": false,
+    "accountsFileExists": false,
+    "ownedCacheExists": false
+  },
+  "harnessInventory": "MATCH, as recorded in final result",
+  "scope": "Exact r17 project and identified process generations only; no global-zero claim",
+  "retainedR7Scratch": "out of scope; untouched",
+  "globalZeroClaim": false
+}
