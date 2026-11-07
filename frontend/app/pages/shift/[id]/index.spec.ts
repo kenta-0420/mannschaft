@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { ref } from 'vue'
+import { useNuxtApp } from '#app'
+import jaCommon from '~/locales/ja/common.json'
+import jaShift from '~/locales/ja/shift.json'
 import type { ShiftScheduleResponse, ShiftScheduleStatus } from '~/types/shift'
 import { useTeamStore } from '~/stores/useTeamStore'
 import ShiftDetailPage from './index.vue'
@@ -73,7 +76,11 @@ function prompt(): Prompt {
   return mocks.confirmRequire.mock.calls[0]![0] as Prompt
 }
 
-beforeEach(() => {
+beforeEach(async () => {
+  // lazy locale取得に依存せず、実Nuxt/vue-i18nへ製品の日本語辞書を読み込む。
+  const i18n = useNuxtApp().$i18n
+  await i18n.setLocale('ja')
+  i18n.mergeLocaleMessage('ja', { ...jaCommon, ...jaShift })
   useTeamStore().clear()
   for (const mock of Object.values(mocks)) mock.mockReset()
   mocks.listSlots.mockResolvedValue([])
@@ -93,10 +100,11 @@ describe('シフト詳細の公開前確認', () => {
     const page = await mountPage()
     await button(page, 'shift.detail.publish').trigger('click')
     const confirmation = prompt()
-    expect(confirmation).toMatchObject({
-      message: 'このシフトを公開しますか？メンバーに通知されます。',
-      header: 'シフト公開の確認', icon: 'pi pi-send', acceptLabel: '公開する', rejectLabel: 'キャンセル',
-    })
+    expect(confirmation.message, '公開確認本文').toBe('このシフトを公開しますか？メンバーに通知されます。')
+    expect(confirmation.header, '公開確認見出し').toBe('シフト公開の確認')
+    expect(confirmation.icon, '公開確認アイコン').toBe('pi pi-send')
+    expect(confirmation.acceptLabel, '公開承認ラベル').toBe('公開する')
+    expect(confirmation.rejectLabel, '公開取消ラベル').toBe('キャンセル')
     expect(confirmation.accept).toBeTypeOf('function')
     expect(mocks.transitionStatus).not.toHaveBeenCalled()
   })
