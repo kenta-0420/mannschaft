@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
+import { mockFeatureFlags } from '../helpers/feature-flags'
 import {
   ALLOCATION_ID,
   ORG_ID,
@@ -25,9 +26,16 @@ interface AllocationWrite {
  */
 test.describe('CMP-260910-1609 AC3: 配分額の入力と保存', () => {
   const browserLogs = new WeakMap<Page, string[]>()
+  const apiCalls = new WeakMap<Page, Array<{ path: string; method: string; status: number }>>()
   test.beforeEach(async ({ page }) => {
     const logs: string[] = []
     browserLogs.set(page, logs)
+    const calls: Array<{ path: string; method: string; status: number }> = []
+    apiCalls.set(page, calls)
+    page.on('response', response => {
+      const path = new URL(response.url()).pathname
+      if (path.startsWith('/api/v1/')) calls.push({ path, method: response.request().method(), status: response.status() })
+    })
     page.on('console', message => logs.push(`${message.type()}: ${message.text()}`))
     page.on('pageerror', error => logs.push(`pageerror: ${error.message}`))
     // 現契約は currentUser で復元し、tokenExpiresAt で先回り更新を判定する。
@@ -48,6 +56,9 @@ test.describe('CMP-260910-1609 AC3: 配分額の入力と保存', () => {
       }))
     }, ORG_ID)
     await mockCatchAllApis(page)
+    // /admin/shift-budgetはFEATURE_SHIFT_ENABLED配下。nullを返すと金額入力前に
+    // 公開flagの配列契約を破ってNuxt fatalへ落ちるため、既存の正規helperを使う。
+    await mockFeatureFlags(page)
     await page.route('**/api/v1/me/organizations', route => route.fulfill({
       json: { data: [{ id: ORG_ID, slug: 'budget-input-org', name: '入力試験組織' }] },
     }))
@@ -61,6 +72,14 @@ test.describe('CMP-260910-1609 AC3: 配分額の入力と保存', () => {
     if (testInfo.status !== testInfo.expectedStatus) {
       await testInfo.attach('browser-console', {
         body: Buffer.from(JSON.stringify(browserLogs.get(page) ?? [])),
+        contentType: 'application/json',
+      })
+      await testInfo.attach('page-api-preconditions', {
+        body: Buffer.from(JSON.stringify({
+          finalUrl: page.url(),
+          calls: apiCalls.get(page) ?? [],
+          fixture: { organizationId: ORG_ID, slug: 'budget-input-org', permissions: ['BUDGET_VIEW', 'BUDGET_ADMIN'], featureFlag: 'FEATURE_SHIFT_ENABLED' },
+        })),
         contentType: 'application/json',
       })
     }
