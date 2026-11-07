@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
 import {
   ALLOCATION_ID,
@@ -11,6 +11,110 @@ import {
   setupOrganizationScope,
   setupViewerAuth,
 } from './_helpers'
+
+type AllocationMode = 'create' | 'edit'
+interface AllocationWrite {
+  allocated_amount: number | null
+  version?: number
+}
+
+/**
+ * CMP-260910-1609 AC3。入力を model へ直接代入せず、実 PrimeVue InputNumber の
+ * keypress / paste → blur → 保存を通す。API 境界の記録で符号を失った保存を検知する。
+ * 権限 API まで明示し、編集導線の欠落を金額入力の red と取り違えない。
+ */
+test.describe('CMP-260910-1609 AC3: 配分額の入力と保存', () => {
+  test.beforeEach(async ({ page }) => {
+    await setupAdminAuth(page)
+    await setupOrganizationScope(page, ORG_ID)
+    await mockCatchAllApis(page)
+    await page.route('**/api/v1/me/organizations', route => route.fulfill({
+      json: { data: [{ id: ORG_ID, slug: 'budget-input-org', name: '入力試験組織' }] },
+    }))
+    await page.route('**/api/v1/organizations/budget-input-org/me/permissions', route => route.fulfill({
+      json: { data: { roleName: 'ADMIN', permissions: ['BUDGET_VIEW', 'BUDGET_ADMIN'], scopeAdmin: true } },
+    }))
+    await mockAllocationsList(page, [buildAllocation({ version: 3 })])
+  })
+
+  async function openAmountForm(page: Page, mode: AllocationMode) {
+    const writes: AllocationWrite[] = []
+    await page.route(/\/api\/v1\/shift-budget\/allocations(?:\/\d+)?$/, async (route, request) => {
+      if (request.method() !== 'POST' && request.method() !== 'PUT') {
+        await route.fallback()
+        return
+      }
+      const body: AllocationWrite = request.postDataJSON()
+      writes.push(body)
+      await route.fulfill({
+        status: request.method() === 'POST' ? 201 : 200,
+        json: { data: buildAllocation({ allocated_amount: body.allocated_amount ?? 0, version: 4 }) },
+      })
+    })
+    await page.goto('/admin/shift-budget/allocations')
+    await waitForHydration(page)
+    const create = page.getByRole('button', { name: '新規割当', exact: true })
+    await expect(create, '所属組織slugとBUDGET_ADMINを解決してから入力試験を始める').toBeVisible()
+    const row = page.getByRole('row').filter({
+      has: page.getByRole('cell', { name: String(ALLOCATION_ID), exact: true }),
+    })
+    await expect(row).toBeVisible()
+    if (mode === 'create') await create.click()
+    else await row.locator('button:has(.pi-pencil)').click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+    if (mode === 'create') {
+      await dialog.locator('.p-inputnumber-input').nth(2).fill('2026')
+      await dialog.locator('.p-inputnumber-input').nth(3).fill('100')
+      await dialog.locator('input[type="date"]').nth(0).fill('2026-04-01')
+      await dialog.locator('input[type="date"]').nth(1).fill('2026-04-30')
+    }
+    const amount = dialog.locator('.p-inputnumber-input').nth(mode === 'create' ? 4 : 0)
+    await amount.click()
+    await amount.press('ControlOrMeta+A')
+    await amount.press('Backspace')
+    return { writes, dialog, amount }
+  }
+
+  for (const mode of ['create', 'edit'] as const) {
+    for (const entry of ['keyboard', 'paste', 'empty'] as const) {
+      test(`AC3 ${mode}/${entry}: 不正な金額を明示して保存要求を送らない`, async ({ page }) => {
+        const { writes, dialog, amount } = await openAmountForm(page, mode)
+        if (entry === 'keyboard') {
+          // fill('-5000') では keypress の負号黙殺を通らないため、必ず一文字ずつ打つ。
+          await amount.pressSequentially('-5000')
+        }
+        else if (entry === 'paste') {
+          // DOM value の書換えではなく、本物の InputNumber の paste ハンドラへ渡す。
+          await amount.evaluate((input) => {
+            const clipboardData = new DataTransfer()
+            clipboardData.setData('text/plain', '-5000')
+            input.dispatchEvent(new ClipboardEvent('paste', { clipboardData, bubbles: true, cancelable: true }))
+          })
+        }
+        await amount.press('Tab')
+        await dialog.getByRole('button', { name: '保存', exact: true }).click()
+        // soft にして、修正前も実際の送信内容を後続のアサーションへ残す。
+        await expect.soft(dialog.getByRole('alert')).toBeVisible()
+        await expect.soft(dialog).toBeVisible()
+        expect(writes, '負値や空値を正値/0/nullへ無言変換して保存してはならない').toEqual([])
+      })
+    }
+
+    for (const value of [0, 5000]) {
+      test(`AC3 ${mode}/${value}: 0と正値は入力した金額のまま保存する`, async ({ page }) => {
+        const { writes, dialog, amount } = await openAmountForm(page, mode)
+        await amount.pressSequentially(String(value))
+        await amount.press('Tab')
+        await dialog.getByRole('button', { name: '保存', exact: true }).click()
+        await expect.poll(() => writes.length).toBe(1)
+        expect(writes[0]?.allocated_amount).toBe(value)
+        if (mode === 'edit') expect(writes[0]?.version).toBe(3)
+        await expect(dialog).not.toBeVisible()
+      })
+    }
+  }
+})
 
 /**
  * F08.7 Phase 11-α — admin 予算割当 CRUD 画面 E2E。
