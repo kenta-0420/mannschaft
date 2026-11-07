@@ -478,6 +478,11 @@ export default defineNuxtConfig({
             baseURL: '/dev-fixtures/ranch/base16-v3',
             maxAge: 0,
           },
+          {
+            dir: fileURLToPath(new URL('./dev-fixtures/ranch/appearance64-v4', import.meta.url)),
+            baseURL: '/dev-fixtures/ranch/appearance64-v4',
+            maxAge: 0,
+          },
         ]
       : [],
     devProxy:
