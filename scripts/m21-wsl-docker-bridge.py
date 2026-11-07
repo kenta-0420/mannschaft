@@ -179,7 +179,7 @@ def process_identity(pid):
                 pid_namespace=os.readlink('/proc/self/ns/pid'))
 
 
-def supervise(argv, env, body_deadline, control_fd, global_deadline, clock_delta=None):
+def supervise(argv, env, body_deadline, control_fd, global_deadline, clock_delta=None, started=None):
     """要求専用watchdog内部専用。wireからargv/envを受け取らない。
 
     呼出側はforkした専用子でのみ呼ぶ。watchdogはbridgeと別session、
@@ -216,6 +216,12 @@ def supervise(argv, env, body_deadline, control_fd, global_deadline, clock_delta
     os.close(started_r)
     pidfd = os.pidfd_open(pid)
     identity = process_identity(pid)
+    startup_receipt_ok=True
+    if started is not None:
+        try:
+            publish(started[0],started[1],started[2]|{'leader_identity':identity,'watchdog_identity':process_identity(os.getpid()),'session_acknowledged':acknowledged})
+        except (OSError,Rejected):
+            startup_receipt_ok=False
     eof = {out_r: False, err_r: False}
     captured = {out_r: bytearray(), err_r: bytearray()}
     for fd in eof:
@@ -228,6 +234,9 @@ def supervise(argv, env, body_deadline, control_fd, global_deadline, clock_delta
     force_count = 0
     # WNOWAITはleaderのPID/PGID anchorを保持する。poll/waitは使用しない。
     while time.monotonic_ns() < body_deadline:
+        if not startup_receipt_ok:
+            reason='started-receipt-failed'
+            break
         if abs((time.clock_gettime_ns(time.CLOCK_BOOTTIME)-time.monotonic_ns())-clock_delta)>100000000:
             reason='clock-discontinuity'
             break
@@ -570,7 +579,9 @@ def spawn_watchdog(argv, env, deadline, global_deadline, directory_fd, common, r
             null=os.open('/dev/null',os.O_RDWR)
             for target in (0,1,2): os.dup2(null,target)
             os.closerange(6,65536)
-            result=supervise(argv,env,deadline,3,global_deadline,common.get('clock_delta'))
+            prefix=request.get('receipt_prefix','request-%05d'%request['request_id'])
+            started=(4,prefix+'-started.json',common|{'type':'request-started','request_id':request['request_id'],'operation':request['operation'],'resource':request['resource'],'deadline_ns':deadline})
+            result=supervise(argv,env,deadline,3,global_deadline,common.get('clock_delta'),started)
             private=result.pop('_stdout_hex')
             private_stderr=result.pop('_stderr_hex')
             receipt=common|{'type':'request','request_id':request['request_id'],
