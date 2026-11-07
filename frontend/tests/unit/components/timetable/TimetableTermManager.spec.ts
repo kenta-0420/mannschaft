@@ -202,6 +202,17 @@ describe('TimetableTermManager', () => {
     expect(createTeamTerm).toHaveBeenCalledWith('team-a', expect.objectContaining({ academicYear: 2027 }))
   })
 
+  it('TTM-11: 取得失敗（loadState=error）は空状態ではなく再試行できるエラー表示にし、再試行を親へ伝える', async () => {
+    const wrapper = await mountSuspended(TimetableTermManager, {
+      props: { scopeType: 'team', scopeSlug: 'team-a', terms: [], canManage: true, hint: 'hint', loadState: 'error' },
+    })
+    expect(wrapper.find('[data-testid="term-load-error-state"]').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('No terms defined')
+    expect(wrapper.find('[data-testid="term-add-button"]').exists()).toBe(false)
+    await wrapper.find('[data-testid="term-load-error-state-retry"]').trigger('click')
+    expect(wrapper.emitted('retry')).toBeTruthy()
+  })
+
   it('TTM-07: 組織は組織の作成 API を呼ぶ', async () => {
     createOrgTerm.mockResolvedValue({ id: 13 })
     const wrapper = await mountManager({ scopeType: 'organization' })

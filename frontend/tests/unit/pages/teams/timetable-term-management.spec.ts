@@ -108,6 +108,23 @@ describe('pages/teams/[slug]/timetable.vue — チーム単独の学期・時間
     expect(wrapper.find('[data-testid="timetable-delete-7"]').exists()).toBe(false)
   })
 
+  it('TTP-05: 学期タブの取得失敗は空状態ではなく再試行できるエラー表示にし、再試行で復旧する', async () => {
+    const wrapper = await mountPage()
+    listTerms.mockRejectedValueOnce(new Error('network'))
+    await wrapper.find('[data-testid="timetable-tab-term"]').trigger('click')
+    await flush()
+    expect(wrapper.find('[data-testid="term-load-error-state"]').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('No terms defined')
+
+    listTerms.mockResolvedValueOnce([
+      { id: 11, name: '1学期', startDate: '2026-04-01', endDate: '2026-07-31', academicYear: 2026, scopeType: 'TEAM' },
+    ])
+    await wrapper.find('[data-testid="term-load-error-state-retry"]').trigger('click')
+    await flush()
+    expect(wrapper.find('[data-testid="term-load-error-state"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('1学期')
+  })
+
   it('TTP-04: 時間割の削除は確認を挟み、承認後にだけ削除 API を呼ぶ', async () => {
     const wrapper = await mountPage()
     await wrapper.find('[data-testid="timetable-tab-list"]').trigger('click')

@@ -6,6 +6,9 @@
  * エラーの解釈（400 の fieldErrors / 409 TIMETABLE_021・TIMETABLE_022）はここに集約し、
  * 成功したら `changed` を emit して親に一覧の再取得を任せる。
  * 追加・削除の操作は canManage が true のときだけ出す（ADMIN と MANAGE_TIMETABLE を持つ DEPUTY_ADMIN）。
+ *
+ * 一覧の取得は親が行い、その状態を loadState で受け取る。取得失敗（error）は「学期がありません」の
+ * 空状態へ落とさず、再試行できるエラー表示にする。再試行は `retry` を emit し、親が初回と同じ取得処理を呼ぶ。
  */
 import dayjs from 'dayjs'
 import type { TimetableTerm } from '~/types/timetable'
@@ -21,10 +24,12 @@ const props = defineProps<{
   terms: TimetableTerm[]
   canManage: boolean
   hint: string
+  /** 親が行う一覧取得の状態。省略時は取得済みとして扱う。 */
+  loadState?: 'loading' | 'error' | 'loaded'
 }>()
 
 const emit = defineEmits<{
-  (e: 'changed'): void
+  (e: 'changed' | 'retry'): void
 }>()
 
 const { t } = useI18n()
@@ -165,7 +170,7 @@ async function deleteTerm(termId: number) {
     <div class="mb-4 flex items-center justify-between gap-2">
       <p class="text-sm text-surface-500">{{ hint }}</p>
       <Button
-        v-if="canManage"
+        v-if="canManage && loadState !== 'error'"
         :label="$t('timetable.add_term')"
         icon="pi pi-plus"
         size="small"
@@ -173,7 +178,13 @@ async function deleteTerm(termId: number) {
         @click="openDialog"
       />
     </div>
-    <DataTable :value="terms" data-key="id" striped-rows>
+    <DashboardErrorState
+      v-if="loadState === 'error'"
+      :message="$t('timetable.term_load_error')"
+      testid="term-load-error-state"
+      @retry="emit('retry')"
+    />
+    <DataTable v-else :value="terms" data-key="id" striped-rows :loading="loadState === 'loading'">
       <template #empty>
         <div class="py-8 text-center text-surface-500">
           {{ $t('timetable.no_term') }}

@@ -91,12 +91,24 @@ function statusSeverity(s: TimetableStatus | string) {
     | 'info'
 }
 
-/** チーム固有の学期を取り直す。失敗は握りつぶさず通知し、呼び出し側へ成否を返す。 */
+/**
+ * 学期一覧の取得状態。取得失敗を「学期がありません」の空状態と区別するために持つ
+ * （FRONTEND_CODING_CONVENTION の「取得失敗を空状態へフォールバックさせてはならない」）。
+ */
+const termsLoadState = ref<'loading' | 'error' | 'loaded'>('loading')
+
+/**
+ * チーム固有の学期を取り直す。学期タブの初回表示・再試行・作成ダイアログを開くときの共通の取得処理。
+ * 失敗は握りつぶさず通知し、学期タブには再試行できるエラー表示を出す。呼び出し側へ成否を返す。
+ */
 async function loadTerms(): Promise<boolean> {
+  termsLoadState.value = 'loading'
   try {
     terms.value = await timetableApi.listTerms('team', teamSlug.value)
+    termsLoadState.value = 'loaded'
     return true
   } catch {
+    termsLoadState.value = 'error'
     notification.error(t('timetable.term_load_error'))
     return false
   }
@@ -379,7 +391,9 @@ watch(activeTab, (tab) => {
               :terms="terms"
               :can-manage="canManage"
               :hint="$t('timetable.team_term_hint')"
+              :load-state="termsLoadState"
               @changed="loadTerms"
+              @retry="loadTerms"
             />
           </TabPanel>
         </TabPanels>
