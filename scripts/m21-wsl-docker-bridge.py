@@ -590,7 +590,7 @@ def spawn_watchdog(argv, env, deadline, global_deadline, directory_fd, common, r
                     'deadline_ns':deadline,'linux':result,'daemon_resource_confirmed':False}
             prefix=request.get('receipt_prefix','request-%05d'%request['request_id'])
             publish(4,prefix+'.json',receipt)
-            send_private(5,{'linux':result,'stdout_hex':private,'stderr_hex':private_stderr},min(global_deadline,time.monotonic_ns()+500000000))
+            send_private(5,{'linux':result,'stdout_hex':private,'stderr_hex':private_stderr},min(global_deadline,deadline+2000000000,time.monotonic_ns()+500000000))
             os.close(5); os.close(4)
             os._exit(0)
         except BaseException:
@@ -706,7 +706,7 @@ def bridge_loop(dfd, directory, owner, run, nonce, input_commit):
     finally:
         if active:
             close_active_control(active)
-            limit=min(protocol.global_deadline or t0+2000000000,time.monotonic_ns()+2000000000)
+            limit=min(protocol.global_deadline or t0+2000000000,active['deadline']+2000000000,time.monotonic_ns()+2000000000)
             waited=0
             while time.monotonic_ns()<limit:
                 waited,status=os.waitpid(active['pid'],os.WNOHANG)
@@ -769,7 +769,7 @@ def preflight_one(argv, dfd, common, number, global_deadline, work_deadline):
         return bytes.fromhex(result['stdout_hex']).decode('utf-8').strip()
     finally:
         close_active_control(active)
-        limit=min(global_deadline,time.monotonic_ns()+2000000000)
+        limit=min(global_deadline,deadline+2000000000,time.monotonic_ns()+2000000000)
         while not waited and time.monotonic_ns()<limit:
             waited,status=os.waitpid(active['pid'],os.WNOHANG)
             if not waited: select.select([],[],[],.001)
