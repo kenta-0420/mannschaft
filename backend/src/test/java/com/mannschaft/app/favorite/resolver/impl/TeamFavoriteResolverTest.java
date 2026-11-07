@@ -35,6 +35,8 @@ import static org.mockito.Mockito.verify;
  *
  * <p>チームアイコンが DB の生 R2 キーでなく、{@link MediaUrlResolver} 解決後の
  * 署名付き表示 URL として返ることを検証する。</p>
+ * <p>slug取得のconsumer契約を検査するため、filterAccessibleのbatch戻り集合を直接固定する。
+ * このUTは認可自体の保証ではなく、実DB契約と実JWT実機は別の検証で確認する。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("TeamFavoriteResolver 単体テスト")
@@ -71,6 +73,7 @@ class TeamFavoriteResolverTest {
         given(teamRepository.findAllById(any())).willReturn(List.of(team));
         given(contentVisibilityChecker.filterAccessible(eq(ReferenceType.TEAM), any(), eq(700L)))
                 .willReturn(Set.of(1L));
+        given(teamService.getSlugsByIds(Set.of(1L))).willReturn(Map.of(1L, "tokyo-bears"));
         given(accessControlService.isAdminOrAbove(anyLong(), anyLong(), anyString()))
                 .willReturn(false);
         given(mediaUrlResolver.resolve("team/1/icon/raw.png"))
@@ -95,6 +98,7 @@ class TeamFavoriteResolverTest {
         given(teamRepository.findAllById(any())).willReturn(List.of(team));
         given(contentVisibilityChecker.filterAccessible(eq(ReferenceType.TEAM), any(), eq(700L)))
                 .willReturn(Set.of(2L));
+        given(teamService.getSlugsByIds(Set.of(2L))).willReturn(Map.of(2L, "no-icon-team"));
         given(accessControlService.isAdminOrAbove(anyLong(), anyLong(), anyString()))
                 .willReturn(false);
         given(mediaUrlResolver.resolve(eq(null))).willReturn(null);

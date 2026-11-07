@@ -10,6 +10,7 @@ import com.mannschaft.app.favorite.dto.FavoriteEntityStatus;
 import com.mannschaft.app.favorite.resolver.FavoriteEntityResolver;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.organization.service.OrganizationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -35,6 +36,7 @@ import java.util.stream.Collectors;
 public class OrganizationFavoriteResolver implements FavoriteEntityResolver {
 
     private final OrganizationRepository organizationRepository;
+    private final OrganizationService organizationService;
     private final AccessControlService accessControlService;
     private final MediaUrlResolver mediaUrlResolver;
     private final ContentVisibilityChecker contentVisibilityChecker;
@@ -64,9 +66,16 @@ public class OrganizationFavoriteResolver implements FavoriteEntityResolver {
                     ReferenceType.ORGANIZATION, idMapping.keySet(), currentUserId);
             orgs = orgs.stream().filter(o -> visibleIds.contains(o.getId())).toList();
             Set<Long> foundIds = orgs.stream().map(OrganizationEntity::getId).collect(Collectors.toSet());
+            Map<Long, String> slugs = organizationService.getSlugsByIds(visibleIds);
 
             for (OrganizationEntity org : orgs) {
                 String entityId = idMapping.get(org.getId());
+                String slug = slugs.get(Long.valueOf(entityId));
+                // 一括取得から対象が欠けた場合も、名前やURLを公開しない。
+                if (slug == null) {
+                    result.put(entityId, FavoriteEntityMetaDto.unavailable(entityId, FavoriteEntityType.ORGANIZATION));
+                    continue;
+                }
                 boolean canEdit = accessControlService.isAdminOrAbove(currentUserId, org.getId(), "ORGANIZATION");
                 result.put(entityId, new FavoriteEntityMetaDto(
                         entityId,
@@ -74,7 +83,7 @@ public class OrganizationFavoriteResolver implements FavoriteEntityResolver {
                         org.getName(),
                         // DB には生の R2 キーが入る。表示用署名付き URL へ解決して返す（生キーは 404）。
                         mediaUrlResolver.resolve(org.getIconUrl()),
-                        "/organizations/" + org.getSlug(),
+                        "/organizations/" + slug,
                         canEdit,
                         FavoriteEntityStatus.AVAILABLE
                 ));

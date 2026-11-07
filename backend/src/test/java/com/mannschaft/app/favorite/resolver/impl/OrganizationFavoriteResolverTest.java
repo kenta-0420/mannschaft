@@ -34,6 +34,8 @@ import static org.mockito.Mockito.verify;
  * {@link OrganizationFavoriteResolver} 単体テスト（画像 404 根治 Phase3）。
  *
  * <p>組織アイコンが {@link MediaUrlResolver} 解決後の署名付き表示 URL として返ることを検証する。</p>
+ * <p>slug取得のconsumer契約を検査するため、filterAccessibleのbatch戻り集合を直接固定する。
+ * このUTは認可自体の保証ではなく、実DB契約と実JWT実機は別の検証で確認する。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("OrganizationFavoriteResolver 単体テスト")
@@ -70,6 +72,7 @@ class OrganizationFavoriteResolverTest {
         given(organizationRepository.findAllById(any())).willReturn(List.of(org));
         given(contentVisibilityChecker.filterAccessible(eq(ReferenceType.ORGANIZATION), any(), eq(700L)))
                 .willReturn(Set.of(9L));
+        given(organizationService.getSlugsByIds(Set.of(9L))).willReturn(Map.of(9L, "kanto-league"));
         given(accessControlService.isAdminOrAbove(anyLong(), anyLong(), anyString()))
                 .willReturn(false);
         given(mediaUrlResolver.resolve("org/9/icon/raw.png"))
