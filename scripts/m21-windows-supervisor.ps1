@@ -1023,7 +1023,7 @@ finally {
      }
      $last.stdoutPublished=$child.StdoutPublished;$last.stderrPublished=$child.StderrPublished
      $proof=@{initialExitObserved=$pending[0].initialExitObserved;initialPublicationAttempted=$pending[0].initialPublicationAttempted;exited=$last.exited;stdoutEof=$last.stdoutEof;stderrEof=$last.stderrEof;stdoutWriterClosed=$child.StdoutPublished;stderrWriterClosed=$child.StderrPublished;stdoutPublished=$child.StdoutPublished;stderrPublished=$child.StderrPublished}
-     $allowed=$script:recovered;$jobSatisfied=(!$jobCreated -or $jobEmpty -eq $true);$remainingMs=Remaining -Recovery
+     $allowed=$script:recovered;$jobSatisfied=($jobCreated -and $jobEmpty -eq $true);$remainingMs=Remaining -Recovery
      $adopted=Test-M21PendingExitRecovery $pending[0].child $child $proof $allowed $jobSatisfied $remainingMs
      $script:lateExitProofs.Add(@{owner=$owner;nonce=$Nonce;pid=$child.RecordedPid;creation=$child.RecordedCreation;role=$pending[0].role;sameHeldChild=[object]::ReferenceEquals($pending[0].child,$child);initialExitCapMs=$pending[0].initialExitCapMs;final=$proof;finalExitCode=$last.exitCode;recoveryAllowed=$allowed;jobSatisfied=$jobSatisfied;remainingMs=$remainingMs;adopted=$adopted;writerCloseEvidence='M21Child-publication-flags'})
      if($adopted){$script:pendingCaptureExits.Remove($pending[0])>$null}else{$script:recovered=$false}
