@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useForm } from 'vee-validate'
+import { z } from 'zod'
 import type {
   AllocationCreateRequest,
   AllocationResponse,
@@ -38,22 +40,30 @@ const { t } = useI18n()
 
 const isEdit = computed(() => props.allocation !== null && props.allocation !== undefined)
 
+const amountSchema = z.number().finite().nonnegative()
+const { errors, defineField, handleSubmit, resetForm } = useForm<{ allocated_amount: number | null }>({
+  initialValues: { allocated_amount: 0 },
+  validationSchema: {
+    allocated_amount: (value: unknown) => amountSchema.safeParse(value).success
+      || t('shiftBudget.allocation.form.amountHint'),
+  },
+})
+const [allocatedAmount] = defineField('allocated_amount')
+
 // 作成フォーム
-const createForm = ref<AllocationCreateRequest>({
+const createForm = ref<Omit<AllocationCreateRequest, 'allocated_amount'>>({
   team_id: null,
   project_id: null,
   fiscal_year_id: 0,
   budget_category_id: 0,
   period_start: '',
   period_end: '',
-  allocated_amount: 0,
   currency: 'JPY',
   note: '',
 })
 
 // 更新フォーム
-const updateForm = ref<AllocationUpdateRequest>({
-  allocated_amount: 0,
+const updateForm = ref<Omit<AllocationUpdateRequest, 'allocated_amount'>>({
   note: '',
   version: 0,
 })
@@ -61,9 +71,9 @@ const updateForm = ref<AllocationUpdateRequest>({
 watch(
   () => props.allocation,
   (a) => {
+    resetForm({ values: { allocated_amount: a?.allocated_amount ?? 0 } })
     if (a) {
       updateForm.value = {
-        allocated_amount: a.allocated_amount ?? 0,
         note: a.note ?? '',
         version: a.version,
       }
@@ -77,7 +87,6 @@ watch(
         budget_category_id: 0,
         period_start: '',
         period_end: '',
-        allocated_amount: 0,
         currency: 'JPY',
         note: '',
       }
@@ -86,18 +95,25 @@ watch(
   { immediate: true },
 )
 
+watch(() => props.visible, (visible) => {
+  if (visible) resetForm({ values: { allocated_amount: props.allocation?.allocated_amount ?? 0 } })
+})
+
 function close() {
   emit('update:visible', false)
 }
 
-function onSubmit() {
+const onSubmit = handleSubmit((values) => {
+  // Zodで負数・空・非有限値を拒否した値だけをAPIのnumber契約へ戻す。
+  const amount = values.allocated_amount
+  if (typeof amount !== 'number') return
   if (isEdit.value && props.allocation) {
-    emit('submit-update', { id: props.allocation.id, request: { ...updateForm.value } })
+    emit('submit-update', { id: props.allocation.id, request: { ...updateForm.value, allocated_amount: amount } })
   }
   else {
-    emit('submit-create', { ...createForm.value })
+    emit('submit-create', { ...createForm.value, allocated_amount: amount })
   }
-}
+})
 </script>
 
 <template>
@@ -126,7 +142,9 @@ function onSubmit() {
       </div>
       <div>
         <label class="mb-1 block text-sm font-medium">{{ t('shiftBudget.allocation.amount') }}</label>
-        <InputNumber v-model="updateForm.allocated_amount" mode="decimal" :min="0" class="w-full" />
+        <!-- min=0はPrimeVueが打鍵した負号だけを黙殺するため使わず、検証で保存を拒否する。 -->
+        <InputNumber v-model="allocatedAmount" mode="decimal" :invalid="!!errors.allocated_amount" class="w-full" />
+        <p v-if="errors.allocated_amount" role="alert" class="mt-1 text-sm text-red-600">{{ errors.allocated_amount }}</p>
         <p class="mt-1 text-xs text-surface-500">{{ t('shiftBudget.allocation.form.amountHint') }}</p>
       </div>
       <div>
@@ -174,7 +192,8 @@ function onSubmit() {
 
       <div>
         <label class="mb-1 block text-sm font-medium">{{ t('shiftBudget.allocation.amount') }} *</label>
-        <InputNumber v-model="createForm.allocated_amount" mode="decimal" :min="0" class="w-full" />
+        <InputNumber v-model="allocatedAmount" mode="decimal" :invalid="!!errors.allocated_amount" class="w-full" />
+        <p v-if="errors.allocated_amount" role="alert" class="mt-1 text-sm text-red-600">{{ errors.allocated_amount }}</p>
         <p class="mt-1 text-xs text-surface-500">{{ t('shiftBudget.allocation.form.amountHint') }}</p>
       </div>
 
