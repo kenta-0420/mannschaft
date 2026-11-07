@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { computed, ref, type ComputedRef, type Ref } from 'vue'
@@ -44,7 +45,7 @@ function route(page: string): RouteLocationNormalized {
 }
 
 async function runDeclaredGuards(page: 'invites' | 'permission-groups') {
-  const source = readFileSync(new URL(`./${page}.vue`, import.meta.url), 'utf8')
+  const source = readFileSync(resolve(process.cwd(), 'app/pages/organizations/[slug]', `${page}.vue`), 'utf8')
   const declaration = source.match(/middleware:\s*(\[[^\]]*\]|'[^']*')/)
   expect(declaration, '対象ページに middleware 宣言が必要').not.toBeNull()
   const names = [...declaration![1]!.matchAll(/'([^']+)'/g)].map(match => match[1])
