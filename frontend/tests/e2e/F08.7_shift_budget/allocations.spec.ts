@@ -56,6 +56,16 @@ test.describe('CMP-260910-1609 AC3: 配分額の入力と保存', () => {
       }))
     }, ORG_ID)
     await mockCatchAllApis(page)
+    // 共通レイアウトの読取APIにも実契約を返し、null由来のruntime失敗と仕様redを混同しない。
+    await page.route('**/api/v1/settings/nav', route => route.fulfill({
+      json: { data: { features: [] } },
+    }))
+    await page.route('**/api/v1/dashboard/scope-tabs?**', route => route.fulfill({
+      json: { data: {
+        items: [], page: 0, page_size: 20, total_pages: 0, total_count: 0,
+        has_next: false, has_prev: false,
+      } },
+    }))
     // /admin/shift-budgetはFEATURE_SHIFT_ENABLED配下。nullを返すと金額入力前に
     // 公開flagの配列契約を破ってNuxt fatalへ落ちるため、既存の正規helperを使う。
     await mockFeatureFlags(page)
