@@ -23,6 +23,23 @@ class Rejected(Exception):
     """外部入力を例外本文へ含めない。"""
 
 
+class RequestDenied(Rejected):
+    def __init__(self, deadline):
+        super().__init__('admission-denied')
+        self.deadline=deadline
+
+
+def mysql_secret_env(value):
+    keys={'mysql_root_password','mysql_password'}
+    if type(value) is not dict or set(value)!=keys:
+        raise Rejected('secret-schema')
+    for key in keys:
+        secret=value[key]
+        if type(secret) is not str or not 1<=len(secret)<=1024 or any(c in secret for c in ('\x00','\n','\r')):
+            raise Rejected('secret-schema')
+    return {'MYSQL_ROOT_PASSWORD':value['mysql_root_password'],'MYSQL_PASSWORD':value['mysql_password']}
+
+
 def integer(value, minimum, maximum):
     if type(value) is not int or not minimum <= value <= maximum:
         raise Rejected('integer')
@@ -57,6 +74,7 @@ class Protocol:
         self.work_deadline = None
         self.next_request = 1
         self.cleanup_count = 0
+        self.cleanup_started=False
 
     def check(self, data, keys):
         if type(data) is not dict or set(data) != set(keys) or data.get('owner') != self.owner or data.get('run') != self.run:
@@ -91,13 +109,17 @@ class Protocol:
             raise Rejected('phase')
         ceiling = self.work_deadline if phase == 'work' else self.global_deadline
         deadline = min(ceiling, self.t0 + integer(data['deadline_offset_ms'],1,3300000)*1000000)
+        if operation=='container-create' and role=='mysql': mysql_secret_env(data['secrets'])
         cap_ms = (15000 if role == 'mysql' else 10000) if operation == 'container-stop' else 3000
-        if deadline <= now or deadline - now > cap_ms*1000000:
+        if deadline - now > cap_ms*1000000:
             raise Rejected('deadline')
         if phase == 'cleanup' and self.cleanup_count >= 14:
             raise Rejected('cleanup-limit')
         self.next_request += 1
-        if phase == 'cleanup': self.cleanup_count += 1
+        if phase == 'cleanup':
+            self.cleanup_count += 1
+            self.cleanup_started=True
+        if deadline<=now or (phase=='work' and self.cleanup_started): raise RequestDenied(deadline)
         return operation, deadline
 
 
@@ -179,168 +201,192 @@ def process_identity(pid):
 
 
 def supervise(argv, env, body_deadline, control_fd, global_deadline, clock_delta=None, started=None):
-    """要求専用watchdog内部専用。wireからargv/envを受け取らない。
-
-    呼出側はforkした専用子でのみ呼ぶ。watchdogはbridgeと別session、
-    subreaperをCLIより先に設定する。CLI leaderは全group signal判断が終わるまで未reap。
-    """
+    """要求専用watchdog。fork後の全失敗でも自分の子の回収をattemptする。"""
     watchdog_started_ns=time.monotonic_ns()
     if clock_delta is None: clock_delta=time.clock_gettime_ns(time.CLOCK_BOOTTIME)-time.monotonic_ns()
     if abs((time.clock_gettime_ns(time.CLOCK_BOOTTIME)-time.monotonic_ns())-clock_delta)>100000000:
         raise Rejected('clock-discontinuity')
-    body_deadline = min(body_deadline, global_deadline)
-    if time.monotonic_ns() >= body_deadline:
-        raise Rejected('expired-before-spawn')
+    body_deadline=min(body_deadline,global_deadline)
+    hard_deadline=min(global_deadline,body_deadline+2000000000)
+    if time.monotonic_ns()>=body_deadline: raise Rejected('expired-before-spawn')
     os.setsid()
     subreaper()
-    out_r, out_w = os.pipe2(os.O_CLOEXEC)
-    err_r, err_w = os.pipe2(os.O_CLOEXEC)
-    started_r, started_w = os.pipe2(os.O_CLOEXEC)
-    if time.monotonic_ns() >= body_deadline or abs((time.clock_gettime_ns(time.CLOCK_BOOTTIME)-time.monotonic_ns())-clock_delta)>100000000:
+    out_r,out_w=os.pipe2(os.O_CLOEXEC)
+    err_r,err_w=os.pipe2(os.O_CLOEXEC)
+    started_r,started_w=os.pipe2(os.O_CLOEXEC)
+    if time.monotonic_ns()>=body_deadline or abs((time.clock_gettime_ns(time.CLOCK_BOOTTIME)-time.monotonic_ns())-clock_delta)>100000000:
         for fd in (out_r,out_w,err_r,err_w,started_r,started_w): os.close(fd)
         raise Rejected('expired-before-spawn')
     cli_spawn_ns=time.monotonic_ns()
-    pid = os.fork()
-    if pid == 0:
+    try: pid=os.fork()
+    except BaseException:
+        for fd in (out_r,out_w,err_r,err_w,started_r,started_w): os.close(fd)
+        raise
+    if pid==0:
         try:
             os.close(started_r)
             os.setsid()
-            os.dup2(out_w, 1)
-            os.dup2(err_w, 2)
-            null = os.open('/dev/null', os.O_RDONLY)
-            os.dup2(null, 0)
-            os.write(started_w, b'1')
-            os.closerange(3, 65536)
-            os.execve(argv[0], argv, env)
-        except BaseException:
-            os._exit(127)
-    os.close(out_w); os.close(err_w); os.close(started_w)
-    # child session成立のack前にPGIDへsignalしない。
-    acknowledged = bool(select.select([started_r], [], [], max(0,(body_deadline-time.monotonic_ns())/1e9))[0]) and os.read(started_r,1) == b'1'
-    os.close(started_r)
-    pidfd = os.pidfd_open(pid)
-    identity = process_identity(pid)
-    startup_receipt_ok=True
-    if started is not None:
-        try:
+            os.dup2(out_w,1); os.dup2(err_w,2)
+            null=os.open('/dev/null',os.O_RDONLY); os.dup2(null,0)
+            os.write(started_w,b'1')
+            os.closerange(3,65536)
+            os.execve(argv[0],argv,env)
+        except BaseException: os._exit(127)
+    pidfd=None
+    acknowledged=False
+    anchor_held=True
+    identity={'pid':pid,'pgid':None,'startticks':None,'boot_id':None,'pid_namespace':None}
+    identity_confirmed=False
+    write_closed={out_w:False,err_w:False,started_w:False}
+    ack_closed=False
+    eof={out_r:False,err_r:False}
+    captured={out_r:bytearray(),err_r:bytearray()}
+    primary_eof={out_r:False,err_r:False}
+    primary_children_exited=False
+    primary_green=False
+    primary_failure_stage=None
+    secondary=[]
+    stage='parent-fds'
+    reason='completed'
+    force_count=0
+    reaped=[]
+    cli_status=None
+    children_reaped=False
+    body_observed_ns=None
+    eof_observed_ns={out_r:None,err_r:None}
+    try:
+        for fd in write_closed:
+            os.close(fd); write_closed[fd]=True
+        stage='session-ack'
+        acknowledged=bool(select.select([started_r],[],[],max(0,(body_deadline-time.monotonic_ns())/1e9))[0]) and os.read(started_r,1)==b'1'
+        identity['pgid']=pid if acknowledged else None
+        os.close(started_r); ack_closed=True
+        stage='pidfd'
+        pidfd=os.pidfd_open(pid)
+        stage='identity'
+        identity=process_identity(pid); identity_confirmed=True
+        stage='setup'
+        for fd in eof: os.set_blocking(fd,False)
+        os.set_blocking(control_fd,False)
+        stage='started-receipt'
+        if started is not None:
             publish(started[0],started[1],started[2]|{'leader_identity':identity,'watchdog_identity':process_identity(os.getpid()),'session_acknowledged':acknowledged})
-        except (OSError,Rejected):
-            startup_receipt_ok=False
-    eof = {out_r: False, err_r: False}
-    captured = {out_r: bytearray(), err_r: bytearray()}
-    for fd in eof:
-        os.set_blocking(fd, False)
-    os.set_blocking(control_fd, False)
-    reason = 'completed'
-    if clock_delta is None: clock_delta=time.clock_gettime_ns(time.CLOCK_BOOTTIME)-time.monotonic_ns()
-    leader_seen = False
-    output_full = False
-    force_count = 0
-    # WNOWAITはleaderのPID/PGID anchorを保持する。poll/waitは使用しない。
-    while time.monotonic_ns() < body_deadline:
-        if not startup_receipt_ok:
-            reason='started-receipt-failed'
-            break
-        if abs((time.clock_gettime_ns(time.CLOCK_BOOTTIME)-time.monotonic_ns())-clock_delta)>100000000:
-            reason='clock-discontinuity'
-            break
-        status = os.waitid(os.P_PID, pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
-        leader_seen = status is not None
-        if leader_seen:
-            break
-        readers = [fd for fd in eof if not eof[fd]] + [control_fd]
-        ready = select.select(readers, [], [], min(.01,max(0,(body_deadline-time.monotonic_ns())/1e9)))[0]
-        if control_fd in ready:
-            os.read(control_fd, 1)
-            reason = 'cancel-or-bridge-eof'
-            break
-        for fd in ready:
-            if fd == control_fd:
-                continue
-            chunk = os.read(fd,4096)
-            if not chunk:
-                eof[fd] = True
-            elif len(captured[fd])+len(chunk) > MAX_FRAME:
-                output_full = True
-                reason = 'output-full'
-            else:
-                captured[fd].extend(chunk)
-        if output_full:
-            break
-    if not leader_seen and reason == 'completed':
-        reason = 'body-deadline'
-    # leaderが既にexitしていても孫を残せるので、anchor保持中に固定group停止。
-    body_observed_ns=time.monotonic_ns()
-    signal_decision_ns=body_observed_ns
-    primary_eof = {}
-    for fd in eof:
-        while not eof[fd] and time.monotonic_ns()<min(body_deadline,global_deadline) and select.select([fd],[],[],0)[0]:
-            chunk = os.read(fd,4096)
-            if not chunk: eof[fd] = True
-            elif len(captured[fd])+len(chunk) <= MAX_FRAME: captured[fd].extend(chunk)
-            else:
-                output_full = True
-                break
-        primary_eof[fd] = eof[fd]
-    children = Path('/proc/self/task/'+str(os.getpid())+'/children').read_text().split()
-    primary_children_exited = leader_seen and all(os.waitid(os.P_PID,int(child),os.WEXITED|os.WNOHANG|os.WNOWAIT) is not None for child in children)
-    primary_green = reason == 'completed' and primary_children_exited and all(primary_eof.values()) and not output_full
-    if not primary_green:
-        if reason == 'completed': reason = 'primary-child-or-eof-incomplete'
-        if acknowledged:
-            force_count = 1
-            try:
-                os.killpg(pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-        else:
-            signal.pidfd_send_signal(pidfd, signal.SIGKILL)
-            force_count = 1
-            reason = 'session-unconfirmed'
-    reaped = []
-    cli_status = None
-    children_reaped = False
-    exit_deadline = min(global_deadline,time.monotonic_ns()+1000000000)
-    while time.monotonic_ns() < exit_deadline:
-        try:
-            child, status = os.waitpid(-1, os.WNOHANG)
-        except ChildProcessError:
-            children_reaped = True
-            break
-        if child:
-            reaped.append(child)
-            if child == pid:
-                cli_status = os.waitstatus_to_exitcode(status)
-        else:
-            select.select([], [], [], .001)
-    reap_observed_ns=time.monotonic_ns()
-    eof_observed_ns={}
-    for fd in eof:
-        eof_deadline = min(global_deadline,time.monotonic_ns()+500000000)
-        while not eof[fd] and time.monotonic_ns() < eof_deadline:
-            if select.select([fd], [], [], max(0,(eof_deadline-time.monotonic_ns())/1e9))[0]:
-                chunk = os.read(fd,4096)
-                if not chunk:
-                    eof[fd] = True
-                elif len(captured[fd])+len(chunk) <= MAX_FRAME:
-                    captured[fd].extend(chunk)
+        stage='observe'
+        leader_seen=False
+        output_full=False
+        while time.monotonic_ns()<body_deadline:
+            if abs((time.clock_gettime_ns(time.CLOCK_BOOTTIME)-time.monotonic_ns())-clock_delta)>100000000:
+                reason='clock-discontinuity'; break
+            try: status=os.waitid(os.P_PID,pid,os.WEXITED|os.WNOHANG|os.WNOWAIT)
+            except ChildProcessError:
+                anchor_held=False
+                raise
+            leader_seen=status is not None
+            if leader_seen: break
+            readers=[fd for fd in eof if not eof[fd]]+[control_fd]
+            ready=select.select(readers,[],[],min(.01,max(0,(body_deadline-time.monotonic_ns())/1e9)))[0]
+            if control_fd in ready:
+                os.read(control_fd,1)
+                reason='cancel-or-bridge-eof'; break
+            for fd in ready:
+                chunk=os.read(fd,4096)
+                if not chunk: eof[fd]=True
+                elif len(captured[fd])+len(chunk)>MAX_FRAME:
+                    output_full=True; reason='output-full'
+                else: captured[fd].extend(chunk)
+            if output_full: break
+        if not leader_seen and reason=='completed': reason='body-deadline'
+        stage='primary-observation'
+        for fd in eof:
+            while not eof[fd] and time.monotonic_ns()<body_deadline and select.select([fd],[],[],0)[0]:
+                chunk=os.read(fd,4096)
+                if not chunk: eof[fd]=True
+                elif len(captured[fd])+len(chunk)<=MAX_FRAME: captured[fd].extend(chunk)
                 else:
-                    output_full = True
-        eof_observed_ns[fd]=time.monotonic_ns() if eof[fd] else None
-        os.close(fd)
-    os.close(pidfd)
-    os.close(control_fd)
+                    output_full=True; break
+            primary_eof[fd]=eof[fd]
+        children=Path('/proc/self/task/'+str(os.getpid())+'/children').read_text().split()
+        primary_children_exited=leader_seen and all(os.waitid(os.P_PID,int(child),os.WEXITED|os.WNOHANG|os.WNOWAIT) is not None for child in children)
+        primary_green=reason=='completed' and primary_children_exited and all(primary_eof.values()) and not output_full
+        if not primary_green and reason=='completed': reason='primary-child-or-eof-incomplete'
+    except BaseException:
+        primary_failure_stage=stage
+        reason='supervision-failed'
+        primary_green=False
+    finally:
+        # このfinallyより前にleaderをreapしない。全signal判断が済むまでanchorを保持する。
+        body_observed_ns=time.monotonic_ns()
+        for fd in write_closed:
+            if not write_closed[fd]:
+                try: os.close(fd); write_closed[fd]=True
+                except OSError: secondary.append('write-close-failed')
+        signal_decision_ns=time.monotonic_ns()
+        if not primary_green:
+            try:
+                if acknowledged and anchor_held:
+                    force_count=1; os.killpg(pid,signal.SIGKILL)
+                elif pidfd is not None:
+                    force_count=1; signal.pidfd_send_signal(pidfd,signal.SIGKILL)
+                elif anchor_held:
+                    # pidfd取得失敗でも、自分の未reap fork子のPIDは再利用されない。
+                    force_count=1; os.kill(pid,signal.SIGKILL)
+                else: secondary.append('anchor-unconfirmed')
+            except ProcessLookupError: secondary.append('signal-task-already-exited')
+            except OSError: secondary.append('signal-failed')
+        # 以後PGIDへのsignalは禁止。失敗でもreapと各EOFを別々にattemptする。
+        exit_deadline=min(hard_deadline,time.monotonic_ns()+1000000000)
+        while time.monotonic_ns()<exit_deadline:
+            try: child,status=os.waitpid(-1,os.WNOHANG)
+            except ChildProcessError:
+                children_reaped=True; break
+            except OSError:
+                secondary.append('reap-failed'); break
+            if child:
+                reaped.append(child)
+                if child==pid: cli_status=os.waitstatus_to_exitcode(status)
+            else: select.select([],[],[],min(.001,max(0,(exit_deadline-time.monotonic_ns())/1e9)))
+        reap_observed_ns=time.monotonic_ns()
+        for fd in eof:
+            eof_deadline=min(hard_deadline,time.monotonic_ns()+500000000)
+            try:
+                os.set_blocking(fd,False)
+                while not eof[fd] and time.monotonic_ns()<eof_deadline:
+                    if select.select([fd],[],[],max(0,(eof_deadline-time.monotonic_ns())/1e9))[0]:
+                        chunk=os.read(fd,4096)
+                        if not chunk: eof[fd]=True
+                        elif len(captured[fd])+len(chunk)<=MAX_FRAME: captured[fd].extend(chunk)
+                eof_observed_ns[fd]=time.monotonic_ns() if eof[fd] else None
+            except OSError: secondary.append('stdout-read-failed' if fd==out_r else 'stderr-read-failed')
+            finally:
+                try: os.close(fd)
+                except OSError: secondary.append('read-close-failed')
+        if not ack_closed:
+            try: os.close(started_r)
+            except OSError: secondary.append('ack-close-failed')
+        if pidfd is not None:
+            try: os.close(pidfd)
+            except OSError: secondary.append('pidfd-close-failed')
+        try: os.close(control_fd)
+        except OSError: secondary.append('control-close-failed')
     retained=[]
     if not children_reaped:
-        for child in Path('/proc/self/task/'+str(os.getpid())+'/children').read_text().split():
-            try: retained.append(process_identity(int(child)))
-            except (FileNotFoundError,ProcessLookupError): pass
-    return dict(watchdog_started_ns=watchdog_started_ns,cli_spawn_ns=cli_spawn_ns,body_observed_ns=body_observed_ns,body_elapsed_ms=(body_observed_ns-watchdog_started_ns)//1000000,signal_decision_ns=signal_decision_ns,reap_observed_ns=reap_observed_ns,stdout_eof_observed_ns=eof_observed_ns[out_r],stderr_eof_observed_ns=eof_observed_ns[err_r],retained_children=retained,leader_identity=identity, cli_exit=cli_status, children_reaped=children_reaped,
-                reaped_pids=reaped, stdout_eof=eof[out_r], stderr_eof=eof[err_r],
-                write_closed=True, force_count=force_count, reason=reason,
-                primary_children_exited=primary_children_exited, primary_stdout_eof=primary_eof[out_r], primary_stderr_eof=primary_eof[err_r],
-                physical_completed=primary_green and children_reaped and all(eof.values()), green=primary_green and cli_status==0 and children_reaped and all(eof.values()), _stdout_hex=bytes(captured[out_r]).hex(), _stderr_hex=bytes(captured[err_r]).hex())
-
+        try:
+            for child in Path('/proc/self/task/'+str(os.getpid())+'/children').read_text().split():
+                try: retained.append(process_identity(int(child)))
+                except (OSError,ValueError): retained.append({'pid':int(child),'identity_confirmed':False})
+        except (OSError,ValueError): secondary.append('retained-set-unavailable')
+    physical=primary_green and children_reaped and all(eof.values()) and not secondary
+    return dict(leader_identity=identity,identity_confirmed=identity_confirmed,cli_exit=cli_status,
+                primary_failure_stage=primary_failure_stage,secondary_failures=secondary,
+                children_reaped=children_reaped,reaped_pids=reaped,retained_children=retained,
+                stdout_eof=eof[out_r],stderr_eof=eof[err_r],write_closed=all(write_closed.values()),
+                force_count=force_count,reason=reason,primary_children_exited=primary_children_exited,
+                primary_stdout_eof=primary_eof[out_r],primary_stderr_eof=primary_eof[err_r],
+                watchdog_started_ns=watchdog_started_ns,cli_spawn_ns=cli_spawn_ns,body_observed_ns=body_observed_ns,
+                body_elapsed_ms=(body_observed_ns-watchdog_started_ns)//1000000,signal_decision_ns=signal_decision_ns,
+                reap_observed_ns=reap_observed_ns,stdout_eof_observed_ns=eof_observed_ns[out_r],stderr_eof_observed_ns=eof_observed_ns[err_r],
+                physical_completed=physical,green=physical and cli_status==0,
+                _stdout_hex=bytes(captured[out_r]).hex(),_stderr_hex=bytes(captured[err_r]).hex())
 
 class DockerBoundary:
     def __init__(self, run, config, descriptor, owner):
@@ -367,25 +413,24 @@ class DockerBoundary:
         if operation != 'container-create' and secrets is not None:
             raise Rejected('unexpected-secret')
         if operation == 'daemon-info' and role == 'daemon':
+            self.daemon_confirmed=False
+            self.inspected.clear()
             return base+['info','--format','{{.ID}}'], env
         if role not in ('mysql','valkey'):
             raise Rejected('role')
         volume=name+'-data'
+        if operation in ('container-inspect','volume-inspect'):
+            self.inspected.pop((operation.split('-')[0],role),None)
         if operation in ('container-create','volume-create','container-start','container-stop','container-remove','volume-remove'):
             self.absence_candidates.discard(role)
         if operation == 'volume-create':
             args = ['volume','create','--label','m21.owner='+self.owner,'--label','m21.run='+self.run,'--label','m21.purpose='+role,volume]
         elif operation == 'container-create':
-            args = ['container','create','--name',name,'--label','m21.owner='+self.owner,'--label','m21.run='+self.run,'--label','m21.purpose='+role,
+            args = ['container','create','--pull=never','--name',name,'--label','m21.owner='+self.owner,'--label','m21.run='+self.run,'--label','m21.purpose='+role,
                     '--publish', '127.0.0.1::'+('3306' if role=='mysql' else '6379'),
                     '--mount','type=volume,src='+volume+',dst='+('/var/lib/mysql' if role=='mysql' else '/data')]
             if role == 'mysql':
-                if type(secrets) is not dict or set(secrets) != {'mysql_root_password','mysql_password'} or type(secrets['mysql_root_password']) is not str or not 1 <= len(secrets['mysql_root_password']) <= 1024 or '\x00' in secrets['mysql_root_password'] or '\n' in secrets['mysql_root_password']:
-                    raise Rejected('secret')
-                if type(secrets['mysql_password']) is not str or not 1 <= len(secrets['mysql_password']) <= 1024 or any(c in secrets['mysql_password'] for c in ('\x00','\n','\r')):
-                    raise Rejected('secret')
-                env['MYSQL_ROOT_PASSWORD'] = secrets['mysql_root_password']
-                env['MYSQL_PASSWORD'] = secrets['mysql_password']
+                env.update(mysql_secret_env(secrets))
                 args += ['--env','MYSQL_ROOT_PASSWORD','--env','MYSQL_PASSWORD','--env','MYSQL_DATABASE=m21_'+self.run.replace('-',''),'--env','MYSQL_USER=m21']
             elif secrets is not None:
                 raise Rejected('secret')
@@ -420,6 +465,7 @@ class DockerBoundary:
     def adopt(self, operation, role, code, output, stderr=b''):
         import re
         if operation=='resources-absent':
+            if not self.daemon_confirmed: raise Rejected('daemon-unconfirmed')
             expected=['error: no such object: '+resource_name(self.run,role),'error: no such object: '+resource_name(self.run,role)+'-data']
             if code!=1 or output!=b'\n' or stderr!=('\n'.join(expected)+'\n').encode('utf-8'):
                 raise Rejected('resources-retained-or-unknown')
@@ -430,6 +476,9 @@ class DockerBoundary:
         text = output.decode('utf-8').strip()
         if operation == 'daemon-info':
             if text != self.descriptor['daemon_id']:
+                self.daemon_confirmed=False
+                self.inspected.clear()
+                self.absence_candidates.clear()
                 raise Rejected('daemon-changed')
             self.daemon_confirmed = True
             return {'daemon_confirmed':True,'confirmed_absent_resources':[{'role':role,'container':resource_name(self.run,role),'volume':resource_name(self.run,role)+'-data'} for role in sorted(self.absence_candidates)]}
@@ -597,14 +646,29 @@ def spawn_watchdog(argv, env, deadline, global_deadline, directory_fd, common, r
             os._exit(91)
     os.close(control_r); os.close(result_w)
     os.set_blocking(result_r,False)
-    return {'pid':pid,'pidfd':os.pidfd_open(pid),'control':control_w,'result':result_r,
+    try: pidfd=os.pidfd_open(pid)
+    except OSError: pidfd=None
+    active={'pid':pid,'pidfd':pidfd,'control':control_w,'result':result_r,'parent_primary':None if pidfd is not None else 'watchdog-pidfd-unavailable',
             'data':bytearray(),'request':request,'deadline':deadline,'cancelled':False}
+    if pidfd is None: close_active_control(active)
+    return active
 
 
 def close_active_control(active):
     if not active['cancelled']:
         os.close(active['control'])
         active['cancelled']=True
+
+
+def publish_denial(dfd, common, protocol, frame, deadline, code, spawn_upper_bound):
+    if code not in ('admission-denied','ownership-unverified','daemon-unconfirmed'):
+        raise Rejected('deny-code')
+    value=common|{'request_id':frame['request_id'],'operation':frame['operation'],'resource':frame['resource'],
+            'phase':frame['phase'],'deadline_ns':deadline,'code':code,'not_spawned':True,'green':False,
+            'childproof':None,'linux':None,'watchdog_exited':None,'watchdog_exit':None,'result':None,
+            'cleanup_request_slots':protocol.cleanup_count,'cleanup_cli_spawn_upper_bound':spawn_upper_bound}
+    publish(dfd,'request-%05d.json'%frame['request_id'],value|{'type':'request'})
+    publish(dfd,'request-%05d-observed.json'%frame['request_id'],value|{'type':'observed'})
 
 
 def bridge_loop(dfd, directory, owner, run, nonce, input_commit):
@@ -622,6 +686,7 @@ def bridge_loop(dfd, directory, owner, run, nonce, input_commit):
     terminal='shutdown'
     overall_green=True
     terminal_watchdog=None
+    cleanup_spawn_upper_bound=0
     try:
         frame=read_frame(0,t0+2000000000)
         if type(frame) is not dict or set(frame)!={'type','owner','run','global_offset_ms','work_offset_ms'}:
@@ -670,9 +735,10 @@ def bridge_loop(dfd, directory, owner, run, nonce, input_commit):
                     overall_green=overall_green and green
                     publish(dfd,'request-%05d-observed.json'%request['request_id'],common|{'type':'observed','request_id':request['request_id'],
                             'operation':request['operation'],'resource':request['resource'],'deadline_ns':active['deadline'],
-                            'watchdog_exited':bool(waited),'watchdog_exit':os.waitstatus_to_exitcode(status) if waited else None,
-                            'result':adopted,'green':green})
-                    os.close(active['result']); os.close(active['pidfd'])
+                            'watchdog_parent_primary':active['parent_primary'],'watchdog_exited':bool(waited),'watchdog_exit':os.waitstatus_to_exitcode(status) if waited else None,
+                            'result':adopted,'green':green,'not_spawned':False,'cleanup_request_slots':protocol.cleanup_count,'cleanup_cli_spawn_upper_bound':cleanup_spawn_upper_bound})
+                    os.close(active['result'])
+                    if active['pidfd'] is not None: os.close(active['pidfd'])
                     close_active_control(active)
                     if not waited: raise Rejected('watchdog-retained')
                     active=None
@@ -690,12 +756,35 @@ def bridge_loop(dfd, directory, owner, run, nonce, input_commit):
                     overall_green=False
                     continue
                 if active: raise Rejected('concurrent-request')
-                operation,deadline=protocol.request(frame,time.monotonic_ns())
-                if not boundary.daemon_confirmed and operation!='daemon-info': raise Rejected('daemon-unconfirmed')
-                if operation=='container-create' and ('volume',frame['resource']) not in boundary.inspected: raise Rejected('volume-unconfirmed')
-                argv,env=boundary.command(operation,frame['resource'],frame.pop('secrets',None))
-                if time.monotonic_ns()>=deadline: raise Rejected('expired-before-watchdog')
+                try:
+                    operation,deadline=protocol.request(frame,time.monotonic_ns())
+                except RequestDenied as denied:
+                    publish_denial(dfd,common,protocol,frame,denied.deadline,'admission-denied',cleanup_spawn_upper_bound)
+                    overall_green=False
+                    continue
+                writes=('container-create','volume-create','container-start','container-stop','container-remove','volume-remove')
+                if not boundary.daemon_confirmed and operation in writes:
+                    publish_denial(dfd,common,protocol,frame,deadline,'daemon-unconfirmed',cleanup_spawn_upper_bound)
+                    overall_green=False
+                    continue
+                if operation=='container-create' and ('volume',frame['resource']) not in boundary.inspected:
+                    publish_denial(dfd,common,protocol,frame,deadline,'ownership-unverified',cleanup_spawn_upper_bound)
+                    overall_green=False
+                    continue
+                try:
+                    argv,env=boundary.command(operation,frame['resource'],frame.pop('secrets',None))
+                except Rejected as denied:
+                    if denied.args[0] not in ('unverified-container','unverified-volume'): raise
+                    publish_denial(dfd,common,protocol,frame,deadline,'ownership-unverified',cleanup_spawn_upper_bound)
+                    overall_green=False
+                    continue
+                if time.monotonic_ns()>=deadline:
+                    publish_denial(dfd,common,protocol,frame,deadline,'admission-denied',cleanup_spawn_upper_bound)
+                    env.clear()
+                    overall_green=False
+                    continue
                 active=spawn_watchdog(argv,env,deadline,protocol.global_deadline,dfd,common,frame)
+                if frame['phase']=='cleanup': cleanup_spawn_upper_bound+=1
                 env.clear()
         else:
             terminal='global-deadline'
@@ -714,9 +803,10 @@ def bridge_loop(dfd, directory, owner, run, nonce, input_commit):
                 select.select([],[],[],.001)
             terminal_watchdog={'pid':active['pid'],'request_id':active['request']['request_id'],'exited':bool(waited),'exit_code':os.waitstatus_to_exitcode(status) if waited else None}
             overall_green=False
-            os.close(active['pidfd']); os.close(active['result'])
+            os.close(active['result'])
+            if active['pidfd'] is not None: os.close(active['pidfd'])
         publish(dfd,'bridge-exit.json',common|{'type':'bridge-exit','reason':terminal,'green':overall_green,
-                'terminal_watchdog':terminal_watchdog,'linux_watchdog_retained':bool(active and not waited),'windows_actual_exit_confirmed':False,
+                'cleanup_request_slots':protocol.cleanup_count,'cleanup_cli_spawn_upper_bound':cleanup_spawn_upper_bound,'terminal_watchdog':terminal_watchdog,'linux_watchdog_retained':bool(active and not waited),'windows_actual_exit_confirmed':False,
                 'windows_stdout_eof_confirmed':False,'windows_stderr_eof_confirmed':False})
     return 0 if overall_green else 1
 
@@ -763,9 +853,9 @@ def preflight_one(argv, dfd, common, number, global_deadline, work_deadline):
             waited,status=os.waitpid(active['pid'],os.WNOHANG)
             if waited: break
             select.select([],[],[],.001)
-        green=bool(waited) and os.waitstatus_to_exitcode(status)==0 and result.get('linux',{}).get('green') is True
+        green=bool(waited) and os.waitstatus_to_exitcode(status)==0 and result.get('linux',{}).get('green') is True and not active['cancelled']
         publish(dfd,'preflight-%d-observed.json'%number,common|{'type':'preflight-observed','preflight_id':number,
-                'deadline_ns':deadline,'watchdog_exited':bool(waited),'watchdog_exit':os.waitstatus_to_exitcode(status) if waited else None,'green':green})
+                'deadline_ns':deadline,'watchdog_parent_primary':active['parent_primary'],'watchdog_exited':bool(waited),'watchdog_exit':os.waitstatus_to_exitcode(status) if waited else None,'green':green})
         if not green: raise Rejected('preflight-incomplete')
         return bytes.fromhex(result['stdout_hex']).decode('utf-8').strip()
     finally:
@@ -775,7 +865,8 @@ def preflight_one(argv, dfd, common, number, global_deadline, work_deadline):
             waited,status=os.waitpid(active['pid'],os.WNOHANG)
             if not waited: select.select([],[],[],.001)
         if not waited: common.setdefault('retained_watchdogs',[]).append({'pid':active['pid'],'request_id':number})
-        os.close(active['result']); os.close(active['pidfd'])
+        os.close(active['result'])
+        if active['pidfd'] is not None: os.close(active['pidfd'])
 
 
 def preflight(dfd,directory,common,protocol,identity):
