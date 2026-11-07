@@ -333,7 +333,19 @@
     "period_all": "All Periods",
     "period_number_placeholder": "Period Number",
     "period_suffix": "",
-    "term_name_placeholder": "e.g. 1st Term"
+    "term_name_placeholder": "e.g. 1st Term",
+    "term_academic_year_range": "Enter an academic year between {min} and {max}",
+    "term_end_before_start": "The end date must be after the start date",
+    "term_date_overlap": "This term overlaps another term. Check the start and end dates",
+    "term_delete_confirm": "Delete the term \"{name}\"? This cannot be undone.",
+    "term_delete_success": "Term deleted",
+    "term_load_error": "Failed to load terms",
+    "team_term_hint": "Terms of this team. When you create a timetable, you choose one of the terms added here.",
+    "no_term_for_create": "There are no terms yet. Add a term in the \"Term\" tab first.",
+    "delete_timetable": "Delete",
+    "delete_timetable_confirm": "Delete the timetable \"{name}\"? This cannot be undone.",
+    "delete_timetable_success": "Timetable deleted",
+    "delete_timetable_error": "Failed to delete the timetable"
   },
   "error": {
     "server": "A server error occurred",

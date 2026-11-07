@@ -30,11 +30,13 @@ public class TeamTimetableTermController {
     private final TimetableTermService termService;
 
     @GetMapping
-    @Operation(summary = "チーム学期一覧（チーム独自＋組織継承）")
+    @Operation(summary = "チーム学期一覧",
+            description = "organizationId を省略するとチーム固有の学期だけを返す。指定するとチームの所属組織であることを"
+                    + "検証したうえで、チーム固有と組織の学期をマージして返す（非所属の組織は 404）。")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<TimetableTermResponse>>> listTeamTerms(
             @PathVariable Long teamId,
-            @RequestParam Long organizationId) {
+            @RequestParam(required = false) Long organizationId) {
         List<TimetableTermResponse> terms = termService
                 .getTeamTerms(teamId, organizationId, SecurityUtils.getCurrentUserId()).stream()
                 .map(e -> new TimetableTermResponse(e.getId(), e.getName(), e.getStartDate(),
