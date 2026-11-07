@@ -149,8 +149,130 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           import pathlib,hashlib,json,os,stat,subprocess
+          import os,pathlib,stat,hashlib
+          MAX_FILES=65536
+          MAX_ENTRIES=131072
+          MAX_BYTES=512*1024**2
+          class PackagingRejected(RuntimeError):
+           def __init__(self,reason,relative):
+            super().__init__(reason);self.reason=reason;self.relative=relative
+          def safe_display(value):
+           value=str(value)
+           return value if len(value)<=512 and not any(ord(c)<32 for c in value) and '\\' not in value and not value.startswith('/') else None
+          def regularize_output(source,destination,diagnostic):
+           source=pathlib.Path(source);destination=pathlib.Path(destination)
+           current='.';links=[];files=[];directories=[];expanded=0;entries=0
+           def fail(reason,relative):
+            diagnostic.update(state='rejected',reason=reason,path=safe_display(relative),pathSHA256=hashlib.sha256(str(relative).encode()).hexdigest(),sourceSymlinksObserved=len(links),normalizations=links[:32])
+            raise PackagingRejected(reason,relative)
+           def signature(s):
+            return (s.st_dev,s.st_ino,s.st_mode,s.st_uid,s.st_size,s.st_mtime_ns,s.st_ctime_ns)
+           try:
+            initial=source.lstat()
+            if not stat.S_ISDIR(initial.st_mode) or stat.S_ISLNK(initial.st_mode):fail('source-root-type','.')
+            root=source.resolve(strict=True);root_identity=(initial.st_dev,initial.st_ino)
+            if root.stat().st_uid!=os.getuid():fail('source-owner','.')
+            if destination.exists() or destination.is_symlink():fail('stage-exists','.')
+            if not destination.parent.is_dir() or destination.parent.is_symlink() or destination.parent.resolve()!=destination.parent.absolute():fail('stage-parent-unknown','.')
+            if destination.absolute().is_relative_to(root):fail('stage-inside-source','.')
+            def bounded_relative(candidate,virtual):
+             candidate=pathlib.Path(candidate)
+             if not candidate.is_relative_to(root):fail('target-escape',virtual)
+             pending=list(candidate.relative_to(root).parts);resolved_parts=[];visited=set();hops=0;linked=False
+             while pending:
+              part=pending.pop(0)
+              if part in ('','.'):continue
+              if part=='..':
+               if not resolved_parts:fail('target-escape',virtual)
+               resolved_parts.pop();continue
+              if '\\' in part or any(ord(c)<32 for c in part):fail('unsafe-source-path',virtual)
+              prefix=root.joinpath(*resolved_parts,part);s=prefix.lstat()
+              if stat.S_ISLNK(s.st_mode):
+               target=os.readlink(prefix);linked=True;hops+=1
+               diagnostic['lastLink']=dict(path=safe_display(virtual),sourceLink=safe_display(prefix.relative_to(root).as_posix()),targetRelative=safe_display(target) if not pathlib.PurePosixPath(target).is_absolute() and ':' not in target else None,targetSHA256=hashlib.sha256(target.encode()).hexdigest())
+               if not target or pathlib.PurePosixPath(target).is_absolute() or '\\' in target or any(ord(c)<32 for c in target) or ':' in target:fail('unsafe-link-target',virtual)
+               key=(str(prefix),target,tuple(pending))
+               if key in visited:fail('link-cycle',virtual)
+               if hops>40:fail('link-depth-limit',virtual)
+               visited.add(key);pending=target.split('/')+pending
+              else:
+               if pending and not stat.S_ISDIR(s.st_mode):fail('non-directory-component',virtual)
+               resolved_parts.append(part)
+             resolved=root.joinpath(*resolved_parts)
+             if linked:diagnostic['lastLink']['resolvedOutputRelative']=safe_display(resolved.relative_to(root).as_posix())
+             return resolved
+            def plan(candidate,virtual,ancestry):
+             nonlocal entries,expanded,current
+             current=virtual or '.';entries+=1
+             if entries>MAX_ENTRIES:fail('expanded-entry-limit',current)
+             if virtual and (safe_display(virtual) is None or any(x in ('','.','..') for x in pathlib.PurePosixPath(virtual).parts)):fail('unsafe-output-path',current)
+             original=candidate.lstat();target_text=os.readlink(candidate) if stat.S_ISLNK(original.st_mode) else None
+             resolved=bounded_relative(candidate,current);s=resolved.lstat()
+             if s.st_uid!=os.getuid():fail('target-owner',current)
+             if s.st_mode&(stat.S_ISUID|stat.S_ISGID):fail('privileged-mode',current)
+             if target_text is not None:
+              if len(links)>=MAX_FILES:fail('link-count-limit',current)
+              links.append(dict(path=current,target=safe_display(target_text),resolved=safe_display(resolved.relative_to(root).as_posix()),targetType='directory' if stat.S_ISDIR(s.st_mode) else 'file'))
+             if stat.S_ISDIR(s.st_mode):
+              identity=(s.st_dev,s.st_ino)
+              if identity in ancestry:fail('directory-cycle',current)
+              directories.append(virtual)
+              for child in sorted(resolved.iterdir(),key=lambda p:p.name):
+               relative=child.name if not virtual else virtual+'/'+child.name
+               plan(child,relative,ancestry|{identity})
+             elif stat.S_ISREG(s.st_mode):
+              if len(files)+1>MAX_FILES:fail('expanded-file-count-limit',current)
+              expanded+=s.st_size
+              if expanded>MAX_BYTES:fail('expanded-byte-limit',current)
+              files.append(dict(path=virtual,original=candidate,resolved=resolved,signature=signature(s),bytes=s.st_size,mode=stat.S_IMODE(s.st_mode)))
+             else:fail('special-file',current)
+            plan(root,'',set())
+            if not files:fail('empty-output','.')
+            diagnostic.update(state='planned',expandedFiles=len(files),expandedEntries=entries,expandedBytes=expanded,sourceSymlinks=len(links),normalizations=links[:32],normalizationRowsTruncated=len(links)>32)
+            destination.mkdir(mode=0o700)
+            for relative in sorted(set(directories),key=lambda p:(p.count('/'),p)):
+             if relative:(destination/relative).mkdir(mode=0o700)
+            rootfd=os.open(root,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+            try:
+             if (os.fstat(rootfd).st_dev,os.fstat(rootfd).st_ino)!=root_identity:fail('root-generation-changed','.')
+             for item in files:
+              current=item['path'];resolved=bounded_relative(item['original'],current)
+              if resolved!=item['resolved']:fail('source-link-changed',current)
+              fd=os.dup(rootfd)
+              try:
+               parts=resolved.relative_to(root).parts
+               for part in parts[:-1]:
+                newfd=os.open(part,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=fd);os.close(fd);fd=newfd
+               filefd=os.open(parts[-1],os.O_RDONLY|os.O_NOFOLLOW,dir_fd=fd)
+              finally:os.close(fd)
+              digest=hashlib.sha256();copied=0
+              with os.fdopen(filefd,'rb') as reader:
+               if signature(os.fstat(reader.fileno()))!=item['signature']:fail('source-file-changed',current)
+               with (destination/current).open('xb') as writer:
+                for chunk in iter(lambda:reader.read(1048576),b''):
+                 copied+=len(chunk)
+                 if copied>item['bytes']:fail('source-size-changed',current)
+                 digest.update(chunk);writer.write(chunk)
+               if copied!=item['bytes'] or signature(os.fstat(reader.fileno()))!=item['signature']:fail('source-file-changed',current)
+              if bounded_relative(item['original'],current)!=resolved or signature(resolved.lstat())!=item['signature']:fail('source-path-changed',current)
+              target=destination/current;target.chmod(item['mode'])
+              if not stat.S_ISREG(target.lstat().st_mode) or target.is_symlink():fail('stage-file-type',current)
+              if hashlib.sha256(target.read_bytes()).hexdigest()!=digest.hexdigest():fail('stage-copy-mismatch',current)
+             if (root.stat().st_dev,root.stat().st_ino)!=root_identity:fail('root-generation-changed','.')
+            finally:os.close(rootfd)
+            diagnostic.update(state='regularized',reason=None,path=None,sourceOutputUnmodified=True,finalStageRegularOnly=True)
+            return dict(sourceSymlinks=len(links),expandedFiles=len(files),expandedBytes=expanded,normalizations=links)
+           except PackagingRejected:raise
+           except (OSError,RuntimeError,ValueError) as exc:
+            fail('source-io-or-resolution-'+type(exc).__name__,current)
           R=pathlib.Path(os.environ['RUNNER_TEMP'])/'joint-fe-b7e81c94'
-          root=pathlib.Path('frontend/.output');assert root.is_dir() and not root.is_symlink()
+          sourceRoot=pathlib.Path('frontend/.output');stageParent=R/'regularized';stageParent.mkdir(mode=0o700)
+          root=stageParent/'.output';normalizationDiagnostic={}
+          try:
+              normalization=regularize_output(sourceRoot,root,normalizationDiagnostic)
+          finally:
+              report=(json.dumps(normalizationDiagnostic,indent=2)+'\n').encode();assert len(report)<=131072
+              (R/'packaging-diagnostic.json').write_bytes(report)
           assert (root/'server/index.mjs').is_file() and (root/'server/node_modules/vue/index.mjs').is_file()
           assert subprocess.check_output(['git','status','--porcelain=v1','--untracked-files=all'])==b''
           rows=[];total=0
@@ -162,18 +284,18 @@ jobs:
               assert stat.S_ISREG(s.st_mode)
               total+=s.st_size;assert total<=512*1024**2
               rows.append({'path':rel,'bytes':s.st_size,'mode':stat.S_IMODE(s.st_mode),'sha256':hashlib.sha256(p.read_bytes()).hexdigest()})
-          assert rows
+          assert rows and len(rows)==normalization['expandedFiles'] and total==normalization['expandedBytes']
           source=json.loads((R/'source.json').read_text());ci=json.loads((R/'npm-ci-exit.json').read_text());build=json.loads((R/'build-exit.json').read_text());assert ci['actualExit']==build['actualExit']==0
           nodePaths=sorted((R/'node-facts').glob('*.json'));assert 0<len(nodePaths)<=256
           assert sum(p.stat().st_size for p in nodePaths)<=262144
           nodeFacts=[json.loads(p.read_text()) for p in nodePaths]
           assert any(x['isMainThread'] and x['isNuxtEntry'] for x in nodeFacts)
           assert all(x['coreFilter']=='00000000' and '--max-old-space-size=8192' in x['nodeOptions'] for x in nodeFacts)
-          source.update(state='CI_PRODUCER_CANDIDATE_ROOT_ADOPTION_PENDING',runtimeAdopted=False,nodeProducerFacts=nodeFacts,nodeObserverSHA256=hashlib.sha256((R/'node-observer.cjs').read_bytes()).hexdigest(),nodeObserverScope='startup facts for Node processes/threads that inherited preload; no full environment or argv',files=rows,logicalBytes=total,noSymlinks=True,regularFilesOnly=True,buildActualExit=build['actualExit'],npmCiActualExit=ci['actualExit'],prebuildResources=json.loads((R/'prebuild-resources.json').read_text()),productionEnvironment={'NODE_ENV':'production','NODE_OPTIONS':'--max-old-space-size=8192 --require='+str(R/'node-observer.cjs'),'NUXT_PUBLIC_API_BASE':'http://localhost:8085','NUXT_INTERNAL_API_BASE':'http://localhost:8085','NUXT_PUBLIC_BASE_URL':'http://localhost:3005','NUXT_GENERATE_SPA':'false','CI':'true','HUSKY':'0'},environmentScope='explicit nonsecret allowlist passed to npm; npm may augment PATH',nuxtVersion=json.loads(pathlib.Path('frontend/node_modules/nuxt/package.json').read_text())['version'],cliVersion=json.loads(pathlib.Path('frontend/node_modules/@nuxt/cli/package.json').read_text())['version'],compilerInputSHA256={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in [pathlib.Path('frontend/node_modules/nuxt/bin/nuxt.mjs'),pathlib.Path('frontend/node_modules/@nuxt/cli/package.json')]},buildTimeMetadata=(R/'build-time.txt').read_text(),peakScope='GNU time max RSS only; not aggregate process-tree peak')
+          source.update(state='CI_PRODUCER_CANDIDATE_ROOT_ADOPTION_PENDING',runtimeAdopted=False,nodeProducerFacts=nodeFacts,nodeObserverSHA256=hashlib.sha256((R/'node-observer.cjs').read_bytes()).hexdigest(),nodeObserverScope='startup facts for Node processes/threads that inherited preload; no full environment or argv',files=rows,logicalBytes=total,noSymlinks=True,regularFilesOnly=True,fileInventoryScope='regularized staging copy of generated output; source output unchanged',sourceSymlinkRegularization=normalization,buildActualExit=build['actualExit'],npmCiActualExit=ci['actualExit'],prebuildResources=json.loads((R/'prebuild-resources.json').read_text()),productionEnvironment={'NODE_ENV':'production','NODE_OPTIONS':'--max-old-space-size=8192 --require='+str(R/'node-observer.cjs'),'NUXT_PUBLIC_API_BASE':'http://localhost:8085','NUXT_INTERNAL_API_BASE':'http://localhost:8085','NUXT_PUBLIC_BASE_URL':'http://localhost:3005','NUXT_GENERATE_SPA':'false','CI':'true','HUSKY':'0'},environmentScope='explicit nonsecret allowlist passed to npm; npm may augment PATH',nuxtVersion=json.loads(pathlib.Path('frontend/node_modules/nuxt/package.json').read_text())['version'],cliVersion=json.loads(pathlib.Path('frontend/node_modules/@nuxt/cli/package.json').read_text())['version'],compilerInputSHA256={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in [pathlib.Path('frontend/node_modules/nuxt/bin/nuxt.mjs'),pathlib.Path('frontend/node_modules/@nuxt/cli/package.json')]},buildTimeMetadata=(R/'build-time.txt').read_text(),peakScope='GNU time max RSS only; not aggregate process-tree peak')
           raw=(json.dumps(source,indent=2)+'\n').encode();assert len(raw)<=16*1024**2
           (R/'payload/manifest.json').write_bytes(raw)
           PY
-          tar --hard-dereference --format=posix --pax-option=delete=atime,delete=ctime --sort=name --numeric-owner --owner=0 --group=0 -czf "$RUNNER_TEMP/joint-fe-b7e81c94/payload/frontend-output.tar.gz" -C frontend .output
+          tar --hard-dereference --format=posix --pax-option=delete=atime,delete=ctime --sort=name --numeric-owner --owner=0 --group=0 -czf "$RUNNER_TEMP/joint-fe-b7e81c94/payload/frontend-output.tar.gz" -C "$RUNNER_TEMP/joint-fe-b7e81c94/regularized" .output
           python3 - <<'PY'
           import pathlib,hashlib,json,os,tarfile
           R=pathlib.Path(os.environ['RUNNER_TEMP'])/'joint-fe-b7e81c94/payload'
@@ -276,6 +398,31 @@ jobs:
                           value=line.strip()[len(prefix):].strip()
                           if re.fullmatch('[0-9]+(?:\.[0-9]+)?',value):vals[key]=float(value) if '.' in value else int(value)
               summary['gnuTime']={'state':'observed','numeric':vals,'aggregateTreePeakProven':False}
+          def packaging_projection(value):
+           def rel(v):
+            return isinstance(v,str) and len(v)<=512 and not v.startswith('/') and '\\' not in v and ':' not in v and not any(ord(c)<32 for c in v) and '..' not in pathlib.PurePosixPath(v).parts
+           if not isinstance(value,dict):return {'state':'unknown'}
+           result={'state':value.get('state') if value.get('state') in ['planned','regularized','rejected'] else 'unknown'}
+           for key in ['expandedFiles','expandedEntries','expandedBytes','sourceSymlinks','sourceSymlinksObserved']:
+            if type(value.get(key))is int and 0<=value[key]<=512*1024**2:result[key]=value[key]
+           reason=value.get('reason')
+           if isinstance(reason,str) and re.fullmatch('[A-Za-z0-9-]{1,96}',reason):result['reason']=reason
+           if rel(value.get('path')):result['path']=value['path']
+           if isinstance(value.get('pathSHA256'),str) and re.fullmatch('[0-9a-f]{64}',value['pathSHA256']):result['pathSHA256']=value['pathSHA256']
+           last=value.get('lastLink')
+           if isinstance(last,dict):
+            result['lastLink']={k:last[k] for k in ['path','sourceLink','resolvedOutputRelative'] if rel(last.get(k))}
+            if isinstance(last.get('targetSHA256'),str) and re.fullmatch('[0-9a-f]{64}',last['targetSHA256']):result['lastLink']['targetSHA256']=last['targetSHA256']
+           result['normalizations']=[]
+           normal=value.get('normalizations',[])
+           if isinstance(normal,list):
+            for item in normal[:32]:
+             if not isinstance(item,dict):continue
+             row={k:item[k] for k in ['path','resolved'] if rel(item.get(k))}
+             if item.get('targetType') in ['directory','file']:row['targetType']=item['targetType']
+             if row:result['normalizations'].append(row)
+           return result
+          summary['packaging']=packaging_projection(obj('packaging-diagnostic.json'))
           summary['inputBytesRead']=used
           raw=(json.dumps(summary,indent=2)+'\n').encode();assert len(raw)<=LIMIT
           (D/'diagnostic.json').write_bytes(raw)
