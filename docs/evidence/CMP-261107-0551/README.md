@@ -31,3 +31,5 @@ Production成功原本を `production-M-proof.json` に保存。4484files scanne
 正式完了提案の正本は親directoryの `CMP-261107-0551.json` / `CMP-261107-0551.md`。Windows build-beforeは絶対pathを除去した選別版、build-receipt/interruptionは未完非PASSと既知所有process残存なし/未知停止0を保持。正式ci[]はH12runでM production/target gateを混入させない。M frontend workflow全体も最終primary APIで両job SUCCESSと確認済み（先行job-only snapshotは履歴保持）。最終root review/merge前の文書提案として保持する。
 
 H専有生成物の最終撤収はgenerated-cleanup-verification.json / generated-cleanup-process-check.json / generated-cleanup-report.mdでPASS。source inventory/Git clean・donor metadata前後同一、3生成物root不在、世代確認済み5PID再観測なし/追加停止0。全OS global-zeroやdonor全content再hashを主張しない。
+
+完了validatorのWindows全履歴CLIはexit1。1,694,464bytesのcoverage実blobが既定execFileSync maxBufferでENOBUFSとなり、catchで不存在と報告されたことをread-only probeで確定した。validator/閾値は変えず、正式I02/I09の参照先をcoverage path/hash/6144件を持つ小renderer-summaryへ向け、full coverage原bytesを保持した。必須CLIを同owned WT/同Git object/同scriptのWSL Node22で固定commit検査し、結果はcompletion-validation.jsonへ分離する。

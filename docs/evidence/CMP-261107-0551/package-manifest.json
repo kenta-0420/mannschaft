@@ -15,8 +15,8 @@
     },
     {
       "path": "docs/evidence/CMP-261107-0551/backend-summary.json",
-      "sha256": "f454ff9b00186b15c7f212bf2c86dd447f8260304e1cc7ecd2deca93f9f3969a",
-      "bytes": 1384
+      "sha256": "a0b4928fa771170e9e263135521ef83fad481c3305d362f88a51f61b5ab9fd7e",
+      "bytes": 1427
     },
     {
       "path": "docs/evidence/CMP-261107-0551/board-new-four.png",
@@ -84,6 +84,11 @@
       "bytes": 15063
     },
     {
+      "path": "docs/evidence/CMP-261107-0551/completion-validation.json",
+      "sha256": "f88379ddbe9f732f64e510a6e6f1320e07db3db90eb611003bca359b5dfe85f6",
+      "bytes": 1229
+    },
+    {
       "path": "docs/evidence/CMP-261107-0551/coverage.jsonl",
       "sha256": "b9f424ff57647ae4a0998446e794e2b26e5991f38f1e7ffcab5251683deadd0b",
       "bytes": 1694464
@@ -135,13 +140,13 @@
     },
     {
       "path": "docs/evidence/CMP-261107-0551/README.md",
-      "sha256": "450007ffffe266146628e9aff5551b19852215c64ee06c214f6715224ee1a74d",
-      "bytes": 9551
+      "sha256": "9f9c9786efc33daf096495babeebcceb88e0f6836b9fb4960cb04a2a436083dc",
+      "bytes": 10067
     },
     {
       "path": "docs/evidence/CMP-261107-0551/renderer-summary.json",
-      "sha256": "ac76b552b8da1c9adf87a28e5ef63198780e8b4a2bac3afa6413e1bdd5627be8",
-      "bytes": 1611
+      "sha256": "749c83c44c514b5bbe7f70f8767c4c626ae3b51aa9629230e25180f8c43228c6",
+      "bytes": 1723
     },
     {
       "path": "docs/evidence/CMP-261107-0551/resident-mobile-10-status360.png",
@@ -180,8 +185,8 @@
     },
     {
       "path": "docs/evidence/CMP-261107-0551/root-test-reference-notes.md",
-      "sha256": "72539532e117ca3341eefa25197022aaac654ca897754c027f2d79806631aa14",
-      "bytes": 1659
+      "sha256": "d3685700abfcf748b2dc21a609e562b695d6a24e65f0182f7cd2d69a2eeaa5aa",
+      "bytes": 1711
     },
     {
       "path": "docs/evidence/CMP-261107-0551/root-visual-review.json",
@@ -217,8 +222,8 @@
   "companionFiles": [
     {
       "path": "docs/evidence/CMP-261107-0551.json",
-      "sha256": "5d9ba22d94f0718d8f7981fe1cd9527247e41c8dbf9dff6859460f8e5d71f667",
-      "bytes": 15655
+      "sha256": "7ef9411baa0478ce4d886d92c3530e1fee911839e48e6de42c01a864d95db150",
+      "bytes": 15669
     },
     {
       "path": "docs/evidence/CMP-261107-0551.md",

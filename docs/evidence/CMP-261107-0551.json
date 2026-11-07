@@ -39,7 +39,7 @@
         },
         {
           "name": "6144 per-cell direct renderer canonical RGBA coverage",
-          "evidence": "docs/evidence/CMP-261107-0551/coverage.jsonl"
+          "evidence": "docs/evidence/CMP-261107-0551/renderer-summary.json"
         }
       ]
     },
@@ -161,7 +161,7 @@
         },
         {
           "name": "6144 direct renderer coverage",
-          "evidence": "docs/evidence/CMP-261107-0551/coverage.jsonl"
+          "evidence": "docs/evidence/CMP-261107-0551/renderer-summary.json"
         },
         {
           "name": "actual idle-walk-idle and representative care ABCD timing composite; raw NOT_EXECUTED retained",

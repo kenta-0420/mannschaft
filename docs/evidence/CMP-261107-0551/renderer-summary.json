@@ -33,5 +33,7 @@
     "actual app UI/auth/backend/lifecycle/exploration are separate",
     "six representative effects stills; not final-pixel golden for every phase",
     "isolated paint CPU and atlas HTTP body ratios; not full-app transfer/TTI/frame-presentation/SLO"
-  ]
+  ],
+  "coverageSha256": "b9f424ff57647ae4a0998446e794e2b26e5991f38f1e7ffcab5251683deadd0b",
+  "coverageRows": 6144
 }

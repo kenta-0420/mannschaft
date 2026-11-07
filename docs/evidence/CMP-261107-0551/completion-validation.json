@@ -1,0 +1,26 @@
+{
+  "status": "FINAL_REQUIRED_CLI_PENDING_WSL_RETRY",
+  "unitTests": {
+    "passed": 22,
+    "failed": 0,
+    "environment": "owned TEMP, tests unchanged"
+  },
+  "providedMetadataValidation": "PASS; same exported validator with 17AC/29merge-time checks/12H runs/localGit1946files/22refs before small-summary ref change",
+  "windowsGlobalCli": {
+    "status": "FAIL",
+    "exitCode": 1,
+    "nodePid": 52604,
+    "processCreationUtc": "2026-11-07T19:58:51Z",
+    "validatedCommit": "9544c00976ca2dc875fc85109550f1126379d928",
+    "message": "coverage.jsonl reported missing although Git blob exists",
+    "rootCause": "execFileSync default 1MiB maxBuffer ENOBUFS caught as absent reference",
+    "readOnlyProbe": {
+      "defaultRead": "ENOBUFS; status null; SIGTERM",
+      "largerDiagnosticBufferBytes": 4194304,
+      "readSucceededBytes": 1694464
+    },
+    "validatorChanged": false
+  },
+  "resolution": "I02/I09 direct evidence refs use small renderer-summary.json carrying coverage path/hash/6144 count. Original full coverage blob unchanged. No AC/test/measurement threshold relaxed.",
+  "wslRetry": "same physical script and same Git objects, Node22, fixed base M and exact committed head; no copy/build/cache/service"
+}
