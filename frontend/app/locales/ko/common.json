@@ -1110,6 +1110,18 @@
     }
   },
   "project": {
+    "back_label": "프로젝트 목록",
+    "delete_aria": "{title} 삭제",
+    "delete_confirm": "\"{title}\"을(를) 삭제하시겠습니까?",
+    "delete_confirm_header": "삭제 확인",
+    "milestone_dialog": {
+      "add_title": "마일스톤 추가",
+      "edit_title": "마일스톤 편집",
+      "title_label": "제목",
+      "title_placeholder": "마일스톤 이름",
+      "due_date_label": "마감일",
+      "add": "추가"
+    },
     "related_todo_no_due": "기한 없음",
     "related_todo_no_assignee": "담당자 없음",
     "related_todo_open": "TODO 상세 열기",
@@ -1170,7 +1182,19 @@
       "none": "없음",
       "custom_emoji": "사용자 지정",
       "custom_color": "사용자 지정 색상",
-      "current": "현재 값"
+      "current": "현재 값",
+      "colors": {
+        "blue": "파랑",
+        "red": "빨강",
+        "green": "초록",
+        "amber": "호박색",
+        "violet": "보라",
+        "pink": "분홍",
+        "cyan": "청록",
+        "teal": "틸",
+        "orange": "주황",
+        "gray": "회색"
+      }
     },
     "guide": {
       "button": "사용 방법",
@@ -1222,7 +1246,10 @@
       "update_failed": "업데이트에 실패했습니다",
       "delete_failed": "삭제에 실패했습니다",
       "status_change_failed": "상태 변경에 실패했습니다",
-      "milestone_save_failed": "마일스톤 저장에 실패했습니다"
+      "milestone_save_failed": "마일스톤 저장에 실패했습니다",
+      "force_unlock_failed": "강제 잠금 해제에 실패했습니다",
+      "completion_mode_failed": "완료 모드 변경에 실패했습니다",
+      "gate_init_failed": "게이트 초기화에 실패했습니다"
     },
     "status": {
       "active": "진행 중",

@@ -1110,6 +1110,18 @@
     }
   },
   "project": {
+    "back_label": "项目列表",
+    "delete_aria": "删除{title}",
+    "delete_confirm": "确定要删除“{title}”吗？",
+    "delete_confirm_header": "确认删除",
+    "milestone_dialog": {
+      "add_title": "添加里程碑",
+      "edit_title": "编辑里程碑",
+      "title_label": "标题",
+      "title_placeholder": "里程碑名称",
+      "due_date_label": "截止日期",
+      "add": "添加"
+    },
     "related_todo_no_due": "无截止日期",
     "related_todo_no_assignee": "未分配负责人",
     "related_todo_open": "打开待办详情",
@@ -1170,7 +1182,19 @@
       "none": "无",
       "custom_emoji": "自定义",
       "custom_color": "自定义颜色",
-      "current": "当前值"
+      "current": "当前值",
+      "colors": {
+        "blue": "蓝色",
+        "red": "红色",
+        "green": "绿色",
+        "amber": "琥珀色",
+        "violet": "紫色",
+        "pink": "粉色",
+        "cyan": "青色",
+        "teal": "蓝绿色",
+        "orange": "橙色",
+        "gray": "灰色"
+      }
     },
     "guide": {
       "button": "使用说明",
@@ -1222,7 +1246,10 @@
       "update_failed": "更新失败",
       "delete_failed": "删除失败",
       "status_change_failed": "更改状态失败",
-      "milestone_save_failed": "保存里程碑失败"
+      "milestone_save_failed": "保存里程碑失败",
+      "force_unlock_failed": "强制解锁失败",
+      "completion_mode_failed": "更改完成模式失败",
+      "gate_init_failed": "初始化关卡失败"
     },
     "status": {
       "active": "进行中",
