@@ -63,20 +63,21 @@ class RanchDevelopmentClipAssignmentIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    void 既存ランダム選定が各生息地のv3を保存し再送は元ACKを返す() {
+    void 既存ランダム選定が各生息地のv4を保存し再送は元ACKを返す() {
         assertThat(resolver.availableMethods()).containsExactly(AssignmentMethod.HABITAT_RANDOM);
         for (Habitat habitat : Habitat.values()) {
             Long id = enroll();
             var request = request(habitat, "0");
             var selected = resolver.resolve(id, request, null, null);
-            assertThat(selected.catalogVersion()).isEqualTo(3L);
+            assertThat(selected.catalogVersion()).isEqualTo(4L);
             assertThat(selected.habitat()).isEqualTo(habitat);
-            assertThat(selected.variantKey()).isEqualTo("DEV_BASE_16_CLIPS_V1");
+            assertThat(selected.variantKey()).isIn("DEV_APPEARANCE_1", "DEV_APPEARANCE_2",
+                    "DEV_APPEARANCE_3", "DEV_APPEARANCE_4");
             assertThat(catalog.candidates(habitat)).extracting(RanchDevelopmentClipCatalog.Candidate::speciesKey)
                     .contains(selected.speciesKey());
             UUID key = UUID.randomUUID();
             var first = writer.assign(id, key, request, selected, NOW.plusSeconds(1));
-            assertThat(dinosaurs.findByUserId(id).orElseThrow().getSpeciesCatalogVersion()).isEqualTo(3L);
+            assertThat(dinosaurs.findByUserId(id).orElseThrow().getSpeciesCatalogVersion()).isEqualTo(4L);
             assertThat(writer.assign(id, key, request, null, NOW.plusSeconds(10))).isEqualTo(first);
             assertThat(writer.savedReplay(id, key, request)).contains(first);
             assertThat(commands.countByUserId(id)).isEqualTo(2);
@@ -148,6 +149,37 @@ class RanchDevelopmentClipAssignmentIT extends AbstractMySqlIntegrationTest {
             assertThat(after.getSpeciesKey()).isEqualTo("DEV_TRICERATOPS");
             assertThat(after.getVariantKey()).isEqualTo("DEV_ORANGE_96_WALK_V1");
             assertThat(after.getSpeciesCatalogVersion()).isEqualTo(2L);
+            assertThat(after.getStage()).isEqualTo(hatched ? DinosaurStage.BABY : DinosaurStage.EGG);
+            assertThat(writer.savedReplay(id, oldKey, originalRequest)).contains(original);
+            assertThat(commands.countByUserId(id)).isEqualTo(2);
+        }
+    }
+
+    @Test
+    void v4有効でも既存v3選定済み卵と孵化個体を再割当せず元ACKを保持する() {
+        for (boolean hatched : List.of(false, true)) {
+            Long id = enroll();
+            UUID oldKey = UUID.randomUUID();
+            var originalRequest = request(Habitat.LAND, "0");
+            var oldSelection = new com.mannschaft.app.ranch.service.RanchAssignmentResolver.Selection(
+                    AssignmentMethod.HABITAT_RANDOM, Habitat.LAND, "DEV_CLIP_TRICERATOPS",
+                    "DEV_BASE_16_CLIPS_V1", 3L, "ranch-development-v1", null, "a".repeat(64));
+            var original = writer.assign(id, oldKey, originalRequest, oldSelection, NOW.plusSeconds(1));
+            var before = dinosaurs.findByUserId(id).orElseThrow();
+            UUID dinosaurId = before.getId();
+            if (hatched) {
+                before.hatch("保存済み個体", NOW.plusSeconds(8 * 24 * 60 * 60));
+                dinosaurs.saveAndFlush(before);
+            }
+            var retry = request(Habitat.SEA, "1");
+            var replacement = resolver.resolve(id, retry, null, null);
+            assertThatThrownBy(() -> writer.assign(id, UUID.randomUUID(), retry, replacement,
+                    NOW.plusSeconds(9 * 24 * 60 * 60))).isInstanceOf(BusinessException.class);
+            var after = dinosaurs.findByUserId(id).orElseThrow();
+            assertThat(after.getId()).isEqualTo(dinosaurId);
+            assertThat(after.getSpeciesKey()).isEqualTo("DEV_CLIP_TRICERATOPS");
+            assertThat(after.getVariantKey()).isEqualTo("DEV_BASE_16_CLIPS_V1");
+            assertThat(after.getSpeciesCatalogVersion()).isEqualTo(3L);
             assertThat(after.getStage()).isEqualTo(hatched ? DinosaurStage.BABY : DinosaurStage.EGG);
             assertThat(writer.savedReplay(id, oldKey, originalRequest)).contains(original);
             assertThat(commands.countByUserId(id)).isEqualTo(2);

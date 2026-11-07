@@ -1,0 +1,31 @@
+{
+  "head": "9e8e9ba15cc7040d88d88067646be2d6a51ec862",
+  "frontendTree": "ccdb9b22051266c89b9bfbe1c5eb8f6a712e2936",
+  "sourceInventorySha256": "8837ded35b5dd045cf9a842d533fe20aefa9d4530d408c39e5d316bb1888c220",
+  "donorDependencies": {
+    "files": 50455,
+    "bytes": 550292699,
+    "metadataSha256": "6ff821e2936abace888fb6d897f57f442c29381680cf28031d911967483db946"
+  },
+  "donorSourceHead": "99a30026523da4f38559b3158687a774fe3103ba",
+  "node": "v22.23.2",
+  "npm": "10.9.8",
+  "resources": {
+    "at": "2026-11-07T18:14:10.793Z",
+    "freeMemory": 20100169728,
+    "totalMemory": 68108480512,
+    "diskFree": 5443997696
+  },
+  "environment": {
+    "NODE_ENV": "production",
+    "maxOldSpaceSizeMiB": 8192,
+    "writeGuardRequired": true,
+    "NUXT_PUBLIC_RANCH_DEVELOPMENT_CLIPS": "true",
+    "jitiCacheScope": "owned worktree local cache; absolute path excluded"
+  },
+  "sourceArtifact": {
+    "path": "outputs/ranch-approved64-main-followup-20261108/build-before.json",
+    "sha256": "8620e107318946ee5e8104f3699c1ced1fc87f429074db51eb48104659990db2",
+    "sanitized": true
+  }
+}
