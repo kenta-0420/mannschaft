@@ -193,6 +193,21 @@
       "source": "outputs/ranch-approved64-main-followup-20261108/pr-checks-final-H.json",
       "sha256": "2f62451d995e7483ed7a03eca6fb5601fcb6fdc29e0b71965a1b3e5f4d2352aa",
       "bytes": 9264
+    },
+    {
+      "source": "outputs/ranch-approved64-main-followup-20261108/postmerge-input-bridge.json",
+      "sha256": "eb6a50681fbdb3fd44f49f3e513e85760f6d2ab035094a8d2ba00e267e6c96ad",
+      "bytes": 475
+    },
+    {
+      "source": "outputs/ranch-approved64-main-followup-20261108/main-push-runs-M-root.json",
+      "sha256": "e440f2e11239a1c9108c0b7d41d0479bbf740a3d63d8e735c803ec9fcc958f55",
+      "bytes": 878
+    },
+    {
+      "source": "outputs/ranch-approved64-production-order-review-20261108.md",
+      "sha256": "d584816026eef7483456902fa1e3a284fbbdcec5ac69d2ff2b037ca0e44fb4ab",
+      "bytes": 11309
     }
   ]
 }

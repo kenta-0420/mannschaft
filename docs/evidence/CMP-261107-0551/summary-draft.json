@@ -43,12 +43,14 @@
     "scope": "historical source-bound success snapshot; not current main-followup CI"
   },
   "production": {
-    "status": "PENDING_NEW_HEAD_BUILD_AND_SCAN",
-    "oldEvidence": "historical only after main followup"
+    "status": "PENDING_MAIN_PUSH_DOCKER_JOB",
+    "evidence": "docs/evidence/CMP-261107-0551/production-current-pending.json",
+    "inputScopeBridge": "docs/evidence/CMP-261107-0551/postmerge-production-input-bridge.json",
+    "orderDecision": "docs/evidence/CMP-261107-0551/production-order-scope-bridge.md",
+    "windowsAttempt": "NOT_COMPLETED / still live at root snapshot"
   },
   "remaining": [
     "latest-head production build/scanner",
-    "PR normal merge",
     "completion ledger/evidence validation"
   ],
   "completionGate": "No completion-evidence schema JSON or successful stages generated; this draft cannot close campaign.",
@@ -85,5 +87,7 @@
     "checksFailure": 0,
     "evidence": "docs/evidence/CMP-261107-0551/ci-current-head.json",
     "pullRequestTargetGateSeparate": true
-  }
+  },
+  "implementationPrState": "MERGED",
+  "implementationMergeCommit": "e2b4744f438d0d376fb3c243e28aaa5ad2ff545d"
 }

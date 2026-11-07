@@ -406,5 +406,6 @@
     "pull_request_target gate is recorded separately and must not be mechanically copied into later completion-evidence ci[].",
     "Docker main-push-only and weekly full-history scan jobs are skipped, not executed successes.",
     "No formal completion schema JSON, task-list completion, push, PR change, or merge performed by this update."
-  ]
+  ],
+  "prSnapshotTiming": "H CI snapshot before normal implementation merge; isDraft/mergeability fields are historical, not current PR state."
 }

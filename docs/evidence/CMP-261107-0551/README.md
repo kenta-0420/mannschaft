@@ -1,6 +1,6 @@
 # CMP-261107-0551 選別証拠・完了準備
 
-状態は IN_PROGRESS。実装PR #4353 の新head CIは12workflow成功。production build/scanner、通常merge、殿の最終裁定は別ゲートであり、この文書は完了宣言ではない。正式完了JSONとtask-list完了遷移は含めない。
+状態は IN_PROGRESS。実装PR #4353 の新head CIは12workflow成功。実装はMへ通常merge済み。production build/scanner、殿の最終裁定は別ゲートであり、この文書は完了宣言ではない。正式完了JSONとtask-list完了遷移は含めない。
 
 担当はclosure文書/B0追記準備。殿は製品・実機採否・住民裏取り・最終出荷判断を担当する。所有worktreeは `work/ranch-approved64-closure-20261108`、branchは `docs/ranch-approved64-closure-20261108`。開始時HEAD `9e8e9ba15cc7040d88d88067646be2d6a51ec862`、作業木cleanを確認。originはローカル本陣のためpushしていない。製品source・既存helper・live runtimeは変更しない。
 
@@ -20,6 +20,8 @@ B0正本 `docs/evidence/CMP-261015-1510/resident-overlay.json` は旧58 persona/
 
 最終r17 result SHA `a50999fed4ea19bd554834b95467056b70e29ab4ca52e715b07e2bb94be7b6c7` はraw FAILのまま。専用runtime撤収は `runtime-cleanup.json` にexit0/removed・compose所有label資産0・専用プロセス/アカウント/cache不在・helper MATCHを選別した。receiptはtrim正規化SHA `27508e5afd2c0a718c4749a9c85ff89ab832ea221ea64566b5130bbe5e96caa6` とraw SHA `79730b0a946847f66538027224590dad25488fe0e25be8877eb200f8945416a5` を区別する。保持中r7 scratchは対象外で触らない。source-manifestの途中r17 hashは明示した履歴で、finalSnapshotSourcesと混同しない。
 
-I14は恐竜素材の初回HTTP body比・同tuple variant body比・isolated renderer CPU p95という測定範囲で採用する。full app TTI/SLO・新head全転送成功へ拡張しない。実機source4ceのactual proof、最新headの4309対象blob同一、frontend/backend全tree非同一を分けて保持する。新head CIは12workflow成功、build/scannerと通常merge/正式closureはpending。住民原観測detailは採取時点の文章を保ち、後続root裁定を別metadata/文書で示す。
+I14は恐竜素材の初回HTTP body比・同tuple variant body比・isolated renderer CPU p95という測定範囲で採用する。full app TTI/SLO・新head全転送成功へ拡張しない。実機source4ceのactual proof、最新headの4309対象blob同一、frontend/backend全tree非同一を分けて保持する。新head CIは12workflow成功、build/scannerと正式closureはpending。実装通常mergeは済み。住民原観測detailは採取時点の文章を保ち、後続root裁定を別metadata/文書で示す。
 
-最新head CIは `ci-current-head.json` に選別保存。head H完全一致のpull_request12workflowすべてSUCCESS、全29checkは27SUCCESS/2SKIPPED・pending0/fail0。Task-List pull_request_target gateは別欄で成功を保持し、将来の正式完了JSON ci[]へ機械追加しない。Docker main-push専用/週次full-history scanの2jobはSKIPPEDで実行成功と区別する。取得時PRはdraft・mergeable UNKNOWNのsnapshot。CI成功はproduction build/scannerやmerge成功を意味しない。
+最新head CIは `ci-current-head.json` に選別保存。head H完全一致のpull_request12workflowすべてSUCCESS、全29checkは27SUCCESS/2SKIPPED・pending0/fail0。Task-List pull_request_target gateは別欄で成功を保持し、将来の正式完了JSON ci[]へ機械追加しない。Docker main-push専用/週次full-history scanの2jobはSKIPPEDで実行成功と区別する。CI取得時PRのdraft・mergeable UNKNOWNはmerge前の歴史snapshot。実装PRは現在MERGED。CI成功だけからproduction build/scanner成功を推定しない。通常mergeの根拠は別のpostmerge bridge。
+
+実装PR #4353は通常merge済み（head H不変、M=`e2b4744f438d0d376fb3c243e28aaa5ad2ff545d`）。closure branchもMを通常mergeしてdoc-only差分へ揃えた。H/M全repo treeはTask-List差で異なるが、frontend Docker入力scope・BE tree・workflow blobはexactであり、その限定bridgeを `postmerge-production-input-bridge.json` / `production-order-scope-bridge.md` に選別した。main-push run42406375715/job128504862033はbuild→scanner→containerHTTP/healthの成功待ち。Windows H buildは継続・未PASS、追加nativeはguard NO_START/作成0の歴史で、製品失敗や新build成功ではない。正式完了JSON/task-list完了/push/PRはまだ行っていない。
