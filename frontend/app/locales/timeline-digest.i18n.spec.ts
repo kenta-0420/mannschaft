@@ -37,6 +37,23 @@ const BASELINE = {
 } as const
 
 const localesDir = dirname(fileURLToPath(import.meta.url))
+type DigestLocale = keyof typeof BASELINE
+type DigestMessages = Record<string, string | Record<string, string>>
+
+function readMessages(locale: DigestLocale): DigestMessages {
+  return JSON.parse(
+    readFileSync(resolve(localesDir, locale, 'timeline_digest.json'), 'utf8'),
+  ) as DigestMessages
+}
+
+const localeMessages = {
+  ja: readMessages('ja'),
+  en: readMessages('en'),
+  zh: readMessages('zh'),
+  ko: readMessages('ko'),
+  es: readMessages('es'),
+  de: readMessages('de'),
+}
 
 function semanticHash(messages: Record<string, string>) {
   const sorted = Object.fromEntries(
@@ -51,15 +68,13 @@ describe('CMP-261108-0254 ダイジェストの実ロケール解決', () => {
   it.each(['ja', 'en', 'zh', 'ko', 'es', 'de'] as const)(
     '%s は既存54キーと文言を保持して名前空間付き翻訳を解決する',
     (locale) => {
-      const messages = JSON.parse(
-        readFileSync(resolve(localesDir, locale, 'timeline_digest.json'), 'utf8'),
-      ) as Record<string, string | Record<string, string>>
+      const messages = localeMessages[locale]
       // 実loaderと同じくJSONをrootへ渡す。ファイル名で名前空間を補ったり、tをmockしない。
-      const i18n = createI18n({
+      const i18n = createI18n<[DigestMessages], DigestLocale, false>({
         legacy: false,
         locale,
         fallbackLocale: false,
-        messages: { [locale]: messages },
+        messages: localeMessages,
         missingWarn: false,
         fallbackWarn: false,
       })
