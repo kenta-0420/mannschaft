@@ -1,11 +1,17 @@
 {
-  "status": "FINAL_REQUIRED_CLI_PENDING_WSL_RETRY",
+  "status": "PASS_REQUIRED_CLI_AND_TARGETED_PROVIDED_METADATA",
   "unitTests": {
     "passed": 22,
     "failed": 0,
-    "environment": "owned TEMP, tests unchanged"
+    "environment": "owned TEMP, tests unchanged",
+    "initialAttempt": {
+      "passed": 20,
+      "failed": 2,
+      "classification": "sandbox TEMP git-init permission denied and proposed evidence not committed into HEAD yet; no product assertion regression",
+      "followup": "owned TEMP after evidence commit passed22/22; tests unchanged"
+    }
   },
-  "providedMetadataValidation": "PASS; same exported validator with 17AC/29merge-time checks/12H runs/localGit1946files/22refs before small-summary ref change",
+  "providedMetadataValidation": "PASS after small-summary ref fix",
   "windowsGlobalCli": {
     "status": "FAIL",
     "exitCode": 1,
@@ -19,8 +25,101 @@
       "largerDiagnosticBufferBytes": 4194304,
       "readSucceededBytes": 1694464
     },
-    "validatorChanged": false
+    "validatorChanged": false,
+    "elapsedLowerBoundSeconds": 668,
+    "elapsedPrecision": "Lower bound: still running at 20:09:59 PR creation; exact exit timestamp was not captured",
+    "rawMessage": "CMP-261107-0551: 証拠ファイルがheadに存在しません: docs/evidence/CMP-261107-0551/coverage.jsonl"
   },
   "resolution": "I02/I09 direct evidence refs use small renderer-summary.json carrying coverage path/hash/6144 count. Original full coverage blob unchanged. No AC/test/measurement threshold relaxed.",
-  "wslRetry": "same physical script and same Git objects, Node22, fixed base M and exact committed head; no copy/build/cache/service"
+  "wslRetry": "same physical script and same Git objects, Node22, fixed base M and exact committed head; no copy/build/cache/service",
+  "requiredCli": {
+    "runtime": "existing native Windows Node22, same physical script and existing Git objects; no verification copy/cache/service/build",
+    "node": "v22.23.2",
+    "git": "git version 2.54.0.windows.1",
+    "base": "e2b4744f438d0d376fb3c243e28aaa5ad2ff545d",
+    "head": "582d1f6fe3feb4d595df394fed4f6c6bdc99ed2d",
+    "validatorBlob": "a952f2cd46c29e73f492b50e5b2c6a5d3a914970",
+    "validatorPhysicalSha256": "3ff27389171361cc9cf3f7669eea23d07696157adcb97a6afacda073f2d682ec",
+    "exitCode": 0,
+    "elapsedSeconds": 508.7416157,
+    "startedUtc": "2026-11-07T20:42:47.8888821Z",
+    "finishedUtc": "2026-11-07T20:51:16.7043527Z",
+    "sourceBinding": {
+      "path": "outputs/ranch-approved64-completion-native-binding.json",
+      "sha256": "c22651f5c56c4ecbdf241dce882b34fc54396ccd3017693b36f55de0ffc05259"
+    },
+    "sourceStdout": {
+      "path": "outputs/ranch-approved64-completion-native.log",
+      "sha256": "8f6c837b4d539a4e8b4e6d501bff6dc6ac911344b024ebe3171eaca8f3e5d103"
+    },
+    "stdout": "完了証拠の構造を確認しました (e2b4744f438d0d376fb3c243e28aaa5ad2ff545d...582d1f6fe3feb4d595df394fed4f6c6bdc99ed2d)。注意: このCLI実行ではGitHub API上のPR/CI状態を検証していません。",
+    "apiFetchClaim": false
+  },
+  "providedMetadataSummary": {
+    "scope": "Provided root primary PR/H CI metadata and local Git changed files, not independent live API fetch",
+    "mergedAt": "2026-11-07T19:28:24Z",
+    "implementationPr": 4353,
+    "implementationHead": "9e8e9ba15cc7040d88d88067646be2d6a51ec862",
+    "changedFilesExpectedFromRootPrimary": 1946,
+    "localGitFiles": 1946,
+    "mergeTimeChecks": 29,
+    "success": 27,
+    "skipped": 2,
+    "ciRunsH": 12,
+    "acCount": 17,
+    "referenceCount": 21
+  },
+  "wslBindingAttempts": {
+    "initial": "PRE_VALIDATOR_NONPASS; Windows-style alternates warning and raw CRLF Git blob mismatch",
+    "resolution": "per-command existing Linux alternate; hash-object only core.autocrlf=true canonicalization; physical script SHA unchanged",
+    "sharedMetadataOrGlobalConfigChanged": false
+  },
+  "finalReceiptCommitScope": "Only receipt/provenance/status documentation; formal17AC tests/refs unchanged from required CLI head.",
+  "redundantEngineDisposition": {
+    "status": "INTERRUPTED_NONPASS_REDUNDANT_AFTER_CANONICAL_CLI_PASS",
+    "winner": "native Windows Node22 canonical CLI actual PASS",
+    "winnerHead": "582d1f6fe3feb4d595df394fed4f6c6bdc99ed2d",
+    "winnerExitCode": 0,
+    "atUtc": "2026-11-07T20:53:46.709Z",
+    "unknownProcessesStopped": 0,
+    "ownedPid": 1349728,
+    "parentPid": 1349670,
+    "generation": {
+      "bootId": "295ee072-04c8-4bfa-93eb-d4c28ca15d94",
+      "startTicks": "9641253"
+    },
+    "parentGeneration": {
+      "bootId": "295ee072-04c8-4bfa-93eb-d4c28ca15d94",
+      "startTicks": "9640495"
+    },
+    "phase": [
+      "git show 582d1f6fe3feb4d595df394fed4f6c6bdc99ed2d:docs/evidence/orphans-org-header-exploratory-20261015.md"
+    ],
+    "knownChildGenerations": [
+      {
+        "pid": 1363916,
+        "startTicks": "9838262",
+        "exe": "git"
+      }
+    ],
+    "signal": "SIGTERM",
+    "remainingOwned": [],
+    "redundantExitCode": 143,
+    "elapsedSeconds": 2142,
+    "parentShellGone": true,
+    "knownOwnedGenerationRemaining": 0,
+    "finishedUtc": "2026-11-07T20:53:46.830Z"
+  },
+  "adoptedWorktreesCleanup": {
+    "source": "outputs/ranch-approved64-main-followup-20261108/adopted-worktrees-cleanup.json",
+    "sha256": "379bd874f61b942a20fdeb943e326335cf50bfbd9b8fb2fbc82411cbf92a6d07",
+    "rootDisposition": "ordinary removal PASS after exact head/clean/ancestry/generated-absence checks; branch refs retained; active closure/FE and protected resources untouched"
+  },
+  "wslInterruptedBinding": {
+    "source": "outputs/ranch-approved64-completion-wsl-binding.txt",
+    "sha256": "1d937d77a3e2b5bc11d0ef1e5b01b67db2a653d1fcd6dabce213b9fa8890fea2",
+    "actualExitCode": 143,
+    "elapsedSeconds": 2142,
+    "classification": "intentional redundant interruption after canonical native CLI passed; never PASS, not product/build failure"
+  }
 }

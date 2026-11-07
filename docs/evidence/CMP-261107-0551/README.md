@@ -33,3 +33,7 @@ Production成功原本を `production-M-proof.json` に保存。4484files scanne
 H専有生成物の最終撤収はgenerated-cleanup-verification.json / generated-cleanup-process-check.json / generated-cleanup-report.mdでPASS。source inventory/Git clean・donor metadata前後同一、3生成物root不在、世代確認済み5PID再観測なし/追加停止0。全OS global-zeroやdonor全content再hashを主張しない。
 
 完了validatorのWindows全履歴CLIはexit1。1,694,464bytesのcoverage実blobが既定execFileSync maxBufferでENOBUFSとなり、catchで不存在と報告されたことをread-only probeで確定した。validator/閾値は変えず、正式I02/I09の参照先をcoverage path/hash/6144件を持つ小renderer-summaryへ向け、full coverage原bytesを保持した。必須CLIを同owned WT/同Git object/同scriptのWSL Node22で固定commit検査し、結果はcompletion-validation.jsonへ分離する。
+
+必須の全履歴CLIは同script/同Git objectsの既存native Windows Node22で固定head582d1f6fe3に対し実exit0。正式17AC参照21件と提供metadata検査もPASS、単体22/22は既実行分を保持し不要な再実行はしていない。実時刻/経過/正本script SHA/Windows ENOBUFS先行FAIL/WSL pre-binding制限と重複engineの最終非PASS裁定をcompletion-validation.jsonへ記録した。CLI自体はGitHub API取得を行わず、trusted Task-List gateのlive API結果と区別する。receipt追補で正式AC/refsは変えていない。
+
+WSL全履歴runはnative必須CLI実PASS後に重複試行として2142秒/exit143で中断し、非PASSを保持。既知PID/親shell/command/exe/bootId-startTicksを二重照合、自己親shellと既知Gitを含む世代残存0・未知停止0。WSLをPASSや製品failureへ読み替えない。

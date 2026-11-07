@@ -85,8 +85,8 @@
     },
     {
       "path": "docs/evidence/CMP-261107-0551/completion-validation.json",
-      "sha256": "f88379ddbe9f732f64e510a6e6f1320e07db3db90eb611003bca359b5dfe85f6",
-      "bytes": 1229
+      "sha256": "aca2c491dec2ab12a3f9ac8a66f6ff43fbafa869347ffff034b8afca22f6309d",
+      "bytes": 5854
     },
     {
       "path": "docs/evidence/CMP-261107-0551/coverage.jsonl",
@@ -140,8 +140,8 @@
     },
     {
       "path": "docs/evidence/CMP-261107-0551/README.md",
-      "sha256": "9f9c9786efc33daf096495babeebcceb88e0f6836b9fb4960cb04a2a436083dc",
-      "bytes": 10067
+      "sha256": "3af72de306aafa64fbf289827cfa750a2fed4b1875e980bd5f5ac90f0d0f074c",
+      "bytes": 10940
     },
     {
       "path": "docs/evidence/CMP-261107-0551/renderer-summary.json",
@@ -227,8 +227,8 @@
     },
     {
       "path": "docs/evidence/CMP-261107-0551.md",
-      "sha256": "cdc5f1a54b05b6327ab44cc4faf3b92edc104ff221d14d4ee075e163ecdc732c",
-      "bytes": 8117
+      "sha256": "1c4a36756074076f967b032375555247c6029b6659fc15d0608a41e4bfad1c03",
+      "bytes": 8583
     }
   ]
 }
