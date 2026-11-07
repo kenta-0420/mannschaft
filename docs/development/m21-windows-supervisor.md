@@ -128,9 +128,21 @@ assign-fail/cleanup-fail/save-failは固定fault点への例外注入であり�
 
 Parentの固定初期化hookと、同じhello→exact Job assign→ACK後のSupervisor hookを追加した。後者は引数なしの `Invoke-M21ProductionAssets` へ明示的に接続する。dummy・fixture・環境変数の有無からは呼ばない。Supervisor起動環境はOS2値・owned TEMP/TMP・固定入力HEADだけを選び、全親環境を継承しない。
 
-この中間実装ではbridge/create/App接続が未実装なので、asset生成後も `formal-runtime-not-connected` で必ず失敗する。`formalEntryEvidence` は接続/asset確認/正式run資格を分離し、`formalRunQualified=false` を維持する。正式入口の存在や有限fixtureのgreenを正式実行合格にしない。実asset生成もrootの別GOまで未実行である。
+正式hookは、固定WSL bridgeのready→init→限定3preflight→descriptor bind、専用MySQL/Valkey作成、ACK後asset生成、FE/Java/helper/3browserの固定起動へ接続する。必要source/receipt/環境が不足すれば先へ進めない。`formalEntryEvidence` は接続/asset確認/正式run資格を分離し、`formalRunQualified=false` を維持する。正式入口の存在や有限fixtureのgreenを正式実行合格にしない。実asset生成・実App・実Docker作成はrootの別GOまで未実行である。
 
-回収の固定計画は90+30+10+16+12+61+14+14+20=267秒、余裕33秒でR300秒。held最大8、Docker cleanup CLI最大14を維持する。今回接続済みの既存Job空待ちは正式のみ10秒、Captureは実exit最大2秒・各stdout/stderr EOF最大1秒を残Gへclampする。未実装のhost/bridge各段の固定表は実回収の証明ではない。
+回収の固定計画は90+30+10+16+12+61+14+14+20=267秒、余裕33秒でR300秒。App Job保持最大8、Job外Parent relay1を別fieldで記録する。Docker cleanup CLIは最大14、同時1を維持する。Job空待ちは正式のみ10秒、Captureは実exit最大2秒・各stdout/stderr EOF最大1秒を残Gへclampする。relay終端の実exit2秒＋各EOF0.5秒は最後の20秒枠に含め、ledger/FSへ残17秒を割り当てる。固定表と実装を実回収の実証へ読み替えない。
+
+Parentは専用Temp直下の `m21-windows-*` とexact `{owner,nonce}` のowner.jsonを使う。新規bridge/owner.jsonには別run UUIDと固定purposeを追加する。Windows→Linuxは既存M21Childの専用stdin frame（4byte BE＋UTF8 JSON、最大16KiB）だけ、Linux→Windowsは新規owned receipt fileだけを使う。stdout/stderrは既存CopyToAsyncのprivate rawとして別採用し、応答parserへ転用しない。OS2値とowned TEMP/TMPだけで固定wsl.exeを1本起動し、WSLENV/proxy/全親envを転送しない。
+
+Linux readyのt0とParent受信時の単一時計を固定し、initはG/Wの絶対offset、requestは送信準備時のelapsed＋局所capを元のG/W offsetへclampして渡す。受領時にnow＋remainingへ戻さない。descriptorは既存daemonと既存local image3件の固定preflightだけで採用し、pull/任意config/追加WSLを起動しない。各work資源はvolume-create→volume-inspect→container-create→container-inspect→container-start→container-inspectの固定6件、2roleで12件である。専用loopback portをstart後にfreezeし、共有Valkey6379を拒否する。
+
+MySQLは新規DB `m21_<bridge-runhex>`、固定user m21、別々の生成root/app passwordだけをprivate frame→Linuxメモリ→Docker子の固定envへ渡す。値をargv/receiptへ出さない。container名は `m21-<runhex>-<role>`、volume名はその `-data` suffix。cleanupは同daemon確認→所有inspect4→stop2→rm4→roleごとの両資源不存在candidate2→最後の同daemon確認の計14件である。各要求は当該保持CLI/watchdogの終了・独立した両EOF/reapを確認後だけ次へ進み、未回収時は追加spawnを拒否する。不存在candidateだけでは資格を立てず、最後の同daemon receiptの両role/exact container/volume名と合わせる。
+
+FEは同WTの絶対CLI/CWD、3003 loopback、必要OS/Temp/URLとFE専用8GiBだけで起動する。Javaはproduction CP＋fixture JAR、8081 loopback、専用DB/Valkey、自己test鍵、メールsimulate、SQS無効、自己BEにpinしたR2/SES/OTLPと既存AWS env providerを固定する。必要キーを新規辞書へ作り、親env/.env/資格情報fileをコピーしない。helperのJava msとOS 100ns世代は既存整数変換を使い、Parentが同じ保持Processのexact Jobを認定する。追加listener workerが必要ならApp保持8の内数にする。
+
+rootはformal-ready.jsonの固定3titleを正規Skyで選ぶ。UI操作をscriptへ追加しない。探索終了時はouter runのformal-browser-close-requested.jsonへexact `{owner,nonce,runId,actorCodes:[system,admin-de,member],requested:true}` を新規atomic発行する。Supervisorが全保持browser/helper生存を検証し、formal-browser-close-admitted.jsonのphase=browser-close-admittedを公開したことをrootが確認してから、Skyで3windowを通常closeする。各actual0/両EOF後のformal-browsers-closed.jsonを確認して初めて既存inner controls/exploration-finished.jsonを発行する。既存Java制御3種を変えない。
+
+Javaが探索完了markerを先に読みhelper cleanupへ進んだ場合、Supervisor/Parentはfresh markerとserved3/failed=falseのhelper state、全browser回収を照合してHOST_CLEANUPへ移る。未完探索のW到達は即nonGreen、既存完了を裏付けたcleanupだけhost90秒＋Supervisor終端30秒を観測する。host-resultとJava actual0/各EOFを確認後、認定済みFE世代を停止し、後続Job回収と外部Docker回収を別に記録する。早期exit/不一致を成功へ置換しない。
 
 有限契約fixture（正式App/Gradle/Docker/Chrome起動0）:
 

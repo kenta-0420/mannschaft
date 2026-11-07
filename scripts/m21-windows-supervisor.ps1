@@ -64,6 +64,8 @@ $metadataReadiness=New-Object 'Collections.Generic.List[object]'
 $parentExitEvidence=$null
 $formalContractEvidence=$null
 $formalEntryEvidence=$null
+$m21FormalAuxiliary=$null
+$m21Bridge=$null
 $chromiumFixture=$TestFixture -in @('chromium-normal','chromium-parent-close')
 $chromiumExe=[IO.Path]::GetFullPath('C:/Users/kenta/AppData/Local/ms-playwright/chromium-1223/chrome-win64/chrome.exe')
 $p6Observations=New-Object 'Collections.Generic.List[object]'
@@ -118,6 +120,7 @@ public sealed class M21Job : SafeHandleZeroOrMinusOneIsInvalid {
 public sealed class M21Child : IDisposable {
  public Process Process;public Task OutTask,ErrTask;FileStream output,error;
  public bool Started,StartupExited,StartupStdoutEof,StartupStderrEof,Captured,StdoutPublished,StderrPublished;
+ bool bridgeInput,bridgeInputClosed,bridgeInputBroken;
  public int RecordedPid;public string RecordedCreation,LogPrefix;public Exception StartupFailure;
  public List<string> StartupCleanupFailures=new List<string>();
  public List<Exception> StartupCleanupExceptions=new List<Exception>();
@@ -139,14 +142,21 @@ public sealed class M21Child : IDisposable {
   return Start(exe,args,cwd,prefix,recoveryMs,observeTimings,null);
  }
  public static M21Child Start(string exe,string[] args,string cwd,string prefix,int recoveryMs,bool observeTimings,Dictionary<string,string> environment) {
+  return StartCore(exe,args,cwd,prefix,recoveryMs,observeTimings,environment,false);
+ }
+ public static M21Child StartBridge(string[] args,string cwd,string prefix,int recoveryMs,Dictionary<string,string> environment) {
+  return StartCore("C:/Windows/System32/wsl.exe",args,cwd,prefix,recoveryMs,false,environment,true);
+ }
+ static M21Child StartCore(string exe,string[] args,string cwd,string prefix,int recoveryMs,bool observeTimings,Dictionary<string,string> environment,bool bridgeInput) {
   Stopwatch recoveryClock=Stopwatch.StartNew();
   Func<int,int> remaining=cap=>Math.Max(0,Math.Min(cap,recoveryMs-(int)recoveryClock.ElapsedMilliseconds));
-  M21Child c=new M21Child();c.LogPrefix=prefix;c.ObserveTimings=observeTimings;
+  M21Child c=new M21Child();c.LogPrefix=prefix;c.ObserveTimings=observeTimings;c.bridgeInput=bridgeInput;
   try {
    c.output=new FileStream(prefix+".out",FileMode.CreateNew,FileAccess.Write,FileShare.Read);
    c.error=new FileStream(prefix+".err",FileMode.CreateNew,FileAccess.Write,FileShare.Read);
    ProcessStartInfo s=new ProcessStartInfo(exe);s.UseShellExecute=false;s.CreateNoWindow=true;s.WorkingDirectory=cwd;
    s.RedirectStandardOutput=true;s.RedirectStandardError=true;
+   s.RedirectStandardInput=bridgeInput;
    StringBuilder a=new StringBuilder();foreach(string x in args){if(a.Length>0)a.Append(' ');a.Append(Quote(x));}s.Arguments=a.ToString();
    if(environment!=null){s.EnvironmentVariables.Clear();foreach(KeyValuePair<string,string> item in environment)s.EnvironmentVariables.Add(item.Key,item.Value);}
    c.Process=new Process();c.Process.StartInfo=s;if(!c.Process.Start())throw new IOException("起動失敗");c.Started=true;
@@ -172,6 +182,17 @@ public sealed class M21Child : IDisposable {
    return c;
   }
  }
+ public void SendBridgeFrame(byte[] frame,int milliseconds) {
+  if(!bridgeInput||bridgeInputClosed||bridgeInputBroken||!Started||frame==null||frame.Length<5||frame.Length>16388||milliseconds<=0||Process.WaitForExit(0))throw new InvalidOperationException("bridge frame拒否");
+  int length=(frame[0]<<24)|(frame[1]<<16)|(frame[2]<<8)|frame[3];
+  if(length!=frame.Length-4)throw new InvalidOperationException("bridge frame長不一致");
+  byte[] payload=(byte[])frame.Clone();
+  Task write=Process.StandardInput.BaseStream.WriteAsync(payload,0,payload.Length);
+  write.ContinueWith(t=>Array.Clear(payload,0,payload.Length),TaskScheduler.Default);
+  try{if(!write.Wait(milliseconds)){bridgeInputBroken=true;throw new TimeoutException("bridge frame書込期限");}}
+  catch{bridgeInputBroken=true;throw;}
+ }
+ public void CloseBridgeInput() { if(bridgeInput&&Started&&!bridgeInputClosed){bridgeInputClosed=true;Process.StandardInput.Close();} }
  public bool Eof(bool stdout,int ms) {
   string role=stdout?"stdout":"stderr";Mark(role+"-eof-before",ms);
   try{
@@ -187,6 +208,7 @@ public sealed class M21Child : IDisposable {
  }
  public void Dispose() {
   List<Exception> errors=new List<Exception>();
+  try{CloseBridgeInput();}catch(Exception e){errors.Add(e);}
   try{if(output!=null)output.Dispose();}catch(Exception e){errors.Add(e);}
   try{if(error!=null)error.Dispose();}catch(Exception e){errors.Add(e);}
   try{if(Process!=null)Process.Dispose();}catch(Exception e){errors.Add(e);}
@@ -315,6 +337,7 @@ try {
  # 定義だけを読む。ACK前に型compile/実子/asset準備を行わない。
  . (Join-Path $PSScriptRoot 'm21-windows-formal-adapter.ps1')
  Assert-M21ScenarioBudget $Scenario $Mode $TestFixture $WorkRemainingMs $TotalRemainingMs
+ if($Scenario -ceq 'formal-m21' -and !$PSBoundParameters.ContainsKey('OwnerId')){throw '正式入口は現ownerの明示が必要'}
  # Supervisorは型compileも子を生み得るものとして、標準Process/JSONのgateだけを先行する。
  # この区間にはcustom型参照/外部command/Process.Startを置かない。
  if($Mode -eq 'Supervisor'){
@@ -805,7 +828,8 @@ try {
    $p6Certification.releasePublished=$true
   }
   Set-Operation 'Parent.wait'
-  if(!$supervisor.Process.WaitForExit((Remaining))){Set-Reason 'work-budget-exhausted';throw 'supervisor exit期限超過'}
+  if($Scenario -ceq 'formal-m21'){Wait-M21FormalSupervisor $supervisor}
+  elseif(!$supervisor.Process.WaitForExit((Remaining))){Set-Reason 'work-budget-exhausted';throw 'supervisor exit期限超過'}
   if(Test-Path -LiteralPath (Join-Path $run 'supervisor-result.json')){
    $inner=Read-Json 'supervisor-result.json'
    if($null -ne $inner.primary){$primary=$inner.primary}
@@ -818,7 +842,7 @@ try {
    if($TestFixture -in @('formal-ms','formal-fe','formal-admission')){$formalContractEvidence=$inner.formalContractEvidence}
    if($Scenario -ceq 'formal-m21'){$formalEntryEvidence=$inner.formalEntryEvidence}
    $grandchildEvidence=$inner.grandchildEvidence
-   if($Scenario -in @('host-fail','cleanup-fail') -and !$inner.recovered){$recovered=$false}
+   if($Scenario -in @('host-fail','cleanup-fail','formal-m21') -and !$inner.recovered){$recovered=$false}
   }
   if($supervisor.Process.ExitCode -ne 0 -and $null -eq $primary){Fail 'dummy-nonzero' ([InvalidOperationException]::new())}
   if($Scenario -in @('normal','formal-m21')){
@@ -833,6 +857,7 @@ finally {
  if($Mode -ne 'Supervisor'){
   Attempt 'job-stop' {if($null -ne $job){$job.Stop();if($null -ne $p6Certification){$p6Certification.jobStopped=$true}}}
   foreach($child in $held){
+   if($null -ne $m21Bridge -and [object]::ReferenceEquals($child,$m21Bridge)){continue}
    Attempt 'direct-stop' {Parent-Event 'kill-before' $child;if($child.Started -and !$child.Process.HasExited){Parent-Event 'kill-issued' $child;$child.Process.Kill();Parent-Event 'kill-returned' $child}else{Parent-Event 'kill-skipped' $child}}
    Attempt 'exit-and-streams' {Capture $child 'direct' 1500}
   }
@@ -853,9 +878,20 @@ finally {
     if(!$p6Certification.childExited -or !$p6Certification.grandchildExited){$script:recovered=$false;throw 'P6認定handle回収未確認'}
    }
   }
+  if($Scenario -ceq 'formal-m21' -and $null -ne (Get-Variable m21FormalCertified -Scope Script -ErrorAction SilentlyContinue)){
+   foreach($role in $script:m21FormalCertified.Keys){
+    Attempt ('formal-held-exit-'+$role) {
+     $entry=$script:m21FormalCertified[$role]
+     $exited=$entry.process.WaitForExit((Remaining 2000 -Recovery))
+     $code=$null;if($exited){$code=$entry.process.ExitCode}
+     $script:knownExitEvidence+=@{role=$role;identity=$entry.identity;exited=$exited;exitCode=$code;evidence='parent-exact-held-handle'}
+     if(!$exited){$script:recovered=$false;throw '正式保持世代の実exit不明'}
+    }
+   }
+  }
   Attempt 'job-close' {if($null -ne $job){$job.Dispose();$job=$null}}
-  # 将来のDocker清掃/ledgerの位置。prototypeは自己dummyだけを扱う。
-  Attempt 'external-cleanup' {Guard-Run;if($Scenario -eq 'cleanup-fail'){Set-Reason 'cleanup-fault';throw 'cleanup故障注入'}}
+  # DockerはJob外。自己ledger/同daemonを独立に回収する。
+  Attempt 'external-cleanup' {Guard-Run;if($Scenario -ceq 'formal-m21'){Stop-M21FormalExternalResources};if($Scenario -eq 'cleanup-fail'){Set-Reason 'cleanup-fault';throw 'cleanup故障注入'}}
  }
  # 起動catchで回収不明だった対象も、保持情報を失う前に再度独立に確認する。
  if($Mode -eq 'Supervisor'){
@@ -869,6 +905,7 @@ finally {
   }}
  }
  foreach($p in $certified){Attempt 'certified-handle-close' {$p.Dispose()}}
+ if($null -ne $m21FormalAuxiliary){foreach($p in $m21FormalAuxiliary){Attempt 'formal-auxiliary-handle-close' {$p.Dispose()}}}
  Attempt 'p6-grand-handle-close' {if($null -ne $script:p6Grand){$script:p6Grand.Dispose();$script:p6Grand=$null}}
  foreach($child in $held){
   Attempt 'last-handle' {

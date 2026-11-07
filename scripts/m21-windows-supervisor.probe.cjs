@@ -623,6 +623,7 @@ $script:expired=$false
 $script:reason=$null
 $script:self=[Diagnostics.Process]::GetCurrentProcess()
 . $Adapter
+[Console]::Out.WriteLine('ENTRY_STAGE_loaded')
 $budget=Get-M21FormalBudget
 if($budget.totalMs -ne 3300000 -or $budget.workMs -ne 3000000 -or $budget.reserveMs -ne 300000){throw 'budget'}
 if(($budget.recoveryCapsMs|Measure-Object -Sum).Sum -ne 267000 -or $budget.marginMs -ne 33000){throw 'caps'}
@@ -632,6 +633,7 @@ foreach($case in @(@('normal','Parent','none',420001,420001),@('formal-m21','Obs
  $rejected=$false;try{Assert-M21ScenarioBudget @case}catch{$rejected=$true};if(!$rejected){throw 'invalid-budget-admitted'}
 }
 Assert-M21FormalRequiredAlive @($self)
+[Console]::Out.WriteLine('ENTRY_STAGE_budget')
 $rejected=$false;try{Assert-M21FormalRequiredAlive @()}catch{$rejected=$true};if(!$rejected){throw 'empty-required-alive'}
 $script:events=New-Object 'Collections.Generic.List[string]'
 function Invoke-M21ProductionAssets { $script:events.Add('assets');return @{formalRunQualified=$false;runtimeCP='fixture-only'} }
@@ -645,23 +647,48 @@ if(($events -join ',') -cne 'assets'){throw 'continued-after-cp-failure'}
 $events.Clear();$script:expired=$true
 try{Invoke-M21FormalSupervisor}catch{}
 if($events.Count -ne 0){throw 'work-after-deadline'}
+[Console]::Out.WriteLine('ENTRY_STAGE_order')
 $script:expired=$false
 $script:run=$PSScriptRoot;$script:owner='${OWNER}';$script:Nonce='0123456789abcdef0123456789abcdef'
 $env:M21_INPUT_COMMIT='7bd15a1c3de31aedce8a235b632a16be75c376b9'
 $env:M21_HOST_ONLY_SENTINEL='public-test-sentinel'
 $environment=New-M21FormalSupervisorEnvironment
 if($environment.ContainsKey('M21_HOST_ONLY_SENTINEL') -or $environment.ContainsKey('PATH') -or $environment['M21_INPUT_COMMIT'] -cne $env:M21_INPUT_COMMIT -or $environment['TEMP'] -cne $run){throw 'supervisor-environment'}
+$script:m21FormalConnection=@{database='m21_0123456789abcdef0123456789abcdef';mysqlPort=33061;valkeyPort=63791;password='public-test-app-password'}
+$script:m21ProductionAssets=@{backend=$PSScriptRoot;productionCP='fixture-cp';fixtureJar=(Join-Path $PSScriptRoot 'fixture.jar')}
+$script:m21FormalHelper=Join-Path $PSScriptRoot 'helper.cjs';$script:m21FormalHelperSha='a'*64
+$script:NodePath='C:/fixture/node.exe'
+$hostEnvironment=New-M21FormalHostEnvironment
+[Console]::Out.WriteLine('ENTRY_STAGE_host_environment')
+foreach($key in @('M21_HOST_ONLY_SENTINEL','PATH','USERPROFILE','JAVA_TOOL_OPTIONS','NODE_OPTIONS','AWS_PROFILE','HTTP_PROXY')){if($hostEnvironment.ContainsKey($key)){throw 'host-env-inheritance'}}
+if($hostEnvironment['SPRING_DATASOURCE_USERNAME'] -cne 'm21' -or $hostEnvironment['SPRING_DATA_REDIS_PORT'] -cne '63791' -or $hostEnvironment['MANNSCHAFT_EMAIL_SIMULATE'] -cne 'true' -or $hostEnvironment['AWS_EC2_METADATA_DISABLED'] -cne 'true' -or $hostEnvironment['MANNSCHAFT_R2_ENDPOINT'] -cne 'http://127.0.0.1:8081' -or $hostEnvironment['MANNSCHAFT_SQS_ENABLED'] -cne 'false'){throw 'host-env-contract'}
+$close=[pscustomobject]@{owner=$owner;nonce=$Nonce;runId='m21-00000000-0000-0000-0000-000000000001';actorCodes=@('system','admin-de','member');requested=$true}
+Assert-M21FormalBrowserCloseRequest $close $close.runId
+$close.nonce='ffffffffffffffffffffffffffffffff'
+$rejected=$false;try{Assert-M21FormalBrowserCloseRequest $close $close.runId}catch{$rejected=$true};if(!$rejected){throw 'other-run-close-admitted'}
+$close.nonce=$Nonce;$close.actorCodes=@('system','member','member')
+$rejected=$false;try{Assert-M21FormalBrowserCloseRequest $close $close.runId}catch{$rejected=$true};if(!$rejected){throw 'wrong-actors-close-admitted'}
+$script:m21FormalConnection.valkeyPort=6379
+$rejected=$false;try{New-M21FormalHostEnvironment}catch{$rejected=$true};if(!$rejected){throw 'shared-valkey-admitted'}
+$script:localClock=[pscustomobject]@{ElapsedMilliseconds=1250}
+$script:m21BridgeOriginMs=1000;$script:m21BridgeGlobalOffsetMs=1000;$script:m21BridgeWorkOffsetMs=600
+function Remaining { param([int]$Cap=[int]::MaxValue,[switch]$Recovery) return [Math]::Min($Cap,200) }
+if((Get-M21FormalBridgeDeadlineOffset 100) -ne 350){throw 'deadline-offset-reset'}
+$script:m21BridgeWorkOffsetMs=300
+if((Get-M21FormalBridgeDeadlineOffset 100) -ne 300){throw 'deadline-offset-not-clamped'}
+$script:m21BridgeWorkOffsetMs=249
+$rejected=$false;try{Get-M21FormalBridgeDeadlineOffset 100}catch{$rejected=$true};if(!$rejected){throw 'expired-offset-admitted'}
 [Console]::Out.WriteLine('M21_ENTRY_CONTRACT_OK')
 `);
   const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', fixture, path.join(__dirname, 'm21-windows-formal-adapter.ps1')], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   let stdout = '', stderr = '';
   child.stdout.on('data', data => { stdout += data; });
   child.stderr.on('data', data => { stderr += data; });
-  const timer = setTimeout(() => child.kill(), 15000);
+  const timer = setTimeout(() => child.kill(), 60000);
   let code;
   try { code = await new Promise((resolve, reject) => { child.on('error', reject); child.on('exit', resolve); }); }
   finally { clearTimeout(timer); }
-  assert.equal(code, 0, stderr.slice(0, 2000));
+  assert.equal(code, 0, `retained:${base}; ${stdout.slice(0, 1000)} ${stderr.slice(0, 2000)}`);
   assert.match(stdout, /M21_ENTRY_CONTRACT_OK/);
   fs.rmSync(base, { recursive: true });
   console.log(JSON.stringify({ passed: true, scope: 'formal-entry-contract', runtimeQualified: false }));
