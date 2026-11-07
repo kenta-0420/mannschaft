@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import tomllib
 import unittest
 from unittest.mock import patch
 
@@ -20,6 +21,8 @@ BINARY = Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else ROOT / 'gitle
 WORKFLOW = (ROOT / '.github/workflows/secret-scan.yml').read_text(encoding='utf-8')
 CONFIG = ROOT / '.gitleaks.toml'
 TARGET = 'docs/evidence/CMP-261021-0647/root-historical-roundtrip-applicability.json'
+M21_TARGET = 'scripts/test_m21_wsl_docker_bridge.py'
+M21_SENTINELS = ('M21_OWNED_SENTINEL_APP', 'M21_OWNED_SENTINEL_ROOT')
 STARTED = time.monotonic()
 
 
@@ -57,6 +60,29 @@ def scanner_commands(job, scan_range, report):
     return preflight, argv
 
 
+class SecretScanConfigTests(unittest.TestCase):
+    def test_m21_sentinel_allowlist_is_exact_rule_path_value_and(self):
+        config = tomllib.loads(CONFIG.read_text(encoding='utf-8'))
+        rule = next(rule for rule in config['rules'] if rule['id'] == 'generic-api-key')
+        entries = [entry for entry in rule['allowlists'] if entry['description'].startswith('M21固定child env試練')]
+        self.assertEqual(len(entries), 1, 'M21 exception must be a single scoped entry')
+        entry = entries[0]
+        self.assertEqual(set(entry), {'description', 'condition', 'regexTarget', 'paths', 'regexes'})
+        self.assertEqual(entry['condition'], 'AND')
+        self.assertEqual(entry['regexTarget'], 'secret')
+        self.assertEqual(len(M21_SENTINELS), 2)
+        self.assertEqual(entry['paths'], [r'^scripts/test_m21_wsl_docker_bridge\.py$'])
+        self.assertEqual(entry['regexes'], ['^' + re.escape(value) + '$' for value in M21_SENTINELS])
+        for path in (M21_TARGET + '.bak', 'other/' + M21_TARGET, 'scripts/neighbor.py'):
+            self.assertFalse(re.fullmatch(entry['paths'][0], path), 'neighbor path must remain scanned')
+        for pattern, value in zip(entry['regexes'], M21_SENTINELS):
+            self.assertIsNotNone(re.fullmatch(pattern, value))
+            self.assertIsNone(re.fullmatch(pattern, 'prefix' + value))
+            self.assertIsNone(re.fullmatch(pattern, value + 'suffix'))
+        self.assertFalse(any(re.fullmatch(pattern, '0123456789abcdef' * 3) for pattern in entry['regexes']),
+                         'different high entropy value must remain scanned')
+
+
 class SecretScanRegression(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -70,7 +96,7 @@ class SecretScanRegression(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.repo = Path(self.temporary.name) / 'repo'
         self.repo.mkdir()
-        self.values = []
+        self.values = list(M21_SENTINELS)
         self.git('init', '-b', 'main')
         self.git('config', 'user.email', 'fixture@example.invalid')
         self.git('config', 'user.name', 'Secret scan fixture')
@@ -181,6 +207,33 @@ class SecretScanRegression(unittest.TestCase):
     def test_allowed_value_in_other_path_is_detected(self):
         self.write_detection(relative='docs/evidence/CMP-261021-0647/neighbor.json', value='useApi/ofetch')
         self.commit('identifier outside allowed path')
+        self.scan()
+
+    def test_m21_exact_sentinels_in_history_and_merge_are_excluded(self):
+        self.git('checkout', '-b', 'm21-side')
+        self.write_detection(relative=M21_TARGET, value=M21_SENTINELS[0])
+        self.commit('first fixed non-secret sentinel')
+        (self.repo / M21_TARGET).unlink()
+        self.commit('remove fixed sentinel from side')
+        self.git('checkout', 'main')
+        self.write('main.md', 'non-secret merge marker\n')
+        self.commit('main advance')
+        self.git('merge', '--no-ff', '--no-commit', 'm21-side')
+        self.write_detection(relative=M21_TARGET, value=M21_SENTINELS[1])
+        self.commit('merge-only fixed sentinel')
+        self.assertEqual(len(self.git('show', '-s', '--format=%P', 'HEAD').split()), 2)
+        self.scan(expected_exit=0, expected_count=0)
+        self.scan('full-history-scan', expected_exit=0, expected_count=0)
+
+    def test_m21_same_values_in_other_path_are_detected(self):
+        for index, value in enumerate(M21_SENTINELS):
+            self.write_detection(relative='scripts/m21-neighbor-' + str(index) + '.py', value=value)
+        self.commit('fixed sentinels outside exact path')
+        self.scan(expected_count=2)
+
+    def test_m21_other_value_in_same_path_is_detected(self):
+        self.write_detection(relative=M21_TARGET)
+        self.commit('synthetic high entropy value in M21 path')
         self.scan()
 
     def test_other_value_in_allowed_path_is_detected(self):
