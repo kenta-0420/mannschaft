@@ -166,6 +166,7 @@ public sealed class M21Child : IDisposable {
  bool bridgeInput,bridgeInputClosed,bridgeInputBroken;
  public int? BridgeInputCodePage,BridgeInputPreambleLength;
  public bool BridgeWriteCompleted,BridgeFlushCompleted;
+ public string BridgeInputStage;
  public int RecordedPid;public string RecordedCreation,LogPrefix;public Exception StartupFailure;
  public List<string> StartupCleanupFailures=new List<string>();
  public List<Exception> StartupCleanupExceptions=new List<Exception>();
@@ -252,20 +253,23 @@ public sealed class M21Child : IDisposable {
   }
  }
  public void SendBridgeFrame(byte[] frame,int milliseconds) {
-  if(!bridgeInput||bridgeInputClosed||bridgeInputBroken||!Started||frame==null||frame.Length<5||frame.Length>16388||milliseconds<=0||Process.WaitForExit(0))throw new InvalidOperationException("bridge frame拒否");
+  BridgeWriteCompleted=false;BridgeFlushCompleted=false;BridgeInputStage="guard";
+  if(!bridgeInput||bridgeInputClosed||bridgeInputBroken||!Started||frame==null||frame.Length<5||frame.Length>16388||milliseconds<=0||Process.WaitForExit(0)){BridgeInputStage="guard-rejected";throw new InvalidOperationException("bridge frame拒否");}
   int length=(frame[0]<<24)|(frame[1]<<16)|(frame[2]<<8)|frame[3];
-  if(length!=frame.Length-4)throw new InvalidOperationException("bridge frame長不一致");
+  if(length!=frame.Length-4){BridgeInputStage="guard-rejected";throw new InvalidOperationException("bridge frame長不一致");}
   byte[] payload=(byte[])frame.Clone();Task write=null;
   Stopwatch ioClock=Stopwatch.StartNew();Func<int> left=()=>Math.Max(0,milliseconds-(int)ioClock.ElapsedMilliseconds);
-  BridgeWriteCompleted=false;BridgeFlushCompleted=false;
   try{
+   BridgeInputStage="write-started";
    write=Process.StandardInput.BaseStream.WriteAsync(payload,0,payload.Length);
    write.ContinueWith(t=>Array.Clear(payload,0,payload.Length),TaskScheduler.Default);
    if(!write.Wait(left())||write.Status!=TaskStatus.RanToCompletion||left()<=0)throw new TimeoutException("bridge frame書込期限");
    BridgeWriteCompleted=true;
+   BridgeInputStage="flush-started";
    Task flush=Process.StandardInput.BaseStream.FlushAsync();
    if(!flush.Wait(left())||flush.Status!=TaskStatus.RanToCompletion||left()<=0)throw new TimeoutException("bridge frameflush期限");
    BridgeFlushCompleted=true;
+   BridgeInputStage="write-flush-completed";
   }
   catch{bridgeInputBroken=true;throw;}
   finally{if(write==null)Array.Clear(payload,0,payload.Length);}

@@ -178,6 +178,8 @@ Windows→WSLの同一性ゲートは、既存work/valkey最終container-inspect
 
 ### 統合後17件の固定引渡し
 
+B4のWindows phaseは同じStopwatchのelapsed ticksとfrequencyで最大10点だけを記録する。descriptor検証、bind送信開始、write/flush完了、bound待ちを分け、native guard前とwrapper guard前の状態をfreshに戻す。bind専用finallyのstateを採取し、initのtrueをbind成功へ読み替えない。Linuxの絶対時計値との直接比較はしない。hostには専用生成 `JOB_QR_SIGNING_SECRET` を一項目だけ追加し、値を掲載せず非空/UTF8 32byte以上を検査する。既存kid/active設定と他validatorを変更しない。
+
 通常kentaの既存ExecutionPolicy、固定Node `C:/Claude/mannschaft/.claude/runtime-assets/node22-d7249e88-6cfac601/node-v22.23.2-win-x64/node.exe`（SHA256 `0d0f5e39f9f3d9587bc19f73eab3c2c9c4903fd02d6dbf9c853dd81b3d95fad4`）で、clean統合HEADの40桁を `M21_INPUT_COMMIT` に設定し、同じownerを明示する。rootの別GO後、順に各1回だけ実行する。
 
     node scripts/m21-windows-supervisor.probe.cjs --formal-contract-fixture --owner-id 1d767b20-825c-4edc-b397-8d4367036462

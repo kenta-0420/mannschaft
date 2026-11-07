@@ -35,6 +35,8 @@ function New-M21FormalSecret {
 }
 
 function Send-M21FormalBridgeFrame([Collections.IDictionary]$Frame,[int]$CapMs=1000) {
+ # wrapper拒否でも前回frameのtrueを現在の試行へ混ぜない。
+ if($null -ne $script:m21Bridge){$script:m21Bridge.BridgeWriteCompleted=$false;$script:m21Bridge.BridgeFlushCompleted=$false;$script:m21Bridge.BridgeInputStage='wrapper-guard'}
  if($null -eq $script:m21Bridge -or (Remaining -Recovery) -le 0){throw 'bridge送信期限/実体不在'}
  $bytes=$utf8.GetBytes(($Frame|ConvertTo-Json -Depth 8 -Compress))
  if($bytes.Length -lt 1 -or $bytes.Length -gt 16384){throw 'bridge frame上限'}
@@ -139,6 +141,13 @@ function Assert-M21WslRelayStarted([object]$Started,[long]$UpperDeadlineNs) {
  }
 }
 
+function Set-M21WslRelayFixturePhase([ValidateSet('ready-adopted','init-write-flush-completed','initialized-adopted','descriptor-validated','bind-send-started','bind-write-flush-completed','bound-wait','bound','request-started','kill-issued')][string]$Phase) {
+ if($script:fixtureEvidence.phaseObservations.Count -ge 10){throw 'B4固定phase上限'}
+ $script:fixtureEvidence.phase=$Phase
+ $script:fixtureEvidence.phaseObservations.Add(@{phase=$Phase;elapsedTicks=[long]$localClock.ElapsedTicks})
+ Set-Operation ('B4.'+$Phase)
+}
+
 function Invoke-M21WslRelayLossFixture {
  # fixed test CLIだけ。外部Docker境界をdummyに置換しLinux fork/pidfd/reap/EOFは実物。
  Guard-Run;Require-Work
@@ -163,31 +172,39 @@ function Invoke-M21WslRelayLossFixture {
  Register-Child $relay 'wsl-relay-loss-fixture'
  $script:fixtureEvidence=@{fixture='wsl-relay-loss';passed=$false;primaryRelayQualified=$false;primaryReason='intentional-relay-loss';formalRunQualified=$false;realDockerInvoked=$false;inputCommit=$commit;bridgeSourceSha256=$script:m21BridgeSourceSha;fixtureSourceSha256=$testSha;arguments=$relay.Process.StartInfo.Arguments;windows=$null;linux=$null;linuxBridgeActualExitObserved=$false;linuxWatchdogActualExitObserved=$false;retained=$run}
  $script:fixtureEvidence.phase=$null
+ $script:fixtureEvidence.phaseObservations=New-Object 'Collections.Generic.List[object]'
+ $script:fixtureEvidence.stopwatchFrequency=[long][Diagnostics.Stopwatch]::Frequency
  $script:fixtureEvidence.stdin=@{codePage=$relay.BridgeInputCodePage;preambleLength=$relay.BridgeInputPreambleLength;initWriteCompleted=$false;initFlushCompleted=$false}
  if([IO.Path]::GetFullPath($relay.Process.MainModule.FileName) -ine 'C:\Windows\System32\wsl.exe'){throw 'fixture保持exe不一致'}
  $ready=Wait-M21FormalBridgeFile 'ready.json' 15000
  Assert-M21FormalBridgeDocument $ready 'ready';$script:m21BridgeReady=$ready
- $script:fixtureEvidence.phase='ready-adopted';Set-Operation 'B4.ready-adopted'
+ Set-M21WslRelayFixturePhase 'ready-adopted'
  $script:m21BridgeOriginTicks=$localClock.ElapsedTicks
  $script:m21BridgeGlobalOffsetMs=Remaining 4000 -Recovery;$script:m21BridgeWorkOffsetMs=Remaining 3000
  try{Send-M21FormalBridgeFrame @{type='init';owner=$owner;run=$script:m21BridgeRun;global_offset_ms=$script:m21BridgeGlobalOffsetMs;work_offset_ms=$script:m21BridgeWorkOffsetMs}}
- finally{$script:fixtureEvidence.stdin.initWriteCompleted=$relay.BridgeWriteCompleted;$script:fixtureEvidence.stdin.initFlushCompleted=$relay.BridgeFlushCompleted}
- $script:fixtureEvidence.phase='init-write-flush-completed';Set-Operation 'B4.init-write-flush-completed'
+ finally{$script:fixtureEvidence.stdin.initWriteCompleted=$relay.BridgeWriteCompleted;$script:fixtureEvidence.stdin.initFlushCompleted=$relay.BridgeFlushCompleted;$script:fixtureEvidence.stdin.initStage=$relay.BridgeInputStage}
+ Set-M21WslRelayFixturePhase 'init-write-flush-completed'
  $initialized=Wait-M21FormalBridgeFile 'initialized.json' 2000
  Assert-M21FormalBridgeDocument $initialized 'initialized'
- $script:fixtureEvidence.phase='initialized-adopted';Set-Operation 'B4.initialized-adopted'
+ Set-M21WslRelayFixturePhase 'initialized-adopted'
  $descriptor=$initialized.descriptor
  if($descriptor.daemon_id -cne 'fixture-daemon' -or $descriptor.mysql_image_id -cne ('sha256:'+('a'*64)) -or $descriptor.valkey_image_id -cne ('sha256:'+('b'*64))){throw 'fixture descriptor不一致'}
- Send-M21FormalBridgeFrame @{type='bind';owner=$owner;run=$script:m21BridgeRun;descriptor=$descriptor}
+ Set-M21WslRelayFixturePhase 'descriptor-validated'
+ $script:fixtureEvidence.bindSend=@{stage='not-attempted';writeCompleted=$false;flushCompleted=$false}
+ Set-M21WslRelayFixturePhase 'bind-send-started'
+ try{Send-M21FormalBridgeFrame @{type='bind';owner=$owner;run=$script:m21BridgeRun;descriptor=$descriptor}}
+ finally{$script:fixtureEvidence.bindSend.stage=$relay.BridgeInputStage;$script:fixtureEvidence.bindSend.writeCompleted=$relay.BridgeWriteCompleted;$script:fixtureEvidence.bindSend.flushCompleted=$relay.BridgeFlushCompleted}
+ Set-M21WslRelayFixturePhase 'bind-write-flush-completed'
+ Set-M21WslRelayFixturePhase 'bound-wait'
  $bound=Wait-M21FormalBridgeFile 'bound.json' 1000
  Assert-M21FormalBridgeDocument $bound 'bound'
- $script:fixtureEvidence.phase='bound';Set-Operation 'B4.bound'
+ Set-M21WslRelayFixturePhase 'bound'
  $offset=Get-M21FormalBridgeDeadlineOffset 1000 -Recovery
  Send-M21FormalBridgeFrame @{type='request';owner=$owner;run=$script:m21BridgeRun;request_id=1;phase='cleanup';operation='daemon-info';resource='daemon';deadline_offset_ms=$offset}
  $started=Wait-M21FormalBridgeFile 'request-00001-started.json' 1000 -Recovery
  Assert-M21FormalBridgeDocument $started 'request-started'
  Assert-M21WslRelayStarted $started ([long]$ready.t0_ns+$offset*1000000)
- $script:fixtureEvidence.phase='request-started';Set-Operation 'B4.request-started'
+ Set-M21WslRelayFixturePhase 'request-started'
  Assert-M21FormalRequiredAlive @($relay.Process)
  $identity=Identity $relay.Process
  $script:fixtureEvidence.windows=@{identity=$identity;exe=$relay.Process.MainModule.FileName;exeSha256=$wslSha;killIssued=$false;actualExited=$false;exitCode=$null;stdoutEof=$false;stderrEof=$false}
@@ -196,7 +213,7 @@ function Invoke-M21WslRelayLossFixture {
  # 保存済みの同じProcessだけ。Windows relay終了をLinux CLI終了へ読み替えない。
  $relay.Process.Kill()
  $script:fixtureEvidence.windows.killIssued=$true
- $script:fixtureEvidence.phase='kill-issued';Set-Operation 'B4.kill-issued'
+ Set-M21WslRelayFixturePhase 'kill-issued'
  if(!$relay.Process.WaitForExit((Remaining 2000 -Recovery))){throw 'held relay actual exit不明'}
  Capture $relay 'wsl-relay-loss-primary' 500
  $aliveRejected=$false;try{Assert-M21FormalRequiredAlive @($relay.Process)}catch{$aliveRejected=$true}
@@ -361,7 +378,9 @@ function New-M21FormalHostEnvironment {
   AWS_ACCESS_KEY_ID='m21-owned-test';AWS_SECRET_ACCESS_KEY=(New-M21FormalSecret);AWS_EC2_METADATA_DISABLED='true';AWS_REGION='ap-northeast-1'
   MANNSCHAFT_ERROR_REPORT_SLACK_WEBHOOK_URL='';MANAGEMENT_TRACING_ENABLED='false';OTEL_SDK_DISABLED='true';OTEL_EXPORTER_OTLP_ENDPOINT='http://127.0.0.1:8081/v1/traces'
   MANNSCHAFT_JWT_SECRET=(New-M21FormalSecret);MANNSCHAFT_ENCRYPTION_KEY=(New-M21FormalSecret);MANNSCHAFT_HMAC_KEY=(New-M21FormalSecret);MANNSCHAFT_INTERNAL_SIGNING_KEY=(New-M21FormalSecret)
+  JOB_QR_SIGNING_SECRET=(New-M21FormalSecret)
  }
+ if([string]::IsNullOrWhiteSpace($fixed.JOB_QR_SIGNING_SECRET) -or [Text.Encoding]::UTF8.GetByteCount([string]$fixed.JOB_QR_SIGNING_SECRET) -lt 32){Set-Reason 'formal-qr-signing-secret-invalid';throw ([IO.InvalidDataException]::new())}
  foreach($key in $fixed.Keys){$environment.Add($key,[string]$fixed[$key])}
  return ,$environment
 }

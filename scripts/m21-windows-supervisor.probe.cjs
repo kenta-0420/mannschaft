@@ -726,6 +726,7 @@ $script:m21ProductionAssets=@{backend=$PSScriptRoot;productionCP='fixture-cp';fi
 $script:m21FormalHelper=Join-Path $PSScriptRoot 'helper.cjs';$script:m21FormalHelperSha='a'*64
 $script:NodePath='C:/fixture/node.exe'
 $hostEnvironment=New-M21FormalHostEnvironment
+if(!$hostEnvironment.ContainsKey('JOB_QR_SIGNING_SECRET') -or [string]::IsNullOrWhiteSpace($hostEnvironment['JOB_QR_SIGNING_SECRET']) -or [Text.Encoding]::UTF8.GetByteCount($hostEnvironment['JOB_QR_SIGNING_SECRET']) -lt 32){throw 'qr-signing-secret-missing'}
 Entry-Phase 'host-environment'
 foreach($key in @('M21_HOST_ONLY_SENTINEL','PATH','USERPROFILE','JAVA_TOOL_OPTIONS','NODE_OPTIONS','AWS_PROFILE','HTTP_PROXY')){if($hostEnvironment.ContainsKey($key)){throw 'host-env-inheritance'}}
 if($hostEnvironment['SPRING_DATASOURCE_USERNAME'] -cne 'm21' -or $hostEnvironment['SPRING_DATA_REDIS_PORT'] -cne '63791' -or $hostEnvironment['MANNSCHAFT_EMAIL_SIMULATE'] -cne 'true' -or $hostEnvironment['AWS_EC2_METADATA_DISABLED'] -cne 'true' -or $hostEnvironment['MANNSCHAFT_R2_ENDPOINT'] -cne 'http://127.0.0.1:8081' -or $hostEnvironment['MANNSCHAFT_SQS_ENABLED'] -cne 'false'){throw 'host-env-contract'}
