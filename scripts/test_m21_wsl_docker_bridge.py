@@ -392,53 +392,212 @@ class InspectContractTests(unittest.TestCase):
 
 
 
+def collect_readonly_result(pid,result_r,control_w,body_deadline,global_deadline):
+    """readonly診断の保持forkだけを同一G内で観測し、未確認を保持する。"""
+    import hashlib,json,os,select,time
+    data=bytearray(); eof=False; reaped=False; exit_code=None; error=None
+    try:
+        try: os.set_blocking(result_r,False)
+        except OSError: error='result-read-error'
+        while time.monotonic_ns()<global_deadline:
+            now=time.monotonic_ns()
+            if control_w is not None and (now>=body_deadline or eof or error):
+                os.close(control_w); control_w=None
+            if not reaped:
+                try:
+                    waited,status=os.waitpid(pid,os.WNOHANG)
+                    if waited: reaped=True; exit_code=os.waitstatus_to_exitcode(status)
+                except OSError: error='wait-error'
+            if reaped and (eof or error): break
+            remaining=(global_deadline-time.monotonic_ns())/1e9
+            if remaining<=0: break
+            pause=min(remaining,.001 if eof or error else .01)
+            if control_w is not None: pause=min(pause,max(0,(body_deadline-time.monotonic_ns())/1e9))
+            try:
+                ready=select.select([] if eof or error else [result_r],[],[],pause)[0]
+                if ready:
+                    chunk=os.read(result_r,min(4096,65537-len(data)))
+                    if not chunk: eof=True
+                    else:
+                        data.extend(chunk)
+                        if len(data)>65536: error='result-length'
+            except BlockingIOError: pass
+            except OSError: error='result-read-error'
+    finally:
+        if control_w is not None: os.close(control_w)
+        os.close(result_r)
+    result=None
+    if error is None:
+        try:
+            value=json.loads(data)
+            if type(value) is dict: result=value
+        except (ValueError,UnicodeError): pass
+    complete=result is not None
+    observed=time.monotonic_ns()
+    green=complete and eof and reaped and exit_code==0 and error is None and observed<=global_deadline
+    reason=error or ('completed' if green else 'result-json' if eof and not complete else
+                    'supervisor-nonzero' if reaped and exit_code!=0 else
+                    'result-timeout' if observed>=global_deadline else 'result-unconfirmed')
+    return {'result':result,'result_complete':complete,'result_eof':eof,
+            'supervisor_actual_exit':exit_code,'supervisor_reaped':reaped,
+            'cli_children_reaped':result.get('children_reaped') is True if complete else None,
+            'transport_green':green,'transport_error':error,'transport_reason':reason,'result_bytes':len(data),
+            'result_sha256':hashlib.sha256(data).hexdigest(),'observed_ns':observed,
+            'body_deadline_ns':body_deadline,'global_deadline_ns':global_deadline}
+
+
+@unittest.skipUnless(sys.platform=='linux','Linux所有forkの有限診断受信試験')
+class ReadonlyDiagnosticTransportTests(unittest.TestCase):
+    def transport_case(self,partial):
+        import json,os,select,signal,time,uuid
+        collector=collect_readonly_result
+        run=str(uuid.uuid4()); nonce=uuid.uuid4().hex
+        control_r,control_w=os.pipe2(os.O_CLOEXEC)
+        result_r,result_w=os.pipe2(os.O_CLOEXEC)
+        began=time.monotonic_ns(); deadline=began+200000000
+        pid=os.fork()
+        if pid==0:
+            os.close(control_w); os.close(result_r)
+            if partial:
+                os.write(result_w,b'{"children_reaped":')
+                os.close(result_w)
+                select.select([control_r],[],[],1)
+            else:
+                os.write(result_w,json.dumps({'children_reaped':True}).encode())
+                select.select([],[],[],2)
+            os._exit(0)
+        os.close(control_r); os.close(result_w)
+        observed=None; cleanup_reaped=False
+        try:
+            observed=collector(pid,result_r,control_w,began+100000000,deadline)
+            self.assertFalse(observed['transport_green'])
+            self.assertEqual(observed['result_complete'],not partial)
+            self.assertEqual(observed['result_eof'],partial)
+            self.assertEqual(observed['supervisor_reaped'],partial)
+            self.assertEqual(observed['supervisor_actual_exit'],0 if partial else None)
+            self.assertEqual(observed['transport_reason'],'result-json' if partial else 'result-timeout')
+            self.assertLess(observed['observed_ns'],deadline+100000000)
+        finally:
+            if not observed or not observed['supervisor_reaped']:
+                # 診断Gの後処理。保持した自分の未reap dummyだけを別枠で回収する。
+                os.kill(pid,signal.SIGKILL)
+                cleanup_deadline=time.monotonic_ns()+500000000
+                while time.monotonic_ns()<cleanup_deadline:
+                    waited,_=os.waitpid(pid,os.WNOHANG)
+                    if waited: cleanup_reaped=True; break
+                    select.select([],[],[],.001)
+                self.assertTrue(cleanup_reaped,'owned dummy cleanup unconfirmed')
+        if not partial:
+            self.assertTrue(cleanup_reaped)
+            self.assertFalse(observed['supervisor_reaped'])
+        print(json.dumps({'case':'readonly-transport-partial' if partial else 'readonly-transport-no-exit',
+                          'owner':SELF_OWNER,'run':run,'nonce':nonce,'body_deadline_ns':began+100000000,
+                          'diagnostic_deadline_ns':deadline,'diagnostic_result_complete':observed['result_complete'],
+                          'diagnostic_eof':observed['result_eof'],'diagnostic_reaped':observed['supervisor_reaped'],
+                          'diagnostic_green':observed['transport_green'],'dummy_cleanup_after_diagnostic':not partial,
+                          'dummy_cleanup_reaped':cleanup_reaped if not partial else observed['supervisor_reaped']}))
+
+    def test_partial_json_and_eof_are_separate(self): self.transport_case(True)
+    def test_complete_json_without_eof_or_exit_is_unknown(self): self.transport_case(False)
+
+
 @unittest.skipUnless(sys.platform=='linux' and '--real-readonly-absence-once' in sys.argv,'明示read-only既存daemon試験専用')
 class RealDaemonAbsenceFiniteTests(unittest.TestCase):
     def test_exact_missing_object_shape_and_three_second_cap(self):
-        import hashlib,json,os,select,tempfile,time,uuid
+        import hashlib,json,os,shutil,tempfile,time,uuid
+        arguments=sys.argv[1:]
+        self.assertEqual(arguments[:2],['--real-readonly-absence-once','--input-commit'])
+        self.assertEqual(len(arguments),3)
+        self.assertRegex(arguments[2],r'^[0-9a-f]{40}\Z')
+        input_commit=arguments[2]
         run=str(uuid.uuid4()); nonce=uuid.uuid4().hex
         cli_sha=hashlib.sha256(pathlib.Path('/usr/bin/docker').read_bytes()).hexdigest()
         self.assertEqual(cli_sha,'2fc3b56f978ff6951845be1e4ce352256c0ce126eeda8b84d5713009da3771ca')
-        with tempfile.TemporaryDirectory(prefix='m21-windows-readonly-',dir=str(b.TEMP_ROOT)) as parent:
-            root=pathlib.Path(parent); child=root/'bridge'; child.mkdir()
+        root=pathlib.Path(tempfile.mkdtemp(prefix='m21-windows-readonly-',dir=str(b.TEMP_ROOT)))
+        child=root/'bridge'; records=[]; guarded=False
+        evidence={'case':'real-readonly-absence-diagnostic-once','owner':SELF_OWNER,'input_commit':input_commit,
+                  'run':run,'nonce':nonce,'source_sha256':hashlib.sha256(b.Path(b.__file__).read_bytes()).hexdigest(),
+                  'test_sha256':hashlib.sha256(pathlib.Path(__file__).read_bytes()).hexdigest(),'docker_sha256':cli_sha,
+                  'socket':'unix:///var/run/docker.sock','config_path':str(child/'config'),'run_directory':str(child),
+                  'body_cap_ms':3000,'global_cap_ms':5000,'cli_limit':3,'daemon_absence_confirmed':False,
+                  'same_daemon_before_after':False,'green':False,'fixture_error':None}
+        def public_record(record):
+            value={key:value for key,value in record.items() if key!='result'}
+            result=record['result']
+            if result is not None:
+                value['linux']={key:result.get(key) for key in ('reason','cli_exit','children_reaped','stdout_eof','stderr_eof','physical_completed','force_count','body_elapsed_ms','reap_observed_ns','stdout_eof_observed_ns','stderr_eof_observed_ns')}
+                for stream in ('stdout','stderr'):
+                    raw=bytes.fromhex(result.get('_'+stream+'_hex',''))
+                    value[stream+'_len']=len(raw); value[stream+'_sha256']=hashlib.sha256(raw).hexdigest()
+            return value
+        try:
+            child.mkdir()
             owner={'owner':SELF_OWNER,'nonce':nonce}
             with (root/'owner.json').open('x') as f: json.dump(owner,f)
             with (child/'owner.json').open('x') as f: json.dump(owner|{'run':run,'purpose':'m21-docker-bridge'},f)
             dfd=b.guard_run(str(child),SELF_OWNER,run,nonce)
-            os.mkdir('config',dir_fd=dfd); os.close(dfd)
+            try: os.mkdir('config',dir_fd=dfd)
+            finally: os.close(dfd)
+            guarded=True
             boundary=b.DockerBoundary(run,str(child/'config'),{'daemon_id':'syntax-fixture-only','mysql_image_id':'sha256:'+'a'*64,'valkey_image_id':'sha256:'+'b'*64}, owner=SELF_OWNER)
             base=['/usr/bin/docker','--config',str(child/'config'),'--host','unix:///var/run/docker.sock']
-            def once(argv,env):
+            def once(operation,argv,env):
                 control_r,control_w=os.pipe2(os.O_CLOEXEC); result_r,result_w=os.pipe2(os.O_CLOEXEC)
-                began=time.monotonic_ns(); pid=os.fork()
+                began=time.monotonic_ns(); body_deadline=began+3000000000; global_deadline=began+5000000000
+                pid=os.fork()
                 if pid==0:
                     os.close(control_w); os.close(result_r)
-                    result=b.supervise(argv,env,began+3000000000,control_r,began+5000000000)
-                    os.write(result_w,json.dumps(result).encode()); os._exit(0)
+                    code=1
+                    try:
+                        result=b.supervise(argv,env,body_deadline,control_r,global_deadline)
+                        if b.send_private(result_w,result,global_deadline): code=0
+                    except (b.Rejected,OSError,ValueError): pass
+                    finally:
+                        os.close(control_r); os.close(result_w)
+                    os._exit(code)
                 os.close(control_r); os.close(result_w)
-                self.assertTrue(select.select([result_r],[],[],5)[0])
-                result=json.loads(os.read(result_r,65536)); os.close(result_r); os.close(control_w)
-                os.waitpid(pid,0)
-                result['fixture_elapsed_ms']=(time.monotonic_ns()-began)//1000000
-                return result
-            before=once(base+['info','--format','{{.ID}}'],{'PATH':'/usr/bin:/bin','LANG':'C'})
+                record={'operation':operation,'argv':argv,'supervisor_pid':pid,'began_ns':began,
+                        'result':None,'result_complete':False,'result_eof':False,
+                        'supervisor_reaped':False,'supervisor_actual_exit':None,'cli_children_reaped':None}
+                records.append(record)
+                record.update(collect_readonly_result(pid,result_r,control_w,body_deadline,global_deadline))
+                record['fixture_elapsed_ms']=(time.monotonic_ns()-began)//1000000
+                self.assertTrue(record['transport_green'],'readonly transport unconfirmed')
+                self.assertTrue(record['cli_children_reaped'],'readonly CLI children unconfirmed')
+                self.assertTrue(record['result'].get('physical_completed'),'readonly CLI completion unconfirmed')
+                return record['result']
+            before=once('daemon-before',base+['info','--format','{{.ID}}'],{'PATH':'/usr/bin:/bin','LANG':'C'})
+            self.assertEqual(before['cli_exit'],0)
             argv,env=boundary.command('resources-absent','mysql')
-            result=once(argv,env)
-            after=once(base+['info','--format','{{.ID}}'],{'PATH':'/usr/bin:/bin','LANG':'C'})
+            result=once('resources-absent',argv,env)
+            after=once('daemon-after',base+['info','--format','{{.ID}}'],{'PATH':'/usr/bin:/bin','LANG':'C'})
             stdout=bytes.fromhex(result['_stdout_hex']); stderr=bytes.fromhex(result['_stderr_hex'])
             expected=('error: no such object: '+b.resource_name(run,'mysql')+'\nerror: no such object: '+b.resource_name(run,'mysql')+'-data\n').encode()
             known_stdout={b'':'empty',b'\n':'single-newline',b'[]\n':'json-empty-array-newline',b'[]':'json-empty-array',b'M21_PRESENT\n':'present-sentinel'}
             same_daemon=before['cli_exit']==after['cli_exit']==0 and before['physical_completed'] and after['physical_completed'] and before['_stdout_hex']==after['_stdout_hex'] and bool(bytes.fromhex(before['_stdout_hex']).strip())
-            evidence={'case':'real-readonly-absence-diagnostic-once','owner':SELF_OWNER,'run':run,'nonce':nonce,'source_sha256':hashlib.sha256(b.Path(b.__file__).read_bytes()).hexdigest(),'test_sha256':hashlib.sha256(pathlib.Path(__file__).read_bytes()).hexdigest(),'docker_sha256':cli_sha,'body_cap_ms':3000,'elapsed_ms':result['fixture_elapsed_ms'],'cli_exit':result['cli_exit'],'children_reaped':result['children_reaped'],'stdout_eof':result['stdout_eof'],'stderr_eof':result['stderr_eof'],'physical_completed':result['physical_completed'],'stdout_len':len(stdout),'stdout_shape':known_stdout.get(stdout,'unknown'),'stdout_sha256':hashlib.sha256(stdout).hexdigest(),'stderr_len':len(stderr),'stderr_line_count':len(stderr.splitlines()),'stderr_shape':'exact-two-lowercase-error-no-such-object' if stderr==expected else 'unknown','stderr_sha256':hashlib.sha256(stderr).hexdigest(),'same_daemon_before_after':bool(same_daemon),'daemon_before_elapsed_ms':before['fixture_elapsed_ms'],'daemon_after_elapsed_ms':after['fixture_elapsed_ms'],'daemon_before':{key:before.get(key) for key in ('reason','cli_exit','children_reaped','stdout_eof','stderr_eof','physical_completed','force_count','body_elapsed_ms','reap_observed_ns','stdout_eof_observed_ns','stderr_eof_observed_ns')},'daemon_after':{key:after.get(key) for key in ('reason','cli_exit','children_reaped','stdout_eof','stderr_eof','physical_completed','force_count','body_elapsed_ms','reap_observed_ns','stdout_eof_observed_ns','stderr_eof_observed_ns')},'daemon_before_id_sha256':hashlib.sha256(bytes.fromhex(before['_stdout_hex'])).hexdigest(),'daemon_after_id_sha256':hashlib.sha256(bytes.fromhex(after['_stdout_hex'])).hexdigest(),'daemon_absence_confirmed':False}
-            out=pathlib.Path(__file__).resolve().parent.parent/'.claude'/'campaigns'
-            out.mkdir(parents=True,exist_ok=True)
-            with (out/('m21-bridge-readonly-'+run+'.json')).open('x') as f: json.dump(evidence,f,sort_keys=True)
-            print(json.dumps(evidence,sort_keys=True))
+            evidence.update(stdout_shape=known_stdout.get(stdout,'unknown'),stderr_line_count=len(stderr.splitlines()),
+                            stderr_shape='exact-two-lowercase-error-no-such-object' if stderr==expected else 'unknown',
+                            same_daemon_before_after=bool(same_daemon))
             self.assertTrue(result['physical_completed'])
             self.assertEqual(result['cli_exit'],1)
             self.assertEqual(stdout,b'\n')
             self.assertEqual(stderr,expected)
             self.assertTrue(same_daemon)
+            evidence['green']=True
+        except BaseException as error:
+            evidence['fixture_error']='assertion' if isinstance(error,AssertionError) else 'fixture-exception'
+            raise
+        finally:
+            evidence['cli_records']=[public_record(record) for record in records]
+            evidence['cli_attempt_count']=len(records)
+            evidence['cli_spawn_count_upper_bound']=len(records)
+            safe_cleanup=guarded and all(record['supervisor_reaped'] and record['result_eof'] and record['result_complete'] and record['cli_children_reaped'] is True for record in records)
+            evidence['temp_retained']=not safe_cleanup
+            out=pathlib.Path(__file__).resolve().parent.parent/'.claude'/'campaigns'
+            out.mkdir(parents=True,exist_ok=True)
+            with (out/('m21-bridge-readonly-'+run+'.json')).open('x') as f: json.dump(evidence,f,sort_keys=True)
+            print(json.dumps(evidence,sort_keys=True))
+            if safe_cleanup: shutil.rmtree(root)
 
 @unittest.skipUnless(sys.platform=='linux','Linux公開receipt実子試験')
 class PublicReceiptFiniteTests(unittest.TestCase):

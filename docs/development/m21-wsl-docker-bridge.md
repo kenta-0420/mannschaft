@@ -105,3 +105,11 @@ Windows側はresources-readyへexpectedRunIdとLinux側socket_proofを保持し�
 最終inspectはrunning=trueだけでなく、同じowned Valkey CIDへの自隊container-start成功後のwork inspectに限る。prestartで予期せずrunningでもINFOを追加せず、daemon再確認/新create時はこの認定を失効する。run_idはcacheしない。
 
 bridge-exitの固定診断はterminal_phase/terminal_code/phase_started_ns/phase_deadline_ns/terminal_nsを持つ。bind-read→bind-validation→bound-publishを区別し、schemaとdescriptor-bindは固定codeで分離する。readのdeadlineと記録値は同一変数、全時刻はLinux CLOCK_MONOTONICであり、期限を延長しない。失敗code/時刻を回収前に固定し、後続回収で上書きしない。Rejectedの未知値はother-rejected、OS/値/Unicode例外は固定typeのみで、例外本文・受信値・秘密を公開しない。既存reason=bridge-terminalは維持する。
+
+## readonly診断fixtureの有限観測
+
+専用入口は --real-readonly-absence-once --input-commit <40hex>。input-commitは供給値の形式確認と記録だけを行い、実HEAD一致は実行前のroot照合で保証する。実行GO前に非起動のwsl --list --runningでUbuntu-24.04の既稼働を確認し、停止中なら起動しない。Docker CLIはinfo→resources-absent→infoの最大3件直列、固定Unix socketと新規所有空config、PATH/LANGだけの子envを維持する。
+
+各onceは同じbeganからbody3秒/G5秒を固定し、送信は既存send_private、受信はnonblocking/selectの64KiB上限で行う。完全JSON・result EOF・supervisor actual exit/reap・CLI子集合reapを別記録し、いずれか未確認なら次CLIを起動しない。body期限でcontrol EOFを送り、既存superviseによる回収を同じG内で観測する。期限後のblocking read/waitや成功への上書きは行わない。G後も不明な子はunknownとして所有Tempを保持し、supervisorだけを停止してCLI回収済みとは扱わない。全runのhard15秒保証は主張しない。
+
+packetはowner/run/nonce、供給inputcommit、物理source/test SHA、実argv、configpath/socket、各CLIのreason/actualexit/EOF/reapと出力len/hashを保存し、raw本文を公開しない。dummy試練はpartial JSONと完全JSON後のpipe保持/未終了を実forkで確認する。後者の試験自身による既知dummyの別有限cleanupは診断G資格と分離し、cleanup成功で診断nonGreenを変更しない。実daemon診断は専用GOまで実行しない。
