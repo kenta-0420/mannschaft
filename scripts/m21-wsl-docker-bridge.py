@@ -722,18 +722,19 @@ def bridge_loop(dfd, directory, owner, run, nonce, input_commit):
 
 
 def main():
-    import argparse,re
-    parser=argparse.ArgumentParser(add_help=False)
-    for name in ('run-directory','owner','run','nonce','input-commit'): parser.add_argument('--'+name,required=True)
-    args=parser.parse_args()
+    import re
     try:
-        if not re.fullmatch('[0-9a-f]{40}',args.input_commit): raise Rejected('input-commit')
-        dfd=guard_run(args.run_directory,args.owner,args.run,args.nonce)
-        try: return bridge_loop(dfd,args.run_directory,args.owner,args.run,args.nonce,args.input_commit)
+        arguments=sys.argv[1:]
+        keys={'--run-directory','--owner','--run','--nonce','--input-commit'}
+        if len(arguments)!=10 or set(arguments[::2])!=keys:
+            raise Rejected('arguments')
+        values=dict(zip(arguments[::2],arguments[1::2]))
+        if not re.fullmatch('[0-9a-f]{40}',values['--input-commit']): raise Rejected('input-commit')
+        dfd=guard_run(values['--run-directory'],values['--owner'],values['--run'],values['--nonce'])
+        try: return bridge_loop(dfd,values['--run-directory'],values['--owner'],values['--run'],values['--nonce'],values['--input-commit'])
         finally: os.close(dfd)
     except (Rejected,OSError,ValueError,UnicodeError):
         return 78
-
 
 
 # bootstrap専用。stdin wireから任意commandへ到達する経路を持たない。

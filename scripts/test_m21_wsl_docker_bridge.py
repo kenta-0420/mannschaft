@@ -474,6 +474,18 @@ class RemainingBoundaryTests(unittest.TestCase):
         with patch.object(b.os,'setsid',return_value=None),patch.object(b,'subreaper',side_effect=b.Rejected('subreaper-set')),patch.object(b.os,'fork',side_effect=AssertionError('spawn without subreaper')):
             with self.assertRaises(b.Rejected): b.supervise([],{},time.monotonic_ns()+100000000,0,time.monotonic_ns()+200000000)
 
+
+
+class ArgumentBoundaryTests(unittest.TestCase):
+    def test_unknown_argument_has_no_echo_and_no_run_admission(self):
+        import contextlib,io
+        from unittest.mock import patch
+        arguments=['bridge','--run-directory','/forbidden','--owner',SELF_OWNER,'--run','11111111-1111-4111-8111-111111111111','--nonce','a'*32,'--input-commit','0'*40,'--env','OWNED_ARGUMENT_SENTINEL']
+        error=io.StringIO()
+        with patch.object(sys,'argv',arguments),patch.object(b,'guard_run',side_effect=AssertionError('unknown argument reached run admission')),contextlib.redirect_stderr(error):
+            self.assertEqual(b.main(),78)
+        self.assertNotIn('OWNED_ARGUMENT_SENTINEL',error.getvalue())
+
 if __name__ == '__main__':
     if '--relay-fixture' in sys.argv: raise SystemExit(relay_fixture())
     if '--real-readonly-absence-once' in sys.argv:
