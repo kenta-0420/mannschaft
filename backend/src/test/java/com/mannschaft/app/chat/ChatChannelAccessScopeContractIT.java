@@ -73,7 +73,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * （「公開」はチームメンバーが自分で参加できることを意味し、未参加での本文閲覧は許さない）。</p>
  *
  * <p>金型: {@code PhotoAlbumListPhotosScopeContractIT}（{@code @AutoConfigureMockMvc(addFilters=false)}
- * + 実 MySQL Testcontainers）。ID-only エンドポイントのため越境は 403（CHAT_005）に畳み込む。</p>
+ * + 実 MySQL Testcontainers）。越境（存在を知り得ない利用者）は CMP-261105-1507 で不在と同一の 404（CHAT_001）へ改めた。公開チャンネルの未参加チームメンバー（存在は既知）は 403（CHAT_005）のまま。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
@@ -274,12 +274,12 @@ class ChatChannelAccessScopeContractIT extends AbstractMySqlIntegrationTest {
     class ListMessages {
 
         @Test
-        @DisplayName("部外者による他人のDMメッセージ一覧取得は403（CHAT_005・DM本文の総当り閲覧を閉塞）")
-        void 部外者のDMメッセージ一覧は403() throws Exception {
+        @DisplayName("部外者による他人のDMメッセージ一覧取得は404（CHAT_001・不在と同一・DM本文の総当り閲覧を閉塞）")
+        void 部外者のDMメッセージ一覧は404() throws Exception {
             setAuthentication(outsiderId);
             mockMvc.perform(get("/api/v1/chat/channels/{id}/messages", dmChannelId))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("CHAT_005"));
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CHAT_001"));
         }
 
         @Test
@@ -292,12 +292,12 @@ class ChatChannelAccessScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("部外者によるTEAM_PRIVATEのメッセージ一覧取得は403")
-        void 部外者の非公開チャンネルメッセージ一覧は403() throws Exception {
+        @DisplayName("部外者によるTEAM_PRIVATEのメッセージ一覧取得は不在と同一の404")
+        void 部外者の非公開チャンネルメッセージ一覧は404() throws Exception {
             setAuthentication(outsiderId);
             mockMvc.perform(get("/api/v1/chat/channels/{id}/messages", teamPrivateChannelId))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("CHAT_005"));
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CHAT_001"));
         }
 
         @Test
@@ -335,22 +335,22 @@ class ChatChannelAccessScopeContractIT extends AbstractMySqlIntegrationTest {
     class SearchAndThreads {
 
         @Test
-        @DisplayName("部外者による他人のDMメッセージ検索は403（本文漏洩の裏口を閉塞）")
-        void 部外者のDMメッセージ検索は403() throws Exception {
+        @DisplayName("部外者による他人のDMメッセージ検索は不在と同一の404（本文漏洩の裏口を閉塞）")
+        void 部外者のDMメッセージ検索は404() throws Exception {
             setAuthentication(outsiderId);
             mockMvc.perform(get("/api/v1/chat/channels/{id}/messages/search", dmChannelId)
                             .param("keyword", "秘密"))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("CHAT_005"));
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CHAT_001"));
         }
 
         @Test
-        @DisplayName("部外者によるアクティブスレッド一覧取得は403")
-        void 部外者のスレッド一覧は403() throws Exception {
+        @DisplayName("部外者によるアクティブスレッド一覧取得は不在と同一の404")
+        void 部外者のスレッド一覧は404() throws Exception {
             setAuthentication(outsiderId);
             mockMvc.perform(get("/api/v1/chat/channels/{id}/threads", dmChannelId))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("CHAT_005"));
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CHAT_001"));
         }
 
         @Test
@@ -371,12 +371,12 @@ class ChatChannelAccessScopeContractIT extends AbstractMySqlIntegrationTest {
     class GetChannel {
 
         @Test
-        @DisplayName("部外者による他人のDM詳細取得は403（DM相手のuserId・表示名・アバターの漏洩を閉塞）")
-        void 部外者のDM詳細は403() throws Exception {
+        @DisplayName("部外者による他人のDM詳細取得は不在と同一の404（DM相手のuserId・表示名・アバターの漏洩を閉塞）")
+        void 部外者のDM詳細は404() throws Exception {
             setAuthentication(outsiderId);
             mockMvc.perform(get("/api/v1/chat/channels/{id}", dmChannelId))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("CHAT_005"));
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CHAT_001"));
         }
 
         @Test
@@ -407,30 +407,30 @@ class ChatChannelAccessScopeContractIT extends AbstractMySqlIntegrationTest {
     class JoinChannel {
 
         @Test
-        @DisplayName("他人のDMへの自己参加は403（DM/GROUP_DMは自己参加不可）")
-        void 他人のDMへの自己参加は403() throws Exception {
+        @DisplayName("他人のDMへの自己参加は不在と同一の404（DM/GROUP_DMは自己参加不可）")
+        void 他人のDMへの自己参加は404() throws Exception {
             setAuthentication(outsiderId);
             mockMvc.perform(post("/api/v1/chat/channels/{id}/join", dmChannelId))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("CHAT_005"));
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CHAT_001"));
         }
 
         @Test
-        @DisplayName("チームメンバーであっても非公開チャンネルへの自己参加は403（招待制）")
-        void 非公開チャンネルへの自己参加は403() throws Exception {
+        @DisplayName("チームメンバーであっても非公開チャンネルへの自己参加は不在と同一の404（招待制）")
+        void 非公開チャンネルへの自己参加は404() throws Exception {
             setAuthentication(teamOnlyMemberId);
             mockMvc.perform(post("/api/v1/chat/channels/{id}/join", teamPrivateChannelId))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("CHAT_005"));
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CHAT_001"));
         }
 
         @Test
-        @DisplayName("非チームメンバーによる公開チャンネルへの自己参加は403（COMMON_002・スコープ所属を要求）")
-        void 非チームメンバーの公開チャンネル参加は403() throws Exception {
+        @DisplayName("非チームメンバーによる公開チャンネルへの自己参加は不在と同一の404（CHAT_001・他スコープの利用者は存在を知り得ない）")
+        void 非チームメンバーの公開チャンネル参加は404() throws Exception {
             setAuthentication(outsiderId);
             mockMvc.perform(post("/api/v1/chat/channels/{id}/join", teamPublicChannelId))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CHAT_001"));
         }
 
         @Test
@@ -451,14 +451,14 @@ class ChatChannelAccessScopeContractIT extends AbstractMySqlIntegrationTest {
     class WriteOperations {
 
         @Test
-        @DisplayName("部外者による他人のDMへのメッセージ送信は403（投稿バイパスを閉塞）")
-        void 部外者のDMへの送信は403() throws Exception {
+        @DisplayName("部外者による他人のDMへのメッセージ送信は不在と同一の404（投稿バイパスを閉塞）")
+        void 部外者のDMへの送信は404() throws Exception {
             setAuthentication(outsiderId);
             mockMvc.perform(post("/api/v1/chat/channels/{id}/messages", dmChannelId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(sendBody())))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("CHAT_005"));
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CHAT_001"));
         }
 
         @Test
@@ -472,12 +472,12 @@ class ChatChannelAccessScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("部外者による他人のDMのグループDM変換は403（callerId未受領の欠陥を閉塞）")
-        void 部外者のグループDM変換は403() throws Exception {
+        @DisplayName("部外者による他人のDMのグループDM変換は不在と同一の404（callerId未受領の欠陥を閉塞）")
+        void 部外者のグループDM変換は404() throws Exception {
             setAuthentication(outsiderId);
             mockMvc.perform(post("/api/v1/chat/channels/{id}/convert-to-group", dmChannelId))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("CHAT_005"));
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CHAT_001"));
         }
 
         @Test
@@ -508,23 +508,23 @@ class ChatChannelAccessScopeContractIT extends AbstractMySqlIntegrationTest {
         // ---- AC-1a: 村の非メンバーは VILLAGE_LOBBY を閲覧できない ----
 
         @Test
-        @DisplayName("AC-1a: 村の非メンバーによる村ロビーのメッセージ一覧は403（CHAT_005・素通し根治）")
-        void 村非メンバーの村ロビーメッセージ一覧は403() throws Exception {
+        @DisplayName("AC-1a: 村の非メンバーによる村ロビーのメッセージ一覧は404（CHAT_001・不在と同一・素通し根治）")
+        void 村非メンバーの村ロビーメッセージ一覧は404() throws Exception {
             setAuthentication(outsiderId);
             mockMvc.perform(get("/api/v1/chat/channels/{id}/messages", villageLobbyChannelId))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("CHAT_005"));
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CHAT_001"));
         }
 
         // ---- AC-1b: イベント非参加者は EVENT_CHAT を閲覧できない ----
 
         @Test
-        @DisplayName("AC-1b: イベント非参加者によるイベントチャットのメッセージ一覧は403（CHAT_005・素通し根治）")
-        void イベント非参加者のイベントチャットメッセージ一覧は403() throws Exception {
+        @DisplayName("AC-1b: イベント非参加者によるイベントチャットのメッセージ一覧は404（CHAT_001・不在と同一・素通し根治）")
+        void イベント非参加者のイベントチャットメッセージ一覧は404() throws Exception {
             setAuthentication(outsiderId);
             mockMvc.perform(get("/api/v1/chat/channels/{id}/messages", eventChatChannelId))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("CHAT_005"));
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CHAT_001"));
         }
 
         // ---- AC-1c: 正当な村メンバー / イベントスコープメンバーは従来どおり200（回帰防止） ----
@@ -548,65 +548,65 @@ class ChatChannelAccessScopeContractIT extends AbstractMySqlIntegrationTest {
         // ---- AC-1d: list / thread / search の全読取経路で非メンバー403（経路漏れ防止） ----
 
         @Test
-        @DisplayName("AC-1d: 村の非メンバーによる村ロビーのスレッド一覧は403（経路漏れ防止）")
-        void 村非メンバーの村ロビースレッド一覧は403() throws Exception {
+        @DisplayName("AC-1d: 村の非メンバーによる村ロビーのスレッド一覧は不在と同一の404（経路漏れ防止）")
+        void 村非メンバーの村ロビースレッド一覧は404() throws Exception {
             setAuthentication(outsiderId);
             mockMvc.perform(get("/api/v1/chat/channels/{id}/threads", villageLobbyChannelId))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("CHAT_005"));
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CHAT_001"));
         }
 
         @Test
-        @DisplayName("AC-1d: 村の非メンバーによる村ロビーのメッセージ検索は403（経路漏れ防止）")
-        void 村非メンバーの村ロビーメッセージ検索は403() throws Exception {
+        @DisplayName("AC-1d: 村の非メンバーによる村ロビーのメッセージ検索は不在と同一の404（経路漏れ防止）")
+        void 村非メンバーの村ロビーメッセージ検索は404() throws Exception {
             setAuthentication(outsiderId);
             mockMvc.perform(get("/api/v1/chat/channels/{id}/messages/search", villageLobbyChannelId)
                             .param("keyword", "本文"))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("CHAT_005"));
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CHAT_001"));
         }
 
         @Test
-        @DisplayName("AC-1d: イベント非参加者によるイベントチャットのスレッド一覧は403（経路漏れ防止）")
-        void イベント非参加者のイベントチャットスレッド一覧は403() throws Exception {
+        @DisplayName("AC-1d: イベント非参加者によるイベントチャットのスレッド一覧は不在と同一の404（経路漏れ防止）")
+        void イベント非参加者のイベントチャットスレッド一覧は404() throws Exception {
             setAuthentication(outsiderId);
             mockMvc.perform(get("/api/v1/chat/channels/{id}/threads", eventChatChannelId))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("CHAT_005"));
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CHAT_001"));
         }
 
         @Test
-        @DisplayName("AC-1d: イベント非参加者によるイベントチャットのメッセージ検索は403（経路漏れ防止）")
-        void イベント非参加者のイベントチャットメッセージ検索は403() throws Exception {
+        @DisplayName("AC-1d: イベント非参加者によるイベントチャットのメッセージ検索は不在と同一の404（経路漏れ防止）")
+        void イベント非参加者のイベントチャットメッセージ検索は404() throws Exception {
             setAuthentication(outsiderId);
             mockMvc.perform(get("/api/v1/chat/channels/{id}/messages/search", eventChatChannelId)
                             .param("keyword", "本文"))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("CHAT_005"));
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CHAT_001"));
         }
 
         // ---- 投稿経路も同じゲートを通す（非メンバーの書き込みバイパス閉塞） ----
 
         @Test
-        @DisplayName("AC-1d: 村の非メンバーによる村ロビーへのメッセージ送信は403（投稿バイパス閉塞）")
-        void 村非メンバーの村ロビー投稿は403() throws Exception {
+        @DisplayName("AC-1d: 村の非メンバーによる村ロビーへのメッセージ送信は不在と同一の404（投稿バイパス閉塞）")
+        void 村非メンバーの村ロビー投稿は404() throws Exception {
             setAuthentication(outsiderId);
             mockMvc.perform(post("/api/v1/chat/channels/{id}/messages", villageLobbyChannelId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(Map.of("body", "侵入投稿"))))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("CHAT_005"));
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CHAT_001"));
         }
 
         @Test
-        @DisplayName("AC-1d: イベント非参加者によるイベントチャットへのメッセージ送信は403（投稿バイパス閉塞）")
-        void イベント非参加者のイベントチャット投稿は403() throws Exception {
+        @DisplayName("AC-1d: イベント非参加者によるイベントチャットへのメッセージ送信は不在と同一の404（投稿バイパス閉塞）")
+        void イベント非参加者のイベントチャット投稿は404() throws Exception {
             setAuthentication(outsiderId);
             mockMvc.perform(post("/api/v1/chat/channels/{id}/messages", eventChatChannelId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(Map.of("body", "侵入投稿"))))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("CHAT_005"));
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CHAT_001"));
         }
     }
 
