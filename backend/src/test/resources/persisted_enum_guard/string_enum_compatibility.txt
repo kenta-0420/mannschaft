@@ -2186,3 +2186,10 @@ com.mannschaft.app.loyalty.RequestOperation#SELF_SUBMIT
 com.mannschaft.app.loyalty.RequestOperation#STAFF_AWARD
 com.mannschaft.app.template.FeatureDisplayScope#TEAM
 com.mannschaft.app.template.FeatureDisplayScope#ORGANIZATION
+# L1-M初回5定数: 基盤をreader先配布し、全task旧版0の証跡後の別releaseでC/F業務writerを採用する。
+# 新表empty・実業務ReliableEvent/listener未採用が前提。運用文書「永続enumの二段階配布」参照。実展開済みの証明ではない。
+com.mannschaft.app.moduleevent.ModuleEventAttemptStatus#IN_PROGRESS
+com.mannschaft.app.moduleevent.ModuleEventAttemptStatus#PENDING
+com.mannschaft.app.moduleevent.ModuleEventAttemptStatus#QUARANTINED
+com.mannschaft.app.moduleevent.api.dto.ModuleEventNoticeScope#ORGANIZATION
+com.mannschaft.app.moduleevent.api.dto.ModuleEventNoticeScope#TEAM

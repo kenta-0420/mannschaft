@@ -167,7 +167,12 @@ public class NotificationFanoutWorker {
      * 一方、シャード分割・配信の失敗は一過性（DB 一時障害等）でありうるため従来どおりリトライ→上限超で DEAD_LETTER。</p>
      */
     public void processOne(NotificationFanoutJob job) {
-        jobService.markRunning(job.getId());
+        boolean moduleEventNotice = "MODULE_EVENT_NOTICE".equals(job.getNotificationType());
+        if (moduleEventNotice) {
+            if (!jobService.tryMarkModuleEventRunning(job.getId())) return;
+        } else {
+            jobService.markRunning(job.getId());
+        }
         try {
             java.util.Optional<FanoutRecipientSource> resolved =
                     recipientSourceRegistry.resolve(job.getScopeType());
@@ -175,7 +180,11 @@ public class NotificationFanoutWorker {
                 // 未登録 scope_type はリトライ不能な恒久失敗。即 DEAD_LETTER へ短絡し RUNNING 残置を断つ。
                 String reason = "未登録の fan-out scope_type: " + job.getScopeType() + "（jobId=" + job.getId() + "）";
                 log.warn("fan-out ジョブ: {}（即 DEAD_LETTER）", reason);
-                jobService.recordFailure(job.getId(), "IllegalStateException: " + reason, MAX_RETRY, true);
+                if (moduleEventNotice) {
+                    jobService.recordModuleEventFailure(job.getId(), "IllegalStateException: " + reason, MAX_RETRY, true);
+                } else {
+                    jobService.recordFailure(job.getId(), "IllegalStateException: " + reason, MAX_RETRY, true);
+                }
                 return;
             }
             FanoutRecipientSource source = resolved.get();
@@ -248,13 +257,21 @@ public class NotificationFanoutWorker {
                 // in-memory カーソル前進（ループ終了条件）＋ 独立コミットで耐久化（クラッシュ再開の要・AC-2）。
                 // 順序は「INSERT 確定 → カーソル前進」を厳守する（逆にすると欠落する）。
                 job.setCursorSubjectId(newCursor);
-                jobService.advanceCursor(job.getId(), newCursor, added);
+                if (moduleEventNotice) {
+                    jobService.advanceModuleEventCursor(job.getId(), newCursor, added);
+                } else {
+                    jobService.advanceCursor(job.getId(), newCursor, added);
+                }
             }
         } catch (Exception ex) {
             // 配信失敗＝リトライ／DEAD_LETTER へ落とす（耐久キューの正常動作。握り潰しではなく状態に残す）。
             log.warn("fan-out ジョブ配信失敗: jobId={} scopeType={} scopeRef={} cursor={}",
                     job.getId(), job.getScopeType(), job.getScopeRef(), job.getCursorSubjectId(), ex);
-            jobService.recordFailure(job.getId(), ex.getClass().getSimpleName() + ": " + ex.getMessage(), MAX_RETRY);
+            if (moduleEventNotice) {
+                jobService.recordModuleEventFailure(job.getId(), ex.getClass().getSimpleName() + ": " + ex.getMessage(), MAX_RETRY, false);
+            } else {
+                jobService.recordFailure(job.getId(), ex.getClass().getSimpleName() + ": " + ex.getMessage(), MAX_RETRY);
+            }
         }
     }
 
@@ -302,7 +319,11 @@ public class NotificationFanoutWorker {
             }
             long newCursor = page.get(page.size() - 1).userId();
             job.setCursorSubjectId(newCursor);
-            jobService.advanceCursor(job.getId(), newCursor, result.addedCount());
+            if ("MODULE_EVENT_NOTICE".equals(job.getNotificationType())) {
+                jobService.advanceModuleEventCursor(job.getId(), newCursor, result.addedCount());
+            } else {
+                jobService.advanceCursor(job.getId(), newCursor, result.addedCount());
+            }
         }
     }
 

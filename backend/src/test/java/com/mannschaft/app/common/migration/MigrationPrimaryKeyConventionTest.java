@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -39,8 +40,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   <li>{@code major >= 70} のファイルのみ検査対象（原則 #6 は 2026-05-11〜の
  *       新規テーブルに適用。それ以前の major は対象外）。</li>
  *   <li>{@code CREATE TABLE <name> (...)} 文を抽出し、本体に {@code AUTO_INCREMENT} を
- *       含む場合（＝主キーの AUTO_INCREMENT。MySQL の AUTO_INCREMENT は必ずキー列に
- *       付与される）は規約違反とする。</li>
+ *       含む場合は主キー宣言と列型を照合する。単一 UUID 主キーが明示され、
+ *       自動採番が主キー以外に限定されると確認できる場合だけ許可する。</li>
  *   <li>ただし {@link #ALLOWLISTED_TABLES allowlist}（既知の許容済み逸脱）の
  *       テーブルは fail させない。</li>
  * </ul>
@@ -160,6 +161,7 @@ class MigrationPrimaryKeyConventionTest {
                 SqlTextScanningUtils.findStatementEnd(content, bodyStart));
 
             if (AUTO_INCREMENT_PATTERN.matcher(body).find()
+                    && !hasExplicitUuidPrimaryKeyWithoutAutoIncrement(body)
                     && !ALLOWLISTED_TABLES.contains(tableName)
                     && !uuidMigratedTables.contains(tableName)) {
                 violations.add(String.format(
@@ -167,6 +169,95 @@ class MigrationPrimaryKeyConventionTest {
                     fileName, tableName, major));
             }
         }
+    }
+
+    /**
+     * 自動採番の副参照を許可する根拠を CREATE 定義内で確認する。
+     * 主キー不明・複合主キー・未知の書式は証拠不足として許可しない。
+     * SQL 全般を解釈せず、列定義と単一主キー宣言だけを対象にする。
+     */
+    private static boolean hasExplicitUuidPrimaryKeyWithoutAutoIncrement(String body) {
+        List<String> definitions = splitTableDefinitions(body);
+        List<String> primaryColumns = new ArrayList<>();
+        Set<String> uuidColumns = new java.util.HashSet<>();
+        Set<String> autoIncrementColumns = new java.util.HashSet<>();
+        Pattern tablePrimaryKey = Pattern.compile(
+            "^(?:CONSTRAINT\\s+`?[A-Za-z0-9_]+`?\\s+)?PRIMARY\\s+KEY\\s*"
+                + "\\(\\s*`?([A-Za-z0-9_]+)`?\\s*\\)\\s*$", Pattern.CASE_INSENSITIVE);
+        Pattern columnDefinition = Pattern.compile("^`?([A-Za-z0-9_]+)`?\\s+(.+)$",
+            Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+        Pattern primaryKey = Pattern.compile("\\bPRIMARY\\s+KEY\\b", Pattern.CASE_INSENSITIVE);
+        Pattern uuidType = Pattern.compile(
+            "^(?:BINARY\\s*\\(\\s*16\\s*\\)|CHAR\\s*\\(\\s*36\\s*\\))(?=\\s|$)",
+            Pattern.CASE_INSENSITIVE);
+
+        for (String definition : definitions) {
+            Matcher tableKey = tablePrimaryKey.matcher(definition);
+            if (tableKey.matches()) {
+                primaryColumns.add(tableKey.group(1).toLowerCase(Locale.ROOT));
+                continue;
+            }
+            // 複合・式付きなどのテーブル主キーを、同名の列宣言へ読み替えない。
+            if (definition.matches("(?is)^(?:CONSTRAINT\\s+.+?\\s+)?PRIMARY\\s+KEY\\b.*")) {
+                return false;
+            }
+            Matcher column = columnDefinition.matcher(definition);
+            if (!column.matches()) {
+                return false;
+            }
+            String name = column.group(1).toLowerCase(Locale.ROOT);
+            String attributes = column.group(2);
+            if (uuidType.matcher(attributes).find()) {
+                uuidColumns.add(name);
+            }
+            if (AUTO_INCREMENT_PATTERN.matcher(attributes).find()) {
+                autoIncrementColumns.add(name);
+            }
+            Matcher inlineKey = primaryKey.matcher(definition);
+            while (inlineKey.find()) {
+                primaryColumns.add(name);
+            }
+        }
+        return primaryColumns.size() == 1
+            && uuidColumns.contains(primaryColumns.getFirst())
+            && !autoIncrementColumns.contains(primaryColumns.getFirst());
+    }
+
+    /** 外側括弧内の定義だけを、型の括弧や引用符内のカンマを避けて分割する。 */
+    private static List<String> splitTableDefinitions(String body) {
+        String text = body.stripLeading();
+        if (!text.startsWith("(")) {
+            return List.of();
+        }
+        StringBuilder masked = new StringBuilder(text);
+        List<String> definitions = new ArrayList<>();
+        int depth = 1;
+        int from = 1;
+        for (int i = 1; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '\'' || c == '"' || c == '`') {
+                int end = SqlTextScanningUtils.skipQuoted(text, i, c);
+                // リテラル内の PRIMARY KEY 等を宣言として扱わない。識別子の引用は保持する。
+                if (c != '`') {
+                    for (int j = i; j <= end; j++) {
+                        masked.setCharAt(j, ' ');
+                    }
+                }
+                i = end;
+            } else if (c == '(') {
+                depth++;
+            } else if (c == ')') {
+                depth--;
+                if (depth == 0) {
+                    definitions.add(masked.substring(from, i).trim());
+                    return definitions;
+                }
+            } else if (c == ',' && depth == 1) {
+                definitions.add(masked.substring(from, i).trim());
+                from = i + 1;
+            }
+        }
+        return List.of();
     }
 
     /**
