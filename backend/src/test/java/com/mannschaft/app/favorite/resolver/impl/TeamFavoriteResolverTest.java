@@ -7,8 +7,7 @@ import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.favorite.FavoriteEntityType;
 import com.mannschaft.app.favorite.dto.FavoriteEntityMetaDto;
 import com.mannschaft.app.favorite.dto.FavoriteEntityStatus;
-import com.mannschaft.app.team.entity.TeamEntity;
-import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.dto.TeamNameIconView;
 import com.mannschaft.app.team.service.TeamService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,7 +15,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -43,9 +41,6 @@ import static org.mockito.Mockito.verify;
 class TeamFavoriteResolverTest {
 
     @Mock
-    private TeamRepository teamRepository;
-
-    @Mock
     private TeamService teamService;
 
     @Mock
@@ -63,14 +58,9 @@ class TeamFavoriteResolverTest {
     @Test
     @DisplayName("resolveAll: iconUrl は生 R2 キーでなく署名付き表示 URL を返す")
     void resolveAll_resolvesIconUrl() {
-        TeamEntity team = TeamEntity.builder()
-                .name("東京ベアーズ")
-                .slug("tokyo-bears")
-                .iconUrl("team/1/icon/raw.png")
-                .build();
-        ReflectionTestUtils.setField(team, "id", 1L);
+        TeamNameIconView team = new TeamNameIconView(1L, "東京ベアーズ", "team/1/icon/raw.png");
 
-        given(teamRepository.findAllById(any())).willReturn(List.of(team));
+        given(teamService.getNameIconsByIds(any())).willReturn(Map.of(team.id(), team));
         given(contentVisibilityChecker.filterAccessible(eq(ReferenceType.TEAM), any(), eq(700L)))
                 .willReturn(Set.of(1L));
         given(teamService.getSlugsByIds(Set.of(1L))).willReturn(Map.of(1L, "tokyo-bears"));
@@ -92,10 +82,9 @@ class TeamFavoriteResolverTest {
     @Test
     @DisplayName("resolveAll: アイコン未設定（resolver が null 縮退）でも 500 にせず null を返す")
     void resolveAll_nullIcon() {
-        TeamEntity team = TeamEntity.builder().name("無アイコン団").build();
-        ReflectionTestUtils.setField(team, "id", 2L);
+        TeamNameIconView team = new TeamNameIconView(2L, "無アイコン団", null);
 
-        given(teamRepository.findAllById(any())).willReturn(List.of(team));
+        given(teamService.getNameIconsByIds(any())).willReturn(Map.of(team.id(), team));
         given(contentVisibilityChecker.filterAccessible(eq(ReferenceType.TEAM), any(), eq(700L)))
                 .willReturn(Set.of(2L));
         given(teamService.getSlugsByIds(Set.of(2L))).willReturn(Map.of(2L, "no-icon-team"));
@@ -111,13 +100,6 @@ class TeamFavoriteResolverTest {
     @Test
     @DisplayName("可視性: F00 ラダーで閲覧できないチームは UNAVAILABLE（名称・アイコンを返さない）")
     void resolveAll_notVisible_unavailable() {
-        TeamEntity team = TeamEntity.builder()
-                .name("非公開チーム")
-                .iconUrl("team/3/icon/raw.png")
-                .build();
-        ReflectionTestUtils.setField(team, "id", 3L);
-
-        given(teamRepository.findAllById(any())).willReturn(List.of(team));
         given(contentVisibilityChecker.filterAccessible(eq(ReferenceType.TEAM), any(), eq(700L)))
                 .willReturn(Set.of());
 
@@ -128,20 +110,18 @@ class TeamFavoriteResolverTest {
         assertThat(meta.status()).isEqualTo(FavoriteEntityStatus.UNAVAILABLE);
         assertThat(meta.displayName()).isNull();
         assertThat(meta.iconUrl()).isNull();
+        verify(teamService).getNameIconsByIds(Set.of());
+        verify(teamService).getSlugsByIds(Set.of());
     }
 
     @Test
     @DisplayName("slug一括取得に対象IDが無い場合はUNAVAILABLEとしてメタデータを返さない")
     void slug一括取得に対象が無い場合は利用不可() {
-        TeamEntity team = TeamEntity.builder()
-                .name("slug未取得チーム")
-                .slug("entity-only-slug")
-                .build();
-        ReflectionTestUtils.setField(team, "id", 42L);
-        given(teamRepository.findAllById(any())).willReturn(List.of(team));
+        TeamNameIconView team = new TeamNameIconView(42L, "slug未取得チーム", null);
+        given(teamService.getNameIconsByIds(any())).willReturn(Map.of(team.id(), team));
         given(contentVisibilityChecker.filterAccessible(eq(ReferenceType.TEAM), any(), eq(700L)))
                 .willReturn(Set.of(42L));
-        // TeamServiceのmockは既定の空Mapを返す。Entityのslugへフォールバックしない。
+        // slug取得のmockは既定の空Mapを返す。名前・アイコンだけでは公開しない。
 
         FavoriteEntityMetaDto meta = resolver.resolveAll(List.of("42"), 700L).get("42");
 
