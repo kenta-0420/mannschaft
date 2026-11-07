@@ -3,6 +3,8 @@ import type { ShiftSlotResponse } from '~/types/shift'
 export function useShiftBoard(scheduleId: Ref<number>, slots: Ref<ShiftSlotResponse[]>) {
   const shiftApi = useShiftApi()
   const localAssignments = ref<Record<number, number[]>>({})
+  let latestLoadRequest = 0
+  let appliedPatchGeneration = 0
 
   function syncAssignments(): void {
     localAssignments.value = Object.fromEntries(
@@ -12,10 +14,14 @@ export function useShiftBoard(scheduleId: Ref<number>, slots: Ref<ShiftSlotRespo
 
   async function loadSlots(): Promise<void> {
     const requestedSchedule = scheduleId.value
-    const before = slots.value
+    const request = ++latestLoadRequest
+    const patchGeneration = appliedPatchGeneration
     const res = await shiftApi.getShiftSlots(requestedSchedule)
-    // PATCH の確定応答や別スケジュールを、先に開始した GET で上書きしない。
-    if (requestedSchedule !== scheduleId.value || slots.value !== before) return
+    // 最新開始の GET だけを反映し、開始後の確定 PATCH と別スケジュールを保護する。
+    if (
+      requestedSchedule !== scheduleId.value || request !== latestLoadRequest
+      || patchGeneration !== appliedPatchGeneration
+    ) return
     slots.value = res.data
     syncAssignments()
   }
@@ -32,6 +38,7 @@ export function useShiftBoard(scheduleId: Ref<number>, slots: Ref<ShiftSlotRespo
     // 切替前の API 成功は取り消さず、応答だけを現在の別スケジュールへ混入させない。
     if (slot.scheduleId !== scheduleId.value || !slots.value.some((current) => current.id === slot.id)) return
     // 警告・マスクを含む応答全体と、次の操作で送る実版を保持する。
+    appliedPatchGeneration += 1
     slots.value = slots.value.map((current) => current.id === slot.id ? slot : current)
     localAssignments.value[slot.id] = [...slot.assignedUserIds]
   }
@@ -72,6 +79,7 @@ export function useShiftBoard(scheduleId: Ref<number>, slots: Ref<ShiftSlotRespo
   }
 
   watch(scheduleId, () => {
+    latestLoadRequest += 1
     slots.value = []
     localAssignments.value = {}
   })

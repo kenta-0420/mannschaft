@@ -144,6 +144,22 @@ describe('CMP-261008-1253 ボードの実版契約', () => {
     expect(state.localAssignments.value[1]).toEqual([4, 5])
   })
 
+  it('同時GETの後発が先に返っても旧先発応答で巻き戻さない', async () => {
+    const slots = ref([slot(1, 1)])
+    const state = useShiftBoard(ref(1), slots)
+    const first = deferred<{ data: ShiftSlotResponse[] }>()
+    const second = deferred<{ data: ShiftSlotResponse[] }>()
+    api.getShiftSlots.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
+    const firstLoading = state.loadSlots()
+    const secondLoading = state.loadSlots()
+    second.resolve({ data: [slot(1, 3, [4, 5])] })
+    await secondLoading
+    first.resolve({ data: [slot(1, 2, [4])] })
+    await firstLoading
+    expect(slots.value).toEqual([slot(1, 3, [4, 5])])
+    expect(state.localAssignments.value[1]).toEqual([4, 5])
+  })
+
   it('再取得は既存ローカル割当も同期し、別scheduleの旧応答を破棄する', async () => {
     const schedule = ref(1)
     const slots = ref([slot(1, 1)])
