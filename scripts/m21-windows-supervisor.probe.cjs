@@ -506,6 +506,15 @@ async function suite() {
         assert.equal(receipt.process.pid, p.pid);
         assert.match(receipt.process.creation, /^[0-9]+$/);
         assert.equal(receipt.recovered, true, `${scenario}: 自身資源の回収不明`);
+        for (const proof of receipt.resourceRecovery.lateExitProofs ?? []) {
+          assert.equal(proof.sameHeldChild, true); assert.equal(proof.adopted, true);
+          assert.equal(proof.recoveryAllowed, true); assert.equal(proof.jobSatisfied, true); assert.ok(proof.remainingMs > 0);
+          assert.equal(proof.final.initialExitObserved, false); assert.equal(proof.final.initialPublicationAttempted, false);
+          for (const field of ['exited', 'stdoutEof', 'stderrEof', 'stdoutWriterClosed', 'stderrWriterClosed', 'stdoutPublished', 'stderrPublished']) assert.equal(proof.final[field], true);
+          const first = receipt.streams.find(s => s.pid === proof.pid && s.creation === proof.creation && s.role === proof.role && s.exited === false);
+          assert.ok(first); assert.equal(first.stdoutPublished, false); assert.equal(first.stderrPublished, false);
+          assert.ok(receipt.secondary.some(s => s.stage === `${proof.role}-exit-timeout`) || receipt.primary?.stage === `${proof.role}-exit-timeout`);
+        }
         assert.equal(code, scenario === 'normal' || scenario === 'kill-close' ? 0 : 1);
         assert.equal(receipt.passed, code === 0);
         if (scenario === 'normal') {
@@ -727,6 +736,40 @@ $script:m21FormalHelper=Join-Path $PSScriptRoot 'helper.cjs';$script:m21FormalHe
 $script:NodePath='C:/fixture/node.exe'
 $hostEnvironment=New-M21FormalHostEnvironment
 if(!$hostEnvironment.ContainsKey('JOB_QR_SIGNING_SECRET') -or [string]::IsNullOrWhiteSpace($hostEnvironment['JOB_QR_SIGNING_SECRET']) -or [Text.Encoding]::UTF8.GetByteCount($hostEnvironment['JOB_QR_SIGNING_SECRET']) -lt 32){throw 'qr-signing-secret-missing'}
+# M21_PENDING_EXIT_PURE_BEGIN
+$pureMainAst=[Management.Automation.Language.Parser]::ParseFile($SupervisorPath,[ref]$null,[ref]$null)
+$pureJobAssignments=@($pureMainAst.FindAll({param($n) $n -is [Management.Automation.Language.AssignmentStatementAst] -and $n.Left.Extent.Text -ceq '$jobSatisfied'},$true))
+if($pureJobAssignments.Count -ne 1){throw 'pending-exit-job-expression-count'}
+$pureJobExpression=[ScriptBlock]::Create($pureJobAssignments[0].Right.Extent.Text)
+$pureChild=[pscustomobject]@{pid=71;creation='same-birth'};$pureForeign=[pscustomobject]@{pid=71;creation='same-birth'}
+$pureBase=@{initialExitObserved=$false;initialPublicationAttempted=$false;exited=$true;stdoutEof=$true;stderrEof=$true;stdoutWriterClosed=$true;stderrWriterClosed=$true;stdoutPublished=$true;stderrPublished=$true}
+$pureCases=@(
+ @{name='complete';expected=$true},
+ @{name='exit-unconfirmed';key='exited';value=$false;expected=$false},
+ @{name='stdout-not-eof';key='stdoutEof';value=$false;expected=$false},
+ @{name='stderr-not-eof';key='stderrEof';value=$false;expected=$false},
+ @{name='writer-not-closed';key='stdoutWriterClosed';value=$false;expected=$false},
+ @{name='not-published';key='stderrPublished';value=$false;expected=$false},
+ @{name='publication-already-attempted';key='initialPublicationAttempted';value=$true;expected=$false},
+ @{name='not-initial-timeout';key='initialExitObserved';value=$true;expected=$false},
+ @{name='foreign-reference';foreign=$true;expected=$false},
+ @{name='prior-recovery-failure';blocked=$true;expected=$false},
+ @{name='job-created-unobserved';jobCreated=$true;jobEmpty=$false;expected=$false},
+ @{name='job-not-created';jobCreated=$false;jobEmpty=$true;expected=$false},
+ @{name='budget-zero';zeroBudget=$true;expected=$false},
+ @{name='unknown-eof';key='stderrEof';value=$null;expected=$false})
+foreach($pureCase in $pureCases){
+ $pureProof=$pureBase.Clone();if($pureCase.ContainsKey('key')){$pureProof[$pureCase.key]=$pureCase.value}
+ $pureObserved=$pureChild;if($pureCase.ContainsKey('foreign')){$pureObserved=$pureForeign}
+ $pureAllowed=!$pureCase.ContainsKey('blocked');$jobCreated=$true;$jobEmpty=$true
+ if($pureCase.ContainsKey('jobCreated')){$jobCreated=$pureCase.jobCreated;$jobEmpty=$pureCase.jobEmpty}
+ $pureJob=& $pureJobExpression
+ $pureRemaining=1;if($pureCase.ContainsKey('zeroBudget')){$pureRemaining=0}
+ $pureActual=Test-M21PendingExitRecovery $pureChild $pureObserved $pureProof $pureAllowed $pureJob $pureRemaining
+ if($pureActual -isnot [bool] -or $pureActual -ne $pureCase.expected){throw ('pending-exit-pure-'+$pureCase.name)}
+}
+[Console]::Out.WriteLine('M21_PENDING_EXIT_PURE_OK')
+# M21_PENDING_EXIT_PURE_END
 Entry-Phase 'host-environment'
 foreach($key in @('M21_HOST_ONLY_SENTINEL','PATH','USERPROFILE','JAVA_TOOL_OPTIONS','NODE_OPTIONS','AWS_PROFILE','HTTP_PROXY')){if($hostEnvironment.ContainsKey($key)){throw 'host-env-inheritance'}}
 if($hostEnvironment['SPRING_DATASOURCE_USERNAME'] -cne 'm21' -or $hostEnvironment['SPRING_DATA_REDIS_PORT'] -cne '63791' -or $hostEnvironment['MANNSCHAFT_EMAIL_SIMULATE'] -cne 'true' -or $hostEnvironment['AWS_EC2_METADATA_DISABLED'] -cne 'true' -or $hostEnvironment['MANNSCHAFT_R2_ENDPOINT'] -cne 'http://127.0.0.1:8081' -or $hostEnvironment['MANNSCHAFT_SQS_ENABLED'] -cne 'false'){throw 'host-env-contract'}
