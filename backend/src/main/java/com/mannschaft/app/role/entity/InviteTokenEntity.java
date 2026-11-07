@@ -44,7 +44,15 @@ public class InviteTokenEntity {
 
     private Integer maxUses;
 
-    @Column(nullable = false)
+    /**
+     * 使用回数。Entity 経由の UPDATE では書かない（{@code updatable=false}）。
+     *
+     * <p>外側トランザクションの古いスナップショットを持つ Entity が、失効などの全列 UPDATE で
+     * 別トランザクションが進めた値を書き戻して失うことを防ぐ。値を変えてよいのは
+     * 承諾の確保（claim）での加算と補償（release）での減算の native 文だけである
+     * （CMP-260826-1457・陣立て書 §8.2-B/§8.3）。</p>
+     */
+    @Column(nullable = false, updatable = false)
     private Integer usedCount;
 
     private LocalDateTime revokedAt;
@@ -80,27 +88,26 @@ public class InviteTokenEntity {
     }
 
     /**
-     * 使用回数をインクリメントする。
-     */
-    public void incrementUsedCount() {
-        this.usedCount++;
-    }
-
-    /**
      * トークンが有効かどうかを判定する。
      *
      * @return 有効であれば true
      */
     public boolean isValid() {
-        if (this.revokedAt != null) {
+        return isValidState(this.revokedAt, this.expiresAt, this.maxUses, this.usedCount, LocalDateTime.now());
+    }
+
+    /**
+     * 有効性規則を純粋関数として切り出したもの。Entity を読まない承諾の確保（ロック付き射影）と
+     * {@link #isValid()} が同じ規則を共有する。{@code expiresAt}・{@code now} は同じ時刻基準で渡すこと。
+     */
+    public static boolean isValidState(LocalDateTime revokedAt, LocalDateTime expiresAt, Integer maxUses,
+                                       int usedCount, LocalDateTime now) {
+        if (revokedAt != null) {
             return false;
         }
-        if (this.expiresAt != null && this.expiresAt.isBefore(LocalDateTime.now())) {
+        if (expiresAt != null && expiresAt.isBefore(now)) {
             return false;
         }
-        if (this.maxUses != null && this.usedCount >= this.maxUses) {
-            return false;
-        }
-        return true;
+        return maxUses == null || usedCount < maxUses;
     }
 }

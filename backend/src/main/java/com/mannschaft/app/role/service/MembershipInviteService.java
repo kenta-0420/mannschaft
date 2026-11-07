@@ -175,7 +175,7 @@ public class MembershipInviteService {
      */
     @Transactional
     public void revokeMembershipInvite(Long channelId, Long tokenId, Long actorUserId) {
-        InviteTokenEntity token = inviteTokenRepository.findByIdForUpdate(tokenId)
+        InviteTokenEntity token = inviteTokenRepository.lockFreshById(tokenId)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
 
         // URL の channelId と tokenId を実カードで束縛する。宛先なしの共有リンク型トークンや、

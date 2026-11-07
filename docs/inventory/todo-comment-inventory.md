@@ -40,7 +40,7 @@ git grep -n -I -E '//[[:space:]]*(TODO|FIXME|HACK|XXX)' origin/main -- backend/s
 | 性能 | backend/src/main/java/com/mannschaft/app/admin/service/AdminBusinessAlertService.java | 151 | // TODO: チーム群一括判定クエリを追加して最適化する候補 | 次陣で仕様化・Issue化 |
 | 越境整理 | backend/src/main/java/com/mannschaft/app/admin/service/AdminDashboardService.java | 38 | // TODO: adminドメインがmoderationドメイン(ContentReportRepository)・roleドメイン(UserRoleRepository)・scheduleドメイン(ScheduleRepository)をまたいでいる。将来はドメインイベント集約またはQuery Serviceで分離予定 | 次陣で仕様化・Issue化 |
 | 既存CMP・Issue候補 | backend/src/main/java/com/mannschaft/app/auth/AuditEventType.java | 228 | // TODO(F17 Phase 1): 各 Village Service の主要メソッドへ | 次陣で仕様化・Issue化 |
-| 越境整理 | backend/src/main/java/com/mannschaft/app/auth/service/AuthRegistrationService.java | 96 | // TODO: authドメインとroleドメインをまたいでいる（InviteService.joinByInviteを直接呼び出し）。将来はUserRegisteredEventで分離予定 | 次陣で仕様化・Issue化 |
+| 越境整理 | backend/src/main/java/com/mannschaft/app/auth/service/AuthRegistrationService.java | 96 | // TODO: authドメインとroleドメインをまたいでいる（InviteAcceptanceFacade.joinByInviteを直接呼び出し）。将来はUserRegisteredEventで分離予定 | 次陣で仕様化・Issue化 |
 | 実装不足 | backend/src/main/java/com/mannschaft/app/auth/service/NewDeviceDetectionService.java | 63 | // TODO: NotificationDispatchService 連携は通知基盤の実装状況に応じて追加 | 次陣で仕様化・Issue化 |
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/auth/service/UserService.java | 225 | // TODO: userRoleRepository.isSystemAdmin() は role ドメイン直接参照。 | 次陣で仕様化・Issue化 |
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/bulletin/repository/BulletinThreadRepository.java | 305 | // TODO: 将来は VillagePostCreatedEvent によるカウンタ非同期更新へ分離予定。 | 次陣で仕様化・Issue化 |

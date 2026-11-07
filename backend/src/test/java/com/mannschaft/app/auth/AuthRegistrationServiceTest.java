@@ -15,7 +15,7 @@ import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.postal.CountryResolver;
 import com.mannschaft.app.postal.PostalCodePolicyRegistry;
-import com.mannschaft.app.role.service.InviteService;
+import com.mannschaft.app.role.service.InviteAcceptanceFacade;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -80,7 +80,7 @@ class AuthRegistrationServiceTest {
     private BetaRestrictionService betaRestrictionService;
 
     @Mock
-    private InviteService inviteService;
+    private InviteAcceptanceFacade inviteAcceptanceFacade;
 
     // F02.10 §391 郵便番号検証基盤: 実ロジック（JP 固定）を使う
     @Spy
@@ -339,7 +339,7 @@ class AuthRegistrationServiceTest {
             authRegistrationService.register(req, TEST_IP);
 
             // Then
-            verify(inviteService).joinByInvite(eq("valid-token"), any());
+            verify(inviteAcceptanceFacade).joinByInvite(eq("valid-token"), any());
         }
     }
 

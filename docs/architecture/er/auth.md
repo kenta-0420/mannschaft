@@ -559,6 +559,7 @@ erDiagram
 | [returnstayplan](returnstayplan.md) | `return_stay_plan_owner_locks` | `owner_user_id` | ID参照 | `users` |
 | [returnstayplan](returnstayplan.md) | `return_stay_plans` | `owner_user_id` | ID参照 | `users` |
 | [role](role.md) | `archived_membership_grants` | `granted_by` | ID参照 | `users` |
+| [role](role.md) | `invite_token_claims` | `user_id` | ID参照 | `users` |
 | [role](role.md) | `invite_tokens` | `created_by` | ID参照 | `users` |
 | [role](role.md) | `invite_tokens` | `target_user_id` | ID参照 | `users` |
 | [role](role.md) | `ownership_transfer_offers` | `issued_by` | ID参照 | `users` |

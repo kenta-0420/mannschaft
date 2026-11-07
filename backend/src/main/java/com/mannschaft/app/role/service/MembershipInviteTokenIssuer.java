@@ -72,7 +72,7 @@ public class MembershipInviteTokenIssuer {
      */
     @Transactional
     public void revokeForCompensation(Long tokenId) {
-        inviteTokenRepository.findByIdForUpdate(tokenId).ifPresent(token -> {
+        inviteTokenRepository.lockFreshById(tokenId).ifPresent(token -> {
             if (token.getRevokedAt() != null) {
                 return;
             }
