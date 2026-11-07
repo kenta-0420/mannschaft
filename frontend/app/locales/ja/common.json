@@ -317,6 +317,8 @@
     "add_term": "学期追加",
     "term_success": "学期を作成しました",
     "term_error": "学期の作成に失敗しました",
+    "term_academic_year_required": "年度を入力してください",
+    "term_has_timetables": "時間割が残っているため、この学期は削除できません。先に時間割を整理してください",
     "no_period": "時限が定義されていません",
     "no_term": "学期が定義されていません",
     "current_week": "今週",
