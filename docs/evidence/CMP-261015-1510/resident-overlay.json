@@ -557,6 +557,36 @@
       "sourceEvidencePath": ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-outsider/observations.json",
       "trusted": false,
       "status": "observed-unverified"
+    },
+    {
+      "id": "ALIC-CMP0551-PC-20261108",
+      "personaArchetype": "一般×素直",
+      "runId": "ranch64-3fe7b1454ec1c5086db2c581",
+      "sourceHead": "4ce3aa26785871ee363c90b0a514f023ca20723a",
+      "evidencePath": "docs/evidence/CMP-261107-0551/resident-observations-20261108.json",
+      "idAssignment": "原reportのpersonaIdをそのまま保持。固定P01-P20への変換なし。",
+      "trusted": false,
+      "status": "observed-unverified"
+    },
+    {
+      "id": "ALIC-CMP0551-MOBILE-20261108",
+      "personaArchetype": "スマホ片手操作 × 表示崩れ",
+      "runId": "ranch64-3fe7b1454ec1c5086db2c581",
+      "sourceHead": "4ce3aa26785871ee363c90b0a514f023ca20723a",
+      "evidencePath": "docs/evidence/CMP-261107-0551/resident-observations-20261108.json",
+      "idAssignment": "原reportのpersonaIdをそのまま保持。固定P01-P20への変換なし。",
+      "trusted": false,
+      "status": "observed-unverified"
+    },
+    {
+      "id": "ALIC-CMP0551-RETURN-20261108",
+      "personaArchetype": "注意が逸れやすい × 中断復帰",
+      "runId": "ranch64-3fe7b1454ec1c5086db2c581",
+      "sourceHead": "4ce3aa26785871ee363c90b0a514f023ca20723a",
+      "evidencePath": "docs/evidence/CMP-261107-0551/resident-observations-20261108.json",
+      "idAssignment": "原reportのpersonaIdをそのまま保持。固定P01-P20への変換なし。",
+      "trusted": false,
+      "status": "observed-unverified"
     }
   ],
   "journeys": [
@@ -1274,6 +1304,67 @@
       "idAssignment": "journeyIdは原本にないため登録時付与。固定P01-P20への変換なし。",
       "explorationPerformed": true,
       "goalAchieved": true,
+      "coveragePassed": false
+    },
+    {
+      "id": "ALIC-CMP0551-PC-J1-20261108",
+      "personaId": "ALIC-CMP0551-PC-20261108",
+      "purpose": "恐竜の部屋を自力で発見し、世話・ようす・設定・他ページからの復帰を確かめる",
+      "runId": "ranch64-3fe7b1454ec1c5086db2c581",
+      "sourceHead": "4ce3aa26785871ee363c90b0a514f023ca20723a",
+      "evidencePath": "docs/evidence/CMP-261107-0551/resident-observations-20261108.json",
+      "idAssignment": "原reportのjourneyIdをそのまま保持。",
+      "executionCompleted": true,
+      "goalsReached": {
+        "findOwnDinosaur": true,
+        "feed": true,
+        "touch": true,
+        "checkStatus": true,
+        "configureAppearance": true,
+        "configureMovement": true,
+        "revisitFromAnotherPage": true
+      },
+      "allGoalsReached": true,
+      "coveragePassed": false
+    },
+    {
+      "id": "ALIC-CMP0551-MOBILE-J1-20261108",
+      "personaId": "ALIC-CMP0551-MOBILE-20261108",
+      "purpose": "恐竜の部屋を自力で発見し、世話・ようす・設定・他ページからの復帰を確かめる",
+      "runId": "ranch64-3fe7b1454ec1c5086db2c581",
+      "sourceHead": "4ce3aa26785871ee363c90b0a514f023ca20723a",
+      "evidencePath": "docs/evidence/CMP-261107-0551/resident-observations-20261108.json",
+      "idAssignment": "原reportのjourneyIdをそのまま保持。",
+      "executionCompleted": true,
+      "goalsReached": {
+        "findCompanion": true,
+        "care": true,
+        "status": true,
+        "everydayPage": true,
+        "understandHelp": true
+      },
+      "allGoalsReached": true,
+      "coveragePassed": false
+    },
+    {
+      "id": "ALIC-CMP0551-RETURN-J1-20261108",
+      "personaId": "ALIC-CMP0551-RETURN-20261108",
+      "purpose": "恐竜の部屋を自力で発見し、世話・ようす・設定・他ページからの復帰を確かめる",
+      "runId": "ranch64-3fe7b1454ec1c5086db2c581",
+      "sourceHead": "4ce3aa26785871ee363c90b0a514f023ca20723a",
+      "evidencePath": "docs/evidence/CMP-261107-0551/resident-observations-20261108.json",
+      "idAssignment": "原reportのjourneyIdをそのまま保持。",
+      "executionCompleted": true,
+      "goalsReached": {
+        "discoverAvatar": true,
+        "readHelp": true,
+        "care": true,
+        "tabInterruptionReturn": true,
+        "savedPreferenceAfterPageReturn": true,
+        "nameAndGrowthRetained": true,
+        "resumeCare": true
+      },
+      "allGoalsReached": true,
       "coveragePassed": false
     }
   ],
@@ -3782,6 +3873,120 @@
       "priority": "should",
       "trusted": false,
       "status": "observed-unverified"
+    },
+    {
+      "id": "ALIC-CMP0551-PC-20261108-I001",
+      "featureKey": "gamification-gamification",
+      "featureDetail": "恐竜の部屋・任意育成",
+      "personaId": "ALIC-CMP0551-PC-20261108",
+      "journeyId": "ALIC-CMP0551-PC-J1-20261108",
+      "personaArchetype": "一般×素直",
+      "originalRunId": "ranch64-3fe7b1454ec1c5086db2c581",
+      "sourceHead": "4ce3aa26785871ee363c90b0a514f023ca20723a",
+      "evidencePath": "docs/evidence/CMP-261107-0551/resident-observations-20261108.json",
+      "title": "設定の選択欄と音量欄は高さ42px",
+      "detail": "PC 1280x720で描画スタイル/動きselect root各467x42px、音量spinbutton241x42px。checkbox本体20pxはlabel44pxのため不備へ昇格しない。root再現・仕様照合待ち。",
+      "page": "/my/ranch",
+      "urgency": "normal",
+      "priority": "should",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "rootTriage": {
+        "status": "ROOT_DISPOSITION_RECORDED",
+        "evidence": "docs/evidence/CMP-261107-0551/resident-root-disposition.md",
+        "resultSha256": "0dc7b3bef3f4ae897792781c52af17add5989dfbd202f054ca2752cfc9c9ef35",
+        "newConfirmedBugs": 0,
+        "observationsRemainUnverified": true,
+        "executionStageAcceptedByRoot": true,
+        "limits": "小領域は実寸有効・今回未変更。MOB07非再現・元直接原因UNKNOWN。100ms未満変化の不在は主張しない。"
+      }
+    },
+    {
+      "id": "ALIC-CMP0551-MOBILE-20261108-I001",
+      "featureKey": "gamification-gamification",
+      "featureDetail": "恐竜の部屋・任意育成",
+      "personaId": "ALIC-CMP0551-MOBILE-20261108",
+      "journeyId": "ALIC-CMP0551-MOBILE-J1-20261108",
+      "personaArchetype": "スマホ片手操作 × 表示崩れ",
+      "originalRunId": "ranch64-3fe7b1454ec1c5086db2c581",
+      "sourceHead": "4ce3aa26785871ee363c90b0a514f023ca20723a",
+      "evidencePath": "docs/evidence/CMP-261107-0551/resident-observations-20261108.json",
+      "title": "恐竜の部屋タイトルリンクは高さ28px",
+      "detail": "390/360pxでタイトルリンク134.15625x28pxを観測。操作不能や44px基準違反の確定ではない。root再現・適用基準照合待ち。",
+      "page": "/my/ranch",
+      "urgency": "normal",
+      "priority": "should",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "rootTriage": {
+        "status": "ROOT_DISPOSITION_RECORDED",
+        "evidence": "docs/evidence/CMP-261107-0551/resident-root-disposition.md",
+        "resultSha256": "0dc7b3bef3f4ae897792781c52af17add5989dfbd202f054ca2752cfc9c9ef35",
+        "newConfirmedBugs": 0,
+        "observationsRemainUnverified": true,
+        "executionStageAcceptedByRoot": true,
+        "limits": "小領域は実寸有効・今回未変更。MOB07非再現・元直接原因UNKNOWN。100ms未満変化の不在は主張しない。"
+      },
+      "screenshotPath": "docs/evidence/CMP-261107-0551/resident-mobile-10-status360.png"
+    },
+    {
+      "id": "ALIC-CMP0551-MOBILE-20261108-I002",
+      "featureKey": "gamification-gamification",
+      "featureDetail": "恐竜の部屋・任意育成",
+      "personaId": "ALIC-CMP0551-MOBILE-20261108",
+      "journeyId": "ALIC-CMP0551-MOBILE-J1-20261108",
+      "personaArchetype": "スマホ片手操作 × 表示崩れ",
+      "originalRunId": "ranch64-3fe7b1454ec1c5086db2c581",
+      "sourceHead": "4ce3aa26785871ee363c90b0a514f023ca20723a",
+      "evidencePath": "docs/evidence/CMP-261107-0551/resident-observations-20261108.json",
+      "title": "ふれあい直後に素材準備中の表示を観測",
+      "detail": "mobile19で素材準備中を目視。17/18と遷移後20は恐竜画像。成功系画像response/figure dataset未保存、永続性・再現性・原因未確認。HTTP400以上は0。",
+      "page": "/dashboard",
+      "urgency": "normal",
+      "priority": "should",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "rootTriage": {
+        "status": "ROOT_DISPOSITION_RECORDED",
+        "evidence": "docs/evidence/CMP-261107-0551/resident-root-disposition.md",
+        "resultSha256": "0dc7b3bef3f4ae897792781c52af17add5989dfbd202f054ca2752cfc9c9ef35",
+        "newConfirmedBugs": 0,
+        "observationsRemainUnverified": true,
+        "executionStageAcceptedByRoot": true,
+        "limits": "小領域は実寸有効・今回未変更。MOB07非再現・元直接原因UNKNOWN。100ms未満変化の不在は主張しない。"
+      },
+      "screenshotPath": "docs/evidence/CMP-261107-0551/resident-mobile-19-dashboard-pet360.png"
+    },
+    {
+      "id": "ALIC-CMP0551-RETURN-20261108-I001",
+      "featureKey": "gamification-gamification",
+      "featureDetail": "恐竜の部屋・任意育成",
+      "personaId": "ALIC-CMP0551-RETURN-20261108",
+      "journeyId": "ALIC-CMP0551-RETURN-J1-20261108",
+      "personaArchetype": "注意が逸れやすい × 中断復帰",
+      "originalRunId": "ranch64-3fe7b1454ec1c5086db2c581",
+      "sourceHead": "4ce3aa26785871ee363c90b0a514f023ca20723a",
+      "evidencePath": "docs/evidence/CMP-261107-0551/resident-observations-20261108.json",
+      "title": "復帰探索でwidget操作32pxを計測",
+      "detail": "1440x900でwidget再取得/折畳み32x32、タイトル134.15625x28を観測。音input20x20はlabel547x44。未保存別tab復帰と保存後ページ復帰で設定/個体/20XP維持、目的は達成。幾何観測を操作不能やbugへ昇格しない。",
+      "page": "/my/ranch",
+      "urgency": "normal",
+      "priority": "should",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "rootTriage": {
+        "status": "ROOT_DISPOSITION_RECORDED",
+        "evidence": "docs/evidence/CMP-261107-0551/resident-root-disposition.md",
+        "resultSha256": "0dc7b3bef3f4ae897792781c52af17add5989dfbd202f054ca2752cfc9c9ef35",
+        "newConfirmedBugs": 0,
+        "observationsRemainUnverified": true,
+        "executionStageAcceptedByRoot": true,
+        "limits": "小領域は実寸有効・今回未変更。MOB07非再現・元直接原因UNKNOWN。100ms未満変化の不在は主張しない。"
+      }
     }
   ],
   "runEnvironments": {
@@ -4028,6 +4233,27 @@
       "explorationPerformed": true,
       "goalAchieved": true,
       "coveragePassed": false
+    },
+    "ranch64-3fe7b1454ec1c5086db2c581": {
+      "runId": "ranch64-3fe7b1454ec1c5086db2c581",
+      "sourceHead": "4ce3aa26785871ee363c90b0a514f023ca20723a",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "evidencePath": "docs/evidence/CMP-261107-0551/resident-observations-20261108.json",
+      "executionCompleted": true,
+      "allGoalsReached": true,
+      "coveragePassed": false,
+      "rootTriage": {
+        "status": "ROOT_DISPOSITION_RECORDED",
+        "evidence": "docs/evidence/CMP-261107-0551/resident-root-disposition.md",
+        "resultSha256": "0dc7b3bef3f4ae897792781c52af17add5989dfbd202f054ca2752cfc9c9ef35",
+        "newConfirmedBugs": 0,
+        "observationsRemainUnverified": true,
+        "executionStageAcceptedByRoot": true,
+        "limits": "小領域は実寸有効・今回未変更。MOB07非再現・元直接原因UNKNOWN。100ms未満変化の不在は主張しない。"
+      },
+      "formalParentCompletion": false
     }
   }
 }
