@@ -3,6 +3,7 @@ import type { ShiftSlotResponse } from '~/types/shift'
 export function useShiftBoard(scheduleId: Ref<number>, slots: Ref<ShiftSlotResponse[]>) {
   const shiftApi = useShiftApi()
   const localAssignments = ref<Record<number, number[]>>({})
+  let latestLoad = 0
 
   function syncAssignments(): void {
     localAssignments.value = Object.fromEntries(
@@ -11,11 +12,12 @@ export function useShiftBoard(scheduleId: Ref<number>, slots: Ref<ShiftSlotRespo
   }
 
   async function loadSlots(): Promise<void> {
+    const load = ++latestLoad
     const requestedSchedule = scheduleId.value
     const before = slots.value
     const res = await shiftApi.getShiftSlots(requestedSchedule)
     // PATCH の確定応答や別スケジュールを、先に開始した GET で上書きしない。
-    if (requestedSchedule !== scheduleId.value || slots.value !== before) return
+    if (load !== latestLoad || requestedSchedule !== scheduleId.value || slots.value !== before) return
     slots.value = res.data
     syncAssignments()
   }
