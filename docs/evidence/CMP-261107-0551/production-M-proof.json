@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS",
+  "repository": "kenta-0420/mannschaft",
+  "implementation": {
+    "pr": 4353,
+    "head": "9e8e9ba15cc7040d88d88067646be2d6a51ec862",
+    "merge": "e2b4744f438d0d376fb3c243e28aaa5ad2ff545d"
+  },
+  "productionInputBridge": "postmerge-input-bridge.json",
+  "workflow": {
+    "runId": 42406375715,
+    "event": "push",
+    "head": "e2b4744f438d0d376fb3c243e28aaa5ad2ff545d",
+    "job": {
+      "id": 128504862033,
+      "name": "Docker ビルド検証（main push のみ）",
+      "status": "completed",
+      "conclusion": "success",
+      "run_id": 42406375715,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Checkout source",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Set up Docker Buildx",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Build frontend image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Verify .output is self-contained",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5
+        },
+        {
+          "name": "Run container and verify HTTP response and Docker health",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6
+        },
+        {
+          "name": "Dump container state and logs (always)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7
+        },
+        {
+          "name": "Stop container",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8
+        },
+        {
+          "name": "Post Build frontend image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14
+        },
+        {
+          "name": "Post Set up Docker Buildx",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15
+        },
+        {
+          "name": "Post Checkout source",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17
+        }
+      ]
+    }
+  },
+  "artifact": {
+    "scannerFiles": 4484,
+    "imageDigest": "sha256:03ce53bf38d9073575736c18040112d587f9455e3ace05e2d9972f972c17ab90",
+    "imageConfig": "sha256:20ab4abea5640b312cd69e18f85bbe77c46375c78878c9a337e6297e148db770"
+  },
+  "logExcerpts": [
+    "2026-11-07T19:45:33.9016512Z #17 0.856 production artifact: 4484 files checked",
+    "2026-11-07T19:45:39.6159731Z #19 exporting manifest sha256:03ce53bf38d9073575736c18040112d587f9455e3ace05e2d9972f972c17ab90 done",
+    "2026-11-07T19:47:04.3582589Z vue/index.mjs あり",
+    "2026-11-07T19:47:06.6878102Z コンテナが HTTP 応答を返した",
+    "2026-11-07T19:47:10.9260034Z 公開HTTP応答とDocker healthyを確認した",
+    "2026-11-07T19:47:11.1305477Z frontend-ci-verify"
+  ],
+  "scope": "Production Docker build, artifact scanner, standalone output vue dependency, anonymous root HTTP response and Docker HEALTHCHECK; not authenticated production data E2E or feature release. M run is supplemental production evidence, not implementation-head H ci[].",
+  "retrievedAt": "2026-11-07 19:49:49 UTC"
+}
