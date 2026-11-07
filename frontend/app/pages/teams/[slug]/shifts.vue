@@ -167,7 +167,7 @@ onMounted(() => {
           <TabList>
             <Tab :value="0">シフト表</Tab>
             <Tab :value="1">シフト交換</Tab>
-            <Tab :value="2">ポジション管理</Tab>
+            <Tab v-if="isAdmin" :value="2">ポジション管理</Tab>
           </TabList>
           <TabPanels>
             <TabPanel :value="0">
