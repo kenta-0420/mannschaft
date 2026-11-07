@@ -12,6 +12,8 @@
     "board": {
       "title": "Tablero de turnos",
       "memberPool": "Miembros sin asignar",
+      "noUnassignedMembers": "No hay miembros sin asignar",
+      "noMatchingMembers": "Ningún miembro coincide con la búsqueda",
       "dragHint": "Arrastra miembros para asignar",
       "unassignedSlots": "{count} turnos sin asignar"
     },

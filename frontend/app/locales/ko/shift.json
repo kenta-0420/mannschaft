@@ -12,6 +12,8 @@
     "board": {
       "title": "시프트 보드",
       "memberPool": "미배정 멤버",
+      "noUnassignedMembers": "미배정 멤버가 없습니다",
+      "noMatchingMembers": "검색 조건에 일치하는 멤버가 없습니다",
       "dragHint": "멤버를 드래그하여 배정",
       "unassignedSlots": "{count}건 미배정"
     },

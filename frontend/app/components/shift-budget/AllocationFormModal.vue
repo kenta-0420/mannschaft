@@ -135,10 +135,6 @@ const onSubmit = handleSubmit((values) => {
           <span class="font-medium">{{ t('shiftBudget.allocation.period') }}:</span>
           {{ allocation.period_start }} 〜 {{ allocation.period_end }}
         </p>
-        <p>
-          <span class="font-medium">{{ t('shiftBudget.allocation.version') }}:</span>
-          {{ allocation.version }}
-        </p>
       </div>
       <div>
         <label class="mb-1 block text-sm font-medium">{{ t('shiftBudget.allocation.amount') }}</label>

@@ -206,7 +206,7 @@ onMounted(() => {
       </Column>
       <Column :header="t('shiftBudget.allocation.consumed')" style="width: 140px">
         <template #body="{ data }: { data: AllocationResponse }">
-          <span>{{ data.consumed_amount?.toLocaleString() ?? '0' }}</span>
+          <span>{{ data.consumed_amount?.toLocaleString() ?? '0' }} {{ data.currency }}</span>
         </template>
       </Column>
       <Column :header="t('shiftBudget.allocation.rate')" style="width: 180px">
@@ -219,12 +219,16 @@ onMounted(() => {
           <div class="flex gap-1">
             <Button
               icon="pi pi-pencil"
+              :aria-label="t('shiftBudget.allocation.edit')"
+              :title="t('shiftBudget.allocation.edit')"
               size="small"
               severity="secondary"
               @click="openEdit(data)"
             />
             <Button
               icon="pi pi-trash"
+              :aria-label="t('shiftBudget.allocation.delete')"
+              :title="t('shiftBudget.allocation.delete')"
               size="small"
               severity="danger"
               outlined

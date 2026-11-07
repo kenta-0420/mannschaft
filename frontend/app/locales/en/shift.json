@@ -12,6 +12,8 @@
     "board": {
       "title": "Shift Board",
       "memberPool": "Unassigned Members",
+      "noUnassignedMembers": "No unassigned members",
+      "noMatchingMembers": "No members match your search",
       "dragHint": "Drag members to assign",
       "unassignedSlots": "{count} unassigned slots"
     },

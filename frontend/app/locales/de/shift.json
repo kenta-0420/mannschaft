@@ -12,6 +12,8 @@
     "board": {
       "title": "Schichtplan-Board",
       "memberPool": "Nicht zugewiesene Mitglieder",
+      "noUnassignedMembers": "Keine nicht zugewiesenen Mitglieder",
+      "noMatchingMembers": "Keine Mitglieder entsprechen Ihrer Suche",
       "dragHint": "Mitglieder per Drag & Drop zuweisen",
       "unassignedSlots": "{count} nicht zugewiesene Schichten"
     },

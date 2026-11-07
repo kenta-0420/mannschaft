@@ -97,6 +97,9 @@
       <div class="w-60 flex-shrink-0">
         <ShiftMemberPool
           :members="unassignedMembers"
+          :loading="membersLoading"
+          :error="membersError"
+          @retry="loadMembers"
           @drag-start="draggingUserId = $event"
         />
       </div>
@@ -196,6 +199,8 @@ const schedule = ref<ShiftScheduleResponse | null>(null)
 const slots = ref<ShiftSlotResponse[]>([])
 const positions = ref<ShiftPositionResponse[]>([])
 const allMembers = ref<Array<{ userId: number; displayName: string; avatarUrl: string | null }>>([])
+const membersLoading = ref(true)
+const membersError = shallowRef<unknown>()
 const scheduleVersion = ref(0)
 
 // UI 状態
@@ -281,6 +286,8 @@ async function loadPositions(): Promise<void> {
 }
 
 async function loadMembers(): Promise<void> {
+  membersLoading.value = true
+  membersError.value = undefined
   try {
     const res = await teamApi.getMembers(teamSlug.value, { size: 200 })
     allMembers.value = res.data.map((m) => ({
@@ -288,9 +295,11 @@ async function loadMembers(): Promise<void> {
       displayName: m.displayName || String(m.userId),
       avatarUrl: m.avatarUrl,
     }))
-  } catch {
-    // メンバー取得失敗時は空のまま続行（ボード表示は可能）
+  } catch (error) {
+    membersError.value = error
     allMembers.value = []
+  } finally {
+    membersLoading.value = false
   }
 }
 
