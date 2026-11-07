@@ -1,0 +1,22 @@
+{
+  "status": "PASS_FOR_BD85_BEFORE_NEW_APPEARANCE_REPAIR",
+  "head": "bd85fe18eac5ecd16e6d6e77ffba87e88f8ad079",
+  "runId": 39616972456,
+  "url": "https://github.com/kenta-0420/mannschaft/actions/runs/39616972456",
+  "unitTestCounts": [
+    6550,
+    27
+  ],
+  "fileCounts": [
+    668,
+    2
+  ],
+  "rawSummaryLines": [
+    "Install\tUnit test (vitest)\t2026-10-21T14:50:43.6037798Z ^[[2m Test Files ^[[22m ^[[1m^[[32m668 passed^[[39m^[[22m^[[90m (668)^[[39m",
+    "Install\tUnit test (vitest)\t2026-10-21T14:50:43.6089322Z ^[[2m      Tests ^[[22m ^[[1m^[[32m6550 passed^[[39m^[[22m^[[90m (6550)^[[39m",
+    "Install\tUnit test (vitest)\t2026-10-21T14:50:49.8749839Z ^[[2m Test Files ^[[22m ^[[1m^[[32m2 passed^[[39m^[[22m^[[90m (2)^[[39m",
+    "Install\tUnit test (vitest)\t2026-10-21T14:50:49.8751191Z ^[[2m      Tests ^[[22m ^[[1m^[[32m27 passed^[[39m^[[22m^[[90m (27)^[[39m"
+  ],
+  "scope": "Actual official Linux Nuxt config: visibility static auto-import boundary fix included. Does not validate subsequent appearance repair or future shipping head.",
+  "recordedAt": "2026-10-21T15:13:48.502357+00:00"
+}

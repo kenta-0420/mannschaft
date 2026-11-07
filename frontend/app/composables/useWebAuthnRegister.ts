@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { useAuthApi } from './useAuthApi'
+import { b64urlToBuf, bufToB64url } from '~/utils/webauthn'
 
 /**
  * パスキー（WebAuthn）登録フロー composable。
@@ -87,29 +88,6 @@ export function useWebAuthnRegister() {
   }
 
   return { registerPasskey, isRegistering, error }
-}
-
-// ---- base64url ユーティリティ ----
-
-/**
- * ArrayBuffer を base64url 文字列に変換する。
- */
-function bufToB64url(buf: ArrayBuffer): string {
-  const bytes = new Uint8Array(buf)
-  let binary = ''
-  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]!)
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
-}
-
-/**
- * base64url 文字列を ArrayBuffer に変換する。
- */
-function b64urlToBuf(b64url: string): ArrayBuffer {
-  const base64 = b64url.replace(/-/g, '+').replace(/_/g, '/')
-  const binary = atob(base64)
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-  return bytes.buffer
 }
 
 /**

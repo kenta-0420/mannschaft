@@ -91,7 +91,7 @@
       },
       "teamBreakdownEnabled": "Nach Team auswerten",
       "teamBreakdownHint": "Wertet die Antworten je untergeordnetem Team aus (nur Organisationsverteilung).",
-      "teamBreakdownAnonymousConflict": "Die Team-Aufschluesselung ist bei anonymen Umfragen nicht verfuegbar."
+      "teamBreakdownAnonymousConflict": "Die Team-Aufschlüsselung ist bei anonymen Umfragen nicht verfügbar."
     },
     "detail": {
       "scopeMissing": "Bereichsinformationen zur Umfrage fehlen",
@@ -168,7 +168,7 @@
       "remindHint": "Erinnerung an {count} Nicht-Befragte senden (max. 3 Mal)",
       "remindButton": "Erinnerung senden",
       "remindAutoNotice": "Eine automatische Erinnerung wird 24 Stunden vor Ablauf gesendet",
-      "remindSuccess": "Erinnerung an {count} Mitglied(er) gesendet",
+      "remindSuccess": "Versand der Erinnerung an {count} Mitglied(er) ohne Antwort entgegengenommen",
       "remindRemaining": "Verbleibende Sendungen: {count}",
       "remindFailed": "Erinnerung konnte nicht gesendet werden",
       "remindFailedDetail": "Bitte Sendelimit, Cooldown und Berechtigungen prüfen",
@@ -181,12 +181,12 @@
       "emptyUnresponded": "Keine offenen Befragten"
     },
     "teamBreakdown": {
-      "title": "Team-Aufschluesselung",
+      "title": "Team-Aufschlüsselung",
       "reload": "Neu laden",
       "retry": "Erneut versuchen",
-      "fetchFailed": "Die Team-Aufschluesselung konnte nicht geladen werden.",
-      "forbidden": "Sie haben keine Berechtigung, diese Aufschluesselung anzuzeigen.",
-      "empty": "Keine Daten zur Team-Aufschluesselung verfuegbar.",
+      "fetchFailed": "Die Team-Aufschlüsselung konnte nicht geladen werden.",
+      "forbidden": "Sie haben keine Berechtigung, diese Aufschlüsselung anzuzeigen.",
+      "empty": "Keine Daten zur Team-Aufschlüsselung verfügbar.",
       "masked": "Ausgeblendet, da weniger als 5 Teilnehmende.",
       "directMembers": "Direkte Organisationsmitglieder",
       "totalRespondents": "Teilnehmende gesamt: {count}",

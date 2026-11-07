@@ -44,6 +44,8 @@ class TimelineBookmarkAnonymizationEventListenerTest {
 
     @Mock
     private TimelineBookmarkRepository timelineBookmarkRepository;
+    @Mock private com.mannschaft.app.timeline.repository.TimelineRanchTransportRepository ranchTransport;
+
 
     @InjectMocks
     private TimelineBookmarkAnonymizationEventListener listener;

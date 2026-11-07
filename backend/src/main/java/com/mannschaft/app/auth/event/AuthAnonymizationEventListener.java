@@ -33,6 +33,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @RequiredArgsConstructor
 public class AuthAnonymizationEventListener {
 
+    private final com.mannschaft.app.auth.service.BirthProfilePurgeService birthProfilePurgeService;
     private final UserInterestTagRepository userInterestTagRepository;
     private final AccountPurgeCompletionService completionService;
 
@@ -91,6 +92,7 @@ public class AuthAnonymizationEventListener {
 
     /** 同じ所有domain内の全削除を一つのTXで実行し、途中失敗を伝播させる。 */
     private void purgeSettings(Long userId) {
+        birthProfilePurgeService.purgeInAuthTransaction(userId);
         userInterestTagRepository.deleteByUserId(userId);
     }
 }

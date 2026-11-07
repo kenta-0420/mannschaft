@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { toTypedSchema } from '@vee-validate/zod'
+import { toTypedSchema } from '~/utils/toTypedSchema'
 import { useForm } from 'vee-validate'
 import { z } from 'zod'
 
@@ -8,7 +8,7 @@ definePageMeta({ middleware: 'auth', layout: 'default' })
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
-const { isAdminOrDeputy, orgTeams } = useOrgShellContext()
+const { isAdminOrDeputy, orgTeams, orgTeamsError, orgTeamsLoading, refreshOrgTeams } = useOrgShellContext()
 const { resolveScopeId } = useActivityScopeId()
 const paymentRequestApi = usePaymentRequestApi()
 const notification = useNotification()
@@ -39,8 +39,14 @@ const teamOptions = computed(() => orgTeams.value.map((team) => ({
   value: team.id,
 })))
 
+/**
+ * 支払元の候補（親シェルの所属チーム一覧）が使えない間は、選択も送信もさせない。
+ * 取得中は最新が揃うまで、取得失敗時は古い一覧が残っているため、エラーと再試行を出して古い候補で送信させない。
+ */
+const payerTeamsUnavailable = computed(() => orgTeamsLoading.value || orgTeamsError.value)
+
 const submit = handleSubmit(async (values) => {
-  if (!orgId.value || submitting.value) return
+  if (!orgId.value || submitting.value || payerTeamsUnavailable.value) return
   submitting.value = true
   try {
     await paymentRequestApi.createPaymentRequest(orgId.value, {
@@ -90,9 +96,27 @@ onMounted(async () => {
             option-label="label"
             option-value="value"
             class="w-full"
+            :disabled="payerTeamsUnavailable"
             :invalid="Boolean(errors.payerTeamId)"
           />
           <small v-if="errors.payerTeamId" class="text-red-600">{{ errors.payerTeamId }}</small>
+          <div v-if="orgTeamsError" class="grid gap-2" data-testid="payer-teams-error">
+            <Message severity="error" :closable="false">
+              {{ t('orgMemberTeams.teams_load_error') }}
+            </Message>
+            <div>
+              <Button
+                type="button"
+                :label="t('orgMemberTeams.groups.retry')"
+                icon="pi pi-refresh"
+                size="small"
+                outlined
+                :loading="orgTeamsLoading"
+                data-testid="payer-teams-retry"
+                @click="refreshOrgTeams"
+              />
+            </div>
+          </div>
         </div>
         <div class="grid gap-1">
           <label for="request-title">{{ t('payment.membership.paymentRequest.title') }}</label>
@@ -124,7 +148,7 @@ onMounted(async () => {
             outlined
             @click="router.push(`/organizations/${orgSlug}/payment-requests`)"
           />
-          <Button type="submit" :label="t('button.create')" :loading="submitting" :disabled="submitting" />
+          <Button type="submit" :label="t('button.create')" :loading="submitting" :disabled="submitting || payerTeamsUnavailable" />
         </div>
       </form>
     </SectionCard>

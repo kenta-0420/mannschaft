@@ -1,6 +1,5 @@
 package com.mannschaft.app.school.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.schedule.AttendanceStatus;
 import com.mannschaft.app.school.dto.MonthlyStatisticsResponse;
 import com.mannschaft.app.school.dto.StudentTermStatisticsResponse;
@@ -35,8 +34,6 @@ import static org.mockito.BDDMockito.given;
 class AttendanceStatisticsServiceTest {
 
     private static final Long TEAM_ID = 100L;
-    /** 認可判定に使う閲覧者ID（checkMembership はモックのため素通り） */
-    private static final Long VIEWER_ID = 999L;
     private static final Long STUDENT_ID_1 = 1L;
     private static final Long STUDENT_ID_2 = 2L;
     private static final LocalDate DATE_2026_05_01 = LocalDate.of(2026, 5, 1);
@@ -47,9 +44,6 @@ class AttendanceStatisticsServiceTest {
 
     @Mock
     private PeriodAttendanceRecordRepository periodRepo;
-
-    @Mock
-    private AccessControlService accessControlService;
 
     @InjectMocks
     private AttendanceStatisticsService service;
@@ -75,7 +69,7 @@ class AttendanceStatisticsServiceTest {
                     eq(TEAM_ID), any(LocalDate.class), any(LocalDate.class)))
                     .willReturn(List.of(r1, r2, r3, r4));
 
-            MonthlyStatisticsResponse result = service.getMonthlyStatistics(TEAM_ID, 2026, 5, VIEWER_ID);
+            MonthlyStatisticsResponse result = service.getMonthlyStatistics(TEAM_ID, 2026, 5);
 
             assertThat(result.getYear()).isEqualTo(2026);
             assertThat(result.getMonth()).isEqualTo(5);
@@ -95,7 +89,7 @@ class AttendanceStatisticsServiceTest {
                     eq(TEAM_ID), any(LocalDate.class), any(LocalDate.class)))
                     .willReturn(List.of());
 
-            MonthlyStatisticsResponse result = service.getMonthlyStatistics(TEAM_ID, 2026, 5, VIEWER_ID);
+            MonthlyStatisticsResponse result = service.getMonthlyStatistics(TEAM_ID, 2026, 5);
 
             assertThat(result.getTotalSchoolDays()).isEqualTo(0);
             assertThat(result.getTotalStudents()).isEqualTo(0);
@@ -114,7 +108,7 @@ class AttendanceStatisticsServiceTest {
                     eq(TEAM_ID), any(LocalDate.class), any(LocalDate.class)))
                     .willReturn(List.of(r1, r2));
 
-            MonthlyStatisticsResponse result = service.getMonthlyStatistics(TEAM_ID, 2026, 5, VIEWER_ID);
+            MonthlyStatisticsResponse result = service.getMonthlyStatistics(TEAM_ID, 2026, 5);
 
             assertThat(result.getStudentBreakdown()).extracting("studentUserId")
                     .containsExactly(STUDENT_ID_1, STUDENT_ID_2);
@@ -201,7 +195,7 @@ class AttendanceStatisticsServiceTest {
                     eq(TEAM_ID), eq(DATE_2026_05_01), eq(DATE_2026_05_02)))
                     .willReturn(List.of(r));
 
-            byte[] csv = service.exportAttendanceCsv(TEAM_ID, DATE_2026_05_01, DATE_2026_05_02, VIEWER_ID);
+            byte[] csv = service.exportAttendanceCsv(TEAM_ID, DATE_2026_05_01, DATE_2026_05_02);
 
             String content = new String(csv, java.nio.charset.StandardCharsets.UTF_8);
             assertThat(content).startsWith("studentUserId,attendanceDate,status");

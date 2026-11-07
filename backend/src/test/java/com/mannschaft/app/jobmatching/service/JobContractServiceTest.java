@@ -10,6 +10,7 @@ import com.mannschaft.app.jobmatching.enums.JobPostingStatus;
 import com.mannschaft.app.jobmatching.enums.RewardType;
 import com.mannschaft.app.jobmatching.enums.VisibilityScope;
 import com.mannschaft.app.jobmatching.enums.WorkLocationType;
+import com.mannschaft.app.jobmatching.event.JobNotificationEvent;
 import com.mannschaft.app.jobmatching.exception.JobmatchingErrorCode;
 import com.mannschaft.app.jobmatching.policy.JobPolicy;
 import com.mannschaft.app.jobmatching.repository.JobApplicationRepository;
@@ -20,6 +21,7 @@ import com.mannschaft.app.jobmatching.state.JobContractStateMachine;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import org.junit.jupiter.api.BeforeEach;
+import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.RepeatedTest;
@@ -72,7 +74,7 @@ class JobContractServiceTest {
     @Mock private JobContractStateMachine stateMachine;
     @Mock private JobPolicy jobPolicy;
     @Mock private JobChatService jobChatService;
-    @Mock private JobNotificationService notificationService;
+    @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private EntityManager entityManager;
     @Mock private Query nativeQuery;
 
@@ -91,6 +93,9 @@ class JobContractServiceTest {
         Field emField = JobContractService.class.getDeclaredField("entityManager");
         emField.setAccessible(true);
         emField.set(service, entityManager);
+
+        // 当事者判定は JobPolicy に一本化した（閲覧ガードと共有。CMP-260821-1027）。mock でも実判定を使う。
+        org.mockito.Mockito.lenient().when(jobPolicy.isContractParticipant(any(), any())).thenCallRealMethod();
 
         // GET_LOCK / RELEASE_LOCK の共通スタブ（成功ケース）。
         given(entityManager.createNativeQuery(anyString())).willReturn(nativeQuery);
@@ -128,7 +133,7 @@ class JobContractServiceTest {
             assertThat(contract.getStatus()).isEqualTo(JobContractStatus.MATCHED);
             assertThat(contract.getChatRoomId()).isEqualTo(CHAT_ROOM_ID);
             verify(jobChatService).createRoomForContract(any(), any());
-            verify(notificationService).notifyMatched(any(), eq(posting));
+            verify(eventPublisher).publishEvent((Object) JobNotificationEvent.matched(contract.getId(), POSTING_ID));
         }
 
         @Test

@@ -78,7 +78,7 @@ test.describe('AC-6: 同意チェックボックス未チェックでバリデ�
 test.describe('AC-7: 同意チェック済みの場合 POST body に privacyPolicyAccepted と version が含まれる', () => {
   test.use({ storageState: { cookies: [], origins: [] } })
 
-  test('登録フォーム送信時のリクエストに privacyPolicyAccepted:true と privacyPolicyVersion:1.1.0 が含まれる', async ({
+  test('登録フォーム送信時のリクエストに privacyPolicyAccepted:true と privacyPolicyVersion:1.1.1（現行ポリシーの版）が含まれる', async ({
     page,
   }) => {
     await page.goto('/register')
@@ -131,7 +131,8 @@ test.describe('AC-7: 同意チェック済みの場合 POST body に privacyPoli
     // キャプチャされたリクエストボディを検証
     expect(capturedBody).not.toBeNull()
     expect(capturedBody!['privacyPolicyAccepted']).toBe(true)
-    expect(capturedBody!['privacyPolicyVersion']).toBe('1.1.0')
+    // 現行ポリシー（landing の版表示 1.1.1）と同意記録の版が一致すること
+    expect(capturedBody!['privacyPolicyVersion']).toBe('1.1.1')
   })
 })
 

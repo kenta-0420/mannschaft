@@ -12,6 +12,7 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.annotation.AnnotatedElementUtils;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Method;
@@ -31,12 +32,22 @@ import java.time.Instant;
  *       {@link BatchFailedEvent} を発火してから例外を再投げする。</li>
  * </ol>
  *
+ * <h2>{@code @Order(20)} の理由（Issue #2997 G7-b / CMP-260827-1152）</h2>
+ * <p>順序は BackgroundFeaturePolicy(5) → FeatureGate(10) → ShedLock(15) → 本 Aspect(20) → TX（LOWEST）。
+ * 本 Aspect が TX の<b>外側</b>に居ることで、完了・失敗イベントは本体 TX の commit / rollback が確定した後に
+ * publish される。commit 自体の失敗も {@code proceed()} の例外として失敗側に入る。
+ * 未指定（LOWEST）だと TX と並びが登録順次第で、実測では TX の<b>内側</b>に入っていた
+ * （TX の確定前に通知が走り、rollback されても成功通知が出る）。ShedLock の外側に出るとロックを取れなかった
+ * pod でも完了が記録されるため、ShedLock 側を 15 に寄せてある（{@code ShedLockConfig#ADVISOR_ORDER}）。
+ * 保証範囲: エンドポイント自身の TX が確定した後に必ず通知する。外側 TX から呼ばれた場合は対象外。</p>
+ *
  * <p>既存 75 バッチには {@link BatchEndpoint} を付与しないため、本 Aspect は何にも影響しない。
  * 第一陣の責務は基盤の据え付けのみで、既存挙動は完全に不変である。</p>
  */
 @Slf4j
 @Aspect
 @Component
+@Order(20)
 @RequiredArgsConstructor
 public class BatchExecutionAspect {
 

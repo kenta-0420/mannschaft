@@ -59,6 +59,7 @@ export function useTournamentParticipants() {
   }
 
   // ===== Phase 9: エントリーメンバー =====
+// 注: BE は全て ApiResponse（{ data: ... }）で包んで返す。呼び出し側で `.data` を剥がすこと。
 
   // エントリー一覧取得
   async function getEntryMembers(
@@ -69,7 +70,7 @@ export function useTournamentParticipants() {
     includeTeamMembers = false,
   ) {
     const query = includeTeamMembers ? '?includeTeamMembers=true' : ''
-    return api<EntryMemberListResponse>(
+    return api<{ data: EntryMemberListResponse }>(
       `${b(orgId)}/tournaments/${tId}/divisions/${divId}/participants/${pId}/entry-members${query}`,
     )
   }
@@ -82,7 +83,7 @@ export function useTournamentParticipants() {
     pId: number,
     body: { userIds?: number[] | null; overwriteExisting?: boolean },
   ) {
-    return api<EntryLoadResponse>(
+    return api<{ data: EntryLoadResponse }>(
       `${b(orgId)}/tournaments/${tId}/divisions/${divId}/participants/${pId}/entry-members/load-from-team`,
       { method: 'POST', body },
     )
@@ -104,7 +105,7 @@ export function useTournamentParticipants() {
       }>
     },
   ) {
-    return api<EntryMemberListResponse>(
+    return api<{ data: EntryMemberListResponse }>(
       `${b(orgId)}/tournaments/${tId}/divisions/${divId}/participants/${pId}/entry-members`,
       { method: 'PUT', body },
     )
@@ -128,7 +129,7 @@ export function useTournamentParticipants() {
 
   // エントリーサマリー（主催者用）
   async function getEntrySummary(orgId: string, tId: number, divId: number) {
-    return api<EntryMemberSummary>(
+    return api<{ data: EntryMemberSummary }>(
       `${b(orgId)}/tournaments/${tId}/divisions/${divId}/entry-summary`,
     )
   }
@@ -145,12 +146,12 @@ export function useTournamentParticipants() {
 
   // テンプレート一覧
   async function getEntryTemplates(orgId: string, teamId: string) {
-    return api<EntryTemplate[]>(`${b(orgId)}/teams/${teamId}/entry-templates`)
+    return api<{ data: EntryTemplate[] }>(`${b(orgId)}/teams/${teamId}/entry-templates`)
   }
 
   // テンプレート詳細
   async function getEntryTemplate(orgId: string, teamId: string, templateId: string) {
-    return api<EntryTemplateDetail>(`${b(orgId)}/teams/${teamId}/entry-templates/${templateId}`)
+    return api<{ data: EntryTemplateDetail }>(`${b(orgId)}/teams/${teamId}/entry-templates/${templateId}`)
   }
 
   // テンプレート作成
@@ -169,7 +170,7 @@ export function useTournamentParticipants() {
       }>
     },
   ) {
-    return api<EntryTemplateDetail>(`${b(orgId)}/teams/${teamId}/entry-templates`, {
+    return api<{ data: EntryTemplateDetail }>(`${b(orgId)}/teams/${teamId}/entry-templates`, {
       method: 'POST',
       body,
     })
@@ -182,7 +183,7 @@ export function useTournamentParticipants() {
     templateId: string,
     body: Parameters<typeof createEntryTemplate>[2],
   ) {
-    return api<EntryTemplateDetail>(
+    return api<{ data: EntryTemplateDetail }>(
       `${b(orgId)}/teams/${teamId}/entry-templates/${templateId}`,
       { method: 'PUT', body },
     )
@@ -203,7 +204,7 @@ export function useTournamentParticipants() {
     pId: number,
     body: { templateId: string; overwriteExisting?: boolean },
   ) {
-    return api<ApplyTemplateResponse>(
+    return api<{ data: ApplyTemplateResponse }>(
       `${b(orgId)}/tournaments/${tId}/divisions/${divId}/participants/${pId}/entry-members/apply-template`,
       { method: 'POST', body },
     )

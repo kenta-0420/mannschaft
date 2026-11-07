@@ -125,6 +125,10 @@ ArchUnit 認可番人（`AuthzControllerGuardArchTest`）は、公開エンド�
 
 1. 新しい権限名を書くときは、**同じ PR に `permissions` への登録マイグレーションを含める**。ロール別デフォルト保有は機能設計書のロール・権限マトリクスに従う。
 2. **（2026-08-29 是正・PR #3387 検分4巡目で裏取り）`role_permissions` の `is_default` は DEPUTY_ADMIN に対しては `checkPermission` 経路でも一切参照されない。** 旧記述（本節初版 2026-08-13）は「`checkPermission` は `is_default` で絞らず全行を数える」としていたが、`ed51600e0e`（2026-08-29「ロール変更のscope直列化と付与者認可」）で `RoleService#resolveEffectivePermissions` が是正され、現在は **DEPUTY_ADMIN の実効権限は `permission_groups` 由来のみ**（`role_permissions` は `is_default` の値を問わず一切参照しない）。ADMIN のみ `role_permissions` を参照し、かつ `is_default = TRUE` の行だけを採用する。したがって **DEPUTY_ADMIN に「天井」として `role_permissions` へ `is_default=0` で登録すること自体は、`checkPermission` 経路では権限漏れを起こさない**（`checkAdminOrHasPermission`／`hasAdminOrPermissionInScope` 経路は従来どおり `is_default=1` のみを自動付与とみなす）。実測: `MemberSubtabVisibilityPermissionSeedIT`（`backend/src/test/java/com/mannschaft/app/member/service/`）。とはいえ「天井行＝permission_groups で個別付与できるようにする」という運用意図自体は変わらないため、**DEPUTY_ADMIN への恒常付与は今後も `permission_groups` 経由に一本化する**方針を維持する（`role_permissions` に `is_default=1` で DEPUTY_ADMIN 行を作ると `checkAdminOrHasPermission` 系経路で無条件付与になってしまうため、その方式は禁止のまま）。通知宛先を選ぶ `findDeputyAdminUserIdsByTeamIdAndPermission` も自動付与だけを対象とし、`role_permissions` 経路では `is_default = 1`、`permission_groups` 経路では対象チームとの一致を必須とする。
+2.5. **（ALIC-2・CMP-261011-0035）権限名を追加したら、FE の i18n キーも同じ PR で足す。** 権限グループの一覧・作成ダイアログは、権限名を
+   `teamAffiliations.permission_names.*`（`.` は `_` に置き換えたキー。例: `jobs.manage` → `jobs_manage`）の訳で表示し、訳が無ければコードのまま出る
+   （カタログの `displayName` は DB に日本語固定なので表示に使わない）。FE の番人 `frontend/tests/unit/i18n/permission-names-coverage.spec.ts` が
+   Flyway の `INSERT INTO permissions`（TEAM / ORGANIZATION）を直接読み、6 言語すべてに過不足なく訳があることを検査する（CI で赤になる）。
 3. `permissions.name` は UNIQUE で `scope` は 1 値しか持てない。`scope` 列は**認可判定では参照されない**（権限一覧 UI 向けの分類列）ため、TEAM と ORGANIZATION の両方で使う権限は主たるスコープ 1 値で登録してよい。
 4. ユニットテストは `AccessControlService` をモックするため、この欠陥を**構造的に検出できない**。また通常の統合テスト基底は `spring.flyway.enabled=false` / `ddl-auto=create` で動くため `permissions` は空表になる。検証するには `spring.flyway.enabled=true` / `ddl-auto=none` をクラス単位で上書きした IT が要る（手本: `ManageRecruitmentsPermissionFlywayIT`）。
 
@@ -138,6 +142,10 @@ ArchUnit 認可番人（`AuthzControllerGuardArchTest`）は、公開エンド�
 - **自己検証**: `PermissionNameCatalogGuardScanningLogicTest` が合成ソース／合成 SQL に対する陽性対照（リテラル・定数・修飾定数・3 引数版・複数行折返しの未登録名を実際に検出する）と陰性対照（登録済みは通す／コメント・Javadoc・テキストブロック中の記述や、メソッド宣言・別シグネチャを誤検出しない）を対で置く。カタログ抽出側も 4 形式（`VALUES` 単発・複数行・`INSERT IGNORE`・`SELECT ... FROM DUAL`）と列順の実証に加え、**未対応形式に出会ったら黙って読み飛ばさず例外で止まる**ことを実証している。本体側にも「走査が空振りしていないこと」（既知呼び出し箇所の実在確認＋件数下限）を独立に置く。
 
 **なぜ「実機裏取り」を required 化しないか**: `e2e-real-smoke` は JAR ビルド〜Testcontainers 不要の実サーバー起動〜seed 投入までを含む重量ワークフローで、ネットワーク・起動タイミング等に起因する flaky 要因を認可とは無関係に持ち込みうる。real E2E（Playwright）を CI スモーク必須対象から除外したのと同じ理由（[project_real_admin_e2e_excluded_from_ci_smoke]）で、**認可回帰の機械的ゲートは既に `*ScopeContractIT` が「Compile & Test」内で担っている**ため、二重に required 化する必要がない。実機裏取りは「契約テストのモック/DI 境界では見えない、実際の HTTP レイヤーでの認可漏れ」を低頻度で捕捉する補助網として非 required のまま維持する。
+
+### 4.4 組織告知の一覧は宛先資格で絞る（一覧と本文の可否を一致） **【必須】**
+
+宛先（チームを選ぶ／グループ）を指定した組織告知は、**宛先外の人の一覧にタイトルを出さない**。元コンテンツ（ブログ・掲示板）の可視性で本文プレビューが 404 になる行も一覧に出さない。組織告知を非メンバーにも返しうる一覧経路は、ロール由来の可視性だけでなく、本文プレビュー・既読と同じ資格判定（`OrgAnnouncementAudienceAccess`）の**直属資格 Qd**（組織の一覧・未読件数・組織 read-all は直属範囲のまま。マスター裁可 ALIC-1 D08）と、元コンテンツの F00 一括評価（`OrgAnnouncementFeedReadability`）を通す。宛先チームの委任資格 Qa でしか読めない告知は組織の一覧に加えない（チーム側の一覧に出る）。一覧に出たものはプレビューで必ず読める。判定を別実装にしない（二重化は将来のずれの元）。取得行をまとめて判定し、SQL 本数は件数に比例させない。判定は `@Transactional` を持たない取りまとめ役（`OrgAnnouncementFeedQueryService`）が tx の外で行い、`@Transactional` のクラス・メソッドから呼ばない（`AnnouncementDelegatedAccessGuardArchTest` F04）。一覧の続き（`nextCursor`）に読めない告知の実在 ID を出さない・任意の告知 ID から位置を復元させないため、カーソルはサーバが発行する継続トークン（Valkey に利用者×組織で結び付けて保存）にし、無効なトークンは理由を区別せず同一の 400 にする。詳細: F02.6 §4 組織スコープ・F01.2.1 §8.2。
 
 ---
 

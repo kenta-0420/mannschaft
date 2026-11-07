@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { JoinRequestUiStatus } from '~/composables/useJoinRequestApi'
+import type { FollowUiStatus } from '~/composables/useFollowSelfStatus'
 import type { TeamResponse } from '~/types/team'
 import FavoriteToggleButton from '~/components/favorites/FavoriteToggleButton.vue'
 
@@ -7,6 +8,8 @@ const emit = defineEmits<{
   back: []
   applySupporter: []
   cancelSupporter: []
+  retryFollowStatus: []
+  retryFollowPermissionSync: []
   applyJoinRequest: []
   retryJoinRequestStatus: []
   showCancelConfirm: []
@@ -21,17 +24,45 @@ const props = defineProps<{
   roleName: string | null
   isAdmin: boolean
   isAdminOrDeputy: boolean
-  followStatus: 'NONE' | 'PENDING' | 'APPROVED'
+  followStatus: FollowUiStatus
   followLoading: boolean
+  /** AC-9: フォロー解除成功・権限再取得失敗の同期失敗フラグ（未所属確定として扱わない）。 */
+  followPermissionSyncError: boolean
   joinRequestStatus: JoinRequestUiStatus
   joinRequestLoading: boolean
   templateLabel: Record<string, string>
 }>()
 
 const { t } = useI18n()
+const route = useRoute()
+// slug 切替中に残る旧ヘッダーの操作を無効化する。
+const archiveSlug = computed(() => route.params.slug === props.team.slug ? props.team.slug : '')
+const archived = computed(() => !!props.team.timestamps?.archivedAt)
+const { available: canArchive, busy: archiveBusy, syncError: archiveSyncError, request: requestArchive, retrySync: retryArchiveSync } = useTeamArchiveAction(
+  archiveSlug, archived, async () => { await navigateTo('/teams') },
+)
+const archiveLabel = computed(() => t(archived.value ? 'teamShell.archive.unarchive' : 'teamShell.archive.archive'))
 
 // F02.8 告知ウィザード（ローカル管理）
 const showBroadcastWizard = ref(false)
+
+/**
+ * ヘッダ人数表示（CMP-261004-1943）。
+ * AC-13: 0 は「0」、欠落/null は「—」で表示する（`?? undefined` では 0 を拾えないため、
+ * null/undefined の判定を明示する）。AC-14: i18n キーへ移行し直書きをやめる。
+ */
+const memberCountText = computed(() => {
+  const count = props.team.metadata?.memberCount
+  return count === null || count === undefined
+    ? t('common.scopeShell.memberCount', { count: '—' }, 2)
+    : t('common.scopeShell.memberCount', count)
+})
+const supporterCountText = computed(() => {
+  const count = props.team.social?.supporterCount
+  return count === null || count === undefined
+    ? t('common.scopeShell.supporterCount', { count: '—' }, 2)
+    : t('common.scopeShell.supporterCount', count)
+})
 
 /**
  * モバイル(<sm)向け「⋯」オーバーフローメニュー。
@@ -43,7 +74,7 @@ function toggleOverflowMenu(event: Event) {
   overflowMenu.value.toggle(event)
 }
 const overflowMenuItems = computed(() => {
-  const items: { label: string, icon: string, command: () => void }[] = []
+  const items: { label: string, icon: string, command: () => void, disabled?: boolean }[] = []
   if (props.roleName) {
     items.push({
       label: t('market.management.title'),
@@ -65,12 +96,16 @@ const overflowMenuItems = computed(() => {
       command: () => { showBroadcastWizard.value = true },
     })
   }
-  if (!props.isAdmin && props.roleName) {
+  // AC-2/AC-3: 応援者(SUPPORTER)には退出を出さない（退出できるのは MEMBER 等の正規加入者のみ）。
+  if (!props.isAdmin && props.roleName && props.roleName !== 'SUPPORTER') {
     items.push({
-      label: 'チームから退出',
+      label: t('teamShell.action.leave_button'),
       icon: 'pi pi-sign-out',
       command: () => emit('showLeaveConfirm'),
     })
+  }
+  if (canArchive.value) {
+    items.push({ label: archiveLabel.value, icon: 'pi pi-box', command: requestArchive, disabled: archiveBusy.value || archiveSyncError.value })
   }
   return items
 })
@@ -88,31 +123,35 @@ const overflowMenuItems = computed(() => {
     @banner-updated="(url) => emit('bannerUpdated', url)"
   >
     <!-- 名前行 + アクション群 -->
-    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-2 pt-1">
+    <div class="flex flex-col md:flex-row md:items-start gap-1 sm:gap-2 pt-1 [&_button]:min-h-11 [&_button]:min-w-11">
       <!-- 左: 戻る + 名前 + メタ情報 -->
-      <div class="flex flex-col gap-1 min-w-0">
+      <div class="flex flex-col gap-1 min-w-0 md:flex-1">
         <div class="flex items-center gap-2 flex-wrap tag-on-light-band">
-          <Button icon="pi pi-arrow-left" text rounded size="small" @click="emit('back')" />
-          <h1 class="text-xl sm:text-2xl font-bold truncate text-surface-900">
+          <Button icon="pi pi-arrow-left" text rounded size="small" :aria-label="$t('button.back')" @click="emit('back')" />
+          <h1 class="min-w-0 max-w-full text-xl sm:text-2xl font-bold truncate text-surface-900">
             {{ displayName }}
           </h1>
           <Tag :value="templateLabel[team.location?.template ?? ''] ?? team.location?.template ?? ''" severity="info" />
-          <RoleBadge v-if="roleName" :role="roleName" />
+          <RoleBadge v-if="roleName" :role="roleName" class="shrink-0 whitespace-nowrap" />
         </div>
         <div class="flex items-center gap-3 text-xs sm:text-sm text-surface-500 flex-wrap pl-8">
-          <span class="flex items-center gap-1">
+          <span class="flex items-center gap-1 whitespace-nowrap" data-testid="scope-header-member-count">
             <i class="pi pi-users text-xs" />
-            メンバー <strong class="text-surface-700">{{ team.metadata?.memberCount ?? 0 }}</strong>人
+            {{ memberCountText }}
           </span>
-          <span v-if="team.visibility?.supporterEnabled" class="flex items-center gap-1">
+          <span
+            v-if="team.visibility?.supporterEnabled"
+            class="flex items-center gap-1 whitespace-nowrap"
+            data-testid="scope-header-supporter-count"
+          >
             <i class="pi pi-heart text-xs" />
-            サポーター <strong class="text-surface-700">{{ team.social?.supporterCount ?? '—' }}</strong>人
+            {{ supporterCountText }}
           </span>
         </div>
       </div>
 
       <!-- 右: アクションボタン群 -->
-      <div class="flex items-center gap-2 flex-wrap shrink-0">
+      <div class="flex items-center gap-2 flex-wrap min-w-0 md:flex-1">
         <FavoriteToggleButton
           entity-type="TEAM"
           :entity-id="String(team.id)"
@@ -129,42 +168,87 @@ const overflowMenuItems = computed(() => {
           data-testid="team-market-link"
           @click="navigateTo(`/teams/${team.slug}/market`)"
         />
-        <template v-if="team.visibility?.supporterEnabled && !roleName">
+        <!--
+          フォロー（サポーター）状態の表示（CMP-261001-0835）。
+          AC-1: APPROVED は roleName・supporterEnabled に関係なく「フォロー解除」導線を出す
+          （SUPPORTER ロール自身も含む。フォロー承認で SUPPORTER ロールが付与されるため）。
+          AC-4: 「フォローする」(NONE) は supporterEnabled=true かつ未所属（roleName なし）
+          かつ同期エラーが無いときだけ出す。
+          AC-6: UNKNOWN/LOADING の間は押せる状態を一切出さない（fail-close）。
+        -->
+        <template v-if="followStatus === 'APPROVED'">
           <Button
-            v-if="followStatus === 'APPROVED'"
             icon="pi pi-heart-fill"
-            label="サポーターです"
+            :label="$t('common.scopeShell.follow_approved_badge')"
+            :aria-label="$t('common.scopeShell.follow_unfollow_aria')"
             size="small"
+            data-testid="follow-unfollow-button"
             :loading="followLoading"
             class="border-red-400 bg-red-50 text-red-500 hover:bg-red-100"
             outlined
             @click="emit('showCancelConfirm')"
           />
-          <span
-            v-else-if="followStatus === 'PENDING'"
-            class="flex items-center gap-2 text-sm text-orange-500"
-          >
-            <i class="pi pi-clock" />申請中（承認待ち）
-            <Button
-              label="取消"
-              size="small"
-              severity="secondary"
-              text
-              :loading="followLoading"
-              @click="emit('cancelSupporter')"
-            />
-          </span>
-          <Button
-            v-else
-            label="サポーターになる"
-            icon="pi pi-heart"
-            severity="secondary"
-            outlined
-            size="small"
-            :loading="followLoading"
-            @click="emit('applySupporter')"
-          />
         </template>
+        <!--
+          検分修繕: PENDING の「取消」は SUPPORTER 以外の正規所属ロールを持つ人には出さない
+          （MEMBER/ADMIN 等の正規所属に PENDING 申請が併存していても、BE はそれを解除対象として
+          扱わないため、取消ボタンを出すと誤操作導線になる）。
+        -->
+        <span
+          v-else-if="followStatus === 'PENDING' && (!roleName || roleName === 'SUPPORTER')"
+          class="flex items-center gap-2 text-sm text-orange-500"
+        >
+          <i class="pi pi-clock" />{{ $t('common.scopeShell.follow_pending_label') }}
+          <Button
+            :label="$t('common.scopeShell.follow_pending_cancel_button')"
+            size="small"
+            severity="secondary"
+            text
+            data-testid="follow-pending-cancel-button"
+            :loading="followLoading"
+            @click="emit('cancelSupporter')"
+          />
+        </span>
+        <span
+          v-else-if="followStatus === 'ERROR'"
+          class="flex items-center gap-2 text-sm text-red-500"
+          data-testid="follow-fetch-error"
+        >
+          <i class="pi pi-exclamation-triangle" />{{ $t('common.scopeShell.follow_fetch_error') }}
+          <Button
+            :label="$t('common.scopeShell.retry')"
+            text
+            size="small"
+            data-testid="follow-retry-button"
+            @click="emit('retryFollowStatus')"
+          />
+        </span>
+        <!-- AC-9: 解除は成功済みだが権限再取得が未同期。フォロー系操作は出さず再試行のみ出す。 -->
+        <span
+          v-else-if="followPermissionSyncError"
+          class="flex items-center gap-2 text-sm text-red-500"
+          data-testid="follow-permission-sync-error"
+        >
+          <i class="pi pi-exclamation-triangle" />{{ $t('common.scopeShell.follow_permission_sync_error_body') }}
+          <Button
+            :label="$t('common.scopeShell.retry')"
+            text
+            size="small"
+            data-testid="follow-permission-sync-retry-button"
+            @click="emit('retryFollowPermissionSync')"
+          />
+        </span>
+        <Button
+          v-else-if="followStatus === 'NONE' && team.visibility?.supporterEnabled && !roleName"
+          :label="$t('common.scopeShell.follow_apply_button')"
+          icon="pi pi-heart"
+          severity="secondary"
+          outlined
+          size="small"
+          data-testid="follow-apply-button"
+          :loading="followLoading"
+          @click="emit('applySupporter')"
+        />
         <template v-if="team.visibility?.visibility === 'PUBLIC' && !roleName">
           <span
             v-if="joinRequestStatus === 'PENDING'"
@@ -242,16 +326,36 @@ const overflowMenuItems = computed(() => {
           class="hidden sm:inline-flex"
           @click="showBroadcastWizard = true"
         />
+        <!-- AC-2/AC-3: 応援者(SUPPORTER)には退出を出さない（退出できるのは MEMBER 等の正規加入者のみ）。 -->
         <Button
-          v-if="!isAdmin && roleName"
-          label="チームから退出"
+          v-if="!isAdmin && roleName && roleName !== 'SUPPORTER'"
+          :label="$t('teamShell.action.leave_button')"
           icon="pi pi-sign-out"
           severity="danger"
           outlined
           size="small"
           class="hidden sm:inline-flex"
+          data-testid="team-leave-button"
           @click="emit('showLeaveConfirm')"
         />
+
+        <Button
+          v-if="canArchive"
+          :label="archiveLabel"
+          icon="pi pi-box"
+          severity="secondary"
+          outlined
+          size="small"
+          class="hidden sm:inline-flex min-h-11"
+          data-testid="team-archive-button"
+          :loading="archiveBusy"
+          :disabled="archiveBusy || archiveSyncError"
+          @click="requestArchive"
+        />
+        <span v-if="archiveSyncError" role="alert" class="text-sm text-red-500">
+          {{ $t('teamShell.archive.syncError') }}
+          <Button :label="$t('common.scopeShell.retry')" text :disabled="archiveBusy" @click="retryArchiveSync" />
+        </span>
 
         <!-- モバイル(<sm): 低頻度アクションを「⋯」オーバーフローメニューへ格納 -->
         <div v-if="overflowMenuItems.length > 0" class="sm:hidden">
@@ -261,10 +365,16 @@ const overflowMenuItems = computed(() => {
             rounded
             severity="secondary"
             size="small"
-            :aria-label="$t('common.menu')"
+            class="min-h-11 min-w-11"
+            :aria-label="$t('common.moreActions')"
             @click="toggleOverflowMenu"
           />
-          <Menu ref="overflowMenu" :model="overflowMenuItems" popup />
+          <Menu
+            ref="overflowMenu"
+            :model="overflowMenuItems"
+            :pt="{ itemLink: { class: 'min-h-11 min-w-11' } }"
+            popup
+          />
         </div>
       </div>
     </div>

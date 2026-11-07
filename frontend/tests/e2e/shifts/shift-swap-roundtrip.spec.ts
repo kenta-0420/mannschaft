@@ -11,7 +11,6 @@ import {
   setupAdminAuth,
   setupMemberAuth,
   mockCatchAllApis,
-  mockTeamMembersApi,
   mockSlots,
   buildSlot,
 } from './_helpers'
@@ -113,7 +112,26 @@ test.describe('SWAP-001〜005: シフト交代募集の一往復（依頼→承�
     await mockCatchAllApis(page)
     await mockFeatureFlags(page)
     await mockInboxSummary(page)
-    await mockTeamMembersApi(page)
+    // slug契約を固定し、数値IDをslugとして扱う偽の成功を許さない。
+    await page.route('**/api/v1/me/teams', async (route) => {
+      await route.fulfill({ json: { data: [{ id: TEAM_ID, slug: TEAM_SLUG }] } })
+    })
+    let membersUrl = ''
+    let membersCalls = 0
+    await page.route('**/api/v1/teams/*/members**', async (route) => {
+      membersUrl = new URL(route.request().url()).pathname
+      membersCalls++
+      if (membersUrl !== `/api/v1/teams/${TEAM_SLUG}/members/all`) {
+        await route.fulfill({ status: 404, json: { message: 'team not found' } })
+        return
+      }
+      await route.fulfill({ json: { data: [{
+        userId: MEMBER2_USER_ID,
+        displayName: 'e2e_member2',
+        avatarUrl: null,
+        roleName: 'MEMBER',
+      }] } })
+    })
     await mockSlots(page, [buildSlot(SLOT_ID_1)])
 
     const today = todayKeyInTokyo()
@@ -177,6 +195,7 @@ test.describe('SWAP-001〜005: シフト交代募集の一往復（依頼→承�
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible({ timeout: 10_000 })
     await expect(dialog.getByText('送信先')).toBeVisible()
+    await expect.poll(() => membersUrl).toBe(`/api/v1/teams/${TEAM_SLUG}/members/all`)
 
     // 既定モード SPECIFIC。交代候補者としてメンバーを1名選ぶ
     const memberLabel = dialog.locator('label', { hasText: 'e2e_member2' }).first()
@@ -192,6 +211,9 @@ test.describe('SWAP-001〜005: シフト交代募集の一往復（依頼→承�
     await expect.poll(() => createCalled, { timeout: 10_000 }).toBe(true)
     expect(createdBody.slotId).toBe(SLOT_ID_1)
     expect(createdBody.targetUserIds).toEqual([MEMBER2_USER_ID])
+    expect(createdBody.openCall).toBe(false)
+    expect(membersUrl).toBe(`/api/v1/teams/${TEAM_SLUG}/members/all`)
+    expect(membersCalls).toBe(1)
   })
 
   test('SWAP-002: ADMIN のシフト交換タブに PENDING 依頼が「保留中」として並ぶ', async ({

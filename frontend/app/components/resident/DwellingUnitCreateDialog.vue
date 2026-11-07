@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { toTypedSchema } from '@vee-validate/zod'
+import { toTypedSchema } from '~/utils/toTypedSchema'
 import { useForm } from 'vee-validate'
 import { z } from 'zod'
 

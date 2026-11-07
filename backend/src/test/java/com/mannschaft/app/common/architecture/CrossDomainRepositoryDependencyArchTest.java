@@ -1,6 +1,7 @@
 package com.mannschaft.app.common.architecture;
 
 import com.tngtech.archunit.core.domain.Dependency;
+import com.tngtech.archunit.junit.ArchTag;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
@@ -47,6 +48,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
     packages = "com.mannschaft.app",
     importOptions = ImportOption.DoNotIncludeTests.class
 )
+@ArchTag(ArchUnitTestTag.ARCHUNIT)
 class CrossDomainRepositoryDependencyArchTest {
 
     private static final String REPOSITORY_MARKER = ".repository";
@@ -75,7 +77,8 @@ class CrossDomainRepositoryDependencyArchTest {
                 if (sourceDomain == null || DomainPackages.isSharedDomain(sourceDomain)) {
                     return;
                 }
-                for (Dependency dep : clazz.getDirectDependenciesFromSelf()) {
+                DependencyFreezeMessages messages = new DependencyFreezeMessages();
+                for (Dependency dep : DependencyFreezeMessages.sorted(clazz.getDirectDependenciesFromSelf())) {
                     JavaClass target = dep.getTargetClass();
                     String targetPkg = target.getPackageName();
                     if (!isRepositoryPackage(targetPkg)) {
@@ -91,7 +94,7 @@ class CrossDomainRepositoryDependencyArchTest {
                         "%s (domain '%s') depends on other-domain repository %s (domain '%s')",
                         clazz.getName(), sourceDomain,
                         target.getName(), targetDomain);
-                    events.add(SimpleConditionEvent.violated(dep, message));
+                    events.add(SimpleConditionEvent.violated(dep, messages.format(message, dep)));
                 }
             }
         };

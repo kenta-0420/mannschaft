@@ -1,9 +1,11 @@
 package com.mannschaft.app.social.announcement.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.mannschaft.app.social.announcement.audience.TargetAudience;
 import com.mannschaft.app.social.announcement.AnnouncementFeedService;
 import lombok.Builder;
 import lombok.Getter;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -26,30 +28,41 @@ import java.time.format.DateTimeFormatter;
 public class AnnouncementFeedItemDto {
 
     /** お知らせフィード ID */
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
     private final Long id;
 
     /** 表示スコープ種別（TEAM / ORGANIZATION） */
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
     private final String scopeType;
 
     /** 表示スコープ ID */
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
     private final Long scopeId;
+
+    /** 本文 preview 対応種別。LOCKED の場合も対応可否だけを返す。 */
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
+    private final boolean contentPreviewAvailable;
 
     /** 表示スコープ名。個人横断フィード以外では null。 */
     private final String scopeName;
 
     /** 元コンテンツ種別（BLOG_POST / BULLETIN_THREAD / TIMELINE_POST / CIRCULATION_DOCUMENT / SURVEY） */
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
     private final String sourceType;
 
     /** 元コンテンツ ID */
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
     private final Long sourceId;
 
     /** お知らせ表示フラグを付けた操作者 ID */
     private final Long authorId;
 
     /** 表示用タイトル（元コンテンツから非正規化） */
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
     private final String titleCache;
 
     /** 本文抜粋（非正規化） */
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
     private final String excerptCache;
 
     /** お知らせ優先度（URGENT / IMPORTANT / NORMAL） */
@@ -73,7 +86,15 @@ public class AnnouncementFeedItemDto {
     private final boolean isRead;
 
     /** 可視性×課金の合成状態（FULL / LOCKED）。 */
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
     private final String accessState;
+
+    /**
+     * 送信時の宛先指定の記録（送信履歴の「宛先: …（送信時 N チーム）」。F01.2.1 AC-H17）。
+     * 送信時の名前で残るため、グループの改名・削除で変わらない。絞り込みなし・LOCKED では null。
+     */
+    @Schema(nullable = true)
+    private final TargetAudience targetAudience;
 
     /** レコード作成日時（ISO 8601） */
     private final String createdAt;
@@ -91,12 +112,26 @@ public class AnnouncementFeedItemDto {
      * @return 変換済み DTO
      */
     public static AnnouncementFeedItemDto from(AnnouncementFeedService.AnnouncementFeedItem item) {
+        return from(item, false);
+    }
+
+    /**
+     * 宛先の記録を出すかどうかを、呼び出し側が閲覧者ごとに判定した結果として受け取って変換する。
+     * 権限の判断は DTO に埋め込まない（組織一覧 Controller の canViewTargetAudience）。
+     *
+     * @param item                  Service が返すフィードアイテム
+     * @param includeTargetAudience 閲覧者がチームグループを閲覧してよいか（false なら targetAudience は null）
+     */
+    public static AnnouncementFeedItemDto from(AnnouncementFeedService.AnnouncementFeedItem item,
+                                               boolean includeTargetAudience) {
         var feed = item.feed();
         boolean locked = "LOCKED".equals(item.accessState());
         return AnnouncementFeedItemDto.builder()
                 .id(feed.getId())
                 .scopeType(feed.getScopeType() != null ? feed.getScopeType().name() : null)
                 .scopeId(feed.getScopeId())
+                .contentPreviewAvailable(feed.getSourceType() == com.mannschaft.app.social.announcement.AnnouncementSourceType.BLOG_POST
+                        || feed.getSourceType() == com.mannschaft.app.social.announcement.AnnouncementSourceType.BULLETIN_THREAD)
                 .scopeName(item.scopeName())
                 .sourceType(locked ? null : feed.getSourceType() != null ? feed.getSourceType().name() : null)
                 .sourceId(locked ? null : feed.getSourceId())
@@ -110,6 +145,7 @@ public class AnnouncementFeedItemDto {
                 .expiresAt(formatDateTime(feed.getExpiresAt()))
                 .isRead(item.isRead())
                 .accessState(item.accessState())
+                .targetAudience(locked || !includeTargetAudience ? null : TargetAudience.fromJson(feed.getTargetAudience()))
                 .createdAt(formatDateTime(feed.getCreatedAt()))
                 .updatedAt(formatDateTime(feed.getUpdatedAt()))
                 .build();

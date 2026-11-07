@@ -38,6 +38,7 @@ import javax.sql.DataSource;
  *   <li>{@code reservationWaitlistCleanupBatch} — F03.4.5 §6.1 キャンセル待ち失効クリーンアップ（毎日 0:45）</li>
  *   <li>{@code reservationPendingExpireBatch} — F03.4.5 §6.3 仮押さえ(PENDING)自動失効（5分間隔）</li>
  *   <li>{@code blogScheduledPublishBatch} — F06.1 ブログ予約公開（DRAFT＋公開時刻到達を PUBLISHED へ・1分間隔）</li>
+ *   <li>{@code automaticScheduleCompletionBatch} — TEAM/ORG具体予定の終了後完了とauto予定表示解除（1分間隔、100候補）</li>
  * </ul>
  *
  * <p>新しいバッチを追加する場合は本 Javadoc にロック名と一行説明を追記すること。
@@ -65,8 +66,18 @@ import javax.sql.DataSource;
 @Configuration
 @Profile("!test & !openapi-gen & !e2e")
 @EnableScheduling
-@EnableSchedulerLock(defaultLockAtMostFor = "30m")
+@EnableSchedulerLock(defaultLockAtMostFor = "30m", order = ShedLockConfig.ADVISOR_ORDER)
 public class ShedLockConfig {
+
+    /**
+     * ShedLock advisor の order（Issue #2997 G7-b / CMP-260827-1152）。
+     *
+     * <p>既定（LOWEST_PRECEDENCE）だと {@code @Order(20)} の {@code BatchExecutionAspect} が ShedLock の外側に出て、
+     * ロックを取れなかった pod でも batch_job_logs に完了が記録され完了通知が飛ぶ。ロックの内側に留めるため
+     * BackgroundFeaturePolicy(5) → FeatureGate(10) → ShedLock(15) → BatchExecutionAspect(20) → TX の並びにする。
+     * 順序は {@code BatchAdvisorOrderTest} が固定する。</p>
+     */
+    public static final int ADVISOR_ORDER = 15;
 
     @Bean
     public LockProvider lockProvider(DataSource dataSource) {

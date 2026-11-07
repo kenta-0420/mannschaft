@@ -14,8 +14,7 @@ import com.mannschaft.app.social.entity.TeamFriendEntity;
 import com.mannschaft.app.social.repository.FollowRepository;
 import com.mannschaft.app.social.repository.FriendContentForwardRepository;
 import com.mannschaft.app.social.repository.TeamFriendRepository;
-import com.mannschaft.app.team.entity.TeamEntity;
-import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -67,7 +66,7 @@ class TeamFriendsServiceTest {
     private TimelinePostRepository timelinePostRepository;
 
     @Mock
-    private TeamRepository teamRepository;
+    private TeamService teamService;
 
     @Mock
     private AccessControlService accessControlService;
@@ -108,10 +107,9 @@ class TeamFriendsServiceTest {
         @DisplayName("正常系: フォロー登録・片方向フォローレスポンスが正常に返る")
         void フォロー登録_片方向() {
             // given
-            TeamEntity targetTeam = TeamEntity.builder().name("相手チーム").build();
             FollowEntity savedFollow = buildFollow(TEAM_ID, TARGET_TEAM_ID, 100L);
 
-            given(teamRepository.findById(TARGET_TEAM_ID)).willReturn(Optional.of(targetTeam));
+            given(teamService.isFollowableTeam(TARGET_TEAM_ID)).willReturn(true);
             given(followRepository.existsByFollowerTypeAndFollowerIdAndFollowedTypeAndFollowedId(
                     FollowerType.TEAM, TEAM_ID, FollowerType.TEAM, TARGET_TEAM_ID)).willReturn(false);
             given(followRepository.save(any(FollowEntity.class))).willReturn(savedFollow);
@@ -160,8 +158,7 @@ class TeamFriendsServiceTest {
         @DisplayName("異常系: 既にフォロー済み → BusinessException(FRIEND_ALREADY_FOLLOWING)")
         void 既にフォロー済み_例外() {
             // given
-            given(teamRepository.findById(TARGET_TEAM_ID))
-                    .willReturn(Optional.of(TeamEntity.builder().name("相手チーム").build()));
+            given(teamService.isFollowableTeam(TARGET_TEAM_ID)).willReturn(true);
             given(followRepository.existsByFollowerTypeAndFollowerIdAndFollowedTypeAndFollowedId(
                     FollowerType.TEAM, TEAM_ID, FollowerType.TEAM, TARGET_TEAM_ID)).willReturn(true);
 
@@ -176,12 +173,11 @@ class TeamFriendsServiceTest {
         @DisplayName("正常系: 相互フォロー成立 → team_friends に INSERT され FRIEND_ESTABLISHED 通知が両チームに送信される")
         void 相互フォロー成立_team_friendsが作成される() {
             // given
-            TeamEntity targetTeam = TeamEntity.builder().name("相手チーム").build();
             FollowEntity savedFollow = buildFollow(TEAM_ID, TARGET_TEAM_ID, 100L);
             FollowEntity reverseFollow = buildFollow(TARGET_TEAM_ID, TEAM_ID, 200L);
             TeamFriendEntity savedFriend = buildTeamFriend(TEAM_ID, TARGET_TEAM_ID, 1L);
 
-            given(teamRepository.findById(TARGET_TEAM_ID)).willReturn(Optional.of(targetTeam));
+            given(teamService.isFollowableTeam(TARGET_TEAM_ID)).willReturn(true);
             given(followRepository.existsByFollowerTypeAndFollowerIdAndFollowedTypeAndFollowedId(
                     FollowerType.TEAM, TEAM_ID, FollowerType.TEAM, TARGET_TEAM_ID)).willReturn(false);
             given(followRepository.save(any(FollowEntity.class))).willReturn(savedFollow);

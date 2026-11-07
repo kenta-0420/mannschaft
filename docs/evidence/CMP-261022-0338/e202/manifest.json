@@ -1,0 +1,131 @@
+{
+    "schemaVersion":  1,
+    "campaign":  "CMP-261022-0338",
+    "implementationPr":  4125,
+    "sourceHead":  "e202bb96c03fc1b9197bfad8d27217dc7b4e8687",
+    "backendHead":  "d969c21a5ef184112bdd50957e20d6e7f73f4b1a",
+    "jarSha256":  "906d0e6a8a6bf758d5544972b60bb005c8f0e2b03e85e698cef36243dfae498d",
+    "redControlFinalSha256":  "e00ebc7d77ec3bc8b7d742c105b97f329a347b60e41d3fb3e98b8cc9edfa67fb",
+    "files":  [
+                  {
+                      "path":  "real-execution.json",
+                      "sourcePath":  "frontend/test-results/timeline-wrap-real/final-e202/real-execution.json",
+                      "bytes":  294,
+                      "sha256":  "aefa1757fe359571b456ebd41a44c1c9a5baf5e615659b7d82de0d65a9f4445f"
+                  },
+                  {
+                      "path":  "real.stderr.log",
+                      "sourcePath":  "frontend/test-results/timeline-wrap-real/final-e202/real.stderr.log",
+                      "bytes":  328,
+                      "sha256":  "5dbf855a6cb01afe89d714368805b36e9c369b9253aec398d3f81f9d011e56e5"
+                  },
+                  {
+                      "path":  "real.stdout.log",
+                      "sourcePath":  "frontend/test-results/timeline-wrap-real/final-e202/real.stdout.log",
+                      "bytes":  2171,
+                      "sha256":  "113467d64da7c59b19dd988c6db48ed2e29bbde766c24393137aaa600fe853e9"
+                  },
+                  {
+                      "path":  "runtime.json",
+                      "sourcePath":  "frontend/test-results/timeline-wrap-real/final-e202/runtime.json",
+                      "bytes":  632,
+                      "sha256":  "5d4011da5b6a5cca620cd5be6308146d74464d070fd85e31641a4dd9bce8b2fa"
+                  },
+                  {
+                      "path":  "summary.json",
+                      "sourcePath":  "frontend/test-results/timeline-wrap-real/final-e202/summary.json",
+                      "bytes":  3404,
+                      "sha256":  "38d286f80573b817ee3980236ced628f6fb0b39b22143bd1677baa3d3a2f0c87"
+                  },
+                  {
+                      "path":  "tail-ready.stderr.log",
+                      "sourcePath":  "frontend/test-results/timeline-wrap-real/final-e202/tail-ready.stderr.log",
+                      "bytes":  328,
+                      "sha256":  "2c6db48662fb1836e82a1e13c123c994793d662bb1bfe8ca73d89eae13868b01"
+                  },
+                  {
+                      "path":  "tail-ready.stdout.log",
+                      "sourcePath":  "frontend/test-results/timeline-wrap-real/final-e202/tail-ready.stdout.log",
+                      "bytes":  614,
+                      "sha256":  "5386effaf7c3a97434ce38f0dd1a4ea21819ad99aa57a0f997bc0033857162db"
+                  },
+                  {
+                      "path":  "warmup-readiness.json",
+                      "sourcePath":  "frontend/test-results/timeline-wrap-real/final-e202/warmup-readiness.json",
+                      "bytes":  1885,
+                      "sha256":  "80ca975b1f05445fe7ee940518bd9d2fff83a1945a3d862ee67e053242fa3d0d"
+                  },
+                  {
+                      "path":  "limited/360.png",
+                      "sourcePath":  "frontend/test-results/timeline-wrap-real/final-e202/limited/360.png",
+                      "bytes":  12777,
+                      "sha256":  "55e1833f8420669ad52434312987f4e474734cebf211dd34cba974d3bdf7858f"
+                  },
+                  {
+                      "path":  "limited/390.png",
+                      "sourcePath":  "frontend/test-results/timeline-wrap-real/final-e202/limited/390.png",
+                      "bytes":  13414,
+                      "sha256":  "f324d5f57201d9d21c0e8fb296a6cc43adad03a8a425c0029d76c5b1a0357c97"
+                  },
+                  {
+                      "path":  "limited/green.stderr.log",
+                      "sourcePath":  "frontend/test-results/timeline-wrap-real/final-e202/limited/green.stderr.log",
+                      "bytes":  0,
+                      "sha256":  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                  },
+                  {
+                      "path":  "limited/green.stdout.log",
+                      "sourcePath":  "frontend/test-results/timeline-wrap-real/final-e202/limited/green.stdout.log",
+                      "bytes":  829,
+                      "sha256":  "5b8c6c9edf5449a037c0778aa9bc8daf8cb94a467fcc423a7fc15d9668e1323b"
+                  },
+                  {
+                      "path":  "limited/red.stderr.log",
+                      "sourcePath":  "frontend/test-results/timeline-wrap-real/final-e202/limited/red.stderr.log",
+                      "bytes":  613,
+                      "sha256":  "e7318e83aa5104bfba03a4129e63ea020fb8f8ba55ad7c77848db51197ebe71f"
+                  },
+                  {
+                      "path":  "limited/red.stdout.log",
+                      "sourcePath":  "frontend/test-results/timeline-wrap-real/final-e202/limited/red.stdout.log",
+                      "bytes":  82,
+                      "sha256":  "1c382bf1ecb7655d02fe573eb7f9652f8599c11de52d7a2f429069144d7c0881"
+                  },
+                  {
+                      "path":  "limited/restoration.json",
+                      "sourcePath":  "frontend/test-results/timeline-wrap-real/final-e202/limited/restoration.json",
+                      "bytes":  696,
+                      "sha256":  "b0ef69462767955f1690dc6f01147012e641aa05ae5498840b4339ed86c68164"
+                  },
+                  {
+                      "path":  "real/ASCII2000-360.png",
+                      "sourcePath":  "frontend/test-results/timeline-wrap-real/final-e202/real/ASCII2000-360.png",
+                      "bytes":  19990,
+                      "sha256":  "7fe959d386195a3328bd77199e1bb54c9a28a43bd7107a7e6f26d5043ead422d"
+                  },
+                  {
+                      "path":  "real/tail-metrics.json",
+                      "sourcePath":  "frontend/test-results/timeline-wrap-real/final-e202/real/tail-metrics.json",
+                      "bytes":  575,
+                      "sha256":  "f2aee5dc74831bc7214804d10fcdb01ed65a94fce1552f695711f7837c8cdfc9"
+                  },
+                  {
+                      "path":  "real/URL2000-360.png",
+                      "sourcePath":  "frontend/test-results/timeline-wrap-real/final-e202/real/URL2000-360.png",
+                      "bytes":  28028,
+                      "sha256":  "0c362ef107721ec26c4b8f8edf9915e3ae25f379b31354df0dc242a252d19e16"
+                  },
+                  {
+                      "path":  "real/改行空行-360.png",
+                      "sourcePath":  "frontend/test-results/timeline-wrap-real/final-e202/real/改行空行-360.png",
+                      "bytes":  52106,
+                      "sha256":  "377332fd4ce8dc1587457f2ea2bcc2adbd68b7bf96e95d709706e72b8e2a3ece"
+                  },
+                  {
+                      "path":  "main-follow.json",
+                      "sourcePath":  "frontend/test-results/timeline-wrap-real/main-follow-e202.json",
+                      "bytes":  5384,
+                      "sha256":  "c7062d6bc6a94ac05d8e1de95383abcbbffb25fc82a3be4256b65ac752b46bcc"
+                  }
+              ]
+}

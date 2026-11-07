@@ -73,6 +73,10 @@ class JobCheckInControllerTest {
     @MockitoBean
     private JobCheckInService checkInService;
 
+    /** 契約の閲覧ガード（CMP-260821-1027）。当事者判定は契約ITで検証し、ここでは素通しの mock とする。 */
+    @MockitoBean
+    private com.mannschaft.app.jobmatching.service.JobContractViewAccessGuard contractViewGuard;
+
     // JwtAuthenticationFilter / UserLocaleFilter の依存解決用
     @MockitoBean
     private AuthTokenService authTokenService;

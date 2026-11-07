@@ -1,21 +1,24 @@
 package com.mannschaft.app.common;
 
 import com.mannschaft.app.family.repository.UserCareLinkRepository;
+import com.mannschaft.app.family.service.FamilyCareLinkQuery;
+import com.mannschaft.app.gdpr.service.GdprLastAdminWithdrawalErrorProvider;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.organization.service.OrganizationMembershipService;
+import com.mannschaft.app.role.authorization.RoleScopeRoleQuery;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.service.DefaultAccessControlService;
 import com.mannschaft.app.role.service.RoleService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -64,7 +67,6 @@ class AccessControlServiceTest {
     @Mock
     private OrganizationMembershipService organizationMembershipService;
 
-    @InjectMocks
     private AccessControlService accessControlService;
 
     // ========================================
@@ -82,6 +84,11 @@ class AccessControlServiceTest {
      */
     @BeforeEach
     void stubDefaultActiveMembership() {
+        accessControlService = new DefaultAccessControlService(
+                userRoleRepository, roleRepository, roleService, membershipRepository, null,
+                organizationMembershipService, new RoleScopeRoleQuery(userRoleRepository),
+                List.of(new FamilyCareLinkQuery(userCareLinkRepository)),
+                List.of(new GdprLastAdminWithdrawalErrorProvider()));
         lenient().doReturn(true).when(userRoleRepository).isActiveUser(anyLong());
         lenient().doReturn(true).when(membershipRepository).existsActiveByUserAndScope(
                 anyLong(), any(ScopeType.class), anyLong());

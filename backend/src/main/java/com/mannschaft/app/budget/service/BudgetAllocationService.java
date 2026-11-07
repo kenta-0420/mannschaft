@@ -48,15 +48,16 @@ public class BudgetAllocationService {
         // 閲覧できていた実機バグを根治する。予算はスコープ問わずDEPUTY_ADMIN限定のためスコープ分岐は不要。
         accessControlService.checkAdminOrAbove(currentUserId, fy.getScopeId(), fy.getScopeType());
 
+        var categories = categoryService.historicalByFiscalYear(fiscalYearId);
         return allocationRepository.findByFiscalYearId(fiscalYearId)
                 .stream()
                 .map(entity -> {
                     AllocationResponse response = budgetMapper.toAllocationResponse(entity);
-                    BudgetCategoryEntity category = categoryService.findById(entity.getCategoryId());
+                    var category = categoryService.requireHistoricalById(categories, entity.getCategoryId());
                     return new AllocationResponse(
                             response.id(),
                             response.categoryId(),
-                            category.getName(),
+                            category.name(),
                             response.month(),
                             response.amount(),
                             response.createdAt(),

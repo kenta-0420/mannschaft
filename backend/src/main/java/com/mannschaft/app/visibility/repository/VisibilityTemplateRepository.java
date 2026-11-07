@@ -2,6 +2,7 @@ package com.mannschaft.app.visibility.repository;
 
 import com.mannschaft.app.visibility.entity.VisibilityTemplateEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -70,4 +71,15 @@ public interface VisibilityTemplateRepository extends JpaRepository<VisibilityTe
      * @return 重複している場合は true
      */
     boolean existsByOwnerUserIdAndName(Long ownerUserId, String name);
+
+    /**
+     * 強匿名化専用。指定ユーザーが所有するテンプレートを物理削除する（システムプリセットは owner NULL のため対象外）。
+     * 子ルールは {@link VisibilityTemplateRuleRepository#deleteAllByOwnerUserId} で先に消すこと。
+     *
+     * @param ownerUserId テンプレート所有ユーザーID
+     * @return 削除件数
+     */
+    @Modifying
+    @Query("DELETE FROM VisibilityTemplateEntity vt WHERE vt.ownerUserId = :ownerUserId")
+    int deleteAllByOwnerUserId(@Param("ownerUserId") Long ownerUserId);
 }

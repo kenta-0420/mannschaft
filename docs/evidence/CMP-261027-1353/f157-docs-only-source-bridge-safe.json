@@ -1,0 +1,202 @@
+{
+    "campaign":  "CMP-261027-1353",
+    "pr":  4166,
+    "artifactSource":  "3db393c2e4e5608e0e168d59baba85e68342ae78",
+    "implementationSource":  "f157e033bb650205dc4ba94d0772f9b1a0be7d15",
+    "mergedMain":  "f6ae38c31bf39cb9300bf16c5d197a5815a017dc",
+    "clean":  true,
+    "trackedDiff":  [
+                        "docs/task-list.md"
+                    ],
+    "allTrackedExceptTaskListIdentical":  true,
+    "topLevelObjectsExceptDocs":  [
+                                      {
+                                          "path":  ".agents",
+                                          "artifactSourceObject":  "c2c100014ddcca54038fe5097c23b35ecb0a1749",
+                                          "newHeadObject":  "c2c100014ddcca54038fe5097c23b35ecb0a1749",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  ".claude",
+                                          "artifactSourceObject":  "6d53583563e2c10317acfb98303b6e6f4ca985df",
+                                          "newHeadObject":  "6d53583563e2c10317acfb98303b6e6f4ca985df",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  ".gitattributes",
+                                          "artifactSourceObject":  "c081b723962c7eed5f42f0877a396544a042c5bb",
+                                          "newHeadObject":  "c081b723962c7eed5f42f0877a396544a042c5bb",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  ".githooks",
+                                          "artifactSourceObject":  "53059f0f5984ac8ac6767c40ff0305480c44df22",
+                                          "newHeadObject":  "53059f0f5984ac8ac6767c40ff0305480c44df22",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  ".github",
+                                          "artifactSourceObject":  "368bc43960c719d27a9403c6916108c7b3b30a73",
+                                          "newHeadObject":  "368bc43960c719d27a9403c6916108c7b3b30a73",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  ".gitignore",
+                                          "artifactSourceObject":  "bbe8229249b3fdcee6b2422a90920e33d1732226",
+                                          "newHeadObject":  "bbe8229249b3fdcee6b2422a90920e33d1732226",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  ".gitleaks.toml",
+                                          "artifactSourceObject":  "4479a7c55d4752d5268af72bd76bc880543b1270",
+                                          "newHeadObject":  "4479a7c55d4752d5268af72bd76bc880543b1270",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  ".gradle-home",
+                                          "artifactSourceObject":  "c946413fd3c367475aa623e46cd10d0e7531a714",
+                                          "newHeadObject":  "c946413fd3c367475aa623e46cd10d0e7531a714",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  ".nvmrc",
+                                          "artifactSourceObject":  "c94711948a665d304dfc7016e1bebc497162b451",
+                                          "newHeadObject":  "c94711948a665d304dfc7016e1bebc497162b451",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  "AGENTS.md",
+                                          "artifactSourceObject":  "5a1ac46e32d8684ed732625ce2c12408da209e6c",
+                                          "newHeadObject":  "5a1ac46e32d8684ed732625ce2c12408da209e6c",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  "backend",
+                                          "artifactSourceObject":  "1786e2ab07ca27b12dc2a4f1e90d367dbd4bfc9b",
+                                          "newHeadObject":  "1786e2ab07ca27b12dc2a4f1e90d367dbd4bfc9b",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  "backend-loop.sh",
+                                          "artifactSourceObject":  "11e0ae208705716230a0981f83b73a18911d18ab",
+                                          "newHeadObject":  "11e0ae208705716230a0981f83b73a18911d18ab",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  "CLAUDE.md",
+                                          "artifactSourceObject":  "8a2e3640185e858b083f95290c2d2b028267c8a9",
+                                          "newHeadObject":  "8a2e3640185e858b083f95290c2d2b028267c8a9",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  "config",
+                                          "artifactSourceObject":  "7e9f42e2356c393e1f4d68dd83b4dc1db1ba25cf",
+                                          "newHeadObject":  "7e9f42e2356c393e1f4d68dd83b4dc1db1ba25cf",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  "docker-compose.yml",
+                                          "artifactSourceObject":  "bfa7da7f026f9fabc67b9d397f83c70c2b39d5b7",
+                                          "newHeadObject":  "bfa7da7f026f9fabc67b9d397f83c70c2b39d5b7",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  "e2e-test-instructions.md",
+                                          "artifactSourceObject":  "253e8d047e4561ccfe1601ce0c0129b1fff96a6a",
+                                          "newHeadObject":  "253e8d047e4561ccfe1601ce0c0129b1fff96a6a",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  "frontend",
+                                          "artifactSourceObject":  "881bfc6df96ea0f55d3d0ecf0148175d4d84262d",
+                                          "newHeadObject":  "881bfc6df96ea0f55d3d0ecf0148175d4d84262d",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  "FUTURE_CONSIDERATIONS.md",
+                                          "artifactSourceObject":  "1b7232633dcb2132c4f2d1ce03397d4d59fd01b4",
+                                          "newHeadObject":  "1b7232633dcb2132c4f2d1ce03397d4d59fd01b4",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  "infra",
+                                          "artifactSourceObject":  "65afd3877b911a1b21cadee55c3bea624855e07b",
+                                          "newHeadObject":  "65afd3877b911a1b21cadee55c3bea624855e07b",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  "k6",
+                                          "artifactSourceObject":  "498e466d38b554bdbfcb8e16a6fe98f511ea79b5",
+                                          "newHeadObject":  "498e466d38b554bdbfcb8e16a6fe98f511ea79b5",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  "public",
+                                          "artifactSourceObject":  "e2d8f1b3328c086c0c31b500b1b5f69b8893ad52",
+                                          "newHeadObject":  "e2d8f1b3328c086c0c31b500b1b5f69b8893ad52",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  "qiita_claudecode_assets_to_codex_bridge.md",
+                                          "artifactSourceObject":  "8f59ae4a4e5a6e5389333e99e5b9b23eaf174316",
+                                          "newHeadObject":  "8f59ae4a4e5a6e5389333e99e5b9b23eaf174316",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  "README.md",
+                                          "artifactSourceObject":  "53edbe452d4e394d108d9737cdeb8a712381df12",
+                                          "newHeadObject":  "53edbe452d4e394d108d9737cdeb8a712381df12",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  "renovate.json",
+                                          "artifactSourceObject":  "9cfb935bdcbb7563e3c59b781348e344cff9a05a",
+                                          "newHeadObject":  "9cfb935bdcbb7563e3c59b781348e344cff9a05a",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  "scripts",
+                                          "artifactSourceObject":  "1dc3fe3844162bb3191da97e0281f31653160a9e",
+                                          "newHeadObject":  "1dc3fe3844162bb3191da97e0281f31653160a9e",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  "skills-lock.json",
+                                          "artifactSourceObject":  "4222a0c539d22baee119da5a64f4ca204c135cbb",
+                                          "newHeadObject":  "4222a0c539d22baee119da5a64f4ca204c135cbb",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  "start-backend.ps1",
+                                          "artifactSourceObject":  "cf113db7d14664c761b0f3a73dfa7bc9001a585d",
+                                          "newHeadObject":  "cf113db7d14664c761b0f3a73dfa7bc9001a585d",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  "start-backend.vbs",
+                                          "artifactSourceObject":  "1cc5367f64c83eb73b59e73b46fc1c9604e95959",
+                                          "newHeadObject":  "1cc5367f64c83eb73b59e73b46fc1c9604e95959",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  "TEST_CONVENTION.md",
+                                          "artifactSourceObject":  "3c6e62695e5de334ed71ac6973eb45d211e9e1c0",
+                                          "newHeadObject":  "3c6e62695e5de334ed71ac6973eb45d211e9e1c0",
+                                          "same":  true
+                                      },
+                                      {
+                                          "path":  "test-fixtures",
+                                          "artifactSourceObject":  "060e7fd092353fbd3960814e5ffb32eae38817fb",
+                                          "newHeadObject":  "060e7fd092353fbd3960814e5ffb32eae38817fb",
+                                          "same":  true
+                                      }
+                                  ],
+    "taskRowExactOneUnchanged":  true,
+    "strictArtifactInputsEqual":  true,
+    "coverage":  "backend/frontend/scripts/.github/root package/config/lock/resourcesを含む全tracked file。唯一の差分はdocs/task-list.md",
+    "artifactRebuildRequired":  false,
+    "artifactInheritance":  "3db公式API/FE成果物、実機、3探索、性能を入力同値で対応付け",
+    "ciInheritance":  false,
+    "newHeadCi":  "pending; must use actual new-head runs",
+    "sourceMutation":  "normal merge only; no product edits"
+}

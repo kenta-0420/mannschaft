@@ -1,8 +1,9 @@
+import { useNuxtApp } from '#app'
 import { defineComponent, h, ref } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
-import { mountSuspended } from '@nuxt/test-utils/runtime'
+import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import ScheduleEventForm from '~/components/schedule/ScheduleEventForm.vue'
 import { PERSONAL_SCOPE_KEY, scheduleScopeKey } from '~/utils/scheduleScopeKey'
 
@@ -27,6 +28,13 @@ const scheduleApiMock = {
 const notificationMock = { success: vi.fn(), error: vi.fn() }
 const errorHandlerMock = { handleApiError: vi.fn(), getFieldErrors: vi.fn(() => ({})) }
 const googleCalendarMock = { googleSyncEnabled: ref(false), fetchPersonalSyncStatus: vi.fn() }
+const previewApiMock = vi.fn()
+const expectedScheduleState = {
+  updatedAt: '2026-09-22T09:00:00+09:00', title: 'Recurring meeting',
+  startAt: '2026-09-22T10:00:00+09:00', endAt: '2026-09-22T11:00:00+09:00', allDay: false, status: 'SCHEDULED',
+  schedules: [{ id: 42, updatedAt: '2026-09-22T09:00:00+09:00', title: 'Recurring meeting', startAt: '2026-09-22T10:00:00+09:00', endAt: '2026-09-22T11:00:00+09:00', allDay: false, status: 'SCHEDULED' }],
+}
+mockNuxtImport('useApi', () => () => previewApiMock)
 
 vi.mock('~/composables/useScheduleApi', () => ({ useScheduleApi: () => scheduleApiMock }))
 vi.mock('~/composables/useNotification', () => ({ useNotification: () => notificationMock }))
@@ -68,19 +76,24 @@ const ScopeSelectorStub = defineComponent({
   },
 })
 
-// タイトル入力欄のみ再現する軽量スタブ（v-model:form）。
+// タイトルと時刻のユーザー入力を再現する軽量スタブ（v-model:form）。
 const BasicFieldsStub = defineComponent({
   name: 'ScheduleEventBasicFields',
-  props: { form: { type: Object, required: true } },
+  props: { form: { type: Object, required: true }, timeOptions: { type: Array, default: () => [] } },
   emits: ['update:form'],
   setup(props, { emit }) {
     return () =>
-      h('input', {
+      h('div', [h('input', {
         'data-testid': 'title-input',
         value: (props.form as { title: string }).title,
         onInput: (e: Event) =>
           emit('update:form', { ...(props.form as object), title: (e.target as HTMLInputElement).value }),
-      })
+      }), h('input', {
+        'data-testid': 'start-time-input',
+        value: (props.form as { startTime: string }).startTime,
+        onInput: (e: Event) =>
+          emit('update:form', { ...(props.form as object), startTime: (e.target as HTMLInputElement).value }),
+      })])
   },
 })
 
@@ -126,6 +139,28 @@ describe('ScheduleEventForm: saved イベントのスコープ', () => {
     errorHandlerMock.handleApiError.mockReset()
   })
 
+  it('日付指定の新規作成が保存失敗しても入力を保持し、savedや閉じるイベントを発火しない', async () => {
+    scheduleApiMock.createPersonalSchedule.mockRejectedValueOnce(new Error('保存失敗'))
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: { visible: false, scopeType: 'team', scopeId: '', isPersonal: true, initialDate: '2026-08-06' },
+      global: { stubs: globalStubs },
+    })
+    await wrapper.setProps({ visible: true })
+    await wrapper.get('[data-testid="title-input"]').setValue('入力を保持する予定')
+
+    const submit = wrapper.findAll('button').find(button => button.text() === wrapper.vm.$t('button.create'))!
+    await submit.trigger('click')
+    await flushPromises()
+
+    expect(scheduleApiMock.createPersonalSchedule).toHaveBeenCalledOnce()
+    expect((wrapper.get('[data-testid="title-input"]').element as HTMLInputElement).value).toBe('入力を保持する予定')
+    const form = wrapper.findComponent(BasicFieldsStub).props('form') as { startDate: Date }
+    expect([form.startDate.getFullYear(), form.startDate.getMonth() + 1, form.startDate.getDate()]).toEqual([2026, 8, 6])
+    expect(wrapper.emitted('saved')).toBeUndefined()
+    expect(wrapper.emitted('update:visible')).toBeUndefined()
+    expect(errorHandlerMock.handleApiError).toHaveBeenCalledOnce()
+  })
+
   it('[P2回帰] 保存API応答待ち中にスコープを変更しても、saved には変更前（実際に保存した）スコープが渡る', async () => {
     // createSchedule の解決を自分で制御できるようにする（応答待ちを再現するため）
     let resolveCreate: (value: unknown) => void = () => {}
@@ -148,7 +183,7 @@ describe('ScheduleEventForm: saved イベントのスコープ', () => {
 
     // 保存ボタンを押す（作成先はチームA＝team_t1 のまま）
     const buttons = wrapper.findAll('button')
-    const submitButton = buttons.find(b => b.text() === '作成')
+    const submitButton = buttons.find(b => b.text() === wrapper.vm.$t('button.create'))
     expect(submitButton).toBeTruthy()
     await submitButton!.trigger('click')
     await flushPromises()
@@ -247,6 +282,7 @@ describe('ScheduleEventForm: recurrence update scope', () => {
     scheduleApiMock.getMyScheduleDetail.mockReset()
     scheduleApiMock.updateSchedule.mockReset()
     scheduleApiMock.updatePersonalSchedule.mockReset()
+    previewApiMock.mockReset().mockResolvedValue({ data: { expectedScheduleState, activities: [] } })
   })
 
   it('offers only this and this-and-following choices before saving a recurring event', async () => {
@@ -270,9 +306,13 @@ describe('ScheduleEventForm: recurrence update scope', () => {
     await flushPromises()
 
     expect(scheduleApiMock.updateSchedule).toHaveBeenCalledTimes(1)
+    expect(previewApiMock).toHaveBeenCalledWith('/api/v1/teams/t1/schedules/42/activity-sync-preview', {
+      method: 'POST', body: { scheduleUpdate: expect.objectContaining({ title: 'Recurring meeting' }), updateScope },
+    })
     expect(scheduleApiMock.updateSchedule).toHaveBeenCalledWith('team', 't1', 42, expect.anything(), updateScope)
     expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).toMatchObject({ title: 'Recurring meeting' })
     expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).not.toHaveProperty('eventType')
+    expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).toHaveProperty('syncConfirmation', { expectedScheduleState, activities: [] })
     expect(wrapper.find('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(false)
   })
 
@@ -282,6 +322,7 @@ describe('ScheduleEventForm: recurrence update scope', () => {
     await wrapper.get('[data-testid="recurrence-update-cancel"]').trigger('click')
 
     expect(scheduleApiMock.updateSchedule).not.toHaveBeenCalled()
+    expect(previewApiMock).not.toHaveBeenCalled()
     expect(wrapper.find('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(false)
   })
 
@@ -317,6 +358,7 @@ describe('ScheduleEventForm: recurrence update scope', () => {
     await flushPromises()
 
     expect(scheduleApiMock.updatePersonalSchedule).toHaveBeenCalledWith(42, expect.objectContaining({ updateScope: 'THIS_AND_FOLLOWING' }))
+    expect(previewApiMock).not.toHaveBeenCalled()
   })
 
   it('updates a non-recurring event directly', async () => {
@@ -333,6 +375,145 @@ describe('ScheduleEventForm: recurrence update scope', () => {
 
     expect(wrapper.find('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(false)
     expect(scheduleApiMock.updateSchedule).toHaveBeenCalledTimes(1)
+    expect(previewApiMock).toHaveBeenCalledWith('/api/v1/teams/t1/schedules/42/activity-sync-preview', {
+      method: 'POST', body: { scheduleUpdate: expect.objectContaining({ title: 'One-time meeting' }), updateScope: undefined },
+    })
+    expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).toHaveProperty('syncConfirmation', { expectedScheduleState, activities: [] })
+  })
+
+  it.each(['team', 'organization'] as const)('%s の編集復元は跨日・端数・秒を保持しタイトル編集で時刻を変えない', async (scopeType) => {
+    scheduleApiMock.getSchedule.mockResolvedValue({ data: {
+      content: { title: '跨日予定' },
+      time: { startAt: '2026-10-15T23:07:30', endAt: '2026-10-16T01:08:45', allDay: false },
+    } })
+    scheduleApiMock.updateSchedule.mockResolvedValue({ data: {} })
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: { visible: false, scopeType, scopeId: 'scope-one', scheduleId: 42 },
+      global: { stubs: globalStubs },
+    })
+    await wrapper.setProps({ visible: true })
+    await flushPromises()
+    const fields = wrapper.findComponent(BasicFieldsStub)
+    expect(fields.props('form')).toMatchObject({ startTime: '23:07:30', endTime: '01:08:45' })
+    expect(fields.props('timeOptions')).toEqual(expect.arrayContaining([
+      { label: '23:07:30', value: '23:07:30' }, { label: '01:08:45', value: '01:08:45' },
+    ]))
+    await wrapper.get('[data-testid="title-input"]').setValue('本文以外は維持')
+    await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
+    await flushPromises()
+    expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).toMatchObject({
+      startAt: expect.stringContaining('2026-10-15T23:07:30'),
+      endAt: expect.stringContaining('2026-10-16T01:08:45'),
+    })
+  })
+
+  it('編集復元後のユーザーによる開始時刻変更は終了を1時間後へ自動調整する', async () => {
+    scheduleApiMock.getSchedule.mockResolvedValue({ data: {
+      content: { title: '跨日予定' },
+      time: { startAt: '2026-10-15T23:00:00', endAt: '2026-10-16T01:00:00', allDay: false },
+    } })
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: { visible: false, scopeType: 'team', scopeId: 't1', scheduleId: 42 },
+      global: { stubs: globalStubs },
+    })
+    await wrapper.setProps({ visible: true })
+    await flushPromises()
+    expect(wrapper.findComponent(BasicFieldsStub).props('form')).toMatchObject({ endTime: '01:00' })
+    await wrapper.get('[data-testid="start-time-input"]').setValue('23:15')
+    await flushPromises()
+    expect(wrapper.findComponent(BasicFieldsStub).props('form')).toMatchObject({ startTime: '23:15', endTime: '00:15' })
+    const form = wrapper.findComponent(BasicFieldsStub).props('form') as { endDate: Date }
+    expect([form.endDate.getFullYear(), form.endDate.getMonth(), form.endDate.getDate()]).toEqual([2026, 9, 16])
+  })
+
+  it('編集GET待機中は入力・更新を許可せず復元完了後の入力を保存する', async () => {
+    let resolveGet!: (value: { data: { content: { title: string }; time: Record<string, unknown> } }) => void
+    scheduleApiMock.getSchedule.mockReturnValue(new Promise(resolve => { resolveGet = resolve }))
+    scheduleApiMock.updateSchedule.mockResolvedValue({ data: {} })
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: { visible: false, scopeType: 'team', scopeId: 't1', scheduleId: 42 },
+      global: { stubs: globalStubs },
+    })
+    await wrapper.setProps({ visible: true })
+    await flushPromises()
+    expect(wrapper.find('[data-testid="title-input"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="schedule-submit"]').attributes('disabled')).toBeDefined()
+    await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
+    expect(previewApiMock).not.toHaveBeenCalled()
+    expect(scheduleApiMock.updateSchedule).not.toHaveBeenCalled()
+    resolveGet({ data: { content: { title: '読み込み済み' }, time: {} } })
+    await flushPromises()
+    await wrapper.get('[data-testid="title-input"]').setValue('復元後のユーザー入力')
+    await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
+    await flushPromises()
+    expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).toMatchObject({ title: '復元後のユーザー入力' })
+  })
+
+  it.each([
+    ['team', '2026-10-16T00:00:00'], ['organization', '2026-10-16T00:00:00'], ['personal', '2026-10-16T00:00:00'],
+    ['team', null], ['organization', null], ['personal', null],
+  ] as const)('%s の終日予定はタイトルだけ編集して排他的終了 %s を保持する', async (scope, endAt) => {
+    const response = { data: {
+      content: { title: '終日予定' },
+      time: { startAt: '2026-10-15T00:00:00', endAt, allDay: true },
+    } }
+    scheduleApiMock.getSchedule.mockResolvedValue(response)
+    scheduleApiMock.getMyScheduleDetail.mockResolvedValue(response)
+    scheduleApiMock.updateSchedule.mockResolvedValue({ data: {} })
+    scheduleApiMock.updatePersonalSchedule.mockResolvedValue({ data: {} })
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: { visible: false, scopeType: scope === 'personal' ? 'team' : scope, scopeId: 'scope-one', scheduleId: 42, isPersonal: scope === 'personal' },
+      global: { stubs: globalStubs },
+    })
+    await wrapper.setProps({ visible: true })
+    await flushPromises()
+    const form = wrapper.findComponent(BasicFieldsStub).props('form') as { endDate: Date | null }
+    if (endAt) expect(form.endDate?.getDate()).toBe(15)
+    else expect(form.endDate).toBeNull()
+    await wrapper.get('[data-testid="title-input"]').setValue('終了日は維持')
+    await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
+    await flushPromises()
+    const body = scope === 'personal'
+      ? scheduleApiMock.updatePersonalSchedule.mock.calls[0]?.[1]
+      : scheduleApiMock.updateSchedule.mock.calls[0]?.[3]
+    expect(body).toMatchObject({ startAt: expect.stringContaining('2026-10-15T00:00:00') })
+    if (endAt) expect(body.endAt).toEqual(expect.stringContaining(endAt))
+    else expect(body.endAt).toBeUndefined()
+  })
+
+  it('旧終日データの非midnight終了は活動の包含終了日を短縮しない', async () => {
+    scheduleApiMock.getSchedule.mockResolvedValue({ data: {
+      content: { title: '旧終日予定' },
+      time: { startAt: '2026-10-15T00:00:00', endAt: '2026-10-16T01:00:00', allDay: true },
+    } })
+    scheduleApiMock.updateSchedule.mockResolvedValue({ data: {} })
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: { visible: false, scopeType: 'team', scopeId: 't1', scheduleId: 42 },
+      global: { stubs: globalStubs },
+    })
+    await wrapper.setProps({ visible: true })
+    await flushPromises()
+    const form = wrapper.findComponent(BasicFieldsStub).props('form') as { endDate: Date }
+    expect(form.endDate.getDate()).toBe(16)
+    await wrapper.get('[data-testid="title-input"]').setValue('活動終了日は維持')
+    await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
+    await flushPromises()
+    expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).toMatchObject({ endAt: expect.stringContaining('2026-10-17T00:00:00') })
+  })
+
+  it('編集GET失敗時は未取得の予定を更新しない', async () => {
+    scheduleApiMock.getSchedule.mockRejectedValue(new Error('取得失敗'))
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: { visible: false, scopeType: 'team', scopeId: 't1', scheduleId: 42 },
+      global: { stubs: globalStubs },
+    })
+    await wrapper.setProps({ visible: true })
+    await flushPromises()
+    expect(wrapper.find('[data-testid="title-input"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="schedule-submit"]').attributes('disabled')).toBeDefined()
+    await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
+    expect(previewApiMock).not.toHaveBeenCalled()
+    expect(scheduleApiMock.updateSchedule).not.toHaveBeenCalled()
   })
 
   it('treats a shared child occurrence as recurring when only parentScheduleId is present', async () => {
@@ -369,5 +550,120 @@ describe('ScheduleEventForm: recurrence update scope', () => {
 
     expect(wrapper.find('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(true)
     expect(scheduleApiMock.updatePersonalSchedule).not.toHaveBeenCalled()
+  })
+})
+
+
+describe('ScheduleEventForm: 見出しと操作の翻訳（CMP-261017-1629）', () => {
+  beforeAll(async () => {
+    await Promise.all((['ja', 'en', 'zh', 'ko', 'es', 'de'] as const)
+      .map(locale => useNuxtApp().$i18n.loadLocaleMessages(locale)))
+  })
+  beforeEach(() => { setActivePinia(createPinia()) })
+
+  it.each([
+    { isPersonal: false, scheduleId: undefined, key: 'createEvent' },
+    { isPersonal: false, scheduleId: 42, key: 'editEvent' },
+    { isPersonal: true, scheduleId: undefined, key: 'addPersonal' },
+    { isPersonal: true, scheduleId: 42, key: 'editPersonal' },
+  ].flatMap(mode => (['ja', 'en', 'zh', 'ko', 'es', 'de'] as const)
+    .map(locale => ({ ...mode, locale }))))('$key/$localeが表示中切替する', async ({ key, locale: targetLocale, ...mode }) => {
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: { visible: false, scopeType: 'team', scopeId: 'team-a', ...mode },
+      global: { stubs: globalStubs },
+    })
+    for (const locale of [targetLocale === 'en' ? 'de' : 'en', targetLocale] as const) {
+      await wrapper.vm.$i18n.setLocale(locale)
+      await flushPromises()
+      const label = wrapper.vm.$t(`schedule.form.${key}`)
+      expect(label).not.toBe(`schedule.form.${key}`)
+      const formDialog = wrapper.findAllComponents(DialogStub)
+        .find(dialog => dialog.find('[data-testid="schedule-submit"]').exists())
+      expect(formDialog?.props('header')).toBe(label)
+      expect(wrapper.text()).toContain(wrapper.vm.$t('button.cancel'))
+      expect(wrapper.text()).toContain(wrapper.vm.$t(mode.scheduleId ? 'button.update' : 'button.create'))
+    }
+  })
+})
+
+describe('ScheduleEventForm: 代理出席設定の保存（CMP-261017-1726）', () => {
+  const ProxyCheckboxStub = defineComponent({
+    name: 'Checkbox',
+    props: { modelValue: Boolean, binary: Boolean, inputId: String },
+    emits: ['update:modelValue'],
+    setup(props, { emit }) {
+      return () => h('input', {
+        type: 'checkbox', id: props.inputId, checked: props.modelValue,
+        onChange: (event: Event) => emit('update:modelValue', (event.target as HTMLInputElement).checked),
+      })
+    },
+  })
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    scheduleApiMock.getSchedule.mockReset()
+    scheduleApiMock.getMyScheduleDetail.mockReset()
+    scheduleApiMock.updateSchedule.mockReset().mockResolvedValue({ data: {} })
+    scheduleApiMock.updatePersonalSchedule.mockReset().mockResolvedValue({ data: {} })
+    previewApiMock.mockReset().mockResolvedValue({ data: { expectedScheduleState, activities: [] } })
+  })
+
+  async function mountProxyEdit(scope: 'team' | 'organization' | 'personal') {
+    const response = { data: {
+      content: { title: '代理設定のある予定' },
+      time: {},
+      allowProxyAttendance: true,
+      isProxyAutoAccept: true,
+    } }
+    scheduleApiMock.getSchedule.mockResolvedValue(response)
+    scheduleApiMock.getMyScheduleDetail.mockResolvedValue(response)
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: { visible: false, scopeType: scope === 'personal' ? 'team' : scope, scopeId: 'scope-one', scheduleId: 42, isPersonal: scope === 'personal' },
+      global: { stubs: { ...globalStubs, Checkbox: ProxyCheckboxStub } },
+    })
+    await wrapper.setProps({ visible: true })
+    await flushPromises()
+    return wrapper
+  }
+
+  it.each(['team', 'organization'] as const)('%s の編集で復元した代理設定をタイトル変更後の更新にも保持する', async (scope) => {
+    const wrapper = await mountProxyEdit(scope)
+    expect((wrapper.get('#scheduleAllowProxy').element as HTMLInputElement).checked).toBe(true)
+    expect((wrapper.get('#scheduleAutoAccept').element as HTMLInputElement).checked).toBe(true)
+
+    await wrapper.get('[data-testid="title-input"]').setValue('代理設定を保持')
+    await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
+    await flushPromises()
+
+    expect(scheduleApiMock.updateSchedule).toHaveBeenCalledWith(scope, 'scope-one', 42, expect.objectContaining({
+      title: '代理設定を保持', allow_proxy_attendance: true, is_proxy_auto_accept: true,
+    }), undefined)
+  })
+
+  it.each(['team', 'organization'] as const)('%s の代理許可をOFFにすると自動受諾もfalseで更新する', async (scope) => {
+    const wrapper = await mountProxyEdit(scope)
+    await wrapper.get('#scheduleAllowProxy').setValue(false)
+    expect(wrapper.find('#scheduleAutoAccept').exists()).toBe(false)
+
+    await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
+    await flushPromises()
+
+    expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).toMatchObject({
+      allow_proxy_attendance: false, is_proxy_auto_accept: false,
+    })
+  })
+
+  it('個人予定の編集には代理設定を表示・送信しない', async () => {
+    const wrapper = await mountProxyEdit('personal')
+    expect(wrapper.find('#scheduleAllowProxy').exists()).toBe(false)
+    expect(wrapper.find('#scheduleAutoAccept').exists()).toBe(false)
+
+    await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
+    await flushPromises()
+
+    expect(scheduleApiMock.updatePersonalSchedule).toHaveBeenCalledTimes(1)
+    const body = scheduleApiMock.updatePersonalSchedule.mock.calls[0]?.[1]
+    expect(body).not.toHaveProperty('allow_proxy_attendance')
+    expect(body).not.toHaveProperty('is_proxy_auto_accept')
   })
 })

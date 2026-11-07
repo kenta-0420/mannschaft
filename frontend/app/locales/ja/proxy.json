@@ -16,7 +16,8 @@
         "pending": "承認待ち",
         "active": "有効",
         "expired": "期限切れ",
-        "revoked": "撤回済み"
+        "revoked": "撤回済み",
+        "scheduled": "適用開始前"
       },
       "effectiveFrom": "有効期間（開始）",
       "effectiveUntil": "有効期間（終了）",
@@ -229,6 +230,25 @@
         "not_allowed": "このスケジュール/イベントでは代理出席が許可されていません",
         "rate_limit": "操作が多すぎます。1分後に再試行してください"
       }
+    },
+    "admin": {
+      "consentsTitle": "代理入力同意書管理",
+      "description": "自組合の代理入力同意書の承認・撤回と代理入力履歴を確認します。",
+      "organization": "管理組合",
+      "proxyUserId": "代理人ID",
+      "status": "状態",
+      "actions": "操作",
+      "approve": "承認",
+      "revoke": "撤回",
+      "approveConfirm": "同意書 #{id} を承認します。確認して続行してください。",
+      "approved": "同意書を承認しました。",
+      "revoked": "同意書を撤回しました。",
+      "selfApprovalDenied": "自分が代理人の同意書は承認できません。",
+      "noConsents": "同意書がありません。",
+      "noRecords": "代理入力履歴がありません。",
+      "none": "なし",
+      "recordId": "履歴ID",
+      "targetType": "対象種別"
     }
   }
 }

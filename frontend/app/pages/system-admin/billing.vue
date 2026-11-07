@@ -19,7 +19,7 @@ import type {
   BillingPagedContractResponse,
 } from '~/composables/useBillingApi'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const { t } = useI18n()
 const notification = useNotification()

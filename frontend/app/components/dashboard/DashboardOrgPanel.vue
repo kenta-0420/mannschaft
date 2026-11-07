@@ -7,6 +7,9 @@
  * - store.selectedOrgId のダッシュボードを getOrganizationDashboard で取得し表示。
  */
 import type { OrgDashboardResponse } from '~/types/dashboard-scope'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useScopeDashboardStore } from '~/stores/useScopeDashboardStore'
+import { useDashboardApi } from '~/composables/useDashboardApi'
 
 const store = useScopeDashboardStore()
 const { getOrganizationDashboard } = useDashboardApi()
@@ -14,8 +17,12 @@ const { getOrganizationDashboard } = useDashboardApi()
 const data = ref<OrgDashboardResponse | null>(null)
 const loading = ref(false)
 const errorKey = ref<string | null>(null)
+// 親refreshで子Widgetが再生成されても、不可視と確定したfeedを復活させない。
+const hiddenAnnouncementIds = ref(new Set<number>())
+const visibleAnnouncements = computed(() => data.value?.orgNotices?.filter(item => !hiddenAnnouncementIds.value.has(Number(item.id))) ?? [])
 
 const selectedOrgId = computed(() => store.selectedOrgId)
+const announcementScopeId = computed(() => store.tabPages.ORGANIZATION?.items.find(item => item.slug === selectedOrgId.value)?.scopeId)
 
 /**
  * 選択中 ID が「まだ slug へ移行されていない内部 BIGINT」かどうかを判定する。
@@ -35,6 +42,8 @@ function isUnmigratedScopeId(id: string): boolean {
     // タグ未ロード（loadTabs 前）。BIGINT 文字列なら移行待ち、slug なら即ロード。
     return /^\d+$/.test(id)
   }
+  // 正規の公開slugが別組織の内部IDと同値でも、公開slugの一致を優先する。
+  if (items.some(item => item.slug === id)) return false
   return items.some(item => item.scopeId === id && item.slug !== id)
 }
 
@@ -60,20 +69,36 @@ const hasResolvedSlug = computed(() =>
  */
 const lastLoadedId = ref<string | null>(null)
 
+const loadedScopeId = ref<string | null>(null)
+const auth = useAuthStore()
+const featureVisibility = useScopeFeatureVisibility(
+  "organization", selectedOrgId,
+  () => loadedScopeId.value === selectedOrgId.value ? data.value?.viewerRole : null,
+  () => !store.isAdminLensOn("ORGANIZATION", selectedOrgId.value ?? ""),
+)
+
+let loadSequence = 0
+
 async function load(orgId: string) {
+  loadedScopeId.value = null
+  data.value = null
+  const request = ++loadSequence
   lastLoadedId.value = orgId
   loading.value = true
   errorKey.value = null
   try {
     const res = await getOrganizationDashboard(orgId)
+    if (request !== loadSequence) return
     data.value = res.data
+    loadedScopeId.value = orgId
   } catch (e) {
+    if (request !== loadSequence) return
     // 握り潰さない。i18n キーを保持して UI に表示する。
     console.error('[DashboardOrgPanel] getOrganizationDashboard failed', e)
     errorKey.value = 'swipeWidgets.actionRequired.loadError'
     data.value = null
   } finally {
-    loading.value = false
+    if (request === loadSequence) loading.value = false
   }
 }
 
@@ -102,12 +127,14 @@ onMounted(async () => {
 function resolveSelectedOrg() {
   const id = selectedOrgId.value
   if (id === null) {
+    ++loadSequence
     data.value = null
     loading.value = false
     lastLoadedId.value = null
     return
   }
   if (isUnmigratedScopeId(id)) {
+    ++loadSequence
     // 内部 BIGINT（移行前）: onMounted の loadTabs が slug に張り替えるまでスピナーを
     // 表示し、空白状態（loading=false/data=null/errorKey=null かつ非 null id）を防ぐ。
     loading.value = true
@@ -122,8 +149,12 @@ function resolveSelectedOrg() {
 watch(
   [selectedOrgId, () => store.tabPages.ORGANIZATION],
   () => resolveSelectedOrg(),
-  { immediate: true },
+  { immediate: true, flush: 'sync' },
 )
+watch(() => auth.user?.id, () => {
+  lastLoadedId.value = null
+  resolveSelectedOrg()
+}, { flush: 'sync' })
 </script>
 
 <template>
@@ -153,20 +184,26 @@ watch(
       :message="$t('scopeDashboard.tagBar.empty')"
     />
 
-    <!-- 管理者レンズ ON: 管理者グリッドへシート差替（§1.2）。実 slug 確定時のみ（検分🟠）。 -->
-    <DashboardAdminWidgetGrid
-      v-else-if="data && hasResolvedSlug && selectedOrgId && store.isAdminLensOn('ORGANIZATION', selectedOrgId)"
-      scope-type="ORGANIZATION"
-      :slug="selectedOrgId"
-    />
-
-    <!-- 既定: メンバー向け厳選 8 ウィジェット（F22.1 既存挙動・差替前）。 -->
-    <DashboardSwipeWidgetGrid
-      v-else-if="data"
-      scope-type="ORGANIZATION"
-      :scope-id="selectedOrgId"
-      :data="data"
-    />
+    <template v-else-if="data">
+      <DashboardAnnouncements
+        v-if="featureVisibility.ready.value && featureVisibility.isVisible('announcements') && data.orgNotices != null && announcementScopeId && selectedOrgId"
+        :key="selectedOrgId"
+        scope-type="ORGANIZATION"
+        :scope-id="announcementScopeId"
+        :scope-slug="selectedOrgId"
+        :items="visibleAnnouncements"
+        @refresh="load(selectedOrgId)"
+        @unavailable="hiddenAnnouncementIds.add($event)"
+      />
+      <DashboardAdminWidgetGrid
+        v-if="hasResolvedSlug && selectedOrgId && store.isAdminLensOn('ORGANIZATION', selectedOrgId)"
+        scope-type="ORGANIZATION"
+        :slug="selectedOrgId"
+      />
+      <DashboardErrorState v-else-if="featureVisibility.error.value" :error="featureVisibility.error.value" @retry="featureVisibility.refresh(true)" />
+      <PageLoading v-else-if="!featureVisibility.ready.value" />
+      <DashboardSwipeWidgetGrid v-else :is-feature-visible="featureVisibility.isVisible" scope-type="ORGANIZATION" :scope-id="selectedOrgId" :numeric-scope-id="announcementScopeId" :data="data" />
+    </template>
 
     <!--
       最終フォールバック（解決待ち）。

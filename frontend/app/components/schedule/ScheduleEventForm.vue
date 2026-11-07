@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { parseWallClockInTz } from '~/utils/wallClock'
 import dayjs from 'dayjs'
 import type { RecurrenceEndType, RecurrenceType, ReminderFormEntry, ScheduleEventFormState, TimeHistoryEntry } from './event-form/types'
 import type { ScheduleTargetMode } from '~/types/schedule'
@@ -86,9 +87,14 @@ const { userTimezone, buildOffsetDateTimeStr } = useDatetime()
 const { t } = useI18n()
 const { googleSyncEnabled, fetchPersonalSyncStatus } = useGoogleCalendarApi()
 
+const activitySync = useActivityScheduleSync()
 const submitting = ref(false)
 const fieldErrors = ref<Record<string, string>>({})
 const isEdit = computed(() => !!props.scheduleId)
+const editLoading = ref(false)
+const editLoaded = ref(false)
+let editLoadGeneration = 0
+onBeforeUnmount(() => { editLoadGeneration++ })
 const targetMode = ref<ScheduleTargetMode>('ALL_MEMBERS')
 const targetUserIds = ref<number[]>([])
 const targetValidationError = ref<string | null>(null)
@@ -96,11 +102,21 @@ const loadedRecurringEvent = ref(false)
 const recurrenceUpdateScopeDialogVisible = ref(false)
 
 // 15分刻みの時刻オプション生成（00:00〜23:45）
-const timeOptions = Array.from({ length: 96 }, (_, i) => {
+const quarterHourOptions = Array.from({ length: 96 }, (_, i) => {
   const h = Math.floor(i / 4)
   const m = (i % 4) * 15
   const v = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
   return { label: v, value: v }
+})
+// 保存済みの端数・秒付き時刻も選択状態で表示し、送信値に保持する。
+const timeOptions = computed(() => {
+  const options = [...quarterHourOptions]
+  for (const value of [form.value.startTime, form.value.endTime]) {
+    if (value && !options.some(option => option.value === value)) {
+      options.push({ label: value, value })
+    }
+  }
+  return options.sort((a, b) => a.value.localeCompare(b.value))
 })
 
 // 入力履歴（localStorage）
@@ -204,6 +220,7 @@ watch(
 watch(
   () => form.value.startDate,
   (newDate) => {
+    if (suppressEndTimeAutoAdjust) return
     if (!newDate) return
     if (!form.value.endDate || form.value.endDate < newDate) {
       form.value.endDate = new Date(newDate)
@@ -211,158 +228,38 @@ watch(
   },
 )
 
-// ダイアログが開くたびに Google 連携ステータスを取得する
-watch(
-  () => props.visible,
-  (v) => {
-    if (v) fetchPersonalSyncStatus()
-  },
-)
+function savedTimeString(date: Date): string {
+  return date.toTimeString().slice(0, date.getSeconds() ? 8 : 5)
+}
 
-watch(
-  () => [props.visible, props.scheduleId],
-  async ([visible, scheduleId]) => {
-    if (visible && scheduleId) {
-      try {
-        const res = effectiveScope.value.isPersonal
-          ? await scheduleApi.getMyScheduleDetail(scheduleId as number)
-          : await scheduleApi.getSchedule(effectiveScope.value.scopeType, effectiveScope.value.scopeId, scheduleId as number)
-        const data = (res as { data: Record<string, unknown> }).data as Record<string, unknown>
-        if (effectiveScope.value.isPersonal) {
-          const content = (data.content as Record<string, unknown>) ?? {}
-          const time = (data.time as Record<string, unknown>) ?? {}
-          form.value.title = (content.title as string) ?? ''
-          form.value.description = (content.description as string) ?? ''
-          form.value.location = (content.location as string) ?? ''
-          form.value.allDay = (time.allDay as boolean) ?? false
-          form.value.attendanceRequired = false
-          form.value.allowProxyAttendance = false
-          form.value.isProxyAutoAccept = false
-          if (time.startAt) {
-            const start = new Date(time.startAt as string)
-            form.value.startDate = start
-            form.value.startTime = start.toTimeString().slice(0, 5)
-          }
-          if (time.endAt) {
-            const end = new Date(time.endAt as string)
-            form.value.endDate = end
-            form.value.endTime = end.toTimeString().slice(0, 5)
-          }
-          // 個人予定: detailedReminders からリマインダーフォーム状態を復元する
-          const detailedReminders = (data.detailedReminders as Array<Record<string, unknown>> | null) ?? []
-          if (detailedReminders.length > 0) {
-            form.value.reminders = detailedReminders.map(reminderResponseToFormEntry)
-          } else {
-            // detailedReminders が未 populate の場合は後方互換の reminders(number[]) から相対リマインダーを復元
-            const legacyReminders = (data.reminders as number[] | null) ?? []
-            form.value.reminders = legacyReminders.map((minutes) => ({
-              key: `rem-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-              kind: 'RELATIVE' as const,
-              relativeValue: minutes,
-              relativeUnit: 'MINUTES' as const,
-              absoluteAt: null,
-            }))
-          }
-          // 個人予定: status.recurrenceRule から繰り返し設定をフォームに復元する
-          const status = (data.status as Record<string, unknown>) ?? {}
-          const recurrenceRule = status.recurrenceRule as Record<string, unknown> | null
-          loadedRecurringEvent.value = recurrenceRule != null || status.parentScheduleId != null
-          if (recurrenceRule && typeof recurrenceRule === 'object') {
-            form.value.recurrence = true
-            form.value.recurrenceType = ((recurrenceRule.type as string) ?? 'WEEKLY') as RecurrenceType
-            form.value.recurrenceInterval = (recurrenceRule.interval as number) ?? 1
-            form.value.recurrenceDaysOfWeek = (recurrenceRule.daysOfWeek as string[]) ?? []
-            form.value.recurrenceEndType = ((recurrenceRule.endType as string) ?? 'NEVER') as RecurrenceEndType
-            if (recurrenceRule.endDate) {
-              form.value.recurrenceEndDate = new Date(recurrenceRule.endDate as string)
-            }
-            if (recurrenceRule.count != null) {
-              form.value.recurrenceCount = recurrenceRule.count as number
-            }
-          } else {
-            form.value.recurrence = false
-          }
-        }
-        else {
-          const content = (data.content as Record<string, unknown>) ?? {}
-          const time = (data.time as Record<string, unknown>) ?? {}
-          form.value.title = (content.title as string) ?? ''
-          form.value.description = (content.description as string) ?? ''
-          form.value.location = (content.location as string) ?? ''
-          form.value.allDay = (time.allDay as boolean) ?? false
-          form.value.attendanceRequired = (content.attendanceRequired as boolean) ?? false
-          form.value.allowProxyAttendance = (data.allowProxyAttendance as boolean) ?? false
-          form.value.isProxyAutoAccept = (data.isProxyAutoAccept as boolean) ?? false
-          form.value.teamBreakdownEnabled = (data.teamBreakdownEnabled as boolean) ?? false
-          targetMode.value = (data.targetMode as ScheduleTargetMode) ?? 'ALL_MEMBERS'
-          targetUserIds.value = ((data.targets as Array<{ userId: number }> | undefined) ?? [])
-            .map(target => target.userId)
-          if (time.startAt) {
-            const start = new Date(time.startAt as string)
-            form.value.startDate = start
-            form.value.startTime = start.toTimeString().slice(0, 5)
-          }
-          if (time.endAt) {
-            const end = new Date(time.endAt as string)
-            form.value.endDate = end
-            form.value.endTime = end.toTimeString().slice(0, 5)
-          }
-          // 共有予定: reminders からリマインダーフォーム状態を復元する
-          const reminders = (data.reminders as Array<Record<string, unknown>> | null) ?? []
-          form.value.reminders = reminders.map(reminderResponseToFormEntry)
-          // 共有予定: scheduledTasks の PENDING タスクを scheduledSurvey / scheduledAttendance に変換する
-          const scheduledTasks = (data.scheduledTasks as Array<Record<string, unknown>> | null) ?? []
-          const recurrence = (data.recurrenceInfo as Record<string, unknown>) ?? {}
-          loadedRecurringEvent.value = recurrence.recurrenceRule != null || recurrence.parentScheduleId != null
-          let recurrenceRule: Record<string, unknown> | null = null
-          if (typeof recurrence.recurrenceRule === 'string') {
-            try {
-              const parsed: unknown = JSON.parse(recurrence.recurrenceRule)
-              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-                recurrenceRule = parsed as Record<string, unknown>
-              }
-            } catch {
-              // 旧データに不正なルールがあっても詳細画面の表示は継続する。
-            }
-          } else if (recurrence.recurrenceRule && typeof recurrence.recurrenceRule === 'object') {
-            recurrenceRule = recurrence.recurrenceRule as Record<string, unknown>
-          }
-          form.value.recurrence = recurrenceRule != null
-          if (recurrenceRule) {
-            form.value.recurrenceType = ((recurrenceRule.type as string) ?? 'WEEKLY') as RecurrenceType
-            form.value.recurrenceInterval = (recurrenceRule.interval as number) ?? 1
-            form.value.recurrenceDaysOfWeek = (recurrenceRule.daysOfWeek as string[]) ?? []
-            form.value.recurrenceEndType = ((recurrenceRule.endType as string) ?? 'NEVER') as RecurrenceEndType
-            if (recurrenceRule.endDate) form.value.recurrenceEndDate = new Date(recurrenceRule.endDate as string)
-            if (recurrenceRule.count != null) form.value.recurrenceCount = recurrenceRule.count as number
-          }
-          for (const task of scheduledTasks) {
-            if (task.status !== 'PENDING') continue
-            if (task.taskType === 'SURVEY') {
-              form.value.scheduledSurvey = {
-                ...form.value.scheduledSurvey,
-                enabled: true,
-                scheduledAt: task.scheduledAt ? new Date(task.scheduledAt as string) : null,
-              }
-            } else if (task.taskType === 'ATTENDANCE') {
-              form.value.scheduledAttendance = {
-                ...form.value.scheduledAttendance,
-                enabled: true,
-                scheduledAt: task.scheduledAt ? new Date(task.scheduledAt as string) : null,
-              }
-            }
-          }
-        }
-      } catch {
-        notification.error(t('schedule.error_load_event'))
-      }
-    } else if (visible && !scheduleId) {
-      loadedRecurringEvent.value = false
-      resetForm()
-      applyInitialDateTime()
-    }
-  },
-)
+/** 個人・共有とも、API日時をユーザーTZの壁時計へ戻してからピッカーへ渡す。 */
+function applySavedDateTime(time: Record<string, unknown>) {
+  const start = time.startAt ? toUserZonedParts(time.startAt as string) : null
+  if (start) {
+    form.value.startDate = start.date
+    form.value.startTime = start.time
+  }
+  const end = time.endAt ? toUserZonedParts(time.endAt as string) : null
+  form.value.endDate = end ? savedEndDate(end.date, form.value.allDay) : null
+  if (end) form.value.endTime = end.time
+}
+
+// APIの終日終了は排他的、日付ピッカーの終了日は当日を含む。
+function savedEndDate(date: Date, allDay: boolean): Date {
+  const end = new Date(date)
+  if (allDay && end.getHours() === 0 && end.getMinutes() === 0 && end.getSeconds() === 0 && end.getMilliseconds() === 0) {
+    end.setDate(end.getDate() - 1)
+  }
+  return end
+}
+
+function buildScheduleDateTime(date: Date | null, time: string): string | null {
+  if (!date || time.split(':').length !== 3) return buildOffsetDateTimeStr(date, time)
+  const [hours = 0, minutes = 0, seconds = 0] = time.split(':').map(Number)
+  const wallClock = new Date(date)
+  wallClock.setHours(hours, minutes, seconds, 0)
+  return buildOffsetDateTimeStr(wallClock)
+}
 
 /**
  * ISO 8601 文字列を「ユーザー設定 TZ における壁時計」として解釈し、
@@ -375,10 +272,13 @@ watch(
 function toUserZonedParts(iso: string): { date: Date; time: string } | null {
   const parsed = dayjs(iso)
   if (!parsed.isValid()) return null
-  const z = parsed.tz(userTimezone.value)
+  // オフセット無しの旧API値はユーザーTZの壁時計。端末TZで解釈してから変換しない。
+  const hasOffset = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(iso)
+  const z = hasOffset ? parsed.tz(userTimezone.value) : parseWallClockInTz(iso, userTimezone.value)
+  const date = new Date(z.year(), z.month(), z.date(), z.hour(), z.minute(), z.second(), z.millisecond())
   return {
-    date: new Date(z.year(), z.month(), z.date(), z.hour(), z.minute(), 0, 0),
-    time: z.format('HH:mm'),
+    date,
+    time: savedTimeString(date),
   }
 }
 
@@ -408,7 +308,7 @@ function applyDefaultEndOneHourAfter(startDate: Date, startTime: string) {
 /**
  * 作成ダイアログを開くときの初期日時をフォームへ適用する（F03.19 §6.6.5）。
  * 優先順位: `initialStartAt`/`initialEndAt`（時刻付き）> `initialDate`（日付のみ・従来挙動）。
- * `initialDate` 経路の挙動は一切変更していない（AC-22c）。
+ * 日付のみの値はピッカー用の壁時計として組み立て、UTC解釈による前日ずれを防ぐ。
  */
 function applyInitialDateTime() {
   if (props.initialStartAt) {
@@ -434,8 +334,9 @@ function applyInitialDateTime() {
     }
   }
   if (props.initialDate) {
-    form.value.startDate = new Date(props.initialDate)
-    form.value.endDate = new Date(props.initialDate)
+    const [year, month, date] = props.initialDate.split('-').map(Number)
+    form.value.startDate = new Date(year!, month! - 1, date!)
+    form.value.endDate = new Date(year!, month! - 1, date!)
   }
 }
 
@@ -533,6 +434,7 @@ function validateScheduledInputs(): string | null {
 }
 
 async function submit(updateScope?: 'THIS_ONLY' | 'THIS_AND_FOLLOWING') {
+  if (isEdit.value && !editLoaded.value) return
   if (!form.value.title.trim()) {
     fieldErrors.value = { title: t('schedule.error_title_required') }
     return
@@ -558,14 +460,14 @@ async function submit(updateScope?: 'THIS_ONLY' | 'THIS_AND_FOLLOWING') {
     description: form.value.description.trim() || undefined,
     location: form.value.location.trim() || undefined,
     allDay: form.value.allDay,
-    startAt: buildOffsetDateTimeStr(form.value.startDate, form.value.allDay ? '' : form.value.startTime) ?? undefined,
+    startAt: buildScheduleDateTime(form.value.startDate, form.value.allDay ? '' : form.value.startTime) ?? undefined,
     endAt: (() => {
       if (form.value.allDay && form.value.endDate) {
         const d = new Date(form.value.endDate)
         d.setDate(d.getDate() + 1)
         return buildOffsetDateTimeStr(d, '') ?? undefined
       }
-      return buildOffsetDateTimeStr(form.value.endDate, form.value.allDay ? '' : form.value.endTime) ?? undefined
+      return buildScheduleDateTime(form.value.endDate, form.value.allDay ? '' : form.value.endTime) ?? undefined
     })(),
   }
   if (effectiveScope.value.isPersonal) {
@@ -573,10 +475,8 @@ async function submit(updateScope?: 'THIS_ONLY' | 'THIS_AND_FOLLOWING') {
   } else {
     if (!isEdit.value) body.eventType = 'OTHER'
     body.attendanceRequired = form.value.attendanceRequired
-    if (!isEdit.value) {
-      body.allow_proxy_attendance = form.value.allowProxyAttendance
-      body.is_proxy_auto_accept = form.value.allowProxyAttendance ? form.value.isProxyAutoAccept : false
-    }
+    body.allow_proxy_attendance = form.value.allowProxyAttendance
+    body.is_proxy_auto_accept = form.value.allowProxyAttendance ? form.value.isProxyAutoAccept : false
     body.targetMode = targetMode.value
     body.targetUserIds = targetMode.value === 'SELECTED_MEMBERS' ? targetUserIds.value : []
     // F03.1 (B) チーム別内訳トグルは組織スコープ + 出欠ありのときのみ送る
@@ -681,7 +581,9 @@ async function submit(updateScope?: 'THIS_ONLY' | 'THIS_AND_FOLLOWING') {
       }
     } else {
       if (isEdit.value && props.scheduleId) {
-        await scheduleApi.updateSchedule(savedScope.scopeType, savedScope.scopeId, props.scheduleId, body, updateScope)
+        const confirmation = await activitySync.confirm(savedScope.scopeType, savedScope.scopeId, props.scheduleId, body, updateScope)
+        if (confirmation === null) return
+        await scheduleApi.updateSchedule(savedScope.scopeType, savedScope.scopeId, props.scheduleId, { ...body, syncConfirmation: confirmation }, updateScope)
       } else {
         await scheduleApi.createSchedule(savedScope.scopeType, savedScope.scopeId, body)
       }
@@ -759,19 +661,179 @@ function close() {
   recurrenceUpdateScopeDialogVisible.value = false
   emit('update:visible', false)
 }
+// 初回の遅延mountでも開く処理を実行する。状態・watchの定義後に登録する。
+// ダイアログが開くたびに Google 連携ステータスを取得する
+watch(
+  () => props.visible,
+  (v) => {
+    if (v) fetchPersonalSyncStatus()
+  },
+  { immediate: true },
+)
+// 初回の遅延mountでも開く処理を実行する。状態・watchの定義後に登録する。
+watch(
+  () => [props.visible, props.scheduleId],
+  async ([visible, scheduleId]) => {
+    const generation = ++editLoadGeneration
+    editLoaded.value = false
+    editLoading.value = false
+    suppressEndTimeAutoAdjust = false
+    if (visible && scheduleId) {
+      editLoading.value = true
+      let restored = false
+      try {
+        const res = effectiveScope.value.isPersonal
+          ? await scheduleApi.getMyScheduleDetail(scheduleId as number)
+          : await scheduleApi.getSchedule(effectiveScope.value.scopeType, effectiveScope.value.scopeId, scheduleId as number)
+        if (generation !== editLoadGeneration) return
+        const data = (res as { data: Record<string, unknown> }).data as Record<string, unknown>
+        suppressEndTimeAutoAdjust = true
+        if (effectiveScope.value.isPersonal) {
+          const content = (data.content as Record<string, unknown>) ?? {}
+          const time = (data.time as Record<string, unknown>) ?? {}
+          form.value.title = (content.title as string) ?? ''
+          form.value.description = (content.description as string) ?? ''
+          form.value.location = (content.location as string) ?? ''
+          form.value.allDay = (time.allDay as boolean) ?? false
+          form.value.attendanceRequired = false
+          form.value.allowProxyAttendance = false
+          form.value.isProxyAutoAccept = false
+          applySavedDateTime(time)
+          // 個人予定: detailedReminders からリマインダーフォーム状態を復元する
+          const detailedReminders = (data.detailedReminders as Array<Record<string, unknown>> | null) ?? []
+          if (detailedReminders.length > 0) {
+            form.value.reminders = detailedReminders.map(reminderResponseToFormEntry)
+          } else {
+            // detailedReminders が未 populate の場合は後方互換の reminders(number[]) から相対リマインダーを復元
+            const legacyReminders = (data.reminders as number[] | null) ?? []
+            form.value.reminders = legacyReminders.map((minutes) => ({
+              key: `rem-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              kind: 'RELATIVE' as const,
+              relativeValue: minutes,
+              relativeUnit: 'MINUTES' as const,
+              absoluteAt: null,
+            }))
+          }
+          // 個人予定: status.recurrenceRule から繰り返し設定をフォームに復元する
+          const status = (data.status as Record<string, unknown>) ?? {}
+          const recurrenceRule = status.recurrenceRule as Record<string, unknown> | null
+          loadedRecurringEvent.value = recurrenceRule != null || status.parentScheduleId != null
+          if (recurrenceRule && typeof recurrenceRule === 'object') {
+            form.value.recurrence = true
+            form.value.recurrenceType = ((recurrenceRule.type as string) ?? 'WEEKLY') as RecurrenceType
+            form.value.recurrenceInterval = (recurrenceRule.interval as number) ?? 1
+            form.value.recurrenceDaysOfWeek = (recurrenceRule.daysOfWeek as string[]) ?? []
+            form.value.recurrenceEndType = ((recurrenceRule.endType as string) ?? 'NEVER') as RecurrenceEndType
+            if (recurrenceRule.endDate) {
+              form.value.recurrenceEndDate = new Date(recurrenceRule.endDate as string)
+            }
+            if (recurrenceRule.count != null) {
+              form.value.recurrenceCount = recurrenceRule.count as number
+            }
+          } else {
+            form.value.recurrence = false
+          }
+        }
+        else {
+          const content = (data.content as Record<string, unknown>) ?? {}
+          const time = (data.time as Record<string, unknown>) ?? {}
+          form.value.title = (content.title as string) ?? ''
+          form.value.description = (content.description as string) ?? ''
+          form.value.location = (content.location as string) ?? ''
+          form.value.allDay = (time.allDay as boolean) ?? false
+          form.value.attendanceRequired = (content.attendanceRequired as boolean) ?? false
+          form.value.allowProxyAttendance = (data.allowProxyAttendance as boolean) ?? false
+          form.value.isProxyAutoAccept = (data.isProxyAutoAccept as boolean) ?? false
+          form.value.teamBreakdownEnabled = (data.teamBreakdownEnabled as boolean) ?? false
+          targetMode.value = (data.targetMode as ScheduleTargetMode) ?? 'ALL_MEMBERS'
+          targetUserIds.value = ((data.targets as Array<{ userId: number }> | undefined) ?? [])
+            .map(target => target.userId)
+          applySavedDateTime(time)
+          // 共有予定: reminders からリマインダーフォーム状態を復元する
+          const reminders = (data.reminders as Array<Record<string, unknown>> | null) ?? []
+          form.value.reminders = reminders.map(reminderResponseToFormEntry)
+          // 共有予定: scheduledTasks の PENDING タスクを scheduledSurvey / scheduledAttendance に変換する
+          const scheduledTasks = (data.scheduledTasks as Array<Record<string, unknown>> | null) ?? []
+          const recurrence = (data.recurrenceInfo as Record<string, unknown>) ?? {}
+          loadedRecurringEvent.value = recurrence.recurrenceRule != null || recurrence.parentScheduleId != null
+          let recurrenceRule: Record<string, unknown> | null = null
+          if (typeof recurrence.recurrenceRule === 'string') {
+            try {
+              const parsed: unknown = JSON.parse(recurrence.recurrenceRule)
+              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                recurrenceRule = parsed as Record<string, unknown>
+              }
+            } catch {
+              // 旧データに不正なルールがあっても詳細画面の表示は継続する。
+            }
+          } else if (recurrence.recurrenceRule && typeof recurrence.recurrenceRule === 'object') {
+            recurrenceRule = recurrence.recurrenceRule as Record<string, unknown>
+          }
+          form.value.recurrence = recurrenceRule != null
+          if (recurrenceRule) {
+            form.value.recurrenceType = ((recurrenceRule.type as string) ?? 'WEEKLY') as RecurrenceType
+            form.value.recurrenceInterval = (recurrenceRule.interval as number) ?? 1
+            form.value.recurrenceDaysOfWeek = (recurrenceRule.daysOfWeek as string[]) ?? []
+            form.value.recurrenceEndType = ((recurrenceRule.endType as string) ?? 'NEVER') as RecurrenceEndType
+            if (recurrenceRule.endDate) form.value.recurrenceEndDate = new Date(recurrenceRule.endDate as string)
+            if (recurrenceRule.count != null) form.value.recurrenceCount = recurrenceRule.count as number
+          }
+          for (const task of scheduledTasks) {
+            if (task.status !== 'PENDING') continue
+            if (task.taskType === 'SURVEY') {
+              form.value.scheduledSurvey = {
+                ...form.value.scheduledSurvey,
+                enabled: true,
+                scheduledAt: task.scheduledAt ? new Date(task.scheduledAt as string) : null,
+              }
+            } else if (task.taskType === 'ATTENDANCE') {
+              form.value.scheduledAttendance = {
+                ...form.value.scheduledAttendance,
+                enabled: true,
+                scheduledAt: task.scheduledAt ? new Date(task.scheduledAt as string) : null,
+              }
+            }
+          }
+        }
+        restored = true
+      } catch {
+        if (generation === editLoadGeneration) notification.error(t('schedule.error_load_event'))
+      } finally {
+        await nextTick()
+        if (generation === editLoadGeneration) {
+          suppressEndTimeAutoAdjust = false
+          editLoaded.value = restored
+          editLoading.value = false
+        }
+      }
+    } else if (visible && !scheduleId) {
+      loadedRecurringEvent.value = false
+      resetForm()
+      applyInitialDateTime()
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
+  <ActivityScheduleSyncDialog
+    v-model:visible="activitySync.visible.value"
+    :preview="activitySync.preview.value"
+    @apply="activitySync.apply"
+    @schedule-only="activitySync.scheduleOnly"
+    @cancel="activitySync.cancel"
+  />
   <Dialog
     :visible="visible"
     :header="
       effectiveScope.isPersonal
         ? isEdit
-          ? '予定を編集'
-          : '予定を追加'
+          ? t('schedule.form.editPersonal')
+          : t('schedule.form.addPersonal')
         : isEdit
-          ? 'イベントを編集'
-          : 'イベントを作成'
+          ? t('schedule.form.editEvent')
+          : t('schedule.form.createEvent')
     "
     :style="{ width: '500px' }"
     class="[&_.p-dialog-close-button]:min-h-11 [&_.p-dialog-close-button]:min-w-11"
@@ -779,7 +841,8 @@ function close() {
     @update:visible="close"
     @hide="resetForm"
   >
-    <div class="flex flex-col gap-4">
+    <PageLoading v-if="editLoading" data-testid="schedule-edit-loading" />
+    <div v-else-if="!isEdit || editLoaded" class="flex flex-col gap-4">
       <!-- スコープ選択（複数スコープがある場合のみ表示） -->
       <ScheduleEventScopeSelector
         v-if="props.scopeOptions && props.scopeOptions.length > 1"
@@ -881,12 +944,13 @@ function close() {
       </div>
     </div>
     <template #footer>
-      <Button label="キャンセル" class="min-h-11" text @click="close" />
+      <Button :label="$t('button.cancel')" class="min-h-11" text @click="close" />
       <Button
-        :label="isEdit ? '更新' : '作成'"
+        :label="isEdit ? $t('button.update') : $t('button.create')"
         icon="pi pi-check"
         class="min-h-11"
-        :loading="submitting"
+        :loading="submitting || editLoading"
+        :disabled="isEdit && !editLoaded"
         data-testid="schedule-submit"
         @click="submit()"
       />

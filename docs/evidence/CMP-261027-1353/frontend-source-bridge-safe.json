@@ -1,0 +1,97 @@
+{
+  "modalRed": "21e4fc04a5",
+  "modalGreen2": "e3c8cdd46d",
+  "finalTargetGreen": "74cf3092b213c8b0b2b5d752006b8ca2dba274ef",
+  "fixedBuildSource": "c63da6152d0c415e60aed1cbd42d816282bfd574",
+  "modalProductBlobs": [
+    {
+      "file": "frontend/app/layouts/default.vue",
+      "green2": "a707e324169b1906c701d356c2a151d17868b55f",
+      "finalTarget": "a707e324169b1906c701d356c2a151d17868b55f",
+      "integrated": "a707e324169b1906c701d356c2a151d17868b55f",
+      "green2EqualsFinalTarget": true,
+      "finalTargetEqualsIntegrated": true
+    },
+    {
+      "file": "frontend/app/components/dashboard/DashboardPersonalPanel.vue",
+      "green2": "77d9c0b71b2bd566dc833c4dde2e7c6057a51fe5",
+      "finalTarget": "77d9c0b71b2bd566dc833c4dde2e7c6057a51fe5",
+      "integrated": "77d9c0b71b2bd566dc833c4dde2e7c6057a51fe5",
+      "green2EqualsFinalTarget": true,
+      "finalTargetEqualsIntegrated": true
+    },
+    {
+      "file": "frontend/app/components/widgets/WidgetMyCalendar.vue",
+      "green2": "b5695e7034fab4b8127455640a4363a12966fc91",
+      "finalTarget": "b5695e7034fab4b8127455640a4363a12966fc91",
+      "integrated": "b5695e7034fab4b8127455640a4363a12966fc91",
+      "green2EqualsFinalTarget": true,
+      "finalTargetEqualsIntegrated": true
+    },
+    {
+      "file": "frontend/app/components/quick-memo/QuickMemoCaptureModal.vue",
+      "green2": "3fa5acadba2bfcc2abbde0d9627f6ce0d80fc10f",
+      "finalTarget": "3fa5acadba2bfcc2abbde0d9627f6ce0d80fc10f",
+      "integrated": "3fa5acadba2bfcc2abbde0d9627f6ce0d80fc10f",
+      "green2EqualsFinalTarget": true,
+      "finalTargetEqualsIntegrated": true
+    },
+    {
+      "file": "frontend/app/components/EntityCreateDialog.vue",
+      "green2": "d36d3510eaf63b380edf24ea971cc8242bb9719a",
+      "finalTarget": "d36d3510eaf63b380edf24ea971cc8242bb9719a",
+      "integrated": "d36d3510eaf63b380edf24ea971cc8242bb9719a",
+      "green2EqualsFinalTarget": true,
+      "finalTargetEqualsIntegrated": true
+    },
+    {
+      "file": "frontend/app/components/DashboardConfigDialog.vue",
+      "green2": "f6f55041ee48bc61aed1c7f3cd5eaca4ebb2fda8",
+      "finalTarget": "f6f55041ee48bc61aed1c7f3cd5eaca4ebb2fda8",
+      "integrated": "f6f55041ee48bc61aed1c7f3cd5eaca4ebb2fda8",
+      "green2EqualsFinalTarget": true,
+      "finalTargetEqualsIntegrated": true
+    },
+    {
+      "file": "frontend/app/components/schedule/ScheduleEventForm.vue",
+      "green2": "9a740cc241b42449c88acaedb2c883b88e873d04",
+      "finalTarget": "9a740cc241b42449c88acaedb2c883b88e873d04",
+      "integrated": "9a740cc241b42449c88acaedb2c883b88e873d04",
+      "green2EqualsFinalTarget": true,
+      "finalTargetEqualsIntegrated": true
+    },
+    {
+      "file": "frontend/app/components/dashboard/DashboardSwipeWidgetGrid.vue",
+      "green2": "07422c1a07abdf3bd34884afcfcdbd92b188474f",
+      "finalTarget": "07422c1a07abdf3bd34884afcfcdbd92b188474f",
+      "integrated": "5f7e8bcb08aabd6f22ae0737f9eb93e602366f3e",
+      "green2EqualsFinalTarget": true,
+      "finalTargetEqualsIntegrated": false
+    }
+  ],
+  "validation": {
+    "modalGreen2": {
+      "tests": 58,
+      "pass": 56,
+      "fail": 2,
+      "expectedRemaining": "Widget async/stub Boolean boundary; subsequent Widget5 allpass replaces its result"
+    },
+    "finalTarget": {
+      "tests": 6,
+      "pass": 6,
+      "fail": 0,
+      "lintFiles": 17,
+      "lintErrors": 0,
+      "lintWarnings": 0,
+      "totalRunExit": 1,
+      "unresolved": "Generated template not written to disk; proof deferred to SSR CSS/computed style/runtimeConfig shape after production build"
+    },
+    "themeRed": {
+      "head": "8628c490d77aa905396c5d9e1081aec239a9865c",
+      "tests": 1,
+      "fail": 1,
+      "kind": "Actual options contract AssertionError; no missing-module collection failure"
+    }
+  },
+  "note": "The complete integration is separately gated by same-head CI; Grid feed numeric-ID changes legitimately differ in integrated blob."
+}

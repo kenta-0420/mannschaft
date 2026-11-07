@@ -1,0 +1,25 @@
+{
+  "head": "82d8682768de515d72827e868eac65c11d2d1324",
+  "verifiedAt": "2026-10-25T03:44:00.401Z",
+  "session": 71683,
+  "exitCode": 0,
+  "receipt": {
+    "bytes": 676,
+    "sha256": "57eed7d7a723a3cdd986b29a1c4f15569494d87df268246ee2c2f7caf77da1c7"
+  },
+  "jar": {
+    "bytes": 221046571,
+    "sha256": "d772c0e02462e9cc36eb48a82da90ca74dd5fc8bcf0304c00a4d37a9773baf49"
+  },
+  "manifest": {
+    "bytes": 3418529,
+    "sha256": "20e4d7498be7ab8a9b181a8aa7aa74f113a48cad61dc8ae05ae715e09949278a",
+    "inputs": 13202
+  },
+  "allFilesUid1000Mode0600Nonsymlink": true,
+  "fullJarHashIndependentlyVerified": true,
+  "testsExecuted": false,
+  "runtimeStarted": false,
+  "scratchRemoved": true,
+  "productionCreated": false
+}

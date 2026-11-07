@@ -1,7 +1,7 @@
 import { defineComponent, h, nextTick, reactive } from 'vue'
 import { flushPromises } from '@vue/test-utils'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import MemberPermissionsPage from '~/pages/admin/member-permissions.vue'
 
 const apiMock = vi.fn()
@@ -46,7 +46,7 @@ const DashboardErrorStateStub = defineComponent({
 
 const ButtonStub = defineComponent({
   inheritAttrs: false,
-  props: { label: String, disabled: Boolean },
+  props: { label: String, disabled: Boolean, loading: Boolean },
   emits: ['click'],
   setup(props, { attrs, emit }) {
     return () =>
@@ -54,7 +54,8 @@ const ButtonStub = defineComponent({
         'button',
         {
           ...attrs,
-          disabled: props.disabled,
+          disabled: props.disabled || props.loading,
+          'data-loading': String(props.loading),
           'data-testid': 'save-member-permissions',
           onClick: () => emit('click'),
         },
@@ -93,6 +94,9 @@ const permissionResponse = {
   },
 }
 
+const unmountPages: Array<() => void> = []
+afterEach(() => { unmountPages.splice(0).forEach(unmount => unmount()) })
+
 async function mountPage() {
   const wrapper = await mountSuspended(MemberPermissionsPage, {
     global: {
@@ -100,7 +104,7 @@ async function mountPage() {
         DashboardErrorState: DashboardErrorStateStub,
         Button: ButtonStub,
         ToggleSwitch: ToggleSwitchStub,
-        PageHeader: { template: '<header><slot /></header>' },
+        PageHeader: { template: '<header><slot /><slot name="subtitle" /><slot name="actions" /></header>' },
         PageLoading: { template: '<div data-testid="loading" />' },
         SectionCard: { template: '<section><slot /></section>' },
       },
@@ -216,4 +220,50 @@ describe('/admin/member-permissions', () => {
       },
     })
   })
+  it.each(['スコープ不正', '取得失敗', '権限拒否', '読込中', '権限配列が空'])('P13 %sでは保存ボタン無効でPUTしない', async (condition) => {
+    if (condition === 'スコープ不正') scopeStoreStub.current = { type: 'personal', id: '0', name: '個人' }
+    if (condition === '権限拒否') teamStoreStub.myTeams = [{ id: 12, role: 'MEMBER' }]
+    if (condition === '取得失敗') apiMock.mockRejectedValue(new Error('取得失敗'))
+    else if (condition === '読込中') apiMock.mockReturnValue(new Promise(() => {}))
+    else apiMock.mockResolvedValue({ data: { ...permissionResponse.data, permissions: condition === '権限配列が空' ? [] : permissionResponse.data.permissions } })
+    const wrapper = await mountPage()
+    const save = wrapper.get<HTMLButtonElement>('[data-testid="save-member-permissions"]')
+    expect(save.element.disabled).toBe(true)
+    await save.trigger('click')
+    await flushPromises()
+    expect(apiMock.mock.calls.filter(([, options]) => options?.method === 'PUT')).toHaveLength(0)
+    expect(save.classes()).toContain('min-h-11')
+  })
+
+  it('P13 取得済みスコープ不一致では保存ボタン無効でPUTしない', async () => {
+    apiMock.mockResolvedValueOnce(permissionResponse).mockReturnValue(new Promise(() => {}))
+    teamStoreStub.myTeams = [{ id: 12, role: 'ADMIN' }, { id: 13, role: 'ADMIN' }]
+    const wrapper = await mountPage()
+    expect(wrapper.get<HTMLButtonElement>('[data-testid="save-member-permissions"]').element.disabled).toBe(false)
+    scopeStoreStub.current = { type: 'team', id: '13', name: '別チーム' }
+    await nextTick()
+    await flushPromises()
+    const save = wrapper.get<HTMLButtonElement>('[data-testid="save-member-permissions"]')
+    expect(save.element.disabled).toBe(true)
+    await save.trigger('click')
+    expect(apiMock.mock.calls.filter(([, options]) => options?.method === 'PUT')).toHaveLength(0)
+  })
+
+  it('P13 未編集でも正常時は有効でPUT1回、saving中はloadingで連打を抑止する', async () => {
+    let finishSave!: (value: typeof permissionResponse) => void
+    apiMock.mockResolvedValueOnce(permissionResponse).mockReturnValue(new Promise<typeof permissionResponse>(resolve => { finishSave = resolve }))
+    const wrapper = await mountPage()
+    const save = wrapper.get<HTMLButtonElement>('[data-testid="save-member-permissions"]')
+    expect(save.element.disabled).toBe(false)
+    await save.trigger('click')
+    expect(save.attributes('data-loading')).toBe('true')
+    expect(save.element.disabled).toBe(true)
+    await save.trigger('click')
+    expect(apiMock.mock.calls.filter(([, options]) => options?.method === 'PUT')).toHaveLength(1)
+    finishSave(permissionResponse)
+    await flushPromises()
+    expect(save.attributes('data-loading')).toBe('false')
+    expect(save.element.disabled).toBe(false)
+  })
+
 })

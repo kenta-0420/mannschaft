@@ -54,6 +54,9 @@ class PersonalBlogControllerTest {
     private BlogPostService postService;
 
     @Mock
+    private com.mannschaft.app.cms.service.BlogRanchNativeOperationFacade ranchNative;
+
+    @Mock
     private UserBlogSettingsService settingsService;
 
     @Mock
@@ -209,7 +212,7 @@ class PersonalBlogControllerTest {
             PublishRequest request = new PublishRequest("PUBLISHED", null, null);
             given(postService.changeStatus(eq(POST_ID), eq(USER_ID), any())).willReturn(mockResponse());
 
-            ResponseEntity<ApiResponse<BlogPostResponse>> result = controller.changeStatus(POST_ID, request);
+            ResponseEntity<ApiResponse<BlogPostResponse>> result = controller.changeStatus(POST_ID, request, new org.springframework.mock.web.MockHttpServletRequest());
 
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         }
@@ -269,7 +272,7 @@ class PersonalBlogControllerTest {
             SelfReviewRequest request = new SelfReviewRequest("PUBLISH");
             given(postService.selfReview(eq(POST_ID), eq(USER_ID), any())).willReturn(mockResponse());
 
-            ResponseEntity<ApiResponse<BlogPostResponse>> result = controller.selfReview(POST_ID, request);
+            ResponseEntity<ApiResponse<BlogPostResponse>> result = controller.selfReview(POST_ID, request, new org.springframework.mock.web.MockHttpServletRequest());
 
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         }

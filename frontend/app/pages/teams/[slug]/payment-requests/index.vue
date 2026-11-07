@@ -5,15 +5,14 @@ definePageMeta({ middleware: 'auth', layout: 'default' })
 
 const route = useRoute()
 const { t, locale } = useI18n()
-const { isAdminOrDeputy } = useTeamShellContext()
-const { resolveScopeId } = useActivityScopeId()
 const paymentRequestApi = usePaymentRequestApi()
-const { handleApiError } = useErrorHandler()
 
 const teamSlug = computed(() => String(route.params.slug))
-const teamId = ref<number | null>(null)
-const requests = ref<PaymentRequestResponse[]>([])
-const loading = ref(true)
+const { data: requests, loading, isAdminOrDeputy, state, loadError, load } = useTeamPaymentPage(
+  teamSlug,
+  async (id) => (await paymentRequestApi.listTeamPaymentRequests(id)).data ?? [],
+  () => [] as PaymentRequestResponse[],
+)
 
 function amountLabel(request: PaymentRequestResponse): string {
   return new Intl.NumberFormat(locale.value, {
@@ -40,21 +39,7 @@ function statusLabel(status: PaymentRequestStatus | undefined): string {
   return t(`payment.membership.paymentRequest.${key}`)
 }
 
-async function load(): Promise<void> {
-  loading.value = true
-  try {
-    teamId.value = await resolveScopeId('TEAM', teamSlug.value)
-    if (teamId.value === null) return
-    const response = await paymentRequestApi.listTeamPaymentRequests(teamId.value)
-    requests.value = response.data ?? []
-  } catch (error: unknown) {
-    handleApiError(error, 'payment-request.team.list')
-  } finally {
-    loading.value = false
-  }
-}
 
-onMounted(load)
 </script>
 
 <template>
@@ -74,11 +59,9 @@ onMounted(load)
       />
     </div>
     <PageLoading v-if="loading" />
-    <Message v-else-if="!isAdminOrDeputy" severity="error" :closable="false">
+    <DashboardErrorState v-else-if="state === 'error'" :error="loadError" :show-retry="true" @retry="load" />
+    <Message v-else-if="state === 'denied'" severity="error" :closable="false">
       {{ t('payment.admin.permissionDenied') }}
-    </Message>
-    <Message v-else-if="teamId === null" severity="error" :closable="false">
-      {{ t('payment.membership.paymentRequest.loadError') }}
     </Message>
     <DashboardEmptyState
       v-else-if="requests.length === 0"

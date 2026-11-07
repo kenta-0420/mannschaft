@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260903-1358",
+  "scope": "app",
+  "implementation": {
+    "pr": 3798,
+    "sha": "2d85d7ed0935fb986622856532e2bf6a1b4db041"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "個人スコープでは案内（personal-scope-unsupported）を出し、スピナーも API 呼び出しも無い",
+      "tests": [
+        {
+          "name": "個人スコープでは案内を出し、スピナーも API 呼び出しも無い",
+          "evidence": "frontend/tests/unit/pages/admin/scope-settings-personal-guard.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "チームスコープでは案内を出さず通常画面として API を呼ぶ",
+      "tests": [
+        {
+          "name": "チームスコープでは案内を出さず API を呼ぶ",
+          "evidence": "frontend/tests/unit/pages/admin/scope-settings-personal-guard.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 38183196800
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/3798"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260903-1358.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260903-1358.md"
+    }
+  },
+  "regressions": []
+}

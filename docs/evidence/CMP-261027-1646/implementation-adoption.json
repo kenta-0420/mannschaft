@@ -1,0 +1,22 @@
+{
+  "repository": "kenta-0420/mannschaft",
+  "pr": 4169,
+  "implementationHead": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+  "mergeCommit": "bc2f2c89e7a40c0775d751aad2bd0e80287fdf0a",
+  "mergedAt": "2026-10-28T09:22:13Z",
+  "mergeMethod": "normal squash",
+  "implementationTree": "6d780a008daa3e8ca4eaae362efe8021e3656826",
+  "mainTree": "6d780a008daa3e8ca4eaae362efe8021e3656826",
+  "allRepositoryTreeIdentical": true,
+  "changedFiles": 16,
+  "finalCi": {
+    "runId": 40662266445,
+    "head": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+    "attempt": 1,
+    "conclusion": "success"
+  },
+  "limits": [
+    "Prior real/exploratory observations remain at a8b; tree bridge does not claim UI rerun at later HEAD.",
+    "Final documentation and raw cleanup are recorded separately."
+  ]
+}

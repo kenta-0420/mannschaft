@@ -1,6 +1,7 @@
 package com.mannschaft.app.auth.dto;
 
 import java.time.LocalDateTime;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +11,7 @@ import lombok.RequiredArgsConstructor;
  */
 @Getter
 @RequiredArgsConstructor
+@Schema(name = "AuthSessionResponse")
 public class SessionResponse {
 
     private final Long id;

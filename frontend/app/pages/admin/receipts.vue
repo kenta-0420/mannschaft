@@ -208,9 +208,9 @@ function statusLabel(status: string): string {
 
 <template>
   <div class="mx-auto max-w-6xl">
-    <div class="mb-4 flex items-center justify-between">
+    <div class="mb-4 flex flex-col items-stretch gap-3 md:flex-row md:items-center md:justify-between md:gap-0">
       <PageHeader :title="t('receipt.list.title')" />
-      <div class="flex gap-2">
+      <div class="flex flex-wrap gap-2 md:flex-nowrap">
         <NuxtLink to="/admin/receipt-settings">
           <Button :label="t('receipt.list.settingsButton')" icon="pi pi-cog" severity="secondary" outlined />
         </NuxtLink>

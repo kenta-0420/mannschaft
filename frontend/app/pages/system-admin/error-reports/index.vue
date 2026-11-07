@@ -9,7 +9,7 @@ import type {
 } from '~/types/error-report'
 import type { PageMeta } from '~/types/api'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const { t } = useI18n()
 const { list, fetchKanban, updateWorkflowStage } = useErrorReportAdmin()

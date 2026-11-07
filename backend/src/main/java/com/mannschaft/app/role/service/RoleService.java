@@ -427,6 +427,13 @@ public class RoleService {
         if (currentRole.isEmpty()) {
             ScopeType membershipScope = "TEAM".equals(scopeType)
                     ? ScopeType.TEAM : ScopeType.ORGANIZATION;
+            // CMP-261001-0835 AC-11: 応援者（SUPPORTER）の /me はフォロー解除 API への案内のため 422。
+            // user_roles 削除・membership 退会のいずれも行う前に判定する（SUPPORTER は user_roles を持たない前提）。
+            if (membershipService.findActiveRoleKind(userId, membershipScope, scopeId)
+                    .filter(roleKind -> roleKind == RoleKind.SUPPORTER)
+                    .isPresent()) {
+                throw new BusinessException(RoleErrorCode.ROLE_015);
+            }
             boolean left = membershipService.leaveMemberByUserAndScope(userId, membershipScope, scopeId);
             if (!left) {
                 throw new BusinessException(RoleErrorCode.ROLE_001);

@@ -1,0 +1,22 @@
+{
+  "head": "b1cfd1f80997434e539ee5495f29b0a0fcd1ac4b",
+  "dompurify": "3.4.17",
+  "result": "PASS",
+  "exitCode": 0,
+  "passed": 1,
+  "skipped": 0,
+  "mocks": false,
+  "trace": false,
+  "cleanup": "作成直後IDの投稿2件/招待/TEAM DELETE204assert、全contextclose成功。所有者me/teamsで今回marker残存0。cold失敗分は別途所有照合/DELETE204/GET404完了。",
+  "firstAttempt": "cold compileによる360s timeout、匿名以降未了・contextclose/finallyも失敗し未合格。marker/TEAM1468/post768をGET所有照合して限定削除204→GET404確認。温環境で同spec/timeout不変の再実行が1pass。",
+  "visualQa": "docs/evidence/observations/CMP-261023-0051/audit-recheck-visual-qa.json",
+  "limitations": [
+    "Node24.15実行（CI指定22との差異）",
+    "BEはbase2bd9d74983既存JAR、候補HEAD全BE同一は未主張",
+    "全DB復元は未主張"
+  ],
+  "temporaryConfigDeleted": true,
+  "trackedStatusClean": true,
+  "feStopped": true,
+  "beKeptRunning": "この実機終了時点は稼働継続。その後の停止はaudit-recheck-be-cleanup.json参照。"
+}

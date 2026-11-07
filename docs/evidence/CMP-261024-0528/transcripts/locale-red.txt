@@ -1,0 +1,36 @@
+Duplicated imports "OrgTeamGroup", the one from "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useBroadcastAudience.ts" has been ignored and "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useOrgTeamMembershipApi.ts" is used
+Duplicated imports "isForbiddenError", the one from "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useAttendancePermissions.ts" has been ignored and "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/utils/tournamentScoreEntry.ts" is used
+Duplicated imports "OrgTeamGroup", the one from "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useBroadcastAudience.ts" has been ignored and "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useOrgTeamMembershipApi.ts" is used
+Duplicated imports "isForbiddenError", the one from "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/composables/useAttendancePermissions.ts" has been ignored and "/tmp/dashboard-zod-261024-iAxjdA/frontend/app/utils/tournamentScoreEntry.ts" is used
+
+ RUN  v4.1.11 /tmp/dashboard-zod-261024-iAxjdA/frontend
+
+ ❯ app/components/ranch/RanchNaming.spec.ts (4 tests | 1 failed) 1203ms
+     × 表示中の言語切替後も命名エラーを現在の言語で検証する 1103ms
+     ✓ 名前は空で始まり、入力→確認→確定でだけnormalized名を送る 67ms
+     ✓ IME編集中は確認へ進まず確定しない 25ms
+     ✓ 10文字上限違反は確認へ進ませない 7ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  app/components/ranch/RanchNaming.spec.ts > AC61 不可逆命名の画面 > 表示中の言語切替後も命名エラーを現在の言語で検証する
+AssertionError: expected '1〜10文字で入力してください。不可視文字・改行・制御文字は使えません。' to be 'Enter 1–10 characters. Invisible char…' // Object.is equality
+
+Expected: "Enter 1–10 characters. Invisible characters, line breaks and control characters are not allowed."
+Received: "1〜10文字で入力してください。不可視文字・改行・制御文字は使えません。"
+
+ ❯ app/components/ranch/RanchNaming.spec.ts:25:75
+     23|   const expectedMessage = i18n.global.t('ranch.naming.invalid')
+     24|   expect(expectedMessage).not.toBe(originalMessage)
+     25|   await vi.waitFor(() => expect(wrapper.find('#ranch-name-error').text…
+       |                                                                           ^
+     26|   expect(wrapper.emitted('confirm')).toBeUndefined()
+     27|   wrapper.unmount()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 3 passed (4)
+   Start at  15:46:57
+   Duration  2.96s (transform 864ms, setup 202ms, import 1.01s, tests 1.20s, environment 359ms)

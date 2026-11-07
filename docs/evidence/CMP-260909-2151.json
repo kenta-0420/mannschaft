@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260909-2151",
+  "scope": "app",
+  "implementation": {
+    "pr": 3810,
+    "sha": "0a75bc01166c437e23084d90316f8e90a0847e03"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "シフト機能フラグ OFF のとき、シフト表の作成・更新・削除・遷移を含む全9経路が塞がる",
+      "tests": [
+        {
+          "name": "フラグOFFのとき全9経路が FEATURE_GATE_001 で拒否される（ShiftScheduleFeatureGateContractIT）",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftScheduleFeatureGateContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "フラグ ON のときは従来どおり通る（対照）",
+      "tests": [
+        {
+          "name": "フラグONなら通る",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftScheduleFeatureGateContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "コントローラのマッピング数と @RequireFeature の付与数が一致することを機械検査する番人がある",
+      "tests": [
+        {
+          "name": "全マッピングメソッドが @RequireFeature(FEATURE_SHIFT_ENABLED) を持つ",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/architecture/ShiftScheduleControllerFeatureGateGuardTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "自動割当の6経路もフラグ OFF で拒否され、ON では従前どおり動く",
+      "tests": [
+        {
+          "name": "AC-11-01 フラグOFFのとき6経路すべてが FEATURE_GATE_001 で拒否される",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftAutoAssignFeatureGateContractIT.java"
+        },
+        {
+          "name": "AC-11-03 フラグONなら自動割当は従前どおり動く",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftAutoAssignFeatureGateContractIT.java"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 38338230287
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/3810"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260909-2151.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260909-2151.md"
+    }
+  },
+  "regressions": []
+}

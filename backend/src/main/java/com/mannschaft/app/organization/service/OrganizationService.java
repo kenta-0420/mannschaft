@@ -17,6 +17,7 @@ import com.mannschaft.app.organization.repository.OrganizationSlugHistoryReposit
 import com.mannschaft.app.common.dto.SlugAvailabilityResponse;
 import com.mannschaft.app.common.dto.SlugResolveResponse;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.event.PersonalInviteScopeClosedEvent;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.PagedResponse;
@@ -27,15 +28,16 @@ import com.mannschaft.app.organization.dto.OrgAllMembersResponse;
 import com.mannschaft.app.organization.dto.OrganizationResponse;
 import com.mannschaft.app.organization.dto.OrganizationSummaryResponse;
 import com.mannschaft.app.organization.dto.UpdateOrganizationRequest;
-import com.mannschaft.app.role.entity.InviteTokenEntity;
-import com.mannschaft.app.role.repository.InviteTokenRepository;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.service.AdminRoleMutationLockService;
 import com.mannschaft.app.role.dto.MemberResponse;
 import com.mannschaft.app.organization.event.OrganizationCreatedEvent;
+import com.mannschaft.app.organization.event.OrganizationArchivedEvent;
 import com.mannschaft.app.organization.event.OrganizationDeletedEvent;
+import com.mannschaft.app.organization.event.OrganizationReopenedEvent;
+import com.mannschaft.app.organization.teamgroup.repository.OrgTeamGroupRepository;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.dto.MembershipCreateRequest;
@@ -74,7 +76,6 @@ public class OrganizationService {
     private final OrganizationSlugHistoryRepository organizationSlugHistoryRepository;
     private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
-    private final InviteTokenRepository inviteTokenRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final OrganizationMembershipService organizationMembershipService;
     private final OrganizationHierarchyService organizationHierarchyService;
@@ -82,6 +83,31 @@ public class OrganizationService {
     private final MediaUrlResolver mediaUrlResolver;
     private final AdminRoleMutationLockService adminRoleMutationLockService;
     private final DuplicateNameGuardService duplicateNameGuardService;
+    private final OrgTeamGroupRepository orgTeamGroupRepository;
+    private final java.time.Clock clock;
+
+    /**
+     * 組織 ID 群の表示名とアイコン URL をまとめて返す（SQL 1 本・CMP-261103-1225 の N+1 解消用）。
+     *
+     * <p>個人ダッシュボードの「今後の予定」が予定ごとに {@code organizationRepository.findById} で
+     * 名前とアイコンを引いていたのを置き換える。{@code findById} と同じ取得（{@code findAllById}）で、
+     * 見つかる範囲も同一である。Entity は外へ渡さない。</p>
+     *
+     * @param ids 組織 ID 群（null・空なら空 Map）
+     * @return 組織 ID → 名前・アイコン（見つかったものだけ）
+     */
+    public Map<Long, com.mannschaft.app.organization.dto.OrganizationNameIconView> getNameIconsByIds(
+            Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<Long, com.mannschaft.app.organization.dto.OrganizationNameIconView> result = new java.util.HashMap<>();
+        for (OrganizationEntity org : organizationRepository.findAllById(ids)) {
+            result.put(org.getId(), new com.mannschaft.app.organization.dto.OrganizationNameIconView(
+                    org.getId(), org.getName(), org.getIconUrl()));
+        }
+        return result;
+    }
 
     /**
      * 組織を作成し、作成者をADMINロールで紐付ける。
@@ -150,7 +176,8 @@ public class OrganizationService {
                     eventPublisher.publishEvent(new OrganizationCreatedEvent(userId, org.getId(), org.getName()));
 
                     log.info("組織作成完了: orgId={}, userId={}", org.getId(), userId);
-                    return ApiResponse.of(toResponse(org, 1));
+                    // 作成直後の組織にサポーターはまだいないため集計クエリを発行せず 0 を返す
+                    return ApiResponse.of(toResponse(org, 1, new OrganizationResponse.OrgSocialDto(0L)));
                 });
     }
 
@@ -175,7 +202,7 @@ public class OrganizationService {
         OrganizationEntity org = findOrganizationBySlugOrThrow(slug);
         Long orgId = org.getId();
         int memberCount = (int) userRoleRepository.countByOrganizationId(orgId);
-        return ApiResponse.of(toResponse(org, memberCount));
+        return ApiResponse.of(toResponse(org, memberCount, null));
     }
 
     /**
@@ -458,6 +485,14 @@ public class OrganizationService {
     }
 
     /**
+     * 組織が存在し、論理削除されていないか（非アクティブ組織の判定。ALIC-1 §2.3 / F00 §11.6）。
+     * {@link OrganizationEntity} は {@code @SQLRestriction("deleted_at IS NULL")} のため、削除済みの組織は {@code findById} で返らない。
+     */
+    public boolean isActiveOrganization(Long orgId) {
+        return organizationRepository.findById(orgId).isPresent();
+    }
+
+    /**
      * 柱②-2 販促プロビジョニング専用: 指定組織の {@code lifecycle_status} を
      * {@code PROVISIONED} から {@code ACTIVE} へ遷移させ、組織名を返す。
      * 存在しなければ empty。
@@ -591,7 +626,7 @@ public class OrganizationService {
         // 同一 slug は no-op（200・履歴を増やさない）
         if (oldSlug.equals(newSlug)) {
             int memberCount = (int) userRoleRepository.countByOrganizationId(orgId);
-            return ApiResponse.of(toResponse(org, memberCount));
+            return ApiResponse.of(toResponse(org, memberCount, null));
         }
 
         validateRenameSlug(newSlug, orgId);
@@ -608,7 +643,7 @@ public class OrganizationService {
         log.info("組織 slug リネーム完了: orgId={}, {} -> {}", orgId, oldSlug, newSlug);
 
         int memberCount = (int) userRoleRepository.countByOrganizationId(orgId);
-        return ApiResponse.of(toResponse(org, memberCount));
+        return ApiResponse.of(toResponse(org, memberCount, null));
     }
 
     /**
@@ -696,7 +731,7 @@ public class OrganizationService {
 
         int memberCount = (int) userRoleRepository.countByOrganizationId(orgId);
         log.info("組織更新完了: orgId={}", orgId);
-        return ApiResponse.of(toResponse(org, memberCount));
+        return ApiResponse.of(toResponse(org, memberCount, null));
     }
 
     /**
@@ -707,15 +742,20 @@ public class OrganizationService {
      * 本メソッドは認可済み呼び出しを前提とする。</p>
      */
     @Transactional
-    // TODO: OrganizationドメインとRoleドメインをまたいでいる。将来はOrganizationDeletedEventで分離予定
     @CacheEvict(value = "org-detail", allEntries = true)
     public void deleteOrganization(Long orgId, Long userId) {
-        OrganizationEntity org = findOrganizationOrThrow(orgId);
+        // F01.2.1 §4.5: 閉鎖の世代番号（closure_generation）を組織行のロックの下で進める。申請の作成（チーム行 → 組織行）・
+        // 招待のコミット後の読み直し（組織行の共有ロック）と直列化され、削除より前に作られた PENDING は必ず古い世代を持つ
+        OrganizationEntity org = organizationRepository.findByIdForUpdate(orgId)
+                .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_001));
         org.softDelete();
+        // role更新は親TXへ持ち込まない。個人招待だけをcommit後にstrict旧世代で片付ける。
+        eventPublisher.publishEvent(new PersonalInviteScopeClosedEvent("ORGANIZATION", orgId, org.getClosureGeneration()));
 
-        // 招待トークン一括失効
-        inviteTokenRepository.findByOrganizationIdAndRevokedAtIsNull(orgId)
-                .forEach(InviteTokenEntity::revoke);
+        // F01.2.1 §4.5: チームグループは同じ organization ドメインなので、同じトランザクションで全件を論理削除する
+        // （加盟の PENDING・制限の片付けは team ドメインが OrganizationDeletedEvent の AFTER_COMMIT で行う）
+        orgTeamGroupRepository.softDeleteAllByOrganizationId(orgId,
+                java.time.Instant.now(clock).truncatedTo(java.time.temporal.ChronoUnit.SECONDS));
 
         // 監査ログ用イベント発行
         eventPublisher.publishEvent(new OrganizationDeletedEvent(userId, orgId));
@@ -740,11 +780,17 @@ public class OrganizationService {
     @Transactional
     @CacheEvict(value = "org-detail", allEntries = true)
     public void archiveOrganization(Long orgId) {
-        OrganizationEntity org = findOrganizationOrThrow(orgId);
+        // F01.2.1 §6.9: 最初に組織行を PESSIMISTIC_WRITE で取り、ロック取得後に未アーカイブを再確認する。
+        // 申請の作成（チーム行 → 組織行）・招待のコミット後の読み直し（組織行の共有ロック）と直列化される
+        OrganizationEntity org = organizationRepository.findByIdForUpdate(orgId)
+                .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_001));
         if (org.getArchivedAt() != null) {
             throw new BusinessException(OrgErrorCode.ORG_003);
         }
         org.archive();
+        eventPublisher.publishEvent(new PersonalInviteScopeClosedEvent("ORGANIZATION", orgId, org.getClosureGeneration()));
+        // 当該組織の PENDING（申請・招待）の片付けは team ドメインが AFTER_COMMIT で行う（§4.5。ACTIVE は残す）
+        eventPublisher.publishEvent(new OrganizationArchivedEvent(null, orgId));
         log.info("組織アーカイブ完了: orgId={}", orgId);
     }
 
@@ -758,6 +804,10 @@ public class OrganizationService {
     public void unarchiveOrganization(Long orgId) {
         OrganizationEntity org = findOrganizationOrThrow(orgId);
         org.unarchive();
+        // F01.2.1 §4.5: 閉鎖の片付けがまだ済んでいなくても、閉鎖より前の PENDING は解除で復元しない。片付けは team ドメインが
+        // AFTER_COMMIT で行う（閉鎖の世代番号 closure_generation が記録より進んだ行＝閉鎖より前に作られた行だけを消す。
+        // 解除後の申請・招待はいまの世代を記録しているので触れない）
+        eventPublisher.publishEvent(new OrganizationReopenedEvent(orgId));
         log.info("組織アーカイブ解除完了: orgId={}", orgId);
     }
 
@@ -858,6 +908,8 @@ public class OrganizationService {
         if (updated == 0) {
             throw new BusinessException(OrgErrorCode.ORG_006);
         }
+        // F01.2.1 §4.5: 論理削除の片付けがまだ済んでいなくても、削除より前の PENDING は復元しない（unarchiveOrganization と同じ）
+        eventPublisher.publishEvent(new OrganizationReopenedEvent(orgId));
         log.info("組織復元完了: orgId={}", orgId);
     }
 
@@ -965,7 +1017,16 @@ public class OrganizationService {
         }
     }
 
-    private OrganizationResponse toResponse(OrganizationEntity org, int memberCount) {
+    /**
+     * 組織詳細レスポンスを組み立てる。
+     *
+     * <p>CMP-261004-1942: {@code social}（サポーター数）は membership ドメインの集計であり、本 Service の
+     * トランザクションから membership の Repository へ届かせない（D-3T・原則 5）。作成直後の 0 以外は
+     * {@code null} で組み立て、トランザクションの外の {@link OrganizationDetailFacade} が合成する。
+     * そのため {@code org-detail} キャッシュには人数を載せない。</p>
+     */
+    private OrganizationResponse toResponse(
+            OrganizationEntity org, int memberCount, OrganizationResponse.OrgSocialDto social) {
         return OrganizationResponse.builder()
                 .id(org.getSlug())
                 .slug(org.getSlug())
@@ -991,6 +1052,7 @@ public class OrganizationService {
                         org.getArchivedAt(), org.getCreatedAt()))
                 .teamApplication(new OrganizationResponse.TeamApplicationDto(
                         Boolean.TRUE.equals(org.getTeamApplicationEnabled())))
+                .social(social)
                 .build();
     }
 }

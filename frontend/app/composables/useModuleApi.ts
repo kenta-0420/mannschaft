@@ -28,15 +28,10 @@ export function useModuleApi() {
     return api(`/api/v1/teams/${teamId}/modules/template`, { method: 'PUT', body })
   }
 
-  async function toggleTeamModule(teamId: string, moduleId: number) {
-    return api(`/api/v1/teams/${teamId}/modules/${moduleId}/toggle`, { method: 'PATCH' })
-  }
-
   return {
     getModuleCatalog,
     getModule,
     getTeamModules,
     applyTemplate,
-    toggleTeamModule,
   }
 }

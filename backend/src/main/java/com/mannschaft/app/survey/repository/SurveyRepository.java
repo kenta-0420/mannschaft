@@ -18,6 +18,20 @@ import java.util.Optional;
  */
 public interface SurveyRepository extends JpaRepository<SurveyEntity, Long> {
 
+    /** 既存の公開・本人未回答条件のまま候補scopeを投影する。期限・配信先条件は追加しない。 */
+    @Query("""
+            SELECT DISTINCT s.scopeId FROM SurveyEntity s
+            WHERE s.scopeType = :scopeType
+              AND s.scopeId IN :scopeIds
+              AND s.status = com.mannschaft.app.survey.SurveyStatus.PUBLISHED
+              AND NOT EXISTS (
+                  SELECT 1 FROM com.mannschaft.app.survey.entity.SurveyResponseEntity r
+                  WHERE r.surveyId = s.id AND r.userId = :userId
+              )
+            """)
+    List<Long> findUnansweredScopeIds(@Param("scopeType") String scopeType,
+            @Param("scopeIds") List<Long> scopeIds, @Param("userId") Long userId);
+
     /**
      * スコープ別にアンケートをページング取得する。
      */

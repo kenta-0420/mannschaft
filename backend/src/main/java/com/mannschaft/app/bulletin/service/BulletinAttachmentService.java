@@ -231,6 +231,19 @@ public class BulletinAttachmentService {
      * @param userId   操作ユーザー ID
      * @return 添付レスポンスリスト
      */
+    /** 添付/返信から最新所属 scope を逆引きする own Repository projection。認可は read Facade が行う。 */
+    public BulletinThreadService.PreviewMetadata getReplyReadMetadata(Long replyId) {
+        BulletinThreadEntity thread = resolveThread(TargetType.REPLY, replyId);
+        return new BulletinThreadService.PreviewMetadata(thread.getId(), thread.getScopeType().name(), thread.getScopeId());
+    }
+
+    public BulletinThreadService.PreviewMetadata getAttachmentReadMetadata(Long attachmentId) {
+        BulletinAttachmentEntity attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new BusinessException(BulletinErrorCode.ATTACHMENT_NOT_FOUND));
+        BulletinThreadEntity thread = resolveThread(attachment.getTargetType(), attachment.getTargetId());
+        return new BulletinThreadService.PreviewMetadata(thread.getId(), thread.getScopeType().name(), thread.getScopeId());
+    }
+
     public List<AttachmentResponse> listThreadAttachments(Long threadId, Long userId) {
         BulletinThreadEntity thread = findThreadOrThrow(threadId);
         checkViewAuthorization(thread, userId);
@@ -278,6 +291,8 @@ public class BulletinAttachmentService {
                 new StorageAclAttachmentBinding("BULLETIN_ATTACHMENT", attachment.getId().toString()),
                 DOWNLOAD_TTL);
 
+        // 最新 ACL の照合後も危険な保存 MIME は返さない。
+        validateContentType(attachment.getContentType());
         log.info("掲示板添付 download-url 発行: attachmentId={}, userId={}", attachmentId, userId);
         return new AttachmentDownloadUrlResponse(downloadUrl, DOWNLOAD_TTL.toSeconds());
     }
@@ -285,6 +300,7 @@ public class BulletinAttachmentService {
     private List<AttachmentResponse> filterDownloadableAttachments(
             List<BulletinAttachmentEntity> attachments, BulletinThreadEntity thread, Long userId) {
         List<StorageAclDownloadRequest> requests = attachments.stream()
+                .filter(attachment -> isReadableContentType(attachment.getContentType()))
                 .map(attachment -> new StorageAclDownloadRequest(
                         attachment.getFileKey(), aclScope(thread, attachment.getCreatedBy()),
                         new StorageAclContentReference("BULLETIN_THREAD", thread.getId().toString()),
@@ -292,6 +308,7 @@ public class BulletinAttachmentService {
                 .toList();
         Map<String, String> readableKeys = storageAccessService.generateDownloadUrlsForList(requests, DOWNLOAD_TTL);
         return attachments.stream()
+                .filter(attachment -> isReadableContentType(attachment.getContentType()))
                 .filter(attachment -> readableKeys.containsKey(attachment.getFileKey()))
                 .map(bulletinMapper::toAttachmentResponse)
                 .toList();
@@ -495,6 +512,11 @@ public class BulletinAttachmentService {
         if (fileSize == null || fileSize <= 0 || fileSize > MAX_FILE_SIZE_BYTES) {
             throw new BusinessException(BulletinErrorCode.ATTACHMENT_SIZE_EXCEEDED);
         }
+    }
+
+    private boolean isReadableContentType(String contentType) {
+        return !FileTypeValidator.isBlocked(contentType)
+                && FileTypeValidator.isAllowed(contentType, ALLOWED_CONTENT_TYPES);
     }
 
     private void validateAttachmentCount(TargetType targetType, Long targetId) {

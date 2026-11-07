@@ -7,6 +7,7 @@ import com.mannschaft.app.bulletin.dto.AttachmentPresignResponse;
 import com.mannschaft.app.bulletin.dto.AttachmentResponse;
 import com.mannschaft.app.bulletin.dto.CreateAttachmentRequest;
 import com.mannschaft.app.bulletin.service.BulletinAttachmentService;
+import com.mannschaft.app.bulletin.service.BulletinReadFacade;
 import com.mannschaft.app.common.ApiResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,6 +47,8 @@ class BulletinAttachmentControllerTest {
 
     @Mock
     private BulletinAttachmentService bulletinAttachmentService;
+    @Mock
+    private BulletinReadFacade readFacade;
 
     @InjectMocks
     private BulletinAttachmentController controller;
@@ -95,28 +98,28 @@ class BulletinAttachmentControllerTest {
     @Test
     @DisplayName("スレッド添付一覧を返す")
     void listThread() {
-        given(bulletinAttachmentService.listThreadAttachments(THREAD_ID, USER_ID)).willReturn(List.of());
+        given(readFacade.listThreadAttachments(THREAD_ID, USER_ID)).willReturn(List.of());
 
         ResponseEntity<ApiResponse<List<AttachmentResponse>>> res = controller.listThreadAttachments(THREAD_ID);
 
         assertThat(res.getStatusCode()).isEqualTo(HttpStatus.OK);
-        verify(bulletinAttachmentService).listThreadAttachments(THREAD_ID, USER_ID);
+        verify(readFacade).listThreadAttachments(THREAD_ID, USER_ID);
     }
 
     @Test
     @DisplayName("返信添付一覧を返す")
     void listReply() {
-        given(bulletinAttachmentService.listReplyAttachments(REPLY_ID, USER_ID)).willReturn(List.of());
+        given(readFacade.listReplyAttachments(REPLY_ID, USER_ID)).willReturn(List.of());
 
         controller.listReplyAttachments(REPLY_ID);
 
-        verify(bulletinAttachmentService).listReplyAttachments(REPLY_ID, USER_ID);
+        verify(readFacade).listReplyAttachments(REPLY_ID, USER_ID);
     }
 
     @Test
     @DisplayName("download-url は 200 で短命 URL を返す")
     void downloadUrl() {
-        given(bulletinAttachmentService.generateDownloadUrl(ATTACHMENT_ID, USER_ID))
+        given(readFacade.generateDownloadUrl(ATTACHMENT_ID, USER_ID))
                 .willReturn(new AttachmentDownloadUrlResponse("https://r2/get", 300L));
 
         ResponseEntity<ApiResponse<AttachmentDownloadUrlResponse>> res = controller.downloadUrl(ATTACHMENT_ID);

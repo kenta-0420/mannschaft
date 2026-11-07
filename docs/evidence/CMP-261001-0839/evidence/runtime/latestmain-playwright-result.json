@@ -1,0 +1,122 @@
+{
+  "config": {
+    "configFile": "/mnt/c/Claude/mannschaft/.claude/runtime/october-first-wave-20261026/csp-playwright-latestmain.config.mjs",
+    "rootDir": "/var/tmp/mannschaft-verification-1000/run-yi61UP/tree/frontend/tests/e2e/real",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/mnt/c/Claude/mannschaft/.claude/runtime/october-first-wave-20261026/csp-latestmain-test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "/var/tmp/mannschaft-verification-1000/run-yi61UP/tree/frontend/tests/e2e/real",
+        "testIgnore": [],
+        "testMatch": [
+          "csp-report-content-types-real.spec.ts"
+        ],
+        "timeout": 180000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "/mnt/c/Claude/mannschaft/.claude/runtime/october-first-wave-20261026/csp-playwright-latestmain-result.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.60.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "csp-report-content-types-real.spec.ts",
+      "file": "csp-report-content-types-real.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "CMP-261001-0839 CSP Content-Type実機契約",
+          "file": "csp-report-content-types-real.spec.ts",
+          "line": 40,
+          "column": 6,
+          "specs": [
+            {
+              "title": "相対report-uriの自動報告と3種のMIME型が204となり実DBへ保存される",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 180000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 18527,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-26T03:56:56.213Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "ac3bfea240add6916f2b-ed3ae34d8292d07aad65",
+              "file": "csp-report-content-types-real.spec.ts",
+              "line": 44,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-26T03:56:54.544Z",
+    "duration": 23884.85,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

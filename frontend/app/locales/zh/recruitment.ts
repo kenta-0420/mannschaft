@@ -274,10 +274,10 @@ export default {
       "RECRUITMENT_312": "未找到处罚设置"
     },
     "noShow": {
-      "pageTitle": "NO_SHOW履歴",
+      "pageTitle": "NO_SHOW记录",
       "adminPageTitle": "NO_SHOW管理",
       "status": {
-        "pending": "确认待ち",
+        "pending": "待确认",
         "confirmed": "确定",
         "expired": "异议期限已过",
         "disputed": "异议中",

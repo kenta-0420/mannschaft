@@ -1,9 +1,8 @@
 package com.mannschaft.app.common.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaMethodCall;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -16,6 +15,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** CMP-1014: status 条件の異なる所属列挙が正本窓口を迂回しないための番人。 */
 @DisplayName("CMP-1014 所属スコープ列挙の呼出元ガード")
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class MembershipScopeEnumerationCallerGuardArchTest {
 
     private static final String REPOSITORY_FQN =
@@ -79,9 +79,7 @@ class MembershipScopeEnumerationCallerGuardArchTest {
     }
 
     private static JavaClasses productionClasses() {
-        return new ClassFileImporter()
-                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                .importPackages("com.mannschaft.app");
+        return ProductionClasses.get();
     }
 
     private static Set<String> callersOf(

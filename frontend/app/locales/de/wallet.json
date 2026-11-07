@@ -479,11 +479,11 @@
     },
     "wallet_guide": {
       "title": "So verwenden Sie die Brieftasche",
-      "description": "Funktion zum Mitführen von Punktekarten auf dem Smartphone und Vorzeigen von Barcodes an der Kasse.",
+      "description": "Prüfe dein Teampunkte-Guthaben und deinen Mitglieds-QR und bewahre auch externe Punktekarten auf deinem Smartphone auf.",
       "overview": {
-        "title": "Was ist die Brieftasche?",
+        "title": "Externe Punktekarten",
         "body": "Registrieren Sie die Barcodes Ihrer Punktekarten und Mitgliedskarten in der App und zeigen Sie sie auf Ihrem Smartphone-Bildschirm vor. Sie können bis zu 200 Karten registrieren.",
-        "hint": "Beim ersten Öffnen müssen Sie den Nutzungsbedingungen zustimmen."
+        "hint": "Du musst den Nutzungsbedingungen nur zustimmen, wenn du externe Punktekarten aktivierst."
       },
       "add_card": {
         "title": "Eine Karte registrieren",
@@ -514,6 +514,14 @@
           "step3": "Halten Sie den Smartphone-Bildschirm zum Scannen Richtung Personal",
           "step4": "(Bei aktivierter biometrischer Authentifizierung) Zuerst mit Gesicht/Fingerabdruck entsperren"
         }
+      },
+      "team_points": {
+        "title": "Teampunkte nutzen",
+        "balance": "Jedes Team hat ein eigenes Guthaben. Die Punkte werden nicht mit denen anderer Teams oder externer Karten zusammengezählt.",
+        "member_qr": "Zeige dem Personal deinen gemeinsamen Mitglieds-QR, um Punkte zu erhalten oder Prämien einzulösen.",
+        "reception": "Scanne den ausgehängten Empfangs-QR, prüfe die Angaben und bestätige sie. Je nach Teameinstellung werden die Punkte sofort oder nach Freigabe durch das Personal gutgeschrieben.",
+        "requests": "Prüfe den Status unter Punkteanträge und storniere Anträge vor der Freigabe. In den Teamdetails siehst du die fehlenden Punkte bis zur Prämie und deinen Verlauf.",
+        "consent": "Du kannst Teampunkte und deinen Mitglieds-QR nutzen, ohne externe Punktekarten zu aktivieren oder deren Bedingungen zuzustimmen."
       }
     }
   }

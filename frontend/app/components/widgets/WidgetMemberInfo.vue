@@ -41,7 +41,7 @@ onMounted(load)
     </div>
 
     <div v-else-if="items.length === 0" class="py-4 text-center text-sm text-surface-400">
-      {{ t('memberInfo.settings.fieldList') }}のフィールドがまだ設定されていません
+      {{ t('dashboard.widgets.memberInfo.fieldsNotConfigured', { fieldList: t('memberInfo.settings.fieldList') }) }}
     </div>
 
     <div v-else class="space-y-2">
@@ -52,11 +52,11 @@ onMounted(load)
         <i class="pi pi-exclamation-circle text-red-500" />
         <div class="flex-1 text-sm">
           <span v-if="overdueCount > 0" class="text-red-600">
-            {{ t('memberInfo.response.overdue') }}: {{ overdueCount }}件
+            {{ t('dashboard.widgets.memberInfo.countWithLabel', { label: t('memberInfo.response.overdue'), count: overdueCount }) }}
           </span>
-          <span v-if="overdueCount > 0 && unansweredCount > 0" class="mx-1 text-surface-400">・</span>
+          <span v-if="overdueCount > 0 && unansweredCount > 0" class="mx-1 text-surface-400">{{ t('dashboard.widgets.common.middleDot') }}</span>
           <span v-if="unansweredCount > 0" class="text-surface-500">
-            {{ t('memberInfo.response.notAnswered') }}: {{ unansweredCount }}件
+            {{ t('dashboard.widgets.memberInfo.countWithLabel', { label: t('memberInfo.response.notAnswered'), count: unansweredCount }) }}
           </span>
         </div>
       </div>
@@ -70,7 +70,7 @@ onMounted(load)
       </div>
 
       <div class="text-xs text-surface-400">
-        全{{ items.length }}フィールド
+        {{ t('dashboard.widgets.memberInfo.totalFields', { count: items.length }, items.length) }}
       </div>
     </div>
   </div>

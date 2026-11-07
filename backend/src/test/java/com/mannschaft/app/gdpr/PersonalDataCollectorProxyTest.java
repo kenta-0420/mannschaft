@@ -4,7 +4,6 @@ import com.mannschaft.app.actionmemo.repository.ActionMemoRepository;
 import com.mannschaft.app.actionmemo.repository.ActionMemoTagLinkRepository;
 import com.mannschaft.app.actionmemo.repository.ActionMemoTagRepository;
 import com.mannschaft.app.actionmemo.repository.UserActionMemoSettingsRepository;
-import com.mannschaft.app.auth.repository.AuditLogRepository;
 import com.mannschaft.app.auth.repository.OAuthAccountRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
@@ -51,7 +50,6 @@ class PersonalDataCollectorProxyTest {
     @Mock private MemberPaymentRepository memberPaymentRepository;
     @Mock private ChartRecordRepository chartRecordRepository;
     @Mock private TimelinePostRepository timelinePostRepository;
-    @Mock private AuditLogRepository auditLogRepository;
     @Mock private NotificationRepository notificationRepository;
     @Mock private ActionMemoRepository actionMemoRepository;
     @Mock private ActionMemoTagRepository actionMemoTagRepository;
@@ -68,6 +66,8 @@ class PersonalDataCollectorProxyTest {
     @Mock private com.mannschaft.app.pointcard.repository.PointCardUserSettingsRepository pointCardUserSettingsRepository;
     @Mock private com.mannschaft.app.pointcard.repository.PointCardGroupRepository pointCardGroupRepository;
     @Mock private com.mannschaft.app.pointcard.repository.PointCardGroupItemRepository pointCardGroupItemRepository;
+
+    @Mock private com.mannschaft.app.ranch.service.RanchPersonalDataExportService ranchPersonalDataExportService;
 
     @InjectMocks private PersonalDataCollector sut;
 

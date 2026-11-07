@@ -15,6 +15,7 @@ import com.mannschaft.app.jobmatching.fee.FeeBreakdown;
 import com.mannschaft.app.jobmatching.fee.JobFeeCalculator;
 import com.mannschaft.app.jobmatching.mapper.JobMapper;
 import com.mannschaft.app.jobmatching.service.JobPostingService;
+import com.mannschaft.app.jobmatching.service.JobPostingViewAccessGuard;
 import com.mannschaft.app.jobmatching.service.command.CreateJobPostingCommand;
 import com.mannschaft.app.jobmatching.service.command.UpdateJobPostingCommand;
 import io.swagger.v3.oas.annotations.Operation;
@@ -53,6 +54,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class JobPostingController {
 
     private final JobPostingService jobPostingService;
+    /** 書込前の閲覧可否の門（知り得ない者には不在と同一応答。CMP-260821-1027）。 */
+    private final JobPostingViewAccessGuard postingViewGuard;
     private final JobFeeCalculator jobFeeCalculator;
     private final JobMapper jobMapper;
 
@@ -176,7 +179,9 @@ public class JobPostingController {
                 req.visibilityScope(),
                 req.publishAt()
         );
-        JobPostingEntity entity = jobPostingService.update(id, cmd, SecurityUtils.getCurrentUserId());
+        Long userId = SecurityUtils.getCurrentUserId();
+        postingViewGuard.requireVisible(id, userId);
+        JobPostingEntity entity = jobPostingService.update(id, cmd, userId);
         return ResponseEntity.ok(ApiResponse.of(jobMapper.toPostingResponse(entity)));
     }
 
@@ -191,7 +196,9 @@ public class JobPostingController {
     @Operation(summary = "求人公開")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "公開成功")
     public ResponseEntity<ApiResponse<JobPostingResponse>> publishJob(@PathVariable Long id) {
-        JobPostingEntity entity = jobPostingService.publish(id, SecurityUtils.getCurrentUserId());
+        Long userId = SecurityUtils.getCurrentUserId();
+        postingViewGuard.requireVisible(id, userId);
+        JobPostingEntity entity = jobPostingService.publish(id, userId);
         return ResponseEntity.ok(ApiResponse.of(jobMapper.toPostingResponse(entity)));
     }
 
@@ -202,7 +209,9 @@ public class JobPostingController {
     @Operation(summary = "求人募集終了")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "終了成功")
     public ResponseEntity<ApiResponse<JobPostingResponse>> closeJob(@PathVariable Long id) {
-        JobPostingEntity entity = jobPostingService.close(id, SecurityUtils.getCurrentUserId());
+        Long userId = SecurityUtils.getCurrentUserId();
+        postingViewGuard.requireVisible(id, userId);
+        JobPostingEntity entity = jobPostingService.close(id, userId);
         return ResponseEntity.ok(ApiResponse.of(jobMapper.toPostingResponse(entity)));
     }
 
@@ -213,7 +222,9 @@ public class JobPostingController {
     @Operation(summary = "求人キャンセル")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "キャンセル成功")
     public ResponseEntity<ApiResponse<JobPostingResponse>> cancelJob(@PathVariable Long id) {
-        JobPostingEntity entity = jobPostingService.cancel(id, SecurityUtils.getCurrentUserId());
+        Long userId = SecurityUtils.getCurrentUserId();
+        postingViewGuard.requireVisible(id, userId);
+        JobPostingEntity entity = jobPostingService.cancel(id, userId);
         return ResponseEntity.ok(ApiResponse.of(jobMapper.toPostingResponse(entity)));
     }
 
@@ -224,7 +235,9 @@ public class JobPostingController {
     @Operation(summary = "求人論理削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteJob(@PathVariable Long id) {
-        jobPostingService.delete(id, SecurityUtils.getCurrentUserId());
+        Long userId = SecurityUtils.getCurrentUserId();
+        postingViewGuard.requireVisible(id, userId);
+        jobPostingService.delete(id, userId);
         return ResponseEntity.noContent().build();
     }
 }

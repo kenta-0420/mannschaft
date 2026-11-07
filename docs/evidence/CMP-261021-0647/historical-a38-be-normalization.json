@@ -1,0 +1,99 @@
+{
+    "recordedAtUtc":  "2026-10-25T03:47:22.0988013+00:00",
+    "runId":  40150974359,
+    "headSha":  "a38b62efc5f20a214caf1d01faff31a536eb50ab",
+    "classification":  "historical evidence, not latest PR head CI",
+    "rawObservations":  {
+                            "uniqueTestSuiteClassNames":  8303,
+                            "rawTestClassStarts":  8303,
+                            "directRawWeightJoinIsValid":  false,
+                            "note":  "raw class-progress contains nested/inner suites; 5,221 unmatched direct names and one stale key from initial raw union are not top-level weight facts."
+                        },
+    "normalization":  {
+                          "method":  "Use :test end records only; canonical top-level name is the prefix before the first $. If exact top-level suite is recorded, use it alone. Otherwise choose all highest observed nested suites (no observed parent) and sum their elapsed_ms.",
+                          "observedTopLevelUnion":  3085,
+                          "crossShardDuplicates":  0,
+                          "duplicateDetails":  [
+
+                                               ],
+                          "nestedOnlyTopLevelCount":  1,
+                          "nestedOnlyTopLevelClasses":  [
+                                                            "com.mannschaft.app.auth.controller.AuthRegisterPrivacyPolicyTest"
+                                                        ],
+                          "historicalWeightEntries":  3083,
+                          "observedAndWeightedCount":  3083,
+                          "observedWithoutWeight":  [
+                                                        "com.mannschaft.app.common.testing.VisibilityResolverContextConfigurationTest",
+                                                        "com.mannschaft.app.bulletin.BulletinReplyAuthorContractIT"
+                                                    ],
+                          "historicalWeightNotObserved":  [
+
+                                                          ],
+                          "perShard":  [
+                                           {
+                                               "shard":  0,
+                                               "topLevelClasses":  513
+                                           },
+                                           {
+                                               "shard":  1,
+                                               "topLevelClasses":  515
+                                           },
+                                           {
+                                               "shard":  2,
+                                               "topLevelClasses":  514
+                                           },
+                                           {
+                                               "shard":  3,
+                                               "topLevelClasses":  514
+                                           },
+                                           {
+                                               "shard":  4,
+                                               "topLevelClasses":  514
+                                           },
+                                           {
+                                               "shard":  5,
+                                               "topLevelClasses":  515
+                                           }
+                                       ],
+                          "normalizedUnionFile":  "normalized-class-weight-union.json"
+                      },
+    "authRegisterPrivacyPolicy":  {
+                                      "class":  "com.mannschaft.app.auth.controller.AuthRegisterPrivacyPolicyTest",
+                                      "shard":  2,
+                                      "elapsedMs":  3138,
+                                      "rootSuites":  [
+                                                         "com.mannschaft.app.auth.controller.AuthRegisterPrivacyPolicyTest$PrivacyPolicyValidationWebMvcTest",
+                                                         "com.mannschaft.app.auth.controller.AuthRegisterPrivacyPolicyTest$PrivacyPolicyPersistenceIntegrationTest"
+                                                     ],
+                                      "historicalWeightSeconds":  3.435,
+                                      "directTopLevelSuiteObserved":  false,
+                                      "sourceRawSuiteRows":  [
+                                                                 {
+                                                                     "class":  "com.mannschaft.app.auth.controller.AuthRegisterPrivacyPolicyTest$PrivacyPolicyValidationWebMvcTest",
+                                                                     "elapsedMs":  1858,
+                                                                     "result":  "SUCCESS"
+                                                                 },
+                                                                 {
+                                                                     "class":  "com.mannschaft.app.auth.controller.AuthRegisterPrivacyPolicyTest$PrivacyPolicyPersistenceIntegrationTest",
+                                                                     "elapsedMs":  1280,
+                                                                     "result":  "SUCCESS"
+                                                                 }
+                                                             ],
+                                      "sumOfNestedSuiteElapsedMs":  3138,
+                                      "interpretation":  "nested-only top-level key is observed after normalizing; it is not stale/unobserved."
+                                  },
+    "reference0a":  {
+                        "runId":  40141975988,
+                        "normalizerSummarySha256":  "e9dc7ceefdd51ad7c60902efb057ceb9f224dd1318dec93eab885bc1d9f6888f",
+                        "classMeasurementsSha256":  "89076b352e5d08ef6de4380e3ea0ec1167d700ab7cb5198ace49b6c4c179d457",
+                        "priorNormalizedUnion":  3085,
+                        "priorNestedOnlyTopCount":  1,
+                        "priorHistoricalWeightCount":  3083,
+                        "priorUnweightedObserved":  [
+                                                        "com.mannschaft.app.bulletin.BulletinReplyAuthorContractIT",
+                                                        "com.mannschaft.app.common.testing.VisibilityResolverContextConfigurationTest"
+                                                    ]
+                    },
+    "sourceWeightsBlob":  "b994845175997c8b8b4d076c00b7f8421719a986",
+    "rawAndInitialAnalysisPreserved":  true
+}

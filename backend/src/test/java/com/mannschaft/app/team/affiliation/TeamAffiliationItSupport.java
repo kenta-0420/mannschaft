@@ -224,16 +224,23 @@ abstract class TeamAffiliationItSupport extends AbstractMySqlIntegrationTest {
     // 加盟の行（検証対象の API を使わずに前提状態を作る）
     // =====================================================================
 
-    /** team_org_memberships の行を native INSERT する。返り値は membershipId。 */
+    /**
+     * team_org_memberships の行を native INSERT する。返り値は membershipId。
+     *
+     * <p>本番の作成と同じく、INSERT の時点の組織・チームの閉鎖の世代（{@code closure_generation}）を記録する
+     * （F01.2.1 §4.5。行が無ければ 0）。この後に組織・チームが閉鎖されれば、この行は閉鎖前の行になる。</p>
+     */
     protected long insertMembershipRow(long teamId, long orgId, String status, String direction,
                                        UUID groupId, LocalDateTime invitedAt) {
         // group_id が NULL のときはリテラルで書く（型のない null のバインドを避ける）
         var insert = em.createNativeQuery(
                         "INSERT INTO team_org_memberships (team_id, organization_id, status, direction, group_id, "
-                                + "invited_at, created_at, updated_at) "
+                                + "invited_at, created_at, updated_at, org_closure_generation, team_closure_generation) "
                                 + "VALUES (:teamId, :orgId, :status, :direction, "
                                 + (groupId == null ? "NULL" : ":groupId")
-                                + ", :invitedAt, :invitedAt, UTC_TIMESTAMP())")
+                                + ", :invitedAt, :invitedAt, UTC_TIMESTAMP(), "
+                                + "COALESCE((SELECT o.closure_generation FROM organizations o WHERE o.id = :orgId), 0), "
+                                + "COALESCE((SELECT t.closure_generation FROM teams t WHERE t.id = :teamId), 0))")
                 .setParameter("teamId", teamId)
                 .setParameter("orgId", orgId)
                 .setParameter("status", status)
@@ -268,6 +275,8 @@ abstract class TeamAffiliationItSupport extends AbstractMySqlIntegrationTest {
         String teams = idList(createdTeamIds);
         String orgs = idList(createdOrgIds);
         if (!createdOrgIds.isEmpty()) {
+            // 通知 outbox（docs/architecture/notification_outbox.md）。加盟の通知はテナントの組織 ID を写しに持つ
+            jdbc.update("DELETE FROM team_notification_outbox WHERE organization_id IN (" + orgs + ")");
             jdbc.update("DELETE FROM notification_fanout_job_messages WHERE job_id IN "
                     + "(SELECT id FROM notification_fanout_jobs WHERE organization_id IN (" + orgs + "))");
             jdbc.update("DELETE FROM notification_fanout_jobs WHERE organization_id IN (" + orgs + ")");

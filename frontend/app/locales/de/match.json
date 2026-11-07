@@ -252,7 +252,8 @@
           "connecting": "Verbinden…",
           "reconnecting": "Erneut verbinden…",
           "offline": "Offline",
-          "denied": "Kein Zuschauen möglich"
+          "denied": "Kein Zuschauen möglich",
+          "unauthenticated": "Anmeldung erforderlich"
         },
         "status": {
           "SCHEDULED": "Nicht begonnen",
@@ -264,7 +265,8 @@
         "denied": {
           "title": "Dieses Spiel kann nicht angesehen werden",
           "detail": "Der Live-Stream ist nicht verfügbar, da er außerhalb des Sichtbarkeitsbereichs liegt."
-        }
+        },
+        "unauthenticated_banner": "Melde dich an, um Live-Updates zu erhalten."
       }
     },
     "analytics": {
@@ -455,12 +457,12 @@
     },
     "org_select": {
       "label": "Organisation",
-      "invalid": "指定された組織は無効です（このチームの組織ではありません）。組織を選び直してください",
-      "placeholder": "組織を選択"
+      "invalid": "Die angegebene Organisation ist ungültig (keine Organisation dieses Teams). Bitte wählen Sie die Organisation erneut aus",
+      "placeholder": "Organisation auswählen"
     },
     "org_context": {
       "resolve_failed": "Team-/Organisationsinfo konnte nicht aufgelöst werden. Bitte prüfe deine Mitgliedschaften",
-      "not_member_of_org": "このチームはこの大会の組織に加盟していないため、試合を記録できません"
+      "not_member_of_org": "Dieses Team ist nicht Mitglied der Organisation dieses Turniers, daher kann das Spiel nicht erfasst werden"
     },
     "entry": {
       "record_from_schedule": "Dieses Spiel aufzeichnen",
@@ -655,24 +657,24 @@
       },
       "ranking": {
         "switch_to_ranking": "Mehrteilnehmer-Rangliste eingeben",
-        "intro": "Fuege Teilnehmer hinzu und gib jeweils die Gesamtpunktzahl ein; der Server ermittelt die Rangfolge automatisch nach absteigender Gesamtpunktzahl.",
+        "intro": "Füge Teilnehmer hinzu und gib jeweils die Gesamtpunktzahl ein; der Server ermittelt die Rangfolge automatisch nach absteigender Gesamtpunktzahl.",
         "mode_label": "Mehrteilnehmer-Rangliste",
         "switch_to_direct": "Zur direkten Gesamteingabe wechseln",
-        "canonical_notice": "Es liegen Teilnehmereintraege vor, daher ist die Mehrteilnehmer-Rangliste massgeblich.",
-        "clear_to_direct": "Eintraege loeschen und zur direkten Eingabe zurueckkehren",
+        "canonical_notice": "Es liegen Teilnehmereinträge vor, daher ist die Mehrteilnehmer-Rangliste massgeblich.",
+        "clear_to_direct": "Einträge löschen und zur direkten Eingabe zurückkehren",
         "standings": "Rangliste (vom Server berechnet)",
         "competitor_label": "Name des Teilnehmers",
         "competitor_placeholder": "z. B. Hanako Yamada",
         "total_label": "Gesamtpunktzahl",
-        "add_entry": "Teilnehmer hinzufuegen",
+        "add_entry": "Teilnehmer hinzufügen",
         "remove_entry": "Diesen Teilnehmer entfernen",
-        "complete": "Rangliste bestaetigen",
-        "complete_hint": "Fuege mindestens zwei Teilnehmer hinzu und gib jeweils Name und Gesamtpunktzahl ein",
+        "complete": "Rangliste bestätigen",
+        "complete_hint": "Füge mindestens zwei Teilnehmer hinzu und gib jeweils Name und Gesamtpunktzahl ein",
         "user_fallback": "Spieler #{id}",
         "team_fallback": "Team #{id}",
         "error": {
-          "load_failed": "Teilnehmereintraege konnten nicht geladen werden",
-          "save_failed": "Teilnehmereintraege konnten nicht gespeichert werden"
+          "load_failed": "Teilnehmereinträge konnten nicht geladen werden",
+          "save_failed": "Teilnehmereinträge konnten nicht gespeichert werden"
         }
       }
     }

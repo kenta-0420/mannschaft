@@ -56,7 +56,7 @@ watch(() => route.path, () => {
             class="min-h-11 min-w-11"
             text
             size="small"
-            :aria-label="$t('common.menu')"
+            :aria-label="$t('common.openNavigation')"
             data-testid="scope-sidebar-toggle"
             @click="showSidebar = true"
           />

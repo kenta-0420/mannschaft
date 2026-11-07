@@ -205,6 +205,82 @@ class ScheduleAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
         em.clear();
     }
 
+    @Nested
+    @DisplayName("カレンダー期間交差（CMP-261024-0528）")
+    class CalendarPeriod {
+
+        @ParameterizedTest
+        @CsvSource({"PERSONAL", "TEAM", "ORGANIZATION", "CALENDAR", "CALENDAR_TEAM", "CALENDAR_ORGANIZATION"})
+        @DisplayName("期間開始前から継続する予定を含め、終了境界・単一点・越境・空期間を守る")
+        void listIncludesOverlappingSchedules(String scope) throws Exception {
+            String eventScope = scope.equals("CALENDAR") ? "PERSONAL" : scope.replace("CALENDAR_", "");
+            LocalDateTime from = LocalDateTime.of(2026, 11, 1, 0, 0);
+            LocalDateTime to = LocalDateTime.of(2026, 12, 12, 23, 59, 59);
+            Long overlap = savePeriodSchedule(eventScope, from.minusMinutes(30), from.plusMinutes(30), memberId);
+            Long lowerPoint = savePeriodSchedule(eventScope, from, null, memberId);
+            Long upperPoint = savePeriodSchedule(eventScope, to, null, memberId);
+            savePeriodSchedule(eventScope, from.minusHours(1), from, memberId);
+            savePeriodSchedule(eventScope, from.minusMinutes(1), null, memberId);
+            savePeriodSchedule(eventScope, to.plusSeconds(1), null, memberId);
+            // 本人予定の取得条件や共有スコープの可視性が期間条件の OR により外れないこと。
+            Long foreignPersonal = savePeriodSchedule(
+                    "PERSONAL", from.minusMinutes(30), from.plusMinutes(30), outsiderId);
+            em.flush();
+            em.clear();
+
+            String path = switch (scope) {
+                case "TEAM" -> "/api/v1/teams/" + teamSlug + "/schedules";
+                case "ORGANIZATION" -> "/api/v1/organizations/" + orgSlug + "/schedules";
+                case "CALENDAR", "CALENDAR_TEAM", "CALENDAR_ORGANIZATION" -> "/api/v1/my/calendar";
+                default -> "/api/v1/me/schedules";
+            };
+            setAuthentication(memberId);
+            mockMvc.perform(get(path)
+                            .param("from", "2026-11-01T00:00:00+09:00")
+                            .param("to", "2026-12-12T23:59:59+09:00"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[*].id").value(org.hamcrest.Matchers.containsInAnyOrder(
+                            overlap.intValue(), lowerPoint.intValue(), upperPoint.intValue())));
+            mockMvc.perform(get(path)
+                            .param("from", "2027-01-01T00:00:00+09:00")
+                            .param("to", "2027-02-01T00:00:00+09:00"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(0));
+
+            setAuthentication(delegateId);
+            // 別所有者は個人予定へ到達せず、非所属者は共有予定へ到達しない。
+            if (!eventScope.equals("PERSONAL")) {
+                setAuthentication(outsiderId);
+            }
+            var foreignResponse = mockMvc.perform(get(path)
+                            .param("from", "2026-11-01T00:00:00+09:00")
+                            .param("to", "2026-12-12T23:59:59+09:00"))
+                    .andExpect(status().isOk());
+            if (scope.equals("CALENDAR_TEAM") || scope.equals("CALENDAR_ORGANIZATION")) {
+                // 非所属者でも本人の個人予定は表示される。共有予定だけが非露出であること。
+                foreignResponse.andExpect(jsonPath("$.data[*].id").value(
+                        org.hamcrest.Matchers.contains(foreignPersonal.intValue())));
+            } else {
+                foreignResponse.andExpect(jsonPath("$.data.length()").value(0));
+            }
+        }
+
+        private Long savePeriodSchedule(String scope, LocalDateTime start, LocalDateTime end, Long ownerId) {
+            return scheduleRepository.save(ScheduleEntity.builder()
+                    .userId(scope.equals("PERSONAL") ? ownerId : null)
+                    .teamId(scope.equals("TEAM") ? teamId : null)
+                    .organizationId(scope.equals("ORGANIZATION") ? orgId : null)
+                    .title("月跨ぎ期間境界")
+                    .startAt(start).endAt(end)
+                    .eventType(EventType.OTHER)
+                    .visibility(ScheduleVisibility.MEMBERS_ONLY)
+                    .minViewRole(MinViewRole.MEMBER_PLUS)
+                    .status(ScheduleStatus.SCHEDULED)
+                    .createdBy(ownerId)
+                    .build()).getId();
+        }
+    }
+
     // ═════════════════════════════════════════════════════════════════════
     // iCal トークン（能力トークン）
     // ═════════════════════════════════════════════════════════════════════

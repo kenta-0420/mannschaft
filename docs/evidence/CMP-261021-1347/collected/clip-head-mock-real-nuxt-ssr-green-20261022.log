@@ -1,0 +1,13 @@
+Duplicated imports "OrgTeamGroup", the one from "frontend/app/composables/useBroadcastAudience.ts" has been ignored and "frontend/app/composables/useOrgTeamMembershipApi.ts" is used
+Duplicated imports "isForbiddenError", the one from "frontend/app/composables/useAttendancePermissions.ts" has been ignored and "frontend/app/utils/tournamentScoreEntry.ts" is used
+Duplicated imports "OrgTeamGroup", the one from "frontend/app/composables/useBroadcastAudience.ts" has been ignored and "frontend/app/composables/useOrgTeamMembershipApi.ts" is used
+Duplicated imports "isForbiddenError", the one from "frontend/app/composables/useAttendancePermissions.ts" has been ignored and "frontend/app/utils/tournamentScoreEntry.ts" is used
+
+ RUN  v4.1.11 work/ranch-avatar-clips-finalize-20261021/frontend
+
+
+ Test Files  1 passed (1)
+      Tests  5 passed | 3 skipped (8)
+   Start at  08:28:49
+   Duration  3.83s (transform 230ms, setup 0ms, import 593ms, tests 77ms, environment 2.28s)
+

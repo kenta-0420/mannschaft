@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "kind": "selected-resident-evidence-manifest",
+  "originalReportHashes": [
+    {
+      "sourceRelative": "resident-1-evidence/resident-report.json",
+      "sha256": "2f46e8a809486c28ed0577af808636bd7fdd906a2b409faae0d2fbe60a10bf4d",
+      "fullRawReportCopied": false
+    },
+    {
+      "sourceRelative": "resident2-evidence/result.json",
+      "sha256": "5863ed8bc60aac916830e773c19393e982c023b31c69bd05a3113fdeb455dab7",
+      "fullRawReportCopied": false
+    },
+    {
+      "sourceRelative": "resident-3-ui/resident-3-report.json",
+      "sha256": "a480e08fa4d531c9116885ffa2fd581832d21cd261efd72d8abd51238aee5572",
+      "fullRawReportCopied": false
+    }
+  ],
+  "selectedImages": [
+    {
+      "path": "docs/evidence/CMP-261024-2051/residents/coordinator-en390-tabs-stable.png",
+      "bytes": 55530,
+      "sha256": "47d8272b28773c62fd3e3d0cd697a675e0727d3dd1b44be576a3d281a87dfd44",
+      "visuallyInspected": true,
+      "note": "統括補足、住民観測と分離"
+    },
+    {
+      "path": "docs/evidence/CMP-261024-2051/residents/r1-established.png",
+      "bytes": 219706,
+      "sha256": "b9892e7b7e4aa19c82221ad924f51d0d8a8dee5e3fe01d578a9613bdcdfc08b2",
+      "visuallyInspected": true,
+      "note": "住民の選定証跡"
+    },
+    {
+      "path": "docs/evidence/CMP-261024-2051/residents/r1-long-candidate-stable.png",
+      "bytes": 110343,
+      "sha256": "d72d2358e5618015485171a413cfa2816f33c808e1b9f35f34370d09c05e474a",
+      "visuallyInspected": true,
+      "note": "住民の選定証跡"
+    },
+    {
+      "path": "docs/evidence/CMP-261024-2051/residents/r2-after-send.png",
+      "bytes": 200469,
+      "sha256": "e7bc11dfe2a66fe6fe53f25794313af03e17968aac17c43b5cb79517cbc32c42",
+      "visuallyInspected": true,
+      "note": "住民の選定証跡"
+    },
+    {
+      "path": "docs/evidence/CMP-261024-2051/residents/r2-close40-review.png",
+      "bytes": 158364,
+      "sha256": "9065498cfb10764344f0ad88982b941975be656f45ee5d03cec5ef5a60315ab1",
+      "visuallyInspected": true,
+      "note": "住民の選定証跡"
+    },
+    {
+      "path": "docs/evidence/CMP-261024-2051/residents/r2-following-confirm.png",
+      "bytes": 206587,
+      "sha256": "39398126e76137987447fd97a647424c36f23678dc18c9af97fbba7f143d3b99",
+      "visuallyInspected": true,
+      "note": "住民の選定証跡"
+    },
+    {
+      "path": "docs/evidence/CMP-261024-2051/residents/r3-mutual390.png",
+      "bytes": 47106,
+      "sha256": "8243b19f8c1c33c1edfd812bcf2542667c2381ca8863d2ea7abbe778ca014774",
+      "visuallyInspected": true,
+      "note": "住民の選定証跡"
+    },
+    {
+      "path": "docs/evidence/CMP-261024-2051/residents/r3-tabs390.png",
+      "bytes": 59190,
+      "sha256": "537e1d8fe350642296958b24ab68220b5fd8c7d7d182ff9916d26f5204a487a9",
+      "visuallyInspected": true,
+      "note": "住民の選定証跡"
+    },
+    {
+      "path": "docs/evidence/CMP-261024-2051/residents/b0-existing-ui-same-store.png",
+      "bytes": 433449,
+      "sha256": "b206f14d8150da89fc7f0ddfa17393acd71b36e9d6cfe6764d3473b84f5f7637",
+      "visuallyInspected": true,
+      "note": "独立origin既存UI/IndexedDBの実表示"
+    },
+    {
+      "path": "docs/evidence/CMP-261024-2051/residents/coordinator-en390-long-candidate.png",
+      "bytes": 56568,
+      "sha256": "85a6b9d4aa667c72bdd18e3e12ec1c1d173fa1c3d5678cb668fe3798a674dd15",
+      "visuallyInspected": true,
+      "note": "統括補足、住民persona観測とは別"
+    },
+    {
+      "path": "docs/evidence/CMP-261024-2051/residents/coordinator-ko390-confirm-stable.png",
+      "bytes": 43400,
+      "sha256": "b192327f7711986296b561492da3fdb7f75aea7b613397a62e1bdcdbb992407a",
+      "visuallyInspected": true,
+      "note": "統括補足、住民persona観測とは別"
+    }
+  ]
+}

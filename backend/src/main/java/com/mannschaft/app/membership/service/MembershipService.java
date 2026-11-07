@@ -321,9 +321,9 @@ public class MembershipService {
         PositionEntity p = positionRepository.findById(req.getPositionId())
                 .orElseThrow(() -> new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_POSITION_CATALOG_NOT_FOUND));
 
-        // スコープ越境検証
+        // スコープ越境検証。他スコープの役職の存在を明かさないため、不在と同一のコードで拒否する（CMP-260821-1027）。
         if (p.getScopeType() != m.getScopeType() || !p.getScopeId().equals(m.getScopeId())) {
-            throw new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_POSITION_SCOPE_MISMATCH);
+            throw new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_POSITION_CATALOG_NOT_FOUND);
         }
 
         if (!p.isAlive()) {
@@ -485,6 +485,21 @@ public class MembershipService {
      */
     public boolean isActiveMember(Long userId, ScopeType scopeType, Long scopeId) {
         return membershipRepository.existsActiveByUserAndScope(userId, scopeType, scopeId);
+    }
+
+    /**
+     * 指定スコープのアクティブなサポーター（{@code role_kind = SUPPORTER} かつ {@code left_at IS NULL}）の人数を返す。
+     *
+     * <p>CMP-261004-1942: 組織詳細のヘッダ表示（{@code social.supporterCount}）用の集計窓口。
+     * 他ドメイン（organization 等）が {@link MembershipRepository} を直接注入せずに済むよう、
+     * プリミティブの件数だけを返す（D-5 ArchUnit 準拠）。</p>
+     *
+     * @param scopeType スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId   スコープ ID
+     * @return アクティブなサポーター数（0 以上）
+     */
+    public long countActiveSupporters(ScopeType scopeType, Long scopeId) {
+        return membershipRepository.countActiveByScopeAndRoleKind(scopeType, scopeId, RoleKind.SUPPORTER);
     }
 
     /** user行ロック後の変更処理向けに、RR snapshotへ依存しない現在の在籍有無を返す。 */

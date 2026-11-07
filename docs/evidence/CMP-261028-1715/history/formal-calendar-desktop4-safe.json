@@ -1,0 +1,570 @@
+{
+  "kind": "formal-ui-not-performance",
+  "sourceHead": "c7879b0244b617ab363927122ab88f801413ecc1",
+  "mode": "desktop",
+  "startedAt": "2026-10-28T11:35:51.167Z",
+  "cases": [
+    {
+      "name": "owner-widget-month-and-personal-create",
+      "status": "passed",
+      "createHTTP201": true,
+      "ownedIdCapturedInMemory": true,
+      "monthRoundTrip": true
+    },
+    {
+      "name": "owner-personal-detail-update-refetch",
+      "status": "passed",
+      "modalPositive": true,
+      "sameOwnedId": true,
+      "timePreserved": true,
+      "updateHTTP200": true,
+      "UIRefetchPreserved": true,
+      "detailAPIOwner200": true
+    },
+    {
+      "name": "owner-widget-to-fullscreen-and-valid-shared-query",
+      "status": "passed",
+      "fullScreenUI": true,
+      "existingSharedQueryPositive": true,
+      "sharedRecordReadOnly": true,
+      "sharedIdentityKeptInMemory": true
+    },
+    {
+      "name": "member-personal-isolation",
+      "status": "failed",
+      "checkpoint": "calendar-view-attached",
+      "errorClass": "assertion-or-driver",
+      "strictLocatorFailure": false,
+      "matcher": null
+    }
+  ],
+  "checkpoints": [
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "case-start",
+      "at": "2026-10-28T11:36:02.910Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "owner-natural-login",
+      "at": "2026-10-28T11:36:02.914Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "identity-http",
+      "at": "2026-10-28T11:36:05.421Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "identity-shape",
+      "at": "2026-10-28T11:36:06.107Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "select-personal",
+      "at": "2026-10-28T11:36:06.119Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "widget-heading-visible",
+      "at": "2026-10-28T11:36:07.151Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "widget-42cells",
+      "at": "2026-10-28T11:36:10.994Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "widget-cells-visible",
+      "at": "2026-10-28T11:36:11.107Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-button-visible",
+      "at": "2026-10-28T11:36:11.483Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-button-click",
+      "at": "2026-10-28T11:36:11.555Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-click-completed",
+      "at": "2026-10-28T11:36:13.087Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-heading-changed",
+      "at": "2026-10-28T11:36:13.176Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-request-observed",
+      "at": "2026-10-28T11:36:13.244Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-observed-requests-finished",
+      "at": "2026-10-28T11:36:13.246Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-next-heading",
+      "at": "2026-10-28T11:36:14.039Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-button-visible",
+      "at": "2026-10-28T11:36:14.602Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-button-click",
+      "at": "2026-10-28T11:36:14.742Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-click-completed",
+      "at": "2026-10-28T11:36:15.685Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-heading-changed",
+      "at": "2026-10-28T11:36:15.803Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-request-observed",
+      "at": "2026-10-28T11:36:15.846Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-observed-requests-finished",
+      "at": "2026-10-28T11:36:15.848Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-restored",
+      "at": "2026-10-28T11:36:16.902Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "widget-heading-visible",
+      "at": "2026-10-28T11:36:16.960Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "widget-42cells",
+      "at": "2026-10-28T11:36:17.016Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "widget-cells-visible",
+      "at": "2026-10-28T11:36:17.076Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "current-month-day-click",
+      "at": "2026-10-28T11:36:17.165Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "form-or-day-list-visible",
+      "at": "2026-10-28T11:36:17.685Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "create-form-visible",
+      "at": "2026-10-28T11:36:17.818Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "own-title-fill",
+      "at": "2026-10-28T11:36:17.853Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "own-create-ui-post",
+      "at": "2026-10-28T11:36:17.979Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "own-create-response",
+      "at": "2026-10-28T11:36:18.740Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "own-create-form-closed",
+      "at": "2026-10-28T11:36:18.793Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "case-start",
+      "at": "2026-10-28T11:36:19.176Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "widget-heading-visible",
+      "at": "2026-10-28T11:36:19.177Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "widget-42cells",
+      "at": "2026-10-28T11:36:19.873Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "widget-cells-visible",
+      "at": "2026-10-28T11:36:19.921Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "current-month-day-click",
+      "at": "2026-10-28T11:36:19.944Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "own-day-row-visible",
+      "at": "2026-10-28T11:36:20.183Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "own-row-detail-click",
+      "at": "2026-10-28T11:36:20.220Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "own-modal-positive",
+      "at": "2026-10-28T11:36:20.673Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "own-edit-open",
+      "at": "2026-10-28T11:36:20.939Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "own-update-title",
+      "at": "2026-10-28T11:36:21.701Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "own-update-ui-patch",
+      "at": "2026-10-28T11:36:21.767Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "own-update-response",
+      "at": "2026-10-28T11:36:22.250Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "own-update-ui-reload",
+      "at": "2026-10-28T11:36:22.650Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "widget-heading-visible",
+      "at": "2026-10-28T11:36:24.244Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "widget-42cells",
+      "at": "2026-10-28T11:36:28.380Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "widget-cells-visible",
+      "at": "2026-10-28T11:36:28.484Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "current-month-day-click",
+      "at": "2026-10-28T11:36:28.602Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "own-day-row-visible",
+      "at": "2026-10-28T11:36:29.278Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "own-row-detail-click",
+      "at": "2026-10-28T11:36:29.317Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "own-modal-positive",
+      "at": "2026-10-28T11:36:29.779Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "own-modal-close",
+      "at": "2026-10-28T11:36:30.021Z"
+    },
+    {
+      "stage": "owner-personal-detail-update-refetch",
+      "name": "owner-detail-api-positive",
+      "at": "2026-10-28T11:36:30.377Z"
+    },
+    {
+      "stage": "owner-widget-to-fullscreen-and-valid-shared-query",
+      "name": "case-start",
+      "at": "2026-10-28T11:36:30.860Z"
+    },
+    {
+      "stage": "owner-widget-to-fullscreen-and-valid-shared-query",
+      "name": "widget-heading-visible",
+      "at": "2026-10-28T11:36:30.861Z"
+    },
+    {
+      "stage": "owner-widget-to-fullscreen-and-valid-shared-query",
+      "name": "widget-42cells",
+      "at": "2026-10-28T11:36:30.877Z"
+    },
+    {
+      "stage": "owner-widget-to-fullscreen-and-valid-shared-query",
+      "name": "widget-cells-visible",
+      "at": "2026-10-28T11:36:30.896Z"
+    },
+    {
+      "stage": "owner-widget-to-fullscreen-and-valid-shared-query",
+      "name": "widget-fullscreen-ui",
+      "at": "2026-10-28T11:36:30.914Z"
+    },
+    {
+      "stage": "owner-widget-to-fullscreen-and-valid-shared-query",
+      "name": "fullscreen-route",
+      "at": "2026-10-28T11:36:32.030Z"
+    },
+    {
+      "stage": "owner-widget-to-fullscreen-and-valid-shared-query",
+      "name": "calendar-view-attached",
+      "at": "2026-10-28T11:36:32.045Z"
+    },
+    {
+      "stage": "owner-widget-to-fullscreen-and-valid-shared-query",
+      "name": "shared-query-positive-entry",
+      "at": "2026-10-28T11:36:34.561Z"
+    },
+    {
+      "stage": "owner-widget-to-fullscreen-and-valid-shared-query",
+      "name": "calendar-view-attached",
+      "at": "2026-10-28T11:36:36.299Z"
+    },
+    {
+      "stage": "owner-widget-to-fullscreen-and-valid-shared-query",
+      "name": "shared-query-positive-detail",
+      "at": "2026-10-28T11:36:39.099Z"
+    },
+    {
+      "stage": "member-personal-isolation",
+      "name": "case-start",
+      "at": "2026-10-28T11:36:39.440Z"
+    },
+    {
+      "stage": "member-personal-isolation",
+      "name": "other-actor-open-login",
+      "at": "2026-10-28T11:36:39.443Z"
+    },
+    {
+      "stage": "member-personal-isolation",
+      "name": "identity-http",
+      "at": "2026-10-28T11:36:59.303Z"
+    },
+    {
+      "stage": "member-personal-isolation",
+      "name": "identity-shape",
+      "at": "2026-10-28T11:36:59.387Z"
+    },
+    {
+      "stage": "member-personal-isolation",
+      "name": "actor-membership-precondition",
+      "at": "2026-10-28T11:36:59.389Z"
+    },
+    {
+      "stage": "member-personal-isolation",
+      "name": "other-calendar-ui-entry",
+      "at": "2026-10-28T11:36:59.746Z"
+    },
+    {
+      "stage": "member-personal-isolation",
+      "name": "calendar-view-attached",
+      "at": "2026-10-28T11:37:00.371Z"
+    }
+  ],
+  "identityShapes": [
+    {
+      "actorAlias": "owner",
+      "httpStatus": 200,
+      "dataObject": true,
+      "idType": "number",
+      "idFinite": true,
+      "idDuplicate": false
+    },
+    {
+      "actorAlias": "member",
+      "httpStatus": 200,
+      "dataObject": true,
+      "idType": "number",
+      "idFinite": true,
+      "idDuplicate": false
+    }
+  ],
+  "ownCreates": 1,
+  "ownUpdates": 1,
+  "ownDeletes": 0,
+  "sharedWrites": 0,
+  "notificationsRequested": 0,
+  "trace": false,
+  "video": false,
+  "rawImages": false,
+  "screenshots": [
+    {
+      "file": "未採用ローカル画像（公開証跡に含めない）",
+      "masked": true,
+      "width": 1280,
+      "height": 900,
+      "bodyOverflowPx": 0
+    }
+  ],
+  "stage": "member-personal-isolation",
+  "checkpoint": "calendar-view-attached",
+  "monthMoves": [
+    {
+      "direction": 1,
+      "clickCompleted": true,
+      "headingChanged": true,
+      "observations": [
+        {
+          "category": "personal",
+          "status": 200,
+          "finished": true,
+          "failed": false
+        },
+        {
+          "category": "shared",
+          "status": 200,
+          "finished": true,
+          "failed": false
+        },
+        {
+          "category": "todos",
+          "status": 200,
+          "finished": true,
+          "failed": false
+        }
+      ],
+      "allObservedCompleted": true
+    },
+    {
+      "direction": -1,
+      "clickCompleted": true,
+      "headingChanged": true,
+      "observations": [
+        {
+          "category": "personal",
+          "status": 200,
+          "finished": true,
+          "failed": false
+        },
+        {
+          "category": "shared",
+          "status": 200,
+          "finished": true,
+          "failed": false
+        },
+        {
+          "category": "todos",
+          "status": 200,
+          "finished": true,
+          "failed": false
+        }
+      ],
+      "allObservedCompleted": true
+    }
+  ],
+  "createRequestAttempted": true,
+  "sharedCandidateReadFailed": true,
+  "status": "failed",
+  "errorClass": "precondition-assertion-or-driver",
+  "ownedRecordFallbackCleanupStatus": 204,
+  "sessions": [
+    {
+      "actorAlias": "owner",
+      "sourceHead": "c7879b0244b617ab363927122ab88f801413ecc1",
+      "credentialsRead": true,
+      "businessMutations": 0,
+      "trace": false,
+      "video": false,
+      "pageErrorCount": 0,
+      "runtimeGuard": {
+        "sourceHead": "c7879b0244b617ab363927122ab88f801413ecc1",
+        "ownerAndSourceMatch": true,
+        "frontendIdentityMatches": true,
+        "frontendOwnedSocketMatches": true,
+        "runtimePublic8081Internal8080Match": true,
+        "existingMainApiIdentityMatches": true,
+        "rawArgvEnvironmentSaved": false
+      },
+      "initialCookieCount": 0,
+      "frontend200": true,
+      "frontendActual3011": true,
+      "frontendLogicalPreserved": true,
+      "apiHealth200": true,
+      "apiActual8080": true,
+      "publicRuntimeApiExpected": true,
+      "fixtureAliasesDistinct": true,
+      "configuredActorAliases": [
+        "owner",
+        "member",
+        "outsider"
+      ],
+      "loginDashboardReached": true,
+      "logoutStatus": 200,
+      "contextClosed": true,
+      "browserClosed": true,
+      "closed": true
+    },
+    {
+      "actorAlias": "member",
+      "sourceHead": "c7879b0244b617ab363927122ab88f801413ecc1",
+      "credentialsRead": true,
+      "businessMutations": 0,
+      "trace": false,
+      "video": false,
+      "pageErrorCount": 0,
+      "runtimeGuard": {
+        "sourceHead": "c7879b0244b617ab363927122ab88f801413ecc1",
+        "ownerAndSourceMatch": true,
+        "frontendIdentityMatches": true,
+        "frontendOwnedSocketMatches": true,
+        "runtimePublic8081Internal8080Match": true,
+        "existingMainApiIdentityMatches": true,
+        "rawArgvEnvironmentSaved": false
+      },
+      "initialCookieCount": 0,
+      "frontend200": true,
+      "frontendActual3011": true,
+      "frontendLogicalPreserved": true,
+      "apiHealth200": true,
+      "apiActual8080": true,
+      "publicRuntimeApiExpected": true,
+      "fixtureAliasesDistinct": true,
+      "configuredActorAliases": [
+        "owner",
+        "member",
+        "outsider"
+      ],
+      "loginStatus": 200,
+      "logoutStatus": 200,
+      "contextClosed": true,
+      "browserClosed": true,
+      "closed": true
+    }
+  ],
+  "allSessionsClosed": true,
+  "finishedAt": "2026-10-28T11:38:50.085Z"
+}

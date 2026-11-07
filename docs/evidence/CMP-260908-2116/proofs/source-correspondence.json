@@ -1,0 +1,150 @@
+{
+  "runtimeSourceHead": "ac49b5af784b79bade786ac0c82b9bb3822289f3",
+  "documentationBaseHead": "f59ea6d054a4a61a05e3084e6b2b1083ccef7673",
+  "wholeTreeEqual": false,
+  "oldEvidenceReassigned": false,
+  "relatedBlobs": [
+    {
+      "path": "backend/src/main/java/com/mannschaft/app/shift/service/ShiftSwapService.java",
+      "runtimeBlob": "2f67ac3db6dffad861acce2fa309bd58c40c3645",
+      "adoptedMainBlob": "2f67ac3db6dffad861acce2fa309bd58c40c3645",
+      "equal": true
+    },
+    {
+      "path": "backend/src/main/java/com/mannschaft/app/shift/repository/ShiftSwapRequestRepository.java",
+      "runtimeBlob": "2e41e309d9955c02a5beea419a25f514238b24b4",
+      "adoptedMainBlob": "2e41e309d9955c02a5beea419a25f514238b24b4",
+      "equal": true
+    },
+    {
+      "path": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+      "runtimeBlob": "704545afb3d7b31f45e1148b3ed7616c3191f482",
+      "adoptedMainBlob": "704545afb3d7b31f45e1148b3ed7616c3191f482",
+      "equal": true
+    },
+    {
+      "path": "frontend/app/components/shift/ShiftSwapRequestFormDialog.vue",
+      "runtimeBlob": "f7c97062ee8056cad32c8cb9a373327dc1a334b2",
+      "adoptedMainBlob": "f7c97062ee8056cad32c8cb9a373327dc1a334b2",
+      "equal": true
+    },
+    {
+      "path": "frontend/app/components/shift/ShiftSwapRequestFormDialog.spec.ts",
+      "runtimeBlob": "924db7c52fbcb71808592bf188b593f32a87f2f0",
+      "adoptedMainBlob": "924db7c52fbcb71808592bf188b593f32a87f2f0",
+      "equal": true
+    },
+    {
+      "path": "frontend/app/components/shift/ShiftSwapList.vue",
+      "runtimeBlob": "1806988d9231f3cf4ee078017f401d77d0fb04c6",
+      "adoptedMainBlob": "1806988d9231f3cf4ee078017f401d77d0fb04c6",
+      "equal": true
+    },
+    {
+      "path": "frontend/app/pages/my/shift.vue",
+      "runtimeBlob": "bbee62a03d8c2214333a636593b901baeb7335cf",
+      "adoptedMainBlob": "bbee62a03d8c2214333a636593b901baeb7335cf",
+      "equal": true
+    },
+    {
+      "path": "frontend/app/pages/teams/[slug]/shifts.vue",
+      "runtimeBlob": "410e2dcd8af7fe6b432cfa82a15f665d1164b4da",
+      "adoptedMainBlob": "410e2dcd8af7fe6b432cfa82a15f665d1164b4da",
+      "equal": true
+    }
+  ],
+  "runtimeCiBridge": {
+    "source": "ac49b5af784b79bade786ac0c82b9bb3822289f3",
+    "priorImplementationPr": 4181,
+    "priorImplementationHead": "6d9503ed3bd332b47899740558b05faa9fd84290",
+    "priorImplementationMerge": "d3e0d74f2d84dc3d21cfd7856b6d9c1806614786",
+    "priorImplementationMergedAt": "2026-10-28T06:02:02Z",
+    "sourceAdoptionPr": 4197,
+    "sourceAdoptionHead": "8fdc5f8c61fa4b91df6ae3f3fabf38fa95f66865",
+    "sourceAdoptionMergedAt": "2026-10-28T06:24:56Z",
+    "betweenChangedPaths": [
+      "docs/evidence/CMP-261004-1822-plan.md",
+      "docs/task-list.md"
+    ],
+    "backendTreeBoth": "8b6cd7eae6acb35a8b201686387b5724fe50ac5a",
+    "frontendTreeBoth": "b4c3e5184336350c282f2e8733550e572e8f9741",
+    "productTreesEqual": true,
+    "docsOnly": true,
+    "limitation": "PR4197のbackend業務jobはdocs-only skip。PR4181の同head実走成功と製品tree一致を分けて保持する。"
+  },
+  "adoptedScopedEvidence": [
+    {
+      "cmpId": "CMP-261021-0647",
+      "evidence": "docs/evidence/CMP-261021-0647.json",
+      "blob": "ff2ae6d77c8a63c15a4e5bbe7dea69e934a97252",
+      "implementation": {
+        "pr": 4053,
+        "sha": "82d8682768de515d72827e868eac65c11d2d1324",
+        "mergeSha": "bfd83ff311b15602085f8a4003c080cb0d564ca4",
+        "mergedAt": "2026-10-25T04:26:23Z"
+      },
+      "meaning": "固定sourceに存在する採用済み完了記録。旧実測sourceは保持し今回実機を代替しない。"
+    },
+    {
+      "cmpId": "CMP-261021-0648",
+      "evidence": "docs/evidence/CMP-261021-0648.json",
+      "blob": "3374afe4e6f1e1a7b74845ef0cd14a096ecec3a2",
+      "implementation": {
+        "pr": 4122,
+        "sha": "22844f91b189ab22596e41ee0a5d767418b8e3b2",
+        "mergeStatus": "MERGED",
+        "mergedAt": "2026-10-25T22:10:43Z",
+        "mergeCommit": "15366b4200bc77513a7d36ff41d88fd4bd49f655"
+      },
+      "meaning": "固定sourceに存在する採用済み完了記録。旧実測sourceは保持し今回実機を代替しない。"
+    },
+    {
+      "cmpId": "CMP-261021-0649",
+      "evidence": "docs/evidence/CMP-261021-0649.json",
+      "blob": "2f3b97cbbd7edc29ef235f9bf67a85cb8fbca180",
+      "implementation": {
+        "pr": 4137,
+        "sha": "1eaafc2cd843e198abcc4d414c4f250ecd05bd77"
+      },
+      "meaning": "固定sourceに存在する採用済み完了記録。旧実測sourceは保持し今回実機を代替しない。"
+    },
+    {
+      "cmpId": "CMP-261009-0616",
+      "evidence": "docs/evidence/CMP-261009-0616.json",
+      "blob": "c10ac90fa1547dd0276359fabac65bd7d03d5bde",
+      "implementation": {
+        "pr": 3741,
+        "sha": "f972720bc85a664df16d578c54061c2106c4bf31"
+      },
+      "meaning": "固定sourceに存在する採用済み完了記録。旧実測sourceは保持し今回実機を代替しない。"
+    }
+  ],
+  "adminAAdoption": {
+    "implementationPr": 4164,
+    "reviewedImplementationHead": "7f96ebc9ad90e106fa59a399a9e4d5dc2c50c3a5",
+    "path": "frontend/app/pages/teams/[slug]/shifts/[scheduleId]/change-requests.vue",
+    "reviewedBlob": "daa255571995ee6c28892f4d0a2cba1b89688665",
+    "actualBlob": "daa255571995ee6c28892f4d0a2cba1b89688665",
+    "blobEqual": true,
+    "reviewedHeadAncestor": false,
+    "adoptionAuthority": "固定sourceのmain台帳はAのみPR4164採用済みと記録。非祖先を未採用とみなさず実内容照合。",
+    "parentWhole1432StillWorking": true
+  },
+  "nuxtChanges": [
+    "旧84からは同値themeのimportTheme移設と6ロケールsystem_admin_email_outbox追加",
+    "734以後は6ロケール追加のみ。shift locale/API/画面操作を差し替えない"
+  ],
+  "shedLock": {
+    "e2eProfileExclusionMaintained": true,
+    "priorStaticProof": {
+      "e2eProfileExclusionObserved": true,
+      "profile": "e2e",
+      "impact": "advisor order15の追加はe2e除外を維持。実起動は未実施。"
+    }
+  },
+  "limits": [
+    "限定関連8blobのみ最新main同一を実Git確認。全app treeの実機を最新mainで実施したとの主張なし。",
+    "旧84とac49は全tree同一ではなく、過去greenは元sourceを保持。",
+    "0647/0648/0649と0616/Aの採用済み証拠は補助。親3ACの今回実測を別に保存する。"
+  ]
+}

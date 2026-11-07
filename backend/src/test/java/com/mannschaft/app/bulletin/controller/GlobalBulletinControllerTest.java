@@ -7,6 +7,7 @@ import com.mannschaft.app.bulletin.service.BulletinCategoryService;
 import com.mannschaft.app.bulletin.service.BulletinReadStatusService;
 import com.mannschaft.app.bulletin.service.BulletinScopeIdResolver;
 import com.mannschaft.app.bulletin.service.BulletinThreadService;
+import com.mannschaft.app.bulletin.service.BulletinReadFacade;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
@@ -180,6 +181,8 @@ class GlobalBulletinControllerTest {
 
         @Mock
         private BulletinThreadService threadService;
+        @Mock
+        private BulletinReadFacade readFacade;
 
         @Mock
         private BulletinReadStatusService readStatusService;
@@ -261,13 +264,13 @@ class GlobalBulletinControllerTest {
         @Test
         @DisplayName("詳細_threadId経路でグローバル詳細へ委譲して200")
         void 詳細_200() {
-            given(threadService.getThreadGlobal(THREAD_ID, USER_ID)).willReturn(threadResponse());
+            given(readFacade.getThreadGlobal(THREAD_ID, USER_ID)).willReturn(threadResponse());
 
             ResponseEntity<ApiResponse<ThreadResponse>> response = controller.getThread(THREAD_ID);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody().getData().getId()).isEqualTo(THREAD_ID);
-            verify(threadService).getThreadGlobal(THREAD_ID, USER_ID);
+            verify(readFacade).getThreadGlobal(THREAD_ID, USER_ID);
         }
 
         @Test

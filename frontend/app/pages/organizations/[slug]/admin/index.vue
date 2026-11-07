@@ -40,13 +40,15 @@ interface AdminConsoleCard {
   to: string | null
   /** 横断承認待ちバッジを点火するカードか（approvals のみ true）。 */
   showApprovalsBadge?: boolean
+  /** 組織 ADMIN にだけ出すカードか（DEPUTY_ADMIN には出さない）。 */
+  adminOnly?: boolean
 }
 
 const route = useRoute()
 const { t } = useI18n()
 
 const orgSlug = computed(() => String(route.params.slug))
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
+const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
 const { getAdminActionRequired } = useScopeTabApi()
 
 // P2b: 横断承認待ち集約のバッジ状態（team ハブと同方針・03 §4.3）。
@@ -78,7 +80,7 @@ onMounted(() => {
 const base = computed(() => `/organizations/${orgSlug.value}`)
 
 // 01 §2.3 表示カードと導線（org）。リンク先は実在ルートに合わせる（P2a）。
-const cards = computed<AdminConsoleCard[]>(() => [
+const allCards = computed<AdminConsoleCard[]>(() => [
   {
     key: 'budget',
     titleKey: 'adminConsole.cards.budget.title',
@@ -114,6 +116,13 @@ const cards = computed<AdminConsoleCard[]>(() => [
     titleKey: 'adminConsole.cards.members.title',
     descKey: 'adminConsole.cards.members.desc',
     icon: 'pi pi-users',
+    to: `${base.value}/members`,
+  },
+  {
+    key: 'member-cards',
+    titleKey: 'memberCardAdmin.title',
+    descKey: 'memberCardAdmin.description',
+    icon: 'pi pi-id-card',
     to: `${base.value}/member-cards`,
   },
   {
@@ -121,7 +130,16 @@ const cards = computed<AdminConsoleCard[]>(() => [
     titleKey: 'adminConsole.cards.settings.title',
     descKey: 'adminConsole.cards.settings.desc',
     icon: 'pi pi-cog',
-    to: `${base.value}/settings/faq-settings`,
+    to: `${base.value}/admin/settings`,
+  },
+  {
+    // F01.2.1 8-A: 加盟の設定（設定画面は org-role-guard で ADMIN 専用。DEPUTY には導線を出さない）
+    key: 'teamAffiliation',
+    titleKey: 'teamAffiliation.settings.title',
+    descKey: 'teamAffiliation.settings.card_desc',
+    icon: 'pi pi-sitemap',
+    to: `${base.value}/settings/team-affiliation`,
+    adminOnly: true,
   },
   {
     key: 'pointCards',
@@ -131,6 +149,10 @@ const cards = computed<AdminConsoleCard[]>(() => [
     to: `${base.value}/admin/point-cards`,
   },
 ])
+
+const cards = computed<AdminConsoleCard[]>(() =>
+  allCards.value.filter(card => !card.adminOnly || isAdmin.value),
+)
 
 /**
  * カードを何で描画するか。

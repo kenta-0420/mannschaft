@@ -92,6 +92,9 @@ class AdminActionRequiredFacadeTest {
                     .containsExactlyInAnyOrder("RESERVATION", "SHIFT_REQUEST", "MATCHING")
                     .doesNotContain("PAYMENT");
             assertThat(res.totalPending()).isEqualTo(6);
+            assertThat(res.domains()).filteredOn(d -> "SHIFT_REQUEST".equals(d.domain()))
+                    .extracting(AdminActionRequiredResponse.DomainSection::listRoute)
+                    .containsExactly("/teams/dev-team/shifts");
             verify(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
             verifyNoInteractions(paymentAdminQueryService);
 

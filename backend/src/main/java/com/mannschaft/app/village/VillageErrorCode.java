@@ -112,8 +112,8 @@ public enum VillageErrorCode implements ErrorCode {
     /** VILLAGE_011: ニックネーム変更レート超過（429） */
     NICKNAME_CHANGE_THROTTLED("VILLAGE_011", "ニックネーム変更は月3回までです", Severity.WARN),
 
-    /** VILLAGE_012: 参加村数ハード上限（429） */
-    PARTICIPATION_LIMIT_EXCEEDED("VILLAGE_012", "参加可能な村数の上限（100）を超えました", Severity.WARN),
+    /** VILLAGE_012: 参加村数ハード上限（429）。{0} には現在の上限値を差し込む（VillageParticipationLimitProvider）。 */
+    PARTICIPATION_LIMIT_EXCEEDED("VILLAGE_012", "参加可能な村数の上限（{0}村）に達しました", Severity.WARN),
 
     /**
      * VILLAGE_014: ガイドライン未同意 / 同意期限切れ（422）。

@@ -54,6 +54,10 @@ mannschaft:
   # 設計書: docs/security/02_cookie_and_session.md §2.1
   cookie:
     secure: ${MANNSCHAFT_COOKIE_SECURE:true}
+  # CMP-261012-0910: 永続 enum EMAIL の書込み門番。本番は第 2 段階（読取り側の全環境展開後）まで false 固定。
+  auth:
+    mfa:
+      email-method-enabled: false
   # F13.1 Phase 13.1.2: QR 署名鍵は環境変数から必須注入（デフォルト値なし＝未設定時は起動失敗）
   jobs:
     qr:

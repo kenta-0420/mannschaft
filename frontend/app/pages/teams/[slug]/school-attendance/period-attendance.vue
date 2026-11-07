@@ -17,9 +17,40 @@ interface PeriodEntry extends PeriodAttendanceEntry {
 const route = useRoute()
 const teamSlug = computed(() => String(route.params.slug))
 
-const { candidates, loading, submitting, lastSummary, loadCandidates, submitPeriodAttendance } =
+const {
+  candidates,
+  loading,
+  submitting,
+  lastSummary,
+  forbidden,
+  loadCandidates,
+  submitPeriodAttendance,
+} =
   usePeriodAttendance(teamSlug)
 const { userTimezone } = useDatetime()
+const {
+  forbidden: permissionsForbidden,
+  loadFailed: permissionsFailed,
+  ready: permissionsReady,
+  canView,
+  canRecordPeriod,
+  loadPermissions,
+} = useAttendancePermissions(teamSlug)
+
+// 判定は BE の権限判定 API のみ。教科担任は閲覧権限が無くても時限登録権限で入れる。
+// 403 は握りつぶさず「権限がありません」を明示する（AC-18）
+const denied = computed(
+  () =>
+    permissionsForbidden.value ||
+    forbidden.value ||
+    (permissionsReady.value && !canView.value && !canRecordPeriod.value),
+)
+
+// 一覧取得・操作は「照会完了かつ該当権限が true」のときだけ許可する（fail-closed）。
+// 照会中・取得失敗・拒否の間は候補一覧 API を呼ばず、日付・時限の操作も封じる。
+const canQuery = computed(
+  () => permissionsReady.value && !denied.value && (canView.value || canRecordPeriod.value),
+)
 
 const today = dayjs().tz(userTimezone.value).format('YYYY-MM-DD')
 const selectedDate = ref(today)
@@ -45,6 +76,7 @@ function initEntries(): void {
 }
 
 async function reload(): Promise<void> {
+  if (!canQuery.value) return
   await loadCandidates(selectedPeriod.value, selectedDate.value)
   initEntries()
   showSummary.value = false
@@ -65,9 +97,12 @@ watch([selectedDate, selectedPeriod], () => {
   void reload()
 })
 
-onMounted(() => {
-  void reload()
-})
+async function loadPage(): Promise<void> {
+  await loadPermissions()
+  await reload()
+}
+
+onMounted(loadPage)
 </script>
 
 <template>
@@ -79,7 +114,17 @@ onMounted(() => {
       </h1>
     </header>
 
-    <main class="flex-1 p-4 max-w-2xl mx-auto w-full">
+    <DashboardErrorState
+      v-if="permissionsFailed"
+      :title="$t('school.attendance.permissionError.title')"
+      :message="$t('school.attendance.permissionError.message')"
+      testid="school-attendance-permission-error"
+      @retry="loadPage"
+    />
+
+    <SchoolAttendanceForbidden v-else-if="denied" />
+
+    <main v-else class="flex-1 p-4 max-w-2xl mx-auto w-full">
       <div class="grid grid-cols-2 gap-4 mb-4">
         <div>
           <label class="text-sm text-surface-500 mb-1 block">
@@ -89,6 +134,7 @@ onMounted(() => {
             v-model="selectedDate"
             type="date"
             class="w-full"
+            :disabled="!canQuery"
             data-testid="period-attendance-date"
           />
         </div>
@@ -102,6 +148,7 @@ onMounted(() => {
             option-label="label"
             option-value="value"
             class="w-full"
+            :disabled="!canQuery"
             data-testid="period-attendance-period-select"
           />
         </div>
@@ -150,7 +197,7 @@ onMounted(() => {
           <Button
             :label="$t('school.attendance.period.submit')"
             :loading="submitting"
-            :disabled="entries.length === 0 || submitting"
+            :disabled="!canRecordPeriod || entries.length === 0 || submitting"
             class="w-full"
             data-testid="period-attendance-submit"
             @click="onSubmit"

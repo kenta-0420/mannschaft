@@ -105,6 +105,6 @@ class TeamOrgAffiliationLockSupportTest {
 
     private static TeamAffiliationOrganizationPort.OrganizationAffiliationState state(boolean archived) {
         return new TeamAffiliationOrganizationPort.OrganizationAffiliationState(
-                ORG_ID, "org-slug", "組織", archived, true, false, TeamApplicationGroupMode.OFF);
+                ORG_ID, "org-slug", "組織", archived, true, false, TeamApplicationGroupMode.OFF, 0L);
     }
 }

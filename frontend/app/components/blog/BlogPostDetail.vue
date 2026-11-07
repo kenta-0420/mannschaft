@@ -12,8 +12,15 @@ const emit = defineEmits<{
 const { renderMarkdown } = useMarkdownRenderer()
 const { formatDate } = useDatetime()
 
+/** 本文内の h1 を h2 に降格する（h1 をページ内で一意に保つ）。 */
+function demoteH1(html: string): string {
+  return html.replace(/<h1(?=[\s>])/gi, '<h2').replace(/<\/h1>/gi, '</h2>')
+}
+
 const renderedBody = computed(() => {
-  return props.post.content?.body ? renderMarkdown(props.post.content.body) : ''
+  if (!props.post.content?.body) return ''
+  // ページタイトルが h1 のため、本文内の h1 は h2 に降格する（サニタイズ後のタグ名置換のみ）
+  return demoteH1(renderMarkdown(props.post.content.body))
 })
 
 const formattedPublishedAt = computed(() => {
@@ -98,7 +105,7 @@ const formattedPublishedAt = computed(() => {
     <!-- eslint-disable vue/no-v-html -->
     <div
       v-if="renderedBody"
-      class="prose prose-lg max-w-none dark:prose-invert"
+      class="article-body max-w-none text-surface-800 dark:text-surface-100"
       v-html="renderedBody"
     />
     <!-- eslint-enable vue/no-v-html -->

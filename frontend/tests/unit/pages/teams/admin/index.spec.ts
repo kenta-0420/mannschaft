@@ -43,18 +43,21 @@ describe('pages/teams/[slug]/admin/index.vue — カードが実リンクとし�
     const wrapper = await mountSuspended(TeamAdminConsolePage)
     await flushMicrotasks()
 
-    // to を持つカードは reservations/budget/paymentRequests/members/settings の5件（approvals は to: null）。
+    // to を持つカードは reservations/budget/paymentRequests/members/memberCards/settings の6件（approvals は to: null）。
     const anchors = wrapper.findAll('a[href]')
-    expect(anchors.length).toBe(5)
+    expect(anchors.length).toBe(6)
   })
 
-  it('TAC-002: 「設定」カードの href が /teams/team-000001/settings/shift を指す', async () => {
+  it('TAC-002: 設定ハブ・メンバー管理・QR会員証管理がそれぞれの画面を指す', async () => {
     const wrapper = await mountSuspended(TeamAdminConsolePage)
     await flushMicrotasks()
 
     const anchors = wrapper.findAll('a[href]')
     const hrefs = anchors.map(a => a.attributes('href'))
-    expect(hrefs).toContain('/teams/team-000001/settings/shift')
+    expect(hrefs).toContain('/teams/team-000001/admin/settings')
+    expect(hrefs).not.toContain('/teams/team-000001/settings/shift')
+    expect(hrefs).toContain('/teams/team-000001/members')
+    expect(hrefs).toContain('/teams/team-000001/member-cards')
   })
 })
 

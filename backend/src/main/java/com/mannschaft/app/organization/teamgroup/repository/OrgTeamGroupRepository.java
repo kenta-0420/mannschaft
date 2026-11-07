@@ -19,6 +19,9 @@ public interface OrgTeamGroupRepository
     /** 組織の生存グループを並び順（同値は ID＝作成順）で取得する。 */
     List<OrgTeamGroupEntity> findByOrganizationIdAndDeletedAtIsNullOrderBySortOrderAscIdAsc(Long organizationId);
 
+    /** 保存済み配信宛先の再検証。削除済みも含め、組織と ID を束縛する。 */
+    List<OrgTeamGroupEntity> findByOrganizationIdAndIdIn(Long organizationId, java.util.Collection<UUID> ids);
+
     /** 組織の生存グループの sort_order の最大値（無ければ -1）。 */
     @Query("SELECT COALESCE(MAX(g.sortOrder), -1) FROM OrgTeamGroupEntity g "
             + "WHERE g.organizationId = :organizationId AND g.deletedAt IS NULL")
@@ -29,4 +32,21 @@ public interface OrgTeamGroupRepository
 
     /** 自分自身を除いて、組織の生存グループに同名が存在するか（改名用）。 */
     boolean existsByOrganizationIdAndNameAndDeletedAtIsNullAndIdNot(Long organizationId, String name, UUID id);
+
+    /** 指定した組織群の生存グループの ID（告知の表示判定。機能の有効・無効に関わらず返す）。 */
+    @Query("SELECT g.id FROM OrgTeamGroupEntity g "
+            + "WHERE g.organizationId IN :organizationIds AND g.deletedAt IS NULL")
+    List<UUID> findLiveIdsByOrganizationIdIn(@Param("organizationIds") java.util.Collection<Long> organizationIds);
+
+    /**
+     * 組織の論理削除に伴い、その組織の生存グループを全件論理削除する（F01.2.1 §4.5・AC-G106。組織の削除と同じ tx）。
+     *
+     * @param now 削除の瞬間（アプリの Clock から取り、秒へ丸めた値）
+     * @return 論理削除した行数
+     */
+    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true)
+    @Query("UPDATE OrgTeamGroupEntity g SET g.deletedAt = :now, g.updatedAt = :now "
+            + "WHERE g.organizationId = :organizationId AND g.deletedAt IS NULL")
+    int softDeleteAllByOrganizationId(@Param("organizationId") Long organizationId,
+                                      @Param("now") java.time.Instant now);
 }

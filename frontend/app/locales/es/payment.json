@@ -134,7 +134,7 @@
     "admin": {
       "pageTitle": "Gestión de pagos",
       "contentGate": {"title":"Gestión de acceso de contenido","loading":"Cargando…","loadError":"No se pudieron cargar los accesos","contentType":"Tipo de contenido","contentId":"ID de contenido","post":"Publicación","announcement":"Anuncio","save":"Guardar","saveSuccess":"Acceso guardado","saveError":"No se pudo guardar el acceso","titleHidden":"Ocultar título","noItems":"No hay conceptos de pago disponibles","clearHint":"Quite todos los conceptos y guarde para eliminar el acceso"},
-      "permissionDenied": "このページは管理者のみアクセスできます",
+      "permissionDenied": "Esta página solo es accesible para administradores",
       "itemsTitle": "Conceptos de pago",
       "selectItem": "Selecciona un concepto de pago",
       "remindUnpaid": "Recordar impagados",

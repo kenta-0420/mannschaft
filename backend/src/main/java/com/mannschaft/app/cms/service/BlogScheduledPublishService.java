@@ -51,6 +51,7 @@ public class BlogScheduledPublishService {
     public static final int MAX_POSTS_PER_RUN = 500;
 
     private final BlogPostRepository postRepository;
+    private final BlogRanchPublicationCapture ranchCapture;
 
     /**
      * 予約公開の対象になっている記事 ID を取得する。
@@ -85,8 +86,15 @@ public class BlogScheduledPublishService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public boolean publishScheduledPost(Long postId, LocalDateTime baseTime) {
+        return publishScheduledPost(postId,baseTime,null);
+    }
+
+    /** 非TX源入口が保持する著者資格だけを受け、既一件処理を同じ源TXで行う。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean publishScheduledPost(Long postId, LocalDateTime baseTime, BlogRanchCaptureContext context) {
         // 論理削除済みは @SQLRestriction("deleted_at IS NULL") により空が返る（AC-13）。
-        Optional<BlogPostEntity> found = postRepository.findById(postId);
+        Optional<BlogPostEntity> found = context!=null && context.qualified()
+                ? postRepository.findForPublicationUpdate(postId) : postRepository.findById(postId);
         if (found.isEmpty()) {
             log.debug("予約公開スキップ: 抽出後に削除された postId={}", postId);
             return false;
@@ -106,6 +114,7 @@ public class BlogScheduledPublishService {
         }
 
         post.completeScheduledPublish();
+        if(context!=null) ranchCapture.capture(post,null,context,com.mannschaft.app.ranch.reward.api.RanchRewardEnvelope.PublicationKind.SCHEDULED);
         postRepository.save(post);
         log.info("予約公開: postId={}, publishedAt={}", postId, post.getPublishedAt());
         return true;

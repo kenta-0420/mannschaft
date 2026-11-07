@@ -93,8 +93,8 @@ class ShiftRequestAdminQueryServiceTest {
                 .filter(i -> "シフト交代申請".equals(i.title())).findFirst().orElseThrow();
         assertThat(change.id()).isEqualTo("88");
         assertThat(swap.id()).isEqualTo("99");
-        // 種別判別は合成 id ではなく detail_route のパスで吸収する（要修正2）
-        assertThat(change.detailRoute()).isEqualTo("/teams/dev-team/admin/shifts/change/88");
-        assertThat(swap.detailRoute()).isEqualTo("/teams/dev-team/admin/shifts/swap/99");
+        // 依頼IDとscheduleIdは別物。既存の変更依頼一覧と交代一覧へ到達させる。
+        assertThat(change.detailRoute()).isEqualTo("/teams/dev-team/shifts/100/change-requests");
+        assertThat(swap.detailRoute()).isEqualTo("/teams/dev-team/shifts?tab=swaps");
     }
 }

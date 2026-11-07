@@ -1,0 +1,10 @@
+ASCII2000/390 {"width":320,"scrollWidth":320,"height":1060,"lines":53,"outside":0}
+ASCII2000/360 {"width":290,"scrollWidth":290,"height":1180,"lines":59,"outside":0}
+ASCII2000/390 {"width":320,"scrollWidth":320,"height":1060,"lines":53,"outside":0}
+URL2000/390 {"width":320,"scrollWidth":320,"height":940,"lines":47,"outside":0}
+URL2000/360 {"width":290,"scrollWidth":290,"height":1040,"lines":52,"outside":0}
+URL2000/390 {"width":320,"scrollWidth":320,"height":940,"lines":47,"outside":0}
+混在2000/390 {"width":320,"scrollWidth":320,"height":1140,"lines":57,"outside":0}
+混在2000/360 {"width":290,"scrollWidth":290,"height":1140,"lines":57,"outside":0}
+混在2000/390 {"width":320,"scrollWidth":320,"height":1140,"lines":57,"outside":0}
+PASS: 折返し・リサイズ・空/null・空行・仮想高さ・追加取得表示

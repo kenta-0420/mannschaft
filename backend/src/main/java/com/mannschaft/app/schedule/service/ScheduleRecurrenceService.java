@@ -59,7 +59,30 @@ public class ScheduleRecurrenceService {
     private static final String UPDATE_SCOPE_ALL = "ALL";
     private static final ZoneId STORAGE_ZONE = UserZoneLocalDateTimeParser.SERVER_ZONE;
 
+    /** 本更新と同じ対象選択・時刻移動を、Entityのコピーだけに適用してプレビューする。 */
+    List<ScheduleEntity> previewActivitySources(ScheduleEntity selected, UpdateScheduleRequest req, String scope) {
+        List<ScheduleEntity> projected = new ArrayList<>();
+        BiFunction<ScheduleEntity, UpdateScheduleRequest, ScheduleEntity> preview = (source, update) -> {
+            ScheduleEntity copy = source.toBuilder()
+                    .title(update.getTitle() != null ? update.getTitle() : source.getTitle())
+                    .startAt(update.getStartAt() != null
+                            ? update.getStartAt().atZoneSameInstant(STORAGE_ZONE).toLocalDateTime() : source.getStartAt())
+                    .endAt(update.getEndAt() != null
+                            ? update.getEndAt().atZoneSameInstant(STORAGE_ZONE).toLocalDateTime() : source.getEndAt())
+                    .allDay(update.getAllDay() != null ? update.getAllDay() : source.getAllDay()).build();
+            projected.add(copy);
+            return copy;
+        };
+        if (selected.isRecurring() || selected.getParentScheduleId() != null) {
+            updateRecurringSchedule(selected, req, scope, preview);
+        } else {
+            preview.apply(selected, req);
+        }
+        return List.copyOf(projected);
+    }
+
     private final ScheduleRepository scheduleRepository;
+    private final ScheduleCreationWriter creationWriter;
     private final ScheduleTargetService scheduleTargetService;
     private final ObjectMapper objectMapper;
     @Qualifier("wallClock")
@@ -97,7 +120,7 @@ public class ScheduleRecurrenceService {
                     .googleCalendarEventId(null)
                     .build();
 
-            ScheduleEntity savedChild = scheduleRepository.save(child);
+            ScheduleEntity savedChild = creationWriter.saveNew(child);
             scheduleTargetService.copyTargets(parent.getId(), savedChild.getId());
         }
 
@@ -129,7 +152,7 @@ public class ScheduleRecurrenceService {
                 Long parentId = schedule.getParentScheduleId() != null
                         ? schedule.getParentScheduleId() : schedule.getId();
                 List<ScheduleEntity> children = scheduleRepository
-                        .findByParentScheduleIdOrderByStartAtAsc(parentId);
+                        .lockActivitySeriesChildren(parentId);
                 Duration shift = startShift(originalSchedule, req);
                 LocalDateTime editTime = LocalDateTime.now(wallClock);
                 if (!shift.isNegative() && !shift.isZero()) {
@@ -370,7 +393,7 @@ public class ScheduleRecurrenceService {
                                          ScheduleEntity originalParent,
                                          ScheduleEntity updatedParent) {
         List<ScheduleEntity> children = scheduleRepository
-                .findByParentScheduleIdOrderByStartAtAsc(parentId);
+                .lockActivitySeriesChildren(parentId);
         Duration shift = startShift(originalParent, req);
         Comparator<ScheduleEntity> order = Comparator.comparing(ScheduleEntity::getStartAt);
         // ALL の子行も同じ一意制約を持つため、後ろへの移動は末尾から確定する。

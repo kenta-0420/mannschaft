@@ -1,11 +1,13 @@
 package com.mannschaft.app.reservation.service;
 
+import com.mannschaft.app.common.architecture.ProductionClasses;
+import com.mannschaft.app.common.architecture.ArchUnitTestTag;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.domain.JavaMethodCall;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,20 +43,14 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 呼び出し元をホワイトリストで固定する。</p>
  */
 @DisplayName("定期予約 構造番人テスト（F03.4.5 §6.2 W2-5・検分 MUST⑥）")
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class ReservationRecurringServiceArchGuardTest {
 
     /** 認可ゲートを持たない series 作成入口を呼んでよい唯一のクラス。 */
     private static final Set<String> ALLOWED_SERIES_CREATE_CALLERS =
             Set.of(ReservationRecurringService.class.getName());
 
-    private static JavaClasses reservationClasses;
-
-    @BeforeAll
-    static void importClasses() {
-        reservationClasses = new ClassFileImporter()
-                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                .importPackages("com.mannschaft.app");
-    }
+    private final JavaClasses reservationClasses = ProductionClasses.get();
 
     // ────────────────────────────────────────────────────────────
     // 番人①: オーケストレーターは非トランザクションでなければならない

@@ -1,6 +1,14 @@
 {
   "school": {
     "attendance": {
+      "forbidden": {
+        "title": "No tiene permiso",
+        "description": "No tiene permiso para ver ni operar esta pantalla de asistencia escolar. Consulte con el tutor o un administrador."
+      },
+      "permissionError": {
+        "title": "No se pudieron comprobar los permisos",
+        "message": "Como no se pudieron verificar los permisos, se han desactivado las operaciones y la carga de listas. Compruebe la conexión e inténtelo de nuevo."
+      },
       "status": {
         "ATTENDING": "Presente",
         "PARTIAL": "Parcial",

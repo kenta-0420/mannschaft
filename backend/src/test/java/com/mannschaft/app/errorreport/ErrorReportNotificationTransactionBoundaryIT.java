@@ -68,6 +68,9 @@ class ErrorReportNotificationTransactionBoundaryIT extends AbstractMySqlIntegrat
     @Autowired
     private ErrorReportRepository errorReportRepository;
 
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean
+    private com.mannschaft.app.errorreport.service.ErrorReportIngestHook ingestHook;
+
     @Autowired
     private TransactionTemplate transactionTemplate;
 
@@ -95,14 +98,26 @@ class ErrorReportNotificationTransactionBoundaryIT extends AbstractMySqlIntegrat
         Long reportId = insertReport(userId, nonce);
         long before = countNotifications(userId);
 
-        // 業務側の失敗でトランザクションをロールバックさせる。
-        // 是正前は updateStatus の内側で @Async な notifyResolution が起動済みであり、
-        // ロールバックしても通知だけが残った。
-        assertThatThrownBy(() -> transactionTemplate.execute(tx -> {
-            errorReportService.updateStatus(reportId,
-                    new ErrorReportUpdateRequest("RESOLVED", null, null), 1L);
-            throw new IllegalStateException("#2990 L11: 業務側の失敗を模す");
-        })).isInstanceOf(IllegalStateException.class);
+        String hash = errorReportRepository.findById(reportId).orElseThrow().getErrorHash();
+        // 公開入口から実管理TXへ入り、resolve/event登録後・commit前だけを失敗させる。
+        org.mockito.Mockito.doAnswer(call -> {
+            if (hash.equals(call.getArgument(0))) {
+                org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                        new org.springframework.transaction.support.TransactionSynchronization() {
+                            @Override
+                            public void beforeCommit(boolean readOnly) {
+                                assertThat(org.springframework.transaction.support.TransactionSynchronizationManager
+                                        .isActualTransactionActive()).isTrue();
+                                assertThat(errorReportRepository.findById(reportId).orElseThrow().getStatus())
+                                        .isEqualTo(ErrorReportStatus.RESOLVED);
+                                throw new IllegalStateException("#2990 L11: 業務側の失敗を模す");
+                            }
+                        });
+            }
+            return null;
+        }).when(ingestHook).afterManagementLock(org.mockito.ArgumentMatchers.anyString());
+        assertThatThrownBy(() -> errorReportService.updateStatus(reportId,
+                new ErrorReportUpdateRequest("RESOLVED", null, null), 1L)).isInstanceOf(IllegalStateException.class);
 
         // 業務側が巻き戻っていること（前提の確認）
         assertThat(statusOf(reportId))
@@ -115,6 +130,24 @@ class ErrorReportNotificationTransactionBoundaryIT extends AbstractMySqlIntegrat
                 assertThat(countNotifications(userId))
                         .as("業務がコミットされていない以上、解決通知は発火してはならない")
                         .isEqualTo(before));
+    }
+
+    @Test
+    @DisplayName("公開管理入口は外側TXを中断し、外側だけrollbackしても管理更新と通知を残す")
+    void 外側だけのロールバックは独立管理TXを巻き戻さない() {
+        String nonce = nonce();
+        Long userId = insertUser("l11-outer-rollback-" + nonce + "@example.com");
+        Long reportId = insertReport(userId, nonce);
+
+        assertThatThrownBy(() -> transactionTemplate.execute(tx -> {
+            errorReportService.updateStatus(reportId,
+                    new ErrorReportUpdateRequest("RESOLVED", null, null), 1L);
+            throw new IllegalStateException("外側だけの失敗");
+        })).isInstanceOf(IllegalStateException.class);
+
+        assertThat(statusOf(reportId)).isEqualTo(ErrorReportStatus.RESOLVED.name());
+        await().atMost(15, TimeUnit.SECONDS).untilAsserted(() ->
+                assertThat(countNotifications(userId)).isEqualTo(1L));
     }
 
     @Test

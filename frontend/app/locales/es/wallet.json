@@ -479,11 +479,11 @@
     },
     "wallet_guide": {
       "title": "Cómo usar la billetera",
-      "description": "Función para llevar tus tarjetas de puntos en el smartphone y mostrar códigos de barras en caja.",
+      "description": "Consulta tus saldos de puntos del equipo y tu QR de miembro, y lleva también tus tarjetas de puntos externas en el móvil.",
       "overview": {
-        "title": "¿Qué es la billetera?",
+        "title": "Acerca de las tarjetas de puntos externas",
         "body": "Registra los códigos de barras de tus tarjetas de puntos y tarjetas de membresía en la aplicación y muéstralos en la pantalla de tu smartphone. Puedes registrar hasta 200 tarjetas.",
-        "hint": "La primera vez que la abras, deberás aceptar los términos de servicio."
+        "hint": "Solo necesitas aceptar las condiciones cuando actives las tarjetas de puntos externas."
       },
       "add_card": {
         "title": "Registrar una tarjeta",
@@ -514,6 +514,14 @@
           "step3": "Acerca la pantalla del smartphone al personal para que lo escanee",
           "step4": "(Si la autenticación biométrica está habilitada) Desbloquea con cara/huella primero"
         }
+      },
+      "team_points": {
+        "title": "Usar los puntos del equipo",
+        "balance": "Cada equipo tiene un saldo independiente. Los puntos no se suman a los de otros equipos ni a los de tarjetas externas.",
+        "member_qr": "Muestra tu QR de miembro compartido al personal para recibir puntos o canjear recompensas.",
+        "reception": "Escanea el QR de recepción expuesto, revisa los datos y confirma. Según la configuración del equipo, los puntos se añaden al instante o después de la aprobación del personal.",
+        "requests": "Consulta el estado en Solicitudes de puntos y cancela las solicitudes antes de su aprobación. Abre los detalles del equipo para ver los puntos que faltan para las recompensas y tu historial.",
+        "consent": "Puedes usar los puntos del equipo y tu QR de miembro sin activar las tarjetas de puntos externas ni aceptar sus condiciones."
       }
     }
   }

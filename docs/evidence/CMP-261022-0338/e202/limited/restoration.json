@@ -1,0 +1,18 @@
+{
+  "head": "e202bb96c03fc1b9197bfad8d27217dc7b4e8687",
+  "componentGitBlob": "b56b8c2729e0d2231b54c96385bd692a1117acd1",
+  "originalSha256": "e00ebc7d77ec3bc8b7d742c105b97f329a347b60e41d3fb3e98b8cc9edfa67fb",
+  "originalLength": 5343,
+  "beforeStatus": "",
+  "node": "v24.15.0",
+  "controlSha256": "acd34140b16718b4bdb694956d163cb0f50ee874539ca109681e74de1bd4176d",
+  "redExit": 1,
+  "redDetected": true,
+  "finallyRestoredSha256": "e00ebc7d77ec3bc8b7d742c105b97f329a347b60e41d3fb3e98b8cc9edfa67fb",
+  "finallyByteEqual": true,
+  "greenExit": 0,
+  "finalSha256": "e00ebc7d77ec3bc8b7d742c105b97f329a347b60e41d3fb3e98b8cc9edfa67fb",
+  "finalByteEqual": true,
+  "afterStatus": "",
+  "clean": true
+}

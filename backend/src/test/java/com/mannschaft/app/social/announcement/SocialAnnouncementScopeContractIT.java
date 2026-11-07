@@ -492,15 +492,29 @@ class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
             assertThat(countReadStatus(orgAnnAPublicId, childMemberAId)).isEqualTo(1);
         }
 
-        /** AC-S6: 配下チームのみ所属者に組織の内輪限定は一覧に出ないため既読化もできない。 */
+        /**
+         * AC-S6（ALIC-1・M6-a で反転）: 配下チーム（組織に ACTIVE 加盟し、宛先に含まれる）の MEMBER は、組織での役割が無くても
+         * 組織の内輪限定（MEMBERS_AND_ABOVE）を単件既読にできる。旧契約は「配下チームのみ所属者は内輪限定を既読化できない」だった。
+         * 宛先外・無所属の部外者は従来どおり既読化できない（下の実在オラクル封じのケースで固定）。
+         */
         @Test
-        @DisplayName("AC-S6 配下チームのみ所属者は組織の内輪限定を既読化できない")
-        void ac_s6_配下チーム所属者は組織内輪限定を既読化できない() throws Exception {
+        @DisplayName("AC-S6 配下チームの MEMBER は組織の内輪限定を宛先資格で既読にできる（ALIC-1・M6-a。旧: 既読化できない）")
+        void ac_s6_配下チーム所属者は宛先資格で組織内輪限定を既読にできる() throws Exception {
             setAuth(childMemberAId);
+            mockMvc.perform(post("/api/v1/organizations/{orgId}/announcements/{id}/read", orgAId, orgAnnAId))
+                    .andExpect(status().isOk());
+            assertThat(countReadStatus(orgAnnAId, childMemberAId)).isEqualTo(1);
+        }
+
+        /** AC-S6: 部外者（組織にも配下チームにも属さない）は組織の内輪限定を既読化できない。 */
+        @Test
+        @DisplayName("AC-S6 部外者は組織の内輪限定を既読化できない")
+        void ac_s6_部外者は組織内輪限定を既読化できない() throws Exception {
+            setAuth(outsiderId);
             mockMvc.perform(post("/api/v1/organizations/{orgId}/announcements/{id}/read", orgAId, orgAnnAId))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("ANNOUNCE_001"));
-            assertThat(countReadStatus(orgAnnAId, childMemberAId)).isZero();
+            assertThat(countReadStatus(orgAnnAId, outsiderId)).isZero();
         }
 
         /** AC-S6 + AC-S2: 別組織の announcementId を自組織の URL に差し込むと遮断される。 */
@@ -567,7 +581,7 @@ class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
         @Test
         @DisplayName("AC-S6 組織版でも不在ID・越境ID・不可視IDは同一応答（実在オラクル封じ）")
         void ac_s6_組織版の実在オラクル封じ() throws Exception {
-            setAuth(childMemberAId);
+            setAuth(outsiderId);
             String missing = readAndReturnBody(orgAId, MISSING_ANNOUNCEMENT_ID);
             String crossTenant = readAndReturnBody(orgAId, orgAnnBId);
             String invisible = readAndReturnBody(orgAId, orgAnnAId);

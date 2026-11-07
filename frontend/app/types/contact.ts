@@ -91,5 +91,5 @@ export interface SendContactRequestBody {
 export interface CreateInviteTokenBody {
   label?: string
   maxUses?: number | null
-  expiresIn?: '1d' | '7d' | '30d' | null
+  expiresIn?: '1d' | '7d' | '30d' | 'unlimited' | null
 }

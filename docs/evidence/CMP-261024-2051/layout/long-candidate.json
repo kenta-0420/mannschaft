@@ -1,0 +1,41 @@
+{
+  "box": {
+    "left": 5,
+    "right": 869,
+    "width": 864,
+    "height": 60
+  },
+  "clientWidth": 864,
+  "scrollWidth": 864,
+  "fragments": [
+    {
+      "left": 17,
+      "right": 857,
+      "top": 449,
+      "bottom": 473
+    },
+    {
+      "left": 17,
+      "right": 117,
+      "top": 472,
+      "bottom": 493
+    }
+  ],
+  "clipped": [
+    {
+      "left": 17,
+      "right": 857,
+      "top": 449,
+      "bottom": 473
+    }
+  ],
+  "dialogBox": {
+    "x": 0,
+    "y": 217,
+    "width": 390,
+    "height": 410
+  },
+  "name": "Internationale fr-mvnd2vnz-1 Freundschaft und Zusammenarbeit Gemeinschaft für gemeinsame Sportverans",
+  "slug": "fr-mvnd2vnz-1",
+  "width": 390
+}

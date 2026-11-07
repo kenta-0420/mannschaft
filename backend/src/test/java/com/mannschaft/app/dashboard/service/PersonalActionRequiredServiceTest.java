@@ -6,6 +6,7 @@ import com.mannschaft.app.dashboard.dto.PersonalActionRequiredResponse;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.team.service.TeamService;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,6 +23,8 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 
 /**
  * {@link PersonalActionRequiredService} の単体テスト。
@@ -52,6 +55,65 @@ class PersonalActionRequiredServiceTest {
 
     private static final Long USER_ID = 1L;
     private static final Long TEAM_ID = 10L;
+
+    @Test
+    void 非空所属でも候補が空ならscope集計を呼ばず総件数ゼロを返す() {
+        given(accessControlService.findAffiliatedScopeIds(USER_ID, "TEAM")).willReturn(Set.of(TEAM_ID));
+        given(accessControlService.findAffiliatedScopeIds(USER_ID, "ORGANIZATION")).willReturn(Set.of());
+        given(teamService.getSlugsByIds(Set.of(TEAM_ID))).willReturn(Map.of(TEAM_ID, "team-alpha"));
+        given(teamService.getNamesByIds(Set.of(TEAM_ID))).willReturn(Map.of(TEAM_ID, "チームA"));
+        given(organizationService.getSlugsByIds(Set.of())).willReturn(Map.of());
+        given(organizationService.getNamesByIds(Set.of())).willReturn(Map.of());
+        given(scopeActionRequiredFacade.findCandidateScopes(USER_ID, Set.of(TEAM_ID), Set.of())).willReturn(Set.of());
+        var response = service.getPersonalActionRequired(USER_ID);
+        assertThat(response.items()).isEmpty();
+        assertThat(response.totalCount()).isZero();
+        org.mockito.Mockito.verify(scopeActionRequiredFacade, org.mockito.Mockito.never())
+                .getActionRequired(any(), any(), any());
+    }
+
+    @Test
+    void 型付き候補で空scopeを省いても所属順と総件数を維持する() {
+        Set<Long> ids = new java.util.LinkedHashSet<>(List.of(20L, 10L));
+        given(accessControlService.findAffiliatedScopeIds(USER_ID, "TEAM")).willReturn(ids);
+        given(accessControlService.findAffiliatedScopeIds(USER_ID, "ORGANIZATION")).willReturn(ids);
+        given(teamService.getSlugsByIds(ids)).willReturn(Map.of(20L, "team-twenty", 10L, "team-ten"));
+        given(teamService.getNamesByIds(ids)).willReturn(Map.of(20L, "チーム20", 10L, "チーム10"));
+        given(organizationService.getSlugsByIds(ids)).willReturn(Map.of(20L, "org-twenty", 10L, "org-ten"));
+        given(organizationService.getNamesByIds(ids)).willReturn(Map.of(20L, "組織20", 10L, "組織10"));
+        given(scopeActionRequiredFacade.findCandidateScopes(USER_ID, ids, ids)).willReturn(Set.of(
+                new com.mannschaft.app.common.visibility.ScopeKey("ORGANIZATION", 10L),
+                new com.mannschaft.app.common.visibility.ScopeKey("TEAM", 20L)));
+        var summary = ActionRequiredSummaryResponse.builder()
+                .circulation(ActionRequiredSummaryResponse.CirculationSection.builder().unconfirmedCount(0).items(List.of()).build())
+                .survey(ActionRequiredSummaryResponse.SurveySection.builder().unansweredCount(1).items(List.of(
+                        ActionRequiredSummaryResponse.SurveyItem.builder().id(55L).title("未回答").build())).build())
+                .attendance(ActionRequiredSummaryResponse.AttendanceSection.builder().unansweredCount(0).items(List.of()).build())
+                .totalActionCount(1).build();
+        given(scopeActionRequiredFacade.getActionRequired(USER_ID, "TEAM", 20L)).willReturn(summary);
+        given(scopeActionRequiredFacade.getActionRequired(USER_ID, "ORGANIZATION", 10L)).willReturn(summary);
+        var response = service.getPersonalActionRequired(USER_ID);
+        assertThat(response.totalCount()).isEqualTo(2);
+        assertThat(response.items()).extracting(item -> item.scopeType()).containsExactly("TEAM", "ORGANIZATION");
+        assertThat(response.items()).extracting(item -> item.scopeId()).containsExactly(20L, 10L);
+        org.mockito.Mockito.verify(scopeActionRequiredFacade, org.mockito.Mockito.never())
+                .getActionRequired(USER_ID, "TEAM", 10L);
+        org.mockito.Mockito.verify(scopeActionRequiredFacade, org.mockito.Mockito.never())
+                .getActionRequired(USER_ID, "ORGANIZATION", 20L);
+    }
+
+    @BeforeEach
+    void 既存表示契約は候補を元所属全件として検証する() {
+        lenient().when(scopeActionRequiredFacade.findCandidateScopes(eq(USER_ID), any(), any()))
+                .thenAnswer(invocation -> {
+                    Set<com.mannschaft.app.common.visibility.ScopeKey> result = new java.util.LinkedHashSet<>();
+                    Set<Long> teams = invocation.getArgument(1);
+                    Set<Long> organizations = invocation.getArgument(2);
+                    teams.forEach(id -> result.add(new com.mannschaft.app.common.visibility.ScopeKey("TEAM", id)));
+                    organizations.forEach(id -> result.add(new com.mannschaft.app.common.visibility.ScopeKey("ORGANIZATION", id)));
+                    return result;
+                });
+    }
 
     @Nested
     @DisplayName("AC-16: fetchAndConvert の circulatedAt 通過")

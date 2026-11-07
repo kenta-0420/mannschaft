@@ -56,6 +56,7 @@ public interface ActivityMapper {
     @Mapping(target = "scopeType", expression = "java(entity.getScopeType().name())")
     @Mapping(target = "visibility", expression = "java(entity.getVisibility().name())")
     @Mapping(target = "status", expression = "java(entity.getStatus().name())")
+    @Mapping(target = "metadataOnly", constant = "false")
     ActivityRecordResponse toActivityRecordResponse(ActivityResultEntity entity);
 
     List<ActivityRecordResponse> toActivityRecordResponseList(List<ActivityResultEntity> entities);

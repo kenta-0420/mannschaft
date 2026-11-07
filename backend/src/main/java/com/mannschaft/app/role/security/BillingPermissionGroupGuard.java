@@ -27,6 +27,25 @@ public class BillingPermissionGroupGuard {
     private static final String ORGANIZATION_PERMISSION = "MANAGE_ORGANIZATION_BILLING";
     private static final String DENIED_EVENT = "BILLING_PERMISSION_GROUP_DENIED";
 
+    /** 権限グループの対象ロール（permission_groups.target_role）の全値。 */
+    private static final List<String> ALL_TARGET_ROLES = List.of("DEPUTY_ADMIN", "MEMBER");
+    /** 課金権限の割当先として認める対象ロール（{@link #authorizeAssignment} は DEPUTY_ADMIN への割当だけを許す）。 */
+    private static final List<String> BILLING_TARGET_ROLES = List.of("DEPUTY_ADMIN");
+
+    /** 課金権限（チーム・組織）の権限名か。 */
+    public static boolean isBillingPermissionName(String permissionName) {
+        return TEAM_PERMISSION.equals(permissionName) || ORGANIZATION_PERMISSION.equals(permissionName);
+    }
+
+    /**
+     * その権限を含められる権限グループの対象ロール。課金権限は {@link #authorizeAssignment} が割当先を DEPUTY_ADMIN に
+     * 限定しているため DEPUTY_ADMIN のみ（MEMBER 向けに含めると誰にも割り当てられないグループになる）。
+     * 権限グループの作成・更新の検証と権限カタログ（FE の選択可否）がこの定義を共用する。
+     */
+    public static List<String> assignableTargetRoles(String permissionName) {
+        return isBillingPermissionName(permissionName) ? BILLING_TARGET_ROLES : ALL_TARGET_ROLES;
+    }
+
     private final AccessControlService accessControlService;
     private final PermissionRepository permissionRepository;
     private final PermissionGroupPermissionRepository groupPermissionRepository;

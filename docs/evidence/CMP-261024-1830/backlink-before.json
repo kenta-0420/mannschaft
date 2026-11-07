@@ -1,0 +1,11 @@
+{
+  "source": "ローカル実機before原本 .claude/evidence/CMP-261024-1830/backlink-accessibility-before.json",
+  "observationType": "実測・先行単体redではない",
+  "url": "http://localhost:3001/teams/att-t-a-mvma18m6/schedule-attendance/54",
+  "ariaSnapshot": "- link \" 出席確認一覧\":\n  - /url: /teams/att-t-a-mvma18m6/schedule-attendance",
+  "text": "出席確認一覧",
+  "decoration": {
+    "html": "<i class=\"pi pi-arrow-left\"></i>",
+    "before": "\"\""
+  }
+}

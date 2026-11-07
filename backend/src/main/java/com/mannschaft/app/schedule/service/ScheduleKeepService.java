@@ -92,6 +92,7 @@ public class ScheduleKeepService {
     private final ScheduleKeepRepository scheduleKeepRepository;
     private final ScheduleKeepAccessGuard scheduleKeepAccessGuard;
     private final ScheduleRepository scheduleRepository;
+    private final ScheduleCreationWriter creationWriter;
     private final ScheduleAttendanceRepository scheduleAttendanceRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final TeamService teamService;
@@ -327,7 +328,7 @@ public class ScheduleKeepService {
                 .createdBy(viewerUserId)
                 .build();
         // 直後の通知判定が SQL でキープ／メンバーシップを引くため、ここで flush して整合させる。
-        ScheduleEntity savedSchedule = scheduleRepository.saveAndFlush(schedule);
+        ScheduleEntity savedSchedule = creationWriter.saveNew(schedule);
 
         keep.setStatus(ScheduleKeepStatus.SCHEDULED);
         keep.setConvertedScheduleId(savedSchedule.getId());

@@ -1,0 +1,22 @@
+
+Running 4 tests using 1 worker
+
+専有DB cleanup対象: error_reports.id=11
+ASCII2000 [33m390[39m { width: [33m236[39m, scrollWidth: [33m236[39m, lines: [33m72[39m, outside: [33m0[39m }
+ASCII2000 [33m360[39m { width: [33m206[39m, scrollWidth: [33m206[39m, lines: [33m84[39m, outside: [33m0[39m }
+ASCII2000 [33m390[39m { width: [33m236[39m, scrollWidth: [33m236[39m, lines: [33m72[39m, outside: [33m0[39m }
+URL2000 [33m390[39m { width: [33m236[39m, scrollWidth: [33m236[39m, lines: [33m65[39m, outside: [33m0[39m }
+URL2000 [33m360[39m { width: [33m206[39m, scrollWidth: [33m206[39m, lines: [33m74[39m, outside: [33m0[39m }
+URL2000 [33m390[39m { width: [33m236[39m, scrollWidth: [33m236[39m, lines: [33m65[39m, outside: [33m0[39m }
+混在2000 [33m390[39m { width: [33m236[39m, scrollWidth: [33m236[39m, lines: [33m76[39m, outside: [33m0[39m }
+混在2000 [33m360[39m { width: [33m206[39m, scrollWidth: [33m206[39m, lines: [33m76[39m, outside: [33m0[39m }
+混在2000 [33m390[39m { width: [33m236[39m, scrollWidth: [33m236[39m, lines: [33m76[39m, outside: [33m0[39m }
+改行空行 [33m390[39m { width: [33m236[39m, scrollWidth: [33m236[39m, lines: [33m4[39m, outside: [33m0[39m }
+改行空行 [33m360[39m { width: [33m206[39m, scrollWidth: [33m206[39m, lines: [33m4[39m, outside: [33m0[39m }
+改行空行 [33m390[39m { width: [33m236[39m, scrollWidth: [33m236[39m, lines: [33m4[39m, outside: [33m0[39m }
+  ok 1 tests\e2e\real\admin\error-report-timeline-wrap.real.spec.ts:78:1 › SYSTEM_ADMINが自然導線からコメントを送り、長文を360/390pxで末尾まで読める (56.6s)
+  ok 2 tests\e2e\real\admin\error-report-timeline-wrap.real.spec.ts:165:3 › 一般会員は詳細URLと実APIへアクセスできない (27.2s)
+  ok 3 tests\e2e\real\admin\error-report-timeline-wrap.real.spec.ts:165:3 › 組織管理者は詳細URLと実APIへアクセスできない (12.4s)
+  ok 4 tests\e2e\real\admin\error-report-timeline-wrap.real.spec.ts:165:3 › 別組織会員は詳細URLと実APIへアクセスできない (21.7s)
+
+  4 passed (2.0m)

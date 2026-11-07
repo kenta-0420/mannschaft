@@ -5,16 +5,23 @@ import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
+import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.team.entity.TeamEntity;
+import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.organization.entity.OrganizationEntity;
+import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
 import com.mannschaft.app.role.repository.InviteTokenRepository;
+import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.NoResultException;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -25,7 +32,9 @@ import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -51,7 +60,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>設計書: docs/features/F04.12_chat_membership_invite.md §4・§6。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
-@Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("F04.12 チャット承諾型招待 認可・権限昇格封鎖契約テスト")
 class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
@@ -74,6 +82,13 @@ class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
     @PersistenceContext
     private EntityManager em;
 
+    @Autowired private PlatformTransactionManager transactionManager;
+    @Autowired private JdbcTemplate jdbc;
+    @Autowired private UserRepository users;
+    @Autowired private TeamRepository teams;
+    @Autowired private OrganizationRepository organizations;
+    @Autowired private RoleRepository roles;
+
     private Long teamAId;
     private Long orgAId;
     private Long archivedOrgId;
@@ -94,6 +109,11 @@ class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        // 親REQUIRES_NEWから見える通常fixtureを明示commitする。発行も実際の独立TXで実行する。
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> setUpCommittedFixtures());
+    }
+
+    private void setUpCommittedFixtures() {
         teamAId = insertTeam("CMIAUTHZ チームA");
         orgAId = insertOrganization("CMIAUTHZ 組織A", false);
         archivedOrgId = insertOrganization("CMIAUTHZ アーカイブ組織", true);
@@ -126,8 +146,39 @@ class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
         dmAdminOrgTargetId = createDm(adminOrgId, targetId);
         dmAdminOrgMemberId = createDm(adminOrgId, orgMemberId);
 
-        em.flush();
-        em.clear();
+    }
+
+    @AfterEach
+    void removeOwnedFixtures() {
+        SecurityContextHolder.clearContext();
+        for (Long channel : new Long[]{dmAdminTargetId, dmMemberTargetId, groupDmId, dmAdminOrgTargetId, dmAdminOrgMemberId}) {
+            if (channel != null) {
+                jdbc.update("DELETE FROM chat_messages WHERE channel_id = ?", channel);
+                jdbc.update("DELETE FROM chat_channel_members WHERE channel_id = ?", channel);
+                jdbc.update("DELETE FROM chat_channels WHERE id = ?", channel);
+            }
+        }
+        for (Long id : new Long[]{adminAId, memberAId, targetId, strangerId, adminOrgId, orgMemberId}) {
+            if (id != null) {
+                jdbc.update("DELETE FROM user_permission_groups WHERE user_id = ?", id);
+                jdbc.update("DELETE FROM user_roles WHERE user_id = ?", id);
+                jdbc.update("DELETE FROM memberships WHERE user_id = ?", id);
+                jdbc.update("DELETE FROM my_scope_folder_items WHERE folder_id IN (SELECT id FROM my_scope_folders WHERE user_id = ?)", id);
+                jdbc.update("DELETE FROM my_scope_folders WHERE user_id = ?", id);
+                jdbc.update("DELETE FROM users WHERE id = ?", id);
+            }
+        }
+        if (teamAId != null) {
+            jdbc.update("DELETE FROM invite_tokens WHERE team_id = ?", teamAId);
+            jdbc.update("DELETE FROM teams WHERE id = ?", teamAId);
+        }
+        for (Long org : new Long[]{orgAId, archivedOrgId}) {
+            if (org != null) {
+                jdbc.update("DELETE FROM invite_tokens WHERE organization_id = ?", org);
+                jdbc.update("DELETE FROM organizations WHERE id = ?", org);
+            }
+        }
+        // MembershipTestHelperが共通seedするrolesは他の試練も共有するため削除しない。
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -160,8 +211,6 @@ class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
                                     inviteBody("TEAM", teamAId, resolveRoleId("MEMBER"), 7))))
                     .andExpect(status().isCreated());
 
-            em.flush();
-            em.clear();
 
             // 宛先付きトークン（target_user_id 非 NULL）が発行されている
             Number tokenId = (Number) em.createNativeQuery(
@@ -204,8 +253,6 @@ class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("ROLE_002"));
 
-            em.flush();
-            em.clear();
             assertThat(inviteTokenRepository.findById(token.getId()).orElseThrow().getRevokedAt()).isNull();
         }
 
@@ -222,8 +269,6 @@ class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("ROLE_002"));
 
-            em.flush();
-            em.clear();
             assertThat(inviteTokenRepository.findById(token.getId()).orElseThrow().getRevokedAt()).isNull();
         }
     }
@@ -294,8 +339,6 @@ class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(post("/api/v1/invite/{token}/join", token))
                     .andExpect(status().isOk());
 
-            em.flush();
-            em.clear();
             assertThat(hasUserRole(targetId, teamAId, "MEMBER")).isTrue();
         }
 
@@ -322,8 +365,6 @@ class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(post("/api/v1/invite/{token}/decline", token))
                     .andExpect(status().isOk());
 
-            em.flush();
-            em.clear();
 
             // revoked_at がセットされている（REVOKED へ導出される）。
             Object revokedAt = em.createNativeQuery(
@@ -337,8 +378,6 @@ class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(post("/api/v1/invite/{token}/join", token))
                     .andExpect(status().is4xxClientError());
 
-            em.flush();
-            em.clear();
             assertThat(hasUserRole(targetId, teamAId, "MEMBER")).isFalse();
         }
     }
@@ -387,8 +426,6 @@ class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(post("/api/v1/invite/{token}/join", token))
                     .andExpect(status().is4xxClientError());
 
-            em.flush();
-            em.clear();
             assertThat(hasUserRole(targetId, teamAId, "MEMBER")).isFalse();
         }
 
@@ -406,8 +443,6 @@ class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(post("/api/v1/invite/{token}/join", token))
                     .andExpect(status().isOk());
 
-            em.flush();
-            em.clear();
             assertThat(hasUserRole(targetId, teamAId, "MEMBER")).isTrue();
         }
 
@@ -503,8 +538,6 @@ class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
                 .usedCount(0)
                 .targetUserId(target)
                 .build());
-        em.flush();
-        em.clear();
         return token;
     }
 
@@ -540,22 +573,10 @@ class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
                 new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of()));
     }
 
-    /** roles.name から id を解決（test profile では Flyway 無効のため無ければ on-demand 投入）。 */
+    /** setupの共通MembershipTestHelperがseedした正規ロールだけを使う。 */
     private Long resolveRoleId(String roleName) {
-        try {
-            return ((Number) em.createNativeQuery("SELECT id FROM roles WHERE name = :name")
-                    .setParameter("name", roleName)
-                    .getSingleResult()).longValue();
-        } catch (NoResultException e) {
-            em.createNativeQuery(
-                            "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
-                                    + "VALUES (:name, :name, 99, 0, NOW(), NOW())")
-                    .setParameter("name", roleName)
-                    .executeUpdate();
-            return ((Number) em.createNativeQuery("SELECT id FROM roles WHERE name = :name")
-                    .setParameter("name", roleName)
-                    .getSingleResult()).longValue();
-        }
+        return roles.findByName(roleName).orElseThrow(() ->
+                new IllegalStateException("通常fixtureの共通ロールがない: " + roleName)).getId();
     }
 
     private boolean hasUserRole(Long userId, Long teamId, String roleName) {
@@ -570,53 +591,25 @@ class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     private Long insertUser(String email) {
-        em.createNativeQuery(
-                        "INSERT INTO users ("
-                                + "email, last_name, first_name, display_name, status, "
-                                + "is_searchable, handle_searchable, contact_approval_required, "
-                                + "online_visibility, dm_receive_from, encryption_key_version, "
-                                + "locale, timezone, reporting_restricted, follow_list_visibility, "
-                                + "care_notification_enabled, offline_only, "
-                                + "created_at, updated_at) "
-                                + "VALUES (:email, 'CMIAUTHZ', 'テスト', 'CMIAUTHZ テスト', 'ACTIVE', "
-                                + "1, 1, 1, "
-                                + "'NOBODY', 'ANYONE', 1, "
-                                + "'ja', 'Asia/Tokyo', 0, 'PUBLIC', "
-                                + "1, 0, "
-                                + "NOW(), NOW())")
-                .setParameter("email", email)
-                .executeUpdate();
-        return ((Number) em.createNativeQuery("SELECT id FROM users WHERE email = :email")
-                .setParameter("email", email)
-                .getSingleResult()).longValue();
+        return users.saveAndFlush(UserEntity.builder().email(email).lastName("CMIAUTHZ").firstName("テスト")
+                .displayName("CMIAUTHZ テスト").status(UserEntity.UserStatus.ACTIVE)
+                .isSearchable(true).locale("ja").timezone("Asia/Tokyo").build()).getId();
     }
 
     private Long insertTeam(String name) {
         String slug = "cmi-" + Long.toHexString(System.nanoTime());
-        em.createNativeQuery(
-                        "INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, slug, "
-                                + "created_at, updated_at) "
-                                + "VALUES (:name, 'PUBLIC', 1, 0, 0, :slug, NOW(), NOW())")
-                .setParameter("name", name)
-                .setParameter("slug", slug)
-                .executeUpdate();
-        return ((Number) em.createNativeQuery("SELECT id FROM teams WHERE slug = :slug")
-                .setParameter("slug", slug)
-                .getSingleResult()).longValue();
+        return teams.saveAndFlush(TeamEntity.builder().name(name).slug(slug)
+                .visibility(TeamEntity.Visibility.PUBLIC).supporterEnabled(true).build()).getId();
     }
 
     private Long insertOrganization(String name, boolean archived) {
         String slug = "cmi-org-" + Long.toHexString(System.nanoTime());
-        em.createNativeQuery(
-                        "INSERT INTO organizations (name, org_type, visibility, hierarchy_visibility, "
-                                + "supporter_enabled, version, slug, archived_at, created_at, updated_at) "
-                                + "VALUES (:name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, :slug, "
-                                + (archived ? "NOW()" : "NULL") + ", NOW(), NOW())")
-                .setParameter("name", name)
-                .setParameter("slug", slug)
-                .executeUpdate();
-        return ((Number) em.createNativeQuery("SELECT id FROM organizations WHERE slug = :slug")
-                .setParameter("slug", slug)
-                .getSingleResult()).longValue();
+        var org = OrganizationEntity.builder().name(name).orgType(OrganizationEntity.OrgType.OTHER)
+                .visibility(OrganizationEntity.Visibility.PUBLIC).hierarchyVisibility(OrganizationEntity.HierarchyVisibility.NONE)
+                .supporterEnabled(true).slug(slug).build();
+        if (archived) {
+            org.archive();
+        }
+        return organizations.saveAndFlush(org).getId();
     }
 }

@@ -1,0 +1,214 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261025-2202",
+  "scope": "app",
+  "implementation": {
+    "pr": 4116,
+    "sha": "609ee90bf65af64b17d95e9ee31d27953c5abdaa"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "独立した2列の4組合せを両scopeで保存・再取得できる",
+      "tests": [
+        {
+          "name": "ScopeFeatureDisplayPolicyContractIT.AC1_四通りを保存再取得できる",
+          "evidence": "backend/src/test/java/com/mannschaft/app/template/ScopeFeatureDisplayPolicyContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "未保存は既定true/trueで初期行を作らず個人設定を保持する",
+      "tests": [
+        {
+          "name": "ScopeFeatureDisplayPolicyContractIT.AC2_未保存は既定trueで初期行を作らない",
+          "evidence": "backend/src/test/java/com/mannschaft/app/template/ScopeFeatureDisplayPolicyContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "空更新は認可後no-op、不正・重複・境界超過の本文は書き込まない",
+      "tests": [
+        {
+          "name": "ScopeFeatureDisplayPolicyContractIT.AC3_空は全列不変と全カタログちょうどは成功する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/template/ScopeFeatureDisplayPolicyContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "既存権限・モジュール条件と表示方針を全導線でANDにする",
+      "tests": [
+        {
+          "name": "useDashboardWidgets.feature-display",
+          "evidence": "frontend/app/composables/useDashboardWidgets.feature-display.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "全OFFでも固定ホーム・切替・管理者表示への復帰を残す",
+      "tests": [
+        {
+          "name": "TEAM/ORG全OFF・管理者復帰の実機",
+          "evidence": "frontend/tests/e2e/real/cmp-261025-2202-feature-display.real.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-6",
+      "description": "設定GET/PUTに実ロール・運営例外・未認証境界を適用する",
+      "tests": [
+        {
+          "name": "ScopeFeatureDisplayPolicyContractIT.AC6_実ロール境界と運営例外",
+          "evidence": "backend/src/test/java/com/mannschaft/app/template/ScopeFeatureDisplayPolicyContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-7",
+      "description": "他scope・非所属・削除scope・親子の設定と所属を隔離する",
+      "tests": [
+        {
+          "name": "ScopeFeatureDisplayPolicyContractIT.AC7_親子組織の設定と所属は継承しない",
+          "evidence": "backend/src/test/java/com/mannschaft/app/template/ScopeFeatureDisplayPolicyContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-8",
+      "description": "途中の実DB例外は全件rollbackし監査はcommit後のみ確定する",
+      "tests": [
+        {
+          "name": "ScopeFeatureDisplayPolicyCommitIT.AC8_二件目の実DB失敗は先行書込もrollbackし監査を確定しない",
+          "evidence": "backend/src/test/java/com/mannschaft/app/template/ScopeFeatureDisplayPolicyCommitIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-9",
+      "description": "OFF/ONは業務データと個人hide/orderを保持する",
+      "tests": [
+        {
+          "name": "ScopeDashboard 非表示混在の並べ替え回帰",
+          "evidence": "frontend/app/components/ScopeDashboard.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-10",
+      "description": "本人/scope切替と遅延応答を分離し失敗時に再試行できる",
+      "tests": [
+        {
+          "name": "useScopeFeatureVisibility scopeとユーザーの切替直後に旧設定を捨て遅延応答を破棄する",
+          "evidence": "frontend/app/composables/useScopeFeatureVisibility.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-11",
+      "description": "scope一括読取と共有1取得でN+1を防ぐ",
+      "tests": [
+        {
+          "name": "ScopeFeatureDisplayPolicyContractIT.AC11_保存キーが増えてもscope全設定の取得は一回",
+          "evidence": "backend/src/test/java/com/mannschaft/app/template/ScopeFeatureDisplayPolicyContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-12",
+      "description": "直URL・業務APIの既存認可とPUBLIC/個人画面を維持する",
+      "tests": [
+        {
+          "name": "TEAM/ORG直URL既存認可の実機",
+          "evidence": "frontend/tests/e2e/real/cmp-261025-2202-feature-display.real.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-13",
+      "description": "要対応は可視区分だけを集計し全OFF時は非表示にする",
+      "tests": [
+        {
+          "name": "ScopeActionRequiredWidget 表示区分・合計・全OFF",
+          "evidence": "frontend/app/components/dashboard/ScopeActionRequiredWidget.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-14",
+      "description": "独立2列・保存成功/失敗・再試行と6言語キーを提供する",
+      "tests": [
+        {
+          "name": "FeatureDisplaySettingsPanel 独立2列と保存失敗の保持",
+          "evidence": "frontend/app/components/FeatureDisplaySettingsPanel.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 40246540422
+    },
+    {
+      "runId": 40246540366
+    },
+    {
+      "runId": 40246540403
+    },
+    {
+      "runId": 40246540360
+    },
+    {
+      "runId": 40246540427
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261025-2202/review.md"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261025-2202/frontend-validation.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261025-2202/exploratory.md"
+    }
+  },
+  "regressions": [
+    {
+      "description": "個人非表示と機能非表示が混在するドラッグで全体indexを取り違える",
+      "test": "ScopeDashboard 非表示混在のdragstart/drop",
+      "redEvidence": "docs/evidence/CMP-261025-2202/frontend-validation.md",
+      "greenEvidence": "docs/evidence/CMP-261025-2202/frontend-validation.md"
+    },
+    {
+      "description": "共有cacheから設定画面を開くとdraftを空に戻す",
+      "test": "FeatureDisplaySettingsPanel 共有cacheが取得済みでrefreshが変更しなくても初回の設定行を表示する",
+      "redEvidence": "docs/evidence/CMP-261025-2202/frontend-validation.md",
+      "greenEvidence": "docs/evidence/CMP-261025-2202/frontend-validation.md"
+    },
+    {
+      "description": "dashboard wireのviewer_roleを未変換で読み表示方針が適用されない",
+      "test": "useDashboardApi TEAM/ORGのviewer_roleをviewerRoleへ変換し既存データと取得条件を保持する",
+      "redEvidence": "docs/evidence/CMP-261025-2202/dashboard-wire-validation.md",
+      "greenEvidence": "docs/evidence/CMP-261025-2202/dashboard-wire-validation.md"
+    },
+    {
+      "description": "TEAM設定直URLで正常解決した非所属nullを未解決と混同する",
+      "test": "チーム機能設定の直URLガード 正常解決した非所属nullは管理画面を出さずhomeへ戻す",
+      "redEvidence": "docs/evidence/CMP-261025-2202/frontend-validation.md",
+      "greenEvidence": "docs/evidence/CMP-261025-2202/frontend-validation.md"
+    },
+    {
+      "description": "ネストしたSwagger応答注釈でclass mappingを余分なHTTPメソッドへ誤帰属する",
+      "test": "nestedSwaggerAnnotationsDoNotCreateMappedMethods",
+      "redEvidence": "docs/evidence/CMP-261025-2202/architecture-validation.md",
+      "greenEvidence": "docs/evidence/CMP-261025-2202/architecture-local-results.json"
+    }
+  ]
+}

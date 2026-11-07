@@ -147,7 +147,7 @@ describe('useActionMemoApi: 週次まとめ (Phase 3)', () => {
   })
 
   describe('getWeeklySummary', () => {
-    it('slug で詳細を取得し WeeklySummary に正規化する', async () => {
+    it('個人ブログの詳細（userId と slug）で取得し WeeklySummary に正規化する', async () => {
       const post = makeBlogPost({
         id: 42,
         title: '週次ふりかえり: 2026-04-06 〜 2026-04-12',
@@ -156,7 +156,10 @@ describe('useActionMemoApi: 週次まとめ (Phase 3)', () => {
       mockFetch.mockResolvedValueOnce({ data: post })
 
       const api = useActionMemoApi()
-      const result = await api.getWeeklySummary('weekly-2026-04-06')
+      const result = await api.getWeeklySummary(7, 'weekly-2026-04-06')
+
+      // スコープ無しの /api/v1/blog/posts/{slug} は 404 になるため、個人ブログの経路を呼ぶ
+      expect(mockFetch.mock.calls[0]![0]).toBe('/api/v1/users/7/blog/posts/weekly-2026-04-06')
 
       expect(result.id).toBe(42)
       expect(result.body).toBe('# 本文全体')

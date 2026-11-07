@@ -1,0 +1,140 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261017-0854",
+  "scope": "app",
+  "implementation": {
+    "pr": 3945,
+    "sha": "fc37284e9122eda2e5ba6422ae3c23b34247a5f9"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "既存日本語の意味を保ち、対象3文言を6localeで解決する",
+      "tests": [
+        {
+          "name": "実Vue翻訳回帰と実設定UI・予定表示",
+          "evidence": "docs/evidence/CMP-261017-0854-real.md"
+        },
+        {
+          "name": "正式red/green対応",
+          "evidence": "docs/evidence/CMP-261017-0854-regressions.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "de実画面の予定見出しと追加導線を翻訳する",
+      "tests": [
+        {
+          "name": "実Vue翻訳回帰と実設定UI・予定表示",
+          "evidence": "docs/evidence/CMP-261017-0854-real.md"
+        },
+        {
+          "name": "正式red/green対応",
+          "evidence": "docs/evidence/CMP-261017-0854-regressions.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "詳細の作成者ラベルを補間し、特殊文字を含む名前を保持する",
+      "tests": [
+        {
+          "name": "実Vue翻訳回帰と実設定UI・予定表示",
+          "evidence": "docs/evidence/CMP-261017-0854-real.md"
+        },
+        {
+          "name": "正式red/green対応",
+          "evidence": "docs/evidence/CMP-261017-0854-regressions.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "表示中のlocale切替に追従する",
+      "tests": [
+        {
+          "name": "実Vue翻訳回帰と実設定UI・予定表示",
+          "evidence": "docs/evidence/CMP-261017-0854-real.md"
+        },
+        {
+          "name": "正式red/green対応",
+          "evidence": "docs/evidence/CMP-261017-0854-regressions.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "既存予定内容と権限・他チームの表示境界を維持する",
+      "tests": [
+        {
+          "name": "3role実API境界と実Vue権限表示",
+          "evidence": "docs/evidence/CMP-261017-0854-real.md"
+        },
+        {
+          "name": "正式red/green対応",
+          "evidence": "docs/evidence/CMP-261017-0854-regressions.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-6",
+      "description": "de360/390幅で翻訳が切れず横パンせず、追加導線を44px以上にする",
+      "tests": [
+        {
+          "name": "真mobile geometryと画像確認",
+          "evidence": "docs/evidence/CMP-261017-0854-real.md"
+        },
+        {
+          "name": "正式red/green対応",
+          "evidence": "docs/evidence/CMP-261017-0854-regressions.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 39007716786
+    },
+    {
+      "runId": 39007716847
+    },
+    {
+      "runId": 39007716802
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261017-0854-review.md"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261017-0854-real.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261017-0854-exploratory.md"
+    }
+  },
+  "regressions": [
+    {
+      "description": "対象3文言の日本語残存と作成者補間",
+      "test": "実Vue単体2spec・5case",
+      "redEvidence": "docs/evidence/CMP-261017-0854-regressions.md",
+      "greenEvidence": "docs/evidence/CMP-261017-0854-regressions.md"
+    },
+    {
+      "description": "de狭幅でnowrap headerが横パンする",
+      "test": "frontend/tests/e2e/real/admin/schedule-i18n-geometry.spec.ts",
+      "redEvidence": "docs/evidence/CMP-261017-0854-regressions.md",
+      "greenEvidence": "docs/evidence/CMP-261017-0854-regressions.md"
+    },
+    {
+      "description": "追加buttonが高さ42pxで44px未満",
+      "test": "frontend/tests/e2e/real/admin/schedule-i18n-geometry.spec.ts",
+      "redEvidence": "docs/evidence/CMP-261017-0854-regressions.md",
+      "greenEvidence": "docs/evidence/CMP-261017-0854-regressions.md"
+    }
+  ]
+}

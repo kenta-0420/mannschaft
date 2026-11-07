@@ -1,0 +1,234 @@
+{
+  "url": "http://localhost:3003/organizations/mobile-menu-20261016-org-a/members",
+  "text": "Mannschaft\n1\nMM\nMobile Menu Fixture Organization A\nメンバー\nメンバー 2人\nお気に入り\nダッシュボード\n基本情報\nメンバー\n所属チーム\nメンバー\n\t\nロール\n\t\n予定の色\n\t\n参加日\n\n\nM\nMobile Menu Admin\n\t\n管理者\n\t\n\t2026/10/16\n\nM\nMobile Menu Member\n\t\nメンバー\n\t\n\t2026/10/16\n1\n20",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "scrollWidth": 390,
+  "clientWidth": 390,
+  "errorReport": {
+    "visible": false,
+    "expanded": false,
+    "submitting": false,
+    "submitted": false,
+    "commentSent": false,
+    "errorMessage": "",
+    "stackTrace": "",
+    "pageUrl": "",
+    "userAgent": "",
+    "requestId": "",
+    "context": ""
+  },
+  "drawers": [],
+  "controls": [
+    {
+      "tag": "BUTTON",
+      "text": "",
+      "label": "メニューを開く",
+      "href": null,
+      "testid": null,
+      "box": {
+        "x": 8,
+        "y": 9.5,
+        "width": 44,
+        "height": 44
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "",
+      "label": "通知",
+      "href": null,
+      "testid": null,
+      "box": {
+        "x": 338,
+        "y": 9.5,
+        "width": 44,
+        "height": 44
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "",
+      "label": null,
+      "href": null,
+      "testid": null,
+      "box": {
+        "x": 108,
+        "y": 152,
+        "width": 44,
+        "height": 44
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "お気に入り",
+      "label": "Mobile Menu Fixture Organization A をお気に入りに追加",
+      "href": null,
+      "testid": "favorite-toggle-ORGANIZATION-mobile-menu-20261016-org-a",
+      "box": {
+        "x": 108,
+        "y": 297,
+        "width": 114,
+        "height": 44
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "",
+      "label": "メニュー",
+      "href": null,
+      "testid": null,
+      "box": {
+        "x": 230,
+        "y": 297,
+        "width": 44,
+        "height": 44
+      }
+    },
+    {
+      "tag": "A",
+      "text": "ダッシュボード",
+      "label": null,
+      "href": "/organizations/mobile-menu-20261016-org-a",
+      "testid": null,
+      "box": {
+        "x": 34,
+        "y": 365,
+        "width": 136,
+        "height": 44
+      }
+    },
+    {
+      "tag": "A",
+      "text": "基本情報",
+      "label": null,
+      "href": "/organizations/mobile-menu-20261016-org-a/info",
+      "testid": null,
+      "box": {
+        "x": 206,
+        "y": 365,
+        "width": 88,
+        "height": 44
+      }
+    },
+    {
+      "tag": "A",
+      "text": "メンバー",
+      "label": null,
+      "href": "/organizations/mobile-menu-20261016-org-a/members",
+      "testid": null,
+      "box": {
+        "x": 330,
+        "y": 365,
+        "width": 88,
+        "height": 44
+      }
+    },
+    {
+      "tag": "A",
+      "text": "所属チーム",
+      "label": null,
+      "href": "/organizations/mobile-menu-20261016-org-a/member-teams",
+      "testid": null,
+      "box": {
+        "x": 454,
+        "y": 365,
+        "width": 103.53125,
+        "height": 44
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "",
+      "label": "次へ",
+      "href": null,
+      "testid": null,
+      "box": {
+        "x": 294,
+        "y": 349,
+        "width": 40,
+        "height": 77
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "",
+      "label": "メニュー",
+      "href": null,
+      "testid": "scope-sidebar-toggle",
+      "box": {
+        "x": 338,
+        "y": 371.5,
+        "width": 32,
+        "height": 32
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "",
+      "label": "最初のページ",
+      "href": null,
+      "testid": null,
+      "box": {
+        "x": 87,
+        "y": 786,
+        "width": 40,
+        "height": 40
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "",
+      "label": "前のページ",
+      "href": null,
+      "testid": null,
+      "box": {
+        "x": 131,
+        "y": 786,
+        "width": 40,
+        "height": 40
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "1",
+      "label": "1ページ",
+      "href": null,
+      "testid": null,
+      "box": {
+        "x": 175,
+        "y": 786,
+        "width": 40,
+        "height": 40
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "",
+      "label": "次のページ",
+      "href": null,
+      "testid": null,
+      "box": {
+        "x": 219,
+        "y": 786,
+        "width": 40,
+        "height": 40
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "",
+      "label": "最後のページ",
+      "href": null,
+      "testid": null,
+      "box": {
+        "x": 263,
+        "y": 786,
+        "width": 40,
+        "height": 40
+      }
+    }
+  ]
+}

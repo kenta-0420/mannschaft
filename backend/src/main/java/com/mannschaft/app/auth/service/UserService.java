@@ -56,6 +56,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * ユーザー管理サービス。プロフィール操作・パスワード変更・メール変更・退会を担当する。
@@ -81,7 +82,28 @@ public class UserService {
             boolean publicProfileEnabled) {
     }
 
+    /** 他ドメインへ公開する最小の本人状態。inactive時にPIIを返さない。 */
+    public record ActiveDisplayState(boolean active, String displayName) { }
+
+    /** 候補ページの本人状態を集合照会する。 */
+    public Map<Long, ActiveDisplayState> getActiveDisplayStates(Collection<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> ids = userIds.stream().filter(Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, ActiveDisplayState> states = new LinkedHashMap<>();
+        for (UserRepository.ActiveDisplayStateRow row : userRepository.findActiveDisplayStateRows(ids)) {
+            boolean active = Boolean.TRUE.equals(row.getActive());
+            states.put(row.getId(), new ActiveDisplayState(active, active ? row.getDisplayName() : null));
+        }
+        return Map.copyOf(states);
+    }
+
     private final UserRepository userRepository;
+    private final UserRowLockService userRowLockService;
     private final EmailChangeTokenRepository emailChangeTokenRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final OAuthAccountRepository oauthAccountRepository;
@@ -136,6 +158,35 @@ public class UserService {
     public java.util.Optional<String> getFullName(Long userId) {
         return userRepository.findById(userId)
                 .map(u -> u.getLastName() + " " + u.getFirstName());
+    }
+
+    /** {@link #getFullNamesAndEmails} の戻り値。他ドメインへ {@link UserEntity} を漏らさない最小値（D-1）。 */
+    public record FullNameAndEmail(String fullName, String email) {
+    }
+
+    /**
+     * 氏名（姓 + " " + 名）とメールアドレスを一括取得する（N+1 防止。{@code findAllById} 1回）。
+     *
+     * <p>見つからないユーザー（退会者は {@code @SQLRestriction} で取得できない）は結果の Map に含めない。
+     * 呼び出し側で空文字などに置き換えること。</p>
+     *
+     * @param userIds ユーザーID集合（null・重複は無視）
+     * @return userId をキーとする氏名・メール
+     */
+    public Map<Long, FullNameAndEmail> getFullNamesAndEmails(Collection<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> ids = userIds.stream().filter(Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, FullNameAndEmail> result = new LinkedHashMap<>();
+        for (UserEntity user : userRepository.findAllById(ids)) {
+            result.put(user.getId(), new FullNameAndEmail(
+                    user.getLastName() + " " + user.getFirstName(), user.getEmail()));
+        }
+        return result;
     }
 
     /**
@@ -264,7 +315,12 @@ public class UserService {
      */
     @Transactional
     public ApiResponse<UserProfileResponse> updateProfile(Long userId, UpdateProfileRequest req) {
+        // ACTIVE以外もlockは取得する。既存FROZENプロフィール資格は維持し、削除済みだけ明示拒否する。
+        userRowLockService.lock(userId);
         UserEntity user = findUserOrThrow(userId);
+        if (user.getDeletedAt() != null) {
+            throw new BusinessException(AuthErrorCode.AUTH_005);
+        }
 
         // countryCode バリデーション（ISO 3166-1 alpha-2: アルファベット大文字2文字）
         if (req.getCountryCode() != null && !COUNTRY_CODE_PATTERN.matcher(req.getCountryCode()).matches()) {
@@ -502,6 +558,7 @@ public class UserService {
      * @param req    メールアドレス変更リクエスト
      * @return メッセージレスポンス
      */
+    @PlaintextTokenDebt(cmp = "CMP-261103-2059") // ハッシュ保存済みだが乱数源が UUID で金庫（SecretTokenVault）未使用。金庫への統合が債務
     @Transactional
     public ApiResponse<MessageResponse> requestEmailChange(Long userId, RequestEmailChangeRequest req) {
         // 1. レートリミット

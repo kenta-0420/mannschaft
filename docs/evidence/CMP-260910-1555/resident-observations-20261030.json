@@ -1,0 +1,374 @@
+{
+  "schemaVersion": 1,
+  "campaign": "CMP-260910-1555",
+  "registrationSource": "actual-resident-artifacts",
+  "trusted": false,
+  "status": "observed-unverified",
+  "originalRunId": "CMP-260910-1555-revalidation-20261030-11",
+  "sourceHead": "588407f98b2b7aecd99897c26bdd3b6129768a82",
+  "owner": "cmp1555r-371bd4bf4b",
+  "idAssignment": "元residentId A/B/Cを保持し、persona/journey/insightの一意IDは登録時付与。固定P01〜P20へ変換しない。",
+  "originalStandardRun": {
+    "exitCode": 0,
+    "executionCompleted": true,
+    "allResidentGoalsAchieved": false,
+    "coveragePassed": false,
+    "formalParentCompletion": false,
+    "fixedUi": {
+      "executed": 58,
+      "passed": 57,
+      "allRequiredPassed": true,
+      "optionalUnmet": "deputy menu未達"
+    },
+    "note": "固定試験・探索実施・目的達成・coverage・正式親完了は別判定。"
+  },
+  "residents": [
+    {
+      "originalResidentId": "A",
+      "registeredPersonaId": "CMP1555-R11-A",
+      "registeredJourneyId": "CMP1555-R11-A-journey",
+      "personaArchetype": "ADHD・中断と保存状態の確認",
+      "purpose": "担当の合成メンバーの時給を登録・訂正し、途中で離れて戻っても保存内容を確認する。",
+      "executionCompleted": true,
+      "goalOutcome": "achieved",
+      "operate": {
+        "total": 47,
+        "success": 38,
+        "failure": 9,
+        "includesDomReads": true,
+        "successCountIsNotWriteCount": true
+      },
+      "context": {
+        "created": 1,
+        "closed": 1,
+        "terminal": true,
+        "mechanicalClosureConfirmed": true,
+        "isMobile": false,
+        "hasTouch": false,
+        "initialViewport": {
+          "width": 1440,
+          "height": 900
+        }
+      },
+      "sourceArtifact": {
+        "artifactId": "resident-A/resident-safe.json",
+        "sha256": "bedd11753800060f126dd54dbd9cc5a56d236d9a03aa9e5d9db4e2a6b7fc267a"
+      },
+      "selectedImages": [
+        {
+          "artifactId": "resident-A/menu_stuck.png",
+          "sha256": "186aedf78eede2c813a1d3a7c72eb586ee6f32e06e9454318f0e9d299ee521db",
+          "width": 1440,
+          "height": 900,
+          "residentImageReview": true,
+          "rootImageReview": "not-recorded"
+        },
+        {
+          "artifactId": "resident-A/final1350.png",
+          "sha256": "94e92d069fbe65ebc50b25a54786c9abaf02bc20abacb219da67335cf5874907",
+          "width": 1440,
+          "height": 900,
+          "residentImageReview": true,
+          "rootImageReview": "viewed"
+        }
+      ],
+      "observation": "自力でメンバー・シフト管理等を探索したが下部の設定導線で迷い、locator timeoutも経験した。1250円保存後、1350円の未保存入力を取消して離脱・復帰し1250円の履歴を確認。同日1350円へ訂正保存し、再離脱・復帰後の一覧・入力欄・履歴1350円を確認した。目的は達成したが、設定を探す摩擦とは分けて記録する。DOM locatorの失敗を製品バグとは断定しない。"
+    },
+    {
+      "originalResidentId": "B",
+      "registeredPersonaId": "CMP1555-R11-B",
+      "registeredJourneyId": "CMP1555-R11-B-journey",
+      "personaArchetype": "一般MEMBER・自分の時給と権限境界",
+      "purpose": "自分の時給情報を確認し、自分が管理操作をできる範囲を画面から理解する。",
+      "executionCompleted": true,
+      "goalOutcome": "unmet",
+      "operate": {
+        "total": 30,
+        "success": 26,
+        "failure": 4,
+        "includesDomReads": true,
+        "successCountIsNotWriteCount": true
+      },
+      "context": {
+        "created": 1,
+        "closed": 1,
+        "terminal": true,
+        "mechanicalClosureConfirmed": true,
+        "isMobile": false,
+        "hasTouch": false,
+        "initialViewport": {
+          "width": 1440,
+          "height": 900
+        }
+      },
+      "sourceArtifact": {
+        "artifactId": "resident-B/resident-safe.json",
+        "sha256": "cd9bd7fa22070361fe569e6c25da92ec0e3b05eaba90343d1250d6bf86b1aec1"
+      },
+      "selectedImages": [
+        {
+          "artifactId": "resident-B/member_menu.png",
+          "sha256": "4bade11f033d71b595e370a6f77ef60c114dad6702afbda606765a9ad13bfef9",
+          "width": 1440,
+          "height": 900,
+          "residentImageReview": false,
+          "rootImageReview": "viewed"
+        }
+      ],
+      "observation": "一般MEMBERとして自チームのメンバー一覧、マイシフト、シフト管理、マイページ、メンバー情報、データ・設定を自律探索したが、自分の時給表示・管理入力の導線を発見できなかった。登録試行0回・他人の時給変更0回で目的は未達。権限制約の正常性は未判定であり、全経路に導線がないことや製品不具合を断定しない。画像は本人が保存のみ、rootがその部分範囲を実視認した。",
+      "registrationAttempts": 0,
+      "otherPersonChanges": 0,
+      "imageReviewLimitation": "本人は保存のみ。rootの画像確認も表示された部分範囲に限定。"
+    },
+    {
+      "originalResidentId": "C",
+      "registeredPersonaId": "CMP1555-R11-C",
+      "registeredJourneyId": "CMP1555-R11-C-journey",
+      "personaArchetype": "スマホ片手・表示とタップ操作",
+      "purpose": "スマホ幅で担当の合成メンバーの時給設定と有効日選択・履歴確認を完遂する。",
+      "executionCompleted": true,
+      "goalOutcome": "achieved",
+      "operate": {
+        "total": 39,
+        "success": 35,
+        "failure": 4,
+        "includesDomReads": true,
+        "successCountIsNotWriteCount": true
+      },
+      "context": {
+        "created": 1,
+        "closed": 1,
+        "terminal": true,
+        "mechanicalClosureConfirmed": true,
+        "isMobile": true,
+        "hasTouch": true,
+        "initialViewport": {
+          "width": 390,
+          "height": 844
+        }
+      },
+      "sourceArtifact": {
+        "artifactId": "resident-C/resident-safe.json",
+        "sha256": "ce543eb69349b6d29690f59bce610161e39121bc717049c4618abdac17d2e190"
+      },
+      "selectedImages": [
+        {
+          "artifactId": "resident-C/initial390.png",
+          "sha256": "025402af8bc91a8e41fa08a9700eab71a9648c5315c22bec2cc35c7449b49921",
+          "width": 390,
+          "height": 844,
+          "residentImageReview": true,
+          "rootImageReview": "viewed"
+        },
+        {
+          "artifactId": "resident-C/menu390.png",
+          "sha256": "ea9486b4887bce87342ef714cd0592a47287063212541859dfc4763e968af363",
+          "width": 390,
+          "height": 844,
+          "residentImageReview": true,
+          "rootImageReview": "viewed"
+        },
+        {
+          "artifactId": "resident-C/team390.png",
+          "sha256": "1ee1a1954c2addf97c8dca58e5dffbf9c51a6371c58d54d58de0649f4e2fd7c2",
+          "width": 390,
+          "height": 844,
+          "residentImageReview": true,
+          "rootImageReview": "viewed"
+        },
+        {
+          "artifactId": "resident-C/form360.png",
+          "sha256": "6158bbf07c4fca2d0063b21468d217feb989e55bd02fb012fb16a9f29d6d6208",
+          "width": 360,
+          "height": 800,
+          "residentImageReview": true,
+          "rootImageReview": "viewed"
+        },
+        {
+          "artifactId": "resident-C/calendar360.png",
+          "sha256": "b5391b0e87861969bed26fe141c6f08131bcc29be1f8bb910ba1078dc5f49c06",
+          "width": 360,
+          "height": 800,
+          "residentImageReview": true,
+          "rootImageReview": "viewed"
+        },
+        {
+          "artifactId": "resident-C/form390.png",
+          "sha256": "dc9300e266ca3207db6ff3867cef99eac83bf7b8a7c3bdcb5e5cf3092bf1cdf8",
+          "width": 390,
+          "height": 844,
+          "residentImageReview": true,
+          "rootImageReview": "viewed"
+        },
+        {
+          "artifactId": "resident-C/calendar390.png",
+          "sha256": "2b0365d83fc4280cc9ffc75758a1e5550d36f60890b77f581019e988adfdd10f",
+          "width": 390,
+          "height": 844,
+          "residentImageReview": true,
+          "rootImageReview": "viewed"
+        },
+        {
+          "artifactId": "resident-C/history390.png",
+          "sha256": "898c82b6638c6c58ebe22948d14fd7749649a0898d8169bf69d89ed3c9ac50ae",
+          "width": 390,
+          "height": 844,
+          "residentImageReview": true,
+          "rootImageReview": "viewed"
+        },
+        {
+          "artifactId": "resident-C/history360.png",
+          "sha256": "ae14869d3aff26e0ffdbf22168d78e6839b1846f0528b0ba8cc7431ac1700f1e",
+          "width": 360,
+          "height": 800,
+          "residentImageReview": true,
+          "rootImageReview": "viewed"
+        }
+      ],
+      "observation": "Chromium mobile/touch contextを実生成し390×844・360×800でtap/scrollを実施。対象Cだけ1300円・2026-11-01を保存し、両幅の再開履歴「2026-11-01 — 1,300円/h」を確認して目的達成。日32×32、月50×32、年52×32のタップ領域を観測した（既知1038に隣接する未実証観測）。保存82×44・取消106×44・閉じる44×44、ページ横パンなし。横タブ初回tapはtimeout、横scroll後に進行。保存後一覧の未設定/—と再開時の金額空・当日は将来日仕様の可能性があり欠陥と断定しない。",
+      "viewports": [
+        {
+          "width": 390,
+          "height": 844
+        },
+        {
+          "width": 360,
+          "height": 800
+        }
+      ],
+      "geometry": {
+        "scrollWidthClientWidth": [
+          [
+            390,
+            390
+          ],
+          [
+            360,
+            360
+          ]
+        ],
+        "save": [
+          82,
+          44
+        ],
+        "cancel": [
+          106,
+          44
+        ],
+        "close": [
+          44,
+          44
+        ],
+        "day": [
+          32,
+          32
+        ],
+        "month": [
+          50,
+          32
+        ],
+        "year": [
+          52,
+          32
+        ]
+      },
+      "futureEffectiveDate": "2026-11-01",
+      "savedHourlyRate": 1300,
+      "physicalDeviceSafariTested": false,
+      "imageCount": 9,
+      "imageReview": {
+        "residentViewed": 9,
+        "rootViewed": 9
+      }
+    }
+  ],
+  "rootCorroboration": {
+    "provenance": "rootの終端・外部撤収・画像実視認報告。住民の未実証ラベルを変更しない。",
+    "terminalArtifact": {
+      "artifactId": "run11-root-terminal-safe.json",
+      "sha256": "da9bc6381e9032497a9c99c662115b690aad7c7e858527cc3e1246cf0472934d"
+    },
+    "visualArtifact": {
+      "artifactId": "run11-root-resident-visual-review-safe.json",
+      "sha256": "ab38834714ab7e8a77f3a32a65e5eeacec763032ec3712f4dfcf45d6ecf15ef1"
+    },
+    "afterAudit": {
+      "selectOnly": true,
+      "fixtureChecksPassed": true,
+      "foreignUnchanged": true,
+      "monthlyObservedPassed": true
+    },
+    "runtimeCleanup": {
+      "standardRemoved": true,
+      "ownedGenerations": 441,
+      "ownedLive": 0,
+      "unknown": 0,
+      "rootScratchReferences": 0,
+      "referenceUnknown": 0,
+      "exactDockerAndScratchAbsent": true,
+      "sharedGenerationsPreserved": true
+    },
+    "windowsPorts": {
+      "earlierBindFailuresPreserved": 2,
+      "laterAllFreeAtUtc": "2026-10-30T00:35:21.6736423Z",
+      "causeDetermined": false,
+      "rootCauseFixedClaim": false,
+      "allFree": true,
+      "receipt": {
+        "artifactId": "run11-windows-closure-v3-safe.json",
+        "sha256": "e9c7bcfde8348e3a539722fe11721387eb1c95ae000f72a1e96f9f92a5c0f7c2"
+      }
+    }
+  },
+  "limitations": [
+    "3件は未実証観測であり、製品不具合・修正完了・B0 coverage合格・親1555正式完了を意味しない。Bの目的未達、optional deputy menu未達、既知0651/1038を保持する。",
+    "operate成功件数にはDOM読取を含み、業務書込回数と同一視しない。物理スマホ/Safariは未試験。",
+    "画像実体は収録せずprivate artifact識別子/SHAのみを選別した。絶対ローカルpath、資格情報、実利用者、生ログは公開しない。",
+    "検証後のworktree切替/sparse操作後、ローカル試験用helper原本が不在となった。実行時SHA・外部safe/明示PNGは保持するが当時のhelper原本による完全再現は未確認。消失時点は未確定。事故を正常cleanupや削除許可済とは扱わない。"
+  ],
+  "privateAssetIncident": {
+    "artifactId": "worktree-private-asset-loss-incident-safe.json",
+    "sha256": "37db981e36e4a229e1ef2e9a7bcb0bb165dccc75be72449a42495e2cbc547fce"
+  },
+  "boardVerification": {
+    "status": "completed",
+    "scope": "ローカル静的ボードの既存autoload取込・再読込非重複。元run字段の精度とは別判定。",
+    "receipt": {
+      "artifactId": "cmp1555-board-ui-3326722d4d91/board-ui-safe.json",
+      "sha256": "8dafb9f0e92e15b1117290bb31f3cf26297be77426bbc8640b7f6c283a55a1cf"
+    },
+    "boardBaseHead": "0220816c1c67e121b7f8dc3f4ac8a3f465198f3c",
+    "inputSha256": {
+      "html": "64d62b5cae580815a09d353844cb45d44232417bfeaf9473953b22dcbca220d4",
+      "data": "6c1f10cc2d5d63ae4fc89d16d12a65accf004012cf8a2e69370f1be3bb32be53"
+    },
+    "importReloadPassed": true,
+    "firstCount": 82,
+    "reloadCount": 82,
+    "reloadDeepEqual": true,
+    "newCards": 3,
+    "old79ImportedProjectionPreserved": true,
+    "old79CheckScope": "既存importerが生成する投影字段の保持。観測原本の全fields保持は別構造検査。",
+    "originalRunIdPrecisionPassed": false,
+    "storedRunId": "october-wave2-login-resident-overlay-20261026",
+    "provenanceLimitation": "既存importerはtop旧runIdを保存。元runはdetail/選別証拠に保持され、stored runIdの精度は合格としない。",
+    "image": {
+      "artifactId": "cmp1555-board-ui-3326722d4d91/board-new-three.png",
+      "sha256": "59465b04052c1940da80850c1bca88b3460f8c24b8525ca3e507ce2e980fe4c7",
+      "rootImageReview": "viewed"
+    },
+    "elapsedMs": 28230.0007,
+    "cleanup": {
+      "completed": true,
+      "withinBudget": true,
+      "elapsedMs": 18874.0962,
+      "knownGenerations": 4,
+      "liveKnown": 0,
+      "profileAbsent": true,
+      "ownPortReleased": true,
+      "contextBrowserAndServerClosed": true,
+      "auditScope": "既知browser rootとsnapshot時点のWin32_Process子孫世代。任意Windows handles全域監査や全期間の全子孫追跡は主張しない。"
+    },
+    "note": "ボードの取込成功は住民目的未達・未実証状態・coverage未判定・親1555未完了を変更しない。"
+  }
+}

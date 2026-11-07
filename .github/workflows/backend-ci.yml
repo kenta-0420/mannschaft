@@ -235,8 +235,11 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
+      - name: 重み表再生成の XML 集計対象を検証
+        run: python3 -m unittest scripts/test_regen_shard_weights.py
+
       - name: Set up Java ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
@@ -256,6 +259,76 @@ jobs:
         run: >-
           ./gradlew verifyShardCoverage --no-daemon --build-cache
           -Pshard.total=${{ env.SHARD_TOTAL }}
+
+  # ---------------------------------------------------------------------------
+  # arch-test: ArchUnit を使うテスト（タグ archunit）を Spring 系とは別の JVM で 1 回だけ実行する
+  #
+  # 【CMP-261002-1606】shard 5 のテスト JVM（-Xmx4g）が OOM した。ArchUnit の本番取り込み
+  # （約 1.1GB）が Spring テストコンテキストと同じワーカー JVM に乗っていたため、通常の `test`
+  # （shard ジョブ）からはタグ archunit を除外し、本ジョブの `archTest` タスクで別 JVM に分けた。
+  # shard 分割しない（取り込みは 1 回で全クラス分を賄うため、分割しても速くならない）。
+  # shard ジョブと並走するため壁時計は延びない。Docker 不要。gate の needs に入れる。
+  # ログの "[test-count] archTest: 実行 N 件" で走ったことを確認できる（0 件なら archTest が失敗する）。
+  # ---------------------------------------------------------------------------
+  arch-test:
+    name: ArchUnit tests (separate JVM)
+    needs: detect
+    if: needs.detect.outputs.backend_changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v6
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+
+      - name: Set up Gradle（依存＋ビルドキャッシュ。shard ジョブと同じキーを共有）
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+          gradle-home-cache-includes: |
+            caches
+            notifications
+
+      - name: Grant Gradle wrapper execute permission
+        run: chmod +x gradlew
+
+      - name: Run ArchUnit tests（archTest・別 JVM）
+        run: ./gradlew archTest --no-daemon --continue --build-cache
+
+      - name: ヒープダンプ（OOM調査用）をアップロード
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: heap-dump-pr-${{ github.event.pull_request.number || 'manual' }}-archtest
+          path: backend/build/heap-dumps/*.hprof
+          retention-days: 3
+          if-no-files-found: ignore
+
+      # artifact 名は "test-results-xml-" で始めない（regen-shard-weights.sh がその接頭辞で
+      # shard 重み表の材料を集めるため。archTest のクラスは通常 test の shard 割当に入れない）。
+      - name: テスト結果XML（JUnit）をアップロード
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: archtest-results-xml-pr-${{ github.event.pull_request.number || 'manual' }}
+          path: backend/build/test-results/archTest/
+          retention-days: 7
+
+      - name: テスト結果レポートをアップロード
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: archtest-results-pr-${{ github.event.pull_request.number || 'manual' }}
+          path: backend/build/reports/tests/archTest/
+          retention-days: 7
 
   # ---------------------------------------------------------------------------
   # non-jst-timezone: CMP-023 の返済済み範囲を非JST JVMで検証する必須ジョブ
@@ -278,7 +351,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Java ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
@@ -300,6 +373,7 @@ jobs:
           -Ptest.timezone=America/Los_Angeles
           -x jacocoTestReport
           --tests "com.mannschaft.app.config.NonJstTimezoneContractTest"
+          --tests "com.mannschaft.app.reservation.service.ReservationPendingExpireServiceClockZoneTest"
           --tests "com.mannschaft.app.config.JacksonTimeTypeSymmetryGuardTest"
           --tests "com.mannschaft.app.schedule.ScheduleAttendanceServiceTest"
           --tests "com.mannschaft.app.shift.service.ShiftRequestServiceTest"
@@ -329,10 +403,10 @@ jobs:
     needs: detect
     if: needs.detect.outputs.backend_changed == 'true'
     runs-on: ubuntu-latest
-    # 通常PRは従来の75分を維持する。Flyway再生が必要なPRでは、CMP-008の
-    # shard 1 が2回とも75分上限でテスト失敗なしにキャンセルされたため、
-    # テストを省略せず後処理まで完了できる105分の枠を確保する。
-    timeout-minutes: ${{ needs.detect.outputs.migrations_changed == 'true' && 105 || 75 }}
+    # 通常PRは100分、migration込みは120分を観測用上限とする（完走・根治の保証ではない）。
+    # test stepは85/105分。setup＋compileが15分を超えると回収余白を保証しない。
+    # workflow自身の変更もmigration-sensitive判定の対象とする。
+    timeout-minutes: ${{ needs.detect.outputs.migrations_changed == 'true' && 120 || 100 }}
     defaults:
       run:
         working-directory: ./backend
@@ -346,7 +420,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Java ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
@@ -388,14 +462,39 @@ jobs:
       #   （65 クラス・計測テスト時間の 72〜88% を占める）を除外する。
       #   migration を触る PR では false となり従来どおり全件実行する。
       #   除外分は backend-nightly-full.yml が毎晩フル実行して担保する。
+      # cache5診断のshard0完走を踏まえcontext保持を5に制限する。
+      # heap/fork・テスト選別は維持し、ローカル既定10は変更しない。
       - name: Run tests (shard ${{ matrix.shard }} / ${{ env.SHARD_TOTAL }})
-        run: >-
-          ./gradlew test --no-daemon --continue --build-cache
-          -Pshard.total=${{ env.SHARD_TOTAL }}
-          -Pshard.index=${{ matrix.shard }}
-          -PexcludeMigrationTests=${{ needs.detect.outputs.migrations_changed == 'true' && 'false' || 'true' }}
+        id: run-tests
+        timeout-minutes: ${{ needs.detect.outputs.migrations_changed == 'true' && 105 || 85 }}
+        run: |
+          bash scripts/run-ci-tests-with-observability.sh ./gradlew test --no-daemon --continue --build-cache \
+            -Pshard.total=${{ env.SHARD_TOTAL }} \
+            -Pshard.index=${{ matrix.shard }} \
+            -PexcludeMigrationTests=${{ needs.detect.outputs.migrations_changed == 'true' && 'false' || 'true' }} \
+            -Pspring.test.context.cache.maxSize=5
         env:
           TESTCONTAINERS_RYUK_DISABLED: "false"
+          CI_SHARD_INDEX: ${{ matrix.shard }}
+          CI_JOB_TIMEOUT_MINUTES: ${{ needs.detect.outputs.migrations_changed == 'true' && 120 || 100 }}
+          CI_TEST_TIMEOUT_MINUTES: ${{ needs.detect.outputs.migrations_changed == 'true' && 105 || 85 }}
+
+      # timeout/cancellationはGHA outcomeも確認し、EXIT trapの0だけを成功にしない。
+      - name: 計測結果にテストstepの実結果を記録
+        if: always()
+        run: bash scripts/run-ci-tests-with-observability.sh --finalize "$TEST_STEP_OUTCOME"
+        env:
+          TEST_STEP_OUTCOME: ${{ steps.run-tests.outcome }}
+
+      - name: 全shardのクラス進捗とJVM診断をアップロード
+        if: always()
+        timeout-minutes: 2
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-runtime-diag-pr-${{ github.event.pull_request.number || 'manual' }}-shard-${{ matrix.shard }}-attempt-${{ github.run_attempt }}
+          path: backend/build/ci-diagnostics/
+          retention-days: 7
+          if-no-files-found: warn
 
       # OOM (OutOfMemoryError) 発生時のみ、-XX:HeapDumpOnOutOfMemoryError で
       # backend/build/heap-dumps/java_pid<PID>.hprof に書き出されるヒープダンプを
@@ -416,7 +515,7 @@ jobs:
       # 正常系であり、これを error にすると本来の失敗原因を覆い隠す形で CI を毎回汚す）。
       - name: ヒープダンプ（OOM調査用）をアップロード
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: heap-dump-pr-${{ github.event.pull_request.number || 'manual' }}-shard-${{ matrix.shard }}
           path: backend/build/heap-dumps/*.hprof
@@ -427,7 +526,7 @@ jobs:
       # 持つため、「Run tests の壁時計」と「Gradle 集計テスト時間」の差を分解できる。
       - name: テスト結果XML（JUnit）をアップロード
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-xml-pr-${{ github.event.pull_request.number || 'manual' }}-shard-${{ matrix.shard }}
           path: |
@@ -437,7 +536,7 @@ jobs:
 
       - name: テスト結果レポートをアップロード
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-pr-${{ github.event.pull_request.number || 'manual' }}-shard-${{ matrix.shard }}
           path: backend/build/reports/tests/
@@ -445,7 +544,7 @@ jobs:
 
       - name: JaCoCo カバレッジレポートをアップロード
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report-pr-${{ github.event.pull_request.number || 'manual' }}-shard-${{ matrix.shard }}
           path: backend/build/reports/jacoco/
@@ -478,7 +577,7 @@ jobs:
   #       → backend_changed の値に関わらず判定不能。fail（exit 1）。
   #   (1) detect.result == 'success' かつ backend_changed != 'true'（docs-only 等）
   #       → shard 系は正しく skip 済み。テスト不要なので success（exit 0）。
-  #   (2) backend_changed == 'true' で 全 shard + lint + shard-coverage-guard + non-jst-timezone が
+  #   (2) backend_changed == 'true' で 全 shard + lint + shard-coverage-guard + non-jst-timezone が（+ arch-test）
   #       success（skipped/failure/cancelled のいずれでもない）→ success（exit 0）。
   #   (3) それ以外（failure / cancelled / 走るべきなのに skipped 等の異常）
   #       → fail（exit 1）。
@@ -489,7 +588,7 @@ jobs:
   # ---------------------------------------------------------------------------
   gate:
     name: Compile & Test
-    needs: [detect, shard, lint, shard-coverage-guard, non-jst-timezone]
+    needs: [detect, shard, lint, shard-coverage-guard, non-jst-timezone, arch-test]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -503,12 +602,14 @@ jobs:
           LINT_RESULT="${{ needs.lint.result }}"
           COVERAGE_GUARD_RESULT="${{ needs.shard-coverage-guard.result }}"
           NON_JST_RESULT="${{ needs.non-jst-timezone.result }}"
+          ARCH_TEST_RESULT="${{ needs.arch-test.result }}"
           echo "[INFO] needs.detect.result            = ${DETECT_RESULT}"
           echo "[INFO] detect.backend_changed          = ${CHANGED}"
           echo "[INFO] needs.shard.result              = ${SHARD_RESULT}"
           echo "[INFO] needs.lint.result               = ${LINT_RESULT}"
           echo "[INFO] needs.shard-coverage-guard.result = ${COVERAGE_GUARD_RESULT}"
           echo "[INFO] needs.non-jst-timezone.result    = ${NON_JST_RESULT}"
+          echo "[INFO] needs.arch-test.result           = ${ARCH_TEST_RESULT}"
 
           # (0) detect 自体が success でない（failure/cancelled/skipped）→ 判定不能につき fail。
           #     ここを通さないと、detect 失敗時に outputs.backend_changed が空文字になり
@@ -529,16 +630,16 @@ jobs:
           fi
 
           # (2) backend_changed == 'true' の経路: 全 shard + lint + shard-coverage-guard + non-jst-timezone が
-          #     厳密に success（skipped/failure/cancelled のいずれでもない）→ success
-          if [ "${SHARD_RESULT}" = "success" ] && [ "${LINT_RESULT}" = "success" ] && [ "${COVERAGE_GUARD_RESULT}" = "success" ] && [ "${NON_JST_RESULT}" = "success" ]; then
-            echo "[OK] 全 shard + lint + shard-coverage-guard + non-jst-timezone が success。Compile & Test は success。"
+          #     厳密に success（arch-test を含む）（skipped/failure/cancelled のいずれでもない）→ success
+          if [ "${SHARD_RESULT}" = "success" ] && [ "${LINT_RESULT}" = "success" ] && [ "${COVERAGE_GUARD_RESULT}" = "success" ] && [ "${NON_JST_RESULT}" = "success" ] && [ "${ARCH_TEST_RESULT}" = "success" ]; then
+            echo "[OK] 全 shard + lint + shard-coverage-guard + non-jst-timezone + arch-test が success。Compile & Test は success。"
             exit 0
           fi
 
           # (3) それ以外（failure / cancelled / 走るべきなのに skipped 等の異常） → fail
           #     shard-coverage-guard / non-jst-timezone が skipped のまま緑にはならない
           #     （走らない番人は無意味なため）。
-          echo "[NG] shard=${SHARD_RESULT}, lint=${LINT_RESULT}, shard-coverage-guard=${COVERAGE_GUARD_RESULT}, non-jst-timezone=${NON_JST_RESULT} — いずれかが success ではない。Compile & Test を失敗とする。"
+          echo "[NG] shard=${SHARD_RESULT}, lint=${LINT_RESULT}, shard-coverage-guard=${COVERAGE_GUARD_RESULT}, non-jst-timezone=${NON_JST_RESULT}, arch-test=${ARCH_TEST_RESULT} — いずれかが success ではない。Compile & Test を失敗とする。"
           exit 1
 
 # =============================================================================

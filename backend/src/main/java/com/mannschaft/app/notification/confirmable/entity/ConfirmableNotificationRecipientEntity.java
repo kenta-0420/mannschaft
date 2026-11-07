@@ -21,6 +21,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * F04.9 確認通知受信者エンティティ。
@@ -65,6 +66,7 @@ public class ConfirmableNotificationRecipientEntity {
      * URLトークン確認用UUID（36文字）。
      * メール・LINE経由でのトークン確認に使用する。
      */
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Column(nullable = false, length = 36, unique = true)
     private String confirmToken;
 
@@ -248,5 +250,16 @@ public class ConfirmableNotificationRecipientEntity {
         if (deadline != null && now.isAfter(deadline)) return false;
 
         return true;
+    }
+
+    /**
+     * 受信者の {@code users.id} だけを {@code Long} で返す。
+     *
+     * <p>{@link #getUser()} は {@link UserEntity} 型を露出するため、他ドメインのクラスがこれを呼ぶと
+     * クロスドメイン Entity 依存として {@code CrossDomainEntityImportArchTest} に新規違反として検知される。
+     * ID だけが必要な呼び出し元（リマインドバッチ等）はこちらを使うこと。</p>
+     */
+    public Long getRecipientUserId() {
+        return this.user == null ? null : this.user.getId();
     }
 }

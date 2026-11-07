@@ -1,0 +1,27 @@
+{
+  "cmpId": "CMP-261024-1830",
+  "authorization": "本人の「削除許可」",
+  "completedAt": "2026-10-24T23:06:14.811981+00:00",
+  "ownedAbsent": true,
+  "error": null,
+  "removedDedicatedRoots": 2,
+  "removedDedicatedContainers": 2,
+  "allDedicatedDirectoriesAbsent": true,
+  "allDedicatedContainersAbsent": true,
+  "volumeAbsent": true,
+  "allDedicatedPortsAbsent": true,
+  "dedicatedPortCount": 4,
+  "sharedContainerIdsAndRunningUnchanged": true,
+  "allSharedContainersRunning": true,
+  "runnerCheck": {
+    "sourceMain": "949971720f",
+    "exitCode": 0,
+    "stdout": "",
+    "stderr": "",
+    "legacyUnmanagedCopiesCovered": false
+  },
+  "worktreeBaseline": {
+    "exitCode": 2,
+    "note": "既存他戦役資産を保持。今回製品/E2E WTは撤去済み。非0を合格扱いしない。"
+  }
+}

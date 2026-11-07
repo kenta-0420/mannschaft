@@ -123,8 +123,11 @@ CSP 違反を収集できるよう、`report-uri` ディレクティブを追加
 - **受信エンドポイント（実装済み・PR #1274）**: `POST /api/v1/security/csp-reports`
   （`com.mannschaft.app.cspreport`）。`SecurityConfig` で `permitAll`（ブラウザ自動送信のため認証不要）、
   Spring Security の CSRF は本アプリではステートレス無効のため弾かれない。`application/json` /
-  `application/csp-report` 双方を受理し、`{"csp-report":{...}}` ラッパーあり・なし両形式をパースして
-  `csp_reports` テーブルに記録、常に 204 を返す（パース失敗は WARN ログのみで握り潰さず記録）。
+  `application/csp-report` / `application/reports+json` を受理し（`charset=UTF-8` 付きも可）、
+  `{"csp-report":{...}}` ラッパーあり・なし両形式をパースして `csp_reports` テーブルに記録する。
+  受信処理は空ボディ・JSON `null` を保存せず204、不正JSON・未対応のReporting API配列もWARNを記録して204を返す。
+  MIME型の受理はReporting API配列の保存や `report-to` の導入を意味しない。前段の公開APIレート制限による429等は維持する。
+  Content-TypeごとのHTTP・実DB回帰は `CspReportContentTypeContractIT` で検証する（CMP-261001-0839）。
 
 #### report-uri の値は「相対パス固定」とし、dev は devProxy で根治（2026-06-03）
 

@@ -1,11 +1,11 @@
 package com.mannschaft.app.common.architecture;
 
 import com.mannschaft.app.common.featuregate.RequireFeature;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -35,12 +35,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * メソッド）にのみ許可」に固定</b>し、CI で機械的に拒否する。</p>
  */
 @DisplayName("番人: @RequireFeature はインターフェースへ付与禁止（Gate基盤工事③ 検分指摘①）")
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class RequireFeatureInterfaceGuardTest {
 
     private static JavaClasses importedClasses() {
-        return new ClassFileImporter()
-                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                .importPackages("com.mannschaft.app");
+        return ProductionClasses.get();
     }
 
     /**

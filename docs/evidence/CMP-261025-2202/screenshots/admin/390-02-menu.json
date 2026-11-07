@@ -1,0 +1,810 @@
+{
+  "url": "http://localhost:3001/teams/teams-1792955080937",
+  "locale": "ja",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "scrollWidth": 390,
+  "clientWidth": 390,
+  "controls": [
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "text": "メニューを開く",
+      "box": {
+        "x": 8,
+        "y": 9.5,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "text": "通知",
+      "box": {
+        "x": 338,
+        "y": 9.5,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "hidden",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "inline-flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "text": "戻る",
+      "box": {
+        "x": 108,
+        "y": 51,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "hidden",
+        "whiteSpace": "normal",
+        "fontSize": "14px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "text": "お気に入り",
+      "box": {
+        "x": 108,
+        "y": 228,
+        "width": 114,
+        "height": 44
+      },
+      "style": {
+        "overflow": "hidden",
+        "whiteSpace": "normal",
+        "fontSize": "14px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "text": "その他の操作",
+      "box": {
+        "x": 230,
+        "y": 228,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "hidden",
+        "whiteSpace": "normal",
+        "fontSize": "14px",
+        "display": "inline-flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "A",
+      "id": "",
+      "role": null,
+      "text": "ダッシュボード",
+      "box": {
+        "x": 34,
+        "y": 296,
+        "width": 136,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "nowrap",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "A",
+      "id": "",
+      "role": null,
+      "text": "基本情報",
+      "box": {
+        "x": 206,
+        "y": 296,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "nowrap",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "A",
+      "id": "",
+      "role": null,
+      "text": "メンバー",
+      "box": {
+        "x": 330,
+        "y": 296,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "nowrap",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "A",
+      "id": "",
+      "role": null,
+      "text": "招待",
+      "box": {
+        "x": 454,
+        "y": 296,
+        "width": 56,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "nowrap",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "A",
+      "id": "",
+      "role": null,
+      "text": "サポーター管理",
+      "box": {
+        "x": 546,
+        "y": 296,
+        "width": 136,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "nowrap",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "A",
+      "id": "",
+      "role": null,
+      "text": "参加申請",
+      "box": {
+        "x": 718,
+        "y": 296,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "nowrap",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "A",
+      "id": "",
+      "role": null,
+      "text": "機能設定",
+      "box": {
+        "x": 842,
+        "y": 296,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "nowrap",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "A",
+      "id": "",
+      "role": null,
+      "text": "所属組織",
+      "box": {
+        "x": 966,
+        "y": 296,
+        "width": 88,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "nowrap",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "A",
+      "id": "",
+      "role": null,
+      "text": "権限グループ",
+      "box": {
+        "x": 1090,
+        "y": 296,
+        "width": 119.046875,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "nowrap",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "A",
+      "id": "",
+      "role": null,
+      "text": "フレンドチーム",
+      "box": {
+        "x": 1245.046875,
+        "y": 296,
+        "width": 135.53125,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "nowrap",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "text": "次へ",
+      "box": {
+        "x": 330,
+        "y": 280,
+        "width": 44,
+        "height": 77
+      },
+      "style": {
+        "overflow": "hidden",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "text": "メニュー",
+      "box": {
+        "x": 20,
+        "y": 358,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "hidden",
+        "whiteSpace": "normal",
+        "fontSize": "14px",
+        "display": "inline-flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "text": "メンバー",
+      "box": {
+        "x": 81,
+        "y": 358,
+        "width": 101.609375,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "14.4px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "text": "管理者",
+      "box": {
+        "x": 182.609375,
+        "y": 358,
+        "width": 87.203125,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "14.4px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "text": "ウィジェット設定",
+      "box": {
+        "x": 194,
+        "y": 420,
+        "width": 156,
+        "height": 44
+      },
+      "style": {
+        "overflow": "hidden",
+        "whiteSpace": "normal",
+        "fontSize": "14px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "BUTTON",
+      "id": "scope-dashboard-section-button-schedule-activity",
+      "role": null,
+      "text": "予定・活動\n今後の予定 / 活動記録 ほか2件\n4",
+      "box": {
+        "x": 41,
+        "y": 489,
+        "width": 308,
+        "height": 68
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "BUTTON",
+      "id": "scope-dashboard-section-button-tasks-confirmation",
+      "role": null,
+      "text": "やること・確認\nTODO / プロジェクト ほか3件\n5",
+      "box": {
+        "x": 41,
+        "y": 571,
+        "width": 308,
+        "height": 68
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "BUTTON",
+      "id": "scope-dashboard-section-button-communication",
+      "role": null,
+      "text": "連絡・共有\n掲示板 / タイムライン ほか3件\n5",
+      "box": {
+        "x": 41,
+        "y": 653,
+        "width": 308,
+        "height": 68
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "BUTTON",
+      "id": "scope-dashboard-section-button-results-members",
+      "role": null,
+      "text": "成績・メンバー\n大会成績 / 順位表 ほか3件\n5",
+      "box": {
+        "x": 41,
+        "y": 735,
+        "width": 308,
+        "height": 68
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "text": "閉じる",
+      "box": {
+        "x": 223,
+        "y": 20,
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "overflow": "hidden",
+        "whiteSpace": "normal",
+        "fontSize": "16px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "text": "ホーム",
+      "box": {
+        "x": 24,
+        "y": 92,
+        "width": 239,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "14.4px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "text": "ダッシュボード",
+      "box": {
+        "x": 32,
+        "y": 136,
+        "width": 231,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "14px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "A",
+      "id": "",
+      "role": null,
+      "text": "お知らせ",
+      "box": {
+        "x": 32,
+        "y": 182,
+        "width": 231,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "14px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "A",
+      "id": "",
+      "role": null,
+      "text": "チャット",
+      "box": {
+        "x": 32,
+        "y": 228,
+        "width": 231,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "14px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "A",
+      "id": "",
+      "role": null,
+      "text": "掲示板",
+      "box": {
+        "x": 32,
+        "y": 274,
+        "width": 231,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "14px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "text": "スケジュール",
+      "box": {
+        "x": 24,
+        "y": 320,
+        "width": 239,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "14.4px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "text": "試合",
+      "box": {
+        "x": 24,
+        "y": 366,
+        "width": 239,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "14.4px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "text": "市",
+      "box": {
+        "x": 24,
+        "y": 412,
+        "width": 239,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "14.4px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "text": "メンバー",
+      "box": {
+        "x": 24,
+        "y": 458,
+        "width": 239,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "14.4px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "A",
+      "id": "",
+      "role": null,
+      "text": "メンバー紹介",
+      "box": {
+        "x": 32,
+        "y": 502,
+        "width": 231,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "14px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "A",
+      "id": "",
+      "role": null,
+      "text": "スキル・資格",
+      "box": {
+        "x": 32,
+        "y": 548,
+        "width": 231,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "14px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "A",
+      "id": "",
+      "role": null,
+      "text": "クイック確認",
+      "box": {
+        "x": 32,
+        "y": 594,
+        "width": 231,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "14px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "A",
+      "id": "",
+      "role": null,
+      "text": "安否確認",
+      "box": {
+        "x": 32,
+        "y": 640,
+        "width": 231,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "14px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "text": "タスク・進行",
+      "box": {
+        "x": 24,
+        "y": 686,
+        "width": 239,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "14.4px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "text": "運営・予算",
+      "box": {
+        "x": 24,
+        "y": 732,
+        "width": 239,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "14.4px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "text": "施設管理",
+      "box": {
+        "x": 24,
+        "y": 778,
+        "width": 239,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "14.4px",
+        "display": "flex"
+      },
+      "checked": null
+    },
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "text": "データ",
+      "box": {
+        "x": 24,
+        "y": 824,
+        "width": 239,
+        "height": 44
+      },
+      "style": {
+        "overflow": "visible",
+        "whiteSpace": "normal",
+        "fontSize": "14.4px",
+        "display": "flex"
+      },
+      "checked": null
+    }
+  ]
+}

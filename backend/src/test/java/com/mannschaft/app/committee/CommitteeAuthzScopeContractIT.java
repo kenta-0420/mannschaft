@@ -193,6 +193,19 @@ class CommitteeAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data").isArray());
         }
+
+        @Test
+        @DisplayName("一覧の各メンバーに displayName が含まれる（FE の member.displayName.charAt の TypeError 防止）")
+        void 一覧の各メンバーにdisplayNameが含まれる() throws Exception {
+            setAuthentication(memberAId);
+            mockMvc.perform(get("/api/v1/committees/{id}/members", committeeAId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(4))
+                    .andExpect(jsonPath("$.data[*].displayName",
+                            org.hamcrest.Matchers.hasSize(4)))
+                    .andExpect(jsonPath("$.data[*].displayName",
+                            org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is("委員会契約 テスト"))));
+        }
     }
 
     @Nested
@@ -518,9 +531,9 @@ class CommitteeAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
         // ─────────────────────────────────────────────────────────────
         // 存在オラクル封じ（越境は不在と同一ステータス 404）
         //
-        // confirmMinutes は活動記録が不在なら COMMITTEE_NOT_FOUND、他委員会スコープの記録なら
-        // MINUTES_NOT_COMMITTEE_SCOPE を投げる。両者のステータスが割れると、正当な CHAIR が
-        // recordId を列挙するだけで「他委員会の議事録が実在するか」を応答差から判別できる。
+        // confirmMinutes は活動記録が不在でも他委員会スコープの記録でも COMMITTEE_NOT_FOUND を投げる。
+        // status/code/message が割れると、正当な CHAIR が recordId を列挙するだけで
+        // 「他委員会の議事録が実在するか」を応答差から判別できる。
         // 下の2ケースは 404 の絶対値を各々固定し、さらに両者の一致も突き合わせる
         // （一致だけを見ると「両方 500」でも通る偽 green になるため絶対値の併存が必須）。
         // ─────────────────────────────────────────────────────────────
@@ -559,7 +572,7 @@ class CommitteeAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
                             committeeAId, recordBId))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code")
-                            .value(CommitteeErrorCode.MINUTES_NOT_COMMITTEE_SCOPE.getCode()));
+                            .value(CommitteeErrorCode.NOT_FOUND.getCode()));
 
             em.flush();
             em.clear();

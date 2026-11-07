@@ -22,6 +22,20 @@ public enum EmailTemplateKind {
     VERIFICATION,
     /** #3 パスワードリセット (raw token 含む) */
     PASSWORD_RESET,
+    /**
+     * CMP-261012-0910: 2FA メールOTP（ログイン用・設定用・本人確認用の 6 桁コード。ja 固定・ログインリンク無し）。
+     * 骨格追加のみ・レンダラは出陣で実装。
+     */
+    MFA_EMAIL_OTP,
+    /**
+     * CMP-261012-0910: 2FA セキュリティ通知（有効化・無効化・バックアップコード使用）。
+     * 骨格追加のみ・レンダラは出陣で実装。
+     */
+    MFA_SECURITY_NOTICE,
+    /**
+     * CMP-261012-0910: 2FA 回復メール（回復トークン入りリンク）。骨格追加のみ・レンダラは出陣で実装。
+     */
+    MFA_RECOVERY,
 
     // 分析・レポート系 (Phase 18-c)
     /** #4 月次 KPI レポート (admin 複数宛) */

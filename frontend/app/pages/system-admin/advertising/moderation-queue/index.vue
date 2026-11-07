@@ -8,7 +8,7 @@
  */
 import type { AdReviewQueueItem } from '~/types/adModeration'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const { t } = useI18n()
 const router = useRouter()

@@ -42,7 +42,11 @@ const {
   subscribeChannel,
   unsubscribeChannel,
   wsConnectionFailed,
+  wsUnauthenticated,
+  isChannelDenied,
 } = useChatApi()
+// 購読拒否（閲覧権限なし）と未認証（再ログインが必要）は別の状態として出し分ける。
+const channelDenied = computed(() => isChannelDenied(props.channel.id))
 const { showSuccess, showError } = useNotification()
 const authStore = useAuthStore()
 
@@ -371,7 +375,13 @@ onUnmounted(() => {
 <template>
   <div class="flex h-full flex-col">
     <!-- 接続失敗バナー -->
-    <div v-if="wsConnectionFailed" class="reconnect-warning">
+    <div v-if="wsUnauthenticated" class="reconnect-warning" role="status">
+      <span>{{ $t('chat.connection.unauthenticated') }}</span>
+    </div>
+    <div v-else-if="channelDenied" class="reconnect-warning" role="status">
+      <span>{{ $t('chat.connection.denied') }}</span>
+    </div>
+    <div v-else-if="wsConnectionFailed" class="reconnect-warning">
       <span>{{ $t('chat.connection.failed') }}</span>
     </div>
 

@@ -85,10 +85,13 @@ class DashboardServiceOrgAnnouncementDedupTest {
     @Mock private UserRoleRepository userRoleRepository;
     @Mock private MembershipScopeQueryService membershipScopeQueryService;
     @Mock private AnnouncementFeedQueryRepository announcementFeedQueryRepository;
+    @Mock private com.mannschaft.app.social.announcement.audience.AnnouncementAudienceMatcher announcementAudienceMatcher;
+    @Mock private com.mannschaft.app.team.service.TeamOrgMembershipQueryService teamOrgMembershipQueryService;
     @Mock private ScopeWidgetSummaryService scopeWidgetSummaryService;
     @Mock private ScopeActionRequiredFacade scopeActionRequiredFacade;
     @Mock private SwipeWidgetVisibilityResolver swipeWidgetVisibilityResolver;
     @Mock private PaymentGateService paymentGateService;
+    @Mock private com.mannschaft.app.social.announcement.AnnouncementReadService announcementReadService;
 
     @InjectMocks
     private DashboardService dashboardService;
@@ -167,17 +170,13 @@ class DashboardServiceOrgAnnouncementDedupTest {
     }
 
     @Test
-    @DisplayName("AC-1: 同一組織の org ロール行が 2 件でも、同一 feedId の組織告知は 1 件だけ表示される")
+    @DisplayName("AC-1: 同一 feedId の組織告知が 2 回返っても、1 件だけ表示される")
     void AC1_多重orgロール_同一feedIdは1件に重複排除() {
-        // 同一 organizationId を 2 件返す（flatMap で同一 feedId が 2 回集約される状況を模擬）。
-        // 本番の findOrganizationIdsByUserId は DISTINCT だが、ここでは feedId 重複排除ロジックの
-        // 検証のため意図的に重複 orgId を与える。
-        given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID))
-                .willReturn(List.of(ORG_ID, ORG_ID));
-        // 各 org スコープにつき同一 feedId(=FEED_ID) の告知が返る → flatMap で 2 回集約される
-        given(announcementFeedQueryRepository.findByOrgScopeForTeamDashboard(
-                eq(ORG_ID), any(), org.mockito.ArgumentMatchers.anyInt()))
-                .willReturn(List.of(orgFeed(FEED_ID)));
+        // 宛先の判定（AnnouncementAudienceMatcher）は IT で検証済み。ここでは同一 feedId(=FEED_ID) の告知が
+        // 2 回返る状況を模擬し、DashboardService 側の feedId 重複排除の防御だけを検証する。
+        given(announcementAudienceMatcher.findVisibleOrgFeeds(
+                eq(TEAM_ID), any(), org.mockito.ArgumentMatchers.anyInt()))
+                .willReturn(List.of(orgFeed(FEED_ID), orgFeed(FEED_ID)));
 
         TeamDashboardResponse response =
                 dashboardService.getTeamDashboard(USER_ID, TEAM_ID, "WEEK");
@@ -198,11 +197,11 @@ class DashboardServiceOrgAnnouncementDedupTest {
     @Test
     @DisplayName("AC-2: org ロール 1 件・feed 1 件なら従来通り 1 件表示される（非回帰）")
     void AC2_単一orgロール単一feed_1件表示() {
-        given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID))
-                .willReturn(List.of(ORG_ID));
-        given(announcementFeedQueryRepository.findByOrgScopeForTeamDashboard(
-                eq(ORG_ID), any(), org.mockito.ArgumentMatchers.anyInt()))
+        given(announcementAudienceMatcher.findVisibleOrgFeeds(
+                eq(TEAM_ID), any(), org.mockito.ArgumentMatchers.anyInt()))
                 .willReturn(List.of(orgFeed(FEED_ID)));
+        given(announcementReadService.fetchReadFeedIds(USER_ID, List.of(FEED_ID)))
+                .willReturn(java.util.Set.of(FEED_ID));
 
         TeamDashboardResponse response =
                 dashboardService.getTeamDashboard(USER_ID, TEAM_ID, "WEEK");
@@ -211,5 +210,9 @@ class DashboardServiceOrgAnnouncementDedupTest {
         List<Map<String, Object>> notices = (List<Map<String, Object>>) (List<?>) response.getTeamNotices();
         assertThat(notices).hasSize(1);
         assertThat(notices.get(0).get("id")).isEqualTo(FEED_ID);
+        assertThat(notices.get(0)).containsEntry("scope_type", "ORGANIZATION")
+                .containsEntry("scope_id", ORG_ID).containsEntry("is_read", true)
+                .containsEntry("source_id", orgFeed(FEED_ID).getSourceId());
+        org.mockito.Mockito.verify(announcementReadService).fetchReadFeedIds(USER_ID, List.of(FEED_ID));
     }
 }

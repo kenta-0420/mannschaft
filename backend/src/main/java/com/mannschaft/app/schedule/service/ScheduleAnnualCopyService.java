@@ -42,6 +42,7 @@ public class ScheduleAnnualCopyService {
     private EntityManager entityManager;
 
     private final ScheduleRepository scheduleRepository;
+    private final ScheduleCreationWriter creationWriter;
     private final ScheduleAnnualCopyLogRepository copyLogRepository;
     private final ScheduleEventCategoryRepository categoryRepository;
     private final ScheduleTargetService scheduleTargetService;
@@ -160,7 +161,7 @@ public class ScheduleAnnualCopyService {
                     .createdBy(executedBy)
                     .build();
 
-            ScheduleEntity saved = scheduleRepository.save(newSchedule);
+            ScheduleEntity saved = creationWriter.saveNew(newSchedule);
             scheduleTargetService.copyTargets(source.getId(), saved.getId());
             createdScheduleIds.add(saved.getId());
             totalCopied++;

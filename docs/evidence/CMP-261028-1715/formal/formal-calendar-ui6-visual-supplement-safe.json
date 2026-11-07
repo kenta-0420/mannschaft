@@ -1,0 +1,41 @@
+{
+  "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+  "purpose": "formal-ui6-read-only-visual-supplement",
+  "desktopSafe": "docs/evidence/CMP-261028-1715/formal/formal-calendar-corrected-images2-safe.json",
+  "mobileSafe": "docs/evidence/CMP-261028-1715/formal/formal-calendar-corrected-images1-safe.json",
+  "desktopImage": "docs/evidence/CMP-261028-1715/images/formal-calendar-desktop-widget-corrected2-masked.png",
+  "desktopImageSha256": "0f70bf1eb38afa6a369958edadbafa967e665842518de3fddccd73a846db0cd3",
+  "mobileImage": "docs/evidence/CMP-261028-1715/images/formal-calendar-mobile-agenda-corrected1-masked.png",
+  "mobileImageSha256": "195620db6a46e5e9afdcb0c3ab0a228369da0e7cc487c09567a12b55215af029",
+  "desktopActuallyViewed": true,
+  "mobileActuallyViewed": true,
+  "desktopHeadingArrows42DatesVisible": true,
+  "desktopViewport": {
+    "height": 1600,
+    "width": 1280
+  },
+  "desktopElementCrop": {
+    "height": 986,
+    "width": 486
+  },
+  "mobileViewport": {
+    "height": 844,
+    "width": 390
+  },
+  "mobileAgendaBodyDateTimeColumnVisible": true,
+  "mobileFreshLayerStateAbsent": true,
+  "privateEventTextMasked": true,
+  "businessWrites": 0,
+  "crudRepeated": false,
+  "allLogout200": true,
+  "allSessionsClosed": true,
+  "cleanupFailure": false,
+  "originalImagesPreserved": true,
+  "desktopCorrected1NotVisualPass": "fixed-header-overlap-from-element-screenshot-viewport-too-short",
+  "limits": [
+    "desktop-supplement-height1600-is-visual-evidence-not-performance",
+    "masked-private-event-title-scope-values-not-visually-verifiable",
+    "original-ui6-functional-results-remain-separate"
+  ],
+  "recordedAt": "2026-10-28T13:45:31.2045110Z"
+}

@@ -185,6 +185,116 @@ class TeamControllerTest {
         verify(teamService, Mockito.never()).getAllMembers(TEAM_ID);
     }
 
+    // ========================================
+    // 管理者向け permission_groups（F01.2 02_api_design.md §メンバー一覧・F01.2.1 8-D）
+    // ========================================
+
+    private static MemberResponse.PermissionGroupRef ref(long id, String name) {
+        return new MemberResponse.PermissionGroupRef(id, name);
+    }
+
+    private void stubTeamMembers() {
+        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+    }
+
+    @Test
+    @DisplayName("getMembers: 管理者（DEPUTY_ADMIN 以上）には DEPUTY/MEMBER の割当済み権限グループを一括取得して載せる")
+    void getMembers_attachesPermissionGroups_forAdminViewer() {
+        Pageable pageable = PageRequest.of(0, 10);
+        stubTeamMembers();
+        given(teamService.getMembers(TEAM_ID, pageable)).willReturn(PagedResponse.of(
+                List.of(new MemberResponse(1L, "管理者", null, "ADMIN", LocalDateTime.now()),
+                        new MemberResponse(2L, "担当", null, "MEMBER", LocalDateTime.now()),
+                        new MemberResponse(3L, "未割当", null, "MEMBER", LocalDateTime.now())),
+                new PagedResponse.PageMeta(3L, 0, 10, 1)));
+        given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+        given(permissionGroupService.findAssignedGroupsByUser(TEAM_ID, "TEAM", List.of(1L, 2L, 3L)))
+                .willReturn(java.util.Map.of(1L, List.of(ref(9, "ignored-for-admin-role")),
+                        2L, List.of(ref(5, "加盟担当"))));
+
+        var body = controller.getMembers(TEAM_SLUG, pageable).getBody();
+
+        assertThat(body).isNotNull();
+        var data = body.getData();
+        // ADMIN ロールは対象外（空配列）。割当のある MEMBER は載り、未割当 MEMBER は空配列
+        assertThat(data.get(0).getPermissionGroups()).isEmpty();
+        assertThat(data.get(1).getPermissionGroups()).extracting(MemberResponse.PermissionGroupRef::id).containsExactly(5L);
+        assertThat(data.get(2).getPermissionGroups()).isEmpty();
+        verify(permissionGroupService).findAssignedGroupsByUser(TEAM_ID, "TEAM", List.of(1L, 2L, 3L));
+    }
+
+    @Test
+    @DisplayName("getMembers: 一般メンバー・非メンバーには permission_groups を載せず、権限グループの検索もしない")
+    void getMembers_omitsPermissionGroups_forNonAdminViewer() {
+        Pageable pageable = PageRequest.of(0, 10);
+        stubTeamMembers();
+        given(teamService.getMembers(TEAM_ID, pageable)).willReturn(PagedResponse.of(
+                List.of(new MemberResponse(2L, "担当", null, "MEMBER", LocalDateTime.now())),
+                new PagedResponse.PageMeta(1L, 0, 10, 1)));
+
+        var body = controller.getMembers(TEAM_SLUG, pageable).getBody();
+
+        assertThat(body).isNotNull();
+        assertThat(body.getData().get(0).getPermissionGroups()).isNull();
+        verify(permissionGroupService, Mockito.never()).findAssignedGroupsByUser(
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyList());
+    }
+
+    @Test
+    @DisplayName("getAllMembers: 管理者には同様に permission_groups を載せ、一般メンバーには載せない")
+    void getAllMembers_attachesPermissionGroups_onlyForAdminViewer() {
+        stubTeamMembers();
+        given(teamService.getAllMembers(TEAM_ID)).willReturn(
+                List.of(new MemberResponse(2L, "担当", null, "DEPUTY_ADMIN", LocalDateTime.now())));
+        given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+        given(permissionGroupService.findAssignedGroupsByUser(TEAM_ID, "TEAM", List.of(2L)))
+                .willReturn(java.util.Map.of(2L, List.of(ref(5, "加盟担当"))));
+
+        var admin = controller.getAllTeamMembers(TEAM_SLUG).getBody();
+        assertThat(admin).isNotNull();
+        assertThat(admin.getData().get(0).getPermissionGroups()).hasSize(1);
+
+        given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+        var member = controller.getAllTeamMembers(TEAM_SLUG).getBody();
+        assertThat(member).isNotNull();
+        assertThat(member.getData().get(0).getPermissionGroups()).isNull();
+    }
+
+    @Test
+    @DisplayName("getMembers: 対象チームの ADMIN/DEPUTY 割当が無い SYSTEM_ADMIN 単独には載せない（権限グループ一覧と同じスコープ管理者判定）")
+    void getMembers_omitsPermissionGroups_forSystemAdminWithoutTeamRole() {
+        Pageable pageable = PageRequest.of(0, 10);
+        stubTeamMembers();
+        given(teamService.getMembers(TEAM_ID, pageable)).willReturn(PagedResponse.of(
+                List.of(new MemberResponse(2L, "担当", null, "MEMBER", LocalDateTime.now())),
+                new PagedResponse.PageMeta(1L, 0, 10, 1)));
+        // hasRoleOrAbove は SYSTEM_ADMIN を最強ロールとして解決するため、所属の無い SYSTEM_ADMIN でも真になる
+        org.mockito.Mockito.lenient().when(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "DEPUTY_ADMIN"))
+                .thenReturn(true);
+        given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+
+        var body = controller.getMembers(TEAM_SLUG, pageable).getBody();
+
+        assertThat(body).isNotNull();
+        assertThat(body.getData().get(0).getPermissionGroups()).isNull();
+        verify(permissionGroupService, Mockito.never()).findAssignedGroupsByUser(
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyCollection());
+    }
+
+    @Test
+    @DisplayName("MemberResponse: permissionGroups が null のときは JSON に出さない（一般メンバー向けの応答を変えない）")
+    void memberResponse_omitsNullPermissionGroupsInJson() throws Exception {
+        var mapper = new com.fasterxml.jackson.databind.ObjectMapper()
+                .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+        var plain = mapper.writeValueAsString(new MemberResponse(1L, "a", null, "MEMBER", LocalDateTime.now()));
+        assertThat(plain).doesNotContain("permissionGroups");
+        var withGroups = mapper.writeValueAsString(
+                new MemberResponse(1L, "a", null, "MEMBER", LocalDateTime.now()).withPermissionGroups(List.of(ref(5, "x"))));
+        assertThat(withGroups).contains("\"permissionGroups\":[{\"id\":5,\"name\":\"x\"}]");
+    }
+
     @Test
     @DisplayName("getTeam: 不在チームは NOT_FOUND がそのまま伝播（IDOR/エニュメレーション対策）")
     void getTeam_notFound_propagates() {
@@ -288,22 +398,22 @@ class TeamControllerTest {
     @Test
     @DisplayName("restoreTeam: 204 No Content（checkSystemAdmin を必ず呼ぶ）")
     void restoreTeam_204() {
-        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+        given(teamService.resolveTeamIdForRestore(TEAM_SLUG)).willReturn(TEAM_ID);
         assertThat(controller.restoreTeam(TEAM_SLUG).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         // チーム ADMIN 判定（checkAdminOrAbove）ではなく SYSTEM_ADMIN 判定であることを固定する
         verify(accessControlService).checkSystemAdmin(USER_ID);
-        verify(teamService).restoreTeam(TEAM_ID);
+        verify(teamService).restoreTeam(TEAM_ID, USER_ID);
     }
 
     @Test
     @DisplayName("restoreTeam: SYSTEM_ADMIN でなければ 403 を送出し復元本体を呼ばない")
     void restoreTeam_403_whenNotSystemAdmin() {
-        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
         willThrow(new BusinessException(CommonErrorCode.COMMON_002))
                 .given(accessControlService).checkSystemAdmin(USER_ID);
         assertThatThrownBy(() -> controller.restoreTeam(TEAM_SLUG))
                 .isInstanceOf(BusinessException.class);
-        verify(teamService, Mockito.never()).restoreTeam(TEAM_ID);
+        verify(teamService, Mockito.never()).resolveTeamIdForRestore(Mockito.anyString());
+        verify(teamService, Mockito.never()).restoreTeam(Mockito.anyLong(), Mockito.anyLong());
     }
 
     @Test

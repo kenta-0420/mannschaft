@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261021-0717",
+  "scope": "app",
+  "implementation": {
+    "pr": 4291,
+    "sha": "89be0ad9292c04b63c8d17a44e520b0464f500eb"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "ShiftBudgetConsumptionService#cancelAllForShift の減算が一度に限定されること。整合バッチとアーカイブ取消リスナーを同一シフトに並行実行する実DB ITで二重減算がないことを確認する。",
+      "tests": [
+        {"name": "ShiftBudgetConsumptionCancelRaceIT.整合バッチと取消リスナーが競合しても二重減算しない()", "evidence": "backend/src/test/java/com/mannschaft/app/shiftbudget/ShiftBudgetConsumptionCancelRaceIT.java"},
+        {"name": "ShiftBudgetConsumptionCancelRaceIT.逐次重複取消と取消対象外は無作用()", "evidence": "backend/src/test/java/com/mannschaft/app/shiftbudget/ShiftBudgetConsumptionCancelRaceIT.java"},
+        {"name": "ShiftBudgetConsumptionCancelRaceIT.減算途中失敗時は消化更新も全件巻き戻る()", "evidence": "backend/src/test/java/com/mannschaft/app/shiftbudget/ShiftBudgetConsumptionCancelRaceIT.java"},
+        {"name": "ShiftBudgetConsumptionServiceTest.planned_のみ_cancel()", "evidence": "backend/src/test/java/com/mannschaft/app/shiftbudget/service/ShiftBudgetConsumptionServiceTest.java"}
+      ]
+    }
+  ],
+  "ci": [{"runId": 41979500331}],
+  "stages": {
+    "review": {"status": "passed", "evidence": "docs/evidence/CMP-261021-0717-review.md"},
+    "real": {"status": "passed", "evidence": "docs/evidence/CMP-261021-0717-real.md"},
+    "exploratory": {"status": "passed", "evidence": "docs/evidence/CMP-261021-0717-exploratory.md"}
+  },
+  "regressions": [
+    {
+      "description": "同一シフトの並行取消で別シフト消化額を保てないredを捕捉し、条件付き取消更新で二重減算を防止する。",
+      "test": "ShiftBudgetConsumptionCancelRaceIT.整合バッチと取消リスナーが競合しても二重減算しない()",
+      "redEvidence": "docs/evidence/CMP-261021-0717-redgreen.md",
+      "greenEvidence": "docs/evidence/CMP-261021-0717-redgreen.md"
+    }
+  ],
+  "limitations": [
+    "UI9実機と住民が操作したsourceはdc977b6724958111c149140ab83f0094b433bb78。最終実装head 89be0ad9292c04b63c8d17a44e520b0464f500ebとの間で0717 own 6 pathsの内容不変を確認した。",
+    "住民観測はtrusted=false / observed-unverifiedの限定的な探索記録であり、A/Bの目的理解未達とCのtechnical-error-closedを保持する。",
+    "既存importerのstored top-level runId精度は合格としていない。全体validatorの既知行数・参照抽出不一致と限定overlay検査成功を区別する。",
+    "CMP-261021-0718、親CMP-260909-1445、9月戦役全体はこの完了範囲に含まない。"
+  ]
+}

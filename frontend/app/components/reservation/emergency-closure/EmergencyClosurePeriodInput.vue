@@ -18,6 +18,7 @@ const emit = defineEmits<{
   'set-today': []
 }>()
 
+const { formatClockTime } = useDatetime()
 const HOURS = Array.from({ length: 24 }, (_, i) => i) // 0〜23
 
 const startDateModel = computed({
@@ -94,11 +95,11 @@ const endHourModel = computed({
           >
             <option :value="null">{{ $t('emergency_closure.placeholder.select') }}</option>
             <option v-for="h in HOURS" :key="`s${h}`" :value="h">
-              {{ String(h).padStart(2, '0') }}:00
+              {{ formatClockTime(`${h}:00`) }}
             </option>
           </select>
         </div>
-        <span class="pb-2 text-surface-400">〜</span>
+        <span class="pb-2 text-surface-400">{{ $t('emergency_closure.label.range_separator') }}</span>
         <div>
           <label class="mb-1 block text-sm font-medium">{{ $t('emergency_closure.label.end_time') }}</label>
           <select
@@ -107,7 +108,7 @@ const endHourModel = computed({
           >
             <option :value="null">{{ $t('emergency_closure.placeholder.select') }}</option>
             <option v-for="h in HOURS" :key="`e${h}`" :value="h">
-              {{ String(h).padStart(2, '0') }}:00
+              {{ formatClockTime(`${h}:00`) }}
             </option>
           </select>
         </div>

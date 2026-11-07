@@ -1,6 +1,7 @@
 package com.mannschaft.app.cms.event;
 
 import com.mannschaft.app.cms.repository.UserBlogSettingsRepository;
+import com.mannschaft.app.cms.repository.BlogRanchTransportRepository;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
@@ -21,6 +22,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 public class UserBlogSettingsPurgeEventListener {
 
     private final UserBlogSettingsRepository userBlogSettingsRepository;
+    private final BlogRanchTransportRepository ranchTransport;
     private final AccountPurgeCompletionService completionService;
 
     /** 30日後の強匿名化。所有データの削除コミット後にのみ完了を記録する。 */
@@ -50,5 +52,6 @@ public class UserBlogSettingsPurgeEventListener {
     /** 同じ所有domain内の全削除を一つのTXで実行し、途中失敗を伝播させる。 */
     private void purgeSettings(Long userId) {
         userBlogSettingsRepository.deleteByUserId(userId);
+        ranchTransport.deleteForUser(userId);
     }
 }

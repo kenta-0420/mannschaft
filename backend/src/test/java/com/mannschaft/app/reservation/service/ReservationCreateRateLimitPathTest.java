@@ -343,9 +343,6 @@ class ReservationCreateRateLimitPathTest {
                 mock(com.mannschaft.app.reservation.repository.ReservationRepository.class),
                 viewAccessGuard,
                 valkeyRateLimiter,
-                mock(com.mannschaft.app.notification.service.NotificationHelper.class),
-                mock(com.mannschaft.app.common.i18n.UserLocaleCache.class),
-                mock(org.springframework.context.MessageSource.class),
                 FIXED_CLOCK);
         given(valkeyRateLimiter.tryConsume(anyString(), anyString(), anyInt(), any()))
                 .willReturn(new RateLimitResult(true, 10, 9, 0L, 1L));

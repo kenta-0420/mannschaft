@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { z } from 'zod'
 import { useForm } from 'vee-validate'
-import { toTypedSchema } from '@vee-validate/zod'
+import { toTypedSchema } from '~/utils/toTypedSchema'
 import type {
   SignageScreen,
   SignageSlot,
@@ -89,7 +89,7 @@ const screenSchema = z.object({
   description: z.string().max(500, '500文字以内').optional(),
   layout: z.enum(['FULLSCREEN', 'SPLIT_HORIZONTAL', 'SPLIT_VERTICAL', 'QUAD']),
   defaultSlideDuration: z
-    .number({ invalid_type_error: '数値を入力してください' })
+    .number({ error: (issue) => issue.input === undefined ? undefined : '数値を入力してください' })
     .int()
     .min(1, '1秒以上を指定してください')
     .max(3600, '3600秒以内で指定してください'),
@@ -125,7 +125,7 @@ const slotSchema = z.object({
   slotType: z.enum(['IMAGE', 'VIDEO', 'URL', 'ANNOUNCEMENT', 'SCHEDULE', 'WEATHER']),
   contentSourceId: z.string().optional(),
   durationSeconds: z
-    .number({ invalid_type_error: '数値を入力してください' })
+    .number({ error: (issue) => issue.input === undefined ? undefined : '数値を入力してください' })
     .int()
     .min(1, '1秒以上を指定してください')
     .max(3600, '3600秒以内で指定してください'),

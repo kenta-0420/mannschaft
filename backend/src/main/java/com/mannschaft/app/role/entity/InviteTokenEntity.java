@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * 招待トークンエンティティ。チーム・組織への招待リンクを管理する。
@@ -28,6 +29,7 @@ public class InviteTokenEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Column(nullable = false, unique = true, length = 36)
     private String token;
 
@@ -46,6 +48,10 @@ public class InviteTokenEntity {
     private Integer usedCount;
 
     private LocalDateTime revokedAt;
+
+    /** 招待先自身の発行時閉鎖世代。組織所属先の閉鎖世代には連動しない（#3892）。 */
+    @Column(name = "scope_closure_generation", nullable = false, updatable = false, columnDefinition = "BIGINT NOT NULL DEFAULT 0")
+    private long scopeClosureGeneration;
 
     private Long createdBy;
 
@@ -68,7 +74,9 @@ public class InviteTokenEntity {
      * トークンを無効化する。
      */
     public void revoke() {
-        this.revokedAt = LocalDateTime.now();
+        if (this.revokedAt == null) {
+            this.revokedAt = LocalDateTime.now();
+        }
     }
 
     /**

@@ -1,12 +1,11 @@
 package com.mannschaft.app.dashboard.service;
 
 import com.mannschaft.app.bulletin.entity.BulletinThreadEntity;
-import com.mannschaft.app.bulletin.repository.BulletinReadStatusRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
+import com.mannschaft.app.bulletin.service.BulletinUnreadQueryService;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
-import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
-import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
+import com.mannschaft.app.chat.service.ChatMemberBatchQueryService;
 import com.mannschaft.app.cms.PostStatus;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
@@ -54,11 +53,11 @@ public class ScopeWidgetSummaryService {
 
     private final BlogPostRepository blogPostRepository;
     private final ChatChannelRepository chatChannelRepository;
-    private final ChatChannelMemberRepository chatChannelMemberRepository;
     private final ScheduleRepository scheduleRepository;
     private final TimelinePostRepository timelinePostRepository;
     private final BulletinThreadRepository bulletinThreadRepository;
-    private final BulletinReadStatusRepository bulletinReadStatusRepository;
+    private final BulletinUnreadQueryService bulletinUnreadQueryService;
+    private final ChatMemberBatchQueryService chatMemberBatchQueryService;
     private final NameResolverService nameResolverService;
     private final ContentVisibilityChecker contentVisibilityChecker;
 
@@ -78,7 +77,7 @@ public class ScopeWidgetSummaryService {
      *
      * @param scopeType {@code "TEAM"} / {@code "ORGANIZATION"}
      * @param scopeId   スコープ ID
-     * @return id / title / author / published_at を含む Map のリスト（記事なしは空配列）
+     * @return id / slug / title / author / published_at を含む Map のリスト（記事なしは空配列）
      */
     public List<Map<String, Object>> buildLatestBlogPosts(String scopeType, Long scopeId) {
         PageRequest top = PageRequest.of(0, RECENT_LIMIT);
@@ -103,6 +102,7 @@ public class ScopeWidgetSummaryService {
         for (BlogPostEntity p : posts) {
             Map<String, Object> map = new HashMap<>();
             map.put("id", p.getId());
+            map.put("slug", p.getSlug());
             map.put("title", p.getTitle());
             map.put("author", p.getAuthorId() != null ? authorNames.get(p.getAuthorId()) : null);
             map.put("published_at", p.getPublishedAt());
@@ -129,20 +129,29 @@ public class ScopeWidgetSummaryService {
     public Map<String, Object> buildChatSummary(String scopeType, Long scopeId, Long userId) {
         List<ChatChannelEntity> channels = scopeChannels(isOrganization(scopeType), scopeId);
 
+        // CMP-261103-1225: チャンネルごとの findByChannelIdAndUserId（N+1）を、chat ドメインの照会 Service
+        // 経由の 1 クエリへまとめる（参加チャンネルだけがキーを持つ）
+        List<Long> channelIds = new ArrayList<>(channels.size());
+        for (ChatChannelEntity ch : channels) {
+            channelIds.add(ch.getId());
+        }
+        Map<Long, Integer> unreadByChannel =
+                chatMemberBatchQueryService.findUnreadCountByChannelForMember(userId, channelIds);
+
         long totalUnread = 0;
         List<Map<String, Object>> channelItems = new ArrayList<>();
         for (ChatChannelEntity ch : channels) {
+            Long channelId = ch.getId();
             // 当該ユーザーがメンバーのチャンネルのみ対象（未参加チャンネルは要対応に含めない）
-            ChatChannelMemberEntity member =
-                    chatChannelMemberRepository.findByChannelIdAndUserId(ch.getId(), userId).orElse(null);
-            if (member == null) {
+            Integer unreadOrNull = unreadByChannel.get(channelId);
+            if (unreadOrNull == null) {
                 continue;
             }
-            int unread = member.getUnreadCount();
+            int unread = unreadOrNull;
             totalUnread += unread;
             if (channelItems.size() < CHAT_CHANNEL_LIMIT) {
                 Map<String, Object> map = new HashMap<>();
-                map.put("id", ch.getId());
+                map.put("id", channelId);
                 map.put("name", ch.getName());
                 map.put("unread_count", unread);
                 map.put("last_message_preview", ch.getLastMessagePreview());
@@ -292,25 +301,30 @@ public class ScopeWidgetSummaryService {
                 .findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc(
                         com.mannschaft.app.bulletin.ScopeType.ORGANIZATION, orgId,
                         PageRequest.of(0, BULLETIN_SCAN_LIMIT));
-        long unreadBulletin = 0;
+        // CMP-261103-1225: スレッドごとの既読判定（N+1）を、bulletin ドメインの照会 Service 経由で
+        // 既読スレッド ID を 1 クエリで一括取得する形へまとめる。未読数 = 走査スレッド数 − 既読数
+        //（既読集合は走査スレッドの部分集合で重複を持たないため、1 件ずつ判定した修正前と同じ件数になる）。
+        List<Long> threadIds = new ArrayList<>();
         for (BulletinThreadEntity thread : threads.getContent()) {
-            if (!bulletinReadStatusRepository.existsByThreadIdAndUserId(thread.getId(), userId)) {
-                unreadBulletin++;
-            }
+            threadIds.add(thread.getId());
         }
+        Set<Long> readIds = bulletinUnreadQueryService.findReadThreadIds(threadIds, userId);
+        long unreadBulletin = threadIds.size() - readIds.size();
 
         // 直近スレッド一覧（クエリ順 = isPinned降順→updated_at降順 の先頭3件）を同時に構築する。
         List<Map<String, Object>> threadList = mapRecentThreads(threads.getContent(), userId);
 
         // 組織スコープのチャット未読合計（当該ユーザーが参加するチャンネルのみ）
+        // CMP-261103-1225: チャンネルごとの取得（N+1）を chat ドメインの照会 Service 経由の 1 クエリへまとめる
         List<ChatChannelEntity> channels = scopeChannels(true, orgId);
-        long unreadChat = 0;
+        List<Long> channelIds = new ArrayList<>(channels.size());
         for (ChatChannelEntity ch : channels) {
-            ChatChannelMemberEntity member =
-                    chatChannelMemberRepository.findByChannelIdAndUserId(ch.getId(), userId).orElse(null);
-            if (member != null) {
-                unreadChat += member.getUnreadCount();
-            }
+            channelIds.add(ch.getId());
+        }
+        long unreadChat = 0;
+        for (Integer unread : chatMemberBatchQueryService
+                .findUnreadCountByChannelForMember(userId, channelIds).values()) {
+            unreadChat += unread;
         }
 
         Map<String, Object> result = new HashMap<>();
@@ -352,16 +366,27 @@ public class ScopeWidgetSummaryService {
      * 入力はクエリ順（isPinned 降順 → updated_at 降順）を前提とし、その順のまま先頭 3 件を採る。
      */
     private List<Map<String, Object>> mapRecentThreads(List<BulletinThreadEntity> threads, Long userId) {
+        // CMP-261103-1225: スレッドごとの既読判定（N+1）を、先頭 RECENT_LIMIT 件分の既読 ID 一括取得 1 クエリへまとめる
+        List<Long> recentIds = new ArrayList<>(RECENT_LIMIT);
+        for (BulletinThreadEntity thread : threads) {
+            if (recentIds.size() >= RECENT_LIMIT) {
+                break;
+            }
+            recentIds.add(thread.getId());
+        }
+        Set<Long> readIds = bulletinUnreadQueryService.findReadThreadIds(recentIds, userId);
+
         List<Map<String, Object>> result = new ArrayList<>();
         for (BulletinThreadEntity thread : threads) {
             if (result.size() >= RECENT_LIMIT) {
                 break;
             }
+            Long threadId = thread.getId();
             Map<String, Object> map = new HashMap<>();
-            map.put("id", thread.getId());
+            map.put("id", threadId);
             map.put("title", thread.getTitle());
             map.put("updated_at", thread.getUpdatedAt());
-            map.put("is_read", bulletinReadStatusRepository.existsByThreadIdAndUserId(thread.getId(), userId));
+            map.put("is_read", readIds.contains(threadId));
             result.add(map);
         }
         return result;

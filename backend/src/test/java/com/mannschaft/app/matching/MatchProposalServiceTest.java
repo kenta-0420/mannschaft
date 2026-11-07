@@ -17,12 +17,13 @@ import com.mannschaft.app.matching.repository.MatchProposalDateRepository;
 import com.mannschaft.app.matching.repository.MatchProposalRepository;
 import com.mannschaft.app.matching.repository.MatchRequestRepository;
 import com.mannschaft.app.matching.repository.NgTeamRepository;
+import com.mannschaft.app.matching.service.MatchProposalCancellationWriter;
 import com.mannschaft.app.matching.service.MatchProposalService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -52,6 +53,34 @@ import static org.mockito.Mockito.verify;
 @DisplayName("MatchProposalService 単体テスト")
 class MatchProposalServiceTest {
 
+    @Nested
+    @DisplayName("CMP1027 cancel/agree-cancel 非readerの状態秘匿とsaveゼロ")
+    class PrivateProposalState {
+        @Test
+        void 全状態全canceltypeは非readerに不在を返しsaveしない() {
+            java.util.List<CancellationType> types = new java.util.ArrayList<>(java.util.Arrays.asList(CancellationType.values()));
+            types.add(null);
+            org.mockito.Mockito.lenient().when(requestRepository.findById(REQUEST_ID))
+                    .thenReturn(Optional.of(createOpenRequest()));
+            for (MatchProposalStatus state : MatchProposalStatus.values()) {
+                for (CancellationType type : types) {
+                    MatchProposalEntity proposal = MatchProposalEntity.builder().id(PROPOSAL_ID)
+                            .requestId(REQUEST_ID).proposingTeamId(TEAM_ID).status(state)
+                            .cancellationType(type).cancelledByTeamId(OTHER_TEAM_ID).build();
+                    given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
+                    assertThatThrownBy(() -> service.cancelProposal(PROPOSAL_ID, ACTOR_ID, new CancelProposalRequest(null, null)))
+                            .isInstanceOf(BusinessException.class)
+                            .extracting(e -> ((BusinessException) e).getErrorCode()).isEqualTo(MatchingErrorCode.PROPOSAL_NOT_FOUND);
+                    assertThatThrownBy(() -> service.agreeCancellation(PROPOSAL_ID, ACTOR_ID))
+                            .isInstanceOf(BusinessException.class)
+                            .extracting(e -> ((BusinessException) e).getErrorCode()).isEqualTo(MatchingErrorCode.PROPOSAL_NOT_FOUND);
+                }
+            }
+            org.mockito.Mockito.verify(proposalRepository, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
+            org.mockito.Mockito.verify(requestRepository, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
+        }
+    }
+
     @Mock
     private MatchProposalRepository proposalRepository;
     @Mock
@@ -65,8 +94,14 @@ class MatchProposalServiceTest {
     @Mock
     private AccessControlService accessControlService;
 
-    @InjectMocks
     private MatchProposalService service;
+
+    @BeforeEach
+    void 実Writerを接続する() {
+        service = new MatchProposalService(proposalRepository, proposalDateRepository, requestRepository,
+                ngTeamRepository, matchingMapper, accessControlService,
+                new MatchProposalCancellationWriter(proposalRepository, requestRepository));
+    }
 
     private static final Long TEAM_ID = 1L;
     private static final Long OTHER_TEAM_ID = 2L;
@@ -371,6 +406,7 @@ class MatchProposalServiceTest {
                     .proposingTeamId(OTHER_TEAM_ID)
                     .build();
             given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
+            given(accessControlService.isMember(ACTOR_ID, OTHER_TEAM_ID, "TEAM")).willReturn(true);
 
             // When & Then - status is PENDING so should throw INVALID_PROPOSAL_STATUS
             assertThatThrownBy(() -> service.agreeCancellation(PROPOSAL_ID, ACTOR_ID))
@@ -392,8 +428,10 @@ class MatchProposalServiceTest {
                     .status(MatchRequestStatus.OPEN).prefectureCode("13").build();
             given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(request));
+            given(requestRepository.findByIdForUpdate(REQUEST_ID)).willReturn(Optional.of(request));
             // 相手チーム＝応募チーム(OTHER_TEAM_ID)の管理者
             given(accessControlService.isAdminOrAbove(ACTOR_ID, OTHER_TEAM_ID, "TEAM")).willReturn(true);
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(false);
             given(proposalRepository.save(any())).willReturn(proposal);
             given(requestRepository.save(any())).willReturn(request);
 
@@ -417,6 +455,7 @@ class MatchProposalServiceTest {
                     .status(MatchRequestStatus.OPEN).prefectureCode("13").build();
             given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(request));
+            given(requestRepository.findByIdForUpdate(REQUEST_ID)).willReturn(Optional.of(request));
             // 相手チーム(OTHER_TEAM_ID)の管理者ではない一方、キャンセルした側(TEAM_ID)の管理者
             given(accessControlService.isAdminOrAbove(ACTOR_ID, OTHER_TEAM_ID, "TEAM")).willReturn(false);
             given(accessControlService.isAdminOrAbove(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(true);
@@ -427,6 +466,27 @@ class MatchProposalServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(MatchingErrorCode.CANNOT_AGREE_OWN_CANCEL));
         }
+    }
+
+    @Test
+    void 旧第三teamの自己ADMIN判定は段取りで保持して022を維持する() {
+        MatchProposalEntity proposal = MatchProposalEntity.builder().requestId(REQUEST_ID)
+                .proposingTeamId(OTHER_TEAM_ID).status(MatchProposalStatus.CANCELLED)
+                .cancellationType(CancellationType.MUTUAL_PENDING).cancelledByTeamId(999L).build();
+        MatchRequestEntity parent = MatchRequestEntity.builder().teamId(TEAM_ID).title("募集").build();
+        given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
+        given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(parent));
+        given(requestRepository.findByIdForUpdate(REQUEST_ID)).willReturn(Optional.of(parent));
+        given(accessControlService.isMember(ACTOR_ID, OTHER_TEAM_ID, "TEAM")).willReturn(true);
+        given(accessControlService.isAdminOrAbove(ACTOR_ID, OTHER_TEAM_ID, "TEAM")).willReturn(false);
+        given(accessControlService.isAdminOrAbove(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(false);
+        given(accessControlService.isAdminOrAbove(ACTOR_ID, 999L, "TEAM")).willReturn(true);
+        assertThatThrownBy(() -> service.agreeCancellation(PROPOSAL_ID, ACTOR_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode()).isEqualTo(MatchingErrorCode.CANNOT_AGREE_OWN_CANCEL);
+        verify(accessControlService).isAdminOrAbove(ACTOR_ID, 999L, "TEAM");
+        org.mockito.Mockito.verify(proposalRepository, org.mockito.Mockito.never()).save(any());
+        org.mockito.Mockito.verify(requestRepository, org.mockito.Mockito.never()).save(any());
     }
 
     @Nested
@@ -494,6 +554,8 @@ class MatchProposalServiceTest {
                     .status(MatchRequestStatus.MATCHED).prefectureCode("13").build();
             given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(request));
+            given(requestRepository.findByIdForUpdate(REQUEST_ID)).willReturn(Optional.of(request));
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, OTHER_TEAM_ID, "TEAM")).willReturn(false);
             given(accessControlService.isAdminOrAbove(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(proposalRepository.save(any())).willReturn(proposal);
             given(requestRepository.save(any())).willReturn(request);
@@ -513,6 +575,7 @@ class MatchProposalServiceTest {
             MatchProposalEntity proposal = MatchProposalEntity.builder()
                     .requestId(REQUEST_ID).proposingTeamId(OTHER_TEAM_ID).build();
             given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
+            given(accessControlService.isMember(ACTOR_ID, OTHER_TEAM_ID, "TEAM")).willReturn(true);
 
             // When / Then
             assertThatThrownBy(() -> service.cancelProposal(PROPOSAL_ID, ACTOR_ID,
@@ -523,9 +586,9 @@ class MatchProposalServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 募集・応募いずれのチーム管理者でもないユーザーはキャンセル不可（越境は存在秘匿のため 404 相当）")
+        @DisplayName("異常系: 閲覧できる募集チームMEMBERでも管理者でなければキャンセル不可（404相当）")
         void 権限なしキャンセル不可() {
-            // Given: 募集チーム=999, 応募チーム=OTHER_TEAM_ID のいずれの管理者でもない（未スタブ＝false）
+            // Given: 募集チーム=999のMEMBER。応募は閲覧できるが、いずれのチーム管理者でもない。
             MatchProposalEntity proposal = MatchProposalEntity.builder()
                     .requestId(REQUEST_ID).proposingTeamId(OTHER_TEAM_ID).build();
             proposal.accept();
@@ -534,6 +597,10 @@ class MatchProposalServiceTest {
                     .status(MatchRequestStatus.MATCHED).prefectureCode("13").build();
             given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(request));
+            given(requestRepository.findByIdForUpdate(REQUEST_ID)).willReturn(Optional.of(request));
+
+            given(accessControlService.isMember(ACTOR_ID, OTHER_TEAM_ID, "TEAM")).willReturn(false);
+            given(accessControlService.isMember(ACTOR_ID, 999L, "TEAM")).willReturn(true);
 
             // When / Then
             assertThatThrownBy(() -> service.cancelProposal(PROPOSAL_ID, ACTOR_ID,

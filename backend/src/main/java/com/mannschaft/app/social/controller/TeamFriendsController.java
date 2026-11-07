@@ -1,6 +1,5 @@
 package com.mannschaft.app.social.controller;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.social.dto.FollowTeamRequest;
@@ -9,6 +8,8 @@ import com.mannschaft.app.social.dto.PastForwardHandling;
 import com.mannschaft.app.social.dto.SetVisibilityRequest;
 import com.mannschaft.app.social.dto.TeamFriendListResponse;
 import com.mannschaft.app.social.dto.UnfollowRequest;
+import com.mannschaft.app.social.service.TeamFriendRequestFacade;
+import com.mannschaft.app.social.service.TeamFriendViewAccessGuard;
 import com.mannschaft.app.social.service.TeamFriendsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -62,11 +63,11 @@ public class TeamFriendsController {
     /** フレンド一覧のデフォルトページサイズ */
     private static final int DEFAULT_PAGE_SIZE = 20;
 
-    /** チームスコープ識別子 */
-    private static final String SCOPE_TEAM = "TEAM";
 
     private final TeamFriendsService teamFriendsService;
-    private final AccessControlService accessControlService;
+    private final TeamFriendRequestFacade teamFriendRequestFacade;
+    /** フレンド関係の閲覧可否の門（閲覧できない者には不在と同一応答。CMP-260821-1027）。 */
+    private final TeamFriendViewAccessGuard friendViewGuard;
 
     // ═════════════════════════════════════════════════════════════
     // POST /follow — 他チームをフォロー
@@ -92,8 +93,7 @@ public class TeamFriendsController {
             @PathVariable("id") Long teamId,
             @Valid @RequestBody FollowTeamRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
-        FollowTeamResponse response = teamFriendsService.follow(
-                teamId, request.getTargetTeamId(), userId);
+        FollowTeamResponse response = teamFriendRequestFacade.follow(teamId, request, userId);
 
         HttpStatus status = (response.getRetryAfterSeconds() != null)
                 ? HttpStatus.ACCEPTED
@@ -164,26 +164,14 @@ public class TeamFriendsController {
         }
         int effectiveSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
 
-        boolean publicOnly = isSupporterOnly(userId, teamId);
+        // SUPPORTER の公開限定は、書込前の閲覧ガードと共有する判定で決める（CMP-260821-1027）。
+        boolean publicOnly = friendViewGuard.listsPublicOnly(userId, teamId);
 
         Pageable pageable = PageRequest.of(page, effectiveSize,
                 Sort.by(Sort.Direction.DESC, "establishedAt"));
         TeamFriendListResponse response = teamFriendsService
                 .listFriendsResponse(teamId, userId, pageable, publicOnly);
         return ResponseEntity.ok(response);
-    }
-
-    /**
-     * 閲覧者が SUPPORTER のみ権限を持つかどうかを判定する。
-     * SUPPORTER は {@code is_public = TRUE} のフレンドのみ閲覧可能の仕様。
-     *
-     * @param userId ユーザー ID
-     * @param teamId チーム ID
-     * @return SUPPORTER のみ（MEMBER 以上でない）の場合 {@code true}
-     */
-    private boolean isSupporterOnly(Long userId, Long teamId) {
-        String roleName = accessControlService.getRoleName(userId, teamId, SCOPE_TEAM);
-        return "SUPPORTER".equals(roleName);
     }
 
     // ═════════════════════════════════════════════════════════════
@@ -206,6 +194,7 @@ public class TeamFriendsController {
             @PathVariable("teamFriendId") Long teamFriendId,
             @Valid @RequestBody SetVisibilityRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
+        friendViewGuard.requireVisible(teamId, teamFriendId, userId);
         teamFriendsService.setVisibility(teamId, teamFriendId,
                 Boolean.TRUE.equals(request.getIsPublic()), userId);
         return ResponseEntity.noContent().build();

@@ -1,6 +1,14 @@
 {
   "school": {
     "attendance": {
+      "forbidden": {
+        "title": "Keine Berechtigung",
+        "description": "Sie haben keine Berechtigung, diese Schulanwesenheits-Seite anzuzeigen oder zu bedienen. Bitte wenden Sie sich an die Klassenleitung oder eine Administration."
+      },
+      "permissionError": {
+        "title": "Berechtigungen konnten nicht geprüft werden",
+        "message": "Da die Berechtigungen nicht geprüft werden konnten, sind Aktionen und das Laden von Listen gesperrt. Prüfen Sie die Verbindung und versuchen Sie es erneut."
+      },
       "status": {
         "ATTENDING": "Anwesend",
         "PARTIAL": "Teilweise anwesend",

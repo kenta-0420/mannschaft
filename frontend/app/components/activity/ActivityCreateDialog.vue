@@ -17,7 +17,6 @@ import type { CreateDraftActivityRequestBody } from '~/composables/useActivityAp
 import {
   buildActivityFieldValues,
   canSubmitActivity,
-  parseSelectOptions,
   toYmd,
   type ActivityFieldValue,
 } from '~/utils/activityFields'
@@ -111,10 +110,15 @@ const formSnapshot = computed<ActivityDraftShape>(() => ({
   selectedTemplateId: selectedTemplateId.value,
 }))
 
-const { clear: clearDraft, restore: restoreDraft, savedFlash } = useFormDraft<ActivityDraftShape>(
-  draftKey.value,
-  { source: formSnapshot, debounceMs: 1000, flashMs: 2000 },
-)
+const {
+  clear: clearDraft,
+  restore: restoreDraft,
+  savedFlash,
+} = useFormDraft<ActivityDraftShape>(draftKey.value, {
+  source: formSnapshot,
+  debounceMs: 1000,
+  flashMs: 2000,
+})
 
 // 復元済みフラッシュ（ダイアログを開いた直後に1回だけ復元トースト表示）
 const restoredFlash = ref(false)
@@ -192,12 +196,13 @@ async function saveDraft() {
       description: description.value.trim() || undefined,
       visibility: visibility.value,
     }
-    await createDraftActivity(props.scopeType, resolvedScopeId.value, body)
+    const created = await createDraftActivity(props.scopeType, resolvedScopeId.value, body)
     clearDraft()
     showSuccess(t('activity.create.draftSuccess'))
     visible.value = false
     await nextTick()
     emit('created')
+    await navigateTo(`/activities/${created.data.id}`)
   } catch {
     showError(t('activity.create.saveError'))
   } finally {
@@ -207,7 +212,8 @@ async function saveDraft() {
 
 // === 送信（全項目入力後・即PUBLISHED作成）===
 async function submit() {
-  if (!canSubmit.value || resolvedScopeId.value === null || selectedTemplateId.value === null) return
+  if (!canSubmit.value || resolvedScopeId.value === null || selectedTemplateId.value === null)
+    return
   submitting.value = true
   let success = false
   try {
@@ -294,7 +300,9 @@ async function submit() {
         </div>
 
         <!-- ADHD配慮ヒント: タイトル+日付だけで保存できる旨を案内 -->
-        <div class="flex items-start gap-2 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-600 dark:bg-blue-900/20 dark:text-blue-300">
+        <div
+          class="flex items-start gap-2 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-600 dark:bg-blue-900/20 dark:text-blue-300"
+        >
           <i class="pi pi-lightbulb mt-0.5 shrink-0" />
           <span>{{ t('activity.create.draftHint') }}</span>
         </div>
@@ -346,7 +354,9 @@ async function submit() {
         <template v-if="selectedTemplate">
           <!-- 公開範囲 -->
           <div>
-            <label class="mb-1 block text-sm font-medium">{{ t('activity.create.visibilityLabel') }}</label>
+            <label class="mb-1 block text-sm font-medium">{{
+              t('activity.create.visibilityLabel')
+            }}</label>
             <Select
               v-model="visibility"
               :options="visibilityOptions"
@@ -359,7 +369,9 @@ async function submit() {
 
           <!-- 説明（任意） -->
           <div>
-            <label class="mb-1 block text-sm font-medium">{{ t('activity.create.descriptionLabel') }}</label>
+            <label class="mb-1 block text-sm font-medium">{{
+              t('activity.create.descriptionLabel')
+            }}</label>
             <Textarea
               v-model="description"
               class="w-full"
@@ -371,67 +383,7 @@ async function submit() {
           </div>
 
           <!-- カスタムフィールド（テンプレ定義） -->
-          <div
-            v-for="field in templateFields"
-            :key="field.id"
-            data-testid="activity-custom-field"
-          >
-            <label class="mb-1 block text-sm font-medium">
-              {{ field.fieldLabel }}
-              <span v-if="field.isRequired" class="text-red-500">*</span>
-              <span v-if="field.unit" class="ml-1 text-xs text-surface-400">({{ field.unit }})</span>
-            </label>
-
-            <InputText
-              v-if="field.fieldType === 'TEXT'"
-              v-model="(fieldInputs[field.fieldKey] as string)"
-              class="w-full"
-              :placeholder="field.placeholder ?? ''"
-            />
-            <Textarea
-              v-else-if="field.fieldType === 'TEXTAREA'"
-              v-model="(fieldInputs[field.fieldKey] as string)"
-              class="w-full"
-              rows="2"
-              auto-resize
-              :placeholder="field.placeholder ?? ''"
-            />
-            <InputNumber
-              v-else-if="field.fieldType === 'NUMBER'"
-              v-model="(fieldInputs[field.fieldKey] as number)"
-              class="w-full"
-              :placeholder="field.placeholder ?? ''"
-            />
-            <DatePicker
-              v-else-if="field.fieldType === 'DATE'"
-              v-model="(fieldInputs[field.fieldKey] as Date)"
-              class="w-full"
-              date-format="yy/mm/dd"
-              show-icon
-            />
-            <DatePicker
-              v-else-if="field.fieldType === 'DATETIME'"
-              v-model="(fieldInputs[field.fieldKey] as Date)"
-              class="w-full"
-              date-format="yy/mm/dd"
-              show-time
-              hour-format="24"
-              show-icon
-            />
-            <Select
-              v-else-if="field.fieldType === 'SELECT'"
-              v-model="(fieldInputs[field.fieldKey] as string)"
-              :options="parseSelectOptions(field.optionsJson)"
-              option-label="label"
-              option-value="value"
-              class="w-full"
-              :placeholder="field.placeholder ?? ''"
-            />
-            <label v-else-if="field.fieldType === 'CHECKBOX'" class="flex items-center gap-2 text-sm">
-              <Checkbox v-model="(fieldInputs[field.fieldKey] as boolean)" binary />
-              <span>{{ field.placeholder ?? field.fieldLabel }}</span>
-            </label>
-          </div>
+          <ActivityFieldInputs v-model="fieldInputs" :fields="templateFields" />
         </template>
       </template>
     </div>

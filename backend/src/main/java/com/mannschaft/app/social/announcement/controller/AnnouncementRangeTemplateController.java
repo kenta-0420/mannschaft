@@ -2,9 +2,11 @@ package com.mannschaft.app.social.announcement.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.social.announcement.AnnouncementRangeTemplateAuthorizer;
 import com.mannschaft.app.social.announcement.AnnouncementRangeTemplateEntity;
 import com.mannschaft.app.social.announcement.AnnouncementRangeTemplateRequest;
 import com.mannschaft.app.social.announcement.AnnouncementRangeTemplateService;
+import com.mannschaft.app.social.announcement.audience.BroadcastAudienceResolver;
 import com.mannschaft.app.social.announcement.dto.TemplateResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -22,6 +24,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * F02.8 告知ウィザード範囲テンプレートコントローラー。
@@ -50,6 +54,8 @@ import java.util.List;
 public class AnnouncementRangeTemplateController {
 
     private final AnnouncementRangeTemplateService templateService;
+    private final BroadcastAudienceResolver audienceResolver;
+    private final AnnouncementRangeTemplateAuthorizer authorizer;
 
     // ═════════════════════════════════════════════════════════════
     // チームスコープ
@@ -72,9 +78,7 @@ public class AnnouncementRangeTemplateController {
         List<AnnouncementRangeTemplateEntity> entities =
                 templateService.findAll("TEAM", teamId, userId);
 
-        List<TemplateResponseDto> dtos = entities.stream()
-                .map(TemplateResponseDto::from)
-                .toList();
+        List<TemplateResponseDto> dtos = toResponses(entities);
 
         return ResponseEntity.ok(ApiResponse.of(dtos));
     }
@@ -99,13 +103,15 @@ public class AnnouncementRangeTemplateController {
 
         Long userId = SecurityUtils.getCurrentUserId();
         AnnouncementRangeTemplateEntity entity =
+                // チームスコープの告知に「チームを選ぶ」は無い（宛先の解決も TEAM では無視する）ため、
+                // 検証済みのチームを載せない＝保存しない
                 templateService.create("TEAM", teamId, userId, req);
 
         log.info("チームテンプレート作成 teamId={}, name={}, userId={}",
                 teamId, req.getName(), userId);
 
         return ResponseEntity.status(201)
-                .body(ApiResponse.of(TemplateResponseDto.from(entity)));
+                .body(ApiResponse.of(toResponse(entity)));
     }
 
     /**
@@ -133,7 +139,7 @@ public class AnnouncementRangeTemplateController {
         log.info("チームテンプレート更新 teamId={}, templateId={}, userId={}",
                 teamId, id, userId);
 
-        return ResponseEntity.ok(ApiResponse.of(TemplateResponseDto.from(entity)));
+        return ResponseEntity.ok(ApiResponse.of(toResponse(entity)));
     }
 
     /**
@@ -182,9 +188,7 @@ public class AnnouncementRangeTemplateController {
         List<AnnouncementRangeTemplateEntity> entities =
                 templateService.findAll("ORGANIZATION", orgId, userId);
 
-        List<TemplateResponseDto> dtos = entities.stream()
-                .map(TemplateResponseDto::from)
-                .toList();
+        List<TemplateResponseDto> dtos = toResponses(entities);
 
         return ResponseEntity.ok(ApiResponse.of(dtos));
     }
@@ -208,6 +212,12 @@ public class AnnouncementRangeTemplateController {
             @Valid @RequestBody AnnouncementRangeTemplateRequest req) {
 
         Long userId = SecurityUtils.getCurrentUserId();
+        // グループ項目は、保存できる人の認可 → グループの検証（トランザクションの外。別ドメインを引くため）→ 保存の順
+        authorizer.checkWritable("ORGANIZATION", orgId, userId, req.hasGroupItems());
+        audienceResolver.validateTemplateGroupItems(
+                orgId, req.getTargetGroupIds(), req.getTargetGroupRange(), req.getIncludeUnassigned());
+        // 「チームを選ぶ」のチームは slug で受け取り、認可の後で内部 ID へ写して検証する（存在を漏らさない順序）
+        req.applyResolvedTeamIds(audienceResolver.resolveTemplateTeams(orgId, req.getTargetTeamIds()));
         AnnouncementRangeTemplateEntity entity =
                 templateService.create("ORGANIZATION", orgId, userId, req);
 
@@ -215,7 +225,7 @@ public class AnnouncementRangeTemplateController {
                 orgId, req.getName(), userId);
 
         return ResponseEntity.status(201)
-                .body(ApiResponse.of(TemplateResponseDto.from(entity)));
+                .body(ApiResponse.of(toResponse(entity)));
     }
 
     /**
@@ -237,13 +247,17 @@ public class AnnouncementRangeTemplateController {
             @Valid @RequestBody AnnouncementRangeTemplateRequest req) {
 
         Long userId = SecurityUtils.getCurrentUserId();
+        authorizer.checkWritable("ORGANIZATION", orgId, userId, req.hasGroupItems());
+        audienceResolver.validateTemplateGroupItems(
+                orgId, req.getTargetGroupIds(), req.getTargetGroupRange(), req.getIncludeUnassigned());
+        req.applyResolvedTeamIds(audienceResolver.resolveTemplateTeams(orgId, req.getTargetTeamIds()));
         AnnouncementRangeTemplateEntity entity =
                 templateService.update("ORGANIZATION", orgId, id, userId, req);
 
         log.info("組織テンプレート更新 orgId={}, templateId={}, userId={}",
                 orgId, id, userId);
 
-        return ResponseEntity.ok(ApiResponse.of(TemplateResponseDto.from(entity)));
+        return ResponseEntity.ok(ApiResponse.of(toResponse(entity)));
     }
 
     /**
@@ -269,5 +283,34 @@ public class AnnouncementRangeTemplateController {
                 orgId, id, userId);
 
         return ResponseEntity.noContent().build();
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // プライベートヘルパー
+    // ─────────────────────────────────────────────────────────────
+
+    /** テンプレート 1 件を応答にする（保存済みのチーム ID を slug へ写す）。 */
+    private TemplateResponseDto toResponse(AnnouncementRangeTemplateEntity entity) {
+        return toResponses(List.of(entity)).get(0);
+    }
+
+    /**
+     * テンプレートの一覧を応答にする。保存済みのチーム ID（内部 ID）は API ではチームの slug で返す
+     * （「チームを選ぶ」の入力と同じ識別子。slug 一本化）。slug の引き当ては一覧全体で 1 回にまとめる。
+     */
+    private List<TemplateResponseDto> toResponses(List<AnnouncementRangeTemplateEntity> entities) {
+        List<Long> allTeamIds = entities.stream()
+                .map(TemplateResponseDto::storedTeamIds)
+                .filter(Objects::nonNull)
+                .flatMap(List::stream)
+                .distinct()
+                .toList();
+        Map<Long, String> slugById = allTeamIds.isEmpty() ? Map.of() : audienceResolver.teamSlugsByIds(allTeamIds);
+        return entities.stream()
+                // 論理削除済みのチームも slug で返し、黙って落とさない（F01.2.1 §8.6。適用時に 400 BROADCAST_002 で
+                // 宛先を選び直させる。落とすと残りのチームだけで送れてしまう）
+                .map(entity -> TemplateResponseDto.from(entity, ids -> ids == null ? null
+                        : ids.stream().map(id -> BroadcastAudienceResolver.requireSlug(slugById, id)).toList()))
+                .toList();
     }
 }

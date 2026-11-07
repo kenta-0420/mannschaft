@@ -1,0 +1,51 @@
+{
+    "campaign":  "CMP-261025-2202",
+    "sourceHead":  "371fcc7150ccdae8c76a2fb4886762649e6222af",
+    "runId":  40232982194,
+    "attempt":  1,
+    "notes":  "親が正式CIの原本ログを独立照合した6テストクラスの成功。クラス数をテスト件数とは扱わない。初回全量は既存MFA性能2件で失敗しており、全体成功の代用にはしない。",
+    "classes":  [
+                    {
+                        "class":  "com.mannschaft.app.template.ScopeFeatureDisplayPolicyContractIT",
+                        "elapsedMillis":  5635,
+                        "result":  "SUCCESS",
+                        "shard":  0,
+                        "jobId":  121288571623
+                    },
+                    {
+                        "class":  "com.mannschaft.app.template.ScopeFeatureDisplayPolicyCommitIT",
+                        "elapsedMillis":  71532,
+                        "result":  "SUCCESS",
+                        "shard":  1,
+                        "jobId":  121288571597
+                    },
+                    {
+                        "class":  "com.mannschaft.app.common.architecture.BillingPlanChangeGuardExistenceRedIT",
+                        "elapsedMillis":  3306,
+                        "result":  "SUCCESS",
+                        "shard":  3,
+                        "jobId":  121288571653
+                    },
+                    {
+                        "class":  "com.mannschaft.app.common.architecture.ApiGateDeclarationGuardTest",
+                        "elapsedMillis":  1110,
+                        "result":  "SUCCESS",
+                        "shard":  4,
+                        "jobId":  121288571635
+                    },
+                    {
+                        "class":  "com.mannschaft.app.common.architecture.DateTimeAndZoneGuardTest",
+                        "elapsedMillis":  4261,
+                        "result":  "SUCCESS",
+                        "shard":  4,
+                        "jobId":  121288571635
+                    },
+                    {
+                        "class":  "com.mannschaft.app.template.ScopeFeatureDisplayPolicyServiceTest",
+                        "elapsedMillis":  685,
+                        "result":  "SUCCESS",
+                        "shard":  4,
+                        "jobId":  121288571635
+                    }
+                ]
+}

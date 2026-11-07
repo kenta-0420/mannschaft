@@ -90,7 +90,7 @@
         "dateHint": "Los encuestados elegirán una fecha"
       },
       "teamBreakdownEnabled": "Agrupar por equipo",
-      "teamBreakdownHint": "Agrupa las respuestas por equipo subordinado (solo distribucion de la organizacion).",
+      "teamBreakdownHint": "Agrupa las respuestas por equipo subordinado (solo distribución de la organización).",
       "teamBreakdownAnonymousConflict": "El desglose por equipo no esta disponible en encuestas anonimas."
     },
     "detail": {
@@ -168,7 +168,7 @@
       "remindHint": "Puedes enviar un recordatorio a {count} miembros sin responder (hasta 3 veces)",
       "remindButton": "Enviar recordatorio",
       "remindAutoNotice": "Se enviará un recordatorio automático 24 horas antes del cierre",
-      "remindSuccess": "Recordatorio enviado a {count} miembro(s)",
+      "remindSuccess": "Se aceptó el envío del recordatorio a {count} miembro(s) sin responder",
       "remindRemaining": "Envíos restantes: {count}",
       "remindFailed": "No se pudo enviar el recordatorio",
       "remindFailedDetail": "Verifica el límite de envío, el tiempo de espera y los permisos",
@@ -188,7 +188,7 @@
       "forbidden": "No tienes permiso para ver este desglose.",
       "empty": "No hay datos de desglose por equipo.",
       "masked": "Oculto porque hay menos de 5 encuestados.",
-      "directMembers": "Miembros directos de la organizacion",
+      "directMembers": "Miembros directos de la organización",
       "totalRespondents": "Total de encuestados: {count}",
       "respondentCount": "{count} encuestados",
       "optionCount": "{count} ({percentage}%)",

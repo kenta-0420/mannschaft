@@ -1,0 +1,195 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261017-1208",
+  "scope": "app",
+  "implementation": {
+    "pr": 3941,
+    "sha": "1730847bd4b9d8b4dba12d2bf08c8be49aa8a16d"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "正常作成201・DB保存・一覧再取得",
+      "tests": [
+        {
+          "name": "管理者がslugと3項目本文で作成でき一覧とDBに永続化される",
+          "evidence": "backend/src/test/java/com/mannschaft/app/budget/ScopedFiscalYearCreateContractIT.java"
+        },
+        {
+          "name": "green結果と実機・住民の照合報告",
+          "evidence": "docs/evidence/CMP-261017-1208/report.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "新年度を選択し空の集計を表示",
+      "tests": [
+        {
+          "name": "年度追加の3項目を送り、旧年度があっても新年度を選択し0集計を表示する",
+          "evidence": "frontend/app/pages/teams/[slug]/budget.spec.ts"
+        },
+        {
+          "name": "green結果と実機・住民の照合報告",
+          "evidence": "docs/evidence/CMP-261017-1208/report.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "実費目の集計スキーマを表示",
+      "tests": [
+        {
+          "name": "BEのcategoriesとbudgetAmount/actualAmount/executionRateで費目を表示する",
+          "evidence": "frontend/app/pages/teams/[slug]/budget.spec.ts"
+        },
+        {
+          "name": "green結果と実機・住民の照合報告",
+          "evidence": "docs/evidence/CMP-261017-1208/report.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "空・欠落・null・100/101文字・日付の境界",
+      "tests": [
+        {
+          "name": "不正な必須入力を400で拒否し既存年度を保持する / 年度名100文字は保存できる / 同日と逆順を入力エラー400で拒否する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/budget/ScopedFiscalYearCreateContractIT.java"
+        },
+        {
+          "name": "green結果と実機・住民の照合報告",
+          "evidence": "docs/evidence/CMP-261017-1208/report.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "期間重複を拒否し既存データを保持",
+      "tests": [
+        {
+          "name": "期間重複を400で拒否し既存年度を保持する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/budget/ScopedFiscalYearCreateContractIT.java"
+        },
+        {
+          "name": "green結果と実機・住民の照合報告",
+          "evidence": "docs/evidence/CMP-261017-1208/report.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-6",
+      "description": "失敗時入力保持と二重送信防止",
+      "tests": [
+        {
+          "name": "POST失敗では入力とダイアログを保持する / 送信を連打してもPOSTは1回だけにする",
+          "evidence": "frontend/app/pages/teams/[slug]/budget.spec.ts"
+        },
+        {
+          "name": "green結果と実機・住民の照合報告",
+          "evidence": "docs/evidence/CMP-261017-1208/report.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-7",
+      "description": "GET失敗時の再試行",
+      "tests": [
+        {
+          "name": "一覧GET失敗の再試行は初回と同じく一覧から集計まで取得する / 集計失敗は前の年度の金額を消して同じ年度を再試行する",
+          "evidence": "frontend/app/pages/teams/[slug]/budget.spec.ts"
+        },
+        {
+          "name": "green結果と実機・住民の照合報告",
+          "evidence": "docs/evidence/CMP-261017-1208/report.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-8",
+      "description": "権限拒否と本文scope偽装防止",
+      "tests": [
+        {
+          "name": "MEMBERと越境管理者と未認証は作成を拒否され保存されない / 本文のscope偽装は無視されパスのスコープだけへ保存される",
+          "evidence": "backend/src/test/java/com/mannschaft/app/budget/ScopedFiscalYearCreateContractIT.java"
+        },
+        {
+          "name": "green結果と実機・住民の照合報告",
+          "evidence": "docs/evidence/CMP-261017-1208/report.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-9",
+      "description": "使い方5カードと6言語",
+      "tests": [
+        {
+          "name": "使い方をヘッダーから開き閉じる",
+          "evidence": "frontend/app/pages/teams/[slug]/budget.spec.ts"
+        },
+        {
+          "name": "6言語ロケールの日本語残存・構造・コンパイル・検出器の番人（46件成功）",
+          "evidence": "frontend/tests/unit/i18n/locale-no-japanese-residue.spec.ts"
+        },
+        {
+          "name": "会計年度フォーム・日付選択・使い方の操作領域は360px幅でも44x44px以上",
+          "evidence": "frontend/tests/e2e/real/budget-mobile-touch-targets.spec.ts"
+        },
+        {
+          "name": "案内5カード・6言語と実機・住民の検証結果",
+          "evidence": "docs/evidence/CMP-261017-1208/report.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-10",
+      "description": "HTTP呼出回数が一覧1・summary1・費目追加0",
+      "tests": [
+        {
+          "name": "実HTTP計測: reload時の年度一覧GET1・summary GET1・費目別追加GET0",
+          "evidence": "docs/evidence/CMP-261017-1208/report.md"
+        },
+        {
+          "name": "関連契約の裏付け: チームslugの年度作成は期間3項目をそのまま送る（呼出回数の証明は実HTTP計測を参照）",
+          "evidence": "frontend/app/composables/useBudgetApi.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 39016603859
+    },
+    {
+      "runId": 39016603854
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261017-1208/report.md"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261017-1208/report.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261017-1208/report.md"
+    }
+  },
+  "regressions": [
+    {
+      "description": "年度POST/API契約不一致: 修正前48件中10件assertion失敗から新規48+既存2の50件成功へ",
+      "test": "ScopedFiscalYearCreateContractIT / BudgetFiscalYearServiceTest",
+      "redEvidence": "docs/evidence/CMP-261017-1208/api-regression-summary.json",
+      "greenEvidence": "docs/evidence/CMP-261017-1208/report.md"
+    },
+    {
+      "description": "360pxの閉じる40pxを修正し8表示142操作領域が44x44px以上",
+      "test": "budget-mobile-touch-targets.spec.ts: 会計年度フォーム・日付選択・使い方の操作領域は360px幅でも44x44px以上",
+      "redEvidence": "docs/evidence/CMP-261017-1208/mobile-regression-red.md",
+      "greenEvidence": "docs/evidence/CMP-261017-1208/mobile-regression-green.json"
+    }
+  ]
+}

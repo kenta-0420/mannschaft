@@ -1,0 +1,293 @@
+{
+  "campaign": "CMP-261027-1353",
+  "implementationPr": 4166,
+  "status": "final-implementation-and-main-adoption-evidence",
+  "implementationSource": "f157e033bb650205dc4ba94d0772f9b1a0be7d15",
+  "mergedMainSource": "7610007cd8301e6f293db80e6902f3991c0e4c70",
+  "includedMain": "ae3ab142f2a11473f287bdf4f02d5ce5f7ecc26f",
+  "laterMainDelta": {
+    "headPrefix": "f6ae38c31b",
+    "classification": "別CMP台帳1語のみ",
+    "productBuildLockSecurityDelta": 0,
+    "verifiedBy": "root全文確認",
+    "merged": true
+  },
+  "baseline": "e355fd722ffe6792118825b73e39f6a1d6b797f6",
+  "performanceSource": "47288ee201da43af31e19a9aa9a3a187004cfdfb",
+  "strictSameInputBetweenHistoricalPerformanceAndFinal": false,
+  "officialRuns": [
+    {
+      "id": "CMP-261027-1353-action-preflight-red1",
+      "expected": "SQL22 to302 only assertion after item-set equality;417 not reached",
+      "source": "177ecfcbcfaa8f1db5f086a692f24f1ea820534f",
+      "cleanup": "removed",
+      "errors": 0,
+      "exit": 1,
+      "skipped": 0
+    },
+    {
+      "id": "CMP-261027-1353-action-preflight-green1",
+      "cleanup": "removed",
+      "source": "9da8f094ce04029961bf32baa9b56d4f15b6f08a",
+      "pass": 39,
+      "error": null,
+      "exit": 0,
+      "skipped": 0
+    },
+    {
+      "id": "CMP-261027-1353-inbox-query-contract-green1",
+      "cleanup": "removed",
+      "source": "25d9ea729647039d65f7457db1f71090981e33c1",
+      "pass": 37,
+      "error": null,
+      "exit": 0,
+      "skipped": 0
+    },
+    {
+      "pass": 49,
+      "exit": 0,
+      "lintFiles": 7,
+      "id": "CMP-261027-1353-timeline-access-green1",
+      "lintErrors": 0,
+      "skipped": 0,
+      "cleanup": "removed",
+      "source": "fc53a3139b2232169e5d79f40719e2f9bdfa33cc"
+    }
+  ],
+  "artifacts": {
+    "api": {
+      "source": "3db393c2e4e5608e0e168d59baba85e68342ae78",
+      "officialRun": "CMP-261027-1353-api-fixed4",
+      "artifact": "preview-api.jar",
+      "sha256": "e171aad842ae4f6fe564b67862dcf366b315c9d700f8fa4e312bdcd801b59ab9",
+      "bytes": 221133261,
+      "exitCode": 0,
+      "error": null,
+      "cleanup": "removed",
+      "runtimeSwap": "frontend owned; not performed by backend agent"
+    },
+    "frontend": {
+      "source": "3db393c2e4e5608e0e168d59baba85e68342ae78",
+      "officialRun": "CMP-261027-1353-final-integrated-build3",
+      "exit": 0,
+      "error": null,
+      "cleanup": "removed",
+      "receiptIndependentReviewer": "root",
+      "runtimeManifest": "artifact-source-summary.json"
+    }
+  },
+  "realUi": {
+    "evidence": [
+      "final-feed-ui-runtime1.json",
+      "final-feed-ui-complement1.json"
+    ],
+    "rootReviewed": true,
+    "otherAccountCoverage": "他アカウント一覧不在・直URL403。完全tenant祖先分離は未証明",
+    "businessDataWrites": 0,
+    "allDatabaseDmlZeroClaimed": false,
+    "formalCases": 7,
+    "supplementalObservations": 5,
+    "independentTwelveCasesClaimed": false
+  },
+  "explorations": [
+    {
+      "run": "exploration-resident1-3db",
+      "source": "3db393c2e4e5608e0e168d59baba85e68342ae78",
+      "evidence": "explorations-summary.json",
+      "achieved": true,
+      "newProductFindings": 0,
+      "logoutStatus": 200,
+      "closed": true,
+      "limits": [
+        "未完了予定未検証",
+        "所属先フィルタ種別未照合",
+        "touch contextのclickであり物理片手操作の証明ではない"
+      ]
+    },
+    {
+      "run": "resident2-3db-exploration1",
+      "evidence": "explorations-summary.json",
+      "label": "⚔️足軽2",
+      "achieved": true,
+      "elapsedSeconds": 553.736,
+      "performanceSample": false,
+      "logoutStatus": 200,
+      "contextClosed": true,
+      "browserClosed": true,
+      "newProductFindings": 0,
+      "runtimeGuardAllMatch": true,
+      "guardOrderDeviationRecorded": true,
+      "instrumentationLimitationsRecorded": true,
+      "rootReviewed": true
+    },
+    {
+      "run": "resident3-3db-runtime1",
+      "source": "3db393c2e4e5608e0e168d59baba85e68342ae78",
+      "evidence": "explorations-summary.json",
+      "achieved": true,
+      "newProductFindings": 0,
+      "logoutStatus": 200,
+      "contextClosed": true,
+      "browserClosed": true,
+      "limits": [
+        "selector/遷移timeoutの原因未特定",
+        "完全tenant祖先分離未証明"
+      ]
+    }
+  ],
+  "measurementPolicy": {
+    "hostAndRuntime": "builds completed before performance; remaining host/cache/JIT effects not individually controlled",
+    "mainMeans": "container visibility, not content readiness",
+    "personalReadyMeans": "calendar DOM plus four successful APIs",
+    "native": "sequential3GET per endpoint; separate diagnostic",
+    "windows": "v2 HTTP1 split origins; SWblock/allow; n2 fresh contexts each; revisit independent clock",
+    "linux": "separate minimal helper;70ff cold1/warm1 not repeated-login SLA"
+  },
+  "businessMutationScope": {
+    "definition": "投稿・参加退会・招待・設定保存などの業務データ変更0",
+    "allDatabaseDmlZeroClaimed": false,
+    "authenticationPostAndSessionUpdatesExcluded": true,
+    "readOnlyRollbackAppliesTo": "候補件数照会専用DB接続のみ"
+  },
+  "privacy": "No credentials, actor details, live scope IDs, raw response/profile or signed URLs. Only source/CI/receipt identifiers.",
+  "evidenceReferences": [
+    "official-run-receipts-summary.json",
+    "artifact-source-summary.json",
+    "performance-summary.json",
+    "explorations-summary.json",
+    "f157-docs-only-source-bridge-safe.json",
+    "head3db-all-ci-rollup-safe.json",
+    "head3db-frontend-ci-summary-safe.json",
+    "head3db-backend-ci-shard0-selected-contracts.json",
+    "head3db-backend-ci-shard5-selected-contracts.json",
+    "head3db-personal-sql-safe.json",
+    "backend-source-bridge.json",
+    "frontend-source-bridge-safe.json",
+    "carousel-source-bridge-safe.json",
+    "final-feed-ui-runtime1.json",
+    "final-feed-ui-complement1.json",
+    "headf157-all-ci-rollup-safe.json",
+    "main-adoption-summary.json",
+    "headf157-ci-run-identity-safe.json",
+    "formal-red-numeric-utf8-summary-safe.json",
+    "main-adoption-feed-complement.json",
+    "main-frontend-runtime-proof.json"
+  ],
+  "pending": [
+    "completion evidence PR merge",
+    "owned runtime/worktree/branch/artifact cleanup"
+  ],
+  "permanentEvidenceMaterialization": {
+    "state": "materialized",
+    "requiredCompletionFile": "docs/evidence/CMP-261027-1353.json",
+    "completionSchema": 1,
+    "implementationTaskStatus": "完了",
+    "completedStagesClaimed": true,
+    "cleanupExecuted": false
+  },
+  "finalWarmDiagnostic": {
+    "evidence": "performance-summary.json",
+    "sourceHead": "3db393c2e4e5608e0e168d59baba85e68342ae78",
+    "platform": "Linux",
+    "serviceWorkers": "block",
+    "n": 1,
+    "temperature": "warm",
+    "routeMs": 589.96,
+    "mainContainerMs": 767.05,
+    "calendarDomMs": 2808.88,
+    "nodeLagMedianMs": 0.128,
+    "nodeLagMaxMs": 1.633,
+    "nodeLagOver100Ms": 0,
+    "logoutStatus": 200,
+    "closed": true,
+    "rootReviewed": true,
+    "limitations": [
+      "Node起動/読込待ちはsubmit区間外、詳細phase未特定",
+      "n1 warm診断でcold/毎login SLAの証明ではない"
+    ]
+  },
+  "artifactAndObservationSource": "3db393c2e4e5608e0e168d59baba85e68342ae78",
+  "docsOnlySourceBridge": {
+    "evidence": "f157-docs-only-source-bridge-safe.json",
+    "allTrackedDiff": [
+      "docs/task-list.md"
+    ],
+    "strictArtifactInputsEqual": true,
+    "rootReviewed": true,
+    "ciInherited": false
+  },
+  "ci3dbHistorical": {
+    "head": "3db393c2e4e5608e0e168d59baba85e68342ae78",
+    "backendRun": 40523313140,
+    "frontendRun": 40523312994,
+    "requiredChecks": [
+      {
+        "link": "https://github.com/kenta-0420/mannschaft/actions/runs/40523313140/job/122305424498",
+        "name": "Compile & Test",
+        "state": "SUCCESS"
+      },
+      {
+        "link": "https://github.com/kenta-0420/mannschaft/actions/runs/40523628793/job/122257116347",
+        "name": "Task-List PR Gate",
+        "state": "SUCCESS"
+      },
+      {
+        "link": "https://github.com/kenta-0420/mannschaft/actions/runs/40523313065/job/122255987127",
+        "name": "OpenAPI Drift Check",
+        "state": "SUCCESS"
+      }
+    ],
+    "active": 0,
+    "failure": 0,
+    "conditionalSkips": [
+      {
+        "name": "Docker ビルド検証（main push のみ）",
+        "reason": "main push only",
+        "link": "https://github.com/kenta-0420/mannschaft/actions/runs/40523312994/job/122255989793"
+      },
+      {
+        "name": "フル履歴スキャン（週次）",
+        "reason": "weekly scheduled full history only",
+        "link": "https://github.com/kenta-0420/mannschaft/actions/runs/40523313022/job/122255990834"
+      }
+    ],
+    "cancelledHistoryCount": 1,
+    "frontendPass": 7218,
+    "frontendExistingSsrSkip": 5,
+    "selectedClassTests": {
+      "PersonalSql": 1,
+      "CandidateQuery": 4,
+      "Leave": 11,
+      "InboxRole": 19,
+      "Timeline": 35,
+      "ActiveGuard": 12
+    },
+    "selectedFailErrorSkip": 0,
+    "scopeCounts": [
+      2,
+      42,
+      417
+    ],
+    "sqlCounts": [
+      28,
+      28,
+      28
+    ],
+    "interpretation": "3db同head CIの詳細。最終f157 CIは別実行、全製品入力同値はsource bridge参照"
+  },
+  "ci": {
+    "head": "f157e033bb650205dc4ba94d0772f9b1a0be7d15",
+    "backendRun": 40540339113,
+    "frontendRun": 40540339178,
+    "conclusion": "success",
+    "active": 0,
+    "failure": 0,
+    "evidence": "headf157-all-ci-rollup-safe.json",
+    "taskGateIncludedInTopRunList": false
+  },
+  "mainAdoption": {
+    "evidence": "main-adoption-summary.json",
+    "api": "passed",
+    "frontendSmoke": "passed-via-partial-smoke-and-isolated-complement"
+  }
+}

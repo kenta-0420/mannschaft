@@ -7,7 +7,9 @@ import type {
   OrgVisibilityDto,
   OrgMetadataDto,
   OrgTimestampsDto,
+  OrgSocialDto,
 } from '~/types/organization'
+import { createLatestGuard } from '~/utils/latestRequest'
 
 // Wave 3-B: OrganizationResponse ネスト構造に対応
 export interface OrgDetail {
@@ -27,8 +29,11 @@ export interface OrgDetail {
   visibility?: OrgVisibilityDto
   metadata?: OrgMetadataDto
   timestamps?: OrgTimestampsDto
-  // 旧フラット互換（別エンドポイントや内部追加フィールド）
-  supporterCount?: number
+  /**
+   * サポーター人数（CMP-261004-1942/1943）。BE OrganizationResponse.social.supporterCount に
+   * 一本化し、旧フラット supporterCount は廃止した（移行完了）。
+   */
+  social?: OrgSocialDto
   description?: string | null
 }
 
@@ -40,12 +45,13 @@ export function useOrgDetail(orgId: Ref<string>) {
 
   const org = ref<OrgDetail | null>(null)
   const orgTeams = ref<OrgTeam[]>([])
+  const orgTeamsError = ref(false)
+  const orgTeamsLoading = ref(false)
   const permissionGroups = ref<OrgPermissionGroup[]>([])
   const loading = ref(false)
 
-  const followStatus = ref<'NONE' | 'PENDING' | 'APPROVED'>('NONE')
-  const followLoading = ref(false)
-  const showCancelSupporterConfirm = ref(false)
+  // フォロー（サポーター）状態の取得・申請・解除はページ側の `useScopeFollowWiring` に一本化
+  // （CMP-261001-0835。権限再取得 loadPermissions との結線をページ単位で持つため）。
   const showLeaveConfirm = ref(false)
 
   /**
@@ -62,24 +68,68 @@ export function useOrgDetail(orgId: Ref<string>) {
     applyJoinRequest: applyJoinRequestRaw,
   } = useJoinRequestSelfStatus('organization')
 
+  /**
+   * 組織詳細の取得（CMP-261004-1942/1943）。
+   *
+   * - 静かな再取得: 既に org が取得済み（null でない）なら `loading` を立てない。
+   *   応援・解除後の人数取り直しで全画面スピナーを出し、ヘッダ・確認ダイアログを
+   *   一瞬消さないため（AC-1/AC-2）。
+   * - 世代ガード: 「最後に発行した要求」かつ「スコープが要求時と同じ」応答だけを反映する（AC-5）。
+   *   スコープ一致だけでは、同一スコープの取り直し①（応援後・1人）が遅延中に取り直し②（解除後・0人）が
+   *   先に反映されると、後着の①で古い人数に戻る。A→B→A の切替でも古い A の応答が新しい A を上書きする。
+   *   403 で詳細を閉じた後に、それより前に発行した要求の遅延 200 が詳細を再表示することも防ぐ。
+   *   （連番は useRoleAccess と同じ作法）
+   * - AC-11: 取得失敗が 403（権限喪失）のときは org を null にして保護された詳細表示を閉じる。
+   */
+  let fetchOrgSeq = 0
   async function fetchOrg() {
-    loading.value = true
+    const seq = ++fetchOrgSeq
+    const requestedId = orgId.value
+    const isCurrent = () => seq === fetchOrgSeq && orgId.value === requestedId
+    const quiet = org.value !== null
+    if (!quiet) loading.value = true
     try {
-      const result = await orgApi.getOrganization(orgId.value)
+      const result = await orgApi.getOrganization(requestedId)
+      if (!isCurrent()) return
       org.value = result.data as OrgDetail
     } catch (error) {
+      if (!isCurrent()) return
+      const status = (error as { statusCode?: number, response?: { status?: number }, status?: number })
+        ?.statusCode ?? (error as { response?: { status?: number } })?.response?.status
+        ?? (error as { status?: number })?.status
+      if (status === 403) org.value = null
       handleApiError(error, '組織詳細取得')
     } finally {
-      loading.value = false
+      // 後発の要求が無いときだけ解く（後発がある場合はその要求の完了で解く）
+      if (seq === fetchOrgSeq) loading.value = false
     }
   }
 
+  /**
+   * 所属チーム一覧の取得（F01.2.1 8-C 検分で根治）。
+   *
+   * - 世代ガード: 最後に発行した要求、かつ要求時と同じ組織の応答だけを反映する。割当の連続・承認後・グループ編集後・
+   *   組織切替で再取得が重なっても、古い応答が最新の所属を上書きしない（一括割当の対象を誤らせない）。
+   * - 失敗は握りつぶさない: `orgTeamsError` を立てて公開し、直前の一覧は空に差し替えない
+   *   （「該当チームなし」と取得失敗を区別するため。一覧側が再試行を出す）。次の成功でエラーは消える。
+   * - `orgTeamsLoading`: 最新の要求が終わるまで立つ。呼び出し側は完了まで操作を止められる。
+   */
+  const orgTeamsGuard = createLatestGuard()
   async function fetchOrgTeams() {
+    const isLatest = orgTeamsGuard.next()
+    const requestedId = orgId.value
+    const isCurrent = () => isLatest() && orgId.value === requestedId
+    orgTeamsLoading.value = true
     try {
-      const result = await orgApi.getTeamsInOrg(orgId.value)
+      const result = await orgApi.getTeamsInOrg(requestedId)
+      if (!isCurrent()) return
       orgTeams.value = result.data
+      orgTeamsError.value = false
     } catch {
-      orgTeams.value = []
+      if (!isCurrent()) return
+      orgTeamsError.value = true
+    } finally {
+      if (isLatest()) orgTeamsLoading.value = false
     }
   }
 
@@ -89,48 +139,6 @@ export function useOrgDetail(orgId: Ref<string>) {
       permissionGroups.value = result.data
     } catch {
       permissionGroups.value = []
-    }
-  }
-
-  async function fetchFollowStatus(roleName: Ref<string | null>) {
-    if (roleName.value) return
-    try {
-      const res = await orgApi.getFollowStatus(orgId.value)
-      followStatus.value = res.data.status
-    } catch {
-      followStatus.value = 'NONE'
-    }
-  }
-
-  async function applySupporter() {
-    followLoading.value = true
-    try {
-      await orgApi.followOrganization(orgId.value)
-      const res = await orgApi.getFollowStatus(orgId.value)
-      followStatus.value = res.data.status
-      notification.success(
-        followStatus.value === 'APPROVED'
-          ? t('common.scopeShell.supporter_registered')
-          : t('common.scopeShell.supporter_applied'),
-      )
-    } catch (error) {
-      handleApiError(error, 'サポーター申請')
-    } finally {
-      followLoading.value = false
-    }
-  }
-
-  async function cancelSupporter() {
-    followLoading.value = true
-    try {
-      await orgApi.unfollowOrganization(orgId.value)
-      followStatus.value = 'NONE'
-      showCancelSupporterConfirm.value = false
-      notification.success(t('common.scopeShell.supporter_canceled'))
-    } catch (error) {
-      handleApiError(error, 'サポーター解除')
-    } finally {
-      followLoading.value = false
     }
   }
 
@@ -161,20 +169,16 @@ export function useOrgDetail(orgId: Ref<string>) {
   return {
     org,
     orgTeams,
+    orgTeamsError,
+    orgTeamsLoading,
     permissionGroups,
     loading,
-    followStatus,
-    followLoading,
     joinRequestStatus,
     joinRequestLoading,
-    showCancelSupporterConfirm,
     showLeaveConfirm,
     fetchOrg,
     fetchOrgTeams,
     fetchPermissionGroups,
-    fetchFollowStatus,
-    applySupporter,
-    cancelSupporter,
     fetchJoinRequestStatus,
     applyJoinRequest,
     leaveOrganization,

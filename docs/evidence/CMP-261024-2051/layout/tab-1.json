@@ -1,0 +1,26 @@
+{
+  "box": {
+    "left": 141.390625,
+    "right": 221.78125,
+    "width": 80.390625,
+    "height": 66
+  },
+  "clientWidth": 79,
+  "scrollWidth": 108,
+  "fragments": [
+    {
+      "left": 157.390625,
+      "right": 233.390625,
+      "top": 742,
+      "bottom": 766
+    }
+  ],
+  "clipped": [
+    {
+      "left": 157.390625,
+      "right": 233.390625,
+      "top": 742,
+      "bottom": 766
+    }
+  ]
+}

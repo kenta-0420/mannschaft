@@ -1,0 +1,948 @@
+{
+  "before": "/home/kenta/verification-evidence/CMP-261027-1646-before-finalweights-1",
+  "after": "/home/kenta/verification-evidence/CMP-261027-1646-after-finalweights-1",
+  "completeProfiles": 37,
+  "rows": [
+    {
+      "file": "candidates-unsharded.tsv",
+      "equal": true,
+      "beforeBytes": 8311057,
+      "afterBytes": 8311057,
+      "beforeSha256": "77c29798fda0603db975e438ffff0cb9d3061cdb3dbe1363a76a2e714db6ad97",
+      "afterSha256": "77c29798fda0603db975e438ffff0cb9d3061cdb3dbe1363a76a2e714db6ad97",
+      "rows": 47087,
+      "candidateCountByTask": {
+        "archTest": 9418,
+        "archUnitFreezeStoreIntegrityTest": 9418,
+        "archUnitTest": 9418,
+        "perfTest": 9418,
+        "test": 9415
+      }
+    },
+    {
+      "file": "settings-unsharded.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-present-false-0.tsv",
+      "equal": true,
+      "beforeBytes": 4380667,
+      "afterBytes": 4380667,
+      "beforeSha256": "a06110eaca40fbd5739891f0cf31987dde2cdaf3aea29a7ba4ac5bcb1f8fc616",
+      "afterSha256": "a06110eaca40fbd5739891f0cf31987dde2cdaf3aea29a7ba4ac5bcb1f8fc616",
+      "rows": 23369,
+      "candidateCountByTask": {
+        "archTest": 9418,
+        "archUnitFreezeStoreIntegrityTest": 9418,
+        "archUnitTest": 1512,
+        "perfTest": 1512,
+        "test": 1509
+      }
+    },
+    {
+      "file": "settings-present-false-0.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-present-false-1.tsv",
+      "equal": true,
+      "beforeBytes": 4382391,
+      "afterBytes": 4382391,
+      "beforeSha256": "cda02acc2875728e31a1a216c85ed5102d85b45a55cd4b872d35c2bd5a5545c5",
+      "afterSha256": "cda02acc2875728e31a1a216c85ed5102d85b45a55cd4b872d35c2bd5a5545c5",
+      "rows": 23411,
+      "candidateCountByTask": {
+        "archTest": 9418,
+        "archUnitFreezeStoreIntegrityTest": 9418,
+        "archUnitTest": 1525,
+        "perfTest": 1525,
+        "test": 1525
+      }
+    },
+    {
+      "file": "settings-present-false-1.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-present-false-2.tsv",
+      "equal": true,
+      "beforeBytes": 4391235,
+      "afterBytes": 4391235,
+      "beforeSha256": "86c7601ce86c981364ec37626a410c3009ad063e5c974ec7d5a3bd860456247d",
+      "afterSha256": "86c7601ce86c981364ec37626a410c3009ad063e5c974ec7d5a3bd860456247d",
+      "rows": 23513,
+      "candidateCountByTask": {
+        "archTest": 9418,
+        "archUnitFreezeStoreIntegrityTest": 9418,
+        "archUnitTest": 1559,
+        "perfTest": 1559,
+        "test": 1559
+      }
+    },
+    {
+      "file": "settings-present-false-2.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-present-false-3.tsv",
+      "equal": true,
+      "beforeBytes": 4404597,
+      "afterBytes": 4404597,
+      "beforeSha256": "24c0fbbedd7175895cf3c646606a3a88196cf6d09ad19757c1405aa64ccce94c",
+      "afterSha256": "24c0fbbedd7175895cf3c646606a3a88196cf6d09ad19757c1405aa64ccce94c",
+      "rows": 23507,
+      "candidateCountByTask": {
+        "archTest": 9418,
+        "archUnitFreezeStoreIntegrityTest": 9418,
+        "archUnitTest": 1557,
+        "perfTest": 1557,
+        "test": 1557
+      }
+    },
+    {
+      "file": "settings-present-false-3.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-present-false-4.tsv",
+      "equal": true,
+      "beforeBytes": 4420059,
+      "afterBytes": 4420059,
+      "beforeSha256": "7f0f5b7f2072e92a0f146db746b4876201dea1f1199b3214f5a7d0727e15559a",
+      "afterSha256": "7f0f5b7f2072e92a0f146db746b4876201dea1f1199b3214f5a7d0727e15559a",
+      "rows": 23561,
+      "candidateCountByTask": {
+        "archTest": 9418,
+        "archUnitFreezeStoreIntegrityTest": 9418,
+        "archUnitTest": 1575,
+        "perfTest": 1575,
+        "test": 1575
+      }
+    },
+    {
+      "file": "settings-present-false-4.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-present-false-5.tsv",
+      "equal": true,
+      "beforeBytes": 4481010,
+      "afterBytes": 4481010,
+      "beforeSha256": "99ad7ad312a10f65cd37d5c61bae3320079886d8d9627ab9a02721d02c386ca1",
+      "afterSha256": "99ad7ad312a10f65cd37d5c61bae3320079886d8d9627ab9a02721d02c386ca1",
+      "rows": 23906,
+      "candidateCountByTask": {
+        "archTest": 9418,
+        "archUnitFreezeStoreIntegrityTest": 9418,
+        "archUnitTest": 1690,
+        "perfTest": 1690,
+        "test": 1690
+      }
+    },
+    {
+      "file": "settings-present-false-5.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-present-true-0.tsv",
+      "equal": true,
+      "beforeBytes": 4302794,
+      "afterBytes": 4302794,
+      "beforeSha256": "c1e55d2e0dde7ea6fc0b522bb87f7f633aedc4cfa9d7b5c8da8c6a385887c636",
+      "afterSha256": "c1e55d2e0dde7ea6fc0b522bb87f7f633aedc4cfa9d7b5c8da8c6a385887c636",
+      "rows": 23156,
+      "candidateCountByTask": {
+        "archTest": 9331,
+        "archUnitFreezeStoreIntegrityTest": 9331,
+        "archUnitTest": 1499,
+        "perfTest": 1499,
+        "test": 1496
+      }
+    },
+    {
+      "file": "settings-present-true-0.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-present-true-1.tsv",
+      "equal": true,
+      "beforeBytes": 4372522,
+      "afterBytes": 4372522,
+      "beforeSha256": "be501f314f7c6ef4ef1391e290fe54cc90558f8c9b665ba213b5a3f48ba829c3",
+      "afterSha256": "be501f314f7c6ef4ef1391e290fe54cc90558f8c9b665ba213b5a3f48ba829c3",
+      "rows": 23504,
+      "candidateCountByTask": {
+        "archTest": 9331,
+        "archUnitFreezeStoreIntegrityTest": 9331,
+        "archUnitTest": 1614,
+        "perfTest": 1614,
+        "test": 1614
+      }
+    },
+    {
+      "file": "settings-present-true-1.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-present-true-2.tsv",
+      "equal": true,
+      "beforeBytes": 4341676,
+      "afterBytes": 4341676,
+      "beforeSha256": "4ad924deb39d1b9f6140179d3168e670b2fd1f2cdccb3fc7cf19d2f9395dd1f7",
+      "afterSha256": "4ad924deb39d1b9f6140179d3168e670b2fd1f2cdccb3fc7cf19d2f9395dd1f7",
+      "rows": 23345,
+      "candidateCountByTask": {
+        "archTest": 9331,
+        "archUnitFreezeStoreIntegrityTest": 9331,
+        "archUnitTest": 1561,
+        "perfTest": 1561,
+        "test": 1561
+      }
+    },
+    {
+      "file": "settings-present-true-2.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-present-true-3.tsv",
+      "equal": true,
+      "beforeBytes": 4309960,
+      "afterBytes": 4309960,
+      "beforeSha256": "d780ec9c57436b54961ec6febae0776c803fd80a464627d237a55524463511f2",
+      "afterSha256": "d780ec9c57436b54961ec6febae0776c803fd80a464627d237a55524463511f2",
+      "rows": 23147,
+      "candidateCountByTask": {
+        "archTest": 9331,
+        "archUnitFreezeStoreIntegrityTest": 9331,
+        "archUnitTest": 1495,
+        "perfTest": 1495,
+        "test": 1495
+      }
+    },
+    {
+      "file": "settings-present-true-3.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-present-true-4.tsv",
+      "equal": true,
+      "beforeBytes": 4318438,
+      "afterBytes": 4318438,
+      "beforeSha256": "7cff553520f432f0fedb5d893c73fa6c63fe47cb13734556e9add4cb925392e1",
+      "afterSha256": "7cff553520f432f0fedb5d893c73fa6c63fe47cb13734556e9add4cb925392e1",
+      "rows": 23222,
+      "candidateCountByTask": {
+        "archTest": 9331,
+        "archUnitFreezeStoreIntegrityTest": 9331,
+        "archUnitTest": 1520,
+        "perfTest": 1520,
+        "test": 1520
+      }
+    },
+    {
+      "file": "settings-present-true-4.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-present-true-5.tsv",
+      "equal": true,
+      "beforeBytes": 4388524,
+      "afterBytes": 4388524,
+      "beforeSha256": "aefa35da0949dfcc58029bcdc0994e97191a67921228b122b847a5e5cb512550",
+      "afterSha256": "aefa35da0949dfcc58029bcdc0994e97191a67921228b122b847a5e5cb512550",
+      "rows": 23588,
+      "candidateCountByTask": {
+        "archTest": 9331,
+        "archUnitFreezeStoreIntegrityTest": 9331,
+        "archUnitTest": 1642,
+        "perfTest": 1642,
+        "test": 1642
+      }
+    },
+    {
+      "file": "settings-present-true-5.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-missing-false-0.tsv",
+      "equal": true,
+      "beforeBytes": 4421269,
+      "afterBytes": 4421269,
+      "beforeSha256": "5c8d564a35f263d7cd77a35d8ca8fe5187d63d14c0f3b9626e268e10efde72a0",
+      "afterSha256": "5c8d564a35f263d7cd77a35d8ca8fe5187d63d14c0f3b9626e268e10efde72a0",
+      "rows": 23597,
+      "candidateCountByTask": {
+        "archTest": 9418,
+        "archUnitFreezeStoreIntegrityTest": 9418,
+        "archUnitTest": 1588,
+        "perfTest": 1588,
+        "test": 1585
+      }
+    },
+    {
+      "file": "settings-missing-false-0.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-missing-false-1.tsv",
+      "equal": true,
+      "beforeBytes": 4344417,
+      "afterBytes": 4344417,
+      "beforeSha256": "c4d769579331f92ddbc65fed6585c148845b744e99ced1a92e04a564484b9e27",
+      "afterSha256": "c4d769579331f92ddbc65fed6585c148845b744e99ced1a92e04a564484b9e27",
+      "rows": 23129,
+      "candidateCountByTask": {
+        "archTest": 9418,
+        "archUnitFreezeStoreIntegrityTest": 9418,
+        "archUnitTest": 1431,
+        "perfTest": 1431,
+        "test": 1431
+      }
+    },
+    {
+      "file": "settings-missing-false-1.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-missing-false-2.tsv",
+      "equal": true,
+      "beforeBytes": 4454934,
+      "afterBytes": 4454934,
+      "beforeSha256": "1e949d6c47dda5ed86f2c9d82411943f26514111f5b51cff27cfb6eb59c6b5a3",
+      "afterSha256": "1e949d6c47dda5ed86f2c9d82411943f26514111f5b51cff27cfb6eb59c6b5a3",
+      "rows": 23870,
+      "candidateCountByTask": {
+        "archTest": 9418,
+        "archUnitFreezeStoreIntegrityTest": 9418,
+        "archUnitTest": 1678,
+        "perfTest": 1678,
+        "test": 1678
+      }
+    },
+    {
+      "file": "settings-missing-false-2.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-missing-false-3.tsv",
+      "equal": true,
+      "beforeBytes": 4428678,
+      "afterBytes": 4428678,
+      "beforeSha256": "b8f88134f3818138b96e9b8ec739ebcdf49f51b297a572eaccf4168c01456ece",
+      "afterSha256": "b8f88134f3818138b96e9b8ec739ebcdf49f51b297a572eaccf4168c01456ece",
+      "rows": 23630,
+      "candidateCountByTask": {
+        "archTest": 9418,
+        "archUnitFreezeStoreIntegrityTest": 9418,
+        "archUnitTest": 1598,
+        "perfTest": 1598,
+        "test": 1598
+      }
+    },
+    {
+      "file": "settings-missing-false-3.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-missing-false-4.tsv",
+      "equal": true,
+      "beforeBytes": 4477470,
+      "afterBytes": 4477470,
+      "beforeSha256": "95b8a5064ce10ad84788fc41da30c3b7fed03db2af152cf872b5a951e58a22b6",
+      "afterSha256": "95b8a5064ce10ad84788fc41da30c3b7fed03db2af152cf872b5a951e58a22b6",
+      "rows": 23978,
+      "candidateCountByTask": {
+        "archTest": 9418,
+        "archUnitFreezeStoreIntegrityTest": 9418,
+        "archUnitTest": 1714,
+        "perfTest": 1714,
+        "test": 1714
+      }
+    },
+    {
+      "file": "settings-missing-false-4.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-missing-false-5.tsv",
+      "equal": true,
+      "beforeBytes": 4333191,
+      "afterBytes": 4333191,
+      "beforeSha256": "c34a2c903b3e9a6a802fa70b7efb2cc57f5e464eed8f193739280899418985a8",
+      "afterSha256": "c34a2c903b3e9a6a802fa70b7efb2cc57f5e464eed8f193739280899418985a8",
+      "rows": 23063,
+      "candidateCountByTask": {
+        "archTest": 9418,
+        "archUnitFreezeStoreIntegrityTest": 9418,
+        "archUnitTest": 1409,
+        "perfTest": 1409,
+        "test": 1409
+      }
+    },
+    {
+      "file": "settings-missing-false-5.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-missing-true-0.tsv",
+      "equal": true,
+      "beforeBytes": 4344062,
+      "afterBytes": 4344062,
+      "beforeSha256": "c63651ee49151c95a5be7e82bef11eecc23ccc9b8614e6c4e8c44a4ccaa4402a",
+      "afterSha256": "c63651ee49151c95a5be7e82bef11eecc23ccc9b8614e6c4e8c44a4ccaa4402a",
+      "rows": 23351,
+      "candidateCountByTask": {
+        "archTest": 9331,
+        "archUnitFreezeStoreIntegrityTest": 9331,
+        "archUnitTest": 1564,
+        "perfTest": 1564,
+        "test": 1561
+      }
+    },
+    {
+      "file": "settings-missing-true-0.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-missing-true-1.tsv",
+      "equal": true,
+      "beforeBytes": 4273510,
+      "afterBytes": 4273510,
+      "beforeSha256": "a2490a23a04c3cf59a3be795a5235e70f4c1b1eeb518849b15b76ad9952642f6",
+      "afterSha256": "a2490a23a04c3cf59a3be795a5235e70f4c1b1eeb518849b15b76ad9952642f6",
+      "rows": 22910,
+      "candidateCountByTask": {
+        "archTest": 9331,
+        "archUnitFreezeStoreIntegrityTest": 9331,
+        "archUnitTest": 1416,
+        "perfTest": 1416,
+        "test": 1416
+      }
+    },
+    {
+      "file": "settings-missing-true-1.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-missing-true-2.tsv",
+      "equal": true,
+      "beforeBytes": 4385554,
+      "afterBytes": 4385554,
+      "beforeSha256": "54e476851ca62386fc5552551ca0998e33f745891febcb0cf0f316b64ecb6ddb",
+      "afterSha256": "54e476851ca62386fc5552551ca0998e33f745891febcb0cf0f316b64ecb6ddb",
+      "rows": 23660,
+      "candidateCountByTask": {
+        "archTest": 9331,
+        "archUnitFreezeStoreIntegrityTest": 9331,
+        "archUnitTest": 1666,
+        "perfTest": 1666,
+        "test": 1666
+      }
+    },
+    {
+      "file": "settings-missing-true-2.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-missing-true-3.tsv",
+      "equal": true,
+      "beforeBytes": 4357666,
+      "afterBytes": 4357666,
+      "beforeSha256": "4cee85bcf7987932aef275661f532d8c9228ddbdf486a98a0808a399525f7394",
+      "afterSha256": "4cee85bcf7987932aef275661f532d8c9228ddbdf486a98a0808a399525f7394",
+      "rows": 23414,
+      "candidateCountByTask": {
+        "archTest": 9331,
+        "archUnitFreezeStoreIntegrityTest": 9331,
+        "archUnitTest": 1584,
+        "perfTest": 1584,
+        "test": 1584
+      }
+    },
+    {
+      "file": "settings-missing-true-3.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-missing-true-4.tsv",
+      "equal": true,
+      "beforeBytes": 4407040,
+      "afterBytes": 4407040,
+      "beforeSha256": "495929ae502a572887b8d262069941a195472d529f63b0e65e6262fa94a9a0e4",
+      "afterSha256": "495929ae502a572887b8d262069941a195472d529f63b0e65e6262fa94a9a0e4",
+      "rows": 23765,
+      "candidateCountByTask": {
+        "archTest": 9331,
+        "archUnitFreezeStoreIntegrityTest": 9331,
+        "archUnitTest": 1701,
+        "perfTest": 1701,
+        "test": 1701
+      }
+    },
+    {
+      "file": "settings-missing-true-4.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-missing-true-5.tsv",
+      "equal": true,
+      "beforeBytes": 4266082,
+      "afterBytes": 4266082,
+      "beforeSha256": "b403410d09a2a0f2a38c52c76a081bf7e8eadf88ce6814f70ecd4e9821de207a",
+      "afterSha256": "b403410d09a2a0f2a38c52c76a081bf7e8eadf88ce6814f70ecd4e9821de207a",
+      "rows": 22862,
+      "candidateCountByTask": {
+        "archTest": 9331,
+        "archUnitFreezeStoreIntegrityTest": 9331,
+        "archUnitTest": 1400,
+        "perfTest": 1400,
+        "test": 1400
+      }
+    },
+    {
+      "file": "settings-missing-true-5.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-boundary-1-0.tsv",
+      "equal": true,
+      "beforeBytes": 8452318,
+      "afterBytes": 8452318,
+      "beforeSha256": "a666f03501a7f398baa38dafd4fcbe334d666f0f54b0461447c68a5ffbf05951",
+      "afterSha256": "a666f03501a7f398baa38dafd4fcbe334d666f0f54b0461447c68a5ffbf05951",
+      "rows": 47087,
+      "candidateCountByTask": {
+        "archTest": 9418,
+        "archUnitFreezeStoreIntegrityTest": 9418,
+        "archUnitTest": 9418,
+        "perfTest": 9418,
+        "test": 9415
+      }
+    },
+    {
+      "file": "settings-boundary-1-0.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-boundary-1-last.tsv",
+      "equal": true,
+      "beforeBytes": 8593579,
+      "afterBytes": 8593579,
+      "beforeSha256": "1360a20f86920e8b327b5458cade4f37b36758d54249f0a7454be6a25ff06181",
+      "afterSha256": "1360a20f86920e8b327b5458cade4f37b36758d54249f0a7454be6a25ff06181",
+      "rows": 47087,
+      "candidateCountByTask": {
+        "archTest": 9418,
+        "archUnitFreezeStoreIntegrityTest": 9418,
+        "archUnitTest": 9418,
+        "perfTest": 9418,
+        "test": 9415
+      }
+    },
+    {
+      "file": "settings-boundary-1-last.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-boundary-1-invalid.tsv",
+      "equal": true,
+      "beforeBytes": 8734840,
+      "afterBytes": 8734840,
+      "beforeSha256": "b628c6ad1e078a57fdc76a3ba5303c25119e388484adf5379eb961bf9d12a9f8",
+      "afterSha256": "b628c6ad1e078a57fdc76a3ba5303c25119e388484adf5379eb961bf9d12a9f8",
+      "rows": 47087,
+      "candidateCountByTask": {
+        "archTest": 9418,
+        "archUnitFreezeStoreIntegrityTest": 9418,
+        "archUnitTest": 9418,
+        "perfTest": 9418,
+        "test": 9415
+      }
+    },
+    {
+      "file": "settings-boundary-1-invalid.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-boundary-2-0.tsv",
+      "equal": true,
+      "beforeBytes": 5992624,
+      "afterBytes": 5992624,
+      "beforeSha256": "ab9b08b07d3a99a625a7cf848fcfa579b445b8bf46806e561416d07ce8cf8d7f",
+      "afterSha256": "ab9b08b07d3a99a625a7cf848fcfa579b445b8bf46806e561416d07ce8cf8d7f",
+      "rows": 33062,
+      "candidateCountByTask": {
+        "archTest": 9418,
+        "archUnitFreezeStoreIntegrityTest": 9418,
+        "archUnitTest": 4743,
+        "perfTest": 4743,
+        "test": 4740
+      }
+    },
+    {
+      "file": "settings-boundary-2-0.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-boundary-2-last.tsv",
+      "equal": true,
+      "beforeBytes": 6075045,
+      "afterBytes": 6075045,
+      "beforeSha256": "3e45d2db3265c4618bd5efaa658d8aafca5a546f270ca6ebd8587798ae9dd8ca",
+      "afterSha256": "3e45d2db3265c4618bd5efaa658d8aafca5a546f270ca6ebd8587798ae9dd8ca",
+      "rows": 32861,
+      "candidateCountByTask": {
+        "archTest": 9418,
+        "archUnitFreezeStoreIntegrityTest": 9418,
+        "archUnitTest": 4675,
+        "perfTest": 4675,
+        "test": 4675
+      }
+    },
+    {
+      "file": "settings-boundary-2-last.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-boundary-2-invalid.tsv",
+      "equal": true,
+      "beforeBytes": 8734840,
+      "afterBytes": 8734840,
+      "beforeSha256": "34812f9293e59d74c4ddfdeaa5c1962c080fcac92b967175aa50e687e13a1fee",
+      "afterSha256": "34812f9293e59d74c4ddfdeaa5c1962c080fcac92b967175aa50e687e13a1fee",
+      "rows": 47087,
+      "candidateCountByTask": {
+        "archTest": 9418,
+        "archUnitFreezeStoreIntegrityTest": 9418,
+        "archUnitTest": 9418,
+        "perfTest": 9418,
+        "test": 9415
+      }
+    },
+    {
+      "file": "settings-boundary-2-invalid.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-boundary-6-0.tsv",
+      "equal": true,
+      "beforeBytes": 4310560,
+      "afterBytes": 4310560,
+      "beforeSha256": "272ef1caca6ab6748d4f75ad9ac674827e8ce64e064af5608724f64835246c10",
+      "afterSha256": "272ef1caca6ab6748d4f75ad9ac674827e8ce64e064af5608724f64835246c10",
+      "rows": 23369,
+      "candidateCountByTask": {
+        "archTest": 9418,
+        "archUnitFreezeStoreIntegrityTest": 9418,
+        "archUnitTest": 1512,
+        "perfTest": 1512,
+        "test": 1509
+      }
+    },
+    {
+      "file": "settings-boundary-6-0.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-boundary-6-last.tsv",
+      "equal": true,
+      "beforeBytes": 4481010,
+      "afterBytes": 4481010,
+      "beforeSha256": "92e5f847836ab37c7f1d92ab4fb5e4ae0de8a587d540a690cd9ca773b21356b2",
+      "afterSha256": "92e5f847836ab37c7f1d92ab4fb5e4ae0de8a587d540a690cd9ca773b21356b2",
+      "rows": 23906,
+      "candidateCountByTask": {
+        "archTest": 9418,
+        "archUnitFreezeStoreIntegrityTest": 9418,
+        "archUnitTest": 1690,
+        "perfTest": 1690,
+        "test": 1690
+      }
+    },
+    {
+      "file": "settings-boundary-6-last.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-boundary-6-invalid.tsv",
+      "equal": true,
+      "beforeBytes": 8734840,
+      "afterBytes": 8734840,
+      "beforeSha256": "da97813b1322f106771b2af7ac06940cada7ef5dd21b5021908763db0412d3ec",
+      "afterSha256": "da97813b1322f106771b2af7ac06940cada7ef5dd21b5021908763db0412d3ec",
+      "rows": 47087,
+      "candidateCountByTask": {
+        "archTest": 9418,
+        "archUnitFreezeStoreIntegrityTest": 9418,
+        "archUnitTest": 9418,
+        "perfTest": 9418,
+        "test": 9415
+      }
+    },
+    {
+      "file": "settings-boundary-6-invalid.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-boundary-invalid-0.tsv",
+      "equal": true,
+      "beforeBytes": 8734840,
+      "afterBytes": 8734840,
+      "beforeSha256": "f436c311dc9ec98beedaaa9b4e440e1b45270bc7b72671762f11d4ec026a777e",
+      "afterSha256": "f436c311dc9ec98beedaaa9b4e440e1b45270bc7b72671762f11d4ec026a777e",
+      "rows": 47087,
+      "candidateCountByTask": {
+        "archTest": 9418,
+        "archUnitFreezeStoreIntegrityTest": 9418,
+        "archUnitTest": 9418,
+        "perfTest": 9418,
+        "test": 9415
+      }
+    },
+    {
+      "file": "settings-boundary-invalid-0.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-boundary-invalid-last.tsv",
+      "equal": true,
+      "beforeBytes": 8876101,
+      "afterBytes": 8876101,
+      "beforeSha256": "9a8b6055e02bdef148f589f0456fec0f7aca9ba40737f5e5f32ce0899b8f4104",
+      "afterSha256": "9a8b6055e02bdef148f589f0456fec0f7aca9ba40737f5e5f32ce0899b8f4104",
+      "rows": 47087,
+      "candidateCountByTask": {
+        "archTest": 9418,
+        "archUnitFreezeStoreIntegrityTest": 9418,
+        "archUnitTest": 9418,
+        "perfTest": 9418,
+        "test": 9415
+      }
+    },
+    {
+      "file": "settings-boundary-invalid-last.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "candidates-boundary-invalid-invalid.tsv",
+      "equal": true,
+      "beforeBytes": 9017362,
+      "afterBytes": 9017362,
+      "beforeSha256": "896c16feba1320b323dddbcc92da9b1bd8b0d6483457b9b2df1a804a662a3afe",
+      "afterSha256": "896c16feba1320b323dddbcc92da9b1bd8b0d6483457b9b2df1a804a662a3afe",
+      "rows": 47087,
+      "candidateCountByTask": {
+        "archTest": 9418,
+        "archUnitFreezeStoreIntegrityTest": 9418,
+        "archUnitTest": 9418,
+        "perfTest": 9418,
+        "test": 9415
+      }
+    },
+    {
+      "file": "settings-boundary-invalid-invalid.tsv",
+      "equal": true,
+      "beforeBytes": 271,
+      "afterBytes": 271,
+      "beforeSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "afterSha256": "658dab14019a5f2e8a0232a5d57bac52a5742846650ec8777a63722d0389f22d",
+      "rows": 5
+    },
+    {
+      "file": "classes.txt",
+      "equal": true,
+      "beforeBytes": 747340,
+      "afterBytes": 747340,
+      "beforeSha256": "9c2bf3b28f4f4972b6cc8238c5d9a155fd53255a58450d84eb093f5960fc0d8d",
+      "afterSha256": "9c2bf3b28f4f4972b6cc8238c5d9a155fd53255a58450d84eb093f5960fc0d8d"
+    },
+    {
+      "file": "helper-boundaries.txt",
+      "equal": true,
+      "beforeBytes": 163,
+      "afterBytes": 163,
+      "beforeSha256": "17ec450bd746872a3dafd7dbd01ecf623e45d36742f6ac56c4c14c4979172a7e",
+      "afterSha256": "17ec450bd746872a3dafd7dbd01ecf623e45d36742f6ac56c4c14c4979172a7e"
+    }
+  ]
+}

@@ -175,11 +175,11 @@ class ReservationServiceGroupRowGuardTest {
     }
 
     private void stubByTeam(ReservationEntity entity) {
-        given(reservationRepository.findByIdAndTeamId(RESERVATION_ID, TEAM_ID)).willReturn(Optional.of(entity));
+        given(reservationRepository.findByIdAndTeamIdForUpdate(RESERVATION_ID, TEAM_ID)).willReturn(Optional.of(entity));
     }
 
     private void stubByUser(ReservationEntity entity) {
-        given(reservationRepository.findByIdAndUserId(RESERVATION_ID, USER_ID)).willReturn(Optional.of(entity));
+        given(reservationRepository.findByIdAndUserIdForUpdate(RESERVATION_ID, USER_ID)).willReturn(Optional.of(entity));
     }
 
     private void assert042(Runnable runnable) {

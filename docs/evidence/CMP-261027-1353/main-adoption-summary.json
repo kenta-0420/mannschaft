@@ -1,0 +1,135 @@
+{
+  "campaign": "CMP-261027-1353",
+  "implementationHead": "f157e033bb650205dc4ba94d0772f9b1a0be7d15",
+  "mergedMainHead": "7610007cd8301e6f293db80e6902f3991c0e4c70",
+  "artifactSourceHead": "3db393c2e4e5608e0e168d59baba85e68342ae78",
+  "actualCompile": {
+    "exitCode": 0,
+    "rerunTasks": true,
+    "noBuildCache": true,
+    "noDaemon": true,
+    "maxWorkers": 2,
+    "heapGiB": 2
+  },
+  "classProof": {
+    "files": 64,
+    "matched": true,
+    "missing": 0,
+    "mismatches": 0
+  },
+  "ownedRestart": {
+    "singleSigterm": true,
+    "oldOwnedProcessEnded": true,
+    "existingLoopPreserved": true,
+    "newLaunchHelperUsed": false,
+    "freshOwnershipGuardsPassed": true,
+    "listenerOwned": true,
+    "healthStatus": 200
+  },
+  "assetProtection": {
+    "windowsProtectedTrackedDigestUnchanged": true,
+    "windowsStashSetUnchanged": true,
+    "windowsStashCount": 20,
+    "windowsBoundedStatusEntries": 100,
+    "windowsRegularFileDigests": 85,
+    "windowsDirectoryMetadataEntries": 15,
+    "directoryRecursiveIdentityClaimed": false,
+    "existingBackupPreserved": true,
+    "wslUntrackedFileCount": 43,
+    "wslPathDigestSetUnchanged": true,
+    "foreignDeletion": false
+  },
+  "preCompileMemoryGate": {
+    "blockedBeforeGradleAttempts": 2,
+    "thresholdRelaxed": false,
+    "boundedRetryAuthorized": true,
+    "actualCompileCompleted": true
+  },
+  "mainFrontendSmoke": "passed-via-smoke2-partial-plus-isolated-feed-complement",
+  "rawLogOrProcessArgumentsIncluded": false,
+  "mainFrontendStartupObservation": {
+    "authenticatedUiVerified": false,
+    "startupSmoke1": "unauthenticated-timeout",
+    "productionPerformanceSample": false,
+    "responseHeadersObserved": false,
+    "afterWorkerReadyWaitSeconds": 10,
+    "rootCause": "first-development-SSR-unresolved",
+    "workerReady": true,
+    "subsequentBoundedRequest": {
+      "startedAtUtc": "2026-10-27T17:34:57Z",
+      "headersMs": 5504,
+      "status": 200,
+      "bodySaved": false
+    },
+    "initialStartupWaitApproxMinutes": 21,
+    "initialStartupCause": "unresolved"
+  },
+  "mainFrontendSmoke1": {
+    "status": "failed",
+    "failureKind": "timeout",
+    "phase": "login-page",
+    "pageErrors": 0,
+    "logoutStatus": 401,
+    "cleanupFailure": true,
+    "closed": true
+  },
+  "mainFrontendSmoke2": {
+    "sourceHead": "7610007cd8301e6f293db80e6902f3991c0e4c70",
+    "status": "failed",
+    "failureKind": "operation-error",
+    "phase": "timeline-navigation",
+    "steps": [
+      {
+        "action": "normal-login-to-dashboard",
+        "routeTemplate": "/dashboard",
+        "passed": true
+      },
+      {
+        "action": "personal-calendar-dom",
+        "meaning": "visible selected PERSONAL calendar heading and >=28 date cells; DOM only",
+        "passed": true
+      }
+    ],
+    "theme": {
+      "publicConfigAvailable": true,
+      "primevueAvailable": true,
+      "runtimeThemePresetAbsent": true,
+      "importThemeConfigured": true,
+      "primary500": "#10b981",
+      "styleCount": 190,
+      "noncePresentCount": 184
+    },
+    "pageErrors": 0,
+    "logoutStatus": 200,
+    "closed": true,
+    "classification": "functional subset passed; whole run remains failed due to helper observing feed API instead of my API",
+    "complement": "passed; main-adoption-feed-complement.json",
+    "imageLimitation": "dashboard image viewport shows Storage/RightNow; calendarDOM assertion is separate"
+  },
+  "mainFrontendAccepted": {
+    "normalLogin": true,
+    "mainContainer": true,
+    "personalCalendarDOM": true,
+    "themeConfig": {
+      "publicPrimevueAvailable": true,
+      "runtimePresetAbsent": true,
+      "importThemeConfigured": true,
+      "primary500": "#10b981",
+      "styleCount": 190,
+      "noncePresentCount": 184
+    },
+    "normalMenuPersonalFeed200": true,
+    "loadedFeedVisible": true,
+    "allAuthenticatedRunsLogout200Closed": true
+  },
+  "mainFrontendEvidence": [
+    "main-adoption-feed-complement.json",
+    "main-frontend-runtime-proof.json",
+    "main-dashboard-masked.png",
+    "main-feed-masked.png"
+  ],
+  "allAuthenticatedBrowserContextsClosed": true,
+  "additionalPerformanceSamples": 0,
+  "runtimeKeptRunning": true,
+  "rootVerifiedFunctionalAdoption": true
+}

@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261004-1943",
+  "scope": "app",
+  "implementation": {
+    "pr": 3670,
+    "sha": "34ec5426e0aee1a1e80537a82106df768a399335"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-13",
+      "description": "0は0・欠落は—・supporterEnabled=false は欄非表示",
+      "tests": [
+        {
+          "name": "AC-13: サポーター 0 は「0」で表示する",
+          "evidence": "frontend/app/components/scopeHeaderHeadcount.spec.ts"
+        },
+        {
+          "name": "AC-13: サポーター数が欠落していれば「—」で表示する / null なら「—」で表示する",
+          "evidence": "frontend/app/components/scopeHeaderHeadcount.spec.ts"
+        },
+        {
+          "name": "AC-13: supporterEnabled=false ならサポーター欄を出さない（メンバー欄は出る）",
+          "evidence": "frontend/app/components/scopeHeaderHeadcount.spec.ts"
+        },
+        {
+          "name": "AC-13: メンバー 0 は「0」/ 欠落は「—」で表示する",
+          "evidence": "frontend/app/components/scopeHeaderHeadcount.spec.ts"
+        },
+        {
+          "name": "実機E2E: 0 は「0」、supporterEnabled=false は欄を出さない",
+          "evidence": "docs/evidence/CMP-261004-1942-real.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-14",
+      "description": "人数表示を i18n 化し実辞書で6言語描画",
+      "tests": [
+        {
+          "name": "ロケール辞書に人数表示のキーがある（AC-14） / en の人数表示キーに日本語が含まれない",
+          "evidence": "frontend/app/components/scopeHeaderHeadcount.spec.ts"
+        },
+        {
+          "name": "AC-14: 6言語それぞれ実際の辞書の文言で人数を描画し、en では日本語が出ない",
+          "evidence": "frontend/app/components/scopeHeaderHeadcount.spec.ts"
+        },
+        {
+          "name": "実機E2E: en・zh で人数表示がロケールどおりに出る",
+          "evidence": "docs/evidence/CMP-261004-1942-real.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 37385896900
+    },
+    {
+      "runId": 37385897050
+    },
+    {
+      "runId": 37385896958
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/3670"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261004-1942-real.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261004-1942-alicization.md"
+    }
+  },
+  "regressions": []
+}

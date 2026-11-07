@@ -61,6 +61,12 @@ class BlogPostPublicVisibleControllerTest {
     private BlogPostService postService;
 
     @MockitoBean
+    private com.mannschaft.app.cms.service.BlogRanchNativeOperationFacade ranchNative;
+
+    @MockitoBean
+    private com.mannschaft.app.cms.service.BlogScopeAccessGuard scopeAccessGuard;
+
+    @MockitoBean
     private BlogFeedService feedService;
 
     @MockitoBean

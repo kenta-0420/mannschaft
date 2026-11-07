@@ -13,6 +13,7 @@ import com.mannschaft.app.matching.repository.MatchRequestRepository;
 import com.mannschaft.app.matching.repository.MatchReviewRepository;
 import com.mannschaft.app.matching.repository.NgTeamRepository;
 import com.mannschaft.app.matching.service.MatchRequestService;
+import com.mannschaft.app.matching.service.MatchRequestVisibilityPolicy;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -71,6 +72,13 @@ class MatchRequestServiceTest {
 
     @InjectMocks
     private MatchRequestService service;
+
+    /** 閲覧資格の判定は MatchRequestVisibilityPolicy に一本化した（閲覧ガードと共有。CMP-260821-1027）。実物を mock 依存で組む。 */
+    @org.junit.jupiter.api.BeforeEach
+    void wireVisibilityPolicy() {
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "visibilityPolicy",
+                new MatchRequestVisibilityPolicy(ngTeamRepository, accessControlService));
+    }
 
     /** 操作/閲覧ユーザー（＝認証プリンシパル）。teamId とは別物であることを明示するため teamId とは異なる値にする。 */
     private static final Long USER_ID = 500L;

@@ -30,7 +30,7 @@ public class NewDeviceLoginNotificationListener {
     static final String RATE_LIMIT_ZONE = "auth:new-device-login";
     static final int RATE_LIMIT = 3;
     static final Duration RATE_LIMIT_WINDOW = Duration.ofHours(1);
-    private static final String ACTION_URL = "/account/sessions";
+    private static final String ACTION_URL = "/settings/security";
 
     private final NotificationHelper notificationHelper;
     private final ValkeyRateLimiter rateLimiter;

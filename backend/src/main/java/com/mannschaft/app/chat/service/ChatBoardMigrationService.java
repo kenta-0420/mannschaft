@@ -121,7 +121,7 @@ public class ChatBoardMigrationService {
             // root_id でスレッド全返信を取得（最大500件）
             Pageable pageable = PageRequest.of(0, 500);
             List<ChatMessageEntity> replies = messageRepository
-                    .findByRootIdAndDeletedAtIsNullOrderByCreatedAtAsc(root.getId(), pageable)
+                    .findByRootIdAndDeletedAtIsNullOrderByCreatedAtAscIdAsc(root.getId(), pageable)
                     .getContent();
 
             if (!replies.isEmpty()) {

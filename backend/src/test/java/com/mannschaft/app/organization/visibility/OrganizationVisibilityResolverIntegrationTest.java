@@ -10,7 +10,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,9 +20,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>実 MySQL（Testcontainers）に対し最小限の seed を投入し、
  * {@link ContentVisibilityChecker} 経由で ORGANIZATION の可視性評価を包括的に検証する。</p>
  *
- * <p>{@link SpringBootTest#properties()} で {@code feature.visibility-resolver.organization=true}
- * を設定し、{@link OrganizationVisibilityResolver} Bean を有効化している。</p>
- *
  * <p>{@code TeamVisibilityResolverIntegrationTest} の方式を踏襲し、
  * {@code @Transactional} ロールバック方式 + {@code em.createNativeQuery}
  * で users / roles / user_roles / organizations を直接 INSERT する。</p>
@@ -32,7 +28,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * name, org_type, visibility, hierarchy_visibility, supporter_enabled, version,
  * created_at, updated_at。</p>
  */
-@SpringBootTest(properties = {"feature.visibility-resolver.organization=true"})
 @Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("OrganizationVisibilityResolver 結合テスト")

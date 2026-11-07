@@ -131,12 +131,11 @@ public class VillageBulletinAccessService {
             return;
         }
 
-        // 村ロール HEADMAN / ELDER のみモデレーション可（村メンバーシップを正準解決）
+        // 村ロール HEADMAN / ELDER のみモデレーション可。
+        // 「現役」（退村 leftAt・BAN bannedAt の除外）は正準クエリ findActiveByVillageIdAndSubject に委譲する。
         if (userId != null) {
             VillageRole role = membershipRepository
-                    .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
-                            villageId, VillageSubjectType.USER, userId)
-                    .filter(m -> m.getBannedAt() == null)
+                    .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, userId)
                     .map(VillageMembershipEntity::getRole)
                     .orElse(null);
             if (role == VillageRole.HEADMAN || role == VillageRole.ELDER) {

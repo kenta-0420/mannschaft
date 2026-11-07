@@ -167,7 +167,7 @@ class InboxAggregationServiceTest {
             stateRow.setSourceType(InboxSourceType.NOTIFICATION);
             stateRow.setSourceId(10L);
             stateRow.setArchivedAt(LocalDateTime.now());
-            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any()))
+            given(itemStateRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any()))
                     .willReturn(List.of(stateRow));
 
             InboxPageResponse res = service.getInbox(USER_ID, "ARCHIVED", null, null, null, 0, 20);
@@ -199,7 +199,7 @@ class InboxAggregationServiceTest {
             expired.setSourceType(InboxSourceType.NOTIFICATION);
             expired.setSourceId(20L);
             expired.setSnoozedUntil(LocalDateTime.now().minusHours(1));
-            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any()))
+            given(itemStateRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any()))
                     .willReturn(List.of(expired));
 
             InboxPageResponse res = service.getInbox(USER_ID, "INBOX", null, null, null, 0, 20);
@@ -219,7 +219,7 @@ class InboxAggregationServiceTest {
             future.setSourceType(InboxSourceType.NOTIFICATION);
             future.setSourceId(21L);
             future.setSnoozedUntil(LocalDateTime.now().plusHours(3));
-            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any()))
+            given(itemStateRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any()))
                     .willReturn(List.of(future));
 
             InboxPageResponse res = service.getInbox(USER_ID, "INBOX", null, null, null, 0, 20);
@@ -237,9 +237,9 @@ class InboxAggregationServiceTest {
     class NoNPlusOne {
 
         @Test
-        @DisplayName("オーバーレイ状態は user_id でまとめ取り（item 件数に依らず 1 回）")
+        @DisplayName("オーバーレイ状態は種別ごとにまとめ取り（各1000件以下なら2種別で2回）")
         void overlayFetchedOnce() {
-            // ソースから多数の項目が返っても、状態まとめ取りは 1 回のみ
+            // 同じソースの項目ごとには引かず、2種別の状態をそれぞれ1回で読む
             given(notificationAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of(
                     item(InboxSourceType.NOTIFICATION, 1L, InboxPriority.NORMAL, LocalDateTime.now()),
                     item(InboxSourceType.NOTIFICATION, 2L, InboxPriority.NORMAL, LocalDateTime.now()),
@@ -249,7 +249,7 @@ class InboxAggregationServiceTest {
 
             service.getInbox(USER_ID, "INBOX", null, null, null, 0, 20);
 
-            verify(itemStateRepository, times(1)).findByUserIdAndSourceTypeIn(any(), any());
+            verify(itemStateRepository, times(2)).findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any());
         }
 
         @Test
@@ -284,7 +284,7 @@ class InboxAggregationServiceTest {
                     item(InboxSourceType.NOTIFICATION, 1L, InboxPriority.NORMAL, LocalDateTime.now())));
             given(todoDueAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of(
                     item(InboxSourceType.TODO_DUE, 2L, InboxPriority.HIGH, LocalDateTime.now())));
-            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any())).willReturn(List.of());
 
             InboxPageResponse res = service.getInbox(
                     USER_ID, "ALL", null, List.of(InboxSourceType.NOTIFICATION), null, 0, 20);
@@ -300,7 +300,7 @@ class InboxAggregationServiceTest {
                     item(InboxSourceType.NOTIFICATION, 1L, InboxPriority.URGENT, LocalDateTime.now()),
                     item(InboxSourceType.NOTIFICATION, 2L, InboxPriority.NORMAL, LocalDateTime.now())));
             given(todoDueAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of());
-            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any())).willReturn(List.of());
 
             InboxPageResponse res = service.getInbox(
                     USER_ID, "ALL", List.of(InboxPriority.URGENT), null, null, 0, 20);
@@ -317,7 +317,7 @@ class InboxAggregationServiceTest {
                     item(InboxSourceType.NOTIFICATION, 1L, InboxPriority.NORMAL, now.minusHours(1)),
                     item(InboxSourceType.NOTIFICATION, 2L, InboxPriority.URGENT, now.minusHours(2))));
             given(todoDueAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of());
-            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any())).willReturn(List.of());
 
             InboxPageResponse res = service.getInbox(USER_ID, "ALL", null, null, null, 0, 20);
 
@@ -341,7 +341,7 @@ class InboxAggregationServiceTest {
             given(notificationAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of(
                     item(InboxSourceType.NOTIFICATION, 1L, InboxPriority.URGENT, LocalDateTime.now())));
             given(todoDueAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of());
-            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any())).willReturn(List.of());
 
             var summary = service.getSummary(USER_ID);
 
@@ -378,7 +378,7 @@ class InboxAggregationServiceTest {
                     item(InboxSourceType.MENTION, 4L, InboxPriority.HIGH, now)));
             given(confirmableAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of(
                     item(InboxSourceType.CONFIRMABLE, 5L, InboxPriority.URGENT, now)));
-            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any())).willReturn(List.of());
 
             return new InboxAggregationService(
                     List.of(notificationAdapter, todoDueAdapter, announcementAdapter,
@@ -407,13 +407,13 @@ class InboxAggregationServiceTest {
         }
 
         @Test
-        @DisplayName("5 ソースでもオーバーレイのまとめ取りは 1 回（N+1 回避を維持）")
-        void overlayFetchedOnceAcrossFiveSources() {
+        @DisplayName("5 ソースでもオーバーレイのまとめ取りは各種別1回（N+1 回避を維持）")
+        void overlayFetchedOncePerSourceAcrossFiveSources() {
             InboxAggregationService svc = fiveSourceService();
 
             svc.getInbox(USER_ID, "ALL", null, null, null, 0, 20);
 
-            verify(itemStateRepository, times(1)).findByUserIdAndSourceTypeIn(any(), any());
+            verify(itemStateRepository, times(5)).findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any());
         }
 
         @Test
@@ -443,7 +443,7 @@ class InboxAggregationServiceTest {
             given(notificationAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of(
                     item(InboxSourceType.NOTIFICATION, 10L, InboxPriority.NORMAL, LocalDateTime.now())));
             given(todoDueAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of());
-            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any())).willReturn(List.of());
 
             InboxLabelLinkEntity link = new InboxLabelLinkEntity();
             link.setLabelId(labelId);
@@ -487,7 +487,7 @@ class InboxAggregationServiceTest {
                     item(InboxSourceType.NOTIFICATION, 2L, InboxPriority.NORMAL, LocalDateTime.now())));
             given(todoDueAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of(
                     item(InboxSourceType.TODO_DUE, 3L, InboxPriority.HIGH, LocalDateTime.now())));
-            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any())).willReturn(List.of());
 
             UUID l1 = UUID.randomUUID();
             InboxLabelLinkEntity link1 = new InboxLabelLinkEntity();
@@ -518,7 +518,7 @@ class InboxAggregationServiceTest {
             given(notificationAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of(
                     item(InboxSourceType.NOTIFICATION, 10L, InboxPriority.NORMAL, LocalDateTime.now())));
             given(todoDueAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of());
-            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any())).willReturn(List.of());
 
             InboxLabelLinkEntity link = new InboxLabelLinkEntity();
             link.setLabelId(deletedLabelId);
@@ -554,7 +554,7 @@ class InboxAggregationServiceTest {
                     itemWithRef(InboxSourceType.NOTIFICATION, 100L, InboxPriority.NORMAL, now,
                             "BLOG_POST:7", InboxState.UNREAD, List.of())));
             given(todoDueAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of());
-            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any())).willReturn(List.of());
 
             // ANNOUNCEMENT アダプタを追加注入したサービスで同一 canonicalRef を返す
             InboxSourceAdapter announcementAdapter = org.mockito.Mockito.mock(InboxSourceAdapter.class);
@@ -588,7 +588,7 @@ class InboxAggregationServiceTest {
                     itemWithRef(InboxSourceType.NOTIFICATION, 101L, InboxPriority.NORMAL, now,
                             "BLOG_POST:8", InboxState.UNREAD, List.of())));
             given(todoDueAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of());
-            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any())).willReturn(List.of());
 
             InboxPageResponse res = service.getInbox(USER_ID, "ALL", null, null, null, 0, 20);
 
@@ -607,7 +607,7 @@ class InboxAggregationServiceTest {
                     itemWithRef(InboxSourceType.MENTION, 2L, InboxPriority.HIGH, now,
                             "MENTION:2", InboxState.UNREAD, List.of())));
             given(todoDueAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of());
-            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any())).willReturn(List.of());
 
             InboxPageResponse res = service.getInbox(USER_ID, "ALL", null, null, null, 0, 20);
 
@@ -620,7 +620,7 @@ class InboxAggregationServiceTest {
             given(notificationAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of(
                     item(InboxSourceType.NOTIFICATION, 1L, InboxPriority.NORMAL, LocalDateTime.now())));
             given(todoDueAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of());
-            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any())).willReturn(List.of());
 
             InboxPageResponse res = service.getInbox(USER_ID, "ALL", null, null, null, 0, 20);
 
@@ -639,7 +639,7 @@ class InboxAggregationServiceTest {
                     itemWithRef(InboxSourceType.NOTIFICATION, 100L, InboxPriority.NORMAL, now,
                             "BLOG_POST:7", InboxState.READ, List.of())));
             given(todoDueAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of());
-            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any())).willReturn(List.of());
 
             InboxSourceAdapter announcementAdapter = org.mockito.Mockito.mock(InboxSourceAdapter.class);
             given(announcementAdapter.sourceType()).willReturn(InboxSourceType.ANNOUNCEMENT);
@@ -670,7 +670,7 @@ class InboxAggregationServiceTest {
                     itemWithRef(InboxSourceType.NOTIFICATION, 100L, InboxPriority.NORMAL, now,
                             "BLOG_POST:7", InboxState.UNREAD, List.of())));
             given(todoDueAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of());
-            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any())).willReturn(List.of());
 
             InboxSourceAdapter announcementAdapter = org.mockito.Mockito.mock(InboxSourceAdapter.class);
             given(announcementAdapter.sourceType()).willReturn(InboxSourceType.ANNOUNCEMENT);
@@ -734,7 +734,7 @@ class InboxAggregationServiceTest {
                     itemWithRef(InboxSourceType.NOTIFICATION, 100L, InboxPriority.NORMAL, now,
                             "BLOG_POST:7", InboxState.READ, List.of())));
             given(todoDueAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of());
-            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any())).willReturn(List.of());
 
             InboxSourceAdapter announcementAdapter = org.mockito.Mockito.mock(InboxSourceAdapter.class);
             given(announcementAdapter.sourceType()).willReturn(InboxSourceType.ANNOUNCEMENT);
@@ -817,7 +817,7 @@ class InboxAggregationServiceTest {
         }
 
         private InboxAggregationService serviceWith(InboxSourceAdapter... adapters) {
-            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any())).willReturn(List.of());
             return new InboxAggregationService(
                     List.of(adapters), priorityNormalizer,
                     itemStateRepository, labelLinkRepository, labelRepository,
@@ -998,7 +998,7 @@ class InboxAggregationServiceTest {
             given(notificationAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of(
                     item(InboxSourceType.MENTION, 10L, InboxPriority.HIGH, LocalDateTime.now())));
             given(todoDueAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of());
-            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any())).willReturn(List.of());
             // ルールは MENTION → REPLY_NEEDED を返すようスタブ（本体ロジックは別途 Rules テストで検証）
             given(suggestionRules.suggest(eq(InboxSourceType.MENTION), any()))
                     .willReturn(List.of(InboxLabelSuggestion.REPLY_NEEDED));
@@ -1026,7 +1026,7 @@ class InboxAggregationServiceTest {
             given(notificationAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of(
                     item(InboxSourceType.NOTIFICATION, 10L, InboxPriority.NORMAL, LocalDateTime.now())));
             given(todoDueAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of());
-            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any())).willReturn(List.of());
             // 既定スタブ（setUp）が空リストを返す → 提案なし
 
             InboxPageResponse res = service.getInbox(USER_ID, "ALL", null, null, null, 0, 20);
@@ -1043,7 +1043,7 @@ class InboxAggregationServiceTest {
             given(notificationAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of(
                     item(InboxSourceType.MENTION, 10L, InboxPriority.HIGH, LocalDateTime.now())));
             given(todoDueAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of());
-            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any())).willReturn(List.of());
             given(suggestionRules.suggest(eq(InboxSourceType.MENTION), any()))
                     .willReturn(List.of(InboxLabelSuggestion.REPLY_NEEDED));
 
@@ -1080,7 +1080,7 @@ class InboxAggregationServiceTest {
             given(notificationAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of(
                     item(InboxSourceType.MENTION, 10L, InboxPriority.HIGH, LocalDateTime.now())));
             given(todoDueAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of());
-            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any())).willReturn(List.of());
             given(suggestionRules.suggest(eq(InboxSourceType.MENTION), any()))
                     .willReturn(List.of(InboxLabelSuggestion.REPLY_NEEDED));
 

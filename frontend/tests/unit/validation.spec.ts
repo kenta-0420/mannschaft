@@ -1,8 +1,13 @@
-import { describe, it, expect } from 'vitest'
+import { beforeAll, describe, it, expect } from 'vitest'
 import { ref } from '#imports'
 import { useRelativeTime } from '~/composables/useRelativeTime'
 
 describe('ERR-002: useRelativeTime バリデーション', () => {
+  // 文言は現在ロケールのメッセージ（common.relativeTime.*）。テスト環境は既定で en に解決されるため ja を明示する。
+  beforeAll(async () => {
+    await useNuxtApp().$i18n.setLocale('ja')
+  })
+
   it('引数なしで呼び出すと relativeTime 関数を返す', () => {
     const { relativeTime, formatRelative } = useRelativeTime()
     expect(typeof relativeTime).toBe('function')

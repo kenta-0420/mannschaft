@@ -8,7 +8,7 @@
 import type { AdMessagingCampaignChannel } from '~/types/adMessagingCampaign'
 import type { AdReviewCampaignDetail } from '~/composables/useSystemAdminAdCampaignApi'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const route = useRoute()
 const router = useRouter()

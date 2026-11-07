@@ -4,7 +4,9 @@ import type {
   InternalNoteResponse,
   FeedbackResponse,
 } from '~/types/admin-report'
-import type { PageMeta } from '~/types/api'
+import type { PageMeta, SpringPage } from '~/types/api'
+
+export type AdminDashboardUsersResponse = { data: SpringPage<unknown> }
 
 export function useAdminReportApi() {
   const api = useApi()
@@ -82,7 +84,7 @@ export function useAdminReportApi() {
       for (const [k, v] of Object.entries(params)) {
         if (v != null) q.set(k, String(v))
       }
-    return api<{ data: unknown[] }>(`/api/v1/admin/dashboard/users?${q}`)
+    return api<AdminDashboardUsersResponse>(`/api/v1/admin/dashboard/users?${q}`)
   }
 
   async function updateUserRole(userId: number, body: { role: string }) {

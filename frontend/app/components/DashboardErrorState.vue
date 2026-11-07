@@ -71,6 +71,7 @@ const testid = computed(() => props.testid ?? 'load-error-state')
       icon="pi pi-refresh"
       severity="secondary"
       outlined
+      class="min-h-11 min-w-11"
       :data-testid="`${testid}-retry`"
       @click="emit('retry')"
     />

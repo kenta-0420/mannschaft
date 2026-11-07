@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260930-1534",
+  "scope": "app",
+  "implementation": {
+    "pr": 3812,
+    "sha": "1ce70f1f57f4e0d9c7fa3f74952ee31706fb330b"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "委員会メンバー一覧の各メンバーに displayName が含まれる（BE レスポンスと FE 型の項目が一致）",
+      "tests": [
+        {
+          "name": "一覧の各メンバーに displayName が含まれる（FE の member.displayName.charAt の TypeError 防止）",
+          "evidence": "backend/src/test/java/com/mannschaft/app/committee/CommitteeAuthzScopeContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "委員会詳細でメンバーの表示名が描画され、アバター未設定でも落ちない",
+      "tests": [
+        {
+          "name": "CDT-004: メンバーの表示名が描画され、アバター未設定でも頭文字フォールバックで落ちない",
+          "evidence": "frontend/tests/unit/pages/committees/committee-detail.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "非メンバーはメンバー一覧を取得できない（403）。氏名項目の追加で認可が緩まない",
+      "tests": [
+        {
+          "name": "非メンバーの一覧取得は403",
+          "evidence": "backend/src/test/java/com/mannschaft/app/committee/CommitteeAuthzScopeContractIT.java"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 38252199427
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/3812"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260930-1534.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260930-1534.md"
+    }
+  },
+  "regressions": []
+}

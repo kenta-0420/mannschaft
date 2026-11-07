@@ -27,7 +27,7 @@ describe('BackButton.vue', () => {
       expect(text.length).toBeGreaterThan(0)
       // 既知の翻訳値、または「正しいキー button.back」自体のいずれかであること。
       // 誤キー（例 common.button.back）へ回帰したらキーがそのまま漏れて不一致→検知される。
-      const acceptable = ['戻る', 'Back', '返回', '뒤로', 'Volver', 'Zuruck', 'button.back']
+      const acceptable = ['戻る', 'Back', '返回', '뒤로', 'Volver', 'Zurück', 'button.back']
       expect(acceptable.some((v) => text.includes(v))).toBe(true)
       expect(text, '誤キー common.button.back への回帰').not.toContain('common.button.back')
     },

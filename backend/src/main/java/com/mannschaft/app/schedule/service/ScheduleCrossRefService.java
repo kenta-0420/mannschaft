@@ -176,6 +176,8 @@ public class ScheduleCrossRefService {
 
         return ScheduleResponse.builder()
                 .id(duplicate.getId())
+                .allowProxyAttendance(duplicate.getAllowProxyAttendance())
+                .isProxyAutoAccept(duplicate.getIsProxyAutoAccept())
                 .content(new ScheduleResponse.ScheduleContentDto(
                         duplicate.getTitle(),
                         duplicate.getStatus().name(),

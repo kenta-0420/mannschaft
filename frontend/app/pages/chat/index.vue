@@ -212,6 +212,15 @@ onUnmounted(() => {
 
 <template>
   <div class="flex h-[calc(100vh-12rem)] flex-col overflow-hidden rounded-xl border-2 border-surface-400 dark:border-surface-500">
+    <header class="flex shrink-0 justify-end border-b border-surface-200 px-2 dark:border-surface-700">
+      <NuxtLink
+        to="/settings/contact-invite-tokens"
+        class="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 px-2 text-sm text-primary-600 hover:underline dark:text-primary-400"
+      >
+        <i class="pi pi-qrcode" aria-hidden="true" />
+        <span>{{ t('contact_invite.my_qr') }}</span>
+      </NuxtLink>
+    </header>
     <!-- タブバー（PC・スマホ共通） -->
     <ChatTabBar
       :tabs="tabs"

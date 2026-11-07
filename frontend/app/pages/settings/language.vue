@@ -8,9 +8,8 @@ definePageMeta({
 
 const { t, locale } = useI18n()
 const notification = useNotification()
-const { changeLocale } = useLocale()
+const { applyAccountLocale } = useLocale()
 const { getProfile, updateProfile } = useUserSettingsApi()
-const authStore = useAuthStore()
 
 const loading = ref(true)
 const saving = ref(false)
@@ -79,9 +78,14 @@ onMounted(async () => {
     form.value.countryCode = res.data.countryCode ?? null
   } catch {
     notification.error(t('settings.language.load_error'))
+    return
   } finally {
     loading.value = false
   }
+  // 表示言語欄（アカウント言語）と実際の表示言語・Cookie を一致させる。
+  // 別端末で言語を変えた場合など、起動時のキャッシュと食い違っていても
+  // ここでアカウントに保存された言語へ揃える（CMP-261007-1243）。
+  await applyAccountLocale(fullProfile.value.locale)
 })
 
 async function save() {
@@ -93,10 +97,8 @@ async function save() {
       timezone: form.value.timezone,
       countryCode: form.value.countryCode,
     })
-    await changeLocale(form.value.locale)
-    if (authStore.user) {
-      await authStore.setUser({ ...authStore.user, locale: form.value.locale })
-    }
+    // 保存した言語を正として、Cookie・authStore キャッシュ・表示言語を揃える。
+    await applyAccountLocale(form.value.locale)
     notification.success(t('settings.language.save_success'))
   } catch {
     notification.error(t('settings.language.save_error'))

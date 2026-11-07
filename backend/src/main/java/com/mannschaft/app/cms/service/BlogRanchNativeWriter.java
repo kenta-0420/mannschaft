@@ -1,0 +1,49 @@
+package com.mannschaft.app.cms.service;
+
+import com.mannschaft.app.cms.dto.BlogPostResponse;
+import com.mannschaft.app.cms.dto.PublishRequest;
+import com.mannschaft.app.cms.dto.SelfReviewRequest;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+/** Auth TX を一時停止し、元の認可・保存を持つ CMS proxy を独立した一つの TX で呼ぶ。 */
+@Service
+@RequiredArgsConstructor
+public class BlogRanchNativeWriter {
+    private final BlogPostService posts;
+    private final BlogRanchCmsTransactionBoundary cmsTransactions;
+    record Outcome(BlogPostResponse response,BlogRanchCapture capture) { }
+    Outcome changeStatus(Long id,Long actor,PublishRequest request) {
+        return changeStatus(id,actor,request,actor,true);
+    }
+    Outcome selfReview(Long id,Long actor,SelfReviewRequest request) {
+        return selfReview(id,actor,request,actor,true);
+    }
+    Outcome changeStatus(Long id,Long actor,PublishRequest request,Long author,boolean qualified) {
+        var context=new BlogRanchCaptureContext(author,qualified);
+        request.armRanchCapture(context);
+        try {
+            return cmsTransactions.outsideAuthTransaction(() ->
+                    new Outcome(posts.changeStatus(id,actor,request),context.take()));
+        }
+        finally { request.clearRanchCapture(); }
+    }
+    Outcome selfReview(Long id,Long actor,SelfReviewRequest request,Long author,boolean qualified) {
+        var context=new BlogRanchCaptureContext(author,qualified);
+        request.armRanchCapture(context);
+        try {
+            return cmsTransactions.outsideAuthTransaction(() ->
+                    new Outcome(posts.selfReview(id,actor,request),context.take()));
+        }
+        finally { request.clearRanchCapture(); }
+    }
+    record BulkOutcome(com.mannschaft.app.cms.dto.BulkActionResponse response,java.util.List<BlogRanchCapture> captures) { }
+    BulkOutcome bulk(com.mannschaft.app.cms.dto.BulkActionRequest request,Long actor,
+            java.util.Map<Long,com.mannschaft.app.auth.dto.DeliveryUserState> states) {
+        var context=new BlogRanchBulkCaptureContext(actor,states);request.armRanchCapture(context);
+        try {
+            return cmsTransactions.outsideAuthTransaction(() ->
+                    new BulkOutcome(posts.bulkAction(request,actor),context.take()));
+        }
+        finally { request.clearRanchCapture(); }
+    }}

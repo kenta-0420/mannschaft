@@ -29,6 +29,7 @@ export interface CommitteeMember {
   role: CommitteeRole
   joinedAt: string
   leftAt: string | null
+  invitedBy: number | null
 }
 
 export interface CommitteeInvitation {

@@ -30,6 +30,7 @@ const NOTICE_REASONS = JA.school.familyNotice.reason
 const REASON_KEYS = Object.keys(REASONS) as (keyof typeof REASONS)[]
 
 const userCred = { email: process.env.TEST_USER_EMAIL ?? '', password: process.env.TEST_USER_PASSWORD ?? '' }
+const studentCred = { email: 'e2e-dummy-2@test.mannschaft.local' } // 生徒 user 4（パスワードは userCred と共通のシード値）
 const adminCred = { email: process.env.TEST_ADMIN_EMAIL ?? '', password: process.env.TEST_ADMIN_PASSWORD ?? '' }
 
 async function newPage(browser: Browser, cred: { email: string; password: string }): Promise<Page> {
@@ -77,6 +78,20 @@ test.describe.serial('CMP-260930-1532 欠席理由 実機E2E', () => {
   test.beforeAll(async ({ browser }) => {
     // 前提データ: 画面に日次レコードを作る入口が無いため API で作る（対象操作ではない）。
     const admin = await newPage(browser, adminCred)
+    // 認可是正（CMP-260930-0230）以降、roll-call は「そのクラスの在籍メンバー」だけを受け付ける（SCHOOL_STUDENT_NOT_ENROLLED）。
+    // 生徒 user 4 が team 92 の MEMBER でなければ、招待トークン経由（実プロダクト経路）で参加させる。
+    const membersRes = await admin.request.get(`${API}/api/v1/teams/${TEAM_SLUG}/members/all`)
+    expect(membersRes.status(), await membersRes.text()).toBe(200)
+    const enrolled = ((await membersRes.json()).data as { userId: number }[]).some((m) => m.userId === STUDENT_ID)
+    if (!enrolled) {
+      const tokRes = await admin.request.post(`${API}/api/v1/teams/${TEAM_SLUG}/invite-tokens`, { data: { roleId: 4, expiresIn: '1d', maxUses: 1 } })
+      expect(tokRes.status(), await tokRes.text()).toBeLessThan(300)
+      const inviteToken = (await tokRes.json()).data.token as string
+      const student = await newPage(browser, { email: studentCred.email, password: userCred.password })
+      const joinRes = await student.request.post(`${API}/api/v1/invite/${inviteToken}/join`, { data: {} })
+      expect(joinRes.status(), await joinRes.text()).toBeLessThan(300)
+      await student.context().close()
+    }
     const res = await admin.request.post(`${API}/api/v1/teams/${TEAM_ID}/attendance/daily/roll-call`, {
       data: { attendanceDate: TODAY, entries: [{ studentUserId: STUDENT_ID, status: 'UNDECIDED' }] },
     })
@@ -213,20 +228,27 @@ test.describe.serial('CMP-260930-1532 欠席理由 実機E2E', () => {
     await parent.context().close()
   })
 
-  test('AC6 ロール横断: 一般メンバー／他チーム（画面と文言を記録）', async ({ browser }, testInfo) => {
-    // 一般メンバー(MEMBER) — 日次点呼画面を URL 直打ち
+  test('AC6 ロール横断: 一般メンバー／他チーム（画面は権限なし表示・BE の登録は 403）', async ({ browser }, testInfo) => {
+    // 一般メンバー(MEMBER) — 日次点呼画面を URL 直打ち。CMP-261001-0630/0230 以降は「権限がありません」で行も提出ボタンも出ない。
     const member = await newPage(browser, userCred)
+    const rollCallListCalls: string[] = []
+    member.on('request', (r) => {
+      if (r.method() === 'GET' && r.url().includes(`/teams/${TEAM_SLUG}/attendance/daily?`)) rollCallListCalls.push(r.url())
+    })
     await member.goto(`/teams/${TEAM_SLUG}/school-attendance/daily-roll-call`, { waitUntil: 'domcontentloaded' })
     await waitForHydration(member)
-    await member.waitForTimeout(3000)
+    await expect(member.getByTestId('school-attendance-forbidden')).toBeVisible({ timeout: 30_000 })
+    await expect(member.getByTestId('school-attendance-forbidden')).toContainText(JA.school.attendance.forbidden.title)
     testInfo.annotations.push({ type: 'member-daily-page', description: await bodyText(member) })
-    const memberRow = member.getByTestId(`roll-call-row-${STUDENT_ID}`)
-    if (await memberRow.isVisible()) {
-      const resP = member.waitForResponse(isRollCall, { timeout: 20_000 })
-      await member.getByTestId('daily-roll-call-submit').click()
-      const res = await resP
-      testInfo.annotations.push({ type: 'member-roll-call-post-status', description: String(res.status()) })
-    }
+    await expect(member.getByTestId(`roll-call-row-${STUDENT_ID}`)).toHaveCount(0)
+    await expect(member.getByTestId('daily-roll-call-submit')).toHaveCount(0)
+    expect(rollCallListCalls, '権限なしの間は一覧 API を呼ばない').toEqual([])
+    // 画面が入口を出さない操作を BE が拒否すること: MEMBER の roll-call POST は 403（かつ何も保存されない）
+    const memberPost = await member.request.post(`${API}/api/v1/teams/${TEAM_ID}/attendance/daily/roll-call`, {
+      data: { attendanceDate: TODAY, entries: [{ studentUserId: STUDENT_ID, status: 'ATTENDING', comment: 'member-denied' }] },
+    })
+    testInfo.annotations.push({ type: 'member-roll-call-post-status', description: String(memberPost.status()) })
+    expect(memberPost.status(), await memberPost.text()).toBe(403)
     // 一般メンバーは先生用の受信一覧を開けない（BE 403）
     await member.goto(`/teams/${TEAM_SLUG}/school-attendance/notices`, { waitUntil: 'domcontentloaded' })
     await waitForHydration(member)
@@ -235,17 +257,18 @@ test.describe.serial('CMP-260930-1532 欠席理由 実機E2E', () => {
     testInfo.annotations.push({ type: 'member-notices-page', description: await bodyText(member) })
     await expectNoRawKeys(member)
 
-    // 他チーム: e2e-user は team 898 の非所属 — 点呼が見えず登録もできない
-    let listStatus = 0
-    member.on('response', (r) => {
-      if (r.url().includes(`/teams/${OTHER_TEAM_SLUG}/attendance/daily?`)) listStatus = r.status()
-    })
+    // 他チーム: e2e-user は team 898 の非所属 — 権限なし表示で、一覧も登録もできない（BE も 403）
+    const permP = member.waitForResponse((r) => r.url().includes(`/teams/${OTHER_TEAM_SLUG}/attendance/permissions`), { timeout: 60_000 })
     await member.goto(`/teams/${OTHER_TEAM_SLUG}/school-attendance/daily-roll-call`, { waitUntil: 'domcontentloaded' })
     await waitForHydration(member)
-    await member.waitForTimeout(3000)
-    expect(listStatus).toBe(403)
+    const perm = await permP
+    expect(perm.status()).toBe(200)
+    expect((await perm.json()).data).toMatchObject({ canView: false, canRecordDaily: false, canRecordPeriod: false })
+    await expect(member.getByTestId('school-attendance-forbidden')).toBeVisible()
     await expect(member.locator('[data-testid^="roll-call-row-"]')).toHaveCount(0)
-    await expect(member.getByTestId('daily-roll-call-submit')).toBeDisabled()
+    await expect(member.getByTestId('daily-roll-call-submit')).toHaveCount(0)
+    const otherList = await member.request.get(`${API}/api/v1/teams/${OTHER_TEAM_SLUG}/attendance/daily?date=${TODAY}`)
+    expect(otherList.status()).toBe(403)
     testInfo.annotations.push({ type: 'other-team-page', description: await bodyText(member) })
     await member.context().close()
   })

@@ -10,29 +10,24 @@ import com.mannschaft.app.errorreport.dto.ErrorReportBulkUpdateRequest;
 import com.mannschaft.app.errorreport.dto.ErrorReportRequest;
 import com.mannschaft.app.errorreport.dto.ErrorReportUpdateRequest;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
-import com.mannschaft.app.errorreport.event.ErrorReportRaisedEvent;
-import com.mannschaft.app.errorreport.event.ErrorReportRegressionDetectedEvent;
 import com.mannschaft.app.errorreport.event.ErrorReportResolvedEvent;
-import com.mannschaft.app.errorreport.event.ErrorReportSeverityEscalatedEvent;
 import com.mannschaft.app.errorreport.repository.ErrorReportRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * エラーレポートの作成・重複集約・ステータス更新を担当するコアサービス。
@@ -40,19 +35,17 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@Transactional
+@Transactional(propagation = Propagation.NOT_SUPPORTED)
 public class ErrorReportService {
 
     private final ErrorReportRepository errorReportRepository;
+    private final ErrorReportIngestService ingestService;
+    private final ErrorReportManagementService managementService;
     /**
      * Issue #2990 L11 — 通知は業務TX内で発火せず、ID だけを載せた業務イベントを publish する。
      * 実配送は {@link ErrorReportNotificationListener} が {@code AFTER_COMMIT} で行う。
      */
     private final ApplicationEventPublisher eventPublisher;
-    private final StringRedisTemplate redisTemplate;
-    /** F12.5 Phase 2-C — CRITICAL/HIGH 新規 / REOPEN 時に AI 即時分析をキックする。 */
-    /** Issue #2990 L4: AI 即時分析の起動は Dispatcher 経由（プロキシ境界を跨がせるため）。 */
-    private final ErrorReportAiAnalysisDispatcher aiAnalysisDispatcher;
     /**
      * F10.5/F10.6 Phase 10-β 後続-⑥ — @Async プロキシバイパス回避のため、
      * バックエンド例外の非同期記録処理は別 Bean に切り出している。
@@ -79,69 +72,6 @@ public class ErrorReportService {
             stackTrace = stackTrace.substring(0, 2000);
         }
 
-        Optional<ErrorReportEntity> existing = errorReportRepository.findByErrorHash(errorHash);
-
-        if (existing.isPresent()) {
-            ErrorReportEntity report = existing.get();
-
-            if (report.getStatus() == ErrorReportStatus.RESOLVED) {
-                // リグレッション: REOPENED に変更
-                report.reopen(request.getOccurredAt());
-                // F12.5 Phase 2 — リグレッション時に workflow_stage / assignee_id をリセット
-                report.setWorkflowStage(null);
-                report.setAssigneeId(null);
-                // F10.6 Phase 10-δ — REOPENED 時に SLA 期限を再設定し、通知済みフラグをリセット
-                report.setSlaDueAt(SlaPolicy.calcDueAt(report.getSeverity(), LocalDateTime.now()));
-                redisTemplate.delete("error-report:sla-overdue-notified:" + report.getId());
-                int affectedCount = trackAffectedUser(errorHash, request.getUserId());
-                if (affectedCount > 0) {
-                    report.setAffectedUserCount(affectedCount);
-                }
-                if (request.getUserComment() != null) {
-                    report.setLatestUserComment(request.getUserComment());
-                }
-                eventPublisher.publishEvent(new ErrorReportRegressionDetectedEvent(report.getId()));
-                // F12.5 Phase 2-C — REOPEN かつ severity HIGH 以上なら AI 即時分析をキック
-                if (report.getSeverity().ordinal() >= ErrorReportSeverity.HIGH.ordinal()) {
-                    aiAnalysisDispatcher.analyzeAfterCommit(report.getId(), null);
-                }
-                log.info("エラーレポートリグレッション検知: id={}, hash={}", report.getId(), errorHash);
-                return report;
-            }
-
-            if (report.getStatus() != ErrorReportStatus.IGNORED) {
-                // 通常の重複集約
-                ErrorReportSeverity oldSeverity = report.getSeverity();
-                errorReportRepository.incrementOccurrence(errorHash, request.getOccurredAt(), request.getUserComment());
-
-                // clearAutomatically = true により永続化コンテキストは自動クリア済み
-                ErrorReportEntity updated = errorReportRepository.findByErrorHash(errorHash).orElseThrow();
-                ErrorReportSeverity newSeverity = updated.getSeverity();
-
-                // 影響ユーザー数追跡
-                int affectedCount = trackAffectedUser(errorHash, request.getUserId());
-                if (affectedCount > 0) {
-                    updated.setAffectedUserCount(affectedCount);
-                }
-
-                // affected_user_count による severity 補正
-                newSeverity = adjustSeverity(updated, affectedCount);
-                if (newSeverity != updated.getSeverity()) {
-                    updated.setSeverity(newSeverity);
-                }
-
-                // severity 昇格通知
-                if (newSeverity.ordinal() > oldSeverity.ordinal()) {
-                    eventPublisher.publishEvent(new ErrorReportSeverityEscalatedEvent(
-                            updated.getId(), oldSeverity, newSeverity));
-                }
-
-                log.info("エラーレポート重複集約: id={}, hash={}, count={}", updated.getId(), errorHash, updated.getOccurrenceCount());
-                return updated;
-            }
-        }
-
-        // IGNORED または該当なし → 新規作成
         ErrorReportSeverity severity = determineSeverity(request.getPageUrl(), request.getErrorMessage());
         Long organizationId = resolveOrganizationId(request.getUserId());
         LocalDateTime now = LocalDateTime.now();
@@ -167,21 +97,7 @@ public class ErrorReportService {
                 .lastOccurredAt(request.getOccurredAt())
                 .latestUserComment(request.getUserComment())
                 .build();
-
-        ErrorReportEntity saved = errorReportRepository.save(newReport);
-
-        // 影響ユーザー追跡
-        trackAffectedUser(errorHash, request.getUserId());
-
-        // 新規作成時の通知
-        if (severity.ordinal() >= ErrorReportSeverity.HIGH.ordinal()) {
-            eventPublisher.publishEvent(new ErrorReportRaisedEvent(saved.getId(), true));
-            // F12.5 Phase 2-C — 新規 HIGH/CRITICAL は AI 即時分析をキック
-            aiAnalysisDispatcher.analyzeAfterCommit(saved.getId(), null);
-        }
-
-        log.info("エラーレポート新規作成: id={}, hash={}, severity={}", saved.getId(), errorHash, severity);
-        return saved;
+        return ingestService.ingest(newReport, ErrorReportIngestTx.Source.FE);
     }
 
     /**
@@ -274,21 +190,11 @@ public class ErrorReportService {
      * @param component Health component 名（"db" / "redis" 等）
      * @return 作成または更新された error_report_id
      */
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public Long findOrCreateHealthDownReport(String component) {
         String errorHash = sha256("HealthDown:" + component);
         LocalDateTime now = LocalDateTime.now();
 
-        Optional<ErrorReportEntity> existing = errorReportRepository.findByErrorHash(errorHash);
-        if (existing.isPresent()) {
-            ErrorReportEntity report = existing.get();
-            // 既存レコードを occurrence_count インクリメントして更新
-            errorReportRepository.incrementOccurrence(errorHash, now, null);
-            log.info("Health DOWN 集約: component={}, reportId={}", component, report.getId());
-            return report.getId();
-        }
-
-        // 新規作成
         ErrorReportEntity newReport = ErrorReportEntity.builder()
                 .errorMessage("Health DOWN: " + component)
                 .pageUrl("health:" + component)
@@ -302,9 +208,7 @@ public class ErrorReportService {
                 .firstOccurredAt(now)
                 .lastOccurredAt(now)
                 .build();
-        ErrorReportEntity saved = errorReportRepository.save(newReport);
-        log.info("Health DOWN 新規記録: component={}, reportId={}", component, saved.getId());
-        return saved.getId();
+        return ingestService.ingest(newReport, ErrorReportIngestTx.Source.HEALTH).getId();
     }
 
     /**
@@ -316,34 +220,34 @@ public class ErrorReportService {
      * @return 更新されたエラーレポートエンティティ
      */
     public ErrorReportEntity updateStatus(Long id, ErrorReportUpdateRequest request, Long adminId) {
-        ErrorReportEntity report = errorReportRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorReportErrorCode.ERROR_REPORT_NOT_FOUND));
+        return managementService.update(id, report -> {
+            ErrorReportStatus newStatus = request.getStatus() != null
+                    ? EnumInputParser.parse(ErrorReportStatus.class, request.getStatus(), "status") : null;
+            ErrorReportSeverity newSeverity = request.getSeverity() != null
+                    ? EnumInputParser.parse(ErrorReportSeverity.class, request.getSeverity(), "severity") : null;
 
-        ErrorReportStatus newStatus = request.getStatus() != null
-                ? EnumInputParser.parse(ErrorReportStatus.class, request.getStatus(), "status") : null;
-        ErrorReportSeverity newSeverity = request.getSeverity() != null
-                ? EnumInputParser.parse(ErrorReportSeverity.class, request.getSeverity(), "severity") : null;
-
-        if (newStatus != null) {
-            report.setStatus(newStatus);
-        }
-        if (newSeverity != null) {
-            report.setSeverity(newSeverity);
-        }
-        if (request.getAdminNote() != null) {
-            report.setAdminNote(request.getAdminNote());
-        }
-
-        if (newStatus == ErrorReportStatus.RESOLVED) {
-            report.resolve(adminId);
-            // 報告者通知（user_id 非NULL時）
-            if (report.getUserId() != null) {
-                eventPublisher.publishEvent(new ErrorReportResolvedEvent(report.getId()));
+            checkReactivation(report, newStatus);
+            if (newStatus != null) {
+                report.setStatus(newStatus);
             }
-        }
+            if (newSeverity != null) {
+                report.setSeverity(newSeverity);
+            }
+            if (request.getAdminNote() != null) {
+                report.setAdminNote(request.getAdminNote());
+            }
 
-        log.info("エラーレポートステータス更新: id={}, status={}, adminId={}", id, newStatus, adminId);
-        return report;
+            if (newStatus == ErrorReportStatus.RESOLVED) {
+                report.resolve(adminId);
+                // 報告者通知（user_id 非NULL時）
+                if (report.getUserId() != null) {
+                    eventPublisher.publishEvent(new ErrorReportResolvedEvent(report.getId()));
+                }
+            }
+
+            log.info("エラーレポートステータス更新: id={}, status={}, adminId={}", id, newStatus, adminId);
+            return report;
+        });
     }
 
     /**
@@ -362,16 +266,14 @@ public class ErrorReportService {
             throw new BusinessException(ErrorReportErrorCode.ERROR_REPORT_BULK_LIMIT_EXCEEDED);
         }
 
-        List<ErrorReportEntity> reports = errorReportRepository.findAllById(request.getIds());
-        for (ErrorReportEntity report : reports) {
-            report.setStatus(status);
-            if (status == ErrorReportStatus.RESOLVED) {
-                report.resolve(null);
+        return managementService.updateMany(request.getIds(), reports -> {
+            for (ErrorReportEntity report : reports) {
+                checkReactivation(report, status);
+                report.setStatus(status);
+                if (status == ErrorReportStatus.RESOLVED) report.resolve(null);
             }
-        }
-
-        log.info("エラーレポート一括更新: count={}, status={}", reports.size(), status);
-        return reports.size();
+            return reports.size();
+        });
     }
 
     /**
@@ -394,18 +296,6 @@ public class ErrorReportService {
     }
 
     /**
-     * 影響ユーザーを Valkey SET で追跡し、ユニークユーザー数を返す。
-     */
-    private int trackAffectedUser(String errorHash, Long userId) {
-        if (userId == null) return -1;
-        String key = "error-report:affected:" + errorHash;
-        redisTemplate.opsForSet().add(key, userId.toString());
-        redisTemplate.expire(key, Duration.ofDays(90));
-        Long size = redisTemplate.opsForSet().size(key);
-        return size != null ? size.intValue() : -1;
-    }
-
-    /**
      * 新規作成時の severity 自動判定。
      */
     private ErrorReportSeverity determineSeverity(String pageUrl, String errorMessage) {
@@ -418,25 +308,6 @@ public class ErrorReportService {
         return ErrorReportSeverity.MEDIUM;
     }
 
-    /**
-     * affected_user_count による severity 補正。
-     */
-    private ErrorReportSeverity adjustSeverity(ErrorReportEntity report, int affectedCount) {
-        ErrorReportSeverity severity = report.getSeverity();
-
-        // occurrence_count >= 50 かつ affected_user_count <= 1 → CRITICAL → HIGH に据え置き
-        if (report.getOccurrenceCount() >= 50 && affectedCount <= 1
-                && severity == ErrorReportSeverity.CRITICAL) {
-            return ErrorReportSeverity.HIGH;
-        }
-
-        // affected_user_count >= 20 かつ severity が MEDIUM → HIGH に昇格
-        if (affectedCount >= 20 && severity == ErrorReportSeverity.MEDIUM) {
-            return ErrorReportSeverity.HIGH;
-        }
-
-        return severity;
-    }
 
     /**
      * URL からパス部分を抽出する。
@@ -458,13 +329,15 @@ public class ErrorReportService {
      *
      * @param reportId エラーレポートID
      */
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void resolveHealthReport(Long reportId) {
-        errorReportRepository.findById(reportId).ifPresent(report -> {
-            if (report.getStatus() != ErrorReportStatus.RESOLVED) {
-                report.resolve(null);
-                log.info("ヘルス復旧によりエラーレポートを自動解決: id={}", reportId);
+        managementService.updateMany(List.of(reportId), reports -> {
+            for (ErrorReportEntity report : reports) {
+                if (report.getStatus() != ErrorReportStatus.RESOLVED && report.getStatus() != ErrorReportStatus.IGNORED) {
+                    report.resolve(null);
+                }
             }
+            return null;
         });
     }
 
@@ -511,4 +384,11 @@ public class ErrorReportService {
             throw new RuntimeException("SHA-256 not available", e);
         }
     }
+    private void checkReactivation(ErrorReportEntity report, ErrorReportStatus status) {
+        if (report.getStatus() == ErrorReportStatus.IGNORED && status != null && status != ErrorReportStatus.IGNORED
+                && errorReportRepository.findFirstActiveForUpdate(report.getErrorHash()).isPresent()) {
+            throw new BusinessException(ErrorReportErrorCode.ERROR_REPORT_013);
+        }
+    }
+
 }
