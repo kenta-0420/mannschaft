@@ -9,6 +9,7 @@ import {
 } from '~/composables/chat/chatMessageMapper'
 import { useChatMembershipInvite } from '~/composables/chat/useChatMembershipInvite'
 import { useChatReadSync } from '~/composables/chat/useChatReadSync'
+import { isMembershipGatedChannelType } from '~/utils/chatChannelType'
 import type { ActiveThreadItem } from './message-panel/ChatActiveThreadsDrawer.vue'
 
 const props = defineProps<{
@@ -157,11 +158,13 @@ async function loadMessages(cursor?: string) {
 
 /**
  * 表示中チャンネルを既読にする（CMP-261105-1507）。完了を待ち、成功したら一覧・タブの未読バッジを消す。
- * 既読の対象はチャンネルメンバー（viewer を持つ）だけ。村ロビー等のメンバー行を持たないチャンネルは対象外。
+ * 既読の対象はメンバー行を持つ種別（DM・グループ DM・チーム/組織チャンネル）だけ。本文を読めた時点で利用者は
+ * メンバーである。村ロビー・イベント・大会チャットはメンバー行を持たないので対象外。
+ * viewer の有無では判定しない（作成・招待の応答は viewer を持たないため、正規のメンバーでも既読にならなかった）。
  * 失敗は握りつぶさずに通知する。
  */
 async function markCurrentChannelRead() {
-  if (!props.channel.viewer) return
+  if (!isMembershipGatedChannelType(props.channel.identity?.channelType)) return
   try {
     await markChannelRead(props.channel.id)
   } catch {
