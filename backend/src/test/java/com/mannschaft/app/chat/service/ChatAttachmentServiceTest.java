@@ -391,7 +391,7 @@ class ChatAttachmentServiceTest {
 
             // アイコン変更経路の API 契約に合わせ、拒否コードは CHANNEL_ICON_PERMISSION_DENIED を渡す
             verify(channelAccessGuard).requireChannelManagerRole(
-                    ch.getId(), SENDER_ID, ChatErrorCode.CHANNEL_ICON_PERMISSION_DENIED);
+                    ch, SENDER_ID, ChatErrorCode.CHANNEL_ICON_PERMISSION_DENIED);
         }
 
         @Test
@@ -400,7 +400,7 @@ class ChatAttachmentServiceTest {
             ChatChannelEntity ch = teamChannel(ChannelType.TEAM_PUBLIC);
             willThrow(new BusinessException(ChatErrorCode.CHANNEL_ICON_PERMISSION_DENIED))
                     .given(channelAccessGuard).requireChannelManagerRole(
-                            CHANNEL_ID, SENDER_ID, ChatErrorCode.CHANNEL_ICON_PERMISSION_DENIED);
+                            ch, SENDER_ID, ChatErrorCode.CHANNEL_ICON_PERMISSION_DENIED);
 
             assertThatThrownBy(() -> service.presignChannelIconUpload(
                     ch, SENDER_ID, "image/jpeg", 1024L, "x.jpg"))

@@ -28,7 +28,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -85,10 +84,10 @@ class ChatChannelAccessGuardTest {
     }
 
     // ========================================
-    // requireChannelMembership
+    // requireChannelMembership（存在秘匿つき・CMP-261105-1507）
     // ========================================
     @Nested
-    @DisplayName("requireChannelMembership — メンバーシップ管理種別のみメンバー行を要求する")
+    @DisplayName("requireChannelMembership — メンバーシップ管理種別のみメンバー行を要求し、拒否は存在秘匿つき")
     class RequireChannelMembership {
 
         @Test
@@ -101,32 +100,54 @@ class ChatChannelAccessGuardTest {
         }
 
         @Test
-        @DisplayName("異常系: 非メンバーは CHANNEL_ACCESS_DENIED（TEAM_PUBLIC も対象）")
-        void 非メンバーは拒否される() {
+        @DisplayName("異常系: 公開チャンネルの同スコープ所属者（存在は既知）は CHANNEL_ACCESS_DENIED")
+        void 公開チャンネルの同スコープ所属者は403() {
             ChatChannelEntity ch = channel(ChannelType.TEAM_PUBLIC, TEAM_ID, null);
             given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(false);
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
 
             assertDenied(() -> guard.requireChannelMembership(ch, USER_ID),
                     ChatErrorCode.CHANNEL_ACCESS_DENIED);
         }
 
         @Test
-        @DisplayName("異常系: DM の第三者は CHANNEL_ACCESS_DENIED（会話関係グラフの列挙を閉塞する）")
-        void DMの第三者は拒否される() {
+        @DisplayName("異常系: 他スコープの利用者は不在と同一の CHANNEL_NOT_FOUND")
+        void 他スコープの利用者は不在と同一() {
+            ChatChannelEntity ch = channel(ChannelType.TEAM_PUBLIC, TEAM_ID, null);
+            given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(false);
+
+            assertDenied(() -> guard.requireChannelMembership(ch, USER_ID),
+                    ChatErrorCode.CHANNEL_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("異常系: 非公開チャンネルは同チームの一般所属者にも秘匿（CHANNEL_NOT_FOUND）")
+        void 非公開チャンネルは同チームの一般所属者にも秘匿() {
+            ChatChannelEntity ch = channel(ChannelType.TEAM_PRIVATE, TEAM_ID, null);
+            given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(false);
+
+            assertDenied(() -> guard.requireChannelMembership(ch, USER_ID),
+                    ChatErrorCode.CHANNEL_NOT_FOUND);
+            verify(accessControlService, never()).isMember(USER_ID, TEAM_ID, "TEAM");
+        }
+
+        @Test
+        @DisplayName("異常系: DM の第三者は不在と同一の CHANNEL_NOT_FOUND（会話関係グラフの列挙を閉塞する）")
+        void DMの第三者は不在と同一() {
             ChatChannelEntity dm = channel(ChannelType.DM, null, null);
             given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, OTHER_USER_ID)).willReturn(false);
 
             assertDenied(() -> guard.requireChannelMembership(dm, OTHER_USER_ID),
-                    ChatErrorCode.CHANNEL_ACCESS_DENIED);
+                    ChatErrorCode.CHANNEL_NOT_FOUND);
         }
 
         @Test
-        @DisplayName("異常系: userId が null なら CHANNEL_ACCESS_DENIED（メンバー照会せず fail-closed）")
+        @DisplayName("異常系: userId が null なら CHANNEL_NOT_FOUND（メンバー照会せず fail-closed）")
         void userIdがnullなら拒否される() {
             ChatChannelEntity ch = channel(ChannelType.GROUP_DM, null, null);
 
             assertDenied(() -> guard.requireChannelMembership(ch, null),
-                    ChatErrorCode.CHANNEL_ACCESS_DENIED);
+                    ChatErrorCode.CHANNEL_NOT_FOUND);
             verifyNoInteractions(memberRepository);
         }
 
@@ -151,35 +172,52 @@ class ChatChannelAccessGuardTest {
     }
 
     // ========================================
-    // requireChannelMember
+    // requireMembershipRowOrConceal / isAwareOfChannel
     // ========================================
     @Nested
-    @DisplayName("requireChannelMember — 種別を問わずメンバー行を要求する")
-    class RequireChannelMember {
+    @DisplayName("requireMembershipRowOrConceal — 種別を問わずメンバー行を要求し、不在コードは引数で決まる")
+    class RequireMembershipRowOrConceal {
 
         @Test
         @DisplayName("正常系: メンバー行があれば通過する")
         void メンバーなら通過する() {
+            ChatChannelEntity dm = channel(ChannelType.DM, null, null);
             given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(true);
 
-            assertThatCode(() -> guard.requireChannelMember(CHANNEL_ID, USER_ID)).doesNotThrowAnyException();
+            assertThatCode(() -> guard.requireMembershipRowOrConceal(dm, USER_ID, ChatErrorCode.CHANNEL_NOT_FOUND))
+                    .doesNotThrowAnyException();
         }
 
         @Test
-        @DisplayName("異常系: メンバー行が無ければ CHANNEL_ACCESS_DENIED")
-        void 非メンバーは拒否される() {
+        @DisplayName("異常系: メッセージ ID 指定系では不在コードに MESSAGE_NOT_FOUND を使う")
+        void 子リソースの不在コードを使う() {
+            ChatChannelEntity dm = channel(ChannelType.DM, null, null);
             given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(false);
 
-            assertDenied(() -> guard.requireChannelMember(CHANNEL_ID, USER_ID),
+            assertDenied(() -> guard.requireMembershipRowOrConceal(dm, USER_ID, ChatErrorCode.MESSAGE_NOT_FOUND),
+                    ChatErrorCode.MESSAGE_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("境界: SYSTEM_ADMIN は存在を知り得るため 403（CHANNEL_ACCESS_DENIED）")
+        void SYSTEM_ADMINは存在を知り得る() {
+            ChatChannelEntity dm = channel(ChannelType.DM, null, null);
+            given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(false);
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(true);
+
+            assertDenied(() -> guard.requireMembershipRowOrConceal(dm, USER_ID, ChatErrorCode.CHANNEL_NOT_FOUND),
                     ChatErrorCode.CHANNEL_ACCESS_DENIED);
         }
 
         @Test
-        @DisplayName("異常系: userId が null なら CHANNEL_ACCESS_DENIED")
-        void userIdがnullなら拒否される() {
-            assertDenied(() -> guard.requireChannelMember(CHANNEL_ID, null),
+        @DisplayName("境界: スコープ ADMIN は非公開チャンネルの存在も知り得るため 403")
+        void スコープADMINは非公開チャンネルも知り得る() {
+            ChatChannelEntity ch = channel(ChannelType.TEAM_PRIVATE, TEAM_ID, null);
+            given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(false);
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+
+            assertDenied(() -> guard.requireMembershipRowOrConceal(ch, USER_ID, ChatErrorCode.CHANNEL_NOT_FOUND),
                     ChatErrorCode.CHANNEL_ACCESS_DENIED);
-            verifyNoInteractions(memberRepository);
         }
     }
 
@@ -198,7 +236,7 @@ class ChatChannelAccessGuardTest {
                     .willReturn(Optional.of(operator));
 
             ChatChannelMemberEntity result = guard.requireChannelManagerRole(
-                    CHANNEL_ID, USER_ID, ChatErrorCode.CHANNEL_ACCESS_DENIED);
+                    channel(ChannelType.TEAM_PUBLIC, TEAM_ID, null), USER_ID, ChatErrorCode.CHANNEL_ACCESS_DENIED);
 
             assertThat(result).isSameAs(operator);
         }
@@ -210,7 +248,7 @@ class ChatChannelAccessGuardTest {
                     .willReturn(Optional.of(member(ChannelMemberRole.ADMIN)));
 
             assertThatCode(() -> guard.requireChannelManagerRole(
-                    CHANNEL_ID, USER_ID, ChatErrorCode.CHANNEL_ACCESS_DENIED))
+                    channel(ChannelType.TEAM_PUBLIC, TEAM_ID, null), USER_ID, ChatErrorCode.CHANNEL_ACCESS_DENIED))
                     .doesNotThrowAnyException();
         }
 
@@ -221,19 +259,20 @@ class ChatChannelAccessGuardTest {
                     .willReturn(Optional.of(member(ChannelMemberRole.MEMBER)));
 
             assertDenied(() -> guard.requireChannelManagerRole(
-                            CHANNEL_ID, USER_ID, ChatErrorCode.CHANNEL_ACCESS_DENIED),
+                            channel(ChannelType.TEAM_PUBLIC, TEAM_ID, null), USER_ID,
+                            ChatErrorCode.CHANNEL_ACCESS_DENIED),
                     ChatErrorCode.CHANNEL_ACCESS_DENIED);
         }
 
         @Test
-        @DisplayName("異常系: 非メンバーは拒否される")
-        void 非メンバーは拒否される() {
+        @DisplayName("異常系: 存在を知り得ない非メンバーは不在と同一の CHANNEL_NOT_FOUND")
+        void 非メンバーは不在と同一() {
             given(memberRepository.findByChannelIdAndUserId(CHANNEL_ID, USER_ID))
                     .willReturn(Optional.empty());
 
             assertDenied(() -> guard.requireChannelManagerRole(
-                            CHANNEL_ID, USER_ID, ChatErrorCode.CHANNEL_ACCESS_DENIED),
-                    ChatErrorCode.CHANNEL_ACCESS_DENIED);
+                            channel(ChannelType.DM, null, null), USER_ID, ChatErrorCode.CHANNEL_ACCESS_DENIED),
+                    ChatErrorCode.CHANNEL_NOT_FOUND);
         }
 
         @Test
@@ -243,7 +282,8 @@ class ChatChannelAccessGuardTest {
                     .willReturn(Optional.of(member(ChannelMemberRole.MEMBER)));
 
             assertDenied(() -> guard.requireChannelManagerRole(
-                            CHANNEL_ID, USER_ID, ChatErrorCode.CHANNEL_ICON_PERMISSION_DENIED),
+                            channel(ChannelType.TEAM_PUBLIC, TEAM_ID, null), USER_ID,
+                            ChatErrorCode.CHANNEL_ICON_PERMISSION_DENIED),
                     ChatErrorCode.CHANNEL_ICON_PERMISSION_DENIED);
         }
     }
@@ -263,39 +303,46 @@ class ChatChannelAccessGuardTest {
 
             assertThatCode(() -> guard.requireChannelAdminAccess(ch, USER_ID)).doesNotThrowAnyException();
 
-            verify(accessControlService, never()).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+            verify(accessControlService, never()).isAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
             verifyNoInteractions(memberRepository);
         }
 
         @Test
-        @DisplayName("正常系: チームチャンネルは当該チームの checkAdminOrAbove に委ねる")
-        void チームチャンネルはチームADMIN判定に委譲する() {
+        @DisplayName("正常系: チームチャンネルは当該チームの ADMIN 以上なら通過する")
+        void チームADMINは通過する() {
             ChatChannelEntity ch = channel(ChannelType.TEAM_PRIVATE, TEAM_ID, null);
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
 
-            guard.requireChannelAdminAccess(ch, USER_ID);
-
-            verify(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+            assertThatCode(() -> guard.requireChannelAdminAccess(ch, USER_ID)).doesNotThrowAnyException();
             verifyNoInteractions(memberRepository);
         }
 
         @Test
-        @DisplayName("異常系: チーム ADMIN でなければ checkAdminOrAbove の例外がそのまま伝播する")
-        void チーム非ADMINは拒否される() {
-            ChatChannelEntity ch = channel(ChannelType.TEAM_PRIVATE, TEAM_ID, null);
-            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+        @DisplayName("異常系: 公開チャンネルの同チーム一般所属者（存在は既知）は COMMON_002")
+        void 同チーム一般所属者はCOMMON_002() {
+            ChatChannelEntity ch = channel(ChannelType.TEAM_PUBLIC, TEAM_ID, null);
+            given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(false);
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
 
             assertDenied(() -> guard.requireChannelAdminAccess(ch, USER_ID), CommonErrorCode.COMMON_002);
         }
 
         @Test
-        @DisplayName("正常系: 組織チャンネル（teamId 無し）は組織スコープの checkAdminOrAbove に委ねる")
+        @DisplayName("異常系: 他チームの利用者は不在と同一の CHANNEL_NOT_FOUND")
+        void 他チームの利用者は不在と同一() {
+            ChatChannelEntity ch = channel(ChannelType.TEAM_PRIVATE, TEAM_ID, null);
+            given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(false);
+
+            assertDenied(() -> guard.requireChannelAdminAccess(ch, USER_ID), ChatErrorCode.CHANNEL_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("正常系: 組織チャンネル（teamId 無し）は組織スコープの ADMIN 判定に委ねる")
         void 組織チャンネルは組織ADMIN判定に委譲する() {
             ChatChannelEntity ch = channel(ChannelType.ORG_PRIVATE, null, ORG_ID);
+            given(accessControlService.isAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(true);
 
-            guard.requireChannelAdminAccess(ch, USER_ID);
-
-            verify(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+            assertThatCode(() -> guard.requireChannelAdminAccess(ch, USER_ID)).doesNotThrowAnyException();
         }
 
         @Test
@@ -331,14 +378,78 @@ class ChatChannelAccessGuardTest {
         }
 
         @Test
-        @DisplayName("異常系: DM の非メンバーは拒否される")
-        void DMの非メンバーは拒否される() {
+        @DisplayName("異常系: DM の非メンバーは不在と同一の CHANNEL_NOT_FOUND")
+        void DMの非メンバーは不在と同一() {
             ChatChannelEntity dm = channel(ChannelType.DM, null, null);
             given(memberRepository.findByChannelIdAndUserId(CHANNEL_ID, USER_ID))
                     .willReturn(Optional.empty());
 
             assertDenied(() -> guard.requireChannelAdminAccess(dm, USER_ID),
-                    ChatErrorCode.CHANNEL_ACCESS_DENIED);
+                    ChatErrorCode.CHANNEL_NOT_FOUND);
+        }
+    }
+
+    // ========================================
+    // requireMessageDeletable（F04.2 §5 メッセージ削除権限）
+    // ========================================
+    @Nested
+    @DisplayName("requireMessageDeletable — 投稿者本人 / チャンネル OWNER・ADMIN / スコープ ADMIN / SYSTEM_ADMIN")
+    class RequireMessageDeletable {
+
+        private ChatMessageEntity messageBy(Long senderId) {
+            return ChatMessageEntity.builder()
+                    .channelId(CHANNEL_ID).senderId(senderId).body("本文").build();
+        }
+
+        @Test
+        @DisplayName("正常系: 投稿者本人は通過し、モデレーション削除ではない（false）")
+        void 本人は通過する() {
+            assertThat(guard.requireMessageDeletable(
+                    channel(ChannelType.DM, null, null), messageBy(USER_ID), USER_ID)).isFalse();
+            verifyNoInteractions(memberRepository);
+        }
+
+        @Test
+        @DisplayName("正常系: チャンネル OWNER は他人の投稿を削除できる（true）")
+        void チャンネルOWNERは削除できる() {
+            given(memberRepository.findByChannelIdAndUserId(CHANNEL_ID, USER_ID))
+                    .willReturn(Optional.of(member(ChannelMemberRole.OWNER)));
+
+            assertThat(guard.requireMessageDeletable(
+                    channel(ChannelType.TEAM_PUBLIC, TEAM_ID, null), messageBy(OTHER_USER_ID), USER_ID)).isTrue();
+        }
+
+        @Test
+        @DisplayName("正常系: チーム ADMIN（または MANAGE_CHAT の DEPUTY_ADMIN）はチャンネル未参加でも削除できる")
+        void チームADMINは削除できる() {
+            given(memberRepository.findByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(Optional.empty());
+            given(accessControlService.hasAdminOrPermissionInScope(USER_ID, TEAM_ID, "TEAM", "MANAGE_CHAT"))
+                    .willReturn(true);
+
+            assertThat(guard.requireMessageDeletable(
+                    channel(ChannelType.TEAM_PUBLIC, TEAM_ID, null), messageBy(OTHER_USER_ID), USER_ID)).isTrue();
+        }
+
+        @Test
+        @DisplayName("異常系: チャンネルの一般 MEMBER は MESSAGE_DELETE_DENIED")
+        void 一般MEMBERは拒否される() {
+            given(memberRepository.findByChannelIdAndUserId(CHANNEL_ID, USER_ID))
+                    .willReturn(Optional.of(member(ChannelMemberRole.MEMBER)));
+            given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(true);
+
+            assertDenied(() -> guard.requireMessageDeletable(
+                            channel(ChannelType.TEAM_PUBLIC, TEAM_ID, null), messageBy(OTHER_USER_ID), USER_ID),
+                    ChatErrorCode.MESSAGE_DELETE_DENIED);
+        }
+
+        @Test
+        @DisplayName("異常系: 他人の DM の第三者は不在と同一の MESSAGE_NOT_FOUND")
+        void DMの第三者は不在と同一() {
+            given(memberRepository.findByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(Optional.empty());
+
+            assertDenied(() -> guard.requireMessageDeletable(
+                            channel(ChannelType.DM, null, null), messageBy(OTHER_USER_ID), USER_ID),
+                    ChatErrorCode.MESSAGE_NOT_FOUND);
         }
     }
 
@@ -555,29 +666,43 @@ class ChatChannelAccessGuardTest {
         @Test
         @DisplayName("正常系: 送信者本人は通過する")
         void 送信者本人は通過する() {
-            assertThatCode(() -> guard.requireMessageOwner(message(USER_ID), USER_ID))
+            assertThatCode(() -> guard.requireMessageOwner(dm(), message(USER_ID), USER_ID))
                     .doesNotThrowAnyException();
         }
 
         @Test
-        @DisplayName("異常系: 他人は MESSAGE_EDIT_DENIED")
+        @DisplayName("異常系: 存在を知り得るチャンネルメンバーの他人は MESSAGE_EDIT_DENIED")
         void 他人は拒否される() {
-            assertDenied(() -> guard.requireMessageOwner(message(USER_ID), OTHER_USER_ID),
+            given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, OTHER_USER_ID)).willReturn(true);
+            assertDenied(() -> guard.requireMessageOwner(dm(), message(USER_ID), OTHER_USER_ID),
                     ChatErrorCode.MESSAGE_EDIT_DENIED);
         }
 
         @Test
-        @DisplayName("異常系: userId が null なら MESSAGE_EDIT_DENIED")
+        @DisplayName("異常系: 存在を知り得ない第三者は不在と同一の MESSAGE_NOT_FOUND")
+        void 第三者は不在と同一() {
+            given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, OTHER_USER_ID)).willReturn(false);
+            assertDenied(() -> guard.requireMessageOwner(dm(), message(USER_ID), OTHER_USER_ID),
+                    ChatErrorCode.MESSAGE_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("異常系: userId が null なら MESSAGE_NOT_FOUND")
         void userIdがnullなら拒否される() {
-            assertDenied(() -> guard.requireMessageOwner(message(USER_ID), null),
-                    ChatErrorCode.MESSAGE_EDIT_DENIED);
+            assertDenied(() -> guard.requireMessageOwner(dm(), message(USER_ID), null),
+                    ChatErrorCode.MESSAGE_NOT_FOUND);
         }
 
         @Test
         @DisplayName("異常系: 送信者が null のメッセージは誰も編集できない")
         void 送信者nullのメッセージは拒否される() {
-            assertDenied(() -> guard.requireMessageOwner(message(null), USER_ID),
+            given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(true);
+            assertDenied(() -> guard.requireMessageOwner(dm(), message(null), USER_ID),
                     ChatErrorCode.MESSAGE_EDIT_DENIED);
+        }
+
+        private ChatChannelEntity dm() {
+            return channel(ChannelType.DM, null, null);
         }
     }
 }

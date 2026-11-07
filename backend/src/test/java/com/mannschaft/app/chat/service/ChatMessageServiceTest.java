@@ -137,6 +137,9 @@ class ChatMessageServiceTest {
         // createChannel() は id 未設定（null）のため anyLong() ではなく any() で受ける。
         lenient().when(memberRepository.existsByChannelIdAndUserId(any(), any())).thenReturn(true);
         lenient().when(channelService.findChannelOrThrow(any())).thenReturn(createChannel());
+        // CMP-261105-1507: メッセージ ID 指定系はメッセージの所属チャンネルを channelRepository から引く
+        //（不在なら MESSAGE_NOT_FOUND）。既定は通常チャンネルが存在するものとする。
+        lenient().when(channelRepository.findById(any())).thenReturn(Optional.of(createChannel()));
         // 裏目付A: VILLAGE_LOBBY / EVENT_CHAT も既定は「正当なメンバー」として通す
         //（非メンバー 403 の検証は実 DB を使う ChatChannelAccessScopeContractIT が担う）。
         lenient().when(postingIdentityService.isUserVillageMember(any(), any())).thenReturn(true);
@@ -349,7 +352,7 @@ class ChatMessageServiceTest {
             EditMessageRequest req = new EditMessageRequest("更新");
             given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(message));
             willThrow(new BusinessException(ChatErrorCode.MESSAGE_EDIT_DENIED))
-                    .given(channelAccessGuard).requireMessageOwner(message, OTHER_USER_ID);
+                    .given(channelAccessGuard).requireMessageOwner(any(), eq(message), eq(OTHER_USER_ID));
 
             // when & then
             assertThatThrownBy(() -> chatMessageService.editMessage(MESSAGE_ID, req, OTHER_USER_ID))
@@ -359,7 +362,7 @@ class ChatMessageServiceTest {
 
             // リクエスト値ではなくリポジトリから引いたメッセージが判定材料になる
             ArgumentCaptor<ChatMessageEntity> captor = ArgumentCaptor.forClass(ChatMessageEntity.class);
-            verify(channelAccessGuard).requireMessageOwner(captor.capture(), eq(OTHER_USER_ID));
+            verify(channelAccessGuard).requireMessageOwner(any(), captor.capture(), eq(OTHER_USER_ID));
             assertThat(captor.getValue()).isSameAs(message);
             assertThat(message.getBody()).isEqualTo("テストメッセージ");
             verify(messageRepository, never()).save(any(ChatMessageEntity.class));
@@ -389,19 +392,19 @@ class ChatMessageServiceTest {
         }
 
         @Test
-        @DisplayName("認可委譲: 送信者本人判定で拒否されればメッセージも添付集計も触らない")
-        void 送信者本人でなければ削除処理に入らない() {
+        @DisplayName("認可委譲: 削除権限判定（F04.2 §5）で拒否されればメッセージも添付集計も触らない")
+        void 削除権限が無ければ削除処理に入らない() {
             // given
             ChatMessageEntity message = createMessage();
             given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(message));
-            willThrow(new BusinessException(ChatErrorCode.MESSAGE_EDIT_DENIED))
-                    .given(channelAccessGuard).requireMessageOwner(message, OTHER_USER_ID);
+            willThrow(new BusinessException(ChatErrorCode.MESSAGE_DELETE_DENIED))
+                    .given(channelAccessGuard).requireMessageDeletable(any(), eq(message), eq(OTHER_USER_ID));
 
             // when & then
             assertThatThrownBy(() -> chatMessageService.deleteMessage(MESSAGE_ID, OTHER_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(ChatErrorCode.MESSAGE_EDIT_DENIED));
+                            .isEqualTo(ChatErrorCode.MESSAGE_DELETE_DENIED));
             verify(messageRepository, never()).save(any(ChatMessageEntity.class));
             verify(attachmentRepository, never()).findByMessageId(any());
         }
@@ -1035,7 +1038,7 @@ class ChatMessageServiceTest {
         @DisplayName("getThread: 非権限者（canView 例外）はスレッド本文を取得できない（漏洩防止）")
         void getThread非権限者は漏洩しない() {
             given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(tournamentMessage()));
-            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(tournamentChannel());
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(tournamentChannel()));
             doThrow(new com.mannschaft.app.common.BusinessException(
                     com.mannschaft.app.tournament.TournamentErrorCode.CONTACT_SPACE_VIEW_FORBIDDEN))
                     .when(tournamentContactAccessService)
@@ -1056,7 +1059,6 @@ class ChatMessageServiceTest {
 
             given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(original));
             given(channelService.findChannelOrThrow(TARGET_CHANNEL_ID)).willReturn(target);
-            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(createChannel()); // 転送元 canView no-op
             doThrow(new com.mannschaft.app.common.BusinessException(
                     com.mannschaft.app.tournament.TournamentErrorCode.CONTACT_SPACE_POST_FORBIDDEN))
                     .when(tournamentContactAccessService).checkPost(any(), any(), any());
@@ -1072,7 +1074,7 @@ class ChatMessageServiceTest {
         void pin大会はcanPost() {
             ChatMessageEntity message = tournamentMessage();
             given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(message));
-            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(tournamentChannel());
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(tournamentChannel()));
             doThrow(new com.mannschaft.app.common.BusinessException(
                     com.mannschaft.app.tournament.TournamentErrorCode.CONTACT_SPACE_POST_FORBIDDEN))
                     .when(tournamentContactAccessService).checkPost(any(), any(), any());

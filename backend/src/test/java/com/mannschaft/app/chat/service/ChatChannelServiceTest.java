@@ -1055,7 +1055,7 @@ class ChatChannelServiceTest {
             ChatChannelEntity kabine = createDmChannel();
             given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(kabine));
             willThrow(new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED))
-                    .given(channelAccessGuard).requireChannelMember(CHANNEL_ID, USER_ID);
+                    .given(channelAccessGuard).requireMembershipRowOrConceal(kabine, USER_ID, ChatErrorCode.CHANNEL_NOT_FOUND);
 
             // when & then
             assertThatThrownBy(() ->
@@ -1063,7 +1063,7 @@ class ChatChannelServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ChatErrorCode.CHANNEL_ACCESS_DENIED));
-            verify(channelAccessGuard).requireChannelMember(CHANNEL_ID, USER_ID);
+            verify(channelAccessGuard).requireMembershipRowOrConceal(kabine, USER_ID, ChatErrorCode.CHANNEL_NOT_FOUND);
             verify(channelRepository, never()).save(any(ChatChannelEntity.class));
         }
 
@@ -1112,13 +1112,16 @@ class ChatChannelServiceTest {
         }
 
         @Test
-        @DisplayName("非権限者（当該チームの ADMIN でない）_COMMON_002 で遮断")
+        @DisplayName("非権限者（当該チームの ADMIN でない）_存在を知り得る所属者は COMMON_002 で遮断")
         void 非権限者_COMMON_002() {
             ChatChannelEntity channel = createChannel();
             given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(channel));
             given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
-            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+            // 越境か権限不足かの作り分けはガード（ChatChannelAccessGuardTest で検証）。ここは委譲を検証する。
+            given(channelAccessGuard.concealOrForbid(channel, USER_ID,
+                    ChatErrorCode.CHANNEL_NOT_FOUND, CommonErrorCode.COMMON_002))
+                    .willReturn(new BusinessException(CommonErrorCode.COMMON_002));
 
             assertThatThrownBy(() ->
                     chatChannelService.updateInquiryChannel(CHANNEL_ID, buildInquiryRequest(true), USER_ID))
@@ -1135,14 +1138,14 @@ class ChatChannelServiceTest {
             ChatChannelEntity channel = createChannel();
             given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(channel));
             given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
-            // checkAdminOrAbove は void no-op（= 認可成功）
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(channelRepository.findByTeamIdAndIsInquiryChannelTrue(TEAM_ID)).willReturn(Optional.empty());
             given(channelRepository.save(any(ChatChannelEntity.class))).willReturn(channel);
             given(chatMapper.toChannelResponse(channel)).willReturn(ChannelResponse.builder().build());
 
             chatChannelService.updateInquiryChannel(CHANNEL_ID, buildInquiryRequest(true), USER_ID);
 
-            verify(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+            verify(accessControlService).isAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
             verify(channelRepository).save(channel);
         }
 
@@ -1158,7 +1161,7 @@ class ChatChannelServiceTest {
 
             chatChannelService.updateInquiryChannel(CHANNEL_ID, buildInquiryRequest(true), USER_ID);
 
-            verify(accessControlService, never()).checkAdminOrAbove(anyLong(), anyLong(), anyString());
+            verify(accessControlService, never()).isAdminOrAbove(anyLong(), anyLong(), anyString());
             verify(channelRepository).save(channel);
         }
     }

@@ -145,12 +145,16 @@ class ChatMemberServiceTest {
             ChatChannelEntity dm = ChatChannelEntity.builder()
                     .channelType(ChannelType.DM).name("dm").build();
             given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(dm);
+            // CMP-261105-1507: 存在を知り得ない第三者への拒否は不在と同一（判定はガードの concealOrForbid）
+            given(channelAccessGuard.concealOrForbid(dm, USER_ID,
+                    ChatErrorCode.CHANNEL_NOT_FOUND, ChatErrorCode.CHANNEL_ACCESS_DENIED))
+                    .willReturn(new BusinessException(ChatErrorCode.CHANNEL_NOT_FOUND));
 
             // when & then
             assertThatThrownBy(() -> chatMemberService.joinChannel(CHANNEL_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(ChatErrorCode.CHANNEL_ACCESS_DENIED));
+                            .isEqualTo(ChatErrorCode.CHANNEL_NOT_FOUND));
             verify(memberRepository, never()).save(any(ChatChannelMemberEntity.class));
         }
 
@@ -162,6 +166,9 @@ class ChatMemberServiceTest {
                     .channelType(ChannelType.TEAM_PRIVATE).teamId(JOIN_TEAM_ID)
                     .isPrivate(true).name("private").build();
             given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(privateChannel);
+            given(channelAccessGuard.concealOrForbid(privateChannel, USER_ID,
+                    ChatErrorCode.CHANNEL_NOT_FOUND, ChatErrorCode.CHANNEL_ACCESS_DENIED))
+                    .willReturn(new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED));
 
             // when & then
             assertThatThrownBy(() -> chatMemberService.joinChannel(CHANNEL_ID, USER_ID))
@@ -180,10 +187,15 @@ class ChatMemberServiceTest {
             given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
             given(membershipService.isActiveMemberForUpdate(USER_ID, ScopeType.TEAM, JOIN_TEAM_ID))
                     .willReturn(false);
+            given(channelAccessGuard.concealOrForbid(channel, USER_ID,
+                    ChatErrorCode.CHANNEL_NOT_FOUND, CommonErrorCode.COMMON_002))
+                    .willReturn(new BusinessException(ChatErrorCode.CHANNEL_NOT_FOUND));
 
             // when & then
             assertThatThrownBy(() -> chatMemberService.joinChannel(CHANNEL_ID, USER_ID))
-                    .isInstanceOf(BusinessException.class);
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(ChatErrorCode.CHANNEL_NOT_FOUND));
             verify(memberRepository, never()).save(any(ChatChannelMemberEntity.class));
         }
     }
@@ -224,8 +236,8 @@ class ChatMemberServiceTest {
             chatMemberService.removeMember(CHANNEL_ID, USER_ID, USER_ID);
 
             // then
-            verify(channelAccessGuard).requireChannelMember(CHANNEL_ID, USER_ID);
-            verify(channelAccessGuard, never()).requireChannelManagerRole(anyLong(), anyLong(), any());
+            verify(channelAccessGuard).requireMembershipRowOrConceal(any(), eq(USER_ID), eq(ChatErrorCode.CHANNEL_NOT_FOUND));
+            verify(channelAccessGuard, never()).requireChannelManagerRole(any(), anyLong(), any());
         }
 
         @Test
@@ -234,7 +246,7 @@ class ChatMemberServiceTest {
             // given
             willThrow(new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED))
                     .given(channelAccessGuard).requireChannelManagerRole(
-                            CHANNEL_ID, USER_ID, ChatErrorCode.CHANNEL_ACCESS_DENIED);
+                            any(), eq(USER_ID), eq(ChatErrorCode.CHANNEL_ACCESS_DENIED));
 
             // when & then
             assertThatThrownBy(() -> chatMemberService.removeMember(CHANNEL_ID, TARGET_USER_ID, USER_ID))
@@ -321,7 +333,7 @@ class ChatMemberServiceTest {
 
             // then: 検証対象は対象者(TARGET_USER_ID)ではなく操作者(USER_ID)である
             verify(channelAccessGuard).requireChannelManagerRole(
-                    CHANNEL_ID, USER_ID, ChatErrorCode.CHANNEL_ACCESS_DENIED);
+                    any(), eq(USER_ID), eq(ChatErrorCode.CHANNEL_ACCESS_DENIED));
         }
 
         @Test
@@ -331,7 +343,7 @@ class ChatMemberServiceTest {
             ChangeRoleRequest req = new ChangeRoleRequest("OWNER");
             willThrow(new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED))
                     .given(channelAccessGuard).requireChannelManagerRole(
-                            CHANNEL_ID, TARGET_USER_ID, ChatErrorCode.CHANNEL_ACCESS_DENIED);
+                            any(), eq(TARGET_USER_ID), eq(ChatErrorCode.CHANNEL_ACCESS_DENIED));
 
             // when & then
             assertThatThrownBy(() -> chatMemberService.changeRole(CHANNEL_ID, TARGET_USER_ID, req, TARGET_USER_ID))
@@ -517,7 +529,7 @@ class ChatMemberServiceTest {
             given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
             willThrow(new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED))
                     .given(channelAccessGuard).requireChannelManagerRole(
-                            CHANNEL_ID, USER_ID, ChatErrorCode.CHANNEL_ACCESS_DENIED);
+                            any(), eq(USER_ID), eq(ChatErrorCode.CHANNEL_ACCESS_DENIED));
 
             // when & then
             assertThatThrownBy(() -> chatMemberService.addMembers(CHANNEL_ID, USER_ID, req))
