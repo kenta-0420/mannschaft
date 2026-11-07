@@ -74,7 +74,8 @@ jobs:
         def source():
          assert not R.is_symlink()and R.is_dir()and R.stat().st_uid==os.getuid();(R/'payload').mkdir(mode=0o700)
          m=resources();save('entry-resources.json',m);print(json.dumps({'entryResourceBytes':m}),flush=True)
-         actual=git('rev-parse','HEAD').decode().strip();assert actual==os.environ['GITHUB_SHA'];parents=git('show','-s','--format=%P','HEAD').decode().split();assert parents==[S]
+         actual=git('rev-parse','HEAD').decode().strip();assert actual==os.environ['GITHUB_SHA'];parents=git('show','-s','--format=%P','HEAD').decode().split();assert parents==['15a037b77c1a2923182b114862988291a098fdfb']
+         if subprocess.run(['git','cat-file','-e',S+'^{tree}'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode!=0:subprocess.run(['git','fetch','--no-tags','--depth=1','origin',S],check=True,timeout=120)
          assert git('rev-parse',S+'^{tree}').decode().strip()=='df0204e2b0ba26b5d914f569598e0587e359bfd8'
          assert git('rev-parse','HEAD:backend').decode().strip()==git('rev-parse',S+':backend').decode().strip()=='bad705ddce629232f449524da4debcf0cbce2aad'
          assert git('diff','--name-status',S,'HEAD').decode().splitlines()==['A\t'+PINS['workflowPath']]
@@ -130,6 +131,8 @@ jobs:
            found=re.search(rb'^Gradle ([0-9.]+)\r?$',versionOutput,re.M);assert found and found.group(1)==b'8.14.4';row['gradleVersionReported']=found.group(1).decode();save('build-result.json',result)
          gradlew.chmod(oldMode);assert sha(gradlew)==gradlewSHA
          result['gradlewOriginalModeRestored']=True;result['accepted']=True;save('build-result.json',result)
+        def smtp_libraries(names):
+         return [n for n in names if n.startswith('BOOT-INF/lib/')and re.search(r'(angus-mail|jakarta[.-]mail|javax[.-]mail|smtp|spring-boot-starter-mail)',n,re.I)]
         def jar_checks(jar,pins):
          assert jar.is_file()and not jar.is_symlink()and stat.S_ISREG(jar.lstat().st_mode)and 0<jar.stat().st_size<=512*1024**2
          with zipfile.ZipFile(jar)as z:
@@ -148,7 +151,7 @@ jobs:
            with zipfile.ZipFile(io.BytesIO(b))as nested:
             i=nested.getinfo(p['classEntry']);assert i.file_size<=4*1024**2;c=nested.read(i);assert hashlib.sha256(c).hexdigest()==p['classSHA256']
            deps.append({'jarEntry':p['jarEntry'],'nestedJarSHA256':p['nestedJarSHA256'],'classEntry':p['classEntry'],'classSHA256':p['classSHA256']})
-          smtp=[n for n in names if n.startswith('BOOT-INF/lib/')and re.search(r'(angus|jakarta[.-]mail|javax[.-]mail|smtp)',n,re.I)];assert not smtp
+          smtp=smtp_libraries(names);save('jar-library-classification.json',{'smtpRelatedLibraries':smtp,'activationLibraries':[n for n in names if n.startswith('BOOT-INF/lib/')and re.search(r'activation',n,re.I)],'newJarClassificationObserved':True});assert not smtp
          return {'classes':classes,'dependencyClasses':deps,'smtpRelatedLibraries':smtp,'removedEventAbsent':True,'privateLocalConfigAbsent':True,'duplicateEntries':False,'jarPathTraversalOrSymlink':False}
         def package():
          source=json.loads((R/'source.json').read_text());build=json.loads((R/'build-result.json').read_text());assert build['accepted']and all(x['actualExit']==0 and x['stdoutEOF']and x['stderrEOF']and x['reaped']for x in build['commands']);assert git('status','--porcelain=v1','-z','--untracked-files=all')==b'';assert pinfiles()==source['inputFiles']
@@ -200,7 +203,7 @@ jobs:
         import pathlib,os,json,stat
         r=pathlib.Path(os.environ['BE_ROOT']);assert not r.is_symlink();out=r.with_name(r.name+'-diagnostic');out.mkdir(mode=0o700)
         result={'diagnosticOnly':True,'successEvidence':False,'jobStatus':os.environ['BE_JOB_STATUS'],'stepOutcomes':{k:os.environ.get('BE_'+k,'unknown')for k in ['RESOURCE','SOURCE','BUILD','PACKAGE','UPLOAD']},'records':{}};used=0
-        for name in ['precheckout-resources.json','entry-resources.json','prebuild-resources.json','source.json','build-result.json','own-term-once.json']:
+        for name in ['precheckout-resources.json','entry-resources.json','prebuild-resources.json','source.json','build-result.json','own-term-once.json','jar-library-classification.json']:
          p=r/name
          if not p.exists():result['records'][name]={'state':'unknown','value':None};continue
          assert not r.is_symlink()and not p.is_symlink()and stat.S_ISREG(p.lstat().st_mode)and p.stat().st_size<=256*1024
