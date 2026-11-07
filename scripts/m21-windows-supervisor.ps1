@@ -33,11 +33,14 @@ $secondary=New-Object 'Collections.Generic.List[object]'
 $attempts=New-Object 'Collections.Generic.List[string]'
 $streams=New-Object 'Collections.Generic.List[object]'
 $held=New-Object 'Collections.Generic.List[object]'
+$pendingCaptureExits=New-Object 'Collections.Generic.List[object]'
+$lateExitProofs=New-Object 'Collections.Generic.List[object]'
 $startupRecovery=New-Object 'Collections.Generic.List[object]'
 $certified=New-Object 'Collections.Generic.List[object]'
 $recovered=$true
 $jobEmpty=$null
 $job=$null
+$jobCreated=$false
 $operation='bootstrap'
 $ioOperation=$null
 $metadataFile=$null
@@ -163,6 +166,7 @@ public sealed class M21Child : IDisposable {
  }
  public Process Process;public Task OutTask,ErrTask;FileStream output,error;
  public bool Started,StartupExited,StartupStdoutEof,StartupStderrEof,Captured,StdoutPublished,StderrPublished;
+ public bool StdoutPublicationAttempted,StderrPublicationAttempted;
  bool bridgeInput,bridgeInputClosed,bridgeInputBroken;
  public int? BridgeInputCodePage,BridgeInputPreambleLength;
  public bool BridgeWriteCompleted,BridgeFlushCompleted;
@@ -283,6 +287,8 @@ public sealed class M21Child : IDisposable {
   }finally{Mark(role+"-eof-after",ms);}
  }
  public void PublishCapturedOutput(bool stdout) {
+  if(stdout&&!StdoutPublished){if(StdoutPublicationAttempted)throw new InvalidOperationException("stdout publication再試行拒否");StdoutPublicationAttempted=true;}
+  if(!stdout&&!StderrPublished){if(StderrPublicationAttempted)throw new InvalidOperationException("stderr publication再試行拒否");StderrPublicationAttempted=true;}
   // 両pump完了と保持Processの実exit後だけ。Process handleは保持し続ける。
   if(!Started||!Process.WaitForExit(0)||OutTask==null||ErrTask==null||OutTask.Status!=TaskStatus.RanToCompletion||ErrTask.Status!=TaskStatus.RanToCompletion)throw new InvalidOperationException("未完了stdioのpublication拒否");
   if(stdout){if(StdoutPublished)return;output.Dispose();StdoutPublished=true;}
@@ -582,10 +588,17 @@ function Capture([M21Child]$child,[string]$role,[int]$milliseconds) {
  $exitMilliseconds=$milliseconds;$streamMilliseconds=$milliseconds
  if($Scenario -ceq 'formal-m21'){$exitMilliseconds=[Math]::Min(2000,$milliseconds);$streamMilliseconds=[Math]::Min(1000,$milliseconds)}
  $exitCap=Remaining $exitMilliseconds -Recovery
+ $exitWaitFaulted=$false
  $child.Mark('capture-exit-before',$exitCap)
- try{$item.exited=$child.Process.WaitForExit($exitCap);if($item.exited){$item.exitCode=$child.Process.ExitCode}}catch{Fail ($role+'-exit') $_.Exception}finally{$child.Mark('capture-exit-after',$exitCap)}
+ try{$item.exited=$child.Process.WaitForExit($exitCap);if($item.exited){$item.exitCode=$child.Process.ExitCode}}catch{$exitWaitFaulted=$true;$script:recovered=$false;Fail ($role+'-exit') $_.Exception}finally{$child.Mark('capture-exit-after',$exitCap)}
  Attempt 'p6-after-child-exit' {P6-State 'after-child-exit'}
- if(!$item.exited){$script:recovered=$false;Fail ($role+'-exit-timeout') ([TimeoutException]::new())}
+ if(!$item.exited){
+  Fail ($role+'-exit-timeout') ([TimeoutException]::new())
+  if(!$exitWaitFaulted -and !$child.StdoutPublicationAttempted -and !$child.StderrPublicationAttempted){
+   $existing=@($script:pendingCaptureExits|Where-Object {[object]::ReferenceEquals($_.child,$child)})
+   if($existing.Count -eq 0){$script:pendingCaptureExits.Add(@{child=$child;role=$role;initialExitCapMs=$exitCap;initialExitObserved=$false;initialPublicationAttempted=$false})}
+  }else{$script:recovered=$false}
+ }
  Attempt 'p6-stdout-before' {P6-State 'stdout-before'}
  try{$item.stdoutEof=$child.Eof($true,(Remaining $streamMilliseconds -Recovery));if(!$item.stdoutEof){Set-Reason 'stdout-eof-timeout';throw 'stdout EOF期限超過'}}catch{$script:recovered=$false;Fail ($role+'-stdout') $_.Exception $_}finally{Attempt 'p6-stdout-after' {P6-State 'stdout-after'}}
  Attempt 'p6-stderr-before' {P6-State 'stderr-before'}
@@ -859,6 +872,7 @@ try {
   if($Scenario -ceq 'formal-m21'){Initialize-M21FormalParent}
   Set-Operation 'Parent.createJob'
   $job=[M21Job]::Create()
+  $jobCreated=$true
   Set-Operation 'Parent.startSupervisor'
   Parent-Event 'start-before'
   $supervisor=New-Supervisor 'Supervisor' 'supervisor';Register-Child $supervisor 'supervisor'
@@ -994,12 +1008,32 @@ finally {
  Attempt 'p6-grand-handle-close' {if($null -ne $script:p6Grand){$script:p6Grand.Dispose();$script:p6Grand=$null}}
  foreach($child in $held){
   Attempt 'last-handle' {
-   $last=@{pid=$child.RecordedPid;creation=$child.RecordedCreation;exited=(!$child.Started -or $child.Process.WaitForExit(0));stdoutEof=(!$child.Started -or ($null -ne $child.OutTask -and $child.OutTask.Status -eq [Threading.Tasks.TaskStatus]::RanToCompletion));stderrEof=(!$child.Started -or ($null -ne $child.ErrTask -and $child.ErrTask.Status -eq [Threading.Tasks.TaskStatus]::RanToCompletion))}
-   $script:lastHandles.Add($last)
-   if(!$last.exited -or !$last.stdoutEof -or !$last.stderrEof){$script:recovered=$false}
+   $last=@{pid=$child.RecordedPid;creation=$child.RecordedCreation;exited=$false;exitCode=$null;stdoutEof=$false;stderrEof=$false;stdoutPublished=$child.StdoutPublished;stderrPublished=$child.StderrPublished}
+   try{
+    $last.exited=(!$child.Started -or $child.Process.WaitForExit(0))
+    if($child.Started -and $last.exited){$last.exitCode=$child.Process.ExitCode}
+    $last.stdoutEof=(!$child.Started -or ($null -ne $child.OutTask -and $child.OutTask.Status -eq [Threading.Tasks.TaskStatus]::RanToCompletion))
+    $last.stderrEof=(!$child.Started -or ($null -ne $child.ErrTask -and $child.ErrTask.Status -eq [Threading.Tasks.TaskStatus]::RanToCompletion))
+    $pending=@($script:pendingCaptureExits|Where-Object {[object]::ReferenceEquals($_.child,$child)})
+    if($pending.Count -eq 1){
+     if($child.Started -and $last.exited -and $last.stdoutEof -and $last.stderrEof -and (Remaining -Recovery) -gt 0){
+      Guard-Run
+      Attempt 'late-exit-stdout-publication' {try{if(!$child.StdoutPublished){if($child.StdoutPublicationAttempted){throw 'stdout publication既試行'};if((Remaining -Recovery) -le 0){throw ([TimeoutException]::new())};$child.PublishCapturedOutput($true);if((Remaining -Recovery) -le 0){throw ([TimeoutException]::new())}}}catch{$script:recovered=$false;Set-Reason 'stdout-publication-failed';throw}}
+      Attempt 'late-exit-stderr-publication' {try{if(!$child.StderrPublished){if($child.StderrPublicationAttempted){throw 'stderr publication既試行'};if((Remaining -Recovery) -le 0){throw ([TimeoutException]::new())};$child.PublishCapturedOutput($false);if((Remaining -Recovery) -le 0){throw ([TimeoutException]::new())}}}catch{$script:recovered=$false;Set-Reason 'stderr-publication-failed';throw}}
+     }
+     $last.stdoutPublished=$child.StdoutPublished;$last.stderrPublished=$child.StderrPublished
+     $proof=@{initialExitObserved=$pending[0].initialExitObserved;initialPublicationAttempted=$pending[0].initialPublicationAttempted;exited=$last.exited;stdoutEof=$last.stdoutEof;stderrEof=$last.stderrEof;stdoutWriterClosed=$child.StdoutPublished;stderrWriterClosed=$child.StderrPublished;stdoutPublished=$child.StdoutPublished;stderrPublished=$child.StderrPublished}
+     $allowed=$script:recovered;$jobSatisfied=(!$jobCreated -or $jobEmpty -eq $true);$remainingMs=Remaining -Recovery
+     $adopted=Test-M21PendingExitRecovery $pending[0].child $child $proof $allowed $jobSatisfied $remainingMs
+     $script:lateExitProofs.Add(@{owner=$owner;nonce=$Nonce;pid=$child.RecordedPid;creation=$child.RecordedCreation;role=$pending[0].role;sameHeldChild=[object]::ReferenceEquals($pending[0].child,$child);initialExitCapMs=$pending[0].initialExitCapMs;final=$proof;finalExitCode=$last.exitCode;recoveryAllowed=$allowed;jobSatisfied=$jobSatisfied;remainingMs=$remainingMs;adopted=$adopted;writerCloseEvidence='M21Child-publication-flags'})
+     if($adopted){$script:pendingCaptureExits.Remove($pending[0])>$null}else{$script:recovered=$false}
+    }
+    if(!$last.exited -or !$last.stdoutEof -or !$last.stderrEof){$script:recovered=$false}
+   }catch{$script:recovered=$false;throw}finally{$script:lastHandles.Add($last)}
   }
   Attempt 'dispose' {$child.Dispose()}
  }
+ if($pendingCaptureExits.Count -gt 0){$script:recovered=$false}
  $observer=$null
  Attempt 'parent-receipt' {
   if($Mode -eq 'Observe' -and $null -ne $parentExitEvidence -and (Test-Path -LiteralPath (Join-Path $run 'result.json'))){
@@ -1030,7 +1064,7 @@ finally {
   if(!$p6Certification.childExited){$retained.Add(@{identity=$p6Certification.child;reason='P6 certified child exit unconfirmed'})}
   if(!$p6Certification.grandchildExited){$retained.Add(@{identity=$p6Certification.grandchild;reason='P6 certified grandchild exit unconfirmed'})}
  }
- $result=[ordered]@{owner=$owner;nonce=$Nonce;process=$processIdentity;mode=$Mode;scenario=$Scenario;passed=($null -eq $primary);primary=$primary;secondary=@($secondary.ToArray());grandchildEvidence=$grandchildEvidence;p6Observations=@($p6Observations.ToArray());p6Certification=$p6Certification;fixtureEvidence=$fixtureEvidence;metadataReadiness=@($metadataReadiness.ToArray());parentExitEvidence=$parentExitEvidence;formalContractEvidence=$formalContractEvidence;formalEntryEvidence=$formalEntryEvidence;lateObservation=$lateObservation;parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@($streams.ToArray());lastHandles=@($lastHandles.ToArray());knownExitEvidence=$knownExitEvidence;startupRecovery=@($startupRecovery.ToArray());resourceRecovery=@{jobEmpty=$jobEmpty;confirmed=$recovered;retained=@($retained.ToArray())};recovered=$recovered;parentKilled=($null -ne $observer);knownExited=0}
+ $result=[ordered]@{owner=$owner;nonce=$Nonce;process=$processIdentity;mode=$Mode;scenario=$Scenario;passed=($null -eq $primary);primary=$primary;secondary=@($secondary.ToArray());grandchildEvidence=$grandchildEvidence;p6Observations=@($p6Observations.ToArray());p6Certification=$p6Certification;fixtureEvidence=$fixtureEvidence;metadataReadiness=@($metadataReadiness.ToArray());parentExitEvidence=$parentExitEvidence;formalContractEvidence=$formalContractEvidence;formalEntryEvidence=$formalEntryEvidence;lateObservation=$lateObservation;parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@($streams.ToArray());lastHandles=@($lastHandles.ToArray());knownExitEvidence=$knownExitEvidence;startupRecovery=@($startupRecovery.ToArray());resourceRecovery=@{jobEmpty=$jobEmpty;confirmed=$recovered;retained=@($retained.ToArray());lateExitProofs=@($lateExitProofs.ToArray())};recovered=$recovered;parentKilled=($null -ne $observer);knownExited=0}
  if($null -ne $observer){$result.knownExited=$observer.knownExited}
  try{
   $name='result.json';if($Mode -eq 'Supervisor'){$name='supervisor-result.json'}elseif($Mode -eq 'Observe'){$name='observe-result.json'}

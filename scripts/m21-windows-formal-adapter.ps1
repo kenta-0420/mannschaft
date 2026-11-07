@@ -1,4 +1,12 @@
 ﻿# M21固定adapterの関数定義だけ。dot-source時に型初期化/子起動を行わない。
+function Test-M21PendingExitRecovery([object]$ExpectedChild,[object]$ObservedChild,[Collections.IDictionary]$Proof,[bool]$RecoveryAllowed,[bool]$JobSatisfied,[int]$RemainingMs) {
+ # last-handle専用。PID/名前の一致で保持参照を代用しない。
+ if($null -eq $ExpectedChild -or ![object]::ReferenceEquals($ExpectedChild,$ObservedChild) -or !$RecoveryAllowed -or !$JobSatisfied -or $RemainingMs -le 0 -or $null -eq $Proof){return $false}
+ foreach($key in @('initialExitObserved','initialPublicationAttempted')){if(!$Proof.Contains($key) -or $Proof[$key] -isnot [bool] -or $Proof[$key]){return $false}}
+ foreach($key in @('exited','stdoutEof','stderrEof','stdoutWriterClosed','stderrWriterClosed','stdoutPublished','stderrPublished')){if(!$Proof.Contains($key) -or $Proof[$key] -isnot [bool] -or !$Proof[$key]){return $false}}
+ return $true
+}
+
 function Get-M21FormalBudget {
  # 回収capの順は採用計画の9段。33秒はretry枠に転用しない。
  return @{totalMs=3300000;workMs=3000000;reserveMs=300000;recoveryCapsMs=@(90000,30000,10000,16000,12000,61000,14000,14000,20000);marginMs=33000;maxAppHeld=8;maxParentRelay=1;maxCleanupCli=14}
