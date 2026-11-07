@@ -30,7 +30,17 @@ const pages = [
 ] as const
 
 function route(page: string): RouteLocationNormalized {
-  return { params: { slug: 'null-role-org' }, path: `${top}/${page}` } as unknown as RouteLocationNormalized
+  return {
+    path: `${top}/${page}`,
+    fullPath: `${top}/${page}`,
+    hash: '',
+    params: { slug: 'null-role-org' },
+    query: {},
+    name: undefined,
+    matched: [],
+    meta: {},
+    redirectedFrom: undefined,
+  }
 }
 
 async function runDeclaredGuards(page: 'invites' | 'permission-groups') {
