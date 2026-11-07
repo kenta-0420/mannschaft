@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { flushPromises, type VueWrapper } from '@vue/test-utils'
 import { nextTick, reactive, ref } from 'vue'
@@ -23,6 +23,8 @@ const createSchedule = vi.fn<(...args: unknown[]) => Promise<ShiftScheduleRespon
 const success = vi.fn()
 const error = vi.fn()
 const handleApiError = vi.fn()
+const ownedWrappers = new Set<VueWrapper>()
+const ownedMounts = new Map<VueWrapper, HTMLElement>()
 
 mockNuxtImport('useRoute', () => () => route)
 mockNuxtImport('useTeamShellContext', () => () => ({ team: shellTeam }))
@@ -62,21 +64,43 @@ async function settle() {
 }
 
 async function mountPage() {
-  const wrapper = await mountSuspended(ShiftsPage, {
-    attachTo: document.body,
-    global: {
-      components: { ShiftScheduleList },
-      // 別タブ/別操作だけを除外し、作成UIと対象一覧は実物を通す。
-      stubs: {
-        ShiftSwapList: true, ShiftPositionManager: true, ShiftRequestForm: true,
-        ShiftReminderButton: true, PageHeader: true,
+  const host = document.createElement('div')
+  document.body.appendChild(host)
+  let wrapper: VueWrapper
+  try {
+    wrapper = await mountSuspended(ShiftsPage, {
+      attachTo: host,
+      global: {
+        components: { ShiftScheduleList },
+        // 別タブ/別操作だけを除外し、作成UIと対象一覧は実物を通す。
+        stubs: {
+          ShiftSwapList: true, ShiftPositionManager: true, ShiftRequestForm: true,
+          ShiftReminderButton: true, PageHeader: true,
+        },
       },
-    },
-  })
+    })
+  } catch (failure) {
+    host.remove()
+    throw failure
+  }
+  ownedWrappers.add(wrapper)
+  ownedMounts.set(wrapper, host)
   await settle()
   expect(wrapper.findComponent(ShiftScheduleList).exists()).toBe(true)
   return wrapper
 }
+
+function unmountOwned(wrapper: VueWrapper) {
+  wrapper.unmount()
+  ownedWrappers.delete(wrapper)
+  ownedMounts.get(wrapper)?.remove()
+  ownedMounts.delete(wrapper)
+}
+
+afterEach(async () => {
+  for (const wrapper of [...ownedWrappers]) unmountOwned(wrapper)
+  await settle()
+})
 
 function button(wrapper: VueWrapper, label: string) {
   const found = wrapper.findAllComponents(Button).find(candidate => candidate.props('label') === label)
@@ -216,7 +240,7 @@ describe('CMP-260910-1600 作成後の実一覧更新', () => {
 
     // Nuxt 3.21.11はmatched pathにslugを補間したkeyでページを再mountする。
     // app/app.vueと当該pageにはpageKey/keepalive overrideなし。同一instanceの偽slug変更はしない。
-    teamA.unmount()
+    unmountOwned(teamA)
     route.params.slug = 'team-b'
     shellTeam.value = { numericId: 20 }
     listSchedules.mockResolvedValue([schedule(3, 'チームBのシフト表', 20)])
