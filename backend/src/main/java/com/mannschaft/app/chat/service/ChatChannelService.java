@@ -46,6 +46,11 @@ import java.util.stream.Collectors;
 
 /**
  * チャットチャンネルサービス。チャンネルのCRUD・アーカイブを担当する。
+ *
+ * <p><b>認可の置き場所（CMP-261105-1507）</b>: チャンネル ID を指定する操作（詳細・更新・削除・アーカイブ・
+ * グループ変換・Zimmer 招待・問い合わせ設定）の認可と存在秘匿は、tx を持たない {@link ChatChannelFacade} が
+ * {@link ChatChannelAccessGuard} で済ませてから本クラスを呼ぶ。本クラスのそれらのメソッドは認可を持たない tx 本体であり、
+ * Controller から直接呼んではならない（番人 {@code AuthzTxFacadeRegistryArchTest}）。</p>
  */
 @Slf4j
 @Service
@@ -62,6 +67,12 @@ public class ChatChannelService {
     private final ChatChannelEventPublisher eventPublisher;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final DomainEventPublisher domainEventPublisher;
+    /**
+     * 未使用（CMP-261105-1507 で認可を {@link ChatChannelFacade} へ移した）。ただしコンストラクタの引数並びが凍結ストア
+     * （D-3 / D-5）の照合キーに含まれており、ここで外すと既存の越境依存が新規違反として再計上されるため残している。
+     * 凍結ストアの棚卸し（別任務）で、ストアの該当行と一緒に外すこと。
+     */
+    @SuppressWarnings("unused")
     private final AccessControlService accessControlService;
     private final UserBlockRepository userBlockRepository;
     private final UserRoleRepository userRoleRepository;
@@ -113,19 +124,16 @@ public class ChatChannelService {
     /**
      * チャンネル詳細を取得する。per-user 拡張（memberCount / viewer / dmPartner）を付与する。
      *
-     * <p><b>認可根治 Wave 6</b>: 従来は非メンバーでも {@code viewer} を null にするだけでレスポンスを返しており、
-     * DM チャンネルでは<b>相手の userId・表示名・アバター URL を無条件に返していた</b>。
-     * channelId を総当りすれば「誰と誰が DM しているか」の関係グラフを全件列挙できる情報漏洩だったため、
-     * メンバーシップ管理種別では閲覧に<b>チャンネルメンバーであること</b>を要求する。</p>
+     * <p><b>認可</b>: 本メソッドは認可を持たない tx 本体である。メンバーシップ管理種別でチャンネルメンバーで
+     * あることの確認（DM の相手・関係グラフの列挙防止）は {@link ChatChannelFacade#getChannel} が
+     * トランザクションの外で済ませる（CMP-261105-1507）。</p>
      *
      * @param channelId チャンネルID
      * @param userId    呼出ユーザーID
      * @return チャンネルレスポンス
-     * @throws BusinessException 閲覧権限がない場合（{@link ChatErrorCode#CHANNEL_ACCESS_DENIED}）
      */
     public ChannelResponse getChannel(Long channelId, Long userId) {
         ChatChannelEntity entity = findChannelOrThrow(channelId);
-        requireChannelMembership(entity, userId);
 
         ChatChannelMemberEntity myMember =
                 memberRepository.findByChannelIdAndUserId(channelId, userId).orElse(null);
@@ -316,13 +324,12 @@ public class ChatChannelService {
      *
      * @param channelId チャンネルID
      * @param request   更新リクエスト
-     * @param userId    操作ユーザーID（認可チェック用）
+     * @param userId    操作ユーザーID（監査ログ等に使う。認可は ChatChannelFacade で済んでいる）
      * @return 更新されたチャンネルレスポンス
      */
     @Transactional
     public ChannelResponse updateChannel(Long channelId, UpdateChannelRequest request, Long userId) {
         ChatChannelEntity channel = findChannelOrThrow(channelId);
-        checkChannelAdminAccess(channel, userId);
         validateNotArchived(channel);
         boolean iconChanged = request.getIconKey() != null && !request.getIconKey().equals(channel.getIconKey());
 
@@ -349,12 +356,11 @@ public class ChatChannelService {
      * チャンネルを削除する（論理削除）。
      *
      * @param channelId チャンネルID
-     * @param userId    操作ユーザーID（認可チェック用）
+     * @param userId    操作ユーザーID（監査ログ等に使う。認可は ChatChannelFacade で済んでいる）
      */
     @Transactional
     public void deleteChannel(Long channelId, Long userId) {
         ChatChannelEntity channel = findChannelOrThrow(channelId);
-        checkChannelAdminAccess(channel, userId);
         if (channel.getIconKey() != null && !channel.getIconKey().isBlank()) {
             chatAttachmentService.releaseChannelIcon(channel, channel.getIconKey());
             domainEventPublisher.publish(new S3ObjectDeleteEvent(channel.getIconKey()));
@@ -369,7 +375,7 @@ public class ChatChannelService {
         }
         channel.softDelete();
         channelRepository.save(channel);
-        log.info("チャンネル削除完了: channelId={}", channelId);
+        log.info("チャンネル削除完了: channelId={}, operatorUserId={}", channelId, userId);
         // F04.2.1 §3.10.1: 削除されたチャンネルを開いている全メンバーにタブ自動クローズを通知
         eventPublisher.publishChannelDeleted(channelId);
     }
@@ -378,16 +384,15 @@ public class ChatChannelService {
      * チャンネルをアーカイブする。
      *
      * @param channelId チャンネルID
-     * @param userId    操作ユーザーID（認可チェック用）
+     * @param userId    操作ユーザーID（監査ログ等に使う。認可は ChatChannelFacade で済んでいる）
      * @return アーカイブされたチャンネルレスポンス
      */
     @Transactional
     public ChannelResponse archiveChannel(Long channelId, Long userId) {
         ChatChannelEntity channel = findChannelOrThrow(channelId);
-        checkChannelAdminAccess(channel, userId);
         channel.archive();
         ChatChannelEntity saved = channelRepository.save(channel);
-        log.info("チャンネルアーカイブ完了: channelId={}", channelId);
+        log.info("チャンネルアーカイブ完了: channelId={}, operatorUserId={}", channelId, userId);
         // F04.2.1 §3.10.1: アーカイブされたチャンネルを開いている全メンバーに入力欄無効化を通知
         eventPublisher.publishChannelArchived(channelId);
         return chatMapper.toChannelResponse(saved);
@@ -398,19 +403,18 @@ public class ChatChannelService {
      * F04.2.1 §3.10.1: 解除後に全メンバーへ CHANNEL_UNARCHIVED イベントを配信し、フロントエンドのタブを復元する。
      *
      * @param channelId チャンネルID
-     * @param userId    操作ユーザーID（認可チェック用）
+     * @param userId    操作ユーザーID（監査ログ等に使う。認可は ChatChannelFacade で済んでいる）
      * @return 更新されたチャンネルレスポンス
      */
     @Transactional
     public ChannelResponse unarchiveChannel(Long channelId, Long userId) {
         ChatChannelEntity channel = findChannelOrThrow(channelId);
-        checkChannelAdminAccess(channel, userId);
         if (!Boolean.TRUE.equals(channel.getIsArchived())) {
             throw new BusinessException(ChatErrorCode.CHANNEL_NOT_ARCHIVED);
         }
         channel.unarchive();
         ChatChannelEntity saved = channelRepository.save(channel);
-        log.info("チャンネルアーカイブ解除完了: channelId={}", channelId);
+        log.info("チャンネルアーカイブ解除完了: channelId={}, operatorUserId={}", channelId, userId);
         // F04.2.1 §3.10.1: 解除を全メンバーに通知（フロントエンドが自動タブクローズを解除）
         eventPublisher.publishChannelUnarchived(channelId);
         return chatMapper.toChannelResponse(saved);
@@ -521,12 +525,13 @@ public class ChatChannelService {
     // TODO: chatドメインがauthドメイン（UserRepository）・userドメイン（UserBlockRepository）・roleドメイン（UserRoleRepository）・dashboardドメイン（ChatContactFolderItemRepository）をまたいでいる。将来はそれぞれのQueryService/Eventで分離予定。Phase1-E: 2026-05-09
     @Transactional
     public ChannelResponse inviteToZimmer(Long channelId, Long callerId, InviteToZimmerRequest request) {
+        // 当事者（チャンネルメンバー）確認は種別判定より先に ChatChannelFacade#inviteToZimmer が済ませる
+        // （種別の差で他人のチャンネルの実在が漏れないため・CMP-261105-1507）。
         ChatChannelEntity kabine = findChannelOrThrow(channelId);
 
         if (kabine.getChannelType() != ChannelType.DM) {
             throw new BusinessException(ChatErrorCode.CHANNEL_NOT_DM);
         }
-        channelAccessGuard.requireChannelMember(channelId, callerId);
 
         // 新しいZimmer（GROUP_DM）を作成
         ChatChannelEntity zimmer = ChatChannelEntity.builder()
@@ -588,18 +593,16 @@ public class ChatChannelService {
      * DMチャンネルをグループDMに変換する。
      * 2者間DMをグループDMに拡張し、追加メンバーを招待可能にする。
      *
-     * <p><b>認可根治 Wave 6</b>: 既存のチャンネル管理操作（更新・削除・アーカイブ）と同じ
-     * {@link #checkChannelAdminAccess} を適用し、DM の場合はチャンネル OWNER のみに限定する。</p>
+     * <p><b>認可</b>: 既存のチャンネル管理操作（更新・削除・アーカイブ）と同じ判定
+     * （DM の場合はチャンネル OWNER のみ）を {@link ChatChannelFacade#convertToGroup} がトランザクションの外で済ませる。</p>
      *
      * @param channelId チャンネルID
-     * @param callerId  操作ユーザーID（認可チェック用）
+     * @param callerId  操作ユーザーID（監査ログ等に使う。認可は ChatChannelFacade で済んでいる）
      * @return 変換後のチャンネルレスポンス
-     * @throws BusinessException 権限がない場合（{@link ChatErrorCode#CHANNEL_ACCESS_DENIED}）
      */
     @Transactional
     public ChannelResponse convertToGroup(Long channelId, Long callerId) {
         ChatChannelEntity channel = findChannelOrThrow(channelId);
-        checkChannelAdminAccess(channel, callerId);
 
         // DM・GROUP_DM以外は変換不可
         if (!channel.isDm()) {
@@ -615,7 +618,7 @@ public class ChatChannelService {
     /**
      * 会話相手が呼出ユーザーからの DM を受け取れることを保証する。
      *
-     * <p>判定は {@link ChatChannelAccessGuard#requireDmDeliverable} に集約し、本メソッドは
+     * <p>判定は {@link ChatDmReceiveAccessGuard#requireDeliverable} に集約し、本メソッドは
      * 判定に要る情報（相手ユーザー・ブロック関係・共通チーム所属・連絡先登録）の取得だけを担う。
      * Kabine（1 対 1）・Zimmer（グループ）・Kabine からの招待・チャンネル作成の全経路がここを通り、
      * 経路によって相手の受信設定が無視される非対称を作らない。</p>
@@ -627,9 +630,7 @@ public class ChatChannelService {
         UserEntity receiver = userRepository.findById(receiverId)
                 .orElseThrow(() -> new BusinessException(ChatErrorCode.CHANNEL_NOT_FOUND));
         DmReceiveFrom setting = receiver.getDmReceiveFrom();
-        channelAccessGuard.requireDmDeliverable(
-                callerId,
-                receiverId,
+        ChatDmReceiveAccessGuard.requireDeliverable(
                 userBlockRepository.existsByBlockerIdAndBlockedId(receiverId, callerId),
                 setting,
                 () -> userRoleRepository.existsSharedTeam(callerId, receiverId),
@@ -655,31 +656,6 @@ public class ChatChannelService {
         if (channel.getIsArchived()) {
             throw new BusinessException(ChatErrorCode.CHANNEL_ARCHIVED);
         }
-    }
-
-    /**
-     * メンバーシップ管理種別（{@link ChannelType#isMembershipGated()}）のチャンネルについて、
-     * 呼出ユーザーがチャンネルメンバーであることを要求する。
-     *
-     * <p>村ロビー・イベント・大会チャットは {@code chat_channel_members} 行を持たない横断スペースであり、
-     * それぞれのドメイン側（village メンバーシップ / {@code TournamentContactAccessService} 等）で
-     * 認可されるため、ここでは素通しする。境界の正準は
-     * {@link ChannelType#isMembershipGated()}（WS 購読認可と共有）。</p>
-     *
-     * <p>大会チャットの閲覧認可（{@code TournamentContactAccessService#checkView}）を必要とする経路は
-     * {@code ChatMessageService#checkChannelViewAccess} 側に集約されている。本サービスは
-     * {@code ChatMessageService} に依存できない（循環依存）ため、ここではメンバーシップ検査のみを行う。</p>
-     */
-    private void requireChannelMembership(ChatChannelEntity channel, Long userId) {
-        channelAccessGuard.requireChannelMembership(channel, userId);
-    }
-
-    /**
-     * チャンネル管理操作（更新・削除・アーカイブ）の認可チェック。
-     * チーム/組織チャンネルはADMIN以上、DM/GROUP_DMはチャンネルOWNERのみ許可。
-     */
-    private void checkChannelAdminAccess(ChatChannelEntity channel, Long userId) {
-        channelAccessGuard.requireChannelAdminAccess(channel, userId);
     }
 
     /**
@@ -718,26 +694,21 @@ public class ChatChannelService {
      *   <li>{@code is_inquiry_channel = TRUE} にする場合、同チームに既に別の問い合わせチャンネルがあれば 409 Conflict</li>
      * </ul>
      *
-     * <p><b>認可の真の強制点（Track2 第二陣 / 2026-05-29）</b>: コントローラーの
-     * {@code @PreAuthorize("hasRole('ADMIN')")} は {@code hasRole} である以上 per-scope 判定にならないため、
-     * 本メソッド内で per-scope 認可（当該チャンネルが属するチームの
-     * ADMIN/DEPUTY_ADMIN、または SYSTEM_ADMIN）を強制する。
-     * circulation ドメインの {@code CirculationService#checkScopeAdminAccess}（#1183）と同一の方針。</p>
+     * <p><b>認可の真の強制点</b>: コントローラーの {@code @PreAuthorize("hasRole('ADMIN')")} は
+     * per-scope 判定にならないため、per-scope 認可（当該チャンネルが属するチームの ADMIN/DEPUTY_ADMIN、
+     * または SYSTEM_ADMIN）を {@link ChatChannelFacade#updateInquiryChannel}
+     * （{@link ChatChannelAccessGuard#requireInquiryChannelAdmin}）が強制する。本メソッドは認可を持たない tx 本体である。</p>
      *
      * @param channelId チャンネルID
      * @param request   更新リクエスト
-     * @param userId    操作ユーザー ID（認可チェック用）
+     * @param userId    操作ユーザー ID（監査ログ等に使う。認可は ChatChannelFacade で済んでいる）
      * @return 更新後のチャンネルレスポンス
-     * @throws BusinessException 当該チームの ADMIN/DEPUTY_ADMIN でも SYSTEM_ADMIN でもない場合（COMMON_002）
      */
     @Transactional
     public ChannelResponse updateInquiryChannel(Long channelId, UpdateInquiryChannelRequest request, Long userId) {
+        // per-scope 認可（SYSTEM_ADMIN またはそのチャンネルのチーム ADMIN/DEPUTY_ADMIN）は
+        // ChatChannelFacade#updateInquiryChannel がトランザクションの外で済ませる（CMP-261105-1507）。
         ChatChannelEntity channel = findChannelOrThrow(channelId);
-
-        // per-scope 認可: SYSTEM_ADMIN 短絡 → そのチャンネルのチーム ADMIN/DEPUTY_ADMIN 必須。
-        if (!accessControlService.isSystemAdmin(userId)) {
-            accessControlService.checkAdminOrAbove(userId, channel.getTeamId(), "TEAM");
-        }
 
         // TEAM_PUBLIC / TEAM_PRIVATE チャンネルのみ設定可能
         if (channel.getChannelType() != ChannelType.TEAM_PUBLIC
@@ -761,7 +732,8 @@ public class ChatChannelService {
 
         channel.updateInquiryChannel(request.getIsInquiryChannel());
         ChatChannelEntity saved = channelRepository.save(channel);
-        log.info("問い合わせチャンネル設定更新: channelId={}, isInquiryChannel={}", channelId, request.getIsInquiryChannel());
+        log.info("問い合わせチャンネル設定更新: channelId={}, isInquiryChannel={}, operatorUserId={}",
+                channelId, request.getIsInquiryChannel(), userId);
         // 業務アラートキャッシュを即時無効化するためにイベントを発行する。
         // AdminBusinessAlertService がこのイベントを受信してキャッシュを削除し、
         // ウィジェットに inquiry 設定が即時反映されるようにする（F10.7）。
