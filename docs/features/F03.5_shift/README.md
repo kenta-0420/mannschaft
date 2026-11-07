@@ -9,7 +9,7 @@
 
 ## 変更履歴
 
-> 継続検証WIP（CMP-261008-1253）: 生成物再生成前・公開不可。`docs/openapi.json` と `frontend/app/types/generated/index.ts` は競合解消のため最新main版を仮置きしている。コードからの正規再生成・現行試練・全CI・実機・探索が終わるまで、完成品として扱わない。
+> 継続検証WIP（CMP-261008-1253）: 公開不可。`docs/openapi.json` と `frontend/app/types/generated/index.ts` は source `ab460a9845764448bb1f694aace0315891c49b19` から正規の H2 `openapi-gen`・`generate:types` で再生成済み。現行試練・全CI・実機・探索が終わるまで、完成品として扱わない。
 
 - **v2.5.1 (2026-10-10)**: 破棄された旧案「シフト希望への時刻カラム追加」（`06_request_time_window.md`）を `archive/06_request_time_window_旧案.md` に参考保存（CMP-261006-0421）。正本ではない。章一覧は変更なし
 - **2026-10-08 / CMP-261008-1253**: シフト枠 GET/更新に実 Long 版を返し、差分割当は flush 後の確定版を引き継ぐ契約へ同期。連続操作・移動の部分成功・版不足時の送信禁止は `02_api_design.md` の差分割当節を参照。
