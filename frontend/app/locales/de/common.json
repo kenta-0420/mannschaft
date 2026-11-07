@@ -333,7 +333,19 @@
     "period_all": "Alle Stunden",
     "period_number_placeholder": "Stundennummer",
     "period_suffix": ". Stunde",
-    "term_name_placeholder": "z.B. 1. Quartal"
+    "term_name_placeholder": "z.B. 1. Quartal",
+    "term_academic_year_range": "Bitte ein Schuljahr zwischen {min} und {max} eingeben",
+    "term_end_before_start": "Das Enddatum muss nach dem Startdatum liegen",
+    "term_date_overlap": "Dieses Semester überschneidet sich mit einem anderen. Bitte Start- und Enddatum prüfen",
+    "term_delete_confirm": "Semester „{name}“ löschen? Dies kann nicht rückgängig gemacht werden.",
+    "term_delete_success": "Semester gelöscht",
+    "term_load_error": "Semester konnten nicht geladen werden",
+    "team_term_hint": "Semester dieses Teams. Beim Erstellen eines Stundenplans wählen Sie eines der hier hinzugefügten Semester.",
+    "no_term_for_create": "Noch keine Semester vorhanden. Fügen Sie zuerst im Semester-Tab ein Semester hinzu.",
+    "delete_timetable": "Löschen",
+    "delete_timetable_confirm": "Stundenplan „{name}“ löschen? Dies kann nicht rückgängig gemacht werden.",
+    "delete_timetable_success": "Stundenplan gelöscht",
+    "delete_timetable_error": "Stundenplan konnte nicht gelöscht werden"
   },
   "error": {
     "server": "Ein Serverfehler ist aufgetreten",
@@ -1110,6 +1122,18 @@
     }
   },
   "project": {
+    "back_label": "Projektliste",
+    "delete_aria": "{title} löschen",
+    "delete_confirm": "„{title}“ löschen?",
+    "delete_confirm_header": "Löschen bestätigen",
+    "milestone_dialog": {
+      "add_title": "Meilenstein hinzufügen",
+      "edit_title": "Meilenstein bearbeiten",
+      "title_label": "Titel",
+      "title_placeholder": "Name des Meilensteins",
+      "due_date_label": "Fällig am",
+      "add": "Hinzufügen"
+    },
     "related_todo_no_due": "Kein Fälligkeitsdatum",
     "related_todo_no_assignee": "Nicht zugewiesen",
     "related_todo_open": "TODO-Details öffnen",
@@ -1170,7 +1194,19 @@
       "none": "Keines",
       "custom_emoji": "Benutzerdefiniert",
       "custom_color": "Benutzerdefinierte Farbe",
-      "current": "Aktuell"
+      "current": "Aktuell",
+      "colors": {
+        "blue": "Blau",
+        "red": "Rot",
+        "green": "Grün",
+        "amber": "Bernstein",
+        "violet": "Violett",
+        "pink": "Rosa",
+        "cyan": "Cyan",
+        "teal": "Petrol",
+        "orange": "Orange",
+        "gray": "Grau"
+      }
     },
     "guide": {
       "button": "Anleitung",
@@ -1222,7 +1258,10 @@
       "update_failed": "Aktualisierung fehlgeschlagen",
       "delete_failed": "Löschen fehlgeschlagen",
       "status_change_failed": "Statusänderung fehlgeschlagen",
-      "milestone_save_failed": "Meilenstein konnte nicht gespeichert werden"
+      "milestone_save_failed": "Meilenstein konnte nicht gespeichert werden",
+      "force_unlock_failed": "Erzwungenes Entsperren fehlgeschlagen",
+      "completion_mode_failed": "Abschlussmodus konnte nicht geändert werden",
+      "gate_init_failed": "Gates konnten nicht initialisiert werden"
     },
     "status": {
       "active": "Aktiv",

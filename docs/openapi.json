@@ -39752,7 +39752,8 @@
         "tags": [
           "時間割学期管理（チーム）"
         ],
-        "summary": "チーム学期一覧（チーム独自＋組織継承）",
+        "summary": "チーム学期一覧",
+        "description": "organizationId を省略するとチーム固有の学期だけを返す。指定するとチームの所属組織であることを検証したうえで、チーム固有と組織の学期をマージして返す（非所属の組織は 404）。",
         "operationId": "listTeamTerms",
         "parameters": [
           {
@@ -39767,7 +39768,7 @@
           {
             "name": "organizationId",
             "in": "query",
-            "required": true,
+            "required": false,
             "schema": {
               "type": "integer",
               "format": "int64"
@@ -217433,7 +217434,9 @@
         "properties": {
           "academicYear": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "maximum": 2100,
+            "minimum": 2000
           },
           "endDate": {
             "type": "string",
