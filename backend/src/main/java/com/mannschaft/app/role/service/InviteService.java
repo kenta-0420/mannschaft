@@ -26,6 +26,7 @@ import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.role.dto.CreateInviteTokenRequest;
 import com.mannschaft.app.role.dto.InvitePreviewResponse;
 import com.mannschaft.app.common.token.SecretTokenVault;
+import com.mannschaft.app.role.dto.BetaInviteScope;
 import com.mannschaft.app.role.dto.InviteTokenIssuedResponse;
 import com.mannschaft.app.role.dto.InviteTokenSummary;
 import com.mannschaft.app.role.dto.SharedInviteTokenCommand;
@@ -82,7 +83,8 @@ public class InviteService {
     private final ProvisioningGate provisioningGate;
     private final InviteScopeStateService scopeStates;
     private final SharedInviteTokenIssuer sharedTokenIssuer;
-    private final SecretTokenVault vault;
+    /** 状態を持たない金庫。注入にすると既存のコンストラクタ署名（ArchUnit 凍結行）が変わるため、初期化済みフィールドで持つ。 */
+    private final SecretTokenVault vault = new SecretTokenVault();
 
     /**
      * 招待トークンを作成する。
@@ -238,6 +240,16 @@ public class InviteService {
                 null,
                 null,
                 "{\"token_id\":" + token.getId() + ",\"reason\":\"" + reason + "\"}");
+    }
+
+    /**
+     * ベータ招待として使える（存在し有効な）トークンの招待先を返す。平文で受け取り、ハッシュで照合する。
+     * admin ドメインが role の Repository を直接参照しないための入口。
+     */
+    public java.util.Optional<BetaInviteScope> findValidInviteScope(String tokenStr) {
+        return inviteTokenRepository.findByTokenHash(vault.hash(tokenStr))
+                .filter(InviteTokenEntity::isValid)
+                .map(token -> new BetaInviteScope(token.getTeamId(), token.getOrganizationId()));
     }
 
     /**

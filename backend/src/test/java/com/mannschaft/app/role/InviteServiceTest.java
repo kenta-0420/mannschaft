@@ -101,8 +101,7 @@ class InviteServiceTest {
     @Mock private InviteScopeStateService scopeStates;
     @Mock private SharedInviteTokenIssuer sharedTokenIssuer;
 
-    @org.mockito.Spy
-    private com.mannschaft.app.common.token.SecretTokenVault vault = new com.mannschaft.app.common.token.SecretTokenVault();
+    private final com.mannschaft.app.common.token.SecretTokenVault vault = new com.mannschaft.app.common.token.SecretTokenVault();
 
     @InjectMocks
     private InviteService inviteService;
