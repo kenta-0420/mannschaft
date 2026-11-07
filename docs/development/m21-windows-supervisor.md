@@ -122,9 +122,71 @@ assign-fail/cleanup-fail/save-failは固定fault点への例外注入であり�
 
 ## 現段階の検証
 
-### 未接続の固定asset caller
+### 正式入口の中間実装と固定asset caller
 
-`Invoke-M21ProductionAssets` は引数なしの内部関数として定義するだけで、dummy・fixture・環境変数の有無からは呼ばない。正式 `formal-m21` 入口への接続と実行は後続の別GOとする。既存dummyのG420秒/R18秒は変更しない。
+`Scenario=formal-m21` は Parent/Supervisor、TestFixture=none だけに限定する。G55分(3300000ms)/W50分(3000000ms)/R5分(300000ms)を上限とし、渡される残W/Gの差にもRを確保する。既存dummyのG420秒/R18秒を拡大しない。親の同じ時計から子へ残量を渡し、各子の開始時に55分へ戻さない。
+
+Parentの固定初期化hookと、同じhello→exact Job assign→ACK後のSupervisor hookを追加した。後者は引数なしの `Invoke-M21ProductionAssets` へ明示的に接続する。dummy・fixture・環境変数の有無からは呼ばない。Supervisor起動環境はOS2値・owned TEMP/TMP・固定入力HEADだけを選び、全親環境を継承しない。
+
+正式hookは、固定WSL bridgeのready→init→限定3preflight→descriptor bind、専用MySQL/Valkey作成、ACK後asset生成、FE/Java/helper/3browserの固定起動へ接続する。必要source/receipt/環境が不足すれば先へ進めない。`formalEntryEvidence` は接続/asset確認/正式run資格を分離し、`formalRunQualified=false` を維持する。正式入口の存在や有限fixtureのgreenを正式実行合格にしない。実asset生成・実App・実Docker作成はrootの別GOまで未実行である。
+
+回収の固定計画は90+30+10+16+12+61+14+14+20=267秒、余裕33秒でR300秒。App Job保持最大8、Job外Parent relay1を別fieldで記録する。Docker cleanup CLIは最大14、同時1を維持する。Job空待ちは正式のみ10秒、Captureは実exit最大2秒・各stdout/stderr EOF最大1秒を残Gへclampする。relay終端の実exit2秒＋各EOF0.5秒は最後の20秒枠に含め、ledger/FSへ残17秒を割り当てる。固定表と実装を実回収の実証へ読み替えない。
+
+Parentは専用Temp直下の `m21-windows-*` とexact `{owner,nonce}` のowner.jsonを使う。新規bridge/owner.jsonには別run UUIDと固定purposeを追加する。Windows→Linuxは既存M21Childの専用stdin frame（4byte BE＋UTF8 JSON、最大16KiB）だけ、Linux→Windowsは新規owned receipt fileだけを使う。stdout/stderrは既存CopyToAsyncのprivate rawとして別採用し、応答parserへ転用しない。OS2値とowned TEMP/TMPだけで固定wsl.exeを1本起動し、WSLENV/proxy/全親envを転送しない。
+
+Linux readyのt0とParent受信時の単一時計を固定し、initはG/Wの絶対offset、requestは送信準備時のelapsed＋局所capを元のG/W offsetへclampして渡す。受領時にnow＋remainingへ戻さない。descriptorは既存daemonと既存local image3件の固定preflightだけで採用し、pull/任意config/追加WSLを起動しない。各work資源はvolume-create→volume-inspect→container-create→container-inspect→container-start→container-inspectの固定6件、2roleで12件である。専用loopback portをstart後にfreezeし、共有Valkey6379を拒否する。
+
+MySQLは新規DB `m21_<bridge-runhex>`、固定user m21、別々の生成root/app passwordだけをprivate frame→Linuxメモリ→Docker子の固定envへ渡す。値をargv/receiptへ出さない。container名は `m21-<runhex>-<role>`、volume名はその `-data` suffix。cleanupは同daemon確認→所有inspect4→stop2→rm4→roleごとの両資源不存在candidate2→最後の同daemon確認の計14件である。各要求は当該保持CLI/watchdogの終了・独立した両EOF/reapを確認後だけ次へ進み、未回収時は追加spawnを拒否する。不存在candidateだけでは資格を立てず、最後の同daemon receiptの両role/exact container/volume名と合わせる。
+
+FEは同WTの絶対CLI/CWD、3003 loopback、必要OS/Temp/URLとFE専用8GiBだけで起動する。Javaはproduction CP＋fixture JAR、8081 loopback、専用DB/Valkey、自己test鍵、メールsimulate、SQS無効、自己BEにpinしたR2/SES/OTLPと既存AWS env providerを固定する。必要キーを新規辞書へ作り、親env/.env/資格情報fileをコピーしない。helperのJava msとOS 100ns世代は既存整数変換を使い、Parentが同じ保持Processのexact Jobを認定する。追加listener workerが必要ならApp保持8の内数にする。
+
+rootはformal-ready.jsonの固定3titleを正規Skyで選ぶ。UI操作をscriptへ追加しない。探索終了時はouter runのformal-browser-close-requested.jsonへexact `{owner,nonce,runId,actorCodes:[system,admin-de,member],requested:true}` を新規atomic発行する。Supervisorが全保持browser/helper生存を検証し、formal-browser-close-admitted.jsonのphase=browser-close-admittedを公開したことをrootが確認してから、Skyで3windowを通常closeする。各actual0/両EOF後のformal-browsers-closed.jsonを確認して初めて既存inner controls/exploration-finished.jsonを発行する。既存Java制御3種を変えない。
+
+Javaが探索完了markerを先に読みhelper cleanupへ進んだ場合、Supervisor/Parentはfresh markerとserved3/failed=falseのhelper state、全browser回収を照合してHOST_CLEANUPへ移る。未完探索のW到達は即nonGreen、既存完了を裏付けたcleanupだけhost90秒＋Supervisor終端30秒を観測する。host-resultとJava actual0/各EOFを確認後、認定済みFE世代を停止し、後続Job回収と外部Docker回収を別に記録する。早期exit/不一致を成功へ置換しない。
+
+有限契約fixture（正式App/Gradle/Docker/Chrome起動0）:
+
+    node scripts/m21-windows-supervisor.probe.cjs --formal-entry-contract --owner-id 1d767b20-825c-4edc-b397-8d4367036462
+
+| 境界 | fixtureで実assertする範囲 | 未実証 |
+|---|---|---|
+| 予算 | G/W/R、267+33、dummy上限、formalのmode/fixture/残量拒否 | 実55分run |
+| hook順序 | 固定Supervisor関数を呼び、外部asset境界の置換でassets→work、CP失敗後work0、期限後assets0 | ACK前spawn0/ACK後実asset生成のOS観測 |
+| RequiredAlive | 現在の保持Processを採用、空集合を拒否 | FE/host/helper/browser早期終了 |
+| 環境 | Supervisor用辞書にsentinel/PATHなし、必要HEAD/TEMPあり | 各実子/孫への伝播 |
+| 途中失敗 | asset例外の後続停止 | 実Job/EOF/Dockerの独立回収 |
+
+通常sandboxのPowerShell policyで拒否された場合は未実行と記録し、policyを変更しない。今回のred/greenは通常ユーザーの既存policyで行い、最初は未定義関数によるred、実装後greenを確認した。既存17件とChromiumの回帰は統合HEADを固定した別GOで1回実施する。
+
+関数診断の旧15秒launcher上限はworkerが置いた任意の診断値であり、採用計画のACではない。その試行は停止・失敗のまま保持し、phase/SHA未採取のため原因を確定していない。追加した60秒診断はchild entryからのphase時刻、Windows launcherのactual exit/両EOF、source前後SHAを `.claude/m21-entry-contract-<nonce>.json` に記録する。60秒診断のgreenを15秒green、正式55/5/50、dummy420/18、B4の保証へ読み替えない。正常時は所有確認後に小さい診断Tempを撤去し、失敗時はexact pathを保持する。
+
+### B4 固定relay喪失fixture
+
+StartBridgeだけは固定prefix `-d Ubuntu-24.04 --exec /usr/bin/python3 -I` をliteralにし、後続source/metadataには既存Quoteを使う。通常M21Childのserializerは変えない。最初のc650入力B4では全argvをQuoteした起動が `/bin/bash: line 1: -d: command not found` / relay actual127で終わり、意図Killへ進めなかった。quoted optionの解釈自体はdocsだけで断定せず、この一次失敗とLinux証拠未取得を保持する。修正後は非秘密の実rendered argumentsもreceiptへ保存する。
+
+212a入力ではbridge ready後terminal/relay actual1となり、Linux子proofを採取できなかった。既定stdinのBOMが原因だったとは未確定である。一方、Frameworkのbuffered BaseStreamにWriteAsyncだけを行いFlushしない不足は独立して補完する。固定bridgeのProcess.Start周囲だけ、既知65001のpreambleがある場合にUTF8NoBOMへ保存・finally復元し、未知preambleは起動前拒否する。Start直後に保持Startedを記録し、起動と復元の二重失敗は起動をprimary・復元をsecondaryへ残す。通常Start/OS設定ファイルは変更しない。各frameは同じ単一cap内でwriteとflushのRanToCompletionを確認し、失敗後の再送を拒否する。B4には固定phaseとcodepage/preamble長/write-flush完了状態だけを追加し、原因未確定の旧失敗を成功へ置換しない。
+
+private Node22で `node scripts/m21-windows-supervisor.probe.cjs --wsl-relay-loss-fixture --owner-id 1d767b20-825c-4edc-b397-8d4367036462` を実行する。`M21_INPUT_COMMIT` にclean統合HEADを指定する。既存readiness runnerとM21Childを再利用する独立1caseであり、通常17件を呼ばない。Windows側はG60秒/W40秒/R20秒、Linux initは残量へclampしたG4秒/W3秒と固定request cap1秒を使う。
+
+固定test CLIはproductionのguard/bridge loopを使い、外部Docker command/preflight境界だけを固定Python dummyへ置換する。Linuxのfork/setsid ACK/pidfd/subreaper/独立watchdog/reap/両EOFは実物である。実Docker/Java/FE/Chromeは起動しない。request-started.jsonのowner/nonce/run/source/request/世代とsession ACKを確認してから、保持した同じwsl.exeだけをKillする。Windows actual exit/各EOFと、その後の独立Linux receiptのCLI子集合reap/各EOFを別に検査する。
+
+fixture passedは意図故障の検査成功だけで、primaryRelayQualified/formalRunQualifiedはfalseである。Windows relayのexit/EOFをLinux CLIやbridgeのactual exitに読み替えない。Linux bridge自身のactual exitは本fixtureでは未観測のfalse、watchdog自身はobserved receiptが得られた場合だけ別flagで記録する。一次Linux失敗を後続reap/EOFでgreenへ更新しない。source SHA前後・exact owner/nonce・保持世代とrawを残し、rootの最小証拠確定と所有/書き手終了確認後に自己Tempだけを撤去する。
+
+Windows→WSLの同一性ゲートは、既存work/valkey最終container-inspectでLinux側owned loopbackから読んだ単一40桁run_idと、Java起動直前にWindows側同portから読んだ値を照合する。固定INFO serverだけを使い、CLI/子/要求を増やさない。Windows側はWと局所3秒をclampし、全frame16KiB、完全RESP bulk、単一run_id、取得済み/直後queuedな追加bytesの拒否、finallyでのcloseを要求する。未来に遅れて届く追加bytesの不在は主張しない。呼出し前に前回proofをnullへ戻し、未生成socketのclosedもnullとする。失敗時はJavaを起動しない。
+
+関数診断の固定loopback9応答は正常、不一致、run_id不足、重複、oversize、不正RESP、不完全RESP、追加bytes、timeoutを実assertする。これは固定parser/gateの有限試験であり、実WSL転送先・実Valkey/daemon・正式Appの資格は未取得のままである。既存Cookie契約は変更していない。旧backend規約のlocalStorage記述との不一致はrootへ報告し、この変更で規約を黙って修正していない。
+
+### 統合後17件の固定引渡し
+
+B4のWindows phaseは同じStopwatchのelapsed ticksとfrequencyで最大10点だけを記録する。descriptor検証、bind送信開始、write/flush完了、bound待ちを分け、native guard前とwrapper guard前の状態をfreshに戻す。bind専用finallyのstateを採取し、initのtrueをbind成功へ読み替えない。Linuxの絶対時計値との直接比較はしない。hostには専用生成 `JOB_QR_SIGNING_SECRET` を一項目だけ追加し、値を掲載せず非空/UTF8 32byte以上を検査する。既存kid/active設定と他validatorを変更しない。
+
+通常kentaの既存ExecutionPolicy、固定Node `C:/Claude/mannschaft/.claude/runtime-assets/node22-d7249e88-6cfac601/node-v22.23.2-win-x64/node.exe`（SHA256 `0d0f5e39f9f3d9587bc19f73eab3c2c9c4903fd02d6dbf9c853dd81b3d95fad4`）で、clean統合HEADの40桁を `M21_INPUT_COMMIT` に設定し、同じownerを明示する。rootの別GO後、順に各1回だけ実行する。
+
+    node scripts/m21-windows-supervisor.probe.cjs --formal-contract-fixture --owner-id 1d767b20-825c-4edc-b397-8d4367036462
+    node scripts/m21-windows-supervisor.probe.cjs --readiness-fixture --owner-id 1d767b20-825c-4edc-b397-8d4367036462
+    node scripts/m21-windows-supervisor.probe.cjs --owner-id 1d767b20-825c-4edc-b397-8d4367036462
+
+順に正式契約3、readiness4、通常10。`--formal-entry-contract` は別の60秒関数診断、B4/Chromiumも別suiteであり17件へ混ぜない。stdout/stderrとexit codeを新nonceのprivate採取先へ保存し、packet内retained/exact runのrawを保全する。過去の失敗Temp、15秒timeout、policy拒否、source別の中間greenを上書き・削除しない。成功時のrunner自身による所有照合済みTemp回収だけを既存動作として認める。
 
 callerは既存Job/Remaining/M21Child/Register-Child/Captureを用いて、source検査後に固定Git Bashの既存turnstile経由offline production CP、固定JDK21のjavac、jarの順で進む。正規WindowsユーザーのKnownFolderと `C:/Users/kenta/AppData/Local` の一致を確認し、既存machine gateを使う。Gradle cacheは `C:/Users/kenta/.gradle`、子環境は必要OS値・private TEMP/HOME・固定tool/cache/path・CP入出力だけを明示する。全親環境は継承しない。
 
@@ -136,7 +198,7 @@ callerは既存Job/Remaining/M21Child/Register-Child/Captureを用いて、sourc
 
     node scripts/m21-windows-supervisor.probe.cjs --owner-id 1d767b20-825c-4edc-b397-8d4367036462
 
-このsliceはPS parserと静的差分だけを確認し、asset生成・変更後dummy回帰・実Java/Gradle・正式環境・実UIは未実行。CP task outcomeの実ログ形式、実machine gate、途中失敗時の停止/EOF/publication/held解除は実測合格としていない。
+asset生成・変更後dummy回帰・実Java/Gradle・正式環境・実UIは未実行。CP task outcomeの実ログ形式、実machine gate、途中失敗時の停止/EOF/publication/held解除は実測合格としていない。
 
 PS Parser.ParseFile、Node --check、diffの静的確認後、rootの限定GOごとに固定入力のsuiteを1回実行する。過去のprobeでAdd-Type実コンパイル・Win32 Job・host非0伝播まで観測したが、P6では孫の早期exit0によりpipe保持fixtureが不成立だった。P6限定修正版の全10caseは同一固定HEADの実測packetで判定する。正式環境・実UI・Chromium互換は未実施で、dummy成功を正式M21合格へ流用しない。過去のsharing違反やPS admission遅延の原因解消とも扱わない。
 

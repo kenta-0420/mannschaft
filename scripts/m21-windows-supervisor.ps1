@@ -2,14 +2,14 @@
 [CmdletBinding()]
 param(
  [ValidateSet('Parent','Supervisor','Observe','ReadinessFixture')][string]$Mode='Parent',
- [ValidateSet('none','parent-before-certificate','lock-release','lock-held','invalid-json','formal-ms','formal-fe','formal-admission','chromium-normal','chromium-parent-close')][string]$TestFixture='none',
- [Parameter(Mandatory=$true)][ValidateSet('normal','pre-ack','wrong-ack','assign-fail','host-fail','stdio-eof','cleanup-fail','save-fail','owner-mismatch','kill-close')][string]$Scenario,
+ [ValidateSet('none','parent-before-certificate','lock-release','lock-held','invalid-json','formal-ms','formal-fe','formal-admission','chromium-normal','chromium-parent-close','wsl-relay-loss')][string]$TestFixture='none',
+ [Parameter(Mandatory=$true)][ValidateSet('normal','pre-ack','wrong-ack','assign-fail','host-fail','stdio-eof','cleanup-fail','save-fail','owner-mismatch','kill-close','formal-m21')][string]$Scenario,
  [Parameter(Mandatory=$true)][string]$RunDirectory,
  [Parameter(Mandatory=$true)][ValidatePattern('^[a-f0-9]{32}$')][string]$Nonce,
  [ValidatePattern('^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$')][string]$OwnerId='d7249e88-1678-4e0c-ae21-a550989098a6',
  [Parameter(Mandatory=$true)][string]$NodePath,
- [Parameter(Mandatory=$true)][ValidateRange(0,420000)][int]$WorkRemainingMs,
- [Parameter(Mandatory=$true)][ValidateRange(0,420000)][int]$TotalRemainingMs
+ [Parameter(Mandatory=$true)][ValidateRange(0,3000000)][int]$WorkRemainingMs,
+ [Parameter(Mandatory=$true)][ValidateRange(0,3300000)][int]$TotalRemainingMs
 )
 $localClock=[Diagnostics.Stopwatch]::StartNew()
 $phaseCount=0
@@ -63,6 +63,9 @@ $fixtureLock=$null
 $metadataReadiness=New-Object 'Collections.Generic.List[object]'
 $parentExitEvidence=$null
 $formalContractEvidence=$null
+$formalEntryEvidence=$null
+$m21FormalAuxiliary=$null
+$m21Bridge=$null
 $chromiumFixture=$TestFixture -in @('chromium-normal','chromium-parent-close')
 $chromiumExe=[IO.Path]::GetFullPath('C:/Users/kenta/AppData/Local/ms-playwright/chromium-1223/chrome-win64/chrome.exe')
 $p6Observations=New-Object 'Collections.Generic.List[object]'
@@ -115,8 +118,55 @@ public sealed class M21Job : SafeHandleZeroOrMinusOneIsInvalid {
  public void Stop() { Check(TerminateJobObject(this,71)); }
 }
 public sealed class M21Child : IDisposable {
+ // 固定INFOだけを読む。CLI/子生成なし。Wと局所3秒の双方を短縮側で守る。
+ public static Dictionary<string,object> ProbeValkeyEndpoint(int port,string expected,Stopwatch clock,int workDeadlineMs) {
+  var proof=new Dictionary<string,object>{{"transport","windows-loopback-info"},{"response_complete",false},{"socket_closed",null},{"within_deadline",false},{"cli_spawned",false},{"childproof",null},{"green",false},{"reason","endpoint-invalid"},{"response_bytes",0}};
+  var result=new Dictionary<string,object>{{"run_id",null},{"socket_proof",proof}};
+  System.Net.Sockets.TcpClient client=null;System.Net.Sockets.NetworkStream stream=null;System.Threading.WaitHandle wait=null;
+  long start=clock.ElapsedTicks, cap=start+Stopwatch.Frequency*3;
+  Func<int> remaining=()=>{long ticks=Math.Min(cap-clock.ElapsedTicks,(long)workDeadlineMs*Stopwatch.Frequency/1000-clock.ElapsedTicks);return ticks<=0?0:(int)Math.Min(3000,ticks*1000/Stopwatch.Frequency);};
+  int count=0;bool valid=false;
+  try {
+   if(port<1||port>65535||!System.Text.RegularExpressions.Regex.IsMatch(expected??"","\\A[a-f0-9]{40}\\z"))throw new InvalidDataException();
+   if(remaining()<=0){proof["reason"]="deadline";throw new TimeoutException();}
+   client=new System.Net.Sockets.TcpClient(System.Net.Sockets.AddressFamily.InterNetwork);
+   var connect=client.BeginConnect(System.Net.IPAddress.Loopback,port,null,null);wait=connect.AsyncWaitHandle;
+   if(!wait.WaitOne(remaining())){proof["reason"]="deadline";throw new TimeoutException();}client.EndConnect(connect);
+   stream=client.GetStream();
+   byte[] command=System.Text.Encoding.ASCII.GetBytes("*2\r\n$4\r\nINFO\r\n$6\r\nserver\r\n");
+   int ms=remaining();if(ms<=0)throw new TimeoutException();stream.WriteTimeout=ms;stream.Write(command,0,command.Length);
+   Func<int> read=()=>{int left=remaining();if(left<=0)throw new TimeoutException();stream.ReadTimeout=left;int b=stream.ReadByte();if(b<0)throw new EndOfStreamException();count++;proof["response_bytes"]=count;if(count>16384)throw new InvalidDataException();return b;};
+   proof["reason"]="resp-invalid";var header=new List<byte>();
+   for(;;){int b=read();header.Add((byte)b);if(header.Count>32)throw new InvalidDataException();if(b==10)break;}
+   string line=System.Text.Encoding.ASCII.GetString(header.ToArray());
+   if(!System.Text.RegularExpressions.Regex.IsMatch(line,"\\A\\$[1-9][0-9]{0,4}\r\n\\z"))throw new InvalidDataException();
+   int size=int.Parse(line.Substring(1,line.Length-3),System.Globalization.CultureInfo.InvariantCulture);
+   if(size>16384-header.Count-2)throw new InvalidDataException();
+   byte[] body=new byte[size];for(int i=0;i<size;i++)body[i]=(byte)read();
+   if(read()!=13||read()!=10)throw new InvalidDataException();proof["response_complete"]=true;
+   // 取得済みframeは厳密長。直後にqueuedな追加bytesも拒否し、未来の不在は主張しない。
+   if(client.Available!=0)throw new InvalidDataException();
+   string info=new System.Text.UTF8Encoding(false,true).GetString(body);
+   if(!info.StartsWith("# Server\r\n",StringComparison.Ordinal)||!info.EndsWith("\r\n",StringComparison.Ordinal))throw new InvalidDataException();
+   string found=null;int matches=0;
+   foreach(string item in info.Split(new[]{"\r\n"},StringSplitOptions.None))if(item.StartsWith("run_id:",StringComparison.Ordinal)){matches++;found=item.Substring(7);}
+   proof["reason"]="run-id-mismatch";
+   if(matches!=1||!System.Text.RegularExpressions.Regex.IsMatch(found??"","\\A[a-f0-9]{40}\\z")||found!=expected)throw new InvalidDataException();
+   if(remaining()<=0)throw new TimeoutException();proof["within_deadline"]=true;result["run_id"]=found;valid=true;
+  } catch(TimeoutException){proof["reason"]="deadline";} catch(System.Net.Sockets.SocketException){proof["reason"]="socket-failed";} catch(InvalidDataException){} catch(IOException){if(remaining()<=0)proof["reason"]="deadline";} catch(ArgumentException){proof["reason"]="endpoint-invalid";}
+  finally {
+   bool closed=true;try{if(stream!=null)stream.Dispose();}catch{closed=false;}try{if(client!=null)client.Close();}catch{closed=false;}try{if(wait!=null)wait.Dispose();}catch{closed=false;}
+   proof["socket_closed"]=client==null?null:(object)closed;proof["green"]=valid&&closed&&remaining()>0;
+   if((bool)proof["green"])proof["reason"]="matched";else result["run_id"]=null;
+  }
+  return result;
+ }
  public Process Process;public Task OutTask,ErrTask;FileStream output,error;
  public bool Started,StartupExited,StartupStdoutEof,StartupStderrEof,Captured,StdoutPublished,StderrPublished;
+ bool bridgeInput,bridgeInputClosed,bridgeInputBroken;
+ public int? BridgeInputCodePage,BridgeInputPreambleLength;
+ public bool BridgeWriteCompleted,BridgeFlushCompleted;
+ public string BridgeInputStage;
  public int RecordedPid;public string RecordedCreation,LogPrefix;public Exception StartupFailure;
  public List<string> StartupCleanupFailures=new List<string>();
  public List<Exception> StartupCleanupExceptions=new List<Exception>();
@@ -138,20 +188,51 @@ public sealed class M21Child : IDisposable {
   return Start(exe,args,cwd,prefix,recoveryMs,observeTimings,null);
  }
  public static M21Child Start(string exe,string[] args,string cwd,string prefix,int recoveryMs,bool observeTimings,Dictionary<string,string> environment) {
+  return StartCore(exe,args,cwd,prefix,recoveryMs,observeTimings,environment,false);
+ }
+ public static M21Child StartBridge(string[] args,string cwd,string prefix,int recoveryMs,Dictionary<string,string> environment) {
+  return StartCore("C:/Windows/System32/wsl.exe",args,cwd,prefix,recoveryMs,false,environment,true);
+ }
+ static string BridgeArguments(string[] args) {
+  if(args==null||(args.Length!=16&&args.Length!=17)||args[0]!="-d"||args[1]!="Ubuntu-24.04"||args[2]!="--exec"||args[3]!="/usr/bin/python3"||args[4]!="-I")throw new InvalidDataException("固定WSL prefix不一致");
+  bool fixture=args.Length==17;int offset=fixture?7:6;
+  if((fixture&&args[6]!="--relay-fixture")||!args[5].EndsWith(fixture?"/test_m21_wsl_docker_bridge.py":"/m21-wsl-docker-bridge.py",StringComparison.Ordinal)||args[offset]!="--run-directory"||args[offset+2]!="--owner"||args[offset+4]!="--run"||args[offset+6]!="--nonce"||args[offset+8]!="--input-commit")throw new InvalidDataException("固定WSL metadata引数不一致");
+  // WSLの先頭optionはliteral。--exec後のsource/metadata値には既存Quoteを使う。
+  StringBuilder a=new StringBuilder("-d Ubuntu-24.04 --exec /usr/bin/python3 -I");
+  for(int i=5;i<args.Length;i++){a.Append(' ');a.Append(Quote(args[i]));}return a.ToString();
+ }
+ static M21Child StartCore(string exe,string[] args,string cwd,string prefix,int recoveryMs,bool observeTimings,Dictionary<string,string> environment,bool bridgeInput) {
   Stopwatch recoveryClock=Stopwatch.StartNew();
   Func<int,int> remaining=cap=>Math.Max(0,Math.Min(cap,recoveryMs-(int)recoveryClock.ElapsedMilliseconds));
-  M21Child c=new M21Child();c.LogPrefix=prefix;c.ObserveTimings=observeTimings;
+  M21Child c=new M21Child();c.LogPrefix=prefix;c.ObserveTimings=observeTimings;c.bridgeInput=bridgeInput;
   try {
    c.output=new FileStream(prefix+".out",FileMode.CreateNew,FileAccess.Write,FileShare.Read);
    c.error=new FileStream(prefix+".err",FileMode.CreateNew,FileAccess.Write,FileShare.Read);
    ProcessStartInfo s=new ProcessStartInfo(exe);s.UseShellExecute=false;s.CreateNoWindow=true;s.WorkingDirectory=cwd;
    s.RedirectStandardOutput=true;s.RedirectStandardError=true;
-   StringBuilder a=new StringBuilder();foreach(string x in args){if(a.Length>0)a.Append(' ');a.Append(Quote(x));}s.Arguments=a.ToString();
+   s.RedirectStandardInput=bridgeInput;
+   if(bridgeInput){s.Arguments=BridgeArguments(args);}
+   else{StringBuilder a=new StringBuilder();foreach(string x in args){if(a.Length>0)a.Append(' ');a.Append(Quote(x));}s.Arguments=a.ToString();}
    if(environment!=null){s.EnvironmentVariables.Clear();foreach(KeyValuePair<string,string> item in environment)s.EnvironmentVariables.Add(item.Key,item.Value);}
-   c.Process=new Process();c.Process.StartInfo=s;if(!c.Process.Start())throw new IOException("起動失敗");c.Started=true;
-   c.RecordedPid=c.Process.Id;
-   IntPtr retained=c.Process.Handle;
-   c.RecordedCreation=c.Process.StartTime.ToUniversalTime().Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture);
+   System.Text.Encoding originalInput=null;bool inputChanged=false;Exception launchFailure=null;
+   try {
+    if(bridgeInput){
+     originalInput=Console.InputEncoding;byte[] preamble=originalInput.GetPreamble();
+     if(preamble.Length>0){
+      if(originalInput.CodePage!=65001||preamble.Length!=3||preamble[0]!=239||preamble[1]!=187||preamble[2]!=191)throw new InvalidDataException("未知stdin preamble拒否");
+      inputChanged=true;Console.InputEncoding=new System.Text.UTF8Encoding(false);
+     }
+     c.BridgeInputCodePage=Console.InputEncoding.CodePage;c.BridgeInputPreambleLength=Console.InputEncoding.GetPreamble().Length;
+     if(c.BridgeInputPreambleLength!=0)throw new InvalidDataException("stdin preamble不成立");
+    }
+    c.Process=new Process();c.Process.StartInfo=s;if(!c.Process.Start())throw new IOException("起動失敗");c.Started=true;
+    c.RecordedPid=c.Process.Id;
+    IntPtr retained=c.Process.Handle;
+    c.RecordedCreation=c.Process.StartTime.ToUniversalTime().Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture);
+   }catch(Exception e){launchFailure=e;throw;}
+   finally {
+    if(inputChanged)try{Console.InputEncoding=originalInput;}catch(Exception restore){if(launchFailure==null)throw;c.CleanupFailure("input-encoding-restore",restore);}
+   }
    c.Mark("stdout-copy-before",-1);
    c.OutTask=c.Process.StandardOutput.BaseStream.CopyToAsync(c.output);
    c.Mark("stdout-copy-after",-1);
@@ -171,6 +252,29 @@ public sealed class M21Child : IDisposable {
    return c;
   }
  }
+ public void SendBridgeFrame(byte[] frame,int milliseconds) {
+  BridgeWriteCompleted=false;BridgeFlushCompleted=false;BridgeInputStage="guard";
+  if(!bridgeInput||bridgeInputClosed||bridgeInputBroken||!Started||frame==null||frame.Length<5||frame.Length>16388||milliseconds<=0||Process.WaitForExit(0)){BridgeInputStage="guard-rejected";throw new InvalidOperationException("bridge frame拒否");}
+  int length=(frame[0]<<24)|(frame[1]<<16)|(frame[2]<<8)|frame[3];
+  if(length!=frame.Length-4){BridgeInputStage="guard-rejected";throw new InvalidOperationException("bridge frame長不一致");}
+  byte[] payload=(byte[])frame.Clone();Task write=null;
+  Stopwatch ioClock=Stopwatch.StartNew();Func<int> left=()=>Math.Max(0,milliseconds-(int)ioClock.ElapsedMilliseconds);
+  try{
+   BridgeInputStage="write-started";
+   write=Process.StandardInput.BaseStream.WriteAsync(payload,0,payload.Length);
+   write.ContinueWith(t=>Array.Clear(payload,0,payload.Length),TaskScheduler.Default);
+   if(!write.Wait(left())||write.Status!=TaskStatus.RanToCompletion||left()<=0)throw new TimeoutException("bridge frame書込期限");
+   BridgeWriteCompleted=true;
+   BridgeInputStage="flush-started";
+   Task flush=Process.StandardInput.BaseStream.FlushAsync();
+   if(!flush.Wait(left())||flush.Status!=TaskStatus.RanToCompletion||left()<=0)throw new TimeoutException("bridge frameflush期限");
+   BridgeFlushCompleted=true;
+   BridgeInputStage="write-flush-completed";
+  }
+  catch{bridgeInputBroken=true;throw;}
+  finally{if(write==null)Array.Clear(payload,0,payload.Length);}
+ }
+ public void CloseBridgeInput() { if(bridgeInput&&Started&&!bridgeInputClosed){bridgeInputClosed=true;Process.StandardInput.Close();} }
  public bool Eof(bool stdout,int ms) {
   string role=stdout?"stdout":"stderr";Mark(role+"-eof-before",ms);
   try{
@@ -186,6 +290,7 @@ public sealed class M21Child : IDisposable {
  }
  public void Dispose() {
   List<Exception> errors=new List<Exception>();
+  try{CloseBridgeInput();}catch(Exception e){errors.Add(e);}
   try{if(output!=null)output.Dispose();}catch(Exception e){errors.Add(e);}
   try{if(error!=null)error.Dispose();}catch(Exception e){errors.Add(e);}
   try{if(Process!=null)Process.Dispose();}catch(Exception e){errors.Add(e);}
@@ -310,8 +415,12 @@ $bootstrapStage='native-bootstrap'
 try {
  if(($TestFixture -eq 'none' -and $Mode -eq 'ReadinessFixture') -or ($TestFixture -eq 'parent-before-certificate' -and ($Mode -notin @('Parent','Observe') -or $Scenario -ne 'kill-close')) -or ($TestFixture -in @('lock-release','lock-held','invalid-json') -and ($Mode -ne 'ReadinessFixture' -or $Scenario -ne 'normal'))){throw '固定fixture組合せ不一致'}
  if($TestFixture -in @('formal-ms','formal-fe','formal-admission') -and ($Mode -notin @('Parent','Supervisor') -or $Scenario -ne 'normal')){throw '固定formal契約fixture組合せ不一致'}
+ if($TestFixture -eq 'wsl-relay-loss' -and ($Mode -cne 'Parent' -or $Scenario -cne 'normal')){throw '固定relay fixture組合せ不一致'}
  if($chromiumFixture -and (($TestFixture -eq 'chromium-normal' -and ($Scenario -ne 'normal' -or $Mode -notin @('Parent','Supervisor'))) -or ($TestFixture -eq 'chromium-parent-close' -and $Scenario -ne 'kill-close'))){throw '固定Chromium組合せ不一致'}
- if($WorkRemainingMs -gt $TotalRemainingMs){Set-Reason 'invalid-budget';throw 'work/total budget不一致'}
+ # 定義だけを読む。ACK前に型compile/実子/asset準備を行わない。
+ . (Join-Path $PSScriptRoot 'm21-windows-formal-adapter.ps1')
+ Assert-M21ScenarioBudget $Scenario $Mode $TestFixture $WorkRemainingMs $TotalRemainingMs
+ if($Scenario -ceq 'formal-m21' -and !$PSBoundParameters.ContainsKey('OwnerId')){throw '正式入口は現ownerの明示が必要'}
  # Supervisorは型compileも子を生み得るものとして、標準Process/JSONのgateだけを先行する。
  # この区間にはcustom型参照/外部command/Process.Startを置かない。
  if($Mode -eq 'Supervisor'){
@@ -351,7 +460,7 @@ catch {
  Attempt 'bootstrap-process-identity' {$current=[Diagnostics.Process]::GetCurrentProcess();$script:processIdentity=@{pid=$current.Id;creation=$current.StartTime.ToUniversalTime().Ticks.ToString()}}
  Attempt 'bootstrap-result-save' {
   $name='result.json';if($Mode -eq 'Supervisor'){$name='supervisor-result.json'}elseif($Mode -eq 'Observe'){$name='observe-result.json'}
-  Write-Json $name @{owner=$owner;nonce=$Nonce;process=$processIdentity;passed=$false;primary=$primary;secondary=@($secondary.ToArray());grandchildEvidence=$grandchildEvidence;p6Observations=@();metadataReadiness=@($metadataReadiness.ToArray());parentExitEvidence=$parentExitEvidence;formalContractEvidence=$formalContractEvidence;parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@();lastHandles=@();startupRecovery=@();resourceRecovery=@{confirmed=$true;jobEmpty=$null;retained=@()};recovered=$true;parentKilled=$false;knownExited=0}
+  Write-Json $name @{owner=$owner;nonce=$Nonce;process=$processIdentity;passed=$false;primary=$primary;secondary=@($secondary.ToArray());grandchildEvidence=$grandchildEvidence;p6Observations=@();metadataReadiness=@($metadataReadiness.ToArray());parentExitEvidence=$parentExitEvidence;formalContractEvidence=$formalContractEvidence;formalEntryEvidence=$formalEntryEvidence;parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@();lastHandles=@();startupRecovery=@();resourceRecovery=@{confirmed=$true;jobEmpty=$null;retained=@()};recovered=$true;parentKilled=$false;knownExited=0}
   $script:bootstrapSaved=$true
  }
  if(!$bootstrapSaved){[Console]::Error.WriteLine((@{passed=$false;primary=$primary;secondary=@($secondary.ToArray())}|ConvertTo-Json -Depth 12 -Compress))}
@@ -432,6 +541,16 @@ function New-Supervisor([string]$childMode,[string]$prefix) {
  $childArguments=@('-NoProfile','-NonInteractive','-File',$PSCommandPath,'-Mode',$childMode,'-Scenario',$Scenario,'-RunDirectory',$run,'-Nonce',$Nonce,'-OwnerId',$owner,'-NodePath',$NodePath,'-WorkRemainingMs',[string](Remaining),'-TotalRemainingMs',[string](Remaining -Recovery))
  if($TestFixture -in @('parent-before-certificate','formal-ms','formal-fe','formal-admission') -or $chromiumFixture){$childArguments+=@('-TestFixture',$TestFixture)}
  Require-Work
+ if($Scenario -ceq 'formal-m21'){
+  $environment=New-M21FormalSupervisorEnvironment
+  Require-Work
+  # 2回の時計読取の丸めでRを1ms削らない。保存済みGを基準にWを短縮する。
+  $formalTotal=Remaining -Recovery
+  $formalWork=[Math]::Min((Remaining),[Math]::Max(0,$formalTotal-300000))
+  $childArguments[[Array]::IndexOf($childArguments,'-WorkRemainingMs')+1]=[string]$formalWork
+  $childArguments[[Array]::IndexOf($childArguments,'-TotalRemainingMs')+1]=[string]$formalTotal
+  return [M21Child]::Start($ps,$childArguments,$PSScriptRoot,(Join-Path $run $prefix),(Remaining -Recovery),$false,$environment)
+ }
  return [M21Child]::Start($ps,$childArguments,$PSScriptRoot,(Join-Path $run $prefix),(Remaining -Recovery),($Scenario -eq 'stdio-eof'))
 }
 function Register-Child([M21Child]$child,[string]$role) {
@@ -460,15 +579,17 @@ function P6-State([string]$stage) {
 function Capture([M21Child]$child,[string]$role,[int]$milliseconds) {
  if(!$child.Started){$script:streams.Add(@{role=$role;notStarted=$true;exited=$true;exitCode=$null;stdoutEof=$true;stderrEof=$true});$child.Captured=$true;return}
  $item=[ordered]@{role=$role;pid=$child.RecordedPid;creation=$child.RecordedCreation;logs=$child.LogPrefix;exited=$false;exitCode=$null;stdoutEof=$false;stderrEof=$false;stdoutPublished=$false;stderrPublished=$false;timingOrigin='held-child-instance';timings=@();timingOverflow=$false}
- $exitCap=Remaining $milliseconds -Recovery
+ $exitMilliseconds=$milliseconds;$streamMilliseconds=$milliseconds
+ if($Scenario -ceq 'formal-m21'){$exitMilliseconds=[Math]::Min(2000,$milliseconds);$streamMilliseconds=[Math]::Min(1000,$milliseconds)}
+ $exitCap=Remaining $exitMilliseconds -Recovery
  $child.Mark('capture-exit-before',$exitCap)
  try{$item.exited=$child.Process.WaitForExit($exitCap);if($item.exited){$item.exitCode=$child.Process.ExitCode}}catch{Fail ($role+'-exit') $_.Exception}finally{$child.Mark('capture-exit-after',$exitCap)}
  Attempt 'p6-after-child-exit' {P6-State 'after-child-exit'}
  if(!$item.exited){$script:recovered=$false;Fail ($role+'-exit-timeout') ([TimeoutException]::new())}
  Attempt 'p6-stdout-before' {P6-State 'stdout-before'}
- try{$item.stdoutEof=$child.Eof($true,(Remaining $milliseconds -Recovery));if(!$item.stdoutEof){Set-Reason 'stdout-eof-timeout';throw 'stdout EOF期限超過'}}catch{$script:recovered=$false;Fail ($role+'-stdout') $_.Exception $_}finally{Attempt 'p6-stdout-after' {P6-State 'stdout-after'}}
+ try{$item.stdoutEof=$child.Eof($true,(Remaining $streamMilliseconds -Recovery));if(!$item.stdoutEof){Set-Reason 'stdout-eof-timeout';throw 'stdout EOF期限超過'}}catch{$script:recovered=$false;Fail ($role+'-stdout') $_.Exception $_}finally{Attempt 'p6-stdout-after' {P6-State 'stdout-after'}}
  Attempt 'p6-stderr-before' {P6-State 'stderr-before'}
- try{$item.stderrEof=$child.Eof($false,(Remaining $milliseconds -Recovery));if(!$item.stderrEof){Set-Reason 'stderr-eof-timeout';throw 'stderr EOF期限超過'}}catch{$script:recovered=$false;Fail ($role+'-stderr') $_.Exception $_}finally{Attempt 'p6-stderr-after' {P6-State 'stderr-after'}}
+ try{$item.stderrEof=$child.Eof($false,(Remaining $streamMilliseconds -Recovery));if(!$item.stderrEof){Set-Reason 'stderr-eof-timeout';throw 'stderr EOF期限超過'}}catch{$script:recovered=$false;Fail ($role+'-stderr') $_.Exception $_}finally{Attempt 'p6-stderr-after' {P6-State 'stderr-after'}}
  if($item.exited -and $item.stdoutEof -and $item.stderrEof){
   Attempt ($role+'-stdout-publication') {try{$child.PublishCapturedOutput($true)}catch{$script:recovered=$false;Set-Reason 'stdout-publication-failed';throw}}
   Attempt ($role+'-stderr-publication') {try{$child.PublishCapturedOutput($false)}catch{$script:recovered=$false;Set-Reason 'stderr-publication-failed';throw}}
@@ -643,12 +764,17 @@ try {
  if($Mode -eq 'ReadinessFixture'){
   # テスト本体は固定pathだけ。通常reader/Observeを置換しない。
   . (Join-Path $PSScriptRoot 'm21-windows-supervisor.readiness-fixture.ps1')
+ }elseif($Mode -eq 'Parent' -and $TestFixture -ceq 'wsl-relay-loss'){
+  Invoke-M21WslRelayLossFixture
  }elseif($Mode -eq 'Supervisor' -and $chromiumFixture){
   if(![M21Job]::InJob($self,$null)){throw 'Chromium ACK後Job不在'}
   Invoke-ChromiumFixture
  }elseif($Mode -eq 'Supervisor' -and $TestFixture -in @('formal-ms','formal-fe','formal-admission')){
   if(![M21Job]::InJob($self,$null)){throw 'formal fixture ACK後Job不在'}
   Invoke-FormalContractFixture
+ }elseif($Mode -eq 'Supervisor' -and $Scenario -ceq 'formal-m21'){
+  if(![M21Job]::InJob($self,$null)){throw 'formal ACK後Job不在'}
+  Invoke-M21FormalSupervisor
  }elseif($Mode -eq 'Supervisor'){
   # 親のexact Job認定ack後に初期化した型で補助観測する。
   if(![M21Job]::InJob($self,$null)){throw 'ack後Job不在'}
@@ -730,6 +856,7 @@ try {
   }finally{foreach($p in $known){Attempt 'observer-handle-close' {$p.Dispose()}}}
  }else{
   if($TestFixture -eq 'parent-before-certificate'){Set-Reason 'fixture-parent-exit';throw '固定fixture: cert前Parent終了'}
+  if($Scenario -ceq 'formal-m21'){Initialize-M21FormalParent}
   Set-Operation 'Parent.createJob'
   $job=[M21Job]::Create()
   Set-Operation 'Parent.startSupervisor'
@@ -786,7 +913,8 @@ try {
    $p6Certification.releasePublished=$true
   }
   Set-Operation 'Parent.wait'
-  if(!$supervisor.Process.WaitForExit((Remaining))){Set-Reason 'work-budget-exhausted';throw 'supervisor exit期限超過'}
+  if($Scenario -ceq 'formal-m21'){Wait-M21FormalSupervisor $supervisor}
+  elseif(!$supervisor.Process.WaitForExit((Remaining))){Set-Reason 'work-budget-exhausted';throw 'supervisor exit期限超過'}
   if(Test-Path -LiteralPath (Join-Path $run 'supervisor-result.json')){
    $inner=Read-Json 'supervisor-result.json'
    if($null -ne $inner.primary){$primary=$inner.primary}
@@ -797,11 +925,12 @@ try {
    foreach($item in $inner.p6Observations){$p6Observations.Add($item)}
    foreach($item in $inner.metadataReadiness){$metadataReadiness.Add($item)}
    if($TestFixture -in @('formal-ms','formal-fe','formal-admission')){$formalContractEvidence=$inner.formalContractEvidence}
+   if($Scenario -ceq 'formal-m21'){$formalEntryEvidence=$inner.formalEntryEvidence}
    $grandchildEvidence=$inner.grandchildEvidence
-   if($Scenario -in @('host-fail','cleanup-fail') -and !$inner.recovered){$recovered=$false}
+   if($Scenario -in @('host-fail','cleanup-fail','formal-m21') -and !$inner.recovered){$recovered=$false}
   }
   if($supervisor.Process.ExitCode -ne 0 -and $null -eq $primary){Fail 'dummy-nonzero' ([InvalidOperationException]::new())}
-  if($Scenario -eq 'normal'){
+  if($Scenario -in @('normal','formal-m21')){
    $inner=Read-Json 'supervisor-result.json'
    if(!$inner.passed -or !$inner.recovered){throw 'inner失敗'}
   }
@@ -813,13 +942,15 @@ finally {
  if($Mode -ne 'Supervisor'){
   Attempt 'job-stop' {if($null -ne $job){$job.Stop();if($null -ne $p6Certification){$p6Certification.jobStopped=$true}}}
   foreach($child in $held){
+   if($Scenario -ceq 'formal-m21' -and $null -ne $m21Bridge -and [object]::ReferenceEquals($child,$m21Bridge)){continue}
    Attempt 'direct-stop' {Parent-Event 'kill-before' $child;if($child.Started -and !$child.Process.HasExited){Parent-Event 'kill-issued' $child;$child.Process.Kill();Parent-Event 'kill-returned' $child}else{Parent-Event 'kill-skipped' $child}}
    Attempt 'exit-and-streams' {Capture $child 'direct' 1500}
   }
   Attempt 'job-empty' {
    if($null -ne $job){
     $clock=[Diagnostics.Stopwatch]::StartNew()
-    $cleanupLimit=Remaining 3000 -Recovery
+    $jobCap=3000;if($Scenario -ceq 'formal-m21'){$jobCap=10000}
+    $cleanupLimit=Remaining $jobCap -Recovery
     while($job.Active() -gt 0 -and $clock.ElapsedMilliseconds -lt $cleanupLimit -and (Remaining -Recovery) -gt 0){Start-Sleep -Milliseconds ([Math]::Min(25,(Remaining -Recovery)))}
     $script:jobEmpty=($job.Active() -eq 0)
     if(!$script:jobEmpty){$script:recovered=$false;throw 'Job残留'}
@@ -832,9 +963,20 @@ finally {
     if(!$p6Certification.childExited -or !$p6Certification.grandchildExited){$script:recovered=$false;throw 'P6認定handle回収未確認'}
    }
   }
+  if($Scenario -ceq 'formal-m21' -and $null -ne (Get-Variable m21FormalCertified -Scope Script -ErrorAction SilentlyContinue)){
+   foreach($role in $script:m21FormalCertified.Keys){
+    Attempt ('formal-held-exit-'+$role) {
+     $entry=$script:m21FormalCertified[$role]
+     $exited=$entry.process.WaitForExit((Remaining 2000 -Recovery))
+     $code=$null;if($exited){$code=$entry.process.ExitCode}
+     $script:knownExitEvidence+=@{role=$role;identity=$entry.identity;exited=$exited;exitCode=$code;evidence='parent-exact-held-handle'}
+     if(!$exited){$script:recovered=$false;throw '正式保持世代の実exit不明'}
+    }
+   }
+  }
   Attempt 'job-close' {if($null -ne $job){$job.Dispose();$job=$null}}
-  # 将来のDocker清掃/ledgerの位置。prototypeは自己dummyだけを扱う。
-  Attempt 'external-cleanup' {Guard-Run;if($Scenario -eq 'cleanup-fail'){Set-Reason 'cleanup-fault';throw 'cleanup故障注入'}}
+  # DockerはJob外。自己ledger/同daemonを独立に回収する。
+  Attempt 'external-cleanup' {Guard-Run;if($Scenario -ceq 'formal-m21'){Stop-M21FormalExternalResources};if($Scenario -eq 'cleanup-fail'){Set-Reason 'cleanup-fault';throw 'cleanup故障注入'}}
  }
  # 起動catchで回収不明だった対象も、保持情報を失う前に再度独立に確認する。
  if($Mode -eq 'Supervisor'){
@@ -848,6 +990,7 @@ finally {
   }}
  }
  foreach($p in $certified){Attempt 'certified-handle-close' {$p.Dispose()}}
+ if($null -ne $m21FormalAuxiliary){foreach($p in $m21FormalAuxiliary){Attempt 'formal-auxiliary-handle-close' {$p.Dispose()}}}
  Attempt 'p6-grand-handle-close' {if($null -ne $script:p6Grand){$script:p6Grand.Dispose();$script:p6Grand=$null}}
  foreach($child in $held){
   Attempt 'last-handle' {
@@ -887,7 +1030,7 @@ finally {
   if(!$p6Certification.childExited){$retained.Add(@{identity=$p6Certification.child;reason='P6 certified child exit unconfirmed'})}
   if(!$p6Certification.grandchildExited){$retained.Add(@{identity=$p6Certification.grandchild;reason='P6 certified grandchild exit unconfirmed'})}
  }
- $result=[ordered]@{owner=$owner;nonce=$Nonce;process=$processIdentity;mode=$Mode;scenario=$Scenario;passed=($null -eq $primary);primary=$primary;secondary=@($secondary.ToArray());grandchildEvidence=$grandchildEvidence;p6Observations=@($p6Observations.ToArray());p6Certification=$p6Certification;fixtureEvidence=$fixtureEvidence;metadataReadiness=@($metadataReadiness.ToArray());parentExitEvidence=$parentExitEvidence;formalContractEvidence=$formalContractEvidence;lateObservation=$lateObservation;parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@($streams.ToArray());lastHandles=@($lastHandles.ToArray());knownExitEvidence=$knownExitEvidence;startupRecovery=@($startupRecovery.ToArray());resourceRecovery=@{jobEmpty=$jobEmpty;confirmed=$recovered;retained=@($retained.ToArray())};recovered=$recovered;parentKilled=($null -ne $observer);knownExited=0}
+ $result=[ordered]@{owner=$owner;nonce=$Nonce;process=$processIdentity;mode=$Mode;scenario=$Scenario;passed=($null -eq $primary);primary=$primary;secondary=@($secondary.ToArray());grandchildEvidence=$grandchildEvidence;p6Observations=@($p6Observations.ToArray());p6Certification=$p6Certification;fixtureEvidence=$fixtureEvidence;metadataReadiness=@($metadataReadiness.ToArray());parentExitEvidence=$parentExitEvidence;formalContractEvidence=$formalContractEvidence;formalEntryEvidence=$formalEntryEvidence;lateObservation=$lateObservation;parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@($streams.ToArray());lastHandles=@($lastHandles.ToArray());knownExitEvidence=$knownExitEvidence;startupRecovery=@($startupRecovery.ToArray());resourceRecovery=@{jobEmpty=$jobEmpty;confirmed=$recovered;retained=@($retained.ToArray())};recovered=$recovered;parentKilled=($null -ne $observer);knownExited=0}
  if($null -ne $observer){$result.knownExited=$observer.knownExited}
  try{
   $name='result.json';if($Mode -eq 'Supervisor'){$name='supervisor-result.json'}elseif($Mode -eq 'Observe'){$name='observe-result.json'}
