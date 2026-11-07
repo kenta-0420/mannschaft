@@ -15,10 +15,10 @@ import uuid
 
 OWNER = '1d767b20-825c-4edc-b397-8d4367036462'
 MAX_FRAME = 16384
-OPERATIONS = {'volume-create': ('mysql','valkey'), 'container-create': ('mysql','valkey'), 'container-start': ('mysql','valkey'), 'daemon-info': ('daemon',), 'container-inspect': ('mysql','valkey'),
+OPERATIONS = {'volume-create': ('mysql','valkey'), 'container-create': ('mysql','valkey'), 'container-start': ('mysql','valkey'), 'resources-absent': ('mysql','valkey'), 'daemon-info': ('daemon',), 'container-inspect': ('mysql','valkey'),
               'container-stop': ('mysql','valkey'), 'container-remove': ('mysql','valkey'),
-              'container-absent': ('mysql','valkey'), 'volume-inspect': ('mysql','valkey'),
-              'volume-remove': ('mysql','valkey'), 'volume-absent': ('mysql','valkey')}
+              'volume-inspect': ('mysql','valkey'),
+              'volume-remove': ('mysql','valkey'), }
 
 class Rejected(Exception):
     """外部入力を例外本文へ含めない。"""
@@ -179,14 +179,12 @@ def process_identity(pid):
                 pid_namespace=os.readlink('/proc/self/ns/pid'))
 
 
-def supervise(argv, env, body_deadline, control_fd, global_deadline=None):
+def supervise(argv, env, body_deadline, control_fd, global_deadline, clock_delta=None):
     """要求専用watchdog内部専用。wireからargv/envを受け取らない。
 
     呼出側はforkした専用子でのみ呼ぶ。watchdogはbridgeと別session、
     subreaperをCLIより先に設定する。CLI leaderは全group signal判断が終わるまで未reap。
     """
-    if global_deadline is None:
-        global_deadline = body_deadline + 2000000000
     body_deadline = min(body_deadline, global_deadline)
     if time.monotonic_ns() >= body_deadline:
         raise Rejected('expired-before-spawn')
@@ -224,7 +222,7 @@ def supervise(argv, env, body_deadline, control_fd, global_deadline=None):
         os.set_blocking(fd, False)
     os.set_blocking(control_fd, False)
     reason = 'completed'
-    clock_delta=time.clock_gettime_ns(time.CLOCK_BOOTTIME)-time.monotonic_ns()
+    if clock_delta is None: clock_delta=time.clock_gettime_ns(time.CLOCK_BOOTTIME)-time.monotonic_ns()
     leader_seen = False
     output_full = False
     force_count = 0
@@ -314,11 +312,16 @@ def supervise(argv, env, body_deadline, control_fd, global_deadline=None):
         os.close(fd)
     os.close(pidfd)
     os.close(control_fd)
-    return dict(leader_identity=identity, cli_exit=cli_status, children_reaped=children_reaped,
+    retained=[]
+    if not children_reaped:
+        for child in Path('/proc/self/task/'+str(os.getpid())+'/children').read_text().split():
+            try: retained.append(process_identity(int(child)))
+            except (FileNotFoundError,ProcessLookupError): pass
+    return dict(retained_children=retained,leader_identity=identity, cli_exit=cli_status, children_reaped=children_reaped,
                 reaped_pids=reaped, stdout_eof=eof[out_r], stderr_eof=eof[err_r],
                 write_closed=True, force_count=force_count, reason=reason,
                 primary_children_exited=primary_children_exited, primary_stdout_eof=primary_eof[out_r], primary_stderr_eof=primary_eof[err_r],
-                green=primary_green and cli_status==0 and children_reaped and all(eof.values()), _stdout_hex=bytes(captured[out_r]).hex())
+                physical_completed=primary_green and children_reaped and all(eof.values()), green=primary_green and cli_status==0 and children_reaped and all(eof.values()), _stdout_hex=bytes(captured[out_r]).hex(), _stderr_hex=bytes(captured[err_r]).hex())
 
 
 class DockerBoundary:
@@ -337,6 +340,7 @@ class DockerBoundary:
         self.inspected = {}
         self.ports = {}
         self.daemon_confirmed = False
+        self.absence_candidates=set()
 
     def command(self, operation, role, secrets=None):
         name = resource_name(self.run,role) if role != 'daemon' else None
@@ -348,12 +352,15 @@ class DockerBoundary:
             return base+['info','--format','{{.ID}}'], env
         if role not in ('mysql','valkey'):
             raise Rejected('role')
+        volume=name+'-data'
+        if operation in ('container-create','volume-create','container-start','container-stop','container-remove','volume-remove'):
+            self.absence_candidates.discard(role)
         if operation == 'volume-create':
-            args = ['volume','create','--label','m21.owner='+self.owner,'--label','m21.run='+self.run,'--label','m21.purpose='+role,name]
+            args = ['volume','create','--label','m21.owner='+self.owner,'--label','m21.run='+self.run,'--label','m21.purpose='+role,volume]
         elif operation == 'container-create':
             args = ['container','create','--name',name,'--label','m21.owner='+self.owner,'--label','m21.run='+self.run,'--label','m21.purpose='+role,
                     '--publish', '127.0.0.1::'+('3306' if role=='mysql' else '6379'),
-                    '--mount','type=volume,src='+name+',dst='+('/var/lib/mysql' if role=='mysql' else '/data')]
+                    '--mount','type=volume,src='+volume+',dst='+('/var/lib/mysql' if role=='mysql' else '/data')]
             if role == 'mysql':
                 if type(secrets) is not dict or set(secrets) != {'mysql_root_password','mysql_password'} or type(secrets['mysql_root_password']) is not str or not 1 <= len(secrets['mysql_root_password']) <= 1024 or '\x00' in secrets['mysql_root_password'] or '\n' in secrets['mysql_root_password']:
                     raise Rejected('secret')
@@ -366,10 +373,10 @@ class DockerBoundary:
                 raise Rejected('secret')
             args += [self.descriptor[role+'_image_id']]
         elif operation == 'container-inspect':
-            template = '{"id":{{json .Id}},"labels":{{json .Config.Labels}},"image":{{json .Image}},"ports":{{json .NetworkSettings.Ports}},"mounts":{{json .Mounts}},"running":{{json .State.Running}}}'
+            template = '{"id":{{json .Id}},"labels":{{json .Config.Labels}},"image":{{json .Image}},"ports":{{json .NetworkSettings.Ports}},"bindings":{{json .HostConfig.PortBindings}},"mounts":{{json .Mounts}},"running":{{json .State.Running}}}'
             args = ['container','inspect','--format',template,name]
         elif operation == 'volume-inspect':
-            args = ['volume','inspect','--format','{"name":{{json .Name}},"labels":{{json .Labels}}}',name]
+            args = ['volume','inspect','--format','{"name":{{json .Name}},"labels":{{json .Labels}}}',volume]
         elif operation in ('container-stop','container-remove','container-start'):
             evidence = self.inspected.get(('container',role))
             if evidence is None or not self.daemon_confirmed:
@@ -385,17 +392,25 @@ class DockerBoundary:
         elif operation == 'volume-remove':
             if ('volume',role) not in self.inspected or not self.daemon_confirmed:
                 raise Rejected('unverified-volume')
-            args = ['volume','rm',name]
+            args = ['volume','rm',volume]
+        elif operation == 'resources-absent':
+            args=['inspect','--format','M21_PRESENT',name,volume]
         elif operation == 'container-absent':
             args = ['container','ls','--all','--filter','name=^/'+name+'$','--format','{{.ID}}']
         elif operation == 'volume-absent':
-            args = ['volume','ls','--filter','name=^'+name+'$','--format','{{.Name}}']
+            args = ['volume','ls','--filter','name=^'+volume+'$','--format','{{.Name}}']
         else:
             raise Rejected('operation')
         return base+args, env
 
-    def adopt(self, operation, role, code, output):
+    def adopt(self, operation, role, code, output, stderr=b''):
         import re
+        if operation=='resources-absent':
+            expected=['error: no such object: '+resource_name(self.run,role),'error: no such object: '+resource_name(self.run,role)+'-data']
+            if code!=1 or output or stderr.decode('utf-8').splitlines()!=expected:
+                raise Rejected('resources-retained-or-unknown')
+            self.absence_candidates.add(role)
+            return {'absence_candidate':True,'absent':False,'requires_same_daemon_after':True}
         if code != 0 or not isinstance(output,bytes) or len(output)>MAX_FRAME:
             raise Rejected('cli-result')
         text = output.decode('utf-8').strip()
@@ -403,13 +418,13 @@ class DockerBoundary:
             if text != self.descriptor['daemon_id']:
                 raise Rejected('daemon-changed')
             self.daemon_confirmed = True
-            return {'daemon_confirmed':True}
+            return {'daemon_confirmed':True,'confirmed_absent_resources':[{'role':role,'container':resource_name(self.run,role),'volume':resource_name(self.run,role)+'-data'} for role in sorted(self.absence_candidates)]}
         if operation.endswith('-absent'):
             if text:
                 raise Rejected('resource-retained')
             return {'absent':True}
         if operation in ('container-create','volume-create'):
-            expected = resource_name(self.run,role)
+            expected = resource_name(self.run,role)+'-data'
             if operation == 'volume-create' and text != expected:
                 raise Rejected('created-volume')
             if operation == 'container-create' and not re.fullmatch('[0-9a-f]{64}',text):
@@ -425,27 +440,40 @@ class DockerBoundary:
                 raise Rejected('ownership')
             kind = operation.split('-')[0]
             if kind == 'volume':
-                if set(value) != {'name','labels'} or value['name'] != resource_name(self.run,role):
+                if set(value) != {'name','labels'} or value['name'] != resource_name(self.run,role)+'-data':
                     raise Rejected('volume-identity')
             else:
-                if set(value) != {'id','labels','image','ports','mounts','running'} or not re.fullmatch('[0-9a-f]{64}',str(value['id'])) or value['image'] != self.descriptor[role+'_image_id'] or type(value['running']) is not bool:
+                if set(value) != {'id','labels','image','ports','bindings','mounts','running'} or not re.fullmatch('[0-9a-f]{64}',str(value['id'])) or value['image'] != self.descriptor[role+'_image_id'] or type(value['running']) is not bool:
                     raise Rejected('container-identity')
                 port_key = '3306/tcp' if role=='mysql' else '6379/tcp'
-                ports = value['ports']
-                if type(ports) is not dict or set(ports) != {port_key} or type(ports[port_key]) is not list or len(ports[port_key]) != 1:
-                    raise Rejected('port-shape')
-                port = ports[port_key][0]
-                if type(port) is not dict or set(port) != {'HostIp','HostPort'} or port['HostIp'] != '127.0.0.1' or type(port['HostPort']) is not str or not re.fullmatch('[0-9]{1,5}',port['HostPort']) or not 1 <= int(port['HostPort']) <= 65535:
-                    raise Rejected('port-binding')
-                if role in self.ports and self.ports[role] != port:
-                    raise Rejected('port-changed')
+                bindings=value['bindings']
+                if type(bindings) is not dict or set(bindings)!={port_key} or type(bindings[port_key]) is not list or len(bindings[port_key])!=1:
+                    raise Rejected('binding-shape')
+                binding=bindings[port_key][0]
+                if type(binding) is not dict or set(binding)!={'HostIp','HostPort'} or binding['HostIp']!='127.0.0.1' or type(binding['HostPort']) is not str or (binding['HostPort'] and (not re.fullmatch('[0-9]{1,5}',binding['HostPort']) or not 1<=int(binding['HostPort'])<=65535)):
+                    raise Rejected('binding-loopback')
+                ports=value['ports']
+                if ports is None: ports={}
+                if type(ports) is not dict or any(key!=port_key and entry is not None for key,entry in ports.items()):
+                    raise Rejected('unexpected-published-port')
+                port=None
+                if ports.get(port_key) is not None:
+                    if type(ports[port_key]) is not list or len(ports[port_key])!=1:
+                        raise Rejected('port-shape')
+                    port=ports[port_key][0]
+                    if type(port) is not dict or set(port)!={'HostIp','HostPort'} or port['HostIp']!='127.0.0.1' or type(port['HostPort']) is not str or not re.fullmatch('[0-9]{1,5}',port['HostPort']) or not 1<=int(port['HostPort'])<=65535:
+                        raise Rejected('port-binding')
+                    if role in self.ports and self.ports[role]!=port:
+                        raise Rejected('port-changed')
+                elif value['running'] or role in self.ports:
+                    raise Rejected('missing-published-port')
                 mounts = value['mounts']
                 if type(mounts) is not list or len(mounts) != 1:
                     raise Rejected('mount-shape')
                 mount = mounts[0]
-                if type(mount) is not dict or mount.get('Type') != 'volume' or mount.get('Name') != resource_name(self.run,role) or mount.get('Destination') != ('/var/lib/mysql' if role=='mysql' else '/data') or mount.get('RW') is not True:
+                if type(mount) is not dict or mount.get('Type') != 'volume' or mount.get('Name') != resource_name(self.run,role)+'-data' or mount.get('Destination') != ('/var/lib/mysql' if role=='mysql' else '/data') or mount.get('RW') is not True:
                     raise Rejected('mount-identity')
-                self.ports[role] = port.copy()
+                if port is not None: self.ports[role] = port.copy()
             self.inspected[(kind,role)] = value
             return {'ownership_inspected':True,'identity':value.get('id',value.get('name')),'loopback_port':self.ports.get(role)}
         return {'command_completed':True,'absent':False}
@@ -528,6 +556,8 @@ def spawn_watchdog(argv, env, deadline, global_deadline, directory_fd, common, r
     import fcntl
     control_r,control_w = os.pipe2(os.O_CLOEXEC)
     result_r,result_w = os.pipe2(os.O_CLOEXEC)
+    if common.get('clock_delta') is not None and abs((time.clock_gettime_ns(time.CLOCK_BOOTTIME)-time.monotonic_ns())-common['clock_delta'])>100000000:
+        raise Rejected('clock-discontinuity')
     if time.monotonic_ns() >= min(deadline,global_deadline):
         for fd in (control_r,control_w,result_r,result_w): os.close(fd)
         raise Rejected('expired-before-watchdog')
@@ -540,14 +570,15 @@ def spawn_watchdog(argv, env, deadline, global_deadline, directory_fd, common, r
             null=os.open('/dev/null',os.O_RDWR)
             for target in (0,1,2): os.dup2(null,target)
             os.closerange(6,65536)
-            result=supervise(argv,env,deadline,3,global_deadline)
+            result=supervise(argv,env,deadline,3,global_deadline,common.get('clock_delta'))
             private=result.pop('_stdout_hex')
+            private_stderr=result.pop('_stderr_hex')
             receipt=common|{'type':'request','request_id':request['request_id'],
                     'operation':request['operation'],'resource':request['resource'],'phase':request['phase'],
                     'deadline_ns':deadline,'linux':result,'daemon_resource_confirmed':False}
             prefix=request.get('receipt_prefix','request-%05d'%request['request_id'])
             publish(4,prefix+'.json',receipt)
-            send_private(5,{'linux':result,'stdout_hex':private},min(global_deadline,time.monotonic_ns()+500000000))
+            send_private(5,{'linux':result,'stdout_hex':private,'stderr_hex':private_stderr},min(global_deadline,time.monotonic_ns()+500000000))
             os.close(5); os.close(4)
             os._exit(0)
         except BaseException:
@@ -572,7 +603,7 @@ def bridge_loop(dfd, directory, owner, run, nonce, input_commit):
             'bridgeSourceSha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
             'pythonSha256':hashlib.sha256(Path('/usr/bin/python3').resolve().read_bytes()).hexdigest(),
             'dockerSha256':hashlib.sha256(Path('/usr/bin/docker').read_bytes()).hexdigest(),
-            't0_ns':t0}|identity
+            't0_ns':t0,'clock_delta':clock_delta,'bridge_identity':process_identity(os.getpid())}|identity
     publish(dfd,'ready.json',common|{'type':'ready','ready':True})
     protocol=Protocol(run,t0,owner)
     active=None
@@ -586,12 +617,12 @@ def bridge_loop(dfd, directory, owner, run, nonce, input_commit):
         os.mkdir('config',mode=0o700,dir_fd=dfd)
         descriptor=preflight(dfd,directory,common,protocol,identity)
         boundary=DockerBoundary(run,directory+'/config',descriptor,owner)
-        publish(dfd,'initialized.json',common|{'type':'initialized','global_deadline_ns':protocol.global_deadline,'work_deadline_ns':protocol.work_deadline,'descriptor':descriptor})
+        publish(dfd,'initialized.json',common|{'type':'initialized','global_deadline_ns':protocol.global_deadline,'work_deadline_ns':protocol.work_deadline,'descriptor':descriptor,'green':True,'preflight':{'count':3,'green':True,'ids':[1,2,3]}})
         binding=read_frame(0,min(protocol.work_deadline,time.monotonic_ns()+2000000000))
         protocol.check(binding,('type','owner','run','descriptor'))
         if binding['type']!='bind' or binding['descriptor']!=descriptor: raise Rejected('descriptor-bind')
         boundary.daemon_confirmed=True
-        publish(dfd,'bound.json',common|{'type':'bound','descriptor':descriptor})
+        publish(dfd,'bound.json',common|{'type':'bound','descriptor':descriptor,'green':True})
         while time.monotonic_ns()<protocol.global_deadline:
             if abs((time.clock_gettime_ns(time.CLOCK_BOOTTIME)-time.monotonic_ns())-clock_delta)>100000000:
                 raise Rejected('clock-discontinuity')
@@ -619,8 +650,8 @@ def bridge_loop(dfd, directory, owner, run, nonce, input_commit):
                             if not waited: select.select([],[],[],.001)
                     adopted=None
                     request=active['request']
-                    if waited and os.waitstatus_to_exitcode(status)==0 and result is not None and result.get('linux',{}).get('green') is True:
-                        try: adopted=boundary.adopt(request['operation'],request['resource'],result['linux']['cli_exit'],bytes.fromhex(result['stdout_hex']))
+                    if waited and os.waitstatus_to_exitcode(status)==0 and result is not None and (result.get('linux',{}).get('green') is True or (request['operation']=='resources-absent' and result.get('linux',{}).get('physical_completed') is True and result['linux'].get('cli_exit')==1)):
+                        try: adopted=boundary.adopt(request['operation'],request['resource'],result['linux']['cli_exit'],bytes.fromhex(result['stdout_hex']),bytes.fromhex(result['stderr_hex']))
                         except (Rejected,ValueError,UnicodeError): pass
                     green=adopted is not None and not active['cancelled']
                     overall_green=overall_green and green
@@ -641,7 +672,7 @@ def bridge_loop(dfd, directory, owner, run, nonce, input_commit):
                     break
                 if frame.get('type')=='cancel':
                     protocol.check(frame,('type','owner','run','request_id'))
-                    if not active or frame['request_id']!=active['request']['request_id']: raise Rejected('cancel')
+                    if not active or active['cancelled'] or frame['request_id']!=active['request']['request_id']: raise Rejected('cancel')
                     close_active_control(active)
                     overall_green=False
                     continue

@@ -39,3 +39,9 @@ bridge-exit.jsonはLinux側の有限終端結果であり、Windows実exit/各EO
 標準実行は python3 scripts/test_m21_wsl_docker_bridge.py。Linux実子試練は即exit/hang/孫pipe保持/孫両pipe閉じ生存/controlEOF、G0fork0、常駐idle/partial/activeParentEOF、init期限。Docker外部境界は固定stub契約でsecret非argv/envclear、daemon変更/nonzero不存在拒否を検査する。WindowsではLinux試験のskipを明示し、greenに数えない。WSL NTFS専用fixtureはproduction同guard/CREATE_NEW/atomic公開/fsync/readを自己所有小directoryで1回測る。
 
 旧checkpoint18866の孫生存greenは欠陥と判定し、greenfalseを要求する実子red2件を先に確認して修正した。現sourceのgreenは新SHAを固定した有限suite結果だけで判断する。Windows relay強制終了、実Docker操作、正式App/Java/FE/Chromium、55分formalrun、既存14回帰は別資格であり、本書だけで取得済みとしない。
+
+最終不存在はR14を維持するため、volume名をcontainer名＋-dataと分離する。resources-absentはroleごと1CLI `docker inspect --format M21_PRESENT <containerName> <volumeName>` に固定し、存在時のJSONを出さない。stdout空、exit1、distinct2名それぞれのexact no-such-objectだけのstderrを暫定candidateとする。最後の同daemon-infoが成功して初めてconfirmed_absent_resourcesへ昇格する。candidateのabsentはfalseのまま、unknown errorはretained。
+
+[Docker inspect公式仕様](https://docs.docker.com/reference/cli/docker/inspect/)は複数object/任意type照合を規定する。[Docker CLI一次source](https://raw.githubusercontent.com/docker/cli/master/cli/command/system/inspect.go)では各object typeをprobeして非skiperrorを返す。別名のどのtypeも不存在なら対象container/volumeも不存在、という判定はこれらからの推論であり、29系実binaryのexact stderr形と3秒capは別の限定read-only実測で確認する。他namespaceの同名存在時は保守的nonGreen。
+
+resources-absentだけは想定CLI exit1のためlinux.greenはfalse。linux.physical_completed（一次子集合/各EOF＋回収済み）とexact absence candidateをobservedで採用する。他operationはexit0/greenを要求する。Windows保持relay終了試験は既存M21Child側担当が実施する。testfileの固定 --relay-fixture はproduction同guard/bridge-loopを使い、Docker境界だけ固定dummyへ置き換える。Linux process/EOFをmockに置換しない。
