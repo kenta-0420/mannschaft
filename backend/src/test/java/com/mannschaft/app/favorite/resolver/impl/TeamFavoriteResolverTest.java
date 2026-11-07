@@ -9,6 +9,7 @@ import com.mannschaft.app.favorite.dto.FavoriteEntityMetaDto;
 import com.mannschaft.app.favorite.dto.FavoriteEntityStatus;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.service.TeamService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,12 +28,15 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 
 /**
  * {@link TeamFavoriteResolver} 単体テスト（画像 404 根治 Phase3）。
  *
  * <p>チームアイコンが DB の生 R2 キーでなく、{@link MediaUrlResolver} 解決後の
  * 署名付き表示 URL として返ることを検証する。</p>
+ * <p>slug取得のconsumer契約を検査するため、filterAccessibleのbatch戻り集合を直接固定する。
+ * このUTは認可自体の保証ではなく、実DB契約と実JWT実機は別の検証で確認する。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("TeamFavoriteResolver 単体テスト")
@@ -40,6 +44,9 @@ class TeamFavoriteResolverTest {
 
     @Mock
     private TeamRepository teamRepository;
+
+    @Mock
+    private TeamService teamService;
 
     @Mock
     private AccessControlService accessControlService;
@@ -66,6 +73,7 @@ class TeamFavoriteResolverTest {
         given(teamRepository.findAllById(any())).willReturn(List.of(team));
         given(contentVisibilityChecker.filterAccessible(eq(ReferenceType.TEAM), any(), eq(700L)))
                 .willReturn(Set.of(1L));
+        given(teamService.getSlugsByIds(Set.of(1L))).willReturn(Map.of(1L, "tokyo-bears"));
         given(accessControlService.isAdminOrAbove(anyLong(), anyLong(), anyString()))
                 .willReturn(false);
         given(mediaUrlResolver.resolve("team/1/icon/raw.png"))
@@ -90,6 +98,7 @@ class TeamFavoriteResolverTest {
         given(teamRepository.findAllById(any())).willReturn(List.of(team));
         given(contentVisibilityChecker.filterAccessible(eq(ReferenceType.TEAM), any(), eq(700L)))
                 .willReturn(Set.of(2L));
+        given(teamService.getSlugsByIds(Set.of(2L))).willReturn(Map.of(2L, "no-icon-team"));
         given(accessControlService.isAdminOrAbove(anyLong(), anyLong(), anyString()))
                 .willReturn(false);
         given(mediaUrlResolver.resolve(eq(null))).willReturn(null);
@@ -119,5 +128,28 @@ class TeamFavoriteResolverTest {
         assertThat(meta.status()).isEqualTo(FavoriteEntityStatus.UNAVAILABLE);
         assertThat(meta.displayName()).isNull();
         assertThat(meta.iconUrl()).isNull();
+    }
+
+    @Test
+    @DisplayName("slug一括取得に対象IDが無い場合はUNAVAILABLEとしてメタデータを返さない")
+    void slug一括取得に対象が無い場合は利用不可() {
+        TeamEntity team = TeamEntity.builder()
+                .name("slug未取得チーム")
+                .slug("entity-only-slug")
+                .build();
+        ReflectionTestUtils.setField(team, "id", 42L);
+        given(teamRepository.findAllById(any())).willReturn(List.of(team));
+        given(contentVisibilityChecker.filterAccessible(eq(ReferenceType.TEAM), any(), eq(700L)))
+                .willReturn(Set.of(42L));
+        // TeamServiceのmockは既定の空Mapを返す。Entityのslugへフォールバックしない。
+
+        FavoriteEntityMetaDto meta = resolver.resolveAll(List.of("42"), 700L).get("42");
+
+        assertThat(meta.status()).isEqualTo(FavoriteEntityStatus.UNAVAILABLE);
+        assertThat(meta.displayName()).isNull();
+        assertThat(meta.iconUrl()).isNull();
+        assertThat(meta.pageUrl()).isNull();
+        assertThat(meta.canEdit()).isFalse();
+        verify(teamService).getSlugsByIds(Set.of(42L));
     }
 }

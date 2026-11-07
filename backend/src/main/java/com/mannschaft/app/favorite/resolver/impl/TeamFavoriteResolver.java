@@ -10,6 +10,7 @@ import com.mannschaft.app.favorite.dto.FavoriteEntityStatus;
 import com.mannschaft.app.favorite.resolver.FavoriteEntityResolver;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -37,6 +38,7 @@ import java.util.stream.Collectors;
 public class TeamFavoriteResolver implements FavoriteEntityResolver {
 
     private final TeamRepository teamRepository;
+    private final TeamService teamService;
     private final AccessControlService accessControlService;
     private final MediaUrlResolver mediaUrlResolver;
     private final ContentVisibilityChecker contentVisibilityChecker;
@@ -68,9 +70,16 @@ public class TeamFavoriteResolver implements FavoriteEntityResolver {
                     ReferenceType.TEAM, idMapping.keySet(), currentUserId);
             teams = teams.stream().filter(t -> visibleIds.contains(t.getId())).toList();
             Set<Long> foundIds = teams.stream().map(TeamEntity::getId).collect(Collectors.toSet());
+            Map<Long, String> slugs = teamService.getSlugsByIds(visibleIds);
 
             for (TeamEntity team : teams) {
                 String entityId = idMapping.get(team.getId());
+                String slug = slugs.get(Long.valueOf(entityId));
+                // 一括取得から対象が欠けた場合も、名前やURLを公開しない。
+                if (slug == null) {
+                    result.put(entityId, FavoriteEntityMetaDto.unavailable(entityId, FavoriteEntityType.TEAM));
+                    continue;
+                }
                 boolean canEdit = accessControlService.isAdminOrAbove(currentUserId, team.getId(), "TEAM");
                 result.put(entityId, new FavoriteEntityMetaDto(
                         entityId,
@@ -78,7 +87,7 @@ public class TeamFavoriteResolver implements FavoriteEntityResolver {
                         team.getName(),
                         // DB には生の R2 キーが入る。表示用署名付き URL へ解決して返す（生キーは 404）。
                         mediaUrlResolver.resolve(team.getIconUrl()),
-                        "/teams/" + team.getSlug(),
+                        "/teams/" + slug,
                         canEdit,
                         FavoriteEntityStatus.AVAILABLE
                 ));
