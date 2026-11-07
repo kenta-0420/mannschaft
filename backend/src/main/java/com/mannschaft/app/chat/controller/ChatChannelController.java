@@ -22,7 +22,6 @@ import com.mannschaft.app.chat.service.ChatMemberService;
 import com.mannschaft.app.chat.service.ChatChannelFacade;
 import com.mannschaft.app.chat.service.ChatMessageFacade;
 import com.mannschaft.app.common.ApiResponse;
-import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
@@ -176,7 +175,6 @@ public class ChatChannelController {
     @PostMapping("/{channelId}/join")
     @Operation(summary = "チャンネル参加")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "参加成功")
-    @AuthorizedInService
     public ResponseEntity<ApiResponse<MemberResponse>> joinChannel(@PathVariable Long channelId) {
         MemberResponse response = channelFacade.joinChannel(channelId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
