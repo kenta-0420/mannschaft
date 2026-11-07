@@ -164,6 +164,8 @@ public sealed class M21Child : IDisposable {
  public Process Process;public Task OutTask,ErrTask;FileStream output,error;
  public bool Started,StartupExited,StartupStdoutEof,StartupStderrEof,Captured,StdoutPublished,StderrPublished;
  bool bridgeInput,bridgeInputClosed,bridgeInputBroken;
+ public int? BridgeInputCodePage,BridgeInputPreambleLength;
+ public bool BridgeWriteCompleted,BridgeFlushCompleted;
  public int RecordedPid;public string RecordedCreation,LogPrefix;public Exception StartupFailure;
  public List<string> StartupCleanupFailures=new List<string>();
  public List<Exception> StartupCleanupExceptions=new List<Exception>();
@@ -211,10 +213,25 @@ public sealed class M21Child : IDisposable {
    if(bridgeInput){s.Arguments=BridgeArguments(args);}
    else{StringBuilder a=new StringBuilder();foreach(string x in args){if(a.Length>0)a.Append(' ');a.Append(Quote(x));}s.Arguments=a.ToString();}
    if(environment!=null){s.EnvironmentVariables.Clear();foreach(KeyValuePair<string,string> item in environment)s.EnvironmentVariables.Add(item.Key,item.Value);}
-   c.Process=new Process();c.Process.StartInfo=s;if(!c.Process.Start())throw new IOException("起動失敗");c.Started=true;
-   c.RecordedPid=c.Process.Id;
-   IntPtr retained=c.Process.Handle;
-   c.RecordedCreation=c.Process.StartTime.ToUniversalTime().Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture);
+   System.Text.Encoding originalInput=null;bool inputChanged=false;Exception launchFailure=null;
+   try {
+    if(bridgeInput){
+     originalInput=Console.InputEncoding;byte[] preamble=originalInput.GetPreamble();
+     if(preamble.Length>0){
+      if(originalInput.CodePage!=65001||preamble.Length!=3||preamble[0]!=239||preamble[1]!=187||preamble[2]!=191)throw new InvalidDataException("未知stdin preamble拒否");
+      inputChanged=true;Console.InputEncoding=new System.Text.UTF8Encoding(false);
+     }
+     c.BridgeInputCodePage=Console.InputEncoding.CodePage;c.BridgeInputPreambleLength=Console.InputEncoding.GetPreamble().Length;
+     if(c.BridgeInputPreambleLength!=0)throw new InvalidDataException("stdin preamble不成立");
+    }
+    c.Process=new Process();c.Process.StartInfo=s;if(!c.Process.Start())throw new IOException("起動失敗");c.Started=true;
+    c.RecordedPid=c.Process.Id;
+    IntPtr retained=c.Process.Handle;
+    c.RecordedCreation=c.Process.StartTime.ToUniversalTime().Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture);
+   }catch(Exception e){launchFailure=e;throw;}
+   finally {
+    if(inputChanged)try{Console.InputEncoding=originalInput;}catch(Exception restore){if(launchFailure==null)throw;c.CleanupFailure("input-encoding-restore",restore);}
+   }
    c.Mark("stdout-copy-before",-1);
    c.OutTask=c.Process.StandardOutput.BaseStream.CopyToAsync(c.output);
    c.Mark("stdout-copy-after",-1);
@@ -238,11 +255,20 @@ public sealed class M21Child : IDisposable {
   if(!bridgeInput||bridgeInputClosed||bridgeInputBroken||!Started||frame==null||frame.Length<5||frame.Length>16388||milliseconds<=0||Process.WaitForExit(0))throw new InvalidOperationException("bridge frame拒否");
   int length=(frame[0]<<24)|(frame[1]<<16)|(frame[2]<<8)|frame[3];
   if(length!=frame.Length-4)throw new InvalidOperationException("bridge frame長不一致");
-  byte[] payload=(byte[])frame.Clone();
-  Task write=Process.StandardInput.BaseStream.WriteAsync(payload,0,payload.Length);
-  write.ContinueWith(t=>Array.Clear(payload,0,payload.Length),TaskScheduler.Default);
-  try{if(!write.Wait(milliseconds)){bridgeInputBroken=true;throw new TimeoutException("bridge frame書込期限");}}
+  byte[] payload=(byte[])frame.Clone();Task write=null;
+  Stopwatch ioClock=Stopwatch.StartNew();Func<int> left=()=>Math.Max(0,milliseconds-(int)ioClock.ElapsedMilliseconds);
+  BridgeWriteCompleted=false;BridgeFlushCompleted=false;
+  try{
+   write=Process.StandardInput.BaseStream.WriteAsync(payload,0,payload.Length);
+   write.ContinueWith(t=>Array.Clear(payload,0,payload.Length),TaskScheduler.Default);
+   if(!write.Wait(left())||write.Status!=TaskStatus.RanToCompletion||left()<=0)throw new TimeoutException("bridge frame書込期限");
+   BridgeWriteCompleted=true;
+   Task flush=Process.StandardInput.BaseStream.FlushAsync();
+   if(!flush.Wait(left())||flush.Status!=TaskStatus.RanToCompletion||left()<=0)throw new TimeoutException("bridge frameflush期限");
+   BridgeFlushCompleted=true;
+  }
   catch{bridgeInputBroken=true;throw;}
+  finally{if(write==null)Array.Clear(payload,0,payload.Length);}
  }
  public void CloseBridgeInput() { if(bridgeInput&&Started&&!bridgeInputClosed){bridgeInputClosed=true;Process.StandardInput.Close();} }
  public bool Eof(bool stdout,int ms) {

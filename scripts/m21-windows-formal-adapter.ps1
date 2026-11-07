@@ -162,24 +162,32 @@ function Invoke-M21WslRelayLossFixture {
  $script:m21Bridge=$relay
  Register-Child $relay 'wsl-relay-loss-fixture'
  $script:fixtureEvidence=@{fixture='wsl-relay-loss';passed=$false;primaryRelayQualified=$false;primaryReason='intentional-relay-loss';formalRunQualified=$false;realDockerInvoked=$false;inputCommit=$commit;bridgeSourceSha256=$script:m21BridgeSourceSha;fixtureSourceSha256=$testSha;arguments=$relay.Process.StartInfo.Arguments;windows=$null;linux=$null;linuxBridgeActualExitObserved=$false;linuxWatchdogActualExitObserved=$false;retained=$run}
+ $script:fixtureEvidence.phase=$null
+ $script:fixtureEvidence.stdin=@{codePage=$relay.BridgeInputCodePage;preambleLength=$relay.BridgeInputPreambleLength;initWriteCompleted=$false;initFlushCompleted=$false}
  if([IO.Path]::GetFullPath($relay.Process.MainModule.FileName) -ine 'C:\Windows\System32\wsl.exe'){throw 'fixture保持exe不一致'}
  $ready=Wait-M21FormalBridgeFile 'ready.json' 15000
  Assert-M21FormalBridgeDocument $ready 'ready';$script:m21BridgeReady=$ready
+ $script:fixtureEvidence.phase='ready-adopted';Set-Operation 'B4.ready-adopted'
  $script:m21BridgeOriginTicks=$localClock.ElapsedTicks
  $script:m21BridgeGlobalOffsetMs=Remaining 4000 -Recovery;$script:m21BridgeWorkOffsetMs=Remaining 3000
- Send-M21FormalBridgeFrame @{type='init';owner=$owner;run=$script:m21BridgeRun;global_offset_ms=$script:m21BridgeGlobalOffsetMs;work_offset_ms=$script:m21BridgeWorkOffsetMs}
+ try{Send-M21FormalBridgeFrame @{type='init';owner=$owner;run=$script:m21BridgeRun;global_offset_ms=$script:m21BridgeGlobalOffsetMs;work_offset_ms=$script:m21BridgeWorkOffsetMs}}
+ finally{$script:fixtureEvidence.stdin.initWriteCompleted=$relay.BridgeWriteCompleted;$script:fixtureEvidence.stdin.initFlushCompleted=$relay.BridgeFlushCompleted}
+ $script:fixtureEvidence.phase='init-write-flush-completed';Set-Operation 'B4.init-write-flush-completed'
  $initialized=Wait-M21FormalBridgeFile 'initialized.json' 2000
  Assert-M21FormalBridgeDocument $initialized 'initialized'
+ $script:fixtureEvidence.phase='initialized-adopted';Set-Operation 'B4.initialized-adopted'
  $descriptor=$initialized.descriptor
  if($descriptor.daemon_id -cne 'fixture-daemon' -or $descriptor.mysql_image_id -cne ('sha256:'+('a'*64)) -or $descriptor.valkey_image_id -cne ('sha256:'+('b'*64))){throw 'fixture descriptor不一致'}
  Send-M21FormalBridgeFrame @{type='bind';owner=$owner;run=$script:m21BridgeRun;descriptor=$descriptor}
  $bound=Wait-M21FormalBridgeFile 'bound.json' 1000
  Assert-M21FormalBridgeDocument $bound 'bound'
+ $script:fixtureEvidence.phase='bound';Set-Operation 'B4.bound'
  $offset=Get-M21FormalBridgeDeadlineOffset 1000 -Recovery
  Send-M21FormalBridgeFrame @{type='request';owner=$owner;run=$script:m21BridgeRun;request_id=1;phase='cleanup';operation='daemon-info';resource='daemon';deadline_offset_ms=$offset}
  $started=Wait-M21FormalBridgeFile 'request-00001-started.json' 1000 -Recovery
  Assert-M21FormalBridgeDocument $started 'request-started'
  Assert-M21WslRelayStarted $started ([long]$ready.t0_ns+$offset*1000000)
+ $script:fixtureEvidence.phase='request-started';Set-Operation 'B4.request-started'
  Assert-M21FormalRequiredAlive @($relay.Process)
  $identity=Identity $relay.Process
  $script:fixtureEvidence.windows=@{identity=$identity;exe=$relay.Process.MainModule.FileName;exeSha256=$wslSha;killIssued=$false;actualExited=$false;exitCode=$null;stdoutEof=$false;stderrEof=$false}
@@ -188,6 +196,7 @@ function Invoke-M21WslRelayLossFixture {
  # 保存済みの同じProcessだけ。Windows relay終了をLinux CLI終了へ読み替えない。
  $relay.Process.Kill()
  $script:fixtureEvidence.windows.killIssued=$true
+ $script:fixtureEvidence.phase='kill-issued';Set-Operation 'B4.kill-issued'
  if(!$relay.Process.WaitForExit((Remaining 2000 -Recovery))){throw 'held relay actual exit不明'}
  Capture $relay 'wsl-relay-loss-primary' 500
  $aliveRejected=$false;try{Assert-M21FormalRequiredAlive @($relay.Process)}catch{$aliveRejected=$true}

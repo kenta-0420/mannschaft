@@ -164,6 +164,8 @@ Javaが探索完了markerを先に読みhelper cleanupへ進んだ場合、Super
 
 StartBridgeだけは固定prefix `-d Ubuntu-24.04 --exec /usr/bin/python3 -I` をliteralにし、後続source/metadataには既存Quoteを使う。通常M21Childのserializerは変えない。最初のc650入力B4では全argvをQuoteした起動が `/bin/bash: line 1: -d: command not found` / relay actual127で終わり、意図Killへ進めなかった。quoted optionの解釈自体はdocsだけで断定せず、この一次失敗とLinux証拠未取得を保持する。修正後は非秘密の実rendered argumentsもreceiptへ保存する。
 
+212a入力ではbridge ready後terminal/relay actual1となり、Linux子proofを採取できなかった。既定stdinのBOMが原因だったとは未確定である。一方、Frameworkのbuffered BaseStreamにWriteAsyncだけを行いFlushしない不足は独立して補完する。固定bridgeのProcess.Start周囲だけ、既知65001のpreambleがある場合にUTF8NoBOMへ保存・finally復元し、未知preambleは起動前拒否する。Start直後に保持Startedを記録し、起動と復元の二重失敗は起動をprimary・復元をsecondaryへ残す。通常Start/OS設定ファイルは変更しない。各frameは同じ単一cap内でwriteとflushのRanToCompletionを確認し、失敗後の再送を拒否する。B4には固定phaseとcodepage/preamble長/write-flush完了状態だけを追加し、原因未確定の旧失敗を成功へ置換しない。
+
 private Node22で `node scripts/m21-windows-supervisor.probe.cjs --wsl-relay-loss-fixture --owner-id 1d767b20-825c-4edc-b397-8d4367036462` を実行する。`M21_INPUT_COMMIT` にclean統合HEADを指定する。既存readiness runnerとM21Childを再利用する独立1caseであり、通常17件を呼ばない。Windows側はG60秒/W40秒/R20秒、Linux initは残量へclampしたG4秒/W3秒と固定request cap1秒を使う。
 
 固定test CLIはproductionのguard/bridge loopを使い、外部Docker command/preflight境界だけを固定Python dummyへ置換する。Linuxのfork/setsid ACK/pidfd/subreaper/独立watchdog/reap/両EOFは実物である。実Docker/Java/FE/Chromeは起動しない。request-started.jsonのowner/nonce/run/source/request/世代とsession ACKを確認してから、保持した同じwsl.exeだけをKillする。Windows actual exit/各EOFと、その後の独立Linux receiptのCLI子集合reap/各EOFを別に検査する。

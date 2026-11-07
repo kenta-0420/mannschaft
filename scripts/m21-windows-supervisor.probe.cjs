@@ -686,10 +686,11 @@ Add-Type -TypeDefinition $native[0].Value
 Entry-Phase 'native-defined'
 $bridgeMethod=[M21Child].GetMethod('BridgeArguments',[Reflection.BindingFlags]'NonPublic,Static')
 $bridgeVector=[string[]]@('-d','Ubuntu-24.04','--exec','/usr/bin/python3','-I','/mnt/c/fixed source/m21-wsl-docker-bridge.py','--run-directory','/mnt/c/fixed run/bridge','--owner','00000000-0000-0000-0000-000000000001','--run','00000000-0000-0000-0000-000000000002','--nonce',('a'*32),'--input-commit',('b'*40))
-$rendered=$bridgeMethod.Invoke($null,@([object]$bridgeVector))
+$bridgeParameters=New-Object object[] 1;$bridgeParameters[0]=$bridgeVector
+$rendered=$bridgeMethod.Invoke($null,$bridgeParameters)
 if(!$rendered.StartsWith('-d Ubuntu-24.04 --exec /usr/bin/python3 -I "') -or !$rendered.Contains('"/mnt/c/fixed source/m21-wsl-docker-bridge.py" "--run-directory" "/mnt/c/fixed run/bridge"')){throw 'bridge-prefix-rendering'}
-$bridgeVector[0]='--unknown';$rejected=$false;try{$bridgeMethod.Invoke($null,@([object]$bridgeVector))}catch{$rejected=$true};if(!$rejected){throw 'bridge-prefix-unknown'}
-$bridgeVector[0]='-d';$shortVector=[string[]]$bridgeVector[0..14];$rejected=$false;try{$bridgeMethod.Invoke($null,@([object]$shortVector))}catch{$rejected=$true};if(!$rejected){throw 'bridge-argument-length'}
+$bridgeVector[0]='--unknown';$rejected=$false;try{$bridgeMethod.Invoke($null,$bridgeParameters)}catch{$actual=$_.Exception;while($null -ne $actual.InnerException){$actual=$actual.InnerException};if($actual -isnot [IO.InvalidDataException]){throw};$rejected=$true};if(!$rejected){throw 'bridge-prefix-unknown'}
+$bridgeVector[0]='-d';$shortVector=[string[]]$bridgeVector[0..14];$bridgeParameters[0]=$shortVector;$rejected=$false;try{$bridgeMethod.Invoke($null,$bridgeParameters)}catch{$actual=$_.Exception;while($null -ne $actual.InnerException){$actual=$actual.InnerException};if($actual -isnot [IO.InvalidDataException]){throw};$rejected=$true};if(!$rejected){throw 'bridge-argument-length'}
 $budget=Get-M21FormalBudget
 if($budget.totalMs -ne 3300000 -or $budget.workMs -ne 3000000 -or $budget.reserveMs -ne 300000){throw 'budget'}
 if(($budget.recoveryCapsMs|Measure-Object -Sum).Sum -ne 267000 -or $budget.marginMs -ne 33000){throw 'caps'}
