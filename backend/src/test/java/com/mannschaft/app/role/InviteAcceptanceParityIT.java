@@ -70,7 +70,7 @@ class InviteAcceptanceParityIT extends InviteAcceptanceItSupport {
     @ParameterizedTest
     @ValueSource(strings = {"TEAM", "ORGANIZATION"})
     @DisplayName("B1 特性: 非ACTIVE ユーザーは ROLE_002、副作用なし")
-    void inactiveUser(String type) {
+    void inactiveUserIsRejected(String type) {
         Scope scope = scope(type);
         expect(scope, new Case(token(scope, 0), inactiveUser("FROZEN"), null), RoleErrorCode.ROLE_002, null);
     }
