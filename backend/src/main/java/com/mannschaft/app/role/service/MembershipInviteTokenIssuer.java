@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * 承諾型招待の宛先付きトークン発行・補償失効を担う role ドメイン専属サービス（F04.12）。
@@ -41,6 +42,7 @@ public class MembershipInviteTokenIssuer {
      * @param command 呼出し側の検証済み値と親の発行時世代
      * @return 発行済みトークン
      */
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Transactional
     public MembershipInviteIssuedToken issue(MembershipInviteTokenCommand command) {
         var builder = InviteTokenEntity.builder()

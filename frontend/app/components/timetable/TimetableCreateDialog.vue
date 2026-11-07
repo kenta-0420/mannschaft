@@ -114,6 +114,11 @@ function submit() {
           class="w-full"
           :placeholder="$t('timetable.term')"
         />
+        <small
+          v-if="terms.length === 0"
+          class="mt-1 block text-surface-500"
+          data-testid="timetable-create-no-term"
+        >{{ $t('timetable.no_term_for_create') }}</small>
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div>

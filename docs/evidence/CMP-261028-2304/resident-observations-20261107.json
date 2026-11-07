@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "registrationSource": "actual-resident-artifacts",
+  "trusted": false,
+  "status": "observed-unverified",
+  "sourceHead": "7a3c076a69754044209e86747097e622ae9b1ab9",
+  "campaignId": "CMP-261028-2304",
+  "explorationPerformedCount": 3,
+  "goalAchievedCount": 2,
+  "coveragePassed": false,
+  "confirmedNewBugs": 0,
+  "dn11Decision": "最終判定保留。DN10未充足、管理住民の目的未達を保持。",
+  "imagePolicy": "画像実体なし。private原本へのpath参照のみ。本文・挨拶・認証情報は選択対象外。",
+  "residents": [
+    {
+      "personaId": "R8-ADMIN",
+      "journeyId": "R8-ADMIN-name-management",
+      "runId": "l1rmw5vnojk-resident-admin",
+      "sourceHead": "7a3c076a69754044209e86747097e622ae9b1ab9",
+      "personaArchetype": "高齢・低リテラシー×素直",
+      "purpose": "組織・チームを取り違えず作成・管理する",
+      "explorationPerformed": true,
+      "goalAchieved": false,
+      "trusted": false,
+      "status": "observed-unverified",
+      "idAssignment": "journeyIdは原本にないため登録時付与。固定P01-P20への変換なし。",
+      "observationsPath": ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-admin/observations.json",
+      "journeyPath": ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-admin/journey.md",
+      "representativeImages": [
+        ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-admin/05-name-check.png",
+        ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-admin/02-org-menu.png",
+        ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-admin/03-org-list.png"
+      ],
+      "selectedObservation": "同名候補3行を見分けられず「やめる」を選択した。3件の同名fixtureが実在し、行重複の不具合とは認定しない。作成・改名の達成はない。",
+      "session": {
+        "contexts": 1,
+        "logins": 1,
+        "contextCloses": 1,
+        "browserCloses": 1,
+        "nativeExit": 0
+      },
+      "mock": false,
+      "purposeApiSubstitution": false
+    },
+    {
+      "personaId": "R8-MEMBER",
+      "journeyId": "R8-MEMBER-navigation-interruption",
+      "runId": "l1rmw5vnojk-resident-member",
+      "sourceHead": "7a3c076a69754044209e86747097e622ae9b1ab9",
+      "personaArchetype": "ADHD傾向×中断・放棄",
+      "purpose": "団体名とメンバーの立場を確認し、別画面から元の団体へ戻る",
+      "explorationPerformed": true,
+      "goalAchieved": true,
+      "trusted": false,
+      "status": "observed-unverified",
+      "idAssignment": "原本journeyIdを保持。",
+      "observationsPath": ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-member/observations.json",
+      "journeyPath": ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-member/journey.json",
+      "representativeImages": [
+        ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-member/13-org-info-final.png",
+        ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-member/14-team-info-final.png",
+        ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-member/11-return-after-team.png"
+      ],
+      "selectedObservation": "組織・チームの名称とメンバーバッジを確認し、別画面からBackで復帰した。名称編集入口は見つからず、拒否実動作は未検証。",
+      "session": {
+        "contexts": 1,
+        "logins": 1,
+        "contextCloses": 1,
+        "browserCloses": 1,
+        "nativeExit": 0
+      },
+      "mock": false,
+      "purposeApiSubstitution": false
+    },
+    {
+      "personaId": "R8-OUTSIDER",
+      "journeyId": "R8-OUTSIDER-public-name",
+      "runId": "l1rmw5vnojk-resident-outsider",
+      "sourceHead": "7a3c076a69754044209e86747097e622ae9b1ab9",
+      "personaArchetype": "一般×隙間狙い",
+      "purpose": "非所属の公開団体の名称と非所属案内を確かめる",
+      "explorationPerformed": true,
+      "goalAchieved": true,
+      "trusted": false,
+      "status": "observed-unverified",
+      "idAssignment": "journeyIdは原本にないため登録時付与。固定P01-P20への変換なし。",
+      "observationsPath": ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-outsider/observations.json",
+      "journeyPath": ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-outsider/journey.json",
+      "representativeImages": [
+        ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-outsider/08-org-info.png",
+        ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-outsider/12-team-info.png",
+        ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-outsider/13-team-settings-direct.png"
+      ],
+      "selectedObservation": "公開組織・チーム名と非所属案内を確認し編集UIは観測しなかった。推測settingsの404は正式管理画面の認可証拠ではなく、team/modulesの403原因も未断定。",
+      "session": {
+        "contexts": 1,
+        "logins": 1,
+        "contextCloses": 1,
+        "browserCloses": 1,
+        "nativeExit": 0
+      },
+      "mock": false,
+      "purposeApiSubstitution": false
+    }
+  ]
+}

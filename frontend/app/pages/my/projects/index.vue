@@ -7,6 +7,8 @@ definePageMeta({ middleware: 'auth' })
 const router = useRouter()
 const projectApi = useProjectApi()
 const { showError } = useNotification()
+const { t } = useI18n()
+const confirmDialog = useConfirm()
 
 // 個人プロジェクト
 const projects = ref<ProjectResponse[]>([])
@@ -42,7 +44,7 @@ async function load() {
     teamProjects.value = teamRes.data
     orgProjects.value = orgRes.data
   } catch {
-    showError('プロジェクトの取得に失敗しました')
+    showError(t('project.error.fetch_failed'))
   } finally {
     loading.value = false
   }
@@ -59,7 +61,7 @@ async function createProject() {
     showDialog.value = false
     await load()
   } catch {
-    showError('プロジェクトの作成に失敗しました')
+    showError(t('project.error.create_failed'))
   }
 }
 
@@ -75,14 +77,23 @@ function openOrgProject(project: OrgProjectResponse) {
   router.push(`/organizations/${project.orgSlug}/projects/${project.id}`)
 }
 
-async function remove(project: ProjectResponse) {
-  if (!confirm(`「${project.title}」を削除しますか？`)) return
-  try {
-    await projectApi.deleteProject(null, project.id)
-    await load()
-  } catch {
-    showError('削除に失敗しました')
-  }
+function remove(project: ProjectResponse) {
+  confirmDialog.require({
+    message: t('project.delete_confirm', { title: project.title }),
+    header: t('project.delete_confirm_header'),
+    icon: 'pi pi-exclamation-triangle',
+    acceptClass: 'p-button-danger',
+    acceptLabel: t('button.delete'),
+    rejectLabel: t('button.cancel'),
+    accept: async () => {
+      try {
+        await projectApi.deleteProject(null, project.id)
+        await load()
+      } catch {
+        showError(t('project.error.delete_failed'))
+      }
+    },
+  })
 }
 
 function statusSeverity(status: string) {
@@ -101,11 +112,11 @@ function statusSeverity(status: string) {
 function statusLabel(status: string) {
   switch (status) {
     case 'ACTIVE':
-      return '進行中'
+      return t('project.status.active')
     case 'COMPLETED':
-      return '完了'
+      return t('project.status.completed')
     case 'ARCHIVED':
-      return 'アーカイブ'
+      return t('project.status.archived')
     default:
       return status
   }
@@ -154,7 +165,7 @@ onMounted(async () => {
             <!-- 進捗バー -->
             <div class="mb-2">
               <div class="mb-1 flex justify-between text-xs text-surface-500">
-                <span>{{ project.completedTodos }}/{{ project.totalTodos }} タスク</span>
+                <span>{{ project.completedTodos }}/{{ project.totalTodos }} {{ $t('project.task_unit') }}</span>
                 <span>{{ toProgressPercent(project.progressRate) }}%</span>
               </div>
               <ProgressBar
@@ -173,13 +184,13 @@ onMounted(async () => {
                   v-if="project.daysRemaining !== null && project.daysRemaining >= 0"
                   class="text-xs"
                 >
-                  (あと{{ project.daysRemaining }}日)
+                  ({{ $t('project.days_remaining', { n: project.daysRemaining }) }})
                 </span>
                 <span
                   v-else-if="project.daysRemaining !== null && project.daysRemaining < 0"
                   class="text-xs text-red-500"
                 >
-                  ({{ Math.abs(project.daysRemaining) }}日超過)
+                  ({{ $t('project.days_overdue', { n: Math.abs(project.daysRemaining) }) }})
                 </span>
               </div>
               <Button
@@ -237,7 +248,7 @@ onMounted(async () => {
             <!-- 進捗バー -->
             <div class="mb-2">
               <div class="mb-1 flex justify-between text-xs text-surface-500">
-                <span>{{ project.completedTodos }}/{{ project.totalTodos }} タスク</span>
+                <span>{{ project.completedTodos }}/{{ project.totalTodos }} {{ $t('project.task_unit') }}</span>
                 <span>{{ toProgressPercent(project.progressRate) }}%</span>
               </div>
               <ProgressBar
@@ -256,13 +267,13 @@ onMounted(async () => {
                   v-if="project.daysRemaining !== null && project.daysRemaining >= 0"
                   class="text-xs"
                 >
-                  (あと{{ project.daysRemaining }}日)
+                  ({{ $t('project.days_remaining', { n: project.daysRemaining }) }})
                 </span>
                 <span
                   v-else-if="project.daysRemaining !== null && project.daysRemaining < 0"
                   class="text-xs text-red-500"
                 >
-                  ({{ Math.abs(project.daysRemaining) }}日超過)
+                  ({{ $t('project.days_overdue', { n: Math.abs(project.daysRemaining) }) }})
                 </span>
               </div>
             </div>
@@ -311,7 +322,7 @@ onMounted(async () => {
             <!-- 進捗バー -->
             <div class="mb-2">
               <div class="mb-1 flex justify-between text-xs text-surface-500">
-                <span>{{ project.completedTodos }}/{{ project.totalTodos }} タスク</span>
+                <span>{{ project.completedTodos }}/{{ project.totalTodos }} {{ $t('project.task_unit') }}</span>
                 <span>{{ toProgressPercent(project.progressRate) }}%</span>
               </div>
               <ProgressBar
@@ -330,13 +341,13 @@ onMounted(async () => {
                   v-if="project.daysRemaining !== null && project.daysRemaining >= 0"
                   class="text-xs"
                 >
-                  (あと{{ project.daysRemaining }}日)
+                  ({{ $t('project.days_remaining', { n: project.daysRemaining }) }})
                 </span>
                 <span
                   v-else-if="project.daysRemaining !== null && project.daysRemaining < 0"
                   class="text-xs text-red-500"
                 >
-                  ({{ Math.abs(project.daysRemaining) }}日超過)
+                  ({{ $t('project.days_overdue', { n: Math.abs(project.daysRemaining) }) }})
                 </span>
               </div>
             </div>

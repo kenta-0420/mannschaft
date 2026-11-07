@@ -24,20 +24,20 @@ const EMOJI_PRESETS = [
 // カラープリセット
 interface ColorOption {
   hex: string
-  label: string
+  key: string
 }
 
 const COLOR_OPTIONS: ColorOption[] = [
-  { hex: '#3B82F6', label: 'Blue' },
-  { hex: '#EF4444', label: 'Red' },
-  { hex: '#10B981', label: 'Green' },
-  { hex: '#F59E0B', label: 'Amber' },
-  { hex: '#8B5CF6', label: 'Violet' },
-  { hex: '#EC4899', label: 'Pink' },
-  { hex: '#06B6D4', label: 'Cyan' },
-  { hex: '#14B8A6', label: 'Teal' },
-  { hex: '#F97316', label: 'Orange' },
-  { hex: '#6B7280', label: 'Gray' },
+  { hex: '#3B82F6', key: 'blue' },
+  { hex: '#EF4444', key: 'red' },
+  { hex: '#10B981', key: 'green' },
+  { hex: '#F59E0B', key: 'amber' },
+  { hex: '#8B5CF6', key: 'violet' },
+  { hex: '#EC4899', key: 'pink' },
+  { hex: '#06B6D4', key: 'cyan' },
+  { hex: '#14B8A6', key: 'teal' },
+  { hex: '#F97316', key: 'orange' },
+  { hex: '#6B7280', key: 'gray' },
 ]
 
 // プリセット外の絵文字が現在値として来た場合の判定
@@ -133,7 +133,7 @@ function selectEmoji(value: string) {
         type="button"
         role="radio"
         :aria-checked="colorVal === opt.hex"
-        :aria-label="opt.label"
+        :aria-label="t(`project.appearance.colors.${opt.key}`)"
         :data-testid="`project-color-option-${opt.hex}`"
         class="flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all"
         :style="{ backgroundColor: opt.hex }"
