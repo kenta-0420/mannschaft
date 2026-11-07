@@ -301,6 +301,8 @@
     "board": {
       "title": "シフトボード",
       "memberPool": "未割当メンバー",
+      "noUnassignedMembers": "未割当のメンバーはいません",
+      "noMatchingMembers": "検索条件に一致するメンバーはいません",
       "dragHint": "メンバーをドラッグして割り当て",
       "unassignedSlots": "{count}件未割当"
     },
@@ -389,6 +391,7 @@
       }
     },
     "entry": {
+      "notStarted": "希望の受付はまだ開始されていません",
       "sectionTitle": "希望の提出・シフトボード",
       "bulkRequest": "まとめて希望を出す",
       "board": "シフトボード",

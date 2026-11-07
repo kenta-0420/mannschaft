@@ -1,5 +1,6 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
+import { mockFeatureFlags } from '../helpers/feature-flags'
 import {
   ALLOCATION_ID,
   ORG_ID,
@@ -11,6 +12,217 @@ import {
   setupOrganizationScope,
   setupViewerAuth,
 } from './_helpers'
+
+type AllocationMode = 'create' | 'edit'
+interface AllocationWrite {
+  allocated_amount: number | null
+  version?: number
+}
+
+/**
+ * CMP-260910-1609 AC3。入力を model へ直接代入せず、実 PrimeVue InputNumber の
+ * keypress / paste → blur → 保存を通す。API 境界の記録で符号を失った保存を検知する。
+ * 権限 API まで明示し、編集導線の欠落を金額入力の red と取り違えない。
+ */
+test.describe('CMP-260910-1609 AC3: 配分額の入力と保存', () => {
+  const browserLogs = new WeakMap<Page, string[]>()
+  const apiCalls = new WeakMap<Page, Array<{ path: string; method: string; status: number }>>()
+  test.beforeEach(async ({ page }) => {
+    const logs: string[] = []
+    browserLogs.set(page, logs)
+    const calls: Array<{ path: string; method: string; status: number }> = []
+    apiCalls.set(page, calls)
+    page.on('response', response => {
+      const path = new URL(response.url()).pathname
+      if (path.startsWith('/api/v1/')) calls.push({ path, method: response.request().method(), status: response.status() })
+    })
+    page.on('console', message => logs.push(`${message.type()}: ${message.text()}`))
+    page.on('pageerror', error => logs.push(`pageerror: ${error.message}`))
+    // 現契約は currentUser で復元し、tokenExpiresAt で先回り更新を判定する。
+    // トークンをlocalStorageへ置く旧helperは使わず、scopeを含め1本で初期化する。
+    await page.addInitScript((organizationId) => {
+      localStorage.setItem('currentUser', JSON.stringify({
+        id: 1,
+        email: 'budget-input@example.invalid',
+        fullName: '配分額入力試験',
+        profileImageUrl: null,
+        systemRole: 'USER',
+        timezone: 'Asia/Tokyo',
+        locale: 'ja',
+      }))
+      localStorage.setItem('tokenExpiresAt', String(Date.now() + 60 * 60 * 1000))
+      localStorage.setItem('currentScope', JSON.stringify({
+        type: 'organization', id: organizationId, name: '入力試験組織',
+      }))
+    }, ORG_ID)
+    await mockCatchAllApis(page)
+    // 共通レイアウトの読取APIにも実契約を返し、null由来のruntime失敗と仕様redを混同しない。
+    await page.route('**/api/v1/settings/nav', route => route.fulfill({
+      json: { data: { features: [] } },
+    }))
+    await page.route('**/api/v1/dashboard/scope-tabs?**', route => route.fulfill({
+      json: { data: {
+        items: [], page: 0, page_size: 20, total_pages: 0, total_count: 0,
+        has_next: false, has_prev: false,
+      } },
+    }))
+    // /admin/shift-budgetはFEATURE_SHIFT_ENABLED配下。nullを返すと金額入力前に
+    // 公開flagの配列契約を破ってNuxt fatalへ落ちるため、既存の正規helperを使う。
+    await mockFeatureFlags(page)
+    await page.route('**/api/v1/me/organizations', route => route.fulfill({
+      json: { data: [{ id: ORG_ID, slug: 'budget-input-org', name: '入力試験組織' }] },
+    }))
+    await page.route('**/api/v1/organizations/budget-input-org/me/permissions', route => route.fulfill({
+      json: { data: { roleName: 'ADMIN', permissions: ['BUDGET_VIEW', 'BUDGET_ADMIN'], scopeAdmin: true } },
+    }))
+    await mockAllocationsList(page, [buildAllocation({ version: 3 })])
+  })
+
+  test.afterEach(async ({ page }, testInfo) => {
+    if (testInfo.status !== testInfo.expectedStatus) {
+      await testInfo.attach('browser-console', {
+        body: Buffer.from(JSON.stringify(browserLogs.get(page) ?? [])),
+        contentType: 'application/json',
+      })
+      await testInfo.attach('page-api-preconditions', {
+        body: Buffer.from(JSON.stringify({
+          finalUrl: page.url(),
+          calls: apiCalls.get(page) ?? [],
+          fixture: { organizationId: ORG_ID, slug: 'budget-input-org', permissions: ['BUDGET_VIEW', 'BUDGET_ADMIN'], featureFlag: 'FEATURE_SHIFT_ENABLED' },
+        })),
+        contentType: 'application/json',
+      })
+    }
+  })
+
+  test('AC1/2: 編集と削除を名前で区別でき、編集に内部versionを表示しない', async ({ page }) => {
+    await page.goto('/admin/shift-budget/allocations')
+    await waitForHydration(page)
+    const row = page.getByRole('row').filter({
+      has: page.getByRole('cell', { name: String(ALLOCATION_ID), exact: true }),
+    })
+    await expect(row).toBeVisible()
+    const edit = row.locator('button:has(.pi-pencil)')
+    const remove = row.locator('button:has(.pi-trash)')
+    await expect(edit, '実際の編集導線が存在してから作法を検査する').toBeVisible()
+    await expect.soft(edit).toHaveAccessibleName('割当を編集')
+    await expect.soft(edit).toHaveAttribute('title', '割当を編集')
+    await expect.soft(remove).toHaveAccessibleName('割当を削除')
+    await expect.soft(remove).toHaveAttribute('title', '割当を削除')
+    await edit.click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+    await expect.soft(dialog.getByText(/バージョン/)).not.toBeVisible()
+    // version=3の保存契約はAC3 edit/0・edit/5000で引き続き検証する。
+    await dialog.getByRole('button', { name: 'キャンセル', exact: true }).click()
+    await expect(dialog).not.toBeVisible()
+    await remove.click()
+    await expect(page.getByRole('dialog')).toContainText(`ID: ${ALLOCATION_ID}`)
+    await page.getByRole('dialog').getByRole('button', { name: 'キャンセル', exact: true }).click()
+  })
+
+  for (const view of ['allocations', 'dashboard']) {
+    test(`AC4 ${view}: 消化額0とnullの既定0にも配分額と同じ通貨を表示する`, async ({ page }) => {
+      const items = [
+        buildAllocation({ id: 1001, allocated_amount: 100_000, consumed_amount: 0 }),
+        { ...buildAllocation({ id: 1002, allocated_amount: 200_000 }), consumed_amount: null },
+      ]
+      await page.route('**/api/v1/shift-budget/allocations?**', route => route.fulfill({
+        json: { data: { items, page: 0, size: 20, total: items.length } },
+      }))
+      await page.goto(`/admin/shift-budget/${view}`)
+      await waitForHydration(page)
+      for (const [id, allocated] of [[1001, '100,000 JPY'], [1002, '200,000 JPY']] as const) {
+        const row = page.getByRole('row').filter({
+          has: page.getByRole('cell', { name: String(id), exact: true }),
+        })
+        await expect(row.getByRole('cell', { name: allocated, exact: true })).toBeVisible()
+        await expect.soft(row.getByRole('cell', { name: '0 JPY', exact: true })).toBeVisible()
+      }
+    })
+  }
+
+  async function openAmountForm(page: Page, mode: AllocationMode) {
+    const writes: AllocationWrite[] = []
+    await page.route(/\/api\/v1\/shift-budget\/allocations(?:\/\d+)?$/, async (route, request) => {
+      if (request.method() !== 'POST' && request.method() !== 'PUT') {
+        await route.fallback()
+        return
+      }
+      const body: AllocationWrite = request.postDataJSON()
+      writes.push(body)
+      await route.fulfill({
+        status: request.method() === 'POST' ? 201 : 200,
+        json: { data: buildAllocation({ allocated_amount: body.allocated_amount ?? 0, version: 4 }) },
+      })
+    })
+    await page.goto('/admin/shift-budget/allocations')
+    await waitForHydration(page)
+    const create = page.getByRole('button', { name: '新規割当', exact: true })
+    await expect(create, '所属組織slugとBUDGET_ADMINを解決してから入力試験を始める').toBeVisible()
+    const row = page.getByRole('row').filter({
+      has: page.getByRole('cell', { name: String(ALLOCATION_ID), exact: true }),
+    })
+    await expect(row).toBeVisible()
+    if (mode === 'create') await create.click()
+    else await row.locator('button:has(.pi-pencil)').click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+    if (mode === 'create') {
+      await dialog.locator('.p-inputnumber-input').nth(2).fill('2026')
+      await dialog.locator('.p-inputnumber-input').nth(3).fill('100')
+      await dialog.locator('input[type="date"]').nth(0).fill('2026-04-01')
+      await dialog.locator('input[type="date"]').nth(1).fill('2026-04-30')
+    }
+    const amount = dialog.locator('.p-inputnumber-input').nth(mode === 'create' ? 4 : 0)
+    await amount.click()
+    await amount.press('ControlOrMeta+A')
+    await amount.press('Backspace')
+    return { writes, dialog, amount }
+  }
+
+  for (const mode of ['create', 'edit'] as const) {
+    for (const entry of ['keyboard', 'paste', 'empty'] as const) {
+      test(`AC3 ${mode}/${entry}: 不正な金額を明示して保存要求を送らない`, async ({ page }, testInfo) => {
+        const { writes, dialog, amount } = await openAmountForm(page, mode)
+        if (entry === 'keyboard') {
+          // fill('-5000') では keypress の負号黙殺を通らないため、必ず一文字ずつ打つ。
+          await amount.pressSequentially('-5000')
+        }
+        else if (entry === 'paste') {
+          // DOM value の書換えではなく、本物の InputNumber の paste ハンドラへ渡す。
+          await amount.evaluate((input) => {
+            const clipboardData = new DataTransfer()
+            clipboardData.setData('text/plain', '-5000')
+            input.dispatchEvent(new ClipboardEvent('paste', { clipboardData, bubbles: true, cancelable: true }))
+          })
+        }
+        await amount.press('Tab')
+        await dialog.getByRole('button', { name: '保存', exact: true }).click()
+        // soft にして、修正前も実際の送信内容を後続のアサーションへ残す。
+        await expect.soft(dialog.getByRole('alert')).toBeVisible()
+        await expect.soft(dialog).toBeVisible()
+        await testInfo.attach('allocation-writes', {
+          body: Buffer.from(JSON.stringify(writes)), contentType: 'application/json',
+        })
+        expect(writes, '負値や空値を正値/0/nullへ無言変換して保存してはならない').toEqual([])
+      })
+    }
+
+    for (const value of [0, 5000]) {
+      test(`AC3 ${mode}/${value}: 0と正値は入力した金額のまま保存する`, async ({ page }) => {
+        const { writes, dialog, amount } = await openAmountForm(page, mode)
+        await amount.pressSequentially(String(value))
+        await amount.press('Tab')
+        await dialog.getByRole('button', { name: '保存', exact: true }).click()
+        await expect.poll(() => writes.length).toBe(1)
+        expect(writes[0]?.allocated_amount).toBe(value)
+        if (mode === 'edit') expect(writes[0]?.version).toBe(3)
+        await expect(dialog).not.toBeVisible()
+      })
+    }
+  }
+})
 
 /**
  * F08.7 Phase 11-α — admin 予算割当 CRUD 画面 E2E。

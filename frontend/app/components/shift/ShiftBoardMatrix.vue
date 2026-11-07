@@ -41,7 +41,7 @@
           >
             <td class="px-3 py-2 text-surface-600 whitespace-nowrap font-medium">
               <div>{{ formatSlotDate(slot.time.slotDate) }}</div>
-              <div class="text-xs text-surface-400">{{ slot.time.startTime }}〜{{ slot.time.endTime }}</div>
+              <div class="text-xs text-surface-400">{{ formatTimeRange(slot.time.startTime, slot.time.endTime) }}</div>
             </td>
             <td
               v-for="position in positions"
@@ -88,7 +88,7 @@ const emit = defineEmits<{
   revokeAutoAssign: []
 }>()
 
-const { formatDate } = useDatetime()
+const { formatDate, formatTimeRange } = useDatetime()
 
 // スロットをそのまま並べ（日付順にソート済みと仮定）
 const groupedSlots = computed(() => {

@@ -885,20 +885,35 @@ for (const width of [360, 390, 1280]) {
         await expect(all.locator('span')).toHaveText('すべて（一覧）')
         await expect(all).toBeVisible()
         await page.evaluate(() => document.fonts.ready.then(() => true))
-        const lines = await all.locator('span').evaluate(element => {
+        const [allElement, jumpElement] = await Promise.all([all.elementHandle(), menu.jump.elementHandle()])
+        if (!allElement || !jumpElement) throw new Error('scope navigation geometry elements are missing')
+        // Popoverのscale遷移中も、同じ描画frameの文字・両column・document幅を比較する。
+        const { lines, foldersBox, jumpBox, documentSize } = await menu.panel.evaluate((panel, elements) => {
+          const { allElement, jumpElement } = elements
+          if (!panel.isConnected || !allElement.isConnected || !jumpElement.isConnected
+            || !panel.contains(allElement) || !panel.contains(jumpElement)) {
+            throw new Error('scope navigation geometry elements are stale or outside the panel')
+          }
+          const text = allElement.querySelectorAll('span')
+          const foldersColumn = allElement.parentElement?.parentElement
+          const jumpColumn = jumpElement.parentElement
+          if (text.length !== 1 || !foldersColumn || !jumpColumn
+            || !panel.contains(foldersColumn) || !panel.contains(jumpColumn)) {
+            throw new Error('scope navigation geometry columns or text are missing')
+          }
           const range = document.createRange()
-          range.selectNodeContents(element)
-          return [...range.getClientRects()].map(rect => ({ top: rect.top, left: rect.left, right: rect.right }))
-        })
-        const foldersBox = await all.evaluate(element => {
-          const box = element.parentElement!.parentElement!.getBoundingClientRect()
-          return { x: box.x, y: box.y, width: box.width, height: box.height }
-        })
-        const jumpBox = await menu.jump.evaluate(element => {
-          const box = element.parentElement!.getBoundingClientRect()
-          return { x: box.x, y: box.y, width: box.width, height: box.height }
-        })
-        const documentSize = await page.evaluate(() => ({ width: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth, bodyWidth: document.body.scrollWidth }))
+          range.selectNodeContents(text[0]!)
+          const rect = (element: Element) => {
+            const box = element.getBoundingClientRect()
+            return { x: box.x, y: box.y, width: box.width, height: box.height }
+          }
+          return {
+            lines: [...range.getClientRects()].map(rect => ({ top: rect.top, left: rect.left, right: rect.right })),
+            foldersBox: rect(foldersColumn),
+            jumpBox: rect(jumpColumn),
+            documentSize: { width: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth, bodyWidth: document.body.scrollWidth },
+          }
+        }, { allElement, jumpElement })
         await testInfo.attach('scope-navigation-geometry', { body: JSON.stringify({ width, scopeType, lines, foldersBox, jumpBox, documentSize }), contentType: 'application/json' })
         expect(lines, 'ALL_LIST_TEXT_HORIZONTAL: 一覧の文字が複数行に縦折返ししている').toHaveLength(1)
         if (mobile) {

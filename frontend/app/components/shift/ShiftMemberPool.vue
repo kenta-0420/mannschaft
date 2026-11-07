@@ -10,30 +10,36 @@
       />
     </div>
     <div class="flex-1 overflow-y-auto p-2 space-y-1">
-      <div
-        v-for="member in filteredMembers"
-        :key="member.userId"
-        class="flex items-center gap-2 p-2 rounded-lg bg-white border border-surface-200 cursor-grab hover:border-primary-400 hover:shadow-sm transition-all"
-        draggable="true"
-        @dragstart="onDragStart($event, member.userId)"
-      >
-        <Avatar
-          v-if="member.avatarUrl"
-          :image="member.avatarUrl"
-          size="small"
-          shape="circle"
-        />
-        <Avatar v-else :label="member.displayName.charAt(0)" size="small" shape="circle" />
-        <div class="flex-1 min-w-0">
-          <p class="text-sm font-medium truncate">{{ member.displayName }}</p>
-          <p v-if="member.remainingHours !== undefined" class="text-xs text-surface-500">
-            残り {{ member.remainingHours }}h
-          </p>
+      <PageLoading v-if="loading" />
+      <DashboardErrorState v-else-if="error !== undefined" :error="error" @retry="emit('retry')" />
+      <template v-else>
+        <div
+          v-for="member in filteredMembers"
+          :key="member.userId"
+          class="flex items-center gap-2 p-2 rounded-lg bg-white border border-surface-200 cursor-grab hover:border-primary-400 hover:shadow-sm transition-all"
+          draggable="true"
+          @dragstart="onDragStart($event, member.userId)"
+        >
+          <Avatar
+            v-if="member.avatarUrl"
+            :image="member.avatarUrl"
+            size="small"
+            shape="circle"
+          />
+          <Avatar v-else :label="member.displayName.charAt(0)" size="small" shape="circle" />
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium truncate">{{ member.displayName }}</p>
+            <p v-if="member.remainingHours !== undefined" class="text-xs text-surface-500">
+              残り {{ member.remainingHours }}h
+            </p>
+          </div>
         </div>
-      </div>
-      <p v-if="filteredMembers.length === 0" class="text-sm text-surface-400 text-center py-4">
-        {{ $t('label.noFollowing') }}
-      </p>
+        <DashboardEmptyState
+          v-if="filteredMembers.length === 0"
+          icon="pi pi-users"
+          :message="$t(members.length === 0 ? 'shift.board.noUnassignedMembers' : 'shift.board.noMatchingMembers')"
+        />
+      </template>
     </div>
     <div class="p-3 border-t border-surface-200 text-xs text-surface-500 text-center">
       {{ $t('shift.board.dragHint') }}
@@ -52,12 +58,18 @@ interface MemberPoolItem {
 
 interface Props {
   members: MemberPoolItem[]
+  loading?: boolean
+  error?: unknown
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  loading: false,
+  error: undefined,
+})
 
 const emit = defineEmits<{
   dragStart: [userId: number]
+  retry: []
 }>()
 
 const filterQuery = ref('')

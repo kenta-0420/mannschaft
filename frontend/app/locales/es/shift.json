@@ -12,6 +12,8 @@
     "board": {
       "title": "Tablero de turnos",
       "memberPool": "Miembros sin asignar",
+      "noUnassignedMembers": "No hay miembros sin asignar",
+      "noMatchingMembers": "Ningún miembro coincide con la búsqueda",
       "dragHint": "Arrastra miembros para asignar",
       "unassignedSlots": "{count} turnos sin asignar"
     },
@@ -389,6 +391,7 @@
       }
     },
     "entry": {
+      "notStarted": "La recepción de preferencias aún no ha comenzado.",
       "sectionTitle": "Enviar preferencias / Tablero de turnos",
       "bulkRequest": "Enviar preferencias en bloque",
       "board": "Tablero de turnos",
