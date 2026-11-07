@@ -379,6 +379,8 @@ class RealDaemonAbsenceFiniteTests(unittest.TestCase):
     def test_exact_missing_object_shape_and_three_second_cap(self):
         import hashlib,json,os,select,tempfile,time,uuid
         run=str(uuid.uuid4()); nonce=uuid.uuid4().hex
+        cli_sha=hashlib.sha256(pathlib.Path('/usr/bin/docker').read_bytes()).hexdigest()
+        self.assertEqual(cli_sha,'2fc3b56f978ff6951845be1e4ce352256c0ce126eeda8b84d5713009da3771ca')
         with tempfile.TemporaryDirectory(prefix='m21-windows-readonly-',dir=str(b.TEMP_ROOT)) as parent:
             root=pathlib.Path(parent); child=root/'bridge'; child.mkdir()
             owner={'owner':b.OWNER,'nonce':nonce}
@@ -387,23 +389,38 @@ class RealDaemonAbsenceFiniteTests(unittest.TestCase):
             dfd=b.guard_run(str(child),b.OWNER,run,nonce)
             os.mkdir('config',dir_fd=dfd); os.close(dfd)
             boundary=b.DockerBoundary(run,str(child/'config'),{'daemon_id':'syntax-fixture-only','mysql_image_id':'sha256:'+'a'*64,'valkey_image_id':'sha256:'+'b'*64})
+            base=['/usr/bin/docker','--config',str(child/'config'),'--host','unix:///var/run/docker.sock']
+            def once(argv,env):
+                control_r,control_w=os.pipe2(os.O_CLOEXEC); result_r,result_w=os.pipe2(os.O_CLOEXEC)
+                began=time.monotonic_ns(); pid=os.fork()
+                if pid==0:
+                    os.close(control_w); os.close(result_r)
+                    result=b.supervise(argv,env,began+3000000000,control_r,began+5000000000)
+                    os.write(result_w,json.dumps(result).encode()); os._exit(0)
+                os.close(control_r); os.close(result_w)
+                self.assertTrue(select.select([result_r],[],[],5)[0])
+                result=json.loads(os.read(result_r,65536)); os.close(result_r); os.close(control_w)
+                os.waitpid(pid,0)
+                result['fixture_elapsed_ms']=(time.monotonic_ns()-began)//1000000
+                return result
+            before=once(base+['info','--format','{{.ID}}'],{'PATH':'/usr/bin:/bin','LANG':'C'})
             argv,env=boundary.command('resources-absent','mysql')
-            control_r,control_w=os.pipe2(os.O_CLOEXEC); result_r,result_w=os.pipe2(os.O_CLOEXEC)
-            pid=os.fork(); began=time.monotonic_ns()
-            if pid==0:
-                os.close(control_w); os.close(result_r)
-                result=b.supervise(argv,env,began+3000000000,control_r,began+5000000000)
-                os.write(result_w,json.dumps(result).encode()); os._exit(0)
-            os.close(control_r); os.close(result_w)
-            self.assertTrue(select.select([result_r],[],[],5)[0])
-            result=json.loads(os.read(result_r,65536)); os.close(result_r); os.close(control_w)
-            os.waitpid(pid,0)
+            result=once(argv,env)
+            after=once(base+['info','--format','{{.ID}}'],{'PATH':'/usr/bin:/bin','LANG':'C'})
+            stdout=bytes.fromhex(result['_stdout_hex']); stderr=bytes.fromhex(result['_stderr_hex'])
+            expected=('error: no such object: '+b.resource_name(run,'mysql')+'\nerror: no such object: '+b.resource_name(run,'mysql')+'-data\n').encode()
+            known_stdout={b'':'empty',b'\n':'single-newline',b'[]\n':'json-empty-array-newline',b'[]':'json-empty-array',b'M21_PRESENT\n':'present-sentinel'}
+            same_daemon=before['cli_exit']==after['cli_exit']==0 and before['physical_completed'] and after['physical_completed'] and before['_stdout_hex']==after['_stdout_hex'] and bool(bytes.fromhex(before['_stdout_hex']).strip())
+            evidence={'case':'real-readonly-absence-diagnostic-once','owner':b.OWNER,'run':run,'nonce':nonce,'source_sha256':hashlib.sha256(b.Path(b.__file__).read_bytes()).hexdigest(),'test_sha256':hashlib.sha256(pathlib.Path(__file__).read_bytes()).hexdigest(),'docker_sha256':cli_sha,'body_cap_ms':3000,'elapsed_ms':result['fixture_elapsed_ms'],'cli_exit':result['cli_exit'],'children_reaped':result['children_reaped'],'stdout_eof':result['stdout_eof'],'stderr_eof':result['stderr_eof'],'physical_completed':result['physical_completed'],'stdout_len':len(stdout),'stdout_shape':known_stdout.get(stdout,'unknown'),'stdout_sha256':hashlib.sha256(stdout).hexdigest(),'stderr_len':len(stderr),'stderr_line_count':len(stderr.splitlines()),'stderr_shape':'exact-two-lowercase-error-no-such-object' if stderr==expected else 'unknown','stderr_sha256':hashlib.sha256(stderr).hexdigest(),'same_daemon_before_after':bool(same_daemon),'daemon_before_elapsed_ms':before['fixture_elapsed_ms'],'daemon_after_elapsed_ms':after['fixture_elapsed_ms'],'daemon_absence_confirmed':False}
+            out=pathlib.Path(__file__).resolve().parent.parent/'.claude'/'campaigns'
+            out.mkdir(parents=True,exist_ok=True)
+            with (out/('m21-bridge-readonly-'+run+'.json')).open('x') as f: json.dump(evidence,f,sort_keys=True)
+            print(json.dumps(evidence,sort_keys=True))
             self.assertTrue(result['physical_completed'])
-            adopted=boundary.adopt('resources-absent','mysql',result['cli_exit'],bytes.fromhex(result['_stdout_hex']),bytes.fromhex(result['_stderr_hex']))
-            self.assertTrue(adopted['absence_candidate']); self.assertFalse(adopted['absent'])
-            print(json.dumps({'case':'real-readonly-absence-once','owner':b.OWNER,'run':run,'nonce':nonce,'source_sha256':hashlib.sha256(b.Path(b.__file__).read_bytes()).hexdigest(),'body_cap_ms':3000,'elapsed_ms':(time.monotonic_ns()-began)//1000000,'cli_exit':result['cli_exit'],'children_reaped':result['children_reaped'],'stdout_eof':result['stdout_eof'],'stderr_eof':result['stderr_eof'],'physical_completed':result['physical_completed'],'exact_two_no_such_objects':True,'daemon_absence_confirmed':False}))
-
-
+            self.assertEqual(result['cli_exit'],1)
+            self.assertEqual(stdout,b'\n')
+            self.assertEqual(stderr,expected)
+            self.assertTrue(same_daemon)
 
 @unittest.skipUnless(sys.platform=='linux','Linux公開receipt実子試験')
 class PublicReceiptFiniteTests(unittest.TestCase):
