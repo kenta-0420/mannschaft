@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
+import { createI18n } from 'vue-i18n'
 import ShiftScheduleList from './ShiftScheduleList.vue'
 import type { ShiftScheduleResponse } from '~/types/shift'
+import jaShift from '~/locales/ja/shift.json'
 
 const mockListSchedules = vi.fn()
 const mockRemindUnsubmitted = vi.fn()
@@ -46,6 +48,11 @@ async function mountList(canManage: boolean, schedules = [schedule()]) {
   })
   const wrapper = await mountSuspended(ShiftScheduleList, {
     props: { teamId: 12, teamSlug: 'team-12', canManage, canManageBoard: canManage },
+    // 文言を検査するため、Nuxtテスト環境のlazy locale初期状態へ依存せず
+    // 正本の日本語辞書を実vue-i18nへ明示する（画面の分岐や文言はmockしない）。
+    global: {
+      plugins: [createI18n({ legacy: false, locale: 'ja', fallbackLocale: false, messages: { ja: jaShift } })],
+    },
   })
   await new Promise(resolve => setTimeout(resolve, 0))
   return wrapper
@@ -142,18 +149,19 @@ describe('CMP-260910-1609 AC7: 希望受付の案内と入力導線', () => {
     target.period.requestDeadline = deadline
     const wrapper = await mountList(true, [target])
     const text = wrapper.text()
+    const renderedContext = JSON.stringify({ locale: 'ja', text })
     const bulkInput = wrapper.findAll('button').filter(button => button.find('.pi-list-check').exists())
 
     if (status === 'DRAFT') {
       // 未存在の翻訳キーを型参照せず、利用者へ見える未開始案内を検査する。
-      expect(text).not.toContain('希望の受付は終了しました')
-      expect(text).toMatch(/受付.*(?:開始前|まだ開始|未開始)/)
+      expect(text, renderedContext).not.toContain(jaShift.shift.entry.closed)
+      expect(text, renderedContext).toMatch(/受付.*(?:開始前|まだ開始|未開始)/)
     }
     else if (accepting) {
-      expect(text).not.toContain('希望の受付は終了しました')
+      expect(text, renderedContext).not.toContain(jaShift.shift.entry.closed)
     }
     else {
-      expect(text).toContain('希望の受付は終了しました')
+      expect(text, renderedContext).toContain(jaShift.shift.entry.closed)
     }
     expect(bulkInput).toHaveLength(accepting ? 1 : 0)
 
