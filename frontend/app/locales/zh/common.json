@@ -2842,6 +2842,7 @@
       "empty": "还没有页面",
       "titleLabel": "标题",
       "slugLabel": "URL 别名",
+      "slugHint": "保存此页面需要填写 URL 别名。",
       "yearLabel": "适用年度",
       "visibilityLabel": "公开范围",
       "visibilityPublic": "完全公开",
@@ -3228,5 +3229,9 @@
       "expires_at": "有效期限",
       "used_count": "使用次数"
     }
+  },
+  "integrationSettings": {
+    "lineSubtitle": "配置 LINE Messaging API 集成",
+    "snsSubtitle": "管理 Instagram 和 X 动态集成"
   }
 }

@@ -100,7 +100,7 @@ onMounted(() => { if (scopeId.value) load() })
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <PageHeader class="md:-mt-1.5" title="LINE設定" subtitle="LINE Messaging API との連携設定">
+    <PageHeader class="md:-mt-1.5" :title="$t('orgSidebar.lineSettings')" :subtitle="$t('integrationSettings.lineSubtitle')">
       <template #actions>
         <div class="flex gap-2">
           <Button v-if="config && !isPersonalScope" label="削除" severity="danger" outlined size="small" @click="remove" />

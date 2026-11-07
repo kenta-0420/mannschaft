@@ -2842,6 +2842,7 @@
       "empty": "No pages yet",
       "titleLabel": "Title",
       "slugLabel": "URL slug",
+      "slugHint": "A URL slug is required to save this page.",
       "yearLabel": "Year",
       "visibilityLabel": "Visibility",
       "visibilityPublic": "Public",
@@ -3228,5 +3229,9 @@
       "expires_at": "Expires at",
       "used_count": "Times used"
     }
+  },
+  "integrationSettings": {
+    "lineSubtitle": "Configure the LINE Messaging API integration",
+    "snsSubtitle": "Manage Instagram and X feed integrations"
   }
 }

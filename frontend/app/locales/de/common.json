@@ -2842,6 +2842,7 @@
       "empty": "Noch keine Seiten vorhanden",
       "titleLabel": "Titel",
       "slugLabel": "URL-Slug",
+      "slugHint": "Zum Speichern dieser Seite ist ein URL-Slug erforderlich.",
       "yearLabel": "Bezugsjahr",
       "visibilityLabel": "Sichtbarkeit",
       "visibilityPublic": "Öffentlich",
@@ -3228,5 +3229,9 @@
       "expires_at": "Gültig bis",
       "used_count": "Anzahl der Nutzungen"
     }
+  },
+  "integrationSettings": {
+    "lineSubtitle": "Integration mit der LINE Messaging API konfigurieren",
+    "snsSubtitle": "Feed-Integrationen für Instagram und X verwalten"
   }
 }

@@ -2842,6 +2842,7 @@
       "empty": "ページがまだありません",
       "titleLabel": "タイトル",
       "slugLabel": "URLスラッグ",
+      "slugHint": "このページを保存するにはURLスラッグが必要です。",
       "yearLabel": "対象年度",
       "visibilityLabel": "公開範囲",
       "visibilityPublic": "全体公開",
@@ -3228,5 +3229,9 @@
       "expires_at": "有効期限",
       "used_count": "利用回数"
     }
+  },
+  "integrationSettings": {
+    "lineSubtitle": "LINE Messaging API との連携設定",
+    "snsSubtitle": "Instagram・X のフィード連携を管理します"
   }
 }

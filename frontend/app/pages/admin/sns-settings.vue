@@ -118,7 +118,7 @@ onMounted(() => { if (scopeId.value) load() })
 
 <template>
   <div class="mx-auto max-w-4xl">
-    <PageHeader class="md:-mt-1.5" title="SNS設定" subtitle="Instagram・X のフィード連携を管理します">
+    <PageHeader class="md:-mt-1.5" :title="$t('orgSidebar.snsSettings')" :subtitle="$t('integrationSettings.snsSubtitle')">
       <template #actions>
         <Button v-if="!isPersonalScope" label="アカウントを追加" icon="pi pi-plus" @click="openCreate" />
       </template>
