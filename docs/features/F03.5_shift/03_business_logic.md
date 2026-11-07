@@ -10,6 +10,7 @@
 1. 管理者がシフトスケジュールを作成（DRAFT）
    a. 期間（start_date / end_date）、期間種別（WEEKLY / MONTHLY / CUSTOM）を設定
    b. 希望収集の締切日時を任意で設定
+   c. 一覧の DRAFT は「希望の受付はまだ開始されていません」と案内する。COLLECTING かつ締切未設定または締切前だけ入力導線を表示し、締切と同時刻以降・ADJUSTING・PUBLISHED・ARCHIVED は受付終了として案内する（CMP-260910-1609 AC7）。
 
 2. スロット（枠）の設定
    a. 日付×時間帯×ポジションの組み合わせでスロットを作成
