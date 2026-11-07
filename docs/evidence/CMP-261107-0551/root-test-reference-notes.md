@@ -7,4 +7,4 @@
 - BE固定4件: `RanchApproved64AcceptanceTest` / `RanchApproved64BoundaryTest` / `RanchApproved64SelectionAcceptanceTest`。新機能の先行red→greenであり、既存欠陥修正の回帰redと混同しない。
 - I11–I13: `useRanchClipPlayback.spec.ts` / `useRanchClipAtlas.spec.ts` / `DinosaurScene.clips.spec.ts` の既存28件。app所有の世代/取消/cache参照に関する限定証拠であり、全browser scheduler/物理GCの測定ではない。
 
-本書はsourceテスト参照の記録。正式3探索の実施完了と専有runtime撤収は別証拠でroot採択済み。新head CIはci-current-head.jsonの12workflow成功で別確認済み。実装は通常merge済み。production artifact/build/scannerはpending。
+本書はsourceテスト参照の記録。正式3探索の実施完了と専有runtime撤収は別証拠でroot採択済み。新head CIはci-current-head.jsonの12workflow成功で別確認済み。実装は通常merge済み。M production artifact/build/scanner/HTTP・health成功。Windows中断cleanup receiptと正式closureはpending。

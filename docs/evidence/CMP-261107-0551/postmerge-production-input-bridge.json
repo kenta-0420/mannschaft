@@ -4,8 +4,8 @@
   "campaignStatus": "IN_PROGRESS",
   "implementationPr": 4353,
   "implementationPrState": "MERGED",
-  "mergedAtUtc": "2026-11-07T19:28Z",
-  "mergedAtPrecision": "root-confirmed minute precision; formal closure must use exact GitHub merged_at.",
+  "mergedAtUtc": "2026-11-07T19:28:24Z",
+  "mergedAtPrecision": "root primary get_pr_info confirmed exact GitHub merged_at; prior minute precision superseded",
   "implementationHead": "9e8e9ba15cc7040d88d88067646be2d6a51ec862",
   "mergeCommit": "e2b4744f438d0d376fb3c243e28aaa5ad2ff545d",
   "headTree": "f7db2d502d907e1e8f805cd3ebc7dfe3a9fb9d99",
@@ -30,5 +30,7 @@
     "implementation.sha remains H; M-push run must not be placed in H-bound completion ci[].",
     "Docker standard build does not assert DEVflag=true input or Windows identical toolchain/artifact bytes.",
     "No production success inferred before Docker build/scanner/self-contained/HTTP/health job completes successfully."
-  ]
+  ],
+  "implementationChangedFiles": 1946,
+  "implementationCommits": 14
 }

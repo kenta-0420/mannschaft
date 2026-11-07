@@ -1,7 +1,7 @@
 {
   "draftFormatVersion": 1,
   "campaign": "CMP-261107-0551",
-  "status": "IN_PROGRESS",
+  "status": "HISTORICAL_DRAFT_SUPERSEDED_BY_FORMAL_REVIEW_PROPOSAL",
   "scope": "app",
   "implementationPr": 4353,
   "oldEvidenceHead": "4ce3aa26785871ee363c90b0a514f023ca20723a",
@@ -43,15 +43,15 @@
     "scope": "historical source-bound success snapshot; not current main-followup CI"
   },
   "production": {
-    "status": "PENDING_MAIN_PUSH_DOCKER_JOB",
-    "evidence": "docs/evidence/CMP-261107-0551/production-current-pending.json",
+    "status": "SUCCESS_MAIN_PUSH_DOCKER_JOB",
+    "evidence": "docs/evidence/CMP-261107-0551/production-M-proof.json",
     "inputScopeBridge": "docs/evidence/CMP-261107-0551/postmerge-production-input-bridge.json",
     "orderDecision": "docs/evidence/CMP-261107-0551/production-order-scope-bridge.md",
-    "windowsAttempt": "NOT_COMPLETED / still live at root snapshot"
+    "parentWorkflow": "SUCCESS; Docker and Install both completed/success, production-M-workflow-final.json",
+    "windowsAttempt": "INTERRUPTED_NONPASS; source/donor preserved and generated cleanup verified"
   },
   "remaining": [
-    "latest-head production build/scanner",
-    "completion ledger/evidence validation"
+    "docs PR trusted gate and root final review/merge"
   ],
   "completionGate": "No completion-evidence schema JSON or successful stages generated; this draft cannot close campaign.",
   "formalResidents": {
@@ -89,5 +89,8 @@
     "pullRequestTargetGateSeparate": true
   },
   "implementationPrState": "MERGED",
-  "implementationMergeCommit": "e2b4744f438d0d376fb3c243e28aaa5ad2ff545d"
+  "implementationMergeCommit": "e2b4744f438d0d376fb3c243e28aaa5ad2ff545d",
+  "supersededBy": "docs/evidence/CMP-261107-0551.md",
+  "windowsInterruptionReceipt": "docs/evidence/CMP-261107-0551/windows-build-interruption.json",
+  "generatedCleanupEvidence": "docs/evidence/CMP-261107-0551/generated-cleanup-verification.json"
 }

@@ -1,7 +1,7 @@
 {
   "draftFormatVersion": 1,
   "campaign": "CMP-261107-0551",
-  "status": "PENDING_MAIN_PUSH_DOCKER_JOB",
+  "status": "HISTORICAL_PRE_DOCKER_SUCCESS_SNAPSHOT",
   "implementationHead": "9e8e9ba15cc7040d88d88067646be2d6a51ec862",
   "mergeCommit": "e2b4744f438d0d376fb3c243e28aaa5ad2ff545d",
   "sourceArtifact": {
@@ -77,5 +77,6 @@
     "additionalNative": "preflight NO_START; no source copy/resources created; not product failure; thresholds unchanged"
   },
   "formalCompletion": false,
-  "limits": "postmerge production run is M-bound; CI12 H success and implementation MERGED do not complete production gate. No new build started by this update."
+  "limits": "Historical pending snapshot retained. Required M Docker job subsequently succeeded; parent workflow Install was still running at root success snapshot.",
+  "supersededBy": "docs/evidence/CMP-261107-0551/production-M-proof.json"
 }

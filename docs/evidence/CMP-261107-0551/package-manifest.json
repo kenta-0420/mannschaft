@@ -1,12 +1,12 @@
 {
-  "status": "IN_PROGRESS",
+  "status": "FORMAL_CLOSURE_PROPOSAL_FOR_DOCS_PR_REVIEW",
   "scope": "選別package保存時点。正式完了証拠schemaではない。",
   "hashBasis": "Git index canonical bytes after attributes normalization; source-manifest hashes identify original source bytes separately.",
   "files": [
     {
       "path": "docs/evidence/CMP-261107-0551/ac-map.md",
-      "sha256": "8a28012c8fb9438a721cbf028ed9eebbb922e8b70cefb435030f1bd59ed18592",
-      "bytes": 6462
+      "sha256": "20eb023ce8643faf1252a0f5ac499f4f11233fa572b1dba508f16c77135e378c",
+      "bytes": 6849
     },
     {
       "path": "docs/evidence/CMP-261107-0551/b0-overlay-checks.json",
@@ -15,8 +15,8 @@
     },
     {
       "path": "docs/evidence/CMP-261107-0551/backend-summary.json",
-      "sha256": "6ea535e20e1861acbf813139e74767bb1fe9e5e983bf271a2ef3927a1fd8176b",
-      "bytes": 1295
+      "sha256": "f454ff9b00186b15c7f212bf2c86dd447f8260304e1cc7ecd2deca93f9f3969a",
+      "bytes": 1384
     },
     {
       "path": "docs/evidence/CMP-261107-0551/board-new-four.png",
@@ -37,6 +37,16 @@
       "path": "docs/evidence/CMP-261107-0551/board-ui-safe.json",
       "sha256": "69b4e6e5c1a927c5f0430a9436909687f7b80d54ec36453e5dc49823978179a1",
       "bytes": 4717
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/build-before.json",
+      "sha256": "b17aa67f8c9a2ece1f23f270021ee0376cb6566edb55ea2be1b30b4cd5bbea0f",
+      "bytes": 1089
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/build-receipt.json",
+      "sha256": "6eab4d1cb2d29f5512c6d46b676564c6e09cbaad5b73d95782abb8ff0aa3b26b",
+      "bytes": 635
     },
     {
       "path": "docs/evidence/CMP-261107-0551/canvas-AIR-PAINT_2D.png",
@@ -79,24 +89,54 @@
       "bytes": 1694464
     },
     {
-      "path": "docs/evidence/CMP-261107-0551/postmerge-production-input-bridge.json",
-      "sha256": "bd25f484ec1579f8f092583715ca8053f162d1a741165dc646532c0cf80f451c",
-      "bytes": 1790
+      "path": "docs/evidence/CMP-261107-0551/formal-acceptance-preparation.md",
+      "sha256": "7097b4211ff86ca411e7d792755dbd30cf17101130aeae96c662bb187f3d4594",
+      "bytes": 14460
     },
     {
-      "path": "docs/evidence/CMP-261107-0551/production-current-pending.json",
-      "sha256": "22834c468d7f54660bc2c21b6826af8d06f067b0d25e3d923a6c015ef24e0814",
-      "bytes": 2680
+      "path": "docs/evidence/CMP-261107-0551/generated-cleanup-process-check.json",
+      "sha256": "acd3ec4126c51d9d6563007d581fa2d5ff8770d9948780a62f2edb7f356f0a57",
+      "bytes": 267
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/generated-cleanup-report.md",
+      "sha256": "daba05a455ddf14d1d04dcadfc24194733c196ac05d4a2e20e0ceaa2ba73faa2",
+      "bytes": 1777
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/generated-cleanup-verification.json",
+      "sha256": "5d558d3868c1e70685071f541c73d461bdadc6282be252b62373451ba61cd946",
+      "bytes": 2356
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/postmerge-production-input-bridge.json",
+      "sha256": "1ae192de6593000ebcebe998f26392d700059d0645e79889bc24e5e6a1c40eb0",
+      "bytes": 1874
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/production-M-proof.json",
+      "sha256": "76783980a49b6e287b511fd6d9d3732f7ec809f9e628d5a5630747df3390fc8a",
+      "bytes": 3627
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/production-M-workflow-final.json",
+      "sha256": "4e337cfe9867d8e7c981e4de778caa194fcd6012c7d850ace98b2f4b8d805edc",
+      "bytes": 857
     },
     {
       "path": "docs/evidence/CMP-261107-0551/production-order-scope-bridge.md",
-      "sha256": "81a8a550afea4ffbfb763a898749dd35612a39611ddab17a28d29b080ab3e5bc",
-      "bytes": 2623
+      "sha256": "d7bcd3d49b8eba5674715f80387a90abd9ee299133ec51cedf39087434b1f777",
+      "bytes": 2765
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/production-pre-success-history.json",
+      "sha256": "2474bf324a2dc4a18d8e0785d2dc1909e78b261bf6faba3c5631b506176e345a",
+      "bytes": 2769
     },
     {
       "path": "docs/evidence/CMP-261107-0551/README.md",
-      "sha256": "23e682aef130f29f1da0774baff783d96f0558102ebe33264c23e56dc5169c76",
-      "bytes": 7729
+      "sha256": "450007ffffe266146628e9aff5551b19852215c64ee06c214f6715224ee1a74d",
+      "bytes": 9551
     },
     {
       "path": "docs/evidence/CMP-261107-0551/renderer-summary.json",
@@ -140,8 +180,8 @@
     },
     {
       "path": "docs/evidence/CMP-261107-0551/root-test-reference-notes.md",
-      "sha256": "261cdf2484bd09a34d0e2efabcd040211e6a85c81274bb1d2ba3c929649c6ec1",
-      "bytes": 1590
+      "sha256": "72539532e117ca3341eefa25197022aaac654ca897754c027f2d79806631aa14",
+      "bytes": 1659
     },
     {
       "path": "docs/evidence/CMP-261107-0551/root-visual-review.json",
@@ -155,18 +195,35 @@
     },
     {
       "path": "docs/evidence/CMP-261107-0551/source-manifest.json",
-      "sha256": "7a75a85ee5e8b6ac47a877b676aa8be59aeb7d938b9d2a1c1f18f5b455a7386a",
-      "bytes": 9776
+      "sha256": "7a8334e88e3253796edb601377832c20afcad8756addd341e239f6b92a6b5001",
+      "bytes": 11663
     },
     {
       "path": "docs/evidence/CMP-261107-0551/summary-draft.json",
-      "sha256": "8879a97078879890d17c9f04b89f34af69a65221430b754c6988151b8b32fbfe",
-      "bytes": 4121
+      "sha256": "9f348db7d83df003a55ea6e9f29b4e68212c94035885c27de95425f03da15798",
+      "bytes": 4513
     },
     {
       "path": "docs/evidence/CMP-261107-0551/ui-status-extract.json",
       "sha256": "8492765691e53fd09fa444be6bcf59c9a92c30e753674cd68027d9f34d23534d",
       "bytes": 6750
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/windows-build-interruption.json",
+      "sha256": "efb039bb02f404742ca318ce34c32a3b905f1c273b53ea923cabe9925fa52e50",
+      "bytes": 654
+    }
+  ],
+  "companionFiles": [
+    {
+      "path": "docs/evidence/CMP-261107-0551.json",
+      "sha256": "5d9ba22d94f0718d8f7981fe1cd9527247e41c8dbf9dff6859460f8e5d71f667",
+      "bytes": 15655
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551.md",
+      "sha256": "cdc5f1a54b05b6327ab44cc4faf3b92edc104ff221d14d4ee075e163ecdc732c",
+      "bytes": 8117
     }
   ]
 }

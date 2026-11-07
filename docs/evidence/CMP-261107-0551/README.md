@@ -1,6 +1,6 @@
 # CMP-261107-0551 選別証拠・完了準備
 
-状態は IN_PROGRESS。実装PR #4353 の新head CIは12workflow成功。実装はMへ通常merge済み。production build/scanner、殿の最終裁定は別ゲートであり、この文書は完了宣言ではない。正式完了JSONとtask-list完了遷移は含めない。
+状態は正式完了提案（docs PR review/merge待ち）。実装PR #4353 の新head CIは12workflow成功。実装はMへ通常merge済み。M Docker production build/scanner/HTTP・healthは成功。殿の正式化GOとWindows重複試行撤収receiptに基づき、正式完了JSON/台帳完了提案を同branchへ追加した。docs PR最終review/mergeは別ゲート。
 
 担当はclosure文書/B0追記準備。殿は製品・実機採否・住民裏取り・最終出荷判断を担当する。所有worktreeは `work/ranch-approved64-closure-20261108`、branchは `docs/ranch-approved64-closure-20261108`。開始時HEAD `9e8e9ba15cc7040d88d88067646be2d6a51ec862`、作業木cleanを確認。originはローカル本陣のためpushしていない。製品source・既存helper・live runtimeは変更しない。
 
@@ -20,8 +20,14 @@ B0正本 `docs/evidence/CMP-261015-1510/resident-overlay.json` は旧58 persona/
 
 最終r17 result SHA `a50999fed4ea19bd554834b95467056b70e29ab4ca52e715b07e2bb94be7b6c7` はraw FAILのまま。専用runtime撤収は `runtime-cleanup.json` にexit0/removed・compose所有label資産0・専用プロセス/アカウント/cache不在・helper MATCHを選別した。receiptはtrim正規化SHA `27508e5afd2c0a718c4749a9c85ff89ab832ea221ea64566b5130bbe5e96caa6` とraw SHA `79730b0a946847f66538027224590dad25488fe0e25be8877eb200f8945416a5` を区別する。保持中r7 scratchは対象外で触らない。source-manifestの途中r17 hashは明示した履歴で、finalSnapshotSourcesと混同しない。
 
-I14は恐竜素材の初回HTTP body比・同tuple variant body比・isolated renderer CPU p95という測定範囲で採用する。full app TTI/SLO・新head全転送成功へ拡張しない。実機source4ceのactual proof、最新headの4309対象blob同一、frontend/backend全tree非同一を分けて保持する。新head CIは12workflow成功、build/scannerと正式closureはpending。実装通常mergeは済み。住民原観測detailは採取時点の文章を保ち、後続root裁定を別metadata/文書で示す。
+I14は恐竜素材の初回HTTP body比・同tuple variant body比・isolated renderer CPU p95という測定範囲で採用する。full app TTI/SLO・新head全転送成功へ拡張しない。実機source4ceのactual proof、最新headの4309対象blob同一、frontend/backend全tree非同一を分けて保持する。新head CIは12workflow成功、M Docker build/scanner/HTTP・health成功、正式closureの文書PR review/merge待ち。実装通常mergeは済み。住民原観測detailは採取時点の文章を保ち、後続root裁定を別metadata/文書で示す。
 
 最新head CIは `ci-current-head.json` に選別保存。head H完全一致のpull_request12workflowすべてSUCCESS、全29checkは27SUCCESS/2SKIPPED・pending0/fail0。Task-List pull_request_target gateは別欄で成功を保持し、将来の正式完了JSON ci[]へ機械追加しない。Docker main-push専用/週次full-history scanの2jobはSKIPPEDで実行成功と区別する。CI取得時PRのdraft・mergeable UNKNOWNはmerge前の歴史snapshot。実装PRは現在MERGED。CI成功だけからproduction build/scanner成功を推定しない。通常mergeの根拠は別のpostmerge bridge。
 
-実装PR #4353は通常merge済み（head H不変、M=`e2b4744f438d0d376fb3c243e28aaa5ad2ff545d`）。closure branchもMを通常mergeしてdoc-only差分へ揃えた。H/M全repo treeはTask-List差で異なるが、frontend Docker入力scope・BE tree・workflow blobはexactであり、その限定bridgeを `postmerge-production-input-bridge.json` / `production-order-scope-bridge.md` に選別した。main-push run42406375715/job128504862033はbuild→scanner→containerHTTP/healthの成功待ち。Windows H buildは継続・未PASS、追加nativeはguard NO_START/作成0の歴史で、製品失敗や新build成功ではない。正式完了JSON/task-list完了/push/PRはまだ行っていない。
+実装PR #4353は通常merge済み（head H不変、M=`e2b4744f438d0d376fb3c243e28aaa5ad2ff545d`）。closure branchもMを通常mergeしてdoc-only差分へ揃えた。H/M全repo treeはTask-List差で異なるが、frontend Docker入力scope・BE tree・workflow blobはexactであり、その限定bridgeを `postmerge-production-input-bridge.json` / `production-order-scope-bridge.md` に選別した。main-push run42406375715/job128504862033はbuild→scanner→self-contained→containerHTTP/health→Stop containerまで成功。Windows H buildはrootが所有世代確認して中断・未PASS、追加nativeはguard NO_START/作成0の歴史で、製品失敗や新build成功ではない。この段落はproduction待機時点の履歴。現在は正式化GOに基づき完了JSON/台帳提案を追加し、文書PRで審査する。
+
+Production成功原本を `production-M-proof.json` に保存。4484files scanner、vue/index.mjs、HTTP、Docker healthy、Stop containerすべてsuccess。image digest `sha256:03ce53bf38d9073575736c18040112d587f9455e3ace05e2d9972f972c17ab90`。先行proof取得時点のInstall/unit継続は歴史。最終primary APIでDocker/Install両job completed SUCCESSを確認し、production-M-workflow-final.jsonにM frontend workflow全体成功を保存した。PR4353の正確なmerged_atはprimary API由来 `2026-11-07T19:28:24Z`。Windows中断receiptが到着しsource/donor不変・所有世代終了を確認したため、正式台帳完了提案を追加した。
+
+正式完了提案の正本は親directoryの `CMP-261107-0551.json` / `CMP-261107-0551.md`。Windows build-beforeは絶対pathを除去した選別版、build-receipt/interruptionは未完非PASSと既知所有process残存なし/未知停止0を保持。正式ci[]はH12runでM production/target gateを混入させない。M frontend workflow全体も最終primary APIで両job SUCCESSと確認済み（先行job-only snapshotは履歴保持）。最終root review/merge前の文書提案として保持する。
+
+H専有生成物の最終撤収はgenerated-cleanup-verification.json / generated-cleanup-process-check.json / generated-cleanup-report.mdでPASS。source inventory/Git clean・donor metadata前後同一、3生成物root不在、世代確認済み5PID再観測なし/追加停止0。全OS global-zeroやdonor全content再hashを主張しない。

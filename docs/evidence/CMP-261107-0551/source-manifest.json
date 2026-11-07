@@ -208,6 +208,51 @@
       "source": "outputs/ranch-approved64-production-order-review-20261108.md",
       "sha256": "d584816026eef7483456902fa1e3a284fbbdcec5ac69d2ff2b037ca0e44fb4ab",
       "bytes": 11309
+    },
+    {
+      "source": "outputs/ranch-approved64-main-followup-20261108/main-production-M-proof.json",
+      "sha256": "76783980a49b6e287b511fd6d9d3732f7ec809f9e628d5a5630747df3390fc8a",
+      "bytes": 3627
+    },
+    {
+      "source": "outputs/ranch-approved64-main-followup-20261108/build-before.json",
+      "sha256": "8620e107318946ee5e8104f3699c1ced1fc87f429074db51eb48104659990db2",
+      "bytes": 1099
+    },
+    {
+      "source": "outputs/ranch-approved64-main-followup-20261108/build-receipt.json",
+      "sha256": "6eab4d1cb2d29f5512c6d46b676564c6e09cbaad5b73d95782abb8ff0aa3b26b",
+      "bytes": 635
+    },
+    {
+      "source": "outputs/ranch-approved64-main-followup-20261108/windows-build-interruption.json",
+      "sha256": "7cee9836a3c47a1cbc15d0b1dd11233dab5a8a12f8668996632793c344e7e6c4",
+      "bytes": 667
+    },
+    {
+      "source": "outputs/ranch-approved64-preclose-audit-20261108.md",
+      "sha256": "f56b0eb8b7fa578cc15e6e543e22f5eed63f8807b71201c4631a7849e97ab035",
+      "bytes": 13300
+    },
+    {
+      "source": "outputs/ranch-approved64-main-followup-20261108/generated-cleanup-verification.json",
+      "sha256": "5d558d3868c1e70685071f541c73d461bdadc6282be252b62373451ba61cd946",
+      "bytes": 2356
+    },
+    {
+      "source": "outputs/ranch-approved64-main-followup-20261108/generated-cleanup-process-check.json",
+      "sha256": "52331085004acf02d35177b41e474e02cc235de906ca9f50617cc14c6cdb6c3d",
+      "bytes": 279
+    },
+    {
+      "source": "outputs/ranch-approved64-main-followup-20261108/generated-cleanup-report.md",
+      "sha256": "daba05a455ddf14d1d04dcadfc24194733c196ac05d4a2e20e0ceaa2ba73faa2",
+      "bytes": 1777
+    },
+    {
+      "source": "outputs/ranch-approved64-main-followup-20261108/main-frontend-jobs-final.json",
+      "sha256": "28ac36ae1019e36b15d09e958d0ac85030d7689db6ae44b5d9c805d30a4d02ea",
+      "bytes": 4575
     }
   ]
 }
