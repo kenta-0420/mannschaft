@@ -783,7 +783,14 @@ def bridge_loop(dfd, directory, owner, run, nonce, input_commit):
                     env.clear()
                     overall_green=False
                     continue
-                active=spawn_watchdog(argv,env,deadline,protocol.global_deadline,dfd,common,frame)
+                try:
+                    active=spawn_watchdog(argv,env,deadline,protocol.global_deadline,dfd,common,frame)
+                except Rejected as denied:
+                    if denied.args[0]!='expired-before-watchdog': raise
+                    publish_denial(dfd,common,protocol,frame,deadline,'admission-denied',cleanup_spawn_upper_bound)
+                    env.clear()
+                    overall_green=False
+                    continue
                 if frame['phase']=='cleanup': cleanup_spawn_upper_bound+=1
                 env.clear()
         else:
