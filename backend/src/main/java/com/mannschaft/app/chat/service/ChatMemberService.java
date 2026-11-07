@@ -12,7 +12,6 @@ import com.mannschaft.app.chat.dto.UpdateMyChannelSettingsRequest;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.EnumInputParser;
@@ -27,6 +26,10 @@ import java.util.List;
 
 /**
  * チャンネルメンバーサービス。メンバーの追加・除外・ロール変更・個人設定を担当する。
+ *
+ * <p><b>認可の置き場所（CMP-261105-1507）</b>: メンバー追加・除外・自己参加・ロール変更の認可と存在秘匿は、
+ * tx を持たない {@link ChatChannelFacade} が {@link ChatChannelAccessGuard} で済ませてから本クラスを呼ぶ。
+ * 本クラスのそれらのメソッドは認可を持たない tx 本体であり、Controller から直接呼んではならない。</p>
  */
 @Slf4j
 @Service
@@ -38,8 +41,6 @@ public class ChatMemberService {
     private final ChatChannelService channelService;
     private final ChatMapper chatMapper;
     private final ChatChannelEventPublisher eventPublisher;
-    private final AccessControlService accessControlService;
-    private final ChatChannelAccessGuard channelAccessGuard;
     private final MembershipService membershipService;
 
     /**
@@ -64,10 +65,9 @@ public class ChatMemberService {
      */
     @Transactional
     public List<MemberResponse> addMembers(Long channelId, Long operatorUserId, AddMemberRequest request) {
+        // 操作者が当該チャンネルの OWNER / ADMIN であること（一般 MEMBER によるメンバー追加の禁止）は
+        // ChatChannelFacade#addMembers がトランザクションの外で保証する。
         ChatChannelEntity channel = channelService.findChannelOrThrow(channelId);
-        // 操作者が当該チャンネルの OWNER / ADMIN であることを保証する（一般 MEMBER によるメンバー追加を禁止）。
-        channelAccessGuard.requireChannelManagerRole(
-                channel, operatorUserId, ChatErrorCode.CHANNEL_ACCESS_DENIED);
 
         requireScopeMembership(channel, request.getUserIds());
 
@@ -119,15 +119,9 @@ public class ChatMemberService {
      */
     @Transactional
     public void removeMember(Long channelId, Long userId, Long operatorUserId) {
-        // 他人を除外する場合は OWNER / ADMIN のみ許可する（一般 MEMBER によるキックを禁止）。
-        // 自分自身の退出は当該チャンネルのメンバーであることのみを要する。
-        ChatChannelEntity channel = channelService.findChannelOrThrow(channelId);
-        if (!operatorUserId.equals(userId)) {
-            channelAccessGuard.requireChannelManagerRole(
-                    channel, operatorUserId, ChatErrorCode.CHANNEL_ACCESS_DENIED);
-        } else {
-            channelAccessGuard.requireMembershipRowOrConceal(channel, operatorUserId, ChatErrorCode.CHANNEL_NOT_FOUND);
-        }
+        // 他人の除外は OWNER / ADMIN のみ、自分自身の退出は当該チャンネルのメンバーであることのみを要する。
+        // この認可は ChatChannelFacade#removeMember がトランザクションの外で保証する。
+        channelService.findChannelOrThrow(channelId);
         ChatChannelMemberEntity member = findMemberOrThrow(channelId, userId);
         if (member.getRole() == ChannelMemberRole.OWNER) {
             throw new BusinessException(ChatErrorCode.OWNER_CANNOT_LEAVE);
@@ -141,8 +135,10 @@ public class ChatMemberService {
     /**
      * チャンネルに自分で参加する。
      *
-     * <p><b>認可根治 Wave 6</b>: {@code channelType}・{@code isPrivate}・スコープ所属に基づき
-     * 自己参加の可否を判定する。</p>
+     * <p><b>認可</b>: {@code channelType}・{@code isPrivate}・スコープ所属に基づく自己参加の可否（存在秘匿つき）は
+     * {@link ChatChannelFacade#joinChannel}（{@link ChatChannelAccessGuard#requireSelfJoinable}）が
+     * トランザクションの外で判定する。本メソッドは、離脱処理との競合を直列化するため、スコープ在籍を
+     * 同じ membership 行のロックを取って再確認する（事前判定の後に離脱した利用者を参加させない）。</p>
      *
      * <p>規則:</p>
      * <ul>
@@ -158,13 +154,23 @@ public class ChatMemberService {
      * @param channelId チャンネルID
      * @param userId    参加するユーザーID
      * @return 参加したメンバーレスポンス
-     * @throws BusinessException 自己参加が許されないチャンネルの場合（{@link ChatErrorCode#CHANNEL_ACCESS_DENIED}）、
-     *                           またはスコープ非メンバーの場合（{@code COMMON_002}）
+     * @throws BusinessException 行ロックつきの再確認でスコープ非メンバーだった場合（{@code COMMON_002}。
+     *                           事前判定を通った利用者なのでチャンネルの存在は既に知り得る）
      */
     @Transactional
     public MemberResponse joinChannel(Long channelId, Long userId) {
         ChatChannelEntity channel = channelService.findChannelOrThrow(channelId);
-        checkSelfJoinAllowed(channel, userId);
+        // 自己参加できる種別か・スコープ所属者か（存在秘匿つき）は ChatChannelAccessGuard#requireSelfJoinable が
+        // トランザクションの外で判定済み。ここでは参加の書き込みと同じトランザクションで、離脱処理と同じ membership 行の
+        // ロックを取って在籍を再確認し、事前判定の後に離脱した利用者を参加させない。
+        // 村ロビー・イベント・大会チャットはメンバーシップで判定しない種別のため対象外。
+        if (channel.getChannelType().isMembershipGated()) {
+            if (channel.getTeamId() != null) {
+                requireActiveMembershipForUpdate(userId, ScopeType.TEAM, channel.getTeamId());
+            } else if (channel.getOrganizationId() != null) {
+                requireActiveMembershipForUpdate(userId, ScopeType.ORGANIZATION, channel.getOrganizationId());
+            }
+        }
 
         if (memberRepository.existsByChannelIdAndUserId(channelId, userId)) {
             throw new BusinessException(ChatErrorCode.ALREADY_MEMBER);
@@ -196,11 +202,9 @@ public class ChatMemberService {
      */
     @Transactional
     public MemberResponse changeRole(Long channelId, Long targetUserId, ChangeRoleRequest request, Long operatorUserId) {
-        // 操作者が当該チャンネルの OWNER / ADMIN であることを保証する
-        //（一般 MEMBER による権限昇格・他人のロール変更を禁止）。
-        ChatChannelEntity channel = channelService.findChannelOrThrow(channelId);
-        channelAccessGuard.requireChannelManagerRole(
-                channel, operatorUserId, ChatErrorCode.CHANNEL_ACCESS_DENIED);
+        // 操作者が当該チャンネルの OWNER / ADMIN であること（一般 MEMBER による権限昇格・他人のロール変更の禁止）は
+        // ChatChannelFacade#changeRole がトランザクションの外で保証する。
+        channelService.findChannelOrThrow(channelId);
 
         ChatChannelMemberEntity member = findMemberOrThrow(channelId, targetUserId);
         ChannelMemberRole newRole = EnumInputParser.parse(ChannelMemberRole.class, request.getRole(), "role");
@@ -283,51 +287,6 @@ public class ChatMemberService {
         ChatChannelMemberEntity member = findMemberOrThrow(channelId, userId);
         member.resetUnreadCount();
         memberRepository.save(member);
-    }
-
-    /**
-     * 自己参加（{@link #joinChannel}）が許されるチャンネルかを検証する。
-     *
-     * <p>メンバーシップでアクセスを判定する種別（{@link ChannelType#isMembershipGated()}）のうち、
-     * 自己参加を許すのは公開スコープチャンネル（{@code TEAM_PUBLIC} / {@code ORG_PUBLIC}）だけであり、
-     * さらにそのスコープ（チーム/組織）のメンバーであることを要求する。</p>
-     */
-    private void checkSelfJoinAllowed(ChatChannelEntity channel, Long userId) {
-        ChannelType channelType = channel.getChannelType();
-        if (!channelType.isMembershipGated()) {
-            // 村ロビー / イベント / 大会チャット: chat_channel_members でアクセス判定しない種別のため従来どおり。
-            return;
-        }
-        // DM / GROUP_DM / 非公開チャンネルは招待制。自己参加は認めない。
-        // 存在を知り得ない利用者（他人の DM・非公開チャンネルの部外者）への拒否は不在と同一応答（CMP-261105-1507）。
-        if (!channelType.isSelfJoinableScopeChannel() || Boolean.TRUE.equals(channel.getIsPrivate())) {
-            throw channelAccessGuard.concealOrForbid(
-                    channel, userId, ChatErrorCode.CHANNEL_NOT_FOUND, ChatErrorCode.CHANNEL_ACCESS_DENIED);
-        }
-        // 公開チャンネルは「スコープ内に対する公開」。当該チーム/組織のメンバーであることを要求する。
-        if (channel.getTeamId() != null) {
-            requireActiveScopeMemberOrConceal(channel, userId, ScopeType.TEAM, channel.getTeamId());
-            return;
-        }
-        if (channel.getOrganizationId() != null) {
-            requireActiveScopeMemberOrConceal(channel, userId, ScopeType.ORGANIZATION, channel.getOrganizationId());
-            return;
-        }
-        // 公開種別なのにスコープが無いチャンネルは所属を検証できない。安全側に倒して拒否する。
-        throw channelAccessGuard.concealOrForbid(
-                channel, userId, ChatErrorCode.CHANNEL_NOT_FOUND, ChatErrorCode.CHANNEL_ACCESS_DENIED);
-    }
-
-    /**
-     * 自己参加の前提となるスコープ在籍を、離脱処理と同じロックを取って確認する。
-     * 在籍していない利用者のうち、チャンネルの存在を知り得ない者（他スコープの利用者）への拒否は不在と同一応答にする。
-     */
-    private void requireActiveScopeMemberOrConceal(ChatChannelEntity channel, Long userId,
-                                                   ScopeType scopeType, Long scopeId) {
-        if (!membershipService.isActiveMemberForUpdate(userId, scopeType, scopeId)) {
-            throw channelAccessGuard.concealOrForbid(
-                    channel, userId, ChatErrorCode.CHANNEL_NOT_FOUND, CommonErrorCode.COMMON_002);
-        }
     }
 
     private ChatChannelMemberEntity findMemberOrThrow(Long channelId, Long userId) {

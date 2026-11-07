@@ -5,7 +5,6 @@ import com.mannschaft.app.bulletin.dto.CreateThreadRequest;
 import com.mannschaft.app.bulletin.service.BulletinThreadService;
 import com.mannschaft.app.chat.ChatErrorCode;
 import com.mannschaft.app.chat.entity.ChatMessageEntity;
-import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -46,8 +45,6 @@ public class ChatBoardMigrationService {
 
     private final ChatMessageRepository messageRepository;
     private final BulletinThreadService bulletinThreadService;
-    private final ChatMessageService chatMessageService;
-    private final ChatChannelMemberRepository memberRepository;
     private final ChatChannelAccessGuard channelAccessGuard;
 
     /**
@@ -77,7 +74,7 @@ public class ChatBoardMigrationService {
 
         // チャンネルメンバーシップ確認（存在を知り得ない利用者は不在メッセージと同一応答・CMP-261105-1507）
         channelAccessGuard.requireMembershipRowOrConceal(
-                chatMessageService.findChannelOfMessage(root), requesterId, ChatErrorCode.MESSAGE_NOT_FOUND);
+                channelAccessGuard.channelOfMessage(root), requesterId, ChatErrorCode.MESSAGE_NOT_FOUND);
 
         // 本文の構築（コピーあり: チャット履歴を引用形式で結合）
         String body = buildBoardBody(root, copyHistory);

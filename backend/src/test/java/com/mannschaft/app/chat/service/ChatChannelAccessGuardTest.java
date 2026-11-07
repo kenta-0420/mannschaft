@@ -1,15 +1,23 @@
-package com.mannschaft.app.chat;
+package com.mannschaft.app.chat.service;
 
-import com.mannschaft.app.auth.DmReceiveFrom;
+import com.mannschaft.app.chat.ChannelMemberRole;
+import com.mannschaft.app.chat.ChannelType;
+import com.mannschaft.app.chat.ChatErrorCode;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import com.mannschaft.app.chat.entity.ChatMessageEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
-import com.mannschaft.app.chat.service.ChatChannelAccessGuard;
+import com.mannschaft.app.chat.repository.ChatChannelRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.ErrorCode;
+import com.mannschaft.app.event.service.EventScopeAccessGuard;
+import com.mannschaft.app.tournament.ContactSpaceKind;
+import com.mannschaft.app.tournament.ContactSpaceScopeType;
+import com.mannschaft.app.tournament.TournamentErrorCode;
+import com.mannschaft.app.tournament.service.TournamentContactAccessService;
+import com.mannschaft.app.village.service.PostingIdentityService;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -21,13 +29,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BooleanSupplier;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -37,9 +46,11 @@ import static org.mockito.Mockito.verifyNoInteractions;
  *
  * <p>チャットドメインの認可判定はすべて本クラスに集約されているため、
  * 「誰がこの操作をしてよいか」の可否そのものはここで検証する。
- * 各業務サービス（{@code ChatChannelService} / {@code ChatMemberService} /
- * {@code ChatMessageService} / {@code ChatAttachmentService}）側のテストは、
- * ガードを<b>正しい引数で呼んでいるか</b>（委譲）を検証する役割分担とする。</p>
+ * Facade（{@link ChatChannelFacade} / {@link ChatMessageFacade}）側のテストは、
+ * 認可が tx 本体より先に走り、拒否されれば tx 本体に入らないこと（配線）を検証する役割分担とする。</p>
+ *
+ * <p>エンティティを受け取る判定はパッケージ内からだけ呼ぶ（Service API にエンティティを公開しない）ため、
+ * 本テストは {@code chat.service} パッケージに置く。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ChatChannelAccessGuard 単体テスト")
@@ -50,6 +61,18 @@ class ChatChannelAccessGuardTest {
 
     @Mock
     private AccessControlService accessControlService;
+
+    @Mock
+    private ChatChannelRepository channelRepository;
+
+    @Mock
+    private TournamentContactAccessService tournamentContactAccessService;
+
+    @Mock
+    private EventScopeAccessGuard eventScopeAccessGuard;
+
+    @Mock
+    private PostingIdentityService postingIdentityService;
 
     @InjectMocks
     private ChatChannelAccessGuard guard;
@@ -229,16 +252,14 @@ class ChatChannelAccessGuardTest {
     class RequireChannelManagerRole {
 
         @Test
-        @DisplayName("正常系: OWNER は通過し、操作者のメンバー行が返る")
+        @DisplayName("正常系: OWNER は通過する")
         void OWNERは通過する() {
-            ChatChannelMemberEntity operator = member(ChannelMemberRole.OWNER);
             given(memberRepository.findByChannelIdAndUserId(CHANNEL_ID, USER_ID))
-                    .willReturn(Optional.of(operator));
+                    .willReturn(Optional.of(member(ChannelMemberRole.OWNER)));
 
-            ChatChannelMemberEntity result = guard.requireChannelManagerRole(
-                    channel(ChannelType.TEAM_PUBLIC, TEAM_ID, null), USER_ID, ChatErrorCode.CHANNEL_ACCESS_DENIED);
-
-            assertThat(result).isSameAs(operator);
+            assertThatCode(() -> guard.requireChannelManagerRole(
+                    channel(ChannelType.TEAM_PUBLIC, TEAM_ID, null), USER_ID, ChatErrorCode.CHANNEL_ACCESS_DENIED))
+                    .doesNotThrowAnyException();
         }
 
         @Test
@@ -538,116 +559,206 @@ class ChatChannelAccessGuardTest {
     }
 
     // ========================================
-    // requireDmDeliverable
+    // checkChannelViewAccess / checkChannelPostAccess（種別ごとの正準判定・存在秘匿つき）
     // ========================================
     @Nested
-    @DisplayName("requireDmDeliverable — 相手のブロック設定と DM 受信範囲設定を要求する")
-    class RequireDmDeliverable {
+    @DisplayName("checkChannelViewAccess — 種別ごとの正準判定へ委譲し、非該当は不在コードと同一")
+    class CheckChannelViewAccess {
 
-        /** 呼ばれたかどうかを記録する BooleanSupplier。遅延評価の検証に使う。 */
-        private BooleanSupplier recording(AtomicBoolean called, boolean value) {
-            return () -> {
-                called.set(true);
-                return value;
-            };
+        private static final Long TOURNAMENT_ID = 777L;
+
+        private ChatChannelEntity tournament() {
+            ChatChannelEntity ch = ChatChannelEntity.builder()
+                    .channelType(ChannelType.TOURNAMENT_CHAT).name("大会連絡").isPrivate(true)
+                    .sourceType("TOURNAMENT").sourceId(TOURNAMENT_ID).build();
+            ReflectionTestUtils.setField(ch, "id", CHANNEL_ID);
+            return ch;
         }
 
         @Test
-        @DisplayName("正常系: ANYONE は素通しする")
-        void ANYONEは通過する() {
-            assertThatCode(() -> guard.requireDmDeliverable(
-                    USER_ID, OTHER_USER_ID, false, DmReceiveFrom.ANYONE, () -> false, () -> false))
+        @DisplayName("大会チャット: canView 可なら通過し、大会の正準判定へ正しい引数で委譲する")
+        void 大会はcanViewへ委譲する() {
+            assertThatCode(() -> guard.checkChannelViewAccess(tournament(), USER_ID, ChatErrorCode.CHANNEL_NOT_FOUND))
+                    .doesNotThrowAnyException();
+            verify(tournamentContactAccessService).checkView(
+                    ContactSpaceScopeType.TOURNAMENT, TOURNAMENT_ID, ContactSpaceKind.CHAT, USER_ID);
+        }
+
+        @Test
+        @DisplayName("大会チャット: 閲覧権限なしは渡された不在コード（メッセージ ID 指定なら CHAT_002）と同一")
+        void 大会の閲覧不可は不在と同一() {
+            willThrow(new BusinessException(TournamentErrorCode.CONTACT_SPACE_VIEW_FORBIDDEN))
+                    .given(tournamentContactAccessService).checkView(any(), any(), any(), any());
+
+            assertDenied(() -> guard.checkChannelViewAccess(tournament(), USER_ID, ChatErrorCode.MESSAGE_NOT_FOUND),
+                    ChatErrorCode.MESSAGE_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("村ロビー: 当該村の現役メンバーでなければ不在と同一")
+        void 村ロビーの非メンバーは不在と同一() {
+            UUID villageId = UUID.randomUUID();
+            ChatChannelEntity lobby = channel(ChannelType.VILLAGE_LOBBY, null, null);
+            ReflectionTestUtils.setField(lobby, "villageId", villageId);
+            given(postingIdentityService.isUserVillageMember(villageId, USER_ID)).willReturn(false);
+
+            assertDenied(() -> guard.checkChannelViewAccess(lobby, USER_ID, ChatErrorCode.CHANNEL_NOT_FOUND),
+                    ChatErrorCode.CHANNEL_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("イベントチャット: イベントスコープのメンバーなら通過する")
+        void イベントのメンバーは通過する() {
+            ChatChannelEntity event = channel(ChannelType.EVENT_CHAT, null, null);
+            ReflectionTestUtils.setField(event, "sourceId", 55L);
+            given(eventScopeAccessGuard.isEventScopeMember(USER_ID, 55L)).willReturn(true);
+
+            assertThatCode(() -> guard.checkChannelViewAccess(event, USER_ID, ChatErrorCode.CHANNEL_NOT_FOUND))
                     .doesNotThrowAnyException();
         }
 
         @Test
-        @DisplayName("遅延評価: ANYONE のときは共通チーム・連絡先の照会 supplier を評価しない")
-        void ANYONEではsupplierを評価しない() {
-            AtomicBoolean sharesTeamCalled = new AtomicBoolean(false);
-            AtomicBoolean contactCalled = new AtomicBoolean(false);
+        @DisplayName("メンバーシップ管理種別: 他スコープの利用者は不在と同一、公開チャンネルの同スコープ所属者は 403")
+        void メンバーシップ管理種別は存在秘匿つき() {
+            given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(false);
+            assertDenied(() -> guard.checkChannelViewAccess(
+                            channel(ChannelType.TEAM_PUBLIC, TEAM_ID, null), USER_ID, ChatErrorCode.CHANNEL_NOT_FOUND),
+                    ChatErrorCode.CHANNEL_NOT_FOUND);
 
-            guard.requireDmDeliverable(USER_ID, OTHER_USER_ID, false, DmReceiveFrom.ANYONE,
-                    recording(sharesTeamCalled, true), recording(contactCalled, true));
-
-            assertThat(sharesTeamCalled).isFalse();
-            assertThat(contactCalled).isFalse();
-        }
-
-        @Test
-        @DisplayName("異常系: 相手にブロックされていれば CHANNEL_ACCESS_DENIED（受信設定より先に判定する）")
-        void ブロックされていれば拒否される() {
-            AtomicBoolean sharesTeamCalled = new AtomicBoolean(false);
-
-            assertDenied(() -> guard.requireDmDeliverable(
-                            USER_ID, OTHER_USER_ID, true, DmReceiveFrom.ANYONE,
-                            recording(sharesTeamCalled, true), () -> true),
-                    ChatErrorCode.CHANNEL_ACCESS_DENIED);
-            assertThat(sharesTeamCalled).isFalse();
-        }
-
-        @Test
-        @DisplayName("異常系: ブロックは受信設定が TEAM_MEMBERS_ONLY で共通チームがあっても優先して拒否する")
-        void ブロックは受信設定に優先する() {
-            assertDenied(() -> guard.requireDmDeliverable(
-                            USER_ID, OTHER_USER_ID, true, DmReceiveFrom.TEAM_MEMBERS_ONLY,
-                            () -> true, () -> true),
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            assertDenied(() -> guard.checkChannelViewAccess(
+                            channel(ChannelType.TEAM_PUBLIC, TEAM_ID, null), USER_ID, ChatErrorCode.CHANNEL_NOT_FOUND),
                     ChatErrorCode.CHANNEL_ACCESS_DENIED);
         }
 
         @Test
-        @DisplayName("正常系: TEAM_MEMBERS_ONLY は共通チームがあれば通過する")
-        void TEAM_MEMBERS_ONLYは共通チームありで通過する() {
-            assertThatCode(() -> guard.requireDmDeliverable(
-                    USER_ID, OTHER_USER_ID, false, DmReceiveFrom.TEAM_MEMBERS_ONLY,
-                    () -> true, () -> false)).doesNotThrowAnyException();
+        @DisplayName("投稿: 大会チャットで閲覧はできるが投稿できない利用者は大会の 403 をそのまま返す")
+        void 大会の投稿不可で閲覧可なら403() {
+            willThrow(new BusinessException(TournamentErrorCode.CONTACT_SPACE_POST_FORBIDDEN))
+                    .given(tournamentContactAccessService).checkPost(any(), any(), any());
+
+            assertDenied(() -> guard.checkChannelPostAccess(tournament(), USER_ID, ChatErrorCode.CHANNEL_NOT_FOUND),
+                    TournamentErrorCode.CONTACT_SPACE_POST_FORBIDDEN);
         }
 
         @Test
-        @DisplayName("異常系: TEAM_MEMBERS_ONLY で共通チームが無ければ DM_RECEIVE_RESTRICTED")
-        void TEAM_MEMBERS_ONLYは共通チームなしで拒否される() {
-            assertDenied(() -> guard.requireDmDeliverable(
-                            USER_ID, OTHER_USER_ID, false, DmReceiveFrom.TEAM_MEMBERS_ONLY,
-                            () -> false, () -> true),
-                    ChatErrorCode.DM_RECEIVE_RESTRICTED);
+        @DisplayName("投稿: 大会チャットで閲覧もできない利用者は不在と同一")
+        void 大会の閲覧も不可なら不在と同一() {
+            willThrow(new BusinessException(TournamentErrorCode.CONTACT_SPACE_POST_FORBIDDEN))
+                    .given(tournamentContactAccessService).checkPost(any(), any(), any());
+            willThrow(new BusinessException(TournamentErrorCode.CONTACT_SPACE_VIEW_FORBIDDEN))
+                    .given(tournamentContactAccessService).checkView(any(), any(), any(), any());
+
+            assertDenied(() -> guard.checkChannelPostAccess(tournament(), USER_ID, ChatErrorCode.MESSAGE_NOT_FOUND),
+                    ChatErrorCode.MESSAGE_NOT_FOUND);
         }
 
         @Test
-        @DisplayName("遅延評価: TEAM_MEMBERS_ONLY では連絡先照会 supplier を評価しない")
-        void TEAM_MEMBERS_ONLYでは連絡先supplierを評価しない() {
-            AtomicBoolean contactCalled = new AtomicBoolean(false);
+        @DisplayName("ID 指定の投稿認可: チャンネルが不在なら CHAT_001（越境の拒否と同一）")
+        void ID指定で不在ならCHAT_001() {
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.empty());
 
-            guard.requireDmDeliverable(USER_ID, OTHER_USER_ID, false, DmReceiveFrom.TEAM_MEMBERS_ONLY,
-                    () -> true, recording(contactCalled, true));
-
-            assertThat(contactCalled).isFalse();
+            assertDenied(() -> guard.requireChannelPostAccess(CHANNEL_ID, USER_ID), ChatErrorCode.CHANNEL_NOT_FOUND);
         }
 
         @Test
-        @DisplayName("正常系: CONTACTS_ONLY は相手の連絡先に登録されていれば通過する")
-        void CONTACTS_ONLYは連絡先登録ありで通過する() {
-            assertThatCode(() -> guard.requireDmDeliverable(
-                    USER_ID, OTHER_USER_ID, false, DmReceiveFrom.CONTACTS_ONLY,
-                    () -> false, () -> true)).doesNotThrowAnyException();
+        @DisplayName("メッセージの所属チャンネルが不在（論理削除済み）なら、メッセージも不在として CHAT_002")
+        void 所属チャンネル不在はメッセージ不在() {
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.empty());
+            ChatMessageEntity message = ChatMessageEntity.builder()
+                    .channelId(CHANNEL_ID).senderId(USER_ID).body("本文").build();
+
+            assertDenied(() -> guard.channelOfMessage(message), ChatErrorCode.MESSAGE_NOT_FOUND);
+        }
+    }
+
+    // ========================================
+    // requireSelfJoinable（自己参加・存在秘匿つき）
+    // ========================================
+    @Nested
+    @DisplayName("requireSelfJoinable — 公開スコープチャンネルのスコープ所属者だけが自己参加できる")
+    class RequireSelfJoinable {
+
+        @Test
+        @DisplayName("正常系: 公開チームチャンネルのチーム所属者は通過する")
+        void 公開チャンネルの所属者は通過する() {
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+
+            assertThatCode(() -> guard.requireSelfJoinable(channel(ChannelType.TEAM_PUBLIC, TEAM_ID, null), USER_ID))
+                    .doesNotThrowAnyException();
         }
 
         @Test
-        @DisplayName("異常系: CONTACTS_ONLY で連絡先未登録なら DM_RECEIVE_RESTRICTED")
-        void CONTACTS_ONLYは連絡先未登録で拒否される() {
-            assertDenied(() -> guard.requireDmDeliverable(
-                            USER_ID, OTHER_USER_ID, false, DmReceiveFrom.CONTACTS_ONLY,
-                            () -> true, () -> false),
-                    ChatErrorCode.DM_RECEIVE_RESTRICTED);
+        @DisplayName("異常系: 他スコープの利用者は不在と同一（CHAT_001）")
+        void 他スコープの利用者は不在と同一() {
+            assertDenied(() -> guard.requireSelfJoinable(channel(ChannelType.TEAM_PUBLIC, TEAM_ID, null), USER_ID),
+                    ChatErrorCode.CHANNEL_NOT_FOUND);
         }
 
         @Test
-        @DisplayName("遅延評価: CONTACTS_ONLY では共通チーム照会 supplier を評価しない")
-        void CONTACTS_ONLYでは共通チームsupplierを評価しない() {
-            AtomicBoolean sharesTeamCalled = new AtomicBoolean(false);
+        @DisplayName("異常系: 他人の DM は不在と同一（招待制の種別差で実在を漏らさない）")
+        void 他人のDMは不在と同一() {
+            assertDenied(() -> guard.requireSelfJoinable(channel(ChannelType.DM, null, null), USER_ID),
+                    ChatErrorCode.CHANNEL_NOT_FOUND);
+        }
 
-            guard.requireDmDeliverable(USER_ID, OTHER_USER_ID, false, DmReceiveFrom.CONTACTS_ONLY,
-                    recording(sharesTeamCalled, true), () -> true);
+        @Test
+        @DisplayName("異常系: 非公開チャンネルを知り得るスコープ ADMIN でも招待制なので CHANNEL_ACCESS_DENIED")
+        void 非公開チャンネルは招待制() {
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
 
-            assertThat(sharesTeamCalled).isFalse();
+            assertDenied(() -> guard.requireSelfJoinable(channel(ChannelType.TEAM_PRIVATE, TEAM_ID, null), USER_ID),
+                    ChatErrorCode.CHANNEL_ACCESS_DENIED);
+        }
+
+        @Test
+        @DisplayName("異常系: スコープ非所属の SYSTEM_ADMIN は存在を知り得るので COMMON_002")
+        void スコープ非所属のSYSTEM_ADMINはCOMMON_002() {
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(true);
+
+            assertDenied(() -> guard.requireSelfJoinable(channel(ChannelType.ORG_PUBLIC, null, ORG_ID), USER_ID),
+                    CommonErrorCode.COMMON_002);
+        }
+
+        @Test
+        @DisplayName("境界: 村ロビー等メンバーシップで判定しない種別は素通しする")
+        void 村ロビーは素通しする() {
+            assertThatCode(() -> guard.requireSelfJoinable(channel(ChannelType.VILLAGE_LOBBY, null, null), USER_ID))
+                    .doesNotThrowAnyException();
+            verifyNoInteractions(accessControlService);
+        }
+    }
+
+    // ========================================
+    // requireInquiryChannelAdmin（F10.7）
+    // ========================================
+    @Nested
+    @DisplayName("requireInquiryChannelAdmin — 当該チームの ADMIN / SYSTEM_ADMIN のみ")
+    class RequireInquiryChannelAdmin {
+
+        @Test
+        @DisplayName("正常系: チーム ADMIN は通過する")
+        void チームADMINは通過する() {
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+
+            assertThatCode(() -> guard.requireInquiryChannelAdmin(
+                    channel(ChannelType.TEAM_PUBLIC, TEAM_ID, null), USER_ID)).doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("異常系: 公開チャンネルの同チーム一般所属者は存在を知り得るので COMMON_002")
+        void 同チーム一般所属者はCOMMON_002() {
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+
+            assertDenied(() -> guard.requireInquiryChannelAdmin(
+                    channel(ChannelType.TEAM_PUBLIC, TEAM_ID, null), USER_ID), CommonErrorCode.COMMON_002);
+        }
+
+        @Test
+        @DisplayName("異常系: 他チームの利用者は不在と同一（CHAT_001）")
+        void 他チームの利用者は不在と同一() {
+            assertDenied(() -> guard.requireInquiryChannelAdmin(
+                    channel(ChannelType.TEAM_PUBLIC, TEAM_ID, null), USER_ID), ChatErrorCode.CHANNEL_NOT_FOUND);
         }
     }
 

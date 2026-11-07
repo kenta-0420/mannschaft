@@ -301,7 +301,7 @@ class ChatExistenceConcealmentContractIT extends AbstractMySqlIntegrationTest {
         void 問い合わせ設定() throws Exception {
             assertConcealedAsChannelNotFound(id -> patch("/api/v1/chat/channels/{id}/inquiry", id)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content(json(Map.of("isInquiryChannel", true))), teamPrivateChannelId);
+                    .content(json(Map.of("is_inquiry_channel", true))), teamPrivateChannelId);
         }
 
         @Test
@@ -309,7 +309,7 @@ class ChatExistenceConcealmentContractIT extends AbstractMySqlIntegrationTest {
         void アイコンURL発行() throws Exception {
             assertConcealedAsChannelNotFound(id -> post("/api/v1/chat/channels/{id}/icon/upload-url", id)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content(json(Map.of("fileName", "a.png", "contentType", "image/png", "fileSize", 100))),
+                    .content(json(Map.of("file_name", "a.png", "content_type", "image/png", "file_size", 100))),
                     teamPrivateChannelId);
         }
 

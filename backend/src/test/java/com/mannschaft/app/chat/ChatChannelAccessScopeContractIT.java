@@ -425,12 +425,12 @@ class ChatChannelAccessScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("非チームメンバーによる公開チャンネルへの自己参加は不在と同一の404（COMMON_002・スコープ所属を要求）")
+        @DisplayName("非チームメンバーによる公開チャンネルへの自己参加は不在と同一の404（CHAT_001・他スコープの利用者は存在を知り得ない）")
         void 非チームメンバーの公開チャンネル参加は404() throws Exception {
             setAuthentication(outsiderId);
             mockMvc.perform(post("/api/v1/chat/channels/{id}/join", teamPublicChannelId))
                     .andExpect(status().isNotFound())
-                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+                    .andExpect(jsonPath("$.error.code").value("CHAT_001"));
         }
 
         @Test

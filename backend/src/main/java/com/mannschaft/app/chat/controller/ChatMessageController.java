@@ -5,7 +5,7 @@ import com.mannschaft.app.chat.dto.ForwardMessageRequest;
 import com.mannschaft.app.chat.dto.MessageResponse;
 import com.mannschaft.app.chat.dto.SendMessageRequest;
 import com.mannschaft.app.chat.dto.ThreadResponse;
-import com.mannschaft.app.chat.service.ChatMessageService;
+import com.mannschaft.app.chat.service.ChatMessageFacade;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.CursorPagedResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,7 +36,7 @@ import com.mannschaft.app.common.SecurityUtils;
 @RequiredArgsConstructor
 public class ChatMessageController {
 
-    private final ChatMessageService messageService;
+    private final ChatMessageFacade messageFacade;
 
 
     /**
@@ -57,8 +57,8 @@ public class ChatMessageController {
             @RequestParam(required = false) Long cursor,
             @RequestParam(required = false) Integer limit,
             @RequestParam(required = false, defaultValue = "before") String direction) {
-        // 認可根治 Wave6: 閲覧認可は listMessages 内部（サービス入口）で強制する（呼び出し元まかせ認可の廃止）。
-        CursorPagedResponse<MessageResponse> response = messageService.listMessages(
+        // 閲覧認可（存在秘匿つき）は ChatMessageFacade がトランザクションの外で強制する（CMP-261105-1507）。
+        CursorPagedResponse<MessageResponse> response = messageFacade.listMessages(
                 channelId, SecurityUtils.getCurrentUserId(), cursor, limit, direction);
         return ResponseEntity.ok(response);
     }
@@ -72,7 +72,7 @@ public class ChatMessageController {
     public ResponseEntity<ApiResponse<MessageResponse>> sendMessage(
             @PathVariable Long channelId,
             @Valid @RequestBody SendMessageRequest request) {
-        MessageResponse response = messageService.sendMessage(channelId, request, SecurityUtils.getCurrentUserId());
+        MessageResponse response = messageFacade.sendMessage(channelId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -85,7 +85,7 @@ public class ChatMessageController {
     public ResponseEntity<ApiResponse<MessageResponse>> editMessage(
             @PathVariable Long messageId,
             @Valid @RequestBody EditMessageRequest request) {
-        MessageResponse response = messageService.editMessage(messageId, request, SecurityUtils.getCurrentUserId());
+        MessageResponse response = messageFacade.editMessage(messageId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -96,7 +96,7 @@ public class ChatMessageController {
     @Operation(summary = "メッセージ削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteMessage(@PathVariable Long messageId) {
-        messageService.deleteMessage(messageId, SecurityUtils.getCurrentUserId());
+        messageFacade.deleteMessage(messageId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -110,7 +110,7 @@ public class ChatMessageController {
             @PathVariable Long messageId,
             @RequestParam(required = false) String cursor,
             @RequestParam(required = false) Integer limit) {
-        ThreadResponse response = messageService.getThread(
+        ThreadResponse response = messageFacade.getThread(
                 messageId, cursor, limit, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -124,7 +124,7 @@ public class ChatMessageController {
     public ResponseEntity<ApiResponse<MessageResponse>> togglePin(
             @PathVariable Long messageId,
             @RequestParam boolean pinned) {
-        MessageResponse response = messageService.togglePin(
+        MessageResponse response = messageFacade.togglePin(
                 messageId, pinned, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -138,7 +138,7 @@ public class ChatMessageController {
     public ResponseEntity<ApiResponse<MessageResponse>> forwardMessage(
             @PathVariable Long messageId,
             @Valid @RequestBody ForwardMessageRequest request) {
-        MessageResponse response = messageService.forwardMessage(messageId, request, SecurityUtils.getCurrentUserId());
+        MessageResponse response = messageFacade.forwardMessage(messageId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -152,7 +152,7 @@ public class ChatMessageController {
             @PathVariable Long channelId,
             @RequestParam String keyword,
             @RequestParam(required = false) Integer limit) {
-        List<MessageResponse> responses = messageService.searchMessages(
+        List<MessageResponse> responses = messageFacade.searchMessages(
                 channelId, keyword, limit, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }

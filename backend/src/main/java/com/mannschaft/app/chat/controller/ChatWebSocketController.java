@@ -2,7 +2,7 @@ package com.mannschaft.app.chat.controller;
 
 import com.mannschaft.app.chat.dto.SendMessageRequest;
 import com.mannschaft.app.chat.dto.WsSendMessageRequest;
-import com.mannschaft.app.chat.service.ChatMessageService;
+import com.mannschaft.app.chat.service.ChatMessageFacade;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -21,7 +21,7 @@ import org.springframework.stereotype.Controller;
 @RequiredArgsConstructor
 public class ChatWebSocketController {
 
-    private final ChatMessageService chatMessageService;
+    private final ChatMessageFacade chatMessageFacade;
 
     /**
      * WebSocket 経由でメッセージを送信する。
@@ -49,7 +49,8 @@ public class ChatWebSocketController {
                 null
         );
 
-        chatMessageService.sendMessage(request.getChannelId(), sendRequest, userId);
+        // 投稿認可は REST と同じ ChatMessageFacade#sendMessage を通す（WS 経路だけ認可が抜ける非対称を作らない）。
+        chatMessageFacade.sendMessage(request.getChannelId(), sendRequest, userId);
         log.debug("WebSocket メッセージ送信完了: channelId={}, userId={}", request.getChannelId(), userId);
     }
 }

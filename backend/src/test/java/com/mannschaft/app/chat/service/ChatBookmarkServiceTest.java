@@ -39,6 +39,10 @@ class ChatBookmarkServiceTest {
     @Mock
     private ChatMessageService messageService;
 
+    /** 閲覧認可（拒否は不在メッセージと同一応答）。可否そのものは ChatChannelAccessGuardTest が検証する。 */
+    @Mock
+    private ChatChannelAccessGuard channelAccessGuard;
+
     @Mock
     private ChatMapper chatMapper;
 
