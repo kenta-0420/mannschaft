@@ -5,15 +5,42 @@ import { useFavoriteNameEdit } from '~/composables/favorites/useFavoriteNameEdit
 import type { UserFavoriteItem } from '~/types/favorite'
 import FavoriteQuickEditDialog from './FavoriteQuickEditDialog.vue'
 
-vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
-vi.mock('#app', () => ({ navigateTo: vi.fn() }))
+vi.mock('vue-i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('vue-i18n')>()),
+  useI18n: () => ({ t: (key: string) => key }),
+}))
+vi.mock('#app', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#app')>()),
+  navigateTo: vi.fn(),
+}))
 
-const getTeam = vi.fn()
-const getOrganization = vi.fn()
-const updateTeam = vi.fn()
-const updateOrganization = vi.fn()
-const success = vi.fn()
-const handleApiError = vi.fn()
+const {
+  getTeam,
+  getOrganization,
+  updateTeam,
+  updateOrganization,
+  updateMyProfile,
+  success,
+  handleApiError,
+} = vi.hoisted(() => ({
+  getTeam: vi.fn(),
+  getOrganization: vi.fn(),
+  updateTeam: vi.fn(),
+  updateOrganization: vi.fn(),
+  updateMyProfile: vi.fn(),
+  success: vi.fn(),
+  handleApiError: vi.fn(),
+}))
+// Nuxtのauto-import先を置換する。globalだけのstubでは正規Nuxt実行へ届かない。
+vi.mock('~/composables/useTeamApi', () => ({ useTeamApi: () => ({ getTeam, updateTeam }) }))
+vi.mock('~/composables/useOrganizationApi', () => ({
+  useOrganizationApi: () => ({ getOrganization, updateOrganization }),
+}))
+vi.mock('~/composables/useSocialProfileApi', () => ({
+  useSocialProfileApi: () => ({ updateMyProfile }),
+}))
+vi.mock('~/composables/useNotification', () => ({ useNotification: () => ({ success }) }))
+vi.mock('~/composables/useErrorHandler', () => ({ useErrorHandler: () => ({ handleApiError }) }))
 const wrappers: ReturnType<typeof mount>[] = []
 
 function item(
@@ -63,7 +90,7 @@ beforeEach(() => {
   vi.resetAllMocks()
   vi.stubGlobal('useTeamApi', () => ({ getTeam, updateTeam }))
   vi.stubGlobal('useOrganizationApi', () => ({ getOrganization, updateOrganization }))
-  vi.stubGlobal('useSocialProfileApi', () => ({ updateMyProfile: vi.fn() }))
+  vi.stubGlobal('useSocialProfileApi', () => ({ updateMyProfile }))
   vi.stubGlobal('useNotification', () => ({ success }))
   vi.stubGlobal('useErrorHandler', () => ({ handleApiError }))
   getTeam.mockResolvedValue(detail())
