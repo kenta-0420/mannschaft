@@ -8911,6 +8911,39 @@ window.BETA_INVENTORY_DATA = {
         "runId": "CMP-261021-0717-ui9-20261105",
         "sourceHead": "dc977b6724958111c149140ab83f0094b433bb78",
         "evidencePath": "docs/evidence/CMP-261021-0717/resident-observations-20261105.json"
+      },
+      {
+        "id": "R8-ADMIN",
+        "personaArchetype": "高齢・低リテラシー×素直",
+        "runId": "l1rmw5vnojk-resident-admin",
+        "sourceHead": "7a3c076a69754044209e86747097e622ae9b1ab9",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-20261107.json",
+        "originalResidentId": "R8-ADMIN",
+        "sourceEvidencePath": ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-admin/observations.json",
+        "trusted": false,
+        "status": "observed-unverified"
+      },
+      {
+        "id": "R8-MEMBER",
+        "personaArchetype": "ADHD傾向×中断・放棄",
+        "runId": "l1rmw5vnojk-resident-member",
+        "sourceHead": "7a3c076a69754044209e86747097e622ae9b1ab9",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-20261107.json",
+        "originalResidentId": "R8-MEMBER",
+        "sourceEvidencePath": ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-member/observations.json",
+        "trusted": false,
+        "status": "observed-unverified"
+      },
+      {
+        "id": "R8-OUTSIDER",
+        "personaArchetype": "一般×隙間狙い",
+        "runId": "l1rmw5vnojk-resident-outsider",
+        "sourceHead": "7a3c076a69754044209e86747097e622ae9b1ab9",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-20261107.json",
+        "originalResidentId": "R8-OUTSIDER",
+        "sourceEvidencePath": ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-outsider/observations.json",
+        "trusted": false,
+        "status": "observed-unverified"
       }
     ],
     "journeys": [
@@ -9590,6 +9623,45 @@ window.BETA_INVENTORY_DATA = {
         "evidencePath": "docs/evidence/CMP-261021-0717/resident-observations-20261105.json",
         "journeyIdSource": "raw IDは既存IDと衝突しないため原IDを保持。",
         "originalJourneyId": "resident-c-ui9"
+      },
+      {
+        "id": "R8-ADMIN-name-management",
+        "personaId": "R8-ADMIN",
+        "purpose": "組織・チームを取り違えず作成・管理する",
+        "runId": "l1rmw5vnojk-resident-admin",
+        "sourceHead": "7a3c076a69754044209e86747097e622ae9b1ab9",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-20261107.json",
+        "sourceEvidencePath": ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-admin/journey.md",
+        "idAssignment": "journeyIdは原本にないため登録時付与。固定P01-P20への変換なし。",
+        "explorationPerformed": true,
+        "goalAchieved": false,
+        "coveragePassed": false
+      },
+      {
+        "id": "R8-MEMBER-navigation-interruption",
+        "personaId": "R8-MEMBER",
+        "purpose": "団体名とメンバーの立場を確認し、別画面から元の団体へ戻る",
+        "runId": "l1rmw5vnojk-resident-member",
+        "sourceHead": "7a3c076a69754044209e86747097e622ae9b1ab9",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-20261107.json",
+        "sourceEvidencePath": ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-member/journey.json",
+        "idAssignment": "原本journeyIdを保持。",
+        "explorationPerformed": true,
+        "goalAchieved": true,
+        "coveragePassed": false
+      },
+      {
+        "id": "R8-OUTSIDER-public-name",
+        "personaId": "R8-OUTSIDER",
+        "purpose": "非所属の公開団体の名称と非所属案内を確かめる",
+        "runId": "l1rmw5vnojk-resident-outsider",
+        "sourceHead": "7a3c076a69754044209e86747097e622ae9b1ab9",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-20261107.json",
+        "sourceEvidencePath": ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-outsider/journey.json",
+        "idAssignment": "journeyIdは原本にないため登録時付与。固定P01-P20への変換なし。",
+        "explorationPerformed": true,
+        "goalAchieved": true,
+        "coveragePassed": false
       }
     ],
     "insights": [
@@ -12040,6 +12112,63 @@ window.BETA_INVENTORY_DATA = {
         "status": "observed-unverified",
         "urgency": "normal",
         "screenshotPath": "docs/evidence/CMP-261021-0717/c-denied.png"
+      },
+      {
+        "id": "R8-ADMIN-selected-01",
+        "featureKey": "organization-manage",
+        "featureDetail": "団体名称・所属と導線",
+        "personaId": "R8-ADMIN",
+        "journeyId": "R8-ADMIN-name-management",
+        "personaArchetype": "高齢・低リテラシー×素直",
+        "originalRunId": "l1rmw5vnojk-resident-admin",
+        "sourceHead": "7a3c076a69754044209e86747097e622ae9b1ab9",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-20261107.json",
+        "sourceEvidencePath": ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-admin/observations.json",
+        "screenshotPath": ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-admin/05-name-check.png",
+        "title": "同名候補を見分けられず作成を中止",
+        "detail": "同名候補3行を見分けられず「やめる」を選択した。3件の同名fixtureが実在し、行重複の不具合とは認定しない。作成・改名の達成はない。",
+        "urgency": "normal",
+        "priority": "should",
+        "trusted": false,
+        "status": "observed-unverified"
+      },
+      {
+        "id": "R8-MEMBER-selected-01",
+        "featureKey": "organization-manage",
+        "featureDetail": "団体名称・所属と導線",
+        "personaId": "R8-MEMBER",
+        "journeyId": "R8-MEMBER-navigation-interruption",
+        "personaArchetype": "ADHD傾向×中断・放棄",
+        "originalRunId": "l1rmw5vnojk-resident-member",
+        "sourceHead": "7a3c076a69754044209e86747097e622ae9b1ab9",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-20261107.json",
+        "sourceEvidencePath": ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-member/observations.json",
+        "screenshotPath": ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-member/13-org-info-final.png",
+        "title": "名称・メンバー表示を確認して中断後に復帰",
+        "detail": "組織・チームの名称とメンバーバッジを確認し、別画面からBackで復帰した。名称編集入口は見つからず、拒否実動作は未検証。",
+        "urgency": "normal",
+        "priority": "should",
+        "trusted": false,
+        "status": "observed-unverified"
+      },
+      {
+        "id": "R8-OUTSIDER-selected-01",
+        "featureKey": "organization-manage",
+        "featureDetail": "団体名称・所属と導線",
+        "personaId": "R8-OUTSIDER",
+        "journeyId": "R8-OUTSIDER-public-name",
+        "personaArchetype": "一般×隙間狙い",
+        "originalRunId": "l1rmw5vnojk-resident-outsider",
+        "sourceHead": "7a3c076a69754044209e86747097e622ae9b1ab9",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-20261107.json",
+        "sourceEvidencePath": ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-outsider/observations.json",
+        "screenshotPath": ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-outsider/08-org-info.png",
+        "title": "公開団体名と非所属の案内を確認",
+        "detail": "公開組織・チーム名と非所属案内を確認し編集UIは観測しなかった。推測settingsの404は正式管理画面の認可証拠ではなく、team/modulesの403原因も未断定。",
+        "urgency": "normal",
+        "priority": "should",
+        "trusted": false,
+        "status": "observed-unverified"
       }
     ],
     "runEnvironments": {
@@ -12250,6 +12379,42 @@ window.BETA_INVENTORY_DATA = {
         "goalsReached": false,
         "coveragePassed": false,
         "note": "再確認 run。main 0f8354b879 の実機。住民3（ya）は途中中断し殿が API で代行したため、実施完了ではない。"
+      },
+      "l1rmw5vnojk-resident-admin": {
+        "sourceHead": "7a3c076a69754044209e86747097e622ae9b1ab9",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-20261107.json",
+        "sourceEvidencePath": ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-admin/observations.json",
+        "trusted": false,
+        "status": "observed-unverified",
+        "runId": "l1rmw5vnojk-resident-admin",
+        "registrationSource": "actual-resident-artifacts",
+        "explorationPerformed": true,
+        "goalAchieved": false,
+        "coveragePassed": false
+      },
+      "l1rmw5vnojk-resident-member": {
+        "sourceHead": "7a3c076a69754044209e86747097e622ae9b1ab9",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-20261107.json",
+        "sourceEvidencePath": ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-member/observations.json",
+        "trusted": false,
+        "status": "observed-unverified",
+        "runId": "l1rmw5vnojk-resident-member",
+        "registrationSource": "actual-resident-artifacts",
+        "explorationPerformed": true,
+        "goalAchieved": true,
+        "coveragePassed": false
+      },
+      "l1rmw5vnojk-resident-outsider": {
+        "sourceHead": "7a3c076a69754044209e86747097e622ae9b1ab9",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-20261107.json",
+        "sourceEvidencePath": ".claude/worktrees/agent-4022-common-admin-7a9502a2/.claude/l1r-real/resident-r8-outsider/observations.json",
+        "trusted": false,
+        "status": "observed-unverified",
+        "runId": "l1rmw5vnojk-resident-outsider",
+        "registrationSource": "actual-resident-artifacts",
+        "explorationPerformed": true,
+        "goalAchieved": true,
+        "coveragePassed": false
       }
     }
   },
