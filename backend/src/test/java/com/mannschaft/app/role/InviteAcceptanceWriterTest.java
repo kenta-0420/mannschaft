@@ -27,6 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
@@ -63,16 +64,16 @@ class InviteAcceptanceWriterTest {
     private static final Long TOKEN_ID = 100L;
     private static final Long ROLE_ID = 3L;
     private static final UUID CLAIM_ID = UUID.fromString("00000000-0000-7000-8000-000000000001");
-    private static final LocalDateTime NOW = LocalDateTime.of(2026, 11, 8, 12, 0);
+    private static final Instant NOW = java.time.LocalDateTime.of(2026, 11, 8, 12, 0).toInstant(java.time.ZoneOffset.UTC);
 
-    private InviteTokenSnapshot token(LocalDateTime expiresAt, Integer maxUses, int usedCount,
-                                      LocalDateTime revokedAt, Long targetUserId) {
+    private InviteTokenSnapshot token(Instant expiresAt, Integer maxUses, int usedCount,
+                                      Instant revokedAt, Long targetUserId) {
         return new InviteTokenSnapshot(TOKEN_ID, TEAM_ID, null, ROLE_ID, expiresAt, maxUses, usedCount, revokedAt,
                 0L, 2L, targetUserId, NOW);
     }
 
     private InviteTokenSnapshot validToken() {
-        return token(NOW.plusDays(1), 3, 0, null, null);
+        return token(NOW.plus(1, java.time.temporal.ChronoUnit.DAYS), 3, 0, null, null);
     }
 
     private void lock(InviteTokenSnapshot snapshot) {
@@ -107,7 +108,7 @@ class InviteAcceptanceWriterTest {
         @Test
         @DisplayName("上限到達 → ROLE_003、期限切れ・失効 → ROLE_002")
         void 無効の種類() {
-            lock(token(NOW.plusDays(1), 3, 3, null, null));
+            lock(token(NOW.plus(1, java.time.temporal.ChronoUnit.DAYS), 3, 3, null, null));
             assertThatThrownBy(() -> writer.claim(LOCATOR, USER_ID, false, null))
                     .satisfies(t -> assertCode(t, RoleErrorCode.ROLE_003, null));
         }
@@ -123,7 +124,7 @@ class InviteAcceptanceWriterTest {
         @Test
         @DisplayName("失効 → ROLE_002")
         void 失効() {
-            lock(token(null, 3, 0, NOW.minusDays(1), null));
+            lock(token(null, 3, 0, NOW.minus(1, java.time.temporal.ChronoUnit.DAYS), null));
             assertThatThrownBy(() -> writer.claim(LOCATOR, USER_ID, false, null))
                     .satisfies(t -> assertCode(t, RoleErrorCode.ROLE_002, null));
         }

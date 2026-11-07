@@ -225,6 +225,8 @@ class InviteAcceptanceFacadeTest {
         @DisplayName("T9 の失敗は ERROR を記録して先へ進み、フォルダ配置まで行う")
         void T9失敗でも配置へ進む() {
             claimable();
+            // folderId 指定ありは T5 の事前確認が走る。実契約は非 null の列挙を返す（inspectInviteFolder）ので OK を返す。
+            given(placementService.checkInviteFolder(USER_ID, FOLDER_ID, "TEAM")).willReturn(InviteFolderCheck.OK);
             given(membershipGrantService.grantRole(anyString(), anyLong(), anyLong(), anyLong(), anyLong(), anyString()))
                     .willReturn(GrantOutcome.GRANTED);
             doThrow(new IllegalStateException("確定失敗")).when(writer).recordJoined(CLAIM_ID);

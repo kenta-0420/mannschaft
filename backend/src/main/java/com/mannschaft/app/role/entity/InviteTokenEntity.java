@@ -12,7 +12,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
@@ -102,6 +104,14 @@ public class InviteTokenEntity {
      */
     public static boolean isValidState(LocalDateTime revokedAt, LocalDateTime expiresAt, Integer maxUses,
                                        int usedCount, LocalDateTime now) {
+        return isValidState(revokedAt == null ? null : revokedAt.toInstant(ZoneOffset.UTC),
+                expiresAt == null ? null : expiresAt.toInstant(ZoneOffset.UTC), maxUses, usedCount,
+                now.toInstant(ZoneOffset.UTC));
+    }
+
+    /** {@link #isValidState(LocalDateTime, LocalDateTime, Integer, int, LocalDateTime)} の瞬間（Instant）版。 */
+    public static boolean isValidState(Instant revokedAt, Instant expiresAt, Integer maxUses,
+                                       int usedCount, Instant now) {
         if (revokedAt != null) {
             return false;
         }

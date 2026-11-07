@@ -90,7 +90,7 @@ abstract class InviteAcceptanceItSupport extends InviteGenerationItSupport {
     }
 
     protected Long folder(Long userId, String scopeType) {
-        jdbc.update("INSERT INTO my_scope_folders (user_id, scope_type, name, sort_order, is_default) VALUES (?, ?, ?, 0, FALSE)",
+        jdbc.update("INSERT INTO my_scope_folders (user_id, scope_type, name, sort_order, is_default, created_at, updated_at) VALUES (?, ?, ?, 0, FALSE, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6))",
                 userId, scopeType, "試練フォルダ");
         return jdbc.queryForObject("SELECT MAX(id) FROM my_scope_folders WHERE user_id = ?", Long.class, userId);
     }
@@ -111,14 +111,31 @@ abstract class InviteAcceptanceItSupport extends InviteGenerationItSupport {
     }
 
     protected void insertMembership(Scope scope, Long userId, String roleKind) {
-        jdbc.update("INSERT INTO memberships (user_id, scope_type, scope_id, role_kind, joined_at) VALUES (?, ?, ?, ?, UTC_TIMESTAMP())",
+        jdbc.update("INSERT INTO memberships (user_id, scope_type, scope_id, role_kind, joined_at, created_at, updated_at) VALUES (?, ?, ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP(), UTC_TIMESTAMP())",
                 userId, scope.type(), scope.id(), roleKind);
     }
 
     protected void insertUserRole(Scope scope, Long userId) {
         String column = "TEAM".equals(scope.type()) ? "team_id" : "organization_id";
-        jdbc.update("INSERT INTO user_roles (user_id, role_id, " + column + ", granted_by) VALUES (?, ?, ?, ?)",
+        jdbc.update("INSERT INTO user_roles (user_id, role_id, " + column + ", granted_by, created_at, updated_at) VALUES (?, ?, ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())",
                 userId, scope.memberRoleId(), scope.id(), userId);
+    }
+
+    /**
+     * 本番の {@code uq_user_roles_user_scope}（V2.006: user_id と生成列 scope_key の一意制約）を、この試験が所有する
+     * 1ユーザーに限って Entity 由来スキーマ（ddl-auto=create。UserRoleEntity は一意制約を持たない）へ再現する。
+     * 関数索引は他ユーザーの行では NULL になるので、既存行・他試験に影響しない。終わったら必ず
+     * {@link #dropUserRoleScopeUnique(String)} で外す。
+     */
+    protected String addUserRoleScopeUnique(Long userId) {
+        String name = "uq_it_user_roles_" + userId;
+        jdbc.execute("ALTER TABLE user_roles ADD UNIQUE INDEX " + name + " ((CASE WHEN user_id = " + userId
+                + " THEN CONCAT(COALESCE(team_id, 0), ':', COALESCE(organization_id, 0)) END))");
+        return name;
+    }
+
+    protected void dropUserRoleScopeUnique(String name) {
+        jdbc.execute("ALTER TABLE user_roles DROP INDEX " + name);
     }
 
     // ------------------------------------------------------------------

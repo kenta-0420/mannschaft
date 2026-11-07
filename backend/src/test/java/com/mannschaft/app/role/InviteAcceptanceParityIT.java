@@ -441,7 +441,7 @@ class InviteAcceptanceParityIT extends InviteAcceptanceItSupport {
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("M1 red: invite_token_claims の列・索引・FK・照合順序が実 migration で揃う")
+    @DisplayName("M1 red: invite_token_claims の列（型・NOT NULL）が揃う。索引・FK・照合順序は FlywayInviteTokenClaimsMigrationTest")
     void claimsTableShape() {
         requireClaimsTable();
         List<Map<String, Object>> columns = jdbc.queryForList("SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, CHARACTER_MAXIMUM_LENGTH "
@@ -457,25 +457,8 @@ class InviteAcceptanceParityIT extends InviteAcceptanceItSupport {
                     .get("IS_NULLABLE")).as(notNull + " は NOT NULL").isEqualTo("NO");
         }
 
-        List<String> indexes = jdbc.queryForList("SELECT CONCAT(INDEX_NAME, ':', GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX)) "
-                + "FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? GROUP BY INDEX_NAME",
-                String.class, CLAIMS);
-        assertThat(indexes.stream().map(i -> i.substring(i.indexOf(':') + 1)).toList())
-                .contains("status,created_at", "token_id");
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() "
-                + "AND TABLE_NAME = ? AND NON_UNIQUE = 0 AND INDEX_NAME <> 'PRIMARY'", Long.class, CLAIMS))
-                .as("(token_id,user_id) 一意制約は付けない").isZero();
+        // 索引・FK・照合順序は IT の Entity 由来スキーマ（ddl-auto=create）には無い。実 migration は
+        // FlywayInviteTokenClaimsMigrationTest で検証する（陣立て書 §9.1）。
 
-        List<Map<String, Object>> fks = jdbc.queryForList("SELECT k.COLUMN_NAME, k.REFERENCED_TABLE_NAME, r.DELETE_RULE "
-                + "FROM information_schema.KEY_COLUMN_USAGE k JOIN information_schema.REFERENTIAL_CONSTRAINTS r "
-                + "ON r.CONSTRAINT_SCHEMA = k.CONSTRAINT_SCHEMA AND r.CONSTRAINT_NAME = k.CONSTRAINT_NAME "
-                + "WHERE k.TABLE_SCHEMA = DATABASE() AND k.TABLE_NAME = ? AND k.REFERENCED_TABLE_NAME IS NOT NULL", CLAIMS);
-        assertThat(fks).singleElement().satisfies(fk -> {
-            assertThat(fk.get("COLUMN_NAME")).isEqualTo("token_id");
-            assertThat(fk.get("REFERENCED_TABLE_NAME")).isEqualTo("invite_tokens");
-            assertThat(fk.get("DELETE_RULE")).as("CASCADE なし").isNotEqualTo("CASCADE");
-        });
-        assertThat(jdbc.queryForObject("SELECT TABLE_COLLATION FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() "
-                + "AND TABLE_NAME = ?", String.class, CLAIMS)).isEqualTo("utf8mb4_0900_ai_ci");
     }
 }

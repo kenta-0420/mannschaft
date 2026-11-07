@@ -399,7 +399,13 @@ class InviteAcceptanceConcurrencyIT extends InviteAcceptanceItSupport {
         Long admin = admin(scope);
         Long userId = user();
         insertUserRole(scope, userId);
-        Throwable error = catching(() -> grants.grantMemberRole(type, scope.id(), userId, admin, "JOIN_REQUEST"));
+        String unique = addUserRoleScopeUnique(userId);
+        Throwable error;
+        try {
+            error = catching(() -> grants.grantMemberRole(type, scope.id(), userId, admin, "JOIN_REQUEST"));
+        } finally {
+            dropUserRoleScopeUnique(unique);
+        }
         assertThat(error).isNotNull();
         assertThat(chainContains(error, DataIntegrityViolationException.class)
                 || chainContains(error, java.sql.SQLIntegrityConstraintViolationException.class))
@@ -416,13 +422,19 @@ class InviteAcceptanceConcurrencyIT extends InviteAcceptanceItSupport {
         Long admin = admin(scope);
         InviteTokenEntity token = token(scope, 0, null, 3, 0, null, null);
         Long userId = user();
-        Throwable approval = catching(() -> new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-            // 承認側の事前確認（スナップショット確立）
-            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM memberships WHERE user_id = ? AND left_at IS NULL",
-                    Long.class, userId)).isZero();
-            runElsewhere(() -> acceptCompat(token.getToken(), userId, null));
-            grants.grantMemberRole(type, scope.id(), userId, admin, "JOIN_REQUEST");
-        }));
+        String unique = addUserRoleScopeUnique(userId);
+        Throwable approval;
+        try {
+            approval = catching(() -> new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                // 承認側の事前確認（スナップショット確立）
+                assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM memberships WHERE user_id = ? AND left_at IS NULL",
+                        Long.class, userId)).isZero();
+                runElsewhere(() -> acceptCompat(token.getToken(), userId, null));
+                grants.grantMemberRole(type, scope.id(), userId, admin, "JOIN_REQUEST");
+            }));
+        } finally {
+            dropUserRoleScopeUnique(unique);
+        }
         assertThat(approval).isNotNull();
         assertThat(chainContains(approval, DataIntegrityViolationException.class)
                 || chainContains(approval, java.sql.SQLIntegrityConstraintViolationException.class))

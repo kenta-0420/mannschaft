@@ -11,7 +11,9 @@ import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Repository;
 
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -203,18 +205,19 @@ class InviteTokenRepositoryImpl implements InviteTokenRepositoryCustom {
         return value == null ? null : ((Number) value).longValue();
     }
 
-    private static LocalDateTime time(Object value) {
+    private static Instant time(Object value) {
         if (value == null) {
             return null;
         }
+        // 全列が同じ変換経路を通るので、壁時計を UTC とみなして瞬間に写しても互いの前後関係は保たれる
         if (value instanceof LocalDateTime local) {
-            return local;
+            return local.toInstant(ZoneOffset.UTC);
         }
         if (value instanceof Timestamp timestamp) {
-            return timestamp.toLocalDateTime();
+            return timestamp.toLocalDateTime().toInstant(ZoneOffset.UTC);
         }
         if (value instanceof java.util.Date date) {
-            return new Timestamp(date.getTime()).toLocalDateTime();
+            return new Timestamp(date.getTime()).toLocalDateTime().toInstant(ZoneOffset.UTC);
         }
         throw new IllegalStateException("招待行の時刻列を解釈できない型: " + value.getClass().getName());
     }

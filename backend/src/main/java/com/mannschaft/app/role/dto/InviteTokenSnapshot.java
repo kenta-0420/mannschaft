@@ -1,6 +1,6 @@
 package com.mannschaft.app.role.dto;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * 招待行をロックして読んだ最新値の射影（Entity を介さない。外側トランザクションのスナップショットや
@@ -11,14 +11,14 @@ public record InviteTokenSnapshot(
         Long teamId,
         Long organizationId,
         Long roleId,
-        LocalDateTime expiresAt,
+        Instant expiresAt,
         Integer maxUses,
         int usedCount,
-        LocalDateTime revokedAt,
+        Instant revokedAt,
         long scopeClosureGeneration,
         Long createdBy,
         Long targetUserId,
-        LocalDateTime dbNow) {
+        Instant dbNow) {
 
     public String scopeType() {
         return teamId != null ? "TEAM" : "ORGANIZATION";
