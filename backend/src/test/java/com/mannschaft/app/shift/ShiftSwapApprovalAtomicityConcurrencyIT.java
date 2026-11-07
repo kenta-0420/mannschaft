@@ -216,8 +216,8 @@ class ShiftSwapApprovalAtomicityConcurrencyIT extends ShiftSwapApprovalTestSuppo
                     String code = switch (change) {
                         case UNPUBLISH -> "SHIFT_012";
                         case MOVE_SOURCE -> "SHIFT_018";
-                        case DELETE_SLOT -> "SHIFT_002";
-                        case DELETE_PARENT -> "SHIFT_001";
+                        // 親削除も入力swap不在と同じ応答にする（CMP-260903-0657）。
+                        case DELETE_SLOT, DELETE_PARENT -> "SHIFT_005";
                         case THIRD_DUPLICATE -> "SHIFT_042";
                         default -> throw new IllegalStateException();
                     };

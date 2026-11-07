@@ -137,11 +137,11 @@ public class ShiftSwapService {
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public SwapRequestResponse createSwapRequest(CreateSwapRequestRequest req, Long userId) {
         // スコープ認可はFacade済み。親→子の順で既存の割当更新・親削除と直列化し、
-        // 公開取消や担当変更のcommit後の値で作成資格を確定する（親不在は従来どおりSHIFT_001）。
+        // 公開取消や担当変更のcommit後の値で作成資格を確定する（親不在も入力枠のSHIFT_002へ畳む）。
         ShiftSlotEntity slot = slotRepository.findById(req.getSlotId())
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SLOT_NOT_FOUND));
         ShiftScheduleEntity schedule = scheduleRepository.findByIdForUpdate(slot.getScheduleId())
-                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SLOT_NOT_FOUND));
         try {
             // 親ロック待ち前の1次キャッシュ・MySQLのsnapshotを使わず、現在の割当を読み直す。
             entityManager.refresh(slot, LockModeType.PESSIMISTIC_READ);
@@ -234,25 +234,25 @@ public class ShiftSwapService {
         ShiftScheduleEntity approvalSchedule = null;
         if (ACTION_APPROVE.equals(req.getAction())) {
             approvalSlot = slotRepository.findById(entity.getSlotId())
-                    .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SLOT_NOT_FOUND));
+                    .orElseThrow(() -> new BusinessException(ShiftErrorCode.SWAP_REQUEST_NOT_FOUND));
             approvalSchedule = scheduleRepository.findById(approvalSlot.getScheduleId())
-                    .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
+                    .orElseThrow(() -> new BusinessException(ShiftErrorCode.SWAP_REQUEST_NOT_FOUND));
             // ここまで親はscope読取だけ。古いmanaged親へロックを追加するとHibernateが先に
             // version不一致を投げるため、未編集の親だけを外して現在値をロック取得する。
             entityManager.detach(approvalSchedule);
             approvalSchedule = scheduleRepository.findByIdForUpdate(approvalSlot.getScheduleId())
-                    .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
+                    .orElseThrow(() -> new BusinessException(ShiftErrorCode.SWAP_REQUEST_NOT_FOUND));
             // scope解決で親・枠が既にPCへ載るため、ロック取得だけでは古い状態が残る。
             // 親→枠の順に現在読み取りし、先行commitの公開取消・手動編集・削除を反映する。
             try {
                 entityManager.refresh(approvalSchedule, LockModeType.PESSIMISTIC_WRITE);
             } catch (EntityNotFoundException e) {
-                throw new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
+                throw new BusinessException(ShiftErrorCode.SWAP_REQUEST_NOT_FOUND);
             }
             try {
                 entityManager.refresh(approvalSlot, LockModeType.PESSIMISTIC_WRITE);
             } catch (EntityNotFoundException e) {
-                throw new BusinessException(ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
+                throw new BusinessException(ShiftErrorCode.SWAP_REQUEST_NOT_FOUND);
             }
             try {
                 entityManager.refresh(entity, LockModeType.PESSIMISTIC_WRITE);
@@ -342,9 +342,8 @@ public class ShiftSwapService {
     }
 
     /**
-     * swapId から scope を解決する（承諾・承認/却下用）。不在なら {@code SWAP_REQUEST_NOT_FOUND}、
-     * 親（枠・スケジュール）が不在なら {@code SHIFT_SLOT_NOT_FOUND} / {@code SHIFT_SCHEDULE_NOT_FOUND}
-     * （是正前の応答と同一。tx内の読み直しでも同じ不在コードを適用する）。
+     * swapId から scope を解決する（承諾・承認/却下用）。親（枠・スケジュール）の不在・論理削除も
+     * 入力swapの {@code SWAP_REQUEST_NOT_FOUND} へ畳み、実在を秘匿する。tx内の読み直しも同じコードとする。
      *
      * @param swapId 交代リクエスト ID
      * @return scope
@@ -371,14 +370,14 @@ public class ShiftSwapService {
     }
 
     /**
-     * 作成対象のシフト枠から scope を解決する。枠が不在なら {@code SHIFT_SLOT_NOT_FOUND}、
-     * スケジュールが不在なら {@code SHIFT_SCHEDULE_NOT_FOUND}。
+     * 作成対象のシフト枠から scope を解決する。枠・親スケジュールの不在・論理削除は
+     * 入力枠の {@code SHIFT_SLOT_NOT_FOUND} へ畳む。
      *
      * @param slotId シフト枠 ID
      * @return scope（requesterId は null）
      */
     public SwapScope resolveSlotScope(Long slotId) {
-        return new SwapScope(resolveTeamIdBySlotId(slotId), null);
+        return new SwapScope(resolveTeamIdBySlotId(slotId, ShiftErrorCode.SHIFT_SLOT_NOT_FOUND), null);
     }
 
     /**
@@ -388,7 +387,7 @@ public class ShiftSwapService {
      * @return 所属チーム ID
      */
     private Long resolveTeamIdBySwap(ShiftSwapRequestEntity entity) {
-        return resolveTeamIdBySlotId(entity.getSlotId());
+        return resolveTeamIdBySlotId(entity.getSlotId(), ShiftErrorCode.SWAP_REQUEST_NOT_FOUND);
     }
 
     /**
@@ -398,14 +397,15 @@ public class ShiftSwapService {
      * 「他チームの swapId を直接指定して越境する」BOLA を封鎖する。</p>
      *
      * @param slotId シフト枠 ID
+     * @param notFoundCode 入力リソースの不在コード（親の不在でも同じ応答にする）
      * @return 所属チーム ID
      */
-    private Long resolveTeamIdBySlotId(Long slotId) {
+    private Long resolveTeamIdBySlotId(Long slotId, ShiftErrorCode notFoundCode) {
         Long scheduleId = slotRepository.findById(slotId)
-                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SLOT_NOT_FOUND))
+                .orElseThrow(() -> new BusinessException(notFoundCode))
                 .getScheduleId();
         return scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND))
+                .orElseThrow(() -> new BusinessException(notFoundCode))
                 .getTeamId();
     }
 

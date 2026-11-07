@@ -23,7 +23,7 @@ import java.util.List;
  * 名前を {@code *AccessService} / {@code *AccessGate} にしないのは、呼んだだけで認可シグナル扱いになり
  * 本クラス内の認可漏れを AuthzControllerGuard が見逃すのを避けるため。</p>
  *
- * <h3>認可表（是正前＝#3528 の契約から変えていない）</h3>
+ * <h3>認可表（許可主体は維持、親不在を入力runの不在へ統一・CMP-260903-0657）</h3>
  * <pre>
  * 主体＼EP                    実行/確定/破棄(schedule)   履歴一覧(schedule)  詳細・目視確認(runId)
  * 部外者(非メンバー)          404 SHIFT_001/SHIFT_024*   404 SHIFT_001       404 SHIFT_024
@@ -34,9 +34,9 @@ import java.util.List;
  * user_roles のみの ADMIN     200/201/204(状態次第)      200                 200(状態次第)
  * 他チームの ADMIN            404 SHIFT_001/SHIFT_024*   404 SHIFT_001       404 SHIFT_024
  * 対象不在                    404 SHIFT_001/SHIFT_024*   404 SHIFT_001       404 SHIFT_024
- * 親だけ不在(スケジュール)    404 SHIFT_001              404 SHIFT_001       404 SHIFT_024
+ * 親だけ不在(スケジュール)    404 SHIFT_001/SHIFT_024*   404 SHIFT_001       404 SHIFT_024
  * *実行(schedule): 越境・不在とも SHIFT_001。確定・破棄(run): run 不在・パスのスケジュールと不一致・越境は
- *  SHIFT_024、スケジュールだけ不在は SHIFT_001。
+ *  SHIFT_024、スケジュールだけ不在の場合も同じ SHIFT_024。
  * DB 変更: 拒否・不在はすべて変更なし（run 行・割当行・スロット行とも不変）。
  * </pre>
  */
