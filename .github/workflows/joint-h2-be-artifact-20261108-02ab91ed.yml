@@ -1,0 +1,219 @@
+name: joint H2 BE artifact 02ab91ed
+'on':
+  push:
+    branches:
+    - feature/october-h2-be-artifact-20261108-02ab91ed
+    paths:
+    - .github/workflows/joint-h2-be-artifact-20261108-02ab91ed.yml
+permissions:
+  contents: read
+concurrency:
+  group: joint-h2-be-02ab91ed
+  cancel-in-progress: false
+jobs:
+  produce-be:
+    if: github.repository == 'kenta-0420/mannschaft' && github.event_name == 'push' && github.ref == 'refs/heads/feature/october-h2-be-artifact-20261108-02ab91ed'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+    - name: checkout前にfresh資源を保存・判定
+      id: resource
+      env: &id001
+        BE_ROOT: ${{ runner.temp }}/joint-h2-be-02ab91ed
+      run: |
+        set -euo pipefail
+        python3 - <<'PY'
+        import os,pathlib,json,shutil
+        r=pathlib.Path(os.environ['BE_ROOT']);r.mkdir(mode=0o700)
+        m={k:int(v.split()[0])*1024 for k,v in (x.split(':',1)for x in pathlib.Path('/proc/meminfo').read_text().splitlines())if k in ['MemTotal','MemAvailable','SwapTotal','SwapFree']};m['diskFreeBytes']=shutil.disk_usage(r).free
+        (r/'precheckout-resources.json').write_text(json.dumps(m,indent=2)+'\n');print(json.dumps({'precheckoutResourceBytes':m}),flush=True)
+        assert m['MemAvailable']>=8*1024**3 and m['diskFreeBytes']>=6*1024**3
+        PY
+    - name: 固定push sourceをcheckout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        fetch-depth: 2
+        persist-credentials: false
+    - name: 既存CI系のJDK21を用意する
+      uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad
+      with:
+        distribution: temurin
+        java-version: '21'
+        check-latest: false
+    - name: H2/S2 source・8raw/39/6class・toolを結合
+      id: source
+      env: *id001
+      run: |
+        set -euo pipefail
+        printf '0\n' > /proc/self/coredump_filter
+        ulimit -c 0
+        cat > "$BE_ROOT/pins.json" <<'PINS'
+        {"workflowPath":".github/workflows/joint-h2-be-artifact-20261108-02ab91ed.yml","eightRawPaths":["scripts/verification-run.mjs","frontend/package.json","frontend/package-lock.json","frontend/nuxt.config.ts","backend/build.gradle.kts","backend/gradle.properties","backend/gradle/wrapper/gradle-wrapper.jar","backend/build-logic/src/main/kotlin/mannschaft.backend-conventions.gradle.kts"],"external39Paths":["backend/build-logic/src/main/kotlin/mannschaft.backend-conventions.gradle.kts","backend/build.gradle.kts","backend/src/main/java/com/mannschaft/app/admin/service/SecurityScanStatusService.java","backend/src/main/java/com/mannschaft/app/auth/service/AuthOAuthService.java","backend/src/main/java/com/mannschaft/app/config/R2Config.java","backend/src/main/java/com/mannschaft/app/config/SchedulingConfig.java","backend/src/main/java/com/mannschaft/app/digest/service/ClaudeDigestAiProvider.java","backend/src/main/java/com/mannschaft/app/directmail/listener/SesNotificationSqsListener.java","backend/src/main/java/com/mannschaft/app/errorreport/service/ErrorReportClaudeAiProvider.java","backend/src/main/java/com/mannschaft/app/errorreport/service/ErrorReportNotifier.java","backend/src/main/java/com/mannschaft/app/errorreport/service/GitHubIssueService.java","backend/src/main/java/com/mannschaft/app/incidentbanner/service/IncidentBannerTranslationProvider.java","backend/src/main/java/com/mannschaft/app/line/service/LineMessagingApiClient.java","backend/src/main/java/com/mannschaft/app/line/service/SnsFeedApiClient.java","backend/src/main/java/com/mannschaft/app/mail/outbox/SesEmailTransport.java","backend/src/main/java/com/mannschaft/app/payment/service/ReceiptService.java","backend/src/main/java/com/mannschaft/app/receipt/service/ReceiptService.java","backend/src/main/java/com/mannschaft/app/schedule/service/GoogleApiClient.java","backend/src/main/java/com/mannschaft/app/schedule/service/GoogleCalendarService.java","backend/src/main/java/com/mannschaft/app/venue/service/GooglePlacesClient.java","backend/src/main/java/com/mannschaft/app/weather/client/WeatherApiClient.java","backend/src/main/java/com/mannschaft/app/weather/config/WeatherApiProperties.java","backend/src/main/java/com/mannschaft/app/weather/config/WeatherLocationProperties.java","backend/src/main/java/com/mannschaft/app/weather/controller/WeatherController.java","backend/src/main/java/com/mannschaft/app/weather/job/GeonamesImportScheduler.java","backend/src/main/java/com/mannschaft/app/weather/job/WeatherLocationBootstrapJob.java","backend/src/main/java/com/mannschaft/app/weather/service/GeonamesImportService.java","backend/src/main/java/com/mannschaft/app/weather/service/WeatherForecastService.java","backend/src/main/java/com/mannschaft/app/weather/service/WeatherLocationDeriver.java","backend/src/main/java/com/mannschaft/app/webhook/service/WebhookDeliveryService.java","backend/src/main/resources/application.yml","backend/src/main/resources/db/migration/V66.002__create_postal_codes.sql","backend/src/main/resources/db/migration/V66.003__create_user_weather_locations.sql","backend/src/main/resources/db/migration/V66.004__create_geonames_metadata.sql","frontend/app/components/dashboard/DashboardPersonalWidgetGrid.vue","frontend/app/components/widgets/WidgetWeather.vue","frontend/app/composables/useDashboardWidgets.ts","frontend/app/composables/useLoginSession.ts","frontend/app/composables/useWeatherApi.ts"],"liveSources":["backend/src/main/java/com/mannschaft/app/auth/service/ValkeyMfaEmailOtpService.java","backend/src/main/java/com/mannschaft/app/mail/outbox/MfaEmailOtpMailRenderer.java","backend/src/main/java/com/mannschaft/app/mail/outbox/EmailOutboxService.java","backend/src/main/java/com/mannschaft/app/mail/outbox/EmailOutboxWorker.java","backend/src/main/java/com/mannschaft/app/shift/service/ShiftScheduleFacade.java","backend/src/main/java/com/mannschaft/app/team/entity/TeamOrgMembershipEntity.java"],"dependencyClassPins":[{"jarEntry":"BOOT-INF/lib/spring-cloud-aws-autoconfigure-3.3.0.jar","classEntry":"io/awspring/cloud/autoconfigure/sqs/SqsAutoConfiguration.class","nestedJarSHA256":"fc586862a4cf7000191005f7e6fc1a45b4a9043224bd3e2f559d43e6c161e344","classSHA256":"7ced2eded26ed1a8dc973679a3a5476def65bed9079e9888bc0fd5b29c05d30d"},{"jarEntry":"BOOT-INF/lib/spring-cloud-aws-sqs-3.3.0.jar","classEntry":"io/awspring/cloud/sqs/config/SqsBootstrapConfiguration.class","nestedJarSHA256":"8ee49a2335e994c313f07d73e7bcbe41f4c609704de4f08026b6510872c5f27d","classSHA256":"f257a044c56d06fa10b902582b8ad06b5db3095d4a939d8d9bf36b81aaf8d02e"},{"jarEntry":"BOOT-INF/lib/spring-context-6.2.17.jar","classEntry":"org/springframework/scheduling/annotation/Scheduled.class","nestedJarSHA256":"a607dc451e1ac6563e44b456acb0dcb67b887eab7313e760ac80b5fa7db96dc2","classSHA256":"f427fdb3928f0e686c581cd573675d67a9bba7d31135d48b0a859be2b9b84e0c"},{"jarEntry":"BOOT-INF/lib/spring-context-6.2.17.jar","classEntry":"org/springframework/scheduling/annotation/ScheduledAnnotationBeanPostProcessor.class","nestedJarSHA256":"a607dc451e1ac6563e44b456acb0dcb67b887eab7313e760ac80b5fa7db96dc2","classSHA256":"f592cdd6598d9dd5057559de76e6240dfc8ad688c03019b47be503aba4267a95"}],"inputPaths":["backend/build-logic/src/main/kotlin/mannschaft.backend-conventions.gradle.kts","backend/build.gradle.kts","backend/gradle.properties","backend/gradle/wrapper/gradle-wrapper.jar","backend/gradle/wrapper/gradle-wrapper.properties","backend/gradlew","backend/settings.gradle.kts","backend/src/main/java/com/mannschaft/app/admin/service/SecurityScanStatusService.java","backend/src/main/java/com/mannschaft/app/auth/service/AuthOAuthService.java","backend/src/main/java/com/mannschaft/app/auth/service/ValkeyMfaEmailOtpService.java","backend/src/main/java/com/mannschaft/app/config/R2Config.java","backend/src/main/java/com/mannschaft/app/config/SchedulingConfig.java","backend/src/main/java/com/mannschaft/app/digest/service/ClaudeDigestAiProvider.java","backend/src/main/java/com/mannschaft/app/directmail/listener/SesNotificationSqsListener.java","backend/src/main/java/com/mannschaft/app/errorreport/service/ErrorReportClaudeAiProvider.java","backend/src/main/java/com/mannschaft/app/errorreport/service/ErrorReportNotifier.java","backend/src/main/java/com/mannschaft/app/errorreport/service/GitHubIssueService.java","backend/src/main/java/com/mannschaft/app/incidentbanner/service/IncidentBannerTranslationProvider.java","backend/src/main/java/com/mannschaft/app/line/service/LineMessagingApiClient.java","backend/src/main/java/com/mannschaft/app/line/service/SnsFeedApiClient.java","backend/src/main/java/com/mannschaft/app/mail/outbox/EmailOutboxService.java","backend/src/main/java/com/mannschaft/app/mail/outbox/EmailOutboxWorker.java","backend/src/main/java/com/mannschaft/app/mail/outbox/MfaEmailOtpMailRenderer.java","backend/src/main/java/com/mannschaft/app/mail/outbox/SesEmailTransport.java","backend/src/main/java/com/mannschaft/app/payment/service/ReceiptService.java","backend/src/main/java/com/mannschaft/app/receipt/service/ReceiptService.java","backend/src/main/java/com/mannschaft/app/schedule/service/GoogleApiClient.java","backend/src/main/java/com/mannschaft/app/schedule/service/GoogleCalendarService.java","backend/src/main/java/com/mannschaft/app/shift/service/ShiftScheduleFacade.java","backend/src/main/java/com/mannschaft/app/team/entity/TeamOrgMembershipEntity.java","backend/src/main/java/com/mannschaft/app/venue/service/GooglePlacesClient.java","backend/src/main/java/com/mannschaft/app/weather/client/WeatherApiClient.java","backend/src/main/java/com/mannschaft/app/weather/config/WeatherApiProperties.java","backend/src/main/java/com/mannschaft/app/weather/config/WeatherLocationProperties.java","backend/src/main/java/com/mannschaft/app/weather/controller/WeatherController.java","backend/src/main/java/com/mannschaft/app/weather/job/GeonamesImportScheduler.java","backend/src/main/java/com/mannschaft/app/weather/job/WeatherLocationBootstrapJob.java","backend/src/main/java/com/mannschaft/app/weather/service/GeonamesImportService.java","backend/src/main/java/com/mannschaft/app/weather/service/WeatherForecastService.java","backend/src/main/java/com/mannschaft/app/weather/service/WeatherLocationDeriver.java","backend/src/main/java/com/mannschaft/app/webhook/service/WebhookDeliveryService.java","backend/src/main/resources/application.yml","backend/src/main/resources/db/migration/V66.002__create_postal_codes.sql","backend/src/main/resources/db/migration/V66.003__create_user_weather_locations.sql","backend/src/main/resources/db/migration/V66.004__create_geonames_metadata.sql","frontend/app/components/dashboard/DashboardPersonalWidgetGrid.vue","frontend/app/components/widgets/WidgetWeather.vue","frontend/app/composables/useDashboardWidgets.ts","frontend/app/composables/useLoginSession.ts","frontend/app/composables/useWeatherApi.ts","frontend/nuxt.config.ts","frontend/package-lock.json","frontend/package.json","scripts/verification-run.mjs"]}
+        PINS
+        cat > "$BE_ROOT/worker.py" <<'WORKER'
+        import pathlib,os,json,hashlib,subprocess,datetime,time,signal,selectors,shutil,stat,re,zipfile,io,sys
+        G=1024**3;W=pathlib.Path.cwd();R=pathlib.Path(os.environ['BE_ROOT']);PINS=json.loads((R/'pins.json').read_text());H='0647a7f2aa98bdabaeb18708dd420a677009cad4';S='d37c830673c71ae01d9bf2b85e547db1ee398a3f'
+        def sha(path):
+         h=hashlib.sha256()
+         with pathlib.Path(path).open('rb')as f:
+          for b in iter(lambda:f.read(1048576),b''):h.update(b)
+         return h.hexdigest()
+        def save(name,value):
+         p=R/name;t=p.with_name(p.name+'.tmp-'+str(os.getpid()));t.write_text(json.dumps(value,indent=2)+'\n');os.replace(t,p)
+        def git(*a):return subprocess.check_output(['git',*a])
+        def resources():
+         m={k:int(v.split()[0])*1024 for k,v in (x.split(':',1)for x in pathlib.Path('/proc/meminfo').read_text().splitlines())if k in ['MemTotal','MemAvailable','SwapTotal','SwapFree']};m['diskFreeBytes']=shutil.disk_usage(W).free;return m
+        def reasons(m,own,during):
+         return [k for k,b in {'memory':m['MemAvailable']<(4 if during else 8)*G,'disk':(m['diskFreeBytes']<=int(2.5*G) if during else m['diskFreeBytes']<6*G),'own':own>3*G}.items()if b]
+        def pinfiles():return {p:{'gitOID':git('rev-parse','HEAD:'+p).decode().strip(),'bytes':(W/p).stat().st_size,'sha256':sha(W/p)}for p in PINS['inputPaths']}
+        def identity(pid):
+         p=pathlib.Path('/proc')/str(pid);f=(p/'stat').read_text().rsplit(')',1)[1].split();return {'pid':pid,'uid':p.stat().st_uid,'startTicks':f[19],'pgid':int(f[2]),'sid':int(f[3])}
+        def source():
+         assert not R.is_symlink()and R.is_dir()and R.stat().st_uid==os.getuid();(R/'payload').mkdir(mode=0o700)
+         m=resources();save('entry-resources.json',m);print(json.dumps({'entryResourceBytes':m}),flush=True)
+         actual=git('rev-parse','HEAD').decode().strip();assert actual==os.environ['GITHUB_SHA'];parents=git('show','-s','--format=%P','HEAD').decode().split();assert parents==[S]
+         assert git('rev-parse',S+'^{tree}').decode().strip()=='df0204e2b0ba26b5d914f569598e0587e359bfd8'
+         assert git('rev-parse','HEAD:backend').decode().strip()==git('rev-parse',S+':backend').decode().strip()=='bad705ddce629232f449524da4debcf0cbce2aad'
+         assert git('diff','--name-status',S,'HEAD').decode().splitlines()==['A\t'+PINS['workflowPath']]
+         assert git('status','--porcelain=v1','-z','--untracked-files=all')==b''
+         j=pathlib.Path(os.environ['JAVA_HOME'])/'bin/java';v=subprocess.run([str(j),'-version'],capture_output=True,timeout=15);assert v.returncode==0;version=(v.stdout+v.stderr).decode();assert len(version)<=4096 and re.search(r'version "21[.\"]',version)
+         assert 'gradle-8.14.4-bin.zip'in(W/'backend/gradle/wrapper/gradle-wrapper.properties').read_text()
+         row={'targetH2':H,'equivalentSourceS2':S,'sourceHead':S,'producerHeadP':actual,'directParents':parents,'sourceTree':'df0204e2b0ba26b5d914f569598e0587e359bfd8','producerTree':git('rev-parse','HEAD^{tree}').decode().strip(),'backendTree':'bad705ddce629232f449524da4debcf0cbce2aad','onlyWorkflowDifference':PINS['workflowPath'],'workflowSHA256':sha(W/PINS['workflowPath']),'inputFiles':pinfiles(),'eightRawPaths':PINS['eightRawPaths'],'external39Paths':PINS['external39Paths'],'liveSources':PINS['liveSources'],'java':{'binarySHA256':sha(j),'versionText':version,'versionActualExit':0},'wrapperVersion':'8.14.4','flags':['bootJar','--no-daemon','-Dorg.gradle.workers.max=1'],'localJDKBinaryEquivalent':False,'sharedLocalCacheReused':False,'windowsInteropBridgeExecuted':False,'runId':os.environ['GITHUB_RUN_ID'],'runAttempt':os.environ['GITHUB_RUN_ATTEMPT'],'entryResources':m,'runtimeAdopted':False};save('source.json',row);assert not reasons(m,0,False)
+        def build():
+         m=resources();save('prebuild-resources.json',m);print(json.dumps({'prebuildResourceBytes':m}),flush=True);assert not reasons(m,0,False)
+         pathlib.Path('/proc/self/coredump_filter').write_text('0\n');assert pathlib.Path('/proc/self/coredump_filter').read_text().strip()=='00000000'
+         home=R/'home';cache=R/'gradle-cache';home.mkdir(mode=0o700);cache.mkdir(mode=0o700)
+         env={'PATH':os.environ['JAVA_HOME']+'/bin:/usr/bin:/bin','JAVA_HOME':os.environ['JAVA_HOME'],'HOME':str(home),'GRADLE_USER_HOME':str(cache),'LANG':'C.UTF-8','TZ':'UTC','CI':'true'}
+         gradlew=W/'backend/gradlew';oldMode=stat.S_IMODE(gradlew.lstat().st_mode);gradlewSHA=sha(gradlew);gradlew.chmod(oldMode|stat.S_IXUSR)
+         result={'gradlewTemporaryExecuteBit':True,'gradlewBytesSHA256':gradlewSHA,'commands':[],'accepted':False,'signalsSent':0,'rawLogsSaved':False,'ownBudgetBytes':3*G,'privateCacheExcludedFromOwnBudget':True,'globalDiskFloorBytes':int(2.5*G),'workerDeadlineSeconds':1800,'cacheSharedWithOtherJob':False};begin=time.monotonic()
+         def ownbytes():
+          n=0
+          for root,dirs,files in os.walk(W,followlinks=False):
+           for name in files:
+            try:s=(pathlib.Path(root)/name).lstat();n+=max(s.st_size,s.st_blocks*512)
+            except FileNotFoundError:pass
+          return n
+         for args in [['/usr/bin/bash','./gradlew','--version','--no-daemon'],['/usr/bin/bash','scripts/gradle-turnstile.sh','./gradlew','bootJar','--no-daemon','-Dorg.gradle.workers.max=1']]:
+          child=subprocess.Popen(args,cwd=W/'backend',env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,start_new_session=True);ident=identity(child.pid);row={'pid':child.pid,'startedUTC':datetime.datetime.now(datetime.timezone.utc).isoformat(),'argvSHA256':hashlib.sha256(json.dumps(args).encode()).hexdigest(),'identity':ident,'actualExit':None,'stdoutEOF':False,'stderrEOF':False,'reaped':False,'taskProgress':[],'dependencyCoordinates':[],'compilerLocations':[]};result['commands'].append(row);save('build-result.json',result)
+          sel=selectors.DefaultSelector();sel.register(child.stdout,selectors.EVENT_READ,'stdout');sel.register(child.stderr,selectors.EVENT_READ,'stderr');hashes={k:hashlib.sha256()for k in ['stdout','stderr']};sizes={k:0 for k in hashes};versionOutput=bytearray();sent=False;last=-100;own=0;reason=None
+          while child.poll()is None or sel.get_map():
+           elapsed=time.monotonic()-begin
+           if elapsed-last>=2:
+            own=ownbytes();last=elapsed;m=resources();checks=reasons(m,own,True);checks+=['deadline']if elapsed>=1800 else[]
+            if checks and reason is None:reason='|'.join(checks)
+            if reason and not sent and child.poll()is None:
+             sent=True;match=False
+             try:match=identity(child.pid)==ident and ident['uid']==os.getuid()and ident['pgid']==ident['sid']==child.pid
+             except OSError:pass
+             save('own-term-once.json',{'identityMatched':match,'identity':ident,'reason':reason,'resources':m,'ownBytes':own,'resultUnknownNoResend':True})
+             if match:
+              try:os.killpg(child.pid,signal.SIGTERM);result['signalsSent']+=1
+              except OSError:row['signalDisposition']='UNKNOWN_NO_RESEND'
+             else:row['signalDisposition']='SUPPRESSED_IDENTITY_UNKNOWN'
+            row.update(elapsedSeconds=elapsed,ownBytes=own,resourceBytes=m,pendingReason=reason);save('build-result.json',result)
+           for key,_ in sel.select(timeout=2):
+            data=os.read(key.fd,65536)
+            if not data:sel.unregister(key.fileobj);row[key.data+'EOF']=True;continue
+            hashes[key.data].update(data);sizes[key.data]+=len(data)
+            if '--version'in args and key.data=='stdout':versionOutput.extend(data);assert len(versionOutput)<=8192
+            for line in data.decode('utf-8','replace').splitlines():
+             if re.fullmatch(r'> Task :[A-Za-z0-9:_-]+(?: [A-Z-]+)?',line)and len(row['taskProgress'])<100:row['taskProgress'].append(line)
+             if 'Could not resolve'in line and len(row['dependencyCoordinates'])<20:row['dependencyCoordinates']+=re.findall(r'[A-Za-z0-9_.-]+:[A-Za-z0-9_.-]+:[A-Za-z0-9_.-]+',line)[:1]
+             loc=re.match(r'([^\s]+\.java):(\d+): error:',line)
+             if loc and len(row['compilerLocations'])<20:row['compilerLocations'].append({'sourcePath':loc[1],'line':int(loc[2])})
+          row.update(actualExit=child.wait(),reaped=True,stdoutBytes=sizes['stdout'],stderrBytes=sizes['stderr'],stdoutSHA256=hashes['stdout'].hexdigest(),stderrSHA256=hashes['stderr'].hexdigest());sel.close();save('build-result.json',result)
+          assert row['actualExit']==0 and reason is None
+          if '--version'in args:
+           found=re.search(rb'^Gradle ([0-9.]+)\r?$',versionOutput,re.M);assert found and found.group(1)==b'8.14.4';row['gradleVersionReported']=found.group(1).decode();save('build-result.json',result)
+         gradlew.chmod(oldMode);assert sha(gradlew)==gradlewSHA
+         result['gradlewOriginalModeRestored']=True;result['accepted']=True;save('build-result.json',result)
+        def jar_checks(jar,pins):
+         assert jar.is_file()and not jar.is_symlink()and stat.S_ISREG(jar.lstat().st_mode)and 0<jar.stat().st_size<=512*1024**2
+         with zipfile.ZipFile(jar)as z:
+          names=z.namelist();assert len(names)==len(set(names))and len(names)<=200000;assert sum(i.file_size for i in z.infolist())<=1024**3
+          for name in names:
+           path=pathlib.PurePosixPath(name);assert not path.is_absolute()and'..'not in path.parts and'\\'not in name and not any(ord(c)<32 for c in name)
+           assert not stat.S_ISLNK(z.getinfo(name).external_attr>>16)
+          assert 'BOOT-INF/classes/com/mannschaft/app/MannschaftApplication.class'in names
+          assert not any('MfaEmailOtpRequestedEvent'in name or re.search(r'(^|/)(\.env|application-local\.(yml|yaml|properties))$',name)for name in names)
+          classes=[]
+          for src in pins['liveSources']:
+           entry='BOOT-INF/classes/'+src.removeprefix('backend/src/main/java/').removesuffix('.java')+'.class';info=z.getinfo(entry);assert 8<=info.file_size<=4*1024**2;b=z.read(entry);assert b[:4]==b'\xca\xfe\xba\xbe'and int.from_bytes(b[6:8],'big')==65;classes.append({'entry':entry,'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest(),'sourcePath':src,'javaClassMajor':65})
+          deps=[]
+          for p in pins['dependencyClassPins']:
+           info=z.getinfo(p['jarEntry']);assert info.file_size<=64*1024**2;b=z.read(info);assert hashlib.sha256(b).hexdigest()==p['nestedJarSHA256']
+           with zipfile.ZipFile(io.BytesIO(b))as nested:
+            i=nested.getinfo(p['classEntry']);assert i.file_size<=4*1024**2;c=nested.read(i);assert hashlib.sha256(c).hexdigest()==p['classSHA256']
+           deps.append({'jarEntry':p['jarEntry'],'nestedJarSHA256':p['nestedJarSHA256'],'classEntry':p['classEntry'],'classSHA256':p['classSHA256']})
+          smtp=[n for n in names if n.startswith('BOOT-INF/lib/')and re.search(r'(angus|jakarta[.-]mail|javax[.-]mail|smtp)',n,re.I)];assert not smtp
+         return {'classes':classes,'dependencyClasses':deps,'smtpRelatedLibraries':smtp,'removedEventAbsent':True,'privateLocalConfigAbsent':True,'duplicateEntries':False,'jarPathTraversalOrSymlink':False}
+        def package():
+         source=json.loads((R/'source.json').read_text());build=json.loads((R/'build-result.json').read_text());assert build['accepted']and all(x['actualExit']==0 and x['stdoutEOF']and x['stderrEOF']and x['reaped']for x in build['commands']);assert git('status','--porcelain=v1','-z','--untracked-files=all')==b'';assert pinfiles()==source['inputFiles']
+         jars=[p for p in(W/'backend/build/libs').glob('*.jar')if not p.name.endswith('-plain.jar')];assert len(jars)==1;proof=jar_checks(jars[0],PINS);assert shutil.disk_usage(W).free>int(2.5*G)+jars[0].stat().st_size
+         out=R/'payload/joint-h2.jar';shutil.copyfile(jars[0],out);assert sha(out)==sha(jars[0]);source.update(state='NEW_H2_JAR_PENDING_ROOT_ADOPTION',jar={'bytes':out.stat().st_size,'sha256':sha(out)},classProof=proof,buildResult=build,privateEnvDumped=False,classesExecuted=False,servicesStarted=False,canonicalWSLScratchCreated=False)
+         raw=(json.dumps(source,indent=2)+'\n').encode();assert len(raw)<=1024**2;(R/'payload/manifest.json').write_bytes(raw);save('payload/producer-receipt.json',{'targetH2':H,'sourceS2':S,'producerHeadP':source['producerHeadP'],'runId':source['runId'],'runAttempt':source['runAttempt'],'jarSHA256':sha(out),'jarBytes':out.stat().st_size,'manifestSHA256':sha(R/'payload/manifest.json'),'actualBootJarExit':build['commands'][-1]['actualExit'],'servicesStarted':False,'runtimeAdopted':False})
+        if __name__=='__main__':{'source':source,'build':build,'package':package}[sys.argv[1]]()
+        WORKER
+        python3 "$BE_ROOT/worker.py" source
+    - name: 既定flagsで有限bootJarを実行
+      id: build
+      env: *id001
+      run: |
+        set -euo pipefail
+        python3 "$BE_ROOT/worker.py" build
+    - name: 新JARのclass/dependency/sourceを検証する
+      id: package
+      env: *id001
+      run: |
+        set -euo pipefail
+        python3 "$BE_ROOT/worker.py" package
+    - name: 成功JARとprovenance3fileを1日保存
+      id: upload
+      if: ${{ success() }}
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: joint-h2-be-0647a7f2-${{ github.run_id }}-attempt${{ github.run_attempt }}
+        path: |-
+          ${{ runner.temp }}/joint-h2-be-02ab91ed/payload/joint-h2.jar
+          ${{ runner.temp }}/joint-h2-be-02ab91ed/payload/manifest.json
+          ${{ runner.temp }}/joint-h2-be-02ab91ed/payload/producer-receipt.json
+        if-no-files-found: error
+        overwrite: false
+        retention-days: 1
+        compression-level: 0
+    - name: 失敗・未取得を限定診断として別保存
+      if: ${{ always() }}
+      env:
+        BE_ROOT: ${{ runner.temp }}/joint-h2-be-02ab91ed
+        BE_JOB_STATUS: ${{ job.status }}
+        BE_RESOURCE: ${{ steps.resource.outcome }}
+        BE_SOURCE: ${{ steps.source.outcome }}
+        BE_BUILD: ${{ steps.build.outcome }}
+        BE_PACKAGE: ${{ steps.package.outcome }}
+        BE_UPLOAD: ${{ steps.upload.outcome }}
+      run: |
+        set -euo pipefail
+        python3 - <<'PY'
+        import pathlib,os,json,stat
+        r=pathlib.Path(os.environ['BE_ROOT']);assert not r.is_symlink();out=r.with_name(r.name+'-diagnostic');out.mkdir(mode=0o700)
+        result={'diagnosticOnly':True,'successEvidence':False,'jobStatus':os.environ['BE_JOB_STATUS'],'stepOutcomes':{k:os.environ.get('BE_'+k,'unknown')for k in ['RESOURCE','SOURCE','BUILD','PACKAGE','UPLOAD']},'records':{}};used=0
+        for name in ['precheckout-resources.json','entry-resources.json','prebuild-resources.json','source.json','build-result.json','own-term-once.json']:
+         p=r/name
+         if not p.exists():result['records'][name]={'state':'unknown','value':None};continue
+         assert not r.is_symlink()and not p.is_symlink()and stat.S_ISREG(p.lstat().st_mode)and p.stat().st_size<=256*1024
+         used+=p.stat().st_size;assert used<=1024**2;result['records'][name]={'state':'observed','value':json.loads(p.read_text())}
+        raw=(json.dumps(result,indent=2)+'\n').encode();assert len(raw)<=1024**2;(out/'diagnostic.json').write_bytes(raw)
+        PY
+    - name: 診断専用artifactを保存
+      if: ${{ always() }}
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: joint-h2-be-diagnostics-${{ github.run_id }}-attempt${{ github.run_attempt }}
+        path: ${{ runner.temp }}/joint-h2-be-02ab91ed-diagnostic/diagnostic.json
+        if-no-files-found: error
+        overwrite: false
+        retention-days: 1
+        compression-level: 0
