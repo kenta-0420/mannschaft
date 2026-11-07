@@ -76,6 +76,18 @@ describe.each(['TEAM', 'ORGANIZATION'] as const)('%s の名称更新契約', (ty
   const get = () => (type === 'TEAM' ? getTeam : getOrganization)
   const update = () => (type === 'TEAM' ? updateTeam : updateOrganization)
 
+  it('詳細取得中の名称入力を無効化し、取得後に編集可能にする', async () => {
+    const pending = deferred<ReturnType<typeof detail>>()
+    get().mockReturnValue(pending.promise)
+    const wrapper = open(item(type))
+    expect(wrapper.find('input').attributes('disabled')).toBeDefined()
+    pending.resolve(detail())
+    await flushPromises()
+    expect(wrapper.find('input').attributes('disabled')).toBeUndefined()
+    await wrapper.find('input').setValue('利用者が編集した名称')
+    expect(wrapper.find('input').element.value).toBe('利用者が編集した名称')
+  })
+
   it.each([0, 7])('正準slugと取得時version=%sで名称だけ保存する', async (version) => {
     get().mockResolvedValue(detail(version))
     const wrapper = open(item(type))

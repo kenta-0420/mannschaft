@@ -163,6 +163,7 @@ function close() {
           >
           <input
             v-model="formName"
+            :disabled="!nameReady"
             type="text"
             class="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700"
             required
@@ -194,6 +195,7 @@ function close() {
           >
           <input
             v-model="formName"
+            :disabled="!nameReady"
             type="text"
             class="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700"
             required
