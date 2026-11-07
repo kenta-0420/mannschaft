@@ -387,11 +387,17 @@ foreach($case in @(@{key='owner';value='foreign'},@{key='nonce';value=('f'*32)},
  try{Assert-ChromiumWitnessAck ([pscustomobject]$bad) ([pscustomobject]$identity)}catch{$rejected=$true}
  if(!$rejected){throw ('ack-admitted-'+$case.key)}
 }
-$proof=@{innerFlags=8192;parentOutsideInner=$true;rootsInsideInner=$true;observerOutsideWitness=$true;parentInsideWitness=$true;rootsInsideWitness=$true;activeBefore=5;parentExited=$true;rootsExited=$true;parentStdoutEof=$true;parentStderrEof=$true;activeAfter=0;outerStopUsed=$false;outerClosedBeforeProof=$false;priorFailure=$false;innerActiveZeroObserved=$false;browserEofObserved=$false;fullRendererActualObserved=$false}
+$proof=@{innerFlags=8192;parentOutsideInner=$true;rootsInsideInner=$true;observerOutsideWitness=$true;parentInsideWitness=$true;rootsInsideWitness=$true;activeBefore=5;parentExited=$true;rootsExited=$true;parentStdoutEof=$true;parentStderrEof=$true;activeAfter=0;remainingRecoveryMs=1;outerStopUsed=$false;outerClosedBeforeProof=$false;priorFailure=$false;innerActiveZeroObserved=$false;browserEofObserved=$false;fullRendererActualObserved=$false}
 if(!(Test-ChromiumWitnessQualification $proof)){throw 'complete-rejected'}
 foreach($case in @(@{key='innerFlags';value=0},@{key='innerFlags';value=10240},@{key='parentOutsideInner';value=$false},@{key='rootsInsideInner';value=$false},@{key='observerOutsideWitness';value=$false},@{key='parentInsideWitness';value=$false},@{key='rootsInsideWitness';value=$false},@{key='activeBefore';value=0},@{key='parentExited';value=$false},@{key='rootsExited';value=$false},@{key='parentStdoutEof';value=$false},@{key='parentStderrEof';value=$null},@{key='activeAfter';value=1},@{key='outerStopUsed';value=$true},@{key='outerClosedBeforeProof';value=$true},@{key='priorFailure';value=$true},@{key='innerActiveZeroObserved';value=$true},@{key='browserEofObserved';value=$true},@{key='fullRendererActualObserved';value=$true})){
  $bad=$proof.Clone();$bad[$case.key]=$case.value;if(Test-ChromiumWitnessQualification $bad){throw ('proof-admitted-'+$case.key)}
 }
+foreach($remaining in @(0,-1,$null,'1')){
+ $bad=$proof.Clone();$bad.remainingRecoveryMs=$remaining
+ if(Test-ChromiumWitnessQualification $bad){throw 'proof-admitted-expired-or-unknown-recovery-budget'}
+}
+$bad=$proof.Clone();$bad.Remove('remainingRecoveryMs')
+if(Test-ChromiumWitnessQualification $bad){throw 'proof-admitted-missing-recovery-budget'}
 # 既存純粋関数と唯一の14case markerだけを抽出。adapter全体を実行しない。
 $adapterAst=[Management.Automation.Language.Parser]::ParseFile($Adapter,[ref]$null,[ref]$null)
 $pendingFunction=@($adapterAst.FindAll({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -ceq 'Test-M21PendingExitRecovery'},$true))
@@ -493,6 +499,7 @@ async function chromiumFixtureSuite() {
         assert.equal(receipt.resourceRecovery.jobEmpty, null, 'inner Job残数は未観測');
         const witness = receipt.chromiumWitness;
         assert.equal(witness.qualified, true); assert.equal(witness.recovery.fallbackStopUsed, false);
+        assert.ok(Number.isInteger(witness.recovery.remainingAfterPublicationMs) && witness.recovery.remainingAfterPublicationMs > 0);
         const proof = read(path.join(run, 'chromium-witness.json'));
         assert.deepEqual(proof, witness.proof); assert.equal(proof.owner, OWNER); assert.equal(proof.nonce, nonce);
         assert.equal(proof.passed, true); assert.equal(proof.witnessContainmentRemainingZero, true);
@@ -501,6 +508,7 @@ async function chromiumFixtureSuite() {
         assert.deepEqual(proof.containment.map(e => e.role), ['parent', 'supervisor', 'system', 'admin-de', 'member']);
         assert.ok(proof.containment.every(e => e.insideWitness === true));
         assert.ok(proof.activeBefore > 0); assert.equal(proof.activeAfter, 0);
+        for (const key of ['zeroQueryRemainingBeforeMs', 'zeroQueryRemainingAfterMs', 'remainingRecoveryMs']) assert.ok(Number.isInteger(proof[key]) && proof[key] > 0);
         assert.equal(proof.parentExited, true); assert.equal(proof.parentStdoutEof, true); assert.equal(proof.parentStderrEof, true);
         assert.equal(proof.rootsExited, true); assert.deepEqual(proof.rootActualExits, receipt.knownExitEvidence);
         for (const key of ['outerStopUsed', 'outerClosedBeforeProof', 'priorFailure', 'innerActiveZeroObserved', 'browserEofObserved', 'fullRendererActualObserved']) assert.equal(proof[key], false);

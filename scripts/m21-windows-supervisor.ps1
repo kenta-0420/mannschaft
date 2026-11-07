@@ -74,7 +74,7 @@ $chromiumWitnessCase=$TestFixture -ceq 'chromium-parent-close'
 $chromiumWitness=$null
 $chromiumWitnessQualified=$false
 $chromiumWitnessProof=$null
-$chromiumWitnessRecovery=@{fallbackStopUsed=$false;activeAfterFallback=$null;closed=$false}
+$chromiumWitnessRecovery=@{fallbackStopUsed=$false;activeAfterFallback=$null;closed=$false;remainingAfterPublicationMs=$null}
 $chromiumExe=[IO.Path]::GetFullPath('C:/Users/kenta/AppData/Local/ms-playwright/chromium-1223/chrome-win64/chrome.exe')
 $p6Observations=New-Object 'Collections.Generic.List[object]'
 function Remaining([int]$cap=[int]::MaxValue,[switch]$Recovery) {
@@ -446,6 +446,7 @@ function Test-ChromiumWitnessQualification([object]$proof) {
  foreach($key in @('parentOutsideInner','rootsInsideInner','observerOutsideWitness','parentInsideWitness','rootsInsideWitness','parentExited','rootsExited','parentStdoutEof','parentStderrEof')){if($proof[$key] -isnot [bool] -or !$proof[$key]){return $false}}
  foreach($key in @('outerStopUsed','outerClosedBeforeProof','priorFailure','innerActiveZeroObserved','browserEofObserved','fullRendererActualObserved')){if($proof[$key] -isnot [bool] -or $proof[$key]){return $false}}
  foreach($key in @('innerFlags','activeBefore','activeAfter')){if($proof[$key] -isnot [int] -and $proof[$key] -isnot [long] -and $proof[$key] -isnot [uint32]){return $false}}
+ if(($proof['remainingRecoveryMs'] -isnot [int] -and $proof['remainingRecoveryMs'] -isnot [long] -and $proof['remainingRecoveryMs'] -isnot [uint32]) -or $proof['remainingRecoveryMs'] -le 0){return $false}
  return ($proof.innerFlags -eq 8192 -and $proof.activeBefore -gt 0 -and $proof.activeAfter -eq 0)
 }
 $bootstrapStage='native-bootstrap'
@@ -938,11 +939,23 @@ try {
     $chromiumWitnessProof.parentStdoutEof=$captured[0].stdoutEof;$chromiumWitnessProof.parentStderrEof=$captured[0].stderrEof
     $chromiumWitnessProof.rootActualExits=@($exitEvidence.ToArray());$chromiumWitnessProof.rootsExited=($exitEvidence.Count -eq 4 -and @($exitEvidence|Where-Object {!$_.exited}).Count -eq 0)
     $clock=[Diagnostics.Stopwatch]::StartNew();$zeroCap=Remaining 3000 -Recovery
-    do{$chromiumWitnessProof.activeAfter=$chromiumWitness.Active();if($chromiumWitnessProof.activeAfter -eq 0){break};if($clock.ElapsedMilliseconds -lt $zeroCap -and (Remaining -Recovery) -gt 0){Start-Sleep -Milliseconds ([Math]::Min(25,(Remaining -Recovery)))}}while($clock.ElapsedMilliseconds -lt $zeroCap -and (Remaining -Recovery) -gt 0)
+    do{
+     $chromiumWitnessProof.zeroQueryRemainingBeforeMs=Remaining -Recovery
+     if($chromiumWitnessProof.zeroQueryRemainingBeforeMs -le 0){Set-Reason 'chromium-witness-total-budget-exhausted';throw ([TimeoutException]::new())}
+     $chromiumWitnessProof.activeAfter=$chromiumWitness.Active()
+     $chromiumWitnessProof.zeroQueryRemainingAfterMs=Remaining -Recovery
+     if($chromiumWitnessProof.zeroQueryRemainingAfterMs -le 0){Set-Reason 'chromium-witness-total-budget-exhausted';throw ([TimeoutException]::new())}
+     if($chromiumWitnessProof.activeAfter -eq 0){break}
+     if($clock.ElapsedMilliseconds -lt $zeroCap -and (Remaining -Recovery) -gt 0){Start-Sleep -Milliseconds ([Math]::Min(25,(Remaining -Recovery)))}
+    }while($clock.ElapsedMilliseconds -lt $zeroCap -and (Remaining -Recovery) -gt 0)
     $chromiumWitnessProof.priorFailure=($null -ne $primary -or !$recovered)
+    $chromiumWitnessProof.remainingRecoveryMs=Remaining -Recovery
     if(!(Test-ChromiumWitnessQualification $chromiumWitnessProof)){Set-Reason 'chromium-witness-not-qualified';throw 'witness限定資格不成立'}
     $chromiumWitnessProof.witnessContainmentRemainingZero=$true;$chromiumWitnessProof.passed=$true
+    if((Remaining -Recovery) -le 0){Set-Reason 'chromium-witness-total-budget-exhausted';throw ([TimeoutException]::new())}
     Write-Json 'chromium-witness.json' $chromiumWitnessProof
+    $chromiumWitnessRecovery.remainingAfterPublicationMs=Remaining -Recovery
+    if($chromiumWitnessRecovery.remainingAfterPublicationMs -le 0){Set-Reason 'chromium-witness-publication-crossed-deadline';throw ([TimeoutException]::new())}
     $chromiumWitnessQualified=$true
    }
    Write-Json 'observer.json' @{owner=$owner;nonce=$Nonce;parentKilled=$true;knownExited=$known.Count;exits=@($exitEvidence.ToArray())}

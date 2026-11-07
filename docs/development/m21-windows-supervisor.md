@@ -218,7 +218,7 @@ Parentが固定3候補のowner/nonce/出生/実exe/live/exact自己Jobを保持h
 
 Parentは既存certified-treeの固定supervisor/system/admin-de/memberの4集合に加えて、実QueryInformationJobObjectのinner LimitFlagsが `0x2000`（kill-on-closeだけ）、Parent自身がinner外、4rootがinner内である事実を記録する。Observeはそのcertifierを直接保持Parentの同出生に照合し、保持Parentと4root全てを同じwitness handleでIsProcessInJob照会する。rootはSky観測後だけ、返却observedFileへ厳密3key `{owner,nonce,observed:true}` をatomic発行する。Observeは4root/Parentの生存とwitnessのkill前Active>0を確認し、直接Parentだけをkillする。保持4rootの実exit、Parentの実exit/採用両EOFを既存Captureで採取した後、既存3000ms capと残Gの短縮側でwitness Active0を照会する。Nodeのlauncher両EOFは外側で別途採取する。既存dummyの3集合期待値は変えない。
 
-成功はouter Stop/Dispose/close前に観測した上記事実だけで判定し、`chromium-witness.json` をatomic保存してからhandleをcloseする。証拠公開失敗、先行failure、outer cleanupの利用、取得不能、残数不明は非greenである。故障時はwitness Stop→有限残数照会→closeを独立attemptするが、その回収でprimaryや資格を成功へ戻さない。probeは最終receiptのpassed/recovered/qualified、fallbackStopUsed=false、保存proofとの完全一致を全て要求する。
+成功はouter Stop/Dispose/close前に観測した上記事実だけで判定し、`chromium-witness.json` をatomic保存してからhandleをcloseする。ゼロ照会の前後と資格証拠確定時には残Gが正であることを要求し、proofの `remainingRecoveryMs` はstrict整数の正数だけを純粋判定で認める。初回CREATE_NEW公開後にも残Gを確認し、公開が期限を跨げばqualifiedを立てず非greenとする。最初の公開fileは上書きせず、残予算と失敗を最終receiptへ別記する。証拠公開失敗、先行failure、outer cleanupの利用、取得不能、残数不明も非greenである。故障時はwitness Stop→有限残数照会→closeを独立attemptするが、その回収でprimaryや資格を成功へ戻さない。probeは最終receiptのpassed/recovered/qualified、fallbackStopUsed=false、公開後残Gの正数、保存proofとの完全一致を全て要求する。
 
 **証拠の意味:** [Nested Jobs](https://learn.microsoft.com/en-us/windows/win32/procthread/nested-jobs)の祖先accountingと[AssignProcessToJobObject](https://learn.microsoft.com/en-us/windows/win32/api/jobapi2/nf-jobapi2-assignprocesstojobobject)の所属継承に従い、保持witnessの[ActiveProcesses](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-jobobject_basic_accounting_information)残数0を `witnessContainmentRemainingZero` として記録する。これはinner Active0、各rendererの保持handleによるactual exit、死亡Supervisorのbrowser pumpのEOFという別の観測を代替しない。`resourceRecovery.jobEmpty` はObserveではnull、`innerActiveZeroObserved` / `browserEofObserved` / `fullRendererActualObserved` とpacketの従来3unknown fieldはfalseを維持する。全renderer handle取得を追加ACにせず、未知PID探索/killは行わない。inner Job handleは従来の無名CreateJob/null security attributes、引数/metadata非伝達、複製・継承を追加しないsourceに基づく証拠を記録する。runtime handle総数の照会・実証を主張しない。
 
@@ -227,11 +227,11 @@ Parentは既存certified-treeの固定supervisor/system/admin-de/memberの4集�
 | owner/nonce/原子的出生ACK、ACK前inner Job/子0 | 固定hello/5key ACK、native前gate、既存Require-Work | 純粋ACK正常1/拒否7、gate→native/inner Job/子のAST順序。OS所属は未実測 |
 | flagsと境界の実Query | inner flags=0x2000、Parent inner外/4root inner内、Observer witness外/保持5世代 witness内 | 実装済、純粋proof反例で拒否。実JobのQueryは未実測 |
 | Parentだけの異常停止と限定owned回収 | 保持4root actual exit、Parent Capture actual/各EOF、kill前witnessActive>0→後0 | 実装済、Chrome/Sky/Job起動0のため実測資格なし |
-| cleanup/pub失敗を成功へ合成しない | pure qualification、保存proof＋最終receipt、fallback独立attempt | 純粋proof正常1/拒否19。cleanup実故障は未実測 |
+| cleanup/pub失敗・残G消尽を成功へ合成しない | pure qualification、照会前後/確定時/初回公開後の残G、保存proof＋最終receipt、fallback独立attempt | 純粋proof正常1/拒否24（残Gの0/負/null/未知型/欠落を含む）。cleanup/期限跨ぎの実故障は未実測 |
 | inner/full-renderer/browserEOFへ昇格しない | rootActualExits、採用EOF、witnessContainmentRemainingZeroとunknown3fieldを分離 | 純粋反例とprobe固定assert、正式App資格false |
 | 既存pending回収を維持 | lateExitProofs/唯一PURE marker/実Job条件をそのまま使用 | 既存純粋14caseを同markerから抽出して合格。17回帰は今回未実行 |
 
-`--chromium-witness-contract` はこの有限fixtureの純粋schema/AST診断専用で、Job/Chrome/GUIを起動しない。生成PSはWindows PowerShell5向けUTF8 BOMを明示する。ACK8/proof20/既存pending14caseを検査し、同じnative C# literalを静的compileする。既存System.Numerics assembly読込を別native engineと数えず、実 `Add-Type -TypeDefinition $nativeCode` だけをASTで選択する。診断のactual exit/各EOF、owner/nonce、4source SHA/mtime前後を自隊 `.claude/campaigns/chromium-witness-contract-<nonce>/` に保存する。純粋診断の合格をChromium qualificationや正式Runの実測へ流用しない。
+`--chromium-witness-contract` はこの有限fixtureの純粋schema/AST診断専用で、Job/Chrome/GUIを起動しない。生成PSはWindows PowerShell5向けUTF8 BOMを明示する。ACK8/proof25/既存pending14caseを検査し、同じnative C# literalを静的compileする。既存System.Numerics assembly読込を別native engineと数えず、実 `Add-Type -TypeDefinition $nativeCode` だけをASTで選択する。診断のactual exit/各EOF、owner/nonce、4source SHA/mtime前後を自隊 `.claude/campaigns/chromium-witness-contract-<nonce>/` に保存する。純粋診断の合格をChromium qualificationや正式Runの実測へ流用しない。
 
 成功時もprofile/rawはrootの証拠確定とexact所有確認まで保持し、retainedにexact baseを返す。途中失敗では後続caseを起動せず、回収不明を記録する。Chrome/Job拒否や取得不能を成功へ読み替えず、未知PID採用・killは行わない。このsliceの静的parser/check成功は実Chromium/Sky互換の証明ではない。
 
