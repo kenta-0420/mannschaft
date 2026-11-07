@@ -1,6 +1,6 @@
-# CMP-260917-1351 完了候補の証拠
+# CMP-260917-1351 完了証拠
 
-これはローカル準備版であり、公開完了記録ではない。実装PR [4368](https://github.com/kenta-0420/mannschaft/pull/4368) の現headは `ffc49732d9ace292ff3d3c2ae5982e72cffdf87f`、確認時点でOPEN・未mergeである。commit/push/完了PR公開は未実施。実装PRの通常mergeとマージ時点のcheck再確認が公開前の残存条件となる。
+実装PR [4368](https://github.com/kenta-0420/mannschaft/pull/4368) はhead `838be3334e162c6e684b8fc9c31aad468c8d8ad2`、2026-11-07T14:25:33Zに通常merge済み（merge `af2dc66cd2f925193f67fd7161541aef267ae9d1`、admin不使用）。exact headのCI成功も一次確認した。Phase7気づき箱metadata補正r2の最終UI裏取りも完了した。公開はroot最終レビュー後とし、この段階ではpush/完了PR公開を行っていない。旧候補はcheckpoint commit `4b32764b38b8a671e4e077c46aed41b8e9720069` に保存し、最新mainへ通常追従している。
 
 ## 正本ACと実装・検証
 
@@ -49,10 +49,18 @@ Archive初期previewは自動承認審査がcommand設置前に即時変更リ�
 
 ## sourceの橋渡しとCI
 
-旧実機r3はFE `2a18c86dc1a36541bf49cb50752c15ef3a944fbe`、r6/R8はFE `7de2005ec90237da4bf560742156f78a18fda703`、BEは `83c98637f0e75f293d5640b35707b26d3848896a`。レンズ/既存guard/Webhookの対象blobは維持し、r6は追加した2ページmetaを含むsourceで検証した。旧0f9からf48の追加修正4pathsは同一で、main追従差分は台帳だけである。その後のf48から現ffcへの差分は `LoyaltyPointsWriterIT.java` の9行だけで、同4pathsのblobは引き続き同一。公開最終候補の識別はffcとし、本文のf48固定ソースURLは同一blobの参照として区別する。1351の呼び出し元・認可依存を照合した範囲でcomponent証拠を限定再利用する。whole treeや公開merged head実機一致は主張しない。
+旧実機r3はFE `2a18c86dc1a36541bf49cb50752c15ef3a944fbe`、r6/R8はFE `7de2005ec90237da4bf560742156f78a18fda703`、BEは `83c98637f0e75f293d5640b35707b26d3848896a`。レンズ/既存guard/Webhookの対象blobは維持し、r6は追加した2ページmetaを含むsourceで検証した。旧0f9からf48の追加修正4pathsは同一で、main追従差分は台帳だけである。その後のf48から現ffcへの差分は `LoyaltyPointsWriterIT.java` の9行だけで、同4pathsのblobは引き続き同一。以後838までの差分は台帳だけで、4featureblobは採用後も同一。公開実装の識別は838とし、本文のf48固定ソースURLは同一blobの参照として区別する。1351の呼び出し元・認可依存を照合した範囲でcomponent証拠を限定再利用する。whole treeや公開merged head実機一致は主張しない。
 
-旧head f48の[Frontend CI 42368568321](https://github.com/kenta-0420/mannschaft/actions/runs/42368568321) はcompleted/successだった。現head ffcの対象は[Frontend CI 42372872561](https://github.com/kenta-0420/mannschaft/actions/runs/42372872561) で、root確認時点（12:45:30ZからUnit test進行中）は23check失敗0、Install/Smoke未完である。旧headの成功を現headの成功へ換算しない。新CI成功と実装PRの通常merge裏取りを待ち、公開完了ゲートfalseを維持する。skippedも個別テストの実行成功へ換算しない。
+[Frontend CI 42379474193](https://github.com/kenta-0420/mannschaft/actions/runs/42379474193) はexact head838でcompleted/successを一次確認した。マージ時点の全23checkはroot一次確認でSUCCESS16・SKIPPED7、失敗/未完了0。旧f48/ffcのCIとは区別し、SKIPPEDを個別試験の実行成功へ換算しない。
 
-reviewはrootによる正本AC・source・unit red/green・実機r3/r6・R8観測と閉鎖の照合を根拠とする。公開前にはPR4368の通常merge後、記録headとマージ時点checkを再照合する。ローカルvalidatorの構造合格とGitHub上の未merge拒否を明確に分離する。
+reviewはrootによる正本AC・source・unit red/green・実機r3/r6・R8観測と閉鎖の照合を根拠とする。実装PRの通常mergeと記録head・マージ時点checkの照合は完了した。ローカルvalidatorの構造検査と、実GitHubのマージ時点check世代・CI照合を分離して確認した。
 
-ローカル準備ではbase `fb354245bcd7c09f8d4a88304404072d76d55ca7` のtrusted validator（blob `a952f2cd46c29e73f492b50e5b2c6a5d3a914970`）を使用した。未commitの作業ファイルを `validateEvidence` / `validateCompletionChanges` へ渡し、構造・参照先・台帳の対象1行だけの変更を確認した。一方、一次確認した `merged=false` を同じvalidatorへ渡した検査は未mergeとして拒否された。したがって公開完了ゲートは未合格である。git refを読むCLIを未commitのHEADへ実行して「差分なしの合格」とする方法は採っていない。
+ローカル準備ではbase `fb354245bcd7c09f8d4a88304404072d76d55ca7` のtrusted validator（blob `a952f2cd46c29e73f492b50e5b2c6a5d3a914970`）を使用した。未commitの作業ファイルを `validateEvidence` / `validateCompletionChanges` へ渡し、構造・参照先・台帳の対象1行だけの変更を確認した。一方、一次確認した `merged=false` を同じvalidatorへ渡した検査は未mergeとして拒否された。これは旧候補段階の正当な拒否履歴であり、実装PRの現在のmerge済み事実へ更新しても消さない。その後、実装merge・CIと次のPhase7 r2裏取りが揃った。git refを読むCLIを未commitのHEADへ実行して「差分なしの合格」とする方法は採っていない。
+
+## Phase7 気づき箱の正式記録
+
+匿名4件を正式local-sourceへ保存し、Linuxの独立ボードUI r1成功をrootが確認した。写真参照をdirからexact fileへ具体化したmetadata補正r2も一回の独立UI検証で成功（root foreground69650終了0）。DOM4件可視、IndexedDBのsource fields完全一致、trusted=false・observed=unverified、reload後の追加0、全Chrome不在を確認した。network/API write/PDF/download/pageerror/consoleerrorはすべて0。rootは4カードとexact PNG参照表示、および元画像とviewportの対応も私有範囲で目視確認した。
+
+最終r2 proof SHA256は `35db51eaa89ced5838fc21d032d266593a1a90262b296f1c24f569c3a8785ff0`、canonical overlay SHA256は `b376080b910e1f8d381c725ec2ccbd917032922503841da94acf0ef400378494`。r1原本は不変で、同4件の画像参照metadataだけを具体化した。既存Windows DBは未操作であり、ツールkernelのassets失敗をWindows側の保存成功へ換算しない。専用profileはrootが所有・元Node/Chrome不在・参照0を確認してr1/r2とも撤去した。別cleanup receiptのSHA256はr1 `33034f9ff6fd2c9ba9af27d27dbd7f9504a8bee677b78aac613348d984b566e4`、r2 `6ddd9b5a8e62d6df707a319210a3737ed485fb6f4fae9e98e1ca0f85dea3d165`。通常UIDの参照検査で非dumpableなsystemd/sd-pamの2PIDに権限例外があったが、rootの読取auditとPID世代固定で参照0を確認し、未確認エラー0で撤去した。原r1/r2 resultのretained記述は変更せず、後続のcleanup別記録として扱う。共有FE/BEは他の9月実機に必要なため継続保持する。
+
+4件の所見は別scopeのunverified観測で、blocker昇格0。タイトル・写真・raw本文・メール・実slugはここへ転載せず、匿名役割・件数・hashだけを証拠とする。r1成功をr2成功へ読み替えず、それぞれの独立検証を区別する。
