@@ -157,7 +157,12 @@ public class InviteService {
 
         String scopeType = resolveScopeType(token);
         Long scopeId = resolveScopeId(token);
-        String targetName = resolveTargetName(scopeId, scopeType);
+        String targetName = switch (scopeType) {
+            // team / organization の Repository には触れず、各ドメインの読み取り窓口へ委譲する
+            case "ORGANIZATION" -> organizationInviteQueryService.findName(scopeId);
+            case "TEAM" -> teamInviteQueryService.findName(scopeId);
+            default -> null;
+        };
         String roleName = roleRepository.findById(token.getRoleId())
                 .map(RoleEntity::getName).orElse(null);
 
@@ -252,17 +257,6 @@ public class InviteService {
     public InviteTokenEntity findByIdAndTeamId(Long tokenId, Long teamId) {
         return inviteTokenRepository.findByIdAndTeamId(tokenId, teamId)
             .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
-    }
-
-    /**
-     * スコープの名前を解決する。team / organization の Repository には触れず、各ドメインの読み取り窓口へ委譲する。
-     */
-    private String resolveTargetName(Long scopeId, String scopeType) {
-        return switch (scopeType) {
-            case "ORGANIZATION" -> organizationInviteQueryService.findName(scopeId);
-            case "TEAM" -> teamInviteQueryService.findName(scopeId);
-            default -> null;
-        };
     }
 
     private InviteTokenResponse toResponse(InviteTokenEntity token, String roleName) {

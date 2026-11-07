@@ -4,7 +4,6 @@ import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaConstructor;
 import com.tngtech.archunit.core.domain.JavaMethod;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import jakarta.persistence.Column;
 import jakarta.persistence.Table;
@@ -55,13 +54,6 @@ class InviteAcceptanceBoundaryArchTest {
     static final String CONTROLLER = "com.mannschaft.app.role.controller.InviteController";
     static final String FOLDER_SERVICE = "com.mannschaft.app.scopefolder.service.MyScopeFolderService";
     static final String TOKEN_ENTITY = "com.mannschaft.app.role.entity.InviteTokenEntity";
-
-    /** 取り込みは高コストなのでクラス単位で1回だけ行う。 */
-    private static final class Production {
-        static final JavaClasses CLASSES = new ClassFileImporter()
-                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                .importPackages("com.mannschaft.app");
-    }
 
     // ------------------------------------------------------------------
     // 新設型の存在と形（red）
@@ -174,7 +166,7 @@ class InviteAcceptanceBoundaryArchTest {
                 require(name);
                 assertThat(d3t(imported(name))).as(name + " の D-3T").isEmpty();
             }
-            List<JavaClass> claimClasses = Production.CLASSES.stream()
+            List<JavaClass> claimClasses = ProductionClasses.get().stream()
                     .filter(c -> c.getPackageName().startsWith("com.mannschaft.app.role"))
                     .filter(c -> c.getSimpleName().startsWith("InviteTokenClaim"))
                     .filter(c -> !c.getPackageName().endsWith(".entity"))
@@ -361,12 +353,12 @@ class InviteAcceptanceBoundaryArchTest {
 
     private static JavaClass imported(String name) {
         require(name);
-        Optional<JavaClass> found = Production.CLASSES.stream().filter(c -> c.getName().equals(name)).findFirst();
+        Optional<JavaClass> found = ProductionClasses.get().stream().filter(c -> c.getName().equals(name)).findFirst();
         return found.orElseGet(() -> fail("本番クラス集合に " + name + " が無い"));
     }
 
     private static List<String> d3t(JavaClass clazz) {
-        return CrossDomainTransactionalTransitiveArchTest.findViolations(clazz, Production.CLASSES).stream()
+        return CrossDomainTransactionalTransitiveArchTest.findViolations(clazz, ProductionClasses.get()).stream()
                 .map(CrossDomainTransactionalTransitiveArchTest.TransitiveViolation::freezeKey)
                 .toList();
     }
