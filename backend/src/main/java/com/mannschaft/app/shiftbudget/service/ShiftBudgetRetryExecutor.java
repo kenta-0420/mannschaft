@@ -49,6 +49,15 @@ public class ShiftBudgetRetryExecutor {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public boolean execute(ShiftBudgetFailedEventEntity entity) {
+        if (entity.getEventType() == null || !entity.getEventType().supportsRetry()) {
+            // 非対応イベントもキューから退避し、後続イベントの処理枠を塞がない。
+            // 元処理を実行していないので診断・試行情報は保持する。
+            entity.markExhausted();
+            repository.saveAndFlush(entity);
+            log.warn("F08.7 再実行非対応イベントを手動補正待ちへ移行: id={}, eventType={}",
+                    entity.getId(), entity.getEventType());
+            return false;
+        }
         // 着手マーク（PENDING → RETRYING + retry_count++ + last_retried_at セット）
         entity.markRetrying();
         repository.saveAndFlush(entity);
@@ -58,17 +67,6 @@ public class ShiftBudgetRetryExecutor {
                 case THRESHOLD_ALERT -> retryThresholdAlert(entity);
                 case WORKFLOW_START -> retryWorkflowStart(entity);
                 case NOTIFICATION_SEND -> retryNotificationSend(entity);
-                case CONSUMPTION_RECORD, CONSUMPTION_CANCEL -> {
-                    // 消化記録 / キャンセル hook は再実行ロジックが複雑（複数 (slot,user) を跨ぐ）。
-                    // 現フェーズでは EXHAUSTED 化させて運用者が DB 直接補正する運用に倒す
-                    // （誤再実行で重複 INSERT を起こすリスクを避ける）。
-                    log.warn("F08.7 リトライ: {} は手動補正運用とするためバッチ再実行は EXHAUSTED 化: id={}, sourceId={}",
-                            entity.getEventType(), entity.getId(), entity.getSourceId());
-                    entity.markFailed("Auto-retry not supported for " + entity.getEventType()
-                            + "; manual reconciliation required.", 0);
-                    repository.save(entity);
-                    return false;
-                }
                 default -> throw new IllegalStateException(
                         "Unknown event type: " + entity.getEventType());
             }

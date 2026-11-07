@@ -14,7 +14,7 @@ export type ShiftBudgetRateMode = 'MEMBER_AVG' | 'POSITION_AVG' | 'EXPLICIT'
 export type ConsumptionStatus = 'OK' | 'WARN' | 'EXCEEDED' | 'SEVERE_EXCEEDED'
 
 /** 失敗イベントのステータス */
-export type FailedEventStatus = 'PENDING' | 'RETRYING' | 'EXHAUSTED' | 'MANUAL_RESOLVED'
+export type FailedEventStatus = 'PENDING' | 'RETRYING' | 'SUCCEEDED' | 'EXHAUSTED' | 'MANUAL_RESOLVED'
 
 // ===== 逆算 API（§6.2.2 / Phase 9-α） =====
 

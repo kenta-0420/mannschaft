@@ -185,11 +185,11 @@ public enum ShiftBudgetErrorCode implements ErrorCode {
             "対象の失敗イベントが見つかりません", Severity.WARN),
 
     /**
-     * 終端ステータス（SUCCEEDED / MANUAL_RESOLVED）の失敗イベントは再実行不可 (HTTP 409)。
-     * EXHAUSTED に対しては運用判断による再試行を許容する（本エラーは投げない）。
+     * 非対応種別または終端ステータス（SUCCEEDED / MANUAL_RESOLVED）は再実行不可 (HTTP 409)。
+     * 対応種別のEXHAUSTEDには運用判断による再試行を許容する。
      */
     FAILED_EVENT_NOT_RETRIABLE("SHIFT_BUDGET_031",
-            "対象の失敗イベントは終端状態のため再実行できません", Severity.WARN);
+            "対象の失敗イベントは再実行できません", Severity.WARN);
 
     private final String code;
     private final String message;

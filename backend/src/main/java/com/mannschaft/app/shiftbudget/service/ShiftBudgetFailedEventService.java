@@ -13,6 +13,8 @@ import com.mannschaft.app.shiftbudget.ShiftBudgetFeatureService;
 import com.mannschaft.app.shiftbudget.dto.FailedEventResponse;
 import com.mannschaft.app.shiftbudget.entity.ShiftBudgetFailedEventEntity;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetFailedEventRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -55,6 +57,7 @@ public class ShiftBudgetFailedEventService {
     private final AuditLogService auditLogService;
     private final ShiftBudgetRetryExecutor retryExecutor;
     private final ObjectMapper objectMapper;
+    private final EntityManager entityManager;
 
     /**
      * 循環依存ガード: FailedEventService → RetryExecutor → ThresholdAlertEvaluationService → FailedEventService
@@ -67,13 +70,15 @@ public class ShiftBudgetFailedEventService {
             AccessControlService accessControlService,
             AuditLogService auditLogService,
             @Lazy ShiftBudgetRetryExecutor retryExecutor,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            EntityManager entityManager) {
         this.repository = repository;
         this.featureService = featureService;
         this.accessControlService = accessControlService;
         this.auditLogService = auditLogService;
         this.retryExecutor = retryExecutor;
         this.objectMapper = objectMapper;
+        this.entityManager = entityManager;
     }
 
     /**
@@ -124,8 +129,9 @@ public class ShiftBudgetFailedEventService {
     /**
      * 個別再実行（管理 API、{@code BUDGET_ADMIN} 権限必須）。
      *
-     * <p>EXHAUSTED ステータスでも運用判断による再試行を許容する。
-     * SUCCEEDED / MANUAL_RESOLVED は終端のため {@code FAILED_EVENT_NOT_RETRIABLE} (409) を返す。</p>
+     * <p>対応3種はEXHAUSTEDでも運用判断による再試行を許容する。
+     * 非対応種別・SUCCEEDED・MANUAL_RESOLVEDは、状態を変更せず
+     * {@code FAILED_EVENT_NOT_RETRIABLE} (409) を返す。</p>
      */
     @Transactional
     public FailedEventResponse retry(Long organizationId, Long failedEventId) {
@@ -136,7 +142,8 @@ public class ShiftBudgetFailedEventService {
                 .filter(e -> e.getOrganizationId().equals(organizationId))
                 .orElseThrow(() -> new BusinessException(ShiftBudgetErrorCode.FAILED_EVENT_NOT_FOUND));
 
-        if (entity.getStatus() == ShiftBudgetFailedEventStatus.SUCCEEDED
+        if (entity.getEventType() == null || !entity.getEventType().supportsRetry()
+                || entity.getStatus() == ShiftBudgetFailedEventStatus.SUCCEEDED
                 || entity.getStatus() == ShiftBudgetFailedEventStatus.MANUAL_RESOLVED) {
             throw new BusinessException(ShiftBudgetErrorCode.FAILED_EVENT_NOT_RETRIABLE);
         }
@@ -144,7 +151,10 @@ public class ShiftBudgetFailedEventService {
         Long currentUserId = SecurityUtils.getCurrentUserIdOrNull();
         boolean success = retryExecutor.execute(entity);
 
-        ShiftBudgetFailedEventEntity refreshed = repository.findById(failedEventId).orElse(entity);
+        // REQUIRES_NEWのmerge先で更新された監査日時を外側の管理entityへ反映する。
+        // 通常のfind/refreshはRRの古いsnapshotを返し得るため、完了済みの行をcurrent readする。
+        entityManager.refresh(entity, LockModeType.PESSIMISTIC_READ);
+        ShiftBudgetFailedEventEntity refreshed = entity;
 
         auditLogService.record(
                 "FAILED_EVENT_RETRIED",

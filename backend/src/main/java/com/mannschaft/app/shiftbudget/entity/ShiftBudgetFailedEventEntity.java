@@ -59,7 +59,7 @@ public class ShiftBudgetFailedEventEntity extends BaseEntity {
     @Column(name = "payload", nullable = false, columnDefinition = "JSON")
     private String payload;
 
-    /** 失敗時のエラーメッセージ（例外クラス名 + メッセージなど）。 */
+    /** 初回診断（例外クラス名 + メッセージなど）。再試行の失敗で上書きしない。 */
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 
@@ -91,15 +91,22 @@ public class ShiftBudgetFailedEventEntity extends BaseEntity {
         this.status = ShiftBudgetFailedEventStatus.SUCCEEDED;
     }
 
-    /** リトライ失敗をマーク（次回試行可、retry_count が上限なら EXHAUSTED）。 */
+    /** 初回診断を保持してリトライ失敗をマーク（上限なら EXHAUSTED）。最新例外は実行側がログへ残す。 */
     public void markFailed(String error, int maxRetry) {
-        this.errorMessage = error;
+        if (this.errorMessage == null) {
+            this.errorMessage = error;
+        }
         if (this.retryCount != null && this.retryCount >= maxRetry) {
             this.status = ShiftBudgetFailedEventStatus.EXHAUSTED;
         } else {
             // 次回バッチ走行で再評価できるように PENDING へ戻す
             this.status = ShiftBudgetFailedEventStatus.PENDING;
         }
+    }
+
+    /** 非対応種別を手動補正待ちにする。再試行していないため診断・回数・最終試行日時を変更しない。 */
+    public void markExhausted() {
+        this.status = ShiftBudgetFailedEventStatus.EXHAUSTED;
     }
 
     /** 運用者が「手動補正済」をマーク（MANUAL_RESOLVED 終端ステータス）。 */
