@@ -27,58 +27,64 @@ const iconInitial = computed(() => props.item.entityType.charAt(0))
 
 <template>
   <div
-    class="flex items-center gap-3 p-3 border-2 border-surface-300 dark:border-surface-600 rounded-lg mb-2 bg-surface-0 dark:bg-surface-800"
+    class="flex flex-wrap items-center gap-3 p-3 border-2 border-surface-300 dark:border-surface-600 rounded-lg mb-2 bg-surface-0 dark:bg-surface-800"
     :class="{ 'opacity-60': !isAvailable }"
     :data-testid="`favorite-card-${item.favoriteId}`"
   >
-    <span
-      class="drag-handle cursor-grab select-none text-surface-400 hover:text-surface-600 dark:hover:text-surface-200"
-      :aria-label="t('favorites.dragHandle')"
-      role="button"
-    >
-      <i class="pi pi-bars" />
-    </span>
+    <div class="flex min-w-0 flex-auto items-center gap-3">
+      <span
+        class="drag-handle cursor-grab select-none text-surface-400 hover:text-surface-600 dark:hover:text-surface-200"
+        :aria-label="t('favorites.dragHandle')"
+        role="button"
+      >
+        <i class="pi pi-bars" />
+      </span>
 
-    <img
-      v-if="item.entity.iconUrl"
-      :src="item.entity.iconUrl"
-      class="w-10 h-10 rounded object-cover shrink-0"
-      alt=""
-    >
-    <div
-      v-else
-      class="w-10 h-10 rounded bg-surface-200 dark:bg-surface-700 flex items-center justify-center text-surface-600 dark:text-surface-300 font-semibold shrink-0"
-      aria-hidden="true"
-    >
-      {{ iconInitial }}
-    </div>
-
-    <div class="flex-1 min-w-0">
-      <div class="flex items-center gap-2">
-        <span class="font-bold text-sm text-surface-800 dark:text-surface-100 truncate">
-          {{ item.entity.name }}
-        </span>
-        <span
-          class="text-xs px-2 py-0.5 bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-300 rounded shrink-0"
-        >
-          {{ t(`favorites.entityType.${item.entityType}`) }}
-        </span>
+      <img
+        v-if="item.entity.iconUrl"
+        :src="item.entity.iconUrl"
+        class="w-10 h-10 rounded object-cover shrink-0"
+        alt=""
+      >
+      <div
+        v-else
+        class="w-10 h-10 rounded bg-surface-200 dark:bg-surface-700 flex items-center justify-center text-surface-600 dark:text-surface-300 font-semibold shrink-0"
+        aria-hidden="true"
+      >
+        {{ iconInitial }}
       </div>
-      <p
-        v-if="isAvailable && item.entity.description"
-        class="text-xs text-surface-500 dark:text-surface-400 truncate"
-      >
-        {{ item.entity.description }}
-      </p>
-      <p
-        v-else-if="!isAvailable"
-        class="text-xs text-surface-500 dark:text-surface-400"
-      >
-        {{ t('favorites.unavailable') }}
-      </p>
+
+      <div class="min-w-0 flex-auto">
+        <div class="flex flex-wrap items-center gap-2">
+          <span
+            class="min-w-0 max-w-full flex-auto font-bold text-sm text-surface-800 dark:text-surface-100 truncate"
+            :title="item.entity.name"
+          >
+            {{ item.entity.name }}
+          </span>
+          <span
+            class="min-w-0 max-w-full truncate text-xs px-2 py-0.5 bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-300 rounded shrink-0"
+            :title="t(`favorites.entityType.${item.entityType}`)"
+          >
+            {{ t(`favorites.entityType.${item.entityType}`) }}
+          </span>
+        </div>
+        <p
+          v-if="isAvailable && item.entity.description"
+          class="text-xs text-surface-500 dark:text-surface-400 truncate"
+        >
+          {{ item.entity.description }}
+        </p>
+        <p
+          v-else-if="!isAvailable"
+          class="text-xs text-surface-500 dark:text-surface-400"
+        >
+          {{ t('favorites.unavailable') }}
+        </p>
+      </div>
     </div>
 
-    <div class="flex gap-1 shrink-0">
+    <div class="ml-auto flex max-w-full flex-wrap gap-1 shrink-0">
       <Button
         v-if="isAvailable"
         type="button"
