@@ -40,7 +40,7 @@ function onUpdateVisible(value: boolean) {
       <LoadingBounce />
     </div>
     <div v-else-if="threads.length === 0" class="py-8 text-center text-sm text-surface-400">
-      進行中のスレッドはありません
+      {{ $t('chat.activeThreadsEmpty') }}
     </div>
     <ul v-else class="divide-y divide-surface-100">
       <li

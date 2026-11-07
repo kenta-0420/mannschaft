@@ -24,6 +24,7 @@ import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.ErrorCode;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
@@ -36,6 +37,7 @@ import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.service.MembershipInviteService;
 import com.mannschaft.app.tournament.ContactSpaceKind;
 import com.mannschaft.app.tournament.ContactSpaceScopeType;
+import com.mannschaft.app.tournament.TournamentErrorCode;
 import com.mannschaft.app.tournament.service.TournamentContactAccessService;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.service.PostingIdentityService;
@@ -202,6 +204,10 @@ public class ChatMessageService {
         ChatMessageEntity parentMessage = null;
         if (request.getParentId() != null) {
             parentMessage = findMessageOrThrow(request.getParentId());
+            // 親は同一チャンネル内に限る。他チャンネル（存在を知り得ないものを含む）の ID は不在と同一に扱う。
+            if (!channel.getId().equals(parentMessage.getChannelId())) {
+                throw new BusinessException(ChatErrorCode.MESSAGE_NOT_FOUND);
+            }
             // rootId: 親がルートなら親のID、親がネストなら親の rootId を継承
             rootId = parentMessage.getRootId() != null ? parentMessage.getRootId() : parentMessage.getId();
             depth = (parentMessage.getDepth() != null ? parentMessage.getDepth() : 0) + 1;
@@ -296,7 +302,7 @@ public class ChatMessageService {
     @Transactional
     public MessageResponse editMessage(Long messageId, EditMessageRequest request, Long userId) {
         ChatMessageEntity message = findMessageOrThrow(messageId);
-        validateMessageOwner(message, userId);
+        channelAccessGuard.requireMessageOwner(findChannelOfMessage(message), message, userId);
 
         message.editBody(request.getBody());
         ChatMessageEntity saved = messageRepository.save(message);
@@ -317,12 +323,18 @@ public class ChatMessageService {
     @Transactional
     public void deleteMessage(Long messageId, Long userId) {
         ChatMessageEntity message = findMessageOrThrow(messageId);
-        validateMessageOwner(message, userId);
+        ChatChannelEntity channel = findChannelOfMessage(message);
+        // F04.2 §5: 投稿者本人 / チャンネル OWNER・ADMIN / スコープ ADMIN（MANAGE_CHAT の DEPUTY_ADMIN）/ SYSTEM_ADMIN。
+        boolean moderation = channelAccessGuard.requireMessageDeletable(channel, message, userId);
+        if (moderation) {
+            // F04.2 §6 監査: CHAT_MESSAGE_DELETED_BY_ADMIN（投稿者本人以外による削除）
+            log.info("CHAT_MESSAGE_DELETED_BY_ADMIN: messageId={}, channelId={}, operatorUserId={}, senderId={}",
+                    messageId, channel.getId(), userId, message.getSenderId());
+        }
 
         // F13 Phase 4-β: 論理削除前に添付ファイル一覧を取得し、各添付の使用量を減算
         List<ChatMessageAttachmentEntity> attachments = attachmentRepository.findByMessageId(messageId);
         if (!attachments.isEmpty()) {
-            ChatChannelEntity channel = channelService.findChannelOrThrow(message.getChannelId());
             for (ChatMessageAttachmentEntity attachment : attachments) {
                 chatAttachmentService.recordAttachmentDeletion(
                         channel, attachment, userId, message.getSenderId());
@@ -363,7 +375,7 @@ public class ChatMessageService {
     public List<MessageResponse> listThreadReplies(Long parentId, Long userId) {
         ChatMessageEntity parent = findMessageOrThrow(parentId);
         // F08.7.1: 大会/ディビジョン連絡チャットの返信一覧も canView を通す（メッセージ本文の漏洩防止）。
-        checkChannelViewAccess(parent.getChannelId(), userId);
+        checkMessageViewAccess(parent, userId);
         List<ChatMessageEntity> replies = messageRepository.findByParentIdOrderByCreatedAtAscIdAsc(parentId);
         return enrichMessages(replies, userId);
     }
@@ -379,7 +391,7 @@ public class ChatMessageService {
     public ThreadResponse getThread(Long messageId, String cursor, Integer limit, Long userId) {
         ChatMessageEntity root = findMessageOrThrow(messageId);
         // F08.7.1: 大会/ディビジョン連絡チャットのスレッド取得も canView を通す（メッセージ本文の漏洩防止）。
-        checkChannelViewAccess(root.getChannelId(), userId);
+        checkMessageViewAccess(root, userId);
         int effectiveLimit = resolveLimit(limit);
 
         // カーソルをページ番号に変換（簡易実装: cursor は "page_N" 形式）
@@ -484,8 +496,8 @@ public class ChatMessageService {
         ChatMessageEntity message = findMessageOrThrow(messageId);
         // F08.7.1: 大会/ディビジョン連絡チャットのピン留めはモデレーション相当＝canPost（代表/主催者）を要求する。
         // 認可根治 Wave6: 通常チャンネルもチャンネルメンバーであることを要求する。
-        ChatChannelEntity channel = channelService.findChannelOrThrow(message.getChannelId());
-        checkChannelPostAccess(channel, userId);
+        ChatChannelEntity channel = findChannelOfMessage(message);
+        checkChannelPostAccess(channel, userId, ChatErrorCode.MESSAGE_NOT_FOUND);
         if (pinned) {
             message.pin();
         } else {
@@ -507,10 +519,10 @@ public class ChatMessageService {
     @Transactional
     public MessageResponse forwardMessage(Long messageId, ForwardMessageRequest request, Long userId) {
         ChatMessageEntity original = findMessageOrThrow(messageId);
-        ChatChannelEntity targetChannel = channelService.findChannelOrThrow(request.getTargetChannelId());
-
         // F08.7.1: 転送元が大会連絡チャットなら閲覧権限（canView）を要求する（非権限者が本文を持ち出せない）。
-        checkChannelViewAccess(original.getChannelId(), userId);
+        // 転送元の秘匿（MESSAGE_NOT_FOUND）は転送先の解決より先に行う（順序が逆だと転送元の実在が漏れる）。
+        checkMessageViewAccess(original, userId);
+        ChatChannelEntity targetChannel = channelService.findChannelOrThrow(request.getTargetChannelId());
         // F08.7.1: 転送先が大会連絡チャットなら投稿権限（canPost）を要求する（投稿バイパス防止）。
         // 認可根治 Wave6: 通常チャンネルへの転送も転送先のメンバーであることを要求する。
         checkChannelPostAccess(targetChannel, userId);
@@ -582,13 +594,59 @@ public class ChatMessageService {
      * @throws BusinessException 閲覧権限がない場合（{@link ChatErrorCode#CHANNEL_ACCESS_DENIED}）
      */
     public void checkChannelViewAccess(Long channelId, Long userId) {
-        ChatChannelEntity channel = channelService.findChannelOrThrow(channelId);
+        checkChannelViewAccess(channelService.findChannelOrThrow(channelId), userId, ChatErrorCode.CHANNEL_NOT_FOUND);
+    }
+
+    /**
+     * 取得済みチャンネルに対する閲覧認可（存在秘匿つき・CMP-261105-1507）。
+     *
+     * @param channel      対象チャンネル（生存確認済み）
+     * @param userId       閲覧ユーザー ID
+     * @param notFoundCode 当該 EP の不在コード（チャンネル ID 指定なら CHANNEL_NOT_FOUND、
+     *                     メッセージ ID 指定なら MESSAGE_NOT_FOUND）。存在を知り得ない利用者への拒否はこれと同一にする
+     */
+    public void checkChannelViewAccess(ChatChannelEntity channel, Long userId, ErrorCode notFoundCode) {
         ContactSpaceScopeType scope = tournamentScopeOf(channel);
         if (scope != null) {
-            tournamentContactAccessService.checkView(scope, channel.getSourceId(), ContactSpaceKind.CHAT, userId);
+            if (!canViewTournamentChannel(scope, channel, userId)) {
+                throw new BusinessException(notFoundCode);
+            }
             return;
         }
-        requireChannelMembership(channel, userId);
+        requireChannelMembership(channel, userId, notFoundCode);
+    }
+
+    /**
+     * メッセージ ID 指定系 EP の閲覧認可。拒否はすべて不在メッセージ（{@link ChatErrorCode#MESSAGE_NOT_FOUND}）
+     * と同一応答にする（子リソースの不在コード。親チャンネルのコードを返すと実在が漏れる）。
+     */
+    public void checkMessageViewAccess(ChatMessageEntity message, Long userId) {
+        checkChannelViewAccess(findChannelOfMessage(message), userId, ChatErrorCode.MESSAGE_NOT_FOUND);
+    }
+
+    /**
+     * メッセージが属するチャンネルを取得する。チャンネルが不在（論理削除済み）なら、メッセージも不在として扱う。
+     */
+    ChatChannelEntity findChannelOfMessage(ChatMessageEntity message) {
+        return channelRepository.findById(message.getChannelId())
+                .orElseThrow(() -> new BusinessException(ChatErrorCode.MESSAGE_NOT_FOUND));
+    }
+
+    /**
+     * 大会連絡チャットを閲覧できるか。大会ドメインの正準判定（{@link TournamentContactAccessService#checkView}）
+     * の拒否（スペース不在・閲覧権限なし）を偽として返す。それ以外の例外はそのまま伝播させる。
+     */
+    private boolean canViewTournamentChannel(ContactSpaceScopeType scope, ChatChannelEntity channel, Long userId) {
+        try {
+            tournamentContactAccessService.checkView(scope, channel.getSourceId(), ContactSpaceKind.CHAT, userId);
+            return true;
+        } catch (BusinessException e) {
+            if (e.getErrorCode() == TournamentErrorCode.CONTACT_SPACE_VIEW_FORBIDDEN
+                    || e.getErrorCode() == TournamentErrorCode.CONTACT_SPACE_NOT_FOUND) {
+                return false;
+            }
+            throw e;
+        }
     }
 
     /**
@@ -656,12 +714,27 @@ public class ChatMessageService {
      * @throws BusinessException 投稿権限がない場合（{@link ChatErrorCode#CHANNEL_ACCESS_DENIED}）
      */
     public void checkChannelPostAccess(ChatChannelEntity channel, Long senderId) {
+        checkChannelPostAccess(channel, senderId, ChatErrorCode.CHANNEL_NOT_FOUND);
+    }
+
+    /**
+     * 投稿・モデレーション認可（存在秘匿つき）。閲覧もできない利用者への拒否は {@code notFoundCode} と同一にし、
+     * 閲覧はできるが投稿できない利用者（大会チャットの一般参加者等）への拒否だけを 403 にする。
+     */
+    public void checkChannelPostAccess(ChatChannelEntity channel, Long senderId, ErrorCode notFoundCode) {
         ContactSpaceScopeType scope = tournamentScopeOf(channel);
         if (scope != null) {
-            tournamentContactAccessService.checkPost(scope, channel.getSourceId(), senderId);
+            try {
+                tournamentContactAccessService.checkPost(scope, channel.getSourceId(), senderId);
+            } catch (BusinessException e) {
+                if (!canViewTournamentChannel(scope, channel, senderId)) {
+                    throw new BusinessException(notFoundCode);
+                }
+                throw e;
+            }
             return;
         }
-        requireChannelMembership(channel, senderId);
+        requireChannelMembership(channel, senderId, notFoundCode);
     }
 
     /**
@@ -685,12 +758,11 @@ public class ChatMessageService {
      *       委譲済みのため、ここには到達しない。将来種別が増えた場合を含め、未知種別は既定で拒否する（fail-closed）。</li>
      * </ul>
      */
-    private void requireChannelMembership(ChatChannelEntity channel, Long userId) {
+    private void requireChannelMembership(ChatChannelEntity channel, Long userId, ErrorCode notFoundCode) {
         ChannelType type = channel.getChannelType();
         if (type.isMembershipGated()) {
-            if (userId == null || !memberRepository.existsByChannelIdAndUserId(channel.getId(), userId)) {
-                throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
-            }
+            // 存在を知り得ない利用者（他人の DM・非公開チャンネル・他スコープ）は不在と同一応答（CMP-261105-1507）。
+            channelAccessGuard.requireMembershipRowOrConceal(channel, userId, notFoundCode);
             return;
         }
         boolean allowed = switch (type) {
@@ -702,7 +774,8 @@ public class ChatMessageService {
             default -> false;
         };
         if (!allowed) {
-            throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
+            // 村ロビー・イベントチャットの非該当者はチャンネルの存在を知り得ない。不在と同一応答にする。
+            throw new BusinessException(notFoundCode);
         }
     }
 
@@ -870,10 +943,6 @@ public class ChatMessageService {
         }
         MessageResponse.SenderDto dto = resolved.get(senderId);
         return dto != null ? dto : new MessageResponse.SenderDto(senderId, DEFAULT_SENDER_DISPLAY_NAME, null);
-    }
-
-    private void validateMessageOwner(ChatMessageEntity message, Long userId) {
-        channelAccessGuard.requireMessageOwner(message, userId);
     }
 
     private int resolveLimit(Integer limit) {

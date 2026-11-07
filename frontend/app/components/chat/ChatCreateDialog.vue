@@ -19,6 +19,7 @@ const teamApi = useTeamApi()
 const orgApi = useOrganizationApi()
 const authStore = useAuthStore()
 const notification = useNotification()
+const { t } = useI18n()
 
 const activeTab = ref(0)
 const members = ref<MemberResponse[]>([])
@@ -66,7 +67,7 @@ const { clear: clearZimmerDraft, restore: restoreZimmerDraft } = useFormDraft<Zi
 )
 
 const chatTypeLabel = computed(() =>
-  contact.selected.value.length <= 1 ? 'Kabine(DM)' : 'Zimmer(部屋)',
+  contact.selected.value.length <= 1 ? t('chat.create.typeDm') : t('chat.create.typeRoom'),
 )
 
 /**
@@ -107,7 +108,7 @@ async function startChat() {
     const firstMember = contact.selected.value[0]
     if (contact.selected.value.length === 1 && firstMember) {
       const res = await getOrCreateDm(firstMember.userId)
-      notification.success('Kabine(DM)を開きました')
+      notification.success(t('chat.create.dmOpened'))
       visible.value = false
       contact.reset()
       emit('openDm', res.data.id)
@@ -121,13 +122,13 @@ async function startChat() {
         name: memberNames,
         memberIds: contact.selected.value.map((m) => m.userId),
       })
-      notification.success('Zimmer(部屋)を作成しました')
+      notification.success(t('chat.create.roomCreated'))
       visible.value = false
       contact.reset()
       emit('created')
     }
   } catch {
-    notification.error('会話の作成に失敗しました')
+    notification.error(t('chat.create.conversationFailed'))
   } finally {
     startingChat.value = false
   }
@@ -147,7 +148,7 @@ async function onSubmitZimmer() {
       memberIds: zimmer.selected.value.map((m) => m.userId),
     })
     clearZimmerDraft()
-    notification.success('Zimmer(部屋)を作成しました')
+    notification.success(t('chat.create.roomCreated'))
     visible.value = false
     name.value = ''
     description.value = ''
@@ -155,7 +156,7 @@ async function onSubmitZimmer() {
     zimmer.reset()
     emit('created')
   } catch {
-    notification.error('Zimmer(部屋)の作成に失敗しました')
+    notification.error(t('chat.create.roomCreateFailed'))
   } finally {
     submitting.value = false
   }
@@ -181,25 +182,24 @@ watch(visible, (v) => {
 </script>
 
 <template>
-  <Dialog v-model:visible="visible" header="新しい会話を始める" modal class="w-full max-w-lg">
+  <Dialog v-model:visible="visible" :header="$t('chat.create.header')" modal class="w-full max-w-lg">
     <Tabs v-model:value="activeTab">
       <TabList>
-        <Tab :value="0"> <i class="pi pi-users mr-1" />連絡先から選ぶ </Tab>
-        <Tab :value="1"> <i class="pi pi-hashtag mr-1" />Zimmer(部屋)を作成 </Tab>
+        <Tab :value="0"> <i class="pi pi-users mr-1" />{{ $t('chat.create.tabContacts') }} </Tab>
+        <Tab :value="1"> <i class="pi pi-hashtag mr-1" />{{ $t('chat.create.tabCreateRoom') }} </Tab>
       </TabList>
 
       <TabPanels>
         <TabPanel :value="0">
           <div class="mt-3 flex flex-col gap-3">
-            <InputText v-model="contact.search.value" placeholder="名前で検索..." class="w-full" />
+            <InputText v-model="contact.search.value" :placeholder="$t('chat.create.searchByName')" class="w-full" />
             <ChatSelectedTags :members="contact.selected.value" @remove="contact.toggle" />
             <div
               v-if="contact.selected.value.length > 0"
               class="rounded-lg bg-surface-100 px-3 py-2 text-xs text-surface-600 dark:bg-surface-700 dark:text-surface-300"
             >
               <i class="pi pi-info-circle mr-1" />
-              {{ contact.selected.value.length }}人選択中 → <strong>{{ chatTypeLabel }}</strong
-              >として開始されます
+              {{ $t('chat.create.selectedSummary', { count: contact.selected.value.length, type: chatTypeLabel }) }}
             </div>
             <ChatMemberSelectList
               :members="contact.filtered.value"
@@ -209,9 +209,9 @@ watch(visible, (v) => {
             />
           </div>
           <div class="mt-4 flex justify-end gap-2">
-            <Button label="キャンセル" text @click="visible = false" />
+            <Button :label="$t('common.cancel')" text @click="visible = false" />
             <Button
-              :label="`${chatTypeLabel}を開始`"
+              :label="$t('chat.create.startAs', { type: chatTypeLabel })"
               :loading="startingChat"
               :disabled="contact.selected.value.length === 0"
               @click="startChat"
@@ -222,22 +222,22 @@ watch(visible, (v) => {
         <TabPanel :value="1">
           <div class="mt-3 flex flex-col gap-4">
             <div>
-              <label class="mb-1 block text-sm font-medium">Zimmer(部屋)名</label>
-              <InputText v-model="name" class="w-full" placeholder="例: general" />
+              <label class="mb-1 block text-sm font-medium">{{ $t('chat.create.roomName') }}</label>
+              <InputText v-model="name" class="w-full" :placeholder="$t('chat.create.roomNamePlaceholder')" />
             </div>
             <div>
-              <label class="mb-1 block text-sm font-medium">説明（任意）</label>
-              <InputText v-model="description" class="w-full" placeholder="Zimmer(部屋)の説明" />
+              <label class="mb-1 block text-sm font-medium">{{ $t('chat.create.descriptionOptional') }}</label>
+              <InputText v-model="description" class="w-full" :placeholder="$t('chat.create.descriptionPlaceholder')" />
             </div>
             <div class="flex items-center gap-2">
               <Checkbox v-model="isPrivate" :binary="true" input-id="private" />
-              <label for="private" class="text-sm">プライベートZimmer(部屋)（招待制）</label>
+              <label for="private" class="text-sm">{{ $t('chat.create.privateRoom') }}</label>
             </div>
             <div>
-              <label class="mb-1 block text-sm font-medium">メンバーを招待（任意）</label>
+              <label class="mb-1 block text-sm font-medium">{{ $t('chat.create.inviteMembersOptional') }}</label>
               <InputText
                 v-model="zimmer.search.value"
-                placeholder="名前で検索..."
+                :placeholder="$t('chat.create.searchByName')"
                 class="mb-2 w-full"
               />
               <ChatSelectedTags
@@ -256,9 +256,9 @@ watch(visible, (v) => {
             </div>
           </div>
           <div class="mt-4 flex justify-end gap-2">
-            <Button label="キャンセル" text @click="visible = false" />
+            <Button :label="$t('common.cancel')" text @click="visible = false" />
             <Button
-              label="作成"
+              :label="$t('chat.create.create')"
               :loading="submitting"
               :disabled="!name.trim()"
               @click="onSubmitZimmer"

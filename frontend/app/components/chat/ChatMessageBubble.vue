@@ -20,6 +20,8 @@ const emit = defineEmits<{
   reaction: [messageId: number, emoji: string]
   pin: [messageId: number]
   delete: [messageId: number]
+  /** 本人の投稿の編集（CMP-261105-1507。従来はメニューに出ても何も起きなかった） */
+  edit: [messageId: number]
   bookmark: [messageId: number]
   /** 招待カードの承諾（F04.12）。messageId でローカル差し替え対象を特定する */
   inviteJoin: [messageId: number, token: string]
@@ -71,6 +73,9 @@ function openContextMenu(x: number, y: number) {
   showContextMenu.value = true
 }
 
+/** この投稿を削除できるか（本人、または管理者として他人の投稿を削除できる場合） */
+const canDeleteThis = computed(() => Boolean(props.isMine || props.canDelete))
+
 /** コンテキストメニュー項目（権限に応じて出し分け） */
 const contextMenuItems = computed<ChatContextMenuItem[]>(() => {
   const items: ChatContextMenuItem[] = []
@@ -105,7 +110,7 @@ const contextMenuItems = computed<ChatContextMenuItem[]>(() => {
     icon: props.message.isBookmarked ? 'pi pi-bookmark-fill' : 'pi pi-bookmark',
   })
 
-  if (props.isMine || props.canDelete) {
+  if (canDeleteThis.value) {
     items.push({
       key: 'delete',
       label: t('chat.contextMenu.delete'),
@@ -142,6 +147,9 @@ function onContextMenuSelect(key: string) {
       break
     case 'delete':
       emit('delete', props.message.id)
+      break
+    case 'edit':
+      emit('edit', props.message.id)
       break
     default:
       break
@@ -180,8 +188,12 @@ const indentStyle = computed(() => {
     </div>
 
     <!-- 削除済み -->
-    <div v-else-if="message.isDeleted" class="py-1 text-sm italic text-surface-400">
-      このメッセージは削除されました
+    <div
+      v-else-if="message.isDeleted"
+      class="py-1 text-sm italic text-surface-400"
+      data-testid="chat-message-deleted"
+    >
+      {{ $t('chat.message.deleted') }}
     </div>
 
     <!-- 招待カード（F04.12） -->
@@ -194,7 +206,7 @@ const indentStyle = computed(() => {
       />
       <div class="min-w-0 flex-1">
         <div class="flex items-baseline gap-2">
-          <span class="text-sm font-semibold">{{ message.sender?.displayName || '不明' }}</span>
+          <span class="text-sm font-semibold">{{ message.sender?.displayName || $t('chat.message.unknownSender') }}</span>
           <span class="text-xs text-surface-400">{{ relativeTime(message.createdAt) }}</span>
         </div>
         <ChatInviteCard
@@ -223,9 +235,9 @@ const indentStyle = computed(() => {
         />
         <div class="min-w-0 flex-1">
           <div class="flex items-baseline gap-2">
-            <span class="text-sm font-semibold">{{ message.sender?.displayName || '不明' }}</span>
+            <span class="text-sm font-semibold">{{ message.sender?.displayName || $t('chat.message.unknownSender') }}</span>
             <span class="text-xs text-surface-400">{{ relativeTime(message.createdAt) }}</span>
-            <span v-if="message.isEdited" class="text-xs text-surface-300">(編集済み)</span>
+            <span v-if="message.isEdited" class="text-xs text-surface-300">{{ $t('chat.message.edited') }}</span>
             <i v-if="message.isPinned" class="pi pi-thumbtack text-xs text-amber-500" />
           </div>
 
@@ -317,8 +329,9 @@ const indentStyle = computed(() => {
           <i class="pi pi-thumbtack text-xs" />
         </button>
         <button
-          v-if="canDelete"
+          v-if="canDeleteThis"
           class="p-1.5 text-surface-400 hover:text-red-500"
+          data-testid="chat-message-delete"
           :title="$t('chat.contextMenu.delete')"
           @click="emit('delete', message.id)"
         >
@@ -327,7 +340,7 @@ const indentStyle = computed(() => {
         <!-- ⋯ ボタン（コンテキストメニュー表示） -->
         <button
           class="p-1.5 text-surface-400 dark:text-surface-500 hover:text-surface-600 dark:hover:text-surface-300"
-          title="その他"
+          :title="$t('common.moreActions')"
           @click.stop="openContextMenu($event.clientX, $event.clientY)"
         >
           <i class="pi pi-ellipsis-h text-xs" />

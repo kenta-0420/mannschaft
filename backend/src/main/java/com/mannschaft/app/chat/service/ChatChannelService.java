@@ -522,11 +522,12 @@ public class ChatChannelService {
     @Transactional
     public ChannelResponse inviteToZimmer(Long channelId, Long callerId, InviteToZimmerRequest request) {
         ChatChannelEntity kabine = findChannelOrThrow(channelId);
+        // 当事者確認を種別判定より先に行う（種別の差で他人のチャンネルの実在が漏れないため・CMP-261105-1507）。
+        channelAccessGuard.requireMembershipRowOrConceal(kabine, callerId, ChatErrorCode.CHANNEL_NOT_FOUND);
 
         if (kabine.getChannelType() != ChannelType.DM) {
             throw new BusinessException(ChatErrorCode.CHANNEL_NOT_DM);
         }
-        channelAccessGuard.requireChannelMember(channelId, callerId);
 
         // 新しいZimmer（GROUP_DM）を作成
         ChatChannelEntity zimmer = ChatChannelEntity.builder()
@@ -735,8 +736,12 @@ public class ChatChannelService {
         ChatChannelEntity channel = findChannelOrThrow(channelId);
 
         // per-scope 認可: SYSTEM_ADMIN 短絡 → そのチャンネルのチーム ADMIN/DEPUTY_ADMIN 必須。
-        if (!accessControlService.isSystemAdmin(userId)) {
-            accessControlService.checkAdminOrAbove(userId, channel.getTeamId(), "TEAM");
+        // 存在を知り得ない利用者（他チーム・他人の DM 等）への拒否は不在と同一応答（CMP-261105-1507）。
+        if (!accessControlService.isSystemAdmin(userId)
+                && !(channel.getTeamId() != null
+                        && accessControlService.isAdminOrAbove(userId, channel.getTeamId(), "TEAM"))) {
+            throw channelAccessGuard.concealOrForbid(
+                    channel, userId, ChatErrorCode.CHANNEL_NOT_FOUND, CommonErrorCode.COMMON_002);
         }
 
         // TEAM_PUBLIC / TEAM_PRIVATE チャンネルのみ設定可能

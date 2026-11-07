@@ -67,7 +67,7 @@ public class ChatMemberService {
         ChatChannelEntity channel = channelService.findChannelOrThrow(channelId);
         // 操作者が当該チャンネルの OWNER / ADMIN であることを保証する（一般 MEMBER によるメンバー追加を禁止）。
         channelAccessGuard.requireChannelManagerRole(
-                channelId, operatorUserId, ChatErrorCode.CHANNEL_ACCESS_DENIED);
+                channel, operatorUserId, ChatErrorCode.CHANNEL_ACCESS_DENIED);
 
         requireScopeMembership(channel, request.getUserIds());
 
@@ -121,11 +121,12 @@ public class ChatMemberService {
     public void removeMember(Long channelId, Long userId, Long operatorUserId) {
         // 他人を除外する場合は OWNER / ADMIN のみ許可する（一般 MEMBER によるキックを禁止）。
         // 自分自身の退出は当該チャンネルのメンバーであることのみを要する。
+        ChatChannelEntity channel = channelService.findChannelOrThrow(channelId);
         if (!operatorUserId.equals(userId)) {
             channelAccessGuard.requireChannelManagerRole(
-                    channelId, operatorUserId, ChatErrorCode.CHANNEL_ACCESS_DENIED);
+                    channel, operatorUserId, ChatErrorCode.CHANNEL_ACCESS_DENIED);
         } else {
-            channelAccessGuard.requireChannelMember(channelId, operatorUserId);
+            channelAccessGuard.requireMembershipRowOrConceal(channel, operatorUserId, ChatErrorCode.CHANNEL_NOT_FOUND);
         }
         ChatChannelMemberEntity member = findMemberOrThrow(channelId, userId);
         if (member.getRole() == ChannelMemberRole.OWNER) {
@@ -197,8 +198,9 @@ public class ChatMemberService {
     public MemberResponse changeRole(Long channelId, Long targetUserId, ChangeRoleRequest request, Long operatorUserId) {
         // 操作者が当該チャンネルの OWNER / ADMIN であることを保証する
         //（一般 MEMBER による権限昇格・他人のロール変更を禁止）。
+        ChatChannelEntity channel = channelService.findChannelOrThrow(channelId);
         channelAccessGuard.requireChannelManagerRole(
-                channelId, operatorUserId, ChatErrorCode.CHANNEL_ACCESS_DENIED);
+                channel, operatorUserId, ChatErrorCode.CHANNEL_ACCESS_DENIED);
 
         ChatChannelMemberEntity member = findMemberOrThrow(channelId, targetUserId);
         ChannelMemberRole newRole = EnumInputParser.parse(ChannelMemberRole.class, request.getRole(), "role");
@@ -297,20 +299,35 @@ public class ChatMemberService {
             return;
         }
         // DM / GROUP_DM / 非公開チャンネルは招待制。自己参加は認めない。
+        // 存在を知り得ない利用者（他人の DM・非公開チャンネルの部外者）への拒否は不在と同一応答（CMP-261105-1507）。
         if (!channelType.isSelfJoinableScopeChannel() || Boolean.TRUE.equals(channel.getIsPrivate())) {
-            throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
+            throw channelAccessGuard.concealOrForbid(
+                    channel, userId, ChatErrorCode.CHANNEL_NOT_FOUND, ChatErrorCode.CHANNEL_ACCESS_DENIED);
         }
         // 公開チャンネルは「スコープ内に対する公開」。当該チーム/組織のメンバーであることを要求する。
         if (channel.getTeamId() != null) {
-            requireActiveMembershipForUpdate(userId, ScopeType.TEAM, channel.getTeamId());
+            requireActiveScopeMemberOrConceal(channel, userId, ScopeType.TEAM, channel.getTeamId());
             return;
         }
         if (channel.getOrganizationId() != null) {
-            requireActiveMembershipForUpdate(userId, ScopeType.ORGANIZATION, channel.getOrganizationId());
+            requireActiveScopeMemberOrConceal(channel, userId, ScopeType.ORGANIZATION, channel.getOrganizationId());
             return;
         }
         // 公開種別なのにスコープが無いチャンネルは所属を検証できない。安全側に倒して拒否する。
-        throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
+        throw channelAccessGuard.concealOrForbid(
+                channel, userId, ChatErrorCode.CHANNEL_NOT_FOUND, ChatErrorCode.CHANNEL_ACCESS_DENIED);
+    }
+
+    /**
+     * 自己参加の前提となるスコープ在籍を、離脱処理と同じロックを取って確認する。
+     * 在籍していない利用者のうち、チャンネルの存在を知り得ない者（他スコープの利用者）への拒否は不在と同一応答にする。
+     */
+    private void requireActiveScopeMemberOrConceal(ChatChannelEntity channel, Long userId,
+                                                   ScopeType scopeType, Long scopeId) {
+        if (!membershipService.isActiveMemberForUpdate(userId, scopeType, scopeId)) {
+            throw channelAccessGuard.concealOrForbid(
+                    channel, userId, ChatErrorCode.CHANNEL_NOT_FOUND, CommonErrorCode.COMMON_002);
+        }
     }
 
     private ChatChannelMemberEntity findMemberOrThrow(Long channelId, Long userId) {

@@ -140,6 +140,20 @@ export const useChatTabsStore = defineStore('chatTabs', () => {
   }
 
   /**
+   * 既読化に成功したチャンネルのタブの未読数を 0 にする（CMP-261105-1507）。
+   * 未読数は永続化対象ではない（復元時に API から取り直す）ため localStorage は更新しない。
+   *
+   * @param channelId 既読になったチャンネル ID
+   */
+  function markChannelReadLocally(channelId: number): void {
+    for (const tab of tabs.value) {
+      if (tab.channelId === channelId && tab.channel.viewer) {
+        tab.channel.viewer.unreadCount = 0
+      }
+    }
+  }
+
+  /**
    * 全タブを閉じ、localStorage から永続化データも削除する。
    */
   function closeAllTabs(): void {
@@ -223,6 +237,7 @@ export const useChatTabsStore = defineStore('chatTabs', () => {
     closeOtherTabs,
     closeRightTabs,
     closeTabsByChannelId,
+    markChannelReadLocally,
     switchTab,
     clearAll,
     closeAllTabs,

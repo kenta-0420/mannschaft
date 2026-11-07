@@ -10,6 +10,8 @@ import com.mannschaft.app.chat.entity.ChatMessageEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -25,6 +27,13 @@ import java.util.function.BooleanSupplier;
  *
  * <p>本クラスはリポジトリと {@link AccessControlService} のみに依存し、チャットの業務サービスには
  * 依存しない。循環依存を作らずに全経路が同一の判定を通ることを保証するための構成である。</p>
+ *
+ * <h2>存在秘匿（CMP-261105-1507・docs/security/01_authorization_baseline.md §3.3.2）</h2>
+ * <p>チャンネル ID・メッセージ ID を指定する EP で、<b>そのチャンネルの存在を知り得ない利用者</b>への拒否は、
+ * 不在 ID への応答（{@link ChatErrorCode#CHANNEL_NOT_FOUND} / {@link ChatErrorCode#MESSAGE_NOT_FOUND}）と
+ * status・{@code error.code}・{@code error.message} まで完全に一致させる。存在を知り得る利用者
+ * （{@link #isAwareOfChannel}）への拒否だけを 403 とする。判定は<b>拒否経路でのみ</b>追加クエリを撃ち、
+ * 許可経路のクエリ回数は変えない（{@link com.mannschaft.app.common.ScopeConcealingAccessGate} と同じ流儀）。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -32,6 +41,9 @@ public class ChatChannelAccessGuard {
 
     private final ChatChannelMemberRepository memberRepository;
     private final AccessControlService accessControlService;
+
+    /** F04.2 §2: DEPUTY_ADMIN にチャンネル管理・メッセージ削除を許す権限名。 */
+    static final String MANAGE_CHAT_PERMISSION = "MANAGE_CHAT";
 
     /**
      * メンバーシップ管理種別（{@link ChannelType#isMembershipGated()}）のチャンネルについて、
@@ -42,41 +54,113 @@ public class ChatChannelAccessGuard {
      * {@code TournamentContactAccessService}）で認可される。本メソッドはその区別を
      * {@link ChannelType#isMembershipGated()} に委ねる。</p>
      *
-     * @throws BusinessException メンバーでない場合（{@link ChatErrorCode#CHANNEL_ACCESS_DENIED}）
+     * @throws BusinessException 存在を知り得ない利用者なら {@link ChatErrorCode#CHANNEL_NOT_FOUND}（不在と同一）、
+     *                           知り得るが未参加なら {@link ChatErrorCode#CHANNEL_ACCESS_DENIED}
      */
     public void requireChannelMembership(ChatChannelEntity channel, Long userId) {
         if (!channel.getChannelType().isMembershipGated()) {
             return;
         }
-        requireMembershipRow(channel.getId(), userId);
+        requireMembershipRowOrConceal(channel, userId, ChatErrorCode.CHANNEL_NOT_FOUND);
     }
 
     /**
-     * 種別を問わず、呼出ユーザーが当該チャンネルの現役メンバーであることを保証する。
+     * 種別を問わず、呼出ユーザーが当該チャンネルの現役メンバー（{@code chat_channel_members} 行あり）で
+     * あることを保証する。拒否は存在秘匿つきで作り分ける。
      *
-     * <p>DM からの Zimmer 招待のように「メンバーシップ行の存在そのものが操作の前提」となる経路で用いる。</p>
-     *
-     * @throws BusinessException メンバーでない場合（{@link ChatErrorCode#CHANNEL_ACCESS_DENIED}）
+     * @param channel      対象チャンネル（生存確認済み）
+     * @param userId       呼出ユーザー ID
+     * @param notFoundCode 当該 EP の不在コード（チャンネル ID 指定なら CHANNEL_NOT_FOUND、
+     *                     メッセージ ID 指定なら MESSAGE_NOT_FOUND）
+     * @throws BusinessException 存在を知り得ない利用者なら {@code notFoundCode}、
+     *                           知り得るが未参加なら {@link ChatErrorCode#CHANNEL_ACCESS_DENIED}
      */
-    public void requireChannelMember(Long channelId, Long userId) {
-        requireMembershipRow(channelId, userId);
+    public void requireMembershipRowOrConceal(ChatChannelEntity channel, Long userId, ErrorCode notFoundCode) {
+        if (userId != null && memberRepository.existsByChannelIdAndUserId(channel.getId(), userId)) {
+            return;
+        }
+        throw concealOrForbid(channel, userId, notFoundCode, ChatErrorCode.CHANNEL_ACCESS_DENIED);
+    }
+
+    /**
+     * 拒否が確定した後に、越境（存在を知り得ない）か権限不足（存在を知り得る）かを作り分けた例外を返す。
+     *
+     * <p>拒否経路でのみ呼ぶこと（{@link #isAwareOfChannel} は追加クエリを撃つ）。</p>
+     *
+     * @param channel       対象チャンネル
+     * @param userId        呼出ユーザー ID
+     * @param notFoundCode  不在時に投げるコードそのもの（専用コードを新設しない）
+     * @param forbiddenCode 存在を知り得る利用者に返す 403 コード
+     * @return 投げるべき例外
+     */
+    public BusinessException concealOrForbid(ChatChannelEntity channel, Long userId,
+                                             ErrorCode notFoundCode, ErrorCode forbiddenCode) {
+        if (isAwareOfChannel(channel, userId)) {
+            return new BusinessException(forbiddenCode);
+        }
+        return new BusinessException(notFoundCode);
+    }
+
+    /**
+     * 呼出ユーザーがチャンネルの<b>存在を知り得る</b>かを判定する（F04.2 §5「チャンネルメンバーシップの可視性」）。
+     *
+     * <ul>
+     *   <li>当該チャンネルのメンバー（{@code chat_channel_members} 行あり）</li>
+     *   <li>SYSTEM_ADMIN（全チャンネルのモデレーション権限を持つ）</li>
+     *   <li>スコープチャンネルのスコープ（チーム/組織）の ADMIN / DEPUTY_ADMIN（スコープ内の全チャンネルを管理する）</li>
+     *   <li>公開スコープチャンネル（{@code TEAM_PUBLIC} / {@code ORG_PUBLIC} かつ非 private）のスコープ所属者
+     *       （参加を促す UI のため非メンバーにも存在が見える）</li>
+     * </ul>
+     * <p>上記以外（他人の DM・グループ DM、非公開チャンネルの非メンバー、他スコープの利用者、
+     * 村ロビー・イベント・大会チャットの非該当者）は存在を知り得ない。</p>
+     */
+    public boolean isAwareOfChannel(ChatChannelEntity channel, Long userId) {
+        if (userId == null) {
+            return false;
+        }
+        if (memberRepository.existsByChannelIdAndUserId(channel.getId(), userId)) {
+            return true;
+        }
+        if (accessControlService.isSystemAdmin(userId)) {
+            return true;
+        }
+        if (!channel.getChannelType().isScopeChannel()) {
+            return false;
+        }
+        if (isScopeAdmin(channel, userId)) {
+            return true;
+        }
+        boolean publicChannel = channel.getChannelType().isSelfJoinableScopeChannel()
+                && !Boolean.TRUE.equals(channel.getIsPrivate());
+        if (!publicChannel) {
+            return false;
+        }
+        if (channel.getTeamId() != null) {
+            return accessControlService.isMember(userId, channel.getTeamId(), "TEAM");
+        }
+        if (channel.getOrganizationId() != null) {
+            return accessControlService.isMember(userId, channel.getOrganizationId(), "ORGANIZATION");
+        }
+        return false;
     }
 
     /**
      * チャンネル内の管理操作（メンバー追加・除外・ロール変更・アイコン変更）について、
      * 呼出ユーザーが当該チャンネルの OWNER または ADMIN であることを保証する。
      *
-     * @param channelId  対象チャンネル ID
+     * @param channel        対象チャンネル（生存確認済み）
      * @param operatorUserId 操作者ユーザー ID
-     * @param deniedCode 拒否時に用いるエラーコード（経路ごとの API 契約に合わせる）
+     * @param deniedCode     存在を知り得る利用者への拒否コード（経路ごとの API 契約に合わせる）
      * @return 操作者のメンバー行
-     * @throws BusinessException メンバーでない、または権限が不足する場合
+     * @throws BusinessException 存在を知り得ない利用者なら {@link ChatErrorCode#CHANNEL_NOT_FOUND}（不在と同一）、
+     *                           知り得るが権限が不足する場合は {@code deniedCode}
      */
-    public ChatChannelMemberEntity requireChannelManagerRole(Long channelId, Long operatorUserId,
+    public ChatChannelMemberEntity requireChannelManagerRole(ChatChannelEntity channel, Long operatorUserId,
                                                              ChatErrorCode deniedCode) {
         ChatChannelMemberEntity operator = memberRepository
-                .findByChannelIdAndUserId(channelId, operatorUserId)
-                .orElseThrow(() -> new BusinessException(deniedCode));
+                .findByChannelIdAndUserId(channel.getId(), operatorUserId)
+                .orElseThrow(() -> concealOrForbid(channel, operatorUserId,
+                        ChatErrorCode.CHANNEL_NOT_FOUND, deniedCode));
         ChannelMemberRole role = operator.getRole();
         if (role != ChannelMemberRole.OWNER && role != ChannelMemberRole.ADMIN) {
             throw new BusinessException(deniedCode);
@@ -92,19 +176,83 @@ public class ChatChannelAccessGuard {
         if (accessControlService.isSystemAdmin(userId)) {
             return;
         }
-        if (channel.getTeamId() != null) {
-            accessControlService.checkAdminOrAbove(userId, channel.getTeamId(), "TEAM");
-            return;
-        }
-        if (channel.getOrganizationId() != null) {
-            accessControlService.checkAdminOrAbove(userId, channel.getOrganizationId(), "ORGANIZATION");
-            return;
+        if (channel.getTeamId() != null || channel.getOrganizationId() != null) {
+            if (isScopeAdmin(channel, userId)) {
+                return;
+            }
+            // 越境は不在と同一（CHANNEL_NOT_FOUND）、存在を知り得る利用者の権限不足は従来どおり COMMON_002。
+            throw concealOrForbid(channel, userId, ChatErrorCode.CHANNEL_NOT_FOUND, CommonErrorCode.COMMON_002);
         }
         ChatChannelMemberEntity member = memberRepository.findByChannelIdAndUserId(channel.getId(), userId)
-                .orElseThrow(() -> new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED));
+                .orElseThrow(() -> new BusinessException(ChatErrorCode.CHANNEL_NOT_FOUND));
         if (member.getRole() != ChannelMemberRole.OWNER) {
             throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
         }
+    }
+
+    /**
+     * チャンネルのスコープ（チーム優先・無ければ組織）の ADMIN / DEPUTY_ADMIN かを判定する。
+     */
+    public boolean isScopeAdmin(ChatChannelEntity channel, Long userId) {
+        if (channel.getTeamId() != null) {
+            return accessControlService.isAdminOrAbove(userId, channel.getTeamId(), "TEAM");
+        }
+        if (channel.getOrganizationId() != null) {
+            return accessControlService.isAdminOrAbove(userId, channel.getOrganizationId(), "ORGANIZATION");
+        }
+        return false;
+    }
+
+    /**
+     * メッセージ削除の認可（F04.2 §5「メッセージ削除権限」・§2 対象ロール）を保証する。
+     *
+     * <p>許可主体: 投稿者本人 / SYSTEM_ADMIN / チャンネルの OWNER・ADMIN /
+     * チャンネルのスコープ（チーム・組織）の ADMIN、または {@code MANAGE_CHAT} 権限を持つ DEPUTY_ADMIN。</p>
+     *
+     * @param channel メッセージが属するチャンネル（生存確認済み）
+     * @param message 対象メッセージ
+     * @param userId  操作者
+     * @return 投稿者本人以外による削除（モデレーション削除）なら true
+     * @throws BusinessException 存在を知り得ない利用者なら {@link ChatErrorCode#MESSAGE_NOT_FOUND}（不在と同一）、
+     *                           知り得るが権限が無い場合は {@link ChatErrorCode#MESSAGE_DELETE_DENIED}
+     */
+    public boolean requireMessageDeletable(ChatChannelEntity channel, ChatMessageEntity message, Long userId) {
+        if (userId != null && userId.equals(message.getSenderId())) {
+            return false;
+        }
+        if (userId != null && canModerateMessages(channel, userId)) {
+            return true;
+        }
+        throw concealOrForbid(channel, userId, ChatErrorCode.MESSAGE_NOT_FOUND, ChatErrorCode.MESSAGE_DELETE_DENIED);
+    }
+
+    /**
+     * 呼出ユーザーが当該チャンネルのメッセージをモデレーション（他人のメッセージの削除）できるかを判定する。
+     * 判定材料はチャンネル実体のスコープとメンバー行のみで、リクエストの申告値は使わない。
+     */
+    public boolean canModerateMessages(ChatChannelEntity channel, Long userId) {
+        if (userId == null) {
+            return false;
+        }
+        if (accessControlService.isSystemAdmin(userId)) {
+            return true;
+        }
+        var member = memberRepository.findByChannelIdAndUserId(channel.getId(), userId);
+        if (member.isPresent()) {
+            ChannelMemberRole role = member.get().getRole();
+            if (role == ChannelMemberRole.OWNER || role == ChannelMemberRole.ADMIN) {
+                return true;
+            }
+        }
+        if (channel.getTeamId() != null) {
+            return accessControlService.hasAdminOrPermissionInScope(
+                    userId, channel.getTeamId(), "TEAM", MANAGE_CHAT_PERMISSION);
+        }
+        if (channel.getOrganizationId() != null) {
+            return accessControlService.hasAdminOrPermissionInScope(
+                    userId, channel.getOrganizationId(), "ORGANIZATION", MANAGE_CHAT_PERMISSION);
+        }
+        return false;
     }
 
     /**
@@ -194,17 +342,13 @@ public class ChatChannelAccessGuard {
      * <p>判定は引数で渡された channelId 等ではなく、取得済みメッセージエンティティの
      * {@code senderId} に基づく。</p>
      *
-     * @throws BusinessException 送信者本人でない場合（{@link ChatErrorCode#MESSAGE_EDIT_DENIED}）
+     * @throws BusinessException 送信者本人でない場合。チャンネルの存在を知り得ない利用者なら
+     *                           {@link ChatErrorCode#MESSAGE_NOT_FOUND}（不在と同一）、知り得るなら
+     *                           {@link ChatErrorCode#MESSAGE_EDIT_DENIED}
      */
-    public void requireMessageOwner(ChatMessageEntity message, Long userId) {
+    public void requireMessageOwner(ChatChannelEntity channel, ChatMessageEntity message, Long userId) {
         if (userId == null || !userId.equals(message.getSenderId())) {
-            throw new BusinessException(ChatErrorCode.MESSAGE_EDIT_DENIED);
-        }
-    }
-
-    private void requireMembershipRow(Long channelId, Long userId) {
-        if (userId == null || !memberRepository.existsByChannelIdAndUserId(channelId, userId)) {
-            throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
+            throw concealOrForbid(channel, userId, ChatErrorCode.MESSAGE_NOT_FOUND, ChatErrorCode.MESSAGE_EDIT_DENIED);
         }
     }
 }

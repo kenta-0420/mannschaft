@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ChatMessageResponse } from '~/types/chat'
 
-defineProps<{
+const props = defineProps<{
   messages: ChatMessageResponse[]
   loading: boolean
   hasMore: boolean
@@ -17,11 +17,20 @@ const emit = defineEmits<{
   reaction: [messageId: number, emoji: string]
   pin: [messageId: number]
   delete: [messageId: number]
+  edit: [messageId: number]
   bookmark: [messageId: number]
   reply: [messageId: number]
   inviteJoin: [messageId: number, token: string]
   inviteDecline: [messageId: number, token: string]
 }>()
+
+const authStore = useAuthStore()
+
+/** ログイン中ユーザー本人の投稿か（編集・削除の出し分け用・CMP-261105-1507） */
+function isMine(message: ChatMessageResponse): boolean {
+  const me = authStore.user?.id
+  return me != null && message.sender?.id === me
+}
 
 const scrollContainer = ref<HTMLElement | null>(null)
 
@@ -32,7 +41,7 @@ defineExpose({ scrollContainer })
   <div ref="scrollContainer" class="flex-1 overflow-y-auto">
     <div v-if="hasMore" class="flex justify-center py-2">
       <Button
-        label="過去のメッセージを読み込む"
+        :label="$t('chat.message.loadOlder')"
         text
         size="small"
         :loading="loading"
@@ -44,11 +53,13 @@ defineExpose({ scrollContainer })
       :key="msg.id"
       :message="msg"
       :can-pin="canPin"
-      :can-delete="canDelete"
+      :can-delete="props.canDelete"
+      :is-mine="isMine(msg)"
       :pending-invite-token="pendingInviteToken"
       @reaction="(messageId: number, emoji: string) => emit('reaction', messageId, emoji)"
       @pin="(messageId: number) => emit('pin', messageId)"
       @delete="(messageId: number) => emit('delete', messageId)"
+      @edit="(messageId: number) => emit('edit', messageId)"
       @bookmark="(messageId: number) => emit('bookmark', messageId)"
       @reply="(messageId: number) => emit('reply', messageId)"
       @invite-join="(messageId: number, token: string) => emit('inviteJoin', messageId, token)"
@@ -57,7 +68,7 @@ defineExpose({ scrollContainer })
     <DashboardEmptyState
       v-if="messages.length === 0 && !loading"
       icon="pi pi-comments"
-      message="まだメッセージがありません"
+      :message="$t('chat.message.empty')"
     />
   </div>
 </template>

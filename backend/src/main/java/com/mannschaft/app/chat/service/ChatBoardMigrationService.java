@@ -48,6 +48,7 @@ public class ChatBoardMigrationService {
     private final BulletinThreadService bulletinThreadService;
     private final ChatMessageService chatMessageService;
     private final ChatChannelMemberRepository memberRepository;
+    private final ChatChannelAccessGuard channelAccessGuard;
 
     /**
      * チャットスレッドを掲示板スレッドに移行する。
@@ -74,10 +75,9 @@ public class ChatBoardMigrationService {
         ChatMessageEntity root = messageRepository.findById(rootMessageId)
                 .orElseThrow(() -> new BusinessException(ChatErrorCode.MESSAGE_NOT_FOUND));
 
-        // チャンネルメンバーシップ確認
-        if (!memberRepository.existsByChannelIdAndUserId(root.getChannelId(), requesterId)) {
-            throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
-        }
+        // チャンネルメンバーシップ確認（存在を知り得ない利用者は不在メッセージと同一応答・CMP-261105-1507）
+        channelAccessGuard.requireMembershipRowOrConceal(
+                chatMessageService.findChannelOfMessage(root), requesterId, ChatErrorCode.MESSAGE_NOT_FOUND);
 
         // 本文の構築（コピーあり: チャット履歴を引用形式で結合）
         String body = buildBoardBody(root, copyHistory);

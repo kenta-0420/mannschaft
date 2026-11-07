@@ -59,6 +59,11 @@ public class ChatMembershipInviteCardService {
                 .orElseThrow(() -> new BusinessException(
                         ChatErrorCode.CHANNEL_NOT_FOUND, HttpStatus.NOT_FOUND));
 
+        // 当事者でなければ、種別の判定より先に不在と同一応答で拒否する（種別の差で実在が漏れないため・CMP-261105-1507）。
+        if (actorUserId == null || !memberRepository.existsByChannelIdAndUserId(channelId, actorUserId)) {
+            throw new BusinessException(ChatErrorCode.CHANNEL_NOT_FOUND, HttpStatus.NOT_FOUND);
+        }
+
         // GROUP_DM を含め DM 以外は招待の入口にできない（isDm() は GROUP_DM も true のため厳密比較する）。
         if (channel.getChannelType() != ChannelType.DM) {
             throw new BusinessException(ChatErrorCode.CHANNEL_NOT_DM, HttpStatus.UNPROCESSABLE_ENTITY);
@@ -69,12 +74,6 @@ public class ChatMembershipInviteCardService {
         if (members.size() != 2) {
             // DM は 2 レコード固定。2 名でなければ宛先を一意に導出できない。
             throw new BusinessException(ChatErrorCode.CHANNEL_NOT_DM, HttpStatus.UNPROCESSABLE_ENTITY);
-        }
-
-        boolean actorIsMember = members.stream()
-                .anyMatch(m -> actorUserId.equals(m.getUserId()));
-        if (!actorIsMember) {
-            throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED, HttpStatus.FORBIDDEN);
         }
 
         return members.stream()

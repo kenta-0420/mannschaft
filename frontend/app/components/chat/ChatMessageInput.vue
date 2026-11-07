@@ -13,6 +13,7 @@ const emit = defineEmits<{
 
 const { sendMessage } = useChatApi()
 const { showError } = useNotification()
+const { t } = useI18n()
 
 const body = ref('')
 const sending = ref(false)
@@ -25,7 +26,7 @@ async function onSend() {
     body.value = ''
     emit('sent')
   } catch {
-    showError('メッセージの送信に失敗しました')
+    showError(t('chat.message.sendFailed'))
   } finally {
     sending.value = false
   }
@@ -44,7 +45,7 @@ function onKeydown(event: KeyboardEvent) {
     <div class="flex items-end gap-2">
       <Textarea
         v-model="body"
-        :placeholder="disabled ? 'このZimmer(部屋)には投稿できません' : 'メッセージを入力...'"
+        :placeholder="disabled ? $t('chat.message.inputDisabled') : $t('chat.message.inputPlaceholder')"
         auto-resize
         rows="1"
         class="flex-1"

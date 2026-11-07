@@ -39,7 +39,7 @@ public class ChatBookmarkService {
         var message = messageService.findMessageOrThrow(request.getMessageId());
         // F08.7.1: 大会/ディビジョン連絡チャットは閲覧権限（canView）が無ければブックマーク不可
         //（非権限者が非公開チャンネルのメッセージを参照・追跡できないよう塞ぐ）。通常チャンネルは no-op。
-        messageService.checkChannelViewAccess(message.getChannelId(), userId);
+        messageService.checkMessageViewAccess(message, userId);
 
         if (bookmarkRepository.existsByUserIdAndMessageId(userId, request.getMessageId())) {
             throw new BusinessException(ChatErrorCode.BOOKMARK_ALREADY_EXISTS);
