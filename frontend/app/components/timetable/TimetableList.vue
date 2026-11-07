@@ -35,7 +35,7 @@ const emit = defineEmits<{
     <Column field="name" :header="$t('timetable.timetable_name')" />
     <Column field="termName" :header="$t('timetable.term')" />
     <Column field="effectiveFrom" :header="$t('timetable.effective_from')" />
-    <Column :header="$t('common.label.status')">
+    <Column :header="$t('label.status')">
       <template #body="{ data }">
         <Badge
           :value="statusLabel(data.status)"
@@ -43,7 +43,7 @@ const emit = defineEmits<{
         />
       </template>
     </Column>
-    <Column v-if="canManage" :header="$t('common.label.actions')" style="width: 200px">
+    <Column v-if="canManage" :header="$t('label.actions')" style="width: 200px">
       <template #body="{ data }">
         <div class="flex gap-1">
           <Button
