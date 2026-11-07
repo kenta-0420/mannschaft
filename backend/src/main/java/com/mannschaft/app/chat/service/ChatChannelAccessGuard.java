@@ -66,9 +66,6 @@ public class ChatChannelAccessGuard {
     /** 裏目付A: {@code VILLAGE_LOBBY} の閲覧・投稿認可を village ドメインの正準判定へ委譲する。 */
     private final PostingIdentityService postingIdentityService;
 
-    /** F04.2 §2: DEPUTY_ADMIN にチャンネル管理・メッセージ削除を許す権限名。 */
-    static final String MANAGE_CHAT_PERMISSION = "MANAGE_CHAT";
-
     // ═════════════════════════════════════════════════════════════════════
     // パッケージ外（Controller）向け: ID を受け取る判定
     // ═════════════════════════════════════════════════════════════════════
@@ -428,8 +425,12 @@ public class ChatChannelAccessGuard {
     /**
      * メッセージ削除の認可（F04.2 §5「メッセージ削除権限」・§2 対象ロール）を保証する。
      *
-     * <p>許可主体: 投稿者本人 / SYSTEM_ADMIN / チャンネルの OWNER・ADMIN /
-     * チャンネルのスコープ（チーム・組織）の ADMIN、または {@code MANAGE_CHAT} 権限を持つ DEPUTY_ADMIN。</p>
+     * <p>許可主体: 投稿者本人 / SYSTEM_ADMIN / チャンネルの OWNER・ADMIN / チャンネルのスコープ（チーム・組織）の ADMIN。</p>
+     *
+     * <p><b>DEPUTY_ADMIN は含めない</b>: F04.2 §2 は {@code MANAGE_CHAT} 権限を持つ DEPUTY_ADMIN にも削除を許すが、
+     * その権限は権限カタログに未登録である（登録は別戦役 CMP-261107-2134）。未登録の権限名で判定すると誰にも付与できず
+     * 番人 {@code PermissionNameCatalogGuardTest} も拒むため、登録されるまで DEPUTY_ADMIN による他人の投稿の削除は許さない。
+     * CMP-261107-2134 で {@code hasAdminOrPermissionInScope(..., "MANAGE_CHAT")} の判定へ広げる。</p>
      *
      * @return 投稿者本人以外による削除（モデレーション削除）なら true
      * @throws BusinessException 存在を知り得ない利用者なら {@link ChatErrorCode#MESSAGE_NOT_FOUND}（不在と同一）、
@@ -463,13 +464,12 @@ public class ChatChannelAccessGuard {
                 return true;
             }
         }
+        // スコープ ADMIN のみ（DEPUTY_ADMIN は MANAGE_CHAT 登録後の CMP-261107-2134 で広げる）。
         if (channel.getTeamId() != null) {
-            return accessControlService.hasAdminOrPermissionInScope(
-                    userId, channel.getTeamId(), "TEAM", MANAGE_CHAT_PERMISSION);
+            return accessControlService.isAdmin(userId, channel.getTeamId(), "TEAM");
         }
         if (channel.getOrganizationId() != null) {
-            return accessControlService.hasAdminOrPermissionInScope(
-                    userId, channel.getOrganizationId(), "ORGANIZATION", MANAGE_CHAT_PERMISSION);
+            return accessControlService.isAdmin(userId, channel.getOrganizationId(), "ORGANIZATION");
         }
         return false;
     }

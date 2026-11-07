@@ -324,7 +324,7 @@ public class ChatChannelService {
      *
      * @param channelId チャンネルID
      * @param request   更新リクエスト
-     * @param userId    操作ユーザーID（認可チェック用）
+     * @param userId    操作ユーザーID（監査ログ等に使う。認可は ChatChannelFacade で済んでいる）
      * @return 更新されたチャンネルレスポンス
      */
     @Transactional
@@ -356,7 +356,7 @@ public class ChatChannelService {
      * チャンネルを削除する（論理削除）。
      *
      * @param channelId チャンネルID
-     * @param userId    操作ユーザーID（認可チェック用）
+     * @param userId    操作ユーザーID（監査ログ等に使う。認可は ChatChannelFacade で済んでいる）
      */
     @Transactional
     public void deleteChannel(Long channelId, Long userId) {
@@ -375,7 +375,7 @@ public class ChatChannelService {
         }
         channel.softDelete();
         channelRepository.save(channel);
-        log.info("チャンネル削除完了: channelId={}", channelId);
+        log.info("チャンネル削除完了: channelId={}, operatorUserId={}", channelId, userId);
         // F04.2.1 §3.10.1: 削除されたチャンネルを開いている全メンバーにタブ自動クローズを通知
         eventPublisher.publishChannelDeleted(channelId);
     }
@@ -384,7 +384,7 @@ public class ChatChannelService {
      * チャンネルをアーカイブする。
      *
      * @param channelId チャンネルID
-     * @param userId    操作ユーザーID（認可チェック用）
+     * @param userId    操作ユーザーID（監査ログ等に使う。認可は ChatChannelFacade で済んでいる）
      * @return アーカイブされたチャンネルレスポンス
      */
     @Transactional
@@ -392,7 +392,7 @@ public class ChatChannelService {
         ChatChannelEntity channel = findChannelOrThrow(channelId);
         channel.archive();
         ChatChannelEntity saved = channelRepository.save(channel);
-        log.info("チャンネルアーカイブ完了: channelId={}", channelId);
+        log.info("チャンネルアーカイブ完了: channelId={}, operatorUserId={}", channelId, userId);
         // F04.2.1 §3.10.1: アーカイブされたチャンネルを開いている全メンバーに入力欄無効化を通知
         eventPublisher.publishChannelArchived(channelId);
         return chatMapper.toChannelResponse(saved);
@@ -403,7 +403,7 @@ public class ChatChannelService {
      * F04.2.1 §3.10.1: 解除後に全メンバーへ CHANNEL_UNARCHIVED イベントを配信し、フロントエンドのタブを復元する。
      *
      * @param channelId チャンネルID
-     * @param userId    操作ユーザーID（認可チェック用）
+     * @param userId    操作ユーザーID（監査ログ等に使う。認可は ChatChannelFacade で済んでいる）
      * @return 更新されたチャンネルレスポンス
      */
     @Transactional
@@ -414,7 +414,7 @@ public class ChatChannelService {
         }
         channel.unarchive();
         ChatChannelEntity saved = channelRepository.save(channel);
-        log.info("チャンネルアーカイブ解除完了: channelId={}", channelId);
+        log.info("チャンネルアーカイブ解除完了: channelId={}, operatorUserId={}", channelId, userId);
         // F04.2.1 §3.10.1: 解除を全メンバーに通知（フロントエンドが自動タブクローズを解除）
         eventPublisher.publishChannelUnarchived(channelId);
         return chatMapper.toChannelResponse(saved);
@@ -597,7 +597,7 @@ public class ChatChannelService {
      * （DM の場合はチャンネル OWNER のみ）を {@link ChatChannelFacade#convertToGroup} がトランザクションの外で済ませる。</p>
      *
      * @param channelId チャンネルID
-     * @param callerId  操作ユーザーID（認可チェック用）
+     * @param callerId  操作ユーザーID（監査ログ等に使う。認可は ChatChannelFacade で済んでいる）
      * @return 変換後のチャンネルレスポンス
      */
     @Transactional
@@ -701,7 +701,7 @@ public class ChatChannelService {
      *
      * @param channelId チャンネルID
      * @param request   更新リクエスト
-     * @param userId    操作ユーザー ID（認可チェック用）
+     * @param userId    操作ユーザー ID（監査ログ等に使う。認可は ChatChannelFacade で済んでいる）
      * @return 更新後のチャンネルレスポンス
      */
     @Transactional
@@ -732,7 +732,8 @@ public class ChatChannelService {
 
         channel.updateInquiryChannel(request.getIsInquiryChannel());
         ChatChannelEntity saved = channelRepository.save(channel);
-        log.info("問い合わせチャンネル設定更新: channelId={}, isInquiryChannel={}", channelId, request.getIsInquiryChannel());
+        log.info("問い合わせチャンネル設定更新: channelId={}, isInquiryChannel={}, operatorUserId={}",
+                channelId, request.getIsInquiryChannel(), userId);
         // 業務アラートキャッシュを即時無効化するためにイベントを発行する。
         // AdminBusinessAlertService がこのイベントを受信してキャッシュを削除し、
         // ウィジェットに inquiry 設定が即時反映されるようにする（F10.7）。

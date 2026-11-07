@@ -75,7 +75,7 @@ public class ChatMessageFacade {
 
     /**
      * メッセージを削除する（F04.2 §5: 投稿者本人 / チャンネル OWNER・ADMIN /
-     * スコープ ADMIN（MANAGE_CHAT の DEPUTY_ADMIN）/ SYSTEM_ADMIN）。
+     * スコープ ADMIN / SYSTEM_ADMIN。DEPUTY_ADMIN は MANAGE_CHAT 登録後の CMP-261107-2134 で広げる）。
      */
     public void deleteMessage(Long messageId, Long userId) {
         ChatMessageEntity message = messageService.findMessageOrThrow(messageId);

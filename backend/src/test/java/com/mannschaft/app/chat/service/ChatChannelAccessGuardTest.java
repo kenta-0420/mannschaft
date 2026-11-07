@@ -441,14 +441,27 @@ class ChatChannelAccessGuardTest {
         }
 
         @Test
-        @DisplayName("正常系: チーム ADMIN（または MANAGE_CHAT の DEPUTY_ADMIN）はチャンネル未参加でも削除できる")
+        @DisplayName("正常系: チーム ADMIN はチャンネル未参加でも削除できる")
         void チームADMINは削除できる() {
             given(memberRepository.findByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(Optional.empty());
-            given(accessControlService.hasAdminOrPermissionInScope(USER_ID, TEAM_ID, "TEAM", "MANAGE_CHAT"))
-                    .willReturn(true);
+            given(accessControlService.isAdmin(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
 
             assertThat(guard.requireMessageDeletable(
                     channel(ChannelType.TEAM_PUBLIC, TEAM_ID, null), messageBy(OTHER_USER_ID), USER_ID)).isTrue();
+        }
+
+        @Test
+        @DisplayName("異常系: チーム DEPUTY_ADMIN は MANAGE_CHAT 登録前（CMP-261107-2134）のため他人の投稿を削除できない")
+        void チームDEPUTY_ADMINは削除できない() {
+            given(memberRepository.findByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(Optional.empty());
+            given(accessControlService.isAdmin(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+            // DEPUTY_ADMIN はスコープ管理者なので存在を知り得る（拒否は 403）
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+
+            assertDenied(() -> guard.requireMessageDeletable(
+                            channel(ChannelType.TEAM_PUBLIC, TEAM_ID, null), messageBy(OTHER_USER_ID), USER_ID),
+                    ChatErrorCode.MESSAGE_DELETE_DENIED);
+            verify(accessControlService, never()).hasAdminOrPermissionInScope(any(), any(), any(), any());
         }
 
         @Test

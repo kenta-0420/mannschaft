@@ -59,7 +59,7 @@ public class ChatMemberService {
      * チャンネルにメンバーを追加する。
      *
      * @param channelId       チャンネルID
-     * @param operatorUserId  操作者ユーザーID（認可チェック用）
+     * @param operatorUserId  操作者ユーザーID（監査ログ等に使う。認可は ChatChannelFacade で済んでいる）
      * @param request         追加リクエスト
      * @return 追加されたメンバーレスポンスリスト
      */
@@ -84,7 +84,8 @@ public class ChatMemberService {
             added.add(memberRepository.save(member));
         }
 
-        log.info("メンバー追加完了: channelId={}, addedCount={}", channelId, added.size());
+        log.info("メンバー追加完了: channelId={}, addedCount={}, operatorUserId={}",
+                channelId, added.size(), operatorUserId);
         return chatMapper.toMemberResponseList(added);
     }
 
@@ -115,7 +116,7 @@ public class ChatMemberService {
      *
      * @param channelId      チャンネルID
      * @param userId         除外するユーザーID
-     * @param operatorUserId 操作者ユーザーID（認可チェック用）
+     * @param operatorUserId 操作者ユーザーID（監査ログ等に使う。認可は ChatChannelFacade で済んでいる）
      */
     @Transactional
     public void removeMember(Long channelId, Long userId, Long operatorUserId) {
@@ -127,7 +128,7 @@ public class ChatMemberService {
             throw new BusinessException(ChatErrorCode.OWNER_CANNOT_LEAVE);
         }
         memberRepository.deleteByChannelIdAndUserId(channelId, userId);
-        log.info("メンバー除外完了: channelId={}, userId={}", channelId, userId);
+        log.info("メンバー除外完了: channelId={}, userId={}, operatorUserId={}", channelId, userId, operatorUserId);
         // F04.2.1 §3.10.1: kick されたメンバーにタブ自動クローズを通知
         eventPublisher.publishMemberKicked(channelId, userId);
     }
@@ -197,7 +198,7 @@ public class ChatMemberService {
      * @param channelId      チャンネルID
      * @param targetUserId   対象ユーザーID
      * @param request        ロール変更リクエスト
-     * @param operatorUserId 操作者ユーザーID（認可チェック用）
+     * @param operatorUserId 操作者ユーザーID（監査ログ等に使う。認可は ChatChannelFacade で済んでいる）
      * @return 更新されたメンバーレスポンス
      */
     @Transactional
