@@ -153,8 +153,8 @@ interrupt_command() {
 trap finish_diagnostics EXIT
 trap 'interrupt_command 130' INT
 trap 'interrupt_command 143' TERM
-# shard3の既存ps監視とshard5の限定診断を同じ子monitorで実行する。
-if [[ "${CI_SHARD_INDEX:-}" =~ ^(3|5)$ ]]; then
+# 遅延したshard0/1の数値資源、shard3の既存ps、shard5の限定診断を同じmonitorで実行する。
+if [[ "${CI_SHARD_INDEX:-}" =~ ^(0|1|3|5)$ ]]; then
   python3 -u - <<'MONITOR' &
 import datetime, os, pathlib, re, selectors, signal, subprocess, time
 
@@ -270,7 +270,7 @@ def collect(argv, kind, pid=None, generation=None):
 def resources():
     append('resource-sample')
     collect(['ps', '-C', 'java', '-o', 'pid,ppid,etimes,time,pcpu,rss,comm'], 'ps')
-    if shard != '5':
+    if shard not in ('0', '1', '5'):
         return
     append(f'cpu-count={os.cpu_count()}')
     for name in ['meminfo', 'pressure/cpu', 'pressure/memory', 'pressure/io']:

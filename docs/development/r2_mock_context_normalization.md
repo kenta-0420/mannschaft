@@ -171,7 +171,10 @@ cache10 が旧runの遅延・OOMを引き起こしたかという因果は区別
 
 ## 105分 timeout の限定診断
 
-`run-ci-tests-with-observability.sh` は shard3 の既存数値ps監視を保ち、shard5では
+`run-ci-tests-with-observability.sh` は shard0/1で開始時と300秒ごとに数値ps・CPU数・
+meminfo・pressure・cgroup制限を記録する。shard0/1ではワーカーへのattachは行わない。
+共通終了要約の`missingPairs=6`はshard0/1の資源欠落やthread採取義務の未達を意味しない。
+shard3 の既存数値ps監視を保ち、shard5では
 開始時と60秒ごとに数値資源・pressure・登録済み通常`:test`ワーカーのGCを記録する。
 既存heap行からPIDとOS開始tickを登録し、世代が一致する生存PIDだけへattachする。
 R2 probe の既存outer classイベントが活動中の場合に限り、開始後60/75/90秒で

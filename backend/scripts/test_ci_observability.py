@@ -23,7 +23,7 @@ class WrapperTest(unittest.TestCase):
         (self.bin / 'python3').write_text(f'#!/usr/bin/env bash\nexec "{python}" "$@"\n', encoding='utf-8')
         (self.bin / 'python3').chmod(0o755)
         self.env = dict(os.environ, CI_DIAGNOSTIC_DIR=self.folder.as_posix(), RUNNER_TEMP=self.folder.as_posix(),
-                        CI_SHARD_INDEX='0', CI_JOB_TIMEOUT_MINUTES='120', CI_TEST_TIMEOUT_MINUTES='105')
+                        CI_SHARD_INDEX='2', CI_JOB_TIMEOUT_MINUTES='120', CI_TEST_TIMEOUT_MINUTES='105')
         self.env['PATH'] = self.bin.as_posix() + os.pathsep + self.env['PATH']
 
     def run_wrapper(self, *args, env=None):
@@ -101,7 +101,7 @@ done
 printf '%s\\n' '2026-11-06T00:00:00Z [ci-test-task-state] task=:test skipped=false skipMessage=null upToDate=false noSource=false failed=false' > "$CI_DIAGNOSTIC_DIR/task-state.log"
 exit "$FAKE_EXIT"
 ''', encoding='utf-8')
-        for shard in ('3', '5'):
+        for shard in ('0', '1', '3', '5'):
             for code in (0, 17):
                 with self.subTest(shard=shard, exit=code):
                     for name in ('monitor-pid', 'monitor-ended'):
@@ -176,6 +176,64 @@ class MonitorTest(unittest.TestCase):
             self.ns['run']()
         self.assertEqual(len(samples), 2)
         popen.assert_not_called()
+
+    def test_slow_shards_collect_resources_immediately_every_300_seconds_without_attach(self):
+        for shard in ('0', '1'):
+            with self.subTest(shard=shard):
+                self.ns.update(shard=shard, stopping=False)
+                samples = []
+                sleeps = []
+                self.ns['resources'] = lambda: samples.append(True)
+                self.ns['time'] = mock.Mock(monotonic=mock.Mock(side_effect=[100, 399, 400]))
+                def sleep(seconds):
+                    sleeps.append(seconds)
+                    if len(sleeps) == 3:
+                        self.ns['stopping'] = True
+                self.ns['time'].sleep = sleep
+                with mock.patch.object(self.ns['signal'], 'signal'), mock.patch.object(subprocess, 'Popen') as popen:
+                    self.ns['run']()
+                self.assertEqual(len(samples), 2)
+                self.assertEqual(sleeps, [1, 1, 1])
+                popen.assert_not_called()
+
+    def test_resource_details_for_slow_shards_and_five_filter_noise_and_report_missing_files(self):
+        # OSの読取境界だけを固定する。実ホストのpressure/cgroup値には依存しない。
+        original_read = Path.read_text
+        values = {'/proc/meminfo': 'MemTotal: 8000 kB\nMemAvailable: 4000 kB\nSwapFree: 0 kB\nPrivate: SECRET\n',
+                  '/proc/pressure/cpu': 'some avg10=0.01 avg60=0.02 avg300=0.03 total=100\nSECRET!\n',
+                  '/proc/pressure/memory': 'full avg10=0.00 avg60=0.00 avg300=0.00 total=0\n',
+                  '/sys/fs/cgroup/cpu.max': '200000 100000\n',
+                  '/sys/fs/cgroup/memory.max': 'max\n',
+                  '/sys/fs/cgroup/memory.current': '1234\n'}
+        def read(path, *args, **kwargs):
+            name = path.as_posix()
+            if name.startswith(('/proc/', '/sys/fs/cgroup/')):
+                if name not in values:
+                    raise FileNotFoundError(name)
+                return values[name]
+            return original_read(path, *args, **kwargs)
+        for shard in ('0', '1', '5', '3'):
+            with self.subTest(shard=shard):
+                (self.folder / 'worker-resources.log').write_text('')
+                self.ns['shard'] = shard
+                with mock.patch.object(Path, 'read_text', read), mock.patch.object(os, 'cpu_count', return_value=2), \
+                     mock.patch.dict(self.ns, collect=mock.Mock(return_value=True)):
+                    self.ns['resources']()
+                    self.ns['collect'].assert_called_once_with(
+                        ['ps', '-C', 'java', '-o', 'pid,ppid,etimes,time,pcpu,rss,comm'], 'ps')
+                log = self.log()
+                self.assertNotIn('SECRET', log)
+                if shard == '3':
+                    self.assertNotIn('cpu-count=', log)
+                    self.assertNotIn('cgroup/', log)
+                    continue
+                for expected in ('cpu-count=2', 'meminfo MemTotal: 8000 kB',
+                                 'meminfo MemAvailable: 4000 kB', 'meminfo SwapFree: 0 kB',
+                                 'pressure/cpu some avg10=', 'pressure/memory full avg10=',
+                                 'pressure/io status=unavailable', 'cgroup/cpu.max 200000 100000',
+                                 'cgroup/memory.max max', 'cgroup/memory.current 1234',
+                                 'cgroup/cpu/cpu.cfs_quota_us status=unavailable'):
+                    self.assertIn(expected, log)
 
     def test_pid_changed_before_attach_never_starts_command(self):
         self.ns['identity'] = lambda pid: '101'
