@@ -14,7 +14,7 @@ bootstrapはready.json（queryなしLinux t0/metadata）→init（type/owner/run
 
 request keysはtype/owner/run/request_id/phase/operation/resource/deadline_offset_ms。phaseはwork/cleanup、roleはdaemon/mysql/valkey、request_idは1から単調。container-create/mysqlのみsecrets exact {mysql_root_password,mysql_password}を追加する。秘密はframed stdin→Linuxメモリ→clearしたDocker子envのMYSQL_ROOT_PASSWORD/MYSQL_PASSWORDだけへ渡す。argvは --env KEY だけ。MYSQL_DATABASE=m21_<runhex>とMYSQL_USER=m21は固定導出する。親env/credentials/context/HOME/proxy/DOCKER_HOSTを読まない。
 
-operationはdaemon-info、volume-create/inspect/remove/absent、container-create/inspect/start/stop/remove/absentだけ。owned名はm21-<runhex>-<role>。Dockerは固定host unix:///var/run/docker.sock、owned新規空config directoryを使用。create実行はrootの別GOまでParent側から送信しない。既存daemon/imageのread-only資格とmutation資格は別である。
+operationはdaemon-info、volume-create/inspect/remove、container-create/inspect/start/stop/remove、resources-absentだけ。owned名はm21-<runhex>-<role>。Dockerは固定host unix:///var/run/docker.sock、owned新規空config directoryを使用。create実行はrootの別GOまでParent側から送信しない。既存daemon/imageのread-only資格とmutation資格は別である。
 
 ## deadlineと回収
 
@@ -40,7 +40,7 @@ bridge-exit.jsonはLinux側の有限終端結果であり、Windows実exit/各EO
 
 旧checkpoint18866の孫生存greenは欠陥と判定し、greenfalseを要求する実子red2件を先に確認して修正した。現sourceのgreenは新SHAを固定した有限suite結果だけで判断する。Windows relay強制終了、実Docker操作、正式App/Java/FE/Chromium、55分formalrun、既存14回帰は別資格であり、本書だけで取得済みとしない。
 
-最終不存在はR14を維持するため、volume名をcontainer名＋-dataと分離する。resources-absentはroleごと1CLI `docker inspect --format M21_PRESENT <containerName> <volumeName>` に固定し、存在時のJSONを出さない。stdout空、exit1、distinct2名それぞれのexact no-such-objectだけのstderrを暫定candidateとする。最後の同daemon-infoが成功して初めてconfirmed_absent_resourcesへ昇格する。candidateのabsentはfalseのまま、unknown errorはretained。
+最終不存在はR14を維持するため、volume名をcontainer名＋-dataと分離する。resources-absentはroleごと1CLI `docker inspect --format M21_PRESENT <containerName> <volumeName>` に固定し、存在時のJSONを出さない。stdoutはexact LF 1byte（hex0a）、exit1、distinct2名それぞれのexact no-such-objectだけのstderrを暫定candidateとする。最後の同daemon-infoが成功して初めてconfirmed_absent_resourcesへ昇格する。candidateのabsentはfalseのまま、unknown errorはretained。
 
 [Docker inspect公式仕様](https://docs.docker.com/reference/cli/docker/inspect/)は複数object/任意type照合を規定する。[Docker CLI一次source](https://raw.githubusercontent.com/docker/cli/master/cli/command/system/inspect.go)では各object typeをprobeして非skiperrorを返す。別名のどのtypeも不存在なら対象container/volumeも不存在、という判定はこれらからの推論であり、29系実binaryのexact stderr形と3秒capは別の限定read-only実測で確認する。他namespaceの同名存在時は保守的nonGreen。
 
@@ -96,7 +96,7 @@ bridgeは認定済みportの固定IPv4 loopbackへnonblocking接続し、固定R
 
 within_deadlineは同じ絶対期限内の完全受信を確認できた証明である。timeoutでは未証明のためfalse、reason=timeoutと実観測時刻/absolute期限を別記する。観測時計がdeadline前でも、短縮側timeoutをdeadline到達実測へ書き換えない。closeまでの全処理が枠外ならgreenにしない。
 
-Windows側はresources-readyへexpectedRunIdとUnix socket proofを保持し、CP/FE準備後のJava spawn直前に同advertised portへ固定INFOを1回実行してrun_idを完全一致させる。誤port/別run_id/不足ではAppを起動しない。この比較はFormal側の責務である。
+Windows側はresources-readyへexpectedRunIdとLinux側socket_proofを保持し、CP/FE準備後のJava spawn直前に同advertised portへ固定INFOを1回実行してrun_idを完全一致させる。誤port/別run_id/不足ではAppを起動しない。この比較はFormal側の責務である。
 
 期限境界の完了/cancel raceはactiveなし・直前の実完了exact ID・初回だけ別request-N-late-cancel.jsonへ固定late-cancel-ackを返す。元receiptは不変、green=false/late_cancel=true/no_signal=true/signal_count=0/cli_spawned=false/childproof=null/deadline_reset=falseを記録しRを継続する。未知/古ID/新request/replay/2回目/別activeへの古cancelはterminal。追加signal/CLI/retryと期限resetは0。
 
