@@ -59,10 +59,17 @@ class LinuxFiniteTests(unittest.TestCase):
             if not select.select([receipt_r],[],[],4)[0]:
                 signal.pidfd_send_signal(pidfd,signal.SIGKILL)
                 self.fail('owned watchdog result deadline')
-            raw = os.read(receipt_r,16384)
+            raw=bytearray()
+            limit=time.monotonic()+4
+            while time.monotonic()<limit:
+                self.assertTrue(select.select([receipt_r],[],[],max(0,limit-time.monotonic()))[0])
+                chunk=os.read(receipt_r,8192)
+                if not chunk: break
+                raw.extend(chunk)
+                self.assertLessEqual(len(raw),65536)
+            else: self.fail('private fixture EOF deadline')
             _, status = os.waitpid(pid,0)
             self.assertEqual(os.waitstatus_to_exitcode(status),0)
-            self.assertEqual(os.read(receipt_r,1),b'')
             return json.loads(raw)
         finally:
             os.close(pidfd); os.close(receipt_r)
@@ -395,6 +402,35 @@ class RealDaemonAbsenceFiniteTests(unittest.TestCase):
             adopted=boundary.adopt('resources-absent','mysql',result['cli_exit'],bytes.fromhex(result['_stdout_hex']),bytes.fromhex(result['_stderr_hex']))
             self.assertTrue(adopted['absence_candidate']); self.assertFalse(adopted['absent'])
             print(json.dumps({'case':'real-readonly-absence-once','owner':b.OWNER,'run':run,'nonce':nonce,'source_sha256':hashlib.sha256(b.Path(b.__file__).read_bytes()).hexdigest(),'body_cap_ms':3000,'elapsed_ms':(time.monotonic_ns()-began)//1000000,'cli_exit':result['cli_exit'],'children_reaped':result['children_reaped'],'stdout_eof':result['stdout_eof'],'stderr_eof':result['stderr_eof'],'physical_completed':result['physical_completed'],'exact_two_no_such_objects':True,'daemon_absence_confirmed':False}))
+
+
+
+@unittest.skipUnless(sys.platform=='linux','Linux公開receipt実子試験')
+class PublicReceiptFiniteTests(unittest.TestCase):
+    def test_public_receipt_bounded_and_secret_free(self):
+        import json,os,select,tempfile,time
+        with tempfile.TemporaryDirectory(prefix='m21-public-fixture-') as directory:
+            dfd=os.open(directory,os.O_RDONLY|os.O_DIRECTORY)
+            secret='OWNED_PUBLIC_SENTINEL_MUST_NOT_APPEAR'
+            argv=['/usr/bin/python3','-I','-c','import os; print("MYSQL_PASSWORD" in os.environ)']
+            active=b.spawn_watchdog(argv,{'PATH':'/usr/bin:/bin','LANG':'C','MYSQL_PASSWORD':secret},time.monotonic_ns()+500000000,time.monotonic_ns()+2500000000,dfd,{'owner':b.OWNER,'run':'11111111-1111-4111-8111-111111111111'},{'request_id':1,'phase':'cleanup','operation':'daemon-info','resource':'daemon'})
+            os.close(dfd)
+            raw=bytearray(); limit=time.monotonic()+3
+            while time.monotonic()<limit:
+                self.assertTrue(select.select([active['result']],[],[],max(0,limit-time.monotonic()))[0])
+                chunk=os.read(active['result'],8192)
+                if not chunk: break
+                raw.extend(chunk); self.assertLessEqual(len(raw),65536)
+            else: self.fail('owned private EOF deadline')
+            os.waitpid(active['pid'],0)
+            os.close(active['result']); os.close(active['pidfd']); b.close_active_control(active)
+            for name in ('request-00001-started.json','request-00001.json'):
+                public=(pathlib.Path(directory)/name).read_bytes()
+                self.assertLessEqual(len(public),b.MAX_FRAME)
+                self.assertNotIn(secret.encode(),public)
+                self.assertNotIn(b'_stdout_hex',public)
+                self.assertNotIn(b'_stderr_hex',public)
+            self.assertTrue(json.loads((pathlib.Path(directory)/'request-00001.json').read_text())['linux']['green'])
 
 if __name__ == '__main__':
     if '--relay-fixture' in sys.argv: raise SystemExit(relay_fixture())
