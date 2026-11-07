@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import com.mannschaft.app.common.token.PlaintextSecretRequired;
 
 /** 共通会員証だけを独立transactionで確保するmembership内writer。 */
 @Service
@@ -22,6 +23,7 @@ public class PlatformCardWriter {
     private final QrTokenService qrTokenService;
     private final PlatformCardMapper platformCardMapper;
 
+    @PlaintextSecretRequired(reason = "会員証の QR を保有者本人に何度でも見せるため平文で保持する。署名付き短命 QR への移行は別 CMP")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public PlatformCardResponse ensure(Long userId, String displayName) {
         Optional<MemberCardEntity> existing = memberCardRepository

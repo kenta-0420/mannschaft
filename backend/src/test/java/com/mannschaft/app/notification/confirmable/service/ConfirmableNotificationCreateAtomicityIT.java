@@ -101,10 +101,6 @@ class ConfirmableNotificationCreateAtomicityIT extends AbstractMySqlIntegrationT
         List<ConfirmableTargetSpec> invalidTargets =
                 List.of(new ConfirmableTargetSpec(ConfirmableTargetType.ORGANIZATION, null));
 
-        // 他テストが commit 済みの CONFIRMABLE_TARGETS ジョブを残していても影響されないよう、
-        // 実行前の件数を基準にし「失敗した呼び出しでジョブが1件も増えない」ことを検証する。
-        long jobCountBefore = countConfirmableTargetsJobs();
-
         assertThatThrownBy(() -> txTemplate.executeWithoutResult(status ->
                 notificationService.createQueuedNotificationWithTargetsAndJob(
                         ScopeType.ORGANIZATION, orgId, title, null,
@@ -130,10 +126,17 @@ class ConfirmableNotificationCreateAtomicityIT extends AbstractMySqlIntegrationT
                 .getSingleResult()).longValue();
         assertThat(targetCount).as("AC-22: 失敗したtargetsは残らない").isZero();
 
-        // AC-22: fanoutジョブも1件も残らない（本体が無い以上、scope_refで引ける行があってはならない）。
-        assertThat(countConfirmableTargetsJobs())
-                .as("AC-22: 本体が無い以上、fanoutジョブも孤立して増えてはならない（実行前件数と同数）")
-                .isEqualTo(jobCountBefore);
+        // AC-22: fanoutジョブも1件も残らない（本体が無い以上、この試験の送信で作られうる行があってはならない）。
+        // 本体がロールバックされ通知 ID（scope_ref）が得られないため、この試験だけが作る組織（organization_id）と
+        // 送信者（actor_id）で絞る。scope_type だけで全件を数えると、同じ DB を共有する先行 IT が残したジョブまで
+        // 数えてしまい、shard の割り振り次第で落ちる（試験の隔離不備。CMP-260826-1457 の PR #4262 で顕在化）。
+        long jobCount = ((Number) em.createNativeQuery(
+                        "SELECT COUNT(*) FROM notification_fanout_jobs WHERE scope_type = 'CONFIRMABLE_TARGETS' "
+                                + "AND organization_id = :orgId AND actor_id = :actorId")
+                .setParameter("orgId", orgId)
+                .setParameter("actorId", adminUserId)
+                .getSingleResult()).longValue();
+        assertThat(jobCount).as("AC-22: 本体が無い以上、fanoutジョブも孤立して残ってはならない").isZero();
     }
 
     @Test
@@ -163,12 +166,6 @@ class ConfirmableNotificationCreateAtomicityIT extends AbstractMySqlIntegrationT
     // =====================================================================
     // ヘルパ
     // =====================================================================
-
-    private long countConfirmableTargetsJobs() {
-        return ((Number) em.createNativeQuery(
-                        "SELECT COUNT(*) FROM notification_fanout_jobs WHERE scope_type = 'CONFIRMABLE_TARGETS'")
-                .getSingleResult()).longValue();
-    }
 
     private Long insertUser() {
         int n = SEQ.incrementAndGet();

@@ -21,6 +21,7 @@ import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * ブログ記事・お知らせエンティティ。
@@ -162,6 +163,7 @@ public class BlogPostEntity extends BaseEntity {
     @Builder.Default
     private boolean publicVisible = true;
 
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Column(length = 64)
     private String previewToken;
 
