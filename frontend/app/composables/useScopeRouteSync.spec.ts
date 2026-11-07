@@ -102,9 +102,9 @@ describe('useScopeRouteSync', () => {
   })
 
   // CMP-260909-0545: 既存URL同期のcharacterization。新しい切替処理は追加しない。
-  it('個人から所属組織を選んだSYSTEM_ADMINもシフト予算3画面で数値組織スコープを保持する', async () => {
+  it('個人から所属組織を選んだ利用者はneutralなシフト予算3画面で数値組織スコープを保持する', async () => {
     const orgStore = useOrganizationStore()
-    orgStore.myOrganizations = [{ ...org(7, 'beta', 'ベータ連盟'), role: 'SYSTEM_ADMIN' }]
+    orgStore.myOrganizations = [org(7, 'beta', 'ベータ連盟')]
     const scopeStore = useScopeStore()
     const sync = useScopeRouteSync()
     expect(scopeStore.current.type).toBe('personal')

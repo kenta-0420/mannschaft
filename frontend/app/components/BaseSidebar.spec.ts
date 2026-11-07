@@ -286,6 +286,17 @@ describe('組織Sidebarのシフト予算入口', () => {
     expect(wrapper.find(href).exists()).toBe(false)
   })
 
+  it('権限取得が正常に未所属を返した場合は入口もナビも表示しない', async () => {
+    apiMock.mockImplementation((url: string) => Promise.resolve(url.endsWith('/me/permissions')
+      ? { data: { roleName: null, permissions: [] } } : { data: [] }))
+    const wrapper = await mountBudgetSidebar()
+
+    expect(wrapper.find(href).exists()).toBe(false)
+    expect(wrapper.find('nav').exists()).toBe(false)
+    expect(wrapper.find('[role="status"]').exists()).toBe(false)
+    expect(wrapper.findComponent({ name: 'DashboardErrorState' }).exists()).toBe(false)
+  })
+
   it.each(['ADMIN', 'SYSTEM_ADMIN'])('%sもSHIFTフラグ未取得・OFFでは入口がなくONに追従する', async role => {
     apiMock.mockImplementation((url: string) => Promise.resolve(url.endsWith('/me/permissions')
       ? budgetPermissions(role, role === 'SYSTEM_ADMIN' ? [] : ['BUDGET_VIEW']) : { data: [] }))
