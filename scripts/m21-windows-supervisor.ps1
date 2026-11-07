@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param(
  [ValidateSet('Parent','Supervisor','Observe','ReadinessFixture')][string]$Mode='Parent',
- [ValidateSet('none','parent-before-certificate','lock-release','lock-held','invalid-json','formal-ms','formal-fe','formal-admission','chromium-normal','chromium-parent-close')][string]$TestFixture='none',
+ [ValidateSet('none','parent-before-certificate','lock-release','lock-held','invalid-json','formal-ms','formal-fe','formal-admission','chromium-normal','chromium-parent-close','wsl-relay-loss')][string]$TestFixture='none',
  [Parameter(Mandatory=$true)][ValidateSet('normal','pre-ack','wrong-ack','assign-fail','host-fail','stdio-eof','cleanup-fail','save-fail','owner-mismatch','kill-close','formal-m21')][string]$Scenario,
  [Parameter(Mandatory=$true)][string]$RunDirectory,
  [Parameter(Mandatory=$true)][ValidatePattern('^[a-f0-9]{32}$')][string]$Nonce,
@@ -118,6 +118,49 @@ public sealed class M21Job : SafeHandleZeroOrMinusOneIsInvalid {
  public void Stop() { Check(TerminateJobObject(this,71)); }
 }
 public sealed class M21Child : IDisposable {
+ // 固定INFOだけを読む。CLI/子生成なし。Wと局所3秒の双方を短縮側で守る。
+ public static Dictionary<string,object> ProbeValkeyEndpoint(int port,string expected,Stopwatch clock,int workDeadlineMs) {
+  var proof=new Dictionary<string,object>{{"transport","windows-loopback-info"},{"response_complete",false},{"socket_closed",null},{"within_deadline",false},{"cli_spawned",false},{"childproof",null},{"green",false},{"reason","endpoint-invalid"},{"response_bytes",0}};
+  var result=new Dictionary<string,object>{{"run_id",null},{"socket_proof",proof}};
+  System.Net.Sockets.TcpClient client=null;System.Net.Sockets.NetworkStream stream=null;System.Threading.WaitHandle wait=null;
+  long start=clock.ElapsedTicks, cap=start+Stopwatch.Frequency*3;
+  Func<int> remaining=()=>{long ticks=Math.Min(cap-clock.ElapsedTicks,(long)workDeadlineMs*Stopwatch.Frequency/1000-clock.ElapsedTicks);return ticks<=0?0:(int)Math.Min(3000,ticks*1000/Stopwatch.Frequency);};
+  int count=0;bool valid=false;
+  try {
+   if(port<1||port>65535||!System.Text.RegularExpressions.Regex.IsMatch(expected??"","\\A[a-f0-9]{40}\\z"))throw new InvalidDataException();
+   if(remaining()<=0){proof["reason"]="deadline";throw new TimeoutException();}
+   client=new System.Net.Sockets.TcpClient(System.Net.Sockets.AddressFamily.InterNetwork);
+   var connect=client.BeginConnect(System.Net.IPAddress.Loopback,port,null,null);wait=connect.AsyncWaitHandle;
+   if(!wait.WaitOne(remaining())){proof["reason"]="deadline";throw new TimeoutException();}client.EndConnect(connect);
+   stream=client.GetStream();
+   byte[] command=System.Text.Encoding.ASCII.GetBytes("*2\r\n$4\r\nINFO\r\n$6\r\nserver\r\n");
+   int ms=remaining();if(ms<=0)throw new TimeoutException();stream.WriteTimeout=ms;stream.Write(command,0,command.Length);
+   Func<int> read=()=>{int left=remaining();if(left<=0)throw new TimeoutException();stream.ReadTimeout=left;int b=stream.ReadByte();if(b<0)throw new EndOfStreamException();count++;proof["response_bytes"]=count;if(count>16384)throw new InvalidDataException();return b;};
+   proof["reason"]="resp-invalid";var header=new List<byte>();
+   for(;;){int b=read();header.Add((byte)b);if(header.Count>32)throw new InvalidDataException();if(b==10)break;}
+   string line=System.Text.Encoding.ASCII.GetString(header.ToArray());
+   if(!System.Text.RegularExpressions.Regex.IsMatch(line,"\\A\\$[1-9][0-9]{0,4}\r\n\\z"))throw new InvalidDataException();
+   int size=int.Parse(line.Substring(1,line.Length-3),System.Globalization.CultureInfo.InvariantCulture);
+   if(size>16384-header.Count-2)throw new InvalidDataException();
+   byte[] body=new byte[size];for(int i=0;i<size;i++)body[i]=(byte)read();
+   if(read()!=13||read()!=10)throw new InvalidDataException();proof["response_complete"]=true;
+   // 取得済みframeは厳密長。直後にqueuedな追加bytesも拒否し、未来の不在は主張しない。
+   if(client.Available!=0)throw new InvalidDataException();
+   string info=new System.Text.UTF8Encoding(false,true).GetString(body);
+   if(!info.StartsWith("# Server\r\n",StringComparison.Ordinal)||!info.EndsWith("\r\n",StringComparison.Ordinal))throw new InvalidDataException();
+   string found=null;int matches=0;
+   foreach(string item in info.Split(new[]{"\r\n"},StringSplitOptions.None))if(item.StartsWith("run_id:",StringComparison.Ordinal)){matches++;found=item.Substring(7);}
+   proof["reason"]="run-id-mismatch";
+   if(matches!=1||!System.Text.RegularExpressions.Regex.IsMatch(found??"","\\A[a-f0-9]{40}\\z")||found!=expected)throw new InvalidDataException();
+   if(remaining()<=0)throw new TimeoutException();proof["within_deadline"]=true;result["run_id"]=found;valid=true;
+  } catch(TimeoutException){proof["reason"]="deadline";} catch(System.Net.Sockets.SocketException){proof["reason"]="socket-failed";} catch(InvalidDataException){} catch(IOException){if(remaining()<=0)proof["reason"]="deadline";} catch(ArgumentException){proof["reason"]="endpoint-invalid";}
+  finally {
+   bool closed=true;try{if(stream!=null)stream.Dispose();}catch{closed=false;}try{if(client!=null)client.Close();}catch{closed=false;}try{if(wait!=null)wait.Dispose();}catch{closed=false;}
+   proof["socket_closed"]=client==null?null:(object)closed;proof["green"]=valid&&closed&&remaining()>0;
+   if((bool)proof["green"])proof["reason"]="matched";else result["run_id"]=null;
+  }
+  return result;
+ }
  public Process Process;public Task OutTask,ErrTask;FileStream output,error;
  public bool Started,StartupExited,StartupStdoutEof,StartupStderrEof,Captured,StdoutPublished,StderrPublished;
  bool bridgeInput,bridgeInputClosed,bridgeInputBroken;
@@ -333,6 +376,7 @@ $bootstrapStage='native-bootstrap'
 try {
  if(($TestFixture -eq 'none' -and $Mode -eq 'ReadinessFixture') -or ($TestFixture -eq 'parent-before-certificate' -and ($Mode -notin @('Parent','Observe') -or $Scenario -ne 'kill-close')) -or ($TestFixture -in @('lock-release','lock-held','invalid-json') -and ($Mode -ne 'ReadinessFixture' -or $Scenario -ne 'normal'))){throw '固定fixture組合せ不一致'}
  if($TestFixture -in @('formal-ms','formal-fe','formal-admission') -and ($Mode -notin @('Parent','Supervisor') -or $Scenario -ne 'normal')){throw '固定formal契約fixture組合せ不一致'}
+ if($TestFixture -eq 'wsl-relay-loss' -and ($Mode -cne 'Parent' -or $Scenario -cne 'normal')){throw '固定relay fixture組合せ不一致'}
  if($chromiumFixture -and (($TestFixture -eq 'chromium-normal' -and ($Scenario -ne 'normal' -or $Mode -notin @('Parent','Supervisor'))) -or ($TestFixture -eq 'chromium-parent-close' -and $Scenario -ne 'kill-close'))){throw '固定Chromium組合せ不一致'}
  # 定義だけを読む。ACK前に型compile/実子/asset準備を行わない。
  . (Join-Path $PSScriptRoot 'm21-windows-formal-adapter.ps1')
@@ -681,6 +725,8 @@ try {
  if($Mode -eq 'ReadinessFixture'){
   # テスト本体は固定pathだけ。通常reader/Observeを置換しない。
   . (Join-Path $PSScriptRoot 'm21-windows-supervisor.readiness-fixture.ps1')
+ }elseif($Mode -eq 'Parent' -and $TestFixture -ceq 'wsl-relay-loss'){
+  Invoke-M21WslRelayLossFixture
  }elseif($Mode -eq 'Supervisor' -and $chromiumFixture){
   if(![M21Job]::InJob($self,$null)){throw 'Chromium ACK後Job不在'}
   Invoke-ChromiumFixture
@@ -857,7 +903,7 @@ finally {
  if($Mode -ne 'Supervisor'){
   Attempt 'job-stop' {if($null -ne $job){$job.Stop();if($null -ne $p6Certification){$p6Certification.jobStopped=$true}}}
   foreach($child in $held){
-   if($null -ne $m21Bridge -and [object]::ReferenceEquals($child,$m21Bridge)){continue}
+   if($Scenario -ceq 'formal-m21' -and $null -ne $m21Bridge -and [object]::ReferenceEquals($child,$m21Bridge)){continue}
    Attempt 'direct-stop' {Parent-Event 'kill-before' $child;if($child.Started -and !$child.Process.HasExited){Parent-Event 'kill-issued' $child;$child.Process.Kill();Parent-Event 'kill-returned' $child}else{Parent-Event 'kill-skipped' $child}}
    Attempt 'exit-and-streams' {Capture $child 'direct' 1500}
   }

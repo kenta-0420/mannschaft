@@ -1,4 +1,4 @@
-﻿// Windows Job Object の固定fixture probe。Chromiumは明示した固定fixtureだけ。
+// Windows Job Object の固定fixture probe。Chromiumは明示した固定fixtureだけ。
 'use strict';
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -6,6 +6,7 @@ const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawn } = require('node:child_process');
+const net = require('node:net');
 // 所有者選択だけを末尾で受ける。既存fixture引数・期待値はそのまま検査する。
 let OWNER = 'd7249e88-1678-4e0c-ae21-a550989098a6';
 if (process.argv.at(-2) === '--owner-id') {
@@ -152,27 +153,37 @@ async function dummy(role, run, nonce, scenario, workMs, totalMs) {
 }
 async function readinessFixtureSuite(kind = 'readiness') {
   const formal = kind === 'formal-contract';
+  const relay = kind === 'wsl-relay-loss';
   assert.equal(process.platform, 'win32');
   assert.equal(process.argv.length, 3, '固定fixture選択以外の入力は拒否');
   const origin = performance.now();
-  const totalDeadline = origin + LIMIT.total;
-  const workDeadline = totalDeadline - LIMIT.reserve;
+  const totalMs = relay ? 60000 : LIMIT.total;
+  const reserveMs = relay ? 20000 : LIMIT.reserve;
+  const totalDeadline = origin + totalMs;
+  const workDeadline = totalDeadline - reserveMs;
   const inputCommit = process.env.M21_INPUT_COMMIT ?? null;
   if (inputCommit !== null) assert.match(inputCommit, /^[0-9a-f]{40}$/);
+  if (relay) {
+    assert.match(inputCommit ?? '', /^[0-9a-f]{40}$/);
+    assert.equal(OWNER, '1d767b20-825c-4edc-b397-8d4367036462');
+    assert.equal(crypto.createHash('sha256').update(fs.readFileSync(process.execPath)).digest('hex'), '0d0f5e39f9f3d9587bc19f73eab3c2c9c4903fd02d6dbf9c853dd81b3d95fad4');
+  }
   const script = path.join(__dirname, 'm21-windows-supervisor.ps1');
-  const inputSHA256 = Object.fromEntries([
+  const inputFiles = [
     ['supervisor', script], ['probe', __filename], ['fixture', path.join(__dirname, 'm21-windows-supervisor.readiness-fixture.ps1')],
     ['operations', path.join(__dirname, '..', 'docs', 'development', 'm21-windows-supervisor.md')],
-  ].map(([name, file]) => [name, crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex').toUpperCase()]));
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), formal ? 'm21-formal-contract-fixture-' : 'm21-readiness-fixture-'));
+  ];
+  if (relay) inputFiles.push(['adapter', path.join(__dirname, 'm21-windows-formal-adapter.ps1')], ['bridge', path.join(__dirname, 'm21-wsl-docker-bridge.py')], ['bridgeFixture', path.join(__dirname, 'test_m21_wsl_docker_bridge.py')]);
+  const inputSHA256 = Object.fromEntries(inputFiles.map(([name, file]) => [name, crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex').toUpperCase()]));
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), relay ? 'm21-windows-relay-loss-' : formal ? 'm21-formal-contract-fixture-' : 'm21-readiness-fixture-'));
   const baseIdentity = fs.lstatSync(base);
   const baseCanonical = fs.realpathSync(base);
-  atomic(path.join(base, 'owner.json'), { owner: OWNER, purpose: 'M21固定readiness試練' });
+  if (!relay) atomic(path.join(base, 'owner.json'), { owner: OWNER, purpose: 'M21固定readiness試練' });
   const results = [];
-  const fixtures = formal ? ['formal-ms', 'formal-fe', 'formal-admission'] : ['parent-before-certificate', 'lock-release', 'lock-held', 'invalid-json'];
+  const fixtures = relay ? ['wsl-relay-loss'] : formal ? ['formal-ms', 'formal-fe', 'formal-admission'] : ['parent-before-certificate', 'lock-release', 'lock-held', 'invalid-json'];
   for (const fixture of fixtures) {
     if (remaining(workDeadline) === 0) break;
-    const run = path.join(base, fixture); fs.mkdirSync(run);
+    const run = relay ? base : path.join(base, fixture); if (!relay) fs.mkdirSync(run);
     const nonce = crypto.randomBytes(16).toString('hex'); atomic(path.join(run, 'owner.json'), { owner: OWNER, nonce });
     if (formal && fixture !== 'formal-ms') {
       const cli = path.join(run, 'frontend', 'node_modules', 'nuxt', 'bin', 'nuxt.mjs');
@@ -188,7 +199,7 @@ console.log(JSON.stringify({owner:owner.owner,nonce:owner.nonce,pid:process.pid,
     const parentCase = fixture === 'parent-before-certificate';
     requireWork(workDeadline);
     const p = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', script,
-      '-Mode', formal ? 'Parent' : parentCase ? 'Observe' : 'ReadinessFixture', '-Scenario', parentCase ? 'kill-close' : 'normal',
+      '-Mode', formal || relay ? 'Parent' : parentCase ? 'Observe' : 'ReadinessFixture', '-Scenario', parentCase ? 'kill-close' : 'normal',
       '-TestFixture', fixture, '-RunDirectory', run, '-Nonce', nonce, '-OwnerId', OWNER, '-NodePath', process.execPath,
       '-WorkRemainingMs', String(remaining(workDeadline)), '-TotalRemainingMs', String(remaining(totalDeadline))],
     { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -263,6 +274,15 @@ console.log(JSON.stringify({owner:owner.owner,nonce:owner.nonce,pid:process.pid,
             assert.equal(fs.existsSync(path.join(run, 'grandchild.json')), false);
           }
         }
+      } else if (relay) {
+        assert.equal(code, 0); assert.equal(receipt.primary, null);
+        evidence = receipt.fixtureEvidence;
+        assert.equal(evidence.fixture, 'wsl-relay-loss'); assert.equal(evidence.passed, true);
+        assert.equal(evidence.primaryRelayQualified, false); assert.equal(evidence.formalRunQualified, false);
+        assert.equal(evidence.realDockerInvoked, false); assert.equal(evidence.linuxBridgeActualExitObserved, false);
+        assert.equal(evidence.windows.actualExited, true); assert.equal(evidence.windows.stdoutEof, true); assert.equal(evidence.windows.stderrEof, true);
+        assert.equal(evidence.linux.primaryGreen, false); assert.equal(evidence.linux.childrenReaped, true);
+        assert.equal(evidence.linux.stdoutEof, true); assert.equal(evidence.linux.stderrEof, true); assert.equal(evidence.linux.writeClosed, true);
       } else if (parentCase) {
         assert.equal(code, 1); assert.equal(receipt.mode, 'Observe');
         assert.equal(receipt.primary.reason, 'parent-exited-before-certificate');
@@ -323,7 +343,9 @@ console.log(JSON.stringify({owner:owner.owner,nonce:owner.nonce,pid:process.pid,
   }
   let passed = results.length === fixtures.length && results.every(r => r.passed);
   let cleanupFailure = null;
-  if (passed) {
+  const sourceSHA256After = relay ? Object.fromEntries(inputFiles.map(([name, file]) => [name, crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex').toUpperCase()])) : null;
+  if (relay && JSON.stringify(sourceSHA256After) !== JSON.stringify(inputSHA256)) passed = false;
+  if (passed && !relay) {
     try {
       const current = fs.lstatSync(base);
       assert.ok(current.isDirectory() && !current.isSymbolicLink()); assert.equal(current.dev, baseIdentity.dev); assert.equal(current.ino, baseIdentity.ino);
@@ -331,8 +353,8 @@ console.log(JSON.stringify({owner:owner.owner,nonce:owner.nonce,pid:process.pid,
       fs.rmSync(base, { recursive: true });
     } catch (error) { passed = false; cleanupFailure = error.message; }
   }
-  console.log(JSON.stringify({ kind: formal ? 'fixed-formal-contract-fixture' : 'fixed-readiness-fixture', passed, inputCommit, inputSHA256, totalMs: LIMIT.total, reserveMs: LIMIT.reserve,
-    results, notRun: fixtures.filter(f => !results.some(r => r.fixture === f)), cleanupFailure, retained: passed ? null : base }));
+  console.log(JSON.stringify({ kind: relay ? 'fixed-wsl-relay-loss-fixture' : formal ? 'fixed-formal-contract-fixture' : 'fixed-readiness-fixture', passed, inputCommit, inputSHA256, sourceSHA256After, totalMs, reserveMs,
+    results, notRun: fixtures.filter(f => !results.some(r => r.fixture === f)), cleanupFailure, retained: relay || !passed ? base : null }));
   if (!passed) process.exitCode = 1;
 }
 async function chromiumFixtureSuite() {
@@ -610,9 +632,36 @@ async function suite() {
 }
 async function formalEntryContract() {
   // 外部asset生成境界だけを置換し、固定入口の順序・期限・fail-closedを検査する。
+  const origin = performance.now();
+  const contractNonce = crypto.randomBytes(16).toString('hex');
+  const sourceFiles = [__filename, path.join(__dirname, 'm21-windows-formal-adapter.ps1'), path.join(__dirname, 'm21-windows-supervisor.ps1')];
+  const sourceSHA256 = () => Object.fromEntries(sourceFiles.map(file => [path.basename(file), crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')]));
+  const sourceBefore = sourceSHA256();
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'm21-entry-contract-'));
+  const baseIdentity = fs.lstatSync(base), baseCanonical = fs.realpathSync(base);
+  atomic(path.join(base, 'owner.json'), { owner: OWNER, nonce: contractNonce, purpose: 'M21関数有限診断' });
+  const bulk = text => Buffer.from(`$${Buffer.byteLength(text)}\r\n${text}\r\n`, 'ascii');
+  const expectedRunId = 'a'.repeat(40);
+  const goodInfo = `# Server\r\nrun_id:${expectedRunId}\r\n`;
+  const endpointResponses = [bulk(goodInfo), bulk(`# Server\r\nrun_id:${'b'.repeat(40)}\r\n`), bulk('# Server\r\nredis_version:8\r\n'),
+    bulk(`${goodInfo}run_id:${expectedRunId}\r\n`), Buffer.from('$20000\r\n'), Buffer.from('+OK\r\n'), Buffer.from('$100\r\nshort'), Buffer.concat([bulk(goodInfo), Buffer.from('+EXTRA\r\n')]), null];
+  const endpointSockets = new Set();
+  let endpointConnections = 0;
+  const endpointServer = net.createServer(socket => {
+    endpointSockets.add(socket); socket.on('close', () => endpointSockets.delete(socket)); socket.on('error', () => {});
+    const response = endpointResponses[endpointConnections++];
+    let request = '', answered = false;
+    socket.on('data', bytes => {
+      request += bytes.toString('ascii');
+      const fixed = '*2\r\n$4\r\nINFO\r\n$6\r\nserver\r\n';
+      if (request.length > fixed.length || !fixed.startsWith(request)) { socket.destroy(); return; }
+      if (!answered && request === fixed) { answered = true; if (response !== null && response !== undefined) socket.end(response); }
+    });
+  });
+  await new Promise((resolve, reject) => { endpointServer.once('error', reject); endpointServer.listen({ host: '127.0.0.1', port: 0, exclusive: true }, resolve); });
+  const endpointPort = endpointServer.address().port;
   const fixture = path.join(base, 'contract.ps1');
-  fs.writeFileSync(fixture, `param([string]$Adapter)
+  fs.writeFileSync(fixture, `param([string]$Adapter,[string]$SupervisorPath,[int]$EndpointPort)
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
 function Set-Reason { param($value) $script:reason=$value }
@@ -622,8 +671,19 @@ function Set-Operation { param($value) }
 $script:expired=$false
 $script:reason=$null
 $script:self=[Diagnostics.Process]::GetCurrentProcess()
+$script:phaseClock=[Diagnostics.Stopwatch]::StartNew()
+$script:localClock=[Diagnostics.Stopwatch]::StartNew();$script:WorkRemainingMs=60000
+function Remaining { param([int]$Cap=[int]::MaxValue,[switch]$Recovery) return [int][Math]::Max(0,[Math]::Min($Cap,[Math]::Floor($script:WorkRemainingMs-$script:localClock.Elapsed.TotalMilliseconds))) }
+function Entry-Phase([string]$Name) { [Console]::Out.WriteLine('ENTRY_PHASE|'+$Name+'|pid='+$self.Id+'|creation='+$self.StartTime.ToUniversalTime().Ticks+'|utcTicks='+[DateTime]::UtcNow.Ticks+'|elapsedMs='+$script:phaseClock.ElapsedMilliseconds) }
+Entry-Phase 'entered'
 . $Adapter
-[Console]::Out.WriteLine('ENTRY_STAGE_loaded')
+Entry-Phase 'loaded'
+$tokens=$null;$errors=$null;$ast=[Management.Automation.Language.Parser]::ParseFile($SupervisorPath,[ref]$tokens,[ref]$errors)
+if($errors.Count){throw 'native-source-parser'}
+$native=@($ast.FindAll({param($node) $node -is [Management.Automation.Language.StringConstantExpressionAst] -and $node.Value.StartsWith('using System;') -and $node.Value.Contains('public sealed class M21Child')},$true))
+if($native.Count -ne 1){throw 'native-fixed-literal'}
+Add-Type -TypeDefinition $native[0].Value
+Entry-Phase 'native-defined'
 $budget=Get-M21FormalBudget
 if($budget.totalMs -ne 3300000 -or $budget.workMs -ne 3000000 -or $budget.reserveMs -ne 300000){throw 'budget'}
 if(($budget.recoveryCapsMs|Measure-Object -Sum).Sum -ne 267000 -or $budget.marginMs -ne 33000){throw 'caps'}
@@ -633,7 +693,7 @@ foreach($case in @(@('normal','Parent','none',420001,420001),@('formal-m21','Obs
  $rejected=$false;try{Assert-M21ScenarioBudget @case}catch{$rejected=$true};if(!$rejected){throw 'invalid-budget-admitted'}
 }
 Assert-M21FormalRequiredAlive @($self)
-[Console]::Out.WriteLine('ENTRY_STAGE_budget')
+Entry-Phase 'budget'
 $rejected=$false;try{Assert-M21FormalRequiredAlive @()}catch{$rejected=$true};if(!$rejected){throw 'empty-required-alive'}
 $script:events=New-Object 'Collections.Generic.List[string]'
 function Invoke-M21ProductionAssets { $script:events.Add('assets');return @{formalRunQualified=$false;runtimeCP='fixture-only'} }
@@ -647,7 +707,7 @@ if(($events -join ',') -cne 'assets'){throw 'continued-after-cp-failure'}
 $events.Clear();$script:expired=$true
 try{Invoke-M21FormalSupervisor}catch{}
 if($events.Count -ne 0){throw 'work-after-deadline'}
-[Console]::Out.WriteLine('ENTRY_STAGE_order')
+Entry-Phase 'order'
 $script:expired=$false
 $script:run=$PSScriptRoot;$script:owner='${OWNER}';$script:Nonce='0123456789abcdef0123456789abcdef'
 $env:M21_INPUT_COMMIT='7bd15a1c3de31aedce8a235b632a16be75c376b9'
@@ -659,7 +719,7 @@ $script:m21ProductionAssets=@{backend=$PSScriptRoot;productionCP='fixture-cp';fi
 $script:m21FormalHelper=Join-Path $PSScriptRoot 'helper.cjs';$script:m21FormalHelperSha='a'*64
 $script:NodePath='C:/fixture/node.exe'
 $hostEnvironment=New-M21FormalHostEnvironment
-[Console]::Out.WriteLine('ENTRY_STAGE_host_environment')
+Entry-Phase 'host-environment'
 foreach($key in @('M21_HOST_ONLY_SENTINEL','PATH','USERPROFILE','JAVA_TOOL_OPTIONS','NODE_OPTIONS','AWS_PROFILE','HTTP_PROXY')){if($hostEnvironment.ContainsKey($key)){throw 'host-env-inheritance'}}
 if($hostEnvironment['SPRING_DATASOURCE_USERNAME'] -cne 'm21' -or $hostEnvironment['SPRING_DATA_REDIS_PORT'] -cne '63791' -or $hostEnvironment['MANNSCHAFT_EMAIL_SIMULATE'] -cne 'true' -or $hostEnvironment['AWS_EC2_METADATA_DISABLED'] -cne 'true' -or $hostEnvironment['MANNSCHAFT_R2_ENDPOINT'] -cne 'http://127.0.0.1:8081' -or $hostEnvironment['MANNSCHAFT_SQS_ENABLED'] -cne 'false'){throw 'host-env-contract'}
 $close=[pscustomobject]@{owner=$owner;nonce=$Nonce;runId='m21-00000000-0000-0000-0000-000000000001';actorCodes=@('system','admin-de','member');requested=$true}
@@ -670,28 +730,72 @@ $close.nonce=$Nonce;$close.actorCodes=@('system','member','member')
 $rejected=$false;try{Assert-M21FormalBrowserCloseRequest $close $close.runId}catch{$rejected=$true};if(!$rejected){throw 'wrong-actors-close-admitted'}
 $script:m21FormalConnection.valkeyPort=6379
 $rejected=$false;try{New-M21FormalHostEnvironment}catch{$rejected=$true};if(!$rejected){throw 'shared-valkey-admitted'}
-$script:localClock=[pscustomobject]@{ElapsedMilliseconds=1250}
-$script:m21BridgeOriginMs=1000;$script:m21BridgeGlobalOffsetMs=1000;$script:m21BridgeWorkOffsetMs=600
+$endpoint=Confirm-M21FormalValkeyEndpoint $EndpointPort ('a'*40)
+if($endpoint.run_id -cne ('a'*40) -or $endpoint.socket_proof.green -ne $true -or $endpoint.socket_proof.socket_closed -ne $true){throw 'endpoint-positive'}
+foreach($case in @('mismatch','missing','duplicate','oversize','malformed','partial','extra','timeout')){
+ $rejected=$false;try{Confirm-M21FormalValkeyEndpoint $EndpointPort ('a'*40)}catch{$rejected=$true}
+ if(!$rejected -or $script:m21LastValkeyProbe.socket_proof.green -ne $false -or $script:m21LastValkeyProbe.socket_proof.socket_closed -ne $true){throw ('endpoint-negative-'+$case)}
+}
+Entry-Phase 'endpoint'
+$script:localClock=[pscustomobject]@{ElapsedTicks=([long][Diagnostics.Stopwatch]::Frequency*2)}
+$script:m21BridgeOriginTicks=[long][Diagnostics.Stopwatch]::Frequency;$script:m21BridgeGlobalOffsetMs=2000;$script:m21BridgeWorkOffsetMs=1600
 function Remaining { param([int]$Cap=[int]::MaxValue,[switch]$Recovery) return [Math]::Min($Cap,200) }
-if((Get-M21FormalBridgeDeadlineOffset 100) -ne 350){throw 'deadline-offset-reset'}
-$script:m21BridgeWorkOffsetMs=300
-if((Get-M21FormalBridgeDeadlineOffset 100) -ne 300){throw 'deadline-offset-not-clamped'}
-$script:m21BridgeWorkOffsetMs=249
+if((Get-M21FormalBridgeDeadlineOffset 100) -ne 1100){throw 'deadline-offset-reset'}
+$script:m21BridgeWorkOffsetMs=1050
+if((Get-M21FormalBridgeDeadlineOffset 100) -ne 1050){throw 'deadline-offset-not-clamped'}
+$script:m21BridgeWorkOffsetMs=999
 $rejected=$false;try{Get-M21FormalBridgeDeadlineOffset 100}catch{$rejected=$true};if(!$rejected){throw 'expired-offset-admitted'}
+$script:m21BridgeRun='00000000-0000-0000-0000-000000000002'
+$script:m21BridgeReady=[pscustomobject]@{boot_id='00000000-0000-0000-0000-000000000003';pid_namespace='pid:[123]'}
+$identity=[pscustomobject]@{pid=123;pgid=123;startticks='123456';boot_id=$script:m21BridgeReady.boot_id;pid_namespace=$script:m21BridgeReady.pid_namespace}
+$started=[pscustomobject]@{owner=$owner;nonce=$Nonce;run=$script:m21BridgeRun;request_id=1;operation='daemon-info';resource='daemon';deadline_ns=10000;session_acknowledged=$true;leader_identity=$identity;watchdog_identity=$identity}
+Assert-M21WslRelayStarted $started 10000
+$started.nonce='ffffffffffffffffffffffffffffffff'
+$rejected=$false;try{Assert-M21WslRelayStarted $started 10000}catch{$rejected=$true};if(!$rejected){throw 'old-relay-started-admitted'}
+Entry-Phase 'complete'
 [Console]::Out.WriteLine('M21_ENTRY_CONTRACT_OK')
 `);
-  const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', fixture, path.join(__dirname, 'm21-windows-formal-adapter.ps1')], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
-  let stdout = '', stderr = '';
-  child.stdout.on('data', data => { stdout += data; });
+  const launchRequestedMs = Math.floor(performance.now() - origin);
+  const child = spawn('C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe', ['-NoProfile', '-NonInteractive', '-File', fixture, path.join(__dirname, 'm21-windows-formal-adapter.ps1'), path.join(__dirname, 'm21-windows-supervisor.ps1'), String(endpointPort)], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  let stdout = '', stderr = '', stdoutEof = false, stderrEof = false, actualExit = null, closeMs = null, firstOutputMs = null, spawnObservedMs = null, deadlineStopIssued = false;
+  child.on('spawn', () => { spawnObservedMs = Math.floor(performance.now() - origin); });
+  child.stdout.on('data', data => { firstOutputMs ??= Math.floor(performance.now() - origin); stdout += data; });
   child.stderr.on('data', data => { stderr += data; });
-  const timer = setTimeout(() => child.kill(), 60000);
+  child.stdout.on('end', () => { stdoutEof = true; });
+  child.stderr.on('end', () => { stderrEof = true; });
+  child.on('exit', (code, signal) => { actualExit = { code, signal, elapsedMs: Math.floor(performance.now() - origin) }; });
+  const timer = setTimeout(() => { deadlineStopIssued = true; child.kill(); }, 60000);
   let code;
-  try { code = await new Promise((resolve, reject) => { child.on('error', reject); child.on('exit', resolve); }); }
-  finally { clearTimeout(timer); }
-  assert.equal(code, 0, `retained:${base}; ${stdout.slice(0, 1000)} ${stderr.slice(0, 2000)}`);
-  assert.match(stdout, /M21_ENTRY_CONTRACT_OK/);
-  fs.rmSync(base, { recursive: true });
-  console.log(JSON.stringify({ passed: true, scope: 'formal-entry-contract', runtimeQualified: false }));
+  try { code = await new Promise((resolve, reject) => { child.on('error', reject); child.on('close', value => { closeMs = Math.floor(performance.now() - origin); resolve(value); }); }); }
+  finally {
+    clearTimeout(timer);
+    for (const socket of endpointSockets) socket.destroy();
+    await new Promise(resolve => endpointServer.close(resolve));
+  }
+  fs.writeFileSync(path.join(base, 'stdout.txt'), stdout, { flag: 'wx' });
+  fs.writeFileSync(path.join(base, 'stderr.txt'), stderr, { flag: 'wx' });
+  const phases = stdout.split(/\r?\n/).filter(line => line.startsWith('ENTRY_PHASE|')).map(line => {
+    const match = /^ENTRY_PHASE\|([a-z-]+)\|pid=([0-9]+)\|creation=([0-9]+)\|utcTicks=([0-9]+)\|elapsedMs=([0-9]+)$/.exec(line);
+    assert.ok(match); return { phase: match[1], pid: Number(match[2]), creation: match[3], utcTicks: match[4], elapsedMs: Number(match[5]) };
+  });
+  const sourceAfter = sourceSHA256();
+  const passed = code === 0 && stdoutEof && stderrEof && !deadlineStopIssued && endpointConnections === 9 && stdout.includes('M21_ENTRY_CONTRACT_OK') && JSON.stringify(sourceBefore) === JSON.stringify(sourceAfter);
+  const evidenceDirectory = path.join(__dirname, '..', '.claude');
+  fs.mkdirSync(evidenceDirectory, { recursive: true });
+  assert.ok(!fs.lstatSync(evidenceDirectory).isSymbolicLink());
+  const evidenceFile = path.join(evidenceDirectory, `m21-entry-contract-${contractNonce}.json`);
+  const evidence = { scope: 'formal-entry-contract-finite-diagnostic', owner: OWNER, nonce: contractNonce, passed, runtimeQualified: false,
+    diagnosticLimitMs: 60000, productionBudgetProof: false, inputCommit: process.env.M21_INPUT_COMMIT ?? null, sourceBefore, sourceAfter,
+    ownLauncherPid: child.pid, launchRequestedMs, spawnObservedMs, actualExit, closeMs, firstOutputMs, stdoutEof, stderrEof, deadlineStopIssued, endpointConnections, phases, retained: passed ? null : base };
+  fs.writeFileSync(evidenceFile, JSON.stringify(evidence), { flag: 'wx' });
+  if (passed) {
+    const current = fs.lstatSync(base);
+    assert.ok(current.isDirectory() && !current.isSymbolicLink()); assert.equal(current.dev, baseIdentity.dev); assert.equal(current.ino, baseIdentity.ino);
+    assert.equal(fs.realpathSync(base), baseCanonical); assert.equal(read(path.join(base, 'owner.json')).nonce, contractNonce);
+    fs.rmSync(base, { recursive: true });
+  }
+  console.log(JSON.stringify({ passed, scope: evidence.scope, runtimeQualified: false, actualExit, stdoutEof, stderrEof, firstOutputMs, phases, evidenceFile, retained: evidence.retained }));
+  assert.ok(passed, `formal entry finite diagnostic failed; evidence:${evidenceFile}`);
 }
 (async () => {
   if (process.argv[2] === '--dummy') {
@@ -699,6 +803,8 @@ $rejected=$false;try{Get-M21FormalBridgeDeadlineOffset 100}catch{$rejected=$true
     await dummy(...process.argv.slice(3));
   } else if (process.argv[2] === '--formal-entry-contract') {
     await formalEntryContract();
+  } else if (process.argv[2] === '--wsl-relay-loss-fixture') {
+    await readinessFixtureSuite('wsl-relay-loss');
   } else if (process.argv[2] === '--readiness-fixture') {
     await readinessFixtureSuite();
   } else if (process.argv[2] === '--formal-contract-fixture') {

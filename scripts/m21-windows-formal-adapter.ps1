@@ -77,8 +77,9 @@ function Start-M21FormalBridge {
  $bridgePath=Join-Path $PSScriptRoot 'm21-wsl-docker-bridge.py'
  if(!(Test-Path -LiteralPath $bridgePath -PathType Leaf)){Set-Reason 'formal-runtime-not-connected';throw ([IO.FileNotFoundException]::new())}
  $script:m21BridgeSourceSha=(Get-FileHash -LiteralPath $bridgePath -Algorithm SHA256).Hash.ToLowerInvariant()
+ $wslSha=(Get-FileHash -LiteralPath 'C:/Windows/System32/wsl.exe' -Algorithm SHA256).Hash
  $script:m21BridgeRun=[Guid]::NewGuid().ToString('D')
- $script:m21BridgeReady=$null;$script:m21BridgeActiveRequest=$null;$script:m21BridgeRequestId=0
+ $script:m21BridgeReady=$null;$script:m21BridgeActiveRequest=$null;$script:m21BridgeRequestId=0;$script:m21FormalPendingMutation=$null
  $script:m21BridgeReceipts=New-Object 'Collections.Generic.List[string]'
  $bridgeDirectory=Join-Path $run 'bridge'
  if(Test-Path -LiteralPath $bridgeDirectory){throw 'bridge directory既存'}
@@ -93,13 +94,13 @@ function Start-M21FormalBridge {
  $script:m21Bridge=[M21Child]::StartBridge([string[]]@('-d','Ubuntu-24.04','--exec','/usr/bin/python3','-I',$linuxSource,'--run-directory',$linuxRun,'--owner',$owner,'--run',$script:m21BridgeRun,'--nonce',$Nonce,'--input-commit',$commit),$PSScriptRoot,(Join-Path $run 'bridge-relay'),(Remaining -Recovery),$environment)
  Register-Child $script:m21Bridge 'formal-bridge'
  if([IO.Path]::GetFullPath($script:m21Bridge.Process.MainModule.FileName) -ine 'C:\Windows\System32\wsl.exe'){throw '保持bridge実exe不一致'}
- Write-Json 'formal-bridge-launcher.json' @{owner=$owner;nonce=$Nonce;run=$script:m21BridgeRun;identity=(Identity $script:m21Bridge.Process);exe=$script:m21Bridge.Process.MainModule.FileName;exeSha256=(Get-FileHash -LiteralPath 'C:/Windows/System32/wsl.exe' -Algorithm SHA256).Hash;bridgeSourceSha256=$script:m21BridgeSourceSha;inputCommit=$commit}
+ Write-Json 'formal-bridge-launcher.json' @{owner=$owner;nonce=$Nonce;run=$script:m21BridgeRun;identity=(Identity $script:m21Bridge.Process);exe=$script:m21Bridge.Process.MainModule.FileName;exeSha256=$wslSha;bridgeSourceSha256=$script:m21BridgeSourceSha;inputCommit=$commit}
  $ready=Wait-M21FormalBridgeFile 'ready.json' 60000
  Assert-M21FormalBridgeDocument $ready 'ready'
  if($ready.ready -ne $true){throw 'bridge ready未確認'}
  $script:m21BridgeReady=$ready
  # Linux t0はready受信より前。単一Parent時計からの残量だけで絶対offsetを固定する。
- $script:m21BridgeOriginMs=$localClock.ElapsedMilliseconds
+ $script:m21BridgeOriginTicks=$localClock.ElapsedTicks
  $script:m21BridgeGlobalOffsetMs=Remaining -Recovery;$script:m21BridgeWorkOffsetMs=Remaining
  Send-M21FormalBridgeFrame @{type='init';owner=$owner;run=$script:m21BridgeRun;global_offset_ms=$script:m21BridgeGlobalOffsetMs;work_offset_ms=$script:m21BridgeWorkOffsetMs}
  $initialized=Wait-M21FormalBridgeFile 'initialized.json' 15000
@@ -120,21 +121,107 @@ function Start-M21FormalBridge {
 }
 
 function Get-M21FormalBridgeDeadlineOffset([int]$CapMs,[switch]$Recovery) {
- $elapsed=[long]$localClock.ElapsedMilliseconds-[long]$script:m21BridgeOriginMs
+ $ticks=[long]$localClock.ElapsedTicks-[long]$script:m21BridgeOriginTicks
+ if($ticks -lt 0 -or $ticks -gt 9223372036854775){throw 'bridge QPC discontinuity'}
+ $remainder=[long]0
+ # 二つのms値を別々にfloorしない。QPC差分を一度だけ整数除算して短縮側へ丸める。
+ $elapsed=[Math]::DivRem([long]($ticks*1000),[long][Diagnostics.Stopwatch]::Frequency,[ref]$remainder)
  $bound=[long]$script:m21BridgeWorkOffsetMs;if($Recovery){$bound=[long]$script:m21BridgeGlobalOffsetMs}
  $remaining=Remaining $CapMs -Recovery:$Recovery
  if($elapsed -lt 0 -or $remaining -le 0 -or $bound -le $elapsed){throw 'bridge deadline exhausted'}
  return [long][Math]::Min($bound,$elapsed+$remaining)
 }
 
-function Invoke-M21FormalDockerRequest([ValidateSet('daemon-info','volume-create','volume-inspect','container-create','container-inspect','container-start','container-stop','container-remove','volume-remove','resources-absent')][string]$Operation,[ValidateSet('mysql','valkey')][string]$Resource,[ValidateSet('work','cleanup')][string]$Phase,[int]$CapMs=3000) {
+function Assert-M21WslRelayStarted([object]$Started,[long]$UpperDeadlineNs) {
+ if($Started.owner -cne $owner -or $Started.nonce -cne $Nonce -or $Started.run -cne $script:m21BridgeRun -or $Started.request_id -ne 1 -or $Started.operation -cne 'daemon-info' -or $Started.resource -cne 'daemon' -or $Started.session_acknowledged -isnot [bool] -or !$Started.session_acknowledged -or $Started.deadline_ns -le 0 -or $Started.deadline_ns -gt $UpperDeadlineNs){throw 'relay fixture開始receipt不一致'}
+ foreach($identity in @($Started.leader_identity,$Started.watchdog_identity)){
+  if(($identity.pid -isnot [int] -and $identity.pid -isnot [long]) -or $identity.pid -le 0 -or ($identity.pgid -isnot [int] -and $identity.pgid -isnot [long]) -or $identity.pgid -le 0 -or $identity.startticks -isnot [string] -or $identity.startticks -cnotmatch '^[1-9][0-9]*$' -or $identity.boot_id -cne $script:m21BridgeReady.boot_id -or $identity.pid_namespace -cne $script:m21BridgeReady.pid_namespace){throw 'relay fixture Linux世代不一致'}
+ }
+}
+
+function Invoke-M21WslRelayLossFixture {
+ # fixed test CLIだけ。外部Docker境界をdummyに置換しLinux fork/pidfd/reap/EOFは実物。
+ Guard-Run;Require-Work
+ $commit=[Environment]::GetEnvironmentVariable('M21_INPUT_COMMIT')
+ if($commit -cnotmatch '^[a-f0-9]{40}$' -or [IO.Path]::GetDirectoryName($run) -ine 'C:\Users\kenta\AppData\Local\Temp' -or [IO.Path]::GetFileName($run) -cnotmatch '^m21-windows-[A-Za-z0-9_-]+$'){throw 'relay fixture固定入力不一致'}
+ $source=Join-Path $PSScriptRoot 'm21-wsl-docker-bridge.py';$test=Join-Path $PSScriptRoot 'test_m21_wsl_docker_bridge.py'
+ $script:m21BridgeSourceSha=(Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash.ToLowerInvariant()
+ $testSha=(Get-FileHash -LiteralPath $test -Algorithm SHA256).Hash.ToLowerInvariant()
+ $wslSha=(Get-FileHash -LiteralPath 'C:/Windows/System32/wsl.exe' -Algorithm SHA256).Hash
+ $script:m21BridgeRun=[Guid]::NewGuid().ToString('D');$script:m21BridgeReady=$null
+ $directory=Join-Path $run 'bridge'
+ if(Test-Path -LiteralPath $directory){throw 'fixture directory既存'}
+ [IO.Directory]::CreateDirectory($directory)>$null
+ Write-Json 'bridge/owner.json' @{owner=$owner;nonce=$Nonce;run=$script:m21BridgeRun;purpose='m21-docker-bridge'}
+ $environment=New-Object 'Collections.Generic.Dictionary[string,string]' ([StringComparer]::OrdinalIgnoreCase)
+ foreach($key in @('SystemRoot','WINDIR')){$value=[Environment]::GetEnvironmentVariable($key);if($null -ne $value){$environment.Add($key,$value)}}
+ $environment.Add('TEMP',$run);$environment.Add('TMP',$run)
+ $linuxTest='/mnt/c/'+$test.Substring(3).Replace('\','/');$linuxDirectory='/mnt/c/'+$directory.Substring(3).Replace('\','/')
+ Require-Work
+ $relay=[M21Child]::StartBridge([string[]]@('-d','Ubuntu-24.04','--exec','/usr/bin/python3','-I',$linuxTest,'--relay-fixture','--run-directory',$linuxDirectory,'--owner',$owner,'--run',$script:m21BridgeRun,'--nonce',$Nonce,'--input-commit',$commit),$PSScriptRoot,(Join-Path $run 'relay'),(Remaining -Recovery),$environment)
+ $script:m21Bridge=$relay
+ Register-Child $relay 'wsl-relay-loss-fixture'
+ $script:fixtureEvidence=@{fixture='wsl-relay-loss';passed=$false;primaryRelayQualified=$false;primaryReason='intentional-relay-loss';formalRunQualified=$false;realDockerInvoked=$false;inputCommit=$commit;bridgeSourceSha256=$script:m21BridgeSourceSha;fixtureSourceSha256=$testSha;windows=$null;linux=$null;linuxBridgeActualExitObserved=$false;linuxWatchdogActualExitObserved=$false;retained=$run}
+ if([IO.Path]::GetFullPath($relay.Process.MainModule.FileName) -ine 'C:\Windows\System32\wsl.exe'){throw 'fixture保持exe不一致'}
+ $ready=Wait-M21FormalBridgeFile 'ready.json' 15000
+ Assert-M21FormalBridgeDocument $ready 'ready';$script:m21BridgeReady=$ready
+ $script:m21BridgeOriginTicks=$localClock.ElapsedTicks
+ $script:m21BridgeGlobalOffsetMs=Remaining 4000 -Recovery;$script:m21BridgeWorkOffsetMs=Remaining 3000
+ Send-M21FormalBridgeFrame @{type='init';owner=$owner;run=$script:m21BridgeRun;global_offset_ms=$script:m21BridgeGlobalOffsetMs;work_offset_ms=$script:m21BridgeWorkOffsetMs}
+ $initialized=Wait-M21FormalBridgeFile 'initialized.json' 2000
+ Assert-M21FormalBridgeDocument $initialized 'initialized'
+ $descriptor=$initialized.descriptor
+ if($descriptor.daemon_id -cne 'fixture-daemon' -or $descriptor.mysql_image_id -cne ('sha256:'+('a'*64)) -or $descriptor.valkey_image_id -cne ('sha256:'+('b'*64))){throw 'fixture descriptor不一致'}
+ Send-M21FormalBridgeFrame @{type='bind';owner=$owner;run=$script:m21BridgeRun;descriptor=$descriptor}
+ $bound=Wait-M21FormalBridgeFile 'bound.json' 1000
+ Assert-M21FormalBridgeDocument $bound 'bound'
+ $offset=Get-M21FormalBridgeDeadlineOffset 1000 -Recovery
+ Send-M21FormalBridgeFrame @{type='request';owner=$owner;run=$script:m21BridgeRun;request_id=1;phase='cleanup';operation='daemon-info';resource='daemon';deadline_offset_ms=$offset}
+ $started=Wait-M21FormalBridgeFile 'request-00001-started.json' 1000 -Recovery
+ Assert-M21FormalBridgeDocument $started 'request-started'
+ Assert-M21WslRelayStarted $started ([long]$ready.t0_ns+$offset*1000000)
+ Assert-M21FormalRequiredAlive @($relay.Process)
+ $identity=Identity $relay.Process
+ $script:fixtureEvidence.windows=@{identity=$identity;exe=$relay.Process.MainModule.FileName;exeSha256=$wslSha;killIssued=$false;actualExited=$false;exitCode=$null;stdoutEof=$false;stderrEof=$false}
+ if(Test-Path -LiteralPath (Join-Path $directory 'request-00001.json')){throw 'relay kill前にCLI回収完了済み'}
+ # 保存済みの同じProcessだけ。Windows relay終了をLinux CLI終了へ読み替えない。
+ $relay.Process.Kill()
+ $script:fixtureEvidence.windows.killIssued=$true
+ if(!$relay.Process.WaitForExit((Remaining 2000 -Recovery))){throw 'held relay actual exit不明'}
+ Capture $relay 'wsl-relay-loss-primary' 500
+ $aliveRejected=$false;try{Assert-M21FormalRequiredAlive @($relay.Process)}catch{$aliveRejected=$true}
+ if(!$aliveRejected){throw '終了済み保持世代をRequiredAliveに採用'}
+ $captured=$streams[$streams.Count-1]
+ $script:fixtureEvidence.windows.actualExited=$captured.exited;$script:fixtureEvidence.windows.exitCode=$captured.exitCode
+ $script:fixtureEvidence.windows.stdoutEof=$captured.stdoutEof;$script:fixtureEvidence.windows.stderrEof=$captured.stderrEof
+ $receiptEnd=$localClock.ElapsedMilliseconds+(Remaining 5000 -Recovery)
+ while(!(Test-Path -LiteralPath (Join-Path $directory 'request-00001.json')) -and $localClock.ElapsedMilliseconds -lt $receiptEnd){Start-Sleep -Milliseconds ([Math]::Min(25,(Remaining -Recovery)))}
+ $physical=Read-Json 'bridge/request-00001.json';Assert-M21FormalBridgeDocument $physical 'request'
+ if($physical.request_id -ne 1 -or $physical.operation -cne 'daemon-info' -or $physical.resource -cne 'daemon' -or $physical.deadline_ns -ne $started.deadline_ns){throw 'independent Linux receipt不一致'}
+ $linux=$physical.linux
+ $script:fixtureEvidence.linux=@{started=$started;primaryGreen=$linux.green;primaryChildrenExited=$linux.primary_children_exited;primaryStdoutEof=$linux.primary_stdout_eof;primaryStderrEof=$linux.primary_stderr_eof;cliExit=$linux.cli_exit;childrenReaped=$linux.children_reaped;stdoutEof=$linux.stdout_eof;stderrEof=$linux.stderr_eof;writeClosed=$linux.write_closed;reason=$linux.reason;forceCount=$linux.force_count;reapedPids=$linux.reaped_pids;leaderIdentity=$linux.leader_identity}
+ if(Test-Path -LiteralPath (Join-Path $directory 'request-00001-observed.json')){
+  $observed=Read-Json 'bridge/request-00001-observed.json'
+  Assert-M21FormalBridgeDocument $observed 'observed'
+  $script:fixtureEvidence.linuxWatchdogActualExitObserved=($observed.watchdog_exited -eq $true -and $observed.watchdog_exit -eq 0)
+ }
+ if(!$captured.exited -or !$captured.stdoutEof -or !$captured.stderrEof -or $linux.green -ne $false -or $linux.children_reaped -ne $true -or $linux.stdout_eof -ne $true -or $linux.stderr_eof -ne $true -or $linux.write_closed -ne $true){throw 'relay loss独立回収未確認'}
+ if((Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash.ToLowerInvariant() -cne $script:m21BridgeSourceSha -or (Get-FileHash -LiteralPath $test -Algorithm SHA256).Hash.ToLowerInvariant() -cne $testSha){throw 'fixture実行中source変更'}
+ $script:fixtureEvidence.passed=$true
+ Write-Json 'wsl-relay-loss-evidence.json' $script:fixtureEvidence
+}
+
+function Invoke-M21FormalDockerRequest([ValidateSet('daemon-info','volume-create','volume-inspect','container-create','container-inspect','container-start','container-stop','container-remove','volume-remove','resources-absent')][string]$Operation,[ValidateSet('mysql','valkey','daemon')][string]$Resource,[ValidateSet('work','cleanup')][string]$Phase,[int]$CapMs=3000) {
  Guard-Run
+ if(($Operation -ceq 'daemon-info') -ne ($Resource -ceq 'daemon')){throw '固定operation/resource不一致'}
  if($null -ne $script:m21BridgeActiveRequest){throw '前CLI未回収。追加spawn拒否'}
  if($Phase -ceq 'work'){Require-Work}
  if((Remaining -Recovery) -le 0){throw 'G0 bridge request拒否'}
  $offset=Get-M21FormalBridgeDeadlineOffset $CapMs -Recovery:($Phase -ceq 'cleanup')
  $script:m21BridgeRequestId++
  $id=$script:m21BridgeRequestId;$script:m21BridgeActiveRequest=$id
+ $mutating=($Phase -ceq 'work' -and $Operation -cin @('volume-create','container-create','container-start'))
+ if($mutating){$script:m21FormalPendingMutation=@{requestId=$id;operation=$Operation;resource=$Resource}}
  $frame=@{type='request';owner=$owner;run=$script:m21BridgeRun;request_id=$id;phase=$Phase;operation=$Operation;resource=$Resource;deadline_offset_ms=$offset}
  if($Operation -ceq 'container-create' -and $Resource -ceq 'mysql'){$frame.secrets=@{mysql_root_password=$script:m21FormalRootPassword;mysql_password=$script:m21FormalAppPassword}}
  $bodyEnd=$localClock.ElapsedMilliseconds+$CapMs
@@ -154,6 +241,16 @@ function Invoke-M21FormalDockerRequest([ValidateSet('daemon-info','volume-create
  foreach($document in @($physical,$observed)){
   if($document.request_id -ne $id -or $document.operation -cne $Operation -or $document.resource -cne $Resource -or $document.deadline_ns -gt ([long]$script:m21BridgeReady.t0_ns+$offset*1000000)){throw 'bridge要求receipt不一致'}
  }
+ if($physical.phase -cne $Phase){throw 'bridge要求phase不一致'}
+ if(($physical.PSObject.Properties.Name -ccontains 'not_spawned') -and $physical.not_spawned -eq $true){
+  if($observed.not_spawned -ne $true -or $physical.green -ne $false -or $observed.green -ne $false -or $physical.code -cnotin @('admission-denied','ownership-unverified','daemon-unconfirmed') -or $observed.code -cne $physical.code -or $null -ne $physical.linux -or $null -ne $physical.childproof -or $null -ne $observed.watchdog_exited -or $null -ne $observed.watchdog_exit -or $null -ne $observed.result){throw 'typed deny receipt不一致'}
+  $script:m21BridgeActiveRequest=$null
+  if($mutating){$script:m21FormalPendingMutation=$null}
+  $script:m21BridgeReceipts.Add('bridge/'+$observedName)
+  Set-Reason ('formal-bridge-'+$physical.code)
+  # 未生成の子にactual exit/EOFを作らず、他roleの回収要求は継続できる。
+  throw ([InvalidOperationException]::new())
+ }
  $linux=$physical.linux
  if($observed.watchdog_exited -eq $true -and $observed.watchdog_exit -eq 0 -and $linux.children_reaped -eq $true -and $linux.stdout_eof -eq $true -and $linux.stderr_eof -eq $true -and $linux.write_closed -eq $true){$script:m21BridgeActiveRequest=$null}
  $script:m21BridgeReceipts.Add('bridge/'+$observedName)
@@ -161,6 +258,7 @@ function Invoke-M21FormalDockerRequest([ValidateSet('daemon-info','volume-create
  if($Operation -ceq 'resources-absent'){
   if($linux.physical_completed -ne $true -or $linux.cli_exit -ne 1 -or $observed.result.absence_candidate -ne $true -or $observed.result.absent -ne $false -or $observed.result.requires_same_daemon_after -ne $true){throw 'typed不存在candidate不成立'}
  }elseif($linux.green -ne $true -or $linux.cli_exit -ne 0){throw 'bridge CLI非0/実子/各EOF不成立'}
+ if($mutating){$script:m21FormalPendingMutation=$null}
  return $observed
 }
 
@@ -174,19 +272,34 @@ function New-M21FormalResources {
   $null=Invoke-M21FormalDockerRequest 'container-inspect' $role 'work'
   $null=Invoke-M21FormalDockerRequest 'container-start' $role 'work'
   $inspection=Invoke-M21FormalDockerRequest 'container-inspect' $role 'work'
-  $port=$inspection.result.loopback_port
-  if(($port -isnot [int] -and $port -isnot [long]) -or $port -lt 1 -or $port -gt 65535 -or ($role -ceq 'valkey' -and $port -eq 6379)){throw '専用loopback port不正'}
+  $mapping=$inspection.result.loopback_port
+  if($null -eq $mapping -or @($mapping.PSObject.Properties.Name).Count -ne 2 -or $mapping.HostIp -cne '127.0.0.1' -or $mapping.HostPort -isnot [string] -or $mapping.HostPort -cnotmatch '^[0-9]{1,5}$'){throw '専用loopback mapping不正'}
+  $port=[int]$mapping.HostPort
+  if($port -lt 1 -or $port -gt 65535 -or ($role -ceq 'valkey' -and $port -eq 6379)){throw '専用loopback port不正'}
   $ports[$role]=[int]$port
+  if($role -ceq 'valkey'){
+   $socket=$inspection.result.socket_proof
+   if($inspection.result.run_id -isnot [string] -or $inspection.result.run_id -cnotmatch '^[a-f0-9]{40}$' -or $socket.transport -cne 'owned-loopback-info' -or $socket.green -ne $true -or $socket.response_complete -ne $true -or $socket.socket_closed -ne $true -or $socket.within_deadline -ne $true -or $socket.cli_spawned -ne $false -or $null -ne $socket.childproof){throw 'Linux Valkey同一性未確認'}
+   $valkeyRunId=$inspection.result.run_id;$valkeySocketProof=$socket
+  }
  }
  $script:m21FormalConnection=@{database=('m21_'+$script:m21BridgeRun.Replace('-',''));mysqlPort=$ports.mysql;valkeyPort=$ports.valkey;password=$script:m21FormalAppPassword}
- Write-Json 'formal-resources-ready.json' @{owner=$owner;nonce=$Nonce;run=$script:m21BridgeRun;descriptor=$script:m21BridgeDescriptor;database=$script:m21FormalConnection.database;mysqlPort=$ports.mysql;valkeyPort=$ports.valkey;secretsPublished=$false}
+ Write-Json 'formal-resources-ready.json' @{owner=$owner;nonce=$Nonce;run=$script:m21BridgeRun;descriptor=$script:m21BridgeDescriptor;database=$script:m21FormalConnection.database;mysqlPort=$ports.mysql;valkeyPort=$ports.valkey;valkeyRunId=$valkeyRunId;valkeySocketProof=$valkeySocketProof;secretsPublished=$false}
+}
+
+function Confirm-M21FormalValkeyEndpoint([int]$Port,[string]$ExpectedRunId) {
+ Require-Work
+ $script:m21LastValkeyProbe=$null
+ $script:m21LastValkeyProbe=[M21Child]::ProbeValkeyEndpoint($Port,$ExpectedRunId,$localClock,$WorkRemainingMs)
+ if($script:m21LastValkeyProbe.socket_proof.green -ne $true){Set-Reason 'formal-valkey-endpoint-unverified';throw ([IO.InvalidDataException]::new())}
+ return $script:m21LastValkeyProbe
 }
 
 function Stop-M21FormalExternalResources {
  $confirmed=$true
  if($null -eq $script:m21Bridge){return}
  # R14: 同daemon2、所有inspect4、stop2、rm4、不存在candidate2。各要求を回収後だけ次へ進む。
- $operations=@(@('daemon-info','mysql',3000),@('container-inspect','mysql',3000),@('container-inspect','valkey',3000),@('volume-inspect','mysql',3000),@('volume-inspect','valkey',3000),@('container-stop','mysql',15000),@('container-stop','valkey',10000),@('container-remove','mysql',3000),@('container-remove','valkey',3000),@('volume-remove','mysql',3000),@('volume-remove','valkey',3000),@('resources-absent','mysql',3000),@('resources-absent','valkey',3000),@('daemon-info','mysql',3000))
+ $operations=@(@('daemon-info','daemon',3000),@('container-inspect','mysql',3000),@('container-inspect','valkey',3000),@('volume-inspect','mysql',3000),@('volume-inspect','valkey',3000),@('container-stop','mysql',15000),@('container-stop','valkey',10000),@('container-remove','mysql',3000),@('container-remove','valkey',3000),@('volume-remove','mysql',3000),@('volume-remove','valkey',3000),@('resources-absent','mysql',3000),@('resources-absent','valkey',3000),@('daemon-info','daemon',3000))
  $last=$null
  foreach($item in $operations){
   try{$last=Invoke-M21FormalDockerRequest $item[0] $item[1] 'cleanup' $item[2]}
@@ -198,6 +311,7 @@ function Stop-M21FormalExternalResources {
   if(($roles-join ',') -cne 'mysql,valkey'){throw '最終不存在role不一致'}
   foreach($entry in $last.result.confirmed_absent_resources){$name='m21-'+$script:m21BridgeRun.Replace('-','')+'-'+$entry.role;if($entry.container -cne $name -or $entry.volume -cne ($name+'-data')){throw '最終不存在name不一致'}}
  }catch{$confirmed=$false;Fail 'formal-docker-final-absence' $_.Exception $_}
+ if($null -ne $script:m21FormalPendingMutation){$confirmed=$false;Fail 'formal-docker-work-result-unconfirmed' ([InvalidOperationException]::new())}
  try{if((Remaining -Recovery) -gt 0 -and !$script:m21Bridge.Process.WaitForExit(0)){Send-M21FormalBridgeFrame @{type='shutdown';owner=$owner;run=$script:m21BridgeRun} 100}}
  catch{$confirmed=$false;Fail 'formal-bridge-shutdown' $_.Exception $_}
  try{
@@ -211,7 +325,7 @@ function Stop-M21FormalExternalResources {
   # 先行workの失敗と、後続14件の資源回収の事実を混同しない。
   $script:formalEntryEvidence.bridgeOperationalGreen=$exit.green
  }catch{$confirmed=$false;Fail 'formal-bridge-exit-and-streams' $_.Exception $_}
- $script:formalEntryEvidence.externalRecovery=@{confirmed=$confirmed;receipts=@($script:m21BridgeReceipts.ToArray());bridgeRun=$script:m21BridgeRun;retained=$run;formalRunQualified=$false}
+ $script:formalEntryEvidence.externalRecovery=@{confirmed=$confirmed;receipts=@($script:m21BridgeReceipts.ToArray());bridgeRun=$script:m21BridgeRun;unconfirmedMutation=$script:m21FormalPendingMutation;retained=$run;formalRunQualified=$false}
  $script:m21FormalRootPassword=$null;$script:m21FormalAppPassword=$null
  if(!$confirmed){$script:recovered=$false;throw '正式外部資源回収未確認'}
 }
@@ -397,6 +511,9 @@ function Invoke-M21FormalWork {
   finally{if($null -ne $response){$response.Dispose()};$http.Abort()}
  }
  Set-Operation 'Supervisor.formal-java'
+ $resources=Read-Json 'formal-resources-ready.json'
+ if($resources.owner -cne $owner -or $resources.nonce -cne $Nonce -or $resources.database -cne $database -or $resources.valkeyPort -ne [int]$redis -or $resources.valkeyRunId -cnotmatch '^[a-f0-9]{40}$'){throw 'Valkey endpoint正本不一致'}
+ $script:formalEntryEvidence.valkeyEndpoint=Confirm-M21FormalValkeyEndpoint ([int]$redis) $resources.valkeyRunId
  $java=Join-Path $script:m21ProductionAssets.jdk 'bin/java.exe'
  Require-Work
  Assert-M21FormalRequiredAlive @($fe.Process,$listener)
