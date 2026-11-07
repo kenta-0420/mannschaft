@@ -1,0 +1,12 @@
+{
+  "knownIds": [
+    55448,
+    56172,
+    46236,
+    40316,
+    59628
+  ],
+  "observedByGetProcess": [],
+  "source": "root identity-checked interruption plus read-only current Get-Process; any reused PID is not stopped",
+  "atUtc": "2026-11-07T19:55:36.1731140Z"
+}
