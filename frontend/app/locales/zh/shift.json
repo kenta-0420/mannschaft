@@ -391,6 +391,7 @@
       }
     },
     "entry": {
+      "notStarted": "排班意愿提交尚未开始。",
       "sectionTitle": "提交排班意愿 / 排班板",
       "bulkRequest": "批量提交意愿",
       "board": "排班板",

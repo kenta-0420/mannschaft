@@ -391,6 +391,7 @@
       }
     },
     "entry": {
+      "notStarted": "Die Abgabe von Schichtwünschen hat noch nicht begonnen.",
       "sectionTitle": "Wünsche einreichen / Schichtboard",
       "bulkRequest": "Wünsche gesammelt einreichen",
       "board": "Schichtboard",
