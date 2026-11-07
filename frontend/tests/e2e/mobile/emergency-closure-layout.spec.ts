@@ -9,8 +9,7 @@ import { waitForHydration } from '../helpers/wait'
  * モックする（認証は localStorage の currentUser で通し、アクセストークンは /auth/refresh のモックが返す）。
  * 日時整形・ステータス表示・親の余白は本番コードのまま（検証専用ページは使わない）。
  *
- * AC-13: 390x844 送信履歴（折りたたみ時／確認状況展開時を別ケース）
- * AC-14: 390px プレビュー表
+ * AC-13/14 は CMP-261104-0336 でカード表示（md 未満）へ置換した。
  * AC-16: 1440x900 で全列・文字列・ボタンが欠けず「見えている」
  * （AC-15 の件数タグ i18n は単体 spec で検証する）
  */
@@ -36,6 +35,13 @@ const CONFIRMATIONS = [
   { userId: 1, userFullName: '山田 太郎', userEmail: 'u1@example.com', appointmentAt: '2026-11-10T09:30:00', confirmed: true, confirmedAt: '2026-11-03T10:00:00', reminderSent: true },
   { userId: 2, userFullName: '鈴木 花子', userEmail: 'u2@example.com', appointmentAt: '2026-11-11T10:00:00', confirmed: false, confirmedAt: null, reminderSent: false },
 ]
+const NOSPACE_A = 'A'.repeat(120)
+const NOSPACE_JA = 'あ'.repeat(80)
+const LONG_CLOSURES = [{ ...CLOSURES[0]!, reason: NOSPACE_A }, { ...CLOSURES[1]!, reason: NOSPACE_JA }]
+const LONG_CONFIRMATIONS = [
+  { ...CONFIRMATIONS[0]!, userFullName: NOSPACE_JA },
+  { ...CONFIRMATIONS[1]!, userFullName: NOSPACE_A },
+]
 const PREVIEW = {
   startDate: '2026-11-10', endDate: '2026-11-12', startTime: null, endTime: null, affectedCount: 2,
   affectedReservations: [
@@ -51,7 +57,7 @@ const TEAM = {
 }
 
 /** 認証（localStorage の currentUser）と API モックを仕込む。未モックの API は空配列で返し、一覧を返す。 */
-async function setupMocks(page: Page): Promise<string[]> {
+async function setupMocks(page: Page, long = false): Promise<string[]> {
   const unmatched: string[] = []
   await page.addInitScript(() => {
     localStorage.setItem('currentUser', JSON.stringify({
@@ -70,9 +76,9 @@ async function setupMocks(page: Page): Promise<string[]> {
     if (p === `/teams/${SLUG}`) return route.fulfill(ok(TEAM))
     if (p === `/teams/${SLUG}/modules`) return route.fulfill(ok([{ moduleSlug: 'reservation', isEnabled: true }]))
     if (p === '/me/teams') return route.fulfill(ok([{ id: 1, slug: SLUG }]))
-    if (p === `/teams/${SLUG}/emergency-closures`) return route.fulfill(ok(CLOSURES))
+    if (p === `/teams/${SLUG}/emergency-closures`) return route.fulfill(ok(long ? LONG_CLOSURES : CLOSURES))
     if (p === `/teams/${SLUG}/emergency-closures/preview`) return route.fulfill(ok(PREVIEW))
-    if (p === `/teams/${SLUG}/emergency-closures/1/confirmations`) return route.fulfill(ok(CONFIRMATIONS))
+    if (p === `/teams/${SLUG}/emergency-closures/1/confirmations`) return route.fulfill(ok(long ? LONG_CONFIRMATIONS : CONFIRMATIONS))
     unmatched.push(`${method} ${p}`)
     return route.fulfill(ok([]))
   })
@@ -80,8 +86,8 @@ async function setupMocks(page: Page): Promise<string[]> {
 }
 
 /** 実画面の「緊急休業」タブまで進む。 */
-async function openClosureTab(page: Page): Promise<void> {
-  await setupMocks(page)
+async function openClosureTab(page: Page, long = false): Promise<void> {
+  await setupMocks(page, long)
   await page.goto(`/teams/${SLUG}/reservations`, { waitUntil: 'domcontentloaded' })
   await waitForHydration(page)
   await page.getByRole('tab', { name: '緊急休業' }).click()
@@ -167,117 +173,184 @@ async function expectHeaderIntact(th: Locator, label: string) {
   expect(m.height - m.paddingY, `${label} が複数行に折り返している (${m.height})`).toBeLessThan(m.lineHeight * 1.6)
 }
 
-/** セルが 1 行に収まり（縦に崩れていない）、内容が切れていない。 */
-async function expectCellSingleLine(td: Locator, label: string) {
-  const m = await td.evaluate((el) => {
-    const lh = parseFloat(getComputedStyle(el).lineHeight) || 20
-    return { height: el.getBoundingClientRect().height, lh }
-  })
-  expect(m.height, `${label} が縦に崩れている (高さ ${m.height})`).toBeLessThanOrEqual(m.lh * 2 + 24)
-}
-
 async function expectNoPageOverflow(page: Page, width: number) {
   const sw = await page.evaluate(() => document.documentElement.scrollWidth)
   expect(sw, `ページ全体が横にはみ出している (scrollWidth=${sw})`).toBeLessThanOrEqual(width)
 }
 
-async function expectReasonNotVertical(history: Locator) {
-  const row = history.locator('tbody > tr').first()
-  const reasonCell = row.locator('td').nth(2)
-  await expect(reasonCell).toHaveText(REASON_200)
-  const rb = await box(reasonCell)
-  expect(rb.width, `理由セルが細すぎる (${rb.width}px)`).toBeGreaterThanOrEqual(200)
-  const rowBox = await box(row)
-  expect(rowBox.height, `理由 200 字の行が高すぎる (${rowBox.height}px)`).toBeLessThanOrEqual(320)
-  const fontSize = await reasonCell.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
-  expect(Math.floor(rb.width / fontSize), '理由セルの 1 行あたり文字数').toBeGreaterThanOrEqual(8)
-}
-
-test.describe('CMP-261030-0651 緊急休業 送信履歴・プレビュー表 390px', () => {
+test.describe('CMP-261104-0336 緊急休業 送信履歴・プレビュー カード表示 390px', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3 })
 
-  test('AC-13a: 送信履歴（折りたたみ時）— 理由が縦崩れせず、見出し・ボタン・ページ幅が健全', async ({ page }) => {
+  /** 要素が可視・寸法あり・ビューポート幅の内側に収まる（横スクロールしないと見えないものは不可）。 */
+  async function expectInViewport(el: Locator, label: string, width: number) {
+    await expect(el, `${label} が可視でない`).toBeVisible()
+    const b = await box(el)
+    expect(b.x, `${label} が左外`).toBeGreaterThanOrEqual(0)
+    expect(b.x + b.width, `${label} が右外 (${b.x + b.width})`).toBeLessThanOrEqual(width)
+    const clip = await el.evaluate((n) => ({ sw: n.scrollWidth, cw: n.clientWidth }))
+    expect(clip.sw, `${label} の中身が切れている`).toBeLessThanOrEqual(clip.cw)
+  }
+
+  test('0336-1: 送信履歴カード — 期間・送信日時・理由・件数・ボタンが横スクロールなしで見える', async ({ page }) => {
     await openClosureTab(page)
     await expect(page.getByText(TEAM_NAME).first(), 'ヘッダーにチーム名が出ていない').toBeVisible()
     const history = historySection(page)
-    await expectReasonNotVertical(history)
-
-    const th = history.locator('thead th', { hasText: '確認状況' })
-    await expectHeaderIntact(th, '見出し「確認状況」')
-    await expect(th).toBeVisible()
-    const thClip = await th.evaluate((n) => ({ sw: n.scrollWidth, cw: n.clientWidth }))
-    expect(thClip.sw, '見出し「確認状況」が切れている').toBeLessThanOrEqual(thClip.cw)
-
-    const btn = history.getByRole('button', { name: /確認状況を見る/ }).first()
-    await expect(btn).toBeVisible()
+    await expect(history.locator('table'), '390px では表を出さない').toBeHidden()
+    const cards = history.locator('[data-testid="closure-history-card"]')
+    await expect(cards).toHaveCount(2)
+    const card = cards.first()
+    await expect(card.locator('[data-field="reason"]')).toHaveText(REASON_200)
+    await expect(card.locator('[data-field="count"]')).toHaveText('12件')
+    await expect(card.locator('[data-field="period"]')).toContainText('11月10日（火）〜11月12日（木）')
+    await expect(card.locator('[data-field="period"]')).toContainText('09:00〜12:00')
+    for (const f of ['period', 'sent-at', 'reason', 'count']) {
+      await expectInViewport(card.locator(`[data-field="${f}"]`), `カード[${f}]`, 390)
+    }
+    const btn = card.getByRole('button', { name: /確認状況を見る/ })
+    await expectInViewport(btn, '「確認状況を見る」', 390)
     const bb = await box(btn)
-    expect(bb.width, `「確認状況を見る」幅 ${bb.width}`).toBeGreaterThanOrEqual(44)
-    expect(bb.height, `「確認状況を見る」高さ ${bb.height}`).toBeGreaterThanOrEqual(44)
-    const btnClip = await btn.evaluate((n) => ({ sw: n.scrollWidth, cw: n.clientWidth }))
-    expect(btnClip.sw).toBeLessThanOrEqual(btnClip.cw)
-
-    // 件数タグ・送信日時・期間も実際に見えている（表内スクロールで到達できる）
-    const row = history.locator('tbody > tr').first()
-    await expect(row.locator('td').nth(3)).toHaveText('12件')
-    for (const i of [0, 1, 2, 3]) await expect(row.locator('td').nth(i)).toBeVisible()
+    expect(bb.width, `ボタン幅 ${bb.width}`).toBeGreaterThanOrEqual(44)
+    expect(bb.height, `ボタン高さ ${bb.height}`).toBeGreaterThanOrEqual(44)
     await expectNoPageOverflow(page, 390)
   })
 
-  test('AC-13b: 送信履歴（確認状況展開時）— 内側の表も縦崩れせず、ページ幅が健全', async ({ page }) => {
+  test('0336-2: 確認状況展開 — 氏名・状態・予約日時・リマインドが画面内', async ({ page }) => {
     await openClosureTab(page)
     const history = historySection(page)
-    await history.getByRole('button', { name: /確認状況を見る/ }).first().click()
-    const inner = history.locator('table table')
-    await expect(inner).toBeVisible()
-
-    await expectReasonNotVertical(history)
-    await expectHeaderIntact(history.locator('thead th', { hasText: '確認状況' }).first(), '見出し「確認状況」')
-
-    const toggle = history.locator('tbody > tr').first().locator('td').last().getByRole('button')
-    await expect(toggle).toBeVisible()
-    const tb = await box(toggle)
-    expect(tb.width).toBeGreaterThanOrEqual(44)
-    expect(tb.height).toBeGreaterThanOrEqual(44)
-
-    const innerRows = inner.locator('tbody tr')
-    await expect(innerRows).toHaveCount(2)
+    await history.locator('[data-testid="closure-card-toggle"]').first().click()
+    const items = history.locator('[data-testid="closure-card-confirmation"]')
+    await expect(items).toHaveCount(2)
     for (let i = 0; i < 2; i++) {
-      await expectCellSingleLine(innerRows.nth(i).locator('td').nth(0), `患者名[${i}]`)
-      await expectCellSingleLine(innerRows.nth(i).locator('td').nth(1), `予約日時[${i}]`)
-      for (let c = 0; c < 4; c++) await expect(innerRows.nth(i).locator('td').nth(c), `内側セル[${i},${c}]`).toBeVisible()
+      for (const f of ['name', 'appointment', 'status', 'reminder']) {
+        await expectInViewport(items.nth(i).locator(`[data-field="${f}"]`), `確認[${i}][${f}]`, 390)
+      }
     }
-    const ths = inner.locator('thead th')
-    await expect(ths).toHaveCount(4)
-    for (let i = 0; i < 4; i++) {
-      await expect(ths.nth(i)).toBeVisible()
-      await expectHeaderIntact(ths.nth(i), `内側見出し[${i}]`)
-      const c = await ths.nth(i).evaluate((n) => ({ sw: n.scrollWidth, cw: n.clientWidth }))
-      expect(c.sw, `内側見出し[${i}] が切れている`).toBeLessThanOrEqual(c.cw)
-    }
+    await expect(items.nth(0).locator('[data-field="name"]')).toHaveText('山田 太郎')
+    await expect(items.nth(0).locator('[data-field="status"]')).toContainText('確認済み')
+    await expect(items.nth(0).locator('[data-field="reminder"]')).toContainText('送信済み')
+    await expect(items.nth(1).locator('[data-field="status"]')).toContainText('未確認')
     await expectNoPageOverflow(page, 390)
   })
 
-  test('AC-14: プレビュー表 — 患者名・日時が縦崩れせず、ページ横はみ出しなし', async ({ page }) => {
+  test('0336-3: プレビュー — 氏名・日時・状態が切れず画面内', async ({ page }) => {
     await openClosureTab(page)
-    const preview = await runPreview(page)
-    const rows = preview.locator('tbody tr')
+    await page.getByRole('button', { name: '影響する予約を確認' }).click()
+    const cards = previewSection(page).locator('[data-testid="closure-preview-card"]')
+    await expect(cards).toHaveCount(2)
     for (let i = 0; i < 2; i++) {
-      await expect(rows.nth(i).locator('td').nth(0)).toBeVisible()
-      await expect(rows.nth(i).locator('td').nth(1)).toBeVisible()
-      await expectCellSingleLine(rows.nth(i).locator('td').nth(0), `プレビュー患者名[${i}]`)
-      await expectCellSingleLine(rows.nth(i).locator('td').nth(1), `プレビュー日時[${i}]`)
-      const rb = await box(rows.nth(i))
-      expect(rb.height, `プレビュー行[${i}] が高すぎる (${rb.height}px)`).toBeLessThanOrEqual(64)
+      await expectInViewport(cards.nth(i).locator('[data-field="name"]'), `プレビュー氏名[${i}]`, 390)
+      await expectInViewport(cards.nth(i).locator('[data-field="datetime"]'), `プレビュー日時[${i}]`, 390)
     }
-    await expect(rows.nth(0).locator('td').nth(0)).toHaveText('山田 太郎')
-    await expect(rows.nth(0).locator('td').nth(1)).toContainText('11月10日（火） 09:30〜10:00')
-    const ths = preview.locator('thead th')
-    await expect(ths).toHaveCount(3)
-    for (let i = 0; i < 3; i++) {
-      await expect(ths.nth(i)).toBeVisible()
-      await expectHeaderIntact(ths.nth(i), `プレビュー見出し[${i}]`)
-    }
+    await expect(cards.nth(0).locator('[data-field="datetime"]')).toContainText('11月10日（火） 09:30〜10:00')
     await expectNoPageOverflow(page, 390)
+  })
+})
+
+test.describe('CMP-261104-0336 緊急休業 表/カード切替の境界 767/768px', () => {
+  test.use({ viewport: { width: 767, height: 900 } })
+
+  test('0336-6: 767px はカード、768px は表（横スクロールなし）', async ({ page }) => {
+    await openClosureTab(page)
+    const history = historySection(page)
+    await expect(history.locator('[data-testid="closure-history-cards"]')).toBeVisible()
+    await expect(history.locator('table')).toBeHidden()
+    await expectNoPageOverflow(page, 767)
+    await page.setViewportSize({ width: 768, height: 900 })
+    await expect(history.locator('table').first()).toBeVisible()
+    await expect(history.locator('[data-testid="closure-history-cards"]')).toBeHidden()
+    await expectNoPageOverflow(page, 768)
+  })
+})
+
+test.describe('CMP-261104-0336 長文の折り返し 390px', () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
+
+  async function expectAllRightWithin(root: Locator, width: number, label: string) {
+    const over = await root.evaluate((r, w) => {
+      const bad: string[] = []
+      r.querySelectorAll('*').forEach((n) => {
+        const b = n.getBoundingClientRect()
+        if (b.width > 0 && b.right > w + 0.5) bad.push(`${n.tagName}.${(n as HTMLElement).className}: ${b.right}`)
+      })
+      return bad
+    }, width)
+    expect(over, `${label}: 右端が ${width}px を超える要素`).toEqual([])
+  }
+
+  test('0336-6: 空白なしの長い理由・氏名でも履歴カード・患者カードが 390px に収まる', async ({ page }) => {
+    await openClosureTab(page, true)
+    const history = historySection(page)
+    const cards = history.locator('[data-testid="closure-history-card"]')
+    await expect(cards.first().locator('[data-field="reason"]')).toHaveText(NOSPACE_A)
+    await expect(cards.nth(1).locator('[data-field="reason"]')).toHaveText(NOSPACE_JA)
+    await expectAllRightWithin(cards.first(), 390, '履歴カード1')
+    await expectAllRightWithin(cards.nth(1), 390, '履歴カード2')
+    const btn = cards.first().locator('[data-testid="closure-card-toggle"]')
+    await expect(btn).toBeVisible()
+    await expect(btn).toBeEnabled()
+    await btn.click()
+    const items = history.locator('[data-testid="closure-card-confirmation"]')
+    await expect(items).toHaveCount(2)
+    await expect(items.nth(0).locator('[data-field="name"]')).toHaveText(NOSPACE_JA)
+    await expect(items.nth(1).locator('[data-field="name"]')).toHaveText(NOSPACE_A)
+    for (let i = 0; i < 2; i++) await expectAllRightWithin(items.nth(i), 390, `患者カード${i}`)
+    await expectAllRightWithin(cards.first(), 390, '展開後の履歴カード1')
+    await expect(btn).toBeVisible()
+    await expect(btn).toBeEnabled()
+    await expectNoPageOverflow(page, 390)
+  })
+})
+
+test.describe('CMP-261104-0336 境界 767/768px — プレビュー・確認状況展開', () => {
+  test.use({ viewport: { width: 767, height: 900 } })
+
+  test('0336-6: プレビュー表示中・確認状況展開中に 767=カード / 768=表、幅内、状態保持', async ({ page }) => {
+    await openClosureTab(page)
+    const history = historySection(page)
+    await history.locator('[data-testid="closure-card-toggle"]').first().click()
+    await expect(history.locator('[data-testid="closure-card-confirmation"]')).toHaveCount(2)
+    await page.getByRole('button', { name: '影響する予約を確認' }).click()
+    const preview = previewSection(page)
+    await expect(preview.locator('[data-testid="closure-preview-card"]')).toHaveCount(2)
+    const hTable = history.locator('[data-testid="closure-history-table"]')
+    const pTable = preview.locator('[data-testid="closure-preview-table"]')
+    const hCards = history.locator('[data-testid="closure-history-card"]')
+    const confCards = history.locator('[data-testid="closure-card-confirmation"]')
+    const pCards = preview.locator('[data-testid="closure-preview-card"]')
+    await expect(pTable).toBeHidden()
+    await expect(hTable).toBeHidden()
+    await expect(confCards.first()).toBeVisible()
+    await expectNoPageOverflow(page, 767)
+
+    await page.setViewportSize({ width: 768, height: 900 })
+    await expect(hTable).toBeVisible()
+    await expect(pTable).toBeVisible()
+    await expect(pCards.first()).toBeHidden()
+    await expect(confCards.first()).toBeHidden()
+    // 状態保持: 展開中の内側表（2行）とプレビュー（2行）が残り、中身が見えている
+    const innerRows = hTable.locator('table table tbody tr')
+    await expect(innerRows).toHaveCount(2)
+    await expect(innerRows.nth(0).locator('td').nth(0)).toBeVisible()
+    await expect(innerRows.nth(0).locator('td').nth(0)).toHaveText('山田 太郎')
+    await expect(innerRows.nth(1).locator('td').nth(0)).toHaveText('鈴木 花子')
+    await expect(innerRows.nth(1).locator('td').nth(0)).toBeVisible()
+    const pRows = pTable.locator('tbody tr')
+    await expect(pRows).toHaveCount(2)
+    await expect(pRows.nth(0).locator('td').nth(0)).toBeVisible()
+    await expectNoPageOverflow(page, 768)
+
+    await page.setViewportSize({ width: 767, height: 900 })
+    await expect(hTable).toBeHidden()
+    await expect(pTable).toBeHidden()
+    await expect(hCards.first()).toBeVisible()
+    await expect(confCards).toHaveCount(2)
+    await expect(confCards.nth(0)).toBeVisible()
+    await expect(confCards.nth(1)).toBeVisible()
+    await expect(confCards.nth(0).locator('[data-field="name"]')).toHaveText('山田 太郎')
+    await expect(pCards).toHaveCount(2)
+    await expect(pCards.nth(0)).toBeVisible()
+    await expect(pCards.nth(1)).toBeVisible()
+    await expectNoPageOverflow(page, 767)
   })
 })
 

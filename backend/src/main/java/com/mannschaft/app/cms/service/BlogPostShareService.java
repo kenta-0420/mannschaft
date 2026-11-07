@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * ブログ記事の共有・プレビュートークンサービス。
@@ -120,6 +121,7 @@ public class BlogPostShareService {
      * <p>認可根治戦役 Wave3-B7: {@link #checkWriteAccess} で
      * 投稿者本人（または記事のスコープADMIN）のみに制限する。</p>
      */
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Transactional
     public BlogPostResponse issuePreviewToken(Long id, Long userId) {
         BlogPostEntity entity = findPostOrThrow(id);

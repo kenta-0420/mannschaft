@@ -60,6 +60,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * 二要素認証（TOTP）サービス。TOTP設定・検証・バックアップコード・MFAリカバリーを担当する。
@@ -240,6 +241,7 @@ public class Auth2faService {
      * @param mfaSessionToken MFAセッショントークン
      * @return メッセージレスポンス
      */
+    @PlaintextTokenDebt(cmp = "CMP-261103-2059") // ハッシュ保存済みだが乱数源が UUID で金庫（SecretTokenVault）未使用。金庫への統合が債務
     @Transactional
     public ApiResponse<MessageResponse> requestMfaRecovery(String mfaSessionToken) {
         // MFAセッショントークンからuserIdを取得（削除はしない。リカバリーフローで再利用可能にする）

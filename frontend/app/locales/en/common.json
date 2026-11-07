@@ -317,6 +317,8 @@
     "add_term": "Add Term",
     "term_success": "Term created",
     "term_error": "Failed to create term",
+    "term_academic_year_required": "Enter the academic year",
+    "term_has_timetables": "This term cannot be deleted because timetables still exist under it. Remove them first",
     "no_period": "No periods defined",
     "no_term": "No terms defined",
     "current_week": "This Week",
@@ -1108,6 +1110,18 @@
     }
   },
   "project": {
+    "back_label": "Projects",
+    "delete_aria": "Delete {title}",
+    "delete_confirm": "Delete \"{title}\"?",
+    "delete_confirm_header": "Confirm deletion",
+    "milestone_dialog": {
+      "add_title": "Add milestone",
+      "edit_title": "Edit milestone",
+      "title_label": "Title",
+      "title_placeholder": "Milestone name",
+      "due_date_label": "Due date",
+      "add": "Add"
+    },
     "related_todo_no_due": "No due date",
     "related_todo_no_assignee": "Unassigned",
     "related_todo_open": "Open TODO details",
@@ -1168,7 +1182,19 @@
       "none": "None",
       "custom_emoji": "Custom",
       "custom_color": "Custom color",
-      "current": "Current"
+      "current": "Current",
+      "colors": {
+        "blue": "Blue",
+        "red": "Red",
+        "green": "Green",
+        "amber": "Amber",
+        "violet": "Violet",
+        "pink": "Pink",
+        "cyan": "Cyan",
+        "teal": "Teal",
+        "orange": "Orange",
+        "gray": "Gray"
+      }
     },
     "guide": {
       "button": "How to use",
@@ -1220,7 +1246,10 @@
       "update_failed": "Failed to update",
       "delete_failed": "Failed to delete",
       "status_change_failed": "Failed to change status",
-      "milestone_save_failed": "Failed to save milestone"
+      "milestone_save_failed": "Failed to save milestone",
+      "force_unlock_failed": "Failed to force unlock",
+      "completion_mode_failed": "Failed to change the completion mode",
+      "gate_init_failed": "Failed to initialize the gates"
     },
     "status": {
       "active": "Active",
@@ -3203,5 +3232,28 @@
     "supporter_label": "Show {feature} to supporters",
     "save_success": "Visibility settings saved",
     "nav": "Navigation"
+  },
+  "secret_token": {
+    "issued_dialog": {
+      "title": "Link issued",
+      "once_warning": "This link is shown only now. Once you close this dialog it will never be shown again. Share it with the people who need it before closing.",
+      "url_label": "Issued link",
+      "copy": "Copy",
+      "copied": "Copied",
+      "copy_failed": "Could not copy. Please select the link and copy it manually",
+      "qr_label": "QR code",
+      "close": "Close",
+      "pdf_download": "Save QR code as PDF"
+    },
+    "list": {
+      "not_shown_hint": "For security, issued links are never shown again. Reissue one if you need it.",
+      "revoked_by_migration": "Revoked as part of a security upgrade",
+      "reissue": "Reissue",
+      "reissue_hint": "Reissuing creates a new link and the old link stops working.",
+      "label_with_id": "Link #{id}",
+      "created_at": "Issued at",
+      "expires_at": "Expires at",
+      "used_count": "Times used"
+    }
   }
 }

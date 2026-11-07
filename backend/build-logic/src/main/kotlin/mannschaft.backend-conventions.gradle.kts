@@ -126,6 +126,9 @@ dependencies {
     // 既に testRuntimeOnly で実行時には存在していたため追加の依存取得は発生しない）。
     testImplementation("org.junit.platform:junit-platform-launcher")
     testImplementation("com.tngtech.archunit:archunit-junit5:1.3.0")
+    // 番人3（CMP-260826-1457）の値の流れ解析は ASM 標準の Analyzer（asm-analysis）に載せる。ArchUnit が shade する ASM は
+    // コア部分だけで tree/analysis を含まないため、テストに限って追加する
+    testImplementation("org.ow2.asm:asm-analysis:9.8")
 
     // === F12.1 PDF生成共通基盤 ===
     // Thymeleaf: PDF用HTMLテンプレートエンジン（画面描画には使わない）

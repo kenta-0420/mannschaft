@@ -19,16 +19,16 @@ defineProps<{
       <span class="text-lg font-bold">{{ summary.gateCompletionRate.toFixed(1) }}%</span>
     </div>
     <ProgressBar :value="summary.gateCompletionRate" class="mb-3" :show-value="false" />
-    <div class="mb-2 grid grid-cols-3 gap-2 text-xs text-surface-500 dark:text-surface-300">
-      <div>
+    <div class="mb-2 grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-2 text-xs text-surface-500 dark:text-surface-300">
+      <div class="min-w-0 break-words">
         <span class="font-medium">{{ $t('project.total_milestones') }}:</span>
         {{ summary.totalMilestones }}
       </div>
-      <div>
+      <div class="min-w-0 break-words">
         <span class="font-medium">{{ $t('project.completed_milestones') }}:</span>
         {{ summary.completedMilestones }}
       </div>
-      <div>
+      <div class="min-w-0 break-words">
         <span class="font-medium">{{ $t('project.locked_milestones') }}:</span>
         {{ summary.lockedMilestones }}
       </div>

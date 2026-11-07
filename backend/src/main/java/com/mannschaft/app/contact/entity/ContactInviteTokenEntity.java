@@ -16,6 +16,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * 個人連絡先招待トークンエンティティ。招待URL/QRコード用のトークンを管理する。
@@ -37,6 +38,7 @@ public class ContactInviteTokenEntity {
     private Long userId;
 
     /** UUID v4 トークン */
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Column(nullable = false, length = 36)
     private String token;
 

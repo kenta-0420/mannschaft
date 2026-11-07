@@ -317,6 +317,8 @@
     "add_term": "Agregar Trimestre",
     "term_success": "Trimestre creado",
     "term_error": "Error al crear el trimestre",
+    "term_academic_year_required": "Introduzca el año académico",
+    "term_has_timetables": "No se puede eliminar este período porque aún tiene horarios. Elimínelos primero",
     "no_period": "No hay períodos definidos",
     "no_term": "No hay trimestres definidos",
     "current_week": "Esta Semana",
@@ -1108,6 +1110,18 @@
     }
   },
   "project": {
+    "back_label": "Lista de proyectos",
+    "delete_aria": "Eliminar {title}",
+    "delete_confirm": "¿Eliminar «{title}»?",
+    "delete_confirm_header": "Confirmar eliminación",
+    "milestone_dialog": {
+      "add_title": "Añadir hito",
+      "edit_title": "Editar hito",
+      "title_label": "Título",
+      "title_placeholder": "Nombre del hito",
+      "due_date_label": "Fecha límite",
+      "add": "Añadir"
+    },
     "related_todo_no_due": "Sin fecha límite",
     "related_todo_no_assignee": "Sin responsable",
     "related_todo_open": "Abrir detalle de la tarea",
@@ -1168,7 +1182,19 @@
       "none": "Ninguno",
       "custom_emoji": "Personalizado",
       "custom_color": "Color personalizado",
-      "current": "Actual"
+      "current": "Actual",
+      "colors": {
+        "blue": "Azul",
+        "red": "Rojo",
+        "green": "Verde",
+        "amber": "Ámbar",
+        "violet": "Violeta",
+        "pink": "Rosa",
+        "cyan": "Cian",
+        "teal": "Verde azulado",
+        "orange": "Naranja",
+        "gray": "Gris"
+      }
     },
     "guide": {
       "button": "Cómo usar",
@@ -1220,7 +1246,10 @@
       "update_failed": "Error al actualizar",
       "delete_failed": "Error al eliminar",
       "status_change_failed": "Error al cambiar el estado",
-      "milestone_save_failed": "Error al guardar el hito"
+      "milestone_save_failed": "Error al guardar el hito",
+      "force_unlock_failed": "No se pudo forzar el desbloqueo",
+      "completion_mode_failed": "No se pudo cambiar el modo de finalización",
+      "gate_init_failed": "No se pudieron inicializar las puertas"
     },
     "status": {
       "active": "Activo",
@@ -3203,5 +3232,28 @@
     "supporter_label": "Mostrar {feature} a seguidores",
     "save_success": "Visibilidad guardada",
     "nav": "Navegación"
+  },
+  "secret_token": {
+    "issued_dialog": {
+      "title": "Enlace emitido",
+      "once_warning": "Este enlace solo se muestra ahora. Al cerrar este cuadro no volverá a mostrarse. Compártalo con quien lo necesite antes de cerrar.",
+      "url_label": "Enlace emitido",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "copy_failed": "No se pudo copiar. Seleccione el enlace y cópielo manualmente",
+      "qr_label": "Código QR",
+      "close": "Cerrar",
+      "pdf_download": "Guardar el código QR como PDF"
+    },
+    "list": {
+      "not_shown_hint": "Por seguridad, los enlaces emitidos no vuelven a mostrarse. Si lo necesita, emita uno nuevo.",
+      "revoked_by_migration": "Revocado por una mejora de seguridad",
+      "reissue": "Volver a emitir",
+      "reissue_hint": "Al volver a emitir se crea un enlace nuevo y el anterior deja de funcionar.",
+      "label_with_id": "Enlace #{id}",
+      "created_at": "Emitido el",
+      "expires_at": "Caduca el",
+      "used_count": "Veces usado"
+    }
   }
 }

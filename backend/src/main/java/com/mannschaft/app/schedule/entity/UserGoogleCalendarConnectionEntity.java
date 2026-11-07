@@ -11,6 +11,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import com.mannschaft.app.common.token.PlaintextSecretRequired;
 
 /**
  * Google Calendar OAuth連携情報エンティティ。
@@ -32,9 +33,11 @@ public class UserGoogleCalendarConnectionEntity extends BaseEntity {
     @Builder.Default
     private String googleCalendarId = "primary";
 
+    @PlaintextSecretRequired(reason = "Google Calendar API の呼び出しに平文のトークンが要るため。暗号化保管の棚卸しは別 CMP で扱う")
     @Column(nullable = false, columnDefinition = "TEXT")
     private String accessToken;
 
+    @PlaintextSecretRequired(reason = "Google の access token 再取得に平文のトークンが要るため。暗号化保管の棚卸しは別 CMP で扱う")
     @Column(nullable = false, columnDefinition = "TEXT")
     private String refreshToken;
 
