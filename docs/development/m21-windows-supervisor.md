@@ -12,6 +12,8 @@ full productionCP/明示3source JAR、実App/FE、Chrome nested Job/Sky GUI、�
 
 ## Windows production assets（生成未実行）
 
+CP initの固定ownerは現正式runの 1d767b20-825c-4edc-b397-8d4367036462 に一致させる。旧d724 ownerはdummy既定値の互換用途に限り、CP initでは旧owner・別UUID・nullを許可しない。owner literal一箇所以外のnonce/purpose/sourceCommit/path/CREATE_NEW/main CP境界は変更しない。この補正は静的契約の整合だけで、実Gradle/CP/JAR生成やowner/creator実検証の合格ではない。実検証は既存前提が満たされた正式Runの別GO後に行う。
+
 `New-M21ProductionAssetContext` はACK後のSupervisor/自隊Jobだけで呼ぶ。新規owned `run/assets` とownerを作り、固定Git実体によるHEAD・全backend/Gradle入力・launcher/initのtracked manifest、実在/reparse/raw SHA256、同HEADとのGit diffを照合する。main/resources/build-logic/wrapperとtest source/resourcesの欠落や未追跡sourceを拒否する。CRLF checkoutのraw SHAとGit blobは別記する。Gitの暗黙取得/認証promptは無効化し、既存M21Child/Remaining/Captureで自分のGit子だけを有限回収する。JDK21/Node22は既存固定path/SHAを検証し、追加downloadしない。
 
 rootの共通heavy順番取得前はturnstile待機wrapperも起動しない。取得後の固定CP生成は、backend CWD・`JAVA_HOME=固定JDK21`・`M21_BACKEND_DIR=context.backend`・`M21_CP_OUTPUT=context.cpFile`で、実体 `C:/Program Files/Git/usr/bin/bash.exe --noprofile --norc ./scripts/gradle-turnstile.sh ./gradlew --no-daemon --offline -Dorg.gradle.java.home=固定JDK21 -Dorg.gradle.java.installations.auto-download=false -I context.cpInit m21ProductionClasspath`。新initは同一canonical projectとowner/nonce、新規出力、Windows/JDK21を確認し、`classes`依存の`sourceSets.main.runtimeClasspath`だけをCREATE_NEW/UTF-8/BOM・改行なしで出力する。test/別WT出力・欠落entryは拒否する。旧CP/cacheへのfallbackはしない。
