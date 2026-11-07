@@ -34,7 +34,8 @@ jobs:
           set -euo pipefail
           mkdir -m 700 "$RUNNER_TEMP/joint-fe-b7e81c94"
           mkdir -m 700 "$RUNNER_TEMP/joint-fe-b7e81c94/payload" "$RUNNER_TEMP/joint-fe-b7e81c94/home"
-          : > "$RUNNER_TEMP/joint-fe-b7e81c94/empty-npmrc"
+          : > "$RUNNER_TEMP/joint-fe-b7e81c94/empty-user-npmrc"
+          : > "$RUNNER_TEMP/joint-fe-b7e81c94/empty-global-npmrc"
           python3 - <<'PY'
           import hashlib,json,os,pathlib,subprocess,shutil,platform
           R=pathlib.Path(os.environ['RUNNER_TEMP'])/'joint-fe-b7e81c94'
@@ -44,8 +45,10 @@ jobs:
           actual=git('rev-parse','HEAD').decode().strip()
           assert actual==os.environ['GITHUB_SHA']
           parents=git('show','-s','--format=%P','HEAD').decode().split();assert len(parents)==1
-          BASE=parents[0]
-          assert git('diff','--name-only',BASE,'HEAD').decode().splitlines()==[WF]
+          BASE='604d90f09f27e01019afeaa3d541aac277cba61f'
+          if subprocess.run(['git','cat-file','-e',BASE+'^{commit}'],capture_output=True).returncode:
+              subprocess.run(['git','fetch','--no-tags','--depth=1','origin',BASE],check=True)
+          assert git('diff','--name-status',BASE,'HEAD').decode().splitlines()==['A\t'+WF]
           assert git('rev-parse',BASE+'^{tree}').decode().strip()=='52bce8d63febd30cdcd6317e022e1b19b4c3d204'
           ft=git('rev-parse','HEAD:frontend').decode().strip()
           assert ft==git('rev-parse',BASE+':frontend').decode().strip()=='e3e396ce9c0b091325f66ce12b4a1babf237d34b'
@@ -75,7 +78,7 @@ jobs:
           mem.update(diskFreeBytes=shutil.disk_usage('.').free)
           (R/'initial-resources.json').write_text(json.dumps(mem,indent=2)+'\n')
           print(json.dumps({'initialResourceBytes':mem}),flush=True)
-          record={'sourceHead':BASE,'originalLocalJointHeadH':H,'equivalentSourceS':BASE,'producerHeadP':actual,'sourceTree':'52bce8d63febd30cdcd6317e022e1b19b4c3d204','actualCheckoutCommit':actual,'producerTree':git('rev-parse','HEAD^{tree}').decode().strip(),'frontendTree':ft,'workflowOnlyDifference':WF,'workflowSHA256':hashlib.sha256(pathlib.Path(WF).read_bytes()).hexdigest(),'inputBaseline':baseline,'inputActual':current,'all28Equivalent':False,'expectedOnlyDifferentInput':'.github','toolVersions':{'node':'v22.23.2','npm':'10.9.8'},'os':{'machine':platform.machine(),'kernel':platform.release()},'tools':tools,'initialResources':dict(mem,diskFreeBytes=shutil.disk_usage('.').free),'runId':os.environ['GITHUB_RUN_ID'],'runAttempt':os.environ['GITHUB_RUN_ATTEMPT'],'repository':os.environ['GITHUB_REPOSITORY'],'ref':os.environ['GITHUB_REF']}
+          record={'sourceHead':BASE,'originalLocalJointHeadH':H,'equivalentSourceS':BASE,'producerHeadP':actual,'directParent':parents[0],'sourceTree':'52bce8d63febd30cdcd6317e022e1b19b4c3d204','actualCheckoutCommit':actual,'producerTree':git('rev-parse','HEAD^{tree}').decode().strip(),'frontendTree':ft,'workflowOnlyDifference':WF,'workflowSHA256':hashlib.sha256(pathlib.Path(WF).read_bytes()).hexdigest(),'inputBaseline':baseline,'inputActual':current,'all28Equivalent':False,'expectedOnlyDifferentInput':'.github','toolVersions':{'node':'v22.23.2','npm':'10.9.8'},'os':{'machine':platform.machine(),'kernel':platform.release()},'tools':tools,'initialResources':dict(mem,diskFreeBytes=shutil.disk_usage('.').free),'runId':os.environ['GITHUB_RUN_ID'],'runAttempt':os.environ['GITHUB_RUN_ATTEMPT'],'repository':os.environ['GITHUB_REPOSITORY'],'ref':os.environ['GITHUB_REF']}
           (R/'source.json').write_text(json.dumps(record,indent=2)+'\n')
           assert mem['MemAvailable']>=14*1024**3
           PY
@@ -88,7 +91,7 @@ jobs:
           ulimit -c 0
           node -e "if(require('fs').readFileSync('/proc/self/coredump_filter','utf8').trim()!=='00000000')process.exit(1)"
           set +e
-          env -i PATH="$PATH" HOME="$RUNNER_TEMP/joint-fe-b7e81c94/home" LANG=C.UTF-8 TZ=UTC CI=true HUSKY=0 NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/joint-fe-b7e81c94/empty-npmrc" NPM_CONFIG_GLOBALCONFIG="$RUNNER_TEMP/joint-fe-b7e81c94/empty-npmrc" NPM_CONFIG_CACHE="$RUNNER_TEMP/joint-fe-b7e81c94/npm-cache" npm ci
+          env -i PATH="$PATH" HOME="$RUNNER_TEMP/joint-fe-b7e81c94/home" LANG=C.UTF-8 TZ=UTC CI=true HUSKY=0 NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/joint-fe-b7e81c94/empty-user-npmrc" NPM_CONFIG_GLOBALCONFIG="$RUNNER_TEMP/joint-fe-b7e81c94/empty-global-npmrc" NPM_CONFIG_CACHE="$RUNNER_TEMP/joint-fe-b7e81c94/npm-cache" npm ci
           actual=$?
           set -e
           printf '{"actualExit":%s}\n' "$actual" > "$RUNNER_TEMP/joint-fe-b7e81c94/npm-ci-exit.json"
@@ -182,7 +185,7 @@ jobs:
                   assert item.type in (tarfile.REGTYPE,tarfile.AREGTYPE) and item.name not in seen and item.name in expected
                   row=expected[item.name];assert item.size==row['bytes'] and hashlib.sha256(tf.extractfile(item).read()).hexdigest()==row['sha256'];seen.add(item.name)
           assert seen==set(expected)
-          receipt={'state':'PACKAGED_FOR_OFFICIAL_UPLOAD_NOT_RUNTIME_ADOPTION','archiveBytes':p.stat().st_size,'archiveSHA256':hashlib.sha256(p.read_bytes()).hexdigest(),'manifestSHA256':hashlib.sha256((R/'manifest.json').read_bytes()).hexdigest(),'logicalBytes':m['logicalBytes'],'regularNoSymlinkArchiveVerified':True,'actualCheckoutCommit':m['actualCheckoutCommit'],'sourceHead':m['sourceHead'],'originalLocalJointHeadH':m['originalLocalJointHeadH'],'equivalentSourceS':m['equivalentSourceS'],'producerHeadP':m['producerHeadP'],'frontendTree':m['frontendTree'],'runId':m['runId'],'runAttempt':m['runAttempt'],'buildActualExit':m['buildActualExit'],'rawArtifactBodyPrinted':False,'secretEnvironmentDumped':False}
+          receipt={'state':'PACKAGED_FOR_OFFICIAL_UPLOAD_NOT_RUNTIME_ADOPTION','archiveBytes':p.stat().st_size,'archiveSHA256':hashlib.sha256(p.read_bytes()).hexdigest(),'manifestSHA256':hashlib.sha256((R/'manifest.json').read_bytes()).hexdigest(),'logicalBytes':m['logicalBytes'],'regularNoSymlinkArchiveVerified':True,'actualCheckoutCommit':m['actualCheckoutCommit'],'sourceHead':m['sourceHead'],'originalLocalJointHeadH':m['originalLocalJointHeadH'],'equivalentSourceS':m['equivalentSourceS'],'producerHeadP':m['producerHeadP'],'directParent':m['directParent'],'frontendTree':m['frontendTree'],'runId':m['runId'],'runAttempt':m['runAttempt'],'buildActualExit':m['buildActualExit'],'rawArtifactBodyPrinted':False,'secretEnvironmentDumped':False}
           (R/'producer-receipt.json').write_text(json.dumps(receipt,indent=2)+'\n')
           PY
       - name: 公式artifactへ限定3fileを1日保存
@@ -244,7 +247,7 @@ jobs:
           summary={'diagnosticOnly':True,'successEvidence':False,'jobStatusAtCollection':os.environ['DIAG_JOB_STATUS'],'stepOutcomes':{k:os.environ.get('DIAG_'+k,'unknown') for k in ['SOURCE','DEPS','AUDIT','BUILD','PACKAGE','PRODUCTION_UPLOAD']},'initialResources':resources('initial-resources.json'),'prebuildResources':resources('prebuild-resources.json'),'npmCi':exit_value('npm-ci-exit.json'),'build':exit_value('build-exit.json')}
           source=obj('source.json');summary['source']={'state':'unknown'}
           if source is not None:
-              keys=['sourceHead','originalLocalJointHeadH','equivalentSourceS','producerHeadP','sourceTree','actualCheckoutCommit','producerTree','frontendTree','workflowSHA256']
+              keys=['sourceHead','originalLocalJointHeadH','equivalentSourceS','producerHeadP','directParent','sourceTree','actualCheckoutCommit','producerTree','frontendTree','workflowSHA256']
               summary['source']={'state':'observed',**{k:source[k] for k in keys if isinstance(source.get(k),str) and re.fullmatch('[0-9a-f]{40}|[0-9a-f]{64}',source[k])}}
           v=obj('tool-versions.json');summary['toolVersions']={'state':'unknown'}
           if v is not None:summary['toolVersions']={'state':'observed',**{k:v[k] for k in ['node','npm'] if isinstance(v.get(k),str) and re.fullmatch('v?[0-9]+\.[0-9]+\.[0-9]+',v[k])}}
