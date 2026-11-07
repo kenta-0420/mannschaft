@@ -133,6 +133,9 @@ UTC暦年2年の等号・閏日・microsecond境界と削除の冪等性は既�
 
 ### CI最小構成と時刻境界
 
+M01 の実スキーマは既存 `FlywayFromScratchMigrationTest` の同一 MySQL・全 migration 再生で検証する。
+公式 `event_publication` の六列、両 Registry 表の UUID 列の `BINARY(16)`、日時の `DATETIME(6)`、文字列の長さ・NULL可否・`utf8mb4` / `utf8mb4_0900_ai_ci` と表の照合順序を固定する characterization であり、製品不具合の red 確認や全体起動、UUID 採番方式の証明を代替しない。追加試験の実 MySQL green は同 HEAD の CI で確認する。
+
 公式JPA publication repository は `ModuleEventConfiguration` が明示的に取り込む。
 DBを除外したSecurity/MVCの最小Boot構成へは自動登録しない。本番・M実MySQL構成では
 同じ公式 `jpaEventPublicationRepository` を使い、限定Registryによる保存・完了削除を維持する。
