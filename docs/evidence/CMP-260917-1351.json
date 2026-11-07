@@ -70,7 +70,7 @@
                         }
                     ],
     "limitations":  [
-                        "実装PR4368はhead838で通常merge済み、CI42379474193はexact838でsuccess。Phase7気づき箱metadata補正r2と専用profile cleanupを確認済み。既存Windows DBは未操作。公開はroot最終レビュー後に行う。",
+                        "実装PR4368はhead838で通常merge済み、CI42379474193はexact838でsuccess。Phase7気づき箱metadata補正r2と専用profile cleanupを確認済み。既存Windows DBは未操作。",
                         "旧実機r3はFE2a18c86d、修正後r6/R8はFE7de2005eを使用した。旧0f9から現838まで追加修正4pathsは同一だが、公開実装head全体・最新main全体を実機済みとは主張しない。",
                         "原PR3319のレンズ・16ページguard・Webhook実装を再利用し、PR4368は招待/権限グループのnull境界だけを追加修正した。AC1/AC3の自動単体試験を新設したとは主張しない。",
                         "SignageのDEPUTY表示は既存ADMIN-only FE契約を維持し、BE読取許可との差を権限拡張で解消していない。",

@@ -1,6 +1,6 @@
 # CMP-260917-1351 完了証拠
 
-実装PR [4368](https://github.com/kenta-0420/mannschaft/pull/4368) はhead `838be3334e162c6e684b8fc9c31aad468c8d8ad2`、2026-11-07T14:25:33Zに通常merge済み（merge `af2dc66cd2f925193f67fd7161541aef267ae9d1`、admin不使用）。exact headのCI成功も一次確認した。Phase7気づき箱metadata補正r2の最終UI裏取りも完了した。公開はroot最終レビュー後とし、この段階ではpush/完了PR公開を行っていない。旧候補はcheckpoint commit `4b32764b38b8a671e4e077c46aed41b8e9720069` に保存し、最新mainへ通常追従している。
+実装PR [4368](https://github.com/kenta-0420/mannschaft/pull/4368) はhead `838be3334e162c6e684b8fc9c31aad468c8d8ad2`、2026-11-07T14:25:33Zに通常merge済み（merge `af2dc66cd2f925193f67fd7161541aef267ae9d1`）。[CI 42379474193](https://github.com/kenta-0420/mannschaft/actions/runs/42379474193) はexact headでsuccess。
 
 ## 正本ACと実装・検証
 
