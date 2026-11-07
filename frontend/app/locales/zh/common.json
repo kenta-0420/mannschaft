@@ -333,7 +333,19 @@
     "period_all": "所有课节",
     "period_number_placeholder": "课节编号",
     "period_suffix": "节",
-    "term_name_placeholder": "例: 第1学期"
+    "term_name_placeholder": "例: 第1学期",
+    "term_academic_year_range": "请输入 {min} 至 {max} 之间的学年",
+    "term_end_before_start": "结束日期必须晚于开始日期",
+    "term_date_overlap": "该学期的期间与其他学期重叠。请检查开始日期和结束日期",
+    "term_delete_confirm": "要删除学期“{name}”吗？此操作无法撤销。",
+    "term_delete_success": "已删除学期",
+    "term_load_error": "加载学期失败",
+    "team_term_hint": "这是本团队的学期。创建课程表时，从这里添加的学期中选择。",
+    "no_term_for_create": "还没有学期。请先在“学期”标签页中添加学期。",
+    "delete_timetable": "删除",
+    "delete_timetable_confirm": "要删除课程表“{name}”吗？此操作无法撤销。",
+    "delete_timetable_success": "已删除课程表",
+    "delete_timetable_error": "删除课程表失败"
   },
   "error": {
     "server": "服务器发生错误",
@@ -1110,6 +1122,18 @@
     }
   },
   "project": {
+    "back_label": "项目列表",
+    "delete_aria": "删除{title}",
+    "delete_confirm": "确定要删除“{title}”吗？",
+    "delete_confirm_header": "确认删除",
+    "milestone_dialog": {
+      "add_title": "添加里程碑",
+      "edit_title": "编辑里程碑",
+      "title_label": "标题",
+      "title_placeholder": "里程碑名称",
+      "due_date_label": "截止日期",
+      "add": "添加"
+    },
     "related_todo_no_due": "无截止日期",
     "related_todo_no_assignee": "未分配负责人",
     "related_todo_open": "打开待办详情",
@@ -1170,7 +1194,19 @@
       "none": "无",
       "custom_emoji": "自定义",
       "custom_color": "自定义颜色",
-      "current": "当前值"
+      "current": "当前值",
+      "colors": {
+        "blue": "蓝色",
+        "red": "红色",
+        "green": "绿色",
+        "amber": "琥珀色",
+        "violet": "紫色",
+        "pink": "粉色",
+        "cyan": "青色",
+        "teal": "蓝绿色",
+        "orange": "橙色",
+        "gray": "灰色"
+      }
     },
     "guide": {
       "button": "使用说明",
@@ -1222,7 +1258,10 @@
       "update_failed": "更新失败",
       "delete_failed": "删除失败",
       "status_change_failed": "更改状态失败",
-      "milestone_save_failed": "保存里程碑失败"
+      "milestone_save_failed": "保存里程碑失败",
+      "force_unlock_failed": "强制解锁失败",
+      "completion_mode_failed": "更改完成模式失败",
+      "gate_init_failed": "初始化关卡失败"
     },
     "status": {
       "active": "进行中",

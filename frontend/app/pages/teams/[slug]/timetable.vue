@@ -17,6 +17,7 @@ const route = useRoute()
 const teamSlug = computed(() => String(route.params.slug))
 const timetableApi = useTimetableApi()
 const notification = useNotification()
+const { confirmAction } = useConfirmDialog()
 const { isAdmin, can, loadPermissions } = useRoleAccess('team', teamSlug)
 
 const canManage = computed(() => isAdmin.value || can('MANAGE_TIMETABLE'))
@@ -88,6 +89,29 @@ function statusSeverity(s: TimetableStatus | string) {
     | 'success'
     | 'secondary'
     | 'info'
+}
+
+/**
+ * 学期一覧の取得状態。取得失敗を「学期がありません」の空状態と区別するために持つ
+ * （FRONTEND_CODING_CONVENTION の「取得失敗を空状態へフォールバックさせてはならない」）。
+ */
+const termsLoadState = ref<'loading' | 'error' | 'loaded'>('loading')
+
+/**
+ * チーム固有の学期を取り直す。学期タブの初回表示・再試行・作成ダイアログを開くときの共通の取得処理。
+ * 失敗は握りつぶさず通知し、学期タブには再試行できるエラー表示を出す。呼び出し側へ成否を返す。
+ */
+async function loadTerms(): Promise<boolean> {
+  termsLoadState.value = 'loading'
+  try {
+    terms.value = await timetableApi.listTerms('team', teamSlug.value)
+    termsLoadState.value = 'loaded'
+    return true
+  } catch {
+    termsLoadState.value = 'error'
+    notification.error(t('timetable.term_load_error'))
+    return false
+  }
 }
 
 async function loadData() {
@@ -200,12 +224,30 @@ async function handleExportPdf() {
 }
 
 async function openCreateDialog() {
-  try {
-    terms.value = await timetableApi.listTerms('team', teamSlug.value)
-  } catch {
-    // サイレント失敗
-  }
+  // 学期が取れないまま開くと「学期を選べない」理由が利用者に分からないため、失敗時は開かずに通知する。
+  if (!(await loadTerms())) return
   showCreateDialog.value = true
+}
+
+function handleDelete(id: number) {
+  const target = timetables.value.find((tt) => tt.id === id)
+  confirmAction({
+    header: t('dialog.confirm_title'),
+    message: t('timetable.delete_timetable_confirm', { name: target?.name ?? '' }),
+    onAccept: async () => {
+      try {
+        await timetableApi.remove(teamSlug.value, id)
+        notification.success(t('timetable.delete_timetable_success'))
+        if (selectedTimetable.value?.id === id) {
+          selectedTimetable.value = null
+          weeklyView.value = null
+        }
+        await loadData()
+      } catch {
+        notification.error(t('timetable.delete_timetable_error'))
+      }
+    },
+  })
 }
 
 async function submitCreate(payload: CreatePayload) {
@@ -260,6 +302,7 @@ onMounted(loadData)
 
 watch(activeTab, (tab) => {
   if (tab === '2') loadChanges()
+  if (tab === '3') loadTerms()
 })
 </script>
 
@@ -273,6 +316,7 @@ watch(activeTab, (tab) => {
           :label="$t('timetable.create_timetable')"
           icon="pi pi-plus"
           size="small"
+          data-testid="timetable-create-button"
           @click="openCreateDialog"
         />
         <Button
@@ -292,8 +336,9 @@ watch(activeTab, (tab) => {
       <Tabs v-model:value="activeTab">
         <TabList>
           <Tab value="0">{{ $t('timetable.tab_weekly') }}</Tab>
-          <Tab value="1">{{ $t('timetable.tab_list') }}</Tab>
+          <Tab value="1" data-testid="timetable-tab-list">{{ $t('timetable.tab_list') }}</Tab>
           <Tab value="2" :disabled="!selectedTimetable">{{ $t('timetable.tab_changes') }}</Tab>
+          <Tab value="3" data-testid="timetable-tab-term">{{ $t('timetable.term') }}</Tab>
         </TabList>
         <TabPanels>
           <!-- 週間ビュー -->
@@ -323,6 +368,7 @@ watch(activeTab, (tab) => {
               @archive="handleArchive"
               @revert-to-draft="handleRevertToDraft"
               @duplicate="handleDuplicate"
+              @delete="handleDelete"
             />
           </TabPanel>
 
@@ -334,6 +380,20 @@ watch(activeTab, (tab) => {
               :can-manage="canManage"
               @open-change-dialog="showChangeDialog = true"
               @delete-change="handleDeleteChange"
+            />
+          </TabPanel>
+
+          <!-- 学期（チーム固有）。チームが自分で学期を作り、時間割の作成で選ぶ -->
+          <TabPanel value="3">
+            <TimetableTermManager
+              scope-type="team"
+              :scope-slug="teamSlug"
+              :terms="terms"
+              :can-manage="canManage"
+              :hint="$t('timetable.team_term_hint')"
+              :load-state="termsLoadState"
+              @changed="loadTerms"
+              @retry="loadTerms"
             />
           </TabPanel>
         </TabPanels>
