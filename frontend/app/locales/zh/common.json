@@ -317,6 +317,8 @@
     "add_term": "添加学期",
     "term_success": "学期已创建",
     "term_error": "创建学期失败",
+    "term_academic_year_required": "请输入学年",
+    "term_has_timetables": "该学期下仍有课程表，无法删除。请先清理课程表",
     "no_period": "未定义节次",
     "no_term": "未定义学期",
     "current_week": "本周",
