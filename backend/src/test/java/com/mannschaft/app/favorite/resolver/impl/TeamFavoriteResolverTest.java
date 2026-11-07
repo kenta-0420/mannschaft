@@ -9,6 +9,7 @@ import com.mannschaft.app.favorite.dto.FavoriteEntityMetaDto;
 import com.mannschaft.app.favorite.dto.FavoriteEntityStatus;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.service.TeamService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,6 +28,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 
 /**
  * {@link TeamFavoriteResolver} 単体テスト（画像 404 根治 Phase3）。
@@ -40,6 +42,9 @@ class TeamFavoriteResolverTest {
 
     @Mock
     private TeamRepository teamRepository;
+
+    @Mock
+    private TeamService teamService;
 
     @Mock
     private AccessControlService accessControlService;
@@ -119,5 +124,28 @@ class TeamFavoriteResolverTest {
         assertThat(meta.status()).isEqualTo(FavoriteEntityStatus.UNAVAILABLE);
         assertThat(meta.displayName()).isNull();
         assertThat(meta.iconUrl()).isNull();
+    }
+
+    @Test
+    @DisplayName("slug一括取得に対象IDが無い場合はUNAVAILABLEとしてメタデータを返さない")
+    void slug一括取得に対象が無い場合は利用不可() {
+        TeamEntity team = TeamEntity.builder()
+                .name("slug未取得チーム")
+                .slug("entity-only-slug")
+                .build();
+        ReflectionTestUtils.setField(team, "id", 42L);
+        given(teamRepository.findAllById(any())).willReturn(List.of(team));
+        given(contentVisibilityChecker.filterAccessible(eq(ReferenceType.TEAM), any(), eq(700L)))
+                .willReturn(Set.of(42L));
+        // TeamServiceのmockは既定の空Mapを返す。Entityのslugへフォールバックしない。
+
+        FavoriteEntityMetaDto meta = resolver.resolveAll(List.of("42"), 700L).get("42");
+
+        assertThat(meta.status()).isEqualTo(FavoriteEntityStatus.UNAVAILABLE);
+        assertThat(meta.displayName()).isNull();
+        assertThat(meta.iconUrl()).isNull();
+        assertThat(meta.pageUrl()).isNull();
+        assertThat(meta.canEdit()).isFalse();
+        verify(teamService).getSlugsByIds(Set.of(42L));
     }
 }
