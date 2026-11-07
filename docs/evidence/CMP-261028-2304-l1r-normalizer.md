@@ -41,7 +41,7 @@ DN-1はnull・空・1個/複数のU+0020、DN-2は両端/内部U+0020・大小�
 | DN-1〜5 | 上記新旧入口の38ケースgreen |
 | DN-6 | 公開final/private無引数constructor/public static String trimSpaces(String)1本を新旧双方で検査、旧型のDeprecatedと非空のbridge属性もgreen。差分上でループ・SPACE定数は所有者内部のみ、旧型→新API→内部実体の委譲を確認 |
 | DN-7 | 本番3callerと既存DuplicateNameCollationGuardRedITは差分0。head 7a3cの実MySQL既存6ケースは成功、失敗/error/skip 0。実物採取・照合完了 |
-| DN-8 | head 7a3cの全6shard・aggregate成功。archTest 58suite/447件、別engine 18suite/37件、本番Integrity 6runner/12件が失敗/error/skip 0。期待18suiteの欠落・重複0。追跡8store・番人・build/CI・weightsのロット差分0（下記） |
+| DN-8 | head 7a3cの全6shard・aggregate成功。archTest 58suite/447件、別engine 18suite/37件、本番Integrity 6runner/12件が失敗/error/skip 0。期待18suiteの欠落・重複0。7store＋stored.rules（計8ファイル）・番人・build/CI・weightsのロット差分0（下記） |
 | DN-9 | Controller/HTTP DTO/認可/DDL変更0。同一経路の変更前後の実生成・Drift成功と生成結果bytes一致を根拠に親が合格判定（下記） |
 | DN-10 | source 7a3cの正式R8は9ケース中6pass/3fail。作成2ケースは同sourceの正式追試でpass、チーム名称更新は未合格。単一run9greenではなく、条件全体は未合格 |
 | DN-11 | 独立探索3/3実施・各正常閉鎖、目的達成2/3。未実証観測登録済み。DN10未充足・管理住民の目的未達を保持し、最終判定保留。coverage合格ではない |
@@ -58,7 +58,7 @@ DN-1はnull・空・1個/複数のU+0020、DN-2は両端/内部U+0020・大小�
 
 実checkoutは `71c75988fc9465f563f8d6527a2287998aae14c0`、tree `35b03439d1d892964857dce63c5a6be079259dce`。remote checkout treeとlocal head 7a3cのtree一致を確認した。private正本は管理worktree `.claude/l1r-ci/pr4352-7a3c-evidence/` の `actual-checkout-proof.json`、`archunit-engine-union-root.json`、`shard5-584-store-diff-root.json`。
 
-追跡済み8store・stored.rules・番人・EXPECTED_LINES・weights・build/CIの本ロット差分は0。runtime storeはchip-awayのみ（D3 14減、D3T 43減、D5 39減、entity/D6 35減、追加0）。削減行のorigin source blobは基準977cとheadで同一と照合済みであり、runtime storeの全bytes不変は主張しない。
+追跡済み7store＋stored.rules（計8ファイル）・番人・EXPECTED_LINES・weights・build/CIの本ロット差分は0。runtime storeはchip-awayのみ（D3 14減、D3T 43減、D5 39減、entity/D6 35減、追加0）。削減行のorigin source blobは基準977cとheadで同一と照合済みであり、runtime storeの全bytes不変は主張しない。
 
 ## DN-9の変更前後の実生成とbytes一致
 
@@ -77,6 +77,7 @@ DN-1はnull・空・1個/複数のU+0020、DN-2は両端/内部U+0020・大小�
 - source 7a3cの `formal-20261107-r8-01` は9ケース中6pass/3fail。組織改名→再GET→元名復旧、member/outsider各2scopeと匿名制限はpass。作成2件は409→中止→409→確認201の後、GET本文読取helperが旧文書を新文書への遷移後に読んで `browser-body-unavailable` となった。製品の保存失敗と断定しない。
 - freshPageで読取競合を根治後、`formal-create-followup-20261107-r8-03` のチーム作成は同名409→中止→確認201→GET200・保存名・画面一致がpass。組織はslug利用可text待機でPOST前failとなり原因未断定の原本を保持した。その後の `formal-org-followup-20261107-r8-04` は同じAC・timeoutで、slug利用可1.4秒、同名409→中止→409→fingerprint確認201→freshPage GET200/json-success・保存名のU+0020保持・画面一致がpass。通し単一run9greenとは記録しない。
 - チーム名称更新R8はdashboard loadingでPATCH未到達。R7のversion欠落による400とは別結果。別修正[Draft PR #4360](https://github.com/kenta-0420/mannschaft/pull/4360) / CMP-261107-1243は未採用で、依存PR #3644の未採用も維持する。DN10全体は未合格。
+- 別修正leaf head 36d1df48fcf3f195db72bfba2ea9f3182703e57 の[Frontend run 42344037580 / job 128317780961](https://github.com/kenta-0420/mannschaft/actions/runs/42344037580/job/128317780961)は、正規Nuxt70件（新56＋旧8＋統合6）skip0、全759files/7633pass＋既存skip5、ranch27passを親がproofで直接確認済み。ただし[Smoke run 42344035535 / job 128317774443](https://github.com/kenta-0420/mannschaft/actions/runs/42344035535/job/128317774443)はNAV-GEOMETRYの360pxで約0.571px差により失敗し、因果調査中。全CI greenではない。
 - 独立3住民の選択観測は [resident-observations-20261107.json](CMP-261028-2304/resident-observations-20261107.json)。全員1 context/1 login・各close 1・native exit 0、source 7a3c、mock/API目的代替0。代表画像は親担当が直接実見した。探索3/3実施と目的達成2/3を分離し、管理住民の未達を残す。同名3行は実在fixtureの3件であり行重複の不具合とは認定しない。識別の迷い・403等は未実証観測で、新規確定不具合やTaskList追加へ昇格0。DN11は名称操作の導線・失敗表示・同名確認まで含む条件であり、実施・閉鎖だけから合格にしない。DN10未充足のため最終判定保留。
 - 気づき箱は累積正本 `CMP-261015-1510/resident-overlay.json` の旧55 persona/55 journey/111 insight全フィールドをdeep保持し、3/3/3のみ追加して58/58/114。top environment/runIdと旧run/sourceを保持した。新3runはrunEnvironmentsへ別登録し、全てtrusted=false/observed-unverified、coverage不昇格。原本にないADMIN/OUTSIDERのjourneyIdは登録時付与と明記。画像実体は公開しない。
 - R8 runtimeは正本receiptでcleanup removed/exit0、所有BE/FE 2process・専用2container・knownvolume1と自scratch不存在を親担当が直接照合済み。全体check exit1は他owner entries5に由来し、全体cleanとはしない。他資産操作0。fixtureは履歴のみでDB撤去済み・再利用不可。名称修正の次回実機には新source・新run・新DB/fixtureが必要。
