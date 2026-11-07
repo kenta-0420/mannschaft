@@ -33,3 +33,5 @@ jobs:
           scripts/unicode-checkout.test.mjs
       - name: Run CI test observability fixtures
         run: python3 backend/scripts/test_ci_observability.py
+      - name: Run M21 Linux finite bridge suite
+        run: python3 scripts/test_m21_wsl_docker_bridge.py
