@@ -103,3 +103,5 @@ Windows側はresources-readyへexpectedRunIdとLinux側socket_proofを保持し�
 先行red5件は新しい必須gateの未実装関数を検出した試練である。parserとowned loopback dummy socketで不足/重複/16KiB境界/partial/extra/timeout/closeを検査する。既存continuationへCLI green/Socket非Green、完了前後cancel、古cachewrite拒否と他role R継続を実子で結合する。実App/実daemon試験/mutation/サービス導入は0。9d checkpointのB4資格は新sourceへ流用しない。
 
 最終inspectはrunning=trueだけでなく、同じowned Valkey CIDへの自隊container-start成功後のwork inspectに限る。prestartで予期せずrunningでもINFOを追加せず、daemon再確認/新create時はこの認定を失効する。run_idはcacheしない。
+
+bridge-exitの固定診断はterminal_phase/terminal_code/phase_started_ns/phase_deadline_ns/terminal_nsを持つ。bind-read→bind-validation→bound-publishを区別し、schemaとdescriptor-bindは固定codeで分離する。readのdeadlineと記録値は同一変数、全時刻はLinux CLOCK_MONOTONICであり、期限を延長しない。失敗code/時刻を回収前に固定し、後続回収で上書きしない。Rejectedの未知値はother-rejected、OS/値/Unicode例外は固定typeのみで、例外本文・受信値・秘密を公開しない。既存reason=bridge-terminalは維持する。

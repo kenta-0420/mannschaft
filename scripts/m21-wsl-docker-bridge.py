@@ -159,6 +159,20 @@ def unique_object(pairs):
     return result
 
 
+def terminal_diagnostic_code(error):
+    if isinstance(error,Rejected):
+        code=error.args[0] if error.args else None
+        return code if type(code) is str and code in (
+            'frame-timeout','parent-eof','frame-length','frame-json','schema',
+            'init-schema','init','integer','uuid','budget','expired','descriptor-bind',
+            'clock-discontinuity','runtime-changed','private-length','watchdog-retained',
+            'cancel','concurrent-request','operation','phase','deadline','cleanup-limit',
+            'uninitialized','secret-schema') else 'other-rejected'
+    if isinstance(error,UnicodeError): return 'unicode-error'
+    if isinstance(error,ValueError): return 'value-error'
+    return 'os-error'
+
+
 def atomic_receipt(directory, name, value):
     """所有済みdirectoryのdirfdに限定、既存receiptを置換しない。"""
     raw = json.dumps(value, separators=(',', ':'), sort_keys=True).encode('utf-8')
@@ -809,20 +823,44 @@ def bridge_loop(dfd, directory, owner, run, nonce, input_commit):
     last_completed_id=None
     last_completed_deadline=None
     cancelled_ids=set()
+    phase='init-read'
+    phase_started_ns=time.monotonic_ns()
+    phase_deadline_ns=t0+2000000000
+    terminal_ns=None
+    terminal_code=None
     try:
-        frame=read_frame(0,t0+2000000000)
+        frame=read_frame(0,phase_deadline_ns)
+        phase='init-validation'
+        phase_started_ns=time.monotonic_ns()
         if type(frame) is not dict or set(frame)!={'type','owner','run','global_offset_ms','work_offset_ms'}:
             raise Rejected('init-schema')
         protocol.initialize(frame,time.monotonic_ns())
+        phase='init-config'
+        phase_started_ns=time.monotonic_ns()
+        phase_deadline_ns=protocol.work_deadline
         os.mkdir('config',mode=0o700,dir_fd=dfd)
+        phase='init-preflight'
+        phase_started_ns=time.monotonic_ns()
         descriptor=preflight(dfd,directory,common,protocol,identity)
         boundary=DockerBoundary(run,directory+'/config',descriptor,owner)
+        phase='initialized-publish'
+        phase_started_ns=time.monotonic_ns()
         publish(dfd,'initialized.json',common|{'type':'initialized','global_deadline_ns':protocol.global_deadline,'work_deadline_ns':protocol.work_deadline,'descriptor':descriptor,'green':True,'preflight':{'count':3,'green':True,'ids':[1,2,3]}})
-        binding=read_frame(0,min(protocol.work_deadline,time.monotonic_ns()+2000000000))
+        phase='bind-read'
+        phase_started_ns=time.monotonic_ns()
+        phase_deadline_ns=min(protocol.work_deadline,phase_started_ns+2000000000)
+        binding=read_frame(0,phase_deadline_ns)
+        phase='bind-validation'
+        phase_started_ns=time.monotonic_ns()
         protocol.check(binding,('type','owner','run','descriptor'))
         if binding['type']!='bind' or binding['descriptor']!=descriptor: raise Rejected('descriptor-bind')
         boundary.daemon_confirmed=True
+        phase='bound-publish'
+        phase_started_ns=time.monotonic_ns()
         publish(dfd,'bound.json',common|{'type':'bound','descriptor':descriptor,'green':True})
+        phase='resident'
+        phase_started_ns=time.monotonic_ns()
+        phase_deadline_ns=protocol.global_deadline
         while time.monotonic_ns()<protocol.global_deadline:
             if abs((time.clock_gettime_ns(time.CLOCK_BOOTTIME)-time.monotonic_ns())-clock_delta)>100000000:
                 raise Rejected('clock-discontinuity')
@@ -871,7 +909,12 @@ def bridge_loop(dfd, directory, owner, run, nonce, input_commit):
                         last_completed_deadline=active['deadline']
                     active=None
             if 0 in ready:
-                frame=read_frame(0,min(protocol.global_deadline,time.monotonic_ns()+1000000000))
+                phase='request-read'
+                phase_started_ns=time.monotonic_ns()
+                phase_deadline_ns=min(protocol.global_deadline,phase_started_ns+1000000000)
+                frame=read_frame(0,phase_deadline_ns)
+                phase='request-validation'
+                phase_started_ns=time.monotonic_ns()
                 if type(frame) is not dict: raise Rejected('schema')
                 if frame.get('type')=='shutdown':
                     protocol.check(frame,('type','owner','run'))
@@ -937,10 +980,13 @@ def bridge_loop(dfd, directory, owner, run, nonce, input_commit):
         else:
             terminal='global-deadline'
             overall_green=False
-    except (Rejected,OSError,ValueError,UnicodeError):
+    except (Rejected,OSError,ValueError,UnicodeError) as error:
+        terminal_ns=time.monotonic_ns()
+        terminal_code=terminal_diagnostic_code(error)
         terminal='bridge-terminal'
         overall_green=False
     finally:
+        if terminal_ns is None: terminal_ns=time.monotonic_ns()
         if active:
             close_active_control(active)
             limit=min(protocol.global_deadline or t0+2000000000,active['deadline']+2000000000,time.monotonic_ns()+2000000000)
@@ -954,6 +1000,8 @@ def bridge_loop(dfd, directory, owner, run, nonce, input_commit):
             os.close(active['result'])
             if active['pidfd'] is not None: os.close(active['pidfd'])
         publish(dfd,'bridge-exit.json',common|{'type':'bridge-exit','reason':terminal,'green':overall_green,
+                'terminal_phase':phase,'terminal_code':terminal_code,'phase_started_ns':phase_started_ns,
+                'phase_deadline_ns':phase_deadline_ns,'terminal_ns':terminal_ns,
                 'cleanup_request_slots':protocol.cleanup_count,'cleanup_cli_spawn_upper_bound':cleanup_spawn_upper_bound,'terminal_watchdog':terminal_watchdog,'linux_watchdog_retained':bool(active and not waited),'windows_actual_exit_confirmed':False,
                 'windows_stdout_eof_confirmed':False,'windows_stderr_eof_confirmed':False})
     return 0 if overall_green else 1
