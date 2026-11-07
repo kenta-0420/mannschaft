@@ -85,6 +85,53 @@ test.describe('CMP-260910-1609 AC3: 配分額の入力と保存', () => {
     }
   })
 
+  test('AC1/2: 編集と削除を名前で区別でき、編集に内部versionを表示しない', async ({ page }) => {
+    await page.goto('/admin/shift-budget/allocations')
+    await waitForHydration(page)
+    const row = page.getByRole('row').filter({
+      has: page.getByRole('cell', { name: String(ALLOCATION_ID), exact: true }),
+    })
+    await expect(row).toBeVisible()
+    const edit = row.locator('button:has(.pi-pencil)')
+    const remove = row.locator('button:has(.pi-trash)')
+    await expect(edit, '実際の編集導線が存在してから作法を検査する').toBeVisible()
+    await expect.soft(edit).toHaveAccessibleName('割当を編集')
+    await expect.soft(edit).toHaveAttribute('title', '割当を編集')
+    await expect.soft(remove).toHaveAccessibleName('割当を削除')
+    await expect.soft(remove).toHaveAttribute('title', '割当を削除')
+    await edit.click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+    await expect.soft(dialog.getByText(/バージョン/)).not.toBeVisible()
+    // version=3の保存契約はAC3 edit/0・edit/5000で引き続き検証する。
+    await dialog.getByRole('button', { name: 'キャンセル', exact: true }).click()
+    await expect(dialog).not.toBeVisible()
+    await remove.click()
+    await expect(page.getByRole('dialog')).toContainText(`ID: ${ALLOCATION_ID}`)
+    await page.getByRole('dialog').getByRole('button', { name: 'キャンセル', exact: true }).click()
+  })
+
+  for (const view of ['allocations', 'dashboard']) {
+    test(`AC4 ${view}: 消化額0とnullの既定0にも配分額と同じ通貨を表示する`, async ({ page }) => {
+      const items = [
+        buildAllocation({ id: 1001, allocated_amount: 100_000, consumed_amount: 0 }),
+        { ...buildAllocation({ id: 1002, allocated_amount: 200_000 }), consumed_amount: null },
+      ]
+      await page.route('**/api/v1/shift-budget/allocations?**', route => route.fulfill({
+        json: { data: { items, page: 0, size: 20, total: items.length } },
+      }))
+      await page.goto(`/admin/shift-budget/${view}`)
+      await waitForHydration(page)
+      for (const [id, allocated] of [[1001, '100,000 JPY'], [1002, '200,000 JPY']] as const) {
+        const row = page.getByRole('row').filter({
+          has: page.getByRole('cell', { name: String(id), exact: true }),
+        })
+        await expect(row.getByRole('cell', { name: allocated, exact: true })).toBeVisible()
+        await expect.soft(row.getByRole('cell', { name: '0 JPY', exact: true })).toBeVisible()
+      }
+    })
+  }
+
   async function openAmountForm(page: Page, mode: AllocationMode) {
     const writes: AllocationWrite[] = []
     await page.route(/\/api\/v1\/shift-budget\/allocations(?:\/\d+)?$/, async (route, request) => {
