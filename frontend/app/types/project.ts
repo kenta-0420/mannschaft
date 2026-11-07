@@ -96,7 +96,8 @@ export interface MilestoneResponse {
   updatedAt: string
   // F02.7 ゲート関連フィールド
   progressRate: number
-  isLocked: boolean
+  /** BE の JSON キーは Jackson の仕様で `locked`（Lombok の isLocked ゲッター由来）。`isLocked` ではない。 */
+  locked: boolean
   lockedByMilestoneId: number | null
   lockedByMilestoneTitle: string | null
   completionMode: MilestoneCompletionMode

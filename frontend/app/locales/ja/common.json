@@ -1122,6 +1122,18 @@
     }
   },
   "project": {
+    "back_label": "プロジェクト一覧",
+    "delete_aria": "{title}を削除",
+    "delete_confirm": "「{title}」を削除しますか？",
+    "delete_confirm_header": "削除の確認",
+    "milestone_dialog": {
+      "add_title": "マイルストーン追加",
+      "edit_title": "マイルストーン編集",
+      "title_label": "タイトル",
+      "title_placeholder": "マイルストーン名",
+      "due_date_label": "期限",
+      "add": "追加"
+    },
     "related_todo_no_due": "期限なし",
     "related_todo_no_assignee": "担当者なし",
     "related_todo_open": "TODO詳細を開く",
@@ -1182,7 +1194,19 @@
       "none": "なし",
       "custom_emoji": "カスタム",
       "custom_color": "カスタムカラー",
-      "current": "現在の値"
+      "current": "現在の値",
+      "colors": {
+        "blue": "ブルー",
+        "red": "レッド",
+        "green": "グリーン",
+        "amber": "アンバー",
+        "violet": "バイオレット",
+        "pink": "ピンク",
+        "cyan": "シアン",
+        "teal": "ティール",
+        "orange": "オレンジ",
+        "gray": "グレー"
+      }
     },
     "guide": {
       "button": "使い方",
@@ -1234,7 +1258,10 @@
       "update_failed": "更新に失敗しました",
       "delete_failed": "削除に失敗しました",
       "status_change_failed": "ステータスの変更に失敗しました",
-      "milestone_save_failed": "マイルストーンの保存に失敗しました"
+      "milestone_save_failed": "マイルストーンの保存に失敗しました",
+      "force_unlock_failed": "強制アンロックに失敗しました",
+      "completion_mode_failed": "完了モードの変更に失敗しました",
+      "gate_init_failed": "ゲートの初期化に失敗しました"
     },
     "status": {
       "active": "進行中",

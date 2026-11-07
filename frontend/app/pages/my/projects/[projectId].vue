@@ -18,6 +18,7 @@ const projectApi = useProjectApi()
 const { showError, showSuccess } = useNotification()
 const authStore = useAuthStore()
 const { t } = useI18n()
+const confirmDialog = useConfirm()
 
 const project = ref<ProjectResponse | null>(null)
 const milestones = ref<MilestoneResponse[]>([])
@@ -74,7 +75,7 @@ async function load() {
     todos.value = tRes.data
     gatesSummary.value = gRes?.data ?? null
   } catch {
-    showError('プロジェクト情報の取得に失敗しました')
+    showError(t('project.error.fetch_failed'))
   } finally {
     loading.value = false
   }
@@ -91,14 +92,13 @@ function openEdit() {
   showEditDialog.value = true
 }
 
-async function saveProject(updatedForm?: UpdateProjectRequest) {
-  if (updatedForm) Object.assign(editForm, updatedForm)
+async function saveProject(form: UpdateProjectRequest) {
   try {
-    await projectApi.updateProject(null, projectId, editForm)
+    await projectApi.updateProject(null, projectId, form)
     showEditDialog.value = false
     await load()
   } catch {
-    showError('更新に失敗しました')
+    showError(t('project.error.update_failed'))
   }
 }
 
@@ -112,7 +112,7 @@ async function toggleComplete() {
     }
     await load()
   } catch {
-    showError('ステータスの変更に失敗しました')
+    showError(t('project.error.status_change_failed'))
   }
 }
 
@@ -132,18 +132,17 @@ function openEditMilestone(ms: MilestoneResponse) {
   showMilestoneDialog.value = true
 }
 
-async function saveMilestone(updatedForm?: CreateMilestoneRequest) {
-  if (updatedForm) Object.assign(milestoneForm, updatedForm)
+async function saveMilestone(form: CreateMilestoneRequest) {
   try {
     if (editingMilestone.value) {
-      await projectApi.updateMilestone(null, projectId, editingMilestone.value.id, milestoneForm)
+      await projectApi.updateMilestone(null, projectId, editingMilestone.value.id, form)
     } else {
-      await projectApi.createMilestone(null, projectId, milestoneForm)
+      await projectApi.createMilestone(null, projectId, form)
     }
     showMilestoneDialog.value = false
     await load()
   } catch {
-    showError('マイルストーンの保存に失敗しました')
+    showError(t('project.error.milestone_save_failed'))
   }
 }
 
@@ -152,18 +151,27 @@ async function toggleMilestoneComplete(ms: MilestoneResponse) {
     await projectApi.completeMilestone(null, projectId, ms.id)
     await load()
   } catch {
-    showError('更新に失敗しました')
+    showError(t('project.error.update_failed'))
   }
 }
 
-async function removeMilestone(ms: MilestoneResponse) {
-  if (!confirm(`「${ms.title}」を削除しますか？`)) return
-  try {
-    await projectApi.deleteMilestone(null, projectId, ms.id)
-    await load()
-  } catch {
-    showError('削除に失敗しました')
-  }
+function removeMilestone(ms: MilestoneResponse) {
+  confirmDialog.require({
+    message: t('project.delete_confirm', { title: ms.title }),
+    header: t('project.delete_confirm_header'),
+    icon: 'pi pi-exclamation-triangle',
+    acceptClass: 'p-button-danger',
+    acceptLabel: t('button.delete'),
+    rejectLabel: t('button.cancel'),
+    accept: async () => {
+      try {
+        await projectApi.deleteMilestone(null, projectId, ms.id)
+        await load()
+      } catch {
+        showError(t('project.error.delete_failed'))
+      }
+    },
+  })
 }
 
 // === F02.7 ゲート機能（個人スコープでは作成者のみ操作可）===
@@ -183,7 +191,7 @@ async function submitForceUnlock(reason: string) {
     showSuccess(t('project.force_unlock_success'))
     await load()
   } catch {
-    showError(t('project.force_unlock_title') + ' に失敗しました')
+    showError(t('project.error.force_unlock_failed'))
   } finally {
     forceUnlockSubmitting.value = false
   }
@@ -195,7 +203,7 @@ async function handleChangeCompletionMode(milestoneId: number, mode: MilestoneCo
     showSuccess(t('project.completion_mode_changed'))
     await load()
   } catch {
-    showError(t('project.completion_mode_changed') + ' に失敗しました')
+    showError(t('project.error.completion_mode_failed'))
   }
 }
 
@@ -209,7 +217,7 @@ async function handleInitializeGate() {
     showSuccess(t('project.initialize_gate_success'))
     await load()
   } catch {
-    showError(t('project.initialize_gate_button') + ' に失敗しました')
+    showError(t('project.error.gate_init_failed'))
   }
 }
 
@@ -224,20 +232,20 @@ onMounted(async () => {
 
     <div v-else-if="project">
       <div class="mb-6">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="flex items-center gap-3">
             <span v-if="project.emoji" class="text-3xl">{{ project.emoji }}</span>
             <PageHeader :title="project.title" back-to="/my/projects" :back-label="$t('project.my_projects')" />
             <Tag
-              :value="project.status === 'COMPLETED' ? '完了' : '進行中'"
+              :value="project.status === 'COMPLETED' ? $t('project.status.completed') : $t('project.status.active')"
               :severity="project.status === 'COMPLETED' ? 'success' : 'info'"
             />
           </div>
           <div v-if="isCreator" class="flex gap-2">
-            <Button icon="pi pi-pencil" label="編集" text @click="openEdit" />
+            <Button icon="pi pi-pencil" :label="$t('project.action.edit')" text @click="openEdit" />
             <Button
               :icon="project.status === 'COMPLETED' ? 'pi pi-refresh' : 'pi pi-check'"
-              :label="project.status === 'COMPLETED' ? '再開' : '完了にする'"
+              :label="project.status === 'COMPLETED' ? $t('project.action.reopen') : $t('project.action.complete')"
               :severity="project.status === 'COMPLETED' ? 'info' : 'success'"
               text
               @click="toggleComplete"
@@ -255,26 +263,26 @@ onMounted(async () => {
       <SectionCard class="mb-6">
         <div class="mb-2 grid gap-4 sm:grid-cols-4">
           <div>
-            <p class="text-xs text-surface-400">進捗</p>
+            <p class="text-xs text-surface-400">{{ $t('project.stats.progress') }}</p>
             <p class="text-2xl font-bold">{{ toProgressPercent(project.progressRate) }}%</p>
           </div>
           <div>
-            <p class="text-xs text-surface-400">タスク</p>
+            <p class="text-xs text-surface-400">{{ $t('project.stats.tasks') }}</p>
             <p class="text-2xl font-bold">{{ project.completedTodos }}/{{ project.totalTodos }}</p>
           </div>
           <div>
-            <p class="text-xs text-surface-400">マイルストーン</p>
+            <p class="text-xs text-surface-400">{{ $t('project.stats.milestones') }}</p>
             <p class="text-2xl font-bold">
               {{ project.milestones.completed }}/{{ project.milestones.total }}
             </p>
           </div>
           <div>
-            <p class="text-xs text-surface-400">期限</p>
+            <p class="text-xs text-surface-400">{{ $t('project.stats.due_date') }}</p>
             <p
               class="text-2xl font-bold"
               :class="(project.daysRemaining ?? 0) < 0 ? 'text-red-500' : ''"
             >
-              {{ project.dueDate ?? '未設定' }}
+              {{ project.dueDate ?? $t('project.stats.no_due_date') }}
             </p>
           </div>
         </div>
@@ -303,9 +311,9 @@ onMounted(async () => {
       />
 
       <div>
-        <h2 class="mb-2 text-lg font-semibold">関連タスク</h2>
+        <h2 class="mb-2 text-lg font-semibold">{{ $t('project.related_tasks') }}</h2>
         <div v-if="todos.length === 0" class="py-4 text-center text-surface-400">
-          このプロジェクトに関連するタスクはありません
+          {{ $t('project.no_related_tasks') }}
         </div>
         <div v-else class="flex flex-col gap-1">
           <ProjectRelatedTodoRow v-for="todo in todos" :key="todo.id" :todo="todo" />
