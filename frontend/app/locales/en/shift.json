@@ -390,7 +390,6 @@
     },
     "entry": {
       "notStarted": "Preference submission has not started yet.",
-      "notStarted": "Preference submission has not started yet.",
       "sectionTitle": "Submit requests / Shift board",
       "bulkRequest": "Submit requests in bulk",
       "board": "Shift board",

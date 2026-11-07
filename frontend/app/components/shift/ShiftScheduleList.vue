@@ -191,9 +191,6 @@ onMounted(load)
           <span v-else-if="s.status.status === 'DRAFT'" class="text-xs text-surface-500">
             {{ t('shift.entry.notStarted') }}
           </span>
-          <span v-else-if="s.status.status === 'DRAFT'" class="text-xs text-surface-500">
-            {{ t('shift.entry.notStarted') }}
-          </span>
           <span v-else class="text-xs text-surface-500">
             {{ t('shift.entry.closed') }}
           </span>
