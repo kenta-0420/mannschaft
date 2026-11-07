@@ -406,6 +406,7 @@ class DockerBoundary:
         self.ports = {}
         self.daemon_confirmed = False
         self.absence_candidates=set()
+        self.valkey_started_id=None
 
     def command(self, operation, role, secrets=None):
         name = resource_name(self.run,role) if role != 'daemon' else None
@@ -416,10 +417,12 @@ class DockerBoundary:
         if operation == 'daemon-info' and role == 'daemon':
             self.daemon_confirmed=False
             self.inspected.clear()
+            self.valkey_started_id=None
             return base+['info','--format','{{.ID}}'], env
         if role not in ('mysql','valkey'):
             raise Rejected('role')
         volume=name+'-data'
+        if operation=='container-create' and role=='valkey': self.valkey_started_id=None
         if operation in ('container-inspect','volume-inspect'):
             self.inspected.pop((operation.split('-')[0],role),None)
         if operation in ('container-create','volume-create','container-start','container-stop','container-remove','volume-remove'):
@@ -536,6 +539,9 @@ class DockerBoundary:
                 if port is not None: self.ports[role] = port.copy()
             self.inspected[(kind,role)] = value
             return {'ownership_inspected':True,'identity':value.get('id',value.get('name')),'loopback_port':self.ports.get(role)}
+        if operation=='container-start' and role=='valkey':
+            evidence=self.inspected.get(('container','valkey'))
+            if evidence is not None: self.valkey_started_id=evidence['id']
         return {'command_completed':True,'absent':False}
 
 def parse_valkey_info_frame(data):
@@ -640,7 +646,7 @@ def with_valkey_identity(boundary, request, adopted, deadline, clock_delta=None)
     if adopted is None or request['phase']!='work' or request['operation']!='container-inspect' or request['resource']!='valkey':
         return adopted,True
     container=boundary.inspected.get(('container','valkey'))
-    if type(container) is not dict or container.get('running') is not True:
+    if type(container) is not dict or container.get('running') is not True or boundary.valkey_started_id!=container.get('id'):
         return adopted,True
     identity,proof=read_owned_valkey_identity(boundary,deadline,clock_delta)
     result=adopted.copy()

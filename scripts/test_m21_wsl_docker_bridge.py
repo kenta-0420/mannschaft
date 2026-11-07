@@ -546,6 +546,7 @@ class RecoveryContinuationFiniteTests(unittest.TestCase):
         def seeded(boundary,*args,**kwargs):
             original_init(boundary,*args,**kwargs)
             boundary.inspected[('volume','mysql')]={'name':b.resource_name(run,'mysql')+'-data'}
+            boundary.valkey_started_id='c'*64
         def command(boundary,operation,role,secrets=None):
             _,env=original_command(boundary,operation,role,secrets)
             if operation=='container-inspect':
@@ -781,7 +782,8 @@ class ValkeyInfoFrameTests(unittest.TestCase):
     def test_failed_refresh_never_reuses_old_identity_or_socket_proof(self):
         from unittest.mock import patch
         d=b.DockerBoundary('11111111-1111-4111-8111-111111111111','/owned/config',{'daemon_id':'fixture','mysql_image_id':'sha256:'+'a'*64,'valkey_image_id':'sha256:'+'b'*64},SELF_OWNER)
-        d.inspected[('container','valkey')]={'running':True}
+        d.inspected[('container','valkey')]={'running':True,'id':'c'*64}
+        d.valkey_started_id='c'*64
         old={'ownership_inspected':True,'run_id':'a'*40,'socket_proof':{'green':True}}
         failed={'green':False,'reason':'timeout'}
         with patch.object(b,'read_owned_valkey_identity',return_value=(None,failed)):
@@ -789,6 +791,16 @@ class ValkeyInfoFrameTests(unittest.TestCase):
         self.assertFalse(green); self.assertNotIn('run_id',result)
         self.assertIs(result['socket_proof'],failed)
         self.assertNotIn('run_id',d.inspected[('container','valkey')])
+
+
+    def test_running_prestart_without_own_start_never_reads_info(self):
+        from unittest.mock import patch
+        d=b.DockerBoundary('11111111-1111-4111-8111-111111111111','/owned/config',{'daemon_id':'fixture','mysql_image_id':'sha256:'+'a'*64,'valkey_image_id':'sha256:'+'b'*64},SELF_OWNER)
+        d.inspected[('container','valkey')]={'running':True,'id':'c'*64}
+        adopted={'ownership_inspected':True}
+        with patch.object(b,'read_owned_valkey_identity',side_effect=AssertionError('prestart INFO')):
+            result,green=b.with_valkey_identity(d,{'phase':'work','operation':'container-inspect','resource':'valkey'},adopted,1)
+        self.assertIs(result,adopted); self.assertTrue(green)
 
 
 class OwnedValkeySocketTests(unittest.TestCase):
