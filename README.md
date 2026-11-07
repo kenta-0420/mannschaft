@@ -1228,6 +1228,8 @@ CI では `openapi.json` と生成型の乖離を自動検出します。`docs/o
 > - Flyway マイグレーション: `.claudecode.md` §18
 > - E-R 図（実スキーマから自動生成・ドメイン単位）: [`docs/architecture/er/README.md`](docs/architecture/er/README.md)。再生成は `cd backend && ./gradlew generateErDiagrams`、仕組みは `.claudecode.md` §10.1。migration／Entity を変更したら再生成してコミットする（CI の ER Diagram Drift Check が検出）。`docs/features` の手描き図は設計意図、`er/` は現実のスキーマ
 
+名称正規化は組織ドメインが所有し、Java公開窓口 `organization.api.DuplicateNameNormalizerApi.trimSpaces` から利用する。既存の `common.duplicatename.DuplicateNameNormalizer` は、呼出側のL2移行・L5撤去まで互換委譲を維持する（[L1-R初回ロットの検証状況](docs/evidence/CMP-261028-2304-l1r-normalizer.md)）。
+
 ### フィーチャーフラグ（Phase 制御）
 
 Phase 9 以降で実装される機能（**広告表示 #27・コルクボード #28**）はデフォルト機能として定義されるが、実装完了前に UI/API が露出しないよう環境変数フラグで制御する。
