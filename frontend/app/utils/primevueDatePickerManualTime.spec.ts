@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import { defineComponent, nextTick, ref } from 'vue'
 import DatePicker from 'primevue/datepicker'
 import PrimeVue from 'primevue/config'
@@ -10,19 +10,24 @@ import { toLocalDateTimeString } from './localDate'
 applyDatePickerManualInputFix(DatePicker)
 
 const ownedContainers: HTMLElement[] = []
+const ownedHosts: VueWrapper[] = []
 afterEach(() => {
-  for (const container of ownedContainers.splice(0)) container.remove()
+  try {
+    for (const host of ownedHosts.splice(0)) host.unmount()
+  } finally {
+    for (const container of ownedContainers.splice(0)) container.remove()
+  }
 })
 
 /** 実コンポーネントの入力イベントから親の v-model までを通す。 */
-async function mountPicker(hourFormat = '24', initialValue: Date | null = null, showTime = true) {
+async function mountPicker(hourFormat = '24', initialValue: Date | null = null, showTime = true, timeOnly = false) {
   const Host = defineComponent({
     components: { DatePicker },
     setup() {
       const model = ref<Date | null>(initialValue)
-      return { model, hourFormat, showTime }
+      return { model, hourFormat, showTime, timeOnly }
     },
-    template: '<DatePicker v-model="model" date-format="yy/mm/dd" :show-time="showTime" :hour-format="hourFormat" />',
+    template: '<DatePicker v-model="model" date-format="yy/mm/dd" :show-time="showTime" :hour-format="hourFormat" :time-only="timeOnly" />',
   })
   const container = document.createElement('div')
   document.body.appendChild(container)
@@ -31,6 +36,7 @@ async function mountPicker(hourFormat = '24', initialValue: Date | null = null, 
     attachTo: container,
     global: { plugins: [PrimeVue] },
   })
+  ownedHosts.push(host)
   await nextTick()
   const picker = host.findComponent(DatePicker)
   const input = host.get('input').element as HTMLInputElement
@@ -63,6 +69,27 @@ function modelDate(value: unknown): Date {
 }
 
 describe('DatePicker の24時間手入力（CMP-260910-1557）', () => {
+  it.each([
+    ['17:30', 17, 30],
+    ['00:00', 0, 0],
+    ['23:59', 23, 59],
+  ])('time-only の %s が実 v-model と blur 後の表示へ保存される', async (typed, hour, minute) => {
+    const { picker, input } = await mountPicker('24', null, false, true)
+
+    await typeInto(input, typed)
+
+    expect(input.value).toBe(typed)
+    expect(input.selectionStart).toBe(typed.length)
+    expect(input.selectionEnd).toBe(typed.length)
+    const value = modelDate(picker.props('modelValue'))
+    // time-only は現在日の Date を返すため、暦日や実行時刻とは比較しない。
+    expect([value.getHours(), value.getMinutes(), value.getSeconds()]).toEqual([hour, minute, 0])
+    await blur(input)
+    expect(input.value).toBe(typed)
+    const blurred = modelDate(picker.props('modelValue'))
+    expect([blurred.getHours(), blurred.getMinutes(), blurred.getSeconds()]).toEqual([hour, minute, 0])
+  })
+
   it.each([
     ['17:30', '2026-10-11T17:30', 17, 30],
     ['00:00', '2026-10-11T00:00', 0, 0],
