@@ -132,6 +132,20 @@ describe('CMP-261008-1253 ボードの実版契約', () => {
     expect(state.localAssignments.value[1]).toEqual([4])
   })
 
+  it('同一scheduleの遅いPATCH応答で新しいGETの版を巻き戻さない', async () => {
+    const slots = ref([slot(1, 1)])
+    const state = useShiftBoard(ref(1), slots)
+    const patch = deferred<{ data: ShiftSlotResponse }>()
+    api.patchSlotAssignments.mockReturnValue(patch.promise)
+    const adding = state.addUser(1, 4)
+    api.getShiftSlots.mockResolvedValue({ data: [slot(1, 3, [5])] })
+    await state.loadSlots()
+    patch.resolve({ data: slot(1, 2, [4]) })
+    await adding
+    expect(slots.value).toEqual([slot(1, 3, [5])])
+    expect(state.localAssignments.value[1]).toEqual([5])
+  })
+
   it('再取得は既存ローカル割当も同期し、別scheduleの旧応答を破棄する', async () => {
     const schedule = ref(1)
     const slots = ref([slot(1, 1)])
