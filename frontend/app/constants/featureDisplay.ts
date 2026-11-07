@@ -118,7 +118,7 @@ export const FEATURE_DISPLAY_CATALOG = [
   },
   {
     key: 'timetable',
-    scopes: ['O'],
+    scopes: ['T', 'O'],
   },
   {
     key: 'surveys',

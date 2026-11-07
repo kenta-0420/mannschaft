@@ -43,7 +43,7 @@ async function saveMemo() {
     }, 3000)
   } catch {
     saveStatus.value = 'idle'
-    notification.error(t('common.dialog.error'))
+    notification.error(t('dialog.error'))
   }
 }
 
