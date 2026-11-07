@@ -94,7 +94,7 @@ function Start-M21FormalBridge {
  $script:m21Bridge=[M21Child]::StartBridge([string[]]@('-d','Ubuntu-24.04','--exec','/usr/bin/python3','-I',$linuxSource,'--run-directory',$linuxRun,'--owner',$owner,'--run',$script:m21BridgeRun,'--nonce',$Nonce,'--input-commit',$commit),$PSScriptRoot,(Join-Path $run 'bridge-relay'),(Remaining -Recovery),$environment)
  Register-Child $script:m21Bridge 'formal-bridge'
  if([IO.Path]::GetFullPath($script:m21Bridge.Process.MainModule.FileName) -ine 'C:\Windows\System32\wsl.exe'){throw '保持bridge実exe不一致'}
- Write-Json 'formal-bridge-launcher.json' @{owner=$owner;nonce=$Nonce;run=$script:m21BridgeRun;identity=(Identity $script:m21Bridge.Process);exe=$script:m21Bridge.Process.MainModule.FileName;exeSha256=$wslSha;bridgeSourceSha256=$script:m21BridgeSourceSha;inputCommit=$commit}
+ Write-Json 'formal-bridge-launcher.json' @{owner=$owner;nonce=$Nonce;run=$script:m21BridgeRun;identity=(Identity $script:m21Bridge.Process);exe=$script:m21Bridge.Process.MainModule.FileName;exeSha256=$wslSha;arguments=$script:m21Bridge.Process.StartInfo.Arguments;bridgeSourceSha256=$script:m21BridgeSourceSha;inputCommit=$commit}
  $ready=Wait-M21FormalBridgeFile 'ready.json' 60000
  Assert-M21FormalBridgeDocument $ready 'ready'
  if($ready.ready -ne $true){throw 'bridge ready未確認'}
@@ -161,7 +161,7 @@ function Invoke-M21WslRelayLossFixture {
  $relay=[M21Child]::StartBridge([string[]]@('-d','Ubuntu-24.04','--exec','/usr/bin/python3','-I',$linuxTest,'--relay-fixture','--run-directory',$linuxDirectory,'--owner',$owner,'--run',$script:m21BridgeRun,'--nonce',$Nonce,'--input-commit',$commit),$PSScriptRoot,(Join-Path $run 'relay'),(Remaining -Recovery),$environment)
  $script:m21Bridge=$relay
  Register-Child $relay 'wsl-relay-loss-fixture'
- $script:fixtureEvidence=@{fixture='wsl-relay-loss';passed=$false;primaryRelayQualified=$false;primaryReason='intentional-relay-loss';formalRunQualified=$false;realDockerInvoked=$false;inputCommit=$commit;bridgeSourceSha256=$script:m21BridgeSourceSha;fixtureSourceSha256=$testSha;windows=$null;linux=$null;linuxBridgeActualExitObserved=$false;linuxWatchdogActualExitObserved=$false;retained=$run}
+ $script:fixtureEvidence=@{fixture='wsl-relay-loss';passed=$false;primaryRelayQualified=$false;primaryReason='intentional-relay-loss';formalRunQualified=$false;realDockerInvoked=$false;inputCommit=$commit;bridgeSourceSha256=$script:m21BridgeSourceSha;fixtureSourceSha256=$testSha;arguments=$relay.Process.StartInfo.Arguments;windows=$null;linux=$null;linuxBridgeActualExitObserved=$false;linuxWatchdogActualExitObserved=$false;retained=$run}
  if([IO.Path]::GetFullPath($relay.Process.MainModule.FileName) -ine 'C:\Windows\System32\wsl.exe'){throw 'fixture保持exe不一致'}
  $ready=Wait-M21FormalBridgeFile 'ready.json' 15000
  Assert-M21FormalBridgeDocument $ready 'ready';$script:m21BridgeReady=$ready

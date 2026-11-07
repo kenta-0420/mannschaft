@@ -162,6 +162,8 @@ Javaが探索完了markerを先に読みhelper cleanupへ進んだ場合、Super
 
 ### B4 固定relay喪失fixture
 
+StartBridgeだけは固定prefix `-d Ubuntu-24.04 --exec /usr/bin/python3 -I` をliteralにし、後続source/metadataには既存Quoteを使う。通常M21Childのserializerは変えない。最初のc650入力B4では全argvをQuoteした起動が `/bin/bash: line 1: -d: command not found` / relay actual127で終わり、意図Killへ進めなかった。quoted optionの解釈自体はdocsだけで断定せず、この一次失敗とLinux証拠未取得を保持する。修正後は非秘密の実rendered argumentsもreceiptへ保存する。
+
 private Node22で `node scripts/m21-windows-supervisor.probe.cjs --wsl-relay-loss-fixture --owner-id 1d767b20-825c-4edc-b397-8d4367036462` を実行する。`M21_INPUT_COMMIT` にclean統合HEADを指定する。既存readiness runnerとM21Childを再利用する独立1caseであり、通常17件を呼ばない。Windows側はG60秒/W40秒/R20秒、Linux initは残量へclampしたG4秒/W3秒と固定request cap1秒を使う。
 
 固定test CLIはproductionのguard/bridge loopを使い、外部Docker command/preflight境界だけを固定Python dummyへ置換する。Linuxのfork/setsid ACK/pidfd/subreaper/独立watchdog/reap/両EOFは実物である。実Docker/Java/FE/Chromeは起動しない。request-started.jsonのowner/nonce/run/source/request/世代とsession ACKを確認してから、保持した同じwsl.exeだけをKillする。Windows actual exit/各EOFと、その後の独立Linux receiptのCLI子集合reap/各EOFを別に検査する。

@@ -190,6 +190,12 @@ public sealed class M21Child : IDisposable {
  public static M21Child StartBridge(string[] args,string cwd,string prefix,int recoveryMs,Dictionary<string,string> environment) {
   return StartCore("C:/Windows/System32/wsl.exe",args,cwd,prefix,recoveryMs,false,environment,true);
  }
+ static string BridgeArguments(string[] args) {
+  if(args==null||args.Length<6||args[0]!="-d"||args[1]!="Ubuntu-24.04"||args[2]!="--exec"||args[3]!="/usr/bin/python3"||args[4]!="-I")throw new InvalidDataException("固定WSL prefix不一致");
+  // WSLの先頭optionはliteral。--exec後のsource/metadata値には既存Quoteを使う。
+  StringBuilder a=new StringBuilder("-d Ubuntu-24.04 --exec /usr/bin/python3 -I");
+  for(int i=5;i<args.Length;i++){a.Append(' ');a.Append(Quote(args[i]));}return a.ToString();
+ }
  static M21Child StartCore(string exe,string[] args,string cwd,string prefix,int recoveryMs,bool observeTimings,Dictionary<string,string> environment,bool bridgeInput) {
   Stopwatch recoveryClock=Stopwatch.StartNew();
   Func<int,int> remaining=cap=>Math.Max(0,Math.Min(cap,recoveryMs-(int)recoveryClock.ElapsedMilliseconds));
@@ -200,7 +206,8 @@ public sealed class M21Child : IDisposable {
    ProcessStartInfo s=new ProcessStartInfo(exe);s.UseShellExecute=false;s.CreateNoWindow=true;s.WorkingDirectory=cwd;
    s.RedirectStandardOutput=true;s.RedirectStandardError=true;
    s.RedirectStandardInput=bridgeInput;
-   StringBuilder a=new StringBuilder();foreach(string x in args){if(a.Length>0)a.Append(' ');a.Append(Quote(x));}s.Arguments=a.ToString();
+   if(bridgeInput){s.Arguments=BridgeArguments(args);}
+   else{StringBuilder a=new StringBuilder();foreach(string x in args){if(a.Length>0)a.Append(' ');a.Append(Quote(x));}s.Arguments=a.ToString();}
    if(environment!=null){s.EnvironmentVariables.Clear();foreach(KeyValuePair<string,string> item in environment)s.EnvironmentVariables.Add(item.Key,item.Value);}
    c.Process=new Process();c.Process.StartInfo=s;if(!c.Process.Start())throw new IOException("起動失敗");c.Started=true;
    c.RecordedPid=c.Process.Id;

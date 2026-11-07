@@ -684,6 +684,11 @@ $native=@($ast.FindAll({param($node) $node -is [Management.Automation.Language.S
 if($native.Count -ne 1){throw 'native-fixed-literal'}
 Add-Type -TypeDefinition $native[0].Value
 Entry-Phase 'native-defined'
+$bridgeMethod=[M21Child].GetMethod('BridgeArguments',[Reflection.BindingFlags]'NonPublic,Static')
+$bridgeVector=[string[]]@('-d','Ubuntu-24.04','--exec','/usr/bin/python3','-I','/mnt/c/fixed-source.py','--run','public-run')
+$rendered=$bridgeMethod.Invoke($null,@([object]$bridgeVector))
+if(!$rendered.StartsWith('-d Ubuntu-24.04 --exec /usr/bin/python3 -I "')){throw 'bridge-prefix-rendering'}
+$bridgeVector[0]='--unknown';$rejected=$false;try{$bridgeMethod.Invoke($null,@([object]$bridgeVector))}catch{$rejected=$true};if(!$rejected){throw 'bridge-prefix-unknown'}
 $budget=Get-M21FormalBudget
 if($budget.totalMs -ne 3300000 -or $budget.workMs -ne 3000000 -or $budget.reserveMs -ne 300000){throw 'budget'}
 if(($budget.recoveryCapsMs|Measure-Object -Sum).Sum -ne 267000 -or $budget.marginMs -ne 33000){throw 'caps'}
