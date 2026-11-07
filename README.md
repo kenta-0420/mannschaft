@@ -970,7 +970,7 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 | 10 | 管理者ダッシュボード（チーム・組織の設定集約）、通報モデレーション、監査ログ、経営分析、パフォーマンス監視、エラー監視 | [F10.1](docs/features/F10.1_admin_dashboard.md), [F10.1.1](docs/features/F10.1.1_team_org_admin_console/README.md), [F10.2](docs/features/F10.2_moderation.md), [F10.3](docs/features/F10.3_audit_logs.md), [F10.4](docs/features/F10.4_business_analytics.md), [F10.5](docs/features/F10.5_performance_monitoring.md), [F10.6](docs/features/F10.6_error_monitoring.md) |
 | 11 | オフライン対応/PWA、多言語コンテンツ、ポリッシュ・テスト・Docker化 | [F11.1](docs/features/F11.1_offline_pwa.md), [F11.2](docs/features/F11.2_multilingual_content.md) |
 
-タイムラインダイジェストの一覧・設定取得は `scopeType`（`TEAM` / `ORGANIZATION`）と数値内部ID `scopeId` が必須。画面は現在のURLに一致するシェルのIDを解決してから取得する（[F06.3](docs/features/F06.3_timeline_digest.md)）。
+タイムラインダイジェストの一覧・設定取得は `scopeType`（`TEAM` / `ORGANIZATION`）と数値内部ID `scopeId` が必須。画面は現在のURLに対応するIDを使い、シェルにIDがない場合は組織・チーム詳細APIから解決する。取得失敗はエラーとして表示し、通信失敗時は再試行できる（[F06.3](docs/features/F06.3_timeline_digest.md)）。
 
 ---
 

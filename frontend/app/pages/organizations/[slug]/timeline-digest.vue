@@ -8,12 +8,43 @@ const route = useRoute()
 const orgSlug = computed(() => String(route.params.slug))
 const { org } = useOrgShellContext()
 // URLと一致したシェルの内部IDだけを送る。未解決時に前スコープのIDを使わない。
-const numericScopeId = computed(() => {
+const shellScopeId = computed(() => {
   const id = org.value?.numericId
   return org.value?.id === orgSlug.value && id != null && Number.isSafeInteger(id) && id > 0
     ? id
     : null
 })
+const { resolveOrganizationNumericId } = useOrganizationNumericId()
+const resolvedScope = ref<{ slug: string; id: number } | null>(null)
+const scopeResolveFailed = ref(false)
+const scopeResolveError = shallowRef<unknown>(null)
+let scopeResolveSeq = 0
+const numericScopeId = computed(
+  () =>
+    shellScopeId.value ??
+    (resolvedScope.value?.slug === orgSlug.value ? resolvedScope.value.id : null),
+)
+
+// 非shellルートでは親が詳細を取得しないため、ページ自身で既存のslug解決経路を使う。
+async function resolveScopeId() {
+  const seq = ++scopeResolveSeq
+  const requestedSlug = orgSlug.value
+  const isCurrent = () => seq === scopeResolveSeq && requestedSlug === orgSlug.value
+  resolvedScope.value = null
+  scopeResolveFailed.value = false
+  scopeResolveError.value = null
+  if (shellScopeId.value !== null) return
+  try {
+    const id = Number(await resolveOrganizationNumericId(requestedSlug))
+    if (!isCurrent()) return
+    if (!Number.isSafeInteger(id) || id <= 0) throw new Error('organization_numeric_id_missing')
+    resolvedScope.value = { slug: requestedSlug, id }
+  } catch (error) {
+    if (!isCurrent()) return
+    scopeResolveError.value = error
+    scopeResolveFailed.value = true
+  }
+}
 const { listDigests, deleteDigest, publishDigest, regenerateDigest } = useTimelineDigestApi()
 const notification = useNotification()
 const { t } = useI18n()
@@ -89,6 +120,13 @@ function onGenerated() {
 }
 
 watch(
+  [orgSlug, shellScopeId],
+  () => {
+    void resolveScopeId()
+  },
+  { immediate: true, flush: 'sync' },
+)
+watch(
   [orgSlug, numericScopeId],
   () => {
     digests.value = []
@@ -99,12 +137,18 @@ watch(
   { immediate: true, flush: 'sync' },
 )
 onBeforeUnmount(() => {
+  scopeResolveSeq++
   requestSeq++
 })
 </script>
 
 <template>
-  <PageLoading v-if="!numericScopeId" />
+  <DashboardErrorState
+    v-if="scopeResolveFailed"
+    :error="scopeResolveError"
+    @retry="resolveScopeId"
+  />
+  <PageLoading v-else-if="!numericScopeId" />
   <div v-else>
     <div class="mb-6 flex items-center justify-between">
       <h1 class="text-2xl font-bold">{{ $t('timeline_digest.title') }}</h1>
