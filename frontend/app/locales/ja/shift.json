@@ -89,7 +89,9 @@
       "saveSuccess": "スロットを保存しました",
       "deleteSuccess": "スロットを削除しました",
       "assignmentMasked": "調整中",
-      "assignmentMaskedHint": "公開前のため割当は表示されません"
+      "assignmentMaskedHint": "公開前のため割当は表示されません",
+      "deleteTitle": "シフト枠を削除",
+      "deleteConfirm": "この枠を削除しますか？この枠に提出済みの希望は、希望一覧と本人の提出履歴から見えなくなります。通常の操作では元に戻せません。"
     },
     "requests": {
       "submissionRate": "提出率",

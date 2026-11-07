@@ -165,7 +165,9 @@
       "saveSuccess": "Franja guardada",
       "deleteSuccess": "Franja eliminada",
       "assignmentMasked": "En ajuste",
-      "assignmentMaskedHint": "Las asignaciones se ocultan hasta que se publique el turno"
+      "assignmentMaskedHint": "Las asignaciones se ocultan hasta que se publique el turno",
+      "deleteTitle": "Eliminar turno",
+      "deleteConfirm": "¿Eliminar este turno? Las solicitudes enviadas para este turno dejarán de aparecer en la lista de solicitudes y en el historial personal. Esta acción no se puede deshacer mediante las operaciones habituales."
     },
     "requests": {
       "submissionRate": "Tasa de envío",
