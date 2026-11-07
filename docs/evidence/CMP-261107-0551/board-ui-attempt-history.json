@@ -1,0 +1,34 @@
+{
+  "status": "HISTORICAL_FAILURES_RETAINED",
+  "attempts": [
+    {
+      "source": "outputs/ranch-approved64-board-ui-20261108/board-ui-initial-fail.json",
+      "sourceSha256": "59cba42ca68db5f03b5a0793c9d0cf845f393eadf7d929b92825359fd02fcb0d",
+      "status": "FAIL",
+      "causeScope": "sandbox localhost WebSocket denied before board reach",
+      "browserRootRemaining": false,
+      "knownBrowserProcessesRemaining": 0,
+      "profileAbsent": true,
+      "portReleased": true,
+      "serverClosed": true,
+      "contextClosed": null,
+      "budgetsMet": true
+    },
+    {
+      "source": "outputs/ranch-approved64-board-ui-20261108/board-ui-import-wait-fail.json",
+      "sourceSha256": "d682318b1816006f591a302b20ced7c9005106f23323c8ae35a38aaa0220abf9",
+      "status": "FAIL",
+      "causeScope": "harness IndexedDB import wait observed partial count; no product failure claim",
+      "browserRootRemaining": false,
+      "knownBrowserProcessesRemaining": 0,
+      "profileAbsent": true,
+      "portReleased": true,
+      "serverClosed": true,
+      "contextClosed": true,
+      "budgetsMet": true
+    }
+  ],
+  "finalReceipt": "docs/evidence/CMP-261107-0551/board-ui-safe.json",
+  "finalReceiptSha256": "69b4e6e5c1a927c5f0430a9436909687f7b80d54ec36453e5dc49823978179a1",
+  "limits": "first sandbox attempt has no context because connect failed; browserServer and profile/port removed. Second import wait failure retained; final polling waits for completed 118-row import."
+}

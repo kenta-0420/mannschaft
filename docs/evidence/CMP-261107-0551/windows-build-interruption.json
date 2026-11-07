@@ -1,0 +1,13 @@
+{
+  "status": "INTERRUPTED_NONPASS_SUPERSEDED_BY_STANDARD_PRODUCTION_DOCKER_PASS",
+  "head": "9e8e9ba15cc7040d88d88067646be2d6a51ec862",
+  "reason": "Root intentionally stopped owned Nuxt after same-input M Docker build/scanner/HTTP/health success",
+  "localPtyExit": 1,
+  "ownedKnownProcessesRemaining": [],
+  "receipt": "build-receipt.json",
+  "receiptSha256": "6eab4d1cb2d29f5512c6d46b676564c6e09cbaad5b73d95782abb8ff0aa3b26b",
+  "beforeSha256": "8620e107318946ee5e8104f3699c1ced1fc87f429074db51eb48104659990db2",
+  "standardProductionProof": "main-production-M-proof.json",
+  "unknownProcessesStopped": 0,
+  "atUtc": "2026-11-07T19:51:53.9466223Z"
+}

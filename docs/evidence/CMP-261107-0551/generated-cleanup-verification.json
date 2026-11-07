@@ -1,0 +1,81 @@
+{
+  "head": "9e8e9ba15cc7040d88d88067646be2d6a51ec862",
+  "sourceClean": true,
+  "sourceInventorySha256": "8837ded35b5dd045cf9a842d533fe20aefa9d4530d408c39e5d316bb1888c220",
+  "sourceInventoryUnchanged": true,
+  "donorHead": "99a30026523da4f38559b3158687a774fe3103ba",
+  "source4ceHead": "4ce3aa26785871ee363c90b0a514f023ca20723a",
+  "donorExpected": {
+    "files": 50455,
+    "bytes": 550292699,
+    "metadataSha256": "6ff821e2936abace888fb6d897f57f442c29381680cf28031d911967483db946"
+  },
+  "donorAfter": {
+    "files": 50455,
+    "bytes": 550292699,
+    "metadataSha256": "6ff821e2936abace888fb6d897f57f442c29381680cf28031d911967483db946"
+  },
+  "depsEqual": true,
+  "protectedEvidence": [
+    {
+      "name": "build-before.json",
+      "sha256": "8620e107318946ee5e8104f3699c1ced1fc87f429074db51eb48104659990db2",
+      "unchanged": true
+    },
+    {
+      "name": "build-receipt.json",
+      "sha256": "6eab4d1cb2d29f5512c6d46b676564c6e09cbaad5b73d95782abb8ff0aa3b26b",
+      "unchanged": true
+    },
+    {
+      "name": "production-build.log",
+      "sha256": "ea81c84b1cbbf0b07468a7ae2e98ea221eef4704fd74dda5560790bdc0930dc4",
+      "unchanged": true
+    },
+    {
+      "name": "production-config-guard.log",
+      "sha256": "33d6f7a321915ac1943893b3b0ff9c16f28d8305d157adafeb07aa3351799649",
+      "unchanged": true
+    },
+    {
+      "name": "windows-build-interruption.json",
+      "sha256": "7cee9836a3c47a1cbc15d0b1dd11233dab5a8a12f8668996632793c344e7e6c4",
+      "unchanged": true
+    }
+  ],
+  "frozenHelpers": [
+    {
+      "file": "run-production.mjs",
+      "sha256": "434b06b41c7e6a248a73a5ce8f582641afea84b5bedba8fde3236b76a1da7123",
+      "unchanged": true
+    },
+    {
+      "file": "write-guard.cjs",
+      "sha256": "2fb603db1ac0db3ca108705bfa58fd6f6bbda41097e480b9a08983751cb773bb",
+      "unchanged": true
+    },
+    {
+      "file": "prepare-deps.mjs",
+      "sha256": "df51b8525fd95b64af1227613a79285b9bb76d0a18f549dbd20779b107ee319f",
+      "unchanged": true
+    }
+  ],
+  "generatedPaths": [
+    {
+      "name": ".nuxt",
+      "absent": true
+    },
+    {
+      "name": ".output",
+      "absent": true
+    },
+    {
+      "name": "node_modules",
+      "absent": true
+    }
+  ],
+  "freeCAfter": 4073787392,
+  "knownProcessesRemainingFromRootInterruptionReceipt": [],
+  "completedAtUtc": "2026-11-07T19:55:35.878Z",
+  "passed": true
+}

@@ -1,0 +1,40 @@
+{
+  "reviewer": "root",
+  "observedAt": "2026-11-07T11:32:55.3983046Z",
+  "scope": "Six representative direct-renderer stills for LAND/SEA/AIR and PIXEL/PAINT_2D; not actual app scene, animation playback, or all frames",
+  "land": "Ground shadow visible below feet; happy tail three curves present",
+  "sea": "All visible flippers preserved in happy representative frame",
+  "air": "Both wings visible in happy representative frame",
+  "images": [
+    {
+      "file": "canvas-AIR-PAINT_2D.png",
+      "sha256": "2d3ef959a93b3e2594328af56d644ae66303cbb1faab11d2f13fb4cc49237e6a",
+      "review": "Root viewed native resolution screenshot; no missing limbs or frame clipping seen in this representative still"
+    },
+    {
+      "file": "canvas-AIR-PIXEL.png",
+      "sha256": "4f1d6f5194129c0717ef161ebc520e57853f4c090c5fd40f970fd5ad996f0d2b",
+      "review": "Root viewed native resolution screenshot; no missing limbs or frame clipping seen in this representative still"
+    },
+    {
+      "file": "canvas-LAND-PAINT_2D.png",
+      "sha256": "fe9127b85325b478dddd7abc5295b9bcfc57f47f2ebd2ba13db208387caa9a1d",
+      "review": "Root viewed native resolution screenshot; no missing limbs or frame clipping seen in this representative still"
+    },
+    {
+      "file": "canvas-LAND-PIXEL.png",
+      "sha256": "863588369d3967624101811aecb7245adefe94f40320c172f160ccdc7ca8d554",
+      "review": "Root viewed native resolution screenshot; no missing limbs or frame clipping seen in this representative still"
+    },
+    {
+      "file": "canvas-SEA-PAINT_2D.png",
+      "sha256": "50c8486eee62ffe44f87aefb5b8c650acc684b6c6d0aea3144639f52c4a71eb0",
+      "review": "Root viewed native resolution screenshot; no missing limbs or frame clipping seen in this representative still"
+    },
+    {
+      "file": "canvas-SEA-PIXEL.png",
+      "sha256": "e2c0ce9edfded21158dd5da33a6917207e2781532529364d8e4b1d4b3558681f",
+      "review": "Root viewed native resolution screenshot; no missing limbs or frame clipping seen in this representative still"
+    }
+  ]
+}
