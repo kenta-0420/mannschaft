@@ -4,28 +4,29 @@ import pathlib
 import unittest
 import sys
 sys.dont_write_bytecode=True
+SELF_OWNER='1d767b20-825c-4edc-b397-8d4367036462'
 spec = importlib.util.spec_from_file_location('bridge', pathlib.Path(__file__).with_name('m21-wsl-docker-bridge.py'))
 b = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(b)
 
 class BoundaryTests(unittest.TestCase):
     def test_admission_and_replay(self):
-        p = b.Protocol('11111111-1111-4111-8111-111111111111', 100)
-        p.initialize(dict(type='init', owner=b.OWNER, run=p.run, global_offset_ms=1000, work_offset_ms=800), 100)
-        r = dict(type='request', owner=b.OWNER, run=p.run, request_id=1, operation='daemon-info', resource='daemon', deadline_offset_ms=200,phase='cleanup')
+        p = b.Protocol('11111111-1111-4111-8111-111111111111', 100, owner=SELF_OWNER)
+        p.initialize(dict(type='init', owner=SELF_OWNER, run=p.run, global_offset_ms=1000, work_offset_ms=800), 100)
+        r = dict(type='request', owner=SELF_OWNER, run=p.run, request_id=1, operation='daemon-info', resource='daemon', deadline_offset_ms=200,phase='cleanup')
         self.assertEqual(p.request(r, 150)[1], 200000100)
         with self.assertRaises(b.Rejected): p.request(r, 150)
     def test_unknown_input_and_secret_api(self):
         for extra in ({'argv': []}, {'env': {}}, {'path':'/tmp'}, {'operation':'exec'}):
-            p = b.Protocol('11111111-1111-4111-8111-111111111111', 100)
-            p.initialize(dict(type='init', owner=b.OWNER, run=p.run, global_offset_ms=1000, work_offset_ms=800), 100)
-            r = dict(type='request', owner=b.OWNER, run=p.run, request_id=1, operation='daemon-info', resource='daemon', deadline_offset_ms=200,phase='cleanup')
+            p = b.Protocol('11111111-1111-4111-8111-111111111111', 100, owner=SELF_OWNER)
+            p.initialize(dict(type='init', owner=SELF_OWNER, run=p.run, global_offset_ms=1000, work_offset_ms=800), 100)
+            r = dict(type='request', owner=SELF_OWNER, run=p.run, request_id=1, operation='daemon-info', resource='daemon', deadline_offset_ms=200,phase='cleanup')
             with self.assertRaises(b.Rejected): p.request(r | extra, 150)
     def test_zero_null_bool_and_expiry(self):
         for value in (0, None, '', True):
             with self.assertRaises(b.Rejected): b.integer(value,1,3000000)
-        p = b.Protocol('11111111-1111-4111-8111-111111111111',100)
-        with self.assertRaises(b.Rejected): p.initialize(dict(type='init',owner=b.OWNER,run=p.run,global_offset_ms=1,work_offset_ms=1),2000000)
+        p = b.Protocol('11111111-1111-4111-8111-111111111111',100, owner=SELF_OWNER)
+        with self.assertRaises(b.Rejected): p.initialize(dict(type='init',owner=SELF_OWNER,run=p.run,global_offset_ms=1,work_offset_ms=1),2000000)
     def test_exact_resource(self):
         self.assertEqual(b.resource_name('11111111-1111-4111-8111-111111111111','mysql'),'m21-11111111111141118111111111111111-mysql')
         with self.assertRaises(b.Rejected): b.resource_name('11111111-1111-4111-8111-111111111111','../foreign')
@@ -119,7 +120,7 @@ class LinuxFiniteTests(unittest.TestCase):
     def test_secret_sentinel_reaches_only_limited_child_env(self):
         import hashlib,json
         secret='M21_OWNED_SENTINEL_APP'
-        boundary=b.DockerBoundary('11111111-1111-4111-8111-111111111111','/owned/config',{'daemon_id':'fixture','mysql_image_id':'sha256:'+'a'*64,'valkey_image_id':'sha256:'+'b'*64})
+        boundary=b.DockerBoundary('11111111-1111-4111-8111-111111111111','/owned/config',{'daemon_id':'fixture','mysql_image_id':'sha256:'+'a'*64,'valkey_image_id':'sha256:'+'b'*64}, owner=SELF_OWNER)
         argv,env=boundary.command('container-create','mysql',{'mysql_root_password':'M21_OWNED_SENTINEL_ROOT','mysql_password':secret})
         expected=hashlib.sha256(secret.encode()).hexdigest()
         code='import hashlib,os; print(hashlib.sha256(os.environ["MYSQL_PASSWORD"].encode()).hexdigest()=="'+expected+'" and (set(os.environ)-{"LC_CTYPE"})=={"PATH","LANG","MYSQL_ROOT_PASSWORD","MYSQL_PASSWORD"})'
@@ -140,7 +141,7 @@ class LinuxFiniteTests(unittest.TestCase):
 class FixedDockerTests(unittest.TestCase):
     def test_fixed_docker_identity_and_secret_argv(self):
         d = b.DockerBoundary('11111111-1111-4111-8111-111111111111','/owned/config',
-                             {'daemon_id':'daemon:local','mysql_image_id':'sha256:'+'a'*64,'valkey_image_id':'sha256:'+'b'*64})
+                             {'daemon_id':'daemon:local','mysql_image_id':'sha256:'+'a'*64,'valkey_image_id':'sha256:'+'b'*64}, owner=SELF_OWNER)
         argv, env = d.command('container-create','mysql',{'mysql_root_password':'OWNED_SENTINEL','mysql_password':'APP_SENTINEL'})
         self.assertNotIn('OWNED_SENTINEL',' '.join(argv))
         self.assertEqual(env['MYSQL_ROOT_PASSWORD'],'OWNED_SENTINEL')
@@ -150,11 +151,11 @@ class FixedDockerTests(unittest.TestCase):
 
     def test_daemon_change_and_nonzero_are_not_absence(self):
         d = b.DockerBoundary('11111111-1111-4111-8111-111111111111','/owned/config',
-                             {'daemon_id':'daemon:local','mysql_image_id':'sha256:'+'a'*64,'valkey_image_id':'sha256:'+'b'*64})
+                             {'daemon_id':'daemon:local','mysql_image_id':'sha256:'+'a'*64,'valkey_image_id':'sha256:'+'b'*64}, owner=SELF_OWNER)
         with self.assertRaises(b.Rejected): d.adopt('daemon-info','daemon',0,b'other-daemon\n')
         with self.assertRaises(b.Rejected): d.adopt('resources-absent','mysql',1,b'')
         missing=('error: no such object: '+b.resource_name(d.run,'mysql')+'\nerror: no such object: '+b.resource_name(d.run,'mysql')+'-data\n').encode()
-        candidate=d.adopt('resources-absent','mysql',1,b'',missing)
+        candidate=d.adopt('resources-absent','mysql',1,b'\n',missing)
         self.assertTrue(candidate['absence_candidate']); self.assertFalse(candidate['absent'])
         self.assertEqual(len(d.adopt('daemon-info','daemon',0,b'daemon:local\n')['confirmed_absent_resources']),1)
 
@@ -184,7 +185,7 @@ class ResidentFiniteTests(unittest.TestCase):
     def resident_case(self,mode):
         import json,os,select,signal,struct,tempfile,time
         from unittest.mock import patch
-        owner=b.OWNER; run='11111111-1111-4111-8111-111111111111'
+        owner=SELF_OWNER; run='11111111-1111-4111-8111-111111111111'
         descriptor={'daemon_id':'fixture-daemon','mysql_image_id':'sha256:'+'a'*64,'valkey_image_id':'sha256:'+'b'*64}
         with tempfile.TemporaryDirectory(prefix='m21-bridge-fixture-') as directory:
             dfd=os.open(directory,os.O_RDONLY|os.O_DIRECTORY)
@@ -253,20 +254,20 @@ class NtfsReceiptFiniteTests(unittest.TestCase):
         root=b.TEMP_ROOT/('m21-windows-bridge-fixture-'+uuid.uuid4().hex)
         child=root/'bridge'
         os.mkdir(root,0o700); os.mkdir(child,0o700)
-        owned={'owner':b.OWNER,'nonce':nonce}
+        owned={'owner':SELF_OWNER,'nonce':nonce}
         def fresh(path,value):
             fd=os.open(str(path),os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
             with os.fdopen(fd,'w') as out: json.dump(value,out)
         fresh(root/'owner.json',owned)
         fresh(child/'owner.json',owned|{'run':run,'purpose':'m21-docker-bridge'})
-        dfd=b.guard_run(str(child),b.OWNER,run,nonce)
+        dfd=b.guard_run(str(child),SELF_OWNER,run,nonce)
         identity=os.fstat(dfd)
         value=owned|{'run':run,'source_sha256':hashlib.sha256(b.Path(b.__file__).read_bytes()).hexdigest(),'case':'ntfs-receipt-once'}
         try:
             b.publish(dfd,'fixture.json',value)
             self.assertEqual(b.read_owned_json(dfd,'fixture.json'),value)
             with self.assertRaises(FileExistsError): b.publish(dfd,'fixture.json',value)
-            print(json.dumps({'case':'ntfs-receipt-once','owner':b.OWNER,'run':run,'nonce':nonce,'source_sha256':value['source_sha256'],'dev':identity.st_dev,'ino':identity.st_ino,'create_new':True,'atomic_public':True,'directory_fsync':True,'read_exact':True}))
+            print(json.dumps({'case':'ntfs-receipt-once','owner':SELF_OWNER,'run':run,'nonce':nonce,'source_sha256':value['source_sha256'],'dev':identity.st_dev,'ino':identity.st_ino,'create_new':True,'atomic_public':True,'directory_fsync':True,'read_exact':True}))
         finally:
             current=os.stat(child,follow_symlinks=False)
             self.assertEqual((current.st_dev,current.st_ino),(identity.st_dev,identity.st_ino))
@@ -291,7 +292,7 @@ class LossFiniteTests(unittest.TestCase):
                 os.close(report_r)
                 try:
                     request={'request_id':1,'operation':'daemon-info','resource':'daemon','phase':'cleanup'}
-                    active=b.spawn_watchdog(['/usr/bin/python3','-I','-c','import time; time.sleep(60)'],{'PATH':'/usr/bin:/bin','LANG':'C'},time.monotonic_ns()+500000000,time.monotonic_ns()+2500000000,dfd,{'owner':b.OWNER,'run':'11111111-1111-4111-8111-111111111111'},request)
+                    active=b.spawn_watchdog(['/usr/bin/python3','-I','-c','import time; time.sleep(60)'],{'PATH':'/usr/bin:/bin','LANG':'C'},time.monotonic_ns()+500000000,time.monotonic_ns()+2500000000,dfd,{'owner':SELF_OWNER,'run':'11111111-1111-4111-8111-111111111111'},request)
                     os.write(report_w,json.dumps({'watchdog_pid':active['pid']}).encode())
                     select.select([],[],[],60)
                 finally: os._exit(90)
@@ -353,8 +354,8 @@ class InspectContractTests(unittest.TestCase):
     def test_created_then_started_mysql_freezes_only_published_loopback(self):
         import json
         run='11111111-1111-4111-8111-111111111111'
-        d=b.DockerBoundary(run,'/owned/config',{'daemon_id':'fixture','mysql_image_id':'sha256:'+'a'*64,'valkey_image_id':'sha256:'+'b'*64})
-        v={'id':'c'*64,'labels':{'m21.owner':b.OWNER,'m21.run':run,'m21.purpose':'mysql'},'image':'sha256:'+'a'*64,'ports':{},'bindings':{'3306/tcp':[{'HostIp':'127.0.0.1','HostPort':''}]},'mounts':[{'Type':'volume','Name':b.resource_name(run,'mysql')+'-data','Destination':'/var/lib/mysql','RW':True}],'running':False}
+        d=b.DockerBoundary(run,'/owned/config',{'daemon_id':'fixture','mysql_image_id':'sha256:'+'a'*64,'valkey_image_id':'sha256:'+'b'*64}, owner=SELF_OWNER)
+        v={'id':'c'*64,'labels':{'m21.owner':SELF_OWNER,'m21.run':run,'m21.purpose':'mysql'},'image':'sha256:'+'a'*64,'ports':{},'bindings':{'3306/tcp':[{'HostIp':'127.0.0.1','HostPort':''}]},'mounts':[{'Type':'volume','Name':b.resource_name(run,'mysql')+'-data','Destination':'/var/lib/mysql','RW':True}],'running':False}
         d.adopt('container-inspect','mysql',0,json.dumps(v).encode())
         self.assertNotIn('mysql',d.ports)
         v['running']=True
@@ -365,12 +366,12 @@ class InspectContractTests(unittest.TestCase):
         with self.assertRaises(b.Rejected): d.adopt('container-inspect','mysql',0,json.dumps(v).encode())
 
     def test_cleanup_count_and_work_deadline(self):
-        p=b.Protocol('11111111-1111-4111-8111-111111111111',100)
-        p.initialize(dict(type='init',owner=b.OWNER,run=p.run,global_offset_ms=1000,work_offset_ms=100),100)
+        p=b.Protocol('11111111-1111-4111-8111-111111111111',100, owner=SELF_OWNER)
+        p.initialize(dict(type='init',owner=SELF_OWNER,run=p.run,global_offset_ms=1000,work_offset_ms=100),100)
         for index in range(1,15):
-            p.request(dict(type='request',owner=b.OWNER,run=p.run,request_id=index,phase='cleanup',operation='daemon-info',resource='daemon',deadline_offset_ms=500),200000000)
-        with self.assertRaises(b.Rejected): p.request(dict(type='request',owner=b.OWNER,run=p.run,request_id=15,phase='cleanup',operation='daemon-info',resource='daemon',deadline_offset_ms=500),200000000)
-        with self.assertRaises(b.Rejected): p.request(dict(type='request',owner=b.OWNER,run=p.run,request_id=15,phase='work',operation='daemon-info',resource='daemon',deadline_offset_ms=500),200000000)
+            p.request(dict(type='request',owner=SELF_OWNER,run=p.run,request_id=index,phase='cleanup',operation='daemon-info',resource='daemon',deadline_offset_ms=500),200000000)
+        with self.assertRaises(b.Rejected): p.request(dict(type='request',owner=SELF_OWNER,run=p.run,request_id=15,phase='cleanup',operation='daemon-info',resource='daemon',deadline_offset_ms=500),200000000)
+        with self.assertRaises(b.Rejected): p.request(dict(type='request',owner=SELF_OWNER,run=p.run,request_id=15,phase='work',operation='daemon-info',resource='daemon',deadline_offset_ms=500),200000000)
 
 
 
@@ -383,12 +384,12 @@ class RealDaemonAbsenceFiniteTests(unittest.TestCase):
         self.assertEqual(cli_sha,'2fc3b56f978ff6951845be1e4ce352256c0ce126eeda8b84d5713009da3771ca')
         with tempfile.TemporaryDirectory(prefix='m21-windows-readonly-',dir=str(b.TEMP_ROOT)) as parent:
             root=pathlib.Path(parent); child=root/'bridge'; child.mkdir()
-            owner={'owner':b.OWNER,'nonce':nonce}
+            owner={'owner':SELF_OWNER,'nonce':nonce}
             with (root/'owner.json').open('x') as f: json.dump(owner,f)
             with (child/'owner.json').open('x') as f: json.dump(owner|{'run':run,'purpose':'m21-docker-bridge'},f)
-            dfd=b.guard_run(str(child),b.OWNER,run,nonce)
+            dfd=b.guard_run(str(child),SELF_OWNER,run,nonce)
             os.mkdir('config',dir_fd=dfd); os.close(dfd)
-            boundary=b.DockerBoundary(run,str(child/'config'),{'daemon_id':'syntax-fixture-only','mysql_image_id':'sha256:'+'a'*64,'valkey_image_id':'sha256:'+'b'*64})
+            boundary=b.DockerBoundary(run,str(child/'config'),{'daemon_id':'syntax-fixture-only','mysql_image_id':'sha256:'+'a'*64,'valkey_image_id':'sha256:'+'b'*64}, owner=SELF_OWNER)
             base=['/usr/bin/docker','--config',str(child/'config'),'--host','unix:///var/run/docker.sock']
             def once(argv,env):
                 control_r,control_w=os.pipe2(os.O_CLOEXEC); result_r,result_w=os.pipe2(os.O_CLOEXEC)
@@ -411,7 +412,7 @@ class RealDaemonAbsenceFiniteTests(unittest.TestCase):
             expected=('error: no such object: '+b.resource_name(run,'mysql')+'\nerror: no such object: '+b.resource_name(run,'mysql')+'-data\n').encode()
             known_stdout={b'':'empty',b'\n':'single-newline',b'[]\n':'json-empty-array-newline',b'[]':'json-empty-array',b'M21_PRESENT\n':'present-sentinel'}
             same_daemon=before['cli_exit']==after['cli_exit']==0 and before['physical_completed'] and after['physical_completed'] and before['_stdout_hex']==after['_stdout_hex'] and bool(bytes.fromhex(before['_stdout_hex']).strip())
-            evidence={'case':'real-readonly-absence-diagnostic-once','owner':b.OWNER,'run':run,'nonce':nonce,'source_sha256':hashlib.sha256(b.Path(b.__file__).read_bytes()).hexdigest(),'test_sha256':hashlib.sha256(pathlib.Path(__file__).read_bytes()).hexdigest(),'docker_sha256':cli_sha,'body_cap_ms':3000,'elapsed_ms':result['fixture_elapsed_ms'],'cli_exit':result['cli_exit'],'children_reaped':result['children_reaped'],'stdout_eof':result['stdout_eof'],'stderr_eof':result['stderr_eof'],'physical_completed':result['physical_completed'],'stdout_len':len(stdout),'stdout_shape':known_stdout.get(stdout,'unknown'),'stdout_sha256':hashlib.sha256(stdout).hexdigest(),'stderr_len':len(stderr),'stderr_line_count':len(stderr.splitlines()),'stderr_shape':'exact-two-lowercase-error-no-such-object' if stderr==expected else 'unknown','stderr_sha256':hashlib.sha256(stderr).hexdigest(),'same_daemon_before_after':bool(same_daemon),'daemon_before_elapsed_ms':before['fixture_elapsed_ms'],'daemon_after_elapsed_ms':after['fixture_elapsed_ms'],'daemon_absence_confirmed':False}
+            evidence={'case':'real-readonly-absence-diagnostic-once','owner':SELF_OWNER,'run':run,'nonce':nonce,'source_sha256':hashlib.sha256(b.Path(b.__file__).read_bytes()).hexdigest(),'test_sha256':hashlib.sha256(pathlib.Path(__file__).read_bytes()).hexdigest(),'docker_sha256':cli_sha,'body_cap_ms':3000,'elapsed_ms':result['fixture_elapsed_ms'],'cli_exit':result['cli_exit'],'children_reaped':result['children_reaped'],'stdout_eof':result['stdout_eof'],'stderr_eof':result['stderr_eof'],'physical_completed':result['physical_completed'],'stdout_len':len(stdout),'stdout_shape':known_stdout.get(stdout,'unknown'),'stdout_sha256':hashlib.sha256(stdout).hexdigest(),'stderr_len':len(stderr),'stderr_line_count':len(stderr.splitlines()),'stderr_shape':'exact-two-lowercase-error-no-such-object' if stderr==expected else 'unknown','stderr_sha256':hashlib.sha256(stderr).hexdigest(),'same_daemon_before_after':bool(same_daemon),'daemon_before_elapsed_ms':before['fixture_elapsed_ms'],'daemon_after_elapsed_ms':after['fixture_elapsed_ms'],'daemon_before':{key:before.get(key) for key in ('reason','cli_exit','children_reaped','stdout_eof','stderr_eof','physical_completed','force_count','body_elapsed_ms','reap_observed_ns','stdout_eof_observed_ns','stderr_eof_observed_ns')},'daemon_after':{key:after.get(key) for key in ('reason','cli_exit','children_reaped','stdout_eof','stderr_eof','physical_completed','force_count','body_elapsed_ms','reap_observed_ns','stdout_eof_observed_ns','stderr_eof_observed_ns')},'daemon_before_id_sha256':hashlib.sha256(bytes.fromhex(before['_stdout_hex'])).hexdigest(),'daemon_after_id_sha256':hashlib.sha256(bytes.fromhex(after['_stdout_hex'])).hexdigest(),'daemon_absence_confirmed':False}
             out=pathlib.Path(__file__).resolve().parent.parent/'.claude'/'campaigns'
             out.mkdir(parents=True,exist_ok=True)
             with (out/('m21-bridge-readonly-'+run+'.json')).open('x') as f: json.dump(evidence,f,sort_keys=True)
@@ -430,7 +431,7 @@ class PublicReceiptFiniteTests(unittest.TestCase):
             dfd=os.open(directory,os.O_RDONLY|os.O_DIRECTORY)
             secret='OWNED_PUBLIC_SENTINEL_MUST_NOT_APPEAR'
             argv=['/usr/bin/python3','-I','-c','import os; print("MYSQL_PASSWORD" in os.environ)']
-            active=b.spawn_watchdog(argv,{'PATH':'/usr/bin:/bin','LANG':'C','MYSQL_PASSWORD':secret},time.monotonic_ns()+500000000,time.monotonic_ns()+2500000000,dfd,{'owner':b.OWNER,'run':'11111111-1111-4111-8111-111111111111'},{'request_id':1,'phase':'cleanup','operation':'daemon-info','resource':'daemon'})
+            active=b.spawn_watchdog(argv,{'PATH':'/usr/bin:/bin','LANG':'C','MYSQL_PASSWORD':secret},time.monotonic_ns()+500000000,time.monotonic_ns()+2500000000,dfd,{'owner':SELF_OWNER,'run':'11111111-1111-4111-8111-111111111111'},{'request_id':1,'phase':'cleanup','operation':'daemon-info','resource':'daemon'})
             os.close(dfd)
             raw=bytearray(); limit=time.monotonic()+3
             while time.monotonic()<limit:
@@ -448,6 +449,30 @@ class PublicReceiptFiniteTests(unittest.TestCase):
                 self.assertNotIn(b'_stdout_hex',public)
                 self.assertNotIn(b'_stderr_hex',public)
             self.assertTrue(json.loads((pathlib.Path(directory)/'request-00001.json').read_text())['linux']['green'])
+
+
+
+@unittest.skipUnless(sys.platform=='linux','Linux frame/clock境界')
+class RemainingBoundaryTests(unittest.TestCase):
+    def test_oversize_zero_and_duplicate_json_are_terminal(self):
+        import os,struct,time
+        for raw in (struct.pack('!I',0),struct.pack('!I',b.MAX_FRAME+1),struct.pack('!I',13)+b'{"a":1,"a":2}'):
+            r,w=os.pipe(); os.write(w,raw); os.close(w)
+            try:
+                with self.assertRaises(b.Rejected): b.read_frame(r,time.monotonic_ns()+100000000)
+            finally: os.close(r)
+
+    def test_clock_discontinuity_has_zero_watchdog_or_cli_spawn(self):
+        from unittest.mock import patch
+        with patch.object(b.time,'clock_gettime_ns',return_value=1000000000),patch.object(b.time,'monotonic_ns',return_value=0),patch.object(b.os,'fork',side_effect=AssertionError('spawn after clock change')):
+            with self.assertRaises(b.Rejected): b.spawn_watchdog([],{},100,200,0,{'clock_delta':0},{})
+            with self.assertRaises(b.Rejected): b.supervise([],{},100,0,200,0)
+
+    def test_subreaper_failure_has_zero_cli_spawn(self):
+        from unittest.mock import patch
+        import time
+        with patch.object(b.os,'setsid',return_value=None),patch.object(b,'subreaper',side_effect=b.Rejected('subreaper-set')),patch.object(b.os,'fork',side_effect=AssertionError('spawn without subreaper')):
+            with self.assertRaises(b.Rejected): b.supervise([],{},time.monotonic_ns()+100000000,0,time.monotonic_ns()+200000000)
 
 if __name__ == '__main__':
     if '--relay-fixture' in sys.argv: raise SystemExit(relay_fixture())

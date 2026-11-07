@@ -13,7 +13,6 @@ import sys
 import time
 import uuid
 
-OWNER = '1d767b20-825c-4edc-b397-8d4367036462'
 MAX_FRAME = 16384
 OPERATIONS = {'volume-create': ('mysql','valkey'), 'container-create': ('mysql','valkey'), 'container-start': ('mysql','valkey'), 'resources-absent': ('mysql','valkey'), 'daemon-info': ('daemon',), 'container-inspect': ('mysql','valkey'),
               'container-stop': ('mysql','valkey'), 'container-remove': ('mysql','valkey'),
@@ -50,7 +49,7 @@ def resource_name(run, role):
 
 
 class Protocol:
-    def __init__(self, run, t0, owner=OWNER):
+    def __init__(self, run, t0, owner):
         self.run = canonical_uuid(run)
         self.owner = canonical_uuid(owner)
         self.t0 = t0
@@ -185,6 +184,10 @@ def supervise(argv, env, body_deadline, control_fd, global_deadline, clock_delta
     呼出側はforkした専用子でのみ呼ぶ。watchdogはbridgeと別session、
     subreaperをCLIより先に設定する。CLI leaderは全group signal判断が終わるまで未reap。
     """
+    watchdog_started_ns=time.monotonic_ns()
+    if clock_delta is None: clock_delta=time.clock_gettime_ns(time.CLOCK_BOOTTIME)-time.monotonic_ns()
+    if abs((time.clock_gettime_ns(time.CLOCK_BOOTTIME)-time.monotonic_ns())-clock_delta)>100000000:
+        raise Rejected('clock-discontinuity')
     body_deadline = min(body_deadline, global_deadline)
     if time.monotonic_ns() >= body_deadline:
         raise Rejected('expired-before-spawn')
@@ -193,9 +196,10 @@ def supervise(argv, env, body_deadline, control_fd, global_deadline, clock_delta
     out_r, out_w = os.pipe2(os.O_CLOEXEC)
     err_r, err_w = os.pipe2(os.O_CLOEXEC)
     started_r, started_w = os.pipe2(os.O_CLOEXEC)
-    if time.monotonic_ns() >= body_deadline:
+    if time.monotonic_ns() >= body_deadline or abs((time.clock_gettime_ns(time.CLOCK_BOOTTIME)-time.monotonic_ns())-clock_delta)>100000000:
         for fd in (out_r,out_w,err_r,err_w,started_r,started_w): os.close(fd)
         raise Rejected('expired-before-spawn')
+    cli_spawn_ns=time.monotonic_ns()
     pid = os.fork()
     if pid == 0:
         try:
@@ -266,6 +270,8 @@ def supervise(argv, env, body_deadline, control_fd, global_deadline, clock_delta
     if not leader_seen and reason == 'completed':
         reason = 'body-deadline'
     # leaderが既にexitしていても孫を残せるので、anchor保持中に固定group停止。
+    body_observed_ns=time.monotonic_ns()
+    signal_decision_ns=body_observed_ns
     primary_eof = {}
     for fd in eof:
         while not eof[fd] and time.monotonic_ns()<min(body_deadline,global_deadline) and select.select([fd],[],[],0)[0]:
@@ -282,9 +288,9 @@ def supervise(argv, env, body_deadline, control_fd, global_deadline, clock_delta
     if not primary_green:
         if reason == 'completed': reason = 'primary-child-or-eof-incomplete'
         if acknowledged:
+            force_count = 1
             try:
                 os.killpg(pid, signal.SIGKILL)
-                force_count = 1
             except ProcessLookupError:
                 pass
         else:
@@ -307,6 +313,8 @@ def supervise(argv, env, body_deadline, control_fd, global_deadline, clock_delta
                 cli_status = os.waitstatus_to_exitcode(status)
         else:
             select.select([], [], [], .001)
+    reap_observed_ns=time.monotonic_ns()
+    eof_observed_ns={}
     for fd in eof:
         eof_deadline = min(global_deadline,time.monotonic_ns()+500000000)
         while not eof[fd] and time.monotonic_ns() < eof_deadline:
@@ -318,6 +326,7 @@ def supervise(argv, env, body_deadline, control_fd, global_deadline, clock_delta
                     captured[fd].extend(chunk)
                 else:
                     output_full = True
+        eof_observed_ns[fd]=time.monotonic_ns() if eof[fd] else None
         os.close(fd)
     os.close(pidfd)
     os.close(control_fd)
@@ -326,7 +335,7 @@ def supervise(argv, env, body_deadline, control_fd, global_deadline, clock_delta
         for child in Path('/proc/self/task/'+str(os.getpid())+'/children').read_text().split():
             try: retained.append(process_identity(int(child)))
             except (FileNotFoundError,ProcessLookupError): pass
-    return dict(retained_children=retained,leader_identity=identity, cli_exit=cli_status, children_reaped=children_reaped,
+    return dict(watchdog_started_ns=watchdog_started_ns,cli_spawn_ns=cli_spawn_ns,body_observed_ns=body_observed_ns,body_elapsed_ms=(body_observed_ns-watchdog_started_ns)//1000000,signal_decision_ns=signal_decision_ns,reap_observed_ns=reap_observed_ns,stdout_eof_observed_ns=eof_observed_ns[out_r],stderr_eof_observed_ns=eof_observed_ns[err_r],retained_children=retained,leader_identity=identity, cli_exit=cli_status, children_reaped=children_reaped,
                 reaped_pids=reaped, stdout_eof=eof[out_r], stderr_eof=eof[err_r],
                 write_closed=True, force_count=force_count, reason=reason,
                 primary_children_exited=primary_children_exited, primary_stdout_eof=primary_eof[out_r], primary_stderr_eof=primary_eof[err_r],
@@ -334,7 +343,7 @@ def supervise(argv, env, body_deadline, control_fd, global_deadline, clock_delta
 
 
 class DockerBoundary:
-    def __init__(self, run, config, descriptor, owner=OWNER):
+    def __init__(self, run, config, descriptor, owner):
         import re
         canonical_uuid(run)
         if type(descriptor) is not dict or set(descriptor) != {'daemon_id','mysql_image_id','valkey_image_id'}:
@@ -404,10 +413,6 @@ class DockerBoundary:
             args = ['volume','rm',volume]
         elif operation == 'resources-absent':
             args=['inspect','--format','M21_PRESENT',name,volume]
-        elif operation == 'container-absent':
-            args = ['container','ls','--all','--filter','name=^/'+name+'$','--format','{{.ID}}']
-        elif operation == 'volume-absent':
-            args = ['volume','ls','--filter','name=^'+volume+'$','--format','{{.Name}}']
         else:
             raise Rejected('operation')
         return base+args, env
@@ -416,7 +421,7 @@ class DockerBoundary:
         import re
         if operation=='resources-absent':
             expected=['error: no such object: '+resource_name(self.run,role),'error: no such object: '+resource_name(self.run,role)+'-data']
-            if code!=1 or output or stderr.decode('utf-8').splitlines()!=expected:
+            if code!=1 or output!=b'\n' or stderr!=('\n'.join(expected)+'\n').encode('utf-8'):
                 raise Rejected('resources-retained-or-unknown')
             self.absence_candidates.add(role)
             return {'absence_candidate':True,'absent':False,'requires_same_daemon_after':True}
@@ -428,10 +433,6 @@ class DockerBoundary:
                 raise Rejected('daemon-changed')
             self.daemon_confirmed = True
             return {'daemon_confirmed':True,'confirmed_absent_resources':[{'role':role,'container':resource_name(self.run,role),'volume':resource_name(self.run,role)+'-data'} for role in sorted(self.absence_candidates)]}
-        if operation.endswith('-absent'):
-            if text:
-                raise Rejected('resource-retained')
-            return {'absent':True}
         if operation in ('container-create','volume-create'):
             expected = resource_name(self.run,role)+'-data'
             if operation == 'volume-create' and text != expected:
@@ -563,10 +564,10 @@ def send_private(fd, value, deadline):
 
 def spawn_watchdog(argv, env, deadline, global_deadline, directory_fd, common, request):
     import fcntl
-    control_r,control_w = os.pipe2(os.O_CLOEXEC)
-    result_r,result_w = os.pipe2(os.O_CLOEXEC)
     if common.get('clock_delta') is not None and abs((time.clock_gettime_ns(time.CLOCK_BOOTTIME)-time.monotonic_ns())-common['clock_delta'])>100000000:
         raise Rejected('clock-discontinuity')
+    control_r,control_w = os.pipe2(os.O_CLOEXEC)
+    result_r,result_w = os.pipe2(os.O_CLOEXEC)
     if time.monotonic_ns() >= min(deadline,global_deadline):
         for fd in (control_r,control_w,result_r,result_w): os.close(fd)
         raise Rejected('expired-before-watchdog')
@@ -620,6 +621,7 @@ def bridge_loop(dfd, directory, owner, run, nonce, input_commit):
     active=None
     terminal='shutdown'
     overall_green=True
+    terminal_watchdog=None
     try:
         frame=read_frame(0,t0+2000000000)
         if type(frame) is not dict or set(frame)!={'type','owner','run','global_offset_ms','work_offset_ms'}:
@@ -710,10 +712,11 @@ def bridge_loop(dfd, directory, owner, run, nonce, input_commit):
                 waited,status=os.waitpid(active['pid'],os.WNOHANG)
                 if waited: break
                 select.select([],[],[],.001)
+            terminal_watchdog={'pid':active['pid'],'request_id':active['request']['request_id'],'exited':bool(waited),'exit_code':os.waitstatus_to_exitcode(status) if waited else None}
             overall_green=False
             os.close(active['pidfd']); os.close(active['result'])
         publish(dfd,'bridge-exit.json',common|{'type':'bridge-exit','reason':terminal,'green':overall_green,
-                'linux_watchdog_retained':bool(active and not waited),'windows_actual_exit_confirmed':False,
+                'terminal_watchdog':terminal_watchdog,'linux_watchdog_retained':bool(active and not waited),'windows_actual_exit_confirmed':False,
                 'windows_stdout_eof_confirmed':False,'windows_stderr_eof_confirmed':False})
     return 0 if overall_green else 1
 
