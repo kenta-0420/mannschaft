@@ -187,13 +187,13 @@ const teamApi = useTeamApi()
 const { t } = useI18n()
 const { handleApiError } = useErrorHandler()
 const { showError } = useNotification()
-const { localAssignments, initSlot, moveUser, addUser, removeUser } = useShiftBoard(scheduleId)
 const { runs, isRunning, runAutoAssign, confirmAutoAssign, revokeAutoAssign, fetchRuns } =
   useAutoAssign(scheduleId)
 
 // データ
 const schedule = ref<ShiftScheduleResponse | null>(null)
 const slots = ref<ShiftSlotResponse[]>([])
+const { localAssignments, loadSlots, moveUser, addUser, removeUser } = useShiftBoard(scheduleId, slots)
 const positions = ref<ShiftPositionResponse[]>([])
 const allMembers = ref<Array<{ userId: number; displayName: string; avatarUrl: string | null }>>([])
 const scheduleVersion = ref(0)
@@ -261,15 +261,6 @@ async function loadSchedule(): Promise<void> {
   schedule.value = (res as { data: ShiftScheduleResponse }).data
 }
 
-async function loadSlots(): Promise<void> {
-  const res = await shiftApi.getShiftSlots(scheduleId.value)
-  const data = (res as { data: ShiftSlotResponse[] }).data
-  slots.value = data
-  // ローカル状態を初期化（assignedUserIds は number[] 型）
-  data.forEach((slot) => {
-    initSlot(slot.id, slot.assignedUserIds ?? [])
-  })
-}
 
 async function loadPositions(): Promise<void> {
   // BE の ShiftPositionController#listPositions は teamId (Long) が必須。
@@ -320,14 +311,12 @@ async function onDropUser(payload: {
   userId: number
 }): Promise<void> {
   const { fromSlotId, toSlotId, userId } = payload
-  const toSlot = slots.value.find((s) => s.id === toSlotId)
-  const toVersion = toSlot ? 0 : 0 // バックエンドの楽観ロックバージョン（実際はAPIレスポンスで更新）
 
   try {
     if (fromSlotId !== null) {
-      await moveUser(fromSlotId, toSlotId, userId, toVersion)
+      await moveUser(fromSlotId, toSlotId, userId)
     } else {
-      await addUser(toSlotId, userId, toVersion)
+      await addUser(toSlotId, userId)
     }
   } catch (e) {
     notifyAssignmentError(e, 'shift-board:drop')
@@ -337,7 +326,7 @@ async function onDropUser(payload: {
 // メンバー削除
 async function onRemoveUser(payload: { slotId: number; userId: number }): Promise<void> {
   try {
-    await removeUser(payload.slotId, payload.userId, 0)
+    await removeUser(payload.slotId, payload.userId)
   } catch (e) {
     notifyAssignmentError(e, 'shift-board:remove')
   }
@@ -347,7 +336,7 @@ async function onRemoveUser(payload: { slotId: number; userId: number }): Promis
 async function onAddUserFromDialog(userId: number): Promise<void> {
   if (addUserSlotId.value !== null) {
     try {
-      await addUser(addUserSlotId.value, userId, 0)
+      await addUser(addUserSlotId.value, userId)
     } catch (e) {
       notifyAssignmentError(e, 'shift-board:add')
       return
