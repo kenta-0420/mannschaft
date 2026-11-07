@@ -26,7 +26,7 @@ import java.util.List;
  * Controller は本クラスだけを呼ぶ。名前を {@code *AccessService} / {@code *AccessGate} にしないのは、
  * 呼んだだけで認可シグナル扱いになり本クラス内の認可漏れを AuthzControllerGuard が見逃すのを避けるため。</p>
  *
- * <h3>認可表（是正前の契約から変えていない。ただし remind の越境は不在と同じ 404 へ揃えた）</h3>
+ * <h3>認可表（未公開の詳細・サマリは後述の 404 秘匿を適用）</h3>
  * <pre>
  * 主体＼EP                  一覧(teamId)   詳細(id)         作成(teamId)    更新/削除/遷移/サマリ/複製/remind(id)
  * 部外者(越境)              403 COMMON_002 404 SHIFT_001    403 COMMON_002  404 SHIFT_001（remind も。是正前は 403）
@@ -37,8 +37,9 @@ import java.util.List;
  * SYSTEM_ADMIN(非/メンバー) 200(全件)      200              201             200/204/201
  * 対象不在・親削除済み      (n/a)          404 SHIFT_001    (n/a)           404 SHIFT_001
  * </pre>
- * <p>未公開（DRAFT・ARCHIVED で publishedAt なし）の詳細は、一般メンバーには 404 SHIFT_001 へ寄せる
- * （越境・SUPPORTER の判定の後。SUPPORTER は公開状態に依らず 403。存在オラクル対策）。一覧・作成は {@code ?teamId=} 直接指定なので越境も不在も 403 のまま（隠さない）。</p>
+ * <p>未公開（DRAFT・ARCHIVED で publishedAt なし）の詳細・サマリは、一般メンバーには 404 SHIFT_001 へ寄せる
+ * （存在オラクル対策）。SUPPORTER は公開状態に依らず既存の 403 を維持する。
+ * 一覧・作成は {@code ?teamId=} 直接指定なので越境も不在も 403 のまま（隠さない）。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -166,12 +167,21 @@ public class ShiftScheduleFacade {
     /**
      * 充足状況サマリーを取得する（SYSTEM_ADMIN、または当該チームの ADMIN/DEPUTY_ADMIN）。
      *
+     * <p>一般メンバーの未公開シフトは不在と同じ 404 で秘匿してから、既存の管理者ゲートを適用する。
+     * SUPPORTER は全状態で既存の 403 を維持し、公開状態による応答差を新設しない。</p>
+     *
      * @param id     スケジュールID
      * @param userId 操作者ユーザーID
      * @return 日付別・ポジション別の充足状況サマリー
      */
     public ShiftScheduleSummaryResponse getScheduleSummary(Long id, Long userId) {
-        requireAdmin(scheduleService.resolveScope(id), userId);
+        ShiftScheduleScope scope = scheduleService.resolveScope(id);
+        // 管理者限定でも、未公開への403と不在404との差から存在が分かる。SUPPORTERの既存403は維持する。
+        if (scope.isHidden() && !isPrivileged(scope.teamId(), userId)
+                && !accessControlService.isSupporter(userId, scope.teamId(), TEAM)) {
+            throw new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
+        }
+        requireAdmin(scope, userId);
         return scheduleService.getScheduleSummary(id);
     }
 

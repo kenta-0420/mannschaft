@@ -356,6 +356,32 @@ DTO から判定できるが、**DTO は `status` が `null` でも組み立て�
 
 ---
 
+### 3.7 充足状況サマリの存在秘匿（CMP-260905-1630）
+
+`GET /shifts/schedules/{id}/summary` は管理者専用でも、未公開シフトに対する一般メンバーの
+403 と不在 ID の 404 が割れると、シフト表の存在を推定できる。管理者限定の判定だけでは足りない。
+現行の認可ファサード `ShiftScheduleFacade` は、既存の `ShiftScheduleScope#isHidden()` を参照して
+未公開の存在秘匿を先に行い、その後に既存の管理者ゲートを適用する。
+
+| 主体 | DRAFT・未公開ARCHIVED・status=null | COLLECTING・ADJUSTING・PUBLISHED・公開済ARCHIVED |
+|---|---|---|
+| 当該チームの一般メンバー | 404 `SHIFT_001`（不在と同一のcode・message） | 403 `COMMON_002` |
+| SUPPORTER | 403 `COMMON_002` | 403 `COMMON_002` |
+| 別チーム管理者・無所属 | 404 `SHIFT_001` | 404 `SHIFT_001` |
+| ADMIN・DEPUTY_ADMIN・SYSTEM_ADMIN・user_rolesのみのADMIN | 200 | 200 |
+
+SUPPORTER の実在 ID と不在 ID の応答差は従来契約 D-2127-1 のままとし、公開状態による差を新設しない。
+不在・対象スケジュール自身の論理削除は全主体で 404 `SHIFT_001`。チーム削除の新しい保証は本件に含めない。
+枠がない管理者のサマリは `summaryByDate=[]` とする。認可後の集計本体は対象を再取得し、
+scope 解決後にスケジュールが削除された場合も 404 とする。
+
+scope 解決は1回で、詳細DTO取得や集計SQLを追加しない。追加の認可読取は未公開経路の定数回に限る。
+存在秘匿と管理者ゲートはトランザクションの外に置き、詳細・枠・PDF・一覧・交代の契約は変更しない。
+`ShiftScheduleSummaryVisibilitySecurityContractIT` が実JWT・実Security・実MySQLのHTTP境界と削除後再取得を、
+`ShiftScheduleFacadeTest` がnull状態と集計非実行・scope解決1回を検査する。
+
+---
+
 ## 4. 404 / 403 の方針と既存契約との整合
 
 ### 4.1 方針（マスター御裁可 B）
@@ -509,10 +535,11 @@ AC-4 は暫定を外して確定形に書き換えた（§7）。
 | R4 | 管理者の調整画面・D&D ボード | `toSlotResponse`（:316 付近）自体でマスクすると `board.vue`・`shift/[id]/edit.vue` の割当編集が空になる。マスクは `listSlots` / `getSlot` の側で行う | 管理者で ADJUSTING のボードに既存割当が表示される |
 | R5 | FE の null 安全 | `assignedUserIds` を `null` にする（案B でも `null` は禁止。空配列 + `assignmentMasked=true`） | メンバーで COLLECTING の枠一覧を開いて TypeError が出ない |
 | R6 | 既存の 403 契約 | 可視性判定を認可判定より前に置く | `ShiftScheduleScopeContractIT` / `ShiftSlotScopeContractIT` の 403 系（T8・T10）が全て緑のまま |
-| R7 | 自動割当・公開ゲート・サマリ | `getScheduleSummary`（:290-292）・`assertNoUnreviewedRuns` は管理者専用経路。可視性判定を足す必要は無い | 管理者の summary が従来どおり。T14 が緑のまま |
+| R7 | 自動割当・公開ゲート | `assertNoUnreviewedRuns` 等の管理者専用操作は既存の認可を維持する。サマリの存在秘匿は別途 R11 で検査する | T14 が緑のまま |
 | R8 | 検索の既存挙動 | 取得後 Java フィルタで実装する（上限 10 件を取ってから削るため結果がさらに減る） | 絞りが SQL 述語側で行われている |
 | R9 | 交代リクエスト作成ダイアログ | `ShiftSwapRequestFormDialog.vue`（:110-128）が `assignedUserIds` を走査して候補者を作る。公開済みシフトでマスクが誤発火すると候補が空になる | 公開済みシフトで交代相手の候補が出る |
 | R10 | `PUBLISHED` かつ `publishedAt = NULL` の行 | 「publishedAt が入っていること」を PUBLISHED の判定条件にする | `ShiftSwapScopeContractIT`（:472-483）・`ShiftMapperTest`（:70-78）が緑のまま（T15・T17） |
+| R11 | サマリの未公開存在秘匿と既存の管理者限定契約 | 管理者限定を理由に可視性を省くと、一般メンバーの未公開403と不在404が割れる | §3.7 の応答表と不在本文一致、管理者全状態成功、SUPPORTER全状態403を実Security契約ITで検査する |
 
 ### 6.1 FE 側に必要な変更
 
@@ -683,6 +710,7 @@ BE が未公開を返さなくなる以上、FE 側の絞り込みは冗長で�
 
 ## 9. 変更履歴
 
+- **v1.3 (2026-11-07)**: CMP-260905-1630 のサマリ存在秘匿を §3.7 / R11 へ追補。R7 の「管理者専用なら可視性不要」というサマリの設計漏れを是正し、SUPPORTER・越境・管理者の既存契約、対象スケジュール自身の削除境界、トランザクションと読取回数の制約を明記。
 - **v1.2 (2026-09-03)**: 未決事項 U-1 にマスターの裁可（**案B**）が下りたため設計を締めた。
   - AC-4 を暫定から**確定形**へ書き換え（`assignmentMasked: boolean` の新設・空配列の維持・
     FE の分岐箇所・OpenAPI 生成型の再生成を 5 項目で明記）。
