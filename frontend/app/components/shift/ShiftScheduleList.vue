@@ -102,6 +102,7 @@ function goToBoard(scheduleId: number) {
   navigateTo(`/teams/${props.teamSlug}/shifts/${scheduleId}/board`)
 }
 
+defineExpose({ refresh: load })
 onMounted(load)
 </script>
 
