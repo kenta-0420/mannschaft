@@ -51,7 +51,7 @@ async function mountList(canManage: boolean, schedules = [schedule()]) {
     // 文言を検査するため、Nuxtテスト環境のlazy locale初期状態へ依存せず
     // 正本の日本語辞書を実vue-i18nへ明示する（画面の分岐や文言はmockしない）。
     global: {
-      plugins: [createI18n({ legacy: false, locale: 'ja', fallbackLocale: false, messages: { ja: jaShift } })],
+      plugins: [createI18n<[typeof jaShift], 'ja', false>({ legacy: false, locale: 'ja', fallbackLocale: false, messages: { ja: jaShift } })],
     },
   })
   await new Promise(resolve => setTimeout(resolve, 0))
