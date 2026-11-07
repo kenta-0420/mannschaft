@@ -10,7 +10,7 @@ const { team } = useTeamShellContext()
 // URLと一致したシェルの内部IDだけを送る。未解決時に前スコープのIDを使わない。
 const numericScopeId = computed(() => {
   const id = team.value?.numericId
-  return team.value?.slug === teamSlug.value && id != null && Number.isSafeInteger(id) && id > 0
+  return team.value?.id === teamSlug.value && id != null && Number.isSafeInteger(id) && id > 0
     ? id
     : null
 })

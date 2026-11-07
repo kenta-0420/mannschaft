@@ -1,4 +1,4 @@
-// @vitest-environment happy-dom
+﻿// @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, reactive, ref, type Ref } from 'vue'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
@@ -88,15 +88,6 @@ describe.each([
   { scopeType: 'TEAM', component: TeamDigest },
   { scopeType: 'ORGANIZATION', component: OrgDigest },
 ])('$scopeType ダイジェストの画面結線', ({ scopeType, component }) => {
-  // 実APIのTeam.idはslugの別名。正準slug参照の回帰用に、TEAMだけ意図的に別値とする。
-  function resolvedScope(slug: string, numericId: number): Scope {
-    return { id: scopeType === 'TEAM' ? 'legacy-team-' + numericId : slug, slug, numericId }
-  }
-
-  beforeEach(() => {
-    entity.value = resolvedScope('public-a', 101)
-  })
-
   function render() {
     wrapper = mount(component, {
       global: {
@@ -134,7 +125,7 @@ describe.each([
     expect(view.findComponent(Table).exists()).toBe(false)
     expect(view.findComponent(Loading).exists()).toBe(true)
 
-    entity.value = resolvedScope('public-a', 101)
+    entity.value = { id: 'public-a', slug: 'public-a', numericId: 101 }
     await flushPromises()
     expect(mocks.list.mock.calls[0]?.slice(0, 2)).toEqual([scopeType, 101])
   })
@@ -153,7 +144,7 @@ describe.each([
     expect(view.findComponent(Table).exists()).toBe(false)
 
     mocks.list.mockResolvedValueOnce({ ...empty(), data: [{ id: 2020 }] })
-    entity.value = resolvedScope('public-b', 202)
+    entity.value = { id: 'public-b', slug: 'public-b', numericId: 202 }
     await flushPromises()
     expect(mocks.list.mock.calls[1]?.slice(0, 2)).toEqual([scopeType, 202])
     expect(view.findComponent(Table).props('value')).toEqual([{ id: 2020 }])
@@ -172,7 +163,7 @@ describe.each([
     await flushPromises()
 
     route.params.slug = 'public-b'
-    entity.value = resolvedScope('public-b', 202)
+    entity.value = { id: 'public-b', slug: 'public-b', numericId: 202 }
     await flushPromises()
     old.reject({ statusCode: 403 })
     await flushPromises()
