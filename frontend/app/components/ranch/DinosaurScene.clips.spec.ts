@@ -14,6 +14,8 @@ import es from '~/locales/es/ranch.json'
 import de from '~/locales/de/ranch.json'
 const entry = developmentRanchClips.find(
   (value) =>
+    value.catalogVersion === '4' &&
+    value.variantKey === 'DEV_APPEARANCE_1' &&
     value.sourceSpecies === 'tyrannosaurus' &&
     value.stage === 'BABY' &&
     value.renderStyle === 'PIXEL',
@@ -21,7 +23,7 @@ const entry = developmentRanchClips.find(
 const dinosaur: DinosaurSummary = {
   id: '11111111-1111-4111-8111-111111111111',
   speciesKey: entry.speciesKey,
-  variantKey: entry.variantKey,
+  variantKey: 'DEV_BASE_16_CLIPS_V1',
   speciesCatalogVersion: '3',
   stage: 'BABY',
   habitat: 'LAND',
