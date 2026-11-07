@@ -218,12 +218,13 @@ class ResidentFiniteTests(unittest.TestCase):
             elif mode!='no-init':
                 send(dict(type='init',owner=owner,run=run,global_offset_ms=1800,work_offset_ms=1500))
                 wait_file('initialized.json',limit)
-                send(dict(type='bind',owner=owner,run=run,descriptor=descriptor))
-                wait_file('bound.json',limit)
+                if mode!='bind-timeout':
+                    send(dict(type='bind',owner=owner,run=run,descriptor={} if mode=='bind-descriptor' else descriptor))
+                    if mode!='bind-descriptor': wait_file('bound.json',limit)
                 if mode=='active-eof':
                     elapsed=(time.monotonic_ns()-ready['t0_ns'])//1000000
                     send(dict(type='request',owner=owner,run=run,request_id=1,phase='cleanup',operation='daemon-info',resource='daemon',deadline_offset_ms=elapsed+400))
-            if mode!='no-init': os.close(w); w=None
+            if mode not in ('no-init','bind-timeout'): os.close(w); w=None
             if not select.select([pidfd],[],[],4)[0]:
                 signal.pidfd_send_signal(pidfd,signal.SIGKILL)
                 os.waitpid(pid,0)
@@ -236,6 +237,14 @@ class ResidentFiniteTests(unittest.TestCase):
             self.assertFalse(receipt['green'])
             self.assertFalse(receipt['linux_watchdog_retained'])
             self.assertFalse(receipt['windows_actual_exit_confirmed'])
+            if mode in ('bind-timeout','bind-descriptor'):
+                self.assertEqual(receipt['reason'],'bridge-terminal')
+                self.assertEqual(receipt['terminal_phase'],'bind-read' if mode=='bind-timeout' else 'bind-validation')
+                self.assertEqual(receipt['terminal_code'],'frame-timeout' if mode=='bind-timeout' else 'descriptor-bind')
+                self.assertLessEqual(receipt['phase_started_ns'],receipt['terminal_ns'])
+                self.assertLessEqual(receipt['phase_deadline_ns'],ready['t0_ns']+1500000000)
+                self.assertEqual(receipt['terminal_watchdog'],None)
+                self.assertNotIn('fixture-daemon',json.dumps(receipt.get('terminal_code')))
             if mode=='active-eof':
                 linux=wait_file('request-00001.json',limit)['linux']
                 self.assertTrue(linux['children_reaped'])
@@ -245,6 +254,12 @@ class ResidentFiniteTests(unittest.TestCase):
     def test_partial_parent_eof(self): self.resident_case('partial')
     def test_active_parent_eof(self): self.resident_case('active-eof')
     def test_initial_handshake_deadline(self): self.resident_case('no-init')
+    def test_bind_deadline_diagnostic(self): self.resident_case('bind-timeout')
+    def test_bind_descriptor_diagnostic(self):
+        self.resident_case('bind-descriptor')
+        self.assertEqual(b.terminal_diagnostic_code(b.Rejected('secret-arbitrary-value')),'other-rejected')
+        self.assertEqual(b.terminal_diagnostic_code(b.Rejected('schema')),'schema')
+        self.assertEqual(b.terminal_diagnostic_code(OSError('secret-arbitrary-value')),'os-error')
 
 
 
