@@ -1,21 +1,42 @@
 {
   "status": "IN_PROGRESS",
-  "scope": "選別package保存時点のhash。正式完了証拠schemaではない。",
+  "scope": "選別package保存時点。正式完了証拠schemaではない。",
+  "hashBasis": "Git index canonical bytes after attributes normalization; source-manifest hashes identify original source bytes separately.",
   "files": [
     {
       "path": "docs/evidence/CMP-261107-0551/ac-map.md",
-      "sha256": "38008a30e4e76159bc726a9d219148d03009a645ee0435daffc196dd6d89095c",
-      "bytes": 5403
+      "sha256": "a7d97df42df268f6e28109e37b06aa3b4860f57c0e57363c7507a2541870545c",
+      "bytes": 5838
     },
     {
       "path": "docs/evidence/CMP-261107-0551/b0-overlay-checks.json",
-      "sha256": "f7a51dec009e06a8dce1a8d618522be577413f9c3ebe090af251811fdc1fddb9",
-      "bytes": 892
+      "sha256": "56dac3e30496aaa75e2f7546228258dd53abc6f023e601d7f09d28af97ad3a67",
+      "bytes": 1075
     },
     {
       "path": "docs/evidence/CMP-261107-0551/backend-summary.json",
-      "sha256": "4f06003b7a015484368656dd413dd2e08a063131ceb7e7b2c331ddf6c4b858d3",
-      "bytes": 1087
+      "sha256": "69afca4279efa8a92cc7e234c19a4b3282f9623410317b81165943e31afa995b",
+      "bytes": 1199
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/board-new-four.png",
+      "sha256": "4d527d291c9e8a81cda219b85436c57bcf6cc2faf366b72106bf7f6de1974d7b",
+      "bytes": 396898
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/board-ui-attempt-history.json",
+      "sha256": "ffcee5bc5e497bfc511d8bdc2d1cb51eeec2e75cfb1a140a0504ed6e416dac9f",
+      "bytes": 1485
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/board-ui-evidence.json",
+      "sha256": "18dbd22cfc2631d45688705186f5a69dd44dbc933378495cbdb556d386416f87",
+      "bytes": 789
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/board-ui-safe.json",
+      "sha256": "69b4e6e5c1a927c5f0430a9436909687f7b80d54ec36453e5dc49823978179a1",
+      "bytes": 4717
     },
     {
       "path": "docs/evidence/CMP-261107-0551/canvas-AIR-PAINT_2D.png",
@@ -54,13 +75,13 @@
     },
     {
       "path": "docs/evidence/CMP-261107-0551/README.md",
-      "sha256": "9ec82d973ebe26a466bfbab4d03bd861dac178f95973663a9f0d6181241581da",
-      "bytes": 4524
+      "sha256": "00c5252fafc85aaa2fe08f4800112b8adf3d350684de1a0ad91d9b42f945b49e",
+      "bytes": 6334
     },
     {
       "path": "docs/evidence/CMP-261107-0551/renderer-summary.json",
-      "sha256": "e565e40ee8528aff2626e0dbdc8375a206064a7506e19ec92fa29e1d5de7af79",
-      "bytes": 1648
+      "sha256": "ac76b552b8da1c9adf87a28e5ef63198780e8b4a2bac3afa6413e1bdd5627be8",
+      "bytes": 1611
     },
     {
       "path": "docs/evidence/CMP-261107-0551/resident-mobile-10-status360.png",
@@ -74,8 +95,8 @@
     },
     {
       "path": "docs/evidence/CMP-261107-0551/resident-observations-20261108.json",
-      "sha256": "72abcb4d57630bfa72b03734fc399a2461b4f10b23e37cfee9915f72fec835a3",
-      "bytes": 26067
+      "sha256": "a7c4c9bc1ade45ab48cec97266e1a43f0fbfb5170d91d0f5f4a609867820bf13",
+      "bytes": 25755
     },
     {
       "path": "docs/evidence/CMP-261107-0551/resident-pc-09-help.png",
@@ -94,33 +115,38 @@
     },
     {
       "path": "docs/evidence/CMP-261107-0551/root-adoption-draft.json",
-      "sha256": "ffe41c06e1c1edd824e5858cb9fdf264291d7899b5a00f0ce888b1415c4fa5fb",
-      "bytes": 1409
+      "sha256": "2c784c184e4e404220ebbf7004e6c342e5468f1b18d7a1159d21229aacf06feb",
+      "bytes": 1771
     },
     {
       "path": "docs/evidence/CMP-261107-0551/root-test-reference-notes.md",
-      "sha256": "3721b72985be0e194bca18cf2cf1b47386114b3afe84eb31b7f3c67bc11de90f",
-      "bytes": 1401
+      "sha256": "9d53483fcae01f2cb66f1d8c98afdc5d4c71b2647197b5d86d49f349cc1fa4dc",
+      "bytes": 1476
     },
     {
       "path": "docs/evidence/CMP-261107-0551/root-visual-review.json",
-      "sha256": "daa86e58f674dd6e4f7a75bc5f24a6f1dd002c5748ab96b7c50d77373ee72853",
-      "bytes": 2088
+      "sha256": "4b6aeccc9ebe80417b26a61b48543add40d15554195ee16f4633f5346243c046",
+      "bytes": 2048
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/runtime-cleanup.json",
+      "sha256": "5324662beed858161c32bebc84182aa12a9590e7f0ac7630094ac8528c57caa4",
+      "bytes": 1315
     },
     {
       "path": "docs/evidence/CMP-261107-0551/source-manifest.json",
-      "sha256": "383bf9be4d0ef18716ff8c3a1af9c994dd1f477f2e07f84a16aac7b414325570",
-      "bytes": 7372
+      "sha256": "3a91b585d6bf22b6e15903aa238553a7e4c39b64c0cd0ff3a53abb31727e3d4d",
+      "bytes": 8750
     },
     {
       "path": "docs/evidence/CMP-261107-0551/summary-draft.json",
-      "sha256": "53ec2e8a845ee71aab5324a06d6bfd29f1705996dea668b06988697ca77fff2c",
-      "bytes": 3091
+      "sha256": "3ef8ab9a9c7e19b737b294d47e5cde62d7cc2fa63b9ba8700b335d6325008f01",
+      "bytes": 3427
     },
     {
       "path": "docs/evidence/CMP-261107-0551/ui-status-extract.json",
-      "sha256": "d6ac7a0ff41cdd5d4e572c968a6333cdb4fa4e6915d935575f5ea4626720ae8c",
-      "bytes": 6593
+      "sha256": "8492765691e53fd09fa444be6bcf59c9a92c30e753674cd68027d9f34d23534d",
+      "bytes": 6750
     }
   ]
 }

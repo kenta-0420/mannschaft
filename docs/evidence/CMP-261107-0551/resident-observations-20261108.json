@@ -554,6 +554,7 @@
     "limits": "小領域は実寸有効・今回未変更。MOB07非再現・元直接原因UNKNOWN。100ms未満変化の不在は主張しない。"
   },
   "formalCompletion": false,
-  "boardUi": "NOT_EXECUTED_ROOT_GO_REQUIRED",
-  "coveragePassed": false
+  "boardUi": "UI_CHECKS_PASSED; see board-ui-safe.json",
+  "coveragePassed": false,
+  "observationTextTiming": "observedfacts/insight detailは住民採取時点を保持。rootTriage metadataとresident-root-disposition.mdが後続最終裁定。待ちとの原観測文言は現時点pendingの宣言ではない。"
 }

@@ -15,7 +15,7 @@
     61,
     118
   ],
-  "staticBoardUi": "NOT_EXECUTED_ROOT_GO_REQUIRED",
+  "staticBoardUi": "UI_CHECKS_PASSED",
   "ordinaryGenerator": {
     "status": "SUCCESS_AFTER_MATERIALIZING_FRONTEND_TESTS",
     "priorAttempt": "FAILED_SPARSE_SPEC_ABSENT",
@@ -28,5 +28,9 @@
     "selfTestWhole": "FAIL_EXISTING_GITHUB_SNAPSHOT_REFERENCE_SET_MISMATCH"
   },
   "globalCoveragePassed": false,
-  "formalCompletion": false
+  "formalCompletion": false,
+  "boardUiEvidence": "docs/evidence/CMP-261107-0551/board-ui-safe.json",
+  "originalRunIdPrecisionPassed": true,
+  "sourceHeadStoragePrecisionPassed": true,
+  "sourceHeadDedicatedUiField": false
 }

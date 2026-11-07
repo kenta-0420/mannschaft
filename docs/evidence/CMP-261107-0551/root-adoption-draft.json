@@ -35,5 +35,12 @@
     "legacy supplement earlier timeout FAIL"
   ],
   "coldTimeoutCause": "UNKNOWN",
-  "formalCompletion": false
+  "formalCompletion": false,
+  "finalR17": {
+    "source": "outputs/ranch-approved64-e2e-20261107/runs/ranch64-3fe7b1454ec1c5086db2c581/result.json",
+    "sha256": "a50999fed4ea19bd554834b95467056b70e29ab4ca52e715b07e2bb94be7b6c7",
+    "rawStatus": "FAIL"
+  },
+  "ownedRuntimeCleanup": "docs/evidence/CMP-261107-0551/runtime-cleanup.json",
+  "formalResidents": "docs/evidence/CMP-261107-0551/resident-observations-20261108.json"
 }

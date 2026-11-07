@@ -130,7 +130,7 @@
   },
   "r17": {
     "source": "outputs/ranch-approved64-e2e-20261107/runs/ranch64-3fe7b1454ec1c5086db2c581/result.json",
-    "sourceSha256": "e4ae351aaa59eab712bc93256f86934423acdad1e2c631155115343b8c00a984",
+    "sourceSha256": "a50999fed4ea19bd554834b95467056b70e29ab4ca52e715b07e2bb94be7b6c7",
     "rawStatus": "FAIL",
     "cases": {
       "backend-setup": {
@@ -187,7 +187,9 @@
       "scripted-error": {
         "status": "FAIL"
       }
-    }
+    },
+    "harnessInventoryStatus": "MATCH",
+    "snapshotStatus": "FINAL_AFTER_RUNTIME_CLEANUP"
   },
   "legacySupplement": {
     "source": "outputs/ranch-approved64-r17-supplement/result.json",
@@ -246,8 +248,14 @@
   "limits": [
     "raw FAIL stays FAIL; individual positive cases do not imply whole-run success",
     "r15 positive count includes reused external renderer/effects/performance; not 35 fresh UI observations",
-    "r17 SEA ambient is positive; legacy AIR assignment is not v3 alias proof",
-    "r17 is still live per root assignment; extracted snapshot is not final cleanup or final boundary outcome",
-    "unknown failure causes remain unknown; no credentials, individual IDs, raw messages or request URLs copied"
-  ]
+    "r17 intermediate snapshots are historical; final legacy AIR and boundary adoption is root-adoption-draft.json",
+    "final r17 runtime cleanup is recorded separately in runtime-cleanup.json",
+    "unknown cold-timeout cause remains UNKNOWN; no credentials, individual IDs, raw messages or request URLs copied"
+  ],
+  "r17SnapshotHistory": {
+    "source": "outputs/ranch-approved64-e2e-20261107/runs/ranch64-3fe7b1454ec1c5086db2c581/result.json",
+    "sourceSha256": "e4ae351aaa59eab712bc93256f86934423acdad1e2c631155115343b8c00a984",
+    "status": "HISTORICAL_INTERMEDIATE_SNAPSHOT_NOT_FINAL",
+    "rawStatus": "FAIL"
+  }
 }

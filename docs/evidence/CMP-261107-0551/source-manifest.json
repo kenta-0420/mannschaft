@@ -77,7 +77,7 @@
       "source": "outputs/ranch-approved64-e2e-20261107/runs/ranch64-3fe7b1454ec1c5086db2c581/result.json",
       "sha256": "e4ae351aaa59eab712bc93256f86934423acdad1e2c631155115343b8c00a984",
       "bytes": 10973,
-      "purpose": "immutable raw status provenance; identifiers, URLs and diagnostics excluded"
+      "purpose": "HISTORICAL_INTERMEDIATE_SNAPSHOT: earlier staging bytes; superseded by finalSnapshotSources for current r17 status/cleanup"
     },
     {
       "source": "outputs/ranch-approved64-r17-supplement/result.json",
@@ -147,5 +147,42 @@
     }
   ],
   "intendedRepositoryDirectory": "docs/evidence/CMP-261107-0551/",
-  "limits": "source paths identify local original evidence by relative path; only selected safe extracts copied. Live raw source hashes are snapshot hashes, not closure claims."
+  "limits": "sources captures staging-time snapshots; intermediate source hashes remain historical. finalSnapshotSources identifies current final r17/legacy/boundary/resident triage/owned cleanup. No raw logs copied.",
+  "finalSnapshotSources": [
+    {
+      "source": "outputs/ranch-approved64-e2e-20261107/runs/ranch64-3fe7b1454ec1c5086db2c581/result.json",
+      "sha256": "a50999fed4ea19bd554834b95467056b70e29ab4ca52e715b07e2bb94be7b6c7",
+      "bytes": 11560
+    },
+    {
+      "source": "outputs/ranch-approved64-r17-cleanup-review.json",
+      "sha256": "d41843853218eedfc82ae4ae13c5a3161aa2285a83c785a1858e327cd6dab84b",
+      "bytes": 1119
+    },
+    {
+      "source": "outputs/ranch-approved64-r17-supplement/legacy-followup-result.json",
+      "sha256": "e58349d9fa395713de035a897148f9a5ed22428cceb432856827b86b2f6d2a55",
+      "bytes": 2037
+    },
+    {
+      "source": "outputs/ranch-approved64-r17-supplement/boundary-result.json",
+      "sha256": "60ee2828ca748010c8f52828fc6a1ba5436dccb94ade58c14648ff54ba748e29",
+      "bytes": 1653
+    },
+    {
+      "source": "outputs/ranch-approved64-resident-triage-20261108/root-disposition.md",
+      "sha256": "33a789a2eb26329ef9bc6c8efbea5b20ed6c2a41d76e241d715fca24ebf107f0",
+      "bytes": 3400
+    },
+    {
+      "source": "outputs/ranch-approved64-resident-triage-20261108/result.json",
+      "sha256": "0dc7b3bef3f4ae897792781c52af17add5989dfbd202f054ca2752cfc9c9ef35",
+      "bytes": 147533
+    },
+    {
+      "source": "outputs/ranch-approved64-core-ui-root-review-20261108.md",
+      "sha256": "ec5d88d3bb119d5e47a9714cfab758e327ea92455d961900376cb92b784635bc",
+      "bytes": 6058
+    }
+  ]
 }

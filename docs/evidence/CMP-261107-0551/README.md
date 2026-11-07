@@ -1,6 +1,6 @@
 # CMP-261107-0551 選別証拠・完了準備
 
-状態は IN_PROGRESS。実装PR #4353 の新head CI、production build/scanner、環境撤収、通常merge、殿の最終裁定は別ゲートであり、この文書は完了宣言ではない。正式完了JSONとtask-list完了遷移は含めない。
+状態は IN_PROGRESS。実装PR #4353 の新head CI、production build/scanner、通常merge、殿の最終裁定は別ゲートであり、この文書は完了宣言ではない。正式完了JSONとtask-list完了遷移は含めない。
 
 担当はclosure文書/B0追記準備。殿は製品・実機採否・住民裏取り・最終出荷判断を担当する。所有worktreeは `work/ranch-approved64-closure-20261108`、branchは `docs/ranch-approved64-closure-20261108`。開始時HEAD `9e8e9ba15cc7040d88d88067646be2d6a51ec862`、作業木cleanを確認。originはローカル本陣のためpushしていない。製品source・既存helper・live runtimeは変更しない。
 
@@ -16,4 +16,8 @@ B0正本 `docs/evidence/CMP-261015-1510/resident-overlay.json` は旧58 persona/
 
 通常generatorは初回sparseにfrontend spec34参照がなく失敗。その履歴を保持し、owned WTへfrontend/testsだけ物理展開後、`B0_INCLUDE_LOCAL_OVERLAY=true` で正規実行に成功した。ignored `.b0-local/run-cmp0551-observations-20261108.json` は正本同一copy・唯一のrun候補。通常出力の無関係なcampaign/snapshot同期差分は採用せず、開始時data.jsの全fieldを保持して生成済みb0RunOverlayのみ置換した。正本/copy/通常生成overlay/採用overlayのdeepEqualとoverlay外baseline deepEqualを確認。`b0-overlay-checks.json` に限定検査を保存した。
 
-通常生成全体validatorと自己検証全体は既知GitHub snapshot参照集合不一致でFAIL。overlay限定採用データではbaseline由来CMP行数不一致でFAIL。これらをoverlay限定の宣言検査・異なるhead/run正規受理・不正10例拒否の合格と混同しない。静的ボードUIは殿GO待ちで未実行。既存importerのstored runIdが累積トップ旧runIdを使う精度制限も未検証のまま保持する。
+通常生成全体validatorと自己検証全体は既知GitHub snapshot参照集合不一致でFAIL。overlay限定採用データではbaseline由来CMP行数不一致でFAIL。これらをoverlay限定の宣言検査・異なるhead/run正規受理・不正10例拒否の合格と混同しない。静的ボードUIは殿GO下で実行し初回118件/reload118件、全行deepEqual・重複0、旧114件と新4件のimport投影を確認した。各カードのpersona/journey/evidence/登録元とdrawerの元runを確認。現HTMLは元runId/sourceHeadを正確に保存し、新4件で実測一致したため、過去版HTMLのトップrunId保存精度制限を今回の既知不備として持ち込まない。sourceHead専用UI表示欄は存在せず、保存値検証と区別する。12.223秒（作業11.951秒/撤収0.272秒）、所有browser4 process残存0/context0/profile不在/port解放/server閉鎖。専用Node終了も親から確認。外部通信0、製品起動なし。board-new-four.pngを担当が実視認し、殿へ共有。先行sandbox接続FAILとimport待ちのpartial count FAILはboard-ui-attempt-history.jsonに保持。
+
+最終r17 result SHA `a50999fed4ea19bd554834b95467056b70e29ab4ca52e715b07e2bb94be7b6c7` はraw FAILのまま。専用runtime撤収は `runtime-cleanup.json` にexit0/removed・compose所有label資産0・専用プロセス/アカウント/cache不在・helper MATCHを選別した。receiptはtrim正規化SHA `27508e5afd2c0a718c4749a9c85ff89ab832ea221ea64566b5130bbe5e96caa6` とraw SHA `79730b0a946847f66538027224590dad25488fe0e25be8877eb200f8945416a5` を区別する。保持中r7 scratchは対象外で触らない。source-manifestの途中r17 hashは明示した履歴で、finalSnapshotSourcesと混同しない。
+
+I14は恐竜素材の初回HTTP body比・同tuple variant body比・isolated renderer CPU p95という測定範囲で採用する。full app TTI/SLO・新head全転送成功へ拡張しない。実機source4ceのactual proof、最新headの4309対象blob同一、frontend/backend全tree非同一を分けて保持する。新head build/scanner・CIと通常merge/正式closureはpending。住民原観測detailは採取時点の文章を保ち、後続root裁定を別metadata/文書で示す。

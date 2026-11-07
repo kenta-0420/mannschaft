@@ -49,7 +49,6 @@
   "remaining": [
     "latest-head CI",
     "latest-head production build/scanner",
-    "owned runtime cleanup",
     "PR normal merge",
     "completion ledger/evidence validation"
   ],
@@ -67,5 +66,14 @@
       "limits": "小領域は実寸有効・今回未変更。MOB07非再現・元直接原因UNKNOWN。100ms未満変化の不在は主張しない。"
     },
     "evidence": "docs/evidence/CMP-261107-0551/resident-observations-20261108.json"
+  },
+  "ownedRuntimeCleanup": "docs/evidence/CMP-261107-0551/runtime-cleanup.json",
+  "staticBoardUi": "docs/evidence/CMP-261107-0551/board-ui-safe.json",
+  "sourceScope": {
+    "actualProofHead": "4ce3aa26785871ee363c90b0a514f023ca20723a",
+    "currentHead": "9e8e9ba15cc7040d88d88067646be2d6a51ec862",
+    "protectedScopeBlobsMatched": 4309,
+    "fullFrontendBackendTreesEqual": false,
+    "newHeadCiAndBuildSuccessNotInferred": true
   }
 }

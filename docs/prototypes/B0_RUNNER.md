@@ -6,7 +6,7 @@
 
 小領域は実寸観測有効だが今回未変更component。mobile touch直後の素材準備中は原PNGを残し、root再試行では持続欠落非再現・元直接原因UNKNOWNとする。裁定は同directoryの `resident-root-disposition.md`。新確定bug0であり、未実証観測を修復済みへ昇格しない。
 
-ignored `.b0-local/run-cmp0551-observations-20261108.json` を正本同一copyとし、通常generatorはsparse spec未配置の初回失敗を保持後、frontend/tests展開で正規実行成功。無関係global同期diffを採用せずbaselineのb0RunOverlayだけを生成overlayへ置換し、overlay外deepEqual・正本/copy/通常生成/採用overlay deepEqualを確認した。通常validator/自己検証全体は既知snapshot参照集合不一致FAIL、baseline保持の限定出力は既存CMP行数不一致FAIL。overlay限定宣言検査と不正10例拒否の合格は全体合格ではない。静的ボードUIはroot GO待ちで未実行、既存importerのstored runId精度制限も未検証。実装PR #4353の新CI/build/mergeと正式完了JSON・task-list更新は別ゲートであり、この追記時点はIN_PROGRESS。
+ignored `.b0-local/run-cmp0551-observations-20261108.json` を正本同一copyとし、通常generatorはsparse spec未配置の初回失敗を保持後、frontend/tests展開で正規実行成功。無関係global同期diffを採用せずbaselineのb0RunOverlayだけを生成overlayへ置換し、overlay外deepEqual・正本/copy/通常生成/採用overlay deepEqualを確認した。通常validator/自己検証全体は既知snapshot参照集合不一致FAIL、baseline保持の限定出力は既存CMP行数不一致FAIL。overlay限定宣言検査と不正10例拒否の合格は全体合格ではない。静的ボードUIはroot GO下で初回118/reload118・全行deepEqual・重複0、旧114投影保持/新4を確認。現HTMLのnew4 runId/originalRunId/sourceHead保存はexact、旧版のトップrunId保存制限は今回へ持ち込まない。カードpersona/journey/evidence/登録元とdrawer元runの表示を確認し、sourceHead専用UI欄なしは保存検証と分ける。board-ui-safe.jsonに12.223秒・所有資源0を記録し、先行2失敗も保持。実装PR #4353の新CI/build/mergeと正式完了JSON・task-list更新は別ゲートであり、この追記時点はIN_PROGRESS。
 
 既存の `beta-inventory-board-b0-coverage.json` をspecの唯一の正本として、journey単位でPlaywrightを実行します。
 
