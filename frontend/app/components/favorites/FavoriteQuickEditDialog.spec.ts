@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
+import { effectScope, ref } from 'vue'
+import { useFavoriteNameEdit } from '~/composables/favorites/useFavoriteNameEdit'
 import type { UserFavoriteItem } from '~/types/favorite'
 import FavoriteQuickEditDialog from './FavoriteQuickEditDialog.vue'
 
@@ -75,6 +77,29 @@ afterEach(() => {
 describe.each(['TEAM', 'ORGANIZATION'] as const)('%s の名称更新契約', (type) => {
   const get = () => (type === 'TEAM' ? getTeam : getOrganization)
   const update = () => (type === 'TEAM' ? updateTeam : updateOrganization)
+
+  it.each([
+    ['basicInfo欠落', undefined],
+    ['name欠落', {}],
+    ['name=null', { name: null }],
+    ['name非文字列', { name: 123 }],
+  ])('詳細の%sでは入力を上書きせず保存不可にする', async (_label, basicInfo) => {
+    get().mockResolvedValue({ data: { numericId: 123, metadata: { version: 0 }, basicInfo } })
+    // UIのtrimが例外になる前に、取得契約そのものを検査する。
+    const scope = effectScope()
+    const name = ref('利用者の入力')
+    try {
+      const edit = scope.run(() => useFavoriteNameEdit(name))!
+      await edit.load(item(type))
+      expect(edit.ready.value).toBe(false)
+      expect(edit.error.value).toBeTruthy()
+      expect(name.value).toBe('利用者の入力')
+      expect(await edit.save(item(type))).toBe(false)
+      expect(update()).not.toHaveBeenCalled()
+    } finally {
+      scope.stop()
+    }
+  })
 
   it('詳細取得中の名称入力を無効化し、取得後に編集可能にする', async () => {
     const pending = deferred<ReturnType<typeof detail>>()

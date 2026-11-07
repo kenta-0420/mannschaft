@@ -42,15 +42,17 @@ export function useFavoriteNameEdit(name: Ref<string>) {
       if (current !== generation) return
       const detail = response.data
       const version = detail.metadata?.version
+      const loadedName = detail.basicInfo?.name
       if (
         String(detail.numericId) !== item.entityId ||
         typeof version !== 'number' ||
         !Number.isSafeInteger(version) ||
-        version < 0
+        version < 0 ||
+        typeof loadedName !== 'string'
       ) {
         throw new Error(t('favorites.saveError'))
       }
-      name.value = detail.basicInfo.name
+      name.value = loadedName
       target = { item, slug, version, generation: current }
       ready.value = true
     } catch (cause) {
