@@ -39,19 +39,19 @@ jobs:
           python3 - <<'PY'
           import hashlib,json,os,pathlib,subprocess,shutil,platform
           R=pathlib.Path(os.environ['RUNNER_TEMP'])/'joint-fe-b7e81c94'
-          H='ee02706b27ea790c7cffb572d386f80be4c6688d'
+          H='0647a7f2aa98bdabaeb18708dd420a677009cad4'
           WF='.github/workflows/joint-fe-artifact-20261108-b7e81c94.yml'
           def git(*a):return subprocess.check_output(['git',*a])
           actual=git('rev-parse','HEAD').decode().strip()
           assert actual==os.environ['GITHUB_SHA']
-          parents=git('show','-s','--format=%P','HEAD').decode().split();assert len(parents)==1
-          BASE='604d90f09f27e01019afeaa3d541aac277cba61f'
+          parents=git('show','-s','--format=%P','HEAD').decode().split();assert parents==['95b5a591623015cefc471f3475c0bf22d2718235','d37c830673c71ae01d9bf2b85e547db1ee398a3f']
+          BASE='d37c830673c71ae01d9bf2b85e547db1ee398a3f'
           if subprocess.run(['git','cat-file','-e',BASE+'^{commit}'],capture_output=True).returncode:
               subprocess.run(['git','fetch','--no-tags','--depth=1','origin',BASE],check=True)
           assert git('diff','--name-status',BASE,'HEAD').decode().splitlines()==['A\t'+WF]
-          assert git('rev-parse',BASE+'^{tree}').decode().strip()=='52bce8d63febd30cdcd6317e022e1b19b4c3d204'
+          assert git('rev-parse',BASE+'^{tree}').decode().strip()=='df0204e2b0ba26b5d914f569598e0587e359bfd8'
           ft=git('rev-parse','HEAD:frontend').decode().strip()
-          assert ft==git('rev-parse',BASE+':frontend').decode().strip()=='e3e396ce9c0b091325f66ce12b4a1babf237d34b'
+          assert ft==git('rev-parse',BASE+':frontend').decode().strip()=='17e5648808c917713d993a16672e5255a49c6e02'
           paths=['frontend','.github','scripts','config','public','test-fixtures','.githooks','.gitattributes','.nvmrc','.npmrc','package.json','package-lock.json','npm-shrinkwrap.json','.github/workflows/frontend-ci.yml','frontend/package.json','frontend/package-lock.json','frontend/nuxt.config.ts','scripts/verification-run.mjs','docs/openapi.json','backend/scripts','backend/src/main/resources','backend/src/main/java/com/mannschaft/app/social/SocialErrorCode.java','backend/src/main/java/com/mannschaft/app/social/announcement/AnnouncementSourceType.java','backend/src/main/java/com/mannschaft/app/tournament/TournamentErrorCode.java','backend/src/main/java/com/mannschaft/app/school/entity/AbsenceReason.java','backend/src/main/java/com/mannschaft/app/diagnosis/controller/DiagnosisController.java','backend/src/main/java/com/mannschaft/app/ranch/controller/RanchAssignmentController.java','backend/src/main/java/com/mannschaft/app/ranch/dto/AssignmentResult.java']
           def inputs(ref):
               out={}
@@ -78,7 +78,7 @@ jobs:
           mem.update(diskFreeBytes=shutil.disk_usage('.').free)
           (R/'initial-resources.json').write_text(json.dumps(mem,indent=2)+'\n')
           print(json.dumps({'initialResourceBytes':mem}),flush=True)
-          record={'sourceHead':BASE,'originalLocalJointHeadH':H,'equivalentSourceS':BASE,'producerHeadP':actual,'directParent':parents[0],'sourceTree':'52bce8d63febd30cdcd6317e022e1b19b4c3d204','actualCheckoutCommit':actual,'producerTree':git('rev-parse','HEAD^{tree}').decode().strip(),'frontendTree':ft,'workflowOnlyDifference':WF,'workflowSHA256':hashlib.sha256(pathlib.Path(WF).read_bytes()).hexdigest(),'inputBaseline':baseline,'inputActual':current,'all28Equivalent':False,'expectedOnlyDifferentInput':'.github','toolVersions':{'node':'v22.23.2','npm':'10.9.8'},'os':{'machine':platform.machine(),'kernel':platform.release()},'tools':tools,'initialResources':dict(mem,diskFreeBytes=shutil.disk_usage('.').free),'runId':os.environ['GITHUB_RUN_ID'],'runAttempt':os.environ['GITHUB_RUN_ATTEMPT'],'repository':os.environ['GITHUB_REPOSITORY'],'ref':os.environ['GITHUB_REF']}
+          record={'sourceHead':BASE,'originalLocalJointHeadH':H,'equivalentSourceS':BASE,'producerHeadP':actual,'directParent':parents[0],'directParents':parents,'sourceTree':'df0204e2b0ba26b5d914f569598e0587e359bfd8','actualCheckoutCommit':actual,'producerTree':git('rev-parse','HEAD^{tree}').decode().strip(),'frontendTree':ft,'workflowOnlyDifference':WF,'workflowSHA256':hashlib.sha256(pathlib.Path(WF).read_bytes()).hexdigest(),'inputBaseline':baseline,'inputActual':current,'all28Equivalent':False,'expectedOnlyDifferentInput':'.github','toolVersions':{'node':'v22.23.2','npm':'10.9.8'},'os':{'machine':platform.machine(),'kernel':platform.release()},'tools':tools,'initialResources':dict(mem,diskFreeBytes=shutil.disk_usage('.').free),'runId':os.environ['GITHUB_RUN_ID'],'runAttempt':os.environ['GITHUB_RUN_ATTEMPT'],'repository':os.environ['GITHUB_REPOSITORY'],'ref':os.environ['GITHUB_REF']}
           (R/'source.json').write_text(json.dumps(record,indent=2)+'\n')
           assert mem['MemAvailable']>=14*1024**3
           PY
@@ -105,6 +105,7 @@ jobs:
           ulimit -c 0
           node --test scripts/audit-with-exemption.test.mjs scripts/patch-nuxt-devtools-simple-git.test.mjs
           node scripts/audit-with-exemption.mjs
+          npm run verify:ranch-development-appearances
       - name: 非秘密Node producer factsだけを観測するpreloadを用意
         run: |
           set -euo pipefail
@@ -142,6 +143,19 @@ jobs:
           actual=$?
           set -e
           printf '{"actualExit":%s}\n' "$actual" > "$RUNNER_TEMP/joint-fe-b7e81c94/build-exit.json"
+          exit "$actual"
+      - name: run default ranch production artifact gate
+        id: production_gate
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          printf '0\n' > /proc/self/coredump_filter
+          ulimit -c 0
+          set +e
+          env -i PATH="$PATH" HOME="$RUNNER_TEMP/joint-fe-b7e81c94/home" LANG=C.UTF-8 TZ=UTC CI=true NODE_OPTIONS="--max-old-space-size=8192 --require=$RUNNER_TEMP/joint-fe-b7e81c94/node-observer.cjs" node scripts/verify-ranch-production-artifact.mjs
+          actual=$?
+          set -e
+          printf '{"actualExit":%s}\n' "$actual" > "$RUNNER_TEMP/joint-fe-b7e81c94/ranch-production-exit.json"
           exit "$actual"
       - name: regular-only・512MiB以内のoutputとproducer manifestを確定
         id: package
@@ -285,13 +299,13 @@ jobs:
               total+=s.st_size;assert total<=512*1024**2
               rows.append({'path':rel,'bytes':s.st_size,'mode':stat.S_IMODE(s.st_mode),'sha256':hashlib.sha256(p.read_bytes()).hexdigest()})
           assert rows and len(rows)==normalization['expandedFiles'] and total==normalization['expandedBytes']
-          source=json.loads((R/'source.json').read_text());ci=json.loads((R/'npm-ci-exit.json').read_text());build=json.loads((R/'build-exit.json').read_text());assert ci['actualExit']==build['actualExit']==0
+          source=json.loads((R/'source.json').read_text());ci=json.loads((R/'npm-ci-exit.json').read_text());build=json.loads((R/'build-exit.json').read_text());gate=json.loads((R/'ranch-production-exit.json').read_text());assert ci['actualExit']==build['actualExit']==gate['actualExit']==0
           nodePaths=sorted((R/'node-facts').glob('*.json'));assert 0<len(nodePaths)<=256
           assert sum(p.stat().st_size for p in nodePaths)<=262144
           nodeFacts=[json.loads(p.read_text()) for p in nodePaths]
           assert any(x['isMainThread'] and x['isNuxtEntry'] for x in nodeFacts)
           assert all(x['coreFilter']=='00000000' and '--max-old-space-size=8192' in x['nodeOptions'] for x in nodeFacts)
-          source.update(state='CI_PRODUCER_CANDIDATE_ROOT_ADOPTION_PENDING',runtimeAdopted=False,nodeProducerFacts=nodeFacts,nodeObserverSHA256=hashlib.sha256((R/'node-observer.cjs').read_bytes()).hexdigest(),nodeObserverScope='startup facts for Node processes/threads that inherited preload; no full environment or argv',files=rows,logicalBytes=total,noSymlinks=True,regularFilesOnly=True,fileInventoryScope='regularized staging copy of generated output; source output unchanged',sourceSymlinkRegularization=normalization,buildActualExit=build['actualExit'],npmCiActualExit=ci['actualExit'],prebuildResources=json.loads((R/'prebuild-resources.json').read_text()),productionEnvironment={'NODE_ENV':'production','NODE_OPTIONS':'--max-old-space-size=8192 --require='+str(R/'node-observer.cjs'),'NUXT_PUBLIC_API_BASE':'http://localhost:8085','NUXT_INTERNAL_API_BASE':'http://localhost:8085','NUXT_PUBLIC_BASE_URL':'http://localhost:3005','NUXT_GENERATE_SPA':'false','CI':'true','HUSKY':'0'},environmentScope='explicit nonsecret allowlist passed to npm; npm may augment PATH',nuxtVersion=json.loads(pathlib.Path('frontend/node_modules/nuxt/package.json').read_text())['version'],cliVersion=json.loads(pathlib.Path('frontend/node_modules/@nuxt/cli/package.json').read_text())['version'],compilerInputSHA256={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in [pathlib.Path('frontend/node_modules/nuxt/bin/nuxt.mjs'),pathlib.Path('frontend/node_modules/@nuxt/cli/package.json')]},buildTimeMetadata=(R/'build-time.txt').read_text(),peakScope='GNU time max RSS only; not aggregate process-tree peak')
+          source.update(state='CI_PRODUCER_CANDIDATE_ROOT_ADOPTION_PENDING',runtimeAdopted=False,nodeProducerFacts=nodeFacts,nodeObserverSHA256=hashlib.sha256((R/'node-observer.cjs').read_bytes()).hexdigest(),nodeObserverScope='startup facts for Node processes/threads that inherited preload; no full environment or argv',files=rows,logicalBytes=total,noSymlinks=True,regularFilesOnly=True,fileInventoryScope='regularized staging copy of generated output; source output unchanged',sourceSymlinkRegularization=normalization,buildActualExit=build['actualExit'],npmCiActualExit=ci['actualExit'],ranchProductionGateActualExit=gate['actualExit'],productionGateSourceSHA256=hashlib.sha256(pathlib.Path('frontend/scripts/verify-ranch-production-artifact.mjs').read_bytes()).hexdigest(),prebuildResources=json.loads((R/'prebuild-resources.json').read_text()),productionEnvironment={'NODE_ENV':'production','NODE_OPTIONS':'--max-old-space-size=8192 --require='+str(R/'node-observer.cjs'),'NUXT_PUBLIC_API_BASE':'http://localhost:8085','NUXT_INTERNAL_API_BASE':'http://localhost:8085','NUXT_PUBLIC_BASE_URL':'http://localhost:3005','NUXT_GENERATE_SPA':'false','CI':'true','HUSKY':'0'},environmentScope='explicit nonsecret allowlist passed to npm; npm may augment PATH',nuxtVersion=json.loads(pathlib.Path('frontend/node_modules/nuxt/package.json').read_text())['version'],cliVersion=json.loads(pathlib.Path('frontend/node_modules/@nuxt/cli/package.json').read_text())['version'],compilerInputSHA256={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in [pathlib.Path('frontend/node_modules/nuxt/bin/nuxt.mjs'),pathlib.Path('frontend/node_modules/@nuxt/cli/package.json')]},buildTimeMetadata=(R/'build-time.txt').read_text(),peakScope='GNU time max RSS only; not aggregate process-tree peak')
           raw=(json.dumps(source,indent=2)+'\n').encode();assert len(raw)<=16*1024**2
           (R/'payload/manifest.json').write_bytes(raw)
           PY
@@ -307,7 +321,7 @@ jobs:
                   assert item.type in (tarfile.REGTYPE,tarfile.AREGTYPE) and item.name not in seen and item.name in expected
                   row=expected[item.name];assert item.size==row['bytes'] and hashlib.sha256(tf.extractfile(item).read()).hexdigest()==row['sha256'];seen.add(item.name)
           assert seen==set(expected)
-          receipt={'state':'PACKAGED_FOR_OFFICIAL_UPLOAD_NOT_RUNTIME_ADOPTION','archiveBytes':p.stat().st_size,'archiveSHA256':hashlib.sha256(p.read_bytes()).hexdigest(),'manifestSHA256':hashlib.sha256((R/'manifest.json').read_bytes()).hexdigest(),'logicalBytes':m['logicalBytes'],'regularNoSymlinkArchiveVerified':True,'actualCheckoutCommit':m['actualCheckoutCommit'],'sourceHead':m['sourceHead'],'originalLocalJointHeadH':m['originalLocalJointHeadH'],'equivalentSourceS':m['equivalentSourceS'],'producerHeadP':m['producerHeadP'],'directParent':m['directParent'],'frontendTree':m['frontendTree'],'runId':m['runId'],'runAttempt':m['runAttempt'],'buildActualExit':m['buildActualExit'],'rawArtifactBodyPrinted':False,'secretEnvironmentDumped':False}
+          receipt={'state':'PACKAGED_FOR_OFFICIAL_UPLOAD_NOT_RUNTIME_ADOPTION','archiveBytes':p.stat().st_size,'archiveSHA256':hashlib.sha256(p.read_bytes()).hexdigest(),'manifestSHA256':hashlib.sha256((R/'manifest.json').read_bytes()).hexdigest(),'logicalBytes':m['logicalBytes'],'regularNoSymlinkArchiveVerified':True,'actualCheckoutCommit':m['actualCheckoutCommit'],'sourceHead':m['sourceHead'],'originalLocalJointHeadH':m['originalLocalJointHeadH'],'equivalentSourceS':m['equivalentSourceS'],'producerHeadP':m['producerHeadP'],'directParent':m['directParent'],'directParents':m['directParents'],'frontendTree':m['frontendTree'],'runId':m['runId'],'runAttempt':m['runAttempt'],'buildActualExit':m['buildActualExit'],'rawArtifactBodyPrinted':False,'secretEnvironmentDumped':False}
           (R/'producer-receipt.json').write_text(json.dumps(receipt,indent=2)+'\n')
           PY
       - name: 公式artifactへ限定3fileを1日保存
@@ -315,7 +329,7 @@ jobs:
         if: ${{ success() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: joint-fe-ee02706-${{ github.run_id }}-attempt${{ github.run_attempt }}
+          name: joint-fe-h2-0647a7f2-${{ github.run_id }}-attempt${{ github.run_attempt }}
           path: |
             ${{ runner.temp }}/joint-fe-b7e81c94/payload/frontend-output.tar.gz
             ${{ runner.temp }}/joint-fe-b7e81c94/payload/manifest.json
@@ -333,6 +347,7 @@ jobs:
           DIAG_DEPS: ${{ steps.deps.outcome }}
           DIAG_AUDIT: ${{ steps.audit.outcome }}
           DIAG_BUILD: ${{ steps.build.outcome }}
+          DIAG_PRODUCTION_GATE: ${{ steps.production_gate.outcome }}
           DIAG_PACKAGE: ${{ steps.package.outcome }}
           DIAG_PRODUCTION_UPLOAD: ${{ steps.production_upload.outcome }}
         run: |
@@ -366,11 +381,12 @@ jobs:
           def exit_value(name):
               o=obj(name)
               return {'state':'observed','actualExit':o['actualExit']} if o is not None and type(o.get('actualExit'))is int else {'state':'unknown','actualExit':None}
-          summary={'diagnosticOnly':True,'successEvidence':False,'jobStatusAtCollection':os.environ['DIAG_JOB_STATUS'],'stepOutcomes':{k:os.environ.get('DIAG_'+k,'unknown') for k in ['SOURCE','DEPS','AUDIT','BUILD','PACKAGE','PRODUCTION_UPLOAD']},'initialResources':resources('initial-resources.json'),'prebuildResources':resources('prebuild-resources.json'),'npmCi':exit_value('npm-ci-exit.json'),'build':exit_value('build-exit.json')}
+          summary={'diagnosticOnly':True,'successEvidence':False,'jobStatusAtCollection':os.environ['DIAG_JOB_STATUS'],'stepOutcomes':{k:os.environ.get('DIAG_'+k,'unknown') for k in ['SOURCE','DEPS','AUDIT','BUILD','PRODUCTION_GATE','PACKAGE','PRODUCTION_UPLOAD']},'initialResources':resources('initial-resources.json'),'prebuildResources':resources('prebuild-resources.json'),'npmCi':exit_value('npm-ci-exit.json'),'build':exit_value('build-exit.json'),'productionGate':exit_value('ranch-production-exit.json')}
           source=obj('source.json');summary['source']={'state':'unknown'}
           if source is not None:
               keys=['sourceHead','originalLocalJointHeadH','equivalentSourceS','producerHeadP','directParent','sourceTree','actualCheckoutCommit','producerTree','frontendTree','workflowSHA256']
               summary['source']={'state':'observed',**{k:source[k] for k in keys if isinstance(source.get(k),str) and re.fullmatch('[0-9a-f]{40}|[0-9a-f]{64}',source[k])}}
+          if source is not None and isinstance(source.get('directParents'),list) and len(source['directParents'])==2 and all(isinstance(x,str) and re.fullmatch('[0-9a-f]{40}',x) for x in source['directParents']):summary['source']['directParents']=source['directParents']
           v=obj('tool-versions.json');summary['toolVersions']={'state':'unknown'}
           if v is not None:summary['toolVersions']={'state':'observed',**{k:v[k] for k in ['node','npm'] if isinstance(v.get(k),str) and re.fullmatch('v?[0-9]+\.[0-9]+\.[0-9]+',v[k])}}
           summary['nodeFacts']={'state':'unknown','rows':[]};nd=R/'node-facts'

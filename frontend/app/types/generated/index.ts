@@ -8976,7 +8976,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** チーム学期一覧（チーム独自＋組織継承） */
+        /**
+         * チーム学期一覧
+         * @description organizationId を省略するとチーム固有の学期だけを返す。指定するとチームの所属組織であることを検証したうえで、チーム固有と組織の学期をマージして返す（非所属の組織は 404）。
+         */
         get: operations["listTeamTerms"];
         put?: never;
         /** チーム学期作成 */
@@ -108861,8 +108864,8 @@ export interface operations {
     };
     listTeamTerms: {
         parameters: {
-            query: {
-                organizationId: number;
+            query?: {
+                organizationId?: number;
             };
             header?: never;
             path: {
