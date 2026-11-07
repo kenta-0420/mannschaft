@@ -1,4 +1,59 @@
 # M21固定adapterの関数定義だけ。dot-source時に型初期化/子起動を行わない。
+function Get-M21FormalBudget {
+ # 回収capの順は採用計画の9段。33秒はretry枠に転用しない。
+ return @{totalMs=3300000;workMs=3000000;reserveMs=300000;recoveryCapsMs=@(90000,30000,10000,16000,12000,61000,14000,14000,20000);marginMs=33000;maxHeld=8;maxCleanupCli=14}
+}
+
+function Assert-M21ScenarioBudget([string]$ScenarioValue,[string]$ModeValue,[string]$FixtureValue,[int]$WorkMs,[int]$TotalMs) {
+ if($WorkMs -lt 0 -or $TotalMs -lt 0 -or $WorkMs -gt $TotalMs){Set-Reason 'invalid-budget';throw ([ArgumentOutOfRangeException]::new())}
+ if($ScenarioValue -ceq 'formal-m21'){
+  $budget=Get-M21FormalBudget
+  if($ModeValue -cnotin @('Parent','Supervisor') -or $FixtureValue -cne 'none' -or $WorkMs -gt $budget.workMs -or $TotalMs -gt $budget.totalMs -or $TotalMs-$WorkMs -lt $budget.reserveMs){Set-Reason 'formal-budget-or-mode-invalid';throw ([ArgumentOutOfRangeException]::new())}
+ }elseif($TotalMs -gt 420000){Set-Reason 'dummy-budget-invalid';throw ([ArgumentOutOfRangeException]::new())}
+}
+
+function New-M21FormalSupervisorEnvironment {
+ # ParentからSupervisorへの境界でも全親envを渡さない。
+ $commit=[Environment]::GetEnvironmentVariable('M21_INPUT_COMMIT')
+ if($commit -cnotmatch '^[a-f0-9]{40}$'){Set-Reason 'asset-source-commit-invalid';throw ([IO.InvalidDataException]::new())}
+ $environment=New-Object 'Collections.Generic.Dictionary[string,string]' ([StringComparer]::OrdinalIgnoreCase)
+ foreach($key in @('SystemRoot','WINDIR')){$value=[Environment]::GetEnvironmentVariable($key);if($null -ne $value){$environment.Add($key,$value)}}
+ $environment.Add('TEMP',$run);$environment.Add('TMP',$run);$environment.Add('M21_INPUT_COMMIT',$commit)
+ return ,$environment
+}
+
+function Assert-M21FormalRequiredAlive([Diagnostics.Process[]]$Processes) {
+ if($null -eq $Processes -or $Processes.Count -lt 1 -or $Processes.Count -gt 8){Set-Reason 'formal-required-alive-set-invalid';throw ([IO.InvalidDataException]::new())}
+ foreach($process in $Processes){
+  # 呼出し元の保持handleのみ。取得不能を終了扱いせずPIDで取り直さない。
+  if($null -eq $process -or $process.Handle -eq [IntPtr]::Zero -or $process.WaitForExit(0)){Set-Reason 'formal-required-alive-exited';throw ([InvalidOperationException]::new())}
+ }
+}
+
+function Initialize-M21FormalParent {
+ Guard-Run;Require-Work
+ $script:formalEntryEvidence=@{budget=(Get-M21FormalBudget);assetConnected=$true;productionAssetsVerified=$false;bridgeConnected=$false;applicationConnected=$false;formalRunQualified=$false;retainedReason='bridge-create-and-application-not-connected'}
+ # 初期sliceはbridge/createを起動しない。未接続を成功receiptにしない。
+}
+
+function Invoke-M21FormalWork {
+ # bridge create/所有receiptとApp環境表の実装・実証が済むまで正式Appへ進めない。
+ Set-Reason 'formal-runtime-not-connected'
+ throw ([InvalidOperationException]::new('M21 bridge/create and application admission are not connected'))
+}
+
+function Invoke-M21FormalSupervisor {
+ Guard-Run;Require-Work
+ Assert-M21FormalRequiredAlive @($self)
+ Set-Operation 'Supervisor.formal-assets'
+ $script:formalEntryEvidence=@{budget=(Get-M21FormalBudget);assetConnected=$true;productionAssetsVerified=$false;bridgeConnected=$false;applicationConnected=$false;formalRunQualified=$false;retainedReason='bridge-create-and-application-not-connected'}
+ # CP→javac→jarの固定callerをACK後にだけ接続。途中失敗なら後続へ進まない。
+ $assets=Invoke-M21ProductionAssets
+ $script:formalEntryEvidence.productionAssetsVerified=$true
+ Require-Work;Assert-M21FormalRequiredAlive @($self)
+ Invoke-M21FormalWork
+}
+
 function Convert-M21FormalTicksToEpochMs([object]$Ticks) {
  # 呼出し元はACK後。PowerShellの / によるdouble丸めを使わない。
  try{Add-Type -AssemblyName System.Numerics}
@@ -146,7 +201,7 @@ function Get-M21AssetBuildProof([ValidateSet('cp','javac','jar')][string]$Role) 
 }
 
 function Invoke-M21ProductionAssets {
- # 未接続・引数なしの固定caller。dummyや環境変数の有無からは呼ばない。
+ # formal-m21のACK後だけが呼ぶ固定caller。dummy/env有無では呼ばない。
  $context=New-M21ProductionAssetContext
  $script:m21AssetCreators=@{}
  $local='C:/Users/kenta/AppData/Local';$cache='C:/Users/kenta/.gradle'

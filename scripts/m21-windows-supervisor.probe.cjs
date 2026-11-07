@@ -608,10 +608,70 @@ async function suite() {
     retained: allRecovered ? null : base }));
   if (!allRecovered) process.exitCode = 1;
 }
+async function formalEntryContract() {
+  // 外部asset生成境界だけを置換し、固定入口の順序・期限・fail-closedを検査する。
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'm21-entry-contract-'));
+  const fixture = path.join(base, 'contract.ps1');
+  fs.writeFileSync(fixture, `param([string]$Adapter)
+$ErrorActionPreference='Stop'
+Set-StrictMode -Version Latest
+function Set-Reason { param($value) $script:reason=$value }
+function Guard-Run {}
+function Require-Work { if($script:expired){throw 'fixture-work-expired'} }
+function Set-Operation { param($value) }
+$script:expired=$false
+$script:reason=$null
+$script:self=[Diagnostics.Process]::GetCurrentProcess()
+. $Adapter
+$budget=Get-M21FormalBudget
+if($budget.totalMs -ne 3300000 -or $budget.workMs -ne 3000000 -or $budget.reserveMs -ne 300000){throw 'budget'}
+if(($budget.recoveryCapsMs|Measure-Object -Sum).Sum -ne 267000 -or $budget.marginMs -ne 33000){throw 'caps'}
+Assert-M21ScenarioBudget 'formal-m21' 'Parent' 'none' 3000000 3300000
+Assert-M21ScenarioBudget 'normal' 'Parent' 'none' 402000 420000
+foreach($case in @(@('normal','Parent','none',420001,420001),@('formal-m21','Observe','none',3000000,3300000),@('formal-m21','Parent','formal-fe',3000000,3300000),@('formal-m21','Parent','none',3000001,3300000),@('formal-m21','Parent','none',3000000,3299999),@('formal-m21','Parent','none',2,1))){
+ $rejected=$false;try{Assert-M21ScenarioBudget @case}catch{$rejected=$true};if(!$rejected){throw 'invalid-budget-admitted'}
+}
+Assert-M21FormalRequiredAlive @($self)
+$rejected=$false;try{Assert-M21FormalRequiredAlive @()}catch{$rejected=$true};if(!$rejected){throw 'empty-required-alive'}
+$script:events=New-Object 'Collections.Generic.List[string]'
+function Invoke-M21ProductionAssets { $script:events.Add('assets');return @{formalRunQualified=$false;runtimeCP='fixture-only'} }
+function Invoke-M21FormalWork { $script:events.Add('work');throw 'fixture-runtime-unconnected' }
+$failed=$false;try{Invoke-M21FormalSupervisor}catch{$failed=$true}
+if(!$failed -or ($events -join ',') -cne 'assets,work'){throw 'asset-work-order'}
+$events.Clear()
+function Invoke-M21ProductionAssets { $script:events.Add('assets');throw 'fixture-cp-failed' }
+try{Invoke-M21FormalSupervisor}catch{}
+if(($events -join ',') -cne 'assets'){throw 'continued-after-cp-failure'}
+$events.Clear();$script:expired=$true
+try{Invoke-M21FormalSupervisor}catch{}
+if($events.Count -ne 0){throw 'work-after-deadline'}
+$script:expired=$false
+$script:run=$PSScriptRoot;$script:owner='${OWNER}';$script:Nonce='0123456789abcdef0123456789abcdef'
+$env:M21_INPUT_COMMIT='7bd15a1c3de31aedce8a235b632a16be75c376b9'
+$env:M21_HOST_ONLY_SENTINEL='public-test-sentinel'
+$environment=New-M21FormalSupervisorEnvironment
+if($environment.ContainsKey('M21_HOST_ONLY_SENTINEL') -or $environment.ContainsKey('PATH') -or $environment['M21_INPUT_COMMIT'] -cne $env:M21_INPUT_COMMIT -or $environment['TEMP'] -cne $run){throw 'supervisor-environment'}
+[Console]::Out.WriteLine('M21_ENTRY_CONTRACT_OK')
+`);
+  const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', fixture, path.join(__dirname, 'm21-windows-formal-adapter.ps1')], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  let stdout = '', stderr = '';
+  child.stdout.on('data', data => { stdout += data; });
+  child.stderr.on('data', data => { stderr += data; });
+  const timer = setTimeout(() => child.kill(), 15000);
+  let code;
+  try { code = await new Promise((resolve, reject) => { child.on('error', reject); child.on('exit', resolve); }); }
+  finally { clearTimeout(timer); }
+  assert.equal(code, 0, stderr.slice(0, 2000));
+  assert.match(stdout, /M21_ENTRY_CONTRACT_OK/);
+  fs.rmSync(base, { recursive: true });
+  console.log(JSON.stringify({ passed: true, scope: 'formal-entry-contract', runtimeQualified: false }));
+}
 (async () => {
   if (process.argv[2] === '--dummy') {
     assert.equal(process.argv.length, 9);
     await dummy(...process.argv.slice(3));
+  } else if (process.argv[2] === '--formal-entry-contract') {
+    await formalEntryContract();
   } else if (process.argv[2] === '--readiness-fixture') {
     await readinessFixtureSuite();
   } else if (process.argv[2] === '--formal-contract-fixture') {

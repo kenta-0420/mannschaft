@@ -122,9 +122,29 @@ assign-fail/cleanup-fail/save-failは固定fault点への例外注入であり�
 
 ## 現段階の検証
 
-### 未接続の固定asset caller
+### 正式入口の中間実装と固定asset caller
 
-`Invoke-M21ProductionAssets` は引数なしの内部関数として定義するだけで、dummy・fixture・環境変数の有無からは呼ばない。正式 `formal-m21` 入口への接続と実行は後続の別GOとする。既存dummyのG420秒/R18秒は変更しない。
+`Scenario=formal-m21` は Parent/Supervisor、TestFixture=none だけに限定する。G55分(3300000ms)/W50分(3000000ms)/R5分(300000ms)を上限とし、渡される残W/Gの差にもRを確保する。既存dummyのG420秒/R18秒を拡大しない。親の同じ時計から子へ残量を渡し、各子の開始時に55分へ戻さない。
+
+Parentの固定初期化hookと、同じhello→exact Job assign→ACK後のSupervisor hookを追加した。後者は引数なしの `Invoke-M21ProductionAssets` へ明示的に接続する。dummy・fixture・環境変数の有無からは呼ばない。Supervisor起動環境はOS2値・owned TEMP/TMP・固定入力HEADだけを選び、全親環境を継承しない。
+
+この中間実装ではbridge/create/App接続が未実装なので、asset生成後も `formal-runtime-not-connected` で必ず失敗する。`formalEntryEvidence` は接続/asset確認/正式run資格を分離し、`formalRunQualified=false` を維持する。正式入口の存在や有限fixtureのgreenを正式実行合格にしない。実asset生成もrootの別GOまで未実行である。
+
+回収の固定計画は90+30+10+16+12+61+14+14+20=267秒、余裕33秒でR300秒。held最大8、Docker cleanup CLI最大14を維持する。今回接続済みの既存Job空待ちは正式のみ10秒、Captureは実exit最大2秒・各stdout/stderr EOF最大1秒を残Gへclampする。未実装のhost/bridge各段の固定表は実回収の証明ではない。
+
+有限契約fixture（正式App/Gradle/Docker/Chrome起動0）:
+
+    node scripts/m21-windows-supervisor.probe.cjs --formal-entry-contract --owner-id 1d767b20-825c-4edc-b397-8d4367036462
+
+| 境界 | fixtureで実assertする範囲 | 未実証 |
+|---|---|---|
+| 予算 | G/W/R、267+33、dummy上限、formalのmode/fixture/残量拒否 | 実55分run |
+| hook順序 | 固定Supervisor関数を呼び、外部asset境界の置換でassets→work、CP失敗後work0、期限後assets0 | ACK前spawn0/ACK後実asset生成のOS観測 |
+| RequiredAlive | 現在の保持Processを採用、空集合を拒否 | FE/host/helper/browser早期終了 |
+| 環境 | Supervisor用辞書にsentinel/PATHなし、必要HEAD/TEMPあり | 各実子/孫への伝播 |
+| 途中失敗 | asset例外の後続停止 | 実Job/EOF/Dockerの独立回収 |
+
+通常sandboxのPowerShell policyで拒否された場合は未実行と記録し、policyを変更しない。今回のred/greenは通常ユーザーの既存policyで行い、最初は未定義関数によるred、実装後greenを確認した。既存17件とChromiumの回帰は統合HEADを固定した別GOで1回実施する。
 
 callerは既存Job/Remaining/M21Child/Register-Child/Captureを用いて、source検査後に固定Git Bashの既存turnstile経由offline production CP、固定JDK21のjavac、jarの順で進む。正規WindowsユーザーのKnownFolderと `C:/Users/kenta/AppData/Local` の一致を確認し、既存machine gateを使う。Gradle cacheは `C:/Users/kenta/.gradle`、子環境は必要OS値・private TEMP/HOME・固定tool/cache/path・CP入出力だけを明示する。全親環境は継承しない。
 
@@ -136,7 +156,7 @@ callerは既存Job/Remaining/M21Child/Register-Child/Captureを用いて、sourc
 
     node scripts/m21-windows-supervisor.probe.cjs --owner-id 1d767b20-825c-4edc-b397-8d4367036462
 
-このsliceはPS parserと静的差分だけを確認し、asset生成・変更後dummy回帰・実Java/Gradle・正式環境・実UIは未実行。CP task outcomeの実ログ形式、実machine gate、途中失敗時の停止/EOF/publication/held解除は実測合格としていない。
+asset生成・変更後dummy回帰・実Java/Gradle・正式環境・実UIは未実行。CP task outcomeの実ログ形式、実machine gate、途中失敗時の停止/EOF/publication/held解除は実測合格としていない。
 
 PS Parser.ParseFile、Node --check、diffの静的確認後、rootの限定GOごとに固定入力のsuiteを1回実行する。過去のprobeでAdd-Type実コンパイル・Win32 Job・host非0伝播まで観測したが、P6では孫の早期exit0によりpipe保持fixtureが不成立だった。P6限定修正版の全10caseは同一固定HEADの実測packetで判定する。正式環境・実UI・Chromium互換は未実施で、dummy成功を正式M21合格へ流用しない。過去のsharing違反やPS admission遅延の原因解消とも扱わない。
 

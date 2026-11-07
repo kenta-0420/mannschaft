@@ -3,13 +3,13 @@
 param(
  [ValidateSet('Parent','Supervisor','Observe','ReadinessFixture')][string]$Mode='Parent',
  [ValidateSet('none','parent-before-certificate','lock-release','lock-held','invalid-json','formal-ms','formal-fe','formal-admission','chromium-normal','chromium-parent-close')][string]$TestFixture='none',
- [Parameter(Mandatory=$true)][ValidateSet('normal','pre-ack','wrong-ack','assign-fail','host-fail','stdio-eof','cleanup-fail','save-fail','owner-mismatch','kill-close')][string]$Scenario,
+ [Parameter(Mandatory=$true)][ValidateSet('normal','pre-ack','wrong-ack','assign-fail','host-fail','stdio-eof','cleanup-fail','save-fail','owner-mismatch','kill-close','formal-m21')][string]$Scenario,
  [Parameter(Mandatory=$true)][string]$RunDirectory,
  [Parameter(Mandatory=$true)][ValidatePattern('^[a-f0-9]{32}$')][string]$Nonce,
  [ValidatePattern('^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$')][string]$OwnerId='d7249e88-1678-4e0c-ae21-a550989098a6',
  [Parameter(Mandatory=$true)][string]$NodePath,
- [Parameter(Mandatory=$true)][ValidateRange(0,420000)][int]$WorkRemainingMs,
- [Parameter(Mandatory=$true)][ValidateRange(0,420000)][int]$TotalRemainingMs
+ [Parameter(Mandatory=$true)][ValidateRange(0,3000000)][int]$WorkRemainingMs,
+ [Parameter(Mandatory=$true)][ValidateRange(0,3300000)][int]$TotalRemainingMs
 )
 $localClock=[Diagnostics.Stopwatch]::StartNew()
 $phaseCount=0
@@ -63,6 +63,7 @@ $fixtureLock=$null
 $metadataReadiness=New-Object 'Collections.Generic.List[object]'
 $parentExitEvidence=$null
 $formalContractEvidence=$null
+$formalEntryEvidence=$null
 $chromiumFixture=$TestFixture -in @('chromium-normal','chromium-parent-close')
 $chromiumExe=[IO.Path]::GetFullPath('C:/Users/kenta/AppData/Local/ms-playwright/chromium-1223/chrome-win64/chrome.exe')
 $p6Observations=New-Object 'Collections.Generic.List[object]'
@@ -311,7 +312,9 @@ try {
  if(($TestFixture -eq 'none' -and $Mode -eq 'ReadinessFixture') -or ($TestFixture -eq 'parent-before-certificate' -and ($Mode -notin @('Parent','Observe') -or $Scenario -ne 'kill-close')) -or ($TestFixture -in @('lock-release','lock-held','invalid-json') -and ($Mode -ne 'ReadinessFixture' -or $Scenario -ne 'normal'))){throw '固定fixture組合せ不一致'}
  if($TestFixture -in @('formal-ms','formal-fe','formal-admission') -and ($Mode -notin @('Parent','Supervisor') -or $Scenario -ne 'normal')){throw '固定formal契約fixture組合せ不一致'}
  if($chromiumFixture -and (($TestFixture -eq 'chromium-normal' -and ($Scenario -ne 'normal' -or $Mode -notin @('Parent','Supervisor'))) -or ($TestFixture -eq 'chromium-parent-close' -and $Scenario -ne 'kill-close'))){throw '固定Chromium組合せ不一致'}
- if($WorkRemainingMs -gt $TotalRemainingMs){Set-Reason 'invalid-budget';throw 'work/total budget不一致'}
+ # 定義だけを読む。ACK前に型compile/実子/asset準備を行わない。
+ . (Join-Path $PSScriptRoot 'm21-windows-formal-adapter.ps1')
+ Assert-M21ScenarioBudget $Scenario $Mode $TestFixture $WorkRemainingMs $TotalRemainingMs
  # Supervisorは型compileも子を生み得るものとして、標準Process/JSONのgateだけを先行する。
  # この区間にはcustom型参照/外部command/Process.Startを置かない。
  if($Mode -eq 'Supervisor'){
@@ -351,7 +354,7 @@ catch {
  Attempt 'bootstrap-process-identity' {$current=[Diagnostics.Process]::GetCurrentProcess();$script:processIdentity=@{pid=$current.Id;creation=$current.StartTime.ToUniversalTime().Ticks.ToString()}}
  Attempt 'bootstrap-result-save' {
   $name='result.json';if($Mode -eq 'Supervisor'){$name='supervisor-result.json'}elseif($Mode -eq 'Observe'){$name='observe-result.json'}
-  Write-Json $name @{owner=$owner;nonce=$Nonce;process=$processIdentity;passed=$false;primary=$primary;secondary=@($secondary.ToArray());grandchildEvidence=$grandchildEvidence;p6Observations=@();metadataReadiness=@($metadataReadiness.ToArray());parentExitEvidence=$parentExitEvidence;formalContractEvidence=$formalContractEvidence;parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@();lastHandles=@();startupRecovery=@();resourceRecovery=@{confirmed=$true;jobEmpty=$null;retained=@()};recovered=$true;parentKilled=$false;knownExited=0}
+  Write-Json $name @{owner=$owner;nonce=$Nonce;process=$processIdentity;passed=$false;primary=$primary;secondary=@($secondary.ToArray());grandchildEvidence=$grandchildEvidence;p6Observations=@();metadataReadiness=@($metadataReadiness.ToArray());parentExitEvidence=$parentExitEvidence;formalContractEvidence=$formalContractEvidence;formalEntryEvidence=$formalEntryEvidence;parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@();lastHandles=@();startupRecovery=@();resourceRecovery=@{confirmed=$true;jobEmpty=$null;retained=@()};recovered=$true;parentKilled=$false;knownExited=0}
   $script:bootstrapSaved=$true
  }
  if(!$bootstrapSaved){[Console]::Error.WriteLine((@{passed=$false;primary=$primary;secondary=@($secondary.ToArray())}|ConvertTo-Json -Depth 12 -Compress))}
@@ -432,6 +435,16 @@ function New-Supervisor([string]$childMode,[string]$prefix) {
  $childArguments=@('-NoProfile','-NonInteractive','-File',$PSCommandPath,'-Mode',$childMode,'-Scenario',$Scenario,'-RunDirectory',$run,'-Nonce',$Nonce,'-OwnerId',$owner,'-NodePath',$NodePath,'-WorkRemainingMs',[string](Remaining),'-TotalRemainingMs',[string](Remaining -Recovery))
  if($TestFixture -in @('parent-before-certificate','formal-ms','formal-fe','formal-admission') -or $chromiumFixture){$childArguments+=@('-TestFixture',$TestFixture)}
  Require-Work
+ if($Scenario -ceq 'formal-m21'){
+  $environment=New-M21FormalSupervisorEnvironment
+  Require-Work
+  # 2回の時計読取の丸めでRを1ms削らない。保存済みGを基準にWを短縮する。
+  $formalTotal=Remaining -Recovery
+  $formalWork=[Math]::Min((Remaining),[Math]::Max(0,$formalTotal-300000))
+  $childArguments[[Array]::IndexOf($childArguments,'-WorkRemainingMs')+1]=[string]$formalWork
+  $childArguments[[Array]::IndexOf($childArguments,'-TotalRemainingMs')+1]=[string]$formalTotal
+  return [M21Child]::Start($ps,$childArguments,$PSScriptRoot,(Join-Path $run $prefix),(Remaining -Recovery),$false,$environment)
+ }
  return [M21Child]::Start($ps,$childArguments,$PSScriptRoot,(Join-Path $run $prefix),(Remaining -Recovery),($Scenario -eq 'stdio-eof'))
 }
 function Register-Child([M21Child]$child,[string]$role) {
@@ -460,15 +473,17 @@ function P6-State([string]$stage) {
 function Capture([M21Child]$child,[string]$role,[int]$milliseconds) {
  if(!$child.Started){$script:streams.Add(@{role=$role;notStarted=$true;exited=$true;exitCode=$null;stdoutEof=$true;stderrEof=$true});$child.Captured=$true;return}
  $item=[ordered]@{role=$role;pid=$child.RecordedPid;creation=$child.RecordedCreation;logs=$child.LogPrefix;exited=$false;exitCode=$null;stdoutEof=$false;stderrEof=$false;stdoutPublished=$false;stderrPublished=$false;timingOrigin='held-child-instance';timings=@();timingOverflow=$false}
- $exitCap=Remaining $milliseconds -Recovery
+ $exitMilliseconds=$milliseconds;$streamMilliseconds=$milliseconds
+ if($Scenario -ceq 'formal-m21'){$exitMilliseconds=[Math]::Min(2000,$milliseconds);$streamMilliseconds=[Math]::Min(1000,$milliseconds)}
+ $exitCap=Remaining $exitMilliseconds -Recovery
  $child.Mark('capture-exit-before',$exitCap)
  try{$item.exited=$child.Process.WaitForExit($exitCap);if($item.exited){$item.exitCode=$child.Process.ExitCode}}catch{Fail ($role+'-exit') $_.Exception}finally{$child.Mark('capture-exit-after',$exitCap)}
  Attempt 'p6-after-child-exit' {P6-State 'after-child-exit'}
  if(!$item.exited){$script:recovered=$false;Fail ($role+'-exit-timeout') ([TimeoutException]::new())}
  Attempt 'p6-stdout-before' {P6-State 'stdout-before'}
- try{$item.stdoutEof=$child.Eof($true,(Remaining $milliseconds -Recovery));if(!$item.stdoutEof){Set-Reason 'stdout-eof-timeout';throw 'stdout EOF期限超過'}}catch{$script:recovered=$false;Fail ($role+'-stdout') $_.Exception $_}finally{Attempt 'p6-stdout-after' {P6-State 'stdout-after'}}
+ try{$item.stdoutEof=$child.Eof($true,(Remaining $streamMilliseconds -Recovery));if(!$item.stdoutEof){Set-Reason 'stdout-eof-timeout';throw 'stdout EOF期限超過'}}catch{$script:recovered=$false;Fail ($role+'-stdout') $_.Exception $_}finally{Attempt 'p6-stdout-after' {P6-State 'stdout-after'}}
  Attempt 'p6-stderr-before' {P6-State 'stderr-before'}
- try{$item.stderrEof=$child.Eof($false,(Remaining $milliseconds -Recovery));if(!$item.stderrEof){Set-Reason 'stderr-eof-timeout';throw 'stderr EOF期限超過'}}catch{$script:recovered=$false;Fail ($role+'-stderr') $_.Exception $_}finally{Attempt 'p6-stderr-after' {P6-State 'stderr-after'}}
+ try{$item.stderrEof=$child.Eof($false,(Remaining $streamMilliseconds -Recovery));if(!$item.stderrEof){Set-Reason 'stderr-eof-timeout';throw 'stderr EOF期限超過'}}catch{$script:recovered=$false;Fail ($role+'-stderr') $_.Exception $_}finally{Attempt 'p6-stderr-after' {P6-State 'stderr-after'}}
  if($item.exited -and $item.stdoutEof -and $item.stderrEof){
   Attempt ($role+'-stdout-publication') {try{$child.PublishCapturedOutput($true)}catch{$script:recovered=$false;Set-Reason 'stdout-publication-failed';throw}}
   Attempt ($role+'-stderr-publication') {try{$child.PublishCapturedOutput($false)}catch{$script:recovered=$false;Set-Reason 'stderr-publication-failed';throw}}
@@ -649,6 +664,9 @@ try {
  }elseif($Mode -eq 'Supervisor' -and $TestFixture -in @('formal-ms','formal-fe','formal-admission')){
   if(![M21Job]::InJob($self,$null)){throw 'formal fixture ACK後Job不在'}
   Invoke-FormalContractFixture
+ }elseif($Mode -eq 'Supervisor' -and $Scenario -ceq 'formal-m21'){
+  if(![M21Job]::InJob($self,$null)){throw 'formal ACK後Job不在'}
+  Invoke-M21FormalSupervisor
  }elseif($Mode -eq 'Supervisor'){
   # 親のexact Job認定ack後に初期化した型で補助観測する。
   if(![M21Job]::InJob($self,$null)){throw 'ack後Job不在'}
@@ -730,6 +748,7 @@ try {
   }finally{foreach($p in $known){Attempt 'observer-handle-close' {$p.Dispose()}}}
  }else{
   if($TestFixture -eq 'parent-before-certificate'){Set-Reason 'fixture-parent-exit';throw '固定fixture: cert前Parent終了'}
+  if($Scenario -ceq 'formal-m21'){Initialize-M21FormalParent}
   Set-Operation 'Parent.createJob'
   $job=[M21Job]::Create()
   Set-Operation 'Parent.startSupervisor'
@@ -797,11 +816,12 @@ try {
    foreach($item in $inner.p6Observations){$p6Observations.Add($item)}
    foreach($item in $inner.metadataReadiness){$metadataReadiness.Add($item)}
    if($TestFixture -in @('formal-ms','formal-fe','formal-admission')){$formalContractEvidence=$inner.formalContractEvidence}
+   if($Scenario -ceq 'formal-m21'){$formalEntryEvidence=$inner.formalEntryEvidence}
    $grandchildEvidence=$inner.grandchildEvidence
    if($Scenario -in @('host-fail','cleanup-fail') -and !$inner.recovered){$recovered=$false}
   }
   if($supervisor.Process.ExitCode -ne 0 -and $null -eq $primary){Fail 'dummy-nonzero' ([InvalidOperationException]::new())}
-  if($Scenario -eq 'normal'){
+  if($Scenario -in @('normal','formal-m21')){
    $inner=Read-Json 'supervisor-result.json'
    if(!$inner.passed -or !$inner.recovered){throw 'inner失敗'}
   }
@@ -819,7 +839,8 @@ finally {
   Attempt 'job-empty' {
    if($null -ne $job){
     $clock=[Diagnostics.Stopwatch]::StartNew()
-    $cleanupLimit=Remaining 3000 -Recovery
+    $jobCap=3000;if($Scenario -ceq 'formal-m21'){$jobCap=10000}
+    $cleanupLimit=Remaining $jobCap -Recovery
     while($job.Active() -gt 0 -and $clock.ElapsedMilliseconds -lt $cleanupLimit -and (Remaining -Recovery) -gt 0){Start-Sleep -Milliseconds ([Math]::Min(25,(Remaining -Recovery)))}
     $script:jobEmpty=($job.Active() -eq 0)
     if(!$script:jobEmpty){$script:recovered=$false;throw 'Job残留'}
@@ -887,7 +908,7 @@ finally {
   if(!$p6Certification.childExited){$retained.Add(@{identity=$p6Certification.child;reason='P6 certified child exit unconfirmed'})}
   if(!$p6Certification.grandchildExited){$retained.Add(@{identity=$p6Certification.grandchild;reason='P6 certified grandchild exit unconfirmed'})}
  }
- $result=[ordered]@{owner=$owner;nonce=$Nonce;process=$processIdentity;mode=$Mode;scenario=$Scenario;passed=($null -eq $primary);primary=$primary;secondary=@($secondary.ToArray());grandchildEvidence=$grandchildEvidence;p6Observations=@($p6Observations.ToArray());p6Certification=$p6Certification;fixtureEvidence=$fixtureEvidence;metadataReadiness=@($metadataReadiness.ToArray());parentExitEvidence=$parentExitEvidence;formalContractEvidence=$formalContractEvidence;lateObservation=$lateObservation;parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@($streams.ToArray());lastHandles=@($lastHandles.ToArray());knownExitEvidence=$knownExitEvidence;startupRecovery=@($startupRecovery.ToArray());resourceRecovery=@{jobEmpty=$jobEmpty;confirmed=$recovered;retained=@($retained.ToArray())};recovered=$recovered;parentKilled=($null -ne $observer);knownExited=0}
+ $result=[ordered]@{owner=$owner;nonce=$Nonce;process=$processIdentity;mode=$Mode;scenario=$Scenario;passed=($null -eq $primary);primary=$primary;secondary=@($secondary.ToArray());grandchildEvidence=$grandchildEvidence;p6Observations=@($p6Observations.ToArray());p6Certification=$p6Certification;fixtureEvidence=$fixtureEvidence;metadataReadiness=@($metadataReadiness.ToArray());parentExitEvidence=$parentExitEvidence;formalContractEvidence=$formalContractEvidence;formalEntryEvidence=$formalEntryEvidence;lateObservation=$lateObservation;parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@($streams.ToArray());lastHandles=@($lastHandles.ToArray());knownExitEvidence=$knownExitEvidence;startupRecovery=@($startupRecovery.ToArray());resourceRecovery=@{jobEmpty=$jobEmpty;confirmed=$recovered;retained=@($retained.ToArray())};recovered=$recovered;parentKilled=($null -ne $observer);knownExited=0}
  if($null -ne $observer){$result.knownExited=$observer.knownExited}
  try{
   $name='result.json';if($Mode -eq 'Supervisor'){$name='supervisor-result.json'}elseif($Mode -eq 'Observe'){$name='observe-result.json'}
