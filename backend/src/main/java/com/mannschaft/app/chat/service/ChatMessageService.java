@@ -825,7 +825,7 @@ public class ChatMessageService {
             return response;
         }
         MessageResponse.InviteCardDto inviteData = new MessageResponse.InviteCardDto(
-                data.tokenId(), data.token(), data.scopeType(), data.scopeId(),
+                data.tokenId(), data.scopeType(), data.scopeId(),
                 data.scopeName(), data.status(), data.isTarget(), data.expiresAt());
         return response.toBuilder().inviteData(inviteData).build();
     }

@@ -103,10 +103,19 @@ abstract class InviteGenerationItSupport extends AbstractMySqlIntegrationTest {
         });
     }
 
+    /** fixture の招待に対応する平文（DB にはハッシュしか無いため、試験が発行時に控える）。 */
+    private final java.util.Map<Long, String> plaintexts = new java.util.concurrent.ConcurrentHashMap<>();
+
+    protected String plaintext(InviteTokenEntity token) {
+        return plaintexts.get(token.getId());
+    }
+
     protected InviteTokenEntity token(Scope scope, long generation, LocalDateTime expires,
                                       Integer maxUses, int usedCount, Long target, LocalDateTime revoked) {
         return inTx(() -> {
-            var builder = InviteTokenEntity.builder().token(UUID.randomUUID().toString())
+            String plain = UUID.randomUUID().toString();
+            var builder = InviteTokenEntity.builder()
+                    .tokenHash(new com.mannschaft.app.common.token.SecretTokenVault().hash(plain))
                     .roleId(scope.memberRoleId()).scopeClosureGeneration(generation)
                     .expiresAt(expires).maxUses(maxUses).usedCount(usedCount).targetUserId(target).revokedAt(revoked);
             if ("TEAM".equals(scope.type())) {
@@ -114,7 +123,9 @@ abstract class InviteGenerationItSupport extends AbstractMySqlIntegrationTest {
             } else {
                 builder.organizationId(scope.id());
             }
-            return tokens.saveAndFlush(builder.build());
+            InviteTokenEntity saved = tokens.saveAndFlush(builder.build());
+            plaintexts.put(saved.getId(), plain);
+            return saved;
         });
     }
 

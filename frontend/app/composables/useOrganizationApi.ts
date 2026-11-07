@@ -23,15 +23,20 @@ interface OrganizationSummaryResponse {
   supporterEnabled: boolean
 }
 
-interface InviteTokenResponse {
+/** 一覧の 1 行。平文トークンは持たない（サーバーにはハッシュしか残らず、再表示できない）。 */
+interface InviteTokenSummary {
   id: number
-  token: string
   roleName: string
   expiresAt: string | null
   maxUses: number | null
   usedCount: number
   revokedAt: string | null
   createdAt: string
+}
+
+/** 発行応答。平文 token を含むのは発行時の一度きり。 */
+interface InviteTokenIssuedResponse extends InviteTokenSummary {
+  token: string
 }
 
 interface PermissionGroupResponse {
@@ -202,14 +207,14 @@ export function useOrganizationApi() {
     orgSlug: string,
     body: { roleId: number; expiresIn: string | null; maxUses: number | null },
   ) {
-    return api<{ data: InviteTokenResponse }>(`/api/v1/organizations/${orgSlug}/invite-tokens`, {
+    return api<{ data: InviteTokenIssuedResponse }>(`/api/v1/organizations/${orgSlug}/invite-tokens`, {
       method: 'POST',
       body,
     })
   }
 
   async function getInviteTokens(orgSlug: string) {
-    return api<{ data: InviteTokenResponse[] }>(`/api/v1/organizations/${orgSlug}/invite-tokens`)
+    return api<{ data: InviteTokenSummary[] }>(`/api/v1/organizations/${orgSlug}/invite-tokens`)
   }
 
   async function deleteInviteToken(orgSlug: string, tokenId: number) {

@@ -8,7 +8,6 @@ import java.time.OffsetDateTime;
  * <p>JSON 契約は camelCase（設計書 D-12）。</p>
  *
  * @param tokenId       発行された招待トークン ID
- * @param token         承諾/辞退 API に渡す UUID トークン文字列
  * @param targetUserId  宛先ユーザー（DM 相手）の ID
  * @param scopeType     招待先種別（{@code TEAM} / {@code ORGANIZATION}）
  * @param scopeId       招待先 ID
@@ -19,7 +18,6 @@ import java.time.OffsetDateTime;
  */
 public record MembershipInviteResponse(
         Long tokenId,
-        String token,
         Long targetUserId,
         String scopeType,
         Long scopeId,

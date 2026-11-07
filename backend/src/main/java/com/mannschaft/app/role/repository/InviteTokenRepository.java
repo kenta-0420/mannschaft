@@ -17,11 +17,12 @@ import java.util.Optional;
  */
 public interface InviteTokenRepository extends JpaRepository<InviteTokenEntity, Long> {
 
-    Optional<InviteTokenEntity> findByToken(String token);
+    /** 平文ではなく {@code SecretTokenVault#hash} で得たハッシュで引く。 */
+    Optional<InviteTokenEntity> findByTokenHash(String tokenHash);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT t FROM InviteTokenEntity t WHERE t.token = :token")
-    Optional<InviteTokenEntity> findByTokenForUpdate(@Param("token") String token);
+    @Query("SELECT t FROM InviteTokenEntity t WHERE t.tokenHash = :tokenHash")
+    Optional<InviteTokenEntity> findByTokenHashForUpdate(@Param("tokenHash") String tokenHash);
 
     /** 失効同士の競合でも既失効日時を保持するcurrent read。 */
     @Lock(LockModeType.PESSIMISTIC_WRITE)

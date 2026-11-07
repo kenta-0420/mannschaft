@@ -25,7 +25,10 @@ import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.role.dto.CreateInviteTokenRequest;
 import com.mannschaft.app.role.dto.InvitePreviewResponse;
-import com.mannschaft.app.role.dto.InviteTokenResponse;
+import com.mannschaft.app.common.token.SecretTokenVault;
+import com.mannschaft.app.role.dto.BetaInviteScope;
+import com.mannschaft.app.role.dto.InviteTokenIssuedResponse;
+import com.mannschaft.app.role.dto.InviteTokenSummary;
 import com.mannschaft.app.role.dto.SharedInviteTokenCommand;
 import com.mannschaft.app.team.TeamErrorCode;
 import com.mannschaft.app.team.entity.TeamEntity;
@@ -80,12 +83,14 @@ public class InviteService {
     private final ProvisioningGate provisioningGate;
     private final InviteScopeStateService scopeStates;
     private final SharedInviteTokenIssuer sharedTokenIssuer;
+    /** 状態を持たない金庫。注入にすると既存のコンストラクタ署名（ArchUnit 凍結行）が変わるため、初期化済みフィールドで持つ。 */
+    private final SecretTokenVault vault = new SecretTokenVault();
 
     /**
      * 招待トークンを作成する。
      */
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    public ApiResponse<InviteTokenResponse> createInviteToken(Long scopeId, String scopeType,
+    public ApiResponse<InviteTokenIssuedResponse> createInviteToken(Long scopeId, String scopeType,
                                                                CreateInviteTokenRequest req, Long createdBy) {
         // 束1 権限昇格根治: 当該スコープの ADMIN/DEPUTY_ADMIN のみ招待トークンを発行できる。
         accessControlService.checkAdminOrAbove(createdBy, scopeId, scopeType);
@@ -102,7 +107,7 @@ public class InviteService {
         LocalDateTime expiresAt = resolveExpiresAt(req.getExpiresIn());
 
         // role専属writerから戻る時点でcommit済み。親共有lockはuser/token lock解放後だけ取得する。
-        InviteTokenResponse token = sharedTokenIssuer.issue(new SharedInviteTokenCommand(scopeType, scopeId,
+        InviteTokenIssuedResponse token = sharedTokenIssuer.issue(new SharedInviteTokenCommand(scopeType, scopeId,
                 role.getId(), role.getName(), createdBy,
                 expiresAt == null ? null : expiresAt.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant(),
                 req.getMaxUses(), scope.closureGeneration()));
@@ -111,14 +116,14 @@ public class InviteService {
             stillCurrent = scopeStates.recheckIssued(scopeType, scopeId, scope.closureGeneration());
         } catch (RuntimeException failure) {
             try {
-                sharedTokenIssuer.revokeForCompensation(token.getId());
+                sharedTokenIssuer.revokeForCompensation(token.id());
             } catch (RuntimeException compensationFailure) {
                 failure.addSuppressed(compensationFailure);
             }
             throw failure;
         }
         if (!stillCurrent) {
-            sharedTokenIssuer.revokeForCompensation(token.getId());
+            sharedTokenIssuer.revokeForCompensation(token.id());
             throw new BusinessException(RoleErrorCode.ROLE_002);
         }
 
@@ -129,7 +134,7 @@ public class InviteService {
     /**
      * スコープ内の有効な招待トークン一覧を取得する。
      */
-    public List<InviteTokenResponse> getInviteTokens(Long scopeId, String scopeType, Long actorUserId) {
+    public List<InviteTokenSummary> getInviteTokens(Long scopeId, String scopeType, Long actorUserId) {
         // 束1 権限昇格根治: 招待トークン一覧は当該スコープの ADMIN/DEPUTY_ADMIN のみ閲覧できる。
         accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType);
 
@@ -182,7 +187,7 @@ public class InviteService {
      */
     @Transactional
     public void declineInvite(String tokenStr, Long userId) {
-        InviteTokenEntity token = inviteTokenRepository.findByTokenForUpdate(tokenStr)
+        InviteTokenEntity token = inviteTokenRepository.findByTokenHashForUpdate(vault.hash(tokenStr))
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
 
         Long targetUserId = token.getTargetUserId();
@@ -190,7 +195,26 @@ public class InviteService {
         if (targetUserId == null || !targetUserId.equals(userId)) {
             throw new BusinessException(RoleErrorCode.ROLE_009, org.springframework.http.HttpStatus.FORBIDDEN);
         }
+        declineLocked(token, userId);
+    }
 
+    /**
+     * 承諾型招待を招待 ID で辞退する（CMP-260826-1457）。平文トークンを持ち回らないための入口。
+     *
+     * <p>ID は推測できるため、宛先本人でない・共有リンク型・存在しない ID は区別せず
+     * いずれも 404 {@link RoleErrorCode#ROLE_002} にする（存在オラクルを作らない）。</p>
+     */
+    @Transactional
+    public void declineInvitationById(Long tokenId, Long userId) {
+        InviteTokenEntity token = inviteTokenRepository.findByIdForUpdate(tokenId)
+                .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
+        if (token.getTargetUserId() == null || !token.getTargetUserId().equals(userId)) {
+            throw new BusinessException(RoleErrorCode.ROLE_002);
+        }
+        declineLocked(token, userId);
+    }
+
+    private void declineLocked(InviteTokenEntity token, Long userId) {
         // 既に失効済み（辞退/取消/補償）なら冪等に扱う（二重 accept を防ぐ revoked_at は既に立っている）。
         if (token.getRevokedAt() != null) {
             return;
@@ -219,10 +243,20 @@ public class InviteService {
     }
 
     /**
+     * ベータ招待として使える（存在し有効な）トークンの招待先を返す。平文で受け取り、ハッシュで照合する。
+     * admin ドメインが role の Repository を直接参照しないための入口。
+     */
+    public java.util.Optional<BetaInviteScope> findValidInviteScope(String tokenStr) {
+        return inviteTokenRepository.findByTokenHash(vault.hash(tokenStr))
+                .filter(InviteTokenEntity::isValid)
+                .map(token -> new BetaInviteScope(token.getTeamId(), token.getOrganizationId()));
+    }
+
+    /**
      * 招待トークンをプレビューする。未認証ユーザーにも表示可能。
      */
     public ApiResponse<InvitePreviewResponse> previewInvite(String tokenStr) {
-        InviteTokenEntity token = inviteTokenRepository.findByToken(tokenStr)
+        InviteTokenEntity token = inviteTokenRepository.findByTokenHash(vault.hash(tokenStr))
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
 
         String scopeType = resolveScopeType(token);
@@ -262,14 +296,39 @@ public class InviteService {
     //       将来はInviteJoinedEventで分離予定
     public void joinByInvite(String tokenStr, Long userId, Long folderId) {
         // user行を先にlockし、同一Tx内でtokenをFOR UPDATEするcanonical順序。
+        lockActiveUser(userId);
+        // FOR UPDATEでロック取得（同時参加の排他制御）。平文は金庫でハッシュ化して引く。
+        InviteTokenEntity token = inviteTokenRepository.findByTokenHashForUpdate(vault.hash(tokenStr))
+                .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
+        joinLocked(token, userId, folderId);
+    }
+
+    /**
+     * 承諾型招待を招待 ID で承諾して参加する（CMP-260826-1457）。平文トークンを持ち回らないための入口。
+     *
+     * <p>宛先本人でない・共有リンク型・存在しない ID は、区別せずいずれも 404 {@link RoleErrorCode#ROLE_002}
+     * （ID は推測できるため存在オラクルを作らない）。以降の有効性判定はトークン入口と同じ {@link #joinLocked}。</p>
+     */
+    @Transactional
+    public void acceptInvitationById(Long tokenId, Long userId, Long folderId) {
+        lockActiveUser(userId);
+        InviteTokenEntity token = inviteTokenRepository.findByIdForUpdate(tokenId)
+                .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
+        if (token.getTargetUserId() == null || !token.getTargetUserId().equals(userId)) {
+            throw new BusinessException(RoleErrorCode.ROLE_002);
+        }
+        joinLocked(token, userId, folderId);
+    }
+
+    private void lockActiveUser(Long userId) {
         if (userRowLockService.lock(userId) != UserRowLockService.UserState.ACTIVE) {
             // inactive/absent userの存在をtoken検証前にoracle化させない。
             throw new BusinessException(RoleErrorCode.ROLE_002);
         }
-        // FOR UPDATEでロック取得（同時参加の排他制御）
-        InviteTokenEntity token = inviteTokenRepository.findByTokenForUpdate(tokenStr)
-                .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
+    }
 
+    /** user 行と token 行をロックした状態で、両入口が共通で行う検証・付与。 */
+    private void joinLocked(InviteTokenEntity token, Long userId, Long folderId) {
         // 有効性チェック
         if (!token.isValid()) {
             if (token.getMaxUses() != null && token.getUsedCount() >= token.getMaxUses()) {
@@ -452,7 +511,7 @@ public class InviteService {
      * @return PNG バイト配列
      */
     public byte[] generateInviteQrCode(String tokenStr, Integer size) {
-        inviteTokenRepository.findByToken(tokenStr)
+        inviteTokenRepository.findByTokenHash(vault.hash(tokenStr))
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
 
         int qrSize = (size != null) ? size : QR_DEFAULT_SIZE;
@@ -479,21 +538,22 @@ public class InviteService {
     }
 
     /**
-     * 招待トークンをIDとチームIDで取得する（IDORチェック用）。
+     * 平文の招待トークンから、指定チームに属する招待を取得する（IDORチェック用）。
      *
-     * @param tokenId 招待トークンID
-     * @param teamId  チームID
+     * @param plaintextToken 平文の招待トークン
+     * @param teamId         チームID
      * @return 招待トークンEntity
-     * @throws BusinessException ROLE_002（存在しないまたはチームに属さない）
+     * @throws BusinessException ROLE_002（存在しない、またはチームに属さない。両者は区別しない）
      */
-    public InviteTokenEntity findByIdAndTeamId(Long tokenId, Long teamId) {
-        return inviteTokenRepository.findByIdAndTeamId(tokenId, teamId)
+    public InviteTokenEntity findByPlaintextAndTeamId(String plaintextToken, Long teamId) {
+        return inviteTokenRepository.findByTokenHash(vault.hash(plaintextToken))
+            .filter(token -> teamId.equals(token.getTeamId()))
             .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
     }
 
-    private InviteTokenResponse toResponse(InviteTokenEntity token, String roleName) {
-        return new InviteTokenResponse(
-                token.getId(), token.getToken(), roleName,
+    private InviteTokenSummary toResponse(InviteTokenEntity token, String roleName) {
+        return new InviteTokenSummary(
+                token.getId(), roleName,
                 token.getExpiresAt(), token.getMaxUses(), token.getUsedCount(),
                 token.getRevokedAt(), token.getCreatedAt());
     }

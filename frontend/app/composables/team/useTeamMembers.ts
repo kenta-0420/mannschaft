@@ -9,15 +9,20 @@ export type TeamPermissionGroup = Required<
   containsAdminOnlyPermission?: boolean
 }
 
-interface InviteTokenResponse {
+/** 一覧の 1 行。平文トークンは持たない（サーバーにはハッシュしか残らず、再表示できない）。 */
+interface InviteTokenSummary {
   id: number
-  token: string
   roleName: string
   expiresAt: string | null
   maxUses: number | null
   usedCount: number
   revokedAt: string | null
   createdAt: string
+}
+
+/** 発行応答。平文 token を含むのは発行時の一度きり。 */
+interface InviteTokenIssuedResponse extends InviteTokenSummary {
+  token: string
 }
 
 interface PagedData<T> {
@@ -86,14 +91,14 @@ export function useTeamMembers() {
     teamSlug: string,
     body: { roleId: number; expiresIn: string | null; maxUses: number | null },
   ) {
-    return api<{ data: InviteTokenResponse }>(`/api/v1/teams/${teamSlug}/invite-tokens`, {
+    return api<{ data: InviteTokenIssuedResponse }>(`/api/v1/teams/${teamSlug}/invite-tokens`, {
       method: 'POST',
       body,
     })
   }
 
   async function getInviteTokens(teamSlug: string) {
-    return api<{ data: InviteTokenResponse[] }>(`/api/v1/teams/${teamSlug}/invite-tokens`)
+    return api<{ data: InviteTokenSummary[] }>(`/api/v1/teams/${teamSlug}/invite-tokens`)
   }
 
   async function deleteInviteToken(teamSlug: string, tokenId: number) {

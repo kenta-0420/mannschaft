@@ -224,7 +224,7 @@ function onSent() {
 // ============================================================
 
 /** 承諾/辞退 API 実行中の招待トークン（招待カードのボタンローディング用・多重送信防止）。 */
-const pendingInviteToken = ref<string | null>(null)
+const pendingInviteToken = ref<number | null>(null)
 
 /**
  * 招待カードの状態をローカルで差し替える（設計書 A-2）。
@@ -240,11 +240,11 @@ function updateInviteStatus(messageId: number, status: 'JOINED' | 'REVOKED') {
   }
 }
 
-async function onInviteJoin(messageId: number, token: string) {
+async function onInviteJoin(messageId: number, tokenId: number) {
   if (pendingInviteToken.value) return
-  pendingInviteToken.value = token
+  pendingInviteToken.value = tokenId
   try {
-    await joinInvite(token)
+    await joinInvite(tokenId)
     updateInviteStatus(messageId, 'JOINED')
     showSuccess(t('chat.invite.joinedSuccess'))
   } catch {
@@ -254,11 +254,11 @@ async function onInviteJoin(messageId: number, token: string) {
   }
 }
 
-async function onInviteDecline(messageId: number, token: string) {
+async function onInviteDecline(messageId: number, tokenId: number) {
   if (pendingInviteToken.value) return
-  pendingInviteToken.value = token
+  pendingInviteToken.value = tokenId
   try {
-    await declineInvite(token)
+    await declineInvite(tokenId)
     updateInviteStatus(messageId, 'REVOKED')
     showSuccess(t('chat.invite.declinedSuccess'))
   } catch {
