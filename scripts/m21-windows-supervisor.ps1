@@ -70,6 +70,11 @@ $formalEntryEvidence=$null
 $m21FormalAuxiliary=$null
 $m21Bridge=$null
 $chromiumFixture=$TestFixture -in @('chromium-normal','chromium-parent-close')
+$chromiumWitnessCase=$TestFixture -ceq 'chromium-parent-close'
+$chromiumWitness=$null
+$chromiumWitnessQualified=$false
+$chromiumWitnessProof=$null
+$chromiumWitnessRecovery=@{fallbackStopUsed=$false;activeAfterFallback=$null;closed=$false}
 $chromiumExe=[IO.Path]::GetFullPath('C:/Users/kenta/AppData/Local/ms-playwright/chromium-1223/chrome-win64/chrome.exe')
 $p6Observations=New-Object 'Collections.Generic.List[object]'
 function Remaining([int]$cap=[int]::MaxValue,[switch]$Recovery) {
@@ -118,6 +123,8 @@ public sealed class M21Job : SafeHandleZeroOrMinusOneIsInvalid {
  [StructLayout(LayoutKind.Sequential)] struct Accounting { public long User,Kernel,PeriodUser,PeriodKernel;public uint Faults,Total,Active,Terminated; }
  [DllImport("kernel32.dll", SetLastError=true)] static extern bool QueryInformationJobObject(M21Job j,int c,out Accounting a,uint n,IntPtr length);
  public uint Active() { Accounting a;Check(QueryInformationJobObject(this,1,out a,(uint)Marshal.SizeOf(typeof(Accounting)),IntPtr.Zero));return a.Active; }
+ [DllImport("kernel32.dll", SetLastError=true)] static extern bool QueryInformationJobObject(M21Job j,int c,out Extended a,uint n,IntPtr length);
+ public uint LimitFlags() { Extended a;Check(QueryInformationJobObject(this,9,out a,(uint)Marshal.SizeOf(typeof(Extended)),IntPtr.Zero));return a.Basic.Flags; }
  public void Stop() { Check(TerminateJobObject(this,71)); }
 }
 public sealed class M21Child : IDisposable {
@@ -417,6 +424,30 @@ function Write-Json([string]$name,[object]$value) {
  }catch{Remember-Failure $_;throw}
  finally{$script:ioOperation=$priorIo;$script:metadataFile=$priorFile}
 }
+function Assert-ChromiumWitnessAck([object]$ack,[object]$expected) {
+ $fields=@($ack.PSObject.Properties.Name)
+ if($fields.Count -ne 5){throw 'witness ACK field集合不一致'}
+ foreach($field in $fields){if(@('owner','nonce','pid','creation','ownedJobVerified') -cnotcontains $field){throw 'witness ACK未知field'}}
+ if($ack.owner -isnot [string] -or $ack.owner -cne $expected.owner -or $ack.nonce -isnot [string] -or $ack.nonce -cne $expected.nonce -or ($ack.pid -isnot [int] -and $ack.pid -isnot [long]) -or $ack.pid -ne $expected.pid -or $ack.creation -isnot [string] -or $ack.creation -cne $expected.creation -or $ack.ownedJobVerified -isnot [bool] -or !$ack.ownedJobVerified){throw 'witness ACK出生/所属不一致'}
+}
+function Wait-ChromiumWitnessAck {
+ # native型/子生成前。既存Remaining Wと原子的metadataだけを使う固定Parent gate。
+ Guard-Run;Require-Work
+ $current=[Diagnostics.Process]::GetCurrentProcess()
+ $expected=@{owner=$owner;nonce=$Nonce;pid=$current.Id;creation=$current.StartTime.ToUniversalTime().Ticks.ToString()}
+ Write-Json 'chromium-witness-hello.json' $expected
+ while(!(Test-Path -LiteralPath (Join-Path $run 'chromium-witness-ack.json')) -and (Remaining) -gt 0){Start-Sleep -Milliseconds ([Math]::Min(25,(Remaining)))}
+ Require-Work
+ $ack=Read-Json 'chromium-witness-ack.json'
+ Assert-ChromiumWitnessAck $ack ([pscustomobject]$expected)
+ Guard-Run;Require-Work
+}
+function Test-ChromiumWitnessQualification([object]$proof) {
+ foreach($key in @('parentOutsideInner','rootsInsideInner','observerOutsideWitness','parentInsideWitness','rootsInsideWitness','parentExited','rootsExited','parentStdoutEof','parentStderrEof')){if($proof[$key] -isnot [bool] -or !$proof[$key]){return $false}}
+ foreach($key in @('outerStopUsed','outerClosedBeforeProof','priorFailure','innerActiveZeroObserved','browserEofObserved','fullRendererActualObserved')){if($proof[$key] -isnot [bool] -or $proof[$key]){return $false}}
+ foreach($key in @('innerFlags','activeBefore','activeAfter')){if($proof[$key] -isnot [int] -and $proof[$key] -isnot [long] -and $proof[$key] -isnot [uint32]){return $false}}
+ return ($proof.innerFlags -eq 8192 -and $proof.activeBefore -gt 0 -and $proof.activeAfter -eq 0)
+}
 $bootstrapStage='native-bootstrap'
 try {
  if(($TestFixture -eq 'none' -and $Mode -eq 'ReadinessFixture') -or ($TestFixture -eq 'parent-before-certificate' -and ($Mode -notin @('Parent','Observe') -or $Scenario -ne 'kill-close')) -or ($TestFixture -in @('lock-release','lock-held','invalid-json') -and ($Mode -ne 'ReadinessFixture' -or $Scenario -ne 'normal'))){throw '固定fixture組合せ不一致'}
@@ -427,6 +458,7 @@ try {
  . (Join-Path $PSScriptRoot 'm21-windows-formal-adapter.ps1')
  Assert-M21ScenarioBudget $Scenario $Mode $TestFixture $WorkRemainingMs $TotalRemainingMs
  if($Scenario -ceq 'formal-m21' -and !$PSBoundParameters.ContainsKey('OwnerId')){throw '正式入口は現ownerの明示が必要'}
+ if($chromiumWitnessCase -and $Mode -ceq 'Parent'){Wait-ChromiumWitnessAck}
  # Supervisorは型compileも子を生み得るものとして、標準Process/JSONのgateだけを先行する。
  # この区間にはcustom型参照/外部command/Process.Startを置かない。
  if($Mode -eq 'Supervisor'){
@@ -833,9 +865,22 @@ try {
   Capture $child 'dummy' 500
  }elseif($Mode -eq 'Observe'){
   # observerはJob外に残る。親は直接保持Processだけを停止する。
+  if($chromiumWitnessCase){
+   Guard-Run;Require-Work
+   $chromiumWitness=[M21Job]::Create()
+   if([M21Job]::InJob([Diagnostics.Process]::GetCurrentProcess(),$chromiumWitness) -or $chromiumWitness.LimitFlags() -ne 8192){throw 'witness設定/Observer所属不一致'}
+  }
   $parent=New-Supervisor 'Parent' 'parent';Register-Child $parent 'parent'
   $known=New-Object 'Collections.Generic.List[object]'
   try{
+   if($chromiumWitnessCase){
+    $witnessHello=Wait-File 'chromium-witness-hello.json';Assert-P6Identity $witnessHello
+    $parentIdentity=Identity $parent.Process
+    if($witnessHello.pid -ne $parentIdentity.pid -or $witnessHello.creation -cne $parentIdentity.creation -or $parent.Process.WaitForExit(0)){throw 'witness Parent出生不一致'}
+    Require-Work
+    $chromiumWitness.Assign($parent.Process)
+    Write-Json 'chromium-witness-ack.json' @{owner=$owner;nonce=$Nonce;pid=$parentIdentity.pid;creation=$parentIdentity.creation;ownedJobVerified=$true}
+   }
    if($TestFixture -eq 'parent-before-certificate'){
     # Fixture自身の独立実exit証拠だけ。通常Capture/streams/Capturedへは触れない。
     if(!$parent.Process.WaitForExit((Remaining))){throw 'fixture Parent実終了未確認'}
@@ -852,18 +897,53 @@ try {
    if(($roles -join ',') -cne $expectedRoles){throw '親認定集合不一致'}
    foreach($member in $certificate.members){if($member.ownedJobVerified -ne $true){throw '親所有Job未認定'};$known.Add((Open-Known $member.identity $null))}
    foreach($p in $known){if($p.HasExited){throw 'RequiredAlive早期終了'}}
+   if($chromiumWitnessCase){
+    $inner=$certificate.chromiumInner
+    if($inner.flags -ne 8192 -or $inner.parentOutsideInner -isnot [bool] -or !$inner.parentOutsideInner -or $inner.rootsInsideInner -isnot [bool] -or !$inner.rootsInsideInner){throw 'inner Job実照会不一致'}
+    $containment=New-Object 'Collections.Generic.List[object]'
+    $parentInside=[M21Job]::InJob($parent.Process,$chromiumWitness)
+    if(!$parentInside -or [M21Job]::InJob([Diagnostics.Process]::GetCurrentProcess(),$chromiumWitness)){throw 'witness Parent/Observer所属不一致'}
+    $containment.Add(@{role='parent';identity=$parentIdentity;insideWitness=$parentInside})
+    for($i=0;$i -lt $known.Count;$i++){
+     $same=Identity $known[$i];$expected=$certificate.members[$i].identity
+     if($same.pid -ne $expected.pid -or $same.creation -cne $expected.creation -or ![M21Job]::InJob($known[$i],$chromiumWitness)){throw 'witness保持root出生/所属不一致'}
+     $containment.Add(@{role=$certificate.members[$i].role;identity=$same;insideWitness=$true})
+    }
+    $chromiumWitnessProof=@{owner=$owner;nonce=$Nonce;parent=$parentIdentity;containment=@($containment.ToArray());innerFlags=$inner.flags;parentOutsideInner=$inner.parentOutsideInner;rootsInsideInner=$inner.rootsInsideInner;observerOutsideWitness=$true;parentInsideWitness=$true;rootsInsideWitness=$true;activeBefore=$null;parentExited=$false;parentExitCode=$null;rootsExited=$false;rootActualExits=@();parentStdoutEof=$false;parentStderrEof=$false;activeAfter=$null;outerStopUsed=$false;outerClosedBeforeProof=$false;priorFailure=$false;innerActiveZeroObserved=$false;browserEofObserved=$false;fullRendererActualObserved=$false;witnessContainmentRemainingZero=$false;innerHandleTransferEvidence='unnamed-CreateJob-null-security-no-duplicate-or-inherit-source';passed=$false}
+   }
    if($chromiumFixture){
     $observed=Wait-File 'chromium-observed.json'
     if(@($observed.PSObject.Properties.Name).Count -ne 3 -or $observed.owner -cne $owner -or $observed.nonce -cne $Nonce -or $observed.observed -isnot [bool] -or !$observed.observed){throw 'root Sky観測marker不一致'}
     foreach($p in $known){if($p.WaitForExit(0)){throw 'Sky観測後RequiredAlive早期終了'}}
    }
    Assert-ObserverParentAlive
+   if($chromiumWitnessCase){
+    Require-Work
+    $chromiumWitnessProof.activeBefore=$chromiumWitness.Active()
+    if($chromiumWitnessProof.activeBefore -le 0){throw 'kill前witness残数不正'}
+   }
    $parent.Process.Kill()
    $exitEvidence=New-Object 'Collections.Generic.List[object]'
    for($i=0;$i -lt $known.Count;$i++){
     $p=$known[$i]
     if(!$p.WaitForExit((Remaining 5000 -Recovery))){throw 'kill-on-close子残留'}
     $exitEvidence.Add(@{role=$certificate.members[$i].role;identity=$certificate.members[$i].identity;exited=$true;exitCode=$p.ExitCode;evidence='observer-held-handle-exit'})
+   }
+   if($chromiumWitnessCase){
+    # 一次Captureの実exit/採用EOFを先に確定する。後続outer cleanupで成功へ合成しない。
+    Capture $parent 'direct' 1500
+    $captured=@($streams|Where-Object {$_.pid -eq $parent.RecordedPid -and $_.creation -ceq $parent.RecordedCreation})
+    if($captured.Count -ne 1){throw 'witness Parent Capture集合不一致'}
+    $chromiumWitnessProof.parentExited=$captured[0].exited;$chromiumWitnessProof.parentExitCode=$captured[0].exitCode
+    $chromiumWitnessProof.parentStdoutEof=$captured[0].stdoutEof;$chromiumWitnessProof.parentStderrEof=$captured[0].stderrEof
+    $chromiumWitnessProof.rootActualExits=@($exitEvidence.ToArray());$chromiumWitnessProof.rootsExited=($exitEvidence.Count -eq 4 -and @($exitEvidence|Where-Object {!$_.exited}).Count -eq 0)
+    $clock=[Diagnostics.Stopwatch]::StartNew();$zeroCap=Remaining 3000 -Recovery
+    do{$chromiumWitnessProof.activeAfter=$chromiumWitness.Active();if($chromiumWitnessProof.activeAfter -eq 0){break};if($clock.ElapsedMilliseconds -lt $zeroCap -and (Remaining -Recovery) -gt 0){Start-Sleep -Milliseconds ([Math]::Min(25,(Remaining -Recovery)))}}while($clock.ElapsedMilliseconds -lt $zeroCap -and (Remaining -Recovery) -gt 0)
+    $chromiumWitnessProof.priorFailure=($null -ne $primary -or !$recovered)
+    if(!(Test-ChromiumWitnessQualification $chromiumWitnessProof)){Set-Reason 'chromium-witness-not-qualified';throw 'witness限定資格不成立'}
+    $chromiumWitnessProof.witnessContainmentRemainingZero=$true;$chromiumWitnessProof.passed=$true
+    Write-Json 'chromium-witness.json' $chromiumWitnessProof
+    $chromiumWitnessQualified=$true
    }
    Write-Json 'observer.json' @{owner=$owner;nonce=$Nonce;parentKilled=$true;knownExited=$known.Count;exits=@($exitEvidence.ToArray())}
   }finally{foreach($p in $known){Attempt 'observer-handle-close' {$p.Dispose()}}}
@@ -908,7 +988,15 @@ try {
     $members.Add(@{role=$entry.role;identity=$entry.identity;ownedJobVerified=$true})
    }
    }
-   Write-Json 'certified-tree.json' @{owner=$owner;nonce=$Nonce;certifier=(Identity ([Diagnostics.Process]::GetCurrentProcess()));members=@($members.ToArray());metadataReadiness=@($metadataReadiness.ToArray())}
+   $certificateValue=@{owner=$owner;nonce=$Nonce;certifier=(Identity ([Diagnostics.Process]::GetCurrentProcess()));members=@($members.ToArray());metadataReadiness=@($metadataReadiness.ToArray())}
+   if($chromiumWitnessCase){
+    $rootsInside=[M21Job]::InJob($supervisor.Process,$job)
+    foreach($p in $certified){if(![M21Job]::InJob($p,$job)){$rootsInside=$false}}
+    $parentOutside=![M21Job]::InJob([Diagnostics.Process]::GetCurrentProcess(),$job);$flags=$job.LimitFlags()
+    if(!$rootsInside -or !$parentOutside -or $flags -ne 8192){throw 'Chromium inner所属/flags不一致'}
+    $certificateValue.chromiumInner=@{flags=$flags;parentOutsideInner=$parentOutside;rootsInsideInner=$rootsInside}
+   }
+   Write-Json 'certified-tree.json' $certificateValue
    Start-Sleep -Milliseconds (Remaining);Set-Reason 'work-budget-exhausted';throw 'observer待機期限超過'
   }
   if($chromiumFixture -and $Scenario -eq 'normal'){$null=Certify-Chromium}
@@ -953,9 +1041,26 @@ try {
  Fail 'execution' $_.Exception $_
 }
 finally {
+ if($null -ne $chromiumWitness){
+  # 成功はStop/close前の証拠だけ。故障時のouter回収は成功判定へ戻さない。
+  if(!$chromiumWitnessQualified -or $null -ne $primary){
+   $script:recovered=$false
+   if($null -eq $primary){Set-Reason 'chromium-witness-unqualified';Fail 'chromium-witness' ([InvalidOperationException]::new())}
+   Attempt 'chromium-witness-fallback-stop' {try{$chromiumWitnessRecovery.fallbackStopUsed=$true;$chromiumWitness.Stop()}catch{$script:recovered=$false;throw}}
+   Attempt 'chromium-witness-fallback-empty' {
+    try{
+     $clock=[Diagnostics.Stopwatch]::StartNew();$cleanupLimit=Remaining 3000 -Recovery
+     do{$chromiumWitnessRecovery.activeAfterFallback=$chromiumWitness.Active();if($chromiumWitnessRecovery.activeAfterFallback -eq 0){break};if($clock.ElapsedMilliseconds -lt $cleanupLimit -and (Remaining -Recovery) -gt 0){Start-Sleep -Milliseconds ([Math]::Min(25,(Remaining -Recovery)))}}while($clock.ElapsedMilliseconds -lt $cleanupLimit -and (Remaining -Recovery) -gt 0)
+     if($chromiumWitnessRecovery.activeAfterFallback -ne 0){throw 'witness fallback残留'}
+    }catch{$script:recovered=$false;throw}
+   }
+  }
+  Attempt 'chromium-witness-close' {try{$chromiumWitness.Dispose();$chromiumWitnessRecovery.closed=$true}catch{$script:recovered=$false;throw}}
+ }
  if($Mode -ne 'Supervisor'){
   Attempt 'job-stop' {if($null -ne $job){$job.Stop();if($null -ne $p6Certification){$p6Certification.jobStopped=$true}}}
   foreach($child in $held){
+   if($chromiumWitnessCase -and $Mode -ceq 'Observe' -and $child.Captured){continue}
    if($Scenario -ceq 'formal-m21' -and $null -ne $m21Bridge -and [object]::ReferenceEquals($child,$m21Bridge)){continue}
    Attempt 'direct-stop' {Parent-Event 'kill-before' $child;if($child.Started -and !$child.Process.HasExited){Parent-Event 'kill-issued' $child;$child.Process.Kill();Parent-Event 'kill-returned' $child}else{Parent-Event 'kill-skipped' $child}}
    Attempt 'exit-and-streams' {Capture $child 'direct' 1500}
@@ -1065,6 +1170,7 @@ finally {
   if(!$p6Certification.grandchildExited){$retained.Add(@{identity=$p6Certification.grandchild;reason='P6 certified grandchild exit unconfirmed'})}
  }
  $result=[ordered]@{owner=$owner;nonce=$Nonce;process=$processIdentity;mode=$Mode;scenario=$Scenario;passed=($null -eq $primary);primary=$primary;secondary=@($secondary.ToArray());grandchildEvidence=$grandchildEvidence;p6Observations=@($p6Observations.ToArray());p6Certification=$p6Certification;fixtureEvidence=$fixtureEvidence;metadataReadiness=@($metadataReadiness.ToArray());parentExitEvidence=$parentExitEvidence;formalContractEvidence=$formalContractEvidence;formalEntryEvidence=$formalEntryEvidence;lateObservation=$lateObservation;parentEvents=@($parentEvents.ToArray());attempts=@($attempts.ToArray());streams=@($streams.ToArray());lastHandles=@($lastHandles.ToArray());knownExitEvidence=$knownExitEvidence;startupRecovery=@($startupRecovery.ToArray());resourceRecovery=@{jobEmpty=$jobEmpty;confirmed=$recovered;retained=@($retained.ToArray());lateExitProofs=@($lateExitProofs.ToArray())};recovered=$recovered;parentKilled=($null -ne $observer);knownExited=0}
+ if($chromiumWitnessCase -and $Mode -ceq 'Observe'){$result.chromiumWitness=@{qualified=($chromiumWitnessQualified -and $null -eq $primary -and $recovered);proof=$chromiumWitnessProof;recovery=$chromiumWitnessRecovery}}
  if($null -ne $observer){$result.knownExited=$observer.knownExited}
  try{
   $name='result.json';if($Mode -eq 'Supervisor'){$name='supervisor-result.json'}elseif($Mode -eq 'Observe'){$name='observe-result.json'}

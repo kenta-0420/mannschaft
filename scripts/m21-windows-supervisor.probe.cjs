@@ -357,6 +357,89 @@ console.log(JSON.stringify({owner:owner.owner,nonce:owner.nonce,pid:process.pid,
     results, notRun: fixtures.filter(f => !results.some(r => r.fixture === f)), cleanupFailure, retained: relay || !passed ? base : null }));
   if (!passed) process.exitCode = 1;
 }
+async function chromiumWitnessContract() {
+  // 純粋schema/ASTと既存native literalのコンパイルだけ。Job/Chrome/実Appは起動しない。
+  assert.equal(process.argv.length, 3);
+  const nonce = crypto.randomBytes(16).toString('hex');
+  const directory = path.join(__dirname, '..', '.claude', 'campaigns', `chromium-witness-contract-${nonce}`);
+  fs.mkdirSync(directory, { recursive: true });
+  atomic(path.join(directory, 'owner.json'), { owner: OWNER, nonce, purpose: 'Chromium witness純粋試練' });
+  const script = path.join(__dirname, 'm21-windows-supervisor.ps1');
+  const sourceFiles = [script, __filename, path.join(__dirname, 'm21-windows-formal-adapter.ps1'), path.join(__dirname, 'm21-windows-supervisor.readiness-fixture.ps1')];
+  const snapshot = () => sourceFiles.map(file => ({ file: path.basename(file), sha256: crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'), mtimeMs: fs.statSync(file).mtimeMs }));
+  const before = snapshot();
+  const fixture = path.join(directory, 'pure.ps1');
+  fs.writeFileSync(fixture, '\uFEFF' + String.raw`param([string]$Source,[string]$Adapter,[string]$Probe)
+$ErrorActionPreference='Stop';Set-StrictMode -Version Latest
+$tokens=$null;$errors=$null;$ast=[Management.Automation.Language.Parser]::ParseFile($Source,[ref]$tokens,[ref]$errors)
+if($errors.Count){throw 'parser'}
+foreach($name in @('Assert-ChromiumWitnessAck','Test-ChromiumWitnessQualification')){
+ $functions=@($ast.FindAll({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -ceq $name},$true))
+ if($functions.Count -ne 1){throw ('missing-pure-'+$name)}
+ . ([ScriptBlock]::Create($functions[0].Extent.Text))
+}
+$owner='1d767b20-825c-4edc-b397-8d4367036462';$Nonce='0123456789abcdef0123456789abcdef'
+$identity=@{owner=$owner;nonce=$Nonce;pid=71;creation='123456789'}
+$ack=@{owner=$owner;nonce=$Nonce;pid=71;creation='123456789';ownedJobVerified=$true}
+Assert-ChromiumWitnessAck ([pscustomobject]$ack) ([pscustomobject]$identity)
+foreach($case in @(@{key='owner';value='foreign'},@{key='nonce';value=('f'*32)},@{key='pid';value=72},@{key='creation';value='123456788'},@{key='ownedJobVerified';value=$false},@{key='ownedJobVerified';value='true'},@{key='extra';value=1})){
+ $bad=$ack.Clone();$bad[$case.key]=$case.value;$rejected=$false
+ try{Assert-ChromiumWitnessAck ([pscustomobject]$bad) ([pscustomobject]$identity)}catch{$rejected=$true}
+ if(!$rejected){throw ('ack-admitted-'+$case.key)}
+}
+$proof=@{innerFlags=8192;parentOutsideInner=$true;rootsInsideInner=$true;observerOutsideWitness=$true;parentInsideWitness=$true;rootsInsideWitness=$true;activeBefore=5;parentExited=$true;rootsExited=$true;parentStdoutEof=$true;parentStderrEof=$true;activeAfter=0;outerStopUsed=$false;outerClosedBeforeProof=$false;priorFailure=$false;innerActiveZeroObserved=$false;browserEofObserved=$false;fullRendererActualObserved=$false}
+if(!(Test-ChromiumWitnessQualification $proof)){throw 'complete-rejected'}
+foreach($case in @(@{key='innerFlags';value=0},@{key='innerFlags';value=10240},@{key='parentOutsideInner';value=$false},@{key='rootsInsideInner';value=$false},@{key='observerOutsideWitness';value=$false},@{key='parentInsideWitness';value=$false},@{key='rootsInsideWitness';value=$false},@{key='activeBefore';value=0},@{key='parentExited';value=$false},@{key='rootsExited';value=$false},@{key='parentStdoutEof';value=$false},@{key='parentStderrEof';value=$null},@{key='activeAfter';value=1},@{key='outerStopUsed';value=$true},@{key='outerClosedBeforeProof';value=$true},@{key='priorFailure';value=$true},@{key='innerActiveZeroObserved';value=$true},@{key='browserEofObserved';value=$true},@{key='fullRendererActualObserved';value=$true})){
+ $bad=$proof.Clone();$bad[$case.key]=$case.value;if(Test-ChromiumWitnessQualification $bad){throw ('proof-admitted-'+$case.key)}
+}
+# 既存純粋関数と唯一の14case markerだけを抽出。adapter全体を実行しない。
+$adapterAst=[Management.Automation.Language.Parser]::ParseFile($Adapter,[ref]$null,[ref]$null)
+$pendingFunction=@($adapterAst.FindAll({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -ceq 'Test-M21PendingExitRecovery'},$true))
+if($pendingFunction.Count -ne 1){throw 'existing-pending-function-count'}
+. ([ScriptBlock]::Create($pendingFunction[0].Extent.Text))
+$SupervisorPath=$Source
+$probeText=[IO.File]::ReadAllText($Probe)
+$markers=[regex]::Matches($probeText,'(?s)# M21_PENDING_EXIT_PURE_BEGIN\r?\n(.*?)# M21_PENDING_EXIT_PURE_END')
+if($markers.Count -ne 1){throw 'existing-pure-marker-count'}
+. ([ScriptBlock]::Create($markers[0].Groups[1].Value))
+$native=@($ast.FindAll({param($n) $n -is [Management.Automation.Language.StringConstantExpressionAst] -and $n.Value.StartsWith('using System;') -and $n.Value.Contains('public sealed class M21Child')},$true))
+if($native.Count -ne 1){throw 'native-literal'}
+Add-Type -TypeDefinition $native[0].Value
+if($null -eq [M21Job].GetMethod('LimitFlags')){throw 'native-flags-query-missing'}
+$parentGate=@($ast.FindAll({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -ceq 'Wait-ChromiumWitnessAck'},$true))
+if($parentGate.Count -ne 1 -or $parentGate[0].Extent.Text -match 'M21Job|M21Child|Process\]::Start|Add-Type|New-Supervisor'){throw 'pre-ack-spawn-native'}
+$calls=@($ast.FindAll({param($n) $n -is [Management.Automation.Language.CommandAst] -and $n.GetCommandName() -ceq 'Wait-ChromiumWitnessAck'},$true))
+$compile=@($ast.FindAll({param($n) $n -is [Management.Automation.Language.CommandAst] -and $n.Extent.Text -ceq 'Add-Type -TypeDefinition $nativeCode'},$true))
+$innerCreate=@($ast.FindAll({param($n) $n -is [Management.Automation.Language.AssignmentStatementAst] -and $n.Left.Extent.Text -ceq '$job' -and $n.Right.Extent.Text -ceq '[M21Job]::Create()'},$true))
+$innerChild=@($ast.FindAll({param($n) $n -is [Management.Automation.Language.CommandAst] -and $n.Extent.Text -ceq "New-Supervisor 'Supervisor' 'supervisor'"},$true))
+if($calls.Count -ne 1 -or $compile.Count -ne 1 -or $innerCreate.Count -ne 1 -or $innerChild.Count -ne 1){throw 'parent-gate-target-count'}
+foreach($stage in @($compile[0],$innerCreate[0],$innerChild[0])){if($calls[0].Extent.StartOffset -ge $stage.Extent.StartOffset){throw 'parent-gate-order'}}
+[Console]::Out.WriteLine('M21_CHROMIUM_WITNESS_PURE_OK')
+`);
+  const totalDeadline = performance.now() + LIMIT.total, workDeadline = totalDeadline - LIMIT.reserve;
+  const p = spawn('C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe', ['-NoProfile', '-NonInteractive', '-File', fixture, script, sourceFiles[2], __filename], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  let exited = false, code = null, launchError = null;
+  p.on('exit', value => { exited = true; code = value; }); p.on('error', error => { launchError = error.name; });
+  const channels = [observeChannel('stdout', p.stdout, fs.createWriteStream(path.join(directory, 'stdout.txt'), { flags: 'wx' })), observeChannel('stderr', p.stderr, fs.createWriteStream(path.join(directory, 'stderr.txt'), { flags: 'wx' }))];
+  let failure = null;
+  try {
+    await until(() => exited || launchError, Infinity, workDeadline);
+    assert.equal(launchError, null);
+    for (const channel of channels) assert.deepEqual(await collectChannel(channel, totalDeadline), []);
+    assert.equal(code, 0);
+    assert.ok(fs.readFileSync(path.join(directory, 'stdout.txt'), 'utf8').includes('M21_CHROMIUM_WITNESS_PURE_OK'));
+    assert.deepEqual(snapshot(), before);
+  } catch (error) {
+    failure = error.message;
+    if (!exited) p.kill();
+    try { await until(() => exited || launchError, LIMIT.recoveryExit, totalDeadline); } catch { /* exact未確認を保存 */ }
+    for (const channel of channels) await recoverChannel(channel, totalDeadline);
+    if (!exited) p.unref();
+  }
+  const packet = { owner: OWNER, nonce, scope: 'chromium-witness-pure-contract', passed: failure === null, failure, before, after: snapshot(), launcherPid: p.pid, launcherExited: exited, launcherExitCode: code, channels: channels.map(c => c.state), browserStarts: 0, nativeJobCreates: 0, runtimeQualified: false, retained: directory };
+  atomic(path.join(directory, 'packet.json'), packet); console.log(JSON.stringify(packet));
+  if (failure !== null) process.exitCode = 1;
+}
 async function chromiumFixtureSuite() {
   assert.equal(process.platform, 'win32');
   assert.equal(process.argv.length, 3);
@@ -366,7 +449,9 @@ async function chromiumFixtureSuite() {
   const totalDeadline = performance.now() + LIMIT.total;
   const workDeadline = totalDeadline - LIMIT.reserve;
   const script = path.join(__dirname, 'm21-windows-supervisor.ps1');
-  const inputSHA256 = Object.fromEntries([script, __filename].map(file => [path.basename(file), crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')]));
+  const sourceFiles = [script, __filename, path.join(__dirname, 'm21-windows-formal-adapter.ps1'), path.join(__dirname, 'm21-windows-supervisor.readiness-fixture.ps1')];
+  const sourceSHA256 = () => Object.fromEntries(sourceFiles.map(file => [path.basename(file), crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')]));
+  const inputSHA256 = sourceSHA256();
   const chrome = 'C:/Users/kenta/AppData/Local/ms-playwright/chromium-1223/chrome-win64/chrome.exe';
   assert.equal(crypto.createHash('sha256').update(fs.readFileSync(chrome)).digest('hex'), '290fa7018fda22c52ada5eddb0113baf3ebc41fd0fde6085eddb19793606c635');
   assert.equal(crypto.createHash('sha256').update(fs.readFileSync(process.execPath)).digest('hex'), '0d0f5e39f9f3d9587bc19f73eab3c2c9c4903fd02d6dbf9c853dd81b3d95fad4');
@@ -376,7 +461,7 @@ async function chromiumFixtureSuite() {
   const results = [];
   for (const fixture of ['chromium-normal', 'chromium-parent-close']) {
     requireWork(workDeadline);
-    for (const file of [script, __filename]) assert.equal(crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'), inputSHA256[path.basename(file)], 'source変更中の試験禁止');
+    assert.deepEqual(sourceSHA256(), inputSHA256, 'source変更中の試験禁止');
     const run = path.join(base, fixture); fs.mkdirSync(run);
     const nonce = crypto.randomBytes(16).toString('hex');
     atomic(path.join(run, 'owner.json'), { owner: OWNER, nonce });
@@ -405,6 +490,20 @@ async function chromiumFixtureSuite() {
       if (abnormal) {
         assert.equal(receipt.parentKilled, true); assert.equal(receipt.knownExited, 4);
         assert.equal(receipt.knownExitEvidence.length, 4); assert.ok(receipt.knownExitEvidence.every(e => e.exited));
+        assert.equal(receipt.resourceRecovery.jobEmpty, null, 'inner Job残数は未観測');
+        const witness = receipt.chromiumWitness;
+        assert.equal(witness.qualified, true); assert.equal(witness.recovery.fallbackStopUsed, false);
+        const proof = read(path.join(run, 'chromium-witness.json'));
+        assert.deepEqual(proof, witness.proof); assert.equal(proof.owner, OWNER); assert.equal(proof.nonce, nonce);
+        assert.equal(proof.passed, true); assert.equal(proof.witnessContainmentRemainingZero, true);
+        assert.equal(proof.innerFlags, 8192); assert.equal(proof.parentOutsideInner, true); assert.equal(proof.rootsInsideInner, true);
+        assert.equal(proof.observerOutsideWitness, true); assert.equal(proof.parentInsideWitness, true); assert.equal(proof.rootsInsideWitness, true);
+        assert.deepEqual(proof.containment.map(e => e.role), ['parent', 'supervisor', 'system', 'admin-de', 'member']);
+        assert.ok(proof.containment.every(e => e.insideWitness === true));
+        assert.ok(proof.activeBefore > 0); assert.equal(proof.activeAfter, 0);
+        assert.equal(proof.parentExited, true); assert.equal(proof.parentStdoutEof, true); assert.equal(proof.parentStderrEof, true);
+        assert.equal(proof.rootsExited, true); assert.deepEqual(proof.rootActualExits, receipt.knownExitEvidence);
+        for (const key of ['outerStopUsed', 'outerClosedBeforeProof', 'priorFailure', 'innerActiveZeroObserved', 'browserEofObserved', 'fullRendererActualObserved']) assert.equal(proof[key], false);
       } else {
         assert.equal(receipt.resourceRecovery.jobEmpty, true);
         const browsers = receipt.streams.filter(s => s.role === 'chromium-normal-close');
@@ -421,7 +520,10 @@ async function chromiumFixtureSuite() {
     if (failure !== null) break;
   }
   const passed = results.length === 2 && results.every(r => r.passed);
-  console.log(JSON.stringify({ kind: 'fixed-chromium-fixture', passed, fullAbnormalTreeRecoveryProven: false, abnormalBrowserEofObserved: false, abnormalJobActiveZeroObserved: false, owner: OWNER, inputCommit, inputSHA256, totalMs: LIMIT.total, reserveMs: LIMIT.reserve, results, retained: base,
+  const sourceSHA256After = sourceSHA256();
+  assert.deepEqual(sourceSHA256After, inputSHA256, '試験後source変更');
+  const abnormalWitnessContainmentRemainingZero = passed && results[1].receipt.chromiumWitness.qualified === true && results[1].receipt.chromiumWitness.proof.witnessContainmentRemainingZero === true;
+  console.log(JSON.stringify({ kind: 'fixed-chromium-fixture', passed, abnormalWitnessContainmentRemainingZero, fullAbnormalTreeRecoveryProven: false, abnormalBrowserEofObserved: false, abnormalJobActiveZeroObserved: false, owner: OWNER, inputCommit, inputSHA256, sourceSHA256After, totalMs: LIMIT.total, reserveMs: LIMIT.reserve, results, retained: base,
     retentionReason: 'rootによる証拠確定とexact所有確認後のprofile撤去待ち' }));
   if (!passed) process.exitCode = 1;
 }
@@ -860,6 +962,8 @@ Entry-Phase 'complete'
     await readinessFixtureSuite();
   } else if (process.argv[2] === '--formal-contract-fixture') {
     await readinessFixtureSuite('formal-contract');
+  } else if (process.argv[2] === '--chromium-witness-contract') {
+    await chromiumWitnessContract();
   } else if (process.argv[2] === '--chromium-fixture') {
     await chromiumFixtureSuite();
   } else {
