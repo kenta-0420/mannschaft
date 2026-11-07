@@ -149,19 +149,22 @@ describe('CMP-260910-1609 AC7: 希望受付の案内と入力導線', () => {
     target.period.requestDeadline = deadline
     const wrapper = await mountList(true, [target])
     const text = wrapper.text()
+    const closedMessage = wrapper.vm.$t('shift.entry.closed')
+    // importした辞書がmessage ASTでも、実composerは可読の正本文言を返す必要がある。
+    expect(closedMessage).toBe('希望の受付は終了しました')
     const renderedContext = JSON.stringify({ locale: 'ja', text })
     const bulkInput = wrapper.findAll('button').filter(button => button.find('.pi-list-check').exists())
 
     if (status === 'DRAFT') {
       // 未存在の翻訳キーを型参照せず、利用者へ見える未開始案内を検査する。
-      expect(text, renderedContext).not.toContain(jaShift.shift.entry.closed)
+      expect(text, renderedContext).not.toContain(closedMessage)
       expect(text, renderedContext).toMatch(/受付.*(?:開始前|まだ開始|未開始)/)
     }
     else if (accepting) {
-      expect(text, renderedContext).not.toContain(jaShift.shift.entry.closed)
+      expect(text, renderedContext).not.toContain(closedMessage)
     }
     else {
-      expect(text, renderedContext).toContain(jaShift.shift.entry.closed)
+      expect(text, renderedContext).toContain(closedMessage)
     }
     expect(bulkInput).toHaveLength(accepting ? 1 : 0)
 
