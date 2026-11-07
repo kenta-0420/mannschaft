@@ -156,7 +156,8 @@
       "noDm": "No direct messages",
       "roomSection": "Zimmer (Rooms)",
       "noRoom": "No rooms yet",
-      "loadFailed": "Failed to load rooms"
+      "loadFailed": "Failed to load rooms",
+      "detailLoadFailed": "Failed to load the channel details"
     },
     "create": {
       "typeDm": "Kabine (DM)",

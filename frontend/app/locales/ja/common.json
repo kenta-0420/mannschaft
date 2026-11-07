@@ -156,7 +156,8 @@
       "noDm": "DMはありません",
       "roomSection": "Zimmer(部屋)",
       "noRoom": "Zimmer(部屋)がありません",
-      "loadFailed": "Zimmer一覧の取得に失敗しました"
+      "loadFailed": "Zimmer一覧の取得に失敗しました",
+      "detailLoadFailed": "チャンネル情報の取得に失敗しました"
     },
     "create": {
       "typeDm": "Kabine(DM)",

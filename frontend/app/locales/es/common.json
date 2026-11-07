@@ -156,7 +156,8 @@
       "noDm": "No hay mensajes directos",
       "roomSection": "Zimmer (salas)",
       "noRoom": "No hay salas",
-      "loadFailed": "No se pudo cargar la lista de salas"
+      "loadFailed": "No se pudo cargar la lista de salas",
+      "detailLoadFailed": "No se pudo cargar la información del canal"
     },
     "create": {
       "typeDm": "Kabine (MD)",

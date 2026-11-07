@@ -156,7 +156,8 @@
       "noDm": "暂无私信",
       "roomSection": "Zimmer（房间）",
       "noRoom": "暂无房间",
-      "loadFailed": "获取房间列表失败"
+      "loadFailed": "获取房间列表失败",
+      "detailLoadFailed": "获取频道信息失败"
     },
     "create": {
       "typeDm": "Kabine（私信）",

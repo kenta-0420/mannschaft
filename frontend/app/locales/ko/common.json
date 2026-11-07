@@ -156,7 +156,8 @@
       "noDm": "DM이 없습니다",
       "roomSection": "Zimmer(방)",
       "noRoom": "방이 없습니다",
-      "loadFailed": "방 목록을 불러오지 못했습니다"
+      "loadFailed": "방 목록을 불러오지 못했습니다",
+      "detailLoadFailed": "채널 정보를 불러오지 못했습니다"
     },
     "create": {
       "typeDm": "Kabine(DM)",

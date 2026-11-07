@@ -156,7 +156,8 @@
       "noDm": "Keine Direktnachrichten",
       "roomSection": "Zimmer (Räume)",
       "noRoom": "Keine Räume vorhanden",
-      "loadFailed": "Raumliste konnte nicht geladen werden"
+      "loadFailed": "Raumliste konnte nicht geladen werden",
+      "detailLoadFailed": "Kanaldetails konnten nicht geladen werden"
     },
     "create": {
       "typeDm": "Kabine (DM)",
