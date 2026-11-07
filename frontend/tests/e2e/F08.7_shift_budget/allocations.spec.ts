@@ -24,9 +24,29 @@ interface AllocationWrite {
  * 権限 API まで明示し、編集導線の欠落を金額入力の red と取り違えない。
  */
 test.describe('CMP-260910-1609 AC3: 配分額の入力と保存', () => {
+  const browserLogs = new WeakMap<Page, string[]>()
   test.beforeEach(async ({ page }) => {
-    await setupAdminAuth(page)
-    await setupOrganizationScope(page, ORG_ID)
+    const logs: string[] = []
+    browserLogs.set(page, logs)
+    page.on('console', message => logs.push(`${message.type()}: ${message.text()}`))
+    page.on('pageerror', error => logs.push(`pageerror: ${error.message}`))
+    // 現契約は currentUser で復元し、tokenExpiresAt で先回り更新を判定する。
+    // トークンをlocalStorageへ置く旧helperは使わず、scopeを含め1本で初期化する。
+    await page.addInitScript((organizationId) => {
+      localStorage.setItem('currentUser', JSON.stringify({
+        id: 1,
+        email: 'budget-input@example.invalid',
+        fullName: '配分額入力試験',
+        profileImageUrl: null,
+        systemRole: 'USER',
+        timezone: 'Asia/Tokyo',
+        locale: 'ja',
+      }))
+      localStorage.setItem('tokenExpiresAt', String(Date.now() + 60 * 60 * 1000))
+      localStorage.setItem('currentScope', JSON.stringify({
+        type: 'organization', id: organizationId, name: '入力試験組織',
+      }))
+    }, ORG_ID)
     await mockCatchAllApis(page)
     await page.route('**/api/v1/me/organizations', route => route.fulfill({
       json: { data: [{ id: ORG_ID, slug: 'budget-input-org', name: '入力試験組織' }] },
@@ -35,6 +55,15 @@ test.describe('CMP-260910-1609 AC3: 配分額の入力と保存', () => {
       json: { data: { roleName: 'ADMIN', permissions: ['BUDGET_VIEW', 'BUDGET_ADMIN'], scopeAdmin: true } },
     }))
     await mockAllocationsList(page, [buildAllocation({ version: 3 })])
+  })
+
+  test.afterEach(async ({ page }, testInfo) => {
+    if (testInfo.status !== testInfo.expectedStatus) {
+      await testInfo.attach('browser-console', {
+        body: Buffer.from(JSON.stringify(browserLogs.get(page) ?? [])),
+        contentType: 'application/json',
+      })
+    }
   })
 
   async function openAmountForm(page: Page, mode: AllocationMode) {
@@ -78,7 +107,7 @@ test.describe('CMP-260910-1609 AC3: 配分額の入力と保存', () => {
 
   for (const mode of ['create', 'edit'] as const) {
     for (const entry of ['keyboard', 'paste', 'empty'] as const) {
-      test(`AC3 ${mode}/${entry}: 不正な金額を明示して保存要求を送らない`, async ({ page }) => {
+      test(`AC3 ${mode}/${entry}: 不正な金額を明示して保存要求を送らない`, async ({ page }, testInfo) => {
         const { writes, dialog, amount } = await openAmountForm(page, mode)
         if (entry === 'keyboard') {
           // fill('-5000') では keypress の負号黙殺を通らないため、必ず一文字ずつ打つ。
@@ -97,6 +126,9 @@ test.describe('CMP-260910-1609 AC3: 配分額の入力と保存', () => {
         // soft にして、修正前も実際の送信内容を後続のアサーションへ残す。
         await expect.soft(dialog.getByRole('alert')).toBeVisible()
         await expect.soft(dialog).toBeVisible()
+        await testInfo.attach('allocation-writes', {
+          body: Buffer.from(JSON.stringify(writes)), contentType: 'application/json',
+        })
         expect(writes, '負値や空値を正値/0/nullへ無言変換して保存してはならない').toEqual([])
       })
     }
