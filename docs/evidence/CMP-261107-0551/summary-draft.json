@@ -47,7 +47,6 @@
     "oldEvidence": "historical only after main followup"
   },
   "remaining": [
-    "latest-head CI",
     "latest-head production build/scanner",
     "PR normal merge",
     "completion ledger/evidence validation"
@@ -75,5 +74,16 @@
     "protectedScopeBlobsMatched": 4309,
     "fullFrontendBackendTreesEqual": false,
     "newHeadCiAndBuildSuccessNotInferred": true
+  },
+  "currentHeadCi": {
+    "headSha": "9e8e9ba15cc7040d88d88067646be2d6a51ec862",
+    "status": "SUCCESS",
+    "pullRequestWorkflowCount": 12,
+    "checksSuccess": 27,
+    "checksSkipped": 2,
+    "checksPending": 0,
+    "checksFailure": 0,
+    "evidence": "docs/evidence/CMP-261107-0551/ci-current-head.json",
+    "pullRequestTargetGateSeparate": true
   }
 }

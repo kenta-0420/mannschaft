@@ -183,6 +183,16 @@
       "source": "outputs/ranch-approved64-core-ui-root-review-20261108.md",
       "sha256": "ec5d88d3bb119d5e47a9714cfab758e327ea92455d961900376cb92b784635bc",
       "bytes": 6058
+    },
+    {
+      "source": "outputs/ranch-approved64-main-followup-20261108/ci-final-H.json",
+      "sha256": "ae8e089c5e99f0a6fca017717cc101995e1b8b7f522389903e440d15a53f8bf0",
+      "bytes": 2345
+    },
+    {
+      "source": "outputs/ranch-approved64-main-followup-20261108/pr-checks-final-H.json",
+      "sha256": "2f62451d995e7483ed7a03eca6fb5601fcb6fdc29e0b71965a1b3e5f4d2352aa",
+      "bytes": 9264
     }
   ]
 }

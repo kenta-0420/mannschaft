@@ -31,6 +31,6 @@
     "skipped": 0,
     "exit": 0
   },
-  "limits": "Targeted historical backend test evidence; archUnit excluded, freeze guard retained. At original capture full CI/actual UI was pending. Current actual UI/resident/cleanup adoption is recorded separately; latest-head CI/build remains pending.",
+  "limits": "Targeted historical backend test evidence; archUnit excluded, freeze guard retained. At original capture full CI/actual UI was pending. Current actual UI/resident/cleanup adoption is recorded separately; latest-head CI is now successful (ci-current-head.json); production build/scanner and merge remain pending.",
   "classification": "redは新feature受入テストの先行失敗。regression 19件は既存機能回帰確認で、既存bugfixのred/greenではない。"
 }

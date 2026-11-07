@@ -5,8 +5,8 @@
   "files": [
     {
       "path": "docs/evidence/CMP-261107-0551/ac-map.md",
-      "sha256": "a7d97df42df268f6e28109e37b06aa3b4860f57c0e57363c7507a2541870545c",
-      "bytes": 5838
+      "sha256": "2a84eb5653a768062e8b838ce0f24fcc45a5fd367d2bd97431303dce491d96bd",
+      "bytes": 6023
     },
     {
       "path": "docs/evidence/CMP-261107-0551/b0-overlay-checks.json",
@@ -15,8 +15,8 @@
     },
     {
       "path": "docs/evidence/CMP-261107-0551/backend-summary.json",
-      "sha256": "69afca4279efa8a92cc7e234c19a4b3282f9623410317b81165943e31afa995b",
-      "bytes": 1199
+      "sha256": "fe744b1b2955016c4deafc64fdb1b2d895167c6e43448a875cecec970d5c50d7",
+      "bytes": 1269
     },
     {
       "path": "docs/evidence/CMP-261107-0551/board-new-four.png",
@@ -69,14 +69,19 @@
       "bytes": 3525
     },
     {
+      "path": "docs/evidence/CMP-261107-0551/ci-current-head.json",
+      "sha256": "83b98526bac28cf2dce969d724aea28add1f7f3105ce0cf8a4eb62d76a842bd7",
+      "bytes": 14922
+    },
+    {
       "path": "docs/evidence/CMP-261107-0551/coverage.jsonl",
       "sha256": "b9f424ff57647ae4a0998446e794e2b26e5991f38f1e7ffcab5251683deadd0b",
       "bytes": 1694464
     },
     {
       "path": "docs/evidence/CMP-261107-0551/README.md",
-      "sha256": "00c5252fafc85aaa2fe08f4800112b8adf3d350684de1a0ad91d9b42f945b49e",
-      "bytes": 6334
+      "sha256": "2e08b59972a23d01d1fb5ae153e183ff78f455e5ad43ac1e0680e00c7eeebdac",
+      "bytes": 6888
     },
     {
       "path": "docs/evidence/CMP-261107-0551/renderer-summary.json",
@@ -120,8 +125,8 @@
     },
     {
       "path": "docs/evidence/CMP-261107-0551/root-test-reference-notes.md",
-      "sha256": "9d53483fcae01f2cb66f1d8c98afdc5d4c71b2647197b5d86d49f349cc1fa4dc",
-      "bytes": 1476
+      "sha256": "7594ffb7bf8ab108ee5215499f2c8b5a2b66d389f8f1ca8a4b04bab92cee0989",
+      "bytes": 1544
     },
     {
       "path": "docs/evidence/CMP-261107-0551/root-visual-review.json",
@@ -135,13 +140,13 @@
     },
     {
       "path": "docs/evidence/CMP-261107-0551/source-manifest.json",
-      "sha256": "3a91b585d6bf22b6e15903aa238553a7e4c39b64c0cd0ff3a53abb31727e3d4d",
-      "bytes": 8750
+      "sha256": "8aa45f10779c116b4e9db9e9d7f88d389447a61927fec35ac1f7282b00e631a7",
+      "bytes": 9157
     },
     {
       "path": "docs/evidence/CMP-261107-0551/summary-draft.json",
-      "sha256": "3ef8ab9a9c7e19b737b294d47e5cde62d7cc2fa63b9ba8700b335d6325008f01",
-      "bytes": 3427
+      "sha256": "a1338f1ac315994c98faef80fa2846224b705f0bf869afc91fb8b61c85d35722",
+      "bytes": 3760
     },
     {
       "path": "docs/evidence/CMP-261107-0551/ui-status-extract.json",
