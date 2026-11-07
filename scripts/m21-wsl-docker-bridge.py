@@ -545,7 +545,7 @@ class DockerBoundary:
         return {'command_completed':True,'absent':False}
 
 def parse_valkey_info_frame(data):
-    """??RESP bulk??????INFO????????"""
+    """単一RESP bulkを検証し、INFO本文を返さずrun_idだけを抽出する。"""
     import re
     if len(data)>MAX_FRAME: raise Rejected('info-size')
     if not data: return None
@@ -571,7 +571,7 @@ def parse_valkey_info_frame(data):
 
 
 def read_owned_valkey_identity(boundary, deadline, clock_delta=None):
-    """fresh inspect?owned port?????INFO?1?????/CLI???"""
+    """fresh inspect済みのowned portへ固定INFOを1回送る。追加子とCLIは0。"""
     import re
     proof={'transport':'owned-loopback-info','response_complete':False,'socket_closed':None,
            'within_deadline':False,'cli_spawned':False,'childproof':None,'green':False,
@@ -620,7 +620,7 @@ def read_owned_valkey_identity(boundary, deadline, clock_delta=None):
             response.extend(chunk); proof['response_bytes']=len(response)
             run_id=parse_valkey_info_frame(response)
             if run_id is not None:
-                # ???????bytes??????????????/??queued extra????
+                # 取得済みと直後queuedの余剰bytesを拒否する。将来の余剰bytes不在は主張しない。
                 if select.select([connection],[],[],0)[0] and connection.recv(1): raise Rejected('info-extra')
                 proof['response_complete']=True
                 proof['response_completed_ns']=time.monotonic_ns()
