@@ -60,6 +60,14 @@ test.describe('DIGEST-001〜005: タイムラインダイジェスト', () => {
     await page.route('**/api/v1/timeline-digest**', async (route) => {
       const url = route.request().url()
       const method = route.request().method()
+      const requestUrl = new URL(url)
+      if (
+        method === 'GET' &&
+        ['/api/v1/timeline-digest', '/api/v1/timeline-digest/config'].includes(requestUrl.pathname)
+      ) {
+        expect(requestUrl.searchParams.get('scopeType')).toBe('TEAM')
+        expect(requestUrl.searchParams.get('scopeId')).toBe(String(TEAM_ID))
+      }
 
       if (url.includes('/generate') && method === 'POST') {
         await route.fulfill({
@@ -106,28 +114,19 @@ test.describe('DIGEST-001〜005: タイムラインダイジェスト', () => {
     })
   })
 
-  test('DIGEST-002: ダイジェスト一覧APIが呼ばれる（GET /timeline-digest）', async ({ page }) => {
-    let listCalled = false
-    await page.route('**/api/v1/timeline-digest?**', async (route) => {
-      if (route.request().method() === 'GET') {
-        listCalled = true
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify(MOCK_DIGEST_LIST),
-        })
-      } else {
-        await route.continue()
-      }
-    })
+  test('DIGEST-002: 一覧画面は必須scopeと数値内部IDをAPIへ送る', async ({ page }) => {
+    const requestPromise = page.waitForRequest(
+      (request) =>
+        request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/timeline-digest',
+    )
+    await page.goto('/teams/' + TEAM_ID + '/timeline-digest')
+    await waitForHydration(page)
+    const requestUrl = new URL((await requestPromise).url())
 
-    // ダイジェスト一覧はAPIとして直接呼べることを確認（コンポーネントがなければAPIレベルで確認）
-    const response = await page.request.get('/api/v1/timeline-digest?limit=20')
-    // モックが設定されている環境ではルート経由でレスポンスが返る
-    // ページコンテキストでは別途APIルートが処理するためAPIレベルのレスポンスは独立
-    expect(listCalled || response.status() === 200 || response.status() === 404).toBe(true)
+    expect(requestUrl.searchParams.get('scopeType')).toBe('TEAM')
+    expect(requestUrl.searchParams.get('scopeId')).toBe(String(TEAM_ID))
+    expect(requestUrl.searchParams.get('limit')).toBe('20')
   })
-
   test('DIGEST-003: ダイジェストを生成できる（POST /timeline-digest/generate）', async ({
     page,
   }) => {
