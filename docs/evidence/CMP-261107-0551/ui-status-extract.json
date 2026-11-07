@@ -1,0 +1,253 @@
+{
+  "status": "PARTIAL",
+  "sourceHead": "4ce3aa26785871ee363c90b0a514f023ca20723a",
+  "r15": {
+    "source": "outputs/ranch-approved64-e2e-20261107/runs/ranch64-b74d015aacf9e4fa08a4f030/result.json",
+    "sourceSha256": "7913d87b014f8dd6201d1117d46978ceadf77367cfeadf24d90a0a13220bcce2",
+    "rawStatus": "FAIL",
+    "cases": {
+      "backend-setup": {
+        "status": "BACKEND_READY"
+      },
+      "cache-isolation": {
+        "status": "PASS"
+      },
+      "private-file-denied": {
+        "status": "PASS"
+      },
+      "renderer-module-smoke": {
+        "status": 200
+      },
+      "renderer-coverage": {
+        "status": "PASS"
+      },
+      "effects-source-comparison": {
+        "status": "PASS"
+      },
+      "performance-i14": {
+        "status": "PASS"
+      },
+      "anonymous-direct": {
+        "status": "PASS"
+      },
+      "login-mount-owner": {
+        "status": "PASS"
+      },
+      "natural-start-assignment": {
+        "status": "PASS"
+      },
+      "hatch": {
+        "status": "PASS"
+      },
+      "scene-asset-scope": {
+        "status": "PASS"
+      },
+      "initial-motion-owner": {
+        "status": "PASS"
+      },
+      "style-PIXEL": {
+        "status": "PASS"
+      },
+      "style-PAINT_2D": {
+        "status": "PASS"
+      },
+      "motion-動きを控える": {
+        "status": "PASS"
+      },
+      "motion-動きを止める": {
+        "status": "PASS"
+      },
+      "os-reduced": {
+        "status": "PASS"
+      },
+      "idle-walk-idle": {
+        "status": "PASS"
+      },
+      "ui-raf-cadence": {
+        "status": "OBSERVED"
+      },
+      "paused-touch": {
+        "status": "PASS"
+      },
+      "visibility-toggle": {
+        "status": "PASS"
+      },
+      "ranch-feed": {
+        "status": "PASS"
+      },
+      "ranch-touch": {
+        "status": "PASS"
+      },
+      "stage-JUVENILE": {
+        "status": "PASS"
+      },
+      "stage-ADULT": {
+        "status": "PASS"
+      },
+      "failed-feed-no-animation": {
+        "status": "PASS"
+      },
+      "atlas-failure-fallback": {
+        "status": "PASS"
+      },
+      "fallback-failure": {
+        "status": "PASS"
+      },
+      "atlas-404": {
+        "status": "PASS"
+      },
+      "atlas-corrupt": {
+        "status": "PASS"
+      },
+      "atlas-wrong-dimensions": {
+        "status": "PASS"
+      },
+      "widget-feed": {
+        "status": "PASS"
+      },
+      "widget-touch": {
+        "status": "PASS"
+      },
+      "widget-collapsed": {
+        "status": "PASS"
+      },
+      "viewport-outside": {
+        "status": "PASS"
+      },
+      "background-tab": {
+        "status": "NOT_EXECUTED"
+      },
+      "login-mount-other": {
+        "status": "PASS"
+      },
+      "initial-motion-other": {
+        "status": "PASS"
+      },
+      "scripted-error": {
+        "status": "FAIL"
+      }
+    }
+  },
+  "r17": {
+    "source": "outputs/ranch-approved64-e2e-20261107/runs/ranch64-3fe7b1454ec1c5086db2c581/result.json",
+    "sourceSha256": "e4ae351aaa59eab712bc93256f86934423acdad1e2c631155115343b8c00a984",
+    "rawStatus": "FAIL",
+    "cases": {
+      "backend-setup": {
+        "status": "BACKEND_READY"
+      },
+      "cache-isolation": {
+        "status": "PASS"
+      },
+      "private-file-denied": {
+        "status": "PASS"
+      },
+      "renderer-module-smoke": {
+        "status": 200
+      },
+      "renderer-coverage": {
+        "status": "PASS"
+      },
+      "effects-source-comparison": {
+        "status": "PASS"
+      },
+      "performance-i14": {
+        "status": "PASS"
+      },
+      "prior-ui-evidence": {
+        "status": "OBSERVED"
+      },
+      "anonymous-direct": {
+        "status": "PASS"
+      },
+      "login-mount-owner": {
+        "status": "PASS"
+      },
+      "natural-start-assignment": {
+        "status": "PASS"
+      },
+      "hatch": {
+        "status": "PASS"
+      },
+      "initial-motion-owner": {
+        "status": "PASS"
+      },
+      "ranch-touch": {
+        "status": "PASS"
+      },
+      "login-mount-other": {
+        "status": "PASS"
+      },
+      "initial-motion-other": {
+        "status": "PASS"
+      },
+      "ambient-SEA": {
+        "status": "PASS"
+      },
+      "scripted-error": {
+        "status": "FAIL"
+      }
+    }
+  },
+  "legacySupplement": {
+    "source": "outputs/ranch-approved64-r17-supplement/result.json",
+    "sourceSha256": "a422167c24c1716ff607b76dfb689ef04fee43e7eb915a346b04362364c39177",
+    "rawStatus": "NOT_AGGREGATED",
+    "cases": {
+      "login-mount-legacy": {
+        "status": "PASS"
+      },
+      "legacy-air-assignment": {
+        "status": "PASS"
+      },
+      "initial-motion-legacy": {
+        "status": "PASS"
+      },
+      "supplement-error": {
+        "status": "FAIL"
+      }
+    }
+  },
+  "boundarySupplement": {
+    "source": "outputs/ranch-approved64-r17-supplement/boundary-result.json",
+    "sourceSha256": "60ee2828ca748010c8f52828fc6a1ba5436dccb94ade58c14648ff54ba748e29",
+    "rawStatus": "NOT_AGGREGATED",
+    "cases": {
+      "login-mount-owner": {
+        "status": "PASS"
+      },
+      "owner-initial-headers": {
+        "status": "NOT_OBSERVED"
+      },
+      "owner-identity": {
+        "status": "PASS"
+      },
+      "login-mount-other": {
+        "status": "PASS"
+      },
+      "other-initial-headers": {
+        "status": "NOT_OBSERVED"
+      },
+      "other-identity": {
+        "status": "PASS"
+      },
+      "owner-boundary-headers": {
+        "status": "NOT_OBSERVED"
+      },
+      "other-boundary-headers": {
+        "status": "NOT_OBSERVED"
+      },
+      "user-boundary": {
+        "status": "PASS"
+      }
+    }
+  },
+  "rootAdoption": "r17 final boundary own200/other404 and legacy AIR V1 idle/happy RGBA exact, same identity ACK/reload, ambient position change accepted by root. Original r15/r17/supplement FAIL retained. Cold timeout cause UNKNOWN.",
+  "limits": [
+    "raw FAIL stays FAIL; individual positive cases do not imply whole-run success",
+    "r15 positive count includes reused external renderer/effects/performance; not 35 fresh UI observations",
+    "r17 SEA ambient is positive; legacy AIR assignment is not v3 alias proof",
+    "r17 is still live per root assignment; extracted snapshot is not final cleanup or final boundary outcome",
+    "unknown failure causes remain unknown; no credentials, individual IDs, raw messages or request URLs copied"
+  ]
+}

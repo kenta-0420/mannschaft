@@ -1,0 +1,36 @@
+{
+  "status": "TARGETED_PROOF_ONLY",
+  "reviewer": "root",
+  "sourceBefore": "2ed2361352f2c0ab5319cab36093a67e0df53bc2",
+  "sourceAfter": "5609b68bca9da0e9f0b7f50f1d4b54afeef08d56",
+  "backendTree": "68de27ec5ad5fc1db8abaa35ed18ad4bcdf25b25",
+  "sameAcceptanceFilesDiff": "EMPTY_CONFIRMED",
+  "red": {
+    "tests": 4,
+    "errors": 0,
+    "reason": "candidate frequency and selected catalog version assertions",
+    "failures": 2,
+    "cleanup": "removed",
+    "skipped": 0,
+    "exit": 1
+  },
+  "green": {
+    "tests": 4,
+    "errors": 0,
+    "failures": 0,
+    "cleanup": "removed",
+    "skipped": 0,
+    "exit": 0
+  },
+  "regression": {
+    "mysqlITTests": 13,
+    "tests": 19,
+    "errors": 0,
+    "failures": 0,
+    "cleanup": "removed",
+    "skipped": 0,
+    "exit": 0
+  },
+  "limits": "Targeted tests, archUnit excluded, freeze guard retained; full CI and actual UI still pending",
+  "classification": "redは新feature受入テストの先行失敗。regression 19件は既存機能回帰確認で、既存bugfixのred/greenではない。"
+}

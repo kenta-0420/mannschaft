@@ -1,0 +1,151 @@
+{
+  "status": "IN_PROGRESS",
+  "sources": [
+    {
+      "source": "outputs/ranch-approved64-render-only-20261107/run-01/result.json",
+      "sha256": "aab82f8d145fc7ed670c5a4c5c37bf1ecc2c0c9f79732cc513e72db930fe7bf9",
+      "bytes": 148295,
+      "purpose": "direct renderer raw result; private paths excluded from staged extraction"
+    },
+    {
+      "source": "outputs/ranch-approved64-render-only-20261107/run-01/coverage.jsonl",
+      "sha256": "b9f424ff57647ae4a0998446e794e2b26e5991f38f1e7ffcab5251683deadd0b",
+      "bytes": 1694464,
+      "purpose": "6144 rows; strict field/type/tuple/hash allowlist checked before byte-identical copy"
+    },
+    {
+      "source": "outputs/ranch-approved64-render-only-20261107/run-01/root-visual-review.json",
+      "sha256": "daa86e58f674dd6e4f7a75bc5f24a6f1dd002c5748ab96b7c50d77373ee72853",
+      "bytes": 2088,
+      "purpose": "prior root native-resolution visual review; byte-identical copy"
+    },
+    {
+      "source": "outputs/ranch-approved64-render-only-20261107/run-01/canvas-AIR-PAINT_2D.png",
+      "sha256": "2d3ef959a93b3e2594328af56d644ae66303cbb1faab11d2f13fb4cc49237e6a",
+      "bytes": 57413,
+      "purpose": "selected representative still; existing pixels copied without regeneration"
+    },
+    {
+      "source": "outputs/ranch-approved64-render-only-20261107/run-01/canvas-AIR-PIXEL.png",
+      "sha256": "4f1d6f5194129c0717ef161ebc520e57853f4c090c5fd40f970fd5ad996f0d2b",
+      "bytes": 5339,
+      "purpose": "selected representative still; existing pixels copied without regeneration"
+    },
+    {
+      "source": "outputs/ranch-approved64-render-only-20261107/run-01/canvas-LAND-PAINT_2D.png",
+      "sha256": "fe9127b85325b478dddd7abc5295b9bcfc57f47f2ebd2ba13db208387caa9a1d",
+      "bytes": 113898,
+      "purpose": "selected representative still; existing pixels copied without regeneration"
+    },
+    {
+      "source": "outputs/ranch-approved64-render-only-20261107/run-01/canvas-LAND-PIXEL.png",
+      "sha256": "863588369d3967624101811aecb7245adefe94f40320c172f160ccdc7ca8d554",
+      "bytes": 10013,
+      "purpose": "selected representative still; existing pixels copied without regeneration"
+    },
+    {
+      "source": "outputs/ranch-approved64-render-only-20261107/run-01/canvas-SEA-PAINT_2D.png",
+      "sha256": "50c8486eee62ffe44f87aefb5b8c650acc684b6c6d0aea3144639f52c4a71eb0",
+      "bytes": 46922,
+      "purpose": "selected representative still; existing pixels copied without regeneration"
+    },
+    {
+      "source": "outputs/ranch-approved64-render-only-20261107/run-01/canvas-SEA-PIXEL.png",
+      "sha256": "e2c0ce9edfded21158dd5da33a6917207e2781532529364d8e4b1d4b3558681f",
+      "bytes": 3525,
+      "purpose": "selected representative still; existing pixels copied without regeneration"
+    },
+    {
+      "source": "outputs/ranch-approved64-backend-proof-20261107/root-review.json",
+      "sha256": "08964804dcf196c40e6fb1e78115f22a651c2c4aadebc1bb01abf7b15ad5671d",
+      "bytes": 889,
+      "purpose": "red assertion2 / same-files green4 / regression19 MySQL13"
+    },
+    {
+      "source": "outputs/ranch-approved64-backend-proof-20261107/proof.json",
+      "sha256": "9c38e4f9f558916b0e2306934735e0cdede353567ec936ba70a249505e2d8ba9",
+      "bytes": 704,
+      "purpose": "original proof linkage; raw not copied"
+    },
+    {
+      "source": "outputs/ranch-approved64-e2e-20261107/runs/ranch64-b74d015aacf9e4fa08a4f030/result.json",
+      "sha256": "7913d87b014f8dd6201d1117d46978ceadf77367cfeadf24d90a0a13220bcce2",
+      "bytes": 19126,
+      "purpose": "immutable raw status provenance; identifiers, URLs and diagnostics excluded"
+    },
+    {
+      "source": "outputs/ranch-approved64-e2e-20261107/runs/ranch64-3fe7b1454ec1c5086db2c581/result.json",
+      "sha256": "e4ae351aaa59eab712bc93256f86934423acdad1e2c631155115343b8c00a984",
+      "bytes": 10973,
+      "purpose": "immutable raw status provenance; identifiers, URLs and diagnostics excluded"
+    },
+    {
+      "source": "outputs/ranch-approved64-r17-supplement/result.json",
+      "sha256": "a422167c24c1716ff607b76dfb689ef04fee43e7eb915a346b04362364c39177",
+      "bytes": 635,
+      "purpose": "immutable raw status provenance; identifiers, URLs and diagnostics excluded"
+    },
+    {
+      "source": "outputs/ranch-approved64-r17-supplement/boundary-result.json",
+      "sha256": "60ee2828ca748010c8f52828fc6a1ba5436dccb94ade58c14648ff54ba748e29",
+      "bytes": 1653,
+      "purpose": "immutable raw status provenance; identifiers, URLs and diagnostics excluded"
+    },
+    {
+      "source": "outputs/ranch-approved64-main-followup-20261108/summary.json",
+      "sha256": "e4d8b58c94df546fe896486b66a6e7f3dde081ac975a2010c3ce27bed523f0f2",
+      "bytes": 921,
+      "purpose": "new head source drift audit; not CI or new build"
+    },
+    {
+      "source": "outputs/ranch-approved64-core-ui-root-review-20261108.md",
+      "sha256": "54707c274ea1a96368e52c29866d17b095e0bffc1a08b37b2224f9c4c58fdddf",
+      "bytes": 5283,
+      "purpose": "source-bound supporting record; summarized, raw not copied"
+    },
+    {
+      "source": "outputs/ranch-approved64-lifecycle-composite-review-20261108.md",
+      "sha256": "67242b97aaa573bace4403a1a2495e1842f8759e99fb9d167cfeae4d73b53aae",
+      "bytes": 9934,
+      "purpose": "source-bound supporting record; summarized, raw not copied"
+    },
+    {
+      "source": "outputs/ranch-approved64-lifecycle-evidence-map-20261107.md",
+      "sha256": "3f72702e8b668fce40099449586959d2b0410325f088b7f9c021fc4a9b565986",
+      "bytes": 9347,
+      "purpose": "source-bound supporting record; summarized, raw not copied"
+    },
+    {
+      "source": "outputs/ranch-approved64-integration-20261107-plan.md",
+      "sha256": "dc5d0d030bc92850d17108ed63eaa0a1a0cc9a141f9b79d3996568534b7c7fcf",
+      "bytes": 9128,
+      "purpose": "source-bound supporting record; summarized, raw not copied"
+    },
+    {
+      "source": "outputs/ranch-approved64-production-evidence.json",
+      "sha256": "bd69d7c6e106a5d4ef65a00695a4b1f44805cddb454ad7f34040818f255187d9",
+      "bytes": 1084,
+      "purpose": "source-bound supporting record; summarized, raw not copied"
+    },
+    {
+      "source": "outputs/ranch-approved64-pr-checks-20261107.json",
+      "sha256": "3420101836e8d527163f2d8824caf885dd2c5783df7870a6d26cafab3e335169",
+      "bytes": 9329,
+      "purpose": "source-bound supporting record; summarized, raw not copied"
+    },
+    {
+      "source": "outputs/ranch-approved64-ci-current-20261107.json",
+      "sha256": "420622042d49dc185568915ac07cd982093796429b433b7fc73c708237157124",
+      "bytes": 4866,
+      "purpose": "source-bound supporting record; summarized, raw not copied"
+    },
+    {
+      "source": "outputs/ranch-approved64-review-disposition-20261107.md",
+      "sha256": "a40a5955e0d35b653d7a22511267614ec51e0ddfbeb652edd1c92ea762178753",
+      "bytes": 2821,
+      "purpose": "source-bound supporting record; summarized, raw not copied"
+    }
+  ],
+  "intendedRepositoryDirectory": "docs/evidence/CMP-261107-0551/",
+  "limits": "source paths identify local original evidence by relative path; only selected safe extracts copied. Live raw source hashes are snapshot hashes, not closure claims."
+}

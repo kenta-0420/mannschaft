@@ -1,0 +1,39 @@
+{
+  "status": "IN_PROGRESS",
+  "sourceHead": "4ce3aa26785871ee363c90b0a514f023ca20723a",
+  "sourceReview": {
+    "path": "outputs/ranch-approved64-core-ui-root-review-20261108.md",
+    "sha256": "ec5d88d3bb119d5e47a9714cfab758e327ea92455d961900376cb92b784635bc"
+  },
+  "rootAdoption": {
+    "legacyFinal": {
+      "source": "outputs/ranch-approved64-r17-supplement/legacy-followup-result.json",
+      "sha256": "e58349d9fa395713de035a897148f9a5ed22428cceb432856827b86b2f6d2a55",
+      "acceptedScope": [
+        "saved v3 AIR tuple unchanged",
+        "V1 idle/happy actual draw matches canonical RGBA",
+        "same identity successful ACK",
+        "reload identity retained",
+        "AIR ambient position change over 1200ms"
+      ]
+    },
+    "boundaryFinal": {
+      "source": "outputs/ranch-approved64-r17-supplement/boundary-result.json",
+      "sha256": "60ee2828ca748010c8f52828fc6a1ba5436dccb94ade58c14648ff54ba748e29",
+      "acceptedScope": [
+        "own200",
+        "other404",
+        "distinct login BrowserContexts with HttpOnly cookies"
+      ],
+      "limits": "personal user boundary; no blanket tenant authorization claim"
+    }
+  },
+  "rawFailuresRetained": [
+    "r15 FAIL",
+    "r17 FAIL",
+    "earlier boundary supplement FAIL",
+    "legacy supplement earlier timeout FAIL"
+  ],
+  "coldTimeoutCause": "UNKNOWN",
+  "formalCompletion": false
+}

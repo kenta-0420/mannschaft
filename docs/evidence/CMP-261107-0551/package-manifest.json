@@ -1,0 +1,126 @@
+{
+  "status": "IN_PROGRESS",
+  "scope": "選別package保存時点のhash。正式完了証拠schemaではない。",
+  "files": [
+    {
+      "path": "docs/evidence/CMP-261107-0551/ac-map.md",
+      "sha256": "38008a30e4e76159bc726a9d219148d03009a645ee0435daffc196dd6d89095c",
+      "bytes": 5403
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/b0-overlay-checks.json",
+      "sha256": "f7a51dec009e06a8dce1a8d618522be577413f9c3ebe090af251811fdc1fddb9",
+      "bytes": 892
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/backend-summary.json",
+      "sha256": "4f06003b7a015484368656dd413dd2e08a063131ceb7e7b2c331ddf6c4b858d3",
+      "bytes": 1087
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/canvas-AIR-PAINT_2D.png",
+      "sha256": "2d3ef959a93b3e2594328af56d644ae66303cbb1faab11d2f13fb4cc49237e6a",
+      "bytes": 57413
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/canvas-AIR-PIXEL.png",
+      "sha256": "4f1d6f5194129c0717ef161ebc520e57853f4c090c5fd40f970fd5ad996f0d2b",
+      "bytes": 5339
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/canvas-LAND-PAINT_2D.png",
+      "sha256": "fe9127b85325b478dddd7abc5295b9bcfc57f47f2ebd2ba13db208387caa9a1d",
+      "bytes": 113898
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/canvas-LAND-PIXEL.png",
+      "sha256": "863588369d3967624101811aecb7245adefe94f40320c172f160ccdc7ca8d554",
+      "bytes": 10013
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/canvas-SEA-PAINT_2D.png",
+      "sha256": "50c8486eee62ffe44f87aefb5b8c650acc684b6c6d0aea3144639f52c4a71eb0",
+      "bytes": 46922
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/canvas-SEA-PIXEL.png",
+      "sha256": "e2c0ce9edfded21158dd5da33a6917207e2781532529364d8e4b1d4b3558681f",
+      "bytes": 3525
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/coverage.jsonl",
+      "sha256": "b9f424ff57647ae4a0998446e794e2b26e5991f38f1e7ffcab5251683deadd0b",
+      "bytes": 1694464
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/README.md",
+      "sha256": "9ec82d973ebe26a466bfbab4d03bd861dac178f95973663a9f0d6181241581da",
+      "bytes": 4524
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/renderer-summary.json",
+      "sha256": "e565e40ee8528aff2626e0dbdc8375a206064a7506e19ec92fa29e1d5de7af79",
+      "bytes": 1648
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/resident-mobile-10-status360.png",
+      "sha256": "bd7c0f97454971ab297f473e57a6fd7af7a43077eca8e52c1b4ec616d8622d2a",
+      "bytes": 55072
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/resident-mobile-19-dashboard-pet360.png",
+      "sha256": "fc4690490cc62b398a219e3fb7a3ca9c2e8b82eaf99f034c496e4420162999dc",
+      "bytes": 43236
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/resident-observations-20261108.json",
+      "sha256": "72abcb4d57630bfa72b03734fc399a2461b4f10b23e37cfee9915f72fec835a3",
+      "bytes": 26067
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/resident-pc-09-help.png",
+      "sha256": "b0f3d9c9a086b54373466db9bdb890f98c536f1109444d15c1a35174cbfa6391",
+      "bytes": 149115
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/resident-return-08-help.png",
+      "sha256": "d4218cf82469191d7ab7caf913b6efbdf2857a4f86575572d991a763d454f95c",
+      "bytes": 252559
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/resident-root-disposition.md",
+      "sha256": "33a789a2eb26329ef9bc6c8efbea5b20ed6c2a41d76e241d715fca24ebf107f0",
+      "bytes": 3400
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/root-adoption-draft.json",
+      "sha256": "ffe41c06e1c1edd824e5858cb9fdf264291d7899b5a00f0ce888b1415c4fa5fb",
+      "bytes": 1409
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/root-test-reference-notes.md",
+      "sha256": "3721b72985be0e194bca18cf2cf1b47386114b3afe84eb31b7f3c67bc11de90f",
+      "bytes": 1401
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/root-visual-review.json",
+      "sha256": "daa86e58f674dd6e4f7a75bc5f24a6f1dd002c5748ab96b7c50d77373ee72853",
+      "bytes": 2088
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/source-manifest.json",
+      "sha256": "383bf9be4d0ef18716ff8c3a1af9c994dd1f477f2e07f84a16aac7b414325570",
+      "bytes": 7372
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/summary-draft.json",
+      "sha256": "53ec2e8a845ee71aab5324a06d6bfd29f1705996dea668b06988697ca77fff2c",
+      "bytes": 3091
+    },
+    {
+      "path": "docs/evidence/CMP-261107-0551/ui-status-extract.json",
+      "sha256": "d6ac7a0ff41cdd5d4e572c968a6333cdb4fa4e6915d935575f5ea4626720ae8c",
+      "bytes": 6593
+    }
+  ]
+}

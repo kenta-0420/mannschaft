@@ -1,0 +1,32 @@
+{
+  "status": "IN_PROGRESS",
+  "overlayAccepted": true,
+  "negativeCasesRejected": 10,
+  "multipleHeadsAndRunsAccepted": true,
+  "baselineFieldsOutsideOverlayDeepEqual": true,
+  "canonicalCopyAndGeneratedOverlayDeepEqual": true,
+  "oldCounts": [
+    58,
+    58,
+    114
+  ],
+  "newCounts": [
+    61,
+    61,
+    118
+  ],
+  "staticBoardUi": "NOT_EXECUTED_ROOT_GO_REQUIRED",
+  "ordinaryGenerator": {
+    "status": "SUCCESS_AFTER_MATERIALIZING_FRONTEND_TESTS",
+    "priorAttempt": "FAILED_SPARSE_SPEC_ABSENT",
+    "outputWritten": true,
+    "unrelatedGlobalDiffExcluded": true
+  },
+  "ordinaryValidator": {
+    "generatedOutput": "FAIL_EXISTING_GITHUB_SNAPSHOT_REFERENCE_SET_MISMATCH",
+    "overlayOnlyOutput": "FAIL_EXISTING_CMP_ROW_COUNT_MISMATCH",
+    "selfTestWhole": "FAIL_EXISTING_GITHUB_SNAPSHOT_REFERENCE_SET_MISMATCH"
+  },
+  "globalCoveragePassed": false,
+  "formalCompletion": false
+}
