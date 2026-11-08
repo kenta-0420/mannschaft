@@ -147,6 +147,77 @@
         "joinFailed": "Failed to join",
         "declineFailed": "Failed to decline"
       }
+    },
+    "channelList": {
+      "title": "Chat",
+      "newConversation": "New conversation",
+      "addChannel": "Add channel",
+      "dmSection": "Kabine (DM)",
+      "noDm": "No direct messages",
+      "roomSection": "Zimmer (Rooms)",
+      "noRoom": "No rooms yet",
+      "loadFailed": "Failed to load rooms",
+      "detailLoadFailed": "Failed to load the channel details"
+    },
+    "create": {
+      "typeDm": "Kabine (DM)",
+      "typeRoom": "Zimmer (Room)",
+      "dmOpened": "Opened Kabine (DM)",
+      "roomCreated": "Created Zimmer (room)",
+      "conversationFailed": "Failed to start the conversation",
+      "roomCreateFailed": "Failed to create Zimmer (room)",
+      "header": "Start a new conversation",
+      "tabContacts": "Choose from contacts",
+      "tabCreateRoom": "Create Zimmer (room)",
+      "searchByName": "Search by name...",
+      "selectedSummary": "{count} selected → will start as {type}",
+      "startAs": "Start {type}",
+      "roomName": "Zimmer (room) name",
+      "roomNamePlaceholder": "e.g. general",
+      "descriptionOptional": "Description (optional)",
+      "descriptionPlaceholder": "Description of the Zimmer (room)",
+      "privateRoom": "Private Zimmer (invite only)",
+      "inviteMembersOptional": "Invite members (optional)",
+      "create": "Create"
+    },
+    "inviteZimmer": {
+      "header": "Invite to a Zimmer",
+      "tooltip": "Invite to a Zimmer",
+      "failed": "Failed to send the invitation",
+      "noMembers": "No members can be invited",
+      "shareQuestion": "Share the existing chat history?",
+      "share": "Share",
+      "shareHint": "Previous messages are carried over to the new Zimmer",
+      "noShare": "Do not share",
+      "noShareHint": "The new Zimmer starts empty",
+      "createZimmer": "Create Zimmer"
+    },
+    "memberSelect": {
+      "notFound": "No members found"
+    },
+    "activeThreadsEmpty": "No active threads",
+    "tabAriaLabel": "{name} tab",
+    "message": {
+      "deleted": "This message was deleted",
+      "unknownSender": "Unknown",
+      "edited": "(edited)",
+      "loadOlder": "Load earlier messages",
+      "empty": "No messages yet",
+      "sendFailed": "Failed to send the message",
+      "inputPlaceholder": "Type a message...",
+      "inputDisabled": "You cannot post in this Zimmer (room)",
+      "loadFailed": "Failed to load messages",
+      "reactionFailed": "Failed to update the reaction",
+      "pinned": "Pinned",
+      "unpinned": "Unpinned",
+      "pinFailed": "Failed to update the pin",
+      "deleteSuccess": "Message deleted",
+      "deleteFailed": "Failed to delete",
+      "bookmarkFailed": "Failed to update the bookmark",
+      "markReadFailed": "Could not mark as read",
+      "editHeader": "Edit message",
+      "editSuccess": "Message edited",
+      "editFailed": "Failed to edit"
     }
   },
   "button": {
