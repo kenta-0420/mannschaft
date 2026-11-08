@@ -2,6 +2,7 @@ package com.mannschaft.app.role.controller;
 
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.role.dto.InviteJoinRequest;
+import com.mannschaft.app.role.service.InviteAcceptanceFacade;
 import com.mannschaft.app.role.service.InviteService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,7 +21,7 @@ import static org.mockito.Mockito.verify;
  * {@link InviteController} の単体テスト。
  *
  * <p>InviteController#joinByInvite の自己スコープ性を固定する契約テスト。
- * {@code InviteService#joinByInvite} は参加者として {@code SecurityUtils.getCurrentUserId()}
+ * {@code InviteAcceptanceFacade#joinByInvite} は参加者として {@code SecurityUtils.getCurrentUserId()}
  * のみを使用し、対象スコープは招待トークン自体（bearer capability）が決めるため、
  * 他人の識別子を参加者として指定する経路が構造的に無い。</p>
  */
@@ -30,6 +31,9 @@ class InviteControllerTest {
 
     @Mock
     private InviteService inviteService;
+
+    @Mock
+    private InviteAcceptanceFacade inviteAcceptanceFacade;
 
     @InjectMocks
     private InviteController controller;
@@ -56,6 +60,6 @@ class InviteControllerTest {
         controller.joinByInvite(TOKEN, new InviteJoinRequest(null));
 
         // 他人の userId を参加者として渡す経路が存在しないことの裏取り。
-        verify(inviteService).joinByInvite(TOKEN, USER_ID, null);
+        verify(inviteAcceptanceFacade).joinByInvite(TOKEN, USER_ID, null);
     }
 }
