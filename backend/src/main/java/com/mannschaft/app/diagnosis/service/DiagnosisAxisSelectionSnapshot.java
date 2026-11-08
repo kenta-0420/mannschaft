@@ -62,7 +62,8 @@ public final class DiagnosisAxisSelectionSnapshot {
         return new DiagnosisResultSummary(saved.id(), saved.method(), saved.completedAt(), saved.resultSchemaVersion(),
                 saved.questionnaireVersion(), saved.scoringVersion(), saved.normalizationVersion(), saved.ruleVersion(),
                 saved.mappingVersion(), saved.typeCode(), saved.axes(), saved.numberSummary(),
-                saved.descriptionSnapshot(), saved.axisDescriptions(), selections);
+                saved.descriptionSnapshot(), saved.axisDescriptions(), selections,
+                saved.speciesKey(), saved.variantKey(), saved.catalogVersion(), saved.mappingDescriptionSnapshot());
     }
 
     private static boolean readable(Map<String, String> texts) {

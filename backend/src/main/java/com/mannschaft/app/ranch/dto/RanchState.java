@@ -19,4 +19,15 @@ public record RanchState(String featureStatus, boolean deliveryPaused, String re
         List<RoomSlotSummary> roomSlots,
         @Schema(nullable = true) String policyVersion,
         Instant serverTime,
-        @Schema(nullable = true) AssignmentSummary assignment) { }
+        @Schema(nullable = true) AssignmentSummary assignment,
+        @Schema(description = "明示公開許可と正式master/質問/素材登録が揃う時だけtrue。育成・報酬停止とは独立")
+        boolean approvedVisualsAvailable) {
+    /** 旧ACK・既存fixtureの互換形。追加fieldを持たない過去JSONはfalseになる。 */
+    public RanchState(String featureStatus, boolean deliveryPaused, String rewardsStatus, boolean shopAvailable,
+            CareBudget careBudget, OwnerSummary owner, DinosaurSummary dinosaur, RanchSettings settings,
+            WeekBudget weekBudget, List<RoomSlotSummary> roomSlots, String policyVersion,
+            Instant serverTime, AssignmentSummary assignment) {
+        this(featureStatus, deliveryPaused, rewardsStatus, shopAvailable, careBudget, owner,
+                dinosaur, settings, weekBudget, roomSlots, policyVersion, serverTime, assignment, false);
+    }
+}

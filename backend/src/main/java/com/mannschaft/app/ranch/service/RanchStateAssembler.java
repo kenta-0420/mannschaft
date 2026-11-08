@@ -71,7 +71,8 @@ public class RanchStateAssembler {
             return new RanchState(careRule.isPresent() ? "AVAILABLE" : "UNAVAILABLE",
                     external.deliveryPaused(), external.rewardsStatus(),
                     external.shopAvailable(), null, null, null, null,
-                    external.weekBudget(), List.of(), external.policyVersion(), now, null);
+                    external.weekBudget(), List.of(), external.policyVersion(), now, null,
+                    external.approvedVisualsAvailable());
         }
         if (dinosaur == null || !owner.getUserId().equals(userId)
                 || !dinosaur.getUserId().equals(userId)
@@ -125,7 +126,7 @@ public class RanchStateAssembler {
                 external.deliveryPaused(), external.rewardsStatus(),
                 external.shopAvailable(), budget, ownerSummary, dinosaurSummary,
                 settings, external.weekBudget(), rooms, external.policyVersion(), now,
-                assignment);
+                assignment, external.approvedVisualsAvailable());
     }
 
     private CareBudget careBudget(Instant now, RanchRuleProvider.CareRuleSnapshot rule,
@@ -191,7 +192,14 @@ public class RanchStateAssembler {
     public record ExternalProjection(boolean deliveryPaused, String rewardsStatus,
                                      boolean shopAvailable, boolean visible,
                                      WeekBudget weekBudget, String policyVersion,
-                                     List<AssignmentMethod> availableMethods) {
+                                     List<AssignmentMethod> availableMethods,
+                                     boolean approvedVisualsAvailable) {
+        public ExternalProjection(boolean deliveryPaused, String rewardsStatus,
+                boolean shopAvailable, boolean visible, WeekBudget weekBudget, String policyVersion,
+                List<AssignmentMethod> availableMethods) {
+            this(deliveryPaused, rewardsStatus, shopAvailable, visible, weekBudget, policyVersion,
+                    availableMethods, false);
+        }
         public ExternalProjection {
             Objects.requireNonNull(rewardsStatus, "報酬状態は必須です");
             availableMethods = List.copyOf(availableMethods);

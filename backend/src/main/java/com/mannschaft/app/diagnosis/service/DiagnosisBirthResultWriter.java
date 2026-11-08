@@ -13,6 +13,7 @@ import com.mannschaft.app.diagnosis.entity.DiagnosisCommandEntity;
 import com.mannschaft.app.diagnosis.entity.DiagnosisResultEntity;
 import com.mannschaft.app.diagnosis.repository.DiagnosisCommandRepository;
 import com.mannschaft.app.diagnosis.repository.DiagnosisResultRepository;
+import com.mannschaft.app.ranch.service.RanchResultMappingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -31,6 +32,8 @@ public class DiagnosisBirthResultWriter {
     private final DiagnosisResultRepository results;
     private final DiagnosisCommandRepository commands;
     private final ObjectMapper mapper;
+    // 派生数から起動時固定mapだけを解決する。RanchのDB/TXへ原情報を渡さない。
+    private final RanchResultMappingService resultMapping;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public DiagnosisResultSummary create(Long userId, UUID commandId, String requestHash, ConfirmedBirthNumbers confirmed) {
@@ -57,6 +60,7 @@ public class DiagnosisBirthResultWriter {
                     "ko", "본인이 확인한 정보를 고정된 자릿수 합산 규칙으로 1부터 9까지 줄인 결과입니다.",
                     "es", "Estos números se redujeron a valores del 1 al 9 a partir de la información que confirmaste, según la regla fija de suma de dígitos.",
                     "de", "Diese Zahlen wurden aus deinen bestätigten Angaben nach der festen Quersummenregel auf Werte von 1 bis 9 reduziert."), Map.of(), null);
+        summary = resultMapping.freeze(summary);
         String snapshot;
         try { snapshot = mapper.writeValueAsString(summary); }
         catch (JsonProcessingException error) { throw unavailable(); }

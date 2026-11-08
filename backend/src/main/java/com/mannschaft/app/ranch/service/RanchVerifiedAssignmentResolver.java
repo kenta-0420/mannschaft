@@ -11,7 +11,7 @@ import com.mannschaft.app.diagnosis.dto.DiagnosisResultSummary;
 import com.mannschaft.app.auth.service.BirthStyleCalculator.BirthNumbers;
 import com.mannschaft.app.diagnosis.service.DiagnosisPublicationReadiness;
 import com.mannschaft.app.diagnosis.DiagnosisMethod;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -27,7 +27,6 @@ import java.util.Objects;
 
 /** 正式masterを優先し、未登録時のランダム選定だけを明示開発fixtureへ分離する。 */
 @Service
-@RequiredArgsConstructor
 public class RanchVerifiedAssignmentResolver implements RanchAssignmentResolver {
     private final RanchDevelopmentVisualCatalog development;
     private final RanchDevelopmentClipCatalog clips;
@@ -35,7 +34,34 @@ public class RanchVerifiedAssignmentResolver implements RanchAssignmentResolver 
     private final DiagnosisPublicationReadiness diagnosisPublication;
     private final RanchRuleProvider rules;
     private final Clock clock;
+    private final RanchApprovedVisualsAvailability visualsAvailability;
     private final SecureRandom random = new SecureRandom();
+
+    @Autowired
+    public RanchVerifiedAssignmentResolver(RanchDevelopmentVisualCatalog development,
+            RanchDevelopmentClipCatalog clips, RanchProductionMasterRegistry production,
+            DiagnosisPublicationReadiness diagnosisPublication, RanchRuleProvider rules,
+            Clock clock, RanchApprovedVisualsAvailability visualsAvailability) {
+        this.development = development;
+        this.clips = clips;
+        this.production = production;
+        this.diagnosisPublication = diagnosisPublication;
+        this.rules = rules;
+        this.clock = clock;
+        this.visualsAvailability = visualsAvailability;
+    }
+
+    /** 既存DEV合成fixtureの互換入口。正式公開を暗黙に許可しない。 */
+    public RanchVerifiedAssignmentResolver(RanchDevelopmentVisualCatalog development,
+            RanchDevelopmentClipCatalog clips, RanchProductionMasterRegistry production,
+            DiagnosisPublicationReadiness diagnosisPublication, RanchRuleProvider rules, Clock clock) {
+        this(development, clips, production, diagnosisPublication, rules, clock,
+                new RanchApprovedVisualsAvailability(false, null));
+    }
+
+    public boolean isApprovedVisualsAvailable() {
+        return visualsAvailability.isAvailable();
+    }
 
     @Override
     public Selection resolve(Long userId, RanchAssignmentRequest request,
@@ -81,6 +107,7 @@ public class RanchVerifiedAssignmentResolver implements RanchAssignmentResolver 
     public List<AssignmentMethod> availableMethods() {
         if (rules.currentCareRule(Instant.now(clock)).isEmpty()) return List.of();
         if (production.current().isPresent()) {
+            if (!isApprovedVisualsAvailable()) return List.of();
             var master = production.current().orElseThrow();
             return diagnosisPublication.approvedVersionAvailable(master.questionnaireVersion(), master.scoringVersion())
                     ? List.of(AssignmentMethod.HABITAT_RANDOM,
@@ -99,6 +126,7 @@ public class RanchVerifiedAssignmentResolver implements RanchAssignmentResolver 
     Selection resolveApproved(RanchAssignmentRequest request,
             DiagnosisResultSummary savedResult, BirthNumbers confirmedBirth,
             RanchProductionMasterRegistry.RegisteredMaster master) {
+        if (!isApprovedVisualsAvailable()) throw unavailable();
         var careRule = rules.currentCareRule(Instant.now(clock)).orElseThrow(this::unavailable);
         RanchProductionMasterRegistry.Pair pair;
         String basis;
@@ -110,9 +138,10 @@ public class RanchVerifiedAssignmentResolver implements RanchAssignmentResolver 
                     || !Objects.equals(savedResult.resultSchemaVersion(), master.resultSchemaVersion())
                     || !Objects.equals(savedResult.questionnaireVersion(), master.questionnaireVersion())
                     || !Objects.equals(savedResult.scoringVersion(), master.scoringVersion())
-                    || (savedResult.mappingVersion() != null
-                            && !savedResult.mappingVersion().equals(master.version()))) throw unavailable();
+                    || !Objects.equals(savedResult.mappingVersion(), master.version())) throw unavailable();
             pair = master.diagnosis(savedResult.typeCode()).orElseThrow(this::unavailable);
+            requireFrozenIdentity(savedResult, pair, master,
+                    master.diagnosisDescriptions().get(savedResult.typeCode()));
             basis = "DIAGNOSIS|" + request.resultId() + "|" + master.version()
                     + "|" + savedResult.typeCode();
         } else if (request.method() == AssignmentMethod.BIRTH_STYLE) {
@@ -129,10 +158,12 @@ public class RanchVerifiedAssignmentResolver implements RanchAssignmentResolver 
                     || savedResult.numberSummary().nameNumber() != confirmedBirth.nameNumber()
                     || savedResult.numberSummary().dateSum() != confirmedBirth.dateSum()
                     || savedResult.numberSummary().nameSum() != confirmedBirth.nameSum()
-                    || (savedResult.mappingVersion() != null
-                            && !savedResult.mappingVersion().equals(master.version()))) throw unavailable();
+                    || !Objects.equals(savedResult.mappingVersion(), master.version())) throw unavailable();
             pair = master.birth(confirmedBirth.lifePathNumber(), confirmedBirth.nameNumber())
                     .orElseThrow(this::unavailable);
+            requireFrozenIdentity(savedResult, pair, master, master.birthDescriptions().get(
+                    new RanchProductionMasterRegistry.BirthPair(
+                            confirmedBirth.lifePathNumber(), confirmedBirth.nameNumber())));
             basis = "BIRTH_STYLE|" + request.resultId() + "|" + master.version()
                     + "|" + confirmedBirth.lifePathNumber() + "|" + confirmedBirth.nameNumber();
         } else if (request.method() == AssignmentMethod.HABITAT_RANDOM) {
@@ -148,6 +179,16 @@ public class RanchVerifiedAssignmentResolver implements RanchAssignmentResolver 
         return new Selection(request.method(), habitat, pair.speciesKey(),
                 pair.variantKey(), master.catalogVersion(), careRule.ruleVersion(),
                 request.resultId(), sha256(basis));
+    }
+
+    private void requireFrozenIdentity(DiagnosisResultSummary result,
+            RanchProductionMasterRegistry.Pair pair,
+            RanchProductionMasterRegistry.RegisteredMaster master,
+            java.util.Map<String,String> description) {
+        if (!Objects.equals(result.speciesKey(), pair.speciesKey())
+                || !Objects.equals(result.variantKey(), pair.variantKey())
+                || !Objects.equals(result.catalogVersion(), Long.toString(master.catalogVersion()))
+                || description == null || !description.equals(result.mappingDescriptionSnapshot())) throw unavailable();
     }
 
     private static String sha256(String value) {

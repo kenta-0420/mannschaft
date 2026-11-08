@@ -186,6 +186,7 @@ class RanchSelfHttpIT extends AbstractMySqlIntegrationTest {
             mvc.perform(get("/api/v1/me/ranch").with(user(me.toString())))
                     .andExpect(status().isOk())
                     .andExpect(header().string("Cache-Control", "private, no-store"))
+                    .andExpect(jsonPath("$.data.approvedVisualsAvailable").value(false))
                     .andExpect(jsonPath("$.data.owner").doesNotExist())
                     .andExpect(jsonPath("$.data.dinosaur").doesNotExist());
         }
