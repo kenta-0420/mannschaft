@@ -1,0 +1,26 @@
+{
+  "status": "SUCCESS",
+  "runId": 42406375715,
+  "head": "e2b4744f438d0d376fb3c243e28aaa5ad2ff545d",
+  "event": "push",
+  "jobs": [
+    {
+      "id": 128504862033,
+      "name": "Docker ビルド検証（main push のみ）",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 128504862322,
+      "name": "Install",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "source": {
+    "path": "outputs/ranch-approved64-main-followup-20261108/main-frontend-jobs-final.json",
+    "sha256": "28ac36ae1019e36b15d09e958d0ac85030d7689db6ae44b5d9c805d30a4d02ea"
+  },
+  "rootApiObservationUtc": "2026-11-07T19:53:48Z",
+  "limits": "M whole frontend workflow and both jobs now success; earlier job-only proof retained at original retrieval time. M is supplemental production proof and remains outside H ci[]."
+}

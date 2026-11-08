@@ -1,0 +1,350 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261107-0551",
+  "scope": "app",
+  "implementation": {
+    "pr": 4353,
+    "sha": "9e8e9ba15cc7040d88d88067646be2d6a51ec862"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "I01",
+      "description": "care正本4608画像と移動正本1536画像のSHA/寸法/一意tupleを照合し、欠落・重複・不正path・未知の種/段階/外見/動作を拒否する。",
+      "tests": [
+        {
+          "name": "v4 validator rejects count, frame, phase, hash and traversal changes",
+          "evidence": "frontend/scripts/verify-ranch-development-appearances.test.mjs"
+        },
+        {
+          "name": "inventory rejects missing and extra files",
+          "evidence": "frontend/scripts/verify-ranch-development-appearances.test.mjs"
+        },
+        {
+          "name": "6144 unique direct-renderer draws and canonical source RGBA comparison",
+          "evidence": "docs/evidence/CMP-261107-0551/renderer-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "I02",
+      "description": "v4は384logical entry・1536clip参照・384fallback。各atlasはABCD4セルで元RGBA完全一致、同tupleのidle Aがfallbackとなる。N±1件数/3・5frame/不正時間を検査失敗とする。",
+      "tests": [
+        {
+          "name": "v4 validator rejects count, frame, phase, hash and traversal changes",
+          "evidence": "frontend/scripts/verify-ranch-development-appearances.test.mjs"
+        },
+        {
+          "name": "native4frame境界を96/384単位で切り出し、範囲外や破損寸法を拒否する",
+          "evidence": "frontend/app/utils/ranch-development-clips.spec.ts"
+        },
+        {
+          "name": "6144 per-cell direct renderer canonical RGBA coverage",
+          "evidence": "docs/evidence/CMP-261107-0551/renderer-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "I03",
+      "description": "v4のspecies×4variant、3段階、2画風の完全一致だけを解決し、UUID不正/null/EGG/未知version・variantでは解決しない。",
+      "tests": [
+        {
+          "name": "16種3stage2styleが同個体の4actionとfallbackへ明示解決される (catalog4全entry loop)",
+          "evidence": "frontend/app/utils/ranch-development-clips.spec.ts"
+        },
+        {
+          "name": "identityの欠損・未知・旧catalogを推定しない %j / 未知stage/styleは画像を返さない",
+          "evidence": "frontend/app/utils/ranch-development-clips.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "I04",
+      "description": "旧v3個体の入力identityとAPI保存値を保持し、同species/stage/styleの最新V1だけへ明示描画互換。v2の既存経路を維持する。",
+      "tests": [
+        {
+          "name": "v3 identityを変更せず同種同段階同画風のv4 V1へ描画aliasする / 既存v2のidentity・bytehash・8frameと本番512gateを維持する",
+          "evidence": "frontend/app/utils/ranch-development-clips.spec.ts"
+        },
+        {
+          "name": "v4候補は各種四つで全外見と保存済みv3を厳密に解決する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/ranch/service/RanchApproved64AcceptanceTest.java"
+        },
+        {
+          "name": "legacy AIR saved v3 tuple / V1 idle-happy RGBA / same identity ACK / reload",
+          "evidence": "docs/evidence/CMP-261107-0551/root-adoption-draft.json"
+        }
+      ]
+    },
+    {
+      "id": "I05",
+      "description": "DEV新規HABITAT_RANDOMでLAND48/SEA12/AIR4組が候補となり、指定生息地外の候補を返さず、実variantを選定結果・basis hashへ記録する。",
+      "tests": [
+        {
+          "name": "v4候補は各種四つで全外見と保存済みv3を厳密に解決する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/ranch/service/RanchApproved64AcceptanceTest.java"
+        },
+        {
+          "name": "各生息地の選定結果とbasisは実際の候補に一致する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/ranch/service/RanchApproved64SelectionAcceptanceTest.java"
+        },
+        {
+          "name": "same-file feature acceptance red2 assertions to green4; regression19/MySQL13",
+          "evidence": "docs/evidence/CMP-261107-0551/backend-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "I06",
+      "description": "production/profile混在・flag off・非隔離環境でDEV候補/素材を無効化する。正式512行gate・正式64/81対応・診断公開状態を不変とする。",
+      "tests": [
+        {
+          "name": "不正な組合せと本番混在は解決しない",
+          "evidence": "backend/src/test/java/com/mannschaft/app/ranch/service/RanchApproved64AcceptanceTest.java"
+        },
+        {
+          "name": "旧版と新外見の交差および空の種は拒否する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/ranch/service/RanchApproved64BoundaryTest.java"
+        },
+        {
+          "name": "productionまたは無効flagは公開しない %j / 既存v2のidentity・bytehash・8frameと本番512gateを維持する",
+          "evidence": "frontend/app/utils/ranch-development-clips.spec.ts"
+        },
+        {
+          "name": "M production Docker artifact scanner and runtime verification under exact production input scope",
+          "evidence": "docs/evidence/CMP-261107-0551/production-M-proof.json"
+        }
+      ]
+    },
+    {
+      "id": "I07",
+      "description": "本体の牧場とwidgetで孵化後の段階・画風・本人identityを用いて最新素材が表示される。旧個体の再読込でも同一性を保持する。",
+      "tests": [
+        {
+          "name": "growth後はcurrentstageを反映してからそのstageのfeedを通知する",
+          "evidence": "frontend/app/components/ranch/RanchWidgetContent.clips.spec.ts"
+        },
+        {
+          "name": "r15 actual ranch/widget hatch/style/stage cases and final legacy reload supplement",
+          "evidence": "docs/evidence/CMP-261107-0551/ui-status-extract.json"
+        },
+        {
+          "name": "same-source composite app acceptance with guarded fixture limits",
+          "evidence": "docs/evidence/CMP-261107-0551.md"
+        }
+      ]
+    },
+    {
+      "id": "I08",
+      "description": "feed/touchの本人同一個体への成功ACKでのみ食事/喜びを一回再生しidleへ戻る。失敗・別個体・切替後遅延応答・再送/連打の既存抑制を保持する。",
+      "tests": [
+        {
+          "name": "pendingの間は予測通知せず拒否ACKでは通知しない / actor変更後の旧成功応答を拒否し新actorへ通知しない / 保存済みcommandIdの再通知は反応sequenceを増やさない",
+          "evidence": "frontend/app/components/ranch/RanchWidgetContent.clips.spec.ts"
+        },
+        {
+          "name": "二重送信を防ぎ完了後だけ次のkeyを発行する",
+          "evidence": "frontend/app/composables/useRanchCommand.spec.ts"
+        },
+        {
+          "name": "actual ranch/widget successful same-individual ACK first canonical draw and failed feed no reaction",
+          "evidence": "docs/evidence/CMP-261107-0551/ui-status-extract.json"
+        }
+      ]
+    },
+    {
+      "id": "I09",
+      "description": "各actionの承認済みduration/phaseStarts/ABCD順と、待機→移動→待機の既存遷移を保持する。全sourceを本体rendererから実表示し原本と比較する。",
+      "tests": [
+        {
+          "name": "idleを2完全cycle後walkを1cycle、phaseStarts境界ちょうどで次frameとなる / feed/happyがcadenceを中断し有限終了後idleから2cycleを再開する",
+          "evidence": "frontend/app/composables/useRanchClipPlayback.spec.ts"
+        },
+        {
+          "name": "6144 direct renderer coverage",
+          "evidence": "docs/evidence/CMP-261107-0551/renderer-summary.json"
+        },
+        {
+          "name": "actual idle-walk-idle and representative care ABCD timing composite; raw NOT_EXECUTED retained",
+          "evidence": "docs/evidence/CMP-261107-0551.md"
+        }
+      ]
+    },
+    {
+      "id": "I10",
+      "description": "承認済み接地影の位置/幅、3本の尾線の座標/発火、海種ごとの喜び全身揺れ、空の揺れ、ゆっくり動く泡/雲を保持し、切れ・浮き・色変化を生じない。",
+      "tests": [
+        {
+          "name": "LAND happyはmetadata座標から3本のtailMarksだけを描きgenericbounceしない / SEA rollはPIXEL step保持/2D補間、AIR swayはPIXEL整数/2D連続値となる / v4 SEAはplesiosaurusを7度、他種を5度とし承認viewerの軸を使う",
+          "evidence": "frontend/app/composables/useRanchClipAtlas.spec.ts"
+        },
+        {
+          "name": "root viewed six representative stills; not all phase final pixel golden",
+          "evidence": "docs/evidence/CMP-261107-0551/root-visual-review.json"
+        },
+        {
+          "name": "actual SEA/AIR ambient final supplements",
+          "evidence": "docs/evidence/CMP-261107-0551/root-adoption-draft.json"
+        }
+      ]
+    },
+    {
+      "id": "I11",
+      "description": "REDUCED/OS reduce/STOPPED/非表示/viewport外/非active/背景tab/unmountで必要な停止を維持し、復帰で追いつき再生しない。",
+      "tests": [
+        {
+          "name": "hidden/identity変更後は追いつかずidleから再開しREDUCED/STOPPEDはRAFを作らない",
+          "evidence": "frontend/app/composables/useRanchClipPlayback.spec.ts"
+        },
+        {
+          "name": "初回hidden/inactive/viewport外はimage0/RAF0、非表示とunmountで全資源を止める",
+          "evidence": "frontend/app/components/ranch/DinosaurScene.clips.spec.ts"
+        },
+        {
+          "name": "root limited lifecycle composite acceptance; actual document.hidden not established",
+          "evidence": "docs/evidence/CMP-261107-0551.md"
+        }
+      ]
+    },
+    {
+      "id": "I12",
+      "description": "atlas404・破損・寸法不正は同identityのfallbackへ戻り、fallbackも失敗すれば文字と操作を保つ。画風や種を勝手に変更しない。古いonloadを採用しない。",
+      "tests": [
+        {
+          "name": "寸法不正は同entry fallbackだけへ移行しfallback失敗はassetPreparingとなる / 同entryでもindividual変更はpending世代を破棄し旧onloadが新個体を描かない / decode失敗はsame-entry fallbackへ移行し古decode完了は新actionをpaintしない",
+          "evidence": "frontend/app/composables/useRanchClipAtlas.spec.ts"
+        },
+        {
+          "name": "actual atlas404/corrupt/dimension/fallback failure with unit/source late-callback acceptance",
+          "evidence": "docs/evidence/CMP-261107-0551.md"
+        }
+      ]
+    },
+    {
+      "id": "I13",
+      "description": "1scene取得は現tupleの必要actionとfallbackだけ。別種/別外見の先読み0、非表示の不要RAF/timer0、identity切替で旧cacheを解放する。",
+      "tests": [
+        {
+          "name": "初回不可視は0取得、低速action画像はready待機しhiddenでpending/旧callbackを取消する / 要求action欠損は別actionを取らずsame-entry静止だけを取得する / STOPPED/REDUCEDは同entry静止だけ取得、切替は進行中atlasを直ちに取消する",
+          "evidence": "frontend/app/composables/useRanchClipAtlas.spec.ts"
+        },
+        {
+          "name": "scene-owned schedulers and cache reference release limited composite acceptance; not browser-global GC",
+          "evidence": "docs/evidence/CMP-261107-0551.md"
+        }
+      ]
+    },
+    {
+      "id": "I14",
+      "description": "固定browser/1280×720/no-cacheで恐竜素材の初回idle atlas HTTP body比を旧v3同条件の2倍以下、同tuple/action variant body比1.5倍以下、isolated renderer paint CPU p95を16.7ms以下とする。全アプリ総転送/TTI/frame presentation/本番SLOは測定範囲に含めない。",
+      "tests": [
+        {
+          "name": "6144 isolated paintRanchClip CPU timings and atlas HTTP body comparisons; limited asset metric",
+          "evidence": "docs/evidence/CMP-261107-0551/renderer-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "I15",
+      "description": "通常productionビルドにDEV画像bytes/ローカル絶対path/生成prompt等を混入させず、公開public配下への配置を行わない。",
+      "tests": [
+        {
+          "name": "production artifact rejects matching PNG bytes and development paths / inventory permits internal links and rejects external links and cycles",
+          "evidence": "frontend/scripts/verify-ranch-production-artifact.test.mjs"
+        },
+        {
+          "name": "M Docker build scanner4484 / standalone vue/index.mjs / HTTP / health / Stop container",
+          "evidence": "docs/evidence/CMP-261107-0551/production-M-proof.json"
+        },
+        {
+          "name": "H to M exact production input scope; repository full tree differs",
+          "evidence": "docs/evidence/CMP-261107-0551/postmerge-production-input-bridge.json"
+        }
+      ]
+    },
+    {
+      "id": "I16",
+      "description": "実BE/FEの本人・未認証・他人/他tenantとURL直打ちの既存境界を確認する。mock APIの成功を実機成功と扱わない。",
+      "tests": [
+        {
+          "name": "actual unauthenticated direct URL and owner access; separate login same command own200 other404",
+          "evidence": "docs/evidence/CMP-261107-0551/root-adoption-draft.json"
+        },
+        {
+          "name": "actual userId boundary acceptance; raw Bearer-assumption failure retained",
+          "evidence": "docs/evidence/CMP-261107-0551.md"
+        }
+      ]
+    },
+    {
+      "id": "I17",
+      "description": "実機後に別の住民視点でwidget・牧場・操作・設定・再訪の探索を行い、導線欠落を確認する。CIと検分・実機・探索の証拠を別記して通常PRフローを完了する。",
+      "tests": [
+        {
+          "name": "three independent residents reached all goals; four unverified observations retained",
+          "evidence": "docs/evidence/CMP-261107-0551/resident-observations-20261108.json"
+        },
+        {
+          "name": "root resident triage with no new confirmed scope bug",
+          "evidence": "docs/evidence/CMP-261107-0551/resident-root-disposition.md"
+        },
+        {
+          "name": "formal CI/review/real/exploratory and normal implementation merge separated",
+          "evidence": "docs/evidence/CMP-261107-0551.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 42397797673
+    },
+    {
+      "runId": 42397797716
+    },
+    {
+      "runId": 42397797649
+    },
+    {
+      "runId": 42397797656
+    },
+    {
+      "runId": 42397797742
+    },
+    {
+      "runId": 42397797703
+    },
+    {
+      "runId": 42397797661
+    },
+    {
+      "runId": 42397797719
+    },
+    {
+      "runId": 42397797671
+    },
+    {
+      "runId": 42397797711
+    },
+    {
+      "runId": 42397797694
+    },
+    {
+      "runId": 42397797662
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261107-0551.md"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261107-0551.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261107-0551/resident-observations-20261108.json"
+    }
+  },
+  "regressions": []
+}
