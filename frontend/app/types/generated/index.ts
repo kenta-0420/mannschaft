@@ -68673,6 +68673,8 @@ export interface components {
             version?: string;
         };
         RanchState: {
+            /** @description 明示公開許可と正式master/質問/素材登録が揃う時だけtrue。育成・報酬停止とは独立 */
+            approvedVisualsAvailable?: boolean;
             assignment?: components["schemas"]["AssignmentSummary"] | null;
             careBudget?: components["schemas"]["CareBudget"] | null;
             deliveryPaused?: boolean;
@@ -69054,6 +69056,8 @@ export interface components {
             axisSelections?: {
                 [key: string]: components["schemas"]["DiagnosisAxisSelection"];
             } | null;
+            /** @description 保存時の種カタログ版。decimal string */
+            catalogVersion?: string | null;
             /** Format: date-time */
             completedAt?: string;
             descriptionSnapshot?: {
@@ -69061,6 +69065,10 @@ export interface components {
             };
             /** Format: uuid */
             id?: string;
+            /** @description 保存時の種・外見名を含む六言語の対応説明 */
+            mappingDescriptionSnapshot?: {
+                [key: string]: string;
+            } | null;
             mappingVersion?: string;
             /** @enum {string} */
             method?: "DIAGNOSIS" | "BIRTH_STYLE";
@@ -69070,7 +69078,9 @@ export interface components {
             resultSchemaVersion?: string;
             ruleVersion?: string;
             scoringVersion?: string;
+            speciesKey?: string | null;
             typeCode?: string;
+            variantKey?: string | null;
         };
         InviteWatcherRequest: {
             /** @enum {string} */
