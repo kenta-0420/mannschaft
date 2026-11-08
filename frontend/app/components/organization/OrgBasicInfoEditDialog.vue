@@ -14,6 +14,7 @@
  * <p>BE `OrganizationEntity.applyUpdate` は「null は無変更・値は上書き」の意味論なので、
  * クリアしたい任意項目は空文字で送る（null は送らない）。</p>
  */
+import { createLatestGuard } from '~/utils/latestRequest'
 import type { OrgDetail } from '~/composables/useOrgDetail'
 import type { PrefectureResponse, CityResponse } from '~/types/matching'
 
@@ -45,6 +46,9 @@ interface BasicInfoForm {
 
 const form = ref<BasicInfoForm>(emptyForm())
 const saving = ref(false)
+const initializing = ref(true)
+const cityGuard = createLatestGuard()
+let isCurrentOpen = () => false
 const nameError = ref<string | null>(null)
 
 // 都道府県／市区町村マスタ（EntityCreateDialog と同じ useMatchingApi 経由）
@@ -71,11 +75,11 @@ function fillFromProps() {
     = prefectures.value.find(p => p.name === form.value.prefecture) ?? null
 }
 
-async function loadPrefectures() {
+async function loadPrefectures(isCurrent: () => boolean) {
   if (prefectures.value.length > 0) return
   try {
     const res = await getPrefectures()
-    prefectures.value = res.data
+    if (isCurrent()) prefectures.value = res.data
   } catch (err) {
     // マスタが引けなくても名称は既存値のまま保存できるため、致命ではない。
     // 握りつぶさず、原因はコンソールへ残す。
@@ -83,35 +87,45 @@ async function loadPrefectures() {
   }
 }
 
-async function loadCities(code: string) {
+async function loadCities(code: string, isOpen = isCurrentOpen) {
+  const isLatest = cityGuard.next()
+  const isCurrent = () => isOpen() && isLatest()
   citiesLoading.value = true
   try {
     const res = await getCities(code)
-    cities.value = res.data
+    if (isCurrent()) cities.value = res.data
   } catch (err) {
-    cities.value = []
-    console.error('[org-basic-info] 市区町村マスタの取得に失敗しました', err)
+    if (isCurrent()) {
+      cities.value = []
+      console.error('[org-basic-info] 市区町村マスタの取得に失敗しました', err)
+    }
   } finally {
-    citiesLoading.value = false
+    if (isCurrent()) citiesLoading.value = false
   }
 }
 
-// 開いたときにマスタを取り直し、現在値でプリフィルする。
-// immediate: true — 生成時点で既に visible=true の場合（親が v-if ではなく常時描画する場合）にも
-// プリフィルが走るようにする。閉じている間は先頭で return するため無駄な取得はしない。
-watch(visible, async (open) => {
+// 開いている間だけ初期化結果を反映し、閉じる・再表示・破棄で旧応答を無効にする。
+watch(visible, async (open, _previous, onCleanup) => {
+  let active = true
+  const isCurrent = () => active && visible.value
+  isCurrentOpen = isCurrent
+  onCleanup(() => {
+    active = false
+  })
+  initializing.value = true
+  citiesLoading.value = false
   if (!open) return
-  await loadPrefectures()
+  await loadPrefectures(isCurrent)
+  if (!isCurrent()) return
   fillFromProps()
-  if (selectedPref.value) await loadCities(selectedPref.value.code)
+  if (selectedPref.value) await loadCities(selectedPref.value.code, isCurrent)
+  if (isCurrent()) initializing.value = false
 }, { immediate: true })
 
-// 都道府県を選び直したら市区町村候補を入れ替える。
-// 市区町村のクリアは「都道府県が実際に変わったとき」だけに限る。
-// watch の第2引数 prev で判定すると、プリフィル時（null → 現在の都道府県）も
-// 「変わった」と見なされて既存の市区町村が消えてしまうため、フォームの現在値と比較する。
 watch(selectedPref, async (pref) => {
-  if (!visible.value) return
+  if (!visible.value || initializing.value) return
+  cityGuard.next()
+  citiesLoading.value = false
   const nextPrefecture = pref?.name ?? ''
   const changed = nextPrefecture !== form.value.prefecture
   form.value.prefecture = nextPrefecture
@@ -122,9 +136,10 @@ watch(selectedPref, async (pref) => {
   if (pref) await loadCities(pref.code)
 })
 
-const canSubmit = computed(() => form.value.name.trim().length > 0 && !saving.value)
+const canSubmit = computed(() => !initializing.value && form.value.name.trim().length > 0 && !saving.value)
 
 async function handleSave() {
+  if (initializing.value || !visible.value || saving.value) return
   if (form.value.name.trim().length === 0) {
     nameError.value = t('organization.basicInfoEdit.nameRequired')
     return
@@ -181,6 +196,7 @@ async function handleSave() {
         <InputText
           id="org-basic-info-name"
           v-model="form.name"
+          :disabled="initializing"
           class="w-full"
           data-testid="org-basic-info-name"
         />
@@ -193,7 +209,12 @@ async function handleSave() {
         <label class="mb-1 block text-sm font-medium" for="org-basic-info-name-kana">
           {{ t('organization.basicInfoEdit.nameKana') }}
         </label>
-        <InputText id="org-basic-info-name-kana" v-model="form.nameKana" class="w-full" />
+        <InputText
+          id="org-basic-info-name-kana"
+          v-model="form.nameKana"
+          :disabled="initializing"
+          class="w-full"
+        />
       </div>
 
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -201,13 +222,23 @@ async function handleSave() {
           <label class="mb-1 block text-sm font-medium" for="org-basic-info-nickname1">
             {{ t('organization.basicInfoEdit.nickname1') }}
           </label>
-          <InputText id="org-basic-info-nickname1" v-model="form.nickname1" class="w-full" />
+          <InputText
+            id="org-basic-info-nickname1"
+            v-model="form.nickname1"
+            :disabled="initializing"
+            class="w-full"
+          />
         </div>
         <div>
           <label class="mb-1 block text-sm font-medium" for="org-basic-info-nickname2">
             {{ t('organization.basicInfoEdit.nickname2') }}
           </label>
-          <InputText id="org-basic-info-nickname2" v-model="form.nickname2" class="w-full" />
+          <InputText
+            id="org-basic-info-nickname2"
+            v-model="form.nickname2"
+            :disabled="initializing"
+            class="w-full"
+          />
         </div>
       </div>
 
@@ -218,6 +249,7 @@ async function handleSave() {
           </label>
           <Select
             v-model="selectedPref"
+            :disabled="initializing"
             :options="prefectures"
             option-label="name"
             :placeholder="t('organization.basicInfoEdit.selectPlaceholder')"
@@ -237,7 +269,7 @@ async function handleSave() {
             option-label="name"
             option-value="name"
             :loading="citiesLoading"
-            :disabled="!selectedPref"
+            :disabled="initializing || !selectedPref"
             :placeholder="t('organization.basicInfoEdit.selectPlaceholder')"
             filter
             show-clear

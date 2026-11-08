@@ -104,11 +104,14 @@ function save(wrapper: DialogWrapper) {
 function value(wrapper: DialogWrapper, id = 'org-basic-info-name') {
   return (input(wrapper, id).element as HTMLInputElement).value
 }
+function saveDisabled(wrapper: DialogWrapper) {
+  return (save(wrapper).element as HTMLButtonElement).disabled
+}
 function expectInputsBlocked(wrapper: DialogWrapper) {
   for (const id of textIds) expect(input(wrapper, id).props('disabled'), id).toBe(true)
   expect(select(wrapper, 'org-basic-info-prefecture').props('disabled')).toBe(true)
   expect(select(wrapper, 'org-basic-info-city').props('disabled')).toBe(true)
-  expect(save(wrapper).props('disabled')).toBe(true)
+  expect(saveDisabled(wrapper)).toBe(true)
 }
 async function invokeSave(wrapper: DialogWrapper) {
   await (wrapper.vm as unknown as { handleSave: () => Promise<void> }).handleSave()
@@ -145,7 +148,7 @@ describe('OrgBasicInfoEditDialog 初期化の所有権', () => {
     try {
       await invokeSave(wrapper)
       expect(mocks.update).not.toHaveBeenCalled()
-      expect(save(wrapper).props('disabled')).toBe(true)
+      expect(saveDisabled(wrapper)).toBe(true)
     } finally {
       pending.resolve(master)
       await flushPromises()
@@ -261,7 +264,7 @@ describe('OrgBasicInfoEditDialog 初期化の所有権', () => {
     await flushPromises()
     expect(value(wrapper)).toBe('再表示後の入力')
     expect(input(wrapper).props('disabled')).toBe(false)
-    expect(save(wrapper).props('disabled')).toBe(false)
+    expect(saveDisabled(wrapper)).toBe(false)
   })
 
   it('OBI-INIT-08: 旧openの都市応答は新openの候補と入力を上書きしない', async () => {
@@ -304,6 +307,29 @@ describe('OrgBasicInfoEditDialog 初期化の所有権', () => {
     expect(input(wrapper).props('disabled')).toBe(false)
   })
 
+  it('OBI-INIT-12: 再open時にマスタ未掲載の既存所在地を名称更新で失わない', async () => {
+    const wrapper = await mountDialog()
+    await wrapper.setProps({ visible: false })
+    await wrapper.setProps({
+      visible: true,
+      orgId: 'org-b',
+      org: org('org-b', '別の組織', 'マスタ未掲載の地域', '既存の所在地'),
+    })
+    await flushPromises()
+    await input(wrapper).setValue('名称だけ更新')
+    await save(wrapper).trigger('click')
+    await flushPromises()
+    expect(mocks.update).toHaveBeenCalledExactlyOnceWith('org-b', {
+      name: '名称だけ更新',
+      nameKana: 'モト',
+      nickname1: '略称1',
+      nickname2: '略称2',
+      prefecture: 'マスタ未掲載の地域',
+      city: '既存の所在地',
+      version: 0,
+    })
+  })
+
   it.each(['prefectures', 'cities'] as const)(
     'OBI-INIT-10: %s取得失敗時も既存値のfallbackで名称を保存できる',
     async (failing) => {
@@ -339,7 +365,7 @@ describe('OrgBasicInfoEditDialog 初期化の所有権', () => {
     expect(wrapper.emitted('saved')).toBeUndefined()
     expect(value(wrapper)).toBe('保存したい入力')
     expect(mocks.handleApiError).toHaveBeenCalled()
-    expect(save(wrapper).props('disabled')).toBe(false)
+    expect(saveDisabled(wrapper)).toBe(false)
     await save(wrapper).trigger('click')
     await flushPromises()
     expect(mocks.update).toHaveBeenCalledTimes(2)
