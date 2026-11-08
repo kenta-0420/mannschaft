@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-11-08T17:53:12+00:00",
+  "generatedAt": "2026-11-08T19:20:39+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,9 +8,9 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "d61097a49227386d8b4044a2a6ced72fade5b50a",
-    "taskListCommit": "fa5aa4fae6b5ac04c1fbe632028f1c4b8d8129b1",
+    "taskListCommit": "af13a156be7ba03a2367c3ad92759c7d6ce3fb47",
     "inventorySha256": "b0a1f97197840c865756a40f12f577cfeb10aa8083dc95f2932f7b3a7f90528a",
-    "taskListSha256": "91ebed26e29071d7da0c56e9fe3d732f0f7dd274aec869689a275636287e2019",
+    "taskListSha256": "155c6011a3ac59bfacd0540f8a87ce1e69254abde7f257540bfec6f2f1700185",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
@@ -39394,8 +39394,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260930-0234",
       "title": "組織に非所属のユーザーが委員会詳細 API を取得できる（設計上の許容範囲か要確認）",
-      "status": "not-started",
-      "statusLabel": "P1 未着手",
+      "status": "working",
+      "statusLabel": "P1 実装中",
       "stage": "未設定",
       "priority": "未設定",
       "taskPriority": "P1",
@@ -39428,7 +39428,7 @@ window.BETA_INVENTORY_DATA = {
         "NAME_ONLY"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         3518
