@@ -12,7 +12,7 @@ import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.postal.CountryResolver;
 import com.mannschaft.app.postal.PostalCodePolicyRegistry;
-import com.mannschaft.app.role.service.InviteService;
+import com.mannschaft.app.role.service.InviteAcceptanceFacade;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -61,7 +61,7 @@ class AuthRegistrationServiceBirthDateTest {
     @Mock
     private BetaRestrictionService betaRestrictionService;
     @Mock
-    private InviteService inviteService;
+    private InviteAcceptanceFacade inviteAcceptanceFacade;
     @Mock
     private CountryResolver countryResolver;
     @Mock

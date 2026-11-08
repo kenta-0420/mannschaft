@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261104-0336",
+  "scope": "app",
+  "implementation": {
+    "pr": 4313,
+    "sha": "0b776757b18f156b237f7ade772f8e3f1e034ecf"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "md 未満では履歴とプレビューをカード表示にし、主要な情報と操作が横スクロールなしで見える",
+      "tests": [
+        {
+          "name": "EmergencyClosureMobileCards.spec",
+          "evidence": "frontend/tests/unit/components/reservation/emergency-closure/EmergencyClosureMobileCards.spec.ts"
+        },
+        {
+          "name": "emergency-closure-layout.spec",
+          "evidence": "frontend/tests/e2e/mobile/emergency-closure-layout.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "実機の 390px でカード表示になり、「確認状況を見る」が画面内にある。1440px は表表示",
+      "tests": [
+        {
+          "name": "0336 ADMIN",
+          "evidence": "frontend/tests/e2e/real/emergency-closure-cmp261104.real.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 42256754551
+    },
+    {
+      "runId": 42256753988
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4313"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4404"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261104-0336-exploratory.md"
+    }
+  },
+  "regressions": []
+}

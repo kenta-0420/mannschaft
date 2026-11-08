@@ -19,9 +19,9 @@ import com.mannschaft.app.chat.service.ChatAttachmentService;
 import com.mannschaft.app.chat.service.ChatChannelService.ConversationResult;
 import com.mannschaft.app.chat.service.ChatChannelService;
 import com.mannschaft.app.chat.service.ChatMemberService;
-import com.mannschaft.app.chat.service.ChatMessageService;
+import com.mannschaft.app.chat.service.ChatChannelFacade;
+import com.mannschaft.app.chat.service.ChatMessageFacade;
 import com.mannschaft.app.common.ApiResponse;
-import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
@@ -56,7 +56,8 @@ public class ChatChannelController {
 
     private final ChatChannelService channelService;
     private final ChatMemberService memberService;
-    private final ChatMessageService messageService;
+    private final ChatChannelFacade channelFacade;
+    private final ChatMessageFacade messageFacade;
     private final ChatAttachmentService attachmentService;
 
 
@@ -92,7 +93,7 @@ public class ChatChannelController {
     @Operation(summary = "チャンネル詳細")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ChannelResponse>> getChannel(@PathVariable Long channelId) {
-        ChannelResponse response = channelService.getChannel(channelId, SecurityUtils.getCurrentUserId());
+        ChannelResponse response = channelFacade.getChannel(channelId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -105,7 +106,7 @@ public class ChatChannelController {
     public ResponseEntity<ApiResponse<ChannelResponse>> updateChannel(
             @PathVariable Long channelId,
             @Valid @RequestBody UpdateChannelRequest request) {
-        ChannelResponse response = channelService.updateChannel(channelId, request, SecurityUtils.getCurrentUserId());
+        ChannelResponse response = channelFacade.updateChannel(channelId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -116,7 +117,7 @@ public class ChatChannelController {
     @Operation(summary = "チャンネル削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteChannel(@PathVariable Long channelId) {
-        channelService.deleteChannel(channelId, SecurityUtils.getCurrentUserId());
+        channelFacade.deleteChannel(channelId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -127,7 +128,7 @@ public class ChatChannelController {
     @Operation(summary = "チャンネルアーカイブ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "アーカイブ成功")
     public ResponseEntity<ApiResponse<ChannelResponse>> archiveChannel(@PathVariable Long channelId) {
-        ChannelResponse response = channelService.archiveChannel(channelId, SecurityUtils.getCurrentUserId());
+        ChannelResponse response = channelFacade.archiveChannel(channelId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -138,7 +139,7 @@ public class ChatChannelController {
     @Operation(summary = "チャンネルアーカイブ解除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "アーカイブ解除成功")
     public ResponseEntity<ApiResponse<ChannelResponse>> unarchiveChannel(@PathVariable Long channelId) {
-        ChannelResponse response = channelService.unarchiveChannel(channelId, SecurityUtils.getCurrentUserId());
+        ChannelResponse response = channelFacade.unarchiveChannel(channelId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -151,7 +152,7 @@ public class ChatChannelController {
     public ResponseEntity<ApiResponse<List<MemberResponse>>> addMembers(
             @PathVariable Long channelId,
             @Valid @RequestBody AddMemberRequest request) {
-        List<MemberResponse> responses = memberService.addMembers(channelId, SecurityUtils.getCurrentUserId(), request);
+        List<MemberResponse> responses = channelFacade.addMembers(channelId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(responses));
     }
 
@@ -164,7 +165,7 @@ public class ChatChannelController {
     public ResponseEntity<Void> removeMember(
             @PathVariable Long channelId,
             @PathVariable Long userId) {
-        memberService.removeMember(channelId, userId, SecurityUtils.getCurrentUserId());
+        channelFacade.removeMember(channelId, userId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -174,9 +175,8 @@ public class ChatChannelController {
     @PostMapping("/{channelId}/join")
     @Operation(summary = "チャンネル参加")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "参加成功")
-    @AuthorizedInService
     public ResponseEntity<ApiResponse<MemberResponse>> joinChannel(@PathVariable Long channelId) {
-        MemberResponse response = memberService.joinChannel(channelId, SecurityUtils.getCurrentUserId());
+        MemberResponse response = channelFacade.joinChannel(channelId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -190,7 +190,7 @@ public class ChatChannelController {
             @PathVariable Long channelId,
             @PathVariable Long userId,
             @Valid @RequestBody ChangeRoleRequest request) {
-        MemberResponse response = memberService.changeRole(channelId, userId, request, SecurityUtils.getCurrentUserId());
+        MemberResponse response = channelFacade.changeRole(channelId, userId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -224,7 +224,7 @@ public class ChatChannelController {
     public ResponseEntity<ApiResponse<ChannelResponse>> inviteToZimmer(
             @PathVariable Long channelId,
             @Valid @RequestBody InviteToZimmerRequest request) {
-        ChannelResponse response = channelService.inviteToZimmer(
+        ChannelResponse response = channelFacade.inviteToZimmer(
                 channelId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
@@ -237,7 +237,7 @@ public class ChatChannelController {
     @Operation(summary = "DMをグループDMに変換")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "変換成功")
     public ResponseEntity<ApiResponse<ChannelResponse>> convertToGroup(@PathVariable Long channelId) {
-        ChannelResponse response = channelService.convertToGroup(channelId, SecurityUtils.getCurrentUserId());
+        ChannelResponse response = channelFacade.convertToGroup(channelId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -252,7 +252,7 @@ public class ChatChannelController {
             @RequestParam(required = false) String cursor,
             @RequestParam(required = false) Integer limit) {
         CursorPagedResponse<ActiveThreadItemResponse> response =
-                messageService.getActiveThreads(channelId, SecurityUtils.getCurrentUserId(), cursor, limit);
+                messageFacade.getActiveThreads(channelId, SecurityUtils.getCurrentUserId(), cursor, limit);
         return ResponseEntity.ok(response);
     }
 
@@ -309,8 +309,8 @@ public class ChatChannelController {
      * {@code @EnableMethodSecurity} 点火時に JWT へ ROLE_ADMIN が乗らず一斉 403 となるため是正した。
      * scope は <b>パス変数でなくチャンネルエンティティ由来</b>（{@code channelId} から取得した teamId）であり
      * SpEL でパス変数参照できないため、宣言は {@code isAuthenticated()} とし、真の per-scope 認可は
-     * {@code ChatChannelService.updateInquiryChannel} 内で {@code AccessControlService} により強制する
-     *（当該チャンネルのチーム ADMIN/DEPUTY_ADMIN、または SYSTEM_ADMIN 短絡）。</p>
+     * トランザクションの外の {@code ChatChannelFacade.updateInquiryChannel}（{@code ChatChannelAccessGuard}）が強制する
+     *（当該チャンネルのチーム ADMIN/DEPUTY_ADMIN、または SYSTEM_ADMIN 短絡。存在を知り得ない利用者は不在と同一の 404）。</p>
      */
     @PatchMapping("/{channelId}/inquiry")
     @PreAuthorize("isAuthenticated()")
@@ -321,7 +321,7 @@ public class ChatChannelController {
     public ResponseEntity<ApiResponse<ChannelResponse>> updateInquiryChannel(
             @PathVariable Long channelId,
             @Valid @RequestBody UpdateInquiryChannelRequest request) {
-        ChannelResponse response = channelService.updateInquiryChannel(
+        ChannelResponse response = channelFacade.updateInquiryChannel(
                 channelId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }

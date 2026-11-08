@@ -6,6 +6,7 @@ import com.mannschaft.app.chat.ChatErrorCode;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.service.ChatAttachmentService;
 import com.mannschaft.app.chat.service.ChatChannelService;
+import com.mannschaft.app.chat.service.ChatChannelAccessGuard;
 import com.mannschaft.app.chat.service.ChatMessageService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
@@ -65,6 +66,7 @@ class ChatUploadControllerTest {
     @MockitoBean private ChatAttachmentService chatAttachmentService;
     /** 署名 URL 発行の認可入口（投稿権限・添付の閲覧権限）を担うサービス。 */
     @MockitoBean private ChatMessageService chatMessageService;
+    @MockitoBean private ChatChannelAccessGuard chatChannelAccessGuard;
 
     // F11.3 / F14.1 共通フィルター・コンテキストの依存補完
     @MockitoBean private AuthTokenService authTokenService;
@@ -176,8 +178,8 @@ class ChatUploadControllerTest {
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isOk());
 
-        // 認可はリクエストのスコープ申告ではなく、解決済みチャンネル実体に対して当てる。
-        verify(chatMessageService).checkChannelPostAccess(channel, USER_ID);
+        // 認可は本文投稿と同一の判定（ガードがチャンネルを引き直し、実体のスコープで判定する）で当てる。
+        verify(chatChannelAccessGuard).requireChannelPostAccess(CHANNEL_ID, USER_ID);
     }
 
     @Test
@@ -185,7 +187,7 @@ class ChatUploadControllerTest {
     void presign_403_投稿権限なし() throws Exception {
         given(chatChannelService.findChannelOrThrow(CHANNEL_ID)).willReturn(teamChannel());
         willThrow(new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED))
-                .given(chatMessageService).checkChannelPostAccess(any(ChatChannelEntity.class), anyLong());
+                .given(chatChannelAccessGuard).requireChannelPostAccess(anyLong(), anyLong());
 
         String body = """
                 {"channelId": 7, "fileName":"photo.jpg", "contentType":"image/jpeg", "fileSize":1024}

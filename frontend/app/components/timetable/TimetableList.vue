@@ -16,7 +16,7 @@ defineProps<{
 
 const emit = defineEmits<{
   (e: 'select', timetable: Timetable): void
-  (e: 'activate' | 'archive' | 'revert-to-draft' | 'duplicate', id: number): void
+  (e: 'activate' | 'archive' | 'revert-to-draft' | 'duplicate' | 'delete', id: number): void
 }>()
 </script>
 
@@ -35,7 +35,7 @@ const emit = defineEmits<{
     <Column field="name" :header="$t('timetable.timetable_name')" />
     <Column field="termName" :header="$t('timetable.term')" />
     <Column field="effectiveFrom" :header="$t('timetable.effective_from')" />
-    <Column :header="$t('common.label.status')">
+    <Column :header="$t('label.status')">
       <template #body="{ data }">
         <Badge
           :value="statusLabel(data.status)"
@@ -43,7 +43,7 @@ const emit = defineEmits<{
         />
       </template>
     </Column>
-    <Column v-if="canManage" :header="$t('common.label.actions')" style="width: 200px">
+    <Column v-if="canManage" :header="$t('label.actions')" style="width: 200px">
       <template #body="{ data }">
         <div class="flex gap-1">
           <Button
@@ -80,6 +80,18 @@ const emit = defineEmits<{
             text
             severity="info"
             @click.stop="emit('duplicate', data.id)"
+          />
+          <!-- 削除は DRAFT のみ（BE が DRAFT 以外を TIMETABLE_NOT_DRAFT で拒否する） -->
+          <Button
+            v-if="data.status === 'DRAFT'"
+            v-tooltip="$t('timetable.delete_timetable')"
+            icon="pi pi-trash"
+            size="small"
+            text
+            severity="danger"
+            :aria-label="$t('timetable.delete_timetable')"
+            :data-testid="`timetable-delete-${data.id}`"
+            @click.stop="emit('delete', data.id)"
           />
         </div>
       </template>

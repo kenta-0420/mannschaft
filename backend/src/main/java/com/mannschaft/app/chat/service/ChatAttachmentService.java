@@ -309,7 +309,7 @@ public class ChatAttachmentService {
                                                           String fileName) {
         // 1. 認可: 当該チャンネルの OWNER / ADMIN のみアイコンを変更できる。
         channelAccessGuard.requireChannelManagerRole(
-                channel.getId(), currentUserId, ChatErrorCode.CHANNEL_ICON_PERMISSION_DENIED);
+                channel, currentUserId, ChatErrorCode.CHANNEL_ICON_PERMISSION_DENIED);
 
         // 2. MIME ホワイトリスト
         String normalizedType = contentType == null ? "" : contentType.toLowerCase(Locale.ROOT);

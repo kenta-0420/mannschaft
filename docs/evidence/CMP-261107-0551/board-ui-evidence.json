@@ -1,0 +1,14 @@
+{
+  "status": "UI_EVIDENCE_SELECTED",
+  "driverSource": "outputs/check-approved64-board-ui.mjs",
+  "driverSha256": "ae165cf2a1fc6297501b118f8597b492077c27aeb393f238f34550b485c713e0",
+  "safeReceipt": "docs/evidence/CMP-261107-0551/board-ui-safe.json",
+  "safeReceiptSha256": "69b4e6e5c1a927c5f0430a9436909687f7b80d54ec36453e5dc49823978179a1",
+  "selectedScreenshot": "docs/evidence/CMP-261107-0551/board-new-four.png",
+  "screenshotSha256": "4d527d291c9e8a81cda219b85436c57bcf6cc2faf366b72106bf7f6de1974d7b",
+  "workerVisuallyViewed": true,
+  "nodeSessionExit": 0,
+  "nodePid": 42540,
+  "nodePidAbsentAfterExit": true,
+  "limits": "sourceHead exact persistence measured; no dedicated sourceHead UI field exists. Known owned process generation only, no global handle/OS-wide zero claim."
+}

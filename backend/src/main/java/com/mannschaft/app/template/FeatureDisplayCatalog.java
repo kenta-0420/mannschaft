@@ -10,7 +10,8 @@ public final class FeatureDisplayCatalog {
             "forms", "projects", "incidents", "equipment", "parking", "files", "guide", "billing", "surveys",
             "tournaments", "info", "members", "activities", "gallery");
     private static final List<String> TEAM = Stream.concat(COMMON.stream(), Stream.of("shifts", "duties", "matches",
-            "match-analytics", "skills", "repair-plan", "analytics", "league-transfers", "reservations", "nav", "member-info")).toList();
+            "match-analytics", "skills", "repair-plan", "analytics", "league-transfers", "reservations", "nav", "member-info",
+            "timetable")).toList();
     private static final List<String> ORGANIZATION = Stream.concat(COMMON.stream(), Stream.of("events", "timetable",
             "voting", "committees", "facilities", "residents", "kb", "queue", "timeline-digest", "translations",
             "payments", "member-teams", "children")).toList();

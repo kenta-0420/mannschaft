@@ -39752,7 +39752,8 @@
         "tags": [
           "時間割学期管理（チーム）"
         ],
-        "summary": "チーム学期一覧（チーム独自＋組織継承）",
+        "summary": "チーム学期一覧",
+        "description": "organizationId を省略するとチーム固有の学期だけを返す。指定するとチームの所属組織であることを検証したうえで、チーム固有と組織の学期をマージして返す（非所属の組織は 404）。",
         "operationId": "listTeamTerms",
         "parameters": [
           {
@@ -39767,7 +39768,7 @@
           {
             "name": "organizationId",
             "in": "query",
-            "required": true,
+            "required": false,
             "schema": {
               "type": "integer",
               "format": "int64"
@@ -50380,6 +50381,15 @@
               "type": "integer",
               "format": "int64"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "送信の冪等キー（UUID）。同じ送信者・同じチームで同じキーの再送は先の結果を返す。形式不正は 400（RESERVATION_056）",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -50399,6 +50409,36 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseEmergencyClosureResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "同じ Idempotency-Key・同じ内容の再送。新規作成せず先の送信結果を返す",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseEmergencyClosureResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "同じ Idempotency-Key で内容が異なる（RESERVATION_055）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Idempotency-Key の形式が不正（RESERVATION_056）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -192788,6 +192828,31 @@
           "startDate"
         ]
       },
+      "CommonErrorDetail": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "fieldErrors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldError"
+            }
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/CommonErrorDetail"
+          }
+        }
+      },
       "ApiResponseEmergencyClosureResponse": {
         "type": "object",
         "properties": {
@@ -217433,7 +217498,9 @@
         "properties": {
           "academicYear": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "maximum": 2100,
+            "minimum": 2000
           },
           "endDate": {
             "type": "string",
@@ -231343,31 +231410,6 @@
           "sourceTeamName",
           "sourceTeamSlug"
         ]
-      },
-      "CommonErrorDetail": {
-        "type": "object",
-        "properties": {
-          "code": {
-            "type": "string"
-          },
-          "fieldErrors": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/FieldError"
-            }
-          },
-          "message": {
-            "type": "string"
-          }
-        }
-      },
-      "ErrorResponse": {
-        "type": "object",
-        "properties": {
-          "error": {
-            "$ref": "#/components/schemas/CommonErrorDetail"
-          }
-        }
       },
       "FriendFeedForwardStatus": {
         "type": "object",

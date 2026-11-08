@@ -2,7 +2,7 @@ package com.mannschaft.app.chat.controller;
 
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.chat.dto.MessageResponse;
-import com.mannschaft.app.chat.service.ChatMessageService;
+import com.mannschaft.app.chat.service.ChatMessageFacade;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.security.AccessGuard;
 import com.mannschaft.app.proxy.ProxyInputContext;
@@ -50,7 +50,7 @@ class ChatMessageControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private ChatMessageService messageService;
+    private ChatMessageFacade messageFacade;
 
     // 共通フィルター・コンテキストの依存補完
     @MockitoBean
@@ -82,7 +82,7 @@ class ChatMessageControllerTest {
                     .id(1L)
                     .senderId(USER_ID)
                     .build();
-            given(messageService.sendMessage(anyLong(), any(), anyLong()))
+            given(messageFacade.sendMessage(anyLong(), any(), anyLong()))
                     .willReturn(mockResponse);
 
             // when / then: Jackson が SendMessageRequest をデシリアライズできれば 201 が返る
@@ -103,7 +103,7 @@ class ChatMessageControllerTest {
                     .id(2L)
                     .senderId(USER_ID)
                     .build();
-            given(messageService.sendMessage(anyLong(), any(), anyLong()))
+            given(messageFacade.sendMessage(anyLong(), any(), anyLong()))
                     .willReturn(mockResponse);
 
             // when / then

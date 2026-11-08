@@ -1,0 +1,50 @@
+{
+  "kind": "FINAL_NORMAL_680_GENERATED_OUTPUT_ADOPTED",
+  "finalGeneratedSha256": "1619ff145df04e59fe6ac335a756d9511ce61ae624173c6eac8d82d406859c73",
+  "exactBytesEqualToPreviouslyValidatedNormalOutput": true,
+  "normalGenerator": {
+    "exitCode": 0,
+    "fullOutputSha256": "1619ff145df04e59fe6ac335a756d9511ce61ae624173c6eac8d82d406859c73",
+    "outputPrivatePath": "docs/prototypes/.b0-local/r25-generator-output.txt"
+  },
+  "normalValidator": {
+    "exitCode": 1,
+    "output": "file:///C:/Claude/mannschaft/.claude/worktrees/agent-sept-cmp1253-r25-integration-20261109/docs/prototypes/validate-beta-inventory-board.mjs:46\nif (github.status === 'synced' && github.lastAttempt?.status !== 'error' && JSON.stringify(actualGithubNumbers) !== JSON.stringify(expectedGithubNumbers)) throw new Error('GitHubスナップショットの参照集合が正本と不一致です');\n                                                                                                                                                                 ^\n\nError: GitHubスナップショットの参照集合が正本と不一致です\n    at file:///C:/Claude/mannschaft/.claude/worktrees/agent-sept-cmp1253-r25-integration-20261109/docs/prototypes/validate-beta-inventory-board.mjs:46:162\n    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)\n    at async node:internal/modules/esm/loader:639:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)\n\nNode.js v24.15.0\n"
+  },
+  "normalSelfTestOverlay": {
+    "exitCode": 1,
+    "output": "file:///C:/Claude/mannschaft/.claude/worktrees/agent-sept-cmp1253-r25-integration-20261109/docs/prototypes/validate-beta-inventory-board.mjs:46\nif (github.status === 'synced' && github.lastAttempt?.status !== 'error' && JSON.stringify(actualGithubNumbers) !== JSON.stringify(expectedGithubNumbers)) throw new Error('GitHubスナップショットの参照集合が正本と不一致です');\n                                                                                                                                                                 ^\n\nError: GitHubスナップショットの参照集合が正本と不一致です\n    at file:///C:/Claude/mannschaft/.claude/worktrees/agent-sept-cmp1253-r25-integration-20261109/docs/prototypes/validate-beta-inventory-board.mjs:46:162\n    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)\n    at async node:internal/modules/esm/loader:639:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)\n\nNode.js v24.15.0\n"
+  },
+  "overlayOnlyExtractedSelfTest": {
+    "exitCode": 0,
+    "output": "{\"residentOverlayAccepted\":true,\"emptyInsightsAccepted\":true,\"syntheticBaselineAccepted\":true,\"multipleSourceHeadsAndRunsAccepted\":true,\"invalidOverlaysRejected\":10}\n"
+  },
+  "rejectedIntermediate": {
+    "campaigns": 602,
+    "generatedSha256": "71e3f9636550cd3b9111a885ea99680bfce991ee9ea28e042f67d6359a15323d",
+    "proof": "docs/evidence/CMP-261008-1253/b0-overlay-checks-r24.json",
+    "validatorExitCode": 1,
+    "reason": "CMP正本680行に対して602行保持は78行を欠落させるため棄却。L37不一致を最終結果としない。"
+  },
+  "finalCampaigns": 680,
+  "currentTaskListCmpRows": 680,
+  "baselineCounts": [
+    61,
+    61,
+    118
+  ],
+  "finalCounts": [
+    64,
+    64,
+    120
+  ],
+  "baselineAllOverlayFieldsDeepPreserved": true,
+  "topRunIdAndEnvironmentDeepPreserved": true,
+  "canonicalCopyFinalGeneratedOverlayDeepEqual": true,
+  "allValidatorGreenClaim": false,
+  "globalSnapshotSynchronizedClaim": false,
+  "validationReuseReason": "保存済normal exact bytesのSHA一致。既実行通常validator/自己検証のL46 GitHub参照集合不一致FAILを再送せず同結果として適用。overlay限定コード抜出しは同一overlayに対するexit0であり全体合格ではない。",
+  "scope": "正本task-list/inventoryからの通常generator機械生成全量680を最終採用。製品ソース・台帳・生成器・validatorは変更しない。",
+  "staticBoardUi": "別担当・別証拠",
+  "freshHeadCi": "別ゲート・この記録時点未取得"
+}
