@@ -5,7 +5,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.pdf.PdfFileNameBuilder;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.common.pdf.PdfResponseHelper;
-import com.mannschaft.app.role.entity.InviteTokenEntity;
+import com.mannschaft.app.role.dto.InviteTokenSummary;
 import com.mannschaft.app.team.TeamErrorCode;
 import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
@@ -44,7 +44,7 @@ public class InviteQrPdfService {
 
         // トークン取得（IDORチェック: 平文から引いた招待が teamId に属することを確認。
         // 他チームの有効な平文も不明な平文も、同じ 404 ROLE_002 で拒否する）
-        InviteTokenEntity token = inviteService.findByPlaintextAndTeamId(plaintextToken, teamId);
+        InviteTokenSummary token = inviteService.findByPlaintextAndTeamId(plaintextToken, teamId);
 
         // チーム情報取得
         // 他ドメイン（team）は Service 経由で取得する（Entity / Repository を直接参照しない）
@@ -58,12 +58,12 @@ public class InviteQrPdfService {
         Map<String, Object> vars = new HashMap<>();
         vars.put("teamName", team.name());
         vars.put("qrBase64", qrBase64);
-        vars.put("expiresAt", token.getExpiresAt());
-        vars.put("maxUses", token.getMaxUses());
-        vars.put("usedCount", token.getUsedCount());
-        vars.put("isRevoked", token.getRevokedAt() != null);
-        vars.put("isExpired", token.getExpiresAt() != null
-            && token.getExpiresAt().isBefore(LocalDateTime.now()));
+        vars.put("expiresAt", token.expiresAt());
+        vars.put("maxUses", token.maxUses());
+        vars.put("usedCount", token.usedCount());
+        vars.put("isRevoked", token.revokedAt() != null);
+        vars.put("isExpired", token.expiresAt() != null
+            && token.expiresAt().isBefore(LocalDateTime.now()));
 
         // PDF生成
         byte[] pdfBytes = pdfGeneratorService.generateFromTemplate("pdf/invite-qr", vars);

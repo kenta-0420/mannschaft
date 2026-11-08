@@ -188,7 +188,7 @@ class MembershipInviteIdAcceptIT extends InviteTokenHashItSupport {
     }
 
     private Long insertInState(Scope scope, String plaintext, Long target, Long createdBy, InviteState state) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(java.time.ZoneOffset.UTC);
         return switch (state) {
             case JUST_BEFORE_EXPIRY -> insertTargetedInviteWithKnownPlaintext(scope, plaintext, target, createdBy,
                     now.plusSeconds(5), 1, 0, null);

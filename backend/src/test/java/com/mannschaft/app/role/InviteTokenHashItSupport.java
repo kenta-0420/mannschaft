@@ -139,7 +139,7 @@ abstract class InviteTokenHashItSupport extends InviteGenerationItSupport {
                         + "used_count, revoked_at, target_user_id, created_by, scope_closure_generation, created_at) "
                         + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)",
                 vault.hash(plaintext), scope.id(), scope.memberRoleId(), expiresAt, maxUses, usedCount, revokedAt,
-                target, createdBy, LocalDateTime.now());
+                target, createdBy, LocalDateTime.now(java.time.ZoneOffset.UTC));
         return jdbc.queryForObject("SELECT id FROM invite_tokens WHERE token_hash = ?", Long.class, vault.hash(plaintext));
     }
 

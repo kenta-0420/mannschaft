@@ -20,8 +20,8 @@ const emit = defineEmits<{
   edit: [messageId: number]
   bookmark: [messageId: number]
   reply: [messageId: number]
-  inviteJoin: [messageId: number, token: string]
-  inviteDecline: [messageId: number, token: string]
+  inviteJoin: [messageId: number, tokenId: number]
+  inviteDecline: [messageId: number, tokenId: number]
 }>()
 
 const authStore = useAuthStore()

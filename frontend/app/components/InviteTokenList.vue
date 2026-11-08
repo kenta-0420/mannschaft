@@ -231,6 +231,7 @@ onMounted(() => loadTokens())
         <Button
           :label="t('secret_token.issued_dialog.pdf_download')"
           icon="pi pi-file-pdf"
+          class="!min-h-11 w-full whitespace-normal"
           outlined
           :loading="pdfLoading"
           @click="downloadQrPdf"

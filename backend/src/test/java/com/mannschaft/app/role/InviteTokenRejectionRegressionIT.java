@@ -51,7 +51,7 @@ class InviteTokenRejectionRegressionIT extends InviteTokenHashItSupport {
         Scope scope = scope("TEAM");
         JsonNode issued = issueShared(scope, issuer(scope));
         long id = issued.path("id").asLong();
-        jdbc.update("UPDATE invite_tokens SET expires_at = ? WHERE id = ?", LocalDateTime.now().minusMinutes(1), id);
+        jdbc.update("UPDATE invite_tokens SET expires_at = ? WHERE id = ?", LocalDateTime.now(java.time.ZoneOffset.UTC).minusMinutes(1), id);
 
         Long joiner = user();
         assertThat(outcome(perform(joiner, post("/api/v1/invite/{token}/join", issued.path("token").asText()))))
@@ -66,7 +66,7 @@ class InviteTokenRejectionRegressionIT extends InviteTokenHashItSupport {
         Scope scope = scope("TEAM");
         JsonNode issued = issueShared(scope, issuer(scope));
         long id = issued.path("id").asLong();
-        jdbc.update("UPDATE invite_tokens SET revoked_at = ? WHERE id = ?", LocalDateTime.now().minusMinutes(1), id);
+        jdbc.update("UPDATE invite_tokens SET revoked_at = ? WHERE id = ?", LocalDateTime.now(java.time.ZoneOffset.UTC).minusMinutes(1), id);
 
         Long joiner = user();
         assertThat(outcome(perform(joiner, post("/api/v1/invite/{token}/join", issued.path("token").asText()))))
@@ -106,10 +106,10 @@ class InviteTokenRejectionRegressionIT extends InviteTokenHashItSupport {
         Scope scope = scope("TEAM");
         Long admin = issuer(scope);
         JsonNode expired = issueShared(scope, admin);
-        jdbc.update("UPDATE invite_tokens SET expires_at = ? WHERE id = ?", LocalDateTime.now().minusMinutes(1),
+        jdbc.update("UPDATE invite_tokens SET expires_at = ? WHERE id = ?", LocalDateTime.now(java.time.ZoneOffset.UTC).minusMinutes(1),
                 expired.path("id").asLong());
         JsonNode revoked = issueShared(scope, admin);
-        jdbc.update("UPDATE invite_tokens SET revoked_at = ? WHERE id = ?", LocalDateTime.now().minusMinutes(1),
+        jdbc.update("UPDATE invite_tokens SET revoked_at = ? WHERE id = ?", LocalDateTime.now(java.time.ZoneOffset.UTC).minusMinutes(1),
                 revoked.path("id").asLong());
 
         Long viewer = user();

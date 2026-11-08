@@ -48582,6 +48582,50 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/invite-tokens/pdf": {
+      "post": {
+        "tags": [
+          "招待QRコードPDF"
+        ],
+        "summary": "招待QRコードPDFダウンロード",
+        "description": "発行時に受け取った平文トークンから、チームの招待QRコードをMannschaftブランドのPDFで取得する",
+        "operationId": "downloadQrPdf",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteQrPdfRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/homerooms": {
       "get": {
         "tags": [
@@ -55008,7 +55052,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListInviteTokenResponse"
+                  "$ref": "#/components/schemas/ApiResponseListInviteTokenSummary"
                 }
               }
             }
@@ -55047,7 +55091,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseInviteTokenResponse"
+                  "$ref": "#/components/schemas/ApiResponseInviteTokenIssuedResponse"
                 }
               }
             }
@@ -65323,7 +65367,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListInviteTokenResponse"
+                  "$ref": "#/components/schemas/ApiResponseListInviteTokenSummary"
                 }
               }
             }
@@ -65362,7 +65406,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseInviteTokenResponse"
+                  "$ref": "#/components/schemas/ApiResponseInviteTokenIssuedResponse"
                 }
               }
             }
@@ -82648,6 +82692,67 @@
         }
       }
     },
+    "/api/v1/invite/invitations/{tokenId}/decline": {
+      "post": {
+        "tags": [
+          "招待"
+        ],
+        "summary": "承諾型招待の辞退（招待ID指定）",
+        "description": "宛先本人が招待IDで辞退する。revoked_at を立てカードを辞退済み表示にする",
+        "operationId": "declineInvitation",
+        "parameters": [
+          {
+            "name": "tokenId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "辞退成功"
+          }
+        }
+      }
+    },
+    "/api/v1/invite/invitations/{tokenId}/accept": {
+      "post": {
+        "tags": [
+          "招待"
+        ],
+        "summary": "承諾型招待の承諾（招待ID指定）",
+        "description": "宛先本人が招待IDで承諾して参加する。ボディの folderId 指定時はそのフォルダへ、未指定時は未分類フォルダへ配置",
+        "operationId": "acceptInvitation",
+        "parameters": [
+          {
+            "name": "tokenId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteJoinRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "参加成功"
+          }
+        }
+      }
+    },
     "/api/v1/incidents": {
       "get": {
         "tags": [
@@ -85850,7 +85955,7 @@
           "組織委員会招集"
         ],
         "summary": "委員会招集辞退（トークン）",
-        "operationId": "declineInvitation",
+        "operationId": "declineInvitation_1",
         "requestBody": {
           "content": {
             "application/json": {
@@ -85881,7 +85986,7 @@
           "組織委員会招集"
         ],
         "summary": "委員会招集受諾（トークン）",
-        "operationId": "acceptInvitation",
+        "operationId": "acceptInvitation_1",
         "requestBody": {
           "content": {
             "application/json": {
@@ -87436,7 +87541,7 @@
           "ケアリンク（招待）"
         ],
         "summary": "招待承認",
-        "operationId": "acceptInvitation_1",
+        "operationId": "acceptInvitation_2",
         "parameters": [
           {
             "name": "token",
@@ -123655,49 +123760,6 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseListJoinRequestResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/teams/{teamId}/invite-tokens/{tokenId}/pdf": {
-      "get": {
-        "tags": [
-          "招待QRコードPDF"
-        ],
-        "summary": "招待QRコードPDFダウンロード",
-        "description": "チームの招待トークンのQRコードをMannschaftブランドのPDFで取得する",
-        "operationId": "downloadQrPdf",
-        "parameters": [
-          {
-            "name": "teamId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "tokenId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "type": "string",
-                  "format": "byte"
                 }
               }
             }
@@ -191473,6 +191535,15 @@
           }
         }
       },
+      "InviteQrPdfRequest": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
       "ClassHomeroomCreateRequest": {
         "type": "object",
         "properties": {
@@ -195781,15 +195852,15 @@
           "roleId"
         ]
       },
-      "ApiResponseInviteTokenResponse": {
+      "ApiResponseInviteTokenIssuedResponse": {
         "type": "object",
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/InviteTokenResponse"
+            "$ref": "#/components/schemas/InviteTokenIssuedResponse"
           }
         }
       },
-      "InviteTokenResponse": {
+      "InviteTokenIssuedResponse": {
         "type": "object",
         "properties": {
           "createdAt": {
@@ -211651,6 +211722,60 @@
           "ticketTypeId"
         ]
       },
+      "ApiResponseInviteTokenResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/InviteTokenResponse"
+          }
+        }
+      },
+      "InviteTokenResponse": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "eventId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "label": {
+            "type": "string"
+          },
+          "maxUses": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "token": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "usedCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "CreateEventDelegationRequest": {
         "type": "object",
         "properties": {
@@ -212888,9 +213013,6 @@
           "status": {
             "type": "string"
           },
-          "token": {
-            "type": "string"
-          },
           "tokenId": {
             "type": "integer",
             "format": "int64"
@@ -213431,9 +213553,6 @@
           "targetUserId": {
             "type": "integer",
             "format": "int64"
-          },
-          "token": {
-            "type": "string"
           },
           "tokenId": {
             "type": "integer",
@@ -234818,14 +234937,46 @@
           }
         }
       },
-      "ApiResponseListInviteTokenResponse": {
+      "ApiResponseListInviteTokenSummary": {
         "type": "object",
         "properties": {
           "data": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/InviteTokenResponse"
+              "$ref": "#/components/schemas/InviteTokenSummary"
             }
+          }
+        }
+      },
+      "InviteTokenSummary": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "maxUses": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "revokedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "roleName": {
+            "type": "string"
+          },
+          "usedCount": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -250489,6 +250640,17 @@
           },
           "meta": {
             "$ref": "#/components/schemas/PageMeta"
+          }
+        }
+      },
+      "ApiResponseListInviteTokenResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InviteTokenResponse"
+            }
           }
         }
       },

@@ -265,13 +265,15 @@ public class InviteService {
      *
      * @param plaintextToken 平文の招待トークン
      * @param teamId         チームID
-     * @return 招待トークンEntity
+     * @return 招待の概要（Entity は返さない）
      * @throws BusinessException ROLE_002（存在しない、またはチームに属さない。両者は区別しない）
      */
-    public InviteTokenEntity findByPlaintextAndTeamId(String plaintextToken, Long teamId) {
-        return inviteTokenRepository.findByTokenHash(vault.hash(plaintextToken))
-            .filter(token -> teamId.equals(token.getTeamId()))
+    public InviteTokenSummary findByPlaintextAndTeamId(String plaintextToken, Long teamId) {
+        InviteTokenEntity token = inviteTokenRepository.findByTokenHash(vault.hash(plaintextToken))
+            .filter(found -> teamId.equals(found.getTeamId()))
             .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
+        String roleName = roleRepository.findById(token.getRoleId()).map(RoleEntity::getName).orElse(null);
+        return toResponse(token, roleName);
     }
 
     private InviteTokenSummary toResponse(InviteTokenEntity token, String roleName) {

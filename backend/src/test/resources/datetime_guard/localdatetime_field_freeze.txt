@@ -893,7 +893,8 @@ LOCAL_DATE_TIME_FIELD|com.mannschaft.app.resume.entity.ResumeEntity|3
 LOCAL_DATE_TIME_FIELD|com.mannschaft.app.resume.entity.ResumeQualificationEntity|3
 LOCAL_DATE_TIME_FIELD|com.mannschaft.app.resume.entity.ResumeSkillEntity|3
 LOCAL_DATE_TIME_FIELD|com.mannschaft.app.role.dto.BlockResponse|1
-LOCAL_DATE_TIME_FIELD|com.mannschaft.app.role.dto.InviteTokenResponse|3
+LOCAL_DATE_TIME_FIELD|com.mannschaft.app.role.dto.InviteTokenIssuedResponse|3
+LOCAL_DATE_TIME_FIELD|com.mannschaft.app.role.dto.InviteTokenSummary|3
 LOCAL_DATE_TIME_FIELD|com.mannschaft.app.role.dto.MemberResponse|1
 LOCAL_DATE_TIME_FIELD|com.mannschaft.app.role.dto.MyOrganizationResponse|1
 LOCAL_DATE_TIME_FIELD|com.mannschaft.app.role.dto.MyTeamResponse|1

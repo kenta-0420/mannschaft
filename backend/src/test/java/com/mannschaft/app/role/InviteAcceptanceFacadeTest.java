@@ -133,7 +133,7 @@ class InviteAcceptanceFacadeTest {
             given(membershipGrantService.grantRole("TEAM", TEAM_ID, USER_ID, 3L, 2L, "INVITE_TOKEN"))
                     .willReturn(GrantOutcome.GRANTED);
 
-            facade.acceptInvitationById(100L, USER_ID, FOLDER_ID);
+            facade.acceptInvitationById(100L, USER_ID, null);
 
             InOrder order = inOrder(userRowLockService, writer, membershipGrantService, placementService);
             order.verify(userRowLockService).lock(USER_ID);

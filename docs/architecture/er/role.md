@@ -23,7 +23,7 @@ erDiagram
     }
     invite_tokens {
         bigint id PK
-        varchar token_hash UK "SHA-256 hex64"
+        varchar token_hash UK
         bigint team_id "ID参照"
         bigint organization_id "ID参照"
         bigint role_id FK

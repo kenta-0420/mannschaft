@@ -98,7 +98,7 @@ class MembershipInviteAcceptConcurrencyIT extends InviteTokenHashItSupport {
         Long target = user();
         String plaintext = vault.issueBase64Url().plaintext();
         Long tokenId = insertTargetedInviteWithKnownPlaintext(scope, plaintext, target, admin(scope),
-                LocalDateTime.now().plusDays(7), 1, 0, null);
+                LocalDateTime.now(java.time.ZoneOffset.UTC).plusDays(7), 1, 0, null);
 
         List<Outcome> outcomes = race(target, post("/api/v1/invite/{token}/join", plaintext),
                 target, acceptById(tokenId));
