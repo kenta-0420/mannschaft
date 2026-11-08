@@ -1316,6 +1316,8 @@ public class GlobalExceptionHandler {
             Map.entry("RESERVATION_051", HttpStatus.NOT_FOUND),              // RECURRING_BLOCKED_TIME_NOT_FOUND（IDOR秘匿）
             // F03.4.5 §6.4 W2-6 予約作成レートリミット（単枠・グループ共通バケット）
             Map.entry("RESERVATION_053", HttpStatus.TOO_MANY_REQUESTS),      // RESERVATION_CREATE_RATE_LIMITED
+            // CMP-261104-0334 臨時休業通知の冪等性（同じキーで内容が異なる再送は 409。056=キー形式不正は既定 400）
+            Map.entry("RESERVATION_055", HttpStatus.CONFLICT),               // CLOSURE_IDEMPOTENCY_KEY_REUSED
             // F06.5 アクティブリコール学習（IDOR 対策で 404、上限/範囲外は 400、楽観排他/マスク中編集/再輸出は 409）
             Map.entry("REFLECTION_001", HttpStatus.NOT_FOUND),              // NOT_FOUND（他人所有も IDOR 対策で 404）
             Map.entry("REFLECTION_002", HttpStatus.BAD_REQUEST),           // THEME_LIMIT_EXCEEDED
