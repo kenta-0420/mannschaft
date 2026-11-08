@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-10-27T21:26:14+00:00",
+  "generatedAt": "2026-11-08T19:20:39+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,9 +8,9 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "d61097a49227386d8b4044a2a6ced72fade5b50a",
-    "taskListCommit": "1c69b0d8d5dbd605e388759db436ffb49039eaf8",
+    "taskListCommit": "af13a156be7ba03a2367c3ad92759c7d6ce3fb47",
     "inventorySha256": "b0a1f97197840c865756a40f12f577cfeb10aa8083dc95f2932f7b3a7f90528a",
-    "taskListSha256": "2fd31e416d1795d9ae95e8e2b569533d7f3c471d2ccb9e5a334b45801250d079",
+    "taskListSha256": "155c6011a3ac59bfacd0540f8a87ce1e69254abde7f257540bfec6f2f1700185",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
@@ -20,7 +20,7 @@ window.BETA_INVENTORY_DATA = {
     "features": 44,
     "capabilities": 95,
     "splitParents": 33,
-    "campaigns": 602,
+    "campaigns": 680,
     "layer": {
       "能力": 26,
       "ドメイン": 18
@@ -37,11 +37,11 @@ window.BETA_INVENTORY_DATA = {
   "verification": {
     "raw": {
       "features": 44,
-      "campaigns": 602
+      "campaigns": 680
     },
     "parsed": {
       "features": 44,
-      "campaigns": 602,
+      "campaigns": 680,
       "core": 25,
       "noncore": 19,
       "blockers": 23,
@@ -8974,6 +8974,39 @@ window.BETA_INVENTORY_DATA = {
         "idAssignment": "原reportのpersonaIdをそのまま保持。固定P01-P20への変換なし。",
         "trusted": false,
         "status": "observed-unverified"
+      },
+      {
+        "id": "ALIC-CMP1253-R24-A-20261108",
+        "personaArchetype": "一般×素直（担当チーム管理者）",
+        "runId": "cmp1253-r21-A-768ed983-14b4-4b33-8962-501a6bc6e7bd",
+        "sourceHead": "f93884c6a43ae9be5973cf005dfe52ebef7d1262",
+        "evidencePath": "docs/evidence/CMP-261008-1253/resident-observations-r24-20261108.json",
+        "originalResidentId": "A",
+        "idAssignment": "累積一意persona/journey IDは今回の登録時付与。原runIdを保持し、固定P01-P20へ変換しない。",
+        "trusted": false,
+        "status": "observed-unverified"
+      },
+      {
+        "id": "ALIC-CMP1253-R24-B-20261108",
+        "personaArchetype": "高齢・低リテラシー（チーム一般メンバー）",
+        "runId": "cmp1253-r21-B-925566af-50d0-4d4f-ac86-8e012558586e",
+        "sourceHead": "f93884c6a43ae9be5973cf005dfe52ebef7d1262",
+        "evidencePath": "docs/evidence/CMP-261008-1253/resident-observations-r24-20261108.json",
+        "originalResidentId": "B",
+        "idAssignment": "累積一意persona/journey IDは今回の登録時付与。原runIdを保持し、固定P01-P20へ変換しない。",
+        "trusted": false,
+        "status": "observed-unverified"
+      },
+      {
+        "id": "ALIC-CMP1253-R24-C-20261108",
+        "personaArchetype": "一般×隙間狙い（別組織管理者）",
+        "runId": "cmp1253-r21-C-b3cbd8ea-f282-4819-9331-63881e6ce81a",
+        "sourceHead": "f93884c6a43ae9be5973cf005dfe52ebef7d1262",
+        "evidencePath": "docs/evidence/CMP-261008-1253/resident-observations-r24-20261108.json",
+        "originalResidentId": "C",
+        "idAssignment": "累積一意persona/journey IDは今回の登録時付与。原runIdを保持し、固定P01-P20へ変換しない。",
+        "trusted": false,
+        "status": "observed-unverified"
       }
     ],
     "journeys": [
@@ -9752,6 +9785,45 @@ window.BETA_INVENTORY_DATA = {
           "resumeCare": true
         },
         "allGoalsReached": true,
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP1253-R24-A-20261108-J1",
+        "personaId": "ALIC-CMP1253-R24-A-20261108",
+        "purpose": "自分のチームのシフトを開き、担当者の割当を変更し、再訪後の状態を確認する",
+        "runId": "cmp1253-r21-A-768ed983-14b4-4b33-8962-501a6bc6e7bd",
+        "sourceHead": "f93884c6a43ae9be5973cf005dfe52ebef7d1262",
+        "evidencePath": "docs/evidence/CMP-261008-1253/resident-observations-r24-20261108.json",
+        "idAssignment": "原reportにjourney IDがないため登録時付与。",
+        "executionCompleted": true,
+        "allGoalsReached": true,
+        "goalScope": "原住民目的",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP1253-R24-B-20261108-J1",
+        "personaId": "ALIC-CMP1253-R24-B-20261108",
+        "purpose": "自分の所属チームのシフトを探し、自分の予定を確認する",
+        "runId": "cmp1253-r21-B-925566af-50d0-4d4f-ac86-8e012558586e",
+        "sourceHead": "f93884c6a43ae9be5973cf005dfe52ebef7d1262",
+        "evidencePath": "docs/evidence/CMP-261008-1253/resident-observations-r24-20261108.json",
+        "idAssignment": "原reportにjourney IDがないため登録時付与。",
+        "executionCompleted": true,
+        "allGoalsReached": false,
+        "goalScope": "原住民目的",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP1253-R24-C-20261108-J1",
+        "personaId": "ALIC-CMP1253-R24-C-20261108",
+        "purpose": "案内された他組織のシフトを自分の画面から読み取り専用でどこまで確認できるか調べる",
+        "runId": "cmp1253-r21-C-b3cbd8ea-f282-4819-9331-63881e6ce81a",
+        "sourceHead": "f93884c6a43ae9be5973cf005dfe52ebef7d1262",
+        "evidencePath": "docs/evidence/CMP-261008-1253/resident-observations-r24-20261108.json",
+        "idAssignment": "原reportにjourney IDがないため登録時付与。",
+        "executionCompleted": true,
+        "allGoalsReached": true,
+        "goalScope": "読み取り確認範囲のみ",
         "coveragePassed": false
       }
     ],
@@ -12374,6 +12446,48 @@ window.BETA_INVENTORY_DATA = {
           "executionStageAcceptedByRoot": true,
           "limits": "小領域は実寸有効・今回未変更。MOB07非再現・元直接原因UNKNOWN。100ms未満変化の不在は主張しない。"
         }
+      },
+      {
+        "id": "ALIC-CMP1253-R24-B-20261108-I001",
+        "featureKey": "shift-shift",
+        "featureDetail": "シフト閲覧・空状態の説明",
+        "personaId": "ALIC-CMP1253-R24-B-20261108",
+        "journeyId": "ALIC-CMP1253-R24-B-20261108-J1",
+        "personaArchetype": "高齢・低リテラシー（チーム一般メンバー）",
+        "originalRunId": "cmp1253-r21-B-925566af-50d0-4d4f-ac86-8e012558586e",
+        "sourceHead": "f93884c6a43ae9be5973cf005dfe52ebef7d1262",
+        "evidencePath": "docs/evidence/CMP-261008-1253/resident-observations-r24-20261108.json",
+        "title": "予定が空のときに理由と次の相談先が分からない",
+        "detail": "チーム選択後のシフト管理・一覧と12月のマイシフトが空で、自分の予定や次の相談先を確認できなかった。fixtureはDRAFTかつ未割当であり、予定非表示を製品不具合と断定しない。",
+        "page": "/my/shifts",
+        "screenshotPath": ".claude/campaigns/cmp1253-real-r24-entry-budget-20261108/resident-images/B-7.png",
+        "urgency": "normal",
+        "priority": "should",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP1253-R24-C-20261108-I001",
+        "featureKey": "shift-shift",
+        "featureDetail": "シフト閲覧・空状態の説明",
+        "personaId": "ALIC-CMP1253-R24-C-20261108",
+        "journeyId": "ALIC-CMP1253-R24-C-20261108-J1",
+        "personaArchetype": "一般×隙間狙い（別組織管理者）",
+        "originalRunId": "cmp1253-r21-C-b3cbd8ea-f282-4819-9331-63881e6ce81a",
+        "sourceHead": "f93884c6a43ae9be5973cf005dfe52ebef7d1262",
+        "evidencePath": "docs/evidence/CMP-261008-1253/resident-observations-r24-20261108.json",
+        "title": "他組織の一覧案内と空ボードの意味を判別できない",
+        "detail": "他組織一覧は再試行・権限の案内、詳細は見つからない表示、ボードは空で「0件未割当」と表示。権限によるものか一時的不調かは画面から不明。PDFクリック後の生成中表示が元に戻ったが、取得成否・内容は未確認で、漏洩なしとは断定しない。",
+        "page": "/teams/[private-team]/shifts/board",
+        "screenshotPath": ".claude/campaigns/cmp1253-real-r24-entry-budget-20261108/resident-images/C-4.png",
+        "urgency": "normal",
+        "priority": "should",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
       }
     ],
     "runEnvironments": {
@@ -15110,6 +15224,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（PR #3506、実機確認 2026-09-29）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -15175,9 +15290,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-003",
       "title": "村FE/BE契約不一致17件戦役",
       "status": "on-hold",
-      "statusLabel": "保留",
+      "statusLabel": "P3 保留",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -15252,9 +15368,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-004",
       "title": "WS外部ブローカー化＋IaCコスト削減戦役",
       "status": "on-hold",
-      "statusLabel": "保留",
+      "statusLabel": "P4 保留",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -15401,6 +15518,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（追加Wave 4・AC-14完了）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -15474,6 +15592,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -15621,6 +15740,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -15918,6 +16038,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（ローカル／CI検証範囲。AWS依存項目は保留）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -15988,9 +16109,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-009",
       "title": "F18 残高凍結＋AccountPurge法務対応",
       "status": "on-hold",
-      "statusLabel": "保留",
+      "statusLabel": "P3 保留",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -16031,9 +16153,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-010",
       "title": "収益化・信頼の輪・ベータ特典の方針（F20.3）",
       "status": "on-hold",
-      "statusLabel": "保留",
+      "statusLabel": "P5 保留",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -16241,6 +16364,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（PR #3391）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -16292,9 +16416,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-012",
       "title": "運用リスク3点の解消",
       "status": "blocked",
-      "statusLabel": "凍結",
+      "statusLabel": "P4 凍結",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -16344,9 +16469,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-013",
       "title": "保留・未実装の小粒3件",
       "status": "working",
-      "statusLabel": "実機検証待ち（R2 sandboxのみ）",
+      "statusLabel": "P4 実機検証待ち（R2 sandboxのみ）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -16428,9 +16554,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-019",
       "title": "TODO コメント棚卸し（FeatureFlag判定 34箇所ほか）",
       "status": "working",
-      "statusLabel": "進行中（Wave 16: Issue #3498 / PR #3499。実機E2E 2/2 pass、B0-J5 partial。後続 #3502・#3503残）",
+      "statusLabel": "P4 進行中（Wave 16: Issue #3498 / PR #3499。実機E2E 2/2 pass、B0-J5 partial。後続 #3502・#3503残）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -16879,9 +17006,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-020",
       "title": "本番のみで顕在化するスキーマ差の是正（照合順序不一致）",
       "status": "working",
-      "statusLabel": "実機検証待ち",
+      "statusLabel": "P2 実機検証待ち",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -16950,6 +17078,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-09-27）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -17088,6 +17217,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -17158,9 +17288,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-023",
       "title": "時刻設計の全域是正（瞬間はUTC・壁時計はTZ付き）＋テナントTZ導入",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P3 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -17268,6 +17399,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-08-14）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -17436,6 +17568,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了**（main 着地 PR #2763 / squash `c86ba2ce7` / 2026-08-14。**実機E2E 10シナリオ全緑まで裏取り済み**）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -17493,6 +17626,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了**（main 着地 PR #2956 / squash `a2be60ff1` / 2026-08-26）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -17551,6 +17685,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-08-11）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -17632,6 +17767,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-08-14）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -17732,9 +17868,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-033",
       "title": "実機E2Eを単一セッション設計へ是正（dashboard.spec.ts / favorites.spec.ts）",
       "status": "working",
-      "statusLabel": "実機検証待ち（住民3体同時再実施待ち）",
+      "statusLabel": "P4 実機検証待ち（住民3体同時再実施待ち）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -17815,6 +17952,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-08-12）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -17933,6 +18071,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-08-13）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -18004,6 +18143,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-08-15）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -18079,6 +18219,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-08-14）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -18201,6 +18342,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-08-14）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -18485,6 +18627,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-08-15）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -18554,6 +18697,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-09-16）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -18625,6 +18769,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-03）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -18694,6 +18839,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了（2026-08-14・PR 4本すべて main 着地／CI 全緑）**",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -18797,6 +18943,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -18920,6 +19067,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-08-15・マスター御裁可）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -18982,6 +19130,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-08-21）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -19086,6 +19235,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-09-26）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -19154,6 +19304,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（PR #3468）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -19241,6 +19392,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-09-26）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -19293,9 +19445,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-049",
       "title": "**Stripe 実徴収の実機検証（CMP-024 キャンセル料決済の未検証部分）**",
       "status": "on-hold",
-      "statusLabel": "保留（Stripe実徴収の前提未達）",
+      "statusLabel": "P1 保留（Stripe実徴収の前提未達）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -19346,6 +19499,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -19421,6 +19575,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了**（main 着地 PR #2839 / squash `224cdca2e` / 2026-08-18）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -19481,6 +19636,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（`RoleService` の非ACTIVE拒否は PR #2845、呼出元ガードは本変更）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -19549,6 +19705,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（仕様判断済み・到達不能）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -19610,6 +19767,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-08-21、ロットC完結。残務はIssue #2871として明記）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -19894,6 +20052,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-08-27、全18箇所是正済み・PR 6本。戦役末尾の全域機械走査 完了）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -20244,6 +20403,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-09-15、ストレージACL戦役全8PRをmainへ反映）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -20408,6 +20568,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-08-19、PR #2840・実機E2E 15件合格）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -20465,6 +20626,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-08-19、PR #2846 / #2849 / #2852 / #2859）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -20571,6 +20733,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（PR #3260）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -20632,6 +20795,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（PR #3266）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -20702,6 +20866,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了**（main 着地 PR #2881）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -20789,6 +20954,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了**（main 着地 PR #2876）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -20881,6 +21047,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了**（main 着地 PR #2850 / 2026-08-19。**実機E2E 13件全緑まで裏取り済み**）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -20937,6 +21104,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了**（main 着地 PR #3279 / 2026-09-16）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -20998,6 +21166,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了**（PR #3273）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -21058,6 +21227,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-09-15、PR #3275・実Git E2E合格）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -21112,9 +21282,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-110",
       "title": "**秘密情報混入の機械的防止（gitleaks 必須CIゲート＋`.gitignore` 強化）**",
       "status": "on-hold",
-      "statusLabel": "**保留**（本体完了。AWS Secrets Manager での本番鍵ローテーション待ち）",
+      "statusLabel": "**P1 保留**（本体完了。AWS Secrets Manager での本番鍵ローテーション待ち）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -21175,6 +21346,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了**（Wave1〜Wave3-d 実装・実機E2E完了、PR #3052）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -21277,6 +21449,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-09-17、PR #3298・#3307）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -21354,6 +21527,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了（PR #3329）**",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -21411,6 +21585,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了（PR #3345）**",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -21466,10 +21641,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260820-1422",
       "title": "存在オラクル一掃（越境を不在と同じ404へ・skill 以外の全ドメイン）",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -21481,12 +21657,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "是正10コード: PAYMENT_030/SUCCESSION_008/JOB_PERMISSION_DENIED/SOCIAL_107/MATCHING_010/BULLETIN_020/COMMITTEE_MINUTES_NOT_COMMITTEE_SCOPE/RECRUITMENT_314(**マップ未登録＝Severity.WARN既定400に落ちていた登録漏れ。新規登録**)/VILLAGE_002。**公開村の VILLAGE_024 は御裁可により403のまま**（公開村は検索一覧で誰でも見つけられ存在が秘密でないため、404化は「あなたは会員ではない」という正しい案内を奪うだけ）。MATCHING_010 の是正は MatchRequestService/MatchTemplateService の4箇所にも波及。偵察に無かった波及を足軽が発見: JobContractLifecycleScopeContractIT 11アサーション、BulletinScopeContractIT AC-B66(createFolder の parentFolderId 経路)、MatchRequestServiceTest 2件。委員会は既存テスト皆無だったため契約テスト3件を新設。残務は CMP-260820-1423",
+          "label": "是正10コード: PAYMENT_030/SUCCESSION_008/JOB_PERMISSION_DENIED/SOCIAL_107/MATCHING_010/BULLETIN_020/COMMITTEE_MINUTES_NOT_COMMITTEE_SCOPE/RECRUITMENT_314(**マップ未登録＝Severity.WARN既定400に落ちていた登録漏れ。新規登録**)/VILLAGE_002。**公開村の VILLAGE_024 は御裁可により403のまま**（公開村は検索一覧で誰でも見つけられ存在が秘密でないため、404化は「あなたは会員ではない」という正しい案内を奪うだけ）。MATCHING_010 の是正は MatchRequestService/MatchTemplateService の4箇所にも波及。偵察に無かった波及を足軽が発見: JobContractLifecycleScopeContractIT 11アサーション、BulletinScopeContractIT AC-B66(createFolder の parentFolderId 経路)、MatchRequestServiceTest 2件。委員会は既存テスト皆無だったため契約テスト3件を新設。残務は CMP-260820-1423<br>完了（2026-11-05）: 残件 CORKBOARD の是正は PR #4246（head f399bdf、merge 2026-11-01、CI success: Backend 41190266107）。実機E2E（ロール横断・URL直打ち）とアリシゼーションを完了し、探索の気づき（コルクボード導線の欠落）は CMP-261105-0350 へ起票。 [完了証拠](evidence/CMP-260820-1422.json)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "是正10コード: PAYMENT_030/SUCCESSION_008/JOB_PERMISSION_DENIED/SOCIAL_107/MATCHING_010/BULLETIN_020/COMMITTEE_MINUTES_NOT_COMMITTEE_SCOPE/RECRUITMENT_314(**マップ未登録＝Severity.WARN既定400に落ちていた登録漏れ。新規登録**)/VILLAGE_002。**公開村の VILLAGE_024 は御裁可により403のまま**（公開村は検索一覧で誰でも見つけられ存在が秘密でないため、404化は「あなたは会員ではない」という正しい案内を奪うだけ）。MATCHING_010 の是正は MatchRequestService/MatchTemplateService の4箇所にも波及。偵察に無かった波及を足軽が発見: JobContractLifecycleScopeContractIT 11アサーション、BulletinScopeContractIT AC-B66(createFolder の parentFolderId 経路)、MatchRequestServiceTest 2件。委員会は既存テスト皆無だったため契約テスト3件を新設。残務は CMP-260820-1423"
+        "是正10コード: PAYMENT_030/SUCCESSION_008/JOB_PERMISSION_DENIED/SOCIAL_107/MATCHING_010/BULLETIN_020/COMMITTEE_MINUTES_NOT_COMMITTEE_SCOPE/RECRUITMENT_314(**マップ未登録＝Severity.WARN既定400に落ちていた登録漏れ。新規登録**)/VILLAGE_002。**公開村の VILLAGE_024 は御裁可により403のまま**（公開村は検索一覧で誰でも見つけられ存在が秘密でないため、404化は「あなたは会員ではない」という正しい案内を奪うだけ）。MATCHING_010 の是正は MatchRequestService/MatchTemplateService の4箇所にも波及。偵察に無かった波及を足軽が発見: JobContractLifecycleScopeContractIT 11アサーション、BulletinScopeContractIT AC-B66(createFolder の parentFolderId 経路)、MatchRequestServiceTest 2件。委員会は既存テスト皆無だったため契約テスト3件を新設。残務は CMP-260820-1423<br>完了（2026-11-05）: 残件 CORKBOARD の是正は PR #4246（head f399bdf、merge 2026-11-01、CI success: Backend 41190266107）。実機E2E（ロール横断・URL直打ち）とアリシゼーションを完了し、探索の気づき（コルクボード導線の欠落）は CMP-261105-0350 へ起票。 [完了証拠](evidence/CMP-260820-1422.json)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -21501,10 +21677,22 @@ window.BETA_INVENTORY_DATA = {
         "PARKING_020"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        4246
+      ],
+      "github": [
+        {
+          "number": 4246,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
     },
     {
       "id": "CMP-260820-1423",
@@ -21513,6 +21701,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-08-26 マージ済み）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -21586,6 +21775,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-09-18）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -21643,6 +21833,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-09-19）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -21686,6 +21877,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（PR #3384）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -21745,6 +21937,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（PR #3411）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -21806,6 +21999,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（PR #3445）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -21866,6 +22060,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（PR #3510）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -21928,6 +22123,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（PR #3521、受入範囲: builder公開縮小）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -22007,6 +22203,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（PR #3595 MERGED、受入範囲検証済み）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -22081,6 +22278,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（PR #3546）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -22141,6 +22339,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了**（main 着地 PR #2878）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -22210,10 +22409,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260821-1027",
       "title": "存在オラクルの本文正規化 — 越境と不在で応答本文の`error.code`が割れる層を全ドメインで畳む",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -22225,12 +22425,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "履歴: main53f80e2eの限定再確認（2026-10-04）: recruitmentのMoney／Listing Facade等、後継9月0954の限定EPとAuthzTxFacadeRegistry番人はmainへ着地済み。後継範囲の完成を原16domainの受入完了には読み替えない。当時のPayment Receipt JSON/PDF差は旧Draft PR #3624の照合対象としていた。現状更新（2026-10-12、main7efb1f3）: ReceiptのJSON/PDF本文契約はPR #3661・#3681でmainへ着地し、現sourceも該当変更と一致、該当PR HEADのCI GREENを確認済み。PR #3624はCLOSEDで再開不要。後継の着地・CI実績を原16domain全体や過去の申告31/200件の受入GREENへ昇格しない。その他原対象12domainは判定・caller・本文契約の完全対応が未照合であり、未修正12件とは断定しない。既存HOLD・公開slugの裁可と原16domain ACは維持。履歴根拠: .claude/evidence/cmp2217-runtime-restore-20261003/cmp1027-current-scope-recon.md。 状態更新: 後継限定EPは着地済みだが、原16domain受入は未了のまま。",
+          "label": "履歴: main53f80e2eの限定再確認（2026-10-04）: recruitmentのMoney／Listing Facade等、後継9月0954の限定EPとAuthzTxFacadeRegistry番人はmainへ着地済み。後継範囲の完成を原16domainの受入完了には読み替えない。当時のPayment Receipt JSON/PDF差は旧Draft PR #3624の照合対象としていた。現状更新（2026-10-12、main7efb1f3）: ReceiptのJSON/PDF本文契約はPR #3661・#3681でmainへ着地し、現sourceも該当変更と一致、該当PR HEADのCI GREENを確認済み。PR #3624はCLOSEDで再開不要。後継の着地・CI実績を原16domain全体や過去の申告31/200件の受入GREENへ昇格しない。その他原対象12domainは判定・caller・本文契約の完全対応が未照合であり、未修正12件とは断定しない。既存HOLD・公開slugの裁可と原16domain ACは維持。履歴根拠: .claude/evidence/cmp2217-runtime-restore-20261003/cmp1027-current-scope-recon.md。 状態更新: 後継限定EPは着地済みだが、原16domain受入は未了のまま。<br>完了（2026-11-05）: PR #4252（head 16113fb、merge 2026-11-02、CI success: Backend 41372932233・Frontend 41372932072）。実機E2E（7対象のロール横断・URL直打ち）合格。備品の返却・履歴の非所属者 403/404 差は殿が F07.3:766 の裁定により範囲外と判定。探索の気づき（備品の貸出画面欠落と MEMBER 自己返却不可）は CMP-261105-0349 へ起票。 [完了証拠](evidence/CMP-260821-1027.json)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "履歴: main53f80e2eの限定再確認（2026-10-04）: recruitmentのMoney／Listing Facade等、後継9月0954の限定EPとAuthzTxFacadeRegistry番人はmainへ着地済み。後継範囲の完成を原16domainの受入完了には読み替えない。当時のPayment Receipt JSON/PDF差は旧Draft PR #3624の照合対象としていた。現状更新（2026-10-12、main7efb1f3）: ReceiptのJSON/PDF本文契約はPR #3661・#3681でmainへ着地し、現sourceも該当変更と一致、該当PR HEADのCI GREENを確認済み。PR #3624はCLOSEDで再開不要。後継の着地・CI実績を原16domain全体や過去の申告31/200件の受入GREENへ昇格しない。その他原対象12domainは判定・caller・本文契約の完全対応が未照合であり、未修正12件とは断定しない。既存HOLD・公開slugの裁可と原16domain ACは維持。履歴根拠: .claude/evidence/cmp2217-runtime-restore-20261003/cmp1027-current-scope-recon.md。 状態更新: 後継限定EPは着地済みだが、原16domain受入は未了のまま。"
+        "履歴: main53f80e2eの限定再確認（2026-10-04）: recruitmentのMoney／Listing Facade等、後継9月0954の限定EPとAuthzTxFacadeRegistry番人はmainへ着地済み。後継範囲の完成を原16domainの受入完了には読み替えない。当時のPayment Receipt JSON/PDF差は旧Draft PR #3624の照合対象としていた。現状更新（2026-10-12、main7efb1f3）: ReceiptのJSON/PDF本文契約はPR #3661・#3681でmainへ着地し、現sourceも該当変更と一致、該当PR HEADのCI GREENを確認済み。PR #3624はCLOSEDで再開不要。後継の着地・CI実績を原16domain全体や過去の申告31/200件の受入GREENへ昇格しない。その他原対象12domainは判定・caller・本文契約の完全対応が未照合であり、未修正12件とは断定しない。既存HOLD・公開slugの裁可と原16domain ACは維持。履歴根拠: .claude/evidence/cmp2217-runtime-restore-20261003/cmp1027-current-scope-recon.md。 状態更新: 後継限定EPは着地済みだが、原16domain受入は未了のまま。<br>完了（2026-11-05）: PR #4252（head 16113fb、merge 2026-11-02、CI success: Backend 41372932233・Frontend 41372932072）。実機E2E（7対象のロール横断・URL直打ち）合格。備品の返却・履歴の非所属者 403/404 差は殿が F07.3:766 の裁定により範囲外と判定。探索の気づき（備品の貸出画面欠落と MEMBER 自己返却不可）は CMP-261105-0349 へ起票。 [完了証拠](evidence/CMP-260821-1027.json)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -22276,13 +22476,14 @@ window.BETA_INVENTORY_DATA = {
         "AC"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
       "githubRefs": [
         2887,
         3624,
         3661,
-        3681
+        3681,
+        4252
       ],
       "github": [
         {
@@ -22340,6 +22541,15 @@ window.BETA_INVENTORY_DATA = {
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
+        },
+        {
+          "number": 4252,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
         }
       ]
     },
@@ -22347,9 +22557,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260821-1235",
       "title": "frontend-deploy.yml のデプロイ経路が未検証（門番の検査範囲と task definition のパス）",
       "status": "working",
-      "statusLabel": "実機検証待ち（AWS）",
+      "statusLabel": "P4 実機検証待ち（AWS）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -22427,6 +22638,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了**（main 着地 PR #2894・#2902）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -22503,6 +22715,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-08-28・PR #2979）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -22560,6 +22773,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-02・production build／コンテナHTTP応答／main CI確認済み）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -22641,6 +22855,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-08-26・vueの二重インストールが原因。修正＋Docker検証CI番人をPR #2970で導入）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -22702,6 +22917,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-08-27・Node/npmを22.23.2へ全面固定＋lockfile破損検出の番人を導入。PR #TBD）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -22766,12 +22982,103 @@ window.BETA_INVENTORY_DATA = {
       ]
     },
     {
-      "id": "CMP-260824-2217",
-      "title": "予約マトリックス本人予約済み表示・待機防御・日付Accordion仕上げ",
-      "status": "working",
-      "statusLabel": "実装済み（PR #2934 merge済み 2026-08-24）／残: 完了証拠JSON・本人予約済み表示と待機409の実機E2E証跡",
+      "id": "CMP-260822-1730",
+      "title": "チームTZ対応・日跨ぎ予約枠",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "チームのIANA timezoneを正本とし、営業時間・テンプレート・予約枠・単発／定期ブロックで「終了は翌日」を扱えること。期限・通知はチーム現地時刻をInstant化して比較し、既存同日枠は後方互換を保つこと",
+      "acceptance": [
+        "チームのIANA timezoneを正本とし、営業時間・テンプレート・予約枠・単発／定期ブロックで「終了は翌日」を扱えること。期限・通知はチーム現地時刻をInstant化して比較し、既存同日枠は後方互換を保つこと"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "`OvernightReservationTeamTimezoneAcceptanceTest`、`ReservationSlotGenerationServiceTest`、`ReservationUnavailabilityCheckerTest`。旧記述「PR #2922作成済み、CI確認中」は2026-11-05に現状へ同期済み（実装は PR #4248 が merge 済み）<br>完了（2026-11-05）: 実装 PR #4248（head 650d75a、merge 2026-11-01、CI success: Backend 41294153302）。再実機の欠陥 D-1730-1 は PR #4275 で解消。アリシゼーションの確定不具合 R3（日跨ぎ枠の終了日が出ない）は PR #4296 で是正（回帰テスト ReservationMapperTest・ReservationList.spec.ts、green は Frontend CI run 41910604109）、起票済みの R2 は CMP-261105-0345 へ。 [完了証拠](evidence/CMP-260822-1730.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "`OvernightReservationTeamTimezoneAcceptanceTest`、`ReservationSlotGenerationServiceTest`、`ReservationUnavailabilityCheckerTest`。旧記述「PR #2922作成済み、CI確認中」は2026-11-05に現状へ同期済み（実装は PR #4248 が merge 済み）<br>完了（2026-11-05）: 実装 PR #4248（head 650d75a、merge 2026-11-01、CI success: Backend 41294153302）。再実機の欠陥 D-1730-1 は PR #4275 で解消。アリシゼーションの確定不具合 R3（日跨ぎ枠の終了日が出ない）は PR #4296 で是正（回帰テスト ReservationMapperTest・ReservationList.spec.ts、green は Frontend CI run 41910604109）、起票済みの R2 は CMP-261105-0345 へ。 [完了証拠](evidence/CMP-260822-1730.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "`2026-08-22-overnight-reservation-team-timezone.md`"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "TZ",
+        "IANA",
+        "timezone",
+        "Instant"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        2922,
+        4248,
+        4275,
+        4296
+      ],
+      "github": [
+        {
+          "number": 2922,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加(予約): チームTZ対応と日跨ぎ予約枠",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2922",
+          "updatedAt": "2026-08-24T08:36:14Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 4248,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4275,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4296,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-260824-2217",
+      "title": "予約マトリックス本人予約済み表示・待機防御・日付Accordion仕上げ",
+      "status": "done",
+      "statusLabel": "完了",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -22783,12 +23090,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "`ReservationGridService`、`ReservationWaitlistService`、Matrix/Group/Waitlist Vitest、実機E2E。更新（2026-10-10、origin/main照合）: PR #2934 は 2026-08-24 に merge 済み。本人限定フラグ `reservedByCurrentUser`（`ReservationGridResponse`:113、`SlotMatrixPicker.vue`:316・369・601、`reservationMatrix.ts`、`docs/openapi.json`・`types/generated/index.ts` に反映）／待機登録の PENDING・CONFIRMED 予約持ち拒否と重複登録409（`ReservationWaitlistService`:138-146、`WAITLIST_ALREADY_REGISTERED`）／日付 Accordion（`GroupBookingDialog.vue`:332）／6言語 `reservation.json` に追加済み／UT（Grid・Waitlist・Matrix・Group・Waitlist Dialog）と実機E2E `reservation-v2-d-group.spec.ts`（待機409:465）も同梱。未確認: 本人予約済み表示そのものの実機E2E証跡、`docs/evidence/CMP-260824-2217.json` は不在のため完了にしない",
+          "label": "`ReservationGridService`、`ReservationWaitlistService`、Matrix/Group/Waitlist Vitest、実機E2E。更新（2026-10-10、origin/main照合）: PR #2934 は 2026-08-24 に merge 済み。本人限定フラグ `reservedByCurrentUser`（`ReservationGridResponse`:113、`SlotMatrixPicker.vue`:316・369・601、`reservationMatrix.ts`、`docs/openapi.json`・`types/generated/index.ts` に反映）／待機登録の PENDING・CONFIRMED 予約持ち拒否と重複登録409（`ReservationWaitlistService`:138-146、`WAITLIST_ALREADY_REGISTERED`）／日付 Accordion（`GroupBookingDialog.vue`:332）／6言語 `reservation.json` に追加済み／UT（Grid・Waitlist・Matrix・Group・Waitlist Dialog）と実機E2E `reservation-v2-d-group.spec.ts`（待機409:465）も同梱。旧記述の未確認事項（本人予約済み表示の実機E2E証跡・証拠JSON）は2026-11-05に解消。2026-10-31 状態同期: 旧状態「実装済み（PR #2934 merge済み 2026-08-24）／残: 完了証拠JSON・本人予約済み表示と待機409の実機E2E証跡」→実装中（8月CMP残務の再出陣。台帳ゲート準拠）<br>完了（2026-11-05）: PR #2934（head edb7b98、merge 2026-08-24、CI success: Backend 32750842905・Frontend 32750842952）。実機E2E（本人予約済み表示・待機409・ロール横断）合格。アリシゼーションの確定不具合 R1（aria-label の誤案内）は PR #4293（回帰テスト SlotMatrixPicker.spec.ts、red run 41886574308・green run 41890867902）で是正。 [完了証拠](evidence/CMP-260824-2217.json)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "`ReservationGridService`、`ReservationWaitlistService`、Matrix/Group/Waitlist Vitest、実機E2E。更新（2026-10-10、origin/main照合）: PR #2934 は 2026-08-24 に merge 済み。本人限定フラグ `reservedByCurrentUser`（`ReservationGridResponse`:113、`SlotMatrixPicker.vue`:316・369・601、`reservationMatrix.ts`、`docs/openapi.json`・`types/generated/index.ts` に反映）／待機登録の PENDING・CONFIRMED 予約持ち拒否と重複登録409（`ReservationWaitlistService`:138-146、`WAITLIST_ALREADY_REGISTERED`）／日付 Accordion（`GroupBookingDialog.vue`:332）／6言語 `reservation.json` に追加済み／UT（Grid・Waitlist・Matrix・Group・Waitlist Dialog）と実機E2E `reservation-v2-d-group.spec.ts`（待機409:465）も同梱。未確認: 本人予約済み表示そのものの実機E2E証跡、`docs/evidence/CMP-260824-2217.json` は不在のため完了にしない"
+        "`ReservationGridService`、`ReservationWaitlistService`、Matrix/Group/Waitlist Vitest、実機E2E。更新（2026-10-10、origin/main照合）: PR #2934 は 2026-08-24 に merge 済み。本人限定フラグ `reservedByCurrentUser`（`ReservationGridResponse`:113、`SlotMatrixPicker.vue`:316・369・601、`reservationMatrix.ts`、`docs/openapi.json`・`types/generated/index.ts` に反映）／待機登録の PENDING・CONFIRMED 予約持ち拒否と重複登録409（`ReservationWaitlistService`:138-146、`WAITLIST_ALREADY_REGISTERED`）／日付 Accordion（`GroupBookingDialog.vue`:332）／6言語 `reservation.json` に追加済み／UT（Grid・Waitlist・Matrix・Group・Waitlist Dialog）と実機E2E `reservation-v2-d-group.spec.ts`（待機409:465）も同梱。旧記述の未確認事項（本人予約済み表示の実機E2E証跡・証拠JSON）は2026-11-05に解消。2026-10-31 状態同期: 旧状態「実装済み（PR #2934 merge済み 2026-08-24）／残: 完了証拠JSON・本人予約済み表示と待機409の実機E2E証跡」→実装中（8月CMP残務の再出陣。台帳ゲート準拠）<br>完了（2026-11-05）: PR #2934（head edb7b98、merge 2026-08-24、CI success: Backend 32750842905・Frontend 32750842952）。実機E2E（本人予約済み表示・待機409・ロール横断）合格。アリシゼーションの確定不具合 R1（aria-label の誤案内）は PR #4293（回帰テスト SlotMatrixPicker.spec.ts、red run 41886574308・green run 41890867902）で是正。 [完了証拠](evidence/CMP-260824-2217.json)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -22806,10 +23113,11 @@ window.BETA_INVENTORY_DATA = {
         "OpenAPI"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
       "githubRefs": [
-        2934
+        2934,
+        4293
       ],
       "github": [
         {
@@ -22825,65 +23133,15 @@ window.BETA_INVENTORY_DATA = {
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
-        }
-      ]
-    },
-    {
-      "id": "CMP-260822-1730",
-      "title": "チームTZ対応・日跨ぎ予約枠",
-      "status": "working",
-      "statusLabel": "実装中",
-      "stage": "未設定",
-      "priority": "未設定",
-      "audiences": [],
-      "featureKey": null,
-      "updated": "未設定",
-      "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "チームのIANA timezoneを正本とし、営業時間・テンプレート・予約枠・単発／定期ブロックで「終了は翌日」を扱えること。期限・通知はチーム現地時刻をInstant化して比較し、既存同日枠は後方互換を保つこと",
-      "acceptance": [
-        "チームのIANA timezoneを正本とし、営業時間・テンプレート・予約枠・単発／定期ブロックで「終了は翌日」を扱えること。期限・通知はチーム現地時刻をInstant化して比較し、既存同日枠は後方互換を保つこと"
-      ],
-      "blocker": "—",
-      "issues": [
+        },
         {
-          "label": "`OvernightReservationTeamTimezoneAcceptanceTest`、`ReservationSlotGenerationServiceTest`、`ReservationUnavailabilityCheckerTest`。PR #2922作成済み、CI確認中",
-          "state": "unknown"
-        }
-      ],
-      "prs": [
-        "`OvernightReservationTeamTimezoneAcceptanceTest`、`ReservationSlotGenerationServiceTest`、`ReservationUnavailabilityCheckerTest`。PR #2922作成済み、CI確認中"
-      ],
-      "ci": "正本に記載された証拠を確認してください。",
-      "refs": [
-        "`2026-08-22-overnight-reservation-team-timezone.md`"
-      ],
-      "source": "docs/task-list.md",
-      "sourceTokens": [
-        "TZ",
-        "IANA",
-        "timezone",
-        "Instant"
-      ],
-      "tags": [
-        "進行中"
-      ],
-      "githubRefs": [
-        2922
-      ],
-      "github": [
-        {
-          "number": 2922,
-          "kind": "pull_request",
-          "state": "merged",
-          "title": "機能追加(予約): チームTZ対応と日跨ぎ予約枠",
-          "url": "https://github.com/kenta-0420/mannschaft/pull/2922",
-          "updatedAt": "2026-08-24T08:36:14Z",
-          "ci": {
-            "status": "unavailable",
-            "reason": "終了済みPRのCIは同期対象外",
-            "checks": [],
-            "source": "GraphQL statusCheckRollup"
-          }
+          "number": 4293,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
         }
       ]
     },
@@ -22894,6 +23152,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -22970,6 +23229,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（PR #3166）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -23041,6 +23301,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（#3163）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -23120,6 +23381,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-09）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -23228,6 +23490,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-09-09）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -23541,6 +23804,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（PR #3171）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -23620,6 +23884,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -23697,9 +23962,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260903-0653",
       "title": "自分の希望・自分の交代申請の一覧にシフト表ステータスの境界が無い",
       "status": "on-hold",
-      "statusLabel": "保留（未公開シフトに属する本人履歴の可視性方針待ち）",
+      "statusLabel": "P5 保留（未公開シフトに属する本人履歴の可視性方針待ち）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -23764,9 +24030,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260903-0654",
       "title": "シフト変更依頼の一覧・詳細にシフト表ステータスの境界が無い",
       "status": "on-hold",
-      "statusLabel": "保留（未公開シフトに属する変更依頼の可視性方針待ち）",
+      "statusLabel": "P5 保留（未公開シフトに属する変更依頼の可視性方針待ち）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -23778,12 +24045,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "PR #3086（設計書 §8 B-4）",
+          "label": "PR #3086（設計書 §8 B-4）<br>注記（2026-11-05、O-2127-4 の殿の裁定）: シフト表の実機E2E（CMP-260826-2127）で、一般メンバーが見えないはずの DRAFT（下書き）のシフト表に変更依頼を作成でき（POST /shifts/change-requests が 201）、同じ DRAFT への希望提出は 409 SHIFT_012、存在しない ID なら 404 SHIFT_001 となる差から、下書きの実在とステータスが読めることを確認した。設計書 `05_unpublished_visibility.md` §2 の「DRAFT は存在ごと秘匿」と矛盾する欠陥と殿が認めた。本件は作成経路にも境界が無い問題として、本行（§8 B-4）へ畳み込む。方針: DRAFT は存在ごと秘匿とし、作成経路（POST /shifts/change-requests）も不在の ID と同じ 404 にする。別行は起こさない。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "PR #3086（設計書 §8 B-4）"
+        "PR #3086（設計書 §8 B-4）<br>注記（2026-11-05、O-2127-4 の殿の裁定）: シフト表の実機E2E（CMP-260826-2127）で、一般メンバーが見えないはずの DRAFT（下書き）のシフト表に変更依頼を作成でき（POST /shifts/change-requests が 201）、同じ DRAFT への希望提出は 409 SHIFT_012、存在しない ID なら 404 SHIFT_001 となる差から、下書きの実在とステータスが読めることを確認した。設計書 `05_unpublished_visibility.md` §2 の「DRAFT は存在ごと秘匿」と矛盾する欠陥と殿が認めた。本件は作成経路にも境界が無い問題として、本行（§8 B-4）へ畳み込む。方針: DRAFT は存在ごと秘匿とし、作成経路（POST /shifts/change-requests）も不在の ID と同じ 404 にする。別行は起こさない。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -23822,9 +24089,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260903-0655",
       "title": "シフト交代募集 方式②（手挙げ→依頼者が選ぶ）が BE/FE ともに未結線のまま死んでいた（当初は「オープンコール作成APIに認可が無い」として起票）",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P3 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -23917,6 +24185,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（既存修正の確認）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -24005,10 +24274,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260903-0657",
       "title": "shift ドメインの越境応答が 403 と 404 に割れている",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "P1 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -24037,7 +24307,7 @@ window.BETA_INVENTORY_DATA = {
         "shift"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         3086
@@ -24063,9 +24333,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260903-0658",
       "title": "シフト表のステータス遷移に遷移元のガードが無い",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P3 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -24138,9 +24409,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260903-0659",
       "title": "shift_schedules.published_at に status との整合制約が無い",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -24205,9 +24477,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260903-0700",
       "title": "グローバル検索の件数が上限で頭打ちになる（全9種別）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -24263,10 +24536,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260903-0701",
       "title": "交代申請の作成が未公開シフトの枠にも通る（存在オラクル）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "P1 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -24296,7 +24570,7 @@ window.BETA_INVENTORY_DATA = {
         "slotId"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         3086
@@ -24321,10 +24595,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260916-1042",
       "title": "F02.9 お気に入りで TEAM と ORGANIZATION の同一IDが混線し、チームの「開く」が数値URLで404になる",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "P3 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -24336,12 +24611,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "2026-09-16 CMP-033 のアリシゼーションで発見し、殿が隔離実機（FE:3001、BE:8082）で再現。FC東京U-15の「開く」で `/teams/2` に遷移し、`GET /api/v1/teams/2` と関連APIが404、画面は「情報を取得できませんでした」。原因1: `TeamFavoriteResolver` が `\"/teams/\" + team.getId()` を返し、現行slug URLと不一致。原因2: `FavoriteResolverService.resolveAll` が種別を含まない `entityId` だけをキーに `putAll` し、`FavoriteService` も同キーで取得するため、TEAM 1 と ORGANIZATION 1 のメタデータが衝突し、チームカードに組織名・組織URLが出る。CMP-033のセッション設計ACとは別戦役として扱う",
+          "label": "2026-09-16 CMP-033 のアリシゼーションで発見し、殿が隔離実機（FE:3001、BE:8082）で再現。FC東京U-15の「開く」で `/teams/2` に遷移し、`GET /api/v1/teams/2` と関連APIが404、画面は「情報を取得できませんでした」。原因1: `TeamFavoriteResolver` が `\"/teams/\" + team.getId()` を返し、現行slug URLと不一致。原因2: `FavoriteResolverService.resolveAll` が種別を含まない `entityId` だけをキーに `putAll` し、`FavoriteService` も同キーで取得するため、TEAM 1 と ORGANIZATION 1 のメタデータが衝突し、チームカードに組織名・組織URLが出る。CMP-033のセッション設計ACとは別戦役として扱う<br>2026-11-07: Draft #3644を引継ぎ再検証中。D1新違反2件（他domain EntityのgetSlug呼出）で実赤。修正前の実装中先行登録。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "2026-09-16 CMP-033 のアリシゼーションで発見し、殿が隔離実機（FE:3001、BE:8082）で再現。FC東京U-15の「開く」で `/teams/2` に遷移し、`GET /api/v1/teams/2` と関連APIが404、画面は「情報を取得できませんでした」。原因1: `TeamFavoriteResolver` が `\"/teams/\" + team.getId()` を返し、現行slug URLと不一致。原因2: `FavoriteResolverService.resolveAll` が種別を含まない `entityId` だけをキーに `putAll` し、`FavoriteService` も同キーで取得するため、TEAM 1 と ORGANIZATION 1 のメタデータが衝突し、チームカードに組織名・組織URLが出る。CMP-033のセッション設計ACとは別戦役として扱う"
+        "2026-09-16 CMP-033 のアリシゼーションで発見し、殿が隔離実機（FE:3001、BE:8082）で再現。FC東京U-15の「開く」で `/teams/2` に遷移し、`GET /api/v1/teams/2` と関連APIが404、画面は「情報を取得できませんでした」。原因1: `TeamFavoriteResolver` が `\"/teams/\" + team.getId()` を返し、現行slug URLと不一致。原因2: `FavoriteResolverService.resolveAll` が種別を含まない `entityId` だけをキーに `putAll` し、`FavoriteService` も同キーで取得するため、TEAM 1 と ORGANIZATION 1 のメタデータが衝突し、チームカードに組織名・組織URLが出る。CMP-033のセッション設計ACとは別戦役として扱う<br>2026-11-07: Draft #3644を引継ぎ再検証中。D1新違反2件（他domain EntityのgetSlug呼出）で実赤。修正前の実装中先行登録。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -24360,10 +24635,22 @@ window.BETA_INVENTORY_DATA = {
         "URL"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        3644
+      ],
+      "github": [
+        {
+          "number": 3644,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
     },
     {
       "id": "CMP-260917-1206",
@@ -24372,6 +24659,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（PR #3315）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -24461,6 +24749,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（PR #3324）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -24530,6 +24819,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（PR #3332）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -24599,6 +24889,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（PR #3339）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -24665,9 +24956,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260917-1350",
       "title": "組織の管理者向けGET 6件が MEMBER で取得できる認可漏れの根治",
       "status": "working",
-      "statusLabel": "対応中",
+      "statusLabel": "P1 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -24711,10 +25003,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260917-1351",
       "title": "組織ページの管理者レンズがサイドバーに伝わらない／管理者ページ16枚にFEガードが無い",
-      "status": "working",
-      "statusLabel": "対応中",
+      "status": "done",
+      "statusLabel": "完了（PR #4368）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -24726,12 +25019,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "—",
+          "label": "[完了証拠](evidence/CMP-260917-1351.json) / [検証詳細](evidence/CMP-260917-1351-verification.md)。元優先度P3 / PR #4368・unit12件green・実機/探索/気づき箱4件確認",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "[完了証拠](evidence/CMP-260917-1351.json) / [検証詳細](evidence/CMP-260917-1351-verification.md)。元優先度P3 / PR #4368・unit12件green・実機/探索/気づき箱4件確認"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -24749,18 +25042,31 @@ window.BETA_INVENTORY_DATA = {
         "ID"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        4368
+      ],
+      "github": [
+        {
+          "number": 4368,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
     },
     {
       "id": "CMP-260917-1352",
       "title": "リフレッシュトークンの誤リプレイ判定で全デバイスが強制ログアウトされる",
       "status": "working",
-      "statusLabel": "対応中",
+      "statusLabel": "P3 対応中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -24804,6 +25110,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（PR #3357 マージ済み）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -24877,9 +25184,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260918-0508",
       "title": "メンバー紹介 第2段 — 本人による自己編集許可設定と、退会時に本人へ「過去の紹介を残すか」を選ばせる仕組み",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -24956,6 +25264,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了**（main 着地 PR #3392 / commit `ccd77e63c`）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -25022,6 +25331,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -25095,6 +25405,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（L5-PRE-D/V/Oの読取・証拠準備のみ。L5本体未着手）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -25157,6 +25468,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-24、PR #4080・#4081）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -25239,6 +25551,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-08-09）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -25340,6 +25653,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-07-22）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -25548,6 +25862,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-09-24 現物照合）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -25588,6 +25903,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-09-24 現物照合）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -25630,6 +25946,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-09-24 現物照合）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -25699,6 +26016,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-09-24 現行照合）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -25860,6 +26178,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-09-24 現行照合）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -26088,6 +26407,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-09-16、既存修正と最新main CIを確認）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -26152,6 +26472,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（#2905マージ済・実機E2E緑）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -26211,6 +26532,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -26248,10 +26570,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260822-1243",
       "title": "退会時匿名化の個人設定系テーブル取りこぼし全体棚卸し",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -26263,12 +26586,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "発端: F02.2.2 設計時に `AccountPurgeService` / `UserService` を実地確認したところ、いずれも `dashboard_widget_settings` に触れておらず、退会ユーザーの画面設定が孤児として残り続けることが判明した（両クラスが扱うのはトークン・OAuth・MFA/2FA・S3 失敗記録等の認証／GDPR 系のみ）。F02.2.2 はC案への変更で `dashboard_widget_folders` を不採用とし、`dashboard_widget_settings` の退会時削除も本戦役では未対処のため、引き続き本棚卸しの対象とする。残域候補: `dashboard_scope_tab_orders` / `chat_contact_folders` / `chat_contact_folder_items` / `activity_feed` ほか個人設定系全般。PII ではないが保持根拠が説明できず GDPR Art.17 の消去範囲としても弁明が立たない<br>進捗（2026-10-03）: PR #3583。source `d908` の競合TX 3件成功、通常strong経路のsettings残留はRED。旧試練source `17a6f0dd`・run `37065120336` はtarget IT 8件＝元競合3 GREEN／追加5 RED（error・skip 0、36親残留／新25domain登録0・queue／retry／完了記録不足）、Flyway 17件GREEN。最新試練source `efe2b194`・run `37074963596` もtarget IT 8件＝3 GREEN／5 RED（error・skip 0）、Flyway 17件GREEN。対象38親テーブル・27domainのproductionは `2c510510` でcommit済み・静的検分指摘0。pushと修正後の正式CIは未実施。visibility仕様判断待ち、完了判定は未達。<br>更新（2026-10-10）: PR #3583 は 2026-10-03 に main へ merge 済み（旧記述の「push・CI未実施」は解消）。同HEAD `d2586f48` の正式Backend run `37148109648` は全6shard・Arch・日時ガード・集約を含め成功、PRチェック21成功・1正規skip。公開batchの `PersonalSettingsAccountPurgeIT` 8件・固定ClockのUT3件・Flyway17件は failure/error/skip 各0。出荷範囲は承認済み個人設定38親・27domainと既存強消去境界。**残（完了にしない理由）**: visibility templates の保持仕様は判断待ち、共有業務データと本文の扱い、弱匿名化の時期は未変更。4子すべてを公開batchから直接測定したものではない（Flyway実seedで別途確認）。完了証拠JSONも未作成。<br>更新（2026-10-11）: #3583 merge済み。残の visibility templates 等は #3780 で実装中。マスター裁可 2026-10-11: テンプレは30日後purgeで消去・投稿は非公開化／個人設定は30日後消去／共有記録は本文残し著者のみ匿名",
+          "label": "発端: F02.2.2 設計時に `AccountPurgeService` / `UserService` を実地確認したところ、いずれも `dashboard_widget_settings` に触れておらず、退会ユーザーの画面設定が孤児として残り続けることが判明した（両クラスが扱うのはトークン・OAuth・MFA/2FA・S3 失敗記録等の認証／GDPR 系のみ）。F02.2.2 はC案への変更で `dashboard_widget_folders` を不採用とし、`dashboard_widget_settings` の退会時削除も本戦役では未対処のため、引き続き本棚卸しの対象とする。残域候補: `dashboard_scope_tab_orders` / `chat_contact_folders` / `chat_contact_folder_items` / `activity_feed` ほか個人設定系全般。PII ではないが保持根拠が説明できず GDPR Art.17 の消去範囲としても弁明が立たない<br>進捗（2026-10-03）: PR #3583。source `d908` の競合TX 3件成功、通常strong経路のsettings残留はRED。旧試練source `17a6f0dd`・run `37065120336` はtarget IT 8件＝元競合3 GREEN／追加5 RED（error・skip 0、36親残留／新25domain登録0・queue／retry／完了記録不足）、Flyway 17件GREEN。最新試練source `efe2b194`・run `37074963596` もtarget IT 8件＝3 GREEN／5 RED（error・skip 0）、Flyway 17件GREEN。対象38親テーブル・27domainのproductionは `2c510510` でcommit済み・静的検分指摘0。pushと修正後の正式CIは未実施。visibility仕様判断待ち、完了判定は未達。<br>更新（2026-10-10）: PR #3583 は 2026-10-03 に main へ merge 済み（旧記述の「push・CI未実施」は解消）。同HEAD `d2586f48` の正式Backend run `37148109648` は全6shard・Arch・日時ガード・集約を含め成功、PRチェック21成功・1正規skip。公開batchの `PersonalSettingsAccountPurgeIT` 8件・固定ClockのUT3件・Flyway17件は failure/error/skip 各0。出荷範囲は承認済み個人設定38親・27domainと既存強消去境界。**残（完了にしない理由）**: visibility templates の保持仕様は判断待ち、共有業務データと本文の扱い、弱匿名化の時期は未変更。4子すべてを公開batchから直接測定したものではない（Flyway実seedで別途確認）。完了証拠JSONも未作成。<br>更新（2026-10-11）: #3583 merge済み。残の visibility templates 等は #3780 で実装中。マスター裁可 2026-10-11: テンプレは30日後purgeで消去・投稿は非公開化／個人設定は30日後消去／共有記録は本文残し著者のみ匿名<br>完了（2026-11-05）: PR #4251（head a48f290、merge 2026-11-01、CI success: Backend 41208469772）。強匿名化が完走しない欠陥 D-1243-1 は PR #4272（Flyway V256）で解消し、再実機で退会者2名の7表が0件・対照残存・旧トークン401・退会者URL直打ち404/401を確認。探索の気づき（退会の二重送信と説明文の食い違い、確認メール再送導線の欠落）は CMP-261105-0346・0347 へ起票。 [完了証拠](evidence/CMP-260822-1243.json)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "発端: F02.2.2 設計時に `AccountPurgeService` / `UserService` を実地確認したところ、いずれも `dashboard_widget_settings` に触れておらず、退会ユーザーの画面設定が孤児として残り続けることが判明した（両クラスが扱うのはトークン・OAuth・MFA/2FA・S3 失敗記録等の認証／GDPR 系のみ）。F02.2.2 はC案への変更で `dashboard_widget_folders` を不採用とし、`dashboard_widget_settings` の退会時削除も本戦役では未対処のため、引き続き本棚卸しの対象とする。残域候補: `dashboard_scope_tab_orders` / `chat_contact_folders` / `chat_contact_folder_items` / `activity_feed` ほか個人設定系全般。PII ではないが保持根拠が説明できず GDPR Art.17 の消去範囲としても弁明が立たない<br>進捗（2026-10-03）: PR #3583。source `d908` の競合TX 3件成功、通常strong経路のsettings残留はRED。旧試練source `17a6f0dd`・run `37065120336` はtarget IT 8件＝元競合3 GREEN／追加5 RED（error・skip 0、36親残留／新25domain登録0・queue／retry／完了記録不足）、Flyway 17件GREEN。最新試練source `efe2b194`・run `37074963596` もtarget IT 8件＝3 GREEN／5 RED（error・skip 0）、Flyway 17件GREEN。対象38親テーブル・27domainのproductionは `2c510510` でcommit済み・静的検分指摘0。pushと修正後の正式CIは未実施。visibility仕様判断待ち、完了判定は未達。<br>更新（2026-10-10）: PR #3583 は 2026-10-03 に main へ merge 済み（旧記述の「push・CI未実施」は解消）。同HEAD `d2586f48` の正式Backend run `37148109648` は全6shard・Arch・日時ガード・集約を含め成功、PRチェック21成功・1正規skip。公開batchの `PersonalSettingsAccountPurgeIT` 8件・固定ClockのUT3件・Flyway17件は failure/error/skip 各0。出荷範囲は承認済み個人設定38親・27domainと既存強消去境界。**残（完了にしない理由）**: visibility templates の保持仕様は判断待ち、共有業務データと本文の扱い、弱匿名化の時期は未変更。4子すべてを公開batchから直接測定したものではない（Flyway実seedで別途確認）。完了証拠JSONも未作成。<br>更新（2026-10-11）: #3583 merge済み。残の visibility templates 等は #3780 で実装中。マスター裁可 2026-10-11: テンプレは30日後purgeで消去・投稿は非公開化／個人設定は30日後消去／共有記録は本文残し著者のみ匿名"
+        "発端: F02.2.2 設計時に `AccountPurgeService` / `UserService` を実地確認したところ、いずれも `dashboard_widget_settings` に触れておらず、退会ユーザーの画面設定が孤児として残り続けることが判明した（両クラスが扱うのはトークン・OAuth・MFA/2FA・S3 失敗記録等の認証／GDPR 系のみ）。F02.2.2 はC案への変更で `dashboard_widget_folders` を不採用とし、`dashboard_widget_settings` の退会時削除も本戦役では未対処のため、引き続き本棚卸しの対象とする。残域候補: `dashboard_scope_tab_orders` / `chat_contact_folders` / `chat_contact_folder_items` / `activity_feed` ほか個人設定系全般。PII ではないが保持根拠が説明できず GDPR Art.17 の消去範囲としても弁明が立たない<br>進捗（2026-10-03）: PR #3583。source `d908` の競合TX 3件成功、通常strong経路のsettings残留はRED。旧試練source `17a6f0dd`・run `37065120336` はtarget IT 8件＝元競合3 GREEN／追加5 RED（error・skip 0、36親残留／新25domain登録0・queue／retry／完了記録不足）、Flyway 17件GREEN。最新試練source `efe2b194`・run `37074963596` もtarget IT 8件＝3 GREEN／5 RED（error・skip 0）、Flyway 17件GREEN。対象38親テーブル・27domainのproductionは `2c510510` でcommit済み・静的検分指摘0。pushと修正後の正式CIは未実施。visibility仕様判断待ち、完了判定は未達。<br>更新（2026-10-10）: PR #3583 は 2026-10-03 に main へ merge 済み（旧記述の「push・CI未実施」は解消）。同HEAD `d2586f48` の正式Backend run `37148109648` は全6shard・Arch・日時ガード・集約を含め成功、PRチェック21成功・1正規skip。公開batchの `PersonalSettingsAccountPurgeIT` 8件・固定ClockのUT3件・Flyway17件は failure/error/skip 各0。出荷範囲は承認済み個人設定38親・27domainと既存強消去境界。**残（完了にしない理由）**: visibility templates の保持仕様は判断待ち、共有業務データと本文の扱い、弱匿名化の時期は未変更。4子すべてを公開batchから直接測定したものではない（Flyway実seedで別途確認）。完了証拠JSONも未作成。<br>更新（2026-10-11）: #3583 merge済み。残の visibility templates 等は #3780 で実装中。マスター裁可 2026-10-11: テンプレは30日後purgeで消去・投稿は非公開化／個人設定は30日後消去／共有記録は本文残し著者のみ匿名<br>完了（2026-11-05）: PR #4251（head a48f290、merge 2026-11-01、CI success: Backend 41208469772）。強匿名化が完走しない欠陥 D-1243-1 は PR #4272（Flyway V256）で解消し、再実機で退会者2名の7表が0件・対照残存・旧トークン401・退会者URL直打ち404/401を確認。探索の気づき（退会の二重送信と説明文の食い違い、確認メール再送導線の欠落）は CMP-261105-0346・0347 へ起票。 [完了証拠](evidence/CMP-260822-1243.json)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -26283,12 +26606,14 @@ window.BETA_INVENTORY_DATA = {
         "IT"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
       "githubRefs": [
         2919,
         3583,
-        3780
+        3780,
+        4251,
+        4272
       ],
       "github": [
         {
@@ -26332,6 +26657,24 @@ window.BETA_INVENTORY_DATA = {
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
+        },
+        {
+          "number": 4251,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4272,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
         }
       ]
     },
@@ -26342,6 +26685,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了**（main 着地 PR #2909）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -26399,6 +26743,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-02・PR #2976全6シャード成功）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -26459,12 +26804,161 @@ window.BETA_INVENTORY_DATA = {
       ]
     },
     {
+      "id": "CMP-260826-2127",
+      "title": "シフト表APIのステータス可視性制御（#1170はFE表示のみ是正）",
+      "status": "done",
+      "statusLabel": "完了",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "非管理者の一覧と期間一覧から DRAFT および publishedAt=null の ARCHIVED を除外し、DRAFT/未公開ARCHIVEDの単体・枠取得は404にする。COLLECTING/ADJUSTING は一覧・枠を維持し、割当を assignmentMasked=true と assignedUserIds=[] で伏せて枠骨格は返す。PUBLISHED と publishedAt!=null の ARCHIVED は割当を含め全量返す。可視性境界を番人テストで固定する。",
+      "acceptance": [
+        "非管理者の一覧と期間一覧から DRAFT および publishedAt=null の ARCHIVED を除外し、DRAFT/未公開ARCHIVEDの単体・枠取得は404にする。COLLECTING/ADJUSTING は一覧・枠を維持し、割当を assignmentMasked=true と assignedUserIds=[] で伏せて枠骨格は返す。PUBLISHED と publishedAt!=null の ARCHIVED は割当を含め全量返す。可視性境界を番人テストで固定する。"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "PR #3099で実装。PR #3123/#3132で実機E2Eを実施し、#3132はmerge済み。実機E2Eは12 expected、0 unexpected、0 flaky、0 skipped（setup 1件と11ケース）。PR #3129の探索から2件を派生起票。現行ShiftScheduleServiceではlistSchedules/listSchedulesByPeriodのfilterVisibleと詳細取得guardを確認。PR本文でAC-5 PDF、AC-6検索、AC-10純粋team ADMIN、AC-11非所属SYSTEM_ADMIN、AC-12別scope/非所属、AC-14通知、AC-15 FE filter撤去は射程外と明記されているため、全体ACは未完了。9月の別派生課題と混同しない。<br>更新（2026-10-10、origin/main のコード照合）: 射程外とされたACは**コード上は着地済み**。AC-5 `ShiftPdfService`（:92-113）が未公開・COLLECTING・ADJUSTING を非管理者に404（PDF認可は #3603 で `ShiftPdfFacade` へ移動）／AC-6 `GlobalSearchService`（:127-142）が admin・member の2集合を `ShiftScheduleRepository#searchByKeyword`（`NOT_HIDDEN_JPQL`）へ渡し未公開を母集団から除外／AC-10・11 `ShiftScheduleService` と PDF が ADMIN・SYSTEM_ADMIN を短絡（CMP-260903-0656 で確認済み）／AC-12 認可403契約は維持／AC-14 `ShiftPublishedNotificationListener` は公開イベント起点のままで希望提出リマインドは非変更／AC-15 `ShiftScheduleList.vue` の `PUBLISHED` フィルタは撤去済み（:35 にコメントのみ）。未確認: 検索・PDF・認可の実機/実JWT E2E（#3132 の12件に含まれない）と完了証拠JSON。派生済み別CMP: CMP-260903-0651〜0654・0656〜0659・0700・0701、CMP-260905-1630（summary 403）。件数頭打ち（旧AC-6件数一致）は CMP-260903-0700 に分離済み。。2026-10-31 状態同期: 旧状態「実装済み／残AC: 実機E2E未実施分（AC-6 検索・AC-5 PDF・AC-10〜12 認可の実JWT実測）と完了証拠JSON」→実装中（8月CMP残務の再出陣。台帳ゲート準拠）<br>完了（2026-11-05）: PR #3099（head 06b3119、merge 2026-09-04、CI success: Frontend 33871010616・E2E 33871010615）。実機E2E（7視点）と再実機で D-2127-1・D-2127-3 を解消。D-2127-2（非メンバー SYSTEM_ADMIN の検索）は範囲外と裁定済み。MEMBER の下書き存在オラクル O-2127-4 は CMP-260903-0654 へ畳み込み、探索の気づきは CMP-261105-0348 へ起票。 [完了証拠](evidence/CMP-260826-2127.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #3099で実装。PR #3123/#3132で実機E2Eを実施し、#3132はmerge済み。実機E2Eは12 expected、0 unexpected、0 flaky、0 skipped（setup 1件と11ケース）。PR #3129の探索から2件を派生起票。現行ShiftScheduleServiceではlistSchedules/listSchedulesByPeriodのfilterVisibleと詳細取得guardを確認。PR本文でAC-5 PDF、AC-6検索、AC-10純粋team ADMIN、AC-11非所属SYSTEM_ADMIN、AC-12別scope/非所属、AC-14通知、AC-15 FE filter撤去は射程外と明記されているため、全体ACは未完了。9月の別派生課題と混同しない。<br>更新（2026-10-10、origin/main のコード照合）: 射程外とされたACは**コード上は着地済み**。AC-5 `ShiftPdfService`（:92-113）が未公開・COLLECTING・ADJUSTING を非管理者に404（PDF認可は #3603 で `ShiftPdfFacade` へ移動）／AC-6 `GlobalSearchService`（:127-142）が admin・member の2集合を `ShiftScheduleRepository#searchByKeyword`（`NOT_HIDDEN_JPQL`）へ渡し未公開を母集団から除外／AC-10・11 `ShiftScheduleService` と PDF が ADMIN・SYSTEM_ADMIN を短絡（CMP-260903-0656 で確認済み）／AC-12 認可403契約は維持／AC-14 `ShiftPublishedNotificationListener` は公開イベント起点のままで希望提出リマインドは非変更／AC-15 `ShiftScheduleList.vue` の `PUBLISHED` フィルタは撤去済み（:35 にコメントのみ）。未確認: 検索・PDF・認可の実機/実JWT E2E（#3132 の12件に含まれない）と完了証拠JSON。派生済み別CMP: CMP-260903-0651〜0654・0656〜0659・0700・0701、CMP-260905-1630（summary 403）。件数頭打ち（旧AC-6件数一致）は CMP-260903-0700 に分離済み。。2026-10-31 状態同期: 旧状態「実装済み／残AC: 実機E2E未実施分（AC-6 検索・AC-5 PDF・AC-10〜12 認可の実JWT実測）と完了証拠JSON」→実装中（8月CMP残務の再出陣。台帳ゲート準拠）<br>完了（2026-11-05）: PR #3099（head 06b3119、merge 2026-09-04、CI success: Frontend 33871010616・E2E 33871010615）。実機E2E（7視点）と再実機で D-2127-1・D-2127-3 を解消。D-2127-2（非メンバー SYSTEM_ADMIN の検索）は範囲外と裁定済み。MEMBER の下書き存在オラクル O-2127-4 は CMP-260903-0654 へ畳み込み、探索の気づきは CMP-261105-0348 へ起票。 [完了証拠](evidence/CMP-260826-2127.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "API",
+        "FE",
+        "DRAFT",
+        "publishedAt",
+        "null",
+        "ARCHIVED",
+        "DRAFT",
+        "ARCHIVED",
+        "COLLECTING",
+        "ADJUSTING",
+        "assignmentMasked",
+        "true",
+        "assignedUserIds",
+        "PUBLISHED",
+        "publishedAt",
+        "null",
+        "ARCHIVED"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        1170,
+        3099,
+        3123,
+        3129,
+        3132,
+        3603
+      ],
+      "github": [
+        {
+          "number": 1170,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "feat(shift): シフト管理画面を権限別表示に対応",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/1170",
+          "updatedAt": "2026-08-26T11:06:25Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3099,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 未公開シフト表の情報が API から読める欠陥を遮断する（CMP-260826-2127・出陣）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3099",
+          "updatedAt": "2026-09-04T13:29:14Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3123,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "テスト追加: 未公開シフト情報の遮断を実機E2Eで固定する（CMP-260826-2127・実機）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3123",
+          "updatedAt": "2026-09-05T11:30:32Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3129,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "台帳: アリシゼーション（探索的テスト）で発見した欠陥2件を起票",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3129",
+          "updatedAt": "2026-09-05T13:46:41Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3132,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "テスト強化: 未公開シフト遮断の実機E2Eに HTTP 404 検証・AC-17・API 契約検証を足す（CMP-260826-2127・検分反映）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3132",
+          "updatedAt": "2026-09-05T13:58:46Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3603,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: シフトの予定・枠・リマインド・PDF の認可をトランザクションの外のファサードへ（CMP-260923-0954 W6a）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3603",
+          "updatedAt": "2026-10-03T03:43:43Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
       "id": "CMP-260826-1041",
       "title": "停滞している OPEN PR 42件の棚卸しと処遇決定（復活させるか閉じるか）",
       "status": "working",
-      "statusLabel": "着手中",
+      "statusLabel": "P4 着手中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -26844,74 +27338,13 @@ window.BETA_INVENTORY_DATA = {
       ]
     },
     {
-      "id": "CMP-260826-1455",
-      "title": "BAN された村長・長老が権限操作を実行できうる（村メンバーシップの認可述語の誤用）",
-      "status": "working",
-      "statusLabel": "着手中",
-      "stage": "未設定",
-      "priority": "未設定",
-      "audiences": [],
-      "featureKey": null,
-      "updated": "未設定",
-      "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "村の権限操作（ロール変更・BAN）の認可判定が、BAN 済みを除外する正準述語 `findActiveByVillageIdAndSubject` を経由すること。BAN された村長が他の村人のロールを変更できないこと・BAN できないことを red テストで固定してから修正すること。**同種の誤用が他に残っていないか村ドメイン全域を走査**し、番人で再発を禁じること",
-      "acceptance": [
-        "村の権限操作（ロール変更・BAN）の認可判定が、BAN 済みを除外する正準述語 `findActiveByVillageIdAndSubject` を経由すること。BAN された村長が他の村人のロールを変更できないこと・BAN できないことを red テストで固定してから修正すること。**同種の誤用が他に残っていないか村ドメイン全域を走査**し、番人で再発を禁じること"
-      ],
-      "blocker": "—",
-      "issues": [
-        {
-          "label": "進捗（2026-10-03）: PR #3572。source `99323f9368d16e27adb285decdcee565314c3fa6` の公式HTTP 36件・guard 6件・全6 shard green。実UI 6条件は同JARの4＋1＋1別trialで成功（単一run 6件greenではない）。3独立住民探索を完了し気づき4件は観測未実証。保存版 `.claude/evidence/cmp1455-alicization-20261003/`、JAR SHA256 `A30B1DF08B729EED6336FE90806F42A5D03A1137582ADD8BC30FADE5227A302D`。Windows native crash 3件は未解決で既存Linux Javaによる実機確認。最新main追従・再CI／common OOM解消・mergeは未達。",
-          "state": "unknown"
-        }
-      ],
-      "prs": [
-        "進捗（2026-10-03）: PR #3572。source `99323f9368d16e27adb285decdcee565314c3fa6` の公式HTTP 36件・guard 6件・全6 shard green。実UI 6条件は同JARの4＋1＋1別trialで成功（単一run 6件greenではない）。3独立住民探索を完了し気づき4件は観測未実証。保存版 `.claude/evidence/cmp1455-alicization-20261003/`、JAR SHA256 `A30B1DF08B729EED6336FE90806F42A5D03A1137582ADD8BC30FADE5227A302D`。Windows native crash 3件は未解決で既存Linux Javaによる実機確認。最新main追従・再CI／common OOM解消・mergeは未達。"
-      ],
-      "ci": "正本に記載された証拠を確認してください。",
-      "refs": [
-        "背景: 2026-08-26 の偵察で発見。`VillageMembershipService#changeRole`（L262-268）と `#ban`（L311-317）が、`VillageMembershipRepository` の Javadoc が「**認可判定に使ってはならない**」と明記した BAN 未検査の述語 `findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull` を使っている。同 Javadoc には、かつて同型の判定が6名8実装にコピーされ**5実装が bannedAt 未検査で、BAN された長老がモデレーション操作を実行できた実害**が記録されている。今回の2箇所はその掃討から漏れた残党にあたる。正準述語（`left_at IS NULL AND banned_at IS NULL`）は Repository に集約済みだが、**HEADMAN/ELDER 判定そのものは今も12箇所に分散**しており（`requireModerator` / `ensureModerator` / `ensureReviewer` / 無名ヘルパ）、集約されたのはクエリだけである点に注意"
-      ],
-      "source": "docs/task-list.md",
-      "sourceTokens": [
-        "BAN",
-        "BAN",
-        "BAN",
-        "findActiveByVillageIdAndSubject",
-        "BAN",
-        "BAN",
-        "red"
-      ],
-      "tags": [
-        "進行中"
-      ],
-      "githubRefs": [
-        3572
-      ],
-      "github": [
-        {
-          "number": 3572,
-          "kind": "pull_request",
-          "state": "merged",
-          "title": "修正: 村メンバー操作と自己降格の現役メンバー認可 (CMP-260826-1455)",
-          "url": "https://github.com/kenta-0420/mannschaft/pull/3572",
-          "updatedAt": "2026-10-11T22:59:12Z",
-          "ci": {
-            "status": "unavailable",
-            "reason": "終了済みPRのCIは同期対象外",
-            "checks": [],
-            "source": "GraphQL statusCheckRollup"
-          }
-        }
-      ]
-    },
-    {
       "id": "CMP-260826-1456",
       "title": "UNLISTED 村では申請者本人ですら自分の参加申請一覧を引けない（存在秘匿の副作用）",
-      "status": "working",
-      "statusLabel": "着手中",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -26923,12 +27356,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-260820-1423",
       "issues": [
         {
-          "label": "進捗（2026-10-03）: PR #3590。source `a0bc` の公式HTTP 15件・guard 7件・Flyway 16件は失敗／skip 0。FE実audit・lint・types・unitはrun `37020854452` SUCCESS、unit 4件成功。全体BE run `37020854403` はArchUnit OOMでFAIL。実UI・全体green・mergeは未達。",
+          "label": "進捗（2026-10-03）: PR #3590。source `a0bc` の公式HTTP 15件・guard 7件・Flyway 16件は失敗／skip 0。FE実audit・lint・types・unitはrun `37020854452` SUCCESS、unit 4件成功。全体BE run `37020854403` はArchUnit OOMでFAIL。実UI・全体green・mergeは未達。。2026-10-31 状態同期: 旧状態「着手中」→実装中（8月CMP残務の再出陣。台帳ゲート準拠）<br>完了（2026-11-05）: PR #3590（head 7824230、merge 2026-10-12、CI success: Backend 38183026008・Frontend 38183026034）。実機E2E（本人・第三者・他村村長・未認証、URL直打ち、158件のページング、N+1=3文）合格。探索の気づき（村内から申請履歴へ辿れない・取消なし）は CMP-261105-0343 へ起票済み。 [完了証拠](evidence/CMP-260826-1456.json)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "進捗（2026-10-03）: PR #3590。source `a0bc` の公式HTTP 15件・guard 7件・Flyway 16件は失敗／skip 0。FE実audit・lint・types・unitはrun `37020854452` SUCCESS、unit 4件成功。全体BE run `37020854403` はArchUnit OOMでFAIL。実UI・全体green・mergeは未達。"
+        "進捗（2026-10-03）: PR #3590。source `a0bc` の公式HTTP 15件・guard 7件・Flyway 16件は失敗／skip 0。FE実audit・lint・types・unitはrun `37020854452` SUCCESS、unit 4件成功。全体BE run `37020854403` はArchUnit OOMでFAIL。実UI・全体green・mergeは未達。。2026-10-31 状態同期: 旧状態「着手中」→実装中（8月CMP残務の再出陣。台帳ゲート準拠）<br>完了（2026-11-05）: PR #3590（head 7824230、merge 2026-10-12、CI success: Backend 38183026008・Frontend 38183026034）。実機E2E（本人・第三者・他村村長・未認証、URL直打ち、158件のページング、N+1=3文）合格。探索の気づき（村内から申請履歴へ辿れない・取消なし）は CMP-261105-0343 へ起票済み。 [完了証拠](evidence/CMP-260826-1456.json)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -26939,7 +27372,7 @@ window.BETA_INVENTORY_DATA = {
         "UNLISTED"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
       "githubRefs": [
         3590
@@ -26962,12 +27395,86 @@ window.BETA_INVENTORY_DATA = {
       ]
     },
     {
-      "id": "CMP-260826-1457",
-      "title": "招待・共有トークン7系統の平文保存をハッシュ保存へ統一（金庫の一元化）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "id": "CMP-260826-1455",
+      "title": "BAN された村長・長老が権限操作を実行できうる（村メンバーシップの認可述語の誤用）",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "村の権限操作（ロール変更・BAN）の認可判定が、BAN 済みを除外する正準述語 `findActiveByVillageIdAndSubject` を経由すること。BAN された村長が他の村人のロールを変更できないこと・BAN できないことを red テストで固定してから修正すること。**同種の誤用が他に残っていないか村ドメイン全域を走査**し、番人で再発を禁じること",
+      "acceptance": [
+        "村の権限操作（ロール変更・BAN）の認可判定が、BAN 済みを除外する正準述語 `findActiveByVillageIdAndSubject` を経由すること。BAN された村長が他の村人のロールを変更できないこと・BAN できないことを red テストで固定してから修正すること。**同種の誤用が他に残っていないか村ドメイン全域を走査**し、番人で再発を禁じること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "進捗（2026-10-03）: PR #3572。source `99323f9368d16e27adb285decdcee565314c3fa6` の公式HTTP 36件・guard 6件・全6 shard green。実UI 6条件は同JARの4＋1＋1別trialで成功（単一run 6件greenではない）。3独立住民探索を完了し気づき4件は観測未実証。保存版 `.claude/evidence/cmp1455-alicization-20261003/`、JAR SHA256 `A30B1DF08B729EED6336FE90806F42A5D03A1137582ADD8BC30FADE5227A302D`。Windows native crash 3件は未解決で既存Linux Javaによる実機確認。（旧記述の「最新main追従・再CI・mergeは未達」は2026-11-05に現状へ同期済み。PR #3572 は2026-10-11にmerge済み）。2026-10-31 状態同期: 旧状態「着手中」→実装中（8月CMP残務の再出陣。台帳ゲート準拠）<br>完了（2026-11-05、状態を現状へ同期）: 本体修正 PR #3572 は 2026-10-11 に merge 済み（旧記述の「merge 未達」は解消）。村ドメイン全域の述語番人 PR #4244（head 6fbc193、merge 2026-11-01、CI success: Backend 41271403376）で再発を固定。実機E2E（BAN 済み村長・長老の16操作が全て403、URL直打ち）とアリシゼーション合格。 [完了証拠](evidence/CMP-260826-1455.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "進捗（2026-10-03）: PR #3572。source `99323f9368d16e27adb285decdcee565314c3fa6` の公式HTTP 36件・guard 6件・全6 shard green。実UI 6条件は同JARの4＋1＋1別trialで成功（単一run 6件greenではない）。3独立住民探索を完了し気づき4件は観測未実証。保存版 `.claude/evidence/cmp1455-alicization-20261003/`、JAR SHA256 `A30B1DF08B729EED6336FE90806F42A5D03A1137582ADD8BC30FADE5227A302D`。Windows native crash 3件は未解決で既存Linux Javaによる実機確認。（旧記述の「最新main追従・再CI・mergeは未達」は2026-11-05に現状へ同期済み。PR #3572 は2026-10-11にmerge済み）。2026-10-31 状態同期: 旧状態「着手中」→実装中（8月CMP残務の再出陣。台帳ゲート準拠）<br>完了（2026-11-05、状態を現状へ同期）: 本体修正 PR #3572 は 2026-10-11 に merge 済み（旧記述の「merge 未達」は解消）。村ドメイン全域の述語番人 PR #4244（head 6fbc193、merge 2026-11-01、CI success: Backend 41271403376）で再発を固定。実機E2E（BAN 済み村長・長老の16操作が全て403、URL直打ち）とアリシゼーション合格。 [完了証拠](evidence/CMP-260826-1455.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "背景: 2026-08-26 の偵察で発見。`VillageMembershipService#changeRole`（L262-268）と `#ban`（L311-317）が、`VillageMembershipRepository` の Javadoc が「**認可判定に使ってはならない**」と明記した BAN 未検査の述語 `findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull` を使っている。同 Javadoc には、かつて同型の判定が6名8実装にコピーされ**5実装が bannedAt 未検査で、BAN された長老がモデレーション操作を実行できた実害**が記録されている。今回の2箇所はその掃討から漏れた残党にあたる。正準述語（`left_at IS NULL AND banned_at IS NULL`）は Repository に集約済みだが、**HEADMAN/ELDER 判定そのものは今も12箇所に分散**しており（`requireModerator` / `ensureModerator` / `ensureReviewer` / 無名ヘルパ）、集約されたのはクエリだけである点に注意"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "BAN",
+        "BAN",
+        "BAN",
+        "findActiveByVillageIdAndSubject",
+        "BAN",
+        "BAN",
+        "red"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        3572,
+        4244
+      ],
+      "github": [
+        {
+          "number": 3572,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 村メンバー操作と自己降格の現役メンバー認可 (CMP-260826-1455)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3572",
+          "updatedAt": "2026-10-11T22:59:12Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 4244,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-260826-1457",
+      "title": "招待・共有トークン7系統の平文保存をハッシュ保存へ統一（金庫の一元化）",
+      "status": "working",
+      "statusLabel": "P4 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -26979,12 +27486,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-260821-1519",
       "issues": [
         {
-          "label": "—",
+          "label": "—。2026-10-31 状態同期: 旧状態「未着手」→実装中（8月CMP残務の再出陣。台帳ゲート準拠）",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "—。2026-10-31 状態同期: 旧状態「未着手」→実装中（8月CMP残務の再出陣。台帳ゲート準拠）"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -26996,7 +27503,7 @@ window.BETA_INVENTORY_DATA = {
         "DB"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         2353
@@ -27019,159 +27526,13 @@ window.BETA_INVENTORY_DATA = {
       ]
     },
     {
-      "id": "CMP-260826-2127",
-      "title": "シフト表APIのステータス可視性制御（#1170はFE表示のみ是正）",
-      "status": "working",
-      "statusLabel": "実装済み／残AC: 実機E2E未実施分（AC-6 検索・AC-5 PDF・AC-10〜12 認可の実JWT実測）と完了証拠JSON",
-      "stage": "未設定",
-      "priority": "未設定",
-      "audiences": [],
-      "featureKey": null,
-      "updated": "未設定",
-      "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "非管理者の一覧と期間一覧から DRAFT および publishedAt=null の ARCHIVED を除外し、DRAFT/未公開ARCHIVEDの単体・枠取得は404にする。COLLECTING/ADJUSTING は一覧・枠を維持し、割当を assignmentMasked=true と assignedUserIds=[] で伏せて枠骨格は返す。PUBLISHED と publishedAt!=null の ARCHIVED は割当を含め全量返す。可視性境界を番人テストで固定する。",
-      "acceptance": [
-        "非管理者の一覧と期間一覧から DRAFT および publishedAt=null の ARCHIVED を除外し、DRAFT/未公開ARCHIVEDの単体・枠取得は404にする。COLLECTING/ADJUSTING は一覧・枠を維持し、割当を assignmentMasked=true と assignedUserIds=[] で伏せて枠骨格は返す。PUBLISHED と publishedAt!=null の ARCHIVED は割当を含め全量返す。可視性境界を番人テストで固定する。"
-      ],
-      "blocker": "—",
-      "issues": [
-        {
-          "label": "PR #3099で実装。PR #3123/#3132で実機E2Eを実施し、#3132はmerge済み。実機E2Eは12 expected、0 unexpected、0 flaky、0 skipped（setup 1件と11ケース）。PR #3129の探索から2件を派生起票。現行ShiftScheduleServiceではlistSchedules/listSchedulesByPeriodのfilterVisibleと詳細取得guardを確認。PR本文でAC-5 PDF、AC-6検索、AC-10純粋team ADMIN、AC-11非所属SYSTEM_ADMIN、AC-12別scope/非所属、AC-14通知、AC-15 FE filter撤去は射程外と明記されているため、全体ACは未完了。9月の別派生課題と混同しない。<br>更新（2026-10-10、origin/main のコード照合）: 射程外とされたACは**コード上は着地済み**。AC-5 `ShiftPdfService`（:92-113）が未公開・COLLECTING・ADJUSTING を非管理者に404（PDF認可は #3603 で `ShiftPdfFacade` へ移動）／AC-6 `GlobalSearchService`（:127-142）が admin・member の2集合を `ShiftScheduleRepository#searchByKeyword`（`NOT_HIDDEN_JPQL`）へ渡し未公開を母集団から除外／AC-10・11 `ShiftScheduleService` と PDF が ADMIN・SYSTEM_ADMIN を短絡（CMP-260903-0656 で確認済み）／AC-12 認可403契約は維持／AC-14 `ShiftPublishedNotificationListener` は公開イベント起点のままで希望提出リマインドは非変更／AC-15 `ShiftScheduleList.vue` の `PUBLISHED` フィルタは撤去済み（:35 にコメントのみ）。未確認: 検索・PDF・認可の実機/実JWT E2E（#3132 の12件に含まれない）と完了証拠JSON。派生済み別CMP: CMP-260903-0651〜0654・0656〜0659・0700・0701、CMP-260905-1630（summary 403）。件数頭打ち（旧AC-6件数一致）は CMP-260903-0700 に分離済み。",
-          "state": "unknown"
-        }
-      ],
-      "prs": [
-        "PR #3099で実装。PR #3123/#3132で実機E2Eを実施し、#3132はmerge済み。実機E2Eは12 expected、0 unexpected、0 flaky、0 skipped（setup 1件と11ケース）。PR #3129の探索から2件を派生起票。現行ShiftScheduleServiceではlistSchedules/listSchedulesByPeriodのfilterVisibleと詳細取得guardを確認。PR本文でAC-5 PDF、AC-6検索、AC-10純粋team ADMIN、AC-11非所属SYSTEM_ADMIN、AC-12別scope/非所属、AC-14通知、AC-15 FE filter撤去は射程外と明記されているため、全体ACは未完了。9月の別派生課題と混同しない。<br>更新（2026-10-10、origin/main のコード照合）: 射程外とされたACは**コード上は着地済み**。AC-5 `ShiftPdfService`（:92-113）が未公開・COLLECTING・ADJUSTING を非管理者に404（PDF認可は #3603 で `ShiftPdfFacade` へ移動）／AC-6 `GlobalSearchService`（:127-142）が admin・member の2集合を `ShiftScheduleRepository#searchByKeyword`（`NOT_HIDDEN_JPQL`）へ渡し未公開を母集団から除外／AC-10・11 `ShiftScheduleService` と PDF が ADMIN・SYSTEM_ADMIN を短絡（CMP-260903-0656 で確認済み）／AC-12 認可403契約は維持／AC-14 `ShiftPublishedNotificationListener` は公開イベント起点のままで希望提出リマインドは非変更／AC-15 `ShiftScheduleList.vue` の `PUBLISHED` フィルタは撤去済み（:35 にコメントのみ）。未確認: 検索・PDF・認可の実機/実JWT E2E（#3132 の12件に含まれない）と完了証拠JSON。派生済み別CMP: CMP-260903-0651〜0654・0656〜0659・0700・0701、CMP-260905-1630（summary 403）。件数頭打ち（旧AC-6件数一致）は CMP-260903-0700 に分離済み。"
-      ],
-      "ci": "正本に記載された証拠を確認してください。",
-      "refs": [
-        "—"
-      ],
-      "source": "docs/task-list.md",
-      "sourceTokens": [
-        "API",
-        "FE",
-        "DRAFT",
-        "publishedAt",
-        "null",
-        "ARCHIVED",
-        "DRAFT",
-        "ARCHIVED",
-        "COLLECTING",
-        "ADJUSTING",
-        "assignmentMasked",
-        "true",
-        "assignedUserIds",
-        "PUBLISHED",
-        "publishedAt",
-        "null",
-        "ARCHIVED"
-      ],
-      "tags": [
-        "進行中"
-      ],
-      "githubRefs": [
-        1170,
-        3099,
-        3123,
-        3129,
-        3132,
-        3603
-      ],
-      "github": [
-        {
-          "number": 1170,
-          "kind": "pull_request",
-          "state": "merged",
-          "title": "feat(shift): シフト管理画面を権限別表示に対応",
-          "url": "https://github.com/kenta-0420/mannschaft/pull/1170",
-          "updatedAt": "2026-08-26T11:06:25Z",
-          "ci": {
-            "status": "unavailable",
-            "reason": "終了済みPRのCIは同期対象外",
-            "checks": [],
-            "source": "GraphQL statusCheckRollup"
-          }
-        },
-        {
-          "number": 3099,
-          "kind": "pull_request",
-          "state": "merged",
-          "title": "修正: 未公開シフト表の情報が API から読める欠陥を遮断する（CMP-260826-2127・出陣）",
-          "url": "https://github.com/kenta-0420/mannschaft/pull/3099",
-          "updatedAt": "2026-09-04T13:29:14Z",
-          "ci": {
-            "status": "unavailable",
-            "reason": "終了済みPRのCIは同期対象外",
-            "checks": [],
-            "source": "GraphQL statusCheckRollup"
-          }
-        },
-        {
-          "number": 3123,
-          "kind": "pull_request",
-          "state": "merged",
-          "title": "テスト追加: 未公開シフト情報の遮断を実機E2Eで固定する（CMP-260826-2127・実機）",
-          "url": "https://github.com/kenta-0420/mannschaft/pull/3123",
-          "updatedAt": "2026-09-05T11:30:32Z",
-          "ci": {
-            "status": "unavailable",
-            "reason": "終了済みPRのCIは同期対象外",
-            "checks": [],
-            "source": "GraphQL statusCheckRollup"
-          }
-        },
-        {
-          "number": 3129,
-          "kind": "pull_request",
-          "state": "merged",
-          "title": "台帳: アリシゼーション（探索的テスト）で発見した欠陥2件を起票",
-          "url": "https://github.com/kenta-0420/mannschaft/pull/3129",
-          "updatedAt": "2026-09-05T13:46:41Z",
-          "ci": {
-            "status": "unavailable",
-            "reason": "終了済みPRのCIは同期対象外",
-            "checks": [],
-            "source": "GraphQL statusCheckRollup"
-          }
-        },
-        {
-          "number": 3132,
-          "kind": "pull_request",
-          "state": "merged",
-          "title": "テスト強化: 未公開シフト遮断の実機E2Eに HTTP 404 検証・AC-17・API 契約検証を足す（CMP-260826-2127・検分反映）",
-          "url": "https://github.com/kenta-0420/mannschaft/pull/3132",
-          "updatedAt": "2026-09-05T13:58:46Z",
-          "ci": {
-            "status": "unavailable",
-            "reason": "終了済みPRのCIは同期対象外",
-            "checks": [],
-            "source": "GraphQL statusCheckRollup"
-          }
-        },
-        {
-          "number": 3603,
-          "kind": "pull_request",
-          "state": "merged",
-          "title": "修正: シフトの予定・枠・リマインド・PDF の認可をトランザクションの外のファサードへ（CMP-260923-0954 W6a）",
-          "url": "https://github.com/kenta-0420/mannschaft/pull/3603",
-          "updatedAt": "2026-10-03T03:43:43Z",
-          "ci": {
-            "status": "unavailable",
-            "reason": "終了済みPRのCIは同期対象外",
-            "checks": [],
-            "source": "GraphQL statusCheckRollup"
-          }
-        }
-      ]
-    },
-    {
       "id": "CMP-260826-2128",
       "title": "メソッド認可の点火（`@EnableMethodSecurity`）を守る回帰テストが main に存在しない",
       "status": "done",
       "statusLabel": "**完了**（PR #3164）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -27249,9 +27610,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260826-2129",
       "title": "本番インフラが一度も構築されていない（マスター確認済・未構築確定）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -27311,6 +27673,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了**（PR #3008・#3010・#3011）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -27449,10 +27812,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260827-1808",
       "title": "村への入村が並行実行で不変条件を破る（現役所属の重複・参加上限100村の超過）",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -27464,12 +27828,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "指摘元: PR #2979 の Codex 検分（P1 2件）",
+          "label": "指摘元: PR #2979 の Codex 検分（P1 2件）。実装 [PR #4250](https://github.com/kenta-0420/mannschaft/pull/4250)、V1 是正 [PR #4330](https://github.com/kenta-0420/mannschaft/pull/4330)。[完了証拠](evidence/CMP-260827-1808.json)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "指摘元: PR #2979 の Codex 検分（P1 2件）"
+        "指摘元: PR #2979 の Codex 検分（P1 2件）。実装 [PR #4250](https://github.com/kenta-0420/mannschaft/pull/4250)、V1 是正 [PR #4330](https://github.com/kenta-0420/mannschaft/pull/4330)。[完了証拠](evidence/CMP-260827-1808.json)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -27481,10 +27845,12 @@ window.BETA_INVENTORY_DATA = {
         "DB"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
       "githubRefs": [
-        2979
+        2979,
+        4250,
+        4330
       ],
       "github": [
         {
@@ -27500,16 +27866,35 @@ window.BETA_INVENTORY_DATA = {
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
+        },
+        {
+          "number": 4250,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4330,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
         }
       ]
     },
     {
       "id": "CMP-260827-1152",
       "title": "付随通知の業務トランザクション巻き込み — CMP-056 リスト外の残存（Issue #2997）",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了（ReservationPendingExpireService#notifyApplicant のみ PR #3721 が改変中のため除外・未了として残す）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -27521,16 +27906,16 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "Issue #2997（先行: Issue #2834 / CMP-056）",
+          "label": "Issue #2997（先行: Issue #2834 / CMP-056）。群ごとの PR: G1 #3779・G8 #3783（既着地）、G2 #3792、G6 #3837、G7-a #3854、G3 #4001、G5 #3864、G4 のバッチ2キー #3817、G7-b #4177、G4-b #4181。関連修正 #3843。番人 NotificationTransactionBoundaryGuardTest の最終値（main で実測）: 凍結台帳 CENSUS_FLOOR 10・CLASSIFIED_FLOOR 1（実エントリは ReservationPendingExpireService#notifyApplicant の1件のみ）・RAW_CANDIDATE_HITS_MIN/STRUCTURAL_NOTIFY_CALLS_MIN/NOTIFY_BEARING_FILES_MIN 161/141/92・D-3T（EXPECTED_LINES_CROSS_DOMAIN_TX_D3T）7352。実機E2E は PR #4208（spec 7本、全導線 PASS。「業務処理が通知の失敗に巻き込まれない」は実環境では注入できず各 PR の IT で担保）、アリシゼーションは run-20261028（住民4体・確定不具合2件は CMP-261028-2328 / CMP-261028-2329 へ分離起票）。 [完了証拠](evidence/CMP-260827-1152.json)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "Issue #2997（先行: Issue #2834 / CMP-056）"
+        "Issue #2997（先行: Issue #2834 / CMP-056）。群ごとの PR: G1 #3779・G8 #3783（既着地）、G2 #3792、G6 #3837、G7-a #3854、G3 #4001、G5 #3864、G4 のバッチ2キー #3817、G7-b #4177、G4-b #4181。関連修正 #3843。番人 NotificationTransactionBoundaryGuardTest の最終値（main で実測）: 凍結台帳 CENSUS_FLOOR 10・CLASSIFIED_FLOOR 1（実エントリは ReservationPendingExpireService#notifyApplicant の1件のみ）・RAW_CANDIDATE_HITS_MIN/STRUCTURAL_NOTIFY_CALLS_MIN/NOTIFY_BEARING_FILES_MIN 161/141/92・D-3T（EXPECTED_LINES_CROSS_DOMAIN_TX_D3T）7352。実機E2E は PR #4208（spec 7本、全導線 PASS。「業務処理が通知の失敗に巻き込まれない」は実環境では注入できず各 PR の IT で担保）、アリシゼーションは run-20261028（住民4体・確定不具合2件は CMP-261028-2328 / CMP-261028-2329 へ分離起票）。 [完了証拠](evidence/CMP-260827-1152.json)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "背景: CMP-056 は既知18箇所（第1群11・第2群7）の完了をもって閉じたが、戦役の締めの全域機械走査で、リスト外に同型の欠陥が多数残存していることが判明した。症状は同じで、業務データの save/update と `NotificationHelper#notify` 等の直接呼び出しが同一 `@Transactional` 内にあり、通知の失敗が業務処理ごと巻き戻る。代表例: `BetaGrantService`（javadoc 自身が「同一 `@Transactional` 内で行い、例外を投げれば `beta_grants` 行を含めて全ロールバックする」と明記）、`MemberPaymentService`（分離予定の TODO を自認）、`DigestAsyncExecutor`、`MemberInfoResponseService`、`TicketExpiryBatchService`、`ReflectionSpacedReminderService`、`ShiftPreferenceReminderBatchService`、`EmergencyClosureService`、`ReservationReminderDispatchBatchService`、`RecruitmentListingService`、`InboxSnoozeRevivalBatchService`、`ErrorReportWeeklySummaryService`、`MarketFriendTargetService`。**要軍議の理由**: 件数が多く、かつ除外判定が要る。通知そのものが目的のクラス（対象外）との切り分けが必要。**判定保留の記録**: `ReservationPendingExpireService` / `ReservationWaitlistService` は自身が `REQUIRES_NEW` で隔離済みだが1件ずつの Runner 化はされておらず、誤検知の可能性がある。`JobNotificationService` 等は通知自体が目的と思われるが Issue #2834 に対象外の明記が無く未確認。**正規形は確立済み**: `backend/.claudecode.md` の「原則5」。金型は `contact/event/ContactRequestNotificationListener`、IT の金型は `contact/ContactRequestNotificationTransactionIT`。**教訓**: 台帳が「3箇所」と言い偵察で18箇所と判明し、さらに締めの走査でその外側が出た。リストを信じて締めの全域走査を省いていたら、戦役を誤って完了と判定していた　【2026-09-09 追記（Issue #2990 L13 凱旋時の実測）】戦役は進行中。番人 `NotificationTransactionBoundaryGuardTest` の凍結台帳 `backend/src/test/resources/notification_guard/notification_tx_boundary_freeze.txt` に未是正エントリが**36件**残っている（L13 着地後の実測。ファイル内の `com.mannschaft.*#メソッド` 行を数えた値）。ドメイン別内訳: jobmatching 4 / notification 4 / recruitment 4 / reservation 4 / admin 2 / digest 2 / role 2 / shift 2 / survey 2 / ticket 2 / timetable 2 / actionmemo 1 / billing 1 / memberinfo 1 / reflection 1 / repairplan 1 / todo 1。なお本行が参照する Issue #2997 と Issue #2990 は同一戦役に対して立った重複 issue であり、本行が両者の台帳正本である（#2990 側に別行は作らない）。残件の消化は凍結台帳のエントリを1件ずつ正規形（業務TX内は publishEvent のみ、配送は AFTER_COMMIT リスナー / REQUIRES_NEW）へ倒し、台帳から行を削っていく形で進める。"
+        "背景: CMP-056 は既知18箇所（第1群11・第2群7）の完了をもって閉じたが、戦役の締めの全域機械走査で、リスト外に同型の欠陥が多数残存していることが判明した。症状は同じで、業務データの save/update と `NotificationHelper#notify` 等の直接呼び出しが同一 `@Transactional` 内にあり、通知の失敗が業務処理ごと巻き戻る。代表例: `BetaGrantService`（javadoc 自身が「同一 `@Transactional` 内で行い、例外を投げれば `beta_grants` 行を含めて全ロールバックする」と明記）、`MemberPaymentService`（分離予定の TODO を自認）、`DigestAsyncExecutor`、`MemberInfoResponseService`、`TicketExpiryBatchService`、`ReflectionSpacedReminderService`、`ShiftPreferenceReminderBatchService`、`EmergencyClosureService`、`ReservationReminderDispatchBatchService`、`RecruitmentListingService`、`InboxSnoozeRevivalBatchService`、`ErrorReportWeeklySummaryService`、`MarketFriendTargetService`。**要軍議の理由**: 件数が多く、かつ除外判定が要る。通知そのものが目的のクラス（対象外）との切り分けが必要。**判定保留の記録**: `ReservationPendingExpireService` / `ReservationWaitlistService` は自身が `REQUIRES_NEW` で隔離済みだが1件ずつの Runner 化はされておらず、誤検知の可能性がある。`JobNotificationService` 等は通知自体が目的と思われるが Issue #2834 に対象外の明記が無く未確認。**正規形は確立済み**: `backend/.claudecode.md` の「原則5」。金型は `contact/event/ContactRequestNotificationListener`、IT の金型は `contact/ContactRequestNotificationTransactionIT`。**教訓**: 台帳が「3箇所」と言い偵察で18箇所と判明し、さらに締めの走査でその外側が出た。リストを信じて締めの全域走査を省いていたら、戦役を誤って完了と判定していた　【2026-09-09 追記（Issue #2990 L13 凱旋時の実測）】戦役は進行中。番人 `NotificationTransactionBoundaryGuardTest` の凍結台帳 `backend/src/test/resources/notification_guard/notification_tx_boundary_freeze.txt` に未是正エントリが**36件**残っている（L13 着地後の実測。ファイル内の `com.mannschaft.*#メソッド` 行を数えた値）。ドメイン別内訳: jobmatching 4 / notification 4 / recruitment 4 / reservation 4 / admin 2 / digest 2 / role 2 / shift 2 / survey 2 / ticket 2 / timetable 2 / actionmemo 1 / billing 1 / memberinfo 1 / reflection 1 / repairplan 1 / todo 1。なお本行が参照する Issue #2997 と Issue #2990 は同一戦役に対して立った重複 issue であり、本行が両者の台帳正本である（#2990 側に別行は作らない）。残件の消化は凍結台帳のエントリを1件ずつ正規形（業務TX内は publishEvent のみ、配送は AFTER_COMMIT リスナー / REQUIRES_NEW）へ倒し、台帳から行を削っていく形で進める。 【2026-10-28 追記（戦役の締め）】群別の是正は着地。残るのは ReservationPendingExpireService#notifyApplicant の1件のみで、PR #3721（OPEN）が改変中のため本戦役では除外し、凍結台帳に残す（#3721 の着地後に正規形へ倒して台帳から削る。CMP-261028-2328 の依存列にも記載）。 アリシゼーション run-20261028 の確定不具合2件は本戦役の範囲外の既存欠陥であり、別 CMP として起票した（CMP-261028-2328 予約通知 actionUrl、CMP-261028-2329 緊急休業の件数表示）。回帰テストは起票先で先行させる。"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -27546,12 +27931,25 @@ window.BETA_INVENTORY_DATA = {
         "Runner"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
       "githubRefs": [
         2834,
         2990,
-        2997
+        2997,
+        3721,
+        3779,
+        3783,
+        3792,
+        3817,
+        3837,
+        3843,
+        3854,
+        3864,
+        4001,
+        4177,
+        4181,
+        4208
       ],
       "github": [
         {
@@ -27580,6 +27978,128 @@ window.BETA_INVENTORY_DATA = {
           "url": "https://github.com/kenta-0420/mannschaft/issues/2997",
           "updatedAt": "2026-10-27T04:54:22Z",
           "ci": null
+        },
+        {
+          "number": 3721,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 3779,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 3783,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 3792,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 3817,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "確認通知リマインドバッチの遅延読み込み失敗を根治 (CMP-260925-0905)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3817",
+          "updatedAt": "2026-10-14T01:16:10Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3837,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 3843,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 3854,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 3864,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4001,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4177,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4181,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4208,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
         }
       ]
     },
@@ -27590,6 +28110,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了**（main 着地 PR #2955・#2958・#2965・#2988。CI是正 #2976 を含む）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -27711,6 +28232,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -27769,9 +28291,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260901-1246",
       "title": "統合カレンダーのフォールバックチップ色が設計書§3.3の自動色要求を満たさない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P5 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -27826,9 +28349,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260901-1247",
       "title": "統合カレンダーのレイヤー表示/非表示がサーバーへ永続化されず端末ごとに閉じる",
       "status": "not-started",
-      "statusLabel": "未着手（要設計判断: localStorage とサーバー側 hidden のどちらを正本とするか）",
+      "statusLabel": "P3 未着手（要設計判断: localStorage とサーバー側 hidden のどちらを正本とするか）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -27883,9 +28407,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260902-0058",
       "title": "共有予定の説明文が詳細パネルに永久に表示されない（description未返却）",
       "status": "not-started",
-      "statusLabel": "未着手（要設計判断: ScheduleDetailResponseへの切替か可視性込みの再設計か）",
+      "statusLabel": "P3 未着手（要設計判断: ScheduleDetailResponseへの切替か可視性込みの再設計か）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -27961,6 +28486,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -28020,9 +28546,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260902-1016",
       "title": "管理者向け管理メニュー基盤の新設",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -28077,10 +28604,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260902-1017",
       "title": "領収書の承認・無効化の権限分離",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "P1 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -28111,7 +28639,7 @@ window.BETA_INVENTORY_DATA = {
         "F08"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         3060
@@ -28137,9 +28665,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260902-1454",
       "title": "通知クレジットの Stripe Customer を組織単位へ作り直す",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -28200,6 +28729,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-13）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -28287,9 +28817,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260904-1003",
       "title": "領収書の宛名を受領者ごとに記憶する",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P5 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -28335,6 +28866,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "対応不要（仕様どおり・2026-10-13 取り下げ）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -28375,9 +28907,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260905-0514",
       "title": "同一ユーザーの近接ログインで `refresh_tokens` がデッドロックし 500 を返す（リトライ無し）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -28415,9 +28948,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260905-0515",
       "title": "Response DTO ネスト化（Wave 2-C-A / schedule）に FE が追従しておらず、ダッシュボードの表示が静かに欠落する",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -28481,10 +29015,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260905-1630",
       "title": "シフトのサマリ API だけ 403 を返し、未公開シフト表の存在オラクルが残る",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "P1 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -28516,7 +29051,7 @@ window.BETA_INVENTORY_DATA = {
         "shift"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -28525,9 +29060,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260905-1631",
       "title": "シフト希望提出のウィザードが履歴も下書きも持たず、中断すると入力が消える",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -28562,9 +29098,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260905-1414",
       "title": "検索キーになる PII の保護方針を横断で定める",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -28622,10 +29159,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260905-1415",
       "title": "ローカル検証環境の立ち上げ手順を文書化する",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -28637,12 +29175,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "—",
+          "label": "[実装PR #4332](https://github.com/kenta-0420/mannschaft/pull/4332)・[完了証拠](evidence/CMP-260905-1415.json)・[文書検証](evidence/CMP-260905-1415-verification.md)（tooling文書整備。アプリ実機/探索は対象外・フル起動未実施）",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "[実装PR #4332](https://github.com/kenta-0420/mannschaft/pull/4332)・[完了証拠](evidence/CMP-260905-1415.json)・[文書検証](evidence/CMP-260905-1415-verification.md)（tooling文書整備。アプリ実機/探索は対象外・フル起動未実施）"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -28689,18 +29227,31 @@ window.BETA_INVENTORY_DATA = {
         "development"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        4332
+      ],
+      "github": [
+        {
+          "number": 4332,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
     },
     {
       "id": "CMP-260905-2214",
       "title": "UI 文字列の直書きが FE 全域に残存（i18n ルール違反の横断戦役）",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P4 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -28750,9 +29301,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260907-0001",
       "title": "画像URLプロバイダの `@Profile` 二分岐が本番以外でダミー文字列を返す（chart ドメイン）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -28820,9 +29372,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260907-0002",
       "title": "領収書のPDFダウンロードが実ファイルを保存せず、再発行がプレビューなのに成功と表示する",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -28883,6 +29436,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-09-09・PR #3184）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -28974,6 +29528,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-13）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -29050,6 +29605,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-09-07）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -29109,6 +29665,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-09-07）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -29169,6 +29726,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-09-07）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -29223,6 +29781,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-09-07）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -29304,9 +29863,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260907-1038",
       "title": "主要な操作要素のタップ領域が全画面共通で44x44px未満（モバイル）",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P5 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -29345,10 +29905,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260908-2116",
       "title": "シフト交代の承諾・却下がUIから永久に押せない",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -29360,16 +29921,16 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "実機/アリシゼーション 2026-10-21 不合格: 新規行 CMP-261021-0647・CMP-261021-0648・CMP-261021-0649・CMP-261021-0650・CMP-261021-0651 参照",
+          "label": "実装PR #3176・元head47f99539の同head CI3run成功。[完了証拠](evidence/CMP-260908-2116.json)・[検分](evidence/CMP-260908-2116-review.md)・[実機](evidence/CMP-260908-2116-real.md)・[探索](evidence/CMP-260908-2116-exploratory.md)。固定ac49の親3AC実測/3住民実探索・新4観測の気づき箱表示/再読込をroot受入。原run08 exit1/finish0・全目的未達/Dswitch両false・0650/0651未修正・UI cleanup予算超過と既存board validator FAILを保持し、標準run成功/全app無欠陥/coverage合格へ読み替えない。本番0。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "実機/アリシゼーション 2026-10-21 不合格: 新規行 CMP-261021-0647・CMP-261021-0648・CMP-261021-0649・CMP-261021-0650・CMP-261021-0651 参照"
+        "実装PR #3176・元head47f99539の同head CI3run成功。[完了証拠](evidence/CMP-260908-2116.json)・[検分](evidence/CMP-260908-2116-review.md)・[実機](evidence/CMP-260908-2116-real.md)・[探索](evidence/CMP-260908-2116-exploratory.md)。固定ac49の親3AC実測/3住民実探索・新4観測の気づき箱表示/再読込をroot受入。原run08 exit1/finish0・全目的未達/Dswitch両false・0650/0651未修正・UI cleanup予算超過と既存board validator FAILを保持し、標準run成功/全app無欠陥/coverage合格へ読み替えない。本番0。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "承諾ボタンと却下ボタンが同一の `v-if=\"swap.status === 'PENDING' && swap.accepterId === authStore.currentUser?.id\"`（`frontend/app/components/shift/ShiftSwapList.vue:81`）で覆われているが、BE の承諾は「先着承諾」方式で `accepterId` は承諾APIを呼んだ時点で初めて確定する（`ShiftSwapService#acceptSwapRequest`）。承諾前は必ず null のため条件は誰に対しても成立せず、**実装済みの承諾・却下機能が一度もUIに現れない**。API直叩きでは管理者が200で承諾できることを実機で裏取り済み。CMP-260903-0655（オープンコール撤退・PR #3148）で `/teams/{slug}/shifts` の描画を直した結果、初めて画面上で観測可能になった既存欠陥。2026-09-08 の実機E2E・アリシゼーションで発見"
+        "【発見時の記録】承諾ボタンと却下ボタンが同一の `v-if=\"swap.status === 'PENDING' && swap.accepterId === authStore.currentUser?.id\"`（`frontend/app/components/shift/ShiftSwapList.vue:81`）で覆われているが、BE の承諾は「先着承諾」方式で `accepterId` は承諾APIを呼んだ時点で初めて確定する（`ShiftSwapService#acceptSwapRequest`）。承諾前は必ず null のため条件は誰に対しても成立せず、**実装済みの承諾・却下機能が一度もUIに現れない**。API直叩きでは管理者が200で承諾できることを実機で裏取り済み。CMP-260903-0655（オープンコール撤退・PR #3148）で `/teams/{slug}/shifts` の描画を直した結果、初めて画面上で観測可能になった既存欠陥。2026-09-08 の実機E2E・アリシゼーションで発見"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -29380,10 +29941,11 @@ window.BETA_INVENTORY_DATA = {
         "E2E"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
       "githubRefs": [
-        3148
+        3148,
+        3176
       ],
       "github": [
         {
@@ -29399,6 +29961,20 @@ window.BETA_INVENTORY_DATA = {
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
+        },
+        {
+          "number": 3176,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: シフト交代の承諾・却下がUIから永久に押せない問題を根治（CMP-260908-2116）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3176",
+          "updatedAt": "2026-09-08T17:56:22Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -29406,9 +29982,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260908-2117",
       "title": "手動割当したシフトがマイシフトに出ない（割当の保存先が二重）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -29450,9 +30027,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260908-2118",
       "title": "シフト機能の導線欠落・軽微欠陥まとめ（6件）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -29487,9 +30065,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260909-1033",
       "title": "参加申請（join request）の取消がシステム全体に存在しない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -29554,9 +30133,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260909-1141",
       "title": "実装済みなのに画面から到達できないページ30ルート",
       "status": "working",
-      "statusLabel": "進行中（Phase 1〜5 完了・続報PR #3362/#3365/#3366/本PRマージ済み・2026-09-18）",
+      "statusLabel": "P2 進行中（Phase 1〜5 完了・続報PR #3362/#3365/#3366/本PRマージ済み・2026-09-18）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -29788,9 +30368,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260909-1142",
       "title": "シフト希望に「入れる時間帯」を持たせる（マスター必須機能）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -29842,9 +30423,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260909-1143",
       "title": "同じ日に枠が2つあると2件目のシフト希望が出せない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -29881,9 +30463,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260909-0302",
       "title": "通知本文の zh/ko/es/de が未翻訳のまま日本語で配信される",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -29993,9 +30576,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260909-0303",
       "title": "シフト予算アラート再送の部分成功で、成功済み受信者へ重複配信される",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -30060,9 +30644,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260909-0304",
       "title": "支払担当引継（billing payer handover）の main 上既存欠陥 2件",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -30150,9 +30735,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260909-0541",
       "title": "ShiftBudgetAllocationEntity と V11.030 の列不一致で F08.7 が Flyway 適用スキーマ上ほぼ全滅（500）",
       "status": "not-started",
-      "statusLabel": "未着手（Entity 側の是正 PR は別途並行着手中）",
+      "statusLabel": "P2 未着手（Entity 側の是正 PR は別途並行着手中）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -30228,9 +30814,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260909-0542",
       "title": "シフト予算 閾値超過アラート通知の actionUrl が実在しない FE ルートを指す（404）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -30285,9 +30872,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260909-0543",
       "title": "シフト予算 割当一覧の取得失敗が「登録されていません」の空状態に化ける（エラー握りつぶし）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -30339,9 +30927,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260909-0544",
       "title": "シフト予算 失敗イベント画面が生の SQL と Java 例外クラス名をそのまま利用者へ表示する（情報開示）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -30400,10 +30989,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-0545",
       "title": "/admin/shift-budget/* が運営コンソールからしか到達できず、組織 ADMIN に導線が無い／SYSTEM_ADMIN も個人スコープで行き止まる",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "P2 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -30440,7 +31030,7 @@ window.BETA_INVENTORY_DATA = {
         "shift-budget"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         2990
@@ -30460,10 +31050,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-2148",
       "title": "シフト割当の正本が二重（充足サマリーと人件費が別ソースを読む）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "P1 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -30493,7 +31084,7 @@ window.BETA_INVENTORY_DATA = {
         "shift_assignments"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -30505,6 +31096,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-14）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -30560,10 +31152,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-2150",
       "title": "時給未設定者の人件費が黙って0円で計上される",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "done",
+      "statusLabel": "完了（2026-11-07）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -30575,24 +31168,51 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "—",
+          "label": "実装PR #3230→#3247（exact head681f289・CI34701282751）。1555実UI/探索を原ACに限定再利用、root検分finding0。[完了証拠](evidence/CMP-260909-2150.json)・[限定再利用検分](evidence/CMP-260909-2150-review.md)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "実装PR #3230→#3247（exact head681f289・CI34701282751）。1555実UI/探索を原ACに限定再利用、root検分finding0。[完了証拠](evidence/CMP-260909-2150.json)・[限定再利用検分](evidence/CMP-260909-2150-review.md)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "2026-09-09 のシフト機能の軍議で発見。`ShiftBudgetConsumptionRecordListener:127` が `findEffectiveRate(...).orElse(BigDecimal.ZERO)` としており、時給が未登録のユーザーは**時給0円として消費記録が作られる**。集計上は「働いたが人件費0円」となり、予算の消化額も過少になる。対処療法の典型（未設定という状態を0という値で潰している）。新設する作成画面の見積り側では `unratedUserIds` として明示する設計（CMP-260909-1142 系の設計書 §12）だが、**公開時の計上経路は別であり本件は残る**"
+        "2026-09-09 のシフト機能の軍議で発見。`ShiftBudgetConsumptionRecordListener:127` が `findEffectiveRate(...).orElse(BigDecimal.ZERO)` としており、時給が未登録のユーザーは**時給0円として消費記録が作られる**。集計上は「働いたが人件費0円」となり、予算の消化額も過少になる。対処療法の典型（未設定という状態を0という値で潰している）。新設する作成画面の見積り側では `unratedUserIds` として明示する設計（CMP-260909-1142 系の設計書 §12）だが、**公開時の計上経路は別であり本件は残る** 現在はCMP-260910-1555でスキップ＋組織予算管理者警告へ是正済み。旧原因記述は発見時の履歴として保持。過去0円行の補正・人別集計はCMP-260910-1559の別範囲。"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未着手"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        3230,
+        3247
+      ],
+      "github": [
+        {
+          "number": 3230,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: シフト予算の消化額が常に0円になる欠陥を根治し時給設定画面を新設（CMP-260910-1555）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3230",
+          "updatedAt": "2026-09-12T09:43:32Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3247,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
     },
     {
       "id": "CMP-260909-2151",
@@ -30601,6 +31221,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-14）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -30656,9 +31277,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260909-2152",
       "title": "月次締め後に取り消された人件費が会計仕訳とズレる",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P1 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -30694,10 +31316,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-2153",
       "title": "シフト枠の物理削除で希望も連鎖して消える",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "P1 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -30723,7 +31346,7 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -30732,9 +31355,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260909-2154",
       "title": "Flyway ドリフト番人の既知未返済台帳（38列）を空にする",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -30774,9 +31398,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260909-2155",
       "title": "労働基準法の休憩の検証が無い",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -30811,9 +31436,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260910-0025",
       "title": "請求担当引継の RESUME に運用チームの権限経路が無い",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -30871,9 +31497,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260910-0026",
       "title": "請求担当引継の並行実行・認可・スケジュール注釈を実 DB の IT で固定する",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -30965,9 +31592,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260909-1445",
       "title": "手動アーカイブでシフト予算の消化が取り消されず、割当が恒久的に削除不能になる",
       "status": "unknown",
-      "statusLabel": "実機合格・検分で欠陥2件（新規行参照）",
+      "statusLabel": "P3 実機合格・検分で欠陥2件（新規行参照）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -31046,6 +31674,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-21）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -31121,6 +31750,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "対応不要（#3217 で解消済み・2026-10-21）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -31191,9 +31821,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260910-0041",
       "title": "通知の自動削除が保持期間より9時間早く走っている",
       "status": "working",
-      "statusLabel": "commit済（検証中）",
+      "statusLabel": "P3 commit済（検証中）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -31251,6 +31882,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-21）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -31324,6 +31956,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-14）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -31394,6 +32027,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-20）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -31466,6 +32100,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-14）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -31539,6 +32174,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "対応不要（仕様どおり・2026-09-10 取り下げ）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -31597,6 +32233,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -31636,9 +32273,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260910-1002",
       "title": "組織作成 API に未定義の orgType を渡すと 500 になる（400 が正しい）",
       "status": "working",
-      "statusLabel": "commit済（検証中）",
+      "statusLabel": "P3 commit済（検証中）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -31682,9 +32320,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260910-1056",
       "title": "管理者専用セグメントの滞在防止が URL 直打ち・F5 では一度も発火しない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -31731,9 +32370,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260910-1118",
       "title": "参加申請の申請者側に、自分が出した申請を一覧・追跡する導線が無い",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -31773,9 +32413,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260910-0127",
       "title": "シフト枠の日付を変更しても既存の希望の日付が追随しない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P1 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -31814,10 +32455,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1555",
       "title": "時給を登録する画面がアプリ内に1つも無く、シフト予算の消化が全件0円で記録される（F08.7）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "done",
+      "statusLabel": "完了（2026-10-30）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -31829,12 +32471,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "実機/アリシゼーション 2026-10-21: 認可修正合格・機能実額PASS（CMP-261021-0659）。CMP-261021-0651/既存CMP-260907-1038が別スコープで残るため親は未完了。新規課題はCMP-261021-0651参照",
+          "label": "原3ACをrun11実UI/独立3住民/root検分で受入（A/C達成・B未達、既知0651/1038/副管理者UIは保持）。正当追随PR #3247・BE34701282751、観測登録PR #4234。[完了証拠](evidence/CMP-260910-1555.json)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "実機/アリシゼーション 2026-10-21: 認可修正合格・機能実額PASS（CMP-261021-0659）。CMP-261021-0651/既存CMP-260907-1038が別スコープで残るため親は未完了。新規課題はCMP-261021-0651参照"
+        "原3ACをrun11実UI/独立3住民/root検分で受入（A/C達成・B未達、既知0651/1038/副管理者UIは保持）。正当追随PR #3247・BE34701282751、観測登録PR #4234。[完了証拠](evidence/CMP-260910-1555.json)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -31845,10 +32487,32 @@ window.BETA_INVENTORY_DATA = {
         "F08"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        3247,
+        4234
+      ],
+      "github": [
+        {
+          "number": 3247,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4234,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
     },
     {
       "id": "CMP-260910-1556",
@@ -31857,6 +32521,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-21）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -31912,10 +32577,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1557",
       "title": "日付欄にキーボードで日付を打つと別の日付が無警告で保存される（PrimeVue DatePicker・波及範囲未確認）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "P1 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -31946,7 +32612,7 @@ window.BETA_INVENTORY_DATA = {
         "DatePicker"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -31955,9 +32621,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260910-1558",
       "title": "壊れた予算割当が二度と削除できず後始末が不能になる（確定額0円なのに確定済み扱い）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -31992,9 +32659,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260910-1559",
       "title": "消化サマリの人別集計が自己矛盾している（時間と金額が合わない）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P1 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -32030,10 +32698,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1600",
       "title": "シフト表を作成しても直後の画面は「スケジュールがありません」のままで、利用者が重複作成する",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "done",
+      "statusLabel": "完了（PR #4382）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -32045,12 +32714,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "—",
+          "label": "[完了証拠](evidence/CMP-260910-1600.json) / [検証詳細](evidence/CMP-260910-1600-verification.md)。元優先度P3 / unit8・統合129・実機3役割・独立探索採用3件・復元/撤収確認",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "[完了証拠](evidence/CMP-260910-1600.json) / [検証詳細](evidence/CMP-260910-1600-verification.md)。元優先度P3 / unit8・統合129・実機3役割・独立探索採用3件・復元/撤収確認"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -32059,18 +32728,31 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未着手"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        4382
+      ],
+      "github": [
+        {
+          "number": 4382,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
     },
     {
       "id": "CMP-260910-1601",
       "title": "予算割当の新規作成が「IDを手で打て」という画面になっており管理者が値を知る手段が無い",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -32107,9 +32789,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260910-1602",
       "title": "予算割当ダイアログで保存に失敗しても画面が無反応で、BE の理由が捨てられる",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -32146,10 +32829,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1603",
       "title": "一般メンバーに「ポジション管理」タブが見えるが、押すと真っ白になる",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "P3 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -32161,12 +32845,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "—",
+          "label": "見出しを既存isAdmin条件へ整合する試練・実装を準備（検証未実施）",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "見出しを既存isAdmin条件へ整合する試練・実装を準備（検証未実施）"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -32175,7 +32859,7 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -32183,10 +32867,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1604",
       "title": "シフト詳細の「確定公開」に確認ダイアログが無く、全メンバーへの通知が押した瞬間に飛ぶ",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "P3 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -32215,7 +32900,7 @@ window.BETA_INVENTORY_DATA = {
         "id"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -32224,9 +32909,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260910-1605",
       "title": "チームのシフト表一覧から枠編集画面へ行けない（劣化コピーの一覧が行き止まり）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -32264,10 +32950,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1606",
       "title": "失敗イベントの「再実行」が直せないうえ元の診断情報を消してしまう",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "P1 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -32293,7 +32980,7 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -32302,9 +32989,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260910-1607",
       "title": "シフト系 BE のエラー処理の穴3件（不正 enum で500・未知フィールドで偽成功・acknowledge が冪等でない）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -32346,9 +33034,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260910-1608",
       "title": "管理者の通知未読数が 1,687,652 件に達し実通知が完全に埋没している",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -32382,10 +33071,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1609",
       "title": "シフト予算・シフトボードの表示と作法の細かい欠陥7件（読み上げ不能・内部値露出・符号の黙殺・単位不統一など）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "P1 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -32397,12 +33087,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "—",
+          "label": "2026-11-07 偵察済み。登録のみ、製品・試練未着手。実装時は #3832（ShiftScheduleList・状態util・翻訳）と #3738（ShiftBoardMatrix・board）の既存差分を保持して調整する。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "2026-11-07 偵察済み。登録のみ、製品・試練未着手。実装時は #3832（ShiftScheduleList・状態util・翻訳）と #3738（ShiftBoardMatrix・board）の既存差分を保持して調整する。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -32411,18 +33101,41 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未着手"
+        "進行中"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        3738,
+        3832
+      ],
+      "github": [
+        {
+          "number": 3738,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 3832,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
     },
     {
       "id": "CMP-260910-1811",
       "title": "テスト用プロファイルで `application-test.yml` の機能フラグがテストに届かず、shift-budget の統合テスト29ファイルが機能無効のまま緑になっている（F08.7）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -32514,9 +33227,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260910-1812",
       "title": "シフトのステータス遷移に遷移表が無く、どの状態からでも任意の状態へ移れる",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -32572,9 +33286,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260911-0109",
       "title": "モジュール価格設定画面 `/admin/module-pricing` はバックエンドが一行も存在せず、到達できても動かない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -32618,6 +33333,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-13）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -32680,6 +33396,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-21）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -32738,6 +33455,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-21）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -32827,6 +33545,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（PR #3282・#3291、2026-09-16）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -32906,6 +33625,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了**（main 着地 PR #3397 / commit `330a23b27`）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -32989,9 +33709,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260912-1823",
       "title": "`PageMeta.totalElements` は BE が送らないのに必須フィールドとして型付けされており、FE 8箇所以上で総件数が取れずページャーが出ない疑い",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -33039,6 +33760,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -33116,6 +33838,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -33163,6 +33886,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-21）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -33214,9 +33938,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260916-0053",
       "title": "通報管理のステータス絞り込みが BE 未対応のため機能せず、UI を削除した（復活には BE 対応が要る）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -33312,6 +34037,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-13）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -33368,9 +34094,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260916-0055",
       "title": "`PointCardRematchBatchService` のページング取りこぼし（チャンクをコミットすると対象集合が縮んで窓がずれる）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -33423,10 +34150,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260916-0056",
       "title": "番人テストの `assertTimeout` が非プリエンプティブで、ハング時こそ機能しない（既存2クラス）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "done",
+      "statusLabel": "P4 完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -33438,12 +34166,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "—",
+          "label": "[実装PR #4403](https://github.com/kenta-0420/mannschaft/pull/4403)・[完了証拠](evidence/CMP-260916-0056.json)・[検証記録](evidence/CMP-260916-0056-validation.md)。実機・探索はtest-onlyのため対象外（製品UI/API/認可/schema/利用者データ不変）",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "[実装PR #4403](https://github.com/kenta-0420/mannschaft/pull/4403)・[完了証拠](evidence/CMP-260916-0056.json)・[検証記録](evidence/CMP-260916-0056-validation.md)。実機・探索はtest-onlyのため対象外（製品UI/API/認可/schema/利用者データ不変）"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -33454,10 +34182,11 @@ window.BETA_INVENTORY_DATA = {
         "assertTimeout"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
       "githubRefs": [
-        3283
+        3283,
+        4403
       ],
       "github": [
         {
@@ -33473,6 +34202,15 @@ window.BETA_INVENTORY_DATA = {
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
+        },
+        {
+          "number": 4403,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
         }
       ]
     },
@@ -33480,9 +34218,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260916-0336",
       "title": "Billing Center PR6b-3: 上位変更（upgrade）の取り消し機能を追加する",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -33535,9 +34274,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260916-1348",
       "title": "springdoc は operationId が衝突すると既存側を黙って改名し、無関係な API の識別子が静かに変わる",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -33581,9 +34321,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260912-0909",
       "title": "【親タスク】運営管理ページ6枚がBE不在で動かない（FEだけ作られている）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -33624,9 +34365,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260912-0910",
       "title": "MEMBER権限設定画面がBE不在をエラー握りつぶしで隠し「全権限が有効」と嘘を表示する",
       "status": "working",
-      "statusLabel": "実装中（PR #3448）",
+      "statusLabel": "P3 実装中（PR #3448）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -33688,6 +34430,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-09-18）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -33744,10 +34487,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260916-2328",
       "title": "openapi 再生成の手順書で、★の主が `--dry-run` かどうかを利用者が判別できない（判定材料が表示されない）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "done",
+      "statusLabel": "完了（PR #4396）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -33759,12 +34503,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "—",
+          "label": "[実装PR #4396](https://github.com/kenta-0420/mannschaft/pull/4396)・[Harness CI](https://github.com/kenta-0420/mannschaft/actions/runs/42454616580)・[完了証拠](evidence/CMP-260916-2328.json)。tooling範囲の24fixture通過・skip0。実CIM/WSL/生成は未実施、実機/探索は理由付き対象外",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "[実装PR #4396](https://github.com/kenta-0420/mannschaft/pull/4396)・[Harness CI](https://github.com/kenta-0420/mannschaft/actions/runs/42454616580)・[完了証拠](evidence/CMP-260916-2328.json)。tooling範囲の24fixture通過・skip0。実CIM/WSL/生成は未実施、実機/探索は理由付き対象外"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -33777,10 +34521,11 @@ window.BETA_INVENTORY_DATA = {
         "dry-run"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
       "githubRefs": [
-        3291
+        3291,
+        4396
       ],
       "github": [
         {
@@ -33796,6 +34541,15 @@ window.BETA_INVENTORY_DATA = {
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
+        },
+        {
+          "number": 4396,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
         }
       ]
     },
@@ -33803,9 +34557,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260917-0041",
       "title": "運営管理ページ4枚がスコープ配下の同機能ページと重複した残骸になっている",
       "status": "working",
-      "statusLabel": "対応中（2026-09-18）",
+      "statusLabel": "P4 対応中（2026-09-18）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -33875,9 +34630,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260917-0121",
       "title": "【BE実装】割引キャンペーンと販促（campaigns・promotions）のバックエンドが存在しない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -33931,9 +34687,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260917-0122",
       "title": "【BE実装】パッケージ管理（packages）のバックエンドが存在しない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P5 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -33979,9 +34736,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260917-0123",
       "title": "【BE実装】組織請求設定と税設定（org-billing・tax-settings）のバックエンドが存在しない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -34037,6 +34795,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-05。実機E2E 2026-10-04・アリシゼーション 2026-10-05 実施）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -34166,6 +34925,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了**（main 着地 PR #3403 / commit `d6e0c869c`）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -34224,6 +34984,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了**（main 着地 PR #3404 / commit `add8e49cb`）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -34281,9 +35042,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260917-0529",
       "title": "チーム／組織サイドバーの27項目が SYSTEM_ADMIN 以外に永久非表示（DEFAULT モジュールを OPTIONAL と同じ仕組みで判定）",
       "status": "working",
-      "statusLabel": "対応中（2026-09-17）",
+      "statusLabel": "P2 対応中（2026-09-17）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -34344,9 +35106,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260918-0023",
       "title": "委員会一覧のステータス表示が壊れている（未再現・要追加調査）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -34380,10 +35143,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260918-0024",
       "title": "組織スコープのゲーミフィケーションとタイムラインダイジェストで裏のAPIが失敗している",
-      "status": "unknown",
-      "statusLabel": "①ゲーミフィケーション: 完了（チーム固有機能と確定・PR #3356 マージ済み）。殿が実機で組織 levelAvailable=false / チーム true を確認 ②タイムラインダイジェスト400: 残件（本戦役では未着手）",
+      "status": "working",
+      "statusLabel": "P3 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -34395,12 +35159,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "—",
+          "label": "①ゲーミフィケーション完了（チーム固有機能と確定、PR #3356 マージ済み、殿が実機で組織 levelAvailable=false / チーム true を確認）。①完了を維持し、②タイムラインダイジェスト400是正を実装中として登録。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "①ゲーミフィケーション完了（チーム固有機能と確定、PR #3356 マージ済み、殿が実機で組織 levelAvailable=false / チーム true を確認）。①完了を維持し、②タイムラインダイジェスト400是正を実装中として登録。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -34412,7 +35176,7 @@ window.BETA_INVENTORY_DATA = {
         "BE"
       ],
       "tags": [
-        "未整理"
+        "進行中"
       ],
       "githubRefs": [
         3356
@@ -34441,6 +35205,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（PR #3352 マージ済み）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -34496,9 +35261,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260918-0404",
       "title": "【番人】「リンクはあるが条件で永久に消える」型を検出する番人が無い",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -34602,9 +35368,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260918-1359",
       "title": "payment神クラスの段階分割とMoney値オブジェクト導入",
       "status": "working",
-      "statusLabel": "対応中（第1段: 照会責務分割）",
+      "statusLabel": "P4 対応中（第1段: 照会責務分割）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -34666,9 +35433,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260918-1406",
       "title": "D-5凍結ストアを段階返済する（初回: 地域マスタread窓口）",
       "status": "working",
-      "statusLabel": "対応中",
+      "statusLabel": "P4 対応中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -34736,6 +35504,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（PR #3369・CI通過）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -34834,6 +35603,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -34894,9 +35664,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260918-2312",
       "title": "予約の組織対応・org-billing（営利/非営利課金）はマスター裁可でいったん射程外（将来意向あり）",
       "status": "not-started",
-      "statusLabel": "未着手（バックログ）",
+      "statusLabel": "P5 未着手（バックログ）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -34976,9 +35747,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260918-1344",
       "title": "ゲーミフィケーションのポイント付与アクション4種が未実装",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -35022,9 +35794,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260919-1139",
       "title": "i18n の `common.` 接頭辞の誤用が40種、FE 全体に残っている",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -35084,9 +35857,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260919-1140",
       "title": "ダッシュボードの「メンバー」ウィジェットと上部タブ「メンバー」が別機能を指している",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -35141,6 +35915,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-13）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -35203,6 +35978,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -35264,6 +36040,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -35333,9 +36110,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260917-2350",
       "title": "予約(tx1)が `REQUIRES_NEW` の provisioner を呼び、外側の接続を保持したまま2本目の接続を取る",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -35422,9 +36200,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260919-0213",
       "title": "`billing_price_band_versions` に `product_kind='PLAN'` の行が1件も無く、upgrade 候補が恒久的に出ない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -35482,9 +36261,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260919-0214",
       "title": "PR6b-1 実機E2Eのハッピーパス（見積り→確定→3DS→APPLIED）が未検証",
       "status": "on-hold",
-      "statusLabel": "保留（CMP-260919-0213の販売マスタ整備待ち）",
+      "statusLabel": "P4 保留（CMP-260919-0213の販売マスタ整備待ち）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -35538,9 +36318,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260919-1504",
       "title": "`BillingAccessGuard.isScopeMember` が所属判定を `user_roles` のみで行い memberships を見ない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -35598,9 +36379,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260919-1505",
       "title": "テストが `roles.priority` に正準外の値を書けないようにする検出器が無い",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -35664,6 +36446,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了**（PR #3396・#3406）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -35745,6 +36528,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-09-28）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -35803,6 +36587,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（PR #3424）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -35862,6 +36647,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（PR #3425）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -35916,6 +36702,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了**（PR #3500）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -35979,6 +36766,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了**（main 着地 PR #3394 / commit `24ef3af40`）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -36039,6 +36827,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了**",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -36215,6 +37004,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（台帳訂正のみ・実装/削除は別戦役）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -36260,6 +37050,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了**（別セッションの PR #3423 で根治）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -36364,6 +37155,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（PR番号は本PRで付与）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -36407,6 +37199,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了**（PR #3507）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -36475,6 +37268,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-05。実機E2E 2026-10-04・アリシゼーション 2026-10-05 実施）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -36716,6 +37510,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "**完了**（PR #3436）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -36816,6 +37611,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -36908,6 +37704,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -36985,9 +37782,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260923-1732",
       "title": "組織通知fan-out母集団クエリのfilesort解消",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -37034,6 +37832,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -37089,9 +37888,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260924-0011",
       "title": "通報一覧に drill-down（詳細確認・対応・非表示化）への導線が存在しない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -37127,10 +37927,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260924-0012",
       "title": "Entity を持たないテーブル（`content_reports_archive` 等）は列欠落の番人の射程外",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "P4 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -37142,12 +37943,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-260920-0705（完了）",
       "issues": [
         {
-          "label": "—",
+          "label": "既知4pair（content_reports／report_actions／direct_mail_logs／direct_mail_recipients と各archive）の列存在ガードを試練先行で準備する。型・NULL・DEFAULT・PK・索引・列順は検査範囲外。開始登録のみで、実装・検証は未完了",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "既知4pair（content_reports／report_actions／direct_mail_logs／direct_mail_recipients と各archive）の列存在ガードを試練先行で準備する。型・NULL・DEFAULT・PK・索引・列順は検査範囲外。開始登録のみで、実装・検証は未完了"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -37160,7 +37961,7 @@ window.BETA_INVENTORY_DATA = {
         "Entity"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         3406
@@ -37186,9 +37987,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260924-0033",
       "title": "配布済みdaimyo pluginのcacheがsource mainより古い",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -37236,6 +38038,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -37309,9 +38112,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260925-0901",
       "title": "シフト表・枠の作成ボタンの連打で二重作成される",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -37354,9 +38158,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260925-0902",
       "title": "i18n の欠落（未定義キー・日本語直書き）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -37393,9 +38198,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260925-0903",
       "title": "古い応答が新しい表示を上書きする競合（レースコンディション）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -37462,9 +38268,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260925-0904",
       "title": "取得失敗の扱いが残る画面",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -37509,6 +38316,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-14）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -37560,9 +38368,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260925-0906",
       "title": "本陣の BE（8080）が main に追随していない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -37602,9 +38411,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260925-0907",
       "title": "実機E2E の安定化",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -37663,6 +38473,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-01）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -37717,6 +38528,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -37803,6 +38615,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-09-28）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -37862,6 +38675,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了(2026-10-15)",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -37992,9 +38806,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260928-1233",
       "title": "F03.11 管理者手動ペナルティ解除の公開仕様未実装",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -38054,10 +38869,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260929-1517",
       "title": "タイムライン投稿の可視性判定が公開状態を見ず、同じスコープの利用者が他人の DRAFT/SCHEDULED/HIDDEN 投稿を ID で読める疑い（優先度高）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "P1 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -38095,7 +38911,7 @@ window.BETA_INVENTORY_DATA = {
         "E2E"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         3462
@@ -38121,9 +38937,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260929-2235",
       "title": "人（利用者・プロフィール）を通報する機能: まず相手と共通のチーム・組織の管理者へ、次に運営へ",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -38181,9 +38998,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260930-0228",
       "title": "大会のメンバー番号入力・エントリーテンプレート保存の UI が無い",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -38238,9 +39056,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260930-0229",
       "title": "回覧の本人スキップ・管理者スキップに UI の導線が無く、FE と BE の API パスも食い違っている",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -38305,6 +39124,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -38403,9 +39223,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260930-0231",
       "title": "委員会の配信履歴画面が中身の無い行を並べ、配信操作の UI も無い",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -38459,9 +39280,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260930-0232",
       "title": "代理投票一覧が常に空になり、作成ボタンが MEMBER にも表示される",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -38515,9 +39337,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260930-0233",
       "title": "駐車場申請の UI が無く、申請一覧 API の閲覧範囲に疑い（認可の要確認事項）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P1 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -38571,10 +39394,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260930-0234",
       "title": "組織に非所属のユーザーが委員会詳細 API を取得できる（設計上の許容範囲か要確認）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "P1 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -38604,7 +39428,7 @@ window.BETA_INVENTORY_DATA = {
         "NAME_ONLY"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         3518
@@ -38630,9 +39454,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260926-0027",
       "title": "所属のない SYSTEM_ADMIN が組織・チームページの管理操作を通れない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -38694,9 +39519,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260926-0028",
       "title": "`MemberProfileService#copyMembers` の N+1",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -38752,9 +39578,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260926-0029",
       "title": "`MemberProfileService#lookupMembers` の limit に 0・負数を渡したときの扱いが未定義",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -38811,9 +39638,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260926-0030",
       "title": "DRAFT ページを DEPUTY_ADMIN が見られるかの仕様の揺れ",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P5 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -38872,6 +39700,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -38944,9 +39773,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260930-1533",
       "title": "投票・朝の点呼が一覧取得の 403 を握りつぶして「0件」表示にし、作成・提出ボタンを出す",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -39016,6 +39846,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-14）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -39086,10 +39917,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260930-1535",
       "title": "i18n の生キー表示: `common.back` 未定義・朝の点呼の欠席理由選択肢が関数の文字列で表示される",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "P3 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -39121,7 +39953,7 @@ window.BETA_INVENTORY_DATA = {
         "back"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         3518
@@ -39147,9 +39979,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260930-1536",
       "title": "朝の点呼で生徒が氏名でなく user id で表示される",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -39204,9 +40037,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260930-1537",
       "title": "回覧の取り消し・削除の UI が無い（BE は実装済み）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -39263,9 +40097,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260930-1538",
       "title": "チームの画面から投票（議決権行使）・学校出欠への導線が無い",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -39320,6 +40155,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -39423,9 +40259,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260930-1931",
       "title": "料金表（`GET /api/v1/billing/plans`・Billing Center のプラン一覧/変更プレビュー）が価格改定の新価格を読まない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P1 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -39487,6 +40324,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-02・PR #3556）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -39558,6 +40396,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-13）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -39614,9 +40453,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260930-1934",
       "title": "価格改定の作成フォームで商品キー・税コードが自由入力、税率が basis points の生数値入力（ALIC-2）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -39658,6 +40498,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -39716,9 +40557,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260930-2355",
       "title": "価格改定の残論点（運用堅牢化・テスト強化）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -39786,9 +40628,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260930-2356",
       "title": "価格改定の future 予約を複数本にする（設計書 BC-18「次 future C も予約できる」）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P5 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -39830,9 +40673,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260930-2126",
       "title": "member ドメインの書き込み系メソッドが推移的に他ドメインへ触れる D-3T 凍結負債（約40行）の返済",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -39888,10 +40732,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260930-2127",
       "title": "既存の監査イベントリスナー（認証系・circulation）が `@Async(\"event-pool\")` のリスナーから `@Async` 付きの `AuditLogService#record` を呼び、event-pool（max5/queue100/AbortPolicy、`AsyncConfig.java`）へ二重投入している",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "P4 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -39931,7 +40776,7 @@ window.BETA_INVENTORY_DATA = {
         "recordSync"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         3387
@@ -39957,9 +40802,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261001-0834",
       "title": "組織の紹介サブタブで応援者の閲覧をどう扱うか（Phase 2）と 403 時の文言",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -40019,6 +40865,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -40073,9 +40920,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261001-0836",
       "title": "メンバー紹介のプロフィールを非表示にする操作が画面に無い",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -40110,9 +40958,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261001-0837",
       "title": "公開範囲が PUBLIC のメンバー紹介ページを未ログインでは見られない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -40149,10 +40998,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261001-0838",
       "title": "メンバー紹介ページ作成の使い勝手（必須項目の未案内・初期設定ダイアログの再表示）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "P5 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -40164,12 +41014,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "—",
+          "label": "— [PR #4204](https://github.com/kenta-0420/mannschaft/pull/4204)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "— [PR #4204](https://github.com/kenta-0420/mannschaft/pull/4204)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -40180,10 +41030,22 @@ window.BETA_INVENTORY_DATA = {
         "URL"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        4204
+      ],
+      "github": [
+        {
+          "number": 4204,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
     },
     {
       "id": "CMP-261001-0839",
@@ -40192,6 +41054,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -40256,9 +41119,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261001-1032",
       "title": "Billing Center のスマホ幅（390px）で見出し横の「使い方」が縦1文字ずつ折返し、操作要素4件がタップ領域44px未満",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P5 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -40302,9 +41166,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260930-2346",
       "title": "朝の点呼・時限点呼の対象日レコードを画面から作る入口が無い（生徒欄が既存の日次・時限レコードからしか作られない。時限点呼の BE 候補取得は簡易実装で TODO あり）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -40362,6 +41227,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -40464,9 +41330,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261001-0631",
       "title": "保護者の出欠連絡・タイムライン（`/me/attendance/notices`・`/me/attendance/timeline`）へ、画面からの入口が無い",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -40526,9 +41393,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261001-0632",
       "title": "学校出欠画面の遷移・表示の不備: 保護者連絡ページの「戻る」の先 `/me` が 404（マイページの実体は `/my`）、先生の受信一覧の「戻る」の先 `/teams/{slug}/school-attendance` にページが無い、タイムラインで日次未記録のとき状態が生キー `school.attendance.status.undefined`、`common.close`・`common.open` が生キー表示（`common.back` は CMP-260930-1535）、遅刻連絡でも項目名が「欠席理由」、保護者の連絡履歴が古い順で新しい連絡が最下部",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -40597,9 +41465,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260930-2312",
       "title": "大会エントリーのテンプレート一覧とメンバー取得の N+1（`TournamentEntryTemplateService` の一覧でテンプレートごとの件数 SQL、詳細・メンバー取得でユーザーごとの名前取得 SQL）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -40639,9 +41508,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260930-2313",
       "title": "`FlywayFromScratchMigrationTest` の型照合を VARCHAR 長（Entity の length が DB の長さを超える列）まで広げる",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -40683,9 +41553,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261001-2325",
       "title": "`NotificationDispatchPoolSaturationIT` が CI で不定期に `TaskRejectedException` で落ちる（`saturate()` が共有プールの空きを前提に maxPoolSize＋キュー容量ちょうどまで詰めるため、同じ JVM の他テストが残した @Async タスクが1件でもあると溢れる）",
       "status": "working",
-      "statusLabel": "対応中（CI未確認）",
+      "statusLabel": "P4 対応中（CI未確認）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -40800,9 +41671,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261002-1342",
       "title": "メンバー紹介のプロフィール削除に確認が無く、元に戻せない",
       "status": "unknown",
-      "statusLabel": "確認ダイアログは対応済み（本PR）／物理削除のままでよいかは未決",
+      "statusLabel": "P3 確認ダイアログは対応済み（本PR）／物理削除のままでよいかは未決",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -40868,10 +41740,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261002-1343",
       "title": "実機 spec `cmp260918-4-member-profiles-two-tier.real.spec.ts` の③が、初期設定ダイアログに阻まれて失敗する",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了（2026-10-28）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -40883,12 +41756,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "—",
+          "label": "専用組織fixtureの前提修復後、③の初期設定表示と実遮蔽red（p-dialog-maskが新規ページ作成を遮断しtimeout）を実機確認。ダイアログ内の「あとで決める」通常クリックと非表示待ちを追加。実機全5件PASS（unexpected/skipped/flaky各0、cleanup失敗0）。[選択証拠](evidence/CMP-261002-1343/selected-proof.json)。PR #4178採用済み（head 3d5335b4f6、merge 8382ef05dd）・独立検分指摘0。Frontend CI成功。探索はtest-onlyで製品導線差分なしのため対象外。[完了証拠](evidence/CMP-261002-1343.json)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "専用組織fixtureの前提修復後、③の初期設定表示と実遮蔽red（p-dialog-maskが新規ページ作成を遮断しtimeout）を実機確認。ダイアログ内の「あとで決める」通常クリックと非表示待ちを追加。実機全5件PASS（unexpected/skipped/flaky各0、cleanup失敗0）。[選択証拠](evidence/CMP-261002-1343/selected-proof.json)。PR #4178採用済み（head 3d5335b4f6、merge 8382ef05dd）・独立検分指摘0。Frontend CI成功。探索はtest-onlyで製品導線差分なしのため対象外。[完了証拠](evidence/CMP-261002-1343.json)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -40904,11 +41777,12 @@ window.BETA_INVENTORY_DATA = {
         "spec"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
       "githubRefs": [
         3387,
-        3454
+        3454,
+        4178
       ],
       "github": [
         {
@@ -40938,6 +41812,15 @@ window.BETA_INVENTORY_DATA = {
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
+        },
+        {
+          "number": 4178,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
         }
       ]
     },
@@ -40945,9 +41828,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261002-1344",
       "title": "デスクトップ幅で `/dashboard` を開くとハイドレーション不一致が出る",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P5 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -41003,9 +41887,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261002-0742",
       "title": "大会エントリー/テンプレ不備（CMP-260929-0654 派生）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -41048,6 +41933,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -41106,6 +41992,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -41160,9 +42047,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261002-0801",
       "title": "学校出欠 第2段: 教科担当マスターと代理委任",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P5 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -41200,9 +42088,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261002-0802",
       "title": "学校出欠 CSV の品質",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -41241,9 +42130,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261002-0803",
       "title": "学校出欠の N+1",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -41285,9 +42175,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261002-0804",
       "title": "日次点呼画面の初回点呼",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -41327,9 +42218,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261002-0805",
       "title": "学校出欠への画面導線・未使用 composable",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -41368,27 +42260,28 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261002-1135",
       "title": "node-forge 脆弱性 GHSA-86w9-cpqp-85rv の CI audit 期限付き除外を解除する（期限 2026-10-30。node-forge の修正版が出たら override で上げる／listhen が node-forge を使わなくなるまで）",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
       "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "`frontend/scripts/audit-with-exemption.mjs` と専用テスト・CI試験ステップを削除し `.github/workflows/frontend-ci.yml` の audit ステップを `npm audit --audit-level=high` へ戻したうえで、main の Frontend CI が緑であること",
+      "nextAction": "node-forge の除外が撤去され、除外ゼロの audit ゲート（`audit-with-exemption.mjs`）で main の Frontend CI が緑であること",
       "acceptance": [
-        "`frontend/scripts/audit-with-exemption.mjs` と専用テスト・CI試験ステップを削除し `.github/workflows/frontend-ci.yml` の audit ステップを `npm audit --audit-level=high` へ戻したうえで、main の Frontend CI が緑であること"
+        "node-forge の除外が撤去され、除外ゼロの audit ゲート（`audit-with-exemption.mjs`）で main の Frontend CI が緑であること"
       ],
       "blocker": "—",
       "issues": [
         {
-          "label": "—",
+          "label": "[PR #4253](https://github.com/kenta-0420/mannschaft/pull/4253)（node-forge 1.4.2 へ更新、node-forge 除外撤去）・[PR #4259](https://github.com/kenta-0420/mannschaft/pull/4259)（braces 除外撤去で除外ゼロ化）・[完了証拠](evidence/CMP-261002-1135.json)。条件改訂: スクリプトは除外ゼロの共通ゲートとして存続（2026-11-04 殿裁定。削除すると将来の期限付き例外運用の仕組みを失うため）",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "[PR #4253](https://github.com/kenta-0420/mannschaft/pull/4253)（node-forge 1.4.2 へ更新、node-forge 除外撤去）・[PR #4259](https://github.com/kenta-0420/mannschaft/pull/4259)（braces 除外撤去で除外ゼロ化）・[完了証拠](evidence/CMP-261002-1135.json)。条件改訂: スクリプトは除外ゼロの共通ゲートとして存続（2026-11-04 殿裁定。削除すると将来の期限付き例外運用の仕組みを失うため）"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -41404,37 +42297,50 @@ window.BETA_INVENTORY_DATA = {
         "override",
         "listhen",
         "node-forge",
-        "frontend",
-        "scripts",
+        "node-forge",
+        "audit",
         "audit-with-exemption",
         "mjs",
-        "CI",
-        "github",
-        "workflows",
-        "frontend-ci",
-        "yml",
-        "audit",
-        "npm",
-        "audit",
-        "audit-level",
-        "high",
         "main",
         "Frontend",
         "CI"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        4253,
+        4259
+      ],
+      "github": [
+        {
+          "number": 4253,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4259,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
     },
     {
       "id": "CMP-261002-1559",
       "title": "同期 `ConfirmableNotificationService#send` が受信者501人以上の募集でシステム確認通知を一切送れない（`SEND_FAILED`）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -41490,9 +42396,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261002-1600",
       "title": "通知クレジットの猶予72時間ちょうどの判定が `consume`（`isBefore`=ブロック）と `isSendBlocked`（`isAfter`=許可）で食い違い、`consume` が `Clock` 注入でなく `LocalDateTime.now()` を使う",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -41556,9 +42463,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261002-1601",
       "title": "市の最終認証通知の ORG 受信者がコメント（ADMIN）と異なり組織全メンバーで、`createdBy`=札主のため `notifyAll` の送信者除外により札主へアプリ内通知が届かない可能性",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -41615,9 +42523,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261002-1602",
       "title": "確認通知の `actionUrl` 未設定時のフォールバック `/confirmations/{id}`（`ConfirmableInboxAdapter.java:82-84`）に対応する FE ページが無く 404（委員会配信・支払請求等も同穴）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -41676,9 +42585,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261002-1603",
       "title": "通知トランザクション境界の番人で `FriendNotificationService` 等残り3クラスのクラス単位免除が、呼び出し元の違反を沈黙させている",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -41731,10 +42641,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261002-1604",
       "title": "確認通知 API に存在オラクル（アリシゼーション ALIC-2）: 他組織の確認通知 ID へのアクセスで、実在時は 404 `CONFIRMABLE_NOTIFICATION_SCOPE_MISMATCH`、不在時は 404 `CONFIRMABLE_NOTIFICATION_NOT_FOUND` とエラーコードが異なり ID の実在が判別できる",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "P1 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -41767,7 +42678,7 @@ window.BETA_INVENTORY_DATA = {
         "ID"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -41776,9 +42687,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261002-1605",
       "title": "SYSTEM\\_ADMIN へのバッチ完了通知が無差別配信され、検証用 e2e-admin の通知一覧が264万件（増加中）となり、確認通知を画面で特定できず実機E2Eが成立しない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -41821,6 +42733,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -41908,6 +42821,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "重複（CMP-261002-1135 へ統合・PR #3585）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -41984,6 +42898,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-03）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -42025,9 +42940,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261003-0121",
       "title": "アンケート回答者・結果の部分再読込後も上部回答数が古いまま残る",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -42063,10 +42979,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261003-1229",
       "title": "braces の high 脆弱性で出荷CIが失敗し、公式修正版が未公開",
-      "status": "on-hold",
-      "statusLabel": "保留（公式修正版導入または依存撤去待ち）",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -42078,12 +42995,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "2026-10-03の調査履歴: [公式 GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) は affected <=3.0.3・Patched None。2026-10-03のnpm registry一次読取でも latest=3.0.3。Draft #3609 統合HEAD `2230766` のInstall run `37090510764`（job `111109651006`）で high @intlify/unplugin-vue-i18n として伝播し失敗。現時点で出荷CIを通せる修正版がなく保留、今回は未評価の例外を追加せずlock/例外変更なし。読取範囲ではユーザー任意globの実アプリ入力経路は未発見だが、本番.outputからの除外は未実証。Survey単体149件greenや統合ローカル検証の成否とは別の出荷ブロッカー",
+          "label": "2026-10-03の調査履歴: [公式 GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) は affected <=3.0.3・Patched None。2026-10-03のnpm registry一次読取でも latest=3.0.3。Draft #3609 統合HEAD `2230766` のInstall run `37090510764`（job `111109651006`）で high @intlify/unplugin-vue-i18n として伝播し失敗。現時点で出荷CIを通せる修正版がなく保留、今回は未評価の例外を追加せずlock/例外変更なし。読取範囲ではユーザー任意globの実アプリ入力経路は未発見だが、本番.outputからの除外は未実証。Survey単体149件greenや統合ローカル検証の成否とは別の出荷ブロッカー 2026-11-03 状態同期: 旧状態「保留」→実装中（#4259 で例外撤去。npm audit の high/critical は0件、braces 3.0.3）。 2026-11-04 完了: braces の勧告 GHSA-vfj7-8cjw-p6xm は 2026-10-23 に GitHub 上で withdrawn され、修正版導入・依存撤去なしで npm audit の high/critical が0件。除外撤去は [PR #4259](https://github.com/kenta-0420/mannschaft/pull/4259)、[完了証拠](evidence/CMP-261003-1229.json)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "2026-10-03の調査履歴: [公式 GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) は affected <=3.0.3・Patched None。2026-10-03のnpm registry一次読取でも latest=3.0.3。Draft #3609 統合HEAD `2230766` のInstall run `37090510764`（job `111109651006`）で high @intlify/unplugin-vue-i18n として伝播し失敗。現時点で出荷CIを通せる修正版がなく保留、今回は未評価の例外を追加せずlock/例外変更なし。読取範囲ではユーザー任意globの実アプリ入力経路は未発見だが、本番.outputからの除外は未実証。Survey単体149件greenや統合ローカル検証の成否とは別の出荷ブロッカー"
+        "2026-10-03の調査履歴: [公式 GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) は affected <=3.0.3・Patched None。2026-10-03のnpm registry一次読取でも latest=3.0.3。Draft #3609 統合HEAD `2230766` のInstall run `37090510764`（job `111109651006`）で high @intlify/unplugin-vue-i18n として伝播し失敗。現時点で出荷CIを通せる修正版がなく保留、今回は未評価の例外を追加せずlock/例外変更なし。読取範囲ではユーザー任意globの実アプリ入力経路は未発見だが、本番.outputからの除外は未実証。Survey単体149件greenや統合ローカル検証の成否とは別の出荷ブロッカー 2026-11-03 状態同期: 旧状態「保留」→実装中（#4259 で例外撤去。npm audit の high/critical は0件、braces 3.0.3）。 2026-11-04 完了: braces の勧告 GHSA-vfj7-8cjw-p6xm は 2026-10-23 に GitHub 上で withdrawn され、修正版導入・依存撤去なしで npm audit の high/critical が0件。除外撤去は [PR #4259](https://github.com/kenta-0420/mannschaft/pull/4259)、[完了証拠](evidence/CMP-261003-1229.json)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -42101,10 +43018,11 @@ window.BETA_INVENTORY_DATA = {
         "PR"
       ],
       "tags": [
-        "保留"
+        "完了"
       ],
       "githubRefs": [
-        3609
+        3609,
+        4259
       ],
       "github": [
         {
@@ -42119,6 +43037,15 @@ window.BETA_INVENTORY_DATA = {
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
+        },
+        {
+          "number": 4259,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
         }
       ]
     },
@@ -42129,6 +43056,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -42202,9 +43130,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261004-1817",
       "title": "RecruitmentListingController の get と estimateCancellationFee をファサード型へ移行",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -42249,6 +43178,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -42296,10 +43226,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261004-1819",
       "title": "SYSTEM_ADMIN が存在しない teamId でシフトスケジュールを作成できる",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "P3 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -42311,12 +43242,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "チームの存在検証が無い。CMP-260923-0954 の実機調査で発見",
+          "label": "チームの存在検証が無い。CMP-260923-0954 の実機調査で発見。[実装計画・AC](evidence/CMP-261004-1819-plan.md)。軍議ACレビュー済み。実装・試験・実機・独立探索は未実施。 [PR #4193](https://github.com/kenta-0420/mannschaft/pull/4193)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "チームの存在検証が無い。CMP-260923-0954 の実機調査で発見"
+        "チームの存在検証が無い。CMP-260923-0954 の実機調査で発見。[実装計画・AC](evidence/CMP-261004-1819-plan.md)。軍議ACレビュー済み。実装・試験・実機・独立探索は未実施。 [PR #4193](https://github.com/kenta-0420/mannschaft/pull/4193)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -42330,18 +43261,31 @@ window.BETA_INVENTORY_DATA = {
         "SYSTEM_ADMIN"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        4193
+      ],
+      "github": [
+        {
+          "number": 4193,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
     },
     {
       "id": "CMP-261004-1820",
       "title": "シフトスケジュールの状態遷移で不正な status 文字列を送ると 500 になる想定（要実測）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -42379,9 +43323,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261004-1821",
       "title": "認可をトランザクション外へ出した後の、チーム・組織の生存（論理削除）確認の共通手段が無い",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -42417,10 +43362,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261004-1822",
       "title": "TeamOrgInviteCommittedIT「承諾と取消の同時実行は一方だけ成功する」が稀に 409 期待で 500",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "P4 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -42432,12 +43378,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "PR #3623 の CI で1回発生（再実行で緑）。#3569 で導入されたテスト。並行競合時に未捕捉の例外が 500 になる疑い",
+          "label": "PR #3623 の CI で1回発生（再実行で緑）。#3569 で導入されたテスト。並行競合時に未捕捉の例外が 500 になる疑い。2026-10-28: 実ロック2順序と限定診断を準備、原因未確定・未実行。AC/担当範囲は [検証計画](evidence/CMP-261004-1822-plan.md)。 [PR #4198](https://github.com/kenta-0420/mannschaft/pull/4198)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "PR #3623 の CI で1回発生（再実行で緑）。#3569 で導入されたテスト。並行競合時に未捕捉の例外が 500 になる疑い"
+        "PR #3623 の CI で1回発生（再実行で緑）。#3569 で導入されたテスト。並行競合時に未捕捉の例外が 500 になる疑い。2026-10-28: 実ロック2順序と限定診断を準備、原因未確定・未実行。AC/担当範囲は [検証計画](evidence/CMP-261004-1822-plan.md)。 [PR #4198](https://github.com/kenta-0420/mannschaft/pull/4198)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -42448,11 +43394,12 @@ window.BETA_INVENTORY_DATA = {
         "TeamOrgInviteCommittedIT"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         3569,
-        3623
+        3623,
+        4198
       ],
       "github": [
         {
@@ -42482,6 +43429,15 @@ window.BETA_INVENTORY_DATA = {
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
+        },
+        {
+          "number": 4198,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
         }
       ]
     },
@@ -42489,9 +43445,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261004-1823",
       "title": "出欠の期間集計（AttendanceStatistics getTermStatistics）の時限別内訳に teamId 条件が無い",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -42531,9 +43488,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261004-1824",
       "title": "手元の IT 実行で Spring コンテキスト起動が AspectJ のポイントカット照合で約1時間終わらない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -42573,9 +43531,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261004-1825",
       "title": "シフト以外の PDF テンプレートに、レスポンス DTO のネスト化へ追随していない同型の不整合が無いかの横断確認",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -42615,9 +43574,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261004-1826",
       "title": "listCustomerCharts の N+1 の疑い（要調査）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -42654,9 +43614,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261004-1940",
       "title": "最後のADMINの自主退会: 設計書は422、実装は409 ROLE_004 で不一致",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -42694,9 +43655,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261004-1941",
       "title": "組織・チームヘッダのモバイル境界が sm(640px) で FE 規約の md(768px) と不一致",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P5 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -42740,6 +43702,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了(2026-10-10)",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -42809,6 +43772,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了(2026-10-10)",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -42865,6 +43829,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -42997,6 +43962,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-26）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -43038,6 +44004,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-26）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -43078,9 +44045,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261005-1055",
       "title": "組織・チームヘッダの『メンバー ◯人』が一般メンバーを数えていない疑い（user_roles を数えるが V60.010 で MEMBER/SUPPORTER 行は削除済み）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -43123,9 +44091,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261004-2047",
       "title": "テスト用 Spring コンテキストの構成統一（独自の @MockitoBean 等を持つ IT 約135本を共通構成へ寄せ、1 JVM のコンテキスト数を減らす）",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P4 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -43188,6 +44157,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（PR #3663）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -43248,9 +44218,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261005-2102",
       "title": "募集テンプレートとキャンセルポリシーの管理画面が無い",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -43293,9 +44264,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261005-2103",
       "title": "無断欠席・ペナルティ管理画面の導線・文言・権限ゲート",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -43340,9 +44312,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261005-2104",
       "title": "確認通知の受信者一覧のアバターが署名 URL 化されず表示されない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -43382,9 +44355,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261005-2105",
       "title": "アリシゼーション 2026-10-05 で見つかった表示・導線の軽微欠陥まとめ",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -43419,9 +44393,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261005-2154",
       "title": "シフト FE の API パス修正（PR #3663）の実機確認が未完了",
       "status": "working",
-      "statusLabel": "着手中",
+      "statusLabel": "P4 着手中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -43491,6 +44466,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -43594,9 +44570,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261006-0303",
       "title": "詳細キャッシュの read-through 競合: evict 前に始まったキャッシュミスの GET が、evict 後に旧値を再登録し最大 TTL 残る（team-detail・org-detail ほか @CacheEvict 全般の構造的問題）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -43660,6 +44637,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -43715,10 +44693,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261006-0901",
       "title": "大会の部門・参加チーム GET の path orgId 未検証（越境で 200）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "P1 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -43759,7 +44738,7 @@ window.BETA_INVENTORY_DATA = {
         "green"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         3668
@@ -43785,9 +44764,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261006-0902",
       "title": "学校出欠の画面の小さな欠陥5件",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -43836,9 +44816,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261006-0903",
       "title": "通知のリンク先がルートに存在しない・ストレージ欄の遷移先誤り",
       "status": "working",
-      "statusLabel": "実装中（セッション通知導線）／未着手（残2件）",
+      "statusLabel": "P3 実装中（セッション通知導線）／未着手（残2件）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -43885,9 +44866,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261006-0904",
       "title": "学校出欠 real spec の強化候補",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -43950,6 +44932,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -44015,6 +44998,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-10）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -44119,9 +45103,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261007-1125",
       "title": "Task-List着手ゲートとPR対応付けの必須化",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P4 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -44168,6 +45153,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -44298,6 +45284,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了(2026-10-07)",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -44357,6 +45344,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了(2026-10-08)",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -44413,6 +45401,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -44471,6 +45460,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -44540,6 +45530,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了(2026-10-09)",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -44599,9 +45590,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261008-1253",
       "title": "シフト手動割当の枠版番号契約根治",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P2 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -44613,12 +45605,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-261005-2154 / Shift実機で発見",
       "issues": [
         {
-          "label": "事前登録PR。main反映後にBE/APIのred試練と最小修正を実施。 2026-10-24整理確認: 既存Draft [PR #3724](https://github.com/kenta-0420/mannschaft/pull/3724)、確認head `e0e8a3337750a9cb186281f041bf335fbc7c2188` を正本として保護。実機未完。次は最新mainの同等実装・差分を確認→不足実機/探索/検分。旧局所CIを最新source全体の合格へ昇格せず、本整理では機能実装・新担当の着手を意味しない。",
+          "label": "事前登録PR。main反映後にBE/APIのred試練と最小修正を実施。 2026-10-24整理確認: 既存Draft [PR #3724](https://github.com/kenta-0420/mannschaft/pull/3724)、確認head `e0e8a3337750a9cb186281f041bf335fbc7c2188` を正本として保護。実機未完。次は最新mainの同等実装・差分を確認→不足実機/探索/検分。旧局所CIを最新source全体の合格へ昇格せず、本整理では機能実装・新担当の着手を意味しない。 [slot version前提の部分証拠](evidence/CMP-261008-1253-slot-version-precondition-20261108.md)（FE slot version前提の部分採択。全1253完了ではない）。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "事前登録PR。main反映後にBE/APIのred試練と最小修正を実施。 2026-10-24整理確認: 既存Draft [PR #3724](https://github.com/kenta-0420/mannschaft/pull/3724)、確認head `e0e8a3337750a9cb186281f041bf335fbc7c2188` を正本として保護。実機未完。次は最新mainの同等実装・差分を確認→不足実機/探索/検分。旧局所CIを最新source全体の合格へ昇格せず、本整理では機能実装・新担当の着手を意味しない。"
+        "事前登録PR。main反映後にBE/APIのred試練と最小修正を実施。 2026-10-24整理確認: 既存Draft [PR #3724](https://github.com/kenta-0420/mannschaft/pull/3724)、確認head `e0e8a3337750a9cb186281f041bf335fbc7c2188` を正本として保護。実機未完。次は最新mainの同等実装・差分を確認→不足実機/探索/検分。旧局所CIを最新source全体の合格へ昇格せず、本整理では機能実装・新担当の着手を意味しない。 [slot version前提の部分証拠](evidence/CMP-261008-1253-slot-version-precondition-20261108.md)（FE slot version前提の部分採択。全1253完了ではない）。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -44659,9 +45651,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261008-1407",
       "title": "シフト4表の版番号をDB/Javaで統一",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P4 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -44745,9 +45738,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261008-1700",
       "title": "チームのブログ画面から作成した記事がチーム記事として保存されない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -44782,9 +45776,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261008-1701",
       "title": "ブログ記事詳細の応答をスコープ内でも不在時と揃える",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P1 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -44822,9 +45817,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261008-1702",
       "title": "未認証利用者のブログ一覧・詳細の扱いを決める",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P5 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -44859,9 +45855,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261008-1703",
       "title": "非メンバーのチームページでモジュール取得の403が未処理",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P5 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -44896,9 +45893,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261008-1704",
       "title": "FOLLOWERS_ONLY の記事が誰にも見えない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -44935,9 +45933,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261008-1705",
       "title": "チームブログへの入口が見つけにくい",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P5 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -44975,6 +45974,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（対象実MySQL検証）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -45060,6 +46060,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（登録PR #3734 MERGED、Docs PR #3732で実装・検証）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -45135,9 +46136,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261008-1817",
       "title": "非所属の活動一覧で利用可能範囲を理解できる案内",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -45175,9 +46177,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261009-0010",
       "title": "広告配信workerの候補取得で自己呼出しTXが適用されない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -45222,6 +46225,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -45278,6 +46282,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了(2026-10-10)",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -45331,9 +46336,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261006-1342",
       "title": "Nuxt 4 への移行と DevTools の更新（simple-git の脆弱性の監査例外を外す）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -45418,9 +46424,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261006-1551",
       "title": "AccessControlService の check 系の例外を catch して false にする実装が、外側のトランザクションを rollback-only にする同型（shiftbudget）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -45491,9 +46498,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261006-1552",
       "title": "2026-10-06 の CMP-261005-2209 の実機確認で残った軽微な所見",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P5 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -45549,9 +46557,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261010-1127",
       "title": "チーム・組織の公開範囲とサポーター受け入れを、作成後に画面から変更できない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -45588,9 +46597,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261010-1128",
       "title": "限定公開のチーム・組織に、閲覧できない人がサポーターになる経路がない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -45630,6 +46640,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了(2026-10-15)",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -45686,9 +46697,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261010-1130",
       "title": "言語設定の保存がアバター画像の保存キーを署名 URL で上書きし、2回目以降は 500 で保存できなくなる",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P1 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -45734,6 +46746,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了(2026-10-15)",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -45789,9 +46802,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261010-1132",
       "title": "FE ロケールの en・zh・ko・es・de に日本語のままの値が残っている",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -45833,9 +46847,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261010-1133",
       "title": "権限のないチーム・組織ページで「時間をおいて再度お試しください」と再試行が出て、エラートーストも重ねて出る",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P3 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -45877,6 +46892,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了(2026-10-10)",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -45944,6 +46960,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-10）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -46006,6 +47023,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "対応不要（仕様どおり・2026-10-10 取り下げ）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -46061,9 +47079,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261010-1811",
       "title": "非ja表示で残る画面の日本語直書き（予定追加ダイアログ・スケジュール画面・参加申請タブ・メンバー権限初期設定モーダル・ナビとウィジェットの aria-label・ダッシュボードの空表示や相対時刻）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -46110,6 +47129,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "重複（CMP-261010-1130 へ統合・2026-10-10）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -46150,9 +47170,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261010-1813",
       "title": "/public/organizations/search が空の組織ページとして 200 表示される（slug と公開検索 API の経路衝突）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -46195,9 +47216,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261010-1814",
       "title": "チーム配下の一部画面（シフト系）でエラー時の扱いを他画面の汎用 404 表示と揃える",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P5 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -46234,9 +47256,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261010-1815",
       "title": "モバイル・多言語での小さな表示不具合（ko 360px で「予定を追加」ボタンが1文字ずつ縦に折り返す、メンバー権限初期設定モーダルが Escape で閉じない、チームタブ送りボタンの幅 40px）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P5 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -46280,9 +47303,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261010-1432",
       "title": "シフト画面の実機確認（2154）で見つかった欠陥の修繕",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P2 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -46436,6 +47460,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -46532,10 +47557,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261011-0035",
       "title": "F01.2.1 組織に加盟するチームをグループに分け、グループ宛てにお知らせを送る（通知 push 予約の outbox 化を含む）",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了（2026-11-01）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -46547,12 +47573,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "全部隊が main に着地済み（2026-10-14）。基盤 #3513（1-A）・#3515（5-A）・#3530（1-B）・#3514（1-C）・#3517（6-D）・#3529（0-A）・#3532（8-0）・#3531（3-C）、読み手改修 #3516（3-A）・#3550（3-B）・#3551（3-D）・#3568（3-E）・#3581（3-F）、加盟 API #3554（2-B1）・#3561（2-A）・#3565（2-B2）・#3569（2-C）・#3660（2-D）・#3855（7-A）、グループ #3552（4-A）・#3566（4-B）、告知 #3567（6-A）・#3640（6-B）・#3638（6-C）・#3639（6-E・6-E'）、通知 outbox #3775（P1）、画面 #3643（8-A）・#3846（8-B）・#3853（8-C）・#3856（8-D）・#3845（8-E）、補修 #3525・#3862・#3863・#3870・#3871・#3886。9-A（設計書・README・本台帳を実装へ追従）は本行の更新を含む PR。**実機E2E（ロール横断・URL 直打ち）とアリシゼーションは完走を確認できていない**（#3660 の再開証跡は .claude/evidence/pr3660-resume-20261014/）。範囲外の課題は CMP-261020-1558・CMP-261020-1559 に起票。完了への移行は、実機E2E・アリシゼーション実施後に本行を更新して行う。**実機E2E #4009 で製品欠陥 D-1〜D-3 の3件を発見→修正中（修正 PR を出すため状態を実装中に戻した）** 2026-10-24整理確認: 既存Draft [PR #4009](https://github.com/kenta-0420/mannschaft/pull/4009)、確認head `c687df9740e208b4c5af5aa06cf0510e8f3ee854` を正本として保護。本文当時はBC10等のD3による失敗/未実行があり、再実機・検分未完。次は最新mainの同等実装・差分を確認→不足検証/再実機/探索/検分。旧結果を最新合格へ昇格せず、本整理で未解決の現存や新担当の着手を断定しない。",
+          "label": "全部隊が main に着地済み（2026-10-14）。基盤 #3513（1-A）・#3515（5-A）・#3530（1-B）・#3514（1-C）・#3517（6-D）・#3529（0-A）・#3532（8-0）・#3531（3-C）、読み手改修 #3516（3-A）・#3550（3-B）・#3551（3-D）・#3568（3-E）・#3581（3-F）、加盟 API #3554（2-B1）・#3561（2-A）・#3565（2-B2）・#3569（2-C）・#3660（2-D）・#3855（7-A）、グループ #3552（4-A）・#3566（4-B）、告知 #3567（6-A）・#3640（6-B）・#3638（6-C）・#3639（6-E・6-E'）、通知 outbox #3775（P1）、画面 #3643（8-A）・#3846（8-B）・#3853（8-C）・#3856（8-D）・#3845（8-E）、補修 #3525・#3862・#3863・#3870・#3871・#3886。9-A（設計書・README・本台帳を実装へ追従）は本行の更新を含む PR。**実機E2E（ロール横断・URL 直打ち）とアリシゼーションは完走を確認できていない**（#3660 の再開証跡は .claude/evidence/pr3660-resume-20261014/）。範囲外の課題は CMP-261020-1558・CMP-261020-1559 に起票。完了への移行は、実機E2E・アリシゼーション実施後に本行を更新して行う。**実機E2E #4009 で製品欠陥 D-1〜D-3 の3件を発見→修正中（修正 PR を出すため状態を実装中に戻した）** 2026-10-24整理確認: 既存Draft [PR #4009](https://github.com/kenta-0420/mannschaft/pull/4009)、確認head `c687df9740e208b4c5af5aa06cf0510e8f3ee854` を正本として保護。本文当時はBC10等のD3による失敗/未実行があり、再実機・検分未完。次は最新mainの同等実装・差分を確認→不足検証/再実機/探索/検分。旧結果を最新合格へ昇格せず、本整理で未解決の現存や新担当の着手を断定しない。 [完了証拠](evidence/CMP-261011-0035.json)。最終盤の PR: #4206（ALIC-1/2 根治）・#4229・#4236・#4239・#4240（実装 PR）。実機E2E は #4009、アリシゼーション観測は #4254。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "全部隊が main に着地済み（2026-10-14）。基盤 #3513（1-A）・#3515（5-A）・#3530（1-B）・#3514（1-C）・#3517（6-D）・#3529（0-A）・#3532（8-0）・#3531（3-C）、読み手改修 #3516（3-A）・#3550（3-B）・#3551（3-D）・#3568（3-E）・#3581（3-F）、加盟 API #3554（2-B1）・#3561（2-A）・#3565（2-B2）・#3569（2-C）・#3660（2-D）・#3855（7-A）、グループ #3552（4-A）・#3566（4-B）、告知 #3567（6-A）・#3640（6-B）・#3638（6-C）・#3639（6-E・6-E'）、通知 outbox #3775（P1）、画面 #3643（8-A）・#3846（8-B）・#3853（8-C）・#3856（8-D）・#3845（8-E）、補修 #3525・#3862・#3863・#3870・#3871・#3886。9-A（設計書・README・本台帳を実装へ追従）は本行の更新を含む PR。**実機E2E（ロール横断・URL 直打ち）とアリシゼーションは完走を確認できていない**（#3660 の再開証跡は .claude/evidence/pr3660-resume-20261014/）。範囲外の課題は CMP-261020-1558・CMP-261020-1559 に起票。完了への移行は、実機E2E・アリシゼーション実施後に本行を更新して行う。**実機E2E #4009 で製品欠陥 D-1〜D-3 の3件を発見→修正中（修正 PR を出すため状態を実装中に戻した）** 2026-10-24整理確認: 既存Draft [PR #4009](https://github.com/kenta-0420/mannschaft/pull/4009)、確認head `c687df9740e208b4c5af5aa06cf0510e8f3ee854` を正本として保護。本文当時はBC10等のD3による失敗/未実行があり、再実機・検分未完。次は最新mainの同等実装・差分を確認→不足検証/再実機/探索/検分。旧結果を最新合格へ昇格せず、本整理で未解決の現存や新担当の着手を断定しない。"
+        "全部隊が main に着地済み（2026-10-14）。基盤 #3513（1-A）・#3515（5-A）・#3530（1-B）・#3514（1-C）・#3517（6-D）・#3529（0-A）・#3532（8-0）・#3531（3-C）、読み手改修 #3516（3-A）・#3550（3-B）・#3551（3-D）・#3568（3-E）・#3581（3-F）、加盟 API #3554（2-B1）・#3561（2-A）・#3565（2-B2）・#3569（2-C）・#3660（2-D）・#3855（7-A）、グループ #3552（4-A）・#3566（4-B）、告知 #3567（6-A）・#3640（6-B）・#3638（6-C）・#3639（6-E・6-E'）、通知 outbox #3775（P1）、画面 #3643（8-A）・#3846（8-B）・#3853（8-C）・#3856（8-D）・#3845（8-E）、補修 #3525・#3862・#3863・#3870・#3871・#3886。9-A（設計書・README・本台帳を実装へ追従）は本行の更新を含む PR。**実機E2E（ロール横断・URL 直打ち）とアリシゼーションは完走を確認できていない**（#3660 の再開証跡は .claude/evidence/pr3660-resume-20261014/）。範囲外の課題は CMP-261020-1558・CMP-261020-1559 に起票。完了への移行は、実機E2E・アリシゼーション実施後に本行を更新して行う。**実機E2E #4009 で製品欠陥 D-1〜D-3 の3件を発見→修正中（修正 PR を出すため状態を実装中に戻した）** 2026-10-24整理確認: 既存Draft [PR #4009](https://github.com/kenta-0420/mannschaft/pull/4009)、確認head `c687df9740e208b4c5af5aa06cf0510e8f3ee854` を正本として保護。本文当時はBC10等のD3による失敗/未実行があり、再実機・検分未完。次は最新mainの同等実装・差分を確認→不足検証/再実機/探索/検分。旧結果を最新合格へ昇格せず、本整理で未解決の現存や新担当の着手を断定しない。 [完了証拠](evidence/CMP-261011-0035.json)。最終盤の PR: #4206（ALIC-1/2 根治）・#4229・#4236・#4239・#4240（実装 PR）。実機E2E は #4009、アリシゼーション観測は #4254。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -46583,7 +47609,7 @@ window.BETA_INVENTORY_DATA = {
         "E2E"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
       "githubRefs": [
         3513,
@@ -46623,7 +47649,13 @@ window.BETA_INVENTORY_DATA = {
         3870,
         3871,
         3886,
-        4009
+        4009,
+        4206,
+        4229,
+        4236,
+        4239,
+        4240,
+        4254
       ],
       "github": [
         {
@@ -47156,6 +48188,60 @@ window.BETA_INVENTORY_DATA = {
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
+        },
+        {
+          "number": 4206,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4229,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4236,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4239,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4240,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4254,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
         }
       ]
     },
@@ -47163,9 +48249,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261011-0124",
       "title": "退会者の著者表示が『不明なユーザー』/空欄になる — 共有記録で退会者を共通ラベル『退会したユーザー』に解決する",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -47229,6 +48316,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "検証済み",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -47281,6 +48369,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -47343,6 +48432,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -47433,9 +48523,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261011-2205",
       "title": "領収書一覧（/me/payments/receipts）が、支払い済みの行を持つ利用者で全言語とも白画面になる",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -47481,9 +48572,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261011-2206",
       "title": "チーム・組織の機能設定画面とガイド画面で、機能カタログの名前と説明が、DB の seed にある日本語のまま全言語に表示される",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -47532,9 +48624,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261012-0910",
       "title": "多要素認証(2FA)の穴埋め — TOTP有効化確定UI・ログイン時バックアップコード・ログイン中の無効化・メールOTP方式(SMS代替、SMSは保留)・リカバリー導線修理・仕様書/プライバシーポリシー修正",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P2 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -47611,9 +48704,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261012-0911",
       "title": "OAuthログインが2FAを迂回する（AuthOAuthService:103-126、2FA有効ユーザーにもMfaRequiredResponseを返さずトークン発行）の是正",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P1 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -47658,9 +48752,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261012-1256",
       "title": "シフト一覧画面の日本語直書きの多言語化",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -47714,6 +48809,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -47820,6 +48916,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -47947,6 +49044,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -48027,9 +49125,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261012-2337",
       "title": "金銭系 Service の public メソッドが認可を経ずに呼べないかを検出する番人の新設",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -48090,6 +49189,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -48151,9 +49251,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261012-2339",
       "title": "機能フラグ OFF でも、不正な本文を送ると 403 ではなく 400 が返る",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -48208,9 +49309,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261012-2340",
       "title": "同一クラス内の自己呼び出しで `@Transactional` が効かない構造が、他のバッチに残っていないかの横断調査",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -48265,9 +49367,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261012-2341",
       "title": "右下ボタンが押せなくなる不具合の、実機での引き金が未特定",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -48319,9 +49422,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261012-2342",
       "title": "生成型の `InboxSummary` が optional になっている",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -48382,9 +49486,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261012-2343",
       "title": "`pages/admin/` 配下の FE ガードの有無を調査",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P1 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -48444,9 +49549,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261012-2344",
       "title": "アーカイブ JSON の `created_at` が JST の壁時計のまま、ファイル名の月は UTC",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -48504,9 +49610,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261012-2345",
       "title": "送信済みを記録してコミットした後に配信が失敗すると再送されない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -48560,9 +49667,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261013-0821",
       "title": "【高】チームの回覧画面で本文が表示されない（テンプレート直下にコメントが混在してルートが複数になり、page-fade が opacity:0 のまま固着する）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -48613,9 +49721,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261013-0822",
       "title": "【中】チームのサイドバーの回覧の moduleSlug が 'circulation' だが実際のスラッグは 'circular' のため、チーム側に回覧の入口が出ない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -48658,9 +49767,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261013-0823",
       "title": "【低】/system-admin 配下へ URL を直打ちして拒否されたときに、拒否トーストが出ない（SPA 遷移なら出る）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P5 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -48705,6 +49815,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -48776,6 +49887,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -48877,6 +49989,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -48978,9 +50091,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261014-1421",
       "title": "【重大】`GeonamesImportService.parseAndUpsert` の月次取り込みが毎回失敗する",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -49038,9 +50152,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261014-1422",
       "title": "【重大】確認通知の送信者向け未確認アラートに重複抑止がない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -49092,9 +50207,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261014-1423",
       "title": "【中】時給の削除に HTTP の入口も画面の入口もない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -49133,9 +50249,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261014-1424",
       "title": "【軽微】確認通知の送信時に指定したリマインド分数が反映されない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -49174,9 +50291,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261014-1425",
       "title": "【軽微】シフトの機能フラグが OFF でも、サイドバーにシフトの導線が残る",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P5 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -49214,9 +50332,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261014-1426",
       "title": "【軽微】権限なしで時給画面・委員会詳細を URL 直打ちしたときの表示と、未来開始日の時給の表示",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -49253,9 +50372,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261014-1427",
       "title": "【flaky】`PersonalSettingsAccountPurgeIT#rejectedPurgeQueueRetainsPendingForRealRetry` が稀に失敗する",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -49312,9 +50432,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261014-1428",
       "title": "【CI】Test shard が約 58 分、出力のないまま打ち切られる",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -49356,6 +50477,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -49447,6 +50569,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -49516,6 +50639,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -49592,6 +50716,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -49649,6 +50774,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -49724,6 +50850,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-15）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -49798,6 +50925,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-26）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -49858,6 +50986,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-17）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -49926,6 +51055,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-18）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -50016,6 +51146,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-15）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -50072,6 +51203,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-15）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -50130,6 +51262,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-16）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -50207,6 +51340,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-16）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -50265,6 +51399,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -50336,6 +51471,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -50398,6 +51534,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -50453,9 +51590,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261016-2102",
       "title": "チーム立替精算の確認dialogが重複表示される既存不具合の修正",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -50494,9 +51632,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261016-0950",
       "title": "チーム別来店ポイントと共通会員QRの実装",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P3 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -50574,6 +51713,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -50653,9 +51793,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261016-0959",
       "title": "月次の非活動チーム・組織自動休止を実装する",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -50725,6 +51866,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -50782,9 +51924,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261017-0549",
       "title": "GDPRエクスポートの本人チャット・監査ログ欠落を解消",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P3 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -50830,6 +51973,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -50886,9 +52030,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261017-0725",
       "title": "長い未解析User-Agentのセッション行がモバイル画面を横にはみ出す",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P3 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -50941,6 +52086,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "重複（CMP-260902-0059へ統合）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -51002,9 +52148,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261017-0807",
       "title": "個人データ出力の中断復帰と再要求時の案内を整合する",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P3 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -51055,9 +52202,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261017-1023",
       "title": "通常ログアウトの本人セッション失効を整合する",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P1 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -51107,9 +52255,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261017-1026",
       "title": "セッション応答のOpenAPIスキーマ衝突を解消する",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P4 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -51155,6 +52304,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-17）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -51211,9 +52361,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261017-1315",
       "title": "GDPRエクスポートZIPの既存パスワード保護を実装する",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P1 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -51271,9 +52422,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261017-1604",
       "title": "node-forge監査例外の既知node/edge固定",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P4 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -51361,6 +52513,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -51426,6 +52579,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -51524,6 +52678,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -51581,6 +52736,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -51639,6 +52795,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -51721,6 +52878,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -51793,6 +52951,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -51852,6 +53011,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -51936,6 +53096,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -51980,9 +53141,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261019-1229",
       "title": "住民探索で見つかった通知設定の所属欠落と小画面メニューの折返しを修正する",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P3 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -52050,9 +53212,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261019-1555",
       "title": "アカウント設定の初回印鑑一覧取得502の発生条件と原因を特定する",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P3 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -52092,9 +53255,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261020-1558",
       "title": "F01.2.1 の範囲外課題: 組織設定画面の org-role-guard が SYSTEM_ADMIN を素通りさせる／changeRole が user_roles 行の無い対象で ROLE_001",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -52151,9 +53315,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261020-1559",
       "title": "F01.2.1 の範囲外課題: team 側加盟 API の teamSlug の OpenAPI 型・teamSelected 正規表現の疑い・FE/BE の不安定なテスト",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -52290,9 +53455,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261020-1528",
       "title": "監査ログ画面で日時が9時間ずれる",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -52332,9 +53498,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261020-1529",
       "title": "権限不足の監査ログ画面が「ログがありません」と表示される",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -52369,9 +53536,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261020-1530",
       "title": "LOGIN_SUCCESS の監査行で ip_address と user_agent が入れ替わる",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P1 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -52415,9 +53583,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261020-1531",
       "title": "権限のない一般メンバーにもチームの全メニューが見える",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -52457,6 +53626,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -52528,6 +53698,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -52586,6 +53757,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -52639,9 +53811,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-0650",
       "title": "シフト交代機能の表示・応答の低重大度3件（内部ID表示・生キー露出・不正値への応答）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -52679,9 +53852,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-0651",
       "title": "権限が無いとき「権限がない」と伝えず、空表示・汎用エラー・空白を出す画面が複数ある（同型の統合）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -52725,9 +53899,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-0652",
       "title": "組織 ADMIN からシフト予算の管理画面へ辿る導線がサイドバー・ダッシュボード・組織メニューのどこにも無い",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -52765,9 +53940,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-0653",
       "title": "シフト予算の操作が失敗しても、画面は理由を示さず汎用文言だけを出す",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -52802,9 +53978,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-0654",
       "title": "シフトの手動アーカイブで取消理由が「削除」固定になり、確認ダイアログも無く即遷移する",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -52839,9 +54016,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-0655",
       "title": "アンケート作成ダイアログの「公開して作成」を押しても下書きのまま公開されない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -52876,9 +54054,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-0656",
       "title": "アンケートの下書き詳細が設問の保存済みを反映せず、設問0件の「公開して作成」は無反応に見える",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -52913,9 +54092,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-0657",
       "title": "シフト予算の月次締めが未来月・当月に対しても成功し、未実施シフトの予算が確定・会計計上される",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P1 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -52950,9 +54130,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-0658",
       "title": "ストレージパス移行バッチで、失敗の記録が解消されず、コピー済みの孤児オブジェクトが残り、完了ログが早く出る",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -52990,6 +54171,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-21）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -53047,6 +54229,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -53130,9 +54313,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-0661",
       "title": "並び替えキーが同値のとき、ページ間で行が重複・欠落する（二次キーが無い）",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -53169,9 +54353,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-0662",
       "title": "イベント一覧のモバイル幅（390px）で公開範囲の列が1文字ずつ縦に折れ、行が極端に高くなる",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P5 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -53208,10 +54393,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261021-0717",
       "title": "整合バッチとアーカイブ取消リスナーが同一シフトを並行処理すると、割当の消化額が二重に減算されうる",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -53223,12 +54409,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-260909-1445",
       "issues": [
         {
-          "label": "—",
+          "label": "[完了証拠](evidence/CMP-261021-0717.json)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "[完了証拠](evidence/CMP-261021-0717.json)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -53244,7 +54430,7 @@ window.BETA_INVENTORY_DATA = {
         "DB"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
       "githubRefs": [],
       "github": []
@@ -53252,10 +54438,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261021-0718",
       "title": "公開済み→調整中→再公開の経路で、非同期の取消リスナーが再公開後の消化まで取り消しうる",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "P1 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -53285,7 +54472,7 @@ window.BETA_INVENTORY_DATA = {
         "IT"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -53294,9 +54481,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-0813",
       "title": "FE 依存の脆弱性: launch-editor（GHSA-587h-7wmj-h5pm ほか）と vite 7.3.6 を、2.14.2 と 7.3.7 へ引き上げて Install CI の audit ゲートを解消する",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P4 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -53361,9 +54549,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-0838",
       "title": "F01.2.1 の範囲外課題: チーム作成で自動生成 slug が既存（論理削除済みを含む）と衝突すると 500 COMMON_999。日本語名で slug が実行 ID 部分だけになり衝突する。実機E2E（PR #4009）で API 再現済み",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -53431,6 +54620,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -53489,9 +54679,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-0021",
       "title": "エラー報告APIが同時報告で同一ハッシュ行を重複作成し、以後その報告が毎回500 — ErrorReportService.createOrAggregate の findByErrorHash が IncorrectResultSizeDataAccessException（2〜4件）（アリシゼーション ALIC-8）",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P2 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -53553,9 +54744,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-1327",
       "title": "エラー報告 Cleanup バッチが未完走の疑い — cleanup()→executeAt() の自己呼び出しでトランザクションが適用されない可能性",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -53612,9 +54804,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-1328",
       "title": "フレンドの NOWAIT 競合で follows だけコミットされ team_friends が欠落し、画面から再試行できない",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -53660,9 +54853,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-1329",
       "title": "フレンド管理者フィードに続き読み込み導線と転送取消 UI が無い",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -53699,10 +54893,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261021-1330",
       "title": "line-settings と sns-settings のタイトル・副題が日本語直書き",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "P3 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -53714,12 +54909,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "2026-10-21 フレンド派生戦役引継の範囲外課題。既存の管理メニュー導線整備とは別の表示文言の不備",
+          "label": "2026-10-21 フレンド派生戦役引継の範囲外課題。既存の管理メニュー導線整備とは別の表示文言の不備。2026-10-28: [AC1〜7計画](evidence/CMP-261021-1330-plan.md)と実ページ・実辞書・実PageHeaderの先行試練を準備。CIコンパイル/actual red確認待ち、製品green・実機・3住民探索は未実施。[PR #4194](https://github.com/kenta-0420/mannschaft/pull/4194)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "2026-10-21 フレンド派生戦役引継の範囲外課題。既存の管理メニュー導線整備とは別の表示文言の不備"
+        "2026-10-21 フレンド派生戦役引継の範囲外課題。既存の管理メニュー導線整備とは別の表示文言の不備。2026-10-28: [AC1〜7計画](evidence/CMP-261021-1330-plan.md)と実ページ・実辞書・実PageHeaderの先行試練を準備。CIコンパイル/actual red確認待ち、製品green・実機・3住民探索は未実施。[PR #4194](https://github.com/kenta-0420/mannschaft/pull/4194)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -53734,18 +54929,31 @@ window.BETA_INVENTORY_DATA = {
         "de"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        4194
+      ],
+      "github": [
+        {
+          "number": 4194,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
     },
     {
       "id": "CMP-261021-1331",
       "title": "ドイツ語の長い見出しが text-3xl ではモバイルで大きすぎる",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P5 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -53787,9 +54995,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-1332",
       "title": "HEALTH 経路が RESOLVED・IGNORED の既存エラー行に到達した場合の扱いを再検討する",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P5 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -53837,6 +55046,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -53894,9 +55104,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-0017",
       "title": "モジュラーモノリス境界負債の返済とGradle/Modulith卒業（親・傘行。子CMPはレーン着手時に採番）",
       "status": "unknown",
-      "statusLabel": "設計完了（Phase 0 着手待ち）",
+      "statusLabel": "P4 設計完了（Phase 0 着手待ち）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -53985,9 +55196,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-0115",
       "title": "UUIDv7 継承負債（D-2b 凍結）の返済",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -54028,9 +55240,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-0355",
       "title": "求人受諾の定員集計がREPEATABLE READのスナップショットを読む競合の根治",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P1 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -54068,9 +55281,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-1338",
       "title": "パスキー登録エンドポイントに再認証を求める",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P1 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -54107,9 +55321,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-1339",
       "title": "パスキーによる再認証でユーザー検証（UV）を必須にする",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P1 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -54148,9 +55363,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-1340",
       "title": "AFTER_COMMIT リスナーがロールバック時に発火しない件の点検",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -54188,9 +55404,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-1341",
       "title": "EmailOutboxEntity の next_attempt_at の時計（Clock 注入）を揃える",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -54230,10 +55447,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261021-1342",
       "title": "e2e の 2fa.spec.ts の曖昧な検証を直す",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -54245,12 +55463,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "起票元: CMP-261012-0910 の派生",
+          "label": "起票元: CMP-261012-0910 の派生。PR #4231、AUTH-011〜013同HEAD CI実走PASS。[完了証拠](evidence/CMP-261021-1342.json)・[AC実走](evidence/CMP-261021-1342-ci.md)。test-only（製品不変、実サービス実機・住民探索は対象外）",
           "state": "unknown"
         }
       ],
       "prs": [
-        "起票元: CMP-261012-0910 の派生"
+        "起票元: CMP-261012-0910 の派生。PR #4231、AUTH-011〜013同HEAD CI実走PASS。[完了証拠](evidence/CMP-261021-1342.json)・[AC実走](evidence/CMP-261021-1342-ci.md)。test-only（製品不変、実サービス実機・住民探索は対象外）"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -54267,18 +55485,31 @@ window.BETA_INVENTORY_DATA = {
         "ts"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        4231
+      ],
+      "github": [
+        {
+          "number": 4231,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
     },
     {
       "id": "CMP-261021-1343",
       "title": "使われていないクラス MfaEmailOtpRequestedEvent の削除",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "P4 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -54307,7 +55538,7 @@ window.BETA_INVENTORY_DATA = {
         "MfaEmailOtpRequestedEvent"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -54316,9 +55547,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-1344",
       "title": "2FA関連画面のタップ領域が 44px 未満の箇所の是正",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P5 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -54361,9 +55593,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-1345",
       "title": "セッション一覧に「不明なデバイス」と表示される件",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P5 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -54400,9 +55633,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-1346",
       "title": "「2段階認証」と「二要素認証」の用語統一",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P5 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -54437,9 +55671,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261021-1602",
       "title": "CMP-261021-0017 子: Phase 0 計測とスパイク",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P4 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -54511,6 +55746,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -54567,6 +55803,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -54656,6 +55893,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -54715,9 +55953,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261022-0234",
       "title": "組織広告dashboardのslugから数値IDへの解決漏れ",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -54763,9 +56002,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261022-0235",
       "title": "Flyway起動時の無条件repairと通常検証を分離する",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P4 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -54813,6 +56053,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -54873,6 +56114,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -54936,6 +56178,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -54996,9 +56239,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261022-0924",
       "title": "広告キャンペーン詳細の共有指標・表部品に日本語直書きが残る",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P3 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P3",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -55045,9 +56289,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261022-1026",
       "title": "複数大名の領地調整基盤",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P4 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -55100,6 +56345,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -55151,9 +56397,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261022-2348",
       "title": "恐竜16種4外見の制作・比較（アロサウルス隔離pilot先行）",
       "status": "unknown",
-      "statusLabel": "試作中",
+      "statusLabel": "P5 試作中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P5",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -55204,6 +56451,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -55281,6 +56529,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -55335,9 +56584,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261023-2301",
       "title": "CMP-261021-0017 子: 返済ロット 第1波（knowledgebase）",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P4 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P4",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -55408,6 +56658,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -55462,6 +56713,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -55516,6 +56768,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -55585,6 +56838,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-24）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -55663,6 +56917,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-25）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -55717,9 +56972,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261003-1020",
       "title": "代理アンケートの回答が対象本人でなく認証代理者へ保存され、GETme・同意機能/組合/実行権限の境界が未束縛",
       "status": "working",
-      "statusLabel": "実装中",
+      "statusLabel": "P1 実装中",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P1",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -55789,6 +57045,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -55857,6 +57114,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -55919,6 +57177,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -55983,6 +57242,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了（2026-10-26）",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -56049,6 +57309,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -56125,6 +57386,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -56195,6 +57457,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -56271,6 +57534,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -56341,31 +57605,32 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261027-1646",
       "title": "CMP-261021-0017 子: build-logic化（L1-B）",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
       "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "[準備計画](evidence/CMP-261021-0017-l1b-plan.md) B-1〜B-8を満たす。B-1: 単一app・plugin版/全依存/解決graph/タスク一覧の前後一致。B-2: 4profile×6index全行一致・通常対象1shard・migration除外0・nested分断0、coverage緑。B-3: 重み欠損/空/未計測・未指定propertyのfallback不変、archTest0件/freezeclass欠損拒否・source全体0拒否。B-4: total1/2/6・index端/範囲外・非数値・負hash/同重み/nestedの挙動維持。B-5: archUnit失敗時freeze実走、必須番人欠損/0件・shard失敗/cancel/timeout/診断欠損でgate非成功、再生成不正入力で旧表bytes保持。B-6: 既存認可IT/番人green・生成OpenAPI前後差分0・実機の許可/拒否/他tenant。B-7: 6shard・heap/fork/context cap・タグ/engine/ログ維持、fresh runのJVM/heap/壁時計/失敗を記録。B-8: 限定例外の正本反映・owner/入口確認・最新HEAD検分・scope appの実機と探索passed、未実施を完了にしない",
+      "nextAction": "[準備計画](evidence/CMP-261021-0017-l1b-plan.md) B-1〜B-8を満たす。B-1: 単一app・plugin版/全依存/解決graph/タスク一覧の前後一致。B-2: 4profile×6index全行一致・通常対象1shard・migration除外0・nested分断0、coverage緑。B-3: 重み欠損/空/未計測・未指定propertyのfallback不変、archTest0件/freezeclass欠損拒否・source全体0拒否。B-4: total1/2/6・index端/範囲外・非数値・負hash/同重み/nestedの挙動維持。B-5: 既存CI条件でarchUnit失敗時freeze実走、必須番人欠損/0件拒否・shard失敗/cancel/timeout/必須ジョブ結果欠損でgate非成功、ローカルTest終端欠損拒否・再生成不正入力で旧表bytes保持。公開診断artifact欠損等のgate強化は[裁可](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6462685947)でCMP-261028-1554（Issue #4200）へ分離し、未解決として残す。B-6: 既存認可IT/番人green・生成OpenAPI前後差分0・実機の許可/拒否/他tenant。B-7: 6shard・heap/fork/context cap・タグ/engine/ログ維持、fresh runのJVM/heap/壁時計/失敗を記録。B-8: 限定例外の正本反映・owner/入口確認・最新HEAD検分・scope appの実機と探索passed、未実施を完了にしない",
       "acceptance": [
-        "[準備計画](evidence/CMP-261021-0017-l1b-plan.md) B-1〜B-8を満たす。B-1: 単一app・plugin版/全依存/解決graph/タスク一覧の前後一致。B-2: 4profile×6index全行一致・通常対象1shard・migration除外0・nested分断0、coverage緑。B-3: 重み欠損/空/未計測・未指定propertyのfallback不変、archTest0件/freezeclass欠損拒否・source全体0拒否。B-4: total1/2/6・index端/範囲外・非数値・負hash/同重み/nestedの挙動維持。B-5: archUnit失敗時freeze実走、必須番人欠損/0件・shard失敗/cancel/timeout/診断欠損でgate非成功、再生成不正入力で旧表bytes保持。B-6: 既存認可IT/番人green・生成OpenAPI前後差分0・実機の許可/拒否/他tenant。B-7: 6shard・heap/fork/context cap・タグ/engine/ログ維持、fresh runのJVM/heap/壁時計/失敗を記録。B-8: 限定例外の正本反映・owner/入口確認・最新HEAD検分・scope appの実機と探索passed、未実施を完了にしない"
+        "[準備計画](evidence/CMP-261021-0017-l1b-plan.md) B-1〜B-8を満たす。B-1: 単一app・plugin版/全依存/解決graph/タスク一覧の前後一致。B-2: 4profile×6index全行一致・通常対象1shard・migration除外0・nested分断0、coverage緑。B-3: 重み欠損/空/未計測・未指定propertyのfallback不変、archTest0件/freezeclass欠損拒否・source全体0拒否。B-4: total1/2/6・index端/範囲外・非数値・負hash/同重み/nestedの挙動維持。B-5: 既存CI条件でarchUnit失敗時freeze実走、必須番人欠損/0件拒否・shard失敗/cancel/timeout/必須ジョブ結果欠損でgate非成功、ローカルTest終端欠損拒否・再生成不正入力で旧表bytes保持。公開診断artifact欠損等のgate強化は[裁可](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6462685947)でCMP-261028-1554（Issue #4200）へ分離し、未解決として残す。B-6: 既存認可IT/番人green・生成OpenAPI前後差分0・実機の許可/拒否/他tenant。B-7: 6shard・heap/fork/context cap・タグ/engine/ログ維持、fresh runのJVM/heap/壁時計/失敗を記録。B-8: 限定例外の正本反映・owner/入口確認・最新HEAD検分・scope appの実機と探索passed、未実施を完了にしない"
       ],
       "blocker": "CMP-261021-0017。L0-M依存のみ[裁可](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6430453220)免除（基準計測未完了・性能未実証）。他入口・所有・build/weights共有予約を維持",
       "issues": [
         {
-          "label": "[親Issue #4022・チェックリスト](https://github.com/kenta-0420/mannschaft/issues/4022)、[準備PR #4162](https://github.com/kenta-0420/mannschaft/pull/4162)、[L0-M入口免除PR #4161](https://github.com/kenta-0420/mannschaft/pull/4161)、[限定承認 REQ-GRADLE-GUARD-01](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6436425040)。StripeJavaVersionGuardTest.javaの参照元のみ新依存定義へ追従可。28系固定・29以上/宣言欠損拒否を維持し、新参照先でも各検体で証明する。旧宣言コメント残し・skip・assertion/範囲緩和は不可。§8.1への限定例外反映は実装前に必要。登録のみでGradle/試練red/実装green/重み再生成/OpenAPI生成/実装CI/検分/実機/探索はすべて未実施",
+          "label": "[完了証拠](evidence/CMP-261027-1646.json)・[実装PR #4169](https://github.com/kenta-0420/mannschaft/pull/4169)・[検証報告](evidence/CMP-261027-1646-l1b-implementation.md)。最終head e67a77172f67ddbacfe4c8d8f9504eae8f54b004、同HEAD CI40662266445 success、通常merge bc2f2c89e7a40c0775d751aad2bd0e80287fdf0a。Stripe参照元限定・B5公開診断別件分離の裁可を正本同期。旧a8b実機4case/独立3住民、f281六fresh・e67六cacheを区別",
           "state": "unknown"
         }
       ],
       "prs": [
-        "[親Issue #4022・チェックリスト](https://github.com/kenta-0420/mannschaft/issues/4022)、[準備PR #4162](https://github.com/kenta-0420/mannschaft/pull/4162)、[L0-M入口免除PR #4161](https://github.com/kenta-0420/mannschaft/pull/4161)、[限定承認 REQ-GRADLE-GUARD-01](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6436425040)。StripeJavaVersionGuardTest.javaの参照元のみ新依存定義へ追従可。28系固定・29以上/宣言欠損拒否を維持し、新参照先でも各検体で証明する。旧宣言コメント残し・skip・assertion/範囲緩和は不可。§8.1への限定例外反映は実装前に必要。登録のみでGradle/試練red/実装green/重み再生成/OpenAPI生成/実装CI/検分/実機/探索はすべて未実施"
+        "[完了証拠](evidence/CMP-261027-1646.json)・[実装PR #4169](https://github.com/kenta-0420/mannschaft/pull/4169)・[検証報告](evidence/CMP-261027-1646-l1b-implementation.md)。最終head e67a77172f67ddbacfe4c8d8f9504eae8f54b004、同HEAD CI40662266445 success、通常merge bc2f2c89e7a40c0775d751aad2bd0e80287fdf0a。Stripe参照元限定・B5公開診断別件分離の裁可を正本同期。旧a8b実機4case/独立3住民、f281六fresh・e67六cacheを区別"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "gradle owner `9ec2bb94-5ba6-494b-9d4a-dd4ed47f29f5`。登録branch `feature/4022-l1b-registration-261027`、WT `agent-4022-l1b-register-261027`。登録PRのmain反映後に試練→実装へ進む。L1-M/L3・他番人変更・Stripe版更新・親完了を含めない"
+        "gradle owner 9ec2bb94-5ba6-494b-9d4a-dd4ed47f29f5。L1-B done/共有build・weights解放をroot確認（調整state4750db4e9f39260205025ea98cb5580a9960401a）。baseline/weights/impl3WTは撤去済み。[cleanup記録](evidence/CMP-261027-1646/cleanup.md)：残14root/888,898,616bytesを明示承認後に撤去。既削除1件と合わせ15root/888,904,965bytes不存在確認、raw保持0。旧拒否・保持条件は履歴として保存。親戦役と別件CMP-261028-1554は未完了、L0-M基準計測/性能未実証を維持"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -56400,13 +57665,26 @@ window.BETA_INVENTORY_DATA = {
         "hash",
         "nested",
         "B-5",
+        "CI",
         "archUnit",
         "freeze",
         "shard",
         "cancel",
         "timeout",
         "gate",
+        "Test",
         "bytes",
+        "artifact",
+        "gate",
+        "https",
+        "github",
+        "com",
+        "kenta-0420",
+        "mannschaft",
+        "issues",
+        "issuecomment-6462685947",
+        "CMP-261028-1554",
+        "Issue",
         "B-6",
         "IT",
         "green",
@@ -56431,25 +57709,15 @@ window.BETA_INVENTORY_DATA = {
         "passed"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
       "githubRefs": [
-        4022,
-        4161,
-        4162
+        4169,
+        4200
       ],
       "github": [
         {
-          "number": 4022,
-          "kind": "issue",
-          "state": "open",
-          "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
-          "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-27T05:08:11Z",
-          "ci": null
-        },
-        {
-          "number": 4161,
+          "number": 4169,
           "kind": "unsynced",
           "state": "unknown",
           "title": "",
@@ -56458,7 +57726,7 @@ window.BETA_INVENTORY_DATA = {
           "ci": null
         },
         {
-          "number": 4162,
+          "number": 4200,
           "kind": "unsynced",
           "state": "unknown",
           "title": "",
@@ -56475,6 +57743,7 @@ window.BETA_INVENTORY_DATA = {
       "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -56537,9 +57806,10 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-261028-0513",
       "title": "可視NAME_ONLY委員会詳細がメンバー限定APIの403で全体失敗する",
       "status": "not-started",
-      "statusLabel": "未着手",
+      "statusLabel": "P2 未着手",
       "stage": "未設定",
       "priority": "未設定",
+      "taskPriority": "P2",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -56573,6 +57843,4732 @@ window.BETA_INVENTORY_DATA = {
       ],
       "tags": [
         "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261028-1554",
+      "title": "Backend CIの公開診断artifact不足を集約gateで拒否する",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "[登録計画](evidence/CMP-261028-1554-ci-published-diagnostics-plan.md) D-1〜D-7。公開診断missing/empty/partial/upload failure・API失敗をgate非成功にし、run/head/shard/再試行世代を照合する。正常6shard・cache hit・docs-only skipを維持。先行red→green・同HEAD実CI・検分・tooling完了証拠を残す",
+      "acceptance": [
+        "[登録計画](evidence/CMP-261028-1554-ci-published-diagnostics-plan.md) D-1〜D-7。公開診断missing/empty/partial/upload failure・API失敗をgate非成功にし、run/head/shard/再試行世代を照合する。正常6shard・cache hit・docs-only skipを維持。先行red→green・同HEAD実CI・検分・tooling完了証拠を残す"
+      ],
+      "blocker": "共有CI編集前に既存ownerと予約調整。L1-Bの完了条件へ戻さない",
+      "issues": [
+        {
+          "label": "[Issue #4200](https://github.com/kenta-0420/mannschaft/issues/4200)、[REQ-GRADLE-DIAG-02裁可](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6462685947)。既存uploadは欠損warn、gateはjob結果のみ。ローカルTest終端/regen検証と公開artifact検証を区別。登録時点で修正・red/green・修正後CIは未実施",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "[Issue #4200](https://github.com/kenta-0420/mannschaft/issues/4200)、[REQ-GRADLE-DIAG-02裁可](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6462685947)。既存uploadは欠損warn、gateはjob結果のみ。ローカルTest終端/regen検証と公開artifact検証を区別。登録時点で修正・red/green・修正後CIは未実施"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "子CMP-261027-1646 / PR #4169から既存不足を分離。L1-B・親戦役の完了や本件解決を意味しない。scope tooling、実装担当/共有予約は着手前に調整"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "Backend",
+        "CI",
+        "artifact",
+        "gate",
+        "evidence",
+        "CMP-261028-1554-ci-published-diagnostics-plan",
+        "md",
+        "D-1",
+        "D-7",
+        "missing",
+        "empty",
+        "partial",
+        "upload",
+        "failure",
+        "API",
+        "gate",
+        "run",
+        "head",
+        "shard",
+        "shard",
+        "cache",
+        "hit",
+        "docs-only",
+        "skip",
+        "red",
+        "green",
+        "HEAD",
+        "CI",
+        "tooling"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        4169,
+        4200
+      ],
+      "github": [
+        {
+          "number": 4169,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4200,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261028-1715",
+      "title": "カレンダー初期表示の直列待ち短縮",
+      "status": "done",
+      "statusLabel": "完了",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "表示対象確定後に部品読込とlayers/予定取得を重ね、設定復元まで表示・操作・fallback追加・保存を止める。両応答順、全解除[]、既知fallback除外、hidden、旧移行、破損/storage不可、savedview、部分失敗と再試行、離脱後副作用抑止を維持。Widget/全画面/mobile agenda/gantt/query導線、非表示未訪問の非取得、認可横断実機、現base/fixed同条件production測定、関連試験/CI/検分/実機後3住民探索と正式証跡を満たす",
+      "acceptance": [
+        "表示対象確定後に部品読込とlayers/予定取得を重ね、設定復元まで表示・操作・fallback追加・保存を止める。両応答順、全解除[]、既知fallback除外、hidden、旧移行、破損/storage不可、savedview、部分失敗と再試行、離脱後副作用抑止を維持。Widget/全画面/mobile agenda/gantt/query導線、非表示未訪問の非取得、認可横断実機、現base/fixed同条件production測定、関連試験/CI/検分/実機後3住民探索と正式証跡を満たす"
+      ],
+      "blocker": "CMP-261027-1353",
+      "issues": [
+        {
+          "label": "PR #4205（head4697・merge2f524、全CI17成功7条件skip）。own15pass/0skip、正式UI8件＋視覚補完、実機後の独立3住民（mobile部分達成）。[完了証拠](evidence/CMP-261028-1715.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #4205（head4697・merge2f524、全CI17成功7条件skip）。own15pass/0skip、正式UI8件＋視覚補完、実機後の独立3住民（mobile部分達成）。[完了証拠](evidence/CMP-261028-1715.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "直列gap短縮と設定復元保護を採用。production6sampleの全体時間は変動が大きく、一貫した全体短縮は未証明。Nav hook≠HTTP要求数。SQL/API/依存/認可変更なし"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "layers",
+        "fallback",
+        "fallback",
+        "hidden",
+        "storage",
+        "savedview",
+        "Widget",
+        "mobile",
+        "agenda",
+        "gantt",
+        "query",
+        "base",
+        "fixed",
+        "production",
+        "CI"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4205
+      ],
+      "github": [
+        {
+          "number": 4205,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261028-2251",
+      "title": "CMP-261021-0017 子: Modulith導入とイベント基盤（L1-M）",
+      "status": "working",
+      "statusLabel": "P4 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "Modulith 1.4.13・ArchUnit 1.3.0を固定。Flywayでutf8mb4_0900_ai_ciのevent_publicationと試行・隔離状態を保存。Registry保存はReliableEventかつ@ModuleEventListenerの対象のみ、既存認証eventは保存0。専用executorでlistenerは非TX。listener失敗は未完了のまま再配信し完了、完了行削除を確認。再投入の対象5分・毎分・上限100件、処理中上限=executor容量、試行10回・隔離・最古30分警告の§11.3初期運用値を実測根拠で確定。実DBのShedLockで同時2起動は片方のみ。未完了1000件＋通常流入10件/秒を5分継続し拒否0・通常イベント発行から購読完了までp99<=5秒、負荷実測を根拠に運用値を§11.3へ反映。退会purge後の再配信でデータ復活0。§11.3の観測点を出力し隔離時即時ERROR/alert、SYSTEM_ADMIN限定で原因修正後に手動再開。ApplicationModules verifyは失敗させないreport-only。既存HTTP/OpenAPI契約を自生成前後で維持（承認済みSYSTEM_ADMIN隔離ページ一覧GET/理由付き1件再開POSTと専用schemaだけ追加、@Hidden禁止）。理由trim1..500・他ロール403/匿名401・競合拒否/監査・payload/秘密/例外本文非露出。継続遅延/隔離/実復旧を現TEAM/ORG管理者へ既存ベル/一覧・耐久outbox/fanoutで冪等通知、短期retry通知0・dedup・restart/outbox途中失敗・所属権限失効/他tenant否定・復旧誤判定防止・6言語を検証。impact resolver契約/実装検体/通知接続はM、認可済み元操作の待機案内と具体画面接続は各C/Fロットの必須AC（未接続green禁止）。auth/notification/purge一括Reliable化なし。kernel TransitionalBridgeの必須reason/removalLane・runtimeTYPEを先行提供しL1R全M待ちにしない。ACごとにred→green、検分、認可実機E2Eと実機後の独立探索、同HEAD CI、通常mergeを完了する。L0-M追加計測免除は本ACを免除しない",
+      "acceptance": [
+        "Modulith 1.4.13・ArchUnit 1.3.0を固定。Flywayでutf8mb4_0900_ai_ciのevent_publicationと試行・隔離状態を保存。Registry保存はReliableEventかつ@ModuleEventListenerの対象のみ、既存認証eventは保存0。専用executorでlistenerは非TX。listener失敗は未完了のまま再配信し完了、完了行削除を確認。再投入の対象5分・毎分・上限100件、処理中上限=executor容量、試行10回・隔離・最古30分警告の§11.3初期運用値を実測根拠で確定。実DBのShedLockで同時2起動は片方のみ。未完了1000件＋通常流入10件/秒を5分継続し拒否0・通常イベント発行から購読完了までp99<=5秒、負荷実測を根拠に運用値を§11.3へ反映。退会purge後の再配信でデータ復活0。§11.3の観測点を出力し隔離時即時ERROR/alert、SYSTEM_ADMIN限定で原因修正後に手動再開。ApplicationModules verifyは失敗させないreport-only。既存HTTP/OpenAPI契約を自生成前後で維持（承認済みSYSTEM_ADMIN隔離ページ一覧GET/理由付き1件再開POSTと専用schemaだけ追加、@Hidden禁止）。理由trim1..500・他ロール403/匿名401・競合拒否/監査・payload/秘密/例外本文非露出。継続遅延/隔離/実復旧を現TEAM/ORG管理者へ既存ベル/一覧・耐久outbox/fanoutで冪等通知、短期retry通知0・dedup・restart/outbox途中失敗・所属権限失効/他tenant否定・復旧誤判定防止・6言語を検証。impact resolver契約/実装検体/通知接続はM、認可済み元操作の待機案内と具体画面接続は各C/Fロットの必須AC（未接続green禁止）。auth/notification/purge一括Reliable化なし。kernel TransitionalBridgeの必須reason/removalLane・runtimeTYPEを先行提供しL1R全M待ちにしない。ACごとにred→green、検分、認可実機E2Eと実機後の独立探索、同HEAD CI、通常mergeを完了する。L0-M追加計測免除は本ACを免除しない"
+      ],
+      "blocker": "CMP-261021-0017（親）/ CMP-261021-1602（L0-S）/ CMP-261027-1646（L1-B）/ CMP-261021-2157（L1-G0）",
+      "issues": [
+        {
+          "label": "[owner移管・正規claim](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6470634290)。登録PR [#4210](https://github.com/kenta-0420/mannschaft/pull/4210) main済。[管理2API・影響通知・先行bridge裁可](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6483913607)。製品試験・検分・実機・探索未実施、未実行green禁止",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "[owner移管・正規claim](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6470634290)。登録PR [#4210](https://github.com/kenta-0420/mannschaft/pull/4210) main済。[管理2API・影響通知・先行bridge裁可](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6483913607)。製品試験・検分・実機・探索未実施、未実行green禁止"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "owner 61522ce4-f452-40e0-b3b7-b16530925934（remote claim 282c11fc）。実装branch feature/4022-boundary-l1m、WT .claude/worktrees/agent-4022-l1m-impl-261029。新moduleevent基盤はL1M所有、admin/notification既存ownerと調整、L2の113配賦/manifestは不変。L0-S/L1-G0/L1-K/L1-F/L1-A/L1-Bの既存完了記録を維持。本登録はL1-M/L1-G/Phase 1・親戦役の完了証拠ではない"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "CMP-261021-0017",
+        "Modulith",
+        "L1-M",
+        "Modulith",
+        "ArchUnit",
+        "Flyway",
+        "utf8mb4_0900_ai_ci",
+        "event_publication",
+        "Registry",
+        "ReliableEvent",
+        "ModuleEventListener",
+        "event",
+        "executor",
+        "listener",
+        "TX",
+        "listener",
+        "executor",
+        "DB",
+        "ShedLock",
+        "p99",
+        "purge",
+        "ERROR",
+        "alert",
+        "SYSTEM_ADMIN",
+        "ApplicationModules",
+        "verify",
+        "report-only",
+        "HTTP",
+        "OpenAPI",
+        "SYSTEM_ADMIN",
+        "GET",
+        "POST",
+        "schema",
+        "Hidden",
+        "trim1",
+        "payload",
+        "TEAM",
+        "ORG",
+        "outbox",
+        "fanout",
+        "retry",
+        "dedup",
+        "restart",
+        "outbox",
+        "tenant",
+        "impact",
+        "resolver",
+        "AC",
+        "green",
+        "auth",
+        "notification",
+        "purge",
+        "Reliable",
+        "kernel",
+        "TransitionalBridge",
+        "reason",
+        "removalLane",
+        "runtimeTYPE",
+        "L1R",
+        "AC",
+        "red",
+        "green",
+        "E2E",
+        "HEAD",
+        "CI",
+        "merge",
+        "L0-M",
+        "AC"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [
+        4210
+      ],
+      "github": [
+        {
+          "number": 4210,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261028-2304",
+      "title": "CMP-261021-0017 子: common-core業務型の返済（L1-R）",
+      "status": "working",
+      "statusLabel": "P4 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "主計画§9.1と付録Aに従い対象164型を業務所有moduleへ移し、旧FQCN互換橋渡しを維持してcaller差分0・HTTP/OpenAPI差分0とする。DB・番人・凍結ストアを変更せず、各ロットの先行試練をgreen化し、対象に必要な検分・実機・独立探索を完了して証拠を残す",
+      "acceptance": [
+        "主計画§9.1と付録Aに従い対象164型を業務所有moduleへ移し、旧FQCN互換橋渡しを維持してcaller差分0・HTTP/OpenAPI差分0とする。DB・番人・凍結ストアを変更せず、各ロットの先行試練をgreen化し、対象に必要な検分・実機・独立探索を完了して証拠を残す"
+      ],
+      "blocker": "CMP-261021-0017、CMP-261021-2158（L1-K完了）。登録時claim `cc2c5a146211d4b97f29760ffb324e01ae03c23d` は履歴として保持。現common-core引継ぎは[親宣言](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6695483881)。TransitionalBridgeはPR #4214でmain提供済み（L1-M全完了待ちではない）",
+      "issues": [
+        {
+          "label": "[登録PR #4211](https://github.com/kenta-0420/mannschaft/pull/4211)はmain反映済みの履歴。[実装PR #4352](https://github.com/kenta-0420/mannschaft/pull/4352)は記録時点Draft・未merge。初回1型は旧staticを互換委譲しDN1〜6の旧19green→全40の21 assertion red（compile成功）→40green/skip0。DN9実生成前後bytes一致は親合格。DN7実MySQL6件、DN8別engine/本番Integrity、DN10実機・DN11探索と最終CIは未完。[進捗・証拠](evidence/CMP-261028-2304-l1r-normalizer.md)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "[登録PR #4211](https://github.com/kenta-0420/mannschaft/pull/4211)はmain反映済みの履歴。[実装PR #4352](https://github.com/kenta-0420/mannschaft/pull/4352)は記録時点Draft・未merge。初回1型は旧staticを互換委譲しDN1〜6の旧19green→全40の21 assertion red（compile成功）→40green/skip0。DN9実生成前後bytes一致は親合格。DN7実MySQL6件、DN8別engine/本番Integrity、DN10実機・DN11探索と最終CIは未完。[進捗・証拠](evidence/CMP-261028-2304-l1r-normalizer.md)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "L1-Rは全164型の子CMPでP4実装中。初回ロットの局所進捗であり、レーン全体・親戦役の完了を意味しない。scope app"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "CMP-261021-0017",
+        "common-core",
+        "L1-R",
+        "module",
+        "FQCN",
+        "caller",
+        "HTTP",
+        "OpenAPI",
+        "DB",
+        "green"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [
+        4211,
+        4214,
+        4352
+      ],
+      "github": [
+        {
+          "number": 4211,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4214,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4352,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261028-2328",
+      "title": "予約系通知の actionUrl が数値 teamId で、通知から予約画面に到達できない（ALIC-1）",
+      "status": "done",
+      "statusLabel": "完了（ReservationPendingExpireService は PR #3721 待ちのため除外、管理者向け通知・問い合わせ通知・業務アラートの3クラスは CMP-261030-0648 へ移した。いずれも未了として残す）",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "予約系の通知（リマインド・キャンセル待ち・強制キャンセル・管理者向け・PendingExpire・AdminBusinessAlert）の actionUrl が `/teams/{数値teamId}/reservations` のため、FE の slug ルートでは「チームが見つかりません」になり予約画面へ到達できない。通知から1タップで予約画面に到達すること（actionUrl を slug へ解決する、または FE が数値 id を正規の slug へ寄せる）。回帰テストを実装より先行させる（red 確認後に修正）",
+      "acceptance": [
+        "予約系の通知（リマインド・キャンセル待ち・強制キャンセル・管理者向け・PendingExpire・AdminBusinessAlert）の actionUrl が `/teams/{数値teamId}/reservations` のため、FE の slug ルートでは「チームが見つかりません」になり予約画面へ到達できない。通知から1タップで予約画面に到達すること（actionUrl を slug へ解決する、または FE が数値 id を正規の slug へ寄せる）。回帰テストを実装より先行させる（red 確認後に修正）"
+      ],
+      "blocker": "PR #3721（ReservationPendingExpireService の行のみ。同ファイルを改変中で競合するため、その行は #3721 着地後に着手）",
+      "issues": [
+        {
+          "label": "アリシゼーション run-20261028 で確定（住民 ALIC-CMP1152-R3、MEMBER・スマホ390/360）。該当: `ReservationReminderDispatchNotificationListener.java:145`、`ReservationWaitlistNotificationEventListener.java:188`、`ReservationForceCancelNotificationEventListener.java:85`、`ReservationAdminNotificationEventListener.java:86,133`、`ReservationPendingExpireService.java:263`、`AdminBusinessAlertService.java:259`。登録時点で修正・テストは未実施 修正PR #4226、実機E2E PR #4237、アリシゼーション run-20261030。[完了証拠](evidence/CMP-261028-2328.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "アリシゼーション run-20261028 で確定（住民 ALIC-CMP1152-R3、MEMBER・スマホ390/360）。該当: `ReservationReminderDispatchNotificationListener.java:145`、`ReservationWaitlistNotificationEventListener.java:188`、`ReservationForceCancelNotificationEventListener.java:85`、`ReservationAdminNotificationEventListener.java:86,133`、`ReservationPendingExpireService.java:263`、`AdminBusinessAlertService.java:259`。登録時点で修正・テストは未実施 修正PR #4226、実機E2E PR #4237、アリシゼーション run-20261030。[完了証拠](evidence/CMP-261028-2328.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "2026-05 の #1036・#1681 から既存。実機では所属チーム 531・565 で再現。CMP-260827-1152（付随通知の業務TX巻き込み是正）の範囲外の既存欠陥として分離起票した。"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "actionUrl",
+        "teamId",
+        "ALIC-1",
+        "PendingExpire",
+        "AdminBusinessAlert",
+        "actionUrl",
+        "teams",
+        "teamId",
+        "reservations",
+        "FE",
+        "slug",
+        "actionUrl",
+        "slug",
+        "FE",
+        "id",
+        "slug",
+        "red"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        1036,
+        1681,
+        3721,
+        4226,
+        4237
+      ],
+      "github": [
+        {
+          "number": 1036,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 1681,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 3721,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4226,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4237,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261028-2329",
+      "title": "緊急休業の一括送信の件数表示が空・undefined になる（ALIC-2）",
+      "status": "done",
+      "statusLabel": "完了",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "緊急休業の一括送信後の結果表示が正しい送信件数になり、送信履歴の件数も正しく表示される。BE の `EmergencyClosureResponse` の `sentCount` と FE のフィールド名を一致させる（生成型か手動型で一本化）。回帰テストを実装より先行させる",
+      "acceptance": [
+        "緊急休業の一括送信後の結果表示が正しい送信件数になり、送信履歴の件数も正しく表示される。BE の `EmergencyClosureResponse` の `sentCount` と FE のフィールド名を一致させる（生成型か手動型で一本化）。回帰テストを実装より先行させる"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "修正PR #4221（実装中）。アリシゼーション run-20261028 で確定（住民 ALIC-CMP1152-R1、チーム ADMIN）。結果表示が「 件に送信しました」（件数が空）、送信履歴が「undefined件」。BE は `sentCount` を返すが、`EmergencyClosureForm.vue:241-242`・`EmergencyClosureHistory.vue:76` は `notifiedCount` を読んでいる。登録時点で修正・テストは未実施 [完了証拠](evidence/CMP-261028-2329.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "修正PR #4221（実装中）。アリシゼーション run-20261028 で確定（住民 ALIC-CMP1152-R1、チーム ADMIN）。結果表示が「 件に送信しました」（件数が空）、送信履歴が「undefined件」。BE は `sentCount` を返すが、`EmergencyClosureForm.vue:241-242`・`EmergencyClosureHistory.vue:76` は `notifiedCount` を読んでいる。登録時点で修正・テストは未実施 [完了証拠](evidence/CMP-261028-2329.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "2026-04 の #75b06b92df から既存。CMP-260827-1152 の範囲外の既存欠陥として分離起票した。"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "undefined",
+        "ALIC-2",
+        "BE",
+        "EmergencyClosureResponse",
+        "sentCount",
+        "FE"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4221
+      ],
+      "github": [
+        {
+          "number": 4221,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261029-1254",
+      "title": "ログイン送信から主要ダッシュボード実データ表示までの1秒目標調査・修正",
+      "status": "working",
+      "statusLabel": "P4 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "ログインフォームready後のsubmitから、保存設定で初期表示対象となる主要widgetの成功した実内容readyまで1000msを目標とする。route・枠・設定・各widget・Calendarの取得成功と可視内容を分け、clean固定HEADの本番buildで実経路の通信・CPU・直列待ちを実測して寄与が確認された原因だけを根治する。同条件baseline/fixed各5回以上の交互測定で全値・中央値・最大を記録し、各条件fixed最大1000ms以下を判定する。空/0/null・失敗/再試行/離脱/ユーザー切替・保存設定・非表示/未訪問の非取得を維持し、認証強度・2FA・認可・Cookie・CSPを弱めず、private APIの匿名先読みを増やさない。red→green、CI、独立検分、認可横断のdesktop/mobile実機、実機後の独立3住民探索を完了する",
+      "acceptance": [
+        "ログインフォームready後のsubmitから、保存設定で初期表示対象となる主要widgetの成功した実内容readyまで1000msを目標とする。route・枠・設定・各widget・Calendarの取得成功と可視内容を分け、clean固定HEADの本番buildで実経路の通信・CPU・直列待ちを実測して寄与が確認された原因だけを根治する。同条件baseline/fixed各5回以上の交互測定で全値・中央値・最大を記録し、各条件fixed最大1000ms以下を判定する。空/0/null・失敗/再試行/離脱/ユーザー切替・保存設定・非表示/未訪問の非取得を維持し、認証強度・2FA・認可・Cookie・CSPを弱めず、private APIの匿名先読みを増やさない。red→green、CI、独立検分、認可横断のdesktop/mobile実機、実機後の独立3住民探索を完了する"
+      ],
+      "blocker": "CMP-261028-1715",
+      "issues": [
+        {
+          "label": "計画・AC1〜10を策定済み。原因の確定実測、製品修正、red/green、性能達成判定、CI・検分・正式実機・探索は未完了。秘密・実ID・本文を含まない証跡だけを正本へ採用する",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "計画・AC1〜10を策定済み。原因の確定実測、製品修正、red/green、性能達成判定、CI・検分・正式実機・探索は未完了。秘密・実ID・本文を含まない証跡だけを正本へ採用する"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "scope app。既存CMP-261028-1715の設定復元保護を維持。空枠・Skeleton・非表示DOMをreadyとせず、未達/未実施を達成扱いにしない。ローカル本番buildの測定を実配信環境の保証へ読み替えない"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "ready",
+        "submit",
+        "widget",
+        "ready",
+        "ms",
+        "route",
+        "widget",
+        "Calendar",
+        "clean",
+        "HEAD",
+        "build",
+        "CPU",
+        "baseline",
+        "fixed",
+        "fixed",
+        "ms",
+        "null",
+        "FA",
+        "Cookie",
+        "CSP",
+        "private",
+        "API",
+        "red",
+        "green",
+        "CI",
+        "desktop",
+        "mobile"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261029-1315",
+      "title": "FE の vue-i18n 系 high 脆弱性（GHSA-8rc2-428q-7ww3 / GHSA-83rm-6c8r-g728）で main の Frontend CI（npm audit）が赤になっている",
+      "status": "working",
+      "statusLabel": "P4 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "vue-i18n 系を修正版 11.4.14 以降へ更新し、例外追加なしで `node scripts/audit-with-exemption.mjs` が他の high/critical 0件で通り、Frontend CI の Install ジョブが緑になる",
+      "acceptance": [
+        "vue-i18n 系を修正版 11.4.14 以降へ更新し、例外追加なしで `node scripts/audit-with-exemption.mjs` が他の high/critical 0件で通り、Frontend CI の Install ジョブが緑になる"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "PR #4218",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #4218"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "FE",
+        "vue-i18n",
+        "high",
+        "GHSA-8rc2-428q-7ww3",
+        "GHSA-83rm-6c8r-g728",
+        "main",
+        "Frontend",
+        "CI",
+        "npm",
+        "audit",
+        "vue-i18n",
+        "node",
+        "scripts",
+        "audit-with-exemption",
+        "mjs",
+        "high",
+        "critical",
+        "Frontend",
+        "CI",
+        "Install"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [
+        4218
+      ],
+      "github": [
+        {
+          "number": 4218,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261029-0620",
+      "title": "プッシュ通知タップで遷移先 URL を読めない（Service Worker が action_url を読むが BE は actionUrl を送る）",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "プッシュ通知をタップすると通知の actionUrl へ遷移する。BE の送信ペイロード（NotificationDispatchService.java:333 付近、NotificationResponse.actionUrl）と frontend/public/sw-custom.js:33 の data.action_url のキー名を一致させ、SW の読み込み経路を含む回帰テストを先行させる",
+      "acceptance": [
+        "プッシュ通知をタップすると通知の actionUrl へ遷移する。BE の送信ペイロード（NotificationDispatchService.java:333 付近、NotificationResponse.actionUrl）と frontend/public/sw-custom.js:33 の data.action_url のキー名を一致させ、SW の読み込み経路を含む回帰テストを先行させる"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261028-2328 の軍議検分（Codex、2026-10-29）で発見。未着手",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261028-2328 の軍議検分（Codex、2026-10-29）で発見。未着手"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "URL",
+        "Service",
+        "Worker",
+        "action_url",
+        "BE",
+        "actionUrl",
+        "actionUrl",
+        "BE",
+        "NotificationDispatchService",
+        "java",
+        "NotificationResponse",
+        "actionUrl",
+        "frontend",
+        "public",
+        "sw-custom",
+        "js",
+        "data",
+        "action_url",
+        "SW"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261030-0648",
+      "title": "管理者向け予約通知・問い合わせ通知・業務アラートの actionUrl が数値 teamId になっている（CMP-261028-2328 からの切り出し）",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "ReservationAdminNotificationEventListener・InquiryChatEventListener・AdminBusinessAlertService（reservationsUrl と inquiryChannelUrl）の actionUrl を slug にする。TeamService はコンストラクタ注入とし、凍結ストアの既存違反の署名移行（件数は不変、新しいクラス対は 0、新旧の対応表を添える）を限定承認のうえで行う。全体の refreeze はしない。slug が解決できないときは `/notifications` にする。取得で例外が出ても通知を失わない。ReservationPendingExpireService:263 は #3721 の着地後に同じ型でそろえる。回帰テストを先に置く",
+      "acceptance": [
+        "ReservationAdminNotificationEventListener・InquiryChatEventListener・AdminBusinessAlertService（reservationsUrl と inquiryChannelUrl）の actionUrl を slug にする。TeamService はコンストラクタ注入とし、凍結ストアの既存違反の署名移行（件数は不変、新しいクラス対は 0、新旧の対応表を添える）を限定承認のうえで行う。全体の refreeze はしない。slug が解決できないときは `/notifications` にする。取得で例外が出ても通知を失わない。ReservationPendingExpireService:263 は #3721 の着地後に同じ型でそろえる。回帰テストを先に置く"
+      ],
+      "blocker": "凍結ストア記録移行の限定承認",
+      "issues": [
+        {
+          "label": "PR #4226 の Codex 検分で、フィールド注入による回避は規約違反と指摘された。マスターの裁定で切り出した。",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #4226 の Codex 検分で、フィールド注入による回避は規約違反と指摘された。マスターの裁定で切り出した。"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "actionUrl",
+        "teamId",
+        "CMP-261028-2328",
+        "ReservationAdminNotificationEventListener",
+        "InquiryChatEventListener",
+        "AdminBusinessAlertService",
+        "reservationsUrl",
+        "inquiryChannelUrl",
+        "actionUrl",
+        "slug",
+        "TeamService",
+        "refreeze",
+        "slug",
+        "notifications",
+        "ReservationPendingExpireService"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        3721,
+        4226
+      ],
+      "github": [
+        {
+          "number": 3721,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4226,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261030-0649",
+      "title": "緊急休業の一括送信が、手入力や「カスタム」テンプレートだと必ず 400 になる（reason の入力欄が無い）（ALIC-A）",
+      "status": "done",
+      "statusLabel": "完了",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "reason を画面で入力・確認できるようにするか、送信前に検証して原因を表示する。手入力とカスタムでも送信できるようにする。回帰テストを先に置く",
+      "acceptance": [
+        "reason を画面で入力・確認できるようにするか、送信前に検証して原因を表示する。手入力とカスタムでも送信できるようにする。回帰テストを先に置く"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "[PR #4243](https://github.com/kenta-0420/mannschaft/pull/4243)。単体テスト `EmergencyClosureReason.spec.ts`。実機E2E で、201字目は打鍵・貼付とも入らない、カスタム・手入力で送信が成功する、空なら警告が出ることを確認。[完了証拠](evidence/CMP-261030-0649.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "[PR #4243](https://github.com/kenta-0420/mannschaft/pull/4243)。単体テスト `EmergencyClosureReason.spec.ts`。実機E2E で、201字目は打鍵・貼付とも入らない、カスタム・手入力で送信が成功する、空なら警告が出ることを確認。[完了証拠](evidence/CMP-261030-0649.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "reason",
+        "ALIC-A",
+        "reason"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4243
+      ],
+      "github": [
+        {
+          "number": 4243,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261030-0650",
+      "title": "緊急休業の「影響する予約の確認」で、患者名の列が空欄になる（ALIC-B）",
+      "status": "done",
+      "statusLabel": "完了",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "プレビュー表に予約者名が表示されること。BE の `EmergencyClosurePreviewResponse.AffectedReservation.userFullName` と FE の `ClosurePreviewItem.userDisplayName`（useEmergencyClosureApi.ts、EmergencyClosurePreview.vue:62）を一致させる。回帰テストを先に置く",
+      "acceptance": [
+        "プレビュー表に予約者名が表示されること。BE の `EmergencyClosurePreviewResponse.AffectedReservation.userFullName` と FE の `ClosurePreviewItem.userDisplayName`（useEmergencyClosureApi.ts、EmergencyClosurePreview.vue:62）を一致させる。回帰テストを先に置く"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "[PR #4247](https://github.com/kenta-0420/mannschaft/pull/4247)。`UserService.getFullNamesAndEmails` の一括取得で N+1 を解消。archunit_store の越境17行を削除（D-3T の4行はトランザクション境界の見直しが要るため別件で残置）。実機E2E で患者のフルネームが出ることを確認。[完了証拠](evidence/CMP-261030-0650.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "[PR #4247](https://github.com/kenta-0420/mannschaft/pull/4247)。`UserService.getFullNamesAndEmails` の一括取得で N+1 を解消。archunit_store の越境17行を削除（D-3T の4行はトランザクション境界の見直しが要るため別件で残置）。実機E2E で患者のフルネームが出ることを確認。[完了証拠](evidence/CMP-261030-0650.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "ALIC-B",
+        "BE",
+        "EmergencyClosurePreviewResponse",
+        "AffectedReservation",
+        "userFullName",
+        "FE",
+        "ClosurePreviewItem",
+        "userDisplayName",
+        "useEmergencyClosureApi",
+        "ts",
+        "EmergencyClosurePreview",
+        "vue"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4247
+      ],
+      "github": [
+        {
+          "number": 4247,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261030-0651",
+      "title": "緊急休業の送信履歴の表が、モバイル（390px）で崩れる（ALIC-C）",
+      "status": "done",
+      "statusLabel": "完了",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "390x844 で次をすべて満たし、DOM 寸法を assert する回帰テストを置く。理由の列が1文字ずつ縦に並ばない。「確認状況」の見出しが切れない。「確認状況を見る」ボタンの幅が 44px 以上。ページが横にはみ出さない",
+      "acceptance": [
+        "390x844 で次をすべて満たし、DOM 寸法を assert する回帰テストを置く。理由の列が1文字ずつ縦に並ばない。「確認状況」の見出しが切れない。「確認状況を見る」ボタンの幅が 44px 以上。ページが横にはみ出さない"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "[PR #4261](https://github.com/kenta-0420/mannschaft/pull/4261)。Playwright の寸法 spec `tests/e2e/mobile/emergency-closure-layout.spec.ts`。実機E2E は [PR #4273](https://github.com/kenta-0420/mannschaft/pull/4273)。アリシゼーションを実施し確定不備4件を別戦役として起票。[完了証拠](evidence/CMP-261030-0651.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "[PR #4261](https://github.com/kenta-0420/mannschaft/pull/4261)。Playwright の寸法 spec `tests/e2e/mobile/emergency-closure-layout.spec.ts`。実機E2E は [PR #4273](https://github.com/kenta-0420/mannschaft/pull/4273)。アリシゼーションを実施し確定不備4件を別戦役として起票。[完了証拠](evidence/CMP-261030-0651.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "px",
+        "ALIC-C",
+        "x844",
+        "DOM",
+        "assert",
+        "px"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4261,
+        4273
+      ],
+      "github": [
+        {
+          "number": 4261,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4273,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261030-0652",
+      "title": "既読の通知をもう一度クリックすると `POST /notifications/{id}/read` が 409 になり、コンソールにエラーが出る（ALIC-D）",
+      "status": "not-started",
+      "statusLabel": "P5 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P5",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "既読の通知をクリックしても、409 もコンソールエラーも出ない。直し方は「FE が既読なら POST しない」か「BE を冪等にする」かで、どちらにするかは軍議で決める。回帰テストを先に置く",
+      "acceptance": [
+        "既読の通知をクリックしても、409 もコンソールエラーも出ない。直し方は「FE が既読なら POST しない」か「BE を冪等にする」かで、どちらにするかは軍議で決める。回帰テストを先に置く"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "WidgetNotices.vue の onMarkRead が、既読でも POST している。BE の NotificationService:187 は ALREADY_READ（INFO）を投げる。殿が実機で 409 を再現した。",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "WidgetNotices.vue の onMarkRead が、既読でも POST している。BE の NotificationService:187 は ALREADY_READ（INFO）を投げる。殿が実機で 409 を再現した。"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "POST",
+        "notifications",
+        "id",
+        "read",
+        "ALIC-D",
+        "FE",
+        "POST",
+        "BE"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261101-2005",
+      "title": "チーム告知一覧ページ（チームのお知らせ一覧）に組織告知が出ない。ダッシュボードのチーム告知カードには出るため導線が食い違う（アリシゼーション 2026-10-30 で観測し殿が確認）",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "チームの告知一覧に、そのチームが読める組織告知（チーム経由で読めるもの）が出て、ダッシュボードのチーム告知カードと同じ集合になること。設計（F02.6／F01.2.1 の D08: 組織告知一覧は直属の宛先だけ、チーム経由で読めるものはチーム側に出す）に沿い、一覧とカードの件数一致を実 MySQL の IT で確認し、宛先外のチームには出ないことも IT で固定すること",
+      "acceptance": [
+        "チームの告知一覧に、そのチームが読める組織告知（チーム経由で読めるもの）が出て、ダッシュボードのチーム告知カードと同じ集合になること。設計（F02.6／F01.2.1 の D08: 組織告知一覧は直属の宛先だけ、チーム経由で読めるものはチーム側に出す）に沿い、一覧とカードの件数一致を実 MySQL の IT で確認し、宛先外のチームには出ないことも IT で固定すること"
+      ],
+      "blocker": "CMP-261011-0035（発見元）",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "F02",
+        "F01",
+        "D08",
+        "MySQL",
+        "IT",
+        "IT"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261101-2006",
+      "title": "チーム告知フィード（`AnnouncementFeedService#getAnnouncementFeed`）のカーソルが isPinned を含まず、ピン留め項目の境界で次ページの項目が飛ぶ（#4240 の Codex 検分 r1 で発見。組織側は #4240 でサーバ発行トークンに直した。チーム側は既存のまま）",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "ピン留め項目と通常項目が混在するチーム告知フィードを、ページ境界がピン留めの切り替わり位置に来る条件で全ページ辿ったとき、項目の欠落も重複も無いこと。境界ケース（ピン留め最終項目がページ末尾）の red テストを先に置き、実 MySQL の IT で確認すること",
+      "acceptance": [
+        "ピン留め項目と通常項目が混在するチーム告知フィードを、ページ境界がピン留めの切り替わり位置に来る条件で全ページ辿ったとき、項目の欠落も重複も無いこと。境界ケース（ピン留め最終項目がページ末尾）の red テストを先に置き、実 MySQL の IT で確認すること"
+      ],
+      "blocker": "CMP-261011-0035（発見元）",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "AnnouncementFeedService",
+        "getAnnouncementFeed",
+        "isPinned",
+        "Codex",
+        "r1",
+        "red",
+        "MySQL",
+        "IT"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        4240
+      ],
+      "github": [
+        {
+          "number": 4240,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261101-2007",
+      "title": "「管理者ビューに切り替えできます」のポップオーバーが閉じるまで居座り、ダッシュボードの「すべてのお知らせ」リンクや未読バッジを覆って押せない（閉じるボタンは 15x24px）。1280x900 と 390/360px で実機確認",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "ポップオーバーが表示されていても、ダッシュボードの「すべてのお知らせ」リンクと未読バッジが 1280x900・390px・360px の各幅で押せること。閉じるボタンの押下領域がモバイルで 44px 以上あること。コンポーネントテストと実機の座標判定（elementFromPoint 等）で確認すること",
+      "acceptance": [
+        "ポップオーバーが表示されていても、ダッシュボードの「すべてのお知らせ」リンクと未読バッジが 1280x900・390px・360px の各幅で押せること。閉じるボタンの押下領域がモバイルで 44px 以上あること。コンポーネントテストと実機の座標判定（elementFromPoint 等）で確認すること"
+      ],
+      "blocker": "CMP-261011-0035（発見元）",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "x24px",
+        "x900",
+        "px",
+        "x900",
+        "px",
+        "px",
+        "px",
+        "elementFromPoint"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261101-2008",
+      "title": "チームダッシュボードの組織告知レスポンスに `target_team_ids`（他チームの ID 一覧）が載っている（`DashboardService.toAnnouncementFeedMap`）。不要な情報の露出なので外す",
+      "status": "working",
+      "statusLabel": "P1 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P1",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "チームダッシュボードの組織告知レスポンスに `target_team_ids` が含まれず、FE が参照していないこと（FE の参照を grep で確認し、参照があれば先に外す）。応答の形を固定する BE テストを先に置くこと",
+      "acceptance": [
+        "チームダッシュボードの組織告知レスポンスに `target_team_ids` が含まれず、FE が参照していないこと（FE の参照を grep で確認し、参照があれば先に外す）。応答の形を固定する BE テストを先に置くこと"
+      ],
+      "blocker": "CMP-261011-0035（発見元）",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "target_team_ids",
+        "ID",
+        "DashboardService",
+        "toAnnouncementFeedMap",
+        "target_team_ids",
+        "FE",
+        "FE",
+        "grep",
+        "BE"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261101-2009",
+      "title": "個人の受信箱（`AnnouncementInboxAdapter`）に、チームメンバー向けの組織告知が出ない（親組織を暗黙に加えない設計）。出すべきかの仕様判断から行う",
+      "status": "not-started",
+      "statusLabel": "P5 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P5",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "まず軍議で「受信箱にチーム経由の組織告知を出すか」を決め、設計書（F02.6 など）に決定を書くこと。出すと決めた場合は、宛先資格を満たす告知だけが受信箱に出て、宛先外には出ないことを IT で確認する。出さないと決めた場合は、その理由と導線（どこで読めるか）を設計書に明記すること",
+      "acceptance": [
+        "まず軍議で「受信箱にチーム経由の組織告知を出すか」を決め、設計書（F02.6 など）に決定を書くこと。出すと決めた場合は、宛先資格を満たす告知だけが受信箱に出て、宛先外には出ないことを IT で確認する。出さないと決めた場合は、その理由と導線（どこで読めるか）を設計書に明記すること"
+      ],
+      "blocker": "CMP-261011-0035（発見元）",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "AnnouncementInboxAdapter",
+        "F02",
+        "IT"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261101-2010",
+      "title": "告知ウィザードで「チームを選ぶ」を選んだとき、加盟チームが0件だと空白で説明が無く「次へ」も押せない（`BroadcastStep1Audience.vue` の `orgTeams.length > 0` 条件）",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "加盟チームが0件の組織で「チームを選ぶ」を選ぶと、加盟チームが無い旨の説明文と次の行動への導線（加盟申請や招待の画面など）が表示されること。文言は 6 言語のロケールに追加し、コンポーネントテストで確認すること",
+      "acceptance": [
+        "加盟チームが0件の組織で「チームを選ぶ」を選ぶと、加盟チームが無い旨の説明文と次の行動への導線（加盟申請や招待の画面など）が表示されること。文言は 6 言語のロケールに追加し、コンポーネントテストで確認すること"
+      ],
+      "blocker": "CMP-261011-0035（発見元）",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "BroadcastStep1Audience",
+        "vue",
+        "orgTeams",
+        "length"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261101-1404",
+      "title": "カレンダー週グリッドDST試験の実行日依存（時限爆弾）を根治",
+      "status": "done",
+      "statusLabel": "完了",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "2026-11-01 以降に全 FE PR の CI が `CalendarWeekGrid.dst.spec.ts` の秋の重複試験（`expected 30 to be 90`）で落ちる原因が、実行日（現在時刻）への依存であることを特定し、試験もしくはコンポーネントを根治する。システム日付が 2026-11-01 のときもそれ以外の日も unit テストが緑になる",
+      "acceptance": [
+        "2026-11-01 以降に全 FE PR の CI が `CalendarWeekGrid.dst.spec.ts` の秋の重複試験（`expected 30 to be 90`）で落ちる原因が、実行日（現在時刻）への依存であることを特定し、試験もしくはコンポーネントを根治する。システム日付が 2026-11-01 のときもそれ以外の日も unit テストが緑になる"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "修正 PR は別途起票<br>完了（2026-11-05）: PR #4257（head c74a8d8、merge 2026-11-02、CI success: Frontend 41359956092・E2E 41359956153）。実機E2E（NY・Havana の切替日、保存値の往復、他アカウント403）合格、探索の気づきはスマホ幅の週表示非表示（仕様どおり、棄却）。 [完了証拠](evidence/CMP-261101-1404.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "修正 PR は別途起票<br>完了（2026-11-05）: PR #4257（head c74a8d8、merge 2026-11-02、CI success: Frontend 41359956092・E2E 41359956153）。実機E2E（NY・Havana の切替日、保存値の往復、他アカウント403）合格、探索の気づきはスマホ幅の週表示非表示（仕様どおり、棄却）。 [完了証拠](evidence/CMP-261101-1404.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "DST",
+        "FE",
+        "PR",
+        "CI",
+        "CalendarWeekGrid",
+        "dst",
+        "spec",
+        "ts",
+        "expected",
+        "to",
+        "be",
+        "unit"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4257
+      ],
+      "github": [
+        {
+          "number": 4257,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261103-0817",
+      "title": "村の入村上限を管理画面から変更できるようにする。#4250（CMP-260827-1808）で設定値 `mannschaft.village.participation-hard-limit`（既定100・DB天井1000、`VillageParticipationLimitProvider`）の下地を入れたので、管理画面と変更 API を新設する",
+      "status": "not-started",
+      "statusLabel": "P5 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P5",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "着手前に軍議と御裁可を得ること。管理画面から入村上限を変更でき、`VillageParticipationLimitProvider` が変更後の値を返し、DB天井1000を超える値は拒否されること。権限なしのロールでは変更できないことを IT と実機で確認する",
+      "acceptance": [
+        "着手前に軍議と御裁可を得ること。管理画面から入村上限を変更でき、`VillageParticipationLimitProvider` が変更後の値を返し、DB天井1000を超える値は拒否されること。権限なしのロールでは変更できないことを IT と実機で確認する"
+      ],
+      "blocker": "CMP-260827-1808",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "CMP-260827-1808",
+        "mannschaft",
+        "village",
+        "participation-hard-limit",
+        "DB",
+        "VillageParticipationLimitProvider",
+        "API",
+        "VillageParticipationLimitProvider",
+        "DB",
+        "IT"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        4250
+      ],
+      "github": [
+        {
+          "number": 4250,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261103-0818",
+      "title": "build-logic への移設以降、dependabot が backend の Java(Gradle) 依存を検出できなくなった疑い。#3689・#3692・#3696 が自動クローズされた",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "`.github/dependabot.yml` の gradle 設定と build-logic／version catalog の位置を照合し、backend の Gradle 依存が dependabot に検出されること（更新 PR が再び起票されること）を確かめる。検出されない場合は設定を直す",
+      "acceptance": [
+        "`.github/dependabot.yml` の gradle 設定と build-logic／version catalog の位置を照合し、backend の Gradle 依存が dependabot に検出されること（更新 PR が再び起票されること）を確かめる。検出されない場合は設定を直す"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "build-logic",
+        "dependabot",
+        "backend",
+        "Java",
+        "Gradle",
+        "github",
+        "dependabot",
+        "yml",
+        "gradle",
+        "build-logic",
+        "version",
+        "catalog",
+        "backend",
+        "Gradle",
+        "dependabot",
+        "PR"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        3689,
+        3692,
+        3696
+      ],
+      "github": [
+        {
+          "number": 3689,
+          "kind": "pull_request",
+          "state": "open",
+          "title": "Bump com.tngtech.archunit:archunit-junit5 from 1.3.0 to 1.5.1 in /backend",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3689",
+          "updatedAt": "2026-10-19T07:15:08Z",
+          "ci": {
+            "status": "success",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3692,
+          "kind": "pull_request",
+          "state": "open",
+          "title": "Bump org.apache.pdfbox:pdfbox from 3.0.3 to 3.0.8 in /backend",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3692",
+          "updatedAt": "2026-10-19T07:15:10Z",
+          "ci": {
+            "status": "success",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3696,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261103-0819",
+      "title": "臨時休業の一括取消が、同じグループの兄弟行へ波及しない既存仕様の是非を決める",
+      "status": "not-started",
+      "statusLabel": "P5 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P5",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "軍議で「兄弟行へ波及させるべきか」を決め、設計書に決定を書くこと。波及させると決めた場合は是正し、波及することを IT で確認する。しないと決めた場合は理由を設計書に明記する",
+      "acceptance": [
+        "軍議で「兄弟行へ波及させるべきか」を決め、設計書に決定を書くこと。波及させると決めた場合は是正し、波及することを IT で確認する。しないと決めた場合は理由を設計書に明記する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "IT"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261103-0820",
+      "title": "`frontend/app` 配下に `dayjs.tz(文字列, tz)` の直接呼出しが18ファイル・41か所残る（例 `WidgetTodoCountdown.vue:39`）。DST 秋の重複時刻を現在時刻のオフセットで解決する欠陥（Havana の深夜0時で実害確認）",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "CMP-261101-1404（#4257）で作った共通の変換部品へ全件置換し、`dayjs.tz(文字列, tz)` の直接呼出しを禁じる番人（ESLint 等）を置く。DST 秋の重複時刻で誤った時刻にならないことを unit テストで確認する",
+      "acceptance": [
+        "CMP-261101-1404（#4257）で作った共通の変換部品へ全件置換し、`dayjs.tz(文字列, tz)` の直接呼出しを禁じる番人（ESLint 等）を置く。DST 秋の重複時刻で誤った時刻にならないことを unit テストで確認する"
+      ],
+      "blocker": "CMP-261101-1404",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "frontend",
+        "app",
+        "dayjs",
+        "tz",
+        "tz",
+        "WidgetTodoCountdown",
+        "vue",
+        "DST",
+        "Havana",
+        "CMP-261101-1404",
+        "dayjs",
+        "tz",
+        "tz",
+        "ESLint",
+        "DST",
+        "unit"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        4257
+      ],
+      "github": [
+        {
+          "number": 4257,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261103-0821",
+      "title": "`action_memo_tags.sort_order` の Entity と DB の型ずれを是正する。全 Entity とスキーマの型を照合する試験が現状無い",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "`action_memo_tags.sort_order` の Entity と DB の型が一致すること。全 Entity とスキーマの型を照合する試験を新設し、型ずれがあれば CI で落ちること（既知の差異は理由付きの許容リストへ）",
+      "acceptance": [
+        "`action_memo_tags.sort_order` の Entity と DB の型が一致すること。全 Entity とスキーマの型を照合する試験を新設し、型ずれがあれば CI で落ちること（既知の差異は理由付きの許容リストへ）"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "action_memo_tags",
+        "sort_order",
+        "Entity",
+        "DB",
+        "Entity",
+        "action_memo_tags",
+        "sort_order",
+        "Entity",
+        "DB",
+        "Entity",
+        "CI"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261103-0822",
+      "title": "お知らせの解除・ピン留め入口に存在オラクルが残る（CMP-260821-1027 / #4252 の7対象の範囲外と裁定）",
+      "status": "not-started",
+      "statusLabel": "P1 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P1",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "越境と不在で status・error.code・message が一致すること。手本は `CorkboardScopedBoardVisibilityGuard`（#4246）で、閲覧資格基準の非トランザクションガードを前置する。越境・不在・正常の3系統を IT で確認する",
+      "acceptance": [
+        "越境と不在で status・error.code・message が一致すること。手本は `CorkboardScopedBoardVisibilityGuard`（#4246）で、閲覧資格基準の非トランザクションガードを前置する。越境・不在・正常の3系統を IT で確認する"
+      ],
+      "blocker": "CMP-260821-1027",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "CMP-260821-1027",
+        "status",
+        "error",
+        "code",
+        "message",
+        "CorkboardScopedBoardVisibilityGuard",
+        "IT"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        4246,
+        4252
+      ],
+      "github": [
+        {
+          "number": 4246,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4252,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261103-0823",
+      "title": "フレンドの転送入口に存在オラクルが残る（CMP-260821-1027 / #4252 の範囲外と裁定）。内容は CMP-261103-0822 と同型",
+      "status": "not-started",
+      "statusLabel": "P1 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P1",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "越境と不在で status・error.code・message が一致すること。手本は `CorkboardScopedBoardVisibilityGuard`（#4246）。越境・不在・正常の3系統を IT で確認する",
+      "acceptance": [
+        "越境と不在で status・error.code・message が一致すること。手本は `CorkboardScopedBoardVisibilityGuard`（#4246）。越境・不在・正常の3系統を IT で確認する"
+      ],
+      "blocker": "CMP-260821-1027",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "CMP-260821-1027",
+        "CMP-261103-0822",
+        "status",
+        "error",
+        "code",
+        "message",
+        "CorkboardScopedBoardVisibilityGuard",
+        "IT"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        4246,
+        4252
+      ],
+      "github": [
+        {
+          "number": 4246,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4252,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261103-1940",
+      "title": "E-R図の自動生成と規約への明示",
+      "status": "done",
+      "statusLabel": "完了",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "Flyway 適用済み DB から `docs/architecture/er/` にドメイン単位の mermaid E-R 図を自動生成し、再生成漏れを CI（ER Diagram Drift Check）が検出すること。CLAUDE.md・`backend/.claudecode.md` §10.1・`domain_db_design_principles.md`・README に所在と再生成手順が明示され、手描き図を持つ `docs/features` の10ファイルから `er/` へ誘導されること",
+      "acceptance": [
+        "Flyway 適用済み DB から `docs/architecture/er/` にドメイン単位の mermaid E-R 図を自動生成し、再生成漏れを CI（ER Diagram Drift Check）が検出すること。CLAUDE.md・`backend/.claudecode.md` §10.1・`domain_db_design_principles.md`・README に所在と再生成手順が明示され、手描き図を持つ `docs/features` の10ファイルから `er/` へ誘導されること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "[PR #4268](https://github.com/kenta-0420/mannschaft/pull/4268)。[完了証拠](evidence/CMP-261103-1940.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "[PR #4268](https://github.com/kenta-0420/mannschaft/pull/4268)。[完了証拠](evidence/CMP-261103-1940.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "E-R",
+        "Flyway",
+        "DB",
+        "docs",
+        "architecture",
+        "er",
+        "mermaid",
+        "E-R",
+        "CI",
+        "ER",
+        "Diagram",
+        "Drift",
+        "Check",
+        "CLAUDE",
+        "md",
+        "backend",
+        "claudecode",
+        "md",
+        "domain_db_design_principles",
+        "md",
+        "README",
+        "docs",
+        "features",
+        "er"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4268
+      ],
+      "github": [
+        {
+          "number": 4268,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261104-0334",
+      "title": "緊急休業の確認ダイアログで「送信する」を連打すると、休業が複数件作られる（ALIC-1）",
+      "status": "done",
+      "statusLabel": "完了",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "連打しても送信が1回だけであること。FE の再入防止と BE の多重作成の防止のどちらを採るか、あるいは両方かは、軍議で決める。回帰テストを先に置く",
+      "acceptance": [
+        "連打しても送信が1回だけであること。FE の再入防止と BE の多重作成の防止のどちらを採るか、あるいは両方かは、軍議で決める。回帰テストを先に置く"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "確認ダイアログの「送信する」を素早く3回押すと、一括送信の POST が3回とも 201 で通り、休業が3件作られてトーストが3回出た。DB で確かめた: emergency_closures の id 36・37・38 は、team 1607 の同じ秒の行。原因（FE）: `EmergencyClosureConfirmDialog.vue` の送信ボタンに loading・disabled が無く、`EmergencyClosureForm.vue` の `confirmSend` に再入ガードが無い。ダイアログが閉じるアニメーションの間も押せる。原因（BE）: 冪等性が無い。アリシゼーション run-20261104-emergency-closure の足軽3が観測し、殿が裏取りした。<br>完了（2026-11-08）: FE PR #4281、BE PR #4290（head e944e8e、merge 2026-11-08、CI success: Backend 42446868534・Frontend 42446868554）。実機E2E は PR #4404 で合格（連打で POST 1回・休業1件。MEMBER・他テナントは負で確認）。アリシゼーション run-20261108-emergency-closure で元に戻っている箇所は無し。新規不備は CMP-261108-1050〜1059・1100 に起票済み（PR #4406）。 [完了証拠](evidence/CMP-261104-0334.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "確認ダイアログの「送信する」を素早く3回押すと、一括送信の POST が3回とも 201 で通り、休業が3件作られてトーストが3回出た。DB で確かめた: emergency_closures の id 36・37・38 は、team 1607 の同じ秒の行。原因（FE）: `EmergencyClosureConfirmDialog.vue` の送信ボタンに loading・disabled が無く、`EmergencyClosureForm.vue` の `confirmSend` に再入ガードが無い。ダイアログが閉じるアニメーションの間も押せる。原因（BE）: 冪等性が無い。アリシゼーション run-20261104-emergency-closure の足軽3が観測し、殿が裏取りした。<br>完了（2026-11-08）: FE PR #4281、BE PR #4290（head e944e8e、merge 2026-11-08、CI success: Backend 42446868534・Frontend 42446868554）。実機E2E は PR #4404 で合格（連打で POST 1回・休業1件。MEMBER・他テナントは負で確認）。アリシゼーション run-20261108-emergency-closure で元に戻っている箇所は無し。新規不備は CMP-261108-1050〜1059・1100 に起票済み（PR #4406）。 [完了証拠](evidence/CMP-261104-0334.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "ALIC-1",
+        "FE",
+        "BE"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4281,
+        4290,
+        4404,
+        4406
+      ],
+      "github": [
+        {
+          "number": 4281,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4290,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4404,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4406,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261104-0335",
+      "title": "緊急休業の日付表記が ja の直書きで、de ロケールでも「11月9日（月）〜11月10日（火）」と出る（ALIC-2）",
+      "status": "done",
+      "statusLabel": "完了",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "ロケールに従った日付表記にすること。対象期間・確認ダイアログ・履歴・プレビューのすべてで、区切りの「〜」も含めて直書きをやめる",
+      "acceptance": [
+        "ロケールに従った日付表記にすること。対象期間・確認ダイアログ・履歴・プレビューのすべてで、区切りの「〜」も含めて直書きをやめる"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "`EmergencyClosureForm.vue:65-70` の `formatDate` が「m月d日（曜）」を組み立てる。de ロケールでも、対象期間・確認ダイアログ・履歴・プレビューに ja の表記が出る。区切りの「〜」も直書き。アリシゼーション run-20261104-emergency-closure の足軽4が観測し、殿が裏取りした。<br>完了（2026-11-08）: PR #4292（head 84b752b、merge 2026-11-05、CI success: Frontend 42022415250・Backend 42022415269）。実機E2E は PR #4404 で合格（ja と de の両方）。アリシゼーション run-20261108-emergency-closure で元に戻っている箇所は無し。同種の別画面（予約 SlotMatrixPicker の週表示）は CMP-261108-1055 に起票済み。 [完了証拠](evidence/CMP-261104-0335.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "`EmergencyClosureForm.vue:65-70` の `formatDate` が「m月d日（曜）」を組み立てる。de ロケールでも、対象期間・確認ダイアログ・履歴・プレビューに ja の表記が出る。区切りの「〜」も直書き。アリシゼーション run-20261104-emergency-closure の足軽4が観測し、殿が裏取りした。<br>完了（2026-11-08）: PR #4292（head 84b752b、merge 2026-11-05、CI success: Frontend 42022415250・Backend 42022415269）。実機E2E は PR #4404 で合格（ja と de の両方）。アリシゼーション run-20261108-emergency-closure で元に戻っている箇所は無し。同種の別画面（予約 SlotMatrixPicker の週表示）は CMP-261108-1055 に起票済み。 [完了証拠](evidence/CMP-261104-0335.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "ja",
+        "de",
+        "ALIC-2"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4292,
+        4404
+      ],
+      "github": [
+        {
+          "number": 4292,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4404,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261104-0336",
+      "title": "緊急休業の送信履歴とプレビューの表が、390px で主要な列と「確認状況を見る」が画面外になり、横スクロールの手がかりも無い（ALIC-3）",
+      "status": "done",
+      "statusLabel": "完了",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "モバイルでは主要な情報と操作が、横スクロールなしで見えること（カード表示などで）",
+      "acceptance": [
+        "モバイルでは主要な情報と操作が、横スクロールなしで見えること（カード表示などで）"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "390px で、履歴は表 793px に対して表示幅 240px。初期表示では「送信日時」「休業期間」の2列しか見えず、理由・件数・確認状況を見るが画面外にある。確認状況を展開しても「リマインド」の列しか見えない。プレビューの日時も「10:00〜10:」で切れて見える。足軽1・2・4 の3体と実機E2E が同じことを観測した。先行の送信履歴の戦役の受け入れ条件（表コンテナ内の横スクロールは可）は満たしているが、スマホで誰が読んだかを見る導線が事実上見つからない。殿が裏取りした。<br>完了（2026-11-08）: PR #4313（head 0b77675、merge 2026-11-06、CI success: Frontend 42256754551・Frontend E2E 42256753988）。実機E2E は PR #4404 で合格（390px はカード、ページの横はみ出し 0px）。アリシゼーション run-20261108-emergency-closure（--視覚 mobile）で元に戻っている箇所は無し。 [完了証拠](evidence/CMP-261104-0336.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "390px で、履歴は表 793px に対して表示幅 240px。初期表示では「送信日時」「休業期間」の2列しか見えず、理由・件数・確認状況を見るが画面外にある。確認状況を展開しても「リマインド」の列しか見えない。プレビューの日時も「10:00〜10:」で切れて見える。足軽1・2・4 の3体と実機E2E が同じことを観測した。先行の送信履歴の戦役の受け入れ条件（表コンテナ内の横スクロールは可）は満たしているが、スマホで誰が読んだかを見る導線が事実上見つからない。殿が裏取りした。<br>完了（2026-11-08）: PR #4313（head 0b77675、merge 2026-11-06、CI success: Frontend 42256754551・Frontend E2E 42256753988）。実機E2E は PR #4404 で合格（390px はカード、ページの横はみ出し 0px）。アリシゼーション run-20261108-emergency-closure（--視覚 mobile）で元に戻っている箇所は無し。 [完了証拠](evidence/CMP-261104-0336.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "px",
+        "ALIC-3"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4313,
+        4404
+      ],
+      "github": [
+        {
+          "number": 4313,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4404,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261104-0337",
+      "title": "リロードや URL 直打ちの後、STOMP の CONNECT が空のトークンで送られ、確認状況のリアルタイム購読が拒否される（ALIC-4）",
+      "status": "done",
+      "statusLabel": "完了",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "リロード後も ADMIN が購読できること。認証の失敗と認可の拒否を区別して表示すること。DENIED のときは無限に再接続しないこと。他の STOMP 利用箇所も棚卸しすること",
+      "acceptance": [
+        "リロード後も ADMIN が購読できること。認証の失敗と認可の拒否を区別して表示すること。DENIED のときは無限に再接続しないこと。他の STOMP 利用箇所も棚卸しすること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "ページのリロードや URL 直打ちの後、CONNECT が `Authorization: Bearer `（空のトークン）で送られ、ADMIN でも `EmergencyClosureSubscriptionInterceptor` の userId==null の分岐で「未認証」として拒否される（BE ログ「購読を拒否（未認証）」）。FE は、どの ERROR フレームでも DENIED にする（`useEmergencyClosureLive.ts:264`）ため「閲覧権限がありません」と誤表示し、2秒ごとの再接続を無限に繰り返す。原因: `useAuthStore` の accessToken はメモリだけに持つのでリロードで null になり、`useEmergencyClosureLive.ts:239` がこれを `Bearer ${accessToken ?? ''}` に組んでいる。通知用の WS もリロード後は CONNECT のトークンが空だったため、緊急休業に限らない横断の課題の可能性がある。殿が裏取りした。<br>完了（2026-11-08）: BE PR #4286（Cookie 認証ハンドシェイク・x-error-code）、試験修正 PR #4327、FE PR #4309（head 2ad1fc0、merge 2026-11-05、CI success: Frontend 42108714648・Backend 42108714708）。実機E2E は PR #4404 で合格（空 Bearer 0本・ERROR 0、リロード後と URL 直打ち後の購読が成立）。アリシゼーション run-20261108-emergency-closure で元に戻っている箇所は無し。 [完了証拠](evidence/CMP-261104-0337.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "ページのリロードや URL 直打ちの後、CONNECT が `Authorization: Bearer `（空のトークン）で送られ、ADMIN でも `EmergencyClosureSubscriptionInterceptor` の userId==null の分岐で「未認証」として拒否される（BE ログ「購読を拒否（未認証）」）。FE は、どの ERROR フレームでも DENIED にする（`useEmergencyClosureLive.ts:264`）ため「閲覧権限がありません」と誤表示し、2秒ごとの再接続を無限に繰り返す。原因: `useAuthStore` の accessToken はメモリだけに持つのでリロードで null になり、`useEmergencyClosureLive.ts:239` がこれを `Bearer ${accessToken ?? ''}` に組んでいる。通知用の WS もリロード後は CONNECT のトークンが空だったため、緊急休業に限らない横断の課題の可能性がある。殿が裏取りした。<br>完了（2026-11-08）: BE PR #4286（Cookie 認証ハンドシェイク・x-error-code）、試験修正 PR #4327、FE PR #4309（head 2ad1fc0、merge 2026-11-05、CI success: Frontend 42108714648・Backend 42108714708）。実機E2E は PR #4404 で合格（空 Bearer 0本・ERROR 0、リロード後と URL 直打ち後の購読が成立）。アリシゼーション run-20261108-emergency-closure で元に戻っている箇所は無し。 [完了証拠](evidence/CMP-261104-0337.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "URL",
+        "STOMP",
+        "CONNECT",
+        "ALIC-4",
+        "ADMIN",
+        "DENIED",
+        "STOMP"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4286,
+        4309,
+        4327,
+        4404
+      ],
+      "github": [
+        {
+          "number": 4286,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4309,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4327,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4404,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261103-1225",
+      "title": "BE全域のN+1クエリ解消（SQL速度改善・Phase1〜5）",
+      "status": "working",
+      "statusLabel": "P4 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "偵察した約200候補（高約60）について、Phase1（ログイン後導線・ダッシュボード）、Phase2（一覧・詳細API）、Phase3（統計・CSV）、Phase4（バッチ・イベント。NotificationHelperのまとめ判定は単独）、Phase5（中・低を実測で選別し、見送りは理由を記録）を完了する。対象箇所ごとに、SQLを増やす要因を独立に増やしてもSQL数が一定であることをテストする。修正前にredを確認する。応答・認可・TX境界が修正前と等価であること",
+      "acceptance": [
+        "偵察した約200候補（高約60）について、Phase1（ログイン後導線・ダッシュボード）、Phase2（一覧・詳細API）、Phase3（統計・CSV）、Phase4（バッチ・イベント。NotificationHelperのまとめ判定は単独）、Phase5（中・低を実測で選別し、見送りは理由を記録）を完了する。対象箇所ごとに、SQLを増やす要因を独立に増やしてもSQL数が一定であることをテストする。修正前にredを確認する。応答・認可・TX境界が修正前と等価であること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "正本 issue #4270",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "正本 issue #4270"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        ".claude/campaigns/2026-11-03-n1-elimination.md（揮発）"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "BE",
+        "SQL",
+        "Phase1",
+        "Phase1",
+        "Phase2",
+        "API",
+        "Phase3",
+        "CSV",
+        "Phase4",
+        "NotificationHelper",
+        "Phase5",
+        "SQL",
+        "SQL",
+        "red",
+        "TX"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [
+        4270
+      ],
+      "github": [
+        {
+          "number": 4270,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261103-2059",
+      "title": "認証系の自前トークン発行3件（2FA回復 `Auth2faService`・OAuth連携確認 `AuthOAuthService`・メール変更 `UserService`）を共通金庫 `common/token/SecretTokenVault` へ統合する",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "3か所が `SecretTokenVault` 経由で発行・照合し、債務注釈 `@PlaintextTokenDebt(cmp=\"CMP-261103-2059\")` の残存が0であること（番人で保証）",
+      "acceptance": [
+        "3か所が `SecretTokenVault` 経由で発行・照合し、債務注釈 `@PlaintextTokenDebt(cmp=\"CMP-261103-2059\")` の残存が0であること（番人で保証）"
+      ],
+      "blocker": "CMP-260826-1457",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "3件とも UUID を SHA-256 で保存しており平文の保存は無いが、金庫を通らない自前の乱数で発行している。CMP-260826-1457 の番人の範囲外として債務注釈で追跡する"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "FA",
+        "Auth2faService",
+        "OAuth",
+        "AuthOAuthService",
+        "UserService",
+        "common",
+        "token",
+        "SecretTokenVault",
+        "SecretTokenVault",
+        "PlaintextTokenDebt",
+        "cmp",
+        "CMP-261103-2059"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261105-0343",
+      "title": "村の操作の導線の欠落と誤表示（参加連打・BAN解除・参加申請履歴・掲示板403誤表示）",
+      "status": "not-started",
+      "statusLabel": "P2 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "参加ボタンに loading・disabled・再入ガードが入り、連打しても POST が1回だけ送られる。BAN の解除導線（BE の unban API＋FE の BAN 一覧と解除操作）があり、BAN 済みの人が管理画面の一覧から見つかる。参加申請の履歴から村へのリンクと申請の取消ができる。非村人が村を開いても BulletinThreadList が「掲示板の取得に失敗しました」を出さない。回帰テスト（red→green）と実機E2E（実BE・実FE、権限あり・なし・他テナントのロール横断、URL直打ち含む）で確認する。",
+      "acceptance": [
+        "参加ボタンに loading・disabled・再入ガードが入り、連打しても POST が1回だけ送られる。BAN の解除導線（BE の unban API＋FE の BAN 一覧と解除操作）があり、BAN 済みの人が管理画面の一覧から見つかる。参加申請の履歴から村へのリンクと申請の取消ができる。非村人が村を開いても BulletinThreadList が「掲示板の取得に失敗しました」を出さない。回帰テスト（red→green）と実機E2E（実BE・実FE、権限あり・なし・他テナントのロール横断、URL直打ち含む）で確認する。"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "発見元: CMP-260827-1808 のアリシゼーション（verify-A の V1付記・V2・V3b・V4）。V2: 自由参加村で「参加する」5連打→POST 5回（201×1・409×4）、赤トースト4枚。原因 `frontend/app/components/VillageHeader.vue:325-331`（loading/disabled なし）、`frontend/app/pages/villages/[id].vue:215-228`（onJoin に再入ガードなし）。V3b: BE に unban API が無く（grep 0件）、一覧は現役のみ。`VillageMembershipService`（ban のみ）、設計書 `docs/features/F17.1_village_community.md:709-715` に解除の定義なし。ja ロケールの village.members の unban キーは未使用。V4: `frontend/app/pages/my/village-join-requests.vue:1-16` は読取専用で村リンク・取消なし。取消 API `useVillageMembershipApi.ts:246` は `/villages/[id]/join-request.vue:217` でしか使われない。V1付記: `frontend/app/components/bulletin/BulletinThreadList.vue:57-59` が 403 でもエラーを出す。2026-11-04 アリシゼーションで確定（既存欠陥）。V2 は #662（2026-05）、V4 は #3590（2026-10-12）から存在。証跡: `.claude/evidence/e2e-august-20261103/alicization-verify-A.md`",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "発見元: CMP-260827-1808 のアリシゼーション（verify-A の V1付記・V2・V3b・V4）。V2: 自由参加村で「参加する」5連打→POST 5回（201×1・409×4）、赤トースト4枚。原因 `frontend/app/components/VillageHeader.vue:325-331`（loading/disabled なし）、`frontend/app/pages/villages/[id].vue:215-228`（onJoin に再入ガードなし）。V3b: BE に unban API が無く（grep 0件）、一覧は現役のみ。`VillageMembershipService`（ban のみ）、設計書 `docs/features/F17.1_village_community.md:709-715` に解除の定義なし。ja ロケールの village.members の unban キーは未使用。V4: `frontend/app/pages/my/village-join-requests.vue:1-16` は読取専用で村リンク・取消なし。取消 API `useVillageMembershipApi.ts:246` は `/villages/[id]/join-request.vue:217` でしか使われない。V1付記: `frontend/app/components/bulletin/BulletinThreadList.vue:57-59` が 403 でもエラーを出す。2026-11-04 アリシゼーションで確定（既存欠陥）。V2 は #662（2026-05）、V4 は #3590（2026-10-12）から存在。証跡: `.claude/evidence/e2e-august-20261103/alicization-verify-A.md`"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "2026-11-04 アリシゼーション確定の既存欠陥（戦役起因ではない）"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "BAN",
+        "loading",
+        "disabled",
+        "POST",
+        "BAN",
+        "BE",
+        "unban",
+        "API",
+        "FE",
+        "BAN",
+        "BAN",
+        "BulletinThreadList",
+        "red",
+        "green",
+        "E2E",
+        "BE",
+        "FE",
+        "URL"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        662,
+        3590
+      ],
+      "github": [
+        {
+          "number": 662,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 3590,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "feat: 存在秘匿を維持する本人の村参加申請履歴",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3590",
+          "updatedAt": "2026-10-12T03:14:59Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261105-0344",
+      "title": "村人数キャッシュ villages.member_count_cache が参加・退村・BAN で更新されない",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "参加・退村・BAN・BAN後の再参加の各経路で member_count_cache が現役人数と一致するよう増減する（同一トランザクション内。経路ごとの回帰テストを red→green にする）。ヘッダーの村人数と一覧の totalElements・VillageAffinityService のヒントの数が一致する。既存データは現役人数から再計算して補正する（補正の要否を実DBの差分件数で確認して記録し、要なら Flyway 補正または一度きりの補正手順を用意する）。実機で参加→退村→BAN を行い、ヘッダー表示が追随することを確認する。",
+      "acceptance": [
+        "参加・退村・BAN・BAN後の再参加の各経路で member_count_cache が現役人数と一致するよう増減する（同一トランザクション内。経路ごとの回帰テストを red→green にする）。ヘッダーの村人数と一覧の totalElements・VillageAffinityService のヒントの数が一致する。既存データは現役人数から再計算して補正する（補正の要否を実DBの差分件数で確認して記録し、要なら Flyway 補正または一度きりの補正手順を用意する）。実機で参加→退村→BAN を行い、ヘッダー表示が追随することを確認する。"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "発見元: CMP-260827-1808 のアリシゼーション（verify-A の V5）。ヘッダー「村人数」は `villages.member_count_cache` を表示するが、書込は作成時のみ（`backend/.../VillageService.java:145`、`VillageCreationRequestService.java:145,235`）で、参加・退村・BAN で増減しない。`VillageService.java:569` が cache をそのまま返す。`VillageEntity.java:89-90`。VillageAffinityService:94 のヒントと一覧は現役を数えるため食い違う。2026-11-04 アリシゼーションで確定（既存欠陥）。F17 Phase1 #628 以来の欠陥で、1808 は入村経路を作り直したが cache 更新を足さなかった。データ不整合のため、村の導線の行とは別行にした。証跡: `.claude/evidence/e2e-august-20261103/alicization-verify-A.md`",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "発見元: CMP-260827-1808 のアリシゼーション（verify-A の V5）。ヘッダー「村人数」は `villages.member_count_cache` を表示するが、書込は作成時のみ（`backend/.../VillageService.java:145`、`VillageCreationRequestService.java:145,235`）で、参加・退村・BAN で増減しない。`VillageService.java:569` が cache をそのまま返す。`VillageEntity.java:89-90`。VillageAffinityService:94 のヒントと一覧は現役を数えるため食い違う。2026-11-04 アリシゼーションで確定（既存欠陥）。F17 Phase1 #628 以来の欠陥で、1808 は入村経路を作り直したが cache 更新を足さなかった。データ不整合のため、村の導線の行とは別行にした。証跡: `.claude/evidence/e2e-august-20261103/alicization-verify-A.md`"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "2026-11-04 アリシゼーション確定の既存欠陥（戦役起因ではない）"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "villages",
+        "member_count_cache",
+        "BAN",
+        "BAN",
+        "BAN",
+        "member_count_cache",
+        "red",
+        "green",
+        "totalElements",
+        "VillageAffinityService",
+        "DB",
+        "Flyway",
+        "BAN"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        628
+      ],
+      "github": [
+        {
+          "number": 628,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261105-0345",
+      "title": "「自分の予約」一覧がモバイル幅で崩れる（列の固定幅）",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "390px・360px 幅で、「自分の予約」一覧のステータスと取消ボタンが折り返さず画面内に収まる（横スクロール枠かレスポンシブな列指定）。360px で取消ボタンが操作できる。幅の回帰テストと、実機で 390/360 のスクリーンショット確認を行う。",
+      "acceptance": [
+        "390px・360px 幅で、「自分の予約」一覧のステータスと取消ボタンが折り返さず画面内に収まる（横スクロール枠かレスポンシブな列指定）。360px で取消ボタンが操作できる。幅の回帰テストと、実機で 390/360 のスクリーンショット確認を行う。"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "発見元: CMP-260822-1730 のアリシゼーション（verify-A の R2）。`frontend/app/components/reservation/ReservationList.vue:312,332,339,344,354` の列が固定 px（200+120+100+150=570px）で、DataTable に scrollable/レスポンシブ指定が無く、390/360 で折り返し、360 では取消ボタンが画面外に出る。2026-11-04 アリシゼーションで確定（既存欠陥）。固定幅は 2026-03 の初版から。証跡: `.claude/evidence/e2e-august-20261103/alicization-verify-A.md`",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "発見元: CMP-260822-1730 のアリシゼーション（verify-A の R2）。`frontend/app/components/reservation/ReservationList.vue:312,332,339,344,354` の列が固定 px（200+120+100+150=570px）で、DataTable に scrollable/レスポンシブ指定が無く、390/360 で折り返し、360 では取消ボタンが画面外に出る。2026-11-04 アリシゼーションで確定（既存欠陥）。固定幅は 2026-03 の初版から。証跡: `.claude/evidence/e2e-august-20261103/alicization-verify-A.md`"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "2026-11-04 アリシゼーション確定の既存欠陥（戦役起因ではない）"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "px",
+        "px",
+        "px"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261105-0346",
+      "title": "退会ダイアログの二重送信と説明文の食い違い（W1・W2）",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "削除ボタンをダブルクリックしても DELETE /users/me が1回しか送られない（in-flight ガード）。「この操作は取り消せません」「全てのデータが完全に削除されます」の説明を、30日以内の再ログインで取り消せる実際の挙動と、復帰できない項目（push・Google Calendar・天気地点・お気に入り）の制約に合わせて6言語（ja/en/zh/ko/es/de）で書き直す。回帰テスト（連打で1回のみ）と実機で、ダブルクリックと再ログインによる取消を確認する。",
+      "acceptance": [
+        "削除ボタンをダブルクリックしても DELETE /users/me が1回しか送られない（in-flight ガード）。「この操作は取り消せません」「全てのデータが完全に削除されます」の説明を、30日以内の再ログインで取り消せる実際の挙動と、復帰できない項目（push・Google Calendar・天気地点・お気に入り）の制約に合わせて6言語（ja/en/zh/ko/es/de）で書き直す。回帰テスト（連打で1回のみ）と実機で、ダブルクリックと再ログインによる取消を確認する。"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "発見元: CMP-260822-1243 のアリシゼーション（verify-A の W1・W2）。W1: `frontend/app/components/settings/SettingsDeletionPreviewDialog.vue:131-136` の confirm() は emit 後に currentPassword を空にするだけ、`frontend/app/pages/settings/account.vue:11-34` の handleDeleteAccount に in-flight 判定なし。2発目は空パスワードで AUTH_010（`UserService.java:696-698`、`AuthErrorCode.java:43`）。W2: `frontend/app/locales/ja/settings.json:24,482,484`（他言語も同趣旨）。BE の説明は `UserController.java:193`「30日間は取り消し可能」。設計 `docs/architecture/withdrawal_flow_immediate_anonymization_fix.md` §13.8 の部分復帰の案内（requiresReconfiguration）は account-restore 画面に未実装。2026-11-04 アリシゼーションで確定（既存欠陥）。W1 は 2026-04-30、W2 は 2026-06-22 から。証跡: `.claude/evidence/e2e-august-20261103/alicization-verify-A.md`",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "発見元: CMP-260822-1243 のアリシゼーション（verify-A の W1・W2）。W1: `frontend/app/components/settings/SettingsDeletionPreviewDialog.vue:131-136` の confirm() は emit 後に currentPassword を空にするだけ、`frontend/app/pages/settings/account.vue:11-34` の handleDeleteAccount に in-flight 判定なし。2発目は空パスワードで AUTH_010（`UserService.java:696-698`、`AuthErrorCode.java:43`）。W2: `frontend/app/locales/ja/settings.json:24,482,484`（他言語も同趣旨）。BE の説明は `UserController.java:193`「30日間は取り消し可能」。設計 `docs/architecture/withdrawal_flow_immediate_anonymization_fix.md` §13.8 の部分復帰の案内（requiresReconfiguration）は account-restore 画面に未実装。2026-11-04 アリシゼーションで確定（既存欠陥）。W1 は 2026-04-30、W2 は 2026-06-22 から。証跡: `.claude/evidence/e2e-august-20261103/alicization-verify-A.md`"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "2026-11-04 アリシゼーション確定の既存欠陥（戦役起因ではない）"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "W1",
+        "W2",
+        "DELETE",
+        "users",
+        "me",
+        "in-flight",
+        "push",
+        "Google",
+        "Calendar",
+        "ja",
+        "en",
+        "zh",
+        "ko",
+        "es",
+        "de"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261105-0347",
+      "title": "ログイン画面から確認メールの再送へ辿れない（AUTH_002）",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "メール未確認でログインして AUTH_002 になったとき、ログイン画面から確認メールの再送へ進める（トースト内または画面内のリンクから再送操作ができる）。再送は連打ガード付きで、レート制限の文言も案内する。回帰テストと実機で、未確認アカウントのログイン→再送→メール到達を確認する。",
+      "acceptance": [
+        "メール未確認でログインして AUTH_002 になったとき、ログイン画面から確認メールの再送へ進める（トースト内または画面内のリンクから再送操作ができる）。再送は連打ガード付きで、レート制限の文言も案内する。回帰テストと実機で、未確認アカウントのログイン→再送→メール到達を確認する。"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "発見元: CMP-260822-1243 のアリシゼーション（verify-A の W4）。`frontend/app/pages/login.vue:160-165` は AUTH_002 でトーストを出すだけで再送のリンクが無い（文言は `locales/ja/auth.json:38-39`）。ログイン画面の導線は `login.vue:207,272-283`（パスワード忘れ・登録のみ）。再送は登録直後の /verify-email にしか無い。2026-11-04 アリシゼーションで確定（既存欠陥）。#8b3ef7f917（2026-06-18）から。証跡: `.claude/evidence/e2e-august-20261103/alicization-verify-A.md`",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "発見元: CMP-260822-1243 のアリシゼーション（verify-A の W4）。`frontend/app/pages/login.vue:160-165` は AUTH_002 でトーストを出すだけで再送のリンクが無い（文言は `locales/ja/auth.json:38-39`）。ログイン画面の導線は `login.vue:207,272-283`（パスワード忘れ・登録のみ）。再送は登録直後の /verify-email にしか無い。2026-11-04 アリシゼーションで確定（既存欠陥）。#8b3ef7f917（2026-06-18）から。証跡: `.claude/evidence/e2e-august-20261103/alicization-verify-A.md`"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "2026-11-04 アリシゼーション確定の既存欠陥（戦役起因ではない）"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "AUTH_002",
+        "AUTH_002"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261105-0348",
+      "title": "シフト画面の案内欠落と権限表示のずれ（S1・S2・S4）",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "S1: 確定済み（PUBLISHED/ARCHIVED）のシフトへの変更依頼が 409 SHIFT_012 になる理由と、交代は交代申請から行う旨を画面が案内し、SelectButton の再クリックで種別が null にならない（:allow-empty=false）。S2: MEMBER に「編集」タブ、board の作成・削除・D&D・割当の UI が出ない（canManage で隠す。API は 403 で防御済みのまま）。S4: SUPPORTER が /shift/{id} を開いて 403 になったとき、本文が空白にならず、エラー表示と戻る導線が出る（edit.vue など同型のページも確認）。各回帰テストと、実機でロール別（ADMIN/MEMBER/SUPPORTER）に確認する。",
+      "acceptance": [
+        "S1: 確定済み（PUBLISHED/ARCHIVED）のシフトへの変更依頼が 409 SHIFT_012 になる理由と、交代は交代申請から行う旨を画面が案内し、SelectButton の再クリックで種別が null にならない（:allow-empty=false）。S2: MEMBER に「編集」タブ、board の作成・削除・D&D・割当の UI が出ない（canManage で隠す。API は 403 で防御済みのまま）。S4: SUPPORTER が /shift/{id} を開いて 403 になったとき、本文が空白にならず、エラー表示と戻る導線が出る（edit.vue など同型のページも確認）。各回帰テストと、実機でロール別（ADMIN/MEMBER/SUPPORTER）に確認する。"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "発見元: CMP-260826-2127 のアリシゼーション（verify-B の S1・S2・S4）。S1: BE の 409 は仕様どおり（`ShiftChangeRequestService.java:75-77`、`docs/features/F03.5_shift/01_db_design.md:271`）。FE `frontend/app/components/shift/ShiftChangeRequestForm.vue:17-25,56-62` は status を見ず、`frontend/app/composables/useChangeRequest.ts:40-43` は汎用文言。BE の 409 化（#3835、2026-10-14）に FE が追随していない。S2: `frontend/app/pages/shift/[id]/index.vue:226-230`（編集タブが canManage の外）、`frontend/app/pages/teams/[slug]/shifts/[scheduleId]/board.vue` と `ShiftBoardMatrix.vue` に権限判定なし。BE は `ShiftSlotFacade.java:92,105,118,131,148,159,164-177` で防御済み。S4: `frontend/app/pages/shift/[id]/index.vue:43-54`（catch は handleApiError のみ）、`:252-254`（schedule=null の描画分岐なし）。2026-11-04 アリシゼーションで確定（既存欠陥）。いずれも 2127 の変更ではない。S3（漏えいなし）は仕様どおり。証跡: `.claude/evidence/e2e-august-20261103/alicization-verify-B.md`",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "発見元: CMP-260826-2127 のアリシゼーション（verify-B の S1・S2・S4）。S1: BE の 409 は仕様どおり（`ShiftChangeRequestService.java:75-77`、`docs/features/F03.5_shift/01_db_design.md:271`）。FE `frontend/app/components/shift/ShiftChangeRequestForm.vue:17-25,56-62` は status を見ず、`frontend/app/composables/useChangeRequest.ts:40-43` は汎用文言。BE の 409 化（#3835、2026-10-14）に FE が追随していない。S2: `frontend/app/pages/shift/[id]/index.vue:226-230`（編集タブが canManage の外）、`frontend/app/pages/teams/[slug]/shifts/[scheduleId]/board.vue` と `ShiftBoardMatrix.vue` に権限判定なし。BE は `ShiftSlotFacade.java:92,105,118,131,148,159,164-177` で防御済み。S4: `frontend/app/pages/shift/[id]/index.vue:43-54`（catch は handleApiError のみ）、`:252-254`（schedule=null の描画分岐なし）。2026-11-04 アリシゼーションで確定（既存欠陥）。いずれも 2127 の変更ではない。S3（漏えいなし）は仕様どおり。証跡: `.claude/evidence/e2e-august-20261103/alicization-verify-B.md`"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "2026-11-04 アリシゼーション確定の既存欠陥（戦役起因ではない）"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "S1",
+        "S2",
+        "S4",
+        "S1",
+        "PUBLISHED",
+        "ARCHIVED",
+        "SHIFT_012",
+        "SelectButton",
+        "null",
+        "allow-empty",
+        "false",
+        "S2",
+        "MEMBER",
+        "board",
+        "UI",
+        "canManage",
+        "API",
+        "S4",
+        "SUPPORTER",
+        "shift",
+        "id",
+        "edit",
+        "vue",
+        "ADMIN",
+        "MEMBER",
+        "SUPPORTER"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        3835
+      ],
+      "github": [
+        {
+          "number": 3835,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261105-0349",
+      "title": "備品: 貸出・返却・履歴の画面が無い（E1）と、借りた本人の MEMBER が返却できない認可の仕様違反（E2）",
+      "status": "not-started",
+      "statusLabel": "P2 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "E1: 備品の品物を押すと詳細で、借りる・返す・履歴を操作できる画面がある（useEquipmentApi の assign/history を使う）。E2【認可の仕様違反】: 借りた本人（assigned_to_user_id が本人）の MEMBER が自分の貸出分を返却でき（200）、他人の貸出分は 403 のまま。チーム版・組織版の BE と controller の両方を直す。回帰テスト（本人 MEMBER 200・他人 MEMBER 403・ADMIN 200、red→green）と、実機で MEMBER 本人による貸出→返却を確認する。",
+      "acceptance": [
+        "E1: 備品の品物を押すと詳細で、借りる・返す・履歴を操作できる画面がある（useEquipmentApi の assign/history を使う）。E2【認可の仕様違反】: 借りた本人（assigned_to_user_id が本人）の MEMBER が自分の貸出分を返却でき（200）、他人の貸出分は 403 のまま。チーム版・組織版の BE と controller の両方を直す。回帰テスト（本人 MEMBER 200・他人 MEMBER 403・ADMIN 200、red→green）と、実機で MEMBER 本人による貸出→返却を確認する。"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "発見元: CMP-260821-1027 のアリシゼーション（verify-B の E1・E2）。E2（仕様違反・優先度高）: `backend/.../equipment/service/EquipmentAssignmentService.java:82`（returnForTeam）と `:93`（組織版）が checkAdminOrAbove のみで、assigned_to_user_id = 本人の分岐が無い。`TeamEquipmentController.java:162-170` も同様。仕様 `docs/features/F07.3_equipment.md:24`（MEMBER は自分の貸出分の返却操作）、`:288`、`:632`、`:662`、`:771`（自分の貸出分の返却のみ。不一致は 403）、`:818`。認可根治 Wave2 の 845e232a6f（#2268、2026-07-15）が返却を ADMIN 限定に絞り過ぎた。E1: `frontend/app/components/equipment/EquipmentList.vue:11,68` が emit('select') を出すが、`frontend/app/pages/teams/[slug]/equipment.vue:65-71` が受けていない。貸出・返却・履歴のページ・コンポーネントは存在しない。2026-11-04 アリシゼーションで確定（既存欠陥）。E1 は 2026-03 の初期実装から。E1 の導線を作ると E2 が表面化するため同じ行にした。証跡: `.claude/evidence/e2e-august-20261103/alicization-verify-B.md`",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "発見元: CMP-260821-1027 のアリシゼーション（verify-B の E1・E2）。E2（仕様違反・優先度高）: `backend/.../equipment/service/EquipmentAssignmentService.java:82`（returnForTeam）と `:93`（組織版）が checkAdminOrAbove のみで、assigned_to_user_id = 本人の分岐が無い。`TeamEquipmentController.java:162-170` も同様。仕様 `docs/features/F07.3_equipment.md:24`（MEMBER は自分の貸出分の返却操作）、`:288`、`:632`、`:662`、`:771`（自分の貸出分の返却のみ。不一致は 403）、`:818`。認可根治 Wave2 の 845e232a6f（#2268、2026-07-15）が返却を ADMIN 限定に絞り過ぎた。E1: `frontend/app/components/equipment/EquipmentList.vue:11,68` が emit('select') を出すが、`frontend/app/pages/teams/[slug]/equipment.vue:65-71` が受けていない。貸出・返却・履歴のページ・コンポーネントは存在しない。2026-11-04 アリシゼーションで確定（既存欠陥）。E1 は 2026-03 の初期実装から。E1 の導線を作ると E2 が表面化するため同じ行にした。証跡: `.claude/evidence/e2e-august-20261103/alicization-verify-B.md`"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "2026-11-04 アリシゼーション確定の既存欠陥（戦役起因ではない）"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "E1",
+        "MEMBER",
+        "E2",
+        "E1",
+        "useEquipmentApi",
+        "assign",
+        "history",
+        "E2",
+        "assigned_to_user_id",
+        "MEMBER",
+        "BE",
+        "controller",
+        "MEMBER",
+        "MEMBER",
+        "ADMIN",
+        "red",
+        "green",
+        "MEMBER"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        2268
+      ],
+      "github": [
+        {
+          "number": 2268,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261105-0350",
+      "title": "コルクボード: チーム・組織のボードへのメニューが無い（E3）と /corkboard の作成ボタン・共有ボード一覧の欠落（E4）",
+      "status": "not-started",
+      "statusLabel": "P2 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "E3: チームと組織のサイドバー（またはナビ）にコルクボードへのメニューがあり、チーム・組織の共有ボードへ画面から到達できる（URL 直打ち不要）。E4: /corkboard の「ボードを作成」が反応して作成でき、所属チームの共有ボードが一覧に出る（個人ボードだけの取得をやめる）。回帰テストと、実機で MEMBER・ADMIN・他チームのロール別に確認する。",
+      "acceptance": [
+        "E3: チームと組織のサイドバー（またはナビ）にコルクボードへのメニューがあり、チーム・組織の共有ボードへ画面から到達できる（URL 直打ち不要）。E4: /corkboard の「ボードを作成」が反応して作成でき、所属チームの共有ボードが一覧に出る（個人ボードだけの取得をやめる）。回帰テストと、実機で MEMBER・ADMIN・他チームのロール別に確認する。"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "発見元: CMP-260820-1422 のアリシゼーション（verify-B の E3・E4）。E3: `frontend/app/components/TeamSidebar.vue`・`OrganizationSidebar.vue` に項目が無く、唯一のリンクは `/my/corkboard` 用ウィジェット（`ScopeDashboard.vue:156,190`）と `useCorkboardDetail.ts:110` の router.push('/corkboard') のみ。E4: `frontend/app/pages/corkboard/index.vue:48` の Button に @click も遷移も無く、`:15,23` の getMyBoards（`useCorkboardApi.ts:62-64`、GET /api/v1/users/me/corkboards）は個人ボードのみ。createMyBoard はあるが未使用。2026-11-04 アリシゼーションで確定（既存欠陥）。最終変更 fff42c5188（2026-05-04）から。なお備品のメニュー非表示（E3前半）は検証チームでモジュール未有効のため環境起因として除外。証跡: `.claude/evidence/e2e-august-20261103/alicization-verify-B.md`",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "発見元: CMP-260820-1422 のアリシゼーション（verify-B の E3・E4）。E3: `frontend/app/components/TeamSidebar.vue`・`OrganizationSidebar.vue` に項目が無く、唯一のリンクは `/my/corkboard` 用ウィジェット（`ScopeDashboard.vue:156,190`）と `useCorkboardDetail.ts:110` の router.push('/corkboard') のみ。E4: `frontend/app/pages/corkboard/index.vue:48` の Button に @click も遷移も無く、`:15,23` の getMyBoards（`useCorkboardApi.ts:62-64`、GET /api/v1/users/me/corkboards）は個人ボードのみ。createMyBoard はあるが未使用。2026-11-04 アリシゼーションで確定（既存欠陥）。最終変更 fff42c5188（2026-05-04）から。なお備品のメニュー非表示（E3前半）は検証チームでモジュール未有効のため環境起因として除外。証跡: `.claude/evidence/e2e-august-20261103/alicization-verify-B.md`"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "2026-11-04 アリシゼーション確定の既存欠陥（戦役起因ではない）"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "E3",
+        "corkboard",
+        "E4",
+        "E3",
+        "URL",
+        "E4",
+        "corkboard",
+        "MEMBER",
+        "ADMIN"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261104-2256",
+      "title": "E-R図の複数自己参照の欠落是正",
+      "status": "done",
+      "statusLabel": "完了",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "同一テーブルに自己参照が2本以上ある場合（chat_messages・schedules・timeline_posts）、mermaid が線を1本に畳むため図から参照が消える。各ドメインページに「自己参照」表を出して全件を列挙し、凡例にこの制約を明記すること",
+      "acceptance": [
+        "同一テーブルに自己参照が2本以上ある場合（chat_messages・schedules・timeline_posts）、mermaid が線を1本に畳むため図から参照が消える。各ドメインページに「自己参照」表を出して全件を列挙し、凡例にこの制約を明記すること"
+      ],
+      "blocker": "CMP-261103-1940",
+      "issues": [
+        {
+          "label": "[PR #4298](https://github.com/kenta-0420/mannschaft/pull/4298)。[完了証拠](evidence/CMP-261104-2256.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "[PR #4298](https://github.com/kenta-0420/mannschaft/pull/4298)。[完了証拠](evidence/CMP-261104-2256.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "E-R",
+        "chat_messages",
+        "schedules",
+        "timeline_posts",
+        "mermaid"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4298
+      ],
+      "github": [
+        {
+          "number": 4298,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261105-0755",
+      "title": "L-SHIME 週次締めの全7 store照合、限定裁可10記録の履歴化、上限引下げとnightly weights再生成",
+      "status": "done",
+      "statusLabel": "完了",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "全7 storeを照合し先8件と後2件の限定裁可を区別。D1 2157→2153 / D3 1346→1335 / D3T 7353→7352 / D5 1897→1881、最新適格nightlyのweights・既存4 profile coverageを確認（親完了ではない）",
+      "acceptance": [
+        "全7 storeを照合し先8件と後2件の限定裁可を区別。D1 2157→2153 / D3 1346→1335 / D3T 7353→7352 / D5 1897→1881、最新適格nightlyのweights・既存4 profile coverageを確認（親完了ではない）"
+      ],
+      "blocker": "CMP-261021-0017 / #4022",
+      "issues": [
+        {
+          "label": "PR #4300、[完了証拠](evidence/CMP-261105-0755.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #4300、[完了証拠](evidence/CMP-261105-0755.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "L-SHIME",
+        "store",
+        "nightly",
+        "weights",
+        "store",
+        "D1",
+        "D3",
+        "D3T",
+        "D5",
+        "nightly",
+        "weights",
+        "profile",
+        "coverage"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4022,
+        4300
+      ],
+      "github": [
+        {
+          "number": 4022,
+          "kind": "issue",
+          "state": "open",
+          "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
+          "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
+          "updatedAt": "2026-10-27T05:08:11Z",
+          "ci": null
+        },
+        {
+          "number": 4300,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261105-1507",
+      "title": "N+1 戦役（CMP-261103-1225）Phase1 の実機E2E・アリシゼーションで見つかった既存不具合6件の修正",
+      "status": "working",
+      "statusLabel": "P2 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "次の6件を回帰テスト（red→green）付きで直す。① プロジェクトの進捗率が100倍で出る（FE の *100）。② 同じ秒のチャットが逆順に並ぶ（ChatMessageRepository で id を第2キーにしていない）。③ 時間割の学期作成で academicYear・sortOrder を省くと 500。④ 時間割を論理削除した後に学期を削除すると 500（fk_tm_term）。⑤ プロジェクト詳細の「関連タスク」が JSON の生データのまま出る。⑥ プロジェクト詳細の「マイルストーン」が「/」だけになる。あわせて実機での確認も行う",
+      "acceptance": [
+        "次の6件を回帰テスト（red→green）付きで直す。① プロジェクトの進捗率が100倍で出る（FE の *100）。② 同じ秒のチャットが逆順に並ぶ（ChatMessageRepository で id を第2キーにしていない）。③ 時間割の学期作成で academicYear・sortOrder を省くと 500。④ 時間割を論理削除した後に学期を削除すると 500（fk_tm_term）。⑤ プロジェクト詳細の「関連タスク」が JSON の生データのまま出る。⑥ プロジェクト詳細の「マイルストーン」が「/」だけになる。あわせて実機での確認も行う"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "発見元は PR #4302（docs/evidence/CMP-261103-1225/phase1-real-e2e.md）。マージ済み（すべて MERGED）: #4306（①⑤⑥ プロジェクト画面）、#4311（② チャットの同秒の順序）、#4324（③④ 時間割の学期）、#4343（学期画面のエラー表示）、#4355（マイルストーンの保存・プロジェクト画面の多言語化）、#4358（チームの学期・時間割をチーム単独で管理）。実機E2E の証拠 PR #4341 は未マージ。残件: チャットの存在秘匿・本人の編集削除・既読バッジ・多言語化（ブランチ fix/cmp-261105-1507-chat-alic、PR 未作成、D-3T 対応のため Facade 化中）。チャットの PR が着地するまで進行中",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "発見元は PR #4302（docs/evidence/CMP-261103-1225/phase1-real-e2e.md）。マージ済み（すべて MERGED）: #4306（①⑤⑥ プロジェクト画面）、#4311（② チャットの同秒の順序）、#4324（③④ 時間割の学期）、#4343（学期画面のエラー表示）、#4355（マイルストーンの保存・プロジェクト画面の多言語化）、#4358（チームの学期・時間割をチーム単独で管理）。実機E2E の証拠 PR #4341 は未マージ。残件: チャットの存在秘匿・本人の編集削除・既読バッジ・多言語化（ブランチ fix/cmp-261105-1507-chat-alic、PR 未作成、D-3T 対応のため Facade 化中）。チャットの PR が着地するまで進行中"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        ".claude/campaigns/2026-11-05-n1-found-defects.md"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "CMP-261103-1225",
+        "Phase1",
+        "E2E",
+        "red",
+        "green",
+        "FE",
+        "ChatMessageRepository",
+        "id",
+        "academicYear",
+        "sortOrder",
+        "fk_tm_term",
+        "JSON"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [
+        4302,
+        4306,
+        4311,
+        4324,
+        4341,
+        4343,
+        4355,
+        4358
+      ],
+      "github": [
+        {
+          "number": 4302,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4306,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4311,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4324,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4341,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4343,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4355,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4358,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261106-0049",
+      "title": "戦役台帳へ優先度 P1〜P5 を導入（状態列の先頭に必須・番人で機械的に強制）",
+      "status": "on-hold",
+      "statusLabel": "P4 保留（成果は PR #4310 で main に反映済み。完了証拠の要件を満たせない）",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "未完の全行の状態セル先頭に P1〜P5 が付き、番人 `TaskListCmpIdDuplicateGuardTest` が優先度なしの未完行を赤にすること。基準・「P1から順に片付ける」運用が `docs/task-list.md` 冒頭・`CLAUDE.md`・`/試練`・`/出陣` に明記されていること。台帳ゲートの状態パーサが先頭の優先度を読めること",
+      "acceptance": [
+        "未完の全行の状態セル先頭に P1〜P5 が付き、番人 `TaskListCmpIdDuplicateGuardTest` が優先度なしの未完行を赤にすること。基準・「P1から順に片付ける」運用が `docs/task-list.md` 冒頭・`CLAUDE.md`・`/試練`・`/出陣` に明記されていること。台帳ゲートの状態パーサが先頭の優先度を読めること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "PR #4310（番人の red→green、台帳356行へ付与）。#4310 は新 head（51f891745f）の CI が実行中のまま --admin でマージしたため、完了証拠の検証（マージ時点で実行中の check は拒否）を満たせない。規則は変えず保留とする。完了にするには、この戦役の続きの実装 PR を通常どおり CI 完走後にマージし、その PR で証拠を取る。",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #4310（番人の red→green、台帳356行へ付与）。#4310 は新 head（51f891745f）の CI が実行中のまま --admin でマージしたため、完了証拠の検証（マージ時点で実行中の check は拒否）を満たせない。規則は変えず保留とする。完了にするには、この戦役の続きの実装 PR を通常どおり CI 完走後にマージし、その PR で証拠を取る。"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "P1",
+        "P5",
+        "P1",
+        "P5",
+        "TaskListCmpIdDuplicateGuardTest",
+        "P1",
+        "docs",
+        "task-list",
+        "md",
+        "CLAUDE",
+        "md"
+      ],
+      "tags": [
+        "保留"
+      ],
+      "githubRefs": [
+        4310
+      ],
+      "github": [
+        {
+          "number": 4310,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261107-0551",
+      "title": "承認済み恐竜16種4外見3段階素材の本体統合",
+      "status": "done",
+      "statusLabel": "完了",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "承認済み walk/idle/feed/happy を牧場/widget へ接続し、旧個体互換・隔離 DEV・正式64/81 mapping 未指定を維持する。公開512 gate を不変とし、実機E2E・探索・性能・非表示を確認する",
+      "acceptance": [
+        "承認済み walk/idle/feed/happy を牧場/widget へ接続し、旧個体互換・隔離 DEV・正式64/81 mapping 未指定を維持する。公開512 gate を不変とし、実機E2E・探索・性能・非表示を確認する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "[実装PR #4353](https://github.com/kenta-0420/mannschaft/pull/4353) head `9e8e9ba15c`、H CI12成功・M Docker build/scanner/HTTP・health成功。限定複合実機/raw FAIL・正式3探索・未実証4観測・所有撤収の範囲は[最終記録](evidence/CMP-261107-0551.md)。[完了証拠](evidence/CMP-261107-0551.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "[実装PR #4353](https://github.com/kenta-0420/mannschaft/pull/4353) head `9e8e9ba15c`、H CI12成功・M Docker build/scanner/HTTP・health成功。限定複合実機/raw FAIL・正式3探索・未実証4観測・所有撤収の範囲は[最終記録](evidence/CMP-261107-0551.md)。[完了証拠](evidence/CMP-261107-0551.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "[選別証拠](evidence/CMP-261107-0551/README.md)"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "walk",
+        "idle",
+        "feed",
+        "happy",
+        "widget",
+        "DEV",
+        "mapping",
+        "gate",
+        "E2E"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4353
+      ],
+      "github": [
+        {
+          "number": 4353,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261107-1243",
+      "title": "お気に入りのチーム・組織名称更新契約修正",
+      "status": "working",
+      "statusLabel": "P4 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "正準pageUrlのslugと詳細取得時version（0有効）で名称を更新しnumericId一致を確認。読込中の名称入力・保存を禁止し、対象切替の応答逆転と4xx時の入力喪失・誤成功を防止する。型検査・回帰・CI・ロール横断実機・独立探索を完了する",
+      "acceptance": [
+        "正準pageUrlのslugと詳細取得時version（0有効）で名称を更新しnumericId一致を確認。読込中の名称入力・保存を禁止し、対象切替の応答逆転と4xx時の入力喪失・誤成功を防止する。型検査・回帰・CI・ロール横断実機・独立探索を完了する"
+      ],
+      "blocker": "PR #3644 / CMP-260916-1042",
+      "issues": [
+        {
+          "label": "L1-R実機で既存400/version欠落を確認。登録前の私有試作・単体回帰は保全するが適正な登録先行とは扱わない。PR #3644の正準URL提供に依存し、型検査・既存8件・CI・実機・独立探索は未完。製品公開は別途判断",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "L1-R実機で既存400/version欠落を確認。登録前の私有試作・単体回帰は保全するが適正な登録先行とは扱わない。PR #3644の正準URL提供に依存し、型検査・既存8件・CI・実機・独立探索は未完。製品公開は別途判断"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "pageUrl",
+        "slug",
+        "version",
+        "numericId",
+        "xx",
+        "CI"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [
+        3644
+      ],
+      "github": [
+        {
+          "number": 3644,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261107-0740",
+      "title": "LoyaltyPointsWriterIT 200並列初回作成テストの接続枯渇による不安定さの根治",
+      "status": "done",
+      "statusLabel": "完了",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "200並列が program 共有ロックを待つ間の Hikari 接続保持の仕組みを特定し、テスト意図（別人200人の初回でも作成は各1回）を弱めずに決定的に通る形へ直す。ローカル反復実行で確認する",
+      "acceptance": [
+        "200並列が program 共有ロックを待つ間の Hikari 接続保持の仕組みを特定し、テスト意図（別人200人の初回でも作成は各1回）を弱めずに決定的に通る形へ直す。ローカル反復実行で確認する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "PR #4290 の CI（run 42272037248、Test shard 4）で `Connection is not available, request timed out after 3100ms (total=23, active=23, waiting=132)` により2回続けて失敗。shard 構成で通ったり落ちたりする<br>完了（2026-11-08）: 台帳登録 PR #4363、PR #4364（試験クラスのプール設定。真因は試験前提の不足で本番コードの欠陥ではない）、PR #4392（head 40cf1ec、merge 2026-11-08、CI success: Backend 42439693063。並列の担い手を専用スレッドにし 180秒の期限を設けた）。変更は試験コードのみで UI が無いため、実機E2E とアリシゼーションは対象外（test-only）。 [完了証拠](evidence/CMP-261107-0740.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #4290 の CI（run 42272037248、Test shard 4）で `Connection is not available, request timed out after 3100ms (total=23, active=23, waiting=132)` により2回続けて失敗。shard 構成で通ったり落ちたりする<br>完了（2026-11-08）: 台帳登録 PR #4363、PR #4364（試験クラスのプール設定。真因は試験前提の不足で本番コードの欠陥ではない）、PR #4392（head 40cf1ec、merge 2026-11-08、CI success: Backend 42439693063。並列の担い手を専用スレッドにし 180秒の期限を設けた）。変更は試験コードのみで UI が無いため、実機E2E とアリシゼーションは対象外（test-only）。 [完了証拠](evidence/CMP-261107-0740.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "LoyaltyPointsWriterIT",
+        "program",
+        "Hikari"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4290,
+        4363,
+        4364,
+        4392
+      ],
+      "github": [
+        {
+          "number": 4290,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4363,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4364,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4392,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261107-2134",
+      "title": "権限カタログに MANAGE_TIMETABLE と MANAGE_CHAT が存在しない",
+      "status": "not-started",
+      "statusLabel": "P2 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "Flyway で権限 MANAGE_TIMETABLE・MANAGE_CHAT を登録し、BE の学期・時間割の変更系（checkAdminOrAbove のまま）を「ADMIN 以上、または当該権限を持つ DEPUTY_ADMIN」の判定へ切り替える。FE の can('MANAGE_TIMETABLE') が権限保持者で true になる表示条件にする。権限なし DEPUTY_ADMIN が 403 になることを契約 IT で固定する",
+      "acceptance": [
+        "Flyway で権限 MANAGE_TIMETABLE・MANAGE_CHAT を登録し、BE の学期・時間割の変更系（checkAdminOrAbove のまま）を「ADMIN 以上、または当該権限を持つ DEPUTY_ADMIN」の判定へ切り替える。FE の can('MANAGE_TIMETABLE') が権限保持者で true になる表示条件にする。権限なし DEPUTY_ADMIN が 403 になることを契約 IT で固定する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "仕様は F03.9 の権限表と F04.2 §5（DEPUTY_ADMIN は該当権限を持つときだけ ADMIN と同等）。現状は権限なしの DEPUTY_ADMIN も通り、FE の can('MANAGE_TIMETABLE') は常に false。マスターの裁可（2026-11-07）により CMP-261105-1507 とは別戦役",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "仕様は F03.9 の権限表と F04.2 §5（DEPUTY_ADMIN は該当権限を持つときだけ ADMIN と同等）。現状は権限なしの DEPUTY_ADMIN も通り、FE の can('MANAGE_TIMETABLE') は常に false。マスターの裁可（2026-11-07）により CMP-261105-1507 とは別戦役"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "CMP-261105-1507 派生（2026-11-07）"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "MANAGE_TIMETABLE",
+        "MANAGE_CHAT",
+        "Flyway",
+        "MANAGE_TIMETABLE",
+        "MANAGE_CHAT",
+        "BE",
+        "checkAdminOrAbove",
+        "ADMIN",
+        "DEPUTY_ADMIN",
+        "FE",
+        "can",
+        "MANAGE_TIMETABLE",
+        "true",
+        "DEPUTY_ADMIN",
+        "IT"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261107-2135",
+      "title": "f221-swipe-dashboard.spec.ts の NAV-GEOMETRY（360px・390px）の揺れの根治",
+      "status": "not-started",
+      "statusLabel": "P2 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "`frontend/tests/e2e/f221-swipe-dashboard.spec.ts:850` が揺れる原因（サブピクセルの丸めに対する許容が無い疑い）を特定し、許容の根拠を示したうえで根本から直す。反復実行で安定することを確認する",
+      "acceptance": [
+        "`frontend/tests/e2e/f221-swipe-dashboard.spec.ts:850` が揺れる原因（サブピクセルの丸めに対する許容が無い疑い）を特定し、許容の根拠を示したうえで根本から直す。反復実行で安定することを確認する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261105-1507 の PR #4355・#4358 で、main を取り込んだあとに落ちた（実測が期待より 0.5〜1.5px 小さい。例: 359.77 < 360.33）。いずれも再実行で緑になった",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261105-1507 の PR #4355・#4358 で、main を取り込んだあとに落ちた（実測が期待より 0.5〜1.5px 小さい。例: 359.77 < 360.33）。いずれも再実行で緑になった"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "CMP-261105-1507 派生（2026-11-07）"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "f221-swipe-dashboard",
+        "spec",
+        "ts",
+        "NAV-GEOMETRY",
+        "px",
+        "px",
+        "frontend",
+        "tests",
+        "e2e",
+        "f221-swipe-dashboard",
+        "spec",
+        "ts"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        4355,
+        4358
+      ],
+      "github": [
+        {
+          "number": 4355,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4358,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261107-2136",
+      "title": "CMP-261105-1507 で見つかった小さな残件（型の食い違い・学期名重複の表示・de の折返し）",
+      "status": "not-started",
+      "statusLabel": "P2 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "(1) FE の型 `TimetableTerm.scopeType` を BE の応答 `scope` に一致させ、型検査で固定する。(2) 学期名の重複（409 TIMETABLE_020）を汎用の失敗トーストではなく、名称欄の重複エラーとして画面に出す。(3) lang=de で `main.css:56-60` の `.p-button-label` と `PageHeader.vue:68` の `overflow-wrap:anywhere` が長い単語を途中で折るのを、hyphens などで単語境界を尊重する形へ直す。項目ごとに回帰テストまたは実機確認を行う",
+      "acceptance": [
+        "(1) FE の型 `TimetableTerm.scopeType` を BE の応答 `scope` に一致させ、型検査で固定する。(2) 学期名の重複（409 TIMETABLE_020）を汎用の失敗トーストではなく、名称欄の重複エラーとして画面に出す。(3) lang=de で `main.css:56-60` の `.p-button-label` と `PageHeader.vue:68` の `overflow-wrap:anywhere` が長い単語を途中で折るのを、hyphens などで単語境界を尊重する形へ直す。項目ごとに回帰テストまたは実機確認を行う"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261105-1507 の実機E2E・アリシゼーションで発見",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261105-1507 の実機E2E・アリシゼーションで発見"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "CMP-261105-1507 派生（2026-11-07）"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "CMP-261105-1507",
+        "de",
+        "FE",
+        "TimetableTerm",
+        "scopeType",
+        "BE",
+        "scope",
+        "TIMETABLE_020",
+        "lang",
+        "de",
+        "main",
+        "css",
+        "p-button-label",
+        "PageHeader",
+        "vue",
+        "overflow-wrap",
+        "anywhere",
+        "hyphens"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261107-1832",
+      "title": "招待承諾の grantRole 全面分離と照合の証拠づくり",
+      "status": "not-started",
+      "statusLabel": "P2 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "CMP-260826-1457 の分離で `MembershipGrantService.grantRole` に role と membership をまたぐトランザクションの越境（凍結済みの既存負債）が残った。①付与と確保記録（invite_token_claims）の GRANTED 化を同じトランザクションで行う ②そのうえで取り残された CLAIMED を自動で戻す照合バッチを入れる（「時間と現在の在籍だけでは付与の失敗を証明できない」制約を満たす照合にすること）③JoinRequest の既存の挙動（競合時の一意制約違反、user_roles だけが残る場合）を改善する ④BlockService が memberships を残す既存の不具合も直す。**本番公開の前に完了させる**",
+      "acceptance": [
+        "CMP-260826-1457 の分離で `MembershipGrantService.grantRole` に role と membership をまたぐトランザクションの越境（凍結済みの既存負債）が残った。①付与と確保記録（invite_token_claims）の GRANTED 化を同じトランザクションで行う ②そのうえで取り残された CLAIMED を自動で戻す照合バッチを入れる（「時間と現在の在籍だけでは付与の失敗を証明できない」制約を満たす照合にすること）③JoinRequest の既存の挙動（競合時の一意制約違反、user_roles だけが残る場合）を改善する ④BlockService が memberships を残す既存の不具合も直す。**本番公開の前に完了させる**"
+      ],
+      "blocker": "CMP-260826-1457 の招待承諾分離 PR",
+      "issues": [
+        {
+          "label": "正本の設計: `.claude/campaigns/2026-11-08-cmp1457-invite-accept-split.md` の §9.7 と §17（揮発ファイルのため要点を本行に記載）",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "正本の設計: `.claude/campaigns/2026-11-08-cmp1457-invite-accept-split.md` の §9.7 と §17（揮発ファイルのため要点を本行に記載）"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "grantRole",
+        "CMP-260826-1457",
+        "MembershipGrantService",
+        "grantRole",
+        "role",
+        "membership",
+        "invite_token_claims",
+        "GRANTED",
+        "CLAIMED",
+        "JoinRequest",
+        "user_roles",
+        "BlockService",
+        "memberships"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261107-1833",
+      "title": "招待付き新規登録が必ず ROLE_002 で失敗する不具合の根治（優先度高）",
+      "status": "not-started",
+      "statusLabel": "P1 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P1",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "事実: `AuthRegistrationService` は `PENDING_VERIFICATION` のまま招待参加を呼ぶが、`UserRepository.findByIdForUpdate` は ACTIVE しか返さないため、招待付きの登録は登録ごと巻き戻る。ベータ制限中は招待が必須なので、招待付きの登録が常に失敗する疑いがある。①登録時の参加資格の方針を決める（方向案: 登録時は保留として記録し、メール確認の完了時に本人として参加させる。メール確認後も ACTIVE にならない未成年の経路も考える）②実装し、実機 E2E で招待付き登録が成功することを確かめる ③分離 PR の特性試験 F2 を、期待値の反転として更新する",
+      "acceptance": [
+        "事実: `AuthRegistrationService` は `PENDING_VERIFICATION` のまま招待参加を呼ぶが、`UserRepository.findByIdForUpdate` は ACTIVE しか返さないため、招待付きの登録は登録ごと巻き戻る。ベータ制限中は招待が必須なので、招待付きの登録が常に失敗する疑いがある。①登録時の参加資格の方針を決める（方向案: 登録時は保留として記録し、メール確認の完了時に本人として参加させる。メール確認後も ACTIVE にならない未成年の経路も考える）②実装し、実機 E2E で招待付き登録が成功することを確かめる ③分離 PR の特性試験 F2 を、期待値の反転として更新する"
+      ],
+      "blocker": "CMP-260826-1457 の招待承諾分離 PR",
+      "issues": [
+        {
+          "label": "正本の設計: `.claude/campaigns/2026-11-08-cmp1457-invite-accept-split.md`",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "正本の設計: `.claude/campaigns/2026-11-08-cmp1457-invite-accept-split.md`"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "ROLE_002",
+        "AuthRegistrationService",
+        "PENDING_VERIFICATION",
+        "UserRepository",
+        "findByIdForUpdate",
+        "ACTIVE",
+        "ACTIVE",
+        "E2E",
+        "PR",
+        "F2"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261107-2216",
+      "title": "お気に入りカードが狭いウィジェットで名称幅0になる不具合の修正",
+      "status": "working",
+      "statusLabel": "P3 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "220px級のウィジェットでも空でない名称の描画幅が0にならず識別できる。狭幅・広幅・長名で横はみ出しを防ぎ、開く・編集・削除の操作、既存の権限制御、ドラッグ並替えを維持する。0件・空名称・利用不可の境界、回帰・型検査・CI・認可実機・実機後の独立探索を確認する",
+      "acceptance": [
+        "220px級のウィジェットでも空でない名称の描画幅が0にならず識別できる。狭幅・広幅・長名で横はみ出しを防ぎ、開く・編集・削除の操作、既存の権限制御、ドラッグ並替えを維持する。0件・空名称・利用不可の境界、回帰・型検査・CI・認可実機・実機後の独立探索を確認する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "実機で名称データが存在するのに描画幅0となる既存不具合を確認。単一行flex内で名称が縮み、操作群と種別badgeが縮まない構造。登録時点で製品修正と修正後の試験・実機・独立探索は未実施",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "実機で名称データが存在するのに描画幅0となる既存不具合を確認。単一行flex内で名称が縮み、操作群と種別badgeが縮まない構造。登録時点で製品修正と修正後の試験・実機・独立探索は未実施"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "対象はFavoriteCardの表示レイアウトのみ。同ID解決・名称更新契約とは別範囲。親grid・Widget・API・認可仕様は変更しない"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "px",
+        "CI"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261108-0254",
+      "title": "タイムラインダイジェストの6言語リソースが名前空間なしで読み込まれ、画面に翻訳キーが表示される",
+      "status": "working",
+      "statusLabel": "P2 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "ja/en/zh/ko/es/deの既存54キーと全ての文言を保持し、`timeline_digest.*`を実vue-i18nで解決する。日本語の見出し・空表示・設定ラベルが正常に表示されること。scope/API/権限/loaderは変更しない。実JSONと実vue-i18nの6caseをred先行で確認し、green・実機・実機後の独立探索で検証する",
+      "acceptance": [
+        "ja/en/zh/ko/es/deの既存54キーと全ての文言を保持し、`timeline_digest.*`を実vue-i18nで解決する。日本語の見出し・空表示・設定ラベルが正常に表示されること。scope/API/権限/loaderは変更しない。実JSONと実vue-i18nの6caseをred先行で確認し、green・実機・実機後の独立探索で検証する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "9月ダイジェスト(0024)の実機で一覧GET200・数値scope通過後に生キー表示を確認。6言語JSONは名前空間なしの54キーを直下に持ち、loaderはrootへmergeする。[PR #206](https://github.com/kenta-0420/mannschaft/pull/206)で導入、[PR #2634](https://github.com/kenta-0420/mannschaft/pull/2634)で同一症状を既知未修正として記録",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "9月ダイジェスト(0024)の実機で一覧GET200・数値scope通過後に生キー表示を確認。6言語JSONは名前空間なしの54キーを直下に持ち、loaderはrootへmergeする。[PR #206](https://github.com/kenta-0420/mannschaft/pull/206)で導入、[PR #2634](https://github.com/kenta-0420/mannschaft/pull/2634)で同一症状を既知未修正として記録"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "9月ダイジェスト(0024)の実機再検証に必要な前提修正として独立管理する。登録時点ではlocale/source/test未変更、修正後の実機・独立探索は未実施。9月ダイジェスト(0024)も未完了を維持する"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "ja",
+        "en",
+        "zh",
+        "ko",
+        "es",
+        "de",
+        "timeline_digest",
+        "vue-i18n",
+        "scope",
+        "API",
+        "loader",
+        "JSON",
+        "vue-i18n",
+        "case",
+        "red",
+        "green"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [
+        206,
+        2634
+      ],
+      "github": [
+        {
+          "number": 206,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 2634,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261108-0922",
+      "title": "組織基本情報編集の初期化遅延による入力上書きを防ぐ",
+      "status": "working",
+      "statusLabel": "P3 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "マスタ取得中は基本情報6項目の編集と保存を防ぎ、閉じて再表示した後の遅着応答が現在の入力・候補・初期化状態を上書きしない。取得失敗時は既存値のfallbackを維持し、通常更新と元名への復旧、既存の権限制御・version・送信項目を保つ。deferred回帰のred→green、既存回帰・型検査・CI・実機・実機後の独立探索を確認する",
+      "acceptance": [
+        "マスタ取得中は基本情報6項目の編集と保存を防ぎ、閉じて再表示した後の遅着応答が現在の入力・候補・初期化状態を上書きしない。取得失敗時は既存値のfallbackを維持し、通常更新と元名への復旧、既存の権限制御・version・送信項目を保つ。deferred回帰のred→green、既存回帰・型検査・CI・実機・実機後の独立探索を確認する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "実機で元名への復旧操作が変更後の名称を再送する事象を確認。初期化中も入力可能で、マスタ取得後にフォームを再設定する経路が存在する。登録時点では製品・テスト未変更、修正後の検証は未実施",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "実機で元名への復旧操作が変更後の名称を再送する事象を確認。初期化中も入力可能で、マスタ取得後にフォームを再設定する経路が存在する。登録時点では製品・テスト未変更、修正後の検証は未実施"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "対象はOrgBasicInfoEditDialog.vueと同一ディレクトリの回帰spec。編集導線追加の完了済みCMP-260907-0852とは別の不具合として管理し、公開範囲設定・共有フォーム・API・認可仕様へ拡張しない"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "fallback",
+        "version",
+        "deferred",
+        "red",
+        "green",
+        "CI"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261108-1635",
+      "title": "診断64コードと恐竜16種4外見の対応仕様を正本化",
+      "status": "done",
+      "statusLabel": "完了",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "全64code/64target1対1、採択16種/群/4外見、現行6軸不変、版付きdocs正本・未登録/既存個体/出生81/公開境界、検査/検分/通常CI",
+      "acceptance": [
+        "全64code/64target1対1、採択16種/群/4外見、現行6軸不変、版付きdocs正本・未登録/既存個体/出生81/公開境界、検査/検分/通常CI"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "[実装PR #4400](https://github.com/kenta-0420/mannschaft/pull/4400)、[完了証拠](evidence/CMP-261108-1635.json)、[検査・レビュー記録](evidence/CMP-261108-1635.md)。登録前候補の経緯を保持。runtime/正式masterは未登録",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "[実装PR #4400](https://github.com/kenta-0420/mannschaft/pull/4400)、[完了証拠](evidence/CMP-261108-1635.json)、[検査・レビュー記録](evidence/CMP-261108-1635.md)。登録前候補の経緯を保持。runtime/正式masterは未登録"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "code",
+        "target1",
+        "docs",
+        "CI"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4400
+      ],
+      "github": [
+        {
+          "number": 4400,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261108-1829",
+      "title": "開発途中で停止した worktree の棚卸しと開発再開",
+      "status": "not-started",
+      "statusLabel": "P2 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "別表 `docs/development/stalled-worktrees.md` のすべての行が「再開して PR マージ」「既存 PR へ統合」「破棄（理由つき、マスター承認）」のいずれかで決着し、対応する worktree が撤去されていること。未 push の固有 commit を持つ worktree は先に push または PR 化し、失われないことを確認する。決着した行は別表の状態を「決着」にする",
+      "acceptance": [
+        "別表 `docs/development/stalled-worktrees.md` のすべての行が「再開して PR マージ」「既存 PR へ統合」「破棄（理由つき、マスター承認）」のいずれかで決着し、対応する worktree が撤去されていること。未 push の固有 commit を持つ worktree は先に push または PR 化し、失われないことを確認する。決着した行は別表の状態を「決着」にする"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "[別表](development/stalled-worktrees.md)（2026-11-08 時点 203 本・うち未 push の固有 commit あり 97 本）。第1段で副産物のみの 6 本を撤去、ブランチは未削除",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "[別表](development/stalled-worktrees.md)（2026-11-08 時点 203 本・うち未 push の固有 commit あり 97 本）。第1段で副産物のみの 6 本を撤去、ブランチは未削除"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "worktree",
+        "docs",
+        "development",
+        "stalled-worktrees",
+        "md",
+        "PR",
+        "PR",
+        "worktree",
+        "push",
+        "commit",
+        "worktree",
+        "push",
+        "PR"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261108-1050",
+      "title": "緊急休業: 送信成功後も入力が残り、再送で同じ休業が二重に作られ患者へ2通届く",
+      "status": "not-started",
+      "statusLabel": "P2 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "成功後にフォームを空にする。同じ期間に送信済みの休業があれば送信前に警告する。方式（警告か確認か）は軍議で決める",
+      "acceptance": [
+        "成功後にフォームを空にする。同じ期間に送信済みの休業があれば送信前に警告する。方式（警告か確認か）は軍議で決める"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "EmergencyClosureForm.vue:275 は idempotencyKey を null にするだけ。BE sendClosure は期間重複を見ない。実データ: チーム1727の休業53と56、1729の54と55。アリシゼーション run-20261108（緊急休業）で確定。証跡 C:\\Claude\\evidence-archive\\alicization\\run-20261108-emergency-closure\\",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "EmergencyClosureForm.vue:275 は idempotencyKey を null にするだけ。BE sendClosure は期間重複を見ない。実データ: チーム1727の休業53と56、1729の54と55。アリシゼーション run-20261108（緊急休業）で確定。証跡 C:\\Claude\\evidence-archive\\alicization\\run-20261108-emergency-closure\\"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261108-1051",
+      "title": "緊急休業の確認状況: 「リマインド 未送信」の意味が利用者に誤読される",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "列の名前と意味を正す。患者へのリマインドの状態を表示する。手動の再通知導線を設けるかは軍議で決める",
+      "acceptance": [
+        "列の名前と意味を正す。患者へのリマインドの状態を表示する。手動の再通知導線を設けるかは軍議で決める"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "行の値は送信者へのアラート有無（reminderSentAt、EmergencyClosureService.java:329）だが患者向けと読まれ、患者向けの状態はどこにも出ない。de は見出し「1 gesendet」と行「Nicht gesendet」が矛盾。F04.9 の resend-reminder に緊急休業は乗っていない。アリシゼーション run-20261108（緊急休業）で確定。証跡 C:\\Claude\\evidence-archive\\alicization\\run-20261108-emergency-closure\\",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "行の値は送信者へのアラート有無（reminderSentAt、EmergencyClosureService.java:329）だが患者向けと読まれ、患者向けの状態はどこにも出ない。de は見出し「1 gesendet」と行「Nicht gesendet」が矛盾。F04.9 の resend-reminder に緊急休業は乗っていない。アリシゼーション run-20261108（緊急休業）で確定。証跡 C:\\Claude\\evidence-archive\\alicization\\run-20261108-emergency-closure\\"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261108-1052",
+      "title": "緊急休業: プレビューの件数（予約）と送信結果の件数（人数）が同じ「件」",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "予約の件数と人数を区別して表示する（ja で「4件の予約に通知」の後に「1件に送信」と出ない）",
+      "acceptance": [
+        "予約の件数と人数を区別して表示する（ja で「4件の予約に通知」の後に「1件に送信」と出ない）"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "EmergencyClosurePreview.vue:40 は予約件数、sentCount は人数（EmergencyClosureService.java:139-142）。アリシゼーション run-20261108（緊急休業）で確定。証跡 C:\\Claude\\evidence-archive\\alicization\\run-20261108-emergency-closure\\",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "EmergencyClosurePreview.vue:40 は予約件数、sentCount は人数（EmergencyClosureService.java:139-142）。アリシゼーション run-20261108（緊急休業）で確定。証跡 C:\\Claude\\evidence-archive\\alicization\\run-20261108-emergency-closure\\"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "ja"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261108-1053",
+      "title": "全体共通: ボタンラベルの white-space:normal が最小幅を潰し語の途中で折れる",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "全体の規則を見直し、該当の見出し行に flex-wrap を付けるか、ボタンを shrink-0 にする。390px と 360px、de・ko・ja で語が途中で折れないこと",
+      "acceptance": [
+        "全体の規則を見直し、該当の見出し行に flex-wrap を付けるか、ボタンを shrink-0 にする。390px と 360px、de・ko・ja で語が途中で折れないこと"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "main.css:56-60 の .p-button .p-button-label{white-space:normal;overflow-wrap:anywhere}（767px以下。8f7a6dddd2、CMP-260907-1038）。EmergencyClosurePreview.vue:20 の flex は折り返しも shrink-0 も無く、de のボタンが 116x98 で「Reservieru/ngen」と折れる。CMP-261010-1815 の ko ボタンと同根。アリシゼーション run-20261108（緊急休業）で確定。証跡 C:\\Claude\\evidence-archive\\alicization\\run-20261108-emergency-closure\\",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "main.css:56-60 の .p-button .p-button-label{white-space:normal;overflow-wrap:anywhere}（767px以下。8f7a6dddd2、CMP-260907-1038）。EmergencyClosurePreview.vue:20 の flex は折り返しも shrink-0 も無く、de のボタンが 116x98 で「Reservieru/ngen」と折れる。CMP-261010-1815 の ko ボタンと同根。アリシゼーション run-20261108（緊急休業）で確定。証跡 C:\\Claude\\evidence-archive\\alicization\\run-20261108-emergency-closure\\"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "white-space",
+        "normal",
+        "flex-wrap",
+        "shrink-0",
+        "px",
+        "px",
+        "de",
+        "ko",
+        "ja"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261108-1054",
+      "title": "緊急休業: 必須の欠けをトーストでしか知らせない（欄ごとのエラー無し）",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "欄に結び付いたエラー（赤枠・該当欄へのスクロール）を出す。FE規約 §7（Zod＋VeeValidate）に合わせる",
+      "acceptance": [
+        "欄に結び付いたエラー（赤枠・該当欄へのスクロール）を出す。FE規約 §7（Zod＋VeeValidate）に合わせる"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "EmergencyClosureForm.vue:227-249。アリシゼーション run-20261108（緊急休業）で確定。証跡 C:\\Claude\\evidence-archive\\alicization\\run-20261108-emergency-closure\\",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "EmergencyClosureForm.vue:227-249。アリシゼーション run-20261108（緊急休業）で確定。証跡 C:\\Claude\\evidence-archive\\alicization\\run-20261108-emergency-closure\\"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "FE",
+        "Zod",
+        "VeeValidate"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261108-1055",
+      "title": "予約の SlotMatrixPicker: 週の表示が YYYY/MM/DD に固定されロケールに従わない",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "useDatetime の共通関数へ寄せ、ロケールに従った表示にする",
+      "acceptance": [
+        "useDatetime の共通関数へ寄せ、ロケールに従った表示にする"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "SlotMatrixPicker.vue:216-221、:127（'YYYY/MM/DD (ddd)'、dayjs ロケールは ja 固定）。de でも「Woche 2026/11/02 - 2026/11/08」。CMP-261104-0335 の範囲外。アリシゼーション run-20261108（緊急休業）で確定。証跡 C:\\Claude\\evidence-archive\\alicization\\run-20261108-emergency-closure\\",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "SlotMatrixPicker.vue:216-221、:127（'YYYY/MM/DD (ddd)'、dayjs ロケールは ja 固定）。de でも「Woche 2026/11/02 - 2026/11/08」。CMP-261104-0335 の範囲外。アリシゼーション run-20261108（緊急休業）で確定。証跡 C:\\Claude\\evidence-archive\\alicization\\run-20261108-emergency-closure\\"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "SlotMatrixPicker",
+        "YYYY",
+        "MM",
+        "DD",
+        "useDatetime"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261108-1056",
+      "title": "緊急休業: テンプレート選択が入力済みの理由・件名・本文を確認なしで上書きする",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "入力済みのときはテンプレート適用前に確認するか、元に戻せるようにする。判断保留（併記）: 別ページへ行って戻ると入力が消える（離脱ガードも下書きも無い。共通化は CMP-103 以後まだ）",
+      "acceptance": [
+        "入力済みのときはテンプレート適用前に確認するか、元に戻せるようにする。判断保留（併記）: 別ページへ行って戻ると入力が消える（離脱ガードも下書きも無い。共通化は CMP-103 以後まだ）"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "applyTemplate、EmergencyClosureForm.vue:122-129。2026-11-04 の回でも観測。アリシゼーション run-20261108（緊急休業）で確定。証跡 C:\\Claude\\evidence-archive\\alicization\\run-20261108-emergency-closure\\",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "applyTemplate、EmergencyClosureForm.vue:122-129。2026-11-04 の回でも観測。アリシゼーション run-20261108（緊急休業）で確定。証跡 C:\\Claude\\evidence-archive\\alicization\\run-20261108-emergency-closure\\"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "CMP-103"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261108-1057",
+      "title": "予約のタブ列: 前後へ送るボタンが 44px に足りない（40x57）",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "44x44 以上にする",
+      "acceptance": [
+        "44x44 以上にする"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "TeamReservationsPanel.vue:281 に、ScopePageShell.vue:89 の min-h-11 min-w-11 相当の pt が無い。CMP-261010-1815 と同型の漏れ。アリシゼーション run-20261108（緊急休業）で確定。証跡 C:\\Claude\\evidence-archive\\alicization\\run-20261108-emergency-closure\\",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "TeamReservationsPanel.vue:281 に、ScopePageShell.vue:89 の min-h-11 min-w-11 相当の pt が無い。CMP-261010-1815 と同型の漏れ。アリシゼーション run-20261108（緊急休業）で確定。証跡 C:\\Claude\\evidence-archive\\alicization\\run-20261108-emergency-closure\\"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "px",
+        "x57",
+        "x44"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261108-1058",
+      "title": "緊急休業のテンプレート: 医療前提の文言（診療を休業・患者名）が他業種に合わない",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "業種を問わない語にする。業種別テンプレートにするかは軍議で決める",
+      "acceptance": [
+        "業種を問わない語にする。業種別テンプレートにするかは軍議で決める"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "ja 本文3種が「診療を休業」、表見出しが「患者名」。EmergencyClosureForm.vue:94-120、locales/*/reservation.json の emergency_closure.template.*。対象チームはヨガ・美容室・飲食店・ジム等も含む（F03.4_reservation.md:30）。アリシゼーション run-20261108（緊急休業）で確定。証跡 C:\\Claude\\evidence-archive\\alicization\\run-20261108-emergency-closure\\",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "ja 本文3種が「診療を休業」、表見出しが「患者名」。EmergencyClosureForm.vue:94-120、locales/*/reservation.json の emergency_closure.template.*。対象チームはヨガ・美容室・飲食店・ジム等も含む（F03.4_reservation.md:30）。アリシゼーション run-20261108（緊急休業）で確定。証跡 C:\\Claude\\evidence-archive\\alicization\\run-20261108-emergency-closure\\"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261108-1059",
+      "title": "緊急休業: 時刻選択が1時間刻みのみ（判断保留）",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "軍議で粒度を決め、FE と BE を揃える（予約枠は30分単位。10:00〜10:30 の枠だけを休めない）",
+      "acceptance": [
+        "軍議で粒度を決め、FE と BE を揃える（予約枠は30分単位。10:00〜10:30 の枠だけを休めない）"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "FE: EmergencyClosureForm.vue:28-32、BE: EmergencyClosureService.java:433-435 が分≠0 を拒否（根拠は V3.069 のコメントのみ）。予約枠は F03.4 RESERVATION_022。アリシゼーション run-20261108（緊急休業）で確定。証跡 C:\\Claude\\evidence-archive\\alicization\\run-20261108-emergency-closure\\",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "FE: EmergencyClosureForm.vue:28-32、BE: EmergencyClosureService.java:433-435 が分≠0 を拒否（根拠は V3.069 のコメントのみ）。予約枠は F03.4 RESERVATION_022。アリシゼーション run-20261108（緊急休業）で確定。証跡 C:\\Claude\\evidence-archive\\alicization\\run-20261108-emergency-closure\\"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "FE",
+        "BE"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261108-1100",
+      "title": "設計: 緊急休業の設計書が無く、実装が F04.9 §3 の定めと食い違う",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "設計書を実装に合わせて起こすか、実装を F04.9 に寄せるかを決め、設計書と実装を一致させる",
+      "acceptance": [
+        "設計書を実装に合わせて起こすか、実装を F04.9 に寄せるかを決め、設計書と実装を一致させる"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "F04.9_confirmable_notification.md:91-99 は「emergency_closure_* は作らず confirmable_* で作る」と定めるが、実装は V3.066〜069 の独自テーブルと EmergencyClosure* の独自の流れ。アリシゼーション run-20261108（緊急休業）で確定。",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "F04.9_confirmable_notification.md:91-99 は「emergency_closure_* は作らず confirmable_* で作る」と定めるが、実装は V3.066〜069 の独自テーブルと EmergencyClosure* の独自の流れ。アリシゼーション run-20261108（緊急休業）で確定。"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "F04",
+        "F04"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261108-1101",
+      "title": "ポイント: LoyaltySettingsWriter.updateProgram の同時初回作成でデッドロックが利用者向けエラーに変換されない",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "デッドロックを再試行するか利用者向けエラー（COMMON_003）に変換し、2並列の初回作成のテストで確かめる",
+      "acceptance": [
+        "デッドロックを再試行するか利用者向けエラー（COMMON_003）に変換し、2並列の初回作成のテストで確かめる"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "未作成の program を2要求が同時に作ると MySQL 1213 が CannotAcquireLockException のまま外に出る。LoyaltyPointsWriter は再試行・変換しているが無い。PR #4392 の調査で carrier 2本の AC12 失敗として観測。",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "未作成の program を2要求が同時に作ると MySQL 1213 が CannotAcquireLockException のまま外に出る。LoyaltyPointsWriter は再試行・変換しているが無い。PR #4392 の調査で carrier 2本の AC12 失敗として観測。"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "LoyaltySettingsWriter",
+        "updateProgram",
+        "COMMON_003"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        4392
+      ],
+      "github": [
+        {
+          "number": 4392,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261108-1102",
+      "title": "FE スモーク E2E: f221-swipe-dashboard.spec.ts の NAV-GEOMETRY が PR と無関係に揺れる",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "サブピクセルの丸めか描画待ちのどちらが原因かを突き止めて安定させる",
+      "acceptance": [
+        "サブピクセルの丸めか描画待ちのどちらが原因かを突き止めて安定させる"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "f221-swipe-dashboard.spec.ts:850（スコープナビ 360px と 390px）。jumpBox.y が foldersBox の下端より 0.57px 上（期待 ≥360.34、実測 359.77）。PR #4290 と #4313 で観測。",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "f221-swipe-dashboard.spec.ts:850（スコープナビ 360px と 390px）。jumpBox.y が foldersBox の下端より 0.57px 上（期待 ≥360.34、実測 359.77）。PR #4290 と #4313 で観測。"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "FE",
+        "E2E",
+        "f221-swipe-dashboard",
+        "spec",
+        "ts",
+        "NAV-GEOMETRY",
+        "PR"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        4290,
+        4313
+      ],
+      "github": [
+        {
+          "number": 4290,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4313,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261108-1103",
+      "title": "BE CI: shard 割り当てが Spring コンテキスト共有を考慮せず、Flyway 系全件 PR で 105 分打切りに届く",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "コンテキスト共有を加味した割り当てにするか、時間の上限を見直す",
+      "acceptance": [
+        "コンテキスト共有を加味した割り当てにするか、時間の上限を見直す"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "backend/build-logic/src/main/kotlin/ShardAssignment.kt はクラス重み＋LPT。重み合計が均等でも実測は 6822〜10656 秒に散る。migration を触る PR は shard が打切りに届く（PR #4290 で shard 0 が2回、shard 4 も 99 分）。",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "backend/build-logic/src/main/kotlin/ShardAssignment.kt はクラス重み＋LPT。重み合計が均等でも実測は 6822〜10656 秒に散る。migration を触る PR は shard が打切りに届く（PR #4290 で shard 0 が2回、shard 4 も 99 分）。"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "BE",
+        "CI",
+        "shard",
+        "Spring",
+        "Flyway",
+        "PR"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        4290
+      ],
+      "github": [
+        {
+          "number": 4290,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261108-1104",
+      "title": "開発環境: 本陣 frontend/node_modules が作業中に空になった（原因未特定）",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "原因を突き止め、再発を防ぐ（疑い: worktree の junction を外す前の削除、npm ci）",
+      "acceptance": [
+        "原因を突き止め、再発を防ぐ（疑い: worktree の junction を外す前の削除、npm ci）"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "2026-11-06 に 0 件化。足軽の worktree から robocopy で復元し 887 件・.bin 267 件の一致を確認。",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "2026-11-06 に 0 件化。足軽の worktree から robocopy で復元し 887 件・.bin 267 件の一致を確認。"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "frontend",
+        "node_modules",
+        "worktree",
+        "junction",
+        "npm",
+        "ci"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261108-1105",
+      "title": "運用スクリプト wait-merge.sh: 比較失敗でも overlap=[] と判定して admin マージへ進む",
+      "status": "not-started",
+      "statusLabel": "P2 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "比較の前に fetch する。比較に失敗したらマージを止める。当該スクリプトは .gitignore（.gitignore:34 の .claude/campaigns/*）で git 追跡外のため、修正は揮発物のローカル修正になる。再発防止を残すなら追跡される場所（スクリプトの正本化または /凱旋 の手順文書）へ移すこと",
+      "acceptance": [
+        "比較の前に fetch する。比較に失敗したらマージを止める。当該スクリプトは .gitignore（.gitignore:34 の .claude/campaigns/*）で git 追跡外のため、修正は揮発物のローカル修正になる。再発防止を残すなら追跡される場所（スクリプトの正本化または /凱旋 の手順文書）へ移すこと"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "ローカルに無い commit の比較が fatal: Invalid symmetric difference expression で失敗するのに overlap=[] と判定。PR #4392 のマージで発生（事後に手で確認し、重なりは無かった）。",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "ローカルに無い commit の比較が fatal: Invalid symmetric difference expression で失敗するのに overlap=[] と判定。PR #4392 のマージで発生（事後に手で確認し、重なりは無かった）。"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "wait-merge",
+        "sh",
+        "overlap",
+        "admin",
+        "fetch",
+        "gitignore",
+        "gitignore",
+        "claude",
+        "campaigns",
+        "git"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        4392
+      ],
+      "github": [
+        {
+          "number": 4392,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261108-2000",
+      "title": "CMP-261021-0017 子: L-SHIME早期締め（全7store照合・上限引下げ・推移報告・nightly weights更新）",
+      "status": "working",
+      "statusLabel": "P4 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "前回締めmain2557ef2以後の全7storeの減少・追加を返済PRへ突き合わせ、全EXPECTED_LINESをmain実測へ一致させる。履歴とL0-Cドメイン別推移、適格成功nightlyの全key由来・現source分類を記録し、既存compiled全4profile coverage・Integrity・全CI・独立検分で検証する",
+      "acceptance": [
+        "前回締めmain2557ef2以後の全7storeの減少・追加を返済PRへ突き合わせ、全EXPECTED_LINESをmain実測へ一致させる。履歴とL0-Cドメイン別推移、適格成功nightlyの全key由来・現source分類を記録し、既存compiled全4profile coverage・Integrity・全CI・独立検分で検証する"
+      ],
+      "blocker": "CMP-261021-0017、CMP-261021-2213（L1-F）",
+      "issues": [
+        {
+          "label": "owner e8ded143-7eea-4189-a530-7708882e1200、正規closure claim027449f2確定。登録時点で共有編集・製品/テスト変更・重量実行0。前回週次締め11/5からの早期締めとして全scopeを実施し、weightsだけの更新で完了にしない",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "owner e8ded143-7eea-4189-a530-7708882e1200、正規closure claim027449f2確定。登録時点で共有編集・製品/テスト変更・重量実行0。前回週次締め11/5からの早期締めとして全scopeを実施し、weightsだけの更新で完了にしない"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "親Issue #4022。番人判定・ストア本体・CI/timeout/shard/forkは変更しない。UI/API/DB変更のないtest-onlyで実機・画面探索は理由付き対象外、親/L5-Iは未完了"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "CMP-261021-0017",
+        "L-SHIME",
+        "store",
+        "nightly",
+        "weights",
+        "main2557ef2",
+        "store",
+        "PR",
+        "EXPECTED_LINES",
+        "main",
+        "L0-C",
+        "nightly",
+        "key",
+        "source",
+        "compiled",
+        "profile",
+        "coverage",
+        "Integrity",
+        "CI"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [
+        4022
+      ],
+      "github": [
+        {
+          "number": 4022,
+          "kind": "issue",
+          "state": "open",
+          "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
+          "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
+          "updatedAt": "2026-10-27T05:08:11Z",
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261108-2026",
+      "title": "恐竜診断64・出生占い81の対応をアプリ登録し実機・探索で検証",
+      "status": "working",
+      "statusLabel": "P2 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "scope app。新規結果・割当を正式対応へ接続し、既存snapshot・個体を不変とする。認可・プロフィール確認revision・途中失敗とUI再閲覧を確認。承認素材・公開境界を保持し、red→green・CI・実機E2E後の3住民独立探索まで証拠を揃える",
+      "acceptance": [
+        "scope app。新規結果・割当を正式対応へ接続し、既存snapshot・個体を不変とする。認可・プロフィール確認revision・途中失敗とUI再閲覧を確認。承認素材・公開境界を保持し、red→green・CI・実機E2E後の3住民独立探索まで証拠を揃える"
+      ],
+      "blocker": "CMP-261108-1635",
+      "issues": [
+        {
+          "label": "登録時点の採択確認中から更新: 出生81対応案・質問24問/tie6問・6言語原稿を正式採択。製品未実装・実機未実施・本番未公開。旧仮ID CMP-261108-2000はmain既存戦役との衝突により改番",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "登録時点の採択確認中から更新: 出生81対応案・質問24問/tie6問・6言語原稿を正式採択。製品未実装・実機未実施・本番未公開。旧仮ID CMP-261108-2000はmain既存戦役との衝突により改番"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "scope",
+        "app",
+        "snapshot",
+        "revision",
+        "UI",
+        "red",
+        "green",
+        "CI",
+        "E2E"
+      ],
+      "tags": [
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
