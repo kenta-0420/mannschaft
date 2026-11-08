@@ -1,0 +1,687 @@
+{
+  "mappingVersion": "diagnosis64-spec-v1",
+  "specStatus": "FIXED",
+  "runtimeStatus": "NOT_REGISTERED",
+  "formalMasterRegistration": false,
+  "source": {
+    "verifiedMainCommit": "e34b4ab726c830f4083efb425c2b184063a4eb7c",
+    "proposalSourceCommit": "bf427ea138eaa9e2ff31b85d469f19137fbea51a",
+    "proposalArtifact": "outputs/dinosaur-personality-mapping-proposal-20261108.json",
+    "questionnairePath": "backend/src/main/resources/diagnosis/questionnaire-draft-20261010.json",
+    "questionnaireVersion": "draft-20261010-v2",
+    "scoringVersion": "signed-centered-v1",
+    "axisPath": "backend/src/main/java/com/mannschaft/app/diagnosis/DiagnosisAxis.java",
+    "scoringPath": "backend/src/main/java/com/mannschaft/app/diagnosis/DiagnosisScoringService.java",
+    "devAssetCatalogPath": "backend/src/main/resources/ranch/development/base16-v4.json"
+  },
+  "adoption": {
+    "userDecision": "それで紐づけしよう",
+    "speciesImagesAndGroups": "USER_ADOPTED",
+    "prefixAndSuffixRows": "EDITORIAL_BINDING_V1",
+    "editorialProvenance": "採択済み16種の性格イメージと4群を維持し、現行6軸に重ねて作成した固定表。心理測定による種の推定ではない。",
+    "proposalArtifactStatus": "採択前のPROPOSAL記録は履歴として保持。採択後の対応正本は本ファイル。"
+  },
+  "policy": [
+    "現行診断は好みの傾向を扱い、強さ・優しさ・人格の優劣を測定しない。",
+    "群はゲーム内分身の見た目と性格イメージの編集区分。生物学的食性と区別する。",
+    "speciesKey/variantKeyは既存DEV素材を特定するsymbolicキーで正式マスターUUIDではない。",
+    "種のgamePersonalityImageと本人のaxisPreferenceを別の情報として保持し、既存6軸説明を置換しない。",
+    "色による強弱の序列を設けず、4外見のpixels/body/motionは変更しない。",
+    "64枠の群別件数は利用者母集団での出現確率を意味しない。"
+  ],
+  "axes": [
+    {
+      "bitPosition": 1,
+      "axisId": "FAMILIAR_NEW",
+      "zero": "お気に入りの場所を味わう",
+      "one": "初めての場所をのぞいてみる"
+    },
+    {
+      "bitPosition": 2,
+      "axisId": "FOCUS_VARIETY",
+      "zero": "一つの楽しみにゆっくり浸る",
+      "one": "いくつかの楽しみを少しずつ"
+    },
+    {
+      "bitPosition": 3,
+      "axisId": "SPONTANEOUS_PLAN",
+      "zero": "そのときの気分で選ぶ",
+      "one": "先にしたいことを選んでおく"
+    },
+    {
+      "bitPosition": 4,
+      "axisId": "SOLO_TOGETHER",
+      "zero": "一人で静かな時間を楽しむ",
+      "one": "誰かと同じ時間を楽しむ"
+    },
+    {
+      "bitPosition": 5,
+      "axisId": "EXPRESSION",
+      "zero": "気持ちを心の中で味わいたい",
+      "one": "小さな動きや声で表したい"
+    },
+    {
+      "bitPosition": 6,
+      "axisId": "NOTICE",
+      "zero": "景色全体の雰囲気を味わう",
+      "one": "葉や石の小さな違いを味わう"
+    }
+  ],
+  "groups": [
+    {
+      "group": "MEAT",
+      "impression": "強そう"
+    },
+    {
+      "group": "HERB",
+      "impression": "優しそう"
+    },
+    {
+      "group": "SEA",
+      "impression": "やや優しそう"
+    },
+    {
+      "group": "AIR",
+      "impression": "やや強そう"
+    }
+  ],
+  "prefixAssignments": [
+    {
+      "prefix": "0000",
+      "speciesKey": "stegosaurus",
+      "devAssetSpeciesKey": "DEV_CLIP_STEGOSAURUS",
+      "nameJa": "ステゴサウルス",
+      "group": "HERB",
+      "gamePersonalityImage": "穏やか・マイペース",
+      "axisPreference": [
+        "お気に入りの場所を味わう",
+        "一つの楽しみにゆっくり浸る",
+        "そのときの気分で選ぶ",
+        "一人で静かな時間を楽しむ"
+      ],
+      "editorialReason": "なじみの楽しみを一つ、その場の気分で一人味わう傾向に、自分のペースで過ごす分身像を重ねた。"
+    },
+    {
+      "prefix": "0001",
+      "speciesKey": "triceratops",
+      "devAssetSpeciesKey": "DEV_CLIP_TRICERATOPS",
+      "nameJa": "トリケラトプス",
+      "group": "HERB",
+      "gamePersonalityImage": "仲間を守る・頼もしい",
+      "axisPreference": [
+        "お気に入りの場所を味わう",
+        "一つの楽しみにゆっくり浸る",
+        "そのときの気分で選ぶ",
+        "誰かと同じ時間を楽しむ"
+      ],
+      "editorialReason": "なじみの楽しみを一つ、その場の気分で誰かと味わう傾向に、一緒の時間を大切にする分身像を重ねた。"
+    },
+    {
+      "prefix": "0010",
+      "speciesKey": "pinacosaurus",
+      "devAssetSpeciesKey": "DEV_CLIP_PINACOSAURUS",
+      "nameJa": "ピナコサウルス",
+      "group": "HERB",
+      "gamePersonalityImage": "控えめ・思慮深い",
+      "axisPreference": [
+        "お気に入りの場所を味わう",
+        "一つの楽しみにゆっくり浸る",
+        "先にしたいことを選んでおく",
+        "一人で静かな時間を楽しむ"
+      ],
+      "editorialReason": "なじみの楽しみを一つ、先に選んで一人味わう傾向に、じっくり構える分身像を重ねた。"
+    },
+    {
+      "prefix": "0011",
+      "speciesKey": "ankylosaurus",
+      "devAssetSpeciesKey": "DEV_CLIP_ANKYLOSAURUS",
+      "nameJa": "アンキロサウルス",
+      "group": "HERB",
+      "gamePersonalityImage": "おっとり・大切なものを守る",
+      "axisPreference": [
+        "お気に入りの場所を味わう",
+        "一つの楽しみにゆっくり浸る",
+        "先にしたいことを選んでおく",
+        "誰かと同じ時間を楽しむ"
+      ],
+      "editorialReason": "なじみの楽しみを一つ、先に選んで誰かと味わう傾向に、大切な時間を守る分身像を重ねた。"
+    },
+    {
+      "prefix": "0100",
+      "speciesKey": "archelon",
+      "devAssetSpeciesKey": "DEV_CLIP_ARCHELON",
+      "nameJa": "アーケロン",
+      "group": "SEA",
+      "gamePersonalityImage": "落ち着き・安心感",
+      "axisPreference": [
+        "お気に入りの場所を味わう",
+        "いくつかの楽しみを少しずつ",
+        "そのときの気分で選ぶ",
+        "一人で静かな時間を楽しむ"
+      ],
+      "editorialReason": "なじみの楽しみをいくつか、その場の気分で一人味わう傾向に、ゆったり巡る分身像を重ねた。"
+    },
+    {
+      "prefix": "0101",
+      "speciesKey": "parasaurolophus",
+      "devAssetSpeciesKey": "DEV_CLIP_PARASAUROLOPHUS",
+      "nameJa": "パラサウロロフス",
+      "group": "HERB",
+      "gamePersonalityImage": "明るい・気持ちを伝える",
+      "axisPreference": [
+        "お気に入りの場所を味わう",
+        "いくつかの楽しみを少しずつ",
+        "そのときの気分で選ぶ",
+        "誰かと同じ時間を楽しむ"
+      ],
+      "editorialReason": "なじみの楽しみをいくつか、その場の気分で誰かと味わう傾向に、楽しい時間を分かち合う分身像を重ねた。"
+    },
+    {
+      "prefix": "0110",
+      "speciesKey": "brachiosaurus",
+      "devAssetSpeciesKey": "DEV_CLIP_BRACHIOSAURUS",
+      "nameJa": "ブラキオサウルス",
+      "group": "HERB",
+      "gamePersonalityImage": "包容力・落ち着き",
+      "axisPreference": [
+        "お気に入りの場所を味わう",
+        "いくつかの楽しみを少しずつ",
+        "先にしたいことを選んでおく",
+        "一人で静かな時間を楽しむ"
+      ],
+      "editorialReason": "なじみの楽しみをいくつか、先に選んで一人味わう傾向に、落ち着いて見渡す分身像を重ねた。"
+    },
+    {
+      "prefix": "0111",
+      "speciesKey": "iguanodon",
+      "devAssetSpeciesKey": "DEV_CLIP_IGUANODON",
+      "nameJa": "イグアノドン",
+      "group": "HERB",
+      "gamePersonalityImage": "親しみやすい・協調的",
+      "axisPreference": [
+        "お気に入りの場所を味わう",
+        "いくつかの楽しみを少しずつ",
+        "先にしたいことを選んでおく",
+        "誰かと同じ時間を楽しむ"
+      ],
+      "editorialReason": "なじみの楽しみをいくつか、先に選んで誰かと味わう傾向に、共に楽しむ分身像を重ねた。"
+    },
+    {
+      "prefix": "1000",
+      "speciesKey": "spinosaurus",
+      "devAssetSpeciesKey": "DEV_CLIP_SPINOSAURUS",
+      "nameJa": "スピノサウルス",
+      "group": "MEAT",
+      "gamePersonalityImage": "独自性・探究心",
+      "axisPreference": [
+        "初めての場所をのぞいてみる",
+        "一つの楽しみにゆっくり浸る",
+        "そのときの気分で選ぶ",
+        "一人で静かな時間を楽しむ"
+      ],
+      "editorialReason": "初めての楽しみを一つ、その場の気分で一人味わう傾向に、自分なりに探る分身像を重ねた。"
+    },
+    {
+      "prefix": "1001",
+      "speciesKey": "plesiosaurus",
+      "devAssetSpeciesKey": "DEV_CLIP_PLESIOSAURUS",
+      "nameJa": "プレシオサウルス",
+      "group": "SEA",
+      "gamePersonalityImage": "柔軟・穏やかな交流",
+      "axisPreference": [
+        "初めての場所をのぞいてみる",
+        "一つの楽しみにゆっくり浸る",
+        "そのときの気分で選ぶ",
+        "誰かと同じ時間を楽しむ"
+      ],
+      "editorialReason": "初めての楽しみを一つ、その場の気分で誰かと味わう傾向に、新しい時間を共に巡る分身像を重ねた。"
+    },
+    {
+      "prefix": "1010",
+      "speciesKey": "giganotosaurus",
+      "devAssetSpeciesKey": "DEV_CLIP_GIGANOTOSAURUS",
+      "nameJa": "ギガノトサウルス",
+      "group": "MEAT",
+      "gamePersonalityImage": "芯が強い・粘り強い",
+      "axisPreference": [
+        "初めての場所をのぞいてみる",
+        "一つの楽しみにゆっくり浸る",
+        "先にしたいことを選んでおく",
+        "一人で静かな時間を楽しむ"
+      ],
+      "editorialReason": "初めての楽しみを一つ、先に選んで一人味わう傾向に、一つの道を進む分身像を重ねた。"
+    },
+    {
+      "prefix": "1011",
+      "speciesKey": "tyrannosaurus",
+      "devAssetSpeciesKey": "DEV_CLIP_TYRANNOSAURUS",
+      "nameJa": "ティラノサウルス",
+      "group": "MEAT",
+      "gamePersonalityImage": "勇敢・決断力",
+      "axisPreference": [
+        "初めての場所をのぞいてみる",
+        "一つの楽しみにゆっくり浸る",
+        "先にしたいことを選んでおく",
+        "誰かと同じ時間を楽しむ"
+      ],
+      "editorialReason": "初めての楽しみを一つ、先に選んで誰かと味わう傾向に、選んだ楽しみへ踏み出す分身像を重ねた。"
+    },
+    {
+      "prefix": "1100",
+      "speciesKey": "allosaurus",
+      "devAssetSpeciesKey": "DEV_CLIP_ALLOSAURUS",
+      "nameJa": "アロサウルス",
+      "group": "MEAT",
+      "gamePersonalityImage": "行動的・挑戦好き",
+      "axisPreference": [
+        "初めての場所をのぞいてみる",
+        "いくつかの楽しみを少しずつ",
+        "そのときの気分で選ぶ",
+        "一人で静かな時間を楽しむ"
+      ],
+      "editorialReason": "初めての楽しみをいくつか、その場の気分で一人味わう傾向に、次々と試す分身像を重ねた。"
+    },
+    {
+      "prefix": "1101",
+      "speciesKey": "pteranodon",
+      "devAssetSpeciesKey": "DEV_CLIP_PTERANODON",
+      "nameJa": "プテラノドン",
+      "group": "AIR",
+      "gamePersonalityImage": "自由・活発・冒険好き",
+      "axisPreference": [
+        "初めての場所をのぞいてみる",
+        "いくつかの楽しみを少しずつ",
+        "そのときの気分で選ぶ",
+        "誰かと同じ時間を楽しむ"
+      ],
+      "editorialReason": "初めての楽しみをいくつか、その場の気分で誰かと味わう傾向に、自由に冒険を楽しむ分身像を重ねた。"
+    },
+    {
+      "prefix": "1110",
+      "speciesKey": "marine-longjaw",
+      "devAssetSpeciesKey": "DEV_CLIP_MARINE_LONGJAW",
+      "nameJa": "リオプレウロドン",
+      "group": "SEA",
+      "gamePersonalityImage": "冷静・静かな集中力",
+      "axisPreference": [
+        "初めての場所をのぞいてみる",
+        "いくつかの楽しみを少しずつ",
+        "先にしたいことを選んでおく",
+        "一人で静かな時間を楽しむ"
+      ],
+      "editorialReason": "初めての楽しみをいくつか、先に選んで一人味わう傾向に、静かに探索する分身像を重ねた。"
+    },
+    {
+      "prefix": "1111",
+      "speciesKey": "longneck-spikes",
+      "devAssetSpeciesKey": "DEV_CLIP_LONGNECK_SPIKES",
+      "nameJa": "ニジュールサウルス",
+      "group": "HERB",
+      "gamePersonalityImage": "好奇心・人なつっこい",
+      "axisPreference": [
+        "初めての場所をのぞいてみる",
+        "いくつかの楽しみを少しずつ",
+        "先にしたいことを選んでおく",
+        "誰かと同じ時間を楽しむ"
+      ],
+      "editorialReason": "初めての楽しみをいくつか、先に選んで誰かと味わう傾向に、新しい楽しみを一緒に見つける分身像を重ねた。"
+    }
+  ],
+  "suffixAssignments": [
+    {
+      "suffix": "00",
+      "variantKey": "V1",
+      "devAssetVariantKey": "DEV_APPEARANCE_1",
+      "appearanceInterpretation": "表現内×全体"
+    },
+    {
+      "suffix": "01",
+      "variantKey": "V2",
+      "devAssetVariantKey": "DEV_APPEARANCE_2",
+      "appearanceInterpretation": "表現内×細部"
+    },
+    {
+      "suffix": "10",
+      "variantKey": "V3",
+      "devAssetVariantKey": "DEV_APPEARANCE_3",
+      "appearanceInterpretation": "表現外×全体"
+    },
+    {
+      "suffix": "11",
+      "variantKey": "V4",
+      "devAssetVariantKey": "DEV_APPEARANCE_4",
+      "appearanceInterpretation": "表現外×細部"
+    }
+  ],
+  "mappings": [
+    {
+      "typeCode": "000000",
+      "speciesKey": "stegosaurus",
+      "variantKey": "V1"
+    },
+    {
+      "typeCode": "000001",
+      "speciesKey": "stegosaurus",
+      "variantKey": "V2"
+    },
+    {
+      "typeCode": "000010",
+      "speciesKey": "stegosaurus",
+      "variantKey": "V3"
+    },
+    {
+      "typeCode": "000011",
+      "speciesKey": "stegosaurus",
+      "variantKey": "V4"
+    },
+    {
+      "typeCode": "000100",
+      "speciesKey": "triceratops",
+      "variantKey": "V1"
+    },
+    {
+      "typeCode": "000101",
+      "speciesKey": "triceratops",
+      "variantKey": "V2"
+    },
+    {
+      "typeCode": "000110",
+      "speciesKey": "triceratops",
+      "variantKey": "V3"
+    },
+    {
+      "typeCode": "000111",
+      "speciesKey": "triceratops",
+      "variantKey": "V4"
+    },
+    {
+      "typeCode": "001000",
+      "speciesKey": "pinacosaurus",
+      "variantKey": "V1"
+    },
+    {
+      "typeCode": "001001",
+      "speciesKey": "pinacosaurus",
+      "variantKey": "V2"
+    },
+    {
+      "typeCode": "001010",
+      "speciesKey": "pinacosaurus",
+      "variantKey": "V3"
+    },
+    {
+      "typeCode": "001011",
+      "speciesKey": "pinacosaurus",
+      "variantKey": "V4"
+    },
+    {
+      "typeCode": "001100",
+      "speciesKey": "ankylosaurus",
+      "variantKey": "V1"
+    },
+    {
+      "typeCode": "001101",
+      "speciesKey": "ankylosaurus",
+      "variantKey": "V2"
+    },
+    {
+      "typeCode": "001110",
+      "speciesKey": "ankylosaurus",
+      "variantKey": "V3"
+    },
+    {
+      "typeCode": "001111",
+      "speciesKey": "ankylosaurus",
+      "variantKey": "V4"
+    },
+    {
+      "typeCode": "010000",
+      "speciesKey": "archelon",
+      "variantKey": "V1"
+    },
+    {
+      "typeCode": "010001",
+      "speciesKey": "archelon",
+      "variantKey": "V2"
+    },
+    {
+      "typeCode": "010010",
+      "speciesKey": "archelon",
+      "variantKey": "V3"
+    },
+    {
+      "typeCode": "010011",
+      "speciesKey": "archelon",
+      "variantKey": "V4"
+    },
+    {
+      "typeCode": "010100",
+      "speciesKey": "parasaurolophus",
+      "variantKey": "V1"
+    },
+    {
+      "typeCode": "010101",
+      "speciesKey": "parasaurolophus",
+      "variantKey": "V2"
+    },
+    {
+      "typeCode": "010110",
+      "speciesKey": "parasaurolophus",
+      "variantKey": "V3"
+    },
+    {
+      "typeCode": "010111",
+      "speciesKey": "parasaurolophus",
+      "variantKey": "V4"
+    },
+    {
+      "typeCode": "011000",
+      "speciesKey": "brachiosaurus",
+      "variantKey": "V1"
+    },
+    {
+      "typeCode": "011001",
+      "speciesKey": "brachiosaurus",
+      "variantKey": "V2"
+    },
+    {
+      "typeCode": "011010",
+      "speciesKey": "brachiosaurus",
+      "variantKey": "V3"
+    },
+    {
+      "typeCode": "011011",
+      "speciesKey": "brachiosaurus",
+      "variantKey": "V4"
+    },
+    {
+      "typeCode": "011100",
+      "speciesKey": "iguanodon",
+      "variantKey": "V1"
+    },
+    {
+      "typeCode": "011101",
+      "speciesKey": "iguanodon",
+      "variantKey": "V2"
+    },
+    {
+      "typeCode": "011110",
+      "speciesKey": "iguanodon",
+      "variantKey": "V3"
+    },
+    {
+      "typeCode": "011111",
+      "speciesKey": "iguanodon",
+      "variantKey": "V4"
+    },
+    {
+      "typeCode": "100000",
+      "speciesKey": "spinosaurus",
+      "variantKey": "V1"
+    },
+    {
+      "typeCode": "100001",
+      "speciesKey": "spinosaurus",
+      "variantKey": "V2"
+    },
+    {
+      "typeCode": "100010",
+      "speciesKey": "spinosaurus",
+      "variantKey": "V3"
+    },
+    {
+      "typeCode": "100011",
+      "speciesKey": "spinosaurus",
+      "variantKey": "V4"
+    },
+    {
+      "typeCode": "100100",
+      "speciesKey": "plesiosaurus",
+      "variantKey": "V1"
+    },
+    {
+      "typeCode": "100101",
+      "speciesKey": "plesiosaurus",
+      "variantKey": "V2"
+    },
+    {
+      "typeCode": "100110",
+      "speciesKey": "plesiosaurus",
+      "variantKey": "V3"
+    },
+    {
+      "typeCode": "100111",
+      "speciesKey": "plesiosaurus",
+      "variantKey": "V4"
+    },
+    {
+      "typeCode": "101000",
+      "speciesKey": "giganotosaurus",
+      "variantKey": "V1"
+    },
+    {
+      "typeCode": "101001",
+      "speciesKey": "giganotosaurus",
+      "variantKey": "V2"
+    },
+    {
+      "typeCode": "101010",
+      "speciesKey": "giganotosaurus",
+      "variantKey": "V3"
+    },
+    {
+      "typeCode": "101011",
+      "speciesKey": "giganotosaurus",
+      "variantKey": "V4"
+    },
+    {
+      "typeCode": "101100",
+      "speciesKey": "tyrannosaurus",
+      "variantKey": "V1"
+    },
+    {
+      "typeCode": "101101",
+      "speciesKey": "tyrannosaurus",
+      "variantKey": "V2"
+    },
+    {
+      "typeCode": "101110",
+      "speciesKey": "tyrannosaurus",
+      "variantKey": "V3"
+    },
+    {
+      "typeCode": "101111",
+      "speciesKey": "tyrannosaurus",
+      "variantKey": "V4"
+    },
+    {
+      "typeCode": "110000",
+      "speciesKey": "allosaurus",
+      "variantKey": "V1"
+    },
+    {
+      "typeCode": "110001",
+      "speciesKey": "allosaurus",
+      "variantKey": "V2"
+    },
+    {
+      "typeCode": "110010",
+      "speciesKey": "allosaurus",
+      "variantKey": "V3"
+    },
+    {
+      "typeCode": "110011",
+      "speciesKey": "allosaurus",
+      "variantKey": "V4"
+    },
+    {
+      "typeCode": "110100",
+      "speciesKey": "pteranodon",
+      "variantKey": "V1"
+    },
+    {
+      "typeCode": "110101",
+      "speciesKey": "pteranodon",
+      "variantKey": "V2"
+    },
+    {
+      "typeCode": "110110",
+      "speciesKey": "pteranodon",
+      "variantKey": "V3"
+    },
+    {
+      "typeCode": "110111",
+      "speciesKey": "pteranodon",
+      "variantKey": "V4"
+    },
+    {
+      "typeCode": "111000",
+      "speciesKey": "marine-longjaw",
+      "variantKey": "V1"
+    },
+    {
+      "typeCode": "111001",
+      "speciesKey": "marine-longjaw",
+      "variantKey": "V2"
+    },
+    {
+      "typeCode": "111010",
+      "speciesKey": "marine-longjaw",
+      "variantKey": "V3"
+    },
+    {
+      "typeCode": "111011",
+      "speciesKey": "marine-longjaw",
+      "variantKey": "V4"
+    },
+    {
+      "typeCode": "111100",
+      "speciesKey": "longneck-spikes",
+      "variantKey": "V1"
+    },
+    {
+      "typeCode": "111101",
+      "speciesKey": "longneck-spikes",
+      "variantKey": "V2"
+    },
+    {
+      "typeCode": "111110",
+      "speciesKey": "longneck-spikes",
+      "variantKey": "V3"
+    },
+    {
+      "typeCode": "111111",
+      "speciesKey": "longneck-spikes",
+      "variantKey": "V4"
+    }
+  ],
+  "boundaries": {
+    "questionnaireApproved": false,
+    "translationsApproved": false,
+    "birth81MappingStatus": "UNASSIGNED",
+    "production512Gate": "CLOSED",
+    "existingResults": "保存時snapshotを維持。新表で遡及書換しない。",
+    "existingDinosaur": "確定済み個体ID・species・variant・名前・成長・残高を変更しない。",
+    "runtimeMappingVersion": "本仕様版をruntimeへ登録しない。既存NULL保存/割当不可の契約を維持。"
+  }
+}
