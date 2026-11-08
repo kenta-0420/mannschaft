@@ -30,6 +30,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -220,6 +221,126 @@ class TimetableTermContractIT extends AbstractMySqlIntegrationTest {
         mockMvc.perform(delete("/api/v1/timetable-terms/{id}", orgTerm.getId()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("TIMETABLE_022"));
+    }
+
+    // ---- D4: チーム単独の学期一覧（organizationId 任意） ----
+
+    @Test
+    @DisplayName("D4: organizationId を省いたチーム学期一覧は200で、チーム固有の学期だけを返す")
+    void チーム学期一覧_organizationId省略はチーム固有のみ200() throws Exception {
+        Long teamTermId = saveTeamTerm();
+        termRepository.save(TimetableTermEntity.builder()
+                .organizationId(orgId).academicYear(2025).name("TTTERM 組織だけの学期")
+                .startDate(LocalDate.of(2025, 10, 1)).endDate(LocalDate.of(2026, 3, 31))
+                .sortOrder(1).build());
+        em.flush();
+        em.clear();
+        setAuth(adminTeamId);
+        mockMvc.perform(get("/api/v1/teams/{id}/timetable-terms", teamId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].id").value(teamTermId))
+                .andExpect(jsonPath("$.data[0].scope").value("TEAM"));
+    }
+
+    @Test
+    @DisplayName("D4: organizationId を省いても非メンバーは403")
+    void チーム学期一覧_organizationId省略でも非メンバーは403() throws Exception {
+        Long outsider = insertUser("ttterm-outsider@example.com");
+        em.flush();
+        setAuth(outsider);
+        mockMvc.perform(get("/api/v1/teams/{id}/timetable-terms", teamId))
+                .andExpect(status().isForbidden());
+    }
+
+    // ---- A2: 開始日と終了日の前後 ----
+
+    @Test
+    @DisplayName("A2: チーム学期の作成で開始日が終了日より後なら400、fieldErrorsはendDate")
+    void チーム学期作成_開始日が終了日より後は400() throws Exception {
+        setAuth(adminTeamId);
+        Map<String, Object> body = termBody();
+        body.put("startDate", LocalDate.of(2025, 12, 31).toString());
+        body.put("endDate", LocalDate.of(2025, 10, 1).toString());
+        mockMvc.perform(post("/api/v1/teams/{id}/timetable-terms", teamId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("COMMON_001"))
+                .andExpect(jsonPath("$.error.fieldErrors[0].field").value("endDate"));
+    }
+
+    @Test
+    @DisplayName("A2: 開始日と終了日が同日なら400（DB の CHECK は start_date < end_date）")
+    void チーム学期作成_開始日と終了日が同日は400() throws Exception {
+        setAuth(adminTeamId);
+        Map<String, Object> body = termBody();
+        body.put("startDate", LocalDate.of(2025, 10, 1).toString());
+        body.put("endDate", LocalDate.of(2025, 10, 1).toString());
+        mockMvc.perform(post("/api/v1/teams/{id}/timetable-terms", teamId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.fieldErrors[0].field").value("endDate"));
+    }
+
+    @Test
+    @DisplayName("A2: 組織学期の作成で開始日が終了日より後なら400")
+    void 組織学期作成_開始日が終了日より後は400() throws Exception {
+        setAuth(adminOrgId);
+        Map<String, Object> body = termBody();
+        body.put("startDate", LocalDate.of(2025, 12, 31).toString());
+        body.put("endDate", LocalDate.of(2025, 10, 1).toString());
+        mockMvc.perform(post("/api/v1/organizations/{id}/timetable-terms", orgId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.fieldErrors[0].field").value("endDate"));
+    }
+
+    @Test
+    @DisplayName("A2: PATCH で終了日だけを既存の開始日より前にすると400")
+    void 学期更新_終了日を開始日より前にすると400() throws Exception {
+        Long termId = saveTeamTerm();
+        em.flush();
+        em.clear();
+        setAuth(adminTeamId);
+        mockMvc.perform(patch("/api/v1/timetable-terms/{id}", termId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"endDate\":\"2025-03-31\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("COMMON_001"))
+                .andExpect(jsonPath("$.error.fieldErrors[0].field").value("endDate"));
+    }
+
+    @Test
+    @DisplayName("A7: PATCH の academicYear も作成と同じく2000〜2100の範囲外は400")
+    void 学期更新_academicYear範囲外は400() throws Exception {
+        Long termId = saveTeamTerm();
+        em.flush();
+        em.clear();
+        setAuth(adminTeamId);
+        mockMvc.perform(patch("/api/v1/timetable-terms/{id}", termId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"academicYear\":27}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.fieldErrors[0].field").value("academicYear"));
+    }
+
+    @Test
+    @DisplayName("A2: 日付範囲が既存の学期と重なると409 TIMETABLE_021")
+    void チーム学期作成_日付範囲の重複は409() throws Exception {
+        saveTeamTerm();
+        em.flush();
+        em.clear();
+        setAuth(adminTeamId);
+        Map<String, Object> body = termBody();
+        body.put("startDate", LocalDate.of(2025, 9, 1).toString());
+        mockMvc.perform(post("/api/v1/teams/{id}/timetable-terms", teamId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("TIMETABLE_021"));
     }
 
     // ---- helpers ----

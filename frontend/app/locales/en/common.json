@@ -147,6 +147,77 @@
         "joinFailed": "Failed to join",
         "declineFailed": "Failed to decline"
       }
+    },
+    "channelList": {
+      "title": "Chat",
+      "newConversation": "New conversation",
+      "addChannel": "Add channel",
+      "dmSection": "Kabine (DM)",
+      "noDm": "No direct messages",
+      "roomSection": "Zimmer (Rooms)",
+      "noRoom": "No rooms yet",
+      "loadFailed": "Failed to load rooms",
+      "detailLoadFailed": "Failed to load the channel details"
+    },
+    "create": {
+      "typeDm": "Kabine (DM)",
+      "typeRoom": "Zimmer (Room)",
+      "dmOpened": "Opened Kabine (DM)",
+      "roomCreated": "Created Zimmer (room)",
+      "conversationFailed": "Failed to start the conversation",
+      "roomCreateFailed": "Failed to create Zimmer (room)",
+      "header": "Start a new conversation",
+      "tabContacts": "Choose from contacts",
+      "tabCreateRoom": "Create Zimmer (room)",
+      "searchByName": "Search by name...",
+      "selectedSummary": "{count} selected → will start as {type}",
+      "startAs": "Start {type}",
+      "roomName": "Zimmer (room) name",
+      "roomNamePlaceholder": "e.g. general",
+      "descriptionOptional": "Description (optional)",
+      "descriptionPlaceholder": "Description of the Zimmer (room)",
+      "privateRoom": "Private Zimmer (invite only)",
+      "inviteMembersOptional": "Invite members (optional)",
+      "create": "Create"
+    },
+    "inviteZimmer": {
+      "header": "Invite to a Zimmer",
+      "tooltip": "Invite to a Zimmer",
+      "failed": "Failed to send the invitation",
+      "noMembers": "No members can be invited",
+      "shareQuestion": "Share the existing chat history?",
+      "share": "Share",
+      "shareHint": "Previous messages are carried over to the new Zimmer",
+      "noShare": "Do not share",
+      "noShareHint": "The new Zimmer starts empty",
+      "createZimmer": "Create Zimmer"
+    },
+    "memberSelect": {
+      "notFound": "No members found"
+    },
+    "activeThreadsEmpty": "No active threads",
+    "tabAriaLabel": "{name} tab",
+    "message": {
+      "deleted": "This message was deleted",
+      "unknownSender": "Unknown",
+      "edited": "(edited)",
+      "loadOlder": "Load earlier messages",
+      "empty": "No messages yet",
+      "sendFailed": "Failed to send the message",
+      "inputPlaceholder": "Type a message...",
+      "inputDisabled": "You cannot post in this Zimmer (room)",
+      "loadFailed": "Failed to load messages",
+      "reactionFailed": "Failed to update the reaction",
+      "pinned": "Pinned",
+      "unpinned": "Unpinned",
+      "pinFailed": "Failed to update the pin",
+      "deleteSuccess": "Message deleted",
+      "deleteFailed": "Failed to delete",
+      "bookmarkFailed": "Failed to update the bookmark",
+      "markReadFailed": "Could not mark as read",
+      "editHeader": "Edit message",
+      "editSuccess": "Message edited",
+      "editFailed": "Failed to edit"
     }
   },
   "button": {
@@ -333,7 +404,19 @@
     "period_all": "All Periods",
     "period_number_placeholder": "Period Number",
     "period_suffix": "",
-    "term_name_placeholder": "e.g. 1st Term"
+    "term_name_placeholder": "e.g. 1st Term",
+    "term_academic_year_range": "Enter an academic year between {min} and {max}",
+    "term_end_before_start": "The end date must be after the start date",
+    "term_date_overlap": "This term overlaps another term. Check the start and end dates",
+    "term_delete_confirm": "Delete the term \"{name}\"? This cannot be undone.",
+    "term_delete_success": "Term deleted",
+    "term_load_error": "Failed to load terms",
+    "team_term_hint": "Terms of this team. When you create a timetable, you choose one of the terms added here.",
+    "no_term_for_create": "There are no terms yet. Add a term in the \"Term\" tab first.",
+    "delete_timetable": "Delete",
+    "delete_timetable_confirm": "Delete the timetable \"{name}\"? This cannot be undone.",
+    "delete_timetable_success": "Timetable deleted",
+    "delete_timetable_error": "Failed to delete the timetable"
   },
   "error": {
     "server": "A server error occurred",
@@ -1110,6 +1193,18 @@
     }
   },
   "project": {
+    "back_label": "Projects",
+    "delete_aria": "Delete {title}",
+    "delete_confirm": "Delete \"{title}\"?",
+    "delete_confirm_header": "Confirm deletion",
+    "milestone_dialog": {
+      "add_title": "Add milestone",
+      "edit_title": "Edit milestone",
+      "title_label": "Title",
+      "title_placeholder": "Milestone name",
+      "due_date_label": "Due date",
+      "add": "Add"
+    },
     "related_todo_no_due": "No due date",
     "related_todo_no_assignee": "Unassigned",
     "related_todo_open": "Open TODO details",
@@ -1170,7 +1265,19 @@
       "none": "None",
       "custom_emoji": "Custom",
       "custom_color": "Custom color",
-      "current": "Current"
+      "current": "Current",
+      "colors": {
+        "blue": "Blue",
+        "red": "Red",
+        "green": "Green",
+        "amber": "Amber",
+        "violet": "Violet",
+        "pink": "Pink",
+        "cyan": "Cyan",
+        "teal": "Teal",
+        "orange": "Orange",
+        "gray": "Gray"
+      }
     },
     "guide": {
       "button": "How to use",
@@ -1222,7 +1329,10 @@
       "update_failed": "Failed to update",
       "delete_failed": "Failed to delete",
       "status_change_failed": "Failed to change status",
-      "milestone_save_failed": "Failed to save milestone"
+      "milestone_save_failed": "Failed to save milestone",
+      "force_unlock_failed": "Failed to force unlock",
+      "completion_mode_failed": "Failed to change the completion mode",
+      "gate_init_failed": "Failed to initialize the gates"
     },
     "status": {
       "active": "Active",

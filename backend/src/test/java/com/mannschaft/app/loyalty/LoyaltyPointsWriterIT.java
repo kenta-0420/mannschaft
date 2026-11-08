@@ -22,7 +22,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @org.springframework.boot.test.context.SpringBootTest(classes = LoyaltyPointsWriterIT.PersistenceConfiguration.class, properties = {
-        "spring.flyway.enabled=true", "spring.jpa.hibernate.ddl-auto=none"})
+        "spring.flyway.enabled=true", "spring.jpa.hibernate.ddl-auto=none",
+        // AC19 は200要求を同時にDBへ到達させる試験。既定プール(最大50・取得3秒・増設は逐次)だと、混雑したrunnerで
+        // 150本超が接続待ちで3秒を超え CannotCreateTransactionException になる(コード欠陥ではなく試験前提の不足)。
+        // 200本を起動時に確保して全要求が接続待ちなしでDBロック競合へ入る形にする。
+        "spring.datasource.hikari.maximum-pool-size=200", "spring.datasource.hikari.minimum-idle=200",
+        "spring.datasource.hikari.connection-timeout=30000"})
 @org.springframework.test.context.ActiveProfiles("test")
 @org.springframework.context.annotation.Import(LoyaltyPointsWriterIT.FixedClockConfiguration.class)
 @org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
@@ -43,7 +48,7 @@ class LoyaltyPointsWriterIT {
                     .withDatabaseName("loyalty_writer_flyway")
                     .withUsername("test").withPassword("test")
                     .withTmpFs(java.util.Map.of("/var/lib/mysql", "rw"))
-                    .withCommand("--log_bin_trust_function_creators=1");
+                    .withCommand("--log_bin_trust_function_creators=1", "--max_connections=400");
     static {
         if (AbstractMySqlIntegrationTest.isDockerAvailable()) {
             MYSQL.start();
