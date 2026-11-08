@@ -1,0 +1,248 @@
+{
+  "schemaVersion": 1,
+  "campaign": "CMP-261028-2251",
+  "status": "PASS_FOR_TESTED_HEAD_REMOTE_M18_ONLY",
+  "testedHead": "30744c88a7a0a7621e34335e9ed656e9c38131ca",
+  "latestHeadGreen": false,
+  "localL0MMeasurement": false,
+  "execution": {
+    "kind": "remote GitHub Actions CI",
+    "runId": 40992429514,
+    "jobId": 123857879696,
+    "shard": 0,
+    "runUrl": "https://github.com/kenta-0420/mannschaft/actions/runs/40992429514",
+    "jobUrl": "https://github.com/kenta-0420/mannschaft/actions/runs/40992429514/job/123857879696",
+    "jobConclusion": "success",
+    "actualExits": {
+      "testStep": 0,
+      "command": 0,
+      "shell": 0
+    },
+    "completed": true,
+    "cacheHit": false
+  },
+  "test": {
+    "className": "com.mannschaft.app.moduleevent.ModuleEventLoadIT",
+    "exactCases": 1,
+    "success": 1,
+    "failure": 0,
+    "error": 0,
+    "skip": 0,
+    "caseTimeSeconds": 304.696,
+    "classElapsedMs": 449029,
+    "resultRecords": 1
+  },
+  "shardPopulation": {
+    "tests": 5234,
+    "passed": 5233,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "separateArchCases": 8,
+    "separateArchFailures": 0
+  },
+  "artifacts": {
+    "xmlZip": {
+      "id": 12954326002,
+      "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40992429514/artifacts/12954326002",
+      "bytes": 88611155,
+      "sha256": "a60d4f3de976e169883b79c96ac334c10d7dd2f673911bcff746d4e50c7fa74b"
+    },
+    "diagnosticsZip": {
+      "id": 12954057400,
+      "url": "https://github.com/kenta-0420/mannschaft/actions/runs/40992429514/artifacts/12954057400",
+      "bytes": 52773,
+      "sha256": "25d4f22b973c68771f9fef34ab91879c1ead2c291da6ac643ad16d2f33eefc15"
+    },
+    "jobLogSha256": "cafaaaa6a3e85d59790e9652eab1dea5680c17507b217986b899164b06228ac5",
+    "exactXml": {
+      "entry": "build/test-results/test/TEST-com.mannschaft.app.moduleevent.ModuleEventLoadIT.xml",
+      "bytes": 925761,
+      "sha256": "f156b4dea45117985f5d49f8382c6cf9cb3b614ac9e2a844474d4e8d3f5d93c2"
+    },
+    "rawJsonl": {
+      "file": "m18-result-30744.jsonl",
+      "bytes": 726473,
+      "sha256": "d6a6d6882b0e492af9e2177923f86a4262f972a0e604e49e761ffe665539b919",
+      "records": 1,
+      "normalEntries": 3000,
+      "samples": 3002,
+      "ticks": 5,
+      "omitted": 0,
+      "finalLineEnding": "LF",
+      "jsonWithoutFinalLfSha256": "4e4a1f6c03f11cb969d8c34a9f3cb9c7ad378b3340b83631abd9ee9ac1206ff5"
+    }
+  },
+  "independentVerification": {
+    "status": "PASS",
+    "sha256": "f9b406a495355d3e953113773bb5c05e9886d459aba08cb11bbcc9cc34a29e31",
+    "rootJsonAligned": true
+  },
+  "sources": [
+    {
+      "file": "ModuleEventLoadIT.java",
+      "sha256": "809a340652ec696b0f8d1834a2e16eed40f80be20b6d2da3ecc3be06a2602e6e",
+      "url": "https://github.com/kenta-0420/mannschaft/blob/30744c88a7a0a7621e34335e9ed656e9c38131ca/backend/src/test/java/com/mannschaft/app/moduleevent/ModuleEventLoadIT.java"
+    },
+    {
+      "file": "ModuleEventLoadTestFixture.java",
+      "sha256": "4a8e7b129d15d82d620ddf1f3d0a9dc435e4bd7589a5e2dc40db0352df847446",
+      "url": "https://github.com/kenta-0420/mannschaft/blob/30744c88a7a0a7621e34335e9ed656e9c38131ca/backend/src/test/java/com/mannschaft/app/moduleevent/ModuleEventLoadTestFixture.java"
+    }
+  ],
+  "measurement": {
+    "inputWindowElapsedNs": 300000075512,
+    "normalCount": 3000,
+    "plannedSlotNs": 100000000,
+    "actualSecondBuckets": 300,
+    "eachBucketCount": 10,
+    "missingArrived": 0,
+    "missingCommitted": 0,
+    "missingFinished": 0,
+    "entryFailures": 0,
+    "lateSlots": 0,
+    "percentilesNs": {
+      "p50Ns": 14538675,
+      "p95Ns": 32943165,
+      "p99Ns": 131767637,
+      "maxNs": 1078402348
+    },
+    "commitToFinishP99Ns": 122253299,
+    "percentileDefinition": "全3000件を昇順に並べ、ceil(N*q)-1番目を取るnearest-rank。latency=finishedNs-arrivedNs。arrived/finished未到達はLong.MAX_VALUE。",
+    "finishDefinition": "publisher afterCommit後、finish TX commitと別接続によるpublication/attempt消去確認を経た時刻。arrival起点はcommit起点より保守的。",
+    "frameRejected": 0,
+    "physicalRejected": 0,
+    "initialBacklog": 1000,
+    "replayClaimed": 500,
+    "replayAdmitted": 500,
+    "acceptedMeterDelta": 500,
+    "backlogRemaining": 500,
+    "retainedBeforeCleanup": 500,
+    "tickCount": 5,
+    "allTicksCompleted": true,
+    "lockRows": 1,
+    "sampleCount": 3002,
+    "sampleIntervalMs": 100,
+    "sampledMaxQueue": 93,
+    "sampledMaxAdmission": 100,
+    "capacityAfterStop": 200
+  },
+  "expectedConfigurationFromFrozenSource": {
+    "values": {
+      "tickSeconds": 60,
+      "cutoffSeconds": 300,
+      "claimLimit": 100,
+      "leaseSeconds": 300,
+      "normalReserve": 50
+    },
+    "evidenceKind": "固定sourceの期待値map",
+    "runtimeFieldIntrospection": false,
+    "executedAssertions": "core4/max4/queue200、claimLimit1..100、Scheduled fixedDelay60000ms"
+  },
+  "rawSchema": {
+    "normalEntryKeys": [
+      "arrivedNs",
+      "committedNs",
+      "failure",
+      "finishCalls",
+      "finishedNs",
+      "id",
+      "listenerCalls",
+      "plannedNs",
+      "publicationCount"
+    ],
+    "idKind": "fixture生成UUIDv4",
+    "stringValues": "生成UUIDと計測開始/終了時刻のみ",
+    "payloadOrSecrets": false
+  },
+  "acceptanceMatrix": [
+    {
+      "condition": "remote_case",
+      "status": "達成",
+      "evidence": "M18は実1件成功・skip/error/failureなし、304.696秒。",
+      "sourceLines": "LoadIT:80-82"
+    },
+    {
+      "condition": "input_window",
+      "status": "達成",
+      "evidence": "実投入窓300.000075512秒。",
+      "sourceLines": "LoadIT:131-145"
+    },
+    {
+      "condition": "backlog_1000",
+      "status": "達成",
+      "evidence": "実DBに1000件投入後のremaining==1000をassert。",
+      "sourceLines": "LoadIT:117-118,249-264"
+    },
+    {
+      "condition": "normal_3000_slots",
+      "status": "達成",
+      "evidence": "全3000件・UUID重複0・100ms刻みの予定時刻に対して全件が自身の100ms slot内に到着。",
+      "sourceLines": "LoadIT:119,134-142,169-175"
+    },
+    {
+      "condition": "each_second_10",
+      "status": "達成",
+      "evidence": "300個の実到着bucketすべて10件、計3000件。",
+      "sourceLines": "LoadIT:154-159,177"
+    },
+    {
+      "condition": "full_population",
+      "status": "達成",
+      "evidence": "未供給/未完了/failureは0。全3000件を保持し、未供給/未完了はLong.MAX_VALUEとして評価する。",
+      "sourceLines": "LoadIT:137-139,152-153,209"
+    },
+    {
+      "condition": "no_rejection",
+      "status": "達成",
+      "evidence": "frame/physical拒否とも0。",
+      "sourceLines": "LoadIT:180-181;Fixture:115-118,131"
+    },
+    {
+      "condition": "p99_lte_5_seconds",
+      "status": "達成",
+      "evidence": "全3000件nearest-rank p99=131767637ns（5秒以下）。全件finished>=committed>=arrived。",
+      "sourceLines": "LoadIT:152-179,235-245;Fixture:143-154"
+    },
+    {
+      "condition": "real_scheduler_lock",
+      "status": "達成",
+      "evidence": "親schedulerなし、子の実Scheduled1件/60秒固定delay。ShedLock LockAssert経由の実tick5回・全完了・lockRows1。",
+      "sourceLines": "LoadIT:93-96,123-127,186,192;Fixture:169-215"
+    },
+    {
+      "condition": "replay_progress",
+      "status": "達成",
+      "evidence": "claim/admit/accepted meterは500で一致。backlog500件は後始末直前まで保持。",
+      "sourceLines": "LoadIT:165-185,217-220;Fixture:133-142"
+    },
+    {
+      "condition": "pool_bounds_cleanup",
+      "status": "達成",
+      "evidence": "core/max4・queue容量200。100ms sample3002件は全範囲内、queue最大93/admission最大100、停止後capacity200。",
+      "sourceLines": "LoadIT:102-104,128-130,187-205,219"
+    },
+    {
+      "condition": "latest_head_global_green",
+      "status": "未実証",
+      "evidence": "この記録はtested head30744のshard0/M18のみ。後続commitを含む最新HEAD全体のgreenを示さない。",
+      "sourceLines": "scope"
+    },
+    {
+      "condition": "local_l0m",
+      "status": "未実証",
+      "evidence": "remote CIによるM18であり、local L0-M計測ではない。期限切れlocal候補窓のactual0は不変。",
+      "sourceLines": "scope"
+    },
+    {
+      "condition": "business_subscriber_performance",
+      "status": "未実証",
+      "evidence": "実購読fixtureは固定正常return。C/F業務購読者の処理性能を示さない。",
+      "sourceLines": "LoadIT:54-56;Fixture:47-55"
+    }
+  ],
+  "scopeNotes": [
+    "backlog1000件のうち500件を再生し500件を保持した実測であり、全件drainの証明ではない。",
+    "raw JSONLはXML内JSON文字列に末尾LFを付した既存原本のbyte不変copy。root判定のraw JSON hashは末尾LFを含まない。"
+  ]
+}

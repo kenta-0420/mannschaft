@@ -27,7 +27,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.web.bind.annotation.RequestParam;
 
+import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -112,6 +114,23 @@ public class OpenApiConfig {
                 return parameterModel;
             }
             parameterModel.setSchema(new IntegerSchema().format("int64"));
+            return parameterModel;
+        };
+    }
+
+    /** LocalTime のクエリ引数について、既存の OpenAPI 形式を維持する。 */
+    @Bean
+    public ParameterCustomizer localTimeQueryParameterCustomizer() {
+        return (parameterModel, methodParameter) -> {
+            if (parameterModel != null
+                    && "query".equals(parameterModel.getIn())
+                    && methodParameter.getParameterType() == LocalTime.class
+                    && methodParameter.hasParameterAnnotation(RequestParam.class)
+                    && parameterModel.getSchema() != null
+                    && "string".equals(parameterModel.getSchema().getType())
+                    && parameterModel.getSchema().getFormat() == null) {
+                parameterModel.getSchema().setFormat("date-time");
+            }
             return parameterModel;
         };
     }

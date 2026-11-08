@@ -658,6 +658,81 @@ class FlywayFromScratchMigrationTest {
     }
 
     /**
+     * M01: 採用済み Registry DDL の現契約を固定する characterization test。
+     * 初回から green になり得る。全体起動や公式 UUID の採番方式は別試験の責務とし、
+     * 本番マッピング走査の対象外であるライブラリ所有表も実 Flyway の列定義で検証する。
+     */
+    @Test
+    @Order(20)
+    @DisplayName("M01: Registry 2表の列型・精度・照合順序が正式Flyway実スキーマで成立する")
+    void moduleEventRegistryの2表と列定義がFlywayスキーマと一致する() throws SQLException {
+        migrateFromScratch();
+        assertThat(readActualSchema().get("event_publication"))
+                .as("公式 Registry は採用版の六列だけを持つ")
+                .containsExactlyInAnyOrder("completion_date", "publication_date", "id",
+                        "event_type", "listener_id", "serialized_event");
+        try (Connection conn = connect()) {
+            for (String table : List.of("event_publication", "event_publication_attempts")) {
+                try (var statement = conn.prepareStatement("SELECT TABLE_COLLATION FROM information_schema.TABLES "
+                        + "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?")) {
+                    statement.setString(1, table);
+                    try (ResultSet row = statement.executeQuery()) {
+                        assertThat(row.next()).as("%s が実在する", table).isTrue();
+                        assertThat(row.getString(1)).as("%s の照合順序", table).isEqualTo("utf8mb4_0900_ai_ci");
+                        assertThat(row.next()).isFalse();
+                    }
+                }
+            }
+            assertModuleEventColumn(conn, "event_publication", "id", "binary", "binary(16)", 16, false);
+            assertModuleEventColumn(conn, "event_publication", "completion_date", "datetime", "datetime(6)", null, true);
+            assertModuleEventColumn(conn, "event_publication", "publication_date", "datetime", "datetime(6)", null, false);
+            for (String column : List.of("event_type", "listener_id", "serialized_event")) {
+                assertModuleEventColumn(conn, "event_publication", column, "varchar", "varchar(255)", 255, false);
+            }
+            for (String column : List.of("id", "publication_id", "claim_token", "operation_id", "episode_id")) {
+                assertModuleEventColumn(conn, "event_publication_attempts", column, "binary", "binary(16)", 16,
+                        column.equals("operation_id") || column.equals("episode_id"));
+            }
+            for (String column : List.of("last_attempt_at", "lease_until", "quarantined_at", "created_at", "updated_at")) {
+                assertModuleEventColumn(conn, "event_publication_attempts", column, "datetime", "datetime(6)", null,
+                        !column.equals("created_at") && !column.equals("updated_at"));
+            }
+            assertModuleEventColumn(conn, "event_publication_attempts", "status", "varchar", "varchar(32)", 32, false);
+            assertModuleEventColumn(conn, "event_publication_attempts", "failure_code", "varchar", "varchar(64)", 64, true);
+            assertModuleEventColumn(conn, "event_publication_attempts", "resolver_key", "varchar", "varchar(100)", 100, true);
+            assertModuleEventColumn(conn, "event_publication_attempts", "scope_type", "varchar", "varchar(16)", 16, true);
+        }
+    }
+
+    /** M01 の列契約。期待値は V254 の採用済み定義と DB 設計原則8に対応する。 */
+    private static void assertModuleEventColumn(Connection conn, String table, String column,
+            String dataType, String columnType, Integer length, boolean nullable) throws SQLException {
+        try (var statement = conn.prepareStatement("SELECT DATA_TYPE, COLUMN_TYPE, CHARACTER_MAXIMUM_LENGTH, "
+                + "IS_NULLABLE, DATETIME_PRECISION, CHARACTER_SET_NAME, COLLATION_NAME "
+                + "FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?")) {
+            statement.setString(1, table);
+            statement.setString(2, column);
+            try (ResultSet row = statement.executeQuery()) {
+                assertThat(row.next()).as("%s.%s が実在する", table, column).isTrue();
+                assertThat(row.getString("DATA_TYPE")).as("%s.%s DATA_TYPE", table, column).isEqualTo(dataType);
+                assertThat(row.getString("COLUMN_TYPE")).as("%s.%s COLUMN_TYPE", table, column).isEqualTo(columnType);
+                assertThat(row.getObject("CHARACTER_MAXIMUM_LENGTH", Long.class))
+                        .as("%s.%s 長さ", table, column).isEqualTo(length == null ? null : length.longValue());
+                assertThat(row.getString("IS_NULLABLE")).as("%s.%s NULL可否", table, column)
+                        .isEqualTo(nullable ? "YES" : "NO");
+                if (dataType.equals("datetime")) {
+                    assertThat(row.getInt("DATETIME_PRECISION")).as("%s.%s 日時精度", table, column).isEqualTo(6);
+                }
+                if (dataType.equals("varchar")) {
+                    assertThat(row.getString("CHARACTER_SET_NAME")).as("%s.%s 文字セット", table, column).isEqualTo("utf8mb4");
+                    assertThat(row.getString("COLLATION_NAME")).as("%s.%s 照合順序", table, column).isEqualTo("utf8mb4_0900_ai_ci");
+                }
+                assertThat(row.next()).isFalse();
+            }
+        }
+    }
+
+    /**
      * 番人自身の検証（負のテスト）: 実スキーマの列型を食い違わせた入力を与えると、番人が違反を返すこと。
      * 「違反 0 件」が、検査が走っていない偽 green でないことを示す。
      */

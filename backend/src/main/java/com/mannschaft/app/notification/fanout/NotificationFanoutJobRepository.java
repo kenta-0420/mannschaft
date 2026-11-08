@@ -2,6 +2,8 @@ package com.mannschaft.app.notification.fanout;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -18,6 +20,12 @@ import java.util.UUID;
  */
 @Repository
 public interface NotificationFanoutJobRepository extends JpaRepository<NotificationFanoutJob, UUID> {
+
+    /** M専用状態遷移の後続guardで使うPKロック窓口。委譲足場ではまだ呼ばない。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT job FROM NotificationFanoutJob job WHERE job.id = :id")
+    Optional<NotificationFanoutJob> findByIdForUpdate(@Param("id") UUID id);
+
 
     /**
      * 実行対象ジョブを取得するワーカーのメインクエリ（AC-4）。

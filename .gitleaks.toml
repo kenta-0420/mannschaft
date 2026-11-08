@@ -409,3 +409,15 @@ paths = [
 regexes = [
   '''if \(!process\.env\.API_BASE_URL\) process\.env\.API_BASE_URL = F0121_DEFAULT_API''',
 ]
+
+[[rules.allowlists]]
+description = "M21固定child env試練の既知非秘密sentinel。9b43c099・b61b228aの2抽出値が同一で、fake Python子envへの到達確認だけに使用し実MySQLへ接続しない。generic-api-keyの当該exact pathとSecret完全一致だけをAND除外し、別path・別値の検出は維持する"
+condition = "AND"
+regexTarget = "secret"
+paths = [
+  '''^scripts/test_m21_wsl_docker_bridge\.py$''',
+]
+regexes = [
+  '''^M21_OWNED_SENTINEL_APP$''',
+  '''^M21_OWNED_SENTINEL_ROOT$''',
+]

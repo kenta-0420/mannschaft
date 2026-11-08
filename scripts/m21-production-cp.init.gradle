@@ -1,0 +1,67 @@
+import groovy.json.JsonSlurper
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.LinkOption
+import java.nio.file.StandardOpenOption
+import org.gradle.api.tasks.SourceSetContainer
+
+// 固定Windows M21だけ。test CPや旧CPへfallbackしない。
+gradle.projectsEvaluated {
+    def backend = gradle.rootProject
+    def expected = System.getenv('M21_BACKEND_DIR')
+    def output = System.getenv('M21_CP_OUTPUT')
+    if (!System.getProperty('os.name').startsWith('Windows') || Runtime.version().feature() != 21 ||
+            !expected || !output || !new File(expected).isAbsolute() || !new File(output).isAbsolute()) {
+        throw new GradleException('M21 Windows/JDK21/固定path不一致')
+    }
+    def project = backend.projectDir.toPath().toRealPath()
+    if (new File(expected).toPath().toRealPath() != project) {
+        throw new GradleException('M21 backend project不一致')
+    }
+    def target = new File(output).toPath().toAbsolutePath().normalize()
+    def assets = target.parent
+    if (target.fileName.toString() != 'production-cp.txt' || assets.fileName.toString() != 'assets' ||
+            !assets.toRealPath().toString().equalsIgnoreCase(assets.toString()) ||
+            Files.exists(target, LinkOption.NOFOLLOW_LINKS)) {
+        throw new GradleException('M21 新規owned CP出力でない')
+    }
+    def parseOwner = { path ->
+        if (Files.isSymbolicLink(path) || Files.size(path) > 16384) {
+            throw new GradleException('M21 owner metadata境界不一致')
+        }
+        new JsonSlurper().parse(path.toFile(), 'UTF-8')
+    }
+    def runOwner = parseOwner(assets.parent.resolve('owner.json'))
+    def assetOwner = parseOwner(assets.resolve('owner.json'))
+    if (runOwner.owner != 'f6efb6d3-51e1-4408-a760-92f7d3642122' ||
+            !(runOwner.nonce instanceof String) || !(runOwner.nonce ==~ /[a-f0-9]{32}/) || assetOwner.owner != runOwner.owner ||
+            assetOwner.nonce != runOwner.nonce || assetOwner.purpose != 'm21-production-assets' ||
+            !(assetOwner.sourceCommit instanceof String) || !(assetOwner.sourceCommit ==~ /[a-f0-9]{40}/)) {
+        throw new GradleException('M21 assets owner/nonce不一致')
+    }
+    def main = backend.extensions.getByType(SourceSetContainer).getByName('main')
+    backend.tasks.register('m21ProductionClasspath') {
+        dependsOn backend.tasks.named('classes')
+        doLast {
+            def outputs = main.output.classesDirs.files.collect { it.canonicalFile }
+            if (main.output.resourcesDir != null) outputs.add(main.output.resourcesDir.canonicalFile)
+            def cache = new File(gradle.gradleUserHomeDir, 'caches').canonicalPath.replace('\\', '/').toLowerCase(Locale.ROOT) + '/'
+            main.runtimeClasspath.files.each { entry ->
+                def real = entry.canonicalFile
+                def normalized = real.path.replace('\\', '/').toLowerCase(Locale.ROOT)
+                def ownBackend = backend.projectDir.canonicalPath.replace('\\', '/').toLowerCase(Locale.ROOT) + '/'
+                if (!real.exists() || (real.isDirectory() && !outputs.contains(real)) ||
+                        (real.isDirectory() && !normalized.startsWith(ownBackend)) ||
+                        (real.isFile() && !real.name.endsWith('.jar')) ||
+                        normalized.contains('/classes/java/test') || normalized.contains('/resources/test') ||
+                        (real.isFile() && !normalized.startsWith(ownBackend) && !normalized.startsWith(cache))) {
+                    throw new GradleException('M21 main CPに欠落/test/別WT出力')
+                }
+            }
+            def cp = main.runtimeClasspath.asPath
+            if (!cp || cp.contains('\r') || cp.contains('\n')) throw new GradleException('M21 CP文字列不正')
+            Files.write(target, cp.getBytes(StandardCharsets.UTF_8),
+                    StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
+        }
+    }
+}

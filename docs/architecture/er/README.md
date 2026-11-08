@@ -86,6 +86,7 @@ Docker が必要です。CI（`er-diagram-drift-check`）は migration・Entity�
 | [membership](membership.md) | 7 | 0 |
 | [mention](mention.md) | 1 | 0 |
 | [moderation](moderation.md) | 10 | 0 |
+| [moduleevent](moduleevent.md) | 4 | 0 |
 | [navsettings](navsettings.md) | 2 | 0 |
 | [notification](notification.md) | 20 | 0 |
 | [onboarding](onboarding.md) | 5 | 0 |
@@ -145,9 +146,9 @@ Docker が必要です。CI（`er-diagram-drift-check`）は migration・Entity�
 | [weather](weather.md) | 4 | 0 |
 | [webhook](webhook.md) | 5 | 0 |
 | [workflow](workflow.md) | 8 | 0 |
-| [_unmapped](_unmapped.md) | 9 | 5 |
+| [_unmapped](_unmapped.md) | 10 | 5 |
 
-- ドメイン数（`_unmapped` を除く）: 112
-- テーブル合計: 830（`flyway_schema_history` を除く）
+- ドメイン数（`_unmapped` を除く）: 113
+- テーブル合計: 835（`flyway_schema_history` を除く）
 - ビュー合計: 5
-- Entity 未紐付け（`_unmapped.md`）: テーブル 9 件 / ビュー 5 件
+- Entity 未紐付け（`_unmapped.md`）: テーブル 10 件 / ビュー 5 件

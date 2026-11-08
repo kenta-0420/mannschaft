@@ -168,3 +168,19 @@ cache10 が旧runの遅延・OOMを引き起こしたかという因果は区別
 
 製品の UI/API を変更しない test-only のため、今回変更の実機 E2E・探索試験は対象外。
 別の製品機能の実機結果を本件の完了証拠へ転用しない。
+
+## 105分 timeout の限定診断
+
+`run-ci-tests-with-observability.sh` は shard0/1で開始時と300秒ごとに数値ps・CPU数・
+meminfo・pressure・cgroup制限を記録する。shard0/1ではワーカーへのattachは行わない。
+共通終了要約の`missingPairs=6`はshard0/1の資源欠落やthread採取義務の未達を意味しない。
+shard3 の既存数値ps監視を保ち、shard5では
+開始時と60秒ごとに数値資源・pressure・登録済み通常`:test`ワーカーのGCを記録する。
+既存heap行からPIDとOS開始tickを登録し、世代が一致する生存PIDだけへattachする。
+R2 probe の既存outer classイベントが活動中の場合に限り、開始後60/75/90秒で
+最大2ワーカーのstack/state/lockとGCを採取する（最大6組、各コマンド3秒・64KiB）。
+thread名、環境変数、全引数、接続情報は収録しない。追加case計測やFlyway専用窓は設けない。
+許可済み `worker-resources.log` だけを1.5MiB以下で使い、停止理由・成功数・不足数の余白を残す。
+診断失敗は元のテストexitを変更しない。finalize時に期限envがない場合は採取済み期限を保持し、
+新規実行では前回の期限・ログを継承しない。timeoutの根因は未確定であり、この診断追加を解消証拠としない。
+軽量fixtureは `python -m unittest backend/scripts/test_ci_observability.py` で実行する。

@@ -13959,6 +13959,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system-admin/module-events/{publicationId}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["resumeModuleEventPublication"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system-admin/moderation/templates": {
         parameters: {
             query?: never;
@@ -37850,6 +37866,22 @@ export interface paths {
         };
         /** モジュール詳細取得 */
         get: operations["getModule"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/module-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listQuarantinedModuleEventPublications"];
         put?: never;
         post?: never;
         delete?: never;
@@ -64920,6 +64952,9 @@ export interface components {
             sortOrder: number;
             subscriptionRequired: boolean;
         };
+        ResumeModuleEventRequest: {
+            reason?: string;
+        };
         CreateModerationTemplateRequest: {
             actionType?: string;
             isDefault?: boolean;
@@ -79001,6 +79036,25 @@ export interface components {
         };
         ApiResponseModuleResponse: {
             data?: components["schemas"]["ModuleResponse"];
+        };
+        ModuleEventQuarantineResponse: {
+            eventType?: string;
+            failureCode?: string;
+            /** Format: date-time */
+            lastAttemptAt?: string;
+            listenerId?: string;
+            /** Format: date-time */
+            publicationDate?: string;
+            /** Format: uuid */
+            publicationId?: string;
+            /** Format: date-time */
+            quarantinedAt?: string;
+            /** Format: int32 */
+            retryCount?: number;
+        };
+        PagedResponseModuleEventQuarantineResponse: {
+            data?: components["schemas"]["ModuleEventQuarantineResponse"][];
+            meta?: components["schemas"]["PageMeta"];
         };
         ApiResponseListModerationSettingsResponse: {
             data?: components["schemas"]["ModerationSettingsResponse"][];
@@ -119276,6 +119330,30 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["ApiResponseNavFeatureAdminResponse"];
                 };
+            };
+        };
+    };
+    resumeModuleEventPublication: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResumeModuleEventRequest"];
+            };
+        };
+        responses: {
+            /** @description 再開成功 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -162405,6 +162483,30 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseModuleResponse"];
+                };
+            };
+        };
+    };
+    listQuarantinedModuleEventPublications: {
+        parameters: {
+            query?: {
+                status?: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseModuleEventQuarantineResponse"];
                 };
             };
         };

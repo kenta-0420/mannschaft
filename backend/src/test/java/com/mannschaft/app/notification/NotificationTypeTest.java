@@ -12,8 +12,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class NotificationTypeTest {
 
     @Test
-    @DisplayName("通知種別が全て定義されている（40種別 + TEAM_ORG_* 9種 = 49）")
-    void 全49種別が定義() {
+    @DisplayName("通知種別が全て定義されている（既存49種別 + MODULE_EVENT_NOTICE = 50）")
+    void 全50種別が定義() {
         // 内訳: 設計書§5 の通知種別（F03.4.5 §6.1 の RESERVATION_WAITLIST_OPENING を含む 25 種別）
         //       ＋ TODO_HANDED_OFF（後付け）＋ F20.3 ベータ特典の BETA_PERK_GRANTED/_REVOKED/_EXTENDED/
         //       _REVIEW_FLAGGED（4 種）＋ F03.4.5 §6.3 の RESERVATION_PENDING_EXPIRED（仮押さえ自動失効）
@@ -23,8 +23,9 @@ class NotificationTypeTest {
         //         _APPROVED / _REJECTED（3種）
         //       ＋ 新規端末ログイン、募集ペナルティ解除・適用（3種）
         //       ＋ F01.2.1 §6.7 チーム加盟の TEAM_ORG_*（9種）
-        //       = 計 49 種別。
-        assertThat(NotificationType.values()).hasSize(49);
+        //       ＋ L1-M の MODULE_EVENT_NOTICE（1種）
+        //       = 計 50 種別。
+        assertThat(NotificationType.values()).hasSize(50);
         assertThat(NotificationType.values())
                 .contains(NotificationType.BETA_PERK_GRANTED, NotificationType.BETA_PERK_REVOKED,
                         NotificationType.BETA_PERK_EXTENDED, NotificationType.BETA_PERK_REVIEW_FLAGGED,
@@ -46,7 +47,8 @@ class NotificationTypeTest {
                         NotificationType.TEAM_ORG_PENDING_EXPIRED,
                         NotificationType.TEAM_ORG_PENDING_CANCELLED_BY_SYSTEM,
                         NotificationType.TEAM_ORG_MEMBERSHIP_LEFT,
-                        NotificationType.TEAM_ORG_MEMBERSHIP_REMOVED);
+                        NotificationType.TEAM_ORG_MEMBERSHIP_REMOVED,
+                        NotificationType.MODULE_EVENT_NOTICE);
     }
 
     @Test

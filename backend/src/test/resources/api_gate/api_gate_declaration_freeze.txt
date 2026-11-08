@@ -332,6 +332,7 @@ HTTP|com.mannschaft.app.moderation.controller.SystemAdminModerationController|15
 HTTP|com.mannschaft.app.moderation.controller.SystemAdminReportController|1|1
 HTTP|com.mannschaft.app.moderation.controller.UserViolationController|3|3
 HTTP|com.mannschaft.app.moderation.controller.YabaiController|2|2
+HTTP|com.mannschaft.app.moduleevent.controller.SystemAdminModuleEventController|0|2
 HTTP|com.mannschaft.app.navsettings.controller.NavSettingsController|2|2
 HTTP|com.mannschaft.app.navsettings.controller.SystemAdminNavFeaturesController|4|4
 HTTP|com.mannschaft.app.notification.confirmable.controller.ConfirmableNotificationRecipientController|2|2

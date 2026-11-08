@@ -57270,6 +57270,40 @@
         }
       }
     },
+    "/api/v1/system-admin/module-events/{publicationId}/resume": {
+      "post": {
+        "tags": [
+          "system-admin-module-event-controller"
+        ],
+        "operationId": "resumeModuleEventPublication",
+        "parameters": [
+          {
+            "name": "publicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResumeModuleEventRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "再開成功"
+          }
+        }
+      }
+    },
     "/api/v1/system-admin/moderation/templates": {
       "post": {
         "tags": [
@@ -128692,6 +128726,59 @@
         }
       }
     },
+    "/api/v1/system-admin/module-events": {
+      "get": {
+        "tags": [
+          "system-admin-module-event-controller"
+        ],
+        "operationId": "listQuarantinedModuleEventPublications",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseModuleEventQuarantineResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/system-admin/moderation/settings": {
       "get": {
         "tags": [
@@ -197629,6 +197716,16 @@
           "subscriptionRequired"
         ]
       },
+      "ResumeModuleEventRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          }
+        }
+      },
       "CreateModerationTemplateRequest": {
         "type": "object",
         "properties": {
@@ -236251,6 +236348,54 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/ModuleResponse"
+          }
+        }
+      },
+      "ModuleEventQuarantineResponse": {
+        "type": "object",
+        "properties": {
+          "eventType": {
+            "type": "string"
+          },
+          "failureCode": {
+            "type": "string"
+          },
+          "lastAttemptAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "listenerId": {
+            "type": "string"
+          },
+          "publicationDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "publicationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quarantinedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "retryCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PagedResponseModuleEventQuarantineResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModuleEventQuarantineResponse"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
           }
         }
       },

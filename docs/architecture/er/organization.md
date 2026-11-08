@@ -95,6 +95,8 @@ erDiagram
 | [match](match.md) | `matches` | `organization_id` | ID参照 | `organizations` |
 | [member](member.md) | `member_profile_fields` | `organization_id` | ID参照 | `organizations` |
 | [member](member.md) | `team_pages` | `organization_id` | ID参照 | `organizations` |
+| [moduleevent](moduleevent.md) | `event_publication_attempts` | `organization_id` | ID参照 | `organizations` |
+| [moduleevent](moduleevent.md) | `module_event_notice_outbox` | `organization_id` | ID参照 | `organizations` |
 | [notification](notification.md) | `notification_credit_purchases` | `organization_id` | ID参照 | `organizations` |
 | [notification](notification.md) | `notification_fanout_audiences` | `organization_id` | ID参照 | `organizations` |
 | [notification](notification.md) | `notification_fanout_jobs` | `organization_id` | ID参照 | `organizations` |

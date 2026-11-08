@@ -887,6 +887,10 @@ for (const width of [360, 390, 1280]) {
         await page.evaluate(() => document.fonts.ready.then(() => true))
         // Popover の拡大遷移が終わってから、同一フレームの文字行と矩形を比較する。
         await expect(menu.panel).not.toHaveClass(/\bp-anchored-overlay-enter-active\b/)
+        // Transitionのクラス除去でキャンセルされるAnimationのPromiseを保持せず、現在の描画状態を待つ。
+        await expect.poll(() => menu.panel.evaluate(element =>
+          element.getAnimations().filter(animation => animation.playState === 'running' || animation.pending).length,
+        )).toBe(0)
         const { lines, foldersBox, jumpBox, documentSize } = await all.evaluate((element, jumpTestId) => {
           const range = document.createRange()
           range.selectNodeContents(element.querySelector('span')!)

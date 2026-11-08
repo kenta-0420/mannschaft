@@ -22,6 +22,16 @@ package com.mannschaft.app.notification.fanout;
  */
 public enum FanoutMessageKind {
 
+    /** L1-M: 継続遅延の固定文面。診断・業務入力は含めない。 */
+    MODULE_EVENT_DELAYED("notification.fanout.moduleEvent.delayed.title",
+            "notification.fanout.moduleEvent.delayed.body", 0),
+    /** L1-M: 隔離の固定文面。 */
+    MODULE_EVENT_QUARANTINED("notification.fanout.moduleEvent.quarantined.title",
+            "notification.fanout.moduleEvent.quarantined.body", 0),
+    /** L1-M: 全 listener と業務の完了が確認された復旧の固定文面。 */
+    MODULE_EVENT_RECOVERED("notification.fanout.moduleEvent.recovered.title",
+            "notification.fanout.moduleEvent.recovered.body", 0),
+
     /** アンケート公開（組織スコープ×ALL）。{@code arg0} = アンケート名。 */
     SURVEY_PUBLISHED("notification.fanout.survey.published.title",
             "notification.fanout.survey.published.body", 1),
