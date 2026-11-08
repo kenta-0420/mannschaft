@@ -15,7 +15,7 @@ const { templateLabel } = useScopeLabels()
       class="rounded-lg border border-dashed border-gray-300 p-8 text-center text-gray-500"
     >
       <i class="pi pi-inbox mb-2 text-3xl" />
-      <p>所属チームはありません</p>
+      <p>{{ $t('orgMemberTeams.groups.assign_empty') }}</p>
     </div>
     <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <div
@@ -43,6 +43,9 @@ const { templateLabel } = useScopeLabels()
         </div>
         <div class="text-sm text-gray-500">
           <i class="pi pi-users mr-1" />{{ team.memberCount }}人
+        </div>
+        <div v-if="$slots.actions" class="mt-3" @click.stop>
+          <slot name="actions" :team="team" />
         </div>
       </div>
     </div>

@@ -46,8 +46,8 @@ class StripeJavaVersionGuardTest {
      * 両方に対応するための候補パス。存在する最初のものを採用する。
      */
     private static final List<Path> BUILD_GRADLE_CANDIDATES = List.of(
-        Paths.get("build.gradle.kts"),              // CWD = backend/ （通常想定）
-        Paths.get("backend", "build.gradle.kts")     // CWD = リポジトリルート
+        Paths.get("build-logic", "src", "main", "kotlin", "mannschaft.backend-conventions.gradle.kts"),              // CWD = backend/ （通常想定）
+        Paths.get("backend", "build-logic", "src", "main", "kotlin", "mannschaft.backend-conventions.gradle.kts")     // CWD = リポジトリルート
     );
 
     @Test

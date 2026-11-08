@@ -6,6 +6,7 @@ import com.mannschaft.app.tournament.dto.CreatePromotionRequest;
 import com.mannschaft.app.tournament.dto.PromotionPreviewResponse;
 import com.mannschaft.app.tournament.dto.PromotionRecordResponse;
 import com.mannschaft.app.tournament.service.PromotionService;
+import com.mannschaft.app.tournament.service.TournamentViewAccessGate;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -36,6 +37,8 @@ import java.util.List;
 public class PromotionController {
 
     private final PromotionService promotionService;
+    /** 閲覧系 GET の入口で URL の組織と大会の所属を照合する認可ゲート（非トランザクション）。 */
+    private final TournamentViewAccessGate tournamentViewAccessGate;
 
 
     @PostMapping
@@ -53,6 +56,7 @@ public class PromotionController {
     public ResponseEntity<ApiResponse<List<PromotionRecordResponse>>> getPromotionHistory(
             @PathVariable Long orgId, @PathVariable Long tId) {
         Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        tournamentViewAccessGate.verifyViewable(orgId, tId, viewerUserId);
         return ResponseEntity.ok(ApiResponse.of(promotionService.getPromotionHistory(tId, viewerUserId)));
     }
 

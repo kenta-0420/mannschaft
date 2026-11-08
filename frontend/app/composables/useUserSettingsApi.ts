@@ -76,12 +76,11 @@ export function useUserSettingsApi() {
   }
 
   async function setupPassword(password: string) {
-    return api<{ data: MessageRes }>(
-      `/api/v1/users/me/password/setup?password=${encodeURIComponent(password)}`,
-      {
-        method: 'POST',
-      },
-    )
+    return api<{ data: MessageRes }>('/api/v1/users/me/password/setup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ password }).toString(),
+    })
   }
 
   // === Login History ===

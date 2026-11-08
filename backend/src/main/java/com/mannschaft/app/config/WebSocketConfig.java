@@ -1,6 +1,7 @@
 package com.mannschaft.app.config;
 
 import com.mannschaft.app.chat.ws.ChatChannelSubscriptionInterceptor;
+import com.mannschaft.app.common.websocket.StompErrorCodeErrorHandler;
 import com.mannschaft.app.match.live.MatchLiveSubscriptionInterceptor;
 import com.mannschaft.app.reservation.ws.EmergencyClosureSubscriptionInterceptor;
 import lombok.RequiredArgsConstructor;
@@ -30,8 +31,10 @@ import java.util.Arrays;
  * {@code /queue} が脱落しユーザー宛配信が全滅する — red テストで実証済み）。</p>
  *
  * <p>{@link WebSocketAuthChannelInterceptor} を inbound チャンネルに登録し、
- * STOMP CONNECT フレームの JWT 検証と STOMP Principal 確立（{@code SimpUserRegistry} 登録・
- * 同設計書 §2.3）を行う。</p>
+ * STOMP CONNECT 時の認証ソース確定（有効 Bearer ＞ Cookie 認証ハンドシェイク ＞ 匿名）と
+ * STOMP Principal 確立（{@code SimpUserRegistry} 登録・同設計書 §2.3 / §2.3.1）を行う。
+ * 拒否時は {@link StompErrorCodeErrorHandler} が ERROR フレームの {@code x-error-code} に
+ * 理由コードを載せる（§2.3.2）。</p>
  *
  * <p>さらに {@link MatchLiveSubscriptionInterceptor} を<b>認証インターセプタの後段</b>に登録し、
  * F08.10 ライブ観戦トピック（{@code /topic/matches/{matchId}/live}）の SUBSCRIBE 認可を行う
@@ -85,6 +88,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns(origins)
                 .withSockJS();
+        // 拒否理由を ERROR フレームの x-error-code に載せる共通エラーハンドラ（設計書 §2.3.2・CMP-261104-0337）。
+        // STOMP サブプロトコルハンドラは全エンドポイント共有のため /ws/signage にも効く。
+        registry.setErrorHandler(new StompErrorCodeErrorHandler());
     }
 
     @Override

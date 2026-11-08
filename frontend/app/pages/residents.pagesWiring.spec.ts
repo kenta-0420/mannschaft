@@ -41,7 +41,7 @@ describe('住民台帳', () => {
   })
 
   it('住戸作成はZod/VeeValidate、送信中ロック、作成後通知を持つ', () => {
-    expect(createDialog).toContain("import { toTypedSchema } from '@vee-validate/zod'")
+    expect(createDialog).toContain("import { toTypedSchema } from '~/utils/toTypedSchema'")
     expect(createDialog).toContain("import { useForm } from 'vee-validate'")
     expect(createDialog).toContain("import { z } from 'zod'")
     expect(createDialog).toContain('.min(1')

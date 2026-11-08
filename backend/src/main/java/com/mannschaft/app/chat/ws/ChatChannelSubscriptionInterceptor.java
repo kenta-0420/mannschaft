@@ -3,11 +3,12 @@ package com.mannschaft.app.chat.ws;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
+import com.mannschaft.app.common.websocket.StompErrorCode;
+import com.mannschaft.app.common.websocket.StompRejectedException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
-import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
@@ -23,7 +24,7 @@ import java.util.regex.Pattern;
  * <p>設計書 {@code docs/architecture/websocket_external_broker_valkey.md} §2.6 / AC-11。
  * STOMP {@code SUBSCRIBE} フレームのうち <b>{@code /topic/channels/{channelId}} 宛先のみ</b>を
  * 認可対象とし、<b>チャネルメンバーシップ（{@code chat_channel_members}）を検査</b>して非メンバーの購読を
- * {@link MessagingException} をスローして拒否する（ERROR フレーム返却・購読不成立）。
+ * {@link StompRejectedException} をスローして拒否する（ERROR フレーム返却・購読不成立）。
  * 既存 {@code MatchLiveSubscriptionInterceptor}・{@code EmergencyClosureSubscriptionInterceptor} と同パターン。</p>
  *
  * <h3>設計意図（§2.6）</h3>
@@ -98,7 +99,8 @@ public class ChatChannelSubscriptionInterceptor implements ChannelInterceptor {
             channelId = Long.parseLong(matcher.group(1));
         } catch (NumberFormatException e) {
             // 正規表現を通過しているため通常到達しない（数値オーバーフロー時のみ）。安全側に倒して拒否する。
-            throw new MessagingException("チャネルの購読先 ID が不正です: " + destination);
+            throw new StompRejectedException(StompErrorCode.INVALID_DESTINATION,
+                    "チャネルの購読先 ID が不正です: " + destination);
         }
 
         Long userId = resolveUserId(accessor);
@@ -106,14 +108,15 @@ public class ChatChannelSubscriptionInterceptor implements ChannelInterceptor {
         // 未認証はチャット購読不可（チャットは非公開前提）。
         if (userId == null) {
             log.debug("チャネル購読を拒否（未認証）: destination={}", destination);
-            throw new MessagingException("チャネルの購読権限がありません");
+            // 未認証は FORBIDDEN と区別する（x-error-code・設計書 §2.3.2）。文言は従来どおり。
+            throw new StompRejectedException(StompErrorCode.UNAUTHENTICATED, "チャネルの購読権限がありません");
         }
 
         ChatChannelEntity chatChannel = chatChannelRepository.findById(channelId).orElse(null);
         // チャネル不在／論理削除済みは拒否（存在を漏らさず安全側に倒す）。
         if (chatChannel == null || chatChannel.getDeletedAt() != null) {
             log.debug("チャネル購読を拒否（不在/削除済み）: userId={}, channelId={}", userId, channelId);
-            throw new MessagingException("チャネルの購読権限がありません");
+            throw new StompRejectedException(StompErrorCode.FORBIDDEN, "チャネルの購読権限がありません");
         }
 
         // メンバー行でメンバーシップが定義される種別のみ購読認可を行う。
@@ -129,7 +132,7 @@ public class ChatChannelSubscriptionInterceptor implements ChannelInterceptor {
             log.debug("チャネル購読を拒否（非メンバー）: userId={}, channelId={}, type={}",
                     userId, channelId, chatChannel.getChannelType());
             // 購読を不成立にする（ERROR フレームが返り SUBSCRIBE は確立しない）。
-            throw new MessagingException("チャネルの購読権限がありません");
+            throw new StompRejectedException(StompErrorCode.FORBIDDEN, "チャネルの購読権限がありません");
         }
 
         log.debug("チャネル購読を許可: userId={}, channelId={}", userId, channelId);

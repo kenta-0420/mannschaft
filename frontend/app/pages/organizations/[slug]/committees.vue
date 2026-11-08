@@ -17,6 +17,12 @@ const showCreateDialog = ref(false)
 const creating = ref(false)
 /** 取得失敗は「委員会なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
 const loadFailed = ref(false)
+const { page, rows, totalRecords, onPage } = usePagination()
+
+function changePage(event: { page: number; rows: number }) {
+  onPage(event)
+  loadCommittees()
+}
 
 // 作成フォームの値
 const createForm = ref({
@@ -30,10 +36,12 @@ async function loadCommittees() {
   loading.value = true
   loadFailed.value = false
   try {
-    const res = await committeeApi.listCommittees(orgSlug)
+    const res = await committeeApi.listCommittees(orgSlug, { page: page.value, size: rows.value })
     committees.value = res.data
+    totalRecords.value = res.meta.total
   } catch {
     committees.value = []
+    totalRecords.value = 0
     loadFailed.value = true
   } finally {
     loading.value = false
@@ -131,6 +139,13 @@ onMounted(async () => {
           </div>
         </div>
       </div>
+      <Paginator
+        :first="page * rows"
+        :rows="rows"
+        :total-records="totalRecords"
+        template="PrevPageLink PageLinks NextPageLink"
+        @page="changePage"
+      />
     </SectionCard>
 
     <!-- 委員会作成ダイアログ -->

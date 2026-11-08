@@ -5,6 +5,8 @@ Mannschaft は将来のマイクロサービス分割を見据えた**モジュ�
 
 > 実装記録・背景の全文は [`db_scalability.md`](db_scalability.md) を参照。
 
+> **既存テーブルの現状は [`er/README.md`](er/README.md) を見る。** Flyway 適用済みの実スキーマからドメイン単位に自動生成した E-R 図で、同一ドメイン内 FK は実線、FK なしの ID 参照（本書の「クロスドメインFK禁止」に従った参照）は点線「ID参照(FKなし)」で描かれる。新規テーブル設計・ドメイン境界の判断・既存テーブルの把握の前に、該当ドメインの `er/<domain>.md` を開くこと。`docs/features` の手描き図は設計時点の意図、`er/` は現実のスキーマ。migration や Entity を変更したら `cd backend && ./gradlew generateErDiagrams` で再生成してコミットする（CI の ER Diagram Drift Check が検出。詳細は `backend/.claudecode.md` §10.1）。
+
 ---
 
 ## ドメイン境界の原則

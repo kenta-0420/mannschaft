@@ -1,0 +1,71 @@
+{
+    "owner":  "october0839-0338-20261026",
+    "completedAt":  "2026-10-26T13:28:59.2776036+09:00",
+    "root":  "C:\\Claude\\mannschaft\\.claude\\runtime\\october-first-wave-20261026",
+    "deleted":  [
+                    "backend-env.json",
+                    "backend-env.sh",
+                    "db.env",
+                    "timeline-real-env.json",
+                    "timeline-real-env.sh",
+                    "cmp2610010839-backend.jar",
+                    "cmp2610010839-latestmain-backend.jar"
+                ],
+    "jarHashProof":  [
+                         {
+                             "file":  "cmp2610010839-backend.jar",
+                             "sha256":  "7afe470f32cd2378b4496d99817d8c7f1f0376b0e1545c2b23cc449b550b39fb",
+                             "record":  "csp-build-summary.json",
+                             "matched":  true
+                         },
+                         {
+                             "file":  "cmp2610010839-latestmain-backend.jar",
+                             "sha256":  "906d0e6a8a6bf758d5544972b60bb005c8f0e2b03e85e698cef36243dfae498d",
+                             "record":  "csp-latestmain-artifact.json",
+                             "matched":  true
+                         }
+                     ],
+    "sanitized":  [
+                      {
+                          "file":  "prepare-env.py",
+                          "knownSecretValuesRedacted":  1,
+                          "generatedPasswordLinesRedacted":  0,
+                          "preserved":  "procedure/log retained; secret values removed"
+                      },
+                      {
+                          "file":  "select-timeline-fixtures.cjs",
+                          "knownSecretValuesRedacted":  1,
+                          "generatedPasswordLinesRedacted":  0,
+                          "preserved":  "procedure/log retained; secret values removed"
+                      },
+                      {
+                          "file":  "backend-server-ext4-before-disconnect.log",
+                          "knownSecretValuesRedacted":  0,
+                          "generatedPasswordLinesRedacted":  1,
+                          "preserved":  "procedure/log retained; secret values removed"
+                      },
+                      {
+                          "file":  "backend-server-ext4.log",
+                          "knownSecretValuesRedacted":  0,
+                          "generatedPasswordLinesRedacted":  1,
+                          "preserved":  "procedure/log retained; secret values removed"
+                      },
+                      {
+                          "file":  "backend-server-latestmain.log",
+                          "knownSecretValuesRedacted":  0,
+                          "generatedPasswordLinesRedacted":  1,
+                          "preserved":  "procedure/log retained; secret values removed"
+                      }
+                  ],
+    "knownSecretResidualFiles":  0,
+    "windowsOwnedPortListeners":  0,
+    "ports":  [
+                  3001,
+                  8083,
+                  13339,
+                  16339
+              ],
+    "linuxPortsEvidence":  "cleanup-listeners.txt (captured before holder exit; no WSL restart performed)",
+    "preserved":  "source/hash/receipt/summary/fixtureproof/cleanup logs and sanitized procedures; directory retained",
+    "junction":  "rootT frontend/node_modules untouched"
+}

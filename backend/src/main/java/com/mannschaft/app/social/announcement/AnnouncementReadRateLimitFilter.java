@@ -39,6 +39,8 @@ import java.util.regex.Pattern;
  *       {@link AnnouncementReadService#MARK_ALL_BATCH_SIZE} ×
  *       {@link AnnouncementReadService#MARK_ALL_MAX_BATCHES} 件の {@code INSERT} を伴い、
  *       単件（最大 1 行）より桁違いに重いので、厳しい側に倒すのが妥当である。</li>
+ *   <li><b>組織の read-batch 5 req/分</b>（ALIC-1）— 1 回で最大 50 件の書き込みを伴うため read-all と同じ重さとして
+ *       別枠 {@code announcement:read-batch} を設ける。キーはユーザー単位なので組織 ID を変えても回避できない。</li>
  * </ul>
  *
  * <p><b>実装の流儀</b>: 同ドメインの {@link BroadcastRateLimitFilter} に揃える。
@@ -60,17 +62,25 @@ public class AnnouncementReadRateLimitFilter extends AbstractRateLimitFilter {
     private static final Pattern READ_ALL_PATTERN =
             Pattern.compile("^/api/v1/(teams|organizations)/[^/]+/announcements/read-all$");
 
+    /** 組織の一括既読（表示中の ID を指定）: {@code /api/v1/organizations/{orgId}/announcements/read-batch}（チーム側には無い） */
+    private static final Pattern READ_BATCH_PATTERN =
+            Pattern.compile("^/api/v1/organizations/[^/]+/announcements/read-batch$");
+
     /** 単件既読の上限（1 分あたり / ユーザー）。docs/security/06 §4.2「認証済み WRITE 系」の標準値。 */
     static final int SINGLE_READ_LIMIT = 60;
 
     /** 一括既読の上限（1 分あたり / ユーザー）。設計書 F02.6 §6.4 の想定値。単件より重いので厳しくする。 */
     static final int READ_ALL_LIMIT = 5;
 
+    /** read-batch の上限（1 分あたり / ユーザー）。read-all と同じ重さの書き込みなので同じ 5 回。組織 ID を変えても同一ユーザーで共有する。 */
+    static final int READ_BATCH_LIMIT = 5;
+
     /** ウィンドウ長。 */
     private static final Duration WINDOW = Duration.ofMinutes(1);
 
     static final String ZONE_SINGLE_READ = "announcement:read";
     static final String ZONE_READ_ALL = "announcement:read-all";
+    static final String ZONE_READ_BATCH = "announcement:read-batch";
 
     public AnnouncementReadRateLimitFilter(ObjectProvider<ValkeyRateLimiter> rateLimiterProvider) {
         super(rateLimiterProvider);
@@ -101,6 +111,9 @@ public class AnnouncementReadRateLimitFilter extends AbstractRateLimitFilter {
         // 具体度の高い read-all を先に判定する（単件パターンとは排他だが順序を明示しておく）。
         if (READ_ALL_PATTERN.matcher(path).matches()) {
             return new RateLimitRule(ZONE_READ_ALL, READ_ALL_LIMIT, WINDOW);
+        }
+        if (READ_BATCH_PATTERN.matcher(path).matches()) {
+            return new RateLimitRule(ZONE_READ_BATCH, READ_BATCH_LIMIT, WINDOW);
         }
         if (SINGLE_READ_PATTERN.matcher(path).matches()) {
             return new RateLimitRule(ZONE_SINGLE_READ, SINGLE_READ_LIMIT, WINDOW);

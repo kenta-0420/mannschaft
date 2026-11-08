@@ -75,7 +75,7 @@ public class AnnouncementRangeTemplateService {
                 .scopeId(scopeId)
                 .name(req.getName())
                 .targetRole(req.getTargetRole() != null ? req.getTargetRole() : "MEMBERS_AND_ABOVE")
-                .targetTeamIds(req.getTargetTeamIdsJson())
+                .targetTeamIds(req.toStoredTargetTeamIdsJson())
                 .targetGroupIds(req.getTargetGroupIdsJson())
                 .targetGroupRange(req.getTargetGroupRangeJson())
                 .includeUnassigned(Boolean.TRUE.equals(req.getIncludeUnassigned()))
@@ -122,7 +122,7 @@ public class AnnouncementRangeTemplateService {
             templateRepository.clearDefault(scopeTypeEnum, scopeId);
         }
 
-        entity.update(req.getName(), req.getTargetRole(), req.getTargetTeamIdsJson(),
+        entity.update(req.getName(), req.getTargetRole(), req.toStoredTargetTeamIdsJson(),
                 req.getTargetGroupIdsJson(), req.getTargetGroupRangeJson(),
                 Boolean.TRUE.equals(req.getIncludeUnassigned()),
                 req.getPreferredChannel(), newIsDefault);

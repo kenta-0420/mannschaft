@@ -19,6 +19,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.InOrder;
@@ -593,16 +595,17 @@ class ShiftSlotServiceTest {
                     .isEqualTo(ShiftAssignmentStatus.REVOKED);
         }
 
-        @Test
+        @ParameterizedTest
+        @EnumSource(value = ShiftAssignmentStatus.class, names = {"PROPOSED", "CONFIRMED"})
         @DisplayName("同じ人を再度割り当てても、有効な履歴行があれば二重に記録しない（冪等）")
-        void 既に有効な履歴行があれば追加しない() {
+        void 既に有効な履歴行があれば追加しない(ShiftAssignmentStatus status) {
             ShiftSlotEntity existing = slotWithAssignments(null);
             com.mannschaft.app.shift.entity.ShiftAssignmentEntity history =
                     com.mannschaft.app.shift.entity.ShiftAssignmentEntity.builder()
                             .slotId(SLOT_ID)
                             .userId(101L)
                             .assignedBy(ACTOR)
-                            .status(ShiftAssignmentStatus.CONFIRMED)
+                            .status(status)
                             .build();
             given(slotRepository.findById(SLOT_ID)).willReturn(Optional.of(existing));
             given(slotRepository.save(any(ShiftSlotEntity.class))).willAnswer(inv -> inv.getArgument(0));
@@ -614,6 +617,8 @@ class ShiftSlotServiceTest {
                     SLOT_ID, new SlotAssignmentPatchRequest(List.of(101L), List.of(), 0), ACTOR);
 
             verify(assignmentRepository, never()).saveAll(anyList());
+            assertThat(history.getStatus()).isEqualTo(status);
+            assertThat(history.getAssignedBy()).isEqualTo(ACTOR);
         }
 
         @Test

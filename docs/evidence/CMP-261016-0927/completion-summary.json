@@ -1,0 +1,73 @@
+{
+  "purpose": "実装PR merge後の完了検証記録",
+  "implementationPr": 3912,
+  "sourceHead": "561ed2cd5136eac04fb598bca7206c7d5845696c",
+  "generatedAppHead": "bc8f63befa",
+  "generatedAppDiff": 0,
+  "unit": {
+    "red": "31 failed / 4 passed",
+    "initialGreen": 54,
+    "pollRaceRed": "expected 2 / received 3",
+    "finalGreen": 55
+  },
+  "routeStructure": {
+    "passed": 1
+  },
+  "mock": {
+    "passed": 3,
+    "singleRun": true,
+    "runnerExit": 0,
+    "toolExit": 0
+  },
+  "real": {
+    "passed": 5,
+    "singleRun": true,
+    "duration": "6.8m",
+    "runnerExit": 0,
+    "toolExit": 0,
+    "roles": [
+      "ADMIN",
+      "DEPUTY_ADMIN",
+      "MEMBER",
+      "SUPPORTER",
+      "OTHER_TEAM_ADMIN"
+    ]
+  },
+  "ci": {
+    "confirmedBy": "root",
+    "head": "561ed2cd5136eac04fb598bca7206c7d5845696c",
+    "allLatestPassed": true,
+    "frontendRun": 38894989853,
+    "smokeRun": 38894990531,
+    "lighthouseRun": 38894990563,
+    "taskListLatestRun": 38895383326,
+    "harnessRun": 38894990099
+  },
+  "exploratory": {
+    "status": "passed",
+    "evidence": "docs/evidence/CMP-261016-0927/residents-summary.json",
+    "residents": 3,
+    "rootReviewed": true,
+    "additionalFindings": 0
+  },
+  "finalReview": {
+    "status": "passed",
+    "reviewedBy": "root",
+    "findings": 0,
+    "scope": "根本原因・旧応答・poll競合と最終実機/探索/CIを確認"
+  },
+  "limitations": [
+    "SPA実機、SSR devと旧slug301未検証",
+    "非空実請求詳細未検証、SFC/モックで補完",
+    "trace:onはADMIN本体全assert成功後context終了失敗、trace:offは同assert/fixture/180秒で5green。原因未断定",
+    "専用team1249/1250削除未承認・保全中"
+  ],
+  "excludedFromCommit": [
+    "trace",
+    "authstate",
+    ".env",
+    "cookies",
+    "fixture-preservation.local.json"
+  ],
+  "mergeCommit": "3d4e3f93c25ec66cfd1af374de53ba4954cdee5b"
+}

@@ -67,24 +67,46 @@ public class NotificationPreferenceService {
     // ============================================================
 
     /**
-     * ユーザーの通知設定一覧を取得する。各スコープに表示名を充填する。
+     * ユーザーの通知設定一覧を取得する。保存行に現所属の未保存設定（既定ON）を補完し、表示名を充填する。
      *
      * @param userId ユーザーID
      * @return 通知設定レスポンスリスト
      */
     public List<PreferenceResponse> listPreferences(Long userId) {
         List<NotificationPreferenceEntity> entities = preferenceRepository.findByUserId(userId);
-        if (entities.isEmpty()) {
-            return List.of();
-        }
+        // 管理者の全件参照権限とは分け、既定値の補完対象は実際の所属だけに限る。
+        Set<Long> teamIds = accessControlService.findAffiliatedScopeIds(userId, "TEAM");
+        Set<Long> organizationIds = accessControlService.findAffiliatedScopeIds(userId, "ORGANIZATION");
         // ScopeAffiliationCache は listPreferences 1 回の呼び出しにつき 1 個だけ構築する。
         // stream().map() の lambda 内で毎回 new すると行数ぶんクエリが増える（N+1）ため、
         // ループの外で 1 度だけ構築して使い回す（AC-30）。
-        ScopeAffiliationCache cache = new ScopeAffiliationCache(userId, entities);
-        return entities.stream()
+        ScopeAffiliationCache cache = new ScopeAffiliationCache(userId, entities, teamIds, organizationIds);
+        List<PreferenceResponse> responses = entities.stream()
                 .map(notificationMapper::toPreferenceResponse)
                 .map(response -> fillScopeName(userId, response, cache))
                 .collect(Collectors.toList());
+        Set<PreferenceResponse.PreferenceScopeDto> savedScopes = responses.stream()
+                .map(PreferenceResponse::getScope).collect(Collectors.toSet());
+        // 保存行の順序・OFF・旧scopeTypeを保ち、未保存の現役スコープだけを末尾へ補う。
+        // 名前が解決できない削除済み・不存在スコープには既定行を作らない。
+        teamIds.stream()
+                .filter(cache.teamNames::containsKey)
+                .filter(id -> !savedScopes.contains(new PreferenceResponse.PreferenceScopeDto("TEAM", id)))
+                .map(id -> defaultPreference(userId, "TEAM", id, cache.teamNames.get(id)))
+                .forEach(responses::add);
+        organizationIds.stream()
+                .filter(cache.organizationNames::containsKey)
+                .filter(id -> !savedScopes.contains(new PreferenceResponse.PreferenceScopeDto("ORGANIZATION", id)))
+                .map(id -> defaultPreference(userId, "ORGANIZATION", id, cache.organizationNames.get(id)))
+                .forEach(responses::add);
+        return responses;
+    }
+
+    /** 未保存スコープの既定ON。読み取りでは永続化せず、ID・監査日時も採番しない。 */
+    private PreferenceResponse defaultPreference(Long userId, String scopeType, Long scopeId, String scopeName) {
+        return PreferenceResponse.builder().userId(userId)
+                .scope(new PreferenceResponse.PreferenceScopeDto(scopeType, scopeId))
+                .scopeName(scopeName).isEnabled(true).build();
     }
 
     /**
@@ -120,7 +142,7 @@ public class NotificationPreferenceService {
      *
      * <p>行ごとに所属チェック・名前解決を行うと N+1 になるため（AC-30）、対象行に登場する
      * scopeId を種別ごとにまとめて 1 回のクエリ（{@link AccessControlService#findAffiliatedScopeIds}
-     * 等）で解決する。SYSTEM_ADMIN は全件を所属扱いとする（他 API の越境窓口と同じ扱い）。</p>
+     * 等）で解決する。SYSTEM_ADMIN は保存行の参照先も名前解決できるが、既定行の補完は実所属に限る。</p>
      */
     private final class ScopeAffiliationCache {
 
@@ -130,10 +152,21 @@ public class NotificationPreferenceService {
         private final Map<Long, String> organizationNames;
 
         ScopeAffiliationCache(Long userId, List<NotificationPreferenceEntity> entities) {
+            this(userId, entities, Set.of(), Set.of(), false);
+        }
+
+        ScopeAffiliationCache(Long userId, List<NotificationPreferenceEntity> entities,
+                              Set<Long> teamIds, Set<Long> organizationIds) {
+            this(userId, entities, teamIds, organizationIds, true);
+        }
+
+        private ScopeAffiliationCache(Long userId, List<NotificationPreferenceEntity> entities,
+                                      Set<Long> currentTeamIds, Set<Long> currentOrganizationIds,
+                                      boolean affiliationsLoaded) {
             boolean systemAdmin = accessControlService.isSystemAdmin(userId);
 
-            Set<Long> teamIds = new LinkedHashSet<>();
-            Set<Long> orgIds = new LinkedHashSet<>();
+            Set<Long> teamIds = new LinkedHashSet<>(currentTeamIds);
+            Set<Long> orgIds = new LinkedHashSet<>(currentOrganizationIds);
             for (NotificationPreferenceEntity e : entities) {
                 if (e.getScopeId() == null) {
                     continue;
@@ -147,10 +180,12 @@ public class NotificationPreferenceService {
 
             this.affiliatedTeamIds = teamIds.isEmpty()
                     ? Set.of()
-                    : systemAdmin ? teamIds : accessControlService.findAffiliatedScopeIds(userId, "TEAM");
+                    : systemAdmin ? teamIds : affiliationsLoaded ? currentTeamIds
+                    : accessControlService.findAffiliatedScopeIds(userId, "TEAM");
             this.affiliatedOrganizationIds = orgIds.isEmpty()
                     ? Set.of()
-                    : systemAdmin ? orgIds : accessControlService.findAffiliatedScopeIds(userId, "ORGANIZATION");
+                    : systemAdmin ? orgIds : affiliationsLoaded ? currentOrganizationIds
+                    : accessControlService.findAffiliatedScopeIds(userId, "ORGANIZATION");
 
             Set<Long> resolvableTeamIds = teamIds.stream()
                     .filter(this.affiliatedTeamIds::contains).collect(Collectors.toSet());

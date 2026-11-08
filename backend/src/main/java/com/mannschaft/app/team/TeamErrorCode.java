@@ -27,7 +27,7 @@ public enum TeamErrorCode implements ErrorCode {
     TEAM_005("TEAM_005", "この操作を行う権限がありません", Severity.WARN),
 
     /** チームは論理削除されていません */
-    TEAM_006("TEAM_006", "チームは削除されていないため復元できません", Severity.WARN),
+    TEAM_006("TEAM_006", "このチームは削除されていないため、復元できません", Severity.WARN),
 
     // --- F01.2 拡張プロフィール ---
 

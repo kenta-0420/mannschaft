@@ -45,6 +45,7 @@
       },
       "noData": "没有数据",
       "retry": {
+        "queued": "重试已受理。请等待完成后再查看状态。",
         "button": "重试",
         "confirm": "重试域名「{domain}」的GDPR清除吗？",
         "success": "retry成功",

@@ -43,11 +43,18 @@ public class ChatFolderService {
      */
     public List<ChatFolderResponse> getFolders(Long userId) {
         List<ChatContactFolderEntity> folders = folderRepository.findByUserIdOrderBySortOrder(userId);
+        if (folders.isEmpty()) {
+            return List.of();
+        }
+        // CMP-261103-1225: フォルダごとの findByFolderId（N+1）を 1 クエリへまとめる（各フォルダ内は ID 昇順）
+        List<Long> folderIds = folders.stream().map(ChatContactFolderEntity::getId).toList();
+        java.util.Map<Long, List<ChatContactFolderItemEntity>> itemsByFolderId = new java.util.HashMap<>();
+        for (ChatContactFolderItemEntity item : folderItemRepository.findByFolderIdInOrderByIdAsc(folderIds)) {
+            itemsByFolderId.computeIfAbsent(item.getFolderId(), k -> new java.util.ArrayList<>()).add(item);
+        }
         return folders.stream()
-                .map(folder -> {
-                    List<ChatContactFolderItemEntity> items = folderItemRepository.findByFolderId(folder.getId());
-                    return dashboardMapper.toFolderResponse(folder, items);
-                })
+                .map(folder -> dashboardMapper.toFolderResponse(
+                        folder, itemsByFolderId.getOrDefault(folder.getId(), List.of())))
                 .toList();
     }
 

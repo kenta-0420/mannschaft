@@ -1,0 +1,212 @@
+{
+  "reviewer": "Root Sol/high",
+  "shippingHead": "57368a965b961c36c3d8c9278cfcd9a6ee3ebde0",
+  "runtimeCommit": "40437bf7fdd35b43866348b7a082e8998d69210f",
+  "protectedBindings": [
+    {
+      "path": "frontend/app/components/ranch/DinosaurScene.vue",
+      "runtimeBlob": "3706a93a758760e2f82e68ef941a11fe2f8f7e62",
+      "shippingBlob": "3706a93a758760e2f82e68ef941a11fe2f8f7e62"
+    },
+    {
+      "path": "frontend/app/components/ranch/RanchAdminContent.vue",
+      "runtimeBlob": "37e0ef0328ca4d77b350452059e351e5d6250de7",
+      "shippingBlob": "37e0ef0328ca4d77b350452059e351e5d6250de7"
+    },
+    {
+      "path": "frontend/app/components/ranch/RanchAdminPublications.vue",
+      "runtimeBlob": "c014d45b44fc34527c659fee1f9207d3aba0bf51",
+      "shippingBlob": "c014d45b44fc34527c659fee1f9207d3aba0bf51"
+    },
+    {
+      "path": "frontend/app/components/ranch/RanchAxisResults.vue",
+      "runtimeBlob": "5adeab9f3fbf9d98f29b7d99b0070da33843735f",
+      "shippingBlob": "5adeab9f3fbf9d98f29b7d99b0070da33843735f"
+    },
+    {
+      "path": "frontend/app/components/ranch/RanchBirthProfileContent.vue",
+      "runtimeBlob": "d957f976bd3659a85c21048819b9b024427ddec5",
+      "shippingBlob": "d957f976bd3659a85c21048819b9b024427ddec5"
+    },
+    {
+      "path": "frontend/app/components/ranch/RanchDecorationsContent.vue",
+      "runtimeBlob": "61ba948ccfdadbac58f72e9181d2feded25a8956",
+      "shippingBlob": "61ba948ccfdadbac58f72e9181d2feded25a8956"
+    },
+    {
+      "path": "frontend/app/components/ranch/RanchGuideModal.vue",
+      "runtimeBlob": "a77736848b19ffaa7548c9ae4996a2f7f92c9b13",
+      "shippingBlob": "a77736848b19ffaa7548c9ae4996a2f7f92c9b13"
+    },
+    {
+      "path": "frontend/app/components/ranch/RanchNaming.vue",
+      "runtimeBlob": "21fa87315da9990d4f3b58c441d943aeac038563",
+      "shippingBlob": "21fa87315da9990d4f3b58c441d943aeac038563"
+    },
+    {
+      "path": "frontend/app/components/ranch/RanchPageContent.vue",
+      "runtimeBlob": "6067f63e0dda7ba9690191f61c2871408838830f",
+      "shippingBlob": "6067f63e0dda7ba9690191f61c2871408838830f"
+    },
+    {
+      "path": "frontend/app/components/ranch/RanchRecordsContent.vue",
+      "runtimeBlob": "bde2aac5e22301e64bb6ac49bd1453aad5e6b5a5",
+      "shippingBlob": "bde2aac5e22301e64bb6ac49bd1453aad5e6b5a5"
+    },
+    {
+      "path": "frontend/app/components/ranch/RanchResultContent.vue",
+      "runtimeBlob": "260cc53112fb09231533c2e009ccd1e1a61bef03",
+      "shippingBlob": "260cc53112fb09231533c2e009ccd1e1a61bef03"
+    },
+    {
+      "path": "frontend/app/components/ranch/RanchResultsContent.vue",
+      "runtimeBlob": "16d7aea088bd37f1bdc0c5e721f2fb599827761a",
+      "shippingBlob": "16d7aea088bd37f1bdc0c5e721f2fb599827761a"
+    },
+    {
+      "path": "frontend/app/components/ranch/RanchSettingsPanel.vue",
+      "runtimeBlob": "fada14472bf1e2947e35203ec3319b7de51b96c4",
+      "shippingBlob": "fada14472bf1e2947e35203ec3319b7de51b96c4"
+    },
+    {
+      "path": "frontend/app/components/ranch/RanchShelves.vue",
+      "runtimeBlob": "89e42338eb15b74d5aecc9e3e6808e3e5cc9d3a4",
+      "shippingBlob": "89e42338eb15b74d5aecc9e3e6808e3e5cc9d3a4"
+    },
+    {
+      "path": "frontend/app/components/ranch/RanchStatusPanel.vue",
+      "runtimeBlob": "166466ec18c00fb1f3f02c2f0a95b689e98ddc6f",
+      "shippingBlob": "166466ec18c00fb1f3f02c2f0a95b689e98ddc6f"
+    },
+    {
+      "path": "frontend/app/components/ranch/RanchWidgetContent.vue",
+      "runtimeBlob": "1c12f36edc2f472bb12debae3e50c3909a76937d",
+      "shippingBlob": "1c12f36edc2f472bb12debae3e50c3909a76937d"
+    },
+    {
+      "path": "frontend/app/composables/useDashboardWidgets.ts",
+      "runtimeBlob": "4fa1b8a2be64fd701b0f10e86b1f26943b75fd2a",
+      "shippingBlob": "4fa1b8a2be64fd701b0f10e86b1f26943b75fd2a"
+    },
+    {
+      "path": "frontend/app/composables/useRanchAdminApi.ts",
+      "runtimeBlob": "b9dd880c2376fb181da833b7b259de3b9251606a",
+      "shippingBlob": "b9dd880c2376fb181da833b7b259de3b9251606a"
+    },
+    {
+      "path": "frontend/app/composables/useRanchApi.ts",
+      "runtimeBlob": "811fed9b12e71b2a94ab41d0c7574ddc6e907409",
+      "shippingBlob": "811fed9b12e71b2a94ab41d0c7574ddc6e907409"
+    },
+    {
+      "path": "frontend/app/composables/useRanchAtlas.ts",
+      "runtimeBlob": "3774aa46c2db16682ed872ede50d5af4124101ea",
+      "shippingBlob": "3774aa46c2db16682ed872ede50d5af4124101ea"
+    },
+    {
+      "path": "frontend/app/composables/useRanchClipAtlas.ts",
+      "runtimeBlob": "8f15e629635392e8f44a400f15c17f7f289d0fd5",
+      "shippingBlob": "8f15e629635392e8f44a400f15c17f7f289d0fd5"
+    },
+    {
+      "path": "frontend/app/composables/useRanchClipPlayback.ts",
+      "runtimeBlob": "cd58a8cc1406797e4d56ce9c1579016d097bbc40",
+      "shippingBlob": "cd58a8cc1406797e4d56ce9c1579016d097bbc40"
+    },
+    {
+      "path": "frontend/app/composables/useRanchCommand.ts",
+      "runtimeBlob": "594b7444df60f7fdbb1386328538a2715834db9a",
+      "shippingBlob": "594b7444df60f7fdbb1386328538a2715834db9a"
+    },
+    {
+      "path": "frontend/app/composables/useRanchCommandMemory.ts",
+      "runtimeBlob": "8d4c54b0c0702eb9c0daade32386bd499644e7e6",
+      "shippingBlob": "8d4c54b0c0702eb9c0daade32386bd499644e7e6"
+    },
+    {
+      "path": "frontend/app/composables/useRanchFiniteReaction.ts",
+      "runtimeBlob": "74b9e673d3062cb85f0d54289c5dc15a63473746",
+      "shippingBlob": "74b9e673d3062cb85f0d54289c5dc15a63473746"
+    },
+    {
+      "path": "frontend/app/composables/useRanchPrivateRead.ts",
+      "runtimeBlob": "c6ebe743ff8c5c6605f0279b0fb7d47172504b42",
+      "shippingBlob": "c6ebe743ff8c5c6605f0279b0fb7d47172504b42"
+    },
+    {
+      "path": "frontend/app/composables/useRanchSceneActivity.ts",
+      "runtimeBlob": "18f1fa3a23e34f2a9142b30e7f58e2e965621932",
+      "shippingBlob": "18f1fa3a23e34f2a9142b30e7f58e2e965621932"
+    },
+    {
+      "path": "frontend/app/composables/useRanchSceneClips.ts",
+      "runtimeBlob": "cb6d0e3e10b4322384e22eb4cebde4de53b92db3",
+      "shippingBlob": "cb6d0e3e10b4322384e22eb4cebde4de53b92db3"
+    },
+    {
+      "path": "frontend/app/composables/useRanchState.ts",
+      "runtimeBlob": "234a820048f64b5c4c38f2fd074d95048cc01787",
+      "shippingBlob": "234a820048f64b5c4c38f2fd074d95048cc01787"
+    },
+    {
+      "path": "frontend/app/composables/useRanchTouchSound.ts",
+      "runtimeBlob": "c03694badc413e526ea4ec2b195f90c43de68a50",
+      "shippingBlob": "c03694badc413e526ea4ec2b195f90c43de68a50"
+    },
+    {
+      "path": "frontend/app/composables/useRanchVisibility.ts",
+      "runtimeBlob": "da6928ca4afa93280065760342a8b1a8f1e22613",
+      "shippingBlob": "da6928ca4afa93280065760342a8b1a8f1e22613"
+    },
+    {
+      "path": "frontend/app/utils/ranch-assets.ts",
+      "runtimeBlob": "0433377180388bce7b6588ecd345d03b2f9dc1e1",
+      "shippingBlob": "0433377180388bce7b6588ecd345d03b2f9dc1e1"
+    },
+    {
+      "path": "frontend/app/utils/ranch-development-clips-manifest.json",
+      "runtimeBlob": "c7aa5a73ccbe5d9f1993fe9a483d4635e06d3569",
+      "shippingBlob": "c7aa5a73ccbe5d9f1993fe9a483d4635e06d3569"
+    },
+    {
+      "path": "frontend/app/utils/ranch-development-clips.ts",
+      "runtimeBlob": "48ac28462d74cee269ddd8c3eecbdb8408223de3",
+      "shippingBlob": "48ac28462d74cee269ddd8c3eecbdb8408223de3"
+    },
+    {
+      "path": "frontend/app/utils/ranch-name.ts",
+      "runtimeBlob": "7f08ff5be5d2f58e7aec1c85d58ca9b29495f2b1",
+      "shippingBlob": "7f08ff5be5d2f58e7aec1c85d58ca9b29495f2b1"
+    },
+    {
+      "path": "frontend/app/utils/ranch-production-assets.ts",
+      "runtimeBlob": "e0bc8f0725db795bc07e10dd646738544a152f45",
+      "shippingBlob": "e0bc8f0725db795bc07e10dd646738544a152f45"
+    },
+    {
+      "path": "frontend/nuxt.config.ts",
+      "runtimeBlob": "9a79672853c2327ace7786984980392000c07d74",
+      "shippingBlob": "9a79672853c2327ace7786984980392000c07d74"
+    },
+    {
+      "path": "frontend/app/plugins/appearance.ts",
+      "runtimeBlob": "6335502d3b2357a2c189d9fcf389707f9ee36e79",
+      "shippingBlob": "6335502d3b2357a2c189d9fcf389707f9ee36e79"
+    }
+  ],
+  "frontendChangedPaths": [
+    "frontend/app/composables/useDashboardWidgets.ranch-visibility.spec.ts",
+    "frontend/app/locales/de/surveys.json",
+    "frontend/app/locales/en/surveys.json",
+    "frontend/app/locales/es/surveys.json",
+    "frontend/app/locales/ja/surveys.json",
+    "frontend/app/locales/ko/surveys.json",
+    "frontend/app/locales/zh/surveys.json",
+    "frontend/playwright.mfa-real.config.ts",
+    "frontend/tests/e2e/real/mfa-alic-recheck.real.spec.ts",
+    "frontend/tests/e2e/real/mfa-gap-fill.real.spec.ts",
+    "frontend/tests/e2e/real/support/fakeses.mjs",
+    "frontend/tests/e2e/surveys/survey-remind.spec.ts"
+  ],
+  "scope": "Protected ranch production paths, Nuxt config and repaired appearance plugin equal. Test-only differences and upstream non-ranch survey/MFA changes remain. This is scoped source adoption, not whole-tree equality or full final-head production rebuild."
+}

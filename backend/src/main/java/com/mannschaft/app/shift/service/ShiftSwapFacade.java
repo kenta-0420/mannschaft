@@ -1,5 +1,6 @@
 package com.mannschaft.app.shift.service;
 
+import com.mannschaft.app.auth.service.UserStatusLookupService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
@@ -23,24 +24,26 @@ import java.util.List;
  * 名前を {@code *AccessService} / {@code *AccessGate} にしないのは、呼んだだけで認可シグナル扱いになり
  * 本クラス内の認可漏れを AuthzControllerGuard が見逃すのを避けるため。</p>
  *
- * <h3>認可表（是正前＝#3528 の契約から変えていない。IT の期待値と同一）</h3>
+ * <h3>認可表（スコープの許可主体を維持し、作成資格をCMP-261021-0647で明確化）</h3>
  * <pre>
  * 主体＼EP                      一覧(teamId)   作成(slot)        承諾(swap)        承認/却下(swap)   取消(swap)
  * 部外者(非メンバー)            403 COMMON_002 404 SHIFT_002     404 SHIFT_005     404 SHIFT_005     404 SHIFT_005
  * 同チーム SUPPORTER            403 COMMON_002 403 COMMON_002    403 COMMON_002    403 COMMON_002    403 COMMON_002
- * 同チーム一般メンバー          200(関係分のみ) 201              200(状態次第)     403 COMMON_002    403 COMMON_002(本人以外)
- * チーム ADMIN/DEPUTY_ADMIN     200(全件)      201              200(状態次第)     200(状態次第)     204(状態次第)
+ * 同チーム一般メンバー          200(関係分のみ) 201(作成資格※)   200(状態次第)     403 COMMON_002    403 COMMON_002(本人以外)
+ * チーム ADMIN/DEPUTY_ADMIN     200(全件)      201(作成資格※)   200(状態次第)     200(状態次第)     204(状態次第)
  * 申請者本人                    200            -                (自己承諾は 400 SWAP_SELF_REQUEST) - 204(PENDING のみ。親の存在に依存しない)
- * 非メンバーの SYSTEM_ADMIN     200(全件)      201              200(状態次第)     200(状態次第)     204(状態次第)
- * メンバーの SYSTEM_ADMIN       200(全件)      201              200(状態次第)     200(状態次第)     204(状態次第)
+ * 非メンバーの SYSTEM_ADMIN     200(全件)      201(作成資格※)   200(状態次第)     200(状態次第)     204(状態次第)
+ * メンバーの SYSTEM_ADMIN       200(全件)      201(作成資格※)   200(状態次第)     200(状態次第)     204(状態次第)
  * user_roles のみの ADMIN       200(全件)      403 COMMON_002   403 COMMON_002    200(状態次第)     204(状態次第)
  * 対象不在(swap/slot)           (n/a)          404 SHIFT_002    404 SHIFT_005     404 SHIFT_005     404 SHIFT_005
  * 親だけ不在(枠→スケジュール)   (n/a)          404 SHIFT_001    404 SHIFT_001     404 SHIFT_001     404 SHIFT_001(本人以外)
- * DB 変更: 拒否・不在はすべて変更なし。成功のみ swap 行の insert/update。
+ * DB 変更: 拒否・不在はすべて変更なし。承認はswap・枠の担当・割当履歴を同時更新する。
  * </pre>
+ * <p>※作成資格はPUBLISHEDかつ現在のassigned_user_idsに本人を含むこと。スコープ認可通過後の業務TXで
+ * 状態を先に確認し、非PUBLISHEDは409 SHIFT_012、本人外・未割当は403 SHIFT_019とする。
+ * 管理者のスコープ認可バイパスも、この業務資格を免除しない。個別指名・全体募集とも同じ条件である。</p>
  * <p>親だけ不在のコードを対象リソースの不在コードへ畳まず是正前（SHIFT_001/SHIFT_002）のまま保つのは、
- * 「応答を変えない」契約を優先したため。解決（本クラス）と tx 内の読み直しは同じメソッドを通るので
- * コードは常に一致する。</p>
+ * 「応答を変えない」契約を優先したため。スコープ解決とtx内の読み直しでは、同じ不在コードを適用する。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -51,6 +54,7 @@ public class ShiftSwapFacade {
     private final ShiftSwapService swapService;
     private final ScopeConcealingAccessGate accessGate;
     private final AccessControlService accessControlService;
+    private final UserStatusLookupService userStatusLookupService;
 
     /**
      * 指定チームの交代リクエスト一覧を取得する。
@@ -70,7 +74,7 @@ public class ShiftSwapFacade {
     }
 
     /**
-     * 交代リクエストを作成する（対象シフト枠の所属チームのメンバー、SUPPORTER 不可）。
+     * 交代リクエストを作成する（対象チームのスコープ認可後、Serviceが公開済み・本人担当を確認）。
      *
      * @param req    作成リクエスト
      * @param userId 申請者 ID
@@ -110,7 +114,17 @@ public class ShiftSwapFacade {
         ShiftSwapService.SwapScope scope = swapService.resolveSwapScope(swapId);
         accessGate.requireAdminOrConceal(
                 adminId, scope.teamId(), TEAM, ShiftErrorCode.SWAP_REQUEST_NOT_FOUND);
-        return swapService.resolveSwapRequest(swapId, req, adminId);
+        Long expectedAccepterId = null;
+        if ("APPROVE".equals(req.getAction())) {
+            expectedAccepterId = swapService.resolveApprovalAccepterId(swapId);
+            // 承諾後の脱退・資格変更を再検査する。却下は受諾者の現在資格に依存しない。
+            if (!accessControlService.isMember(expectedAccepterId, scope.teamId(), TEAM)
+                    || accessControlService.isSupporter(expectedAccepterId, scope.teamId(), TEAM)
+                    || !userStatusLookupService.isActive(expectedAccepterId)) {
+                throw new BusinessException(ShiftErrorCode.OPTIMISTIC_LOCK_CONFLICT);
+            }
+        }
+        return swapService.resolveSwapRequest(swapId, req, adminId, expectedAccepterId);
     }
 
     /**

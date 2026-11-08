@@ -23,6 +23,14 @@ public class ShiftSlotResponse {
     String               note;
 
     /**
+     * 枠の楽観ロック version（{@code shift_slots.version} の最新値。CMP-261010-1432 P0）。
+     *
+     * <p>更新系（{@code PATCH /slots/{id}}・{@code PATCH /slots/{id}/assignments}・枠間移動）では
+     * <b>更新後</b>の値を返す。クライアントは次の割当操作でこの値を {@code slotVersion} に送る。</p>
+     */
+    Long                 version;
+
+    /**
      * 割当内容（{@code assignedUserIds}）を閲覧者に伏せたか（CMP-260826-2127 / AC-4）。
      *
      * <p>非管理者が {@code COLLECTING} / {@code ADJUSTING} のシフト表の枠を取得したときだけ

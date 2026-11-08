@@ -41,6 +41,10 @@ mannschaft:
   # F09.18: テスト環境では実 SES を叩かない（simulate=true でログのみ送信）
   email:
     simulate: true
+  # CMP-261012-0910: メール方式 2FA（永続 enum EMAIL の書込み）を試験では解禁する（本番・既定は false）
+  auth:
+    mfa:
+      email-method-enabled: true
   # F09.4 §6 — テスト環境では LINE Webhook 署名検証を無効化（実署名を持たないため）
   line:
     signature-verify:

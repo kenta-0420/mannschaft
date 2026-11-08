@@ -1,5 +1,9 @@
 package com.mannschaft.app.social.announcement.audience;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -29,6 +33,28 @@ public record TargetAudience(
 
     /** 「チームグループで選ぶ」。 */
     public static final String MODE_GROUPS = "GROUPS";
+
+    /** 保存された JSON の読み取り用（書き込み側が保存した JSON をそのまま読む。未知の項目は無視する）。 */
+    private static final ObjectMapper READER = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+    /**
+     * {@code announcement_feeds.target_audience} の JSON を読む。無ければ null。
+     * 壊れていれば黙って捨てず例外にする（お知らせ一覧・ダッシュボードで同じ読み方をするための唯一の入口）。
+     *
+     * @param json 保存された JSON（null・空可）
+     * @return 宛先の記録。記録が無ければ null
+     */
+    public static TargetAudience fromJson(String json) {
+        if (json == null || json.isBlank()) {
+            return null;
+        }
+        try {
+            return READER.readValue(json, TargetAudience.class);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("announcement_feeds.target_audience の JSON を読めません", e);
+        }
+    }
 
     /**
      * グループの参照（送信時の名前）。

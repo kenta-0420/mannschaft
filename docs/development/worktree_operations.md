@@ -44,6 +44,7 @@ node scripts/worktree-cleanup.mjs --days 1 --check --limit 60
 
 - **進行中の agent の worktree は絶対に削除しない**。`git worktree list` の出力で他に動いている agent がないか確認してから削除すること
 - 削除前に **当該 worktree の変更がメインリポに統合されているか** を必ず確認する。未マージの commit を消すと作業が失われる
+- 作業用ブランチの削除前に PR の `MERGED` 状態と main への採用内容、対象ブランチ名・HEAD、所有者、他 worktree／他担当での利用有無を確認する。squash merge は祖先関係だけで未反映と判定せず、PR 内容と main を照合する。条件を満たす自分の作業ブランチの削除は CLAUDE.md に記録された事前許可の範囲で実施し、それ以外は確認を求める
 - メインリポを間違って削除しないこと（`grep "agent-"` で必ず agent の worktree のみに絞る）
 - `git worktree remove --force` は `node_modules` の junction を辿って本陣の実体を巻き込み削除しうる。掃除前に `cmd rmdir` で junction リンクを先に外すこと（memory `feedback_worktree_remove_junction_deletes_honjin_node_modules`）
 
@@ -109,3 +110,36 @@ shallow 境界では、コミットオブジェクトに親 ID があっても�
   - stale 奪取の条件は**ロック保持プロセスの PID が死んでいること**のみ（生存中は経過時間に関わらず奪取しない）。生存中の先客を待つ時間には上限180分を設け、超過時はエラー終了して人間の確認に委ねる
   - **heavy**（このスクリプト経由が必須）: `test` / `build` / `bootJar` / `check` / `compileJava` / `compileTestJava` を含む実行
   - **軽量**（対象外）: `help` / `tasks` / `properties` / `--status` / `--stop` 等
+
+## WSL検証コピーの寿命管理
+
+今後のLinux/WSL検証コピーは Node.js 22以降の共通入口を使う。手作業の `cp -r`、全量tar/zip退避、`node_modules`・build・個別cacheの丸ごとコピーを既定にしない。元のGit worktreeはcleanなrootを指定し、変更はcommitしてから実行する。dirty/untrackedとsubmoduleは作成前に拒否する。Git HEADを固定して `git archive` を直接展開するため、Git管理外の生成物・`.git` は含まれない。
+
+```bash
+node scripts/verification-run.mjs \
+  --source /mnt/c/Claude/mannschaft/.claude/worktrees/agent-example \
+  --evidence-dir /home/kenta/verification-evidence/CMP-YYMMDD-HHMM-run1 \
+  -- node scripts/example-check.mjs
+# 子コマンドは必要な結果だけ $VERIFICATION_EVIDENCE_DIR に直接保存する。
+node scripts/verification-run.mjs --check
+```
+
+証跡保存先の親は事前に作成し、保存先そのものは新規の外部ディレクトリを指定する。既存ディレクトリ、source内、管理親内への保存は拒否する。runnerは小さな `receipt.json`（source HEAD、元exit/signal、cleanup結果と保持理由。archive展開失敗時はpipeline rejectionのcode/最大256文字messageとgit/tarのcode/signalも役割別に記録）だけを保存し、stdout全量ログや全量バックアップは作らない。必要な証跡をCI等の正本へ確定したら、重複するローカルrawログ・全量archiveは所有と保存済みの範囲を確認して撤去する。
+
+展開入力は固定HEADの組込み `git archive --format=tar` に限定する。GNU tarは `--ignore-zeros` で終端ゼロの後も実EOFまで読み、Node pipelineの早期close競合を避ける。member途中切れ・git/tar非0・信号の既存失敗判定は保持する。EOAだけの欠落を検知する保証はなく、EOA後の第二archiveも読むflagなので外部任意tar入力へ広げない。
+
+一時領域は `/var/tmp/mannschaft-verification-<uid>/run-*` の自分専用領域。成功・非0終了・展開/起動失敗でも所有markerとディレクトリidentityを確認してfinallyで撤去する。SIGINT/TERMおよび端末切断のSIGHUPは子process groupへ転送し、停止・参照を確認してから撤去する。停止確認不能、脱走daemonの参照、証跡保存不能、所有境界変更、削除失敗は非0とし正確な保持パス・理由を出す。対象PIDのcmdline・開始時刻・用途を確認して停止し、証跡を保全してからその個別パスだけを処置する。全WSL停止や無差別なrm/pruneへ切り替えない。
+
+SIGKILL・ホスト障害ではfinallyは動かない。`--check` は自分専用管理親だけを調べ、稼働中と要処置を表示し、要処置があれば非0となる。削除は行わず、既存の管理外コピー・他人の領域を対象にしない。
+
+完了時はGit worktreeに加え、自身のWSLコピー、専用cache、配布物、起動プロセス、検証コンテナ・専用volumeを一覧と所有根拠で確認し、不要分を撤去する。共有cache・既存利用者資産は含めない。中断時に保持が必要なら、正確なパス・所有者・用途・保持理由・再確認期限・再開条件を引継書へ記録し、次回確認で解消する。無期限の全量圧縮退避にしない。
+
+参照監査は同UIDのaccessibleな既存プロセスも対象とする。ただし起動前からEACCESで検査不能だったPIDは開始時刻を確定し、同一世代だけをbaseline例外とする。例外数はreceiptと `--check` に表示する。新規プロセス・途中で検査不能になったプロセス・PID世代不明は保持する。すべてのプロセスに対する保護を保証するものではないため、scratchを既存共有daemonへ引き渡す、別セッションへ共有する、常駐背景プロセスを起こす運用は禁止する。Gradle検証では `--no-daemon` を付ける。停止待機は2秒で打ち切って保持し、無関係なプロセスを強制終了しない。
+
+### 既存コピーの孤立コード照合
+
+管理外の旧コピーは「未反映かもしれない」だけで無期限保持せず、まず最新の `origin/main` をfetchして比較先SHAを固定する。台帳・仕様・完了証拠もそのSHAから読み、本陣の古いworking treeを根拠に完了済み戦役を再開しない。
+
+tracked差分・残存refに加え、untracked/ignoredを確認する。`logs/` 配下のspecやfixtureもコードとして扱う。非祖先であることだけでは未反映と判定せず、正本refへの到達、PRのsquash採用、patch-id、改行正規化後の本文、現mainの後続改善まで照合する。
+
+必要な差分だけを秘密情報がないと確認したうえで正本branch/PRへ回収し、CMP・担当・次の一手を対応付ける。既存Draft PR/refに必要差分があれば回収branchを重複作成せず、未完理由と次の一手を既存CMPへ対応付ける。採用済み・検証専用・後続改善で不要なものは採否理由を記録する。全量archiveの追加で解消扱いにせず、使用中プロセス・共有Gitディレクトリ・他の利用者資産を確認してから不要な原コピーを個別に撤去する。未確定分は所有者・再確認期限・再開条件を付けて引き継ぐ。既存の `--check` は検知専用のままとし、無差別削除へ変更しない。

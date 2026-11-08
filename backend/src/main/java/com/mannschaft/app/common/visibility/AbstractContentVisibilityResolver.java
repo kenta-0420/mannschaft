@@ -224,6 +224,21 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
      */
     @Override
     public final Set<Long> filterAccessible(Collection<Long> contentIds, Long viewerUserId) {
+        return filterAccessibleInternal(contentIds, viewerUserId, this::prepareAdditionalAxisContext);
+    }
+
+    /**
+     * 追加軸（課金）の先読み結果を呼び出し側が渡す一括判定（プレビューと同じ厳格な課金結果で一覧を判定する用途）。
+     * 通常の {@link #filterAccessible} は変えない。
+     */
+    protected final Set<Long> filterAccessibleWithAdditionalAxisLoader(
+            Collection<Long> contentIds, Long viewerUserId,
+            java.util.function.BiFunction<List<P>, Long, Object> additionalAxisLoader) {
+        return filterAccessibleInternal(contentIds, viewerUserId, additionalAxisLoader);
+    }
+
+    private Set<Long> filterAccessibleInternal(Collection<Long> contentIds, Long viewerUserId,
+                                               java.util.function.BiFunction<List<P>, Long, Object> additionalAxisLoader) {
         if (contentIds == null || contentIds.isEmpty()) {
             return Set.of();
         }
@@ -246,7 +261,7 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
 
         // 3.5) 追加軸がスナップショット外の情報を要する場合の一括取得（バッチ全体で 1 回）。
         //      これをループ内で行うと件数比例の N+1 になり §9 の SQL 本数上限に反する。
-        Object additionalAxisContext = prepareAdditionalAxisContext(rows, viewerUserId);
+        Object additionalAxisContext = additionalAxisLoader.apply(rows, viewerUserId);
 
         // 4) 各 row の判定（DB アクセスなし、純メモリ）。
         Set<Long> result = new HashSet<>();
@@ -298,6 +313,49 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
     protected final VisibilityDecision decideWithAdditionalAxisLoader(
             Long contentId, Long viewerUserId,
             java.util.function.BiFunction<List<P>, Long, Object> additionalAxisLoader) {
+        return decideInternal(contentId, viewerUserId, additionalAxisLoader, null);
+    }
+
+    /**
+     * 所有スコープでの閲覧者の役割を<b>委任役割に差し替えて</b>評価する専用入口（組織告知の宛先チームのメンバーへの
+     * 本文プレビュー委任。ALIC-1 §2.3）。status・親組織の非アクティブ判定（§11.6）・監査ログ・追加軸（課金）は
+     * 通常の {@link #decide} と同じ本体を通る。差し替えるのは<b>コンテンツ所有スコープの直接所属ロールだけ</b>で、
+     * 委任役割が SUPPORTER 以上なら SCOPE_AFFILIATED / SUPPORTERS_AND_ABOVE を満たし、MEMBER ならさらに MEMBERS_AND_ABOVE を満たす。
+     * ADMINS_AND_ABOVE・PRIVATE・FOLLOWERS_ONLY・CUSTOM_TEMPLATE は満たさない。
+     *
+     * <p>呼び出しは組織告知の本文プレビューの正規経路（{@code social.announcement}）に限る。ArchUnit
+     * （{@code AnnouncementDelegatedAccessGuardArchTest}）が名前に {@code Delegated} を含むこの種の入口の呼び出し元を縛る。
+     * 通常の閲覧 API へ委任資格を流用してはならない。</p>
+     *
+     * @param delegatedRole 委任役割（"MEMBER" / "SUPPORTER"）
+     */
+    protected final VisibilityDecision decideDelegatedWithAdditionalAxisLoader(
+            Long contentId, Long viewerUserId, String delegatedRole,
+            java.util.function.BiFunction<List<P>, Long, Object> additionalAxisLoader) {
+        if (delegatedRole == null || delegatedRole.isBlank()) {
+            throw new IllegalArgumentException("delegatedRole must not be blank");
+        }
+        return decideInternal(contentId, viewerUserId, additionalAxisLoader, delegatedRole);
+    }
+
+    /**
+     * 委任役割で評価し、不可視なら通常の {@code assertCanView} と同じ例外（VISIBILITY_001 / VISIBILITY_004）を投げる。
+     * 追加軸は通常の {@link #prepareAdditionalAxisContext} を使う（課金を持たないコンテンツ向け。掲示板スレッド等）。
+     */
+    public final void assertCanViewDelegated(Long contentId, Long viewerUserId, String delegatedRole) {
+        VisibilityDecision decision = decideDelegatedWithAdditionalAxisLoader(
+                contentId, viewerUserId, delegatedRole, this::prepareAdditionalAxisContext);
+        if (!decision.allowed()) {
+            throw new com.mannschaft.app.common.BusinessException(
+                    decision.denyReason() == DenyReason.NOT_FOUND
+                            ? VisibilityErrorCode.VISIBILITY_004 : VisibilityErrorCode.VISIBILITY_001);
+        }
+    }
+
+    private VisibilityDecision decideInternal(
+            Long contentId, Long viewerUserId,
+            java.util.function.BiFunction<List<P>, Long, Object> additionalAxisLoader,
+            String delegatedRole) {
         if (contentId == null) {
             return VisibilityDecision.deny(referenceType(), null, DenyReason.NOT_FOUND,
                     "contentId is null");
@@ -319,6 +377,9 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
         Set<ScopeKey> descendantScopes = collectDescendantScopes(rows);
         UserScopeRoleSnapshot snapshot = buildSnapshot(
                 viewerUserId, directScopes, orgWideScopes, descendantScopes);
+        if (delegatedRole != null) {
+            snapshot = withDelegatedRole(snapshot, scopeOf(row), delegatedRole);
+        }
 
         // 3) status ガード
         if (!visibleByStatus(row, viewerUserId, snapshot)) {
@@ -378,6 +439,19 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
     // ========================================================================
     // 内部実装
     // ========================================================================
+
+    /** 所有スコープの直接所属ロールだけを委任役割に差し替えた snapshot を返す（他のスコープ・親組織の情報は変えない）。 */
+    private static UserScopeRoleSnapshot withDelegatedRole(UserScopeRoleSnapshot snapshot, ScopeKey scope,
+                                                            String delegatedRole) {
+        if (scope == null || snapshot.isSystemAdmin()) {
+            return snapshot;
+        }
+        java.util.Map<ScopeKey, String> roles = new java.util.HashMap<>(snapshot.roleByScope());
+        roles.put(scope, delegatedRole);
+        return new UserScopeRoleSnapshot(snapshot.systemAdmin(), roles, snapshot.parentOrgByScope(),
+                snapshot.orgMemberOf(), snapshot.suspendedOrgIds(), snapshot.descendantMemberOfOrgIds(),
+                snapshot.orgRoleByScope(), snapshot.descendantRoleByOrgId());
+    }
 
     /**
      * §7.5 status × visibility 合成における status 軸ガード。

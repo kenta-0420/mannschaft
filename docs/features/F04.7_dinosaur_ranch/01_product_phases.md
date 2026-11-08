@@ -87,10 +87,17 @@ Blog公開経路/Timeline origin/代理出欠は [02](02_rewards_data.md) の契
 
 診断は24問（6軸×4問）/5段階、同点軸だけ本人二択を最大6問。回答改版で古いtieを無効化する。server採点のtypeCodeは6bit文字列000000〜111111。軍議の24問内容は開発draftでapproved=false、構成の採択と公開質問内容の承認を分ける。参考サイトの質問・画像・算法を無断複製しない。
 
+診断64コード→16種×4外見の対応仕様は[診断64対応 v1](diagnosis64_species_mapping.md)と[全64行JSON正本](diagnosis64_species_mapping_v1.json)で確定した。採択済みの種の性格イメージを分身へ重ねた編集判断で、強さ/優しさの測定や現行6軸説明の変更ではない。runtime・正式masterは未登録（NOT_REGISTERED）。既存結果snapshot・確定済み個体を変更せず、正式質問未承認・出生81対応UNASSIGNED・本番512公開gate CLOSEDは維持する。
+
 出生占いはユーザー採択の独自数秘。本人DOBの西暦YYYYMMDD全8桁を合計し1〜9へ反復還元する。本人カナを版付きヘボン式ローマ字へ正規化し、姓→名の全英字にA=1〜I=9、J=1〜R=9、S=1〜Z=8を繰返し割当、合計を1〜9へ反復還元する。両数とも11/22/33を特別保持しない。漢字の読みを推測せず本人カナ補完へ戻す。nickname/恐竜名/任意名を代用しない。正規化・romanization・計算規則と派生計算説明を版付きsnapshotに保存し、科学的測定/伝統流派の保証として案内しない。具体恐竜対応表はデザイン完成後にユーザーが決める。mod64を本番対応表に仮採用しない。
 
 診断/占いは本人の私的結果として、ranch未参加でも開始/保存/一覧/詳細/再診断を利用できる。設定と「ようす」から独立到達し、非表示/PAUSED/STOPPED/care・報酬停止/残高0でも閲覧可能。再診断は新resultを作り、恐竜ID/名前/species/variant/XP/愛着/pointsを変えない。全結果は当時の説明snapshotで閲覧し、raw姓名/カナ/DOB/回答を結果へ含めない。mappingVersionは未登録NULLで結果保存可、割当利用は不可。
 
-PIXELは96×96論理ドット、PAINT_2Dと同じ個体・段階・状態で切替する。全64外見・孵化後3成長段階・両style・基本反応/静止fallbackの承認coverageは未完成。実デザインと対応表を揃え承認するまで本番公開gateはOFF。開発S01〜S16/V1〜V4や歩行比較試作は完成素材として登録しない。歩行はPhase 2以降。
+PIXELは96×96論理ドット、PAINT_2Dと同じ個体・段階・状態で切替する。全64外見・孵化後3成長段階・両style・基本反応/静止fallbackの承認coverageは未完成。診断64の対応仕様確定後も、実デザイン・正式登録・出生81対応を含む公開条件が揃うまで本番公開gateはOFF。開発S01〜S16/V1〜V4や歩行比較試作は完成素材として登録しない。歩行はPhase 2以降。
 
 ログイン付与なし。activity0/points0/チーム未所属でも無料careだけで成体へ到達する。週care枠は同日利用可、UTC月曜起点。全源個人points週capは所属数によらず同じで、永久装飾専用。beta特典は独立保持。無料給餌/ふれあいの非減衰愛着は仕草・言葉で表現し公開数値ゲージにしない。開発加算unitはUTC日＋FEED/TOUCH各初回、別key/二tab/連打追加0。数値・閾値はversioned開発fixtureで本番自動採用しない。
+
+
+### 隔離開発の報酬検証候補
+
+隔離DEV reward QA は正式承認と別経路。専用 ranch-isolated と明示 fixture flag だけで既存四活動源の実 worker/ledger を検証する。正式質問・素材・mapping の approval は変更しない。 実測 bounds と実 UI/worker の検証は未実行。

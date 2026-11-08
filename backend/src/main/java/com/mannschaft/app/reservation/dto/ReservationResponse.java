@@ -70,7 +70,11 @@ public class ReservationResponse {
 
     public record ReservationIdentifierDto(Long reservationSlotId, Long lineId, Long teamId, Long userId, String userName) {}
 
-    public record SlotSummaryDto(String lineName, String title, LocalDate slotDate, LocalTime startTime, LocalTime endTime) {}
+    /**
+     * 枠サマリ。{@code endDate} は枠の終了業務日（日跨ぎ枠は slotDate の翌日）。
+     * 日跨ぎ判定（endDate != slotDate）に使う。
+     */
+    public record SlotSummaryDto(String lineName, String title, LocalDate slotDate, LocalDate endDate, LocalTime startTime, LocalTime endTime) {}
 
     public record ReservationStatusDto(String status, LocalDateTime bookedAt, LocalDateTime confirmedAt, LocalDateTime completedAt) {}
 

@@ -55,6 +55,8 @@ class AlwaysReachableDeclarationTest {
             entry("auth.controller.AuditLogAdminController", "getMyLogs", CORE),
             entry("auth.controller.AuditLogScopeController", "getTeamAuditLogs", CORE),
             entry("auth.controller.AuditLogScopeController", "getOrganizationAuditLogs", CORE),
+            entry("publicview.controller.AdminPublicSettingsController", "getTeamPublicSettings", CORE),
+            entry("publicview.controller.AdminPublicSettingsController", "getOrganizationPublicSettings", CORE),
             entry("auth.controller.UserController", "requestWithdrawal", CORE),
             entry("auth.controller.UserController", "cancelWithdrawal", CORE),
             entry("village.controller.VillageInvitationController", "issue", CORE),
@@ -67,9 +69,9 @@ class AlwaysReachableDeclarationTest {
             entry("billing.api.BillingReturnController", "paymentActionReturn", PLATFORM_INFRA));
 
     @Test
-    @org.junit.jupiter.api.DisplayName("常時到達47入口は指定Controllerメソッドへ理由・区分付きで宣言される")
+    @org.junit.jupiter.api.DisplayName("常時到達49入口は指定Controllerメソッドへ理由・区分付きで宣言される")
     void criticalEntryPointsDeclareTheReviewedAlwaysReachableCategory() throws ClassNotFoundException {
-        assertThat(EXPECTED).hasSize(47);
+        assertThat(EXPECTED).hasSize(49);
         for (Map.Entry<String, AlwaysReachableCategory> expected : EXPECTED.entrySet()) {
             String[] key = expected.getKey().split("#", 2);
             Class<?> controller = Class.forName(key[0], false, getClass().getClassLoader());

@@ -211,7 +211,9 @@ function onDeleteConfirm(id: number) {
     <!-- ヘッダー -->
     <div class="mb-4 flex items-center gap-3">
       <PageHeader :title="t('announcement.widget_title')">
-        <span class="text-sm text-surface-400">{{ t('announcement.all_announcements') }}</span>
+        <template #subtitle>
+          <span class="text-sm text-surface-400">{{ t('announcement.all_announcements') }}</span>
+        </template>
       </PageHeader>
     </div>
 

@@ -1,0 +1,56 @@
+{
+  "frontendSource": "13c6cc3d4ad5f3952f8f51e5715e4c6b05a69dc6",
+  "specSource": "acd2743e3b6be7a60bc0747906d37e78c2cd63fd",
+  "specSha256": "109a44fe854ce3a5356e2d3fb0ad2b316d4c17ba393d052362c9d04433031d90",
+  "originalProductSha256": "6f457c4e7ab727f134f21b5a6592faf89df9af4887bda25ca59118d8a744854a",
+  "lease": ".claude/runtime/october-login-1510-20261026/mutation-lease.json",
+  "runs": [
+    {
+      "name": "dimension-red",
+      "exitCode": 1,
+      "durationSeconds": 63.12458109855652,
+      "stats": {
+        "startTime": "2026-10-26T07:41:27.832Z",
+        "duration": 55104.481,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "path": ".claude/runtime/october-login-1510-20261026/formal-worker-acd-r2/dimension-red"
+    },
+    {
+      "name": "dimension-green",
+      "exitCode": 0,
+      "durationSeconds": 75.46165704727173,
+      "stats": {
+        "startTime": "2026-10-26T07:42:31.572Z",
+        "duration": 66962.351,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "path": ".claude/runtime/october-login-1510-20261026/formal-worker-acd-r2/dimension-green"
+    },
+    {
+      "name": "formal",
+      "exitCode": 1,
+      "durationSeconds": 184.19497323036194,
+      "stats": {
+        "startTime": "2026-10-26T07:43:47.627Z",
+        "duration": 163505.87300000002,
+        "expected": 15,
+        "skipped": 2,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "path": ".claude/runtime/october-login-1510-20261026/formal-worker-acd-r2/formal"
+    }
+  ],
+  "redProductSha256": "0a4db57906fc548f047a16394a86dab1cb2e713ebe0d0aca3315fbebe86e6e01",
+  "restoredProductSha256": "6f457c4e7ab727f134f21b5a6592faf89df9af4887bda25ca59118d8a744854a",
+  "restorationByteEqual": true,
+  "redProductSource": "17cab5899b86216190b2c13d31c19812d88593d5",
+  "redProductGitBlobHashVerified": true
+}

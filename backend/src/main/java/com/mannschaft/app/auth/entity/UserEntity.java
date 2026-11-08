@@ -19,9 +19,11 @@ import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.DynamicUpdate;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.Objects;
 
 /**
  * ユーザーマスターエンティティ。認証・プロフィール情報を管理する。
@@ -30,6 +32,7 @@ import java.util.UUID;
 @PersonalData(category = "account")
 @Entity
 @Table(name = "users")
+@DynamicUpdate
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -213,6 +216,12 @@ public class UserEntity extends BaseEntity {
     @Column(columnDefinition = "VARBINARY(255)")
     private String birthDate;
 
+    /** 出生プロフィールの確認世代。氏名・カナ・生年月日の変更時だけ更新する。 */
+    @Column(name = "birth_profile_version", nullable = false)
+    @org.hibernate.annotations.ColumnDefault("0")
+    @Builder.Default
+    private long birthProfileVersion = 0L;
+
     /** ケアカテゴリ。MINOR / ELDERLY / DISABILITY_SUPPORT / GENERAL_FAMILY。 */
     @Enumerated(EnumType.STRING)
     @Column(length = 30)
@@ -382,6 +391,7 @@ public class UserEntity extends BaseEntity {
      * contactHandle は UNIQUE かつ NULL 許容のため null にする。</p>
      */
     public void anonymize() {
+        advanceBirthProfileVersionIfChanged("退会済み", "ユーザー", null, null, null);
         // メールアドレスは UNIQUE + NOT NULL のためダミー値で上書き（null 不可）
         this.email = "withdrawn-" + UUID.randomUUID() + "@deleted.mannschaft.internal";
         // パスワードハッシュを消去（ログイン不可にする）
@@ -580,6 +590,7 @@ public class UserEntity extends BaseEntity {
                                    String postalCode, String lastNameHash, String firstNameHash,
                                    String phoneNumberHash, String locale, String countryCode,
                                    String timezone, DmReceiveFrom dmReceiveFrom) {
+        advanceBirthProfileVersionIfChanged(lastName, firstName, lastNameKana, firstNameKana, this.birthDate);
         this.lastName = lastName;
         this.firstName = firstName;
         this.lastNameKana = lastNameKana;
@@ -597,6 +608,36 @@ public class UserEntity extends BaseEntity {
         this.countryCode = countryCode;
         this.timezone = timezone;
         this.dmReceiveFrom = dmReceiveFrom;
+    }
+
+    /** 呼出側はusersを先にロックする。出生の原入力が変わったときだけ確認世代を進める。 */
+    /** users先ロック後に出生専用入力を更新し、原5欄の変更を一つの確認世代へまとめる。 */
+    public void updateBirthProfile(String lastName, String firstName, String lastNameKana,
+                                   String firstNameKana, String birthDate,
+                                   String lastNameHash, String firstNameHash, String birthDateHash,
+                                   int validatedBirthYear) {
+        advanceBirthProfileVersionIfChanged(lastName, firstName, lastNameKana, firstNameKana, birthDate);
+        this.lastName = lastName;
+        this.firstName = firstName;
+        this.lastNameKana = lastNameKana;
+        this.firstNameKana = firstNameKana;
+        this.birthDate = birthDate;
+        this.lastNameHash = lastNameHash;
+        this.firstNameHash = firstNameHash;
+        this.birthDateHash = birthDateHash;
+        // 成人判定とAGE_RANGEの既存列も、検証済みDOBの年へ同時に揃える。
+        updateBirthYear(validatedBirthYear);
+    }
+
+    private void advanceBirthProfileVersionIfChanged(String lastName, String firstName,
+                                                     String lastNameKana, String firstNameKana,
+                                                     String birthDate) {
+        if (!Objects.equals(this.lastName, lastName) || !Objects.equals(this.firstName, firstName)
+                || !Objects.equals(this.lastNameKana, lastNameKana)
+                || !Objects.equals(this.firstNameKana, firstNameKana)
+                || !Objects.equals(this.birthDate, birthDate)) {
+            this.birthProfileVersion = Math.incrementExact(this.birthProfileVersion);
+        }
     }
 
     /**

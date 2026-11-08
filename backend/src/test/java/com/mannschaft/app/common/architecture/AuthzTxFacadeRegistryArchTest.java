@@ -60,12 +60,19 @@ class AuthzTxFacadeRegistryArchTest {
 
     static final String ACCESS_CONTROL = "com.mannschaft.app.common.AccessControlService";
     static final String GATE = "com.mannschaft.app.common.ScopeConcealingAccessGate";
+    /**
+     * W8（chat）の認可クラス。chat の認可と存在秘匿（{@code isAwareOfChannel} による 404/403 の作り分け）は
+     * 種別ごとの正準判定（大会・イベント・村）を束ねるため Gate に寄せられず、このガードに集約している。
+     * R3 では Facade がここへ届くことを、R4 では tx 本体がここへ届かないことを検査する。
+     */
+    static final String CHAT_GUARD = "com.mannschaft.app.chat.service.ChatChannelAccessGuard";
 
     private static final String SHIFT = "com.mannschaft.app.shift.";
     private static final String REC = "com.mannschaft.app.recruitment.";
     private static final String RSV = "com.mannschaft.app.reservation.";
     private static final String CNF = "com.mannschaft.app.notification.confirmable.";
     private static final String SKL = "com.mannschaft.app.skill.";
+    private static final String CHAT = "com.mannschaft.app.chat.";
 
     /** 登録表の 1 行（Controller#メソッド → 呼ぶべき Facade）。 */
     record Entry(String wave, String controller, String method, String facade) {
@@ -164,11 +171,24 @@ class AuthzTxFacadeRegistryArchTest {
                 "listSchedules", "getSchedule", "createSchedule", "updateSchedule", "deleteSchedule", "transitionStatus",
                 "getScheduleSummary", "remindUnsubmitted", "duplicateSchedule");
         add(list, "W6a", SHIFT + "controller.ShiftSlotController", SHIFT + "service.ShiftSlotFacade",
-                "listSlots", "createSlot", "bulkCreateSlots", "updateSlot", "deleteSlot", "patchSlotAssignments");
+                "listSlots", "createSlot", "bulkCreateSlots", "updateSlot", "deleteSlot", "patchSlotAssignments",
+                "moveSlotAssignment"); // moveSlotAssignment: CMP-261010-1432 枠間移動
         add(list, "W6a", SHIFT + "controller.ShiftPdfController", SHIFT + "service.ShiftPdfFacade", "exportPdf");
         // W7: 資格 API（個別 ID の取得・更新・削除・証明書 URL。CMP-261010-2226）
         add(list, "W7", SKL + "controller.SkillController", SKL + "service.MemberSkillFacade",
                 "getSkill", "updateSkill", "deleteSkill", "getCertificateUrl");
+        // W8: チャット（CMP-261105-1507。チャンネル ID・メッセージ ID 指定の EP の存在秘匿と認可を tx の外へ出した）
+        add(list, "W8", CHAT + "controller.ChatChannelController", CHAT + "service.ChatChannelFacade",
+                "getChannel", "updateChannel", "deleteChannel", "archiveChannel", "unarchiveChannel", "inviteToZimmer",
+                "convertToGroup", "updateInquiryChannel", "addMembers", "removeMember", "joinChannel", "changeRole");
+        add(list, "W8", CHAT + "controller.ChatChannelController", CHAT + "service.ChatMessageFacade",
+                "getActiveThreads");
+        add(list, "W8", CHAT + "controller.ChatMessageController", CHAT + "service.ChatMessageFacade",
+                "listMessages", "sendMessage", "editMessage", "deleteMessage", "getThread", "togglePin",
+                "forwardMessage", "searchMessages");
+        // WebSocket の投稿（/app/chat.send）も REST と同じ Facade を通す（経路で認可が抜ける非対称を作らない）
+        add(list, "W8", CHAT + "controller.ChatWebSocketController", CHAT + "service.ChatMessageFacade",
+                "handleSendMessage");
         return List.copyOf(list);
     }
 
@@ -213,6 +233,13 @@ class AuthzTxFacadeRegistryArchTest {
         map.put(SKL + "service.MemberSkillFacade", List.of(
                 cls(SKL + "service.MemberSkillService"),
                 cls(SKL + "service.SkillCategoryService")));
+        // W8: chat の tx 本体は、Facade を経ない EP（作成・会話開始・添付 URL 等）の認可が同じクラスに残るため METHOD
+        map.put(CHAT + "service.ChatChannelFacade", List.of(
+                method(CHAT + "service.ChatChannelService"),
+                method(CHAT + "service.ChatMemberService")));
+        map.put(CHAT + "service.ChatMessageFacade", List.of(
+                method(CHAT + "service.ChatMessageService"),
+                method(CHAT + "service.ChatChannelService")));
         return map;
     }
 
@@ -252,7 +279,7 @@ class AuthzTxFacadeRegistryArchTest {
                     + "findOrThrow・estimateFee は認可を持たない参照。W5 の対象外（試算の作り替えは別課題）で、"
                     + "tx 本体の直呼びが残るため R1 に通せない");
 
-    static final Rules RULES = new Rules(ENTRIES, TX_BODIES, Set.of(ACCESS_CONTROL, GATE), ACCESS_CONTROL,
+    static final Rules RULES = new Rules(ENTRIES, TX_BODIES, Set.of(ACCESS_CONTROL, GATE, CHAT_GUARD), ACCESS_CONTROL,
             THROW_FORM_ALLOWLIST, UNREGISTERED_FACADE_CALLERS);
 
     private final JavaClasses classes = ProductionClasses.get();
@@ -267,9 +294,10 @@ class AuthzTxFacadeRegistryArchTest {
         Map<String, Long> byWave = ENTRIES.stream()
                 .collect(Collectors.groupingBy(Entry::wave, TreeMap::new, Collectors.counting()));
         assertThat(byWave).containsExactlyInAnyOrderEntriesOf(Map.of(
-                "W1", 9L, "W2", 16L, "W3a", 1L, "W3b", 2L, "W4", 6L, "W5", 11L, "W5周辺", 1L, "W6a", 16L, "W7", 4L));
-        assertThat(ENTRIES).hasSize(66);
-        assertThat(ENTRIES.stream().map(Entry::key).distinct().count()).as("登録表に重複が無い").isEqualTo(66);
+                "W1", 9L, "W2", 16L, "W3a", 1L, "W3b", 2L, "W4", 6L, "W5", 11L, "W5周辺", 1L, "W6a", 17L, "W7", 4L,
+                "W8", 22L)); // W6a: CMP-261010-1432 枠間移動で +1 / W8: CMP-261105-1507 chat
+        assertThat(ENTRIES).hasSize(89); // CMP-261010-1432 枠間移動で +1 / CMP-261105-1507 chat で +22
+        assertThat(ENTRIES.stream().map(Entry::key).distinct().count()).as("登録表に重複が無い").isEqualTo(89);
         assertThat(ENTRIES.stream().map(Entry::facade).collect(Collectors.toSet()))
                 .as("登録表の Facade と tx 本体の表の Facade が一致する").isEqualTo(TX_BODIES.keySet());
     }
@@ -684,13 +712,13 @@ class AuthzTxFacadeRegistryArchTest {
     /**
      * Facade が外へ公開する public メソッドのうち、シグネチャ（名前＋引数型）ごとに継承階層で最も子側の
      * 有効な実装だけを返す。子がオーバーライド済みの親クラス・interface の宣言は呼ばれないので除外する。
-     * Object 由来・合成は除き、選んだ結果が抽象のものも除く。
+     * Object 由来と、選んだ結果が抽象・合成のものは除く。総称 override の bridge は親の消去後シグネチャを
+     * 隠すため、合成メソッドも遮蔽判定には残し、返す結果からだけ除く。
      */
     static List<JavaMethod> effectivePublicMethods(JavaClass facade) {
         Map<String, List<JavaMethod>> bySignature = new LinkedHashMap<>();
         for (JavaMethod m : facade.getAllMethods()) {
             if (!m.getModifiers().contains(JavaModifier.PUBLIC)
-                    || m.getModifiers().contains(JavaModifier.SYNTHETIC)
                     || m.getOwner().isEquivalentTo(Object.class)) {
                 continue;
             }
@@ -710,7 +738,8 @@ class AuthzTxFacadeRegistryArchTest {
                 boolean hidden = pool.stream().anyMatch(o -> o != m
                         && !o.getOwner().equals(m.getOwner())
                         && o.getOwner().isAssignableTo(m.getOwner().getName()));
-                if (!hidden && !m.getModifiers().contains(JavaModifier.ABSTRACT)) {
+                if (!hidden && !m.getModifiers().contains(JavaModifier.ABSTRACT)
+                        && !m.getModifiers().contains(JavaModifier.SYNTHETIC)) {
                     result.add(m);
                 }
             }

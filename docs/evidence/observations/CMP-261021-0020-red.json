@@ -1,0 +1,67 @@
+{
+  "campaign": "CMP-261021-0020",
+  "phase": "試練（red）",
+  "measuredAt": "2026-10-21T05:25:44Z",
+  "sourceBase": "c02aeade458f",
+  "worktree": "C:/Claude/mannschaft/.claude/worktrees/agent-friend-0020-20261021",
+  "executionCopy": "/home/kenta/verify-friend0020",
+  "command": "bash scripts/gradle-turnstile.sh bash ./gradlew test --tests com.mannschaft.app.social.TeamFriendPendingFollowContractIT --tests com.mannschaft.app.social.service.TeamFriendPendingFollowFacadeTest -x archUnitTest -x archUnitFreezeStoreIntegrityTest --console=plain",
+  "lockRoot": "/home/kenta/gradle-turnstile",
+  "exitCode": 1,
+  "tests": 42,
+  "passed": 5,
+  "failed": 37,
+  "errors": 0,
+  "skipped": 0,
+  "suites": [
+    {
+      "name": "CMP-261021-0020 フォロー中一覧のHTTP契約",
+      "tests": "40",
+      "failures": "35",
+      "errors": "0",
+      "skipped": "0",
+      "time": "47.279"
+    },
+    {
+      "name": "com.mannschaft.app.social.service.TeamFriendPendingFollowFacadeTest",
+      "tests": "2",
+      "failures": "2",
+      "errors": "0",
+      "skipped": "0",
+      "time": "6.181"
+    }
+  ],
+  "classification": {
+    "http": "35件すべてAssertionFailedError。未実装pending URLの404に対し200または403を期待して失敗。実JWT・Securityフィルタ・ScopeSlugIdConverter・Testcontainers MySQLの起動とfixture成功。",
+    "facade": "AC9は概要例外の同一性期待違反、AC10は機能なし入口のUnsupportedOperationException。",
+    "regressions": "アーカイブ/PROVISIONEDの数値/slug経路404の4件と未ログイン401/不在slug404の1件が成功。",
+    "limitations": "最初の未実装redより後のアサーションはgreen化後に到達する。AC12/13・FE14-19/24・実機20/21は未実施。"
+  },
+  "examples": [
+    {
+      "test": "AC24_一覧取得後に成立した相互関係の取消は自フォローとフレンドだけを消す",
+      "source": "backend/src/test/java/com/mannschaft/app/social/TeamFriendPendingFollowContractIT.java:383",
+      "expected": 200,
+      "actual": 404
+    },
+    {
+      "test": "AC4_権限なしは一覧と既存フォロー取消を全て403にする",
+      "expected": 403,
+      "actual": 404
+    },
+    {
+      "test": "AC9_チーム概要取得例外を伏せ字や部分成功に変えずそのまま伝播する",
+      "source": "backend/src/test/java/com/mannschaft/app/social/service/TeamFriendPendingFollowFacadeTest.java:58",
+      "expected": "同一の概要取得例外",
+      "actual": "試練先行の未実装例外"
+    }
+  ],
+  "artifacts": {
+    "log": ".claude/test-runs/0020/red.log",
+    "xml": [
+      ".claude/test-runs/0020/TEST-com.mannschaft.app.social.TeamFriendPendingFollowContractIT.xml",
+      ".claude/test-runs/0020/TEST-com.mannschaft.app.social.service.TeamFriendPendingFollowFacadeTest.xml"
+    ]
+  },
+  "freezeStoreDiff": "0（番人のruntime検証とは別）"
+}

@@ -44,6 +44,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * OAuth認証サービス。OAuthプロバイダ連携によるログイン・アカウント連携・連携解除を担当する。
@@ -99,6 +100,7 @@ public class AuthOAuthService {
      * @param userAgent         ユーザーエージェント
      * @return トークンレスポンスまたはOAuth競合レスポンス
      */
+    @PlaintextTokenDebt(cmp = "CMP-261103-2059") // ハッシュ保存済みだが乱数源が UUID で金庫（SecretTokenVault）未使用。金庫への統合が債務
     @Transactional
     public ApiResponse<?> loginWithOAuth(
             String provider, String authorizationCode, String ipAddress, String userAgent) {

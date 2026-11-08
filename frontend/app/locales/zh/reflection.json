@@ -297,6 +297,34 @@
         "add_button": "添加",
         "added": "已添加"
       }
+    },
+    "arSession": {
+      "title": "回忆练习",
+      "description": "查看保存的原文之前，先写下你能回忆起来的内容。这项练习自愿参加。",
+      "start": "开始回忆练习",
+      "freeRecall": "用自己的话回忆",
+      "card": "回忆卡片",
+      "side": {
+        "TERM": "术语提示",
+        "MEANING": "含义提示"
+      },
+      "answered": "我记得",
+      "forgot": "现在想不起来",
+      "answer": "我的回答",
+      "selfRating": "你回忆起了多少？",
+      "rating": {
+        "REMEMBERED": "记起来了",
+        "PARTIAL": "记起了一部分",
+        "FORGOT": "没想起来"
+      },
+      "ratingNeutral": "自我评价不会改变奖励数量。",
+      "save": "保存回答",
+      "complete": "完成并查看原文",
+      "cancel": "取消练习",
+      "cancelled": "这项练习已取消。",
+      "retry": "重试",
+      "failed": "无法加载或保存，请重试。",
+      "original": "保存的原文"
     }
   }
 }

@@ -1,8 +1,40 @@
 {
   "skill": {
+    "form": {
+      "noCategoryAdmin": "이 팀에는 아직 사용할 수 있는 카테고리가 없습니다. \"카테고리 관리\" 탭에서 카테고리를 만들어 주세요.",
+      "noCategoryMember": "이 팀에는 아직 사용할 수 있는 카테고리가 없습니다. 팀 관리자에게 카테고리 생성을 요청해 주세요."
+    },
+    "matrix": {
+      "refresh": "새로고침",
+      "legendPendingNote": "확인 대기 중인 자격은 미등록으로 표시됩니다"
+    },
     "list": {
+      "actions": {
+        "search": "검색",
+        "verify": "승인",
+        "edit": "편집",
+        "delete": "삭제",
+        "certificate": "증명서 보기"
+      },
       "loadDetailFailed": "스킬 상세 정보를 불러오지 못했습니다",
-      "loadCategoriesFailed": "카테고리를 불러오지 못했습니다"
+      "loadCategoriesFailed": "카테고리를 불러오지 못했습니다",
+      "mineTitle": "내 스킬·자격",
+      "deleteConfirm": "\"{name}\"을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+      "deleteConfirmHeader": "자격 삭제"
+    },
+    "category": {
+      "actions": {
+        "edit": "편집",
+        "delete": "삭제"
+      },
+      "deleteConfirm": "\"{name}\" 카테고리를 삭제하시겠습니까?",
+      "deleteConfirmHeader": "카테고리 삭제"
+    },
+    "page": {
+      "permissionLoadFailed": "권한 정보를 불러오지 못했습니다. 잠시 후 다시 불러오세요",
+      "forbidden": "이 팀의 멤버만 스킬·자격을 이용할 수 있습니다",
+      "mineTab": "내 스킬·자격",
+      "categoriesReloadFailed": "카테고리를 다시 불러오지 못했습니다"
     }
   },
   "chat": {
@@ -70,7 +102,9 @@
       "multiple": "{names}이(가) 입력 중…"
     },
     "connection": {
-      "failed": "연결이 끊어졌습니다. 재연결을 시도하고 있습니다…"
+      "failed": "연결이 끊어졌습니다. 재연결을 시도하고 있습니다…",
+      "denied": "이 채널을 볼 권한이 없습니다",
+      "unauthenticated": "로그인이 만료되어 실시간 업데이트가 중지되었습니다. 다시 로그인해 주세요"
     },
     "mobile": {
       "backToList": "채널 목록으로 돌아가기",
@@ -113,6 +147,77 @@
         "joinFailed": "참가에 실패했습니다",
         "declineFailed": "거절에 실패했습니다"
       }
+    },
+    "channelList": {
+      "title": "채팅",
+      "newConversation": "새 대화",
+      "addChannel": "채널 추가",
+      "dmSection": "Kabine(DM)",
+      "noDm": "DM이 없습니다",
+      "roomSection": "Zimmer(방)",
+      "noRoom": "방이 없습니다",
+      "loadFailed": "방 목록을 불러오지 못했습니다",
+      "detailLoadFailed": "채널 정보를 불러오지 못했습니다"
+    },
+    "create": {
+      "typeDm": "Kabine(DM)",
+      "typeRoom": "Zimmer(방)",
+      "dmOpened": "Kabine(DM)을 열었습니다",
+      "roomCreated": "Zimmer(방)를 만들었습니다",
+      "conversationFailed": "대화를 만들지 못했습니다",
+      "roomCreateFailed": "Zimmer(방)를 만들지 못했습니다",
+      "header": "새 대화 시작",
+      "tabContacts": "연락처에서 선택",
+      "tabCreateRoom": "Zimmer(방) 만들기",
+      "searchByName": "이름으로 검색...",
+      "selectedSummary": "{count}명 선택됨 → {type}(으)로 시작합니다",
+      "startAs": "{type} 시작",
+      "roomName": "Zimmer(방) 이름",
+      "roomNamePlaceholder": "예: general",
+      "descriptionOptional": "설명(선택)",
+      "descriptionPlaceholder": "Zimmer(방) 설명",
+      "privateRoom": "비공개 Zimmer(초대 전용)",
+      "inviteMembersOptional": "멤버 초대(선택)",
+      "create": "만들기"
+    },
+    "inviteZimmer": {
+      "header": "Zimmer에 초대",
+      "tooltip": "Zimmer에 초대",
+      "failed": "초대하지 못했습니다",
+      "noMembers": "초대할 수 있는 멤버가 없습니다",
+      "shareQuestion": "기존 채팅 내용을 공유할까요?",
+      "share": "공유하기",
+      "shareHint": "지금까지의 메시지가 새 Zimmer로 이어집니다",
+      "noShare": "공유하지 않기",
+      "noShareHint": "새 Zimmer는 빈 상태로 시작합니다",
+      "createZimmer": "Zimmer 만들기"
+    },
+    "memberSelect": {
+      "notFound": "멤버를 찾을 수 없습니다"
+    },
+    "activeThreadsEmpty": "진행 중인 스레드가 없습니다",
+    "tabAriaLabel": "{name} 탭",
+    "message": {
+      "deleted": "삭제된 메시지입니다",
+      "unknownSender": "알 수 없음",
+      "edited": "(수정됨)",
+      "loadOlder": "이전 메시지 불러오기",
+      "empty": "아직 메시지가 없습니다",
+      "sendFailed": "메시지를 보내지 못했습니다",
+      "inputPlaceholder": "메시지를 입력...",
+      "inputDisabled": "이 Zimmer(방)에는 게시할 수 없습니다",
+      "loadFailed": "메시지를 불러오지 못했습니다",
+      "reactionFailed": "리액션에 실패했습니다",
+      "pinned": "고정했습니다",
+      "unpinned": "고정을 해제했습니다",
+      "pinFailed": "고정 작업에 실패했습니다",
+      "deleteSuccess": "메시지를 삭제했습니다",
+      "deleteFailed": "삭제하지 못했습니다",
+      "bookmarkFailed": "북마크에 실패했습니다",
+      "markReadFailed": "읽음 처리하지 못했습니다",
+      "editHeader": "메시지 수정",
+      "editSuccess": "메시지를 수정했습니다",
+      "editFailed": "수정하지 못했습니다"
     }
   },
   "button": {
@@ -123,6 +228,7 @@
     "create": "만들기",
     "submit": "제출",
     "close": "닫기",
+    "open": "열기",
     "back": "뒤로",
     "help": "사용법",
     "next": "다음",
@@ -282,6 +388,8 @@
     "add_term": "학기 추가",
     "term_success": "학기를 작성했습니다",
     "term_error": "학기 작성에 실패했습니다",
+    "term_academic_year_required": "학년도를 입력해 주세요",
+    "term_has_timetables": "이 학기에 시간표가 남아 있어 삭제할 수 없습니다. 먼저 시간표를 정리해 주세요",
     "no_period": "교시가 정의되지 않았습니다",
     "no_term": "학기가 정의되지 않았습니다",
     "current_week": "이번 주",
@@ -296,7 +404,19 @@
     "period_all": "전체 교시",
     "period_number_placeholder": "교시 번호",
     "period_suffix": "교시",
-    "term_name_placeholder": "예: 1학기"
+    "term_name_placeholder": "예: 1학기",
+    "term_academic_year_range": "학년도는 {min}~{max} 범위로 입력해 주세요",
+    "term_end_before_start": "종료일은 시작일 이후 날짜로 지정해 주세요",
+    "term_date_overlap": "학기 기간이 다른 학기와 겹칩니다. 시작일과 종료일을 확인해 주세요",
+    "term_delete_confirm": "학기 \"{name}\"을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+    "term_delete_success": "학기를 삭제했습니다",
+    "term_load_error": "학기를 불러오지 못했습니다",
+    "team_term_hint": "이 팀의 학기입니다. 시간표를 만들 때 여기에서 추가한 학기 중에서 선택합니다.",
+    "no_term_for_create": "아직 학기가 없습니다. 먼저 \"학기\" 탭에서 학기를 추가해 주세요.",
+    "delete_timetable": "삭제",
+    "delete_timetable_confirm": "시간표 \"{name}\"을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+    "delete_timetable_success": "시간표를 삭제했습니다",
+    "delete_timetable_error": "시간표를 삭제하지 못했습니다"
   },
   "error": {
     "server": "서버 오류가 발생했습니다",
@@ -308,6 +428,8 @@
     "unauthorized": "로그인이 필요합니다",
     "section_load_failed": "이 항목을 불러오지 못했습니다. 새로고침해 주세요.",
     "unknown": "오류가 발생했습니다",
+    "TEAM_001": "팀을 찾을 수 없습니다.",
+    "TEAM_006": "이 팀은 삭제되지 않았으므로 복원할 수 없습니다.",
     "COMMON_001": "입력 내용에 오류가 있습니다",
     "COMMON_002": "이 작업을 수행할 권한이 없습니다",
     "COMMON_003": "다른 사용자가 업데이트했습니다. 화면을 새로고침하세요",
@@ -629,6 +751,7 @@
     }
   },
   "timeline": {
+    "refresh": "새로고침",
     "detail": {
       "back": "뒤로",
       "loadFailed": "게시물을 불러오지 못했습니다",
@@ -1070,6 +1193,21 @@
     }
   },
   "project": {
+    "back_label": "프로젝트 목록",
+    "delete_aria": "{title} 삭제",
+    "delete_confirm": "\"{title}\"을(를) 삭제하시겠습니까?",
+    "delete_confirm_header": "삭제 확인",
+    "milestone_dialog": {
+      "add_title": "마일스톤 추가",
+      "edit_title": "마일스톤 편집",
+      "title_label": "제목",
+      "title_placeholder": "마일스톤 이름",
+      "due_date_label": "마감일",
+      "add": "추가"
+    },
+    "related_todo_no_due": "기한 없음",
+    "related_todo_no_assignee": "담당자 없음",
+    "related_todo_open": "TODO 상세 열기",
     "milestones": "마일스톤",
     "no_milestones": "마일스톤이 없습니다",
     "due_date": "기한",
@@ -1127,7 +1265,19 @@
       "none": "없음",
       "custom_emoji": "사용자 지정",
       "custom_color": "사용자 지정 색상",
-      "current": "현재 값"
+      "current": "현재 값",
+      "colors": {
+        "blue": "파랑",
+        "red": "빨강",
+        "green": "초록",
+        "amber": "호박색",
+        "violet": "보라",
+        "pink": "분홍",
+        "cyan": "청록",
+        "teal": "틸",
+        "orange": "주황",
+        "gray": "회색"
+      }
     },
     "guide": {
       "button": "사용 방법",
@@ -1179,7 +1329,10 @@
       "update_failed": "업데이트에 실패했습니다",
       "delete_failed": "삭제에 실패했습니다",
       "status_change_failed": "상태 변경에 실패했습니다",
-      "milestone_save_failed": "마일스톤 저장에 실패했습니다"
+      "milestone_save_failed": "마일스톤 저장에 실패했습니다",
+      "force_unlock_failed": "강제 잠금 해제에 실패했습니다",
+      "completion_mode_failed": "완료 모드 변경에 실패했습니다",
+      "gate_init_failed": "게이트 초기화에 실패했습니다"
     },
     "status": {
       "active": "진행 중",
@@ -1210,7 +1363,29 @@
   },
   "inviteToken": {
     "printQrPdf": "QR코드 PDF 인쇄",
-    "printQrPdfError": "PDF 인쇄에 실패했습니다"
+    "printQrPdfError": "PDF 인쇄에 실패했습니다",
+    "title": "초대 링크",
+    "createNew": "새 초대 링크",
+    "createTitle": "초대 링크 만들기",
+    "role": "역할",
+    "expiry": "유효 기간",
+    "uses": "사용 횟수",
+    "inviteRole": "초대 역할",
+    "maxUses": "최대 사용 횟수(비워 두면 무제한)",
+    "empty": "아직 초대 링크가 없습니다",
+    "never": "기한 없음",
+    "copy": "초대 URL 복사",
+    "revoke": "초대 링크 비활성화",
+    "revokeConfirm": "이 초대 링크를 비활성화하시겠습니까?",
+    "createSuccess": "초대 링크를 만들었습니다",
+    "createError": "초대 링크를 만들지 못했습니다",
+    "revokeSuccess": "초대 링크를 비활성화했습니다",
+    "revokeError": "초대 링크를 비활성화하지 못했습니다",
+    "copied": "초대 URL을 복사했습니다",
+    "oneDay": "1일",
+    "sevenDays": "7일",
+    "thirtyDays": "30일",
+    "ninetyDays": "90일"
   },
   "visibilityTemplate": {
     "title": "공개 범위 템플릿",
@@ -1470,7 +1645,9 @@
     },
     "ws": {
       "disconnected": "연결이 끊어졌습니다",
-      "reconnecting": "재연결 중…"
+      "reconnecting": "재연결 중…",
+      "denied": "이 보드를 볼 권한이 없어 실시간 업데이트가 중지되었습니다",
+      "unauthenticated": "로그인이 만료되어 실시간 업데이트가 중지되었습니다. 다시 로그인해 주세요"
     },
     "validation": {
       "required": "필수 항목입니다.",
@@ -1593,7 +1770,9 @@
       "more": "외 {count}건",
       "today": "오늘",
       "dayDetail": {
-        "title": "{date}의 일정"
+        "title": "{date}의 일정",
+        "empty": "이 날짜에는 일정이 없습니다",
+        "create": "이 날짜에 일정 추가"
       },
       "empty": "이 기간에 일정이 없습니다",
       "view": {
@@ -2387,6 +2566,14 @@
     "SUPPORTERS_AND_ABOVE": "서포터 이상",
     "MEMBERS_AND_ABOVE": "멤버 이상"
   },
+  "organization_visibility": {
+    "PUBLIC": "공개",
+    "PRIVATE": "제한 공개"
+  },
+  "entity_create": {
+    "error_heading": "입력 내용을 확인해 주세요",
+    "supporter_label": "서포터 기능 활성화"
+  },
   "module_settings": {
     "enabled_count": "활성화된 기능: {count} / {limit}",
     "fetch_error": "기능 목록을 불러오지 못했습니다",
@@ -2446,6 +2633,21 @@
     }
   },
   "teamShell": {
+    "archive": {
+      "syncError": "변경은 완료되었지만 목록을 동기화하지 못했습니다. 다시 불러오세요.",
+      "archive": "팀 보관",
+      "unarchive": "팀 보관 해제",
+      "archiveConfirm": "이 팀을 보관하시겠습니까? 대기 중인 가입 신청과 초대가 취소됩니다. 활성 가입 관계는 유지됩니다. 팀 상세 정보를 더 이상 볼 수 없습니다. 팀 목록의 보관된 팀에서 보관을 해제할 수 있습니다.",
+      "unarchiveConfirm": "팀 보관을 해제하시겠습니까? 취소된 가입 신청과 초대 및 만료된 초대 링크는 복원되지 않습니다.",
+      "archived": "팀을 보관했습니다",
+      "unarchived": "팀 보관을 해제했습니다",
+      "changed": "팀 상태 또는 작업 권한이 변경되었습니다. 목록을 다시 불러오세요.",
+      "listTitle": "보관된 팀",
+      "showList": "보관된 팀 표시",
+      "hideList": "목록 닫기",
+      "fetchError": "보관된 팀을 불러오지 못했습니다.",
+      "empty": "보관된 팀이 없습니다."
+    },
     "tab": {
       "affiliations": "소속 조직",
       "permissionGroups": "권한 그룹",
@@ -2887,5 +3089,254 @@
     "generic_title": "오류가 발생했습니다",
     "generic_description": "잠시 후 다시 시도해 주세요. 문제가 계속되면 관리자에게 문의해 주세요.",
     "back_home": "홈으로 돌아가기"
+  },
+  "loyalty": {
+    "memberQr": {
+      "title": "회원 QR",
+      "expiresIn": "남은 시간 {seconds}초",
+      "expired": "QR을 새로 고치세요",
+      "disabled": "이 회원증은 정지 또는 무효 상태이며 자동으로 재발급되지 않습니다."
+    },
+    "wallet": {
+      "title": "팀 포인트",
+      "empty": "아직 팀 포인트가 없습니다"
+    },
+    "balance": "{points}포인트",
+    "remaining": "{points}포인트 더 필요",
+    "lifetime": "누적 적립 {points}포인트",
+    "refresh": "새로 고침",
+    "more": "계속 보기",
+    "confirm": "내용 확인 후 확정",
+    "retrySame": "동일 요청 재시도",
+    "save": "저장",
+    "saved": "저장했습니다",
+    "cancel": "돌아가기",
+    "name": "이름",
+    "description": "설명(선택)",
+    "active": "활성",
+    "externalCards": "외부 포인트 카드 시작",
+    "history": {
+      "title": "적립 및 교환 내역",
+      "award": "적립",
+      "redeem": "혜택 교환",
+      "empty": "내역이 없습니다"
+    },
+    "audience": {
+      "title": "적립 대상",
+      "allAuthenticated": "로그인한 모든 개인(비회원 포함)",
+      "supportersAndAbove": "서포터 이상",
+      "membersAndAbove": "멤버 이상"
+    },
+    "rule": {
+      "title": "적립 규칙",
+      "amount": "1회 적립 포인트",
+      "points": "1회 {points}포인트",
+      "frequency": "빈도",
+      "frequencyDaily": "일본 시간 기준 하루 1회",
+      "frequencyStaff": "직원 확인 시마다",
+      "selfEnabled": "본인 접수 QR 스캔 허용",
+      "selfDailyOnly": "본인 접수는 하루 1회 규칙만 가능합니다"
+    },
+    "reward": {
+      "title": "혜택",
+      "add": "혜택 추가",
+      "amount": "필요 포인트",
+      "required": "{points}포인트로 교환",
+      "confirm": "{reward}에 {points}포인트 사용"
+    },
+    "scan": {
+      "title": "포인트 접수",
+      "camera": "카메라로 회원 QR 스캔",
+      "cameraDenied": "카메라를 사용할 수 없습니다. 브라우저 권한을 확인하고 재시도하세요.",
+      "confirmAward": "{team}에서 {points}포인트 적립",
+      "success": "포인트 처리가 완료되었습니다",
+      "next": "다음 접수 시작"
+    },
+    "self": {
+      "confirm": "접수 내용 확인",
+      "rescan": "접수 QR을 다시 스캔하세요"
+    },
+    "error": {
+      "uncertain": "결과가 확정되지 않았습니다. 동일 요청을 재전송하세요.",
+      "alreadyAwarded": "오늘 이미 적립했습니다",
+      "ineligible": "현재 적립 대상이 아닙니다",
+      "changed": "내용이 변경되었습니다. 다시 확인하세요.",
+      "insufficient": "포인트가 부족합니다"
+    },
+    "program": {
+      "disabled": "포인트 프로그램이 중지되었습니다",
+      "closedTeam": "이용 종료된 팀"
+    },
+    "settings": {
+      "title": "팀 포인트 설정",
+      "enabled": "포인트 프로그램 활성화"
+    },
+    "mode": {
+      "title": "본인 접수 방식",
+      "staffApproval": "직원 승인(승인 전 적립 없음)",
+      "auto": "자동 적립",
+      "autoWarning": "고정 QR의 촬영 및 원격 재사용을 막을 수 없으며 하루 1회 제한으로 방문을 증명할 수 없습니다."
+    },
+    "reception": {
+      "title": "포인트 접수 QR",
+      "location": "접수 장소",
+      "newLocation": "새 접수 장소 이름",
+      "create": "접수 장소 생성",
+      "preview": "QR 미리 보기",
+      "print": "인쇄 및 공유",
+      "stop": "접수 장소 중지",
+      "sharedLocationStopWarning": "이 장소를 중지하면 체크인도 중지됩니다. 포인트만 중지하려면 프로그램을 중지하세요.",
+      "printTitle": "포인트 접수",
+      "printInstructions": "스캔 후 로그인하여 내용을 확인하고 확정하세요. 일본 시간 기준 하루 1회입니다."
+    },
+    "requests": {
+      "title": "접수 신청",
+      "empty": "접수 신청이 없습니다",
+      "submitted": "신청했습니다(아직 적립되지 않음)",
+      "code": "확인 코드 {code}",
+      "expiresAt": "유효 기한 {datetime}(일본 시간 자정까지)",
+      "showStaff": "직원에게 본인 화면을 보여주고 확인받으세요",
+      "approve": "승인 후 적립",
+      "reject": "거절",
+      "cancel": "신청 취소",
+      "compareBeforeApprove": "승인 전 본인 화면의 이름과 확인 코드를 비교하세요",
+      "enterCode": "본인 화면의 확인 코드",
+      "moreCandidates": "이 범위에 유효한 신청 없음 · 계속 보기",
+      "selfApprovalForbidden": "이 신청은 승인할 수 없습니다. 본인 신청은 다른 직원에게 보여주세요.",
+      "all": "모든 상태",
+      "deletedUser": "탈퇴한 사용자",
+      "closedLocation": "이용 종료된 접수처",
+      "reapply": "현재 내용을 확인하고 재신청",
+      "status": {
+        "pending": "승인 대기",
+        "approved": "승인 완료",
+        "cancelled": "취소됨",
+        "rejected": "거절됨",
+        "expired": "기한 만료",
+        "invalidated": "무효화됨",
+        "superseded": "다른 경로로 적립됨"
+      },
+      "reason": {
+        "userCancelled": "본인이 취소했습니다",
+        "staffRejected": "직원이 거절했습니다",
+        "ttlExpired": "유효 기한이 지났습니다",
+        "dayChanged": "일본 시간 날짜가 바뀌었습니다",
+        "versionChanged": "설정 또는 규칙이 변경되었습니다",
+        "locationInactive": "접수 장소가 중지되었습니다",
+        "teamInactive": "팀이 중지되었습니다",
+        "userInactive": "사용자가 비활성화되었습니다",
+        "ineligible": "현재 적립 대상이 아닙니다",
+        "dailyAwarded": "오늘 이미 적립했습니다",
+        "pointLimit": "포인트 한도에 도달했습니다"
+      }
+    }
+  },
+  "budget_accounting": {
+    "title": "예산 및 회계",
+    "add_year": "회계연도 추가",
+    "fiscal_year": "회계연도",
+    "default_name": "{year} 회계연도",
+    "name": "회계연도 이름(필수)",
+    "name_placeholder": "예: 2026 회계연도",
+    "start_date": "시작일(필수)",
+    "end_date": "종료일(필수)",
+    "add": "추가",
+    "created": "회계연도를 추가했습니다",
+    "empty_years": "등록된 회계연도가 없습니다",
+    "empty_years_hint": "‘회계연도 추가’를 눌러 집계할 기간을 등록하세요.",
+    "totalIncome": "수입",
+    "totalExpense": "지출",
+    "balance": "잔액",
+    "categories": "항목별 예산 및 실적",
+    "empty_categories": "이 회계연도에는 항목이 없습니다",
+    "budget_amount": "예산 {amount}",
+    "actual_amount": "실적 {amount}",
+    "execution_rate": "예산 소진율 {rate}%",
+    "validation": {
+      "name_required": "회계연도 이름을 입력하세요.",
+      "name_max": "회계연도 이름은 100자 이내로 입력하세요.",
+      "date_required": "날짜를 입력하세요.",
+      "date_order": "종료일은 시작일 이후로 지정하세요."
+    }
+  },
+  "budget_guide": {
+    "title": "예산 및 회계 사용 방법",
+    "description": "회계연도를 선택하여 해당 기간의 수입, 지출 및 항목별 예산을 확인합니다. 이 화면은 관리자, 부관리자 등 조회 권한이 있는 사용자를 위한 화면입니다. 일반 멤버는 조회할 수 없습니다. 접근이 필요하면 관리자에게 문의하세요.",
+    "what": {
+      "title": "회계연도란?",
+      "body": "수입과 지출을 함께 확인하는 기간입니다. 4월부터 다음 해 3월까지로 한정되지 않으며, 팀 활동에 맞게 시작일과 종료일을 정할 수 있습니다.",
+      "steps": {
+        "step1": "먼저 화면 상단의 회계연도 목록에서 확인하려는 기간이 등록되어 있는지 확인합니다."
+      }
+    },
+    "create": {
+      "title": "회계연도 추가하기",
+      "body": "관리자와 부관리자가 사용할 수 있습니다. 추가하는 것은 항목이 아니라 수입과 지출을 집계할 회계연도입니다.",
+      "steps": {
+        "step1": "‘회계연도 추가’를 누릅니다.",
+        "step2": "회계연도 이름(공백만으로 구성되지 않은 1~100자), 시작일, 종료일을 입력합니다. 종료일은 시작일 이후로 지정합니다.",
+        "step3": "‘추가’를 누릅니다. 성공하면 새 회계연도가 선택됩니다. 수입, 지출 또는 항목이 등록되지 않았다면 집계는 0엔으로, 항목은 미등록으로 표시됩니다."
+      }
+    },
+    "switch": {
+      "title": "확인할 회계연도 변경하기",
+      "body": "화면 상단에서 회계연도 이름을 선택하면 해당 회계연도의 집계로 전환됩니다.",
+      "steps": {
+        "step1": "확인하려는 회계연도 이름을 누릅니다.",
+        "step2": "불러오기가 끝나면 수입, 지출, 잔액 및 항목을 확인합니다."
+      }
+    },
+    "summary": {
+      "title": "집계와 항목 이해하기",
+      "body": "수입은 들어온 돈, 지출은 사용한 돈, 잔액은 수입에서 지출을 뺀 금액입니다. 항목은 돈의 용도에 따른 분류입니다.",
+      "steps": {
+        "step1": "각 항목의 ‘예산’은 예정 금액이고 ‘실적’은 기록된 금액입니다.",
+        "step2": "‘예산 소진율’은 예산 대비 실적의 비율입니다. 100%를 넘으면 빨간색으로 표시됩니다.",
+        "step3": "이 화면에서는 회계연도를 추가할 수 있습니다. 항목 생성이나 수입 및 지출의 직접 입력은 이 화면에서 할 수 없습니다."
+      }
+    },
+    "trouble": {
+      "title": "문제 해결",
+      "body": "데이터가 없는 경우와 불러오기에 실패한 경우는 다르게 표시됩니다.",
+      "steps": {
+        "step1": "‘등록된 회계연도가 없습니다’가 표시되면 ‘회계연도 추가’에서 첫 번째 기간을 등록합니다.",
+        "step2": "통신 오류가 발생하면 ‘다시 시도’를 누릅니다. 권한 오류가 발생하면 팀 관리자에게 문의하세요.",
+        "step3": "추가에 실패해도 입력 내용은 유지됩니다. 표시된 이유와 입력 내용을 확인한 뒤 ‘추가’를 다시 누릅니다."
+      }
+    }
+  },
+  "feature_display": {
+    "title": "일반 기능 표시",
+    "description": "탐색 메뉴와 홈 화면 표시를 정리합니다. 직접 URL 및 기능 API 권한은 변경되지 않으며 관리자의 기본 화면에도 영향을 주지 않습니다.",
+    "feature": "기능",
+    "member": "멤버에게 표시",
+    "supporter": "서포터에게 표시",
+    "member_label": "멤버에게 {feature} 표시",
+    "supporter_label": "서포터에게 {feature} 표시",
+    "save_success": "표시 설정을 저장했습니다",
+    "nav": "길 안내"
+  },
+  "secret_token": {
+    "issued_dialog": {
+      "title": "링크를 발급했습니다",
+      "once_warning": "이 링크는 지금만 표시됩니다. 닫으면 다시 표시되지 않습니다. 필요한 분께 공유한 뒤에 닫아 주세요.",
+      "url_label": "발급된 링크",
+      "copy": "복사",
+      "copied": "복사했습니다",
+      "copy_failed": "복사하지 못했습니다. 링크를 직접 선택하여 복사해 주세요",
+      "qr_label": "QR 코드",
+      "close": "닫기",
+      "pdf_download": "QR 코드를 PDF로 저장"
+    },
+    "list": {
+      "not_shown_hint": "보안을 위해 발급된 링크는 다시 표시되지 않습니다. 필요하면 다시 발급해 주세요.",
+      "revoked_by_migration": "보안 강화로 인해 만료되었습니다",
+      "reissue": "재발급",
+      "reissue_hint": "재발급하면 새 링크가 만들어지고 이전 링크는 사용할 수 없게 됩니다.",
+      "label_with_id": "링크 #{id}",
+      "created_at": "발급 일시",
+      "expires_at": "유효 기간",
+      "used_count": "사용 횟수"
+    }
   }
 }

@@ -23,7 +23,7 @@ import java.time.LocalDateTime;
  * <p>F17.1 Phase 1: 投稿主体切替のため {@code posted_as_subject_type} / {@code posted_as_subject_id}
  * を追加。村ロビーやチャネル内でチーム/組織代表として発言する際に使用。デフォルトは USER。</p>
  */
-@PersonalData(category = "chatMessages")
+@PersonalData(category = "chat_messages")
 @Entity
 @Table(name = "chat_messages")
 @SQLRestriction("deleted_at IS NULL")

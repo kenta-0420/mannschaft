@@ -5,6 +5,7 @@ import com.mannschaft.app.analytics.controller.TeamAnalyticsController;
 import com.mannschaft.app.match.controller.MatchRecordController;
 import com.mannschaft.app.match.controller.MatchStatsController;
 import com.mannschaft.app.team.controller.OrganizationTeamSearchController;
+import com.mannschaft.app.team.controller.TeamOrgMembershipLeaveController;
 import com.mannschaft.app.team.controller.TeamShiftSettingsController;
 import com.mannschaft.app.template.controller.OrganizationModuleController;
 import com.mannschaft.app.template.controller.TeamModuleController;
@@ -162,6 +163,25 @@ class ScopeSlugControllerContractTest {
             }
         }
         assertThat(scopeParameterCount).isEqualTo(target.scopeParameterCount());
+    }
+
+    @Test
+    @DisplayName("組織離脱のteamSlugはslugを表せるstring契約を維持する")
+    void 組織離脱のteamSlug契約を狭めない() throws NoSuchMethodException {
+        Method endpoint = TeamOrgMembershipLeaveController.class.getDeclaredMethod(
+                "leave", TeamScopeId.class, String.class);
+        MethodParameter methodParameter = new MethodParameter(endpoint, 0);
+        assertThat(methodParameter.getParameterAnnotation(PathVariable.class).value()).isEqualTo("teamSlug");
+        StringSchema schema = new StringSchema();
+        Parameter parameter = new Parameter().schema(schema);
+
+        Parameter customized = new OpenApiConfig().scopeIdParameterCustomizer()
+                .customize(parameter, methodParameter);
+
+        assertThat(customized).isSameAs(parameter);
+        assertThat(customized.getSchema()).isSameAs(schema);
+        assertThat(customized.getSchema().getType()).isEqualTo("string");
+        assertThat(customized.getSchema().getFormat()).isNull();
     }
 
     @Test

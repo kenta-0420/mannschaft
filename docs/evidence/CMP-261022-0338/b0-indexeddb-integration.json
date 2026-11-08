@@ -1,0 +1,269 @@
+{
+  "schemaVersion": 1,
+  "kind": "independent-origin-generated-board-indexeddb-integration",
+  "generatedBoardOverlay": {
+    "runId": "october-first-wave-20261026",
+    "sourceHead": "03be10c6d87ceeec29d4b09f0bac4db0d391c514",
+    "registrationSource": "actual-resident-artifacts",
+    "trusted": false,
+    "status": "observed-unverified",
+    "count": 5
+  },
+  "browser": {
+    "engine": "Playwright Chromium",
+    "context": "fresh non-persistent context",
+    "userExistingProfileAccessed": false,
+    "locale": "ja-JP",
+    "viewport": "1440x1000"
+  },
+  "origin": "http://127.0.0.1:55380",
+  "initialTargetDatabasePresent": false,
+  "initialDatabases": [],
+  "firstOpen": {
+    "total": 5,
+    "uniqueIds": 5,
+    "rows": [
+      {
+        "id": "ALI-october-first-wave-20261026-CMP-261022-0338-OBS-A1",
+        "sourceId": "CMP-261022-0338-OBS-A1",
+        "featureKey": "moderation-incident",
+        "personaId": "resident-mobile-admin",
+        "personaArchetype": "スマホ片手操作×表示崩れ",
+        "journeyId": "CMP2610220338-admin-timeline-wrap",
+        "runId": "october-first-wave-20261026",
+        "evidencePath": "docs/evidence/CMP-261022-0338/residents/admin.md",
+        "screenshotPath": "docs/evidence/CMP-261022-0338/residents/screenshots/admin-11-memo-history-360.png",
+        "uiStatus": "inbox",
+        "registrationSource": "alicization",
+        "trustedFieldPersisted": false,
+        "sourceStatusPersisted": false,
+        "sourceHeadPersisted": false,
+        "originalRunIdPersisted": false,
+        "screenshotBlobPersisted": false
+      },
+      {
+        "id": "ALI-october-first-wave-20261026-CMP-261022-0338-OBS-A2",
+        "sourceId": "CMP-261022-0338-OBS-A2",
+        "featureKey": "moderation-incident",
+        "personaId": "resident-mobile-admin",
+        "personaArchetype": "スマホ片手操作×表示崩れ",
+        "journeyId": "CMP2610220338-admin-timeline-wrap",
+        "runId": "october-first-wave-20261026",
+        "evidencePath": "docs/evidence/CMP-261022-0338/residents/admin.md",
+        "screenshotPath": "docs/evidence/CMP-261022-0338/residents/screenshots/admin-08-memo-form-360.png",
+        "uiStatus": "inbox",
+        "registrationSource": "alicization",
+        "trustedFieldPersisted": false,
+        "sourceStatusPersisted": false,
+        "sourceHeadPersisted": false,
+        "originalRunIdPersisted": false,
+        "screenshotBlobPersisted": false
+      },
+      {
+        "id": "ALI-october-first-wave-20261026-CMP-261022-0338-OBS-A3",
+        "sourceId": "CMP-261022-0338-OBS-A3",
+        "featureKey": "moderation-incident",
+        "personaId": "resident-mobile-admin",
+        "personaArchetype": "スマホ片手操作×表示崩れ",
+        "journeyId": "CMP2610220338-admin-timeline-wrap",
+        "runId": "october-first-wave-20261026",
+        "evidencePath": "docs/evidence/CMP-261022-0338/residents/admin.md",
+        "screenshotPath": "docs/evidence/CMP-261022-0338/residents/screenshots/admin-08-memo-form-360.png",
+        "uiStatus": "inbox",
+        "registrationSource": "alicization",
+        "trustedFieldPersisted": false,
+        "sourceStatusPersisted": false,
+        "sourceHeadPersisted": false,
+        "originalRunIdPersisted": false,
+        "screenshotBlobPersisted": false
+      },
+      {
+        "id": "ALI-october-first-wave-20261026-CMP-261022-0338-OBS-B1",
+        "sourceId": "CMP-261022-0338-OBS-B1",
+        "featureKey": "organization-manage",
+        "personaId": "resident-org-literacy",
+        "personaArchetype": "高齢・低リテラシー×素直",
+        "journeyId": "CMP2610220338-org-shared-report-return",
+        "runId": "october-first-wave-20261026",
+        "evidencePath": "docs/evidence/CMP-261022-0338/residents/organization-admin.md",
+        "screenshotPath": "docs/evidence/CMP-261022-0338/residents/screenshots/org-08-org-360.png",
+        "uiStatus": "inbox",
+        "registrationSource": "alicization",
+        "trustedFieldPersisted": false,
+        "sourceStatusPersisted": false,
+        "sourceHeadPersisted": false,
+        "originalRunIdPersisted": false,
+        "screenshotBlobPersisted": false
+      },
+      {
+        "id": "ALI-october-first-wave-20261026-CMP-261022-0338-OBS-B2",
+        "sourceId": "CMP-261022-0338-OBS-B2",
+        "featureKey": "auth",
+        "personaId": "resident-org-literacy",
+        "personaArchetype": "高齢・低リテラシー×素直",
+        "journeyId": "CMP2610220338-org-shared-report-return",
+        "runId": "october-first-wave-20261026",
+        "evidencePath": "docs/evidence/CMP-261022-0338/residents/organization-admin.md",
+        "screenshotPath": "docs/evidence/CMP-261022-0338/residents/screenshots/org-08-org-360.png",
+        "uiStatus": "inbox",
+        "registrationSource": "alicization",
+        "trustedFieldPersisted": false,
+        "sourceStatusPersisted": false,
+        "sourceHeadPersisted": false,
+        "originalRunIdPersisted": false,
+        "screenshotBlobPersisted": false
+      }
+    ]
+  },
+  "secondOpen": {
+    "total": 5,
+    "uniqueIds": 5,
+    "idsUnchanged": true,
+    "rows": [
+      {
+        "id": "ALI-october-first-wave-20261026-CMP-261022-0338-OBS-A1",
+        "sourceId": "CMP-261022-0338-OBS-A1",
+        "featureKey": "moderation-incident",
+        "personaId": "resident-mobile-admin",
+        "personaArchetype": "スマホ片手操作×表示崩れ",
+        "journeyId": "CMP2610220338-admin-timeline-wrap",
+        "runId": "october-first-wave-20261026",
+        "evidencePath": "docs/evidence/CMP-261022-0338/residents/admin.md",
+        "screenshotPath": "docs/evidence/CMP-261022-0338/residents/screenshots/admin-11-memo-history-360.png",
+        "uiStatus": "inbox",
+        "registrationSource": "alicization",
+        "trustedFieldPersisted": false,
+        "sourceStatusPersisted": false,
+        "sourceHeadPersisted": false,
+        "originalRunIdPersisted": false,
+        "screenshotBlobPersisted": false
+      },
+      {
+        "id": "ALI-october-first-wave-20261026-CMP-261022-0338-OBS-A2",
+        "sourceId": "CMP-261022-0338-OBS-A2",
+        "featureKey": "moderation-incident",
+        "personaId": "resident-mobile-admin",
+        "personaArchetype": "スマホ片手操作×表示崩れ",
+        "journeyId": "CMP2610220338-admin-timeline-wrap",
+        "runId": "october-first-wave-20261026",
+        "evidencePath": "docs/evidence/CMP-261022-0338/residents/admin.md",
+        "screenshotPath": "docs/evidence/CMP-261022-0338/residents/screenshots/admin-08-memo-form-360.png",
+        "uiStatus": "inbox",
+        "registrationSource": "alicization",
+        "trustedFieldPersisted": false,
+        "sourceStatusPersisted": false,
+        "sourceHeadPersisted": false,
+        "originalRunIdPersisted": false,
+        "screenshotBlobPersisted": false
+      },
+      {
+        "id": "ALI-october-first-wave-20261026-CMP-261022-0338-OBS-A3",
+        "sourceId": "CMP-261022-0338-OBS-A3",
+        "featureKey": "moderation-incident",
+        "personaId": "resident-mobile-admin",
+        "personaArchetype": "スマホ片手操作×表示崩れ",
+        "journeyId": "CMP2610220338-admin-timeline-wrap",
+        "runId": "october-first-wave-20261026",
+        "evidencePath": "docs/evidence/CMP-261022-0338/residents/admin.md",
+        "screenshotPath": "docs/evidence/CMP-261022-0338/residents/screenshots/admin-08-memo-form-360.png",
+        "uiStatus": "inbox",
+        "registrationSource": "alicization",
+        "trustedFieldPersisted": false,
+        "sourceStatusPersisted": false,
+        "sourceHeadPersisted": false,
+        "originalRunIdPersisted": false,
+        "screenshotBlobPersisted": false
+      },
+      {
+        "id": "ALI-october-first-wave-20261026-CMP-261022-0338-OBS-B1",
+        "sourceId": "CMP-261022-0338-OBS-B1",
+        "featureKey": "organization-manage",
+        "personaId": "resident-org-literacy",
+        "personaArchetype": "高齢・低リテラシー×素直",
+        "journeyId": "CMP2610220338-org-shared-report-return",
+        "runId": "october-first-wave-20261026",
+        "evidencePath": "docs/evidence/CMP-261022-0338/residents/organization-admin.md",
+        "screenshotPath": "docs/evidence/CMP-261022-0338/residents/screenshots/org-08-org-360.png",
+        "uiStatus": "inbox",
+        "registrationSource": "alicization",
+        "trustedFieldPersisted": false,
+        "sourceStatusPersisted": false,
+        "sourceHeadPersisted": false,
+        "originalRunIdPersisted": false,
+        "screenshotBlobPersisted": false
+      },
+      {
+        "id": "ALI-october-first-wave-20261026-CMP-261022-0338-OBS-B2",
+        "sourceId": "CMP-261022-0338-OBS-B2",
+        "featureKey": "auth",
+        "personaId": "resident-org-literacy",
+        "personaArchetype": "高齢・低リテラシー×素直",
+        "journeyId": "CMP2610220338-org-shared-report-return",
+        "runId": "october-first-wave-20261026",
+        "evidencePath": "docs/evidence/CMP-261022-0338/residents/organization-admin.md",
+        "screenshotPath": "docs/evidence/CMP-261022-0338/residents/screenshots/org-08-org-360.png",
+        "uiStatus": "inbox",
+        "registrationSource": "alicization",
+        "trustedFieldPersisted": false,
+        "sourceStatusPersisted": false,
+        "sourceHeadPersisted": false,
+        "originalRunIdPersisted": false,
+        "screenshotBlobPersisted": false
+      }
+    ]
+  },
+  "ui": {
+    "view": "気づき箱",
+    "visibleStageB0": {
+      "count": 2,
+      "titles": [
+        "組織名buttonの幅と表示切れ候補",
+        "共有URL後の遷移先で必要権限を理解しにくかった"
+      ],
+      "screenshot": "docs/evidence/CMP-261022-0338/b0-insights-stage-b0.png"
+    },
+    "visibleStageB2": {
+      "count": 3,
+      "titles": [
+        "保存後のコメント再読を確認できなかった",
+        "担当者ボタンの縦折返しとカード右端越え",
+        "タブ送りボタン幅が40px"
+      ],
+      "screenshot": "docs/evidence/CMP-261022-0338/b0-insights-stage-b2.png"
+    }
+  },
+  "importSemantics": {
+    "idPrefix": "ALI-october-first-wave-20261026-",
+    "preservedFields": [
+      "id suffix from source insight id",
+      "personaId",
+      "personaArchetype",
+      "journeyId",
+      "runId",
+      "evidencePath",
+      "screenshotPath"
+    ],
+    "standardUiMappings": {
+      "status": "inbox",
+      "registrationSource": "alicization"
+    },
+    "overlayOnlyFieldsNotPersisted": [
+      "trusted",
+      "status=observed-unverified",
+      "sourceHead",
+      "originalRunId"
+    ],
+    "screenshotPathImportedAsText": true,
+    "screenshotFileAutoImportedAsBlob": false
+  },
+  "pageErrors": [],
+  "consoleErrors": [],
+  "requestedOrigins": [
+    "http://127.0.0.1:55380"
+  ],
+  "cleanup": {
+    "contextClosed": true,
+    "browserClosed": true,
+    "ownedHttpServerClosed": true
+  }
+}

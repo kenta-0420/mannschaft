@@ -64,6 +64,13 @@ public class BudgetCategoryService {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         accessControlService.checkAdminOrAbove(currentUserId, fiscalYear.getScopeId(), fiscalYear.getScopeType());
 
+        if (request.parentId() != null) {
+            BudgetCategoryEntity parent = findById(request.parentId());
+            if (!parent.getFiscalYearId().equals(fiscalYear.getId())) {
+                throw new BusinessException(BudgetErrorCode.BUDGET_006);
+            }
+        }
+
         BudgetCategoryEntity entity = BudgetCategoryEntity.builder()
                 .fiscalYearId(request.fiscalYearId())
                 .name(request.name())
@@ -129,10 +136,11 @@ public class BudgetCategoryService {
         // 子カテゴリが存在する場合は削除不可
         List<BudgetCategoryEntity> children = categoryRepository.findByParentId(id);
         if (!children.isEmpty()) {
-            throw new BusinessException(BudgetErrorCode.BUDGET_005);
+            throw new BusinessException(BudgetErrorCode.BUDGET_022);
         }
 
-        categoryRepository.delete(entity);
+        entity.softDelete();
+        categoryRepository.save(entity);
         log.info("カテゴリを削除しました: id={}", id);
     }
 
@@ -224,6 +232,37 @@ public class BudgetCategoryService {
     BudgetCategoryEntity findById(Long id) {
         return categoryRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(BudgetErrorCode.BUDGET_006));
+    }
+
+    /** 呼び出し元で年度の認可を済ませた履歴表示専用。通常の有効費目取得とは分離する。 */
+    List<HistoricalBudgetCategory> listHistoricalByFiscalYear(Long fiscalYearId) {
+        return categoryRepository.findHistoricalByFiscalYearId(fiscalYearId).stream()
+                .map(this::toHistoricalCategory).toList();
+    }
+
+    Map<Long, HistoricalBudgetCategory> historicalByFiscalYear(Long fiscalYearId) {
+        return listHistoricalByFiscalYear(fiscalYearId).stream().collect(
+                java.util.stream.Collectors.toMap(HistoricalBudgetCategory::id, category -> category));
+    }
+
+    HistoricalBudgetCategory findHistoricalById(Long fiscalYearId, Long categoryId) {
+        return categoryRepository.findHistoricalByFiscalYearIdAndId(fiscalYearId, categoryId)
+                .map(this::toHistoricalCategory)
+                .orElseThrow(() -> new BusinessException(BudgetErrorCode.BUDGET_006));
+    }
+
+    HistoricalBudgetCategory requireHistoricalById(Map<Long, HistoricalBudgetCategory> categories, Long categoryId) {
+        HistoricalBudgetCategory category = categories.get(categoryId);
+        if (category == null) {
+            throw new BusinessException(BudgetErrorCode.BUDGET_006);
+        }
+        return category;
+    }
+
+    private HistoricalBudgetCategory toHistoricalCategory(BudgetCategoryRepository.HistoricalCategory category) {
+        boolean deleted = Integer.valueOf(1).equals(category.getDeletedFlag());
+        return new HistoricalBudgetCategory(category.getId(),
+                category.getName() + (deleted ? "（削除済み費目）" : ""), category.getCategoryType(), deleted);
     }
 
     /**

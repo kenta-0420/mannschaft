@@ -35,6 +35,7 @@ class TimetableSlotServiceTest {
     @Mock private TimetableChangeRepository changeRepository;
     @Mock private TimetableRepository timetableRepository;
     @Mock private AccessControlService accessControlService;
+    @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
     @InjectMocks private TimetableSlotService service;
 
     private static final Long ACTOR_USER_ID = 100L;
@@ -127,6 +128,49 @@ class TimetableSlotServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TIMETABLE_050"));
+        }
+
+        private void givenDraftTimetableAndPassThroughSave() {
+            TimetableEntity draftTimetable = TimetableEntity.builder()
+                    .teamId(1L).termId(1L).name("テスト")
+                    .status(TimetableStatus.DRAFT)
+                    .visibility(TimetableVisibility.MEMBERS_ONLY)
+                    .weekPatternEnabled(false).build();
+            given(timetableRepository.findById(1L)).willReturn(Optional.of(draftTimetable));
+            given(slotRepository.saveAll(org.mockito.ArgumentMatchers.anyList()))
+                    .willAnswer(inv -> inv.getArgument(0));
+        }
+
+        @Test
+        @DisplayName("Issue #2997 G7-a: 空白のみのメモへ更新しても共通メモ更新イベントは publish しない")
+        void 置換_空白のみのメモはpublishしない() {
+            givenDraftTimetableAndPassThroughSave();
+
+            service.replaceSlots(1L,
+                    List.of(new SlotData("MON", 1, WeekPattern.EVERY, "数学", null, null, null, "  　 ")),
+                    null, ACTOR_USER_ID);
+
+            org.mockito.Mockito.verify(eventPublisher, org.mockito.Mockito.never())
+                    .publishEvent(org.mockito.ArgumentMatchers.any(Object.class));
+        }
+
+        @Test
+        @DisplayName("Issue #2997 G7-a: 実のあるメモへ更新したらコマの位置つきで publish する")
+        void 置換_実のあるメモはコマの位置つきでpublishする() {
+            givenDraftTimetableAndPassThroughSave();
+
+            service.replaceSlots(1L,
+                    List.of(new SlotData("MON", 2, WeekPattern.EVERY, "数学", null, null, null, "持参物")),
+                    null, ACTOR_USER_ID);
+
+            org.mockito.ArgumentCaptor<Object> captor = org.mockito.ArgumentCaptor.forClass(Object.class);
+            org.mockito.Mockito.verify(eventPublisher).publishEvent(captor.capture());
+            com.mannschaft.app.timetable.event.TimetableSlotNoteUpdatedEvent e =
+                    (com.mannschaft.app.timetable.event.TimetableSlotNoteUpdatedEvent) captor.getValue();
+            assertThat(e.getDayOfWeek()).isEqualTo("MON");
+            assertThat(e.getPeriodNumber()).isEqualTo(2);
+            assertThat(e.getWeekPattern()).isEqualTo(WeekPattern.EVERY);
+            assertThat(e.getNotes()).isEqualTo("持参物");
         }
     }
 }

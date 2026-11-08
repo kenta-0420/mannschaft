@@ -244,4 +244,42 @@ describe('お知らせ本文プレビュー', () => {
       expect(isAnnouncementSourceUrl(url, 'BLOG_POST')).toBe(false)
     }
   })
+
+  // ── CMP-261011-0035 ALIC-1 AC-B07（FE）: 委任経路の FULL は sourceUrl=null・attachments=[] ──
+  function delegated(type: 'BLOG_POST' | 'BULLETIN_THREAD' = 'BLOG_POST'): AnnouncementPreviewResponse {
+    return {
+      feedId: 12, scopeType: 'ORGANIZATION', scopeId: 7, accessState: 'FULL', sourceType: type, sourceId: 31, sourceUrl: null,
+      blogPost: type === 'BLOG_POST' ? { id: 31, content: { body: '委任本文' } } : null,
+      bulletinThread: type === 'BULLETIN_THREAD' ? { id: 31, title: '掲示板', body: '<p>委任本文</p>' } : null,
+      attachments: [],
+    }
+  }
+
+  it.each(['BLOG_POST', 'BULLETIN_THREAD'] as const)('AC-ALIC1-B07: 委任 FULL（%s・sourceUrl=null・添付なし）は本文を表示し既読にできる', async (type) => {
+    const preview = create()
+    api.mockResolvedValueOnce({ data: delegated(type) }).mockResolvedValueOnce({ data: {} })
+    await preview.open(target)
+    expect(preview.state.value).toBe('FULL')
+    expect(preview.preview.value?.sourceUrl).toBeNull()
+    await preview.markDisplayed()
+    expect(api.mock.calls[1]?.[0]).toBe('/api/v1/organizations/7/announcements/12/read')
+    expect(preview.onRead).toHaveBeenCalledWith(target)
+  })
+
+  it('AC-ALIC1-B07: sourceUrl=null で添付を含む FULL は契約違反として fail-closed', async () => {
+    const preview = create()
+    api.mockResolvedValue({ data: { ...delegated('BULLETIN_THREAD'), attachments: [{ id: 5, originalFilename: 'a.pdf', contentType: 'application/pdf' }] } })
+    await preview.open(target)
+    expect(preview.state.value).toBe('ERROR')
+    expect(preview.preview.value).toBeNull()
+  })
+
+  it.each(['https://evil.test/blog', '//evil.test/x', '/blog/posts/x?organizationId=8', 'javascript:alert(1)', ''])(
+    'AC-ALIC1-B07（回帰）: null 以外の不正・外部 sourceUrl（%s）は FULL にしない', async (url) => {
+      const preview = create()
+      api.mockResolvedValue({ data: { ...full(), sourceUrl: url } })
+      await preview.open(target)
+      expect(preview.state.value).toBe('ERROR')
+      expect(preview.preview.value).toBeNull()
+    })
 })

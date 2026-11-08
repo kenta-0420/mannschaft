@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261002-1343",
+  "scope": "test-only",
+  "implementation": {
+    "pr": 4178,
+    "sha": "3d5335b4f6616e8f1e0c879df6067d86f156ec9c"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "spec がダイアログを「あとで決める」で閉じてから操作し、全テストが合格すること",
+      "tests": [
+        {
+          "name": "① 組織メンバー紹介ページが404/エラーにならず開く（ADMIN）",
+          "evidence": "docs/evidence/CMP-261002-1343/selected-proof.json"
+        },
+        {
+          "name": "② MEMBERにはページ作成ボタンが見えない（操作ボタンの権限差）",
+          "evidence": "docs/evidence/CMP-261002-1343/selected-proof.json"
+        },
+        {
+          "name": "③ ADMIN: ページ作成→メンバー追加→編集→削除→ページ削除（画面操作）",
+          "evidence": "docs/evidence/CMP-261002-1343/selected-proof.json"
+        },
+        {
+          "name": "④ URL直打ちでもMEMBERはページ作成APIに書き込めない（権限横断）",
+          "evidence": "docs/evidence/CMP-261002-1343/selected-proof.json"
+        },
+        {
+          "name": "⑤ 他テナント(非所属)は組織メンバー紹介ページのAPIにアクセスできない",
+          "evidence": "docs/evidence/CMP-261002-1343/selected-proof.json"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 40589433062
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4178"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261002-1343/selected-proof.json"
+    },
+    "exploratory": {
+      "status": "not-applicable",
+      "scope": "test-only",
+      "reason": "実装PRは実機specのfixture・ダイアログ操作・証拠記録の変更のみで、製品の画面・API・認可・利用者の導線を変更しないため、追加探索の対象となる製品差分がない。全5件の実機実走はrealで別に記録し、CI成功や他戦役の探索で代替しない。"
+    }
+  },
+  "regressions": [
+    {
+      "description": "初期設定ダイアログが③の新規ページ作成クリックを遮り、変更前実機はtimedOutとなった。元runner classifierのfalseを保持したまま、rootが実エラーと画面から遮蔽redと独立判定。通常「あとで決める」とhidden待ちの追加後に全5件passed、unexpected/skipped/flaky各0、cleanup失敗0。",
+      "test": "③ ADMIN: ページ作成→メンバー追加→編集→削除→ページ削除（画面操作）",
+      "redEvidence": "docs/evidence/CMP-261002-1343/selected-proof.json",
+      "greenEvidence": "docs/evidence/CMP-261002-1343/selected-proof.json"
+    }
+  ]
+}

@@ -15,6 +15,7 @@ import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
+import com.mannschaft.app.common.token.PlaintextSecretRequired;
 
 /**
  * 入居時誓約エンティティ（F09.15 S1）。
@@ -63,6 +64,7 @@ public class SuccessionCovenantEntity extends UuidV7Entity {
     @Column(name = "pdf_sha256", nullable = false, length = 64)
     private String pdfSha256;
 
+    @PlaintextSecretRequired(reason = "内部署名の検証に平文のトークンが要るため。暗号化保管の棚卸しは別 CMP で扱う")
     @Column(name = "internal_signature_token", nullable = false, length = 500)
     private String internalSignatureToken;
 

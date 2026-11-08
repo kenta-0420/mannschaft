@@ -1,5 +1,7 @@
 package com.mannschaft.app.auth;
 
+import com.mannschaft.app.auth.service.UserRowLockService;
+
 import com.mannschaft.app.auth.entity.EmailChangeTokenEntity;
 import com.mannschaft.app.auth.entity.TwoFactorAuthEntity;
 import com.mannschaft.app.auth.entity.UserEntity;
@@ -125,6 +127,9 @@ class UserServiceTest {
 
     @Spy
     private PostalCodePolicyRegistry postalCodePolicyRegistry = new PostalCodePolicyRegistry();
+
+    // Existing isolated unit fixture only; real locking acceptance uses MySQL IT.
+    @Mock private UserRowLockService userRowLockService;
 
     @InjectMocks
     private UserService userService;
@@ -1345,6 +1350,92 @@ class UserServiceTest {
             assertThat(saved).isSameAs(user);
             assertThat(saved.getId()).isEqualTo(EXISTING_ID);
             assertThat(saved.getEmail()).isEqualTo("new@example.com");
+        }
+    }
+
+    // ========================================
+    // getFullNamesAndEmails（CMP-261030-0650: 他ドメインの一括氏名解決）
+    // ========================================
+
+    @Nested
+    @DisplayName("getFullNamesAndEmails")
+    class GetFullNamesAndEmails {
+
+        private UserEntity named(long id, String last, String first, String email) {
+            UserEntity u = UserEntity.builder()
+                    .email(email)
+                    .lastName(last)
+                    .firstName(first)
+                    .build();
+            setId(u, id);
+            return u;
+        }
+
+        /** Repository のモック: 渡された ID のうち known に含まれるものだけを、逆順で返す。 */
+        private void givenRepository(List<UserEntity> known) {
+            given(userRepository.findAllById(any())).willAnswer(inv -> {
+                Iterable<Long> ids = inv.getArgument(0);
+                java.util.Set<Long> wanted = new java.util.HashSet<>();
+                ids.forEach(wanted::add);
+                java.util.List<UserEntity> result = new java.util.ArrayList<>();
+                for (UserEntity u : known) {
+                    if (wanted.contains(u.getId())) {
+                        result.add(u);
+                    }
+                }
+                java.util.Collections.reverse(result);
+                return result;
+            });
+        }
+
+        @SuppressWarnings("unchecked")
+        private List<Long> capturedIds() {
+            ArgumentCaptor<Iterable<Long>> captor = ArgumentCaptor.forClass(Iterable.class);
+            verify(userRepository, org.mockito.Mockito.times(1)).findAllById(captor.capture());
+            List<Long> ids = new java.util.ArrayList<>();
+            captor.getValue().forEach(ids::add);
+            return ids;
+        }
+
+        @Test
+        @DisplayName("複数ID（重複・null混在）の全体を1回で問い合わせ、userId で氏名・メールを対応づける")
+        void 複数IDを一括で取得して対応づける() {
+            givenRepository(List.of(
+                    named(1L, "山田", "太郎", "a@example.com"),
+                    named(2L, "鈴木", "花子", "b@example.com"),
+                    named(3L, "佐藤", "次郎", "c@example.com")));
+
+            var result = userService.getFullNamesAndEmails(java.util.Arrays.asList(1L, 2L, 3L, 1L, null, 2L));
+
+            assertThat(capturedIds()).containsExactlyInAnyOrder(1L, 2L, 3L);
+            assertThat(result).containsOnlyKeys(1L, 2L, 3L);
+            assertThat(result.get(1L)).isEqualTo(new UserService.FullNameAndEmail("山田 太郎", "a@example.com"));
+            assertThat(result.get(2L)).isEqualTo(new UserService.FullNameAndEmail("鈴木 花子", "b@example.com"));
+            assertThat(result.get(3L)).isEqualTo(new UserService.FullNameAndEmail("佐藤 次郎", "c@example.com"));
+            verify(userRepository, never()).findById(any());
+        }
+
+        @Test
+        @DisplayName("見つからないユーザー（99）も問い合わせ、Map には含めない")
+        void 見つからないユーザーも問い合わせてMapに含めない() {
+            givenRepository(List.of(
+                    named(1L, "山田", "太郎", "a@example.com"),
+                    named(2L, "鈴木", "花子", "b@example.com")));
+
+            var result = userService.getFullNamesAndEmails(List.of(1L, 99L, 2L));
+
+            assertThat(capturedIds()).containsExactlyInAnyOrder(1L, 99L, 2L);
+            assertThat(result).containsOnlyKeys(1L, 2L);
+        }
+
+        @Test
+        @DisplayName("null・空集合・null のみの集合は DB に問い合わせず空 Map")
+        void 空入力は問い合わせない() {
+            assertThat(userService.getFullNamesAndEmails(null)).isEmpty();
+            assertThat(userService.getFullNamesAndEmails(List.of())).isEmpty();
+            assertThat(userService.getFullNamesAndEmails(java.util.Collections.singletonList(null))).isEmpty();
+
+            verify(userRepository, never()).findAllById(any());
         }
     }
 }

@@ -46,6 +46,9 @@ export default defineConfig({
         storageState: 'tests/e2e/.auth/real-user.json',
       },
       testMatch: '**/real/**/*.spec.ts',
+      // 所有fixture契約の8件はplaywright.restore.config.tsで省略せず別実行する。
+      // F01.2.1 の実機E2E は作成データの後始末を globalTeardown で行うため、専用設定 playwright-f0121.config.ts で実行する。
+      testIgnore: ['**/real/team-restore-ui.spec.ts', '**/real/f0121-*.real.spec.ts', '**/real/n1p1-regression.real.spec.ts', '**/real/cmp1507-regression.real.spec.ts'],
       dependencies: ['setup-real-user', 'setup-real-admin'],
     },
   ],

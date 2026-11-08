@@ -99,7 +99,9 @@
         "AI_ANALYZED": "AI已分析",
         "GITHUB_ISSUE_CREATED": "已创建GitHub Issue",
         "REOPENED": "重新打开",
-        "RESOLVED": "已解决"
+        "RESOLVED": "已解决",
+        "HEALTH_RECOVERED": "健康状态已恢复",
+        "MERGED_DUPLICATE": "合并重复报告"
       }
     },
     "messages": {

@@ -157,6 +157,24 @@ public class JobPolicy {
         return userId.equals(contract.getRequesterUserId());
     }
 
+    /**
+     * 契約の当事者（Requester または Worker 本人）かを判定する。
+     *
+     * <p>契約の閲覧資格（詳細取得 {@code JobContractService#findById}）と、書込前の閲覧ガード
+     * {@code JobContractViewAccessGuard} が共有する唯一の判定（CMP-260821-1027）。</p>
+     *
+     * @param userId   操作ユーザー
+     * @param contract 対象契約
+     * @return 当事者の場合 true
+     */
+    public boolean isContractParticipant(Long userId, JobContractEntity contract) {
+        if (userId == null || contract == null) {
+            return false;
+        }
+        return userId.equals(contract.getRequesterUserId())
+                || userId.equals(contract.getWorkerUserId());
+    }
+
     // ------------------------------------------------------------------
     // Phase 13.1.2: QR チェックイン／アウト
     // ------------------------------------------------------------------

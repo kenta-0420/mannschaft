@@ -30,8 +30,8 @@ export function useScheduleDelegationApi() {
     return api(`/api/v1/schedules/${scheduleId}/delegations/me`, { method: 'DELETE' })
   }
 
-  async function fetchDelegations(scheduleId: number, page = 1, size = 20) {
-    return api<ScheduleDelegationListResponse>(
+  async function fetchDelegations(scheduleId: number, page = 0, size = 20) {
+    return api<{ data: ScheduleDelegationListResponse }>(
       `/api/v1/schedules/${scheduleId}/delegations`,
       { query: { page, size } },
     )

@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 1,
+  "registrationSource": "actual-resident-artifacts",
+  "trusted": false,
+  "status": "observed-unverified",
+  "campaignId": "CMP-261021-0717",
+  "runId": "CMP-261021-0717-ui9-20261105",
+  "sourceHead": "dc977b6724958111c149140ab83f0094b433bb78",
+  "sourcePaths": {
+    "residentA": "/home/kenta/verification-evidence/CMP-261021-0717-ui9-20261105/resident-a/journey-outcome.json",
+    "residentB": "/home/kenta/verification-evidence/CMP-261021-0717-ui9-20261105/resident-b/journey.json",
+    "residentBTermination": "/home/kenta/verification-evidence/CMP-261021-0717-ui9-20261105/resident-b/termination.json",
+    "residentC": "/home/kenta/verification-evidence/CMP-261021-0717-ui9-20261105/resident-c/resident-summary.json",
+    "rootPoststate": "/home/kenta/verification-evidence/CMP-261021-0717-ui9-20261105/root-resident-poststate.json"
+  },
+  "rootRuntimeClosure": {
+    "status": "STOP requested; normal closure verified",
+    "sessionId": 91254,
+    "exitCode": 0,
+    "allResidentsClosed": true,
+    "matchingLocks": 0,
+    "residentPidsAbsent": true,
+    "cleanup": "removed",
+    "dedicatedScratchAndInternalSourceCopiesRemoved": true,
+    "originalSourceWorktreeRetained": true
+  },
+  "residents": [
+    {
+      "overlayPersonaId": "ALIC-CMP0717-UI9-A",
+      "originalPersonaId": null,
+      "personaArchetype": "一般×連打せっかち",
+      "startedAt": "2026-11-05T03:07:28.914Z",
+      "finishedAt": "2026-11-05T03:16:55.759Z",
+      "rawExit": 0,
+      "goal": "公開・アーカイブ後に予算消化が戻ることをUIから理解できるか",
+      "goalAchieved": false,
+      "facts": [
+        "確定公開ダブルクリック後に確定済み表示",
+        "アーカイブダブルクリック後にアーカイブ表示",
+        "組織会計の収入/支出/残高は前後とも0円",
+        "チーム予算会計は会計年度なし表示",
+        "予算消化が戻ったことは画面上で確認できず"
+      ],
+      "selectorErrors": [],
+      "selectedImage": "resident-a-budget.png",
+      "startedAtBasis": "auth開始時刻（raw journey-outcome.startedAt）",
+      "authStartedAt": "2026-11-05T03:07:28.914Z"
+    },
+    {
+      "overlayPersonaId": "ALIC-CMP0717-UI9-B",
+      "originalPersonaId": null,
+      "personaArchetype": "ADHD傾向×中断放棄",
+      "startedAt": "2026-11-05T03:08:50.392Z",
+      "finishedAt": "2026-11-05T03:19:30.732Z",
+      "rawExit": 0,
+      "termination": "通常CLOSE、stdinをfinallyで解放",
+      "goal": "2026年12月の自分のシフト確認と管理者取消の意味理解",
+      "goalAchieved": false,
+      "facts": [
+        "12月初回表示「シフトがありません」03:09:53Z。A公開03:09:56Zより前",
+        "カレンダーからマイシフトへ戻ると11月表示へ戻った",
+        "12/15 09:00〜17:00と交代依頼導線を確認",
+        "交代依頼理由を入力後Escapeで閉じ、再表示では空。未提出",
+        "アーカイブ編集画面は2/2割当済みで業務保存ボタンなし",
+        "reload後も対象自分シフトと交代依頼導線が表示、取消説明は見つからず",
+        "通知6件に公開通知2件、取消説明なし"
+      ],
+      "selectorErrors": [
+        "03:10:17 strict mode violation: 閉じるbutton 2件",
+        "03:11:33 strict mode violation: 同じ時刻テキスト2件",
+        "03:14:12 編集link timeout 15秒",
+        "03:15:09 locator evaluate timeout 15秒",
+        "03:17:58 通知6 button timeout 15秒"
+      ],
+      "selectorErrorInterpretation": "自動操作セレクタ/timeoutの失敗。アプリ例外として扱わない。",
+      "selectedImage": "b-my-shift.png",
+      "startedAtBasis": "最初の記録された操作時刻（journey.actions先頭）",
+      "authStartedAt": "2026-11-05T03:07:05.044Z"
+    },
+    {
+      "overlayPersonaId": "resident-c",
+      "originalPersonaId": "resident-c",
+      "originalJourneyId": "resident-c-ui9",
+      "personaArchetype": "一般×隙間狙い",
+      "role": "別組織10 ADMIN",
+      "startedAt": "2026-11-05T03:09:00Z",
+      "finishedAt": "2026-11-05T03:16:57.719Z",
+      "rawExit": 0,
+      "goal": "他組織・チームの12月シフト/予算への有限閲覧探索と拒否理由理解",
+      "goalOutcome": "対象シフト・予算画面に到達せず。書込みAPI認可は未検証。",
+      "facts": [
+        "/shift/2とeditはschedule/slots 404、対象タイトルや入力欄なし",
+        "他組織budgetは管理者権限が必要と表示、自組織は予算データなし",
+        "推測allocation詳細routeは404。個別認可の検証ではない",
+        "teamId=1 URLは選択へ反映せず、自組織チームを表示",
+        "他チーム公開ページ経由でも/shift/2は404"
+      ],
+      "selectedImage": "c-denied.png",
+      "overlayJourneyId": "resident-c-ui9",
+      "selectorErrors": [
+        "step 9: 自組織の機能設定リンクのclickがtimeout。取得済みhrefの直接移動で続行",
+        "step 15: 日付inputにスラッシュ区切りをfillしてMalformed value。ISO形式へ修正しstep 16で検索成功"
+      ],
+      "selectorErrorInterpretation": "自動操作時のselector/input表現エラー。アプリ例外や不具合とは扱わない。",
+      "startedAtBasis": "探索開始時刻（raw resident-summary.startedAt）",
+      "authStartedAt": "2026-11-05T03:07:59.014Z"
+    }
+  ],
+  "rootTriage": {
+    "verifiedAt": "2026-11-05T03:32:06Z",
+    "independentImageReview": "6 resident images reviewed by root",
+    "residentFixtures": "2/2/2",
+    "archiveAndDeletion": {
+      "scheduleStatus": "ARCHIVED",
+      "deletedAt": null
+    },
+    "consumptionRows": [
+      {
+        "row": "3/4",
+        "status": "CANCELLED",
+        "amount": "9600/12000",
+        "reason": "SHIFT_DELETED",
+        "at": "2026-11-05T03:14:14Z"
+      }
+    ],
+    "allocation2": {
+      "consumed": 0,
+      "deletedAt": null
+    },
+    "operations": "read-only four SELECTs; no writes",
+    "interpretation": [
+      "ARCHIVED表示継続は既存FULL仕様",
+      "Bの初回空表示はA公開より前で正常",
+      "Aの一般会計0円は消化額とは別で既知CMP-261021-0652観測と分離",
+      "新規確定bug 0、blocker昇格 0",
+      "Cの不存在推測を認可成功として扱わない"
+    ],
+    "environmentAndProduction": {
+      "githubEnvironmentCount": 0,
+      "productionEnvironmentCreated": false,
+      "productionOperations": 0,
+      "source": "root API metadata and operation record; local UI9 development environment is distinct"
+    },
+    "newConfirmedBugCount": 0,
+    "blockerPromotionCount": 0
+  },
+  "limitations": [
+    "3件とも住民観測の未検証記録。coverage合格・一般安全性・新規欠陥を主張しない",
+    "root側DB照合は読取専用の固定4 SELECT、UIは1440x900等の限定条件で全表示監査ではない",
+    "専用scratchと内部source copyは撤去済み。元source worktreeは保持。raw原本は外部private path参照、画像は選択3枚のみ公開コピー",
+    "観測記録時点のCMP-261021-0717は実装中。正式完了更新は別PRで行う"
+  ],
+  "selectedImages": [
+    {
+      "path": "docs/evidence/CMP-261021-0717/resident-a-budget.png",
+      "source": ".claude/campaigns/cmp0717-ui-20261105/ui9-resident-preview-20261105/a-budget-after-archive.png",
+      "bytes": 34388,
+      "sha256": "9a5e2d292ca8e836a02f7d32602d0df9303e1606e517188c9fbabcc614fe461f"
+    },
+    {
+      "path": "docs/evidence/CMP-261021-0717/b-my-shift.png",
+      "source": ".claude/campaigns/cmp0717-ui-20261105/ui9-resident-preview-20261105/b-final-my-december-stable.png",
+      "bytes": 90315,
+      "sha256": "9b763036a704bf6247c4fb6149558a5da5fecf1852be8c34d2a374e79d3d536c"
+    },
+    {
+      "path": "docs/evidence/CMP-261021-0717/c-denied.png",
+      "source": ".claude/campaigns/cmp0717-ui-20261105/ui9-resident-preview-20261105/c-state-11.png",
+      "bytes": 223956,
+      "sha256": "cbc2fa2b785aa2216edb0ddb38e3cd76f2d2bec962cf2a6c91f7ebf8c74eb25a"
+    }
+  ]
+}

@@ -1,0 +1,134 @@
+{
+    "runId":  40246540422,
+    "head":  "609ee90bf65af64b17d95e9ee31d27953c5abdaa",
+    "conclusion":  "success",
+    "attempt":  1,
+    "jobs":  [
+                 {
+                     "conclusion":  "success",
+                     "name":  "Detect changes",
+                     "id":  121329471119
+                 },
+                 {
+                     "conclusion":  "success",
+                     "name":  "Lint (D-5 @Builder guard)",
+                     "id":  121329557667
+                 },
+                 {
+                     "conclusion":  "success",
+                     "name":  "Non-JST timezone contract",
+                     "id":  121329557680
+                 },
+                 {
+                     "conclusion":  "success",
+                     "name":  "ArchUnit tests (separate JVM)",
+                     "id":  121329557738
+                 },
+                 {
+                     "conclusion":  "success",
+                     "name":  "Test (shard 5)",
+                     "id":  121329557745
+                 },
+                 {
+                     "conclusion":  "success",
+                     "name":  "Test (shard 3)",
+                     "id":  121329557751
+                 },
+                 {
+                     "conclusion":  "success",
+                     "name":  "Test (shard 4)",
+                     "id":  121329557758
+                 },
+                 {
+                     "conclusion":  "success",
+                     "name":  "Shard coverage guard",
+                     "id":  121329557770
+                 },
+                 {
+                     "conclusion":  "success",
+                     "name":  "Test (shard 2)",
+                     "id":  121329557774
+                 },
+                 {
+                     "conclusion":  "success",
+                     "name":  "Test (shard 1)",
+                     "id":  121329557807
+                 },
+                 {
+                     "conclusion":  "success",
+                     "name":  "Test (shard 0)",
+                     "id":  121329557859
+                 },
+                 {
+                     "conclusion":  "success",
+                     "name":  "Compile \u0026 Test",
+                     "id":  121353891622
+                 }
+             ],
+    "classes":  [
+                    {
+                        "jobId":  121329557859,
+                        "shard":  0,
+                        "result":  "SUCCESS",
+                        "class":  "ScopeFeatureDisplayPolicyContractIT",
+                        "elapsedMs":  5990
+                    },
+                    {
+                        "jobId":  121329557807,
+                        "shard":  1,
+                        "result":  "SUCCESS",
+                        "class":  "ScopeFeatureDisplayPolicyCommitIT",
+                        "elapsedMs":  33616
+                    },
+                    {
+                        "jobId":  121329557751,
+                        "shard":  3,
+                        "result":  "SUCCESS",
+                        "class":  "BillingPlanChangeGuardExistenceRedIT",
+                        "elapsedMs":  2791
+                    },
+                    {
+                        "jobId":  121329557758,
+                        "shard":  4,
+                        "result":  "SUCCESS",
+                        "class":  "ApiGateDeclarationGuardTest",
+                        "elapsedMs":  1793
+                    },
+                    {
+                        "jobId":  121329557758,
+                        "shard":  4,
+                        "result":  "SUCCESS",
+                        "class":  "DateTimeAndZoneGuardTest",
+                        "elapsedMs":  3377
+                    },
+                    {
+                        "jobId":  121329557758,
+                        "shard":  4,
+                        "result":  "SUCCESS",
+                        "class":  "ScopeFeatureDisplayPolicyServiceTest",
+                        "elapsedMs":  627
+                    }
+                ],
+    "mfaLatency":  [
+                       {
+                           "limitMillis":  3000,
+                           "pathKind":  "last-match",
+                           "elapsedMillis":  2743
+                       },
+                       {
+                           "limitMillis":  1500,
+                           "pathKind":  "all-mismatch",
+                           "elapsedMillis":  915
+                       },
+                       {
+                           "limitMillis":  1500,
+                           "pathKind":  "last-match",
+                           "elapsedMillis":  852
+                       },
+                       {
+                           "limitMillis":  3000,
+                           "pathKind":  "all-mismatch",
+                           "elapsedMillis":  2589
+                       }
+                   ]
+}

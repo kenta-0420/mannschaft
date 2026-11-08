@@ -9,6 +9,7 @@ import type {
   OrgTimestampsDto,
   OrgSocialDto,
 } from '~/types/organization'
+import { createLatestGuard } from '~/utils/latestRequest'
 
 // Wave 3-B: OrganizationResponse ネスト構造に対応
 export interface OrgDetail {
@@ -44,6 +45,8 @@ export function useOrgDetail(orgId: Ref<string>) {
 
   const org = ref<OrgDetail | null>(null)
   const orgTeams = ref<OrgTeam[]>([])
+  const orgTeamsError = ref(false)
+  const orgTeamsLoading = ref(false)
   const permissionGroups = ref<OrgPermissionGroup[]>([])
   const loading = ref(false)
 
@@ -102,12 +105,31 @@ export function useOrgDetail(orgId: Ref<string>) {
     }
   }
 
+  /**
+   * 所属チーム一覧の取得（F01.2.1 8-C 検分で根治）。
+   *
+   * - 世代ガード: 最後に発行した要求、かつ要求時と同じ組織の応答だけを反映する。割当の連続・承認後・グループ編集後・
+   *   組織切替で再取得が重なっても、古い応答が最新の所属を上書きしない（一括割当の対象を誤らせない）。
+   * - 失敗は握りつぶさない: `orgTeamsError` を立てて公開し、直前の一覧は空に差し替えない
+   *   （「該当チームなし」と取得失敗を区別するため。一覧側が再試行を出す）。次の成功でエラーは消える。
+   * - `orgTeamsLoading`: 最新の要求が終わるまで立つ。呼び出し側は完了まで操作を止められる。
+   */
+  const orgTeamsGuard = createLatestGuard()
   async function fetchOrgTeams() {
+    const isLatest = orgTeamsGuard.next()
+    const requestedId = orgId.value
+    const isCurrent = () => isLatest() && orgId.value === requestedId
+    orgTeamsLoading.value = true
     try {
-      const result = await orgApi.getTeamsInOrg(orgId.value)
+      const result = await orgApi.getTeamsInOrg(requestedId)
+      if (!isCurrent()) return
       orgTeams.value = result.data
+      orgTeamsError.value = false
     } catch {
-      orgTeams.value = []
+      if (!isCurrent()) return
+      orgTeamsError.value = true
+    } finally {
+      if (isLatest()) orgTeamsLoading.value = false
     }
   }
 
@@ -147,6 +169,8 @@ export function useOrgDetail(orgId: Ref<string>) {
   return {
     org,
     orgTeams,
+    orgTeamsError,
+    orgTeamsLoading,
     permissionGroups,
     loading,
     joinRequestStatus,

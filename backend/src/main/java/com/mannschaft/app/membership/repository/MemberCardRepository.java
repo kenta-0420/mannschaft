@@ -18,6 +18,9 @@ import java.util.Optional;
  */
 public interface MemberCardRepository extends JpaRepository<MemberCardEntity, Long> {
 
+    /** scope_idがNULLの共通会員証も停止・無効状態を含めて一意に取得する。 */
+    Optional<MemberCardEntity> findByUserIdAndScopeTypeAndDeletedAtIsNull(Long userId, ScopeType scopeType);
+
     /**
      * ユーザーの全会員証を取得する（論理削除除外）。
      */

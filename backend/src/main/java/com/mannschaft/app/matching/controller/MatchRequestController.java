@@ -8,6 +8,7 @@ import com.mannschaft.app.matching.dto.CreateMatchRequestRequest;
 import com.mannschaft.app.matching.dto.MatchRequestCreateResponse;
 import com.mannschaft.app.matching.dto.MatchRequestResponse;
 import com.mannschaft.app.matching.service.MatchRequestService;
+import com.mannschaft.app.matching.service.MatchRequestViewAccessGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -38,6 +39,8 @@ import com.mannschaft.app.common.SecurityUtils;
 public class MatchRequestController {
 
     private final MatchRequestService requestService;
+    /** 募集の閲覧可否の門（閲覧できない者には不在と同一応答。CMP-260821-1027）。 */
+    private final MatchRequestViewAccessGuard requestViewGuard;
 
 
     /**
@@ -97,6 +100,7 @@ public class MatchRequestController {
             @PathVariable Long id,
             @Valid @RequestBody CreateMatchRequestRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
+        requestViewGuard.requireVisible(id, currentUserId);
         MatchRequestResponse response = requestService.updateRequest(id, currentUserId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -109,6 +113,7 @@ public class MatchRequestController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteRequest(@PathVariable Long id) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
+        requestViewGuard.requireVisible(id, currentUserId);
         requestService.deleteRequest(id, currentUserId);
         return ResponseEntity.noContent().build();
     }

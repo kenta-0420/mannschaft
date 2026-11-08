@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useForm } from 'vee-validate'
-import { toTypedSchema } from '@vee-validate/zod'
+import { toTypedSchema } from '~/utils/toTypedSchema'
 import { z } from 'zod'
 import type { FormFieldRequest } from '~/types/form'
 

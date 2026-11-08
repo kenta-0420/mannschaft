@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { blogAnnouncementScope } from '~/utils/announcementRoute'
 import type { BlogPostResponse, BlogSeries, BlogTag } from '~/types/cms'
 import type { GateCheckResponse } from '~/types/payment'
 
+definePageMeta({ key: route => route.fullPath })
 const route = useRoute()
 
 const { getPost, addMitayo, removeMitayo } = useBlogApi()
@@ -22,7 +22,7 @@ async function loadPost() {
   post.value = null
   gateResult.value = null
   try {
-    const res = await getPost(String(route.params.slug), blogAnnouncementScope(route.query))
+    const res = await getPost(String(route.params.slug), route.query)
     if (request !== postSequence) return
     post.value = res.data
     // 記事取得後にペイウォール判定（POST = ブログ記事）
@@ -136,7 +136,6 @@ function onTagClick(tag: BlogTag) {
 }
 
 onMounted(() => loadPost())
-watch(() => [route.params.slug, route.query.teamId, route.query.organizationId], loadPost)
 onScopeDispose(() => { ++postSequence })
 </script>
 

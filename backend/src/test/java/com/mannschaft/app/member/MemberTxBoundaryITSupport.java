@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.event.AuditLogEventListener;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.role.service.DefaultAccessControlService;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.visibility.RolePriority;
 import com.mannschaft.app.dashboard.MinRole;
@@ -325,7 +326,7 @@ abstract class MemberTxBoundaryITSupport extends AbstractMySqlIntegrationTest {
     }
 
     private static Set<String> allowedCommonTxNames() {
-        return Stream.of(AccessControlService.class, NameResolverService.class)
+        return Stream.of(DefaultAccessControlService.class, NameResolverService.class)
                 .flatMap(c -> Arrays.stream(c.getDeclaredMethods())
                         .filter(m -> Modifier.isPublic(m.getModifiers()))
                         .map(Method::getName)

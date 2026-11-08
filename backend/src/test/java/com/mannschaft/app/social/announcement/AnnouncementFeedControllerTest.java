@@ -71,6 +71,10 @@ class AnnouncementFeedControllerTest {
     @MockitoBean
     private RoleResolver roleResolver;
 
+    // 既読（単件・read-all）の判定と書き込みの順序づけ（ALIC-1。tx の外で判定してから書く）
+    @MockitoBean
+    private AnnouncementReadCommandService announcementReadCommandService;
+
     // JwtAuthenticationFilter の依存解決用
     @MockitoBean
     private AuthTokenService authTokenService;
@@ -143,7 +147,7 @@ class AnnouncementFeedControllerTest {
                     false,  // hasNext = false
                     1L      // unreadCount
             );
-            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID))
+            given(roleResolver.resolveViewerRoleForPreview(USER_ID, "TEAM", TEAM_ID))
                     .willReturn(ViewerRole.MEMBER);
             given(announcementFeedService.getAnnouncementFeed(
                     eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), eq(USER_ID),
@@ -167,7 +171,7 @@ class AnnouncementFeedControllerTest {
             // Given
             AnnouncementFeedResult result = new AnnouncementFeedResult(
                     List.of(), null, false, 0L);
-            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID))
+            given(roleResolver.resolveViewerRoleForPreview(USER_ID, "TEAM", TEAM_ID))
                     .willReturn(ViewerRole.MEMBER);
             given(announcementFeedService.getAnnouncementFeed(
                     eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), eq(USER_ID),
@@ -301,7 +305,7 @@ class AnnouncementFeedControllerTest {
         @DisplayName("正常系: 200 OK + id と isRead が返ること")
         void markAsRead_正常系_200() throws Exception {
             // Given
-            willDoNothing().given(announcementFeedService)
+            willDoNothing().given(announcementReadCommandService)
                     .markAsRead(eq(AnnouncementScopeType.TEAM), eq(TEAM_ID),
                             eq(ANNOUNCEMENT_ID), eq(USER_ID));
 
@@ -325,7 +329,7 @@ class AnnouncementFeedControllerTest {
         @DisplayName("正常系: 200 OK + 実際に既読化した件数が markedCount に載ること（#2530 ①）")
         void markAllAsRead_正常系_200() throws Exception {
             // Given: 下流が 8 件を既読化し、未読は残っていない
-            given(announcementFeedService.markAllAsRead(
+            given(announcementReadCommandService.markAllAsRead(
                     eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), eq(USER_ID)))
                     .willReturn(new AnnouncementReadService.MarkAllReadOutcome(8, false));
 
@@ -342,7 +346,7 @@ class AnnouncementFeedControllerTest {
             // Given: 防御上限（500 × 20）に到達して未読が残っている
             int limit = AnnouncementReadService.MARK_ALL_BATCH_SIZE
                     * AnnouncementReadService.MARK_ALL_MAX_BATCHES;
-            given(announcementFeedService.markAllAsRead(
+            given(announcementReadCommandService.markAllAsRead(
                     eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), eq(USER_ID)))
                     .willReturn(new AnnouncementReadService.MarkAllReadOutcome(limit, true));
 

@@ -147,6 +147,12 @@ abstract class AbstractBroadcastAudienceIT extends AbstractMySqlIntegrationTest 
         return ids;
     }
 
+    /** チーム ID をチームの slug（告知の「チームを選ぶ」で送る値）へ写す（順序を保つ）。 */
+    protected List<String> teamSlugs(List<Long> teamIds) {
+        java.util.Map<Long, String> slugs = teamRepository.findSlugMapByIdIn(teamIds);
+        return teamIds.stream().map(slugs::get).toList();
+    }
+
     // ───────── 人物 ─────────
 
     /** 組織内の人物を seed する（ADMIN / DEPUTY_ADMIN は memberships と user_roles の二重 seed）。 */

@@ -3,19 +3,15 @@ package com.mannschaft.app.notification.confirmable.service;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.notification.NotificationPriority;
-import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationEntity;
-import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationPriority;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationRecipientEntity;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationStatus;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmedVia;
 import com.mannschaft.app.notification.confirmable.error.ConfirmableNotificationErrorCode;
 import com.mannschaft.app.notification.confirmable.event.ConfirmableNotificationConfirmedEvent;
+import com.mannschaft.app.notification.confirmable.event.ConfirmableReminderResendEvent;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRecipientRepository;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
-import com.mannschaft.app.membership.ScopeType;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -45,7 +41,6 @@ public class ConfirmableNotificationConfirmService {
     private final ConfirmableNotificationRepository notificationRepository;
     private final ConfirmableNotificationRecipientRepository recipientRepository;
     private final UserRepository userRepository;
-    private final NotificationHelper notificationHelper;
     private final ApplicationEventPublisher eventPublisher;
 
     /**
@@ -236,44 +231,13 @@ public class ConfirmableNotificationConfirmService {
                 .map(r -> r.getUser().getId())
                 .collect(Collectors.toList());
 
-        // F04.3 通知基盤経由でリマインドを一括送信
-        NotificationScopeType notifScopeType = toNotificationScopeType(notification.getScopeType());
-        notificationHelper.notifyAll(
-                targetUserIds,
-                "CONFIRMABLE_NOTIFICATION_REMINDER",
-                toNotificationPriority(notification.getPriority()),
-                notification.getTitle(),
-                notification.getBody() != null ? notification.getBody() : "",
-                "CONFIRMABLE_NOTIFICATION",
-                notificationId,
-                notifScopeType,
-                notification.getScopeId(),
-                notification.getActionUrl(),
-                null);
+        // Issue #2997 G4-b: 通知の配送は業務TXの外へ出す。ここでは受信者IDのスナップショットを載せたイベントを
+        // publish するだけにし、AFTER_COMMIT + @Async("event-pool") の
+        // ConfirmableReminderResendNotificationListener が受信者ごとに sendOne（REQUIRES_NEW）で配送する。
+        // 業務TXがロールバックすれば通知は出ず、通知側の失敗がこのTX（HTTP 204）へ波及しない。
+        // HTTP 204 は「再送を受け付けた」の意味（配送完了は保証しない）。
+        eventPublisher.publishEvent(new ConfirmableReminderResendEvent(notificationId, targetUserIds));
 
-        log.info("手動リマインド再送: notificationId={}, targetCount={}", notificationId, targetUserIds.size());
-    }
-
-    /**
-     * 確認通知の優先度を F04.3 通知基盤の優先度に変換する。
-     */
-    private NotificationPriority toNotificationPriority(ConfirmableNotificationPriority priority) {
-        return switch (priority) {
-            case URGENT -> NotificationPriority.URGENT;
-            case HIGH -> NotificationPriority.HIGH;
-            case NORMAL -> NotificationPriority.NORMAL;
-        };
-    }
-
-    /**
-     * ScopeType を NotificationScopeType に変換する。
-     */
-    private NotificationScopeType toNotificationScopeType(ScopeType scopeType) {
-        return switch (scopeType) {
-            case TEAM -> NotificationScopeType.TEAM;
-            case ORGANIZATION -> NotificationScopeType.ORGANIZATION;
-            case PLATFORM -> NotificationScopeType.SYSTEM;
-            case COMMITTEE -> NotificationScopeType.COMMITTEE;
-        };
+        log.info("手動リマインド再送受付: notificationId={}, targetCount={}", notificationId, targetUserIds.size());
     }
 }

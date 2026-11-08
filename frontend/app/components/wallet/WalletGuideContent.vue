@@ -19,6 +19,17 @@ const presentSteps = computed<string[]>(() => resolveSteps('wallet.wallet_guide.
       {{ t('wallet.wallet_guide.description') }}
     </p>
 
+    <SectionCard>
+      <h2 class="mb-2 text-lg font-semibold">{{ t('wallet.wallet_guide.team_points.title') }}</h2>
+      <div class="space-y-3 text-sm leading-relaxed text-surface-600 dark:text-surface-300">
+        <p>{{ t('wallet.wallet_guide.team_points.balance') }}</p>
+        <p>{{ t('wallet.wallet_guide.team_points.member_qr') }}</p>
+        <p>{{ t('wallet.wallet_guide.team_points.reception') }}</p>
+        <p>{{ t('wallet.wallet_guide.team_points.requests') }}</p>
+        <p>{{ t('wallet.wallet_guide.team_points.consent') }}</p>
+      </div>
+    </SectionCard>
+
     <!-- カード1: ウォレットとは -->
     <SectionCard>
       <div class="flex items-start gap-4">

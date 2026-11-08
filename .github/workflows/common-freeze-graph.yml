@@ -7,6 +7,8 @@ on:
       - '.github/workflows/common-freeze-graph.yml'
       - '.github/fixtures/common-freeze-graph/**'
       - 'backend/build.gradle.kts'
+      - 'backend/settings.gradle.kts'
+      - 'backend/build-logic/**'
       - 'backend/src/test/java/com/mannschaft/app/common/architecture/ArchUnitFreezeStoreIntegrityTest.java'
       - 'backend/src/test/java/com/mannschaft/app/common/architecture/ArchUnitFreezeStoreIntegritySelfTest.java'
       - 'backend/src/test/java/com/mannschaft/app/common/architecture/ArchUnitFreezeMechanismSelfTest.java'
@@ -30,7 +32,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
@@ -45,7 +47,7 @@ jobs:
         run: python3 .github/fixtures/common-freeze-graph/run-linux.py
       - name: 成否を含む原本を保存
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: common-freeze-graph-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/common-freeze-graph/evidence/

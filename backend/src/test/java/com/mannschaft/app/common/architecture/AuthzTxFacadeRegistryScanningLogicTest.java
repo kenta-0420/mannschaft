@@ -8,6 +8,7 @@ import com.mannschaft.app.common.architecture.AuthzTxFacadeRegistryArchTest.TxMo
 import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.domain.JavaModifier;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -438,6 +439,46 @@ class AuthzTxFacadeRegistryScanningLogicTest {
     static class InheritGoodFacade extends GoodParent {
     }
 
+    /** 型消去後の入口を、子の bridge が遮蔽する総称の親。 */
+    static class GenericParent<T> {
+        public String generic(T userId) {
+            return "parent" + userId;
+        }
+    }
+
+    /** 認可付きの具体型 override（R3 の陰性）。 */
+    static class GenericGoodFacade extends GenericParent<Long> {
+        private final FakeGate gate = new FakeGate();
+
+        @Override
+        public String generic(Long userId) {
+            gate.requireAdminOrConceal(userId);
+            return "good";
+        }
+    }
+
+    /** 認可なしの具体型 override（R3 の陽性）。 */
+    static class GenericHollowFacade extends GenericParent<Long> {
+        @Override
+        public String generic(Long userId) {
+            return "hollow" + userId;
+        }
+    }
+
+    /** 総称 override の実入口を呼ぶ Controller 検体。 */
+    static class GenericEntryController {
+        private final GenericGoodFacade good = new GenericGoodFacade();
+        private final GenericHollowFacade hollow = new GenericHollowFacade();
+
+        public String good(Long userId) {
+            return good.generic(userId);
+        }
+
+        public String hollow(Long userId) {
+            return hollow.generic(userId);
+        }
+    }
+
     /** 認可なしの default を持つ interface（オーバーライド済みなら R3 は見ない）。 */
     interface HollowDefault {
         default String inherited(Long userId) {
@@ -519,7 +560,8 @@ class AuthzTxFacadeRegistryScanningLogicTest {
             MergeAuthzTxService.class, MergePlainTxService.class, MergeAuthzFacade.class, MergePlainFacade.class,
             HollowParent.class, InheritHollowFacade.class, GoodParent.class, InheritGoodFacade.class,
             HollowDefault.class, OverrideGoodFacade.class, InterfaceOverrideFacade.class,
-            InterfaceHollowFacade.class, InheritEntryController.class);
+            InterfaceHollowFacade.class, InheritEntryController.class,
+            GenericParent.class, GenericGoodFacade.class, GenericHollowFacade.class, GenericEntryController.class);
 
     private static String n(Class<?> c) {
         return c.getName();
@@ -692,6 +734,54 @@ class AuthzTxFacadeRegistryScanningLogicTest {
                 InterfaceHollowFacade.class, cls(GoodTxService.class));
         assertThat(AuthzTxFacadeRegistryArchTest.r3FacadePublicMethodsReachAuthz(CLASSES, ifaceHollow))
                 .singleElement().asString().contains("HollowDefault.inherited(").contains("認可クラスへ届かない");
+    }
+
+    @Test
+    @DisplayName("総称 override: javac の bridge は親の消去後宣言を遮蔽し、具体型の子入口だけが残る")
+    void 総称overrideの有効入口は子の具体型メソッドだけ() {
+        for (Class<?> facade : List.of(GenericGoodFacade.class, GenericHollowFacade.class)) {
+            assertThat(facade.getDeclaredMethods()).filteredOn(java.lang.reflect.Method::isBridge)
+                    .singleElement().satisfies(bridge -> {
+                        assertThat(bridge.isSynthetic()).isTrue();
+                        assertThat(bridge.getName()).isEqualTo("generic");
+                        assertThat(bridge.getParameterTypes()).containsExactly(Object.class);
+                    });
+
+            assertThat(CLASSES.get(facade).getMethods())
+                    .filteredOn(m -> m.getModifiers().contains(JavaModifier.BRIDGE))
+                    .singleElement().satisfies(bridge -> {
+                        assertThat(bridge.getModifiers()).contains(JavaModifier.SYNTHETIC);
+                        assertThat(bridge.getRawParameterTypes()).extracting(type -> type.getName())
+                                .containsExactly(Object.class.getName());
+                    });
+
+            assertThat(AuthzTxFacadeRegistryArchTest.effectivePublicMethods(CLASSES.get(facade)))
+                    .singleElement().satisfies(method -> {
+                        assertThat(method.getOwner()).isEqualTo(CLASSES.get(facade));
+                        assertThat(method.getName()).isEqualTo("generic");
+                        assertThat(method.getRawParameterTypes()).extracting(type -> type.getName())
+                                .containsExactly(Long.class.getName());
+                        assertThat(method.getModifiers()).doesNotContain(JavaModifier.SYNTHETIC, JavaModifier.BRIDGE);
+                    });
+        }
+    }
+
+    @Test
+    @DisplayName("R3 陰性: 総称メソッドを子が認可付きで override すれば、隠れた親を誤検出しない")
+    void R3_総称overrideの認可付き入口は緑() {
+        Rules good = single(GenericEntryController.class, "good", GenericGoodFacade.class);
+
+        assertThat(AuthzTxFacadeRegistryArchTest.r3FacadePublicMethodsReachAuthz(CLASSES, good)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("R3 陽性: 総称メソッドを子が認可なしで override すれば、子の具体型入口を検出する")
+    void R3_総称overrideの認可なし入口は赤() {
+        Rules hollow = single(GenericEntryController.class, "hollow", GenericHollowFacade.class);
+
+        assertThat(AuthzTxFacadeRegistryArchTest.r3FacadePublicMethodsReachAuthz(CLASSES, hollow))
+                .singleElement().asString().contains("GenericHollowFacade.generic(java.lang.Long)")
+                .contains("認可クラスへ届かない");
     }
 
     // 探索ロジック本体を、呼び先の列挙順を明示して検証する（ArchUnit の呼び出し集合の順序に依存しない）。

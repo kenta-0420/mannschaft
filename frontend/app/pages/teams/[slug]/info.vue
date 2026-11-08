@@ -27,6 +27,7 @@ const {
 
 <template>
   <div class="mt-4">
+    <FriendRequestEntry v-if="team" :target-team="{ teamSlug, teamName: team.basicInfo?.name ?? teamSlug }" profile-kind="authorized" />
     <TeamDetailInfo
       v-if="team"
       :team-id="teamSlug"

@@ -56,8 +56,8 @@ public class BudgetSummaryService {
         accessControlService.checkAdminOrAbove(currentUserId, fy.getScopeId(), fy.getScopeType());
 
         // 承認済み取引のみ集計
-        List<BudgetTransactionEntity> transactions = transactionRepository.findByFiscalYearId(fiscalYearId)
-                .stream()
+        List<BudgetTransactionEntity> allTransactions = transactionRepository.findByFiscalYearId(fiscalYearId);
+        List<BudgetTransactionEntity> transactions = allTransactions.stream()
                 .filter(t -> t.getApprovalStatus() == BudgetApprovalStatus.APPROVED)
                 .toList();
 
@@ -86,7 +86,7 @@ public class BudgetSummaryService {
 
         // カテゴリ別サマリ
         List<CategorySummaryResponse> categorySummaries = buildCategorySummaries(
-                fiscalYearId, transactions, allocationByCategory, warningThreshold, criticalThreshold);
+                fiscalYearId, transactions, allTransactions, allocationByCategory, warningThreshold, criticalThreshold);
 
         return new BudgetSummaryResponse(
                 fy.getId(),
@@ -113,7 +113,7 @@ public class BudgetSummaryService {
         // requiredRole: 'DEPUTY_ADMIN'でスコープ問わず管理者限定のためスコープ分岐は不要。
         accessControlService.checkAdminOrAbove(currentUserId, fy.getScopeId(), fy.getScopeType());
 
-        var category = categoryService.findById(categoryId);
+        var category = categoryService.findHistoricalById(fiscalYearId, categoryId);
 
         List<BudgetTransactionEntity> transactions = transactionRepository.findByFiscalYearId(fiscalYearId)
                 .stream()
@@ -140,9 +140,9 @@ public class BudgetSummaryService {
         BigDecimal criticalThreshold = getCriticalThreshold(fy.getScopeId(), fy.getScopeType());
 
         return new CategorySummaryResponse(
-                category.getId(),
-                category.getName(),
-                category.getCategoryType().name(),
+                category.id(),
+                category.name(),
+                category.categoryType(),
                 budget,
                 actualAmount,
                 remaining,
@@ -165,6 +165,7 @@ public class BudgetSummaryService {
     private List<CategorySummaryResponse> buildCategorySummaries(
             Long fiscalYearId,
             List<BudgetTransactionEntity> transactions,
+            List<BudgetTransactionEntity> allTransactions,
             Map<Long, BigDecimal> allocationByCategory,
             BigDecimal warningThreshold,
             BigDecimal criticalThreshold) {
@@ -172,9 +173,12 @@ public class BudgetSummaryService {
         Map<Long, List<BudgetTransactionEntity>> txByCategory = transactions.stream()
                 .collect(Collectors.groupingBy(BudgetTransactionEntity::getCategoryId));
 
-        var categories = categoryService.listFlatByFiscalYear(fiscalYearId);
+        var historyCategoryIds = allTransactions.stream().map(BudgetTransactionEntity::getCategoryId)
+                .collect(Collectors.toSet());
+        var categories = categoryService.listHistoricalByFiscalYear(fiscalYearId);
 
         return categories.stream()
+                .filter(cat -> !cat.deleted() || allocationByCategory.containsKey(cat.id()) || historyCategoryIds.contains(cat.id()))
                 .map(cat -> {
                     List<BudgetTransactionEntity> catTx = txByCategory.getOrDefault(cat.id(), List.of());
                     BigDecimal actual = catTx.stream()

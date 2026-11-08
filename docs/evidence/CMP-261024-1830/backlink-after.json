@@ -1,0 +1,21 @@
+{
+  "runtimeSourceHead": "af5373aa64252c615067ac965b687067e49ba09a",
+  "observations": [
+    {
+      "scope": "teams",
+      "test": "チーム: 管理者と一般メンバーが人数・一覧・詳細・理由を実画面から確認できる",
+      "url": "http://localhost:3001/teams/att-t-a-mvmagu0v/schedule-attendance/80",
+      "time": "2026-10-24T11:02:06.707Z",
+      "backlink": "- link \"出席確認一覧\":\n  - /url: /teams/att-t-a-mvmagu0v/schedule-attendance",
+      "source": ".claude/evidence/CMP-261024-1830/attendance-e2e/teams-detail-mobile.json"
+    },
+    {
+      "scope": "organizations",
+      "test": "組織: 管理者と一般メンバーが人数・一覧・詳細・理由を実画面から確認できる",
+      "url": "http://localhost:3001/organizations/att-o-a-mvmagu0v/schedule-attendance/85",
+      "time": "2026-10-24T11:04:42.853Z",
+      "backlink": "- link \"出席確認一覧\":\n  - /url: /organizations/att-o-a-mvmagu0v/schedule-attendance",
+      "source": ".claude/evidence/CMP-261024-1830/attendance-e2e/organizations-detail-mobile.json"
+    }
+  ]
+}

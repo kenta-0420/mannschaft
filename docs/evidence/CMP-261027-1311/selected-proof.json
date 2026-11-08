@@ -1,0 +1,520 @@
+{
+  "scope": "BE1311一覧可視性・ページング/sortの完了選択証拠。元ACは変更しない。",
+  "implementationAdoption": {
+    "pr": 4163,
+    "head": "1a10ca038ffb4a215d4b1b44242ff4ef68275607",
+    "state": "MERGED",
+    "merge": "e1c01fdb1fe6cd8cff74a07f5493c98960e829ed",
+    "mergedAt": "2026-10-27T20:27:16Z",
+    "source": "gh pr view --json state,headRefOid,mergeCommit,mergedAt,url の読取確認",
+    "atMergeValidation": {
+      "base": "9a29fe8caa64469f2e5999e503e4d3f21cfc35ec",
+      "implementationPR": 4163,
+      "implementationHead": "1a10ca038ffb4a215d4b1b44242ff4ef68275607",
+      "merge": "e1c01fdb1fe6cd8cff74a07f5493c98960e829ed",
+      "mergedAt": "2026-10-27T20:27:16Z",
+      "changedFilesComplete": 6,
+      "rawCheckRuns": 26,
+      "effectiveChecks": 23,
+      "effectiveConclusions": [
+        "success",
+        "success",
+        "success",
+        "success",
+        "success",
+        "success",
+        "success",
+        "success",
+        "success",
+        "success",
+        "success",
+        "success",
+        "success",
+        "success",
+        "success",
+        "skipped",
+        "success",
+        "success",
+        "success",
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "actualAtMerge": true,
+      "ciRun": {
+        "runId": 40552419310,
+        "sha": "1a10ca038ffb4a215d4b1b44242ff4ef68275607",
+        "conclusion": "success"
+      },
+      "trustedInputValidation": "passed",
+      "scope": "本証拠CMP1311のみ。過去全JSON走査なし。"
+    }
+  },
+  "pairedFrontendAdoption": {
+    "pr": 4167,
+    "head": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+    "merge": "fa70ad7f87c1062b12ce8ae98f7abf47a7392b56",
+    "mergedAt": "2026-10-27T20:44:07Z"
+  },
+  "baseB0Adoption": {
+    "pr": 4188,
+    "head": "bdf1d63866de8b7a678eb44b59084393db00fdca",
+    "merge": "779dfe616e9113f32c85969bd6394a48cdb12431",
+    "mergedAt": "2026-10-27T20:48:37Z"
+  },
+  "ci": {
+    "runId": 40552419310,
+    "sourceHead": "1a10ca038ffb4a215d4b1b44242ff4ef68275607",
+    "conclusion": "success",
+    "totals": {
+      "tests": 48,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "artifacts": [
+      {
+        "id": 12767012277,
+        "name": "test-results-xml-pr-4163-shard-3",
+        "digest": "sha256:e672e8caea434af79b48b8d19d0d3644a7f305c607d485dbabca428aaf235c62",
+        "producerJob": 122367025295,
+        "xml": [
+          {
+            "file": "TEST-com.mannschaft.app.committee.CommitteeListVisibilityIntegrationTest.xml",
+            "sha256": "9ebed19e64f174a6f881efd9d91b97f5e10073b0b29ee1257145c8979939e34a",
+            "counts": {
+              "tests": 31,
+              "failures": 0,
+              "errors": 0,
+              "skipped": 0
+            }
+          }
+        ]
+      },
+      {
+        "id": 12765462239,
+        "name": "test-results-xml-pr-4163-shard-0",
+        "digest": "sha256:61d116c0e543d1c6088b8fbe01f880f767b31f2201a689a9988def7cc118fd73",
+        "producerJob": 122367025303,
+        "xml": [
+          {
+            "file": "TEST-com.mannschaft.app.committee.CommitteeServiceToBuilderTest$CreateCommittee.xml",
+            "sha256": "03b496f079aa349dcfeed3e9e69c62da757b64d605664f03ab650dab110db060",
+            "counts": {
+              "tests": 2,
+              "failures": 0,
+              "errors": 0,
+              "skipped": 0
+            }
+          },
+          {
+            "file": "TEST-com.mannschaft.app.committee.CommitteeServiceToBuilderTest$TransitionStatus.xml",
+            "sha256": "43f990da6c98489fe82c68129268f3d4780cc0e7d9d35cf739aac6a018e8b26e",
+            "counts": {
+              "tests": 1,
+              "failures": 0,
+              "errors": 0,
+              "skipped": 0
+            }
+          },
+          {
+            "file": "TEST-com.mannschaft.app.committee.CommitteeServiceToBuilderTest$UpdateCommittee.xml",
+            "sha256": "60be7ff4da6cd7f4a3f7c1a594d090dbb8e5ad2debfd5c856aefa2afc9c92b77",
+            "counts": {
+              "tests": 1,
+              "failures": 0,
+              "errors": 0,
+              "skipped": 0
+            }
+          },
+          {
+            "file": "TEST-com.mannschaft.app.committee.CommitteeServiceToBuilderTest.xml",
+            "sha256": "559c2bdbc351f4968c2891cb04b1fa339a6ecb95b0e4a124a9b04bb49460158f",
+            "counts": {
+              "tests": 13,
+              "failures": 0,
+              "errors": 0,
+              "skipped": 0
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "independentXMLVerification": {
+    "owner": "root",
+    "sourceHead": "1a10ca038ffb4a215d4b1b44242ff4ef68275607",
+    "runId": 40552419310,
+    "actualXMLTestcases": 48,
+    "failure": 0,
+    "error": 0,
+    "skip": 0,
+    "sourceBlobsMatchPrimaryReview": true,
+    "duplicateDisplayNamesRetained": true,
+    "sourceRef": {
+      "path": ".claude/runtime/october-fifth-wave-20261027/1311/final-1a10-ci-targets/root-independent-xml-verification.json",
+      "sha256": "d68f9967df1e2b4842f306b1be81ef5e3d8321ff4d7e1afd5cf567a34c350ca1"
+    }
+  },
+  "sourceMapping": [
+    {
+      "class": "CommitteeListVisibilityIntegrationTest",
+      "sourceHead": "1a10ca038ffb4a215d4b1b44242ff4ef68275607",
+      "sourcePath": "backend/src/test/java/com/mannschaft/app/committee/CommitteeListVisibilityIntegrationTest.java",
+      "sourceGitBlob": "25e35cbd38710948d6ddd87ccdb8f711cf2e561b",
+      "sourceSha256": "d4d91548b7059e29e0e5163fd72fd8a252c52951d624e1be08bc57e3e102426c",
+      "actualExecuted": 31
+    },
+    {
+      "class": "CommitteeServiceToBuilderTest",
+      "sourceHead": "1a10ca038ffb4a215d4b1b44242ff4ef68275607",
+      "sourcePath": "backend/src/test/java/com/mannschaft/app/committee/CommitteeServiceToBuilderTest.java",
+      "sourceGitBlob": "a057fe6e8037c8263328bffea608e12a2ce687d2",
+      "sourceSha256": "4a3320a4b15fd7520bc898023f4aae2f0c9c686e4655a8b953beaef9c5e286c4",
+      "actualExecuted": 17
+    }
+  ],
+  "regressions": {
+    "visibility": {
+      "sourceHead": "21ad9530001a9759fb4ce5bc483ad428e80145b2",
+      "tests": "25",
+      "failures": "13",
+      "errors": "0",
+      "skipped": "0"
+    },
+    "sort": {
+      "tests": 48,
+      "failures": 10,
+      "errors": 0,
+      "skipped": 0
+    },
+    "localGreen": {
+      "tests": 48,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "localSortNativeGitOnly": false,
+    "limitation": "local sort red/greenはWindows Git adapter利用の実行経路違反を保持。native-onlyだったと読み替えない。取消CIから対象sort red XMLは取得できず、独立CI redは未証明。",
+    "previousCI": {
+      "head": "15097fbcae59cd5906b3f5e1f8b87ba312a40171",
+      "runId": 40532685710,
+      "target48": "passed",
+      "wholeWorkflow": "failed",
+      "cause": "別件Loyalty試験failure"
+    }
+  },
+  "runtime": {
+    "frontendHead": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+    "backendHead": "1a10ca038ffb4a215d4b1b44242ff4ef68275607",
+    "jarSha256": "adc5eba49ddb537cc8e0dbc4bd980f443246556315a6b571291b0854626c52cf",
+    "jarBytes": 221125009,
+    "sourceFinal": {
+      "head": "1a10ca038ffb4a215d4b1b44242ff4ef68275607",
+      "commitTree": "9a4a457ec9a99dfaa8244be5fa65e9e3127c1fec",
+      "backendTree": "afa8d0607c12186baba05e4cc1eee995fcfcbda0",
+      "productionMainTree": "5d9d181cb2bb412a9799e6ccdabf2a745d52f449",
+      "clean": true,
+      "runnerExit": 0,
+      "receiptCleanup": "removed",
+      "scratchGone": true
+    },
+    "readiness1909": {
+      "result": "PASS",
+      "jarSHA256": "adc5eba49ddb537cc8e0dbc4bd980f443246556315a6b571291b0854626c52cf",
+      "at": "2026-10-27T19:25:29.485908+00:00"
+    },
+    "recovery": {
+      "sourceHead": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+      "frontendTree": "b16f398a3cb2c56c5d7e19af3d946c958758cbe1",
+      "newFullOutputDigest": "54d0df9340759d1d644a7accef528b4ed8acebc7bbd070c2b6a35744f6cc7fd1",
+      "historicalFullOutputDigest": "cedddfedf4564e563ebba41e19e6c7daec3630a1acf433d1b7172485abb9b048",
+      "allOutputBytesEqual": false,
+      "entryBytesEqual": true,
+      "fileCount": 4484
+    },
+    "scope": "consumer実機はFE8f/BE1a。探索は同exact source/config/lock・同BEの独立recovery-build5。whole output byte同一は不成立であり主張しない。"
+  },
+  "real": {
+    "sourceHeads": {
+      "frontend": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+      "backend": "1a10ca038ffb4a215d4b1b44242ff4ef68275607"
+    },
+    "consumerMatrixPassed": true,
+    "initialMatrix": {
+      "failedPreserved": 1,
+      "passed": 50
+    },
+    "targetedNormalEntry": {
+      "applicationCodeChanged": false,
+      "observedCause": "expected initial permission dialog intercepted pointer events; normal scoped later dismissal restored navigation",
+      "passed": true
+    },
+    "oneCancelPassed": true,
+    "originalFailuresPreserved": true,
+    "note": "初回overlay遮断1FAILを保持。通常の「あとで決める」による初期権限dialog終了後の通常Drawer成功とcancel成功で追補。初回結果を書換えない。",
+    "anonymousProvenance": "BE1a新実機匿名は下記別supplementで確認。元51件は50PASS/1FAILかつ匿名0のまま。実装PR #4167本文の匿名主張を訂正し、今回補足を原51件へ加算・転用しない。旧f7匿名結果・BE1a同head CI401とも別証拠。",
+    "anonymousSameHeadCI": "CommitteeListVisibilityIntegrationTest#未認証は実Securityで401; CI40552419310の31case中1case。現実機とは別。",
+    "anonymousSupplement": {
+      "sourceRef": {
+        "path": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/anonymous-supplement-8f671-1a10-v1-observations.json",
+        "sha256": "123c0068e9f2801bb5f938dd1b8ae64efdf288534ab7d89e4af8dadb28277d16"
+      },
+      "status": "passed",
+      "sourceHeads": {
+        "frontend": "8f671cba847a1641222c95fa37d23830d8f4e4d5",
+        "backend": "1a10ca038ffb4a215d4b1b44242ff4ef68275607"
+      },
+      "startedAt": "2026-10-27T21:02:58.062Z",
+      "finishedAt": "2026-10-27T21:03:14.883Z",
+      "cases": [
+        {
+          "id": "committee-list",
+          "redirectLogin": true,
+          "loginFormVisible": true,
+          "protectedRows": 0,
+          "apiStatus": 401
+        },
+        {
+          "id": "committee-detail",
+          "redirectLogin": true,
+          "loginFormVisible": true,
+          "protectedRows": 0,
+          "apiStatus": 401
+        },
+        {
+          "id": "outbox-list",
+          "redirectLogin": true,
+          "loginFormVisible": true,
+          "protectedRows": 0,
+          "apiStatus": 401
+        }
+      ],
+      "contextsCreated": 1,
+      "contextsClosed": 1,
+      "browserClosed": true,
+      "authPOSTs": 0,
+      "nonReadRequests": 0,
+      "pageErrors": 0,
+      "original51Modified": false,
+      "original51AnonymousCases": 0,
+      "runtimeArtifactToolsAndOriginal51BeforeAfterGuards": "PASS（rootが実行器全文レビュー、正常exit0と前後guardを確認）",
+      "runtimeBindingStages": [
+        {
+          "phase": "runtime-binding",
+          "code": "CURRENT_RUNTIME_BINDING",
+          "started": true,
+          "completed": true
+        },
+        {
+          "phase": "final-runtime-binding",
+          "code": "CURRENT_RUNTIME_BINDING",
+          "started": true,
+          "completed": true
+        }
+      ],
+      "runnerScriptSHA256": "3292304f9bf218a2fdd509144090b1f3f2b55b6a9085655d98f9f99bbed01c87",
+      "manifestSHA256": "47c02df1fe24d27c8d2b0102d4d1f93d2e09c8428885cc664b99358986cc024f",
+      "approvalSHA256": "5ae11d3d1259aa600e5cf92fc7d2761f8f6e205dfdb6441bb2da0ab07b1ca4cb",
+      "scope": "別補足3caseのうちcommittee-list/detailは1311認可境界、outbox-listはpaired0660補足。51件matrixとは別集計。"
+    }
+  },
+  "exploratory": {
+    "rootAdjudication": {
+      "path": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/root-be1311-three-purpose-exploration-adjudication.json",
+      "sha256": "8900c70eddd48119a7bc9dbd725d5c7d09ad99e4f63b225658f7ed08707c067e"
+    },
+    "stage": "exploration-executed-observations-triaged",
+    "scopeAcceptance": "required independent explorations performed and normally closed; partial goals preserved, no assertion of B0 coverage or all goals achieved",
+    "committeePurposeAssignments": [
+      "fresh3 general actor3",
+      "fresh3 ADHD actor5",
+      "additional elderly actor3 independent assignment"
+    ],
+    "pairedEmailPurposeAssignment": "fresh3 SYS actor4; excluded from committee-purpose count",
+    "allResidentGoalsAchieved": false,
+    "coveragePassed": false,
+    "baseObservations": "docs/evidence/october-fresh3-20261028/resident-observations.json",
+    "additionalObservations": "docs/evidence/CMP-261027-1311/additional-observations.json",
+    "basePopulation": [
+      25,
+      25,
+      54
+    ],
+    "newPopulation": [
+      26,
+      26,
+      55
+    ],
+    "residentPopulation": "fresh3一般actor3＋ADHDactor5＋追加高齢actor3の3委員会目的assignment。SYSactor4はメールキュー目的の別枠。B0合計4住民。",
+    "partialGoalsPreserved": true,
+    "triage": {
+      "nameOnlyDetail": "separate confirmed existing defect CMP-261028-0513; not hidden by list pagination fix",
+      "locatorTimeouts": "automation limitations; no product defect asserted",
+      "midwayHint": "purpose organization display-name clarification only; no supplied URL or navigation steps",
+      "wholeOutputByteEquivalence": false
+    },
+    "detailDefectCampaign": "CMP-261028-0513",
+    "detailRootProof": "docs/evidence/october-fresh3-20261028/root-name-only-proof.json"
+  },
+  "sourceEvidence": [
+    {
+      "path": ".claude/runtime/october-fifth-wave-20261027/1311/completion-docs-pending-1a10/ac-trace-and-handoff.md",
+      "sha256": "bc91d1864efc87f93d7524d5ad8c65e41481bace394d25f57f14bbe5e8a92a4e",
+      "publication": "rawは公開せず本候補JSONの必要項目・件数・digestのみ選定"
+    },
+    {
+      "path": ".claude/runtime/october-fourth-wave-20261027/next-page-contract/committee-null-rootcause-plan.md",
+      "sha256": "f31eba8301b84565e14170ae7733f8cc9e7f0b2c1ac42e4369608701a267618e",
+      "publication": "rawは公開せず本候補JSONの必要項目・件数・digestのみ選定"
+    },
+    {
+      "path": ".claude/runtime/october-fifth-wave-20261027/1311/incoming-20f2d9ac/stable-sort-plan.md",
+      "sha256": "df9b464d1563f9b884039b3ab8ae8e720c0e7959f50b03a2a419dd5dcb08e2c5",
+      "publication": "rawは公開せず本候補JSONの必要項目・件数・digestのみ選定"
+    },
+    {
+      "path": ".claude/runtime/october-fifth-wave-20261027/1311/red5/result-summary.json",
+      "sha256": "b631a31d6c5de5d126e25245ba8d0b319218adc01d76b36a777e4e45c7714a79",
+      "publication": "rawは公開せず本候補JSONの必要項目・件数・digestのみ選定"
+    },
+    {
+      "path": ".claude/runtime/october-fifth-wave-20261027/1311/sort-red1/test-summary.json",
+      "sha256": "3c9eb3f990ac3ef94c9d59398e05790b4db2450f42331bb08b5656c54bbd4615",
+      "publication": "rawは公開せず本候補JSONの必要項目・件数・digestのみ選定"
+    },
+    {
+      "path": ".claude/runtime/october-fifth-wave-20261027/1311/sort-green1/test-summary.json",
+      "sha256": "cb439d1a38dce9987c0b76cd53e43cf3cbef7bf6dcc4270064a1df529eed0686",
+      "publication": "rawは公開せず本候補JSONの必要項目・件数・digestのみ選定"
+    },
+    {
+      "path": ".claude/runtime/october-fifth-wave-20261027/1311/local-git-adapter-addendum.md",
+      "sha256": "c78da90d66c2ff22941fdbacc671ee0fc1b5d4fd4fd0bf2d7a7ed3dd05d3309f",
+      "publication": "rawは公開せず本候補JSONの必要項目・件数・digestのみ選定"
+    },
+    {
+      "path": ".claude/runtime/october-fifth-wave-20261027/1311/final-1a10-ci-targets/proof.json",
+      "sha256": "6a69d44b3922d7d43947259064e59ae2d7df34d4158bef7b6a514780aa24dcec",
+      "publication": "rawは公開せず本候補JSONの必要項目・件数・digestのみ選定"
+    },
+    {
+      "path": ".claude/runtime/october-fifth-wave-20261027/1311/ci-40552419310-final.json",
+      "sha256": "a629e31e974f9f7282bba44bf8bc30aea9854ec9f1cce4dea4693f911f688b16",
+      "publication": "rawは公開せず本候補JSONの必要項目・件数・digestのみ選定"
+    },
+    {
+      "path": ".claude/runtime/october-fifth-wave-20261027/1311/root-review-main-follow-1a10.json",
+      "sha256": "e1bc82c52eb47af61b42f2348bd24db40c14d2c53c614594826d8ce8e9974776",
+      "publication": "rawは公開せず本候補JSONの必要項目・件数・digestのみ選定"
+    },
+    {
+      "path": ".claude/runtime/october-fifth-wave-20261027/1311/jar3-result/jar-manifest.json",
+      "sha256": "e794d190a2898ae0ebb8eee407bb149f7346221c5c83c5eba549853bae229708",
+      "publication": "rawは公開せず本候補JSONの必要項目・件数・digestのみ選定"
+    },
+    {
+      "path": ".claude/runtime/october-fifth-wave-20261027/1311/jar3-result/source-final.json",
+      "sha256": "1b7bd3a2577e7b595fafa416c783e2b596bab905c6d188950a83f83f0aa4f804",
+      "publication": "rawは公開せず本候補JSONの必要項目・件数・digestのみ選定"
+    },
+    {
+      "path": ".claude/runtime/october-fifth-wave-20261027/sort-candidate-backend-v3/readiness-renewal-1909-v1.json",
+      "sha256": "3e0496ac13d49944e25d8dbe57beea43f87ecb18506af89c6a995664cc9a1e83",
+      "publication": "rawは公開せず本候補JSONの必要項目・件数・digestのみ選定"
+    },
+    {
+      "path": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/root-final-consumer-matrix-aggregate-20261027.json",
+      "sha256": "3c8e2bfdcd502db9159a8220a2b694cf4c709f4e5eced6267efdac4f3049774a",
+      "publication": "rawは公開せず本候補JSONの必要項目・件数・digestのみ選定"
+    },
+    {
+      "path": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/root-fresh3-exploration-adjudication-v1.json",
+      "sha256": "c86890666193fd7af5128cf97f3fb6e498486780e7fd7077d1defcf5a0660c69",
+      "publication": "rawは公開せず本候補JSONの必要項目・件数・digestのみ選定"
+    },
+    {
+      "path": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/root-name-only-diagnostic-v1.json",
+      "sha256": "d2fa4999b201bbb5b16a91ad109d049d51d52a632f92cd439a5ac8d1f421dba1",
+      "publication": "rawは公開せず本候補JSONの必要項目・件数・digestのみ選定"
+    },
+    {
+      "path": ".claude/runtime/october-fifth-wave-20261027/0660/recovery-build5/root-same-source-recovery-scope.json",
+      "sha256": "6bdf90fe372f762c798b6eb43d45b9f44b96c66a92043c73fb9ce294500a459b",
+      "publication": "rawは公開せず本候補JSONの必要項目・件数・digestのみ選定"
+    }
+  ],
+  "privacyFilter": "原本を公開せず件数・digest・相対参照だけ選択。実個人名/email/rawDOM/HTTP本文/認証情報/画像実体は含めない。",
+  "pairedFrontendCompletionAdoption": {
+    "pr": 4189,
+    "head": "8311c6564d7d82392b4342c56ded93b7b51003a9",
+    "merge": "9a29fe8caa64469f2e5999e503e4d3f21cfc35ec",
+    "mergedAt": "2026-10-27T21:16:16Z",
+    "effectiveChecks": 17,
+    "checkRule": "rootがactual at-mergeでsuccess/allowed skipを独立確認",
+    "evidence": "docs/evidence/CMP-261021-0660.json"
+  },
+  "documentationValidation": {
+    "oldPopulation": [
+      25,
+      25,
+      54
+    ],
+    "finalPopulation": [
+      26,
+      26,
+      55
+    ],
+    "oldAllFieldsDeepPreserved": true,
+    "canonicalIgnoredCopyGeneratedEqual": true,
+    "overlayOnlyTenMutationSelfTestPassed": true,
+    "originalACCellUnchanged": true,
+    "task602RowsSevenColumnsUnique": true,
+    "FEandBECompleted": true,
+    "generationRepeatExceptGeneratedAtEqual": true,
+    "wholeB0Validator": {
+      "base": "9a29fe8caa64469f2e5999e503e4d3f21cfc35ec",
+      "baselineRaw": [
+        {
+          "baseHead": "9a29fe8caa64469f2e5999e503e4d3f21cfc35ec",
+          "command": "node docs/prototypes/validate-beta-inventory-board.mjs",
+          "exitCode": 1,
+          "errorMessage": "CMPのGitHub参照が不一致です: CMP-261021-0660"
+        },
+        {
+          "baseHead": "9a29fe8caa64469f2e5999e503e4d3f21cfc35ec",
+          "command": "node docs/prototypes/validate-beta-inventory-board.mjs --self-test-overlay",
+          "exitCode": 1,
+          "errorMessage": "CMPのGitHub参照が不一致です: CMP-261021-0660"
+        }
+      ],
+      "baselineRegeneratedWithExistingGenerator": [
+        {
+          "command": "node docs/prototypes/validate-beta-inventory-board.mjs",
+          "exitCode": 1,
+          "errorMessage": "GitHubスナップショットの参照集合が正本と不一致です"
+        },
+        {
+          "command": "node docs/prototypes/validate-beta-inventory-board.mjs --self-test-overlay",
+          "exitCode": 1,
+          "errorMessage": "GitHubスナップショットの参照集合が正本と不一致です"
+        }
+      ],
+      "finalGenerated": [
+        {
+          "command": "node docs/prototypes/validate-beta-inventory-board.mjs",
+          "exitCode": 1,
+          "errorMessage": "GitHubスナップショットの参照集合が正本と不一致です"
+        },
+        {
+          "command": "node docs/prototypes/validate-beta-inventory-board.mjs --self-test-overlay",
+          "exitCode": 1,
+          "errorMessage": "GitHubスナップショットの参照集合が正本と不一致です"
+        }
+      ],
+      "notPassed": true,
+      "scope": "raw baselineはFE完了後board未再生成により0660参照不一致で先行停止。基準を同じ既存生成器で再生成した対照と今回最終生成の両方は既存snapshot集合不一致。snapshot/validator変更なし。"
+    }
+  }
+}

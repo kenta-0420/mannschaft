@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260910-0043",
+  "scope": "app",
+  "implementation": {
+    "pr": 3827,
+    "sha": "8a90eafa9fb2fd144a326151a3f80bf981bc24b3"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "チャット退避・削除の閾値が UTC 基準で、6か月より1時間新しい削除済み行は退避せず、1時間古い行だけ退避される",
+      "tests": [
+        {
+          "name": "UTC基準で6か月より1時間新しい削除済み行は退避せず、1時間古い行だけ退避・削除する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/chat/service/ChatMessageArchiveBatchServiceUtcBoundaryIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "番人の凍結台帳から本行の返済対象が外れる",
+      "tests": [
+        {
+          "name": "生SQLの時刻列まわりの違反がクラス単位の凍結件数から増えていない",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/architecture/RawSqlTimeColumnGuardTest.java"
+        },
+        {
+          "name": "凍結件数（CMP-023返済台帳）が記録済みスナップショットと一致している（増減とも検知）",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/architecture/DateTimeAndZoneGuardTest.java"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 38464010665
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/3827"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260910-0043.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260910-0043.md"
+    }
+  },
+  "regressions": []
+}

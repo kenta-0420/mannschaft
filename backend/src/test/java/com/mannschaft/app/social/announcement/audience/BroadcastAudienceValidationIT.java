@@ -193,11 +193,11 @@ class BroadcastAudienceValidationIT extends AbstractBroadcastAudienceIT {
         void teamsAndGroups_is011() throws Exception {
             long before = feedCount(orgX.getId());
             assertRejected(broadcastToOrg(XA, orgX.getId(), bulletinBody(Map.of(
-                            "targetTeamIds", List.of(t1.getId()),
+                            "targetTeamIds", List.of(t1.getSlug()),
                             "targetGroupIds", ids(g1.getId())))),
                     "BROADCAST_011", orgX.getId(), before);
             assertRejected(broadcastToOrg(XA, orgX.getId(), bulletinBody(Map.of(
-                            "targetTeamIds", List.of(t1.getId()),
+                            "targetTeamIds", List.of(t1.getSlug()),
                             "includeUnassigned", true))),
                     "BROADCAST_011", orgX.getId(), before);
         }
@@ -211,8 +211,32 @@ class BroadcastAudienceValidationIT extends AbstractBroadcastAudienceIT {
         @DisplayName("YA が組織 Y の告知で組織 X のチームを指定すると 400 BROADCAST_002")
         void otherOrgTeam_is002() throws Exception {
             long before = feedCount(orgY.getId());
-            assertRejected(broadcastToOrg(YA, orgY.getId(), bulletinBody(Map.of("targetTeamIds", List.of(t1.getId())))),
+            assertRejected(broadcastToOrg(YA, orgY.getId(), bulletinBody(Map.of("targetTeamIds", List.of(t1.getSlug())))),
                     "BROADCAST_002", orgY.getId(), before);
+        }
+
+        @Test
+        @DisplayName("D-3（実機E2E #4009）: 存在しない slug は他組織のチームと同じ 400 BROADCAST_002（存在オラクルにしない）。"
+                + "プレビューも同じ")
+        void unknownSlug_isSameAsOtherOrgTeam() throws Exception {
+            long before = feedCount(orgY.getId());
+            assertRejected(broadcastToOrg(YA, orgY.getId(),
+                            bulletinBody(Map.of("targetTeamIds", List.of("no-such-team-slug-d3")))),
+                    "BROADCAST_002", orgY.getId(), before);
+            preview(YA, orgY.getId(), bulletinBody(Map.of("targetTeamIds", List.of("no-such-team-slug-d3"))))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("BROADCAST_002"));
+            preview(YA, orgY.getId(), bulletinBody(Map.of("targetTeamIds", List.of(t1.getSlug()))))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("BROADCAST_002"));
+        }
+
+        @Test
+        @DisplayName("D-3: 自組織のチームは slug で指定すればプレビューが 200 で件数を返す")
+        void ownTeamSlug_previewIsOk() throws Exception {
+            preview(YA, orgY.getId(), bulletinBody(Map.of("targetTeamIds", List.of(tY.getSlug()))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.resolvedTeamCount").value(1));
         }
 
         @Test
@@ -220,7 +244,7 @@ class BroadcastAudienceValidationIT extends AbstractBroadcastAudienceIT {
         void mixedTeams_is002() throws Exception {
             long before = feedCount(orgY.getId());
             assertRejected(broadcastToOrg(YA, orgY.getId(),
-                            bulletinBody(Map.of("targetTeamIds", List.of(tY.getId(), t1.getId())))),
+                            bulletinBody(Map.of("targetTeamIds", List.of(tY.getSlug(), t1.getSlug())))),
                     "BROADCAST_002", orgY.getId(), before);
         }
 
@@ -248,7 +272,7 @@ class BroadcastAudienceValidationIT extends AbstractBroadcastAudienceIT {
                     em, officer, "DEPUTY_ADMIN", tu.getId(), orgX.getId());
             flushAndClear();
             long before = feedCount(orgX.getId());
-            assertRejected(broadcastToOrg(XA, orgX.getId(), bulletinBody(Map.of("targetTeamIds", List.of(tu.getId())))),
+            assertRejected(broadcastToOrg(XA, orgX.getId(), bulletinBody(Map.of("targetTeamIds", List.of(tu.getSlug())))),
                     "BROADCAST_002", orgX.getId(), before);
         }
 
@@ -259,7 +283,7 @@ class BroadcastAudienceValidationIT extends AbstractBroadcastAudienceIT {
             affiliate(tp.getId(), orgX.getId(), TeamOrgMembershipEntity.Status.PENDING, null);
             flushAndClear();
             long before = feedCount(orgX.getId());
-            assertRejected(broadcastToOrg(XA, orgX.getId(), bulletinBody(Map.of("targetTeamIds", List.of(tp.getId())))),
+            assertRejected(broadcastToOrg(XA, orgX.getId(), bulletinBody(Map.of("targetTeamIds", List.of(tp.getSlug())))),
                     "BROADCAST_002", orgX.getId(), before);
         }
 
@@ -271,7 +295,7 @@ class BroadcastAudienceValidationIT extends AbstractBroadcastAudienceIT {
                     .setParameter("t", tl.getId()).setParameter("o", orgX.getId()).executeUpdate();
             flushAndClear();
             long before = feedCount(orgX.getId());
-            assertRejected(broadcastToOrg(XA, orgX.getId(), bulletinBody(Map.of("targetTeamIds", List.of(tl.getId())))),
+            assertRejected(broadcastToOrg(XA, orgX.getId(), bulletinBody(Map.of("targetTeamIds", List.of(tl.getSlug())))),
                     "BROADCAST_002", orgX.getId(), before);
         }
 
@@ -370,10 +394,10 @@ class BroadcastAudienceValidationIT extends AbstractBroadcastAudienceIT {
 
             long before = feedCount(orgX.getId());
             assertRejected(broadcastToOrg(XA, orgX.getId(),
-                            bulletinBody(Map.of("targetTeamIds", List.of(archived.getId())))),
+                            bulletinBody(Map.of("targetTeamIds", List.of(archived.getSlug())))),
                     "BROADCAST_002", orgX.getId(), before);
             assertRejected(broadcastToOrg(XA, orgX.getId(),
-                            bulletinBody(Map.of("targetTeamIds", List.of(deleted.getId())))),
+                            bulletinBody(Map.of("targetTeamIds", List.of(deleted.getSlug())))),
                     "BROADCAST_002", orgX.getId(), before);
         }
 
@@ -409,7 +433,7 @@ class BroadcastAudienceValidationIT extends AbstractBroadcastAudienceIT {
         @Test
         @DisplayName("「チームを選ぶ」で 501 件は 400 BROADCAST_010（加盟の照合より先に弾く）")
         void teams501_is010() throws Exception {
-            List<Long> ids = new ArrayList<>(LongStream.rangeClosed(1, 501).map(i -> 980_000_000L + i).boxed().toList());
+            List<String> ids = new ArrayList<>(LongStream.rangeClosed(1, 501).mapToObj(i -> "no-team-" + i).toList());
             long before = feedCount(orgX.getId());
             assertRejected(broadcastToOrg(XA, orgX.getId(), bulletinBody(Map.of("targetTeamIds", ids))),
                     "BROADCAST_010", orgX.getId(), before);
@@ -419,7 +443,7 @@ class BroadcastAudienceValidationIT extends AbstractBroadcastAudienceIT {
         @DisplayName("「チームを選ぶ」で 500 件は成功し、グループ経由なら 501 チームでも成功する")
         void teams500_andGroupOf501_succeed() throws Exception {
             OrgTeamGroupEntity big = newGroup(orgX.getId(), "大きなグループ", 10);
-            List<Long> bigTeams = activeTeams(orgX.getId(), big.getId(), 501);
+            List<String> bigTeams = teamSlugs(activeTeams(orgX.getId(), big.getId(), 501));
             flushAndClear();
 
             long teamFeed = feedIdOf(broadcastToOrg(XA, orgX.getId(),
@@ -439,7 +463,7 @@ class BroadcastAudienceValidationIT extends AbstractBroadcastAudienceIT {
         @DisplayName("同じチーム・同じグループを重ねて指定しても、保存は1件ずつ（重複排除）")
         void duplicates_areCollapsed() throws Exception {
             long teamFeed = feedIdOf(broadcastToOrg(XA, orgX.getId(),
-                    bulletinBody(Map.of("targetTeamIds", List.of(t1.getId(), t1.getId(), t2.getId()))))
+                    bulletinBody(Map.of("targetTeamIds", List.of(t1.getSlug(), t1.getSlug(), t2.getSlug()))))
                     .andExpect(status().isCreated()));
             assertThat(savedTargetTeamIds(teamFeed)).containsExactly(t1.getId(), t2.getId());
 

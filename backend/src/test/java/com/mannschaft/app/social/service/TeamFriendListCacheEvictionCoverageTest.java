@@ -144,7 +144,7 @@ class TeamFriendListCacheEvictionCoverageTest {
         // toView の teamRepository.findById(...).orElse(null)（@SQLRestriction で削除済みは引けない）により
         // friendTeamName = null がキャッシュされる。restoreTeam が失効させないと、
         // 復元後もフレンド名が空欄のまま最大 30 分表示され続ける。
-        assertEvictsAllEntries(TeamService.class, "restoreTeam", Long.class);
+        assertEvictsAllEntries(TeamService.class, "restoreTeam", Long.class, Long.class);
     }
 
     @Test

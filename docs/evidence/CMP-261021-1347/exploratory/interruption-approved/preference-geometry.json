@@ -1,0 +1,207 @@
+{
+  "prefDetails": [
+    {
+      "selector": "BUTTON",
+      "text": "再取得",
+      "rect": {
+        "x": 276,
+        "y": 188,
+        "width": 74,
+        "height": 44,
+        "top": 188,
+        "right": 350,
+        "bottom": 232,
+        "left": 276
+      },
+      "style": {
+        "height": "44px",
+        "minHeight": "44px",
+        "overflow": "hidden"
+      },
+      "scrollWidth": 72,
+      "clientWidth": 72
+    },
+    {
+      "selector": "[role=combobox]",
+      "text": "通常2D",
+      "rect": {
+        "x": 298,
+        "y": 410,
+        "width": 425,
+        "height": 40,
+        "top": 410,
+        "right": 723,
+        "bottom": 450,
+        "left": 298
+      },
+      "style": {
+        "height": "40px",
+        "minHeight": "auto",
+        "overflow": "hidden"
+      },
+      "scrollWidth": 425,
+      "clientWidth": 425
+    },
+    {
+      "selector": "[role=combobox]",
+      "text": "動きを止める",
+      "rect": {
+        "x": 777,
+        "y": 410,
+        "width": 425,
+        "height": 40,
+        "top": 410,
+        "right": 1202,
+        "bottom": 450,
+        "left": 777
+      },
+      "style": {
+        "height": "40px",
+        "minHeight": "auto",
+        "overflow": "hidden"
+      },
+      "scrollWidth": 425,
+      "clientWidth": 425
+    },
+    {
+      "selector": "INPUT",
+      "text": "checkbox",
+      "rect": {
+        "x": 297,
+        "y": 475,
+        "width": 20,
+        "height": 20,
+        "top": 475,
+        "right": 317,
+        "bottom": 495,
+        "left": 297
+      },
+      "style": {
+        "height": "20px",
+        "minHeight": "0px",
+        "overflow": "visible"
+      },
+      "scrollWidth": 18,
+      "clientWidth": 18
+    },
+    {
+      "selector": "#pv_id_1_102",
+      "text": "text",
+      "rect": {
+        "x": 808,
+        "y": 463,
+        "width": 241,
+        "height": 42,
+        "top": 463,
+        "right": 1049,
+        "bottom": 505,
+        "left": 808
+      },
+      "style": {
+        "height": "42px",
+        "minHeight": "auto",
+        "overflow": "clip"
+      },
+      "scrollWidth": 239,
+      "clientWidth": 239
+    },
+    {
+      "selector": "BUTTON",
+      "text": "保存する",
+      "rect": {
+        "x": 297,
+        "y": 555,
+        "width": 90,
+        "height": 44,
+        "top": 555,
+        "right": 387,
+        "bottom": 599,
+        "left": 297
+      },
+      "style": {
+        "height": "44px",
+        "minHeight": "44px",
+        "overflow": "hidden"
+      },
+      "scrollWidth": 88,
+      "clientWidth": 88
+    },
+    {
+      "selector": "BUTTON",
+      "text": "非表示にする",
+      "rect": {
+        "x": 399,
+        "y": 555,
+        "width": 122.171875,
+        "height": 44,
+        "top": 555,
+        "right": 521.171875,
+        "bottom": 599,
+        "left": 399
+      },
+      "style": {
+        "height": "44px",
+        "minHeight": "44px",
+        "overflow": "hidden"
+      },
+      "scrollWidth": 120,
+      "clientWidth": 120
+    },
+    {
+      "selector": "BUTTON",
+      "text": "休止する",
+      "rect": {
+        "x": 533.171875,
+        "y": 555,
+        "width": 90,
+        "height": 44,
+        "top": 555,
+        "right": 623.171875,
+        "bottom": 599,
+        "left": 533.171875
+      },
+      "style": {
+        "height": "44px",
+        "minHeight": "44px",
+        "overflow": "hidden"
+      },
+      "scrollWidth": 88,
+      "clientWidth": 88
+    }
+  ],
+  "audit": {
+    "clipped": [],
+    "fixed": [
+      {
+        "tag": "HEADER",
+        "text": "Mannschaft\nチーム\n組織",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 1280,
+          "height": 64,
+          "top": 0,
+          "right": 1280,
+          "bottom": 64,
+          "left": 0
+        },
+        "position": "sticky"
+      },
+      {
+        "tag": "NAV",
+        "text": "ホーム\nダッシュボード\nカレンダー\nインボックス\nつながり\n村\nタイムライン\nブログ\nチャット\nくらし\n市\n求人\nマッチング\n予約確認\nポイントカード\nしごと\n",
+        "rect": {
+          "x": 0,
+          "y": 64,
+          "width": 260,
+          "height": 656,
+          "top": 64,
+          "right": 260,
+          "bottom": 720,
+          "left": 0
+        },
+        "position": "sticky"
+      }
+    ]
+  }
+}

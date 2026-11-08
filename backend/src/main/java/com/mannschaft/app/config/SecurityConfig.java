@@ -282,6 +282,9 @@ public class SecurityConfig {
                     "/api/v1/auth/2fa/validate",
                     "/api/v1/auth/2fa/recovery/request",
                     "/api/v1/auth/2fa/recovery/confirm",
+                    // CMP-261012-0910: ログイン時のメールOTP 送信（MFA セッショントークンを本文で受ける）。
+                    // レート制限は Service 層の AuthTokenService.checkRateLimit（IP・セッション・ユーザー単位）。
+                    "/api/v1/auth/2fa/email/send",
                     // WebAuthn パスキーログイン（第一要素として未認証で呼ばれるため公開必須）
                     "/api/v1/auth/webauthn/login/begin",
                     "/api/v1/auth/webauthn/login/complete"

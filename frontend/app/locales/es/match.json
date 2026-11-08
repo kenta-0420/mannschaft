@@ -252,7 +252,8 @@
           "connecting": "Conectando…",
           "reconnecting": "Reconectando…",
           "offline": "Sin conexión",
-          "denied": "No se puede ver"
+          "denied": "No se puede ver",
+          "unauthenticated": "Inicio de sesión requerido"
         },
         "status": {
           "SCHEDULED": "Sin empezar",
@@ -264,7 +265,8 @@
         "denied": {
           "title": "No se puede ver este partido",
           "detail": "La transmisión en vivo no está disponible porque está fuera del alcance de visibilidad."
-        }
+        },
+        "unauthenticated_banner": "Inicia sesión para recibir actualizaciones en directo."
       }
     },
     "analytics": {

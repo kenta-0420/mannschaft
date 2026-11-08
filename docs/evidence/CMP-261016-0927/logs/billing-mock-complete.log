@@ -1,0 +1,9 @@
+
+Running 3 tests using 1 worker
+
+  ok 1 [chromium] › tests\e2e\cmp011-p7-payment-request.spec.ts:116:3 › CMP-011 P7 支払依頼 UI › 支払い開始で冪等キーを送りPayment Elementダイアログを開く (16.7s)
+  ok 2 [chromium] › tests\e2e\cmp011-p7-payment-request.spec.ts:141:3 › CMP-011 P7 支払依頼 UI › チーム側のPROCESSINGを短期pollしてPAIDを表示する (22.0s)
+  ok 3 [chromium] › tests\e2e\cmp011-p7-payment-request.spec.ts:164:3 › CMP-011 P7 支払依頼 UI › 立替精算を確認してSETTLEDを表示する (28.9s)
+
+  3 passed (1.4m)
+RUNNER_EXIT=0

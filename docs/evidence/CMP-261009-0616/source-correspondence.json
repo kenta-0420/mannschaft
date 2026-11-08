@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261009-0616",
+  "runtimeSourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+  "implementationHead": "f972720bc85a664df16d578c54061c2106c4bf31",
+  "comparison": "git rev-parse <sha>:<literal-path> / git diff --name-only -- backend frontend",
+  "wholeTreeIdentical": false,
+  "correspondence": [
+    {
+      "path": "backend/src/main/java/com/mannschaft/app/dashboard/dto/AdminActionRequiredResponse.java",
+      "runtimeBlob": "f94fa19d094e92767d8abfdb28bb109932425463",
+      "implementationBlob": "f94fa19d094e92767d8abfdb28bb109932425463",
+      "identical": true
+    },
+    {
+      "path": "backend/src/main/java/com/mannschaft/app/dashboard/service/AdminActionRequiredFacade.java",
+      "runtimeBlob": "a05b979eb3534d8e512bdecabf964226ac0d1450",
+      "implementationBlob": "a05b979eb3534d8e512bdecabf964226ac0d1450",
+      "identical": true
+    },
+    {
+      "path": "backend/src/main/java/com/mannschaft/app/shift/service/ShiftRequestAdminQueryService.java",
+      "runtimeBlob": "435ad3df8c09ba2bf09148a7a97c9cb58f538cb6",
+      "implementationBlob": "435ad3df8c09ba2bf09148a7a97c9cb58f538cb6",
+      "identical": true
+    },
+    {
+      "path": "frontend/app/pages/teams/[slug]/shifts.vue",
+      "runtimeBlob": "410e2dcd8af7fe6b432cfa82a15f665d1164b4da",
+      "implementationBlob": "410e2dcd8af7fe6b432cfa82a15f665d1164b4da",
+      "identical": true
+    },
+    {
+      "path": "frontend/app/pages/teams/[slug]/shifts.spec.ts",
+      "runtimeBlob": "dcc79ad6671535892720b3d82dd6cee939897528",
+      "implementationBlob": "dcc79ad6671535892720b3d82dd6cee939897528",
+      "identical": true
+    },
+    {
+      "path": "frontend/app/components/widgets/WidgetCommandCenter.vue",
+      "runtimeBlob": "7784cd26b9b408546e2139774e6af972f08dd0bf",
+      "implementationBlob": "7784cd26b9b408546e2139774e6af972f08dd0bf",
+      "identical": true
+    },
+    {
+      "path": "frontend/app/composables/useScopeTabApi.ts",
+      "runtimeBlob": "e95c5f6e54b5a60b525b98e42336028943ef27a6",
+      "implementationBlob": "e95c5f6e54b5a60b525b98e42336028943ef27a6",
+      "identical": true
+    },
+    {
+      "path": "frontend/app/pages/teams/[slug]/shifts/[scheduleId]/change-requests.vue",
+      "runtimeBlob": "daa255571995ee6c28892f4d0a2cba1b89688665",
+      "implementationBlob": "daa255571995ee6c28892f4d0a2cba1b89688665",
+      "identical": true
+    },
+    {
+      "path": "frontend/app/pages/teams/[slug]/shifts/[scheduleId]/change-requests.spec.ts",
+      "runtimeBlob": "5db5cf35a0ce1156cae36bc9582059eb8a7fd62b",
+      "implementationBlob": "5db5cf35a0ce1156cae36bc9582059eb8a7fd62b",
+      "identical": true
+    },
+    {
+      "path": "frontend/app/composables/shift/useShiftChangeRequestApi.ts",
+      "runtimeBlob": "322b9c1ff36d339a5984f18bdb2e1d6c365d798e",
+      "implementationBlob": "322b9c1ff36d339a5984f18bdb2e1d6c365d798e",
+      "identical": true
+    },
+    {
+      "path": "backend/src/test/java/com/mannschaft/app/dashboard/service/AdminActionRequiredFacadeTest.java",
+      "runtimeBlob": "099a07271ee2e234eb65a041a83ac23f5cb2df78",
+      "implementationBlob": "099a07271ee2e234eb65a041a83ac23f5cb2df78",
+      "identical": true
+    },
+    {
+      "path": "backend/src/test/java/com/mannschaft/app/shift/service/ShiftRequestAdminQueryServiceTest.java",
+      "runtimeBlob": "9c0026d693bb95e00bb85327abc28e90b2d34723",
+      "implementationBlob": "9c0026d693bb95e00bb85327abc28e90b2d34723",
+      "identical": true
+    }
+  ],
+  "allProductDelta": [
+    "backend/src/main/java/com/mannschaft/app/shift/repository/ShiftSwapRequestRepository.java",
+    "backend/src/main/java/com/mannschaft/app/shift/service/ShiftSwapService.java",
+    "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+    "frontend/app/components/shift/ShiftSwapRequestFormDialog.spec.ts",
+    "frontend/app/components/shift/ShiftSwapRequestFormDialog.vue",
+    "frontend/app/composables/useModuleApi.ts",
+    "frontend/tests/unit/composables/useModuleApi.spec.ts"
+  ],
+  "deltaInterpretation": {
+    "backend": "runtimeだけの0649作成専用READ_COMMITTED/未決重複guardとRepository exists。createSwapRequest内のみの差。0616 Facade/Query読取route生成はblob一致",
+    "frontend": "runtimeだけの申請作成dialog再送guardと対応spec。未使用useModuleApi toggleと旧spec削除も差に含む。shifts query watch/Widget/detailRoute消費/変更審査pageはblob一致",
+    "limits": "0649作成成功・重複防止を0616へ流用しない。全製品tree/全機能の一致は主張しない"
+  },
+  "aDependency": {
+    "pr": 4164,
+    "implementationHead": "7f96ebc9ad90e106fa59a399a9e4d5dc2c50c3a5",
+    "mergedMain": "dea78c8e4b2a868fc0124d3bc7a424a1af4f8fbf",
+    "scope": "CMP-261010-1432-Aのみ採用、1432全体は実装中"
+  },
+  "finalization": {
+    "implementationMerged": true,
+    "ciConfirmed": true,
+    "mergeCommit": "2e2da2169d5661847dce846554a13acc4bda2c03",
+    "mergedAt": "2026-10-27T11:52:19Z"
+  },
+  "finalRootReview": {
+    "privateReference": ".claude/campaigns/cmp0616-takeover-20261027/review-root-f972-final.json",
+    "sha256": "e956f7ddb59c147a83a2ac9bd6622ca2f7c06794835de803746f4190446abc1f",
+    "findings": 0,
+    "mainFollowNineFilesUnchanged": true
+  },
+  "rootIndependentTwelveBlobVerification": {
+    "privateReference": ".claude/campaigns/cmp0616-takeover-20261027/source-bridge-twelve-root-verified.json",
+    "sha256": "370a1854694fc7800f88bb10ccefffc4e8b767d5741527b490ed385ef1262294"
+  }
+}

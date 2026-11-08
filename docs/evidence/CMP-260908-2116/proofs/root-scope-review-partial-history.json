@@ -1,0 +1,96 @@
+{
+  "reviewedAtUtc": "2026-10-29T02:39:29.7138616Z",
+  "reviewer": "/root",
+  "cmpId": "CMP-260908-2116",
+  "owner": "cmp2116r-e2fea90be1",
+  "sourceHead": "ac49b5af784b79bade786ac0c82b9bb3822289f3",
+  "scope": "親3ACの再検証と探索実施。終了protocol成功や全住民の目的達成とは分離",
+  "decision": {
+    "review": "passed",
+    "real": "passed",
+    "exploratory": "pending",
+    "formalCompletionEligible": false,
+    "reasonExploratoryPending": "3住民の独立探索は実施済み。気づき箱の実UI取込・再読込確認と正式文書の最終検分待ち"
+  },
+  "acceptanceCriteria": {
+    "AC1": "passed: role/status controls and terminal hiding",
+    "AC2": "passed: new SPECIFIC UI create/accept/approve; board and three my-shift readbacks; C history preserved; independent reject/cancel unchanged",
+    "AC3": "passed: eight actual UI boundary rows and separate eight API supplement rows; four table hashes unchanged; anonymous UI redirect distinct from API401"
+  },
+  "originalRun": {
+    "exitCode": 1,
+    "finishCreated": false,
+    "finisherExecuted": false,
+    "strictCloseGoalMissed": true,
+    "originalOutcomePreserved": true,
+    "afterAllNineConditions": true,
+    "cleanupAllTenConditions": true,
+    "unionGenerations": 237,
+    "liveGenerations": 0
+  },
+  "residentClaims": {
+    "A": {
+      "executionCompleted": true,
+      "goalsReached": false,
+      "currentConsultationStateVerified": false
+    },
+    "B": {
+      "executionCompleted": true,
+      "goalsReached": false,
+      "acceptCount": 0
+    },
+    "D": {
+      "executionCompleted": true,
+      "goalsReached": false,
+      "assignmentChangeVerified": true,
+      "unauthorizedBoundaryVerified": false,
+      "crossTenantBoundaryVerified": false
+    }
+  },
+  "supportingCi": {
+    "runId": 40632951797,
+    "head": "6d9503ed3bd332b47899740558b05faa9fd84290",
+    "runtimeBackendTreeEqual": true,
+    "scopeContractTests": 37,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "artifactId": 12795482272,
+    "safeSha256": "fce021730f78312c653d8b0ed9a7adac14cf310087629aa5bab2e47558c5e841",
+    "actualAbsentIdComparisonInRun08": false,
+    "notFormalImplementationCi": true
+  },
+  "requestLoggerImpact": {
+    "originalClassificationUnchanged": true,
+    "actualDurationAndStatusUnknown": true,
+    "performanceNormalityClaimed": false,
+    "parentFunctionalAcceptanceBlocked": false,
+    "reason": "固定対象の提出・受諾・承認・却下・取消とreadback/DB整合は実測成功。閾値ERRORの正確な対象request/時間は不明で、これを無害・全体正常とは扱わない。別非同期Todo生成の成功も本判定では主張しない。"
+  },
+  "rootFindings": 0,
+  "sourceReview": {
+    "ui": "ShiftSwapList.vue:47-58,160-193",
+    "candidate": "ShiftSwapMemberPicker.vue:35-67",
+    "authorization": "ShiftSwapFacade.java:98-142",
+    "atomicApproval": "ShiftSwapService.java:200-311",
+    "activeListUnitTests": 9,
+    "targetPathsUnchangedToOriginMain": "f59ea6d054a4a61a05e3084e6b2b1083ccef7673"
+  },
+  "evidence": [
+    "run08-fixed-ui-root-review.json",
+    "run08-resident-preserved-root.json",
+    "independent-after-run08-root-02.json",
+    "run08-external-cleanup-audit-safe.json",
+    "scope-contract-ci-cases-safe.json",
+    "implementation-and-source-gh-safe.json"
+  ],
+  "constraints": {
+    "productionOperations": 0,
+    "newProductFixes": 0,
+    "known0650And0651Unfixed": true,
+    "allResidentGoalsPromoted": false,
+    "oldFailedRunsPromoted": false,
+    "handoffRetained": true
+  },
+  "next": "気づき箱のUI検証後に新しい最終裁定を行い、隔離worktreeの正式証拠と台帳を検分して通常PR/CI/mergeへ進む"
+}

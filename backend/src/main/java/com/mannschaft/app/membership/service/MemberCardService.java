@@ -45,8 +45,52 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class MemberCardService {
+
+    /** ポイント読取用の検証済み共通会員証。更新処理の権限は表さない。 */
+    public record VerifiedPlatformCard(Long userId, Long memberCardId, long expiresAtEpoch) { }
+
+    /** activeな本人の共通会員証を確保する。停止済みカードは復活させない。 */
+    public ApiResponse<com.mannschaft.app.membership.dto.PlatformCardResponse> ensureMyPlatformCard(Long actorUserId) {
+        return platformCardService.ensure(actorUserId);
+    }
+
+    /** 共通会員QRを検証し、チェックイン等の副作用を起こさず本人を解決する。 */
+    @Transactional(readOnly = true)
+    public VerifiedPlatformCard verifyPlatformQr(String qrToken) {
+        if (qrToken == null || qrToken.length() > 512) {
+            throw new BusinessException(MembershipErrorCode.MEMBERSHIP_021);
+        }
+        QrTokenService.MemberCardTokenPayload payload = qrTokenService.parseMemberCardToken(qrToken);
+        if (payload == null || !isCanonicalCardCode(payload.cardCode())
+                || !qrTokenService.hasValidMemberCardTimes(payload)) {
+            throw new BusinessException(MembershipErrorCode.MEMBERSHIP_021);
+        }
+        MemberCardEntity card = memberCardRepository.findByCardCodeAndDeletedAtIsNull(payload.cardCode())
+                .filter(found -> found.getDeletedAt() == null)
+                .orElseThrow(() -> new BusinessException(MembershipErrorCode.MEMBERSHIP_007));
+        if (!qrTokenService.verifyMemberCardSignature(payload, card.getQrSecret())) {
+            throw new BusinessException(MembershipErrorCode.MEMBERSHIP_006);
+        }
+        if (card.getScopeType() != ScopeType.PLATFORM || card.getScopeId() != null) {
+            throw new BusinessException(MembershipErrorCode.MEMBERSHIP_012);
+        }
+        if (card.getStatus() != CardStatus.ACTIVE) {
+            throw new BusinessException(MembershipErrorCode.MEMBERSHIP_003);
+        }
+        return new VerifiedPlatformCard(card.getUserId(), card.getId(), payload.expiresAt());
+    }
+
+    private boolean isCanonicalCardCode(String code) {
+        if (code == null || code.length() != 36) {
+            return false;
+        }
+        try {
+            return java.util.UUID.fromString(code).toString().equalsIgnoreCase(code);
+        } catch (IllegalArgumentException ex) {
+            return false;
+        }
+    }
 
     private static final int CHECKIN_COOLDOWN_MINUTES = 5;
 
@@ -57,6 +101,7 @@ public class MemberCardService {
     private final ApplicationEventPublisher eventPublisher;
     private final NameResolverService nameResolverService;
     private final AccessControlService accessControlService;
+    private final PlatformCardService platformCardService;
 
     /**
      * 自分の会員証一覧を取得する。
@@ -64,6 +109,7 @@ public class MemberCardService {
      * @param userId ユーザーID
      * @return 会員証一覧
      */
+    @Transactional(readOnly = true)
     public ApiResponse<List<MemberCardResponse>> getMyCards(Long userId) {
         List<MemberCardEntity> cards = memberCardRepository
                 .findByUserIdAndDeletedAtIsNullOrderByIssuedAtAsc(userId);
@@ -82,6 +128,7 @@ public class MemberCardService {
      * @param userId リクエストユーザーID
      * @return 会員証詳細
      */
+    @Transactional(readOnly = true)
     public ApiResponse<MemberCardDetailResponse> getCardDetail(Long cardId, Long userId) {
         MemberCardEntity card = findCardOrThrow(cardId);
 
@@ -112,6 +159,7 @@ public class MemberCardService {
      * @param userId リクエストユーザーID
      * @return QRトークン
      */
+    @Transactional(readOnly = true)
     public ApiResponse<QrTokenResponse> getQrToken(Long cardId, Long userId) {
         MemberCardEntity card = findCardOrThrow(cardId);
 
@@ -377,6 +425,7 @@ public class MemberCardService {
      * @param q             検索クエリ
      * @return 会員証一覧とメタ情報
      */
+    @Transactional(readOnly = true)
     public Map<String, Object> getScopeMemberCards(Long currentUserId, ScopeType scopeType, Long scopeId,
                                                     CardStatus status, String q) {
         // 認可: スコープの ADMIN/DEPUTY_ADMIN のみ。非管理者・非メンバー・他スコープ指定は 403。
@@ -492,6 +541,7 @@ public class MemberCardService {
      * @param to     終了日時
      * @return チェックイン履歴
      */
+    @Transactional(readOnly = true)
     public ApiResponse<List<CheckinHistoryResponse>> getCheckinHistory(
             Long cardId, Long userId, LocalDateTime from, LocalDateTime to) {
         MemberCardEntity card = findCardOrThrow(cardId);
@@ -546,6 +596,7 @@ public class MemberCardService {
      * @param to        終了日時
      * @return チェックイン履歴
      */
+    @Transactional(readOnly = true)
     public ApiResponse<List<CheckinHistoryResponse>> getScopeCheckins(
             ScopeType scopeType, Long scopeId, LocalDateTime from, LocalDateTime to) {
         accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), scopeId, scopeType.name());

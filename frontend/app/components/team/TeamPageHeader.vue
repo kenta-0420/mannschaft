@@ -34,6 +34,14 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
+const route = useRoute()
+// slug 切替中に残る旧ヘッダーの操作を無効化する。
+const archiveSlug = computed(() => route.params.slug === props.team.slug ? props.team.slug : '')
+const archived = computed(() => !!props.team.timestamps?.archivedAt)
+const { available: canArchive, busy: archiveBusy, syncError: archiveSyncError, request: requestArchive, retrySync: retryArchiveSync } = useTeamArchiveAction(
+  archiveSlug, archived, async () => { await navigateTo('/teams') },
+)
+const archiveLabel = computed(() => t(archived.value ? 'teamShell.archive.unarchive' : 'teamShell.archive.archive'))
 
 // F02.8 告知ウィザード（ローカル管理）
 const showBroadcastWizard = ref(false)
@@ -45,11 +53,15 @@ const showBroadcastWizard = ref(false)
  */
 const memberCountText = computed(() => {
   const count = props.team.metadata?.memberCount
-  return t('common.scopeShell.memberCount', { count: count === null || count === undefined ? '—' : count })
+  return count === null || count === undefined
+    ? t('common.scopeShell.memberCount', { count: '—' }, 2)
+    : t('common.scopeShell.memberCount', count)
 })
 const supporterCountText = computed(() => {
   const count = props.team.social?.supporterCount
-  return t('common.scopeShell.supporterCount', { count: count === null || count === undefined ? '—' : count })
+  return count === null || count === undefined
+    ? t('common.scopeShell.supporterCount', { count: '—' }, 2)
+    : t('common.scopeShell.supporterCount', count)
 })
 
 /**
@@ -62,7 +74,7 @@ function toggleOverflowMenu(event: Event) {
   overflowMenu.value.toggle(event)
 }
 const overflowMenuItems = computed(() => {
-  const items: { label: string, icon: string, command: () => void }[] = []
+  const items: { label: string, icon: string, command: () => void, disabled?: boolean }[] = []
   if (props.roleName) {
     items.push({
       label: t('market.management.title'),
@@ -92,6 +104,9 @@ const overflowMenuItems = computed(() => {
       command: () => emit('showLeaveConfirm'),
     })
   }
+  if (canArchive.value) {
+    items.push({ label: archiveLabel.value, icon: 'pi pi-box', command: requestArchive, disabled: archiveBusy.value || archiveSyncError.value })
+  }
   return items
 })
 </script>
@@ -108,25 +123,25 @@ const overflowMenuItems = computed(() => {
     @banner-updated="(url) => emit('bannerUpdated', url)"
   >
     <!-- 名前行 + アクション群 -->
-    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-2 pt-1">
+    <div class="flex flex-col md:flex-row md:items-start gap-1 sm:gap-2 pt-1 [&_button]:min-h-11 [&_button]:min-w-11">
       <!-- 左: 戻る + 名前 + メタ情報 -->
-      <div class="flex flex-col gap-1 min-w-0">
+      <div class="flex flex-col gap-1 min-w-0 md:flex-1">
         <div class="flex items-center gap-2 flex-wrap tag-on-light-band">
           <Button icon="pi pi-arrow-left" text rounded size="small" :aria-label="$t('button.back')" @click="emit('back')" />
-          <h1 class="text-xl sm:text-2xl font-bold truncate text-surface-900">
+          <h1 class="min-w-0 max-w-full text-xl sm:text-2xl font-bold truncate text-surface-900">
             {{ displayName }}
           </h1>
           <Tag :value="templateLabel[team.location?.template ?? ''] ?? team.location?.template ?? ''" severity="info" />
-          <RoleBadge v-if="roleName" :role="roleName" />
+          <RoleBadge v-if="roleName" :role="roleName" class="shrink-0 whitespace-nowrap" />
         </div>
         <div class="flex items-center gap-3 text-xs sm:text-sm text-surface-500 flex-wrap pl-8">
-          <span class="flex items-center gap-1" data-testid="scope-header-member-count">
+          <span class="flex items-center gap-1 whitespace-nowrap" data-testid="scope-header-member-count">
             <i class="pi pi-users text-xs" />
             {{ memberCountText }}
           </span>
           <span
             v-if="team.visibility?.supporterEnabled"
-            class="flex items-center gap-1"
+            class="flex items-center gap-1 whitespace-nowrap"
             data-testid="scope-header-supporter-count"
           >
             <i class="pi pi-heart text-xs" />
@@ -136,7 +151,7 @@ const overflowMenuItems = computed(() => {
       </div>
 
       <!-- 右: アクションボタン群 -->
-      <div class="flex items-center gap-2 flex-wrap shrink-0">
+      <div class="flex items-center gap-2 flex-wrap min-w-0 md:flex-1">
         <FavoriteToggleButton
           entity-type="TEAM"
           :entity-id="String(team.id)"
@@ -324,6 +339,24 @@ const overflowMenuItems = computed(() => {
           @click="emit('showLeaveConfirm')"
         />
 
+        <Button
+          v-if="canArchive"
+          :label="archiveLabel"
+          icon="pi pi-box"
+          severity="secondary"
+          outlined
+          size="small"
+          class="hidden sm:inline-flex min-h-11"
+          data-testid="team-archive-button"
+          :loading="archiveBusy"
+          :disabled="archiveBusy || archiveSyncError"
+          @click="requestArchive"
+        />
+        <span v-if="archiveSyncError" role="alert" class="text-sm text-red-500">
+          {{ $t('teamShell.archive.syncError') }}
+          <Button :label="$t('common.scopeShell.retry')" text :disabled="archiveBusy" @click="retryArchiveSync" />
+        </span>
+
         <!-- モバイル(<sm): 低頻度アクションを「⋯」オーバーフローメニューへ格納 -->
         <div v-if="overflowMenuItems.length > 0" class="sm:hidden">
           <Button
@@ -332,10 +365,16 @@ const overflowMenuItems = computed(() => {
             rounded
             severity="secondary"
             size="small"
+            class="min-h-11 min-w-11"
             :aria-label="$t('common.moreActions')"
             @click="toggleOverflowMenu"
           />
-          <Menu ref="overflowMenu" :model="overflowMenuItems" popup />
+          <Menu
+            ref="overflowMenu"
+            :model="overflowMenuItems"
+            :pt="{ itemLink: { class: 'min-h-11 min-w-11' } }"
+            popup
+          />
         </div>
       </div>
     </div>

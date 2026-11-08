@@ -35,15 +35,6 @@ public enum EquipmentErrorCode implements ErrorCode {
     /** 貸出中の備品は削除不可 */
     HAS_ACTIVE_ASSIGNMENTS("EQUIPMENT_008", "貸出中の備品は削除できません。先にすべて返却してください", Severity.WARN),
 
-    /**
-     * 備品のスコープ不一致（404）。
-     *
-     * <p>返却対象の貸出記録（{@code assignmentId}）が、URL パスで指定した備品と異なる備品に
-     * 紐づく場合に投げる。他備品の貸出記録IDを言い当てられても存在の有無が分からないよう、
-     * 越境した ID の存在を秘匿するため 404 に統一する（既存 PARKING_020 の流儀に倣う）。</p>
-     */
-    SCOPE_MISMATCH("EQUIPMENT_009", "備品のスコープが一致しません", Severity.WARN),
-
     /** 不正なコンテンツタイプ */
     INVALID_CONTENT_TYPE("EQUIPMENT_010", "画像形式は JPEG, PNG, WebP のみ対応しています", Severity.WARN),
 
@@ -52,9 +43,6 @@ public enum EquipmentErrorCode implements ErrorCode {
 
     /** 一括操作の件数超過 */
     BULK_LIMIT_EXCEEDED("EQUIPMENT_012", "一括操作は最大20件までです", Severity.WARN),
-
-    /** 一括返却で異なる備品が混在 */
-    MIXED_EQUIPMENT_IN_BULK("EQUIPMENT_013", "一括返却は同一備品の貸出レコードのみ指定できます", Severity.WARN),
 
     /** 備品がメンテナンス中または廃棄済み */
     ITEM_NOT_AVAILABLE("EQUIPMENT_014", "この備品は現在貸出できません", Severity.WARN),

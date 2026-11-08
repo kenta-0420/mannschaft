@@ -221,6 +221,20 @@ class GlobalSearchServiceTest {
         }
 
         @Test
+        @DisplayName("[D-2127-3] SUPPORTER のチームは shifts の検索母集団（admin・member 両集合）に載らない")
+        void SUPPORTERのチームはshifts検索から外れる() {
+            given(accessControlService.isSupporter(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+
+            globalSearchService.search("検索", USER_ID);
+
+            ArgumentCaptor<Collection<Long>> adminIds = ArgumentCaptor.forClass(Collection.class);
+            verify(shiftScheduleRepository)
+                    .searchByKeyword(any(), adminIds.capture(), teamIdsCaptor.capture(), any(Pageable.class));
+            assertThat(adminIds.getValue()).doesNotContain(TEAM_ID);
+            assertThat(teamIdsCaptor.getValue()).doesNotContain(TEAM_ID);
+        }
+
+        @Test
         @DisplayName("[本丸] 組織スコープを持つ種別に、解決した所属組織IDが渡る")
         void 全種別に所属組織IDが渡る() {
             globalSearchService.search("検索", USER_ID);

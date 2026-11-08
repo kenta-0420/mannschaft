@@ -2,6 +2,7 @@ package com.mannschaft.app.budget.controller;
 
 import com.mannschaft.app.budget.dto.CreateFiscalYearRequest;
 import com.mannschaft.app.budget.dto.FiscalYearResponse;
+import com.mannschaft.app.budget.dto.ScopedCreateFiscalYearRequest;
 import com.mannschaft.app.budget.service.BudgetFiscalYearService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
@@ -55,9 +56,11 @@ public class OrgBudgetFiscalYearController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<FiscalYearResponse> create(
             @PathVariable Long orgId,
-            @Valid @RequestBody CreateFiscalYearRequest request) {
+            @Valid @RequestBody ScopedCreateFiscalYearRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
         accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
-        return ApiResponse.of(budgetFiscalYearService.create("ORGANIZATION", orgId, request));
+        CreateFiscalYearRequest scopedRequest = new CreateFiscalYearRequest(
+                request.name(), request.startDate(), request.endDate(), orgId, "ORGANIZATION");
+        return ApiResponse.of(budgetFiscalYearService.create("ORGANIZATION", orgId, scopedRequest));
     }
 }

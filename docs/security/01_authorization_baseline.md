@@ -168,7 +168,7 @@ matcher 式は行挿入で腐らず、`SecurityConfig` を Ctrl+F すれば人�
 >
 > **適用範囲は上記 2 経路に限る**。「認証付きの slug 経路すべてで差を許容する」という包括的な判断ではない。とくに次の契約は変更・免責しない。
 >
-> - F01.2.1 の招待先の可視性（`docs/features/F01.2.1_org_team_groups.md:537`）と加盟受付設定（同 `:993`、実装 `TeamAffiliationFacade`）での「不在と同一ステータス・同一コード」。
+> - F01.2.1 の招待先の可視性（`docs/features/F01.2.1_org_team_groups.md` §6.5「招待先の可視性」）と加盟受付設定（同 §10.2、実装 `TeamAffiliationFacade`）での「不在と同一ステータス・同一コード」。
 > - 本書 §3.3.2（個別 ID 指定系の秘匿ゲート `ScopeConcealingAccessGate`）の、越境応答を不在 ID への応答と完全一致（status・`error.code`・`error.message`）させる契約。チームスコープ配下の**子リソース**（資格・投稿など）の実在や所属を、拒否時の status・code・message の差から判別させてはならない。資格 API（`SkillController` の個別 ID 4 操作と登録）は CMP-261010-2226 で適用済み（`MemberSkillFacade`。越境・不在は 404 `SKILL_002`、同チーム権限不足は 403 `COMMON_002`、`SKILL_003` は非推奨・未使用）。
 >
 > 本項にも対応する番人（自動テスト）は無いため、既存方針どおり契約表へは昇格させない。
@@ -210,6 +210,14 @@ matcher 式は行挿入で腐らず、`SecurityConfig` を Ctrl+F すれば人�
 - `scopeId` は**リソース実体から解決した値**を渡す（パス・クエリの scope 値を鵜呑みにしない）。
 - 公開されているリソース（PUBLIC のチーム・公開中の募集など）と、§3.3.1 の `?teamId=` 一覧型には使わない（非メンバーに常に同一の 403 のまま）。
 - 採用には、試練の前に「EP 別許可主体表」（EP / 許可主体 / 同一スコープの権限不足 / 越境 / 不在 / ID 省略・null の期待値）を作り、契約 IT で実在 ID と不在 ID の応答を並べて比較する（一致だけでは両方壊れたとき偽 green になるので絶対値も固定する）。初出の適用先はシフト希望・ポジション（`ShiftRequestPositionScopeContractIT`）。
+
+**チャット（F04.2）への適用（CMP-261105-1507）**: チャットのスコープはチーム・組織ではなく**チャンネル**（`chat_channel_members`）であり、DM のようにスコープを持たないチャンネルもあるため、`ScopeConcealingAccessGate` をそのまま使わず、同じ判定順の流儀を `ChatChannelAccessGuard`（`concealOrForbid` / `isAwareOfChannel`）に実装している。
+
+- 「存在を知り得る」利用者 = チャンネルメンバー / SYSTEM_ADMIN / スコープチャンネルのスコープ ADMIN・DEPUTY_ADMIN / 公開スコープチャンネル（`TEAM_PUBLIC`・`ORG_PUBLIC` かつ非 private）のスコープ所属者（F04.2 §5「パブリックチャンネルは非メンバーでも存在を確認可能、プライベートは完全非公開」）。この利用者の権限不足だけを 403（`CHAT_005`〜`CHAT_007`・`CHAT_023`・`COMMON_002`）とする。
+- それ以外（他人の DM・グループ DM、非公開チャンネルの非メンバー、他スコープの利用者、村ロビー・イベント・大会チャットの非該当者）への拒否は、チャンネル ID 指定系は `CHAT_001`（404）、メッセージ ID 指定系は子リソースの不在コード `CHAT_002`（404）と完全一致させる。
+- 種別の判定（「DM ではない」等）や転送先の解決は、当事者確認・転送元の秘匿より**後**に置く（先に置くと種別・実在が漏れる）。
+- 判定は**トランザクションの外**で行う。チャンネル ID・メッセージ ID 指定の EP は「Controller（REST・WebSocket）→ `ChatChannelFacade` / `ChatMessageFacade`（tx なし・`ChatChannelAccessGuard` で認可と存在秘匿）→ tx 本体（`ChatChannelService` / `ChatMemberService` / `ChatMessageService`・認可なし）」の形とし、認可が読む他ドメイン（membership / role / tournament / event / village）の行をチャットの書き込みトランザクションに巻き込まない（CLAUDE.md DB 設計の原則 #5・番人 D-3T）。型は `AuthzTxFacadeRegistryArchTest` の登録表（W8）が固定する。自己参加のスコープ在籍だけは、離脱処理との競合を直列化するため tx 本体が行ロックつきで再確認する（事前判定を通った利用者なので、再確認の拒否 `COMMON_002` は実在を漏らさない）。
+- 契約は `ChatExistenceConcealmentContractIT` が全 EP について実在 ID と不在 ID の応答を並べて固定する。
 
 ### 3.4 広告（F09.7 / F09.17・IP レート制限あり）
 `POST /api/v1/ads/*/click`、`GET/POST /api/v1/ads/unsubscribe`、`GET /api/v1/ads/pixels/open`。
@@ -256,7 +264,7 @@ matcher 式は行挿入で腐らず、`SecurityConfig` を Ctrl+F すれば人�
 
 ## 5. WebSocket（/ws）
 
-`/ws` のハンドシェイクは `WebSocketConfig` で `setAllowedOriginPatterns("*")` の上、`WebSocketAuthChannelInterceptor` が STOMP CONNECT 時に JWT を検証する。
+`/ws` のハンドシェイクは `WebSocketConfig` で `setAllowedOriginPatterns(<mannschaft.allowed-origins の列挙>)`（ワイルドカード不使用）の上、`WebSocketAuthChannelInterceptor` が STOMP CONNECT 時に認証ソースを確定する（詳細・正本: [`websocket_external_broker_valkey.md`](../architecture/websocket_external_broker_valkey.md) §2.3.1／§2.3.2）。
 
 - ハンドシェイク自体（HTTP アップグレード）は SecurityFilterChain を通る。`.authenticated()` 反転後にハンドシェイクが 401 で弾かれないことを **実装時に必ず確認** し、必要なら `/ws` を許可リストへ追加する（認証は STOMP CONNECT の interceptor が担うため、ハンドシェイクの permitAll は設計上許容）。
 
@@ -265,16 +273,18 @@ matcher 式は行挿入で腐らず、`SecurityConfig` を Ctrl+F すれば人�
 WebSocket は以下の二層で認証を行う:
 
 1. **ハンドシェイク層（HTTP Upgrade）**: `permitAll()`
-   - SockJS ハンドシェイクは HTTP リクエストのため、Spring Security のフィルターチェーンを通る
-   - WebSocket では Cookie が利用しにくいため、ハンドシェイク自体は許可する
+   - SockJS／生 WebSocket のハンドシェイクは HTTP リクエストのため、Spring Security のフィルターチェーンを通る
+   - ハンドシェイク自体は許可するが、`JwtAuthenticationFilter` が HttpOnly Cookie（`access_token`・`SameSite=Strict`）を検証し、成功すればその Authentication がセッション Principal になる
+   - Origin は `mannschaft.allowed-origins` の列挙のみ許可（同一サイトの別ポートも拒否）。CSWSH 対策のためこの制限と Cookie の SameSite は緩めない
 
-2. **STOMP CONNECT 層（メッセージング）**: JWT 必須
-   - `WebSocketAuthChannelInterceptor` が CONNECT フレームの `Authorization` ヘッダーで JWT を検証する
-   - 検証失敗時: `StompHeaderAccessor.setNativeHeader("ERROR", "認証エラー")` でエラーフレームを返し接続を拒否する
-   - 検証成功後のみ SUBSCRIBE / SEND を許可する
+2. **STOMP CONNECT 層（メッセージング）**: 認証ソースの確定（CMP-261104-0337 改訂）
+   - CONNECT の `Authorization: Bearer <値>` が有効ならそれを採用（Cookie と別ユーザーでも Bearer 優先）
+   - 値のある Bearer が無効なら Cookie へ切り替えず、`x-error-code: UNAUTHENTICATED` の ERROR フレームで接続を拒否する
+   - Bearer が無い／空の `Bearer ` のときは、ハンドシェイクで確立した認証済み Authentication（匿名は除外）を採用する
+   - いずれの場合も Principal 名と session 属性 `userId` を同一ソースから同時に設定する。資格情報が何も無ければ匿名接続（購読ごとに各 Interceptor が認可する）
+   - SUBSCRIBE 拒否は `x-error-code`（`UNAUTHENTICATED`／`FORBIDDEN`／`INVALID_DESTINATION`）で理由を返す
 
-**注意**: `setAllowedOriginPatterns` は本番環境では `MANNSCHAFT_ALLOWED_ORIGINS` と同一ドメインに限定すること。
-開発環境の `"*"` を本番に持ち込まないこと。
+**注意**: `mannschaft.allowed-origins`（`MANNSCHAFT_ALLOWED_ORIGINS`）は本番環境では本番ドメインに限定すること。ワイルドカードを持ち込まないこと。
 
 ---
 
@@ -327,6 +337,7 @@ deny-by-default 反転は以下を実装時に確認してから行う（いず�
 | 日付 | 変更 |
 |---|---|
 | 2026-06-12 | **ステータス追従**: §1 の「移行する（予定）」記述を「移行した（実施済み）」に更新。解決済み課題に取り消し線と根治済み注記を追記。§7 チェックリストを `[x]` 済みに更新。裏取り根拠（`SecurityConfig.java` への `anyRequest().authenticated()` 確認）を記載 |
+| 2026-11-04 | §5 WebSocket: 実装と乖離していた記述（`setAllowedOriginPatterns("*")`・ERROR ネイティブヘッダ）を実態へ是正し、CONNECT の認証ソース優先順位（有効 Bearer ＞ Cookie 認証ハンドシェイク ＞ 匿名、無効 Bearer は拒否）と ERROR フレームの `x-error-code` 約束事を追記（CMP-261104-0337） |
 | 2026-05-26 | 新規作成。deny-by-default 移行設計、webhook 許可リスト、system-admin 包括ルールを定義 |
 | 2026-06-02 | §5 に WebSocket 二層認証モデル（ハンドシェイク層 permitAll／STOMP CONNECT JWT 必須）と `setAllowedOriginPatterns` の本番ドメイン限定要件を追記。§3.6 の Stripe webhook 許可リスト記述を `/**` 再帰禁止・両パス明示に修正。§3.3 の根治記録に `/public/market/categories` 新設・旧 API 維持・FE 修正済みの詳細を追記 |
 | 2026-06-13 | §3.6: SES バウンス/苦情通知を HTTP webhook（`/api/v1/webhooks/ses`・permitAll・SNS 署名検証なし）から SQS 内部認証方式（SES→SNS→SQS→@SqsListener）へ移行（F09.6 Phase 8a）。HTTP 受け口廃止・permitAll 撤去・SSRF/偽造注入の構造的排除。webhook 系統を 4→3（Stripe/LINE/incoming）に更新 |

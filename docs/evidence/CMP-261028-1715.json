@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261028-1715",
+  "scope": "app",
+  "implementation": {
+    "pr": 4205,
+    "sha": "4697a0f99045a2218dbfe6eb8c7e1d894962d8d0"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC1",
+      "description": "表示対象確定後に部品読込とlayers/core予定取得を重ねる。非表示未訪問の取得境界を維持。",
+      "tests": [
+        {
+          "name": "AC1の契約・実証記録",
+          "evidence": "frontend/app/components/widgets/WidgetMyCalendar.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC2",
+      "description": "設定復元完了まで予定表示・操作・保存を止め、応答先着の両順序を守る。",
+      "tests": [
+        {
+          "name": "AC2の契約・実証記録",
+          "evidence": "frontend/app/composables/useMyCalendarData.initialization.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC3",
+      "description": "全解除、既知/新fallback、hidden、旧キー、破損JSON、storage不可、savedviewを維持。",
+      "tests": [
+        {
+          "name": "AC3の契約・実証記録",
+          "evidence": "frontend/app/composables/useMyCalendarData.initialization.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC4",
+      "description": "layers/core/TODO部分失敗・retry・0件回復を維持。",
+      "tests": [
+        {
+          "name": "AC4の契約・実証記録",
+          "evidence": "frontend/app/composables/useMyCalendarData.initialization.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC5",
+      "description": "初期化中の離脱後は旧キー移行・保存・新initializeを行わない。",
+      "tests": [
+        {
+          "name": "AC5の契約・実証記録",
+          "evidence": "frontend/app/composables/useMyCalendarData.initialization.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC6",
+      "description": "Widget/全画面/月/詳細/本人CRUD・mobile agenda/savedweek/gantt/query、他actor非露出・直接拒否を確認。",
+      "tests": [
+        {
+          "name": "AC6の契約・実証記録",
+          "evidence": "docs/evidence/CMP-261028-1715/formal/formal-calendar-ui6-acceptance-safe.json"
+        }
+      ]
+    },
+    {
+      "id": "AC7",
+      "description": "現base/fixed/Navの同条件production各n2を全保持し、区間差とばらつきを報告。全体短縮未証明を明示。",
+      "tests": [
+        {
+          "name": "AC7の契約・実証記録",
+          "evidence": "docs/evidence/CMP-261028-1715/performance/production-calendar-six-sample-comparison-safe.json"
+        }
+      ]
+    },
+    {
+      "id": "AC8",
+      "description": "meaningful red/green・最終CI・検分・正式実機後の独立3住民の実施を証拠化。",
+      "tests": [
+        {
+          "name": "AC8の契約・実証記録",
+          "evidence": "docs/evidence/CMP-261028-1715/source/ci-unit-4697-targets-safe.json"
+        }
+      ]
+    },
+    {
+      "id": "AC9",
+      "description": "GlobalNavItemの可視先読みをinteractionへ限定し、hover/focus/clickを保持。",
+      "tests": [
+        {
+          "name": "AC9の契約・実証記録",
+          "evidence": "frontend/app/components/shell/GlobalNavItem.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 40704724285
+    },
+    {
+      "runId": 40704724219
+    },
+    {
+      "runId": 40704724086
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261028-1715/review-static-safe.md"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261028-1715/formal/formal-calendar-ui6-acceptance-safe.json"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261028-1715/residents/stage-report.md"
+    }
+  },
+  "regressions": [
+    {
+      "description": "Widget準備中の取得開始契約。missing initialize6/empty wrapper1はred根拠から除外。",
+      "test": "WidgetMyCalendar準備中契約",
+      "redEvidence": "docs/evidence/CMP-261028-1715/unit/red-green-evidence-safe.json",
+      "greenEvidence": "docs/evidence/CMP-261028-1715/source/ci-unit-4697-targets-safe.json"
+    },
+    {
+      "description": "可視先読み陽性対照後のtarget hook長さ0期待でNav2件AssertionError。",
+      "test": "GlobalNavItem可視/interaction/route契約2件",
+      "redEvidence": "docs/evidence/CMP-261028-1715/unit/red-green-evidence-safe.json",
+      "greenEvidence": "docs/evidence/CMP-261028-1715/source/ci-unit-4697-targets-safe.json"
+    }
+  ],
+  "limitations": [
+    "whole DOM時間の一貫した改善は未証明。6sampleの範囲と全件を保持する。",
+    "実artifact source488、implementation4697はroot検分済みspec-only bridge。",
+    "標準B0 validatorの既存CMP正本/参照件数不整合は別途残存。overlay限定一致と区別する。",
+    "独立住民3体の実施完了と全目的達成は別。mobileは個人scopeのみ部分達成。"
+  ]
+}

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { toProgressPercent } from '~/utils/projectDetail'
 import type { ProjectResponse, CreateProjectRequest } from '~/types/project'
 
 definePageMeta({ middleware: 'auth' })
@@ -9,6 +10,8 @@ const teamSlug = String(route.params.slug)
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
 const projectApi = useProjectApi()
 const { showError } = useNotification()
+const { t } = useI18n()
+const confirmDialog = useConfirm()
 
 const projects = ref<ProjectResponse[]>([])
 const loading = ref(true)
@@ -30,7 +33,7 @@ async function load() {
     const res = await projectApi.listProjects(teamSlug)
     projects.value = res.data
   } catch {
-    showError('プロジェクトの取得に失敗しました')
+    showError(t('project.error.fetch_failed'))
   } finally {
     loading.value = false
   }
@@ -47,7 +50,7 @@ async function createProject() {
     showDialog.value = false
     await load()
   } catch {
-    showError('プロジェクトの作成に失敗しました')
+    showError(t('project.error.create_failed'))
   }
 }
 
@@ -55,18 +58,27 @@ function openProject(project: ProjectResponse) {
   router.push(`/teams/${teamSlug}/projects/${project.id}`)
 }
 
-async function remove(project: ProjectResponse) {
+function remove(project: ProjectResponse) {
   if (deletingProjectId.value !== null) return
-  if (!confirm(`「${project.title}」を削除しますか？`)) return
-  deletingProjectId.value = project.id
-  try {
-    await projectApi.deleteProject(teamSlug, project.id)
-    await load()
-  } catch {
-    showError('削除に失敗しました')
-  } finally {
-    deletingProjectId.value = null
-  }
+  confirmDialog.require({
+    message: t('project.delete_confirm', { title: project.title }),
+    header: t('project.delete_confirm_header'),
+    icon: 'pi pi-exclamation-triangle',
+    acceptClass: 'p-button-danger',
+    acceptLabel: t('button.delete'),
+    rejectLabel: t('button.cancel'),
+    accept: async () => {
+      deletingProjectId.value = project.id
+      try {
+        await projectApi.deleteProject(teamSlug, project.id)
+        await load()
+      } catch {
+        showError(t('project.error.delete_failed'))
+      } finally {
+        deletingProjectId.value = null
+      }
+    },
+  })
 }
 
 function statusSeverity(status: string) {
@@ -85,11 +97,11 @@ function statusSeverity(status: string) {
 function statusLabel(status: string) {
   switch (status) {
     case 'ACTIVE':
-      return '進行中'
+      return t('project.status.active')
     case 'COMPLETED':
-      return '完了'
+      return t('project.status.completed')
     case 'ARCHIVED':
-      return 'アーカイブ'
+      return t('project.status.archived')
     default:
       return status
   }
@@ -103,7 +115,7 @@ onMounted(async () => {
 
 <template>
   <div>
-    <PageHeader title="プロジェクト" help @help="showGuide = true">
+    <PageHeader :title="$t('project.org_page.title')" help @help="showGuide = true">
       <template #actions>
         <Button
           v-if="isAdminOrDeputy"
@@ -134,11 +146,11 @@ onMounted(async () => {
         <!-- 進捗バー -->
         <div class="mb-2">
           <div class="mb-1 flex justify-between text-xs text-surface-500">
-            <span>{{ project.completedTodos }}/{{ project.totalTodos }} タスク</span>
-            <span>{{ Math.round(project.progressRate * 100) }}%</span>
+            <span>{{ project.completedTodos }}/{{ project.totalTodos }} {{ $t('project.task_unit') }}</span>
+            <span>{{ toProgressPercent(project.progressRate) }}%</span>
           </div>
           <ProgressBar
-            :value="Math.round(project.progressRate * 100)"
+            :value="toProgressPercent(project.progressRate)"
             :show-value="false"
             style="height: 6px"
           />
@@ -153,13 +165,13 @@ onMounted(async () => {
               v-if="project.daysRemaining !== null && project.daysRemaining >= 0"
               class="text-xs"
             >
-              (あと{{ project.daysRemaining }}日)
+              ({{ $t('project.days_remaining', { n: project.daysRemaining }) }})
             </span>
             <span
               v-else-if="project.daysRemaining !== null && project.daysRemaining < 0"
               class="text-xs text-red-500"
             >
-              ({{ Math.abs(project.daysRemaining) }}日超過)
+              ({{ $t('project.days_overdue', { n: Math.abs(project.daysRemaining) }) }})
             </span>
           </div>
           <Button
@@ -169,7 +181,7 @@ onMounted(async () => {
             rounded
             size="small"
             severity="danger"
-            :aria-label="`${project.title}を削除`"
+            :aria-label="$t('project.delete_aria', { title: project.title })"
             :data-testid="`team-project-delete-${project.id}`"
             :disabled="deletingProjectId !== null"
             :loading="deletingProjectId === project.id"
@@ -181,7 +193,7 @@ onMounted(async () => {
       <DashboardEmptyState
         v-if="projects.length === 0"
         icon="pi pi-briefcase"
-        message="プロジェクトがありません"
+        :message="$t('project.org_page.empty')"
         class="col-span-full"
       />
     </div>

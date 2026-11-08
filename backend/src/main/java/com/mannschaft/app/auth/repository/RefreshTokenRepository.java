@@ -4,6 +4,7 @@ import com.mannschaft.app.auth.entity.RefreshTokenEntity;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -17,6 +18,9 @@ import java.util.Optional;
 public interface RefreshTokenRepository extends JpaRepository<RefreshTokenEntity, Long> {
 
     Optional<RefreshTokenEntity> findByTokenHash(String tokenHash);
+
+    /** 署名検証済み本人の単一セッションだけをログアウト対象として取得する。 */
+    Optional<RefreshTokenEntity> findByTokenHashAndUserId(String tokenHash, Long userId);
 
     /**
      * 悲観ロック（{@code PESSIMISTIC_WRITE}）付きでリフレッシュトークンを取得する。
@@ -33,6 +37,21 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshTokenEntity
     Optional<RefreshTokenEntity> findByTokenHashForUpdate(@Param("tokenHash") String tokenHash);
 
     List<RefreshTokenEntity> findByUserIdAndRevokedAtIsNull(Long userId);
+
+    /**
+     * 指定ユーザーの有効な Refresh Token を一括で失効させる（CMP-261012-0910 MFA 回復確認の全セッション失効）。
+     *
+     * <p>一括 UPDATE は InnoDB の current read になるため、同じ TX の読取りビューが行ロック待ちの前に固定されていても、
+     * 待っている間に他 TX（ログイン等）が commit したトークンまで失効できる。{@link #findByUserIdAndRevokedAtIsNull}
+     * で列挙して revoke する方式は、固定済みビューから見えない行を取りこぼす。保留中の変更は実行前に flush する。</p>
+     *
+     * @param userId ユーザー ID
+     * @param now    失効時刻
+     * @return 失効させた件数
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("update RefreshTokenEntity r set r.revokedAt = :now where r.userId = :userId and r.revokedAt is null")
+    int revokeAllActiveByUserId(@Param("userId") Long userId, @Param("now") LocalDateTime now);
 
     void deleteByExpiresAtBefore(LocalDateTime dateTime);
 

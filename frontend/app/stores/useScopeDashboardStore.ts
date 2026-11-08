@@ -162,10 +162,9 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
               this.persistToStorage()
             }
           } else {
-            // BIGINT または UUID どちらでもマッチするアイテムを探す
-            const matchingItem = result.items.find(
-              item => item.scopeId === this.selectedTeamId || item.slug === this.selectedTeamId,
-            )
+            // 公開slugの選択を優先し、一致しない場合だけ旧内部IDを移行する
+            const matchingItem = result.items.find(item => item.slug === this.selectedTeamId)
+              ?? result.items.find(item => item.scopeId === this.selectedTeamId)
             if (matchingItem) {
               const uuid = matchingItem.slug ?? matchingItem.scopeId
               if (uuid !== this.selectedTeamId) {
@@ -186,9 +185,8 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
               this.persistToStorage()
             }
           } else {
-            const matchingItem = result.items.find(
-              item => item.scopeId === this.selectedOrgId || item.slug === this.selectedOrgId,
-            )
+            const matchingItem = result.items.find(item => item.slug === this.selectedOrgId)
+              ?? result.items.find(item => item.scopeId === this.selectedOrgId)
             if (matchingItem) {
               const uuid = matchingItem.slug ?? matchingItem.scopeId
               if (uuid !== this.selectedOrgId) {

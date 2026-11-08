@@ -1,6 +1,7 @@
 package com.mannschaft.app.shift.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.shift.ShiftAssignedUserIds;
 import com.mannschaft.app.shift.ShiftAssignmentStatus;
 import com.mannschaft.app.shift.ShiftErrorCode;
@@ -8,6 +9,8 @@ import com.mannschaft.app.shift.dto.BulkCreateShiftSlotRequest;
 import com.mannschaft.app.shift.dto.CreateShiftSlotRequest;
 import com.mannschaft.app.shift.dto.ShiftAssignmentWarningDto;
 import com.mannschaft.app.shift.dto.ShiftSlotResponse;
+import com.mannschaft.app.shift.dto.SlotAssignmentMoveRequest;
+import com.mannschaft.app.shift.dto.SlotAssignmentMoveResponse;
 import com.mannschaft.app.shift.dto.SlotAssignmentPatchRequest;
 import com.mannschaft.app.shift.dto.UpdateShiftSlotRequest;
 import com.mannschaft.app.shift.entity.ShiftAssignmentEntity;
@@ -224,7 +227,9 @@ public class ShiftSlotService {
                 req.getEndsNextDay()
         );
 
+        // 応答に更新後の version を載せるため flush する（CMP-261010-1432 P0）。
         slotRepository.save(entity);
+        slotRepository.flush();
         recordAssignmentHistory(entity, before, deserializeUserIds(entity.getAssignedUserIds()), userId);
         log.info("シフト枠更新: id={}", slotId);
         return toSlotResponse(entity);
@@ -278,7 +283,9 @@ public class ShiftSlotService {
 
         // managed entity を直接ミューテート（toBuilder().build() 行重複バグ回避）。
         entity.updateAssignedUserIds(serializeUserIds(currentUserIds));
+        // 応答に更新後の version を載せるため flush する（CMP-261010-1432 P0。FE は次の操作でこの値を送る）。
         slotRepository.save(entity);
+        slotRepository.flush();
         recordAssignmentHistory(entity, before, currentUserIds, userId);
 
         log.info("スロット差分割当更新: slotId={}, added={}, removed={}",
@@ -312,13 +319,63 @@ public class ShiftSlotService {
      * @return 警告一覧（重なりが無ければ空リスト。null は返さない）
      */
     private List<ShiftAssignmentWarningDto> detectOverlapWarnings(ShiftSlotEntity entity, List<Long> addedUserIds) {
+        return detectOverlapWarnings(entity, addedUserIds, null);
+    }
+
+    /**
+     * 承認された交代の申請者だけを同じ位置で受諾者へ置換する。
+     *
+     * <p>呼出元は認可・受諾者資格確認後、親→枠を排他ロック付きでrefresh済みであること。
+     * 交代依頼の更新と同一TXに参加し、人数・他担当・枠の業務値を保持する。</p>
+     *
+     * @param slotId 現在値を取得・ロック済みの対象枠ID
+     * @param requesterId 申請者ID
+     * @param accepterId 受諾者ID
+     * @param operatorId 承認管理者ID
+     */
+    @Transactional
+    public void replaceAssignmentForSwap(
+            Long slotId, Long requesterId, Long accepterId, Long operatorId) {
+        ShiftSlotEntity slot = findSlotOrThrow(slotId);
+        List<Long> before = deserializeUserIds(slot.getAssignedUserIds());
+        int requesterIndex = before.indexOf(requesterId);
+        if (requesterIndex < 0 || requesterIndex != before.lastIndexOf(requesterId)) {
+            throw new BusinessException(ShiftErrorCode.OPTIMISTIC_LOCK_CONFLICT);
+        }
+        if (before.contains(accepterId)) {
+            throw new BusinessException(ShiftErrorCode.DUPLICATE_ASSIGNMENT);
+        }
+        // 同一表の完全一致だけを拒否する。部分重なりを許す既存方針は交代でも維持する。
+        detectOverlapWarnings(slot, List.of(accepterId));
+
+        List<Long> after = new ArrayList<>(before);
+        after.set(requesterIndex, accepterId);
+        slot.updateAssignedUserIds(serializeUserIds(after));
+        slotRepository.save(slot);
+        slotRepository.flush();
+
+        // 交代承認だけはBの古い提案を成立済みとみなさず、新しい手動CONFIRMEDを残す。
+        // snapshotからBのPROPOSEDだけを除き、元のmanaged提案行自体は変更しない。
+        List<ShiftAssignmentEntity> existing = assignmentRepository.findAllBySlotId(slot.getId()).stream()
+                .filter(a -> !accepterId.equals(a.getUserId()) || a.getStatus() != ShiftAssignmentStatus.PROPOSED)
+                .toList();
+        recordAssignmentHistory(slot, before, after, operatorId, existing);
+    }
+
+    /**
+     * {@link #detectOverlapWarnings(ShiftSlotEntity, List)} の本体。{@code excludedSlotId} の枠は突き合わせない
+     * （枠間移動では移動元から外す当人を、移動元の枠との重なりで誤って弾かないため）。
+     */
+    private List<ShiftAssignmentWarningDto> detectOverlapWarnings(
+            ShiftSlotEntity entity, List<Long> addedUserIds, Long excludedSlotId) {
         if (addedUserIds.isEmpty()) {
             return List.of();
         }
         Set<Long> conflictingSlotIds = new LinkedHashSet<>();
-        for (ShiftSlotEntity other : slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(
-                entity.getScheduleId())) {
-            if (other.getId().equals(entity.getId())) {
+        // 現在読み取り（FOR SHARE）。親ロック待機中に別操作がコミットした割当を、REPEATABLE READ の
+        // スナップショットで見逃さないため。呼び出し元は必ず親スケジュールを FOR UPDATE で取得済みであること。
+        for (ShiftSlotEntity other : slotRepository.findByScheduleIdForShare(entity.getScheduleId())) {
+            if (other.getId().equals(entity.getId()) || other.getId().equals(excludedSlotId)) {
                 continue;
             }
             List<Long> otherUserIds = deserializeUserIds(other.getAssignedUserIds());
@@ -341,6 +398,89 @@ public class ShiftSlotService {
         return List.of(new ShiftAssignmentWarningDto(
                 ShiftAssignmentWarningDto.ASSIGNMENT_OVERLAP,
                 conflictingSlotIds.stream().sorted().toList()));
+    }
+
+    /**
+     * 割当メンバーを枠 X（移動元）から同じシフト表の枠 Y（移動先）へ <b>1 トランザクションで</b> 移す
+     * （CMP-261010-1432 P。AC-P3〜P7）。
+     *
+     * <p>削除と追加を 2 回の差分割当に分けると、追加が拒否されたときに移動元の割当だけが失われる。
+     * 本メソッドはすべての検査（version・在籍・満員・完全一致の重複）を<b>書き換えの前に</b>済ませ、
+     * どの拒否でも両枠を変えない。</p>
+     *
+     * <p><b>ロック順</b>: 親スケジュール（FOR UPDATE）→ 両枠（FOR UPDATE）。既存の枠更新と同じ親→子の順なので
+     * 新たなデッドロックを作らない。親の ID はスカラーで読み、枠エンティティは FOR UPDATE で初めて読む
+     * （先に通常読みすると、後の FOR UPDATE が永続化コンテキストの古い状態を返すため）。</p>
+     *
+     * <p><b>存在秘匿</b>: 認可は Facade で移動元に対して済んでいる。移動先が不在・別シフト表（同チーム）・
+     * 別チームのいずれでも {@code SHIFT_SLOT_NOT_FOUND}（404）に揃える。移動先の所属は<b>ロックを取る前に</b>
+     * スカラーで照合し、他シフト表・他チームの行はロックしない。</p>
+     *
+     * @param sourceSlotId 移動元の枠 ID
+     * @param request      移動リクエスト
+     * @param operatorId   操作者ユーザー ID
+     * @return 両枠の更新後の状態
+     */
+    @Transactional
+    public SlotAssignmentMoveResponse moveAssignment(
+            Long sourceSlotId, SlotAssignmentMoveRequest request, Long operatorId) {
+        Long scheduleId = slotRepository.findScheduleIdById(sourceSlotId)
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SLOT_NOT_FOUND));
+        lockParentForUpdate(scheduleId, ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
+
+        Long targetSlotId = request.targetSlotId();
+        if (sourceSlotId.equals(targetSlotId)) {
+            throw new BusinessException(CommonErrorCode.COMMON_001);
+        }
+        Long targetScheduleId = slotRepository.findScheduleIdById(targetSlotId).orElse(null);
+        if (!scheduleId.equals(targetScheduleId)) {
+            throw new BusinessException(ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
+        }
+
+        ShiftSlotEntity source = slotRepository.findByIdForUpdate(sourceSlotId)
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SLOT_NOT_FOUND));
+        ShiftSlotEntity target = slotRepository.findByIdForUpdate(targetSlotId)
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SLOT_NOT_FOUND));
+
+        if (!source.getVersion().equals(request.sourceSlotVersion())
+                || !target.getVersion().equals(request.targetSlotVersion())) {
+            throw new BusinessException(ShiftErrorCode.OPTIMISTIC_LOCK_CONFLICT);
+        }
+
+        Long movingUserId = request.userId();
+        List<Long> sourceBefore = deserializeUserIds(source.getAssignedUserIds());
+        List<Long> targetBefore = deserializeUserIds(target.getAssignedUserIds());
+        if (!sourceBefore.contains(movingUserId)) {
+            throw new BusinessException(ShiftErrorCode.MOVE_SOURCE_NOT_ASSIGNED);
+        }
+        if (targetBefore.contains(movingUserId)) {
+            throw new BusinessException(ShiftErrorCode.DUPLICATE_ASSIGNMENT);
+        }
+        if (targetBefore.size() + 1 > target.getRequiredCount()) {
+            throw new BusinessException(ShiftErrorCode.SLOT_ASSIGNMENT_EXCEEDED);
+        }
+        // 完全一致の重複は 409 で拒否（書き換え前に判定する）。移動元は外す当人なので突き合わせない。
+        List<ShiftAssignmentWarningDto> warnings =
+                detectOverlapWarnings(target, List.of(movingUserId), source.getId());
+
+        List<Long> sourceAfter = new ArrayList<>(sourceBefore);
+        sourceAfter.remove(movingUserId);
+        List<Long> targetAfter = new ArrayList<>(targetBefore);
+        targetAfter.add(movingUserId);
+
+        source.updateAssignedUserIds(serializeUserIds(sourceAfter));
+        target.updateAssignedUserIds(serializeUserIds(targetAfter));
+        // 応答に両枠の更新後 version を載せるため flush する。
+        slotRepository.saveAll(List.of(source, target));
+        slotRepository.flush();
+        recordAssignmentHistory(source, sourceBefore, sourceAfter, operatorId);
+        recordAssignmentHistory(target, targetBefore, targetAfter, operatorId);
+
+        log.info("枠間移動: scheduleId={}, from={}, to={}, userId={}",
+                scheduleId, sourceSlotId, targetSlotId, movingUserId);
+        return new SlotAssignmentMoveResponse(
+                toSlotResponse(source),
+                toSlotResponse(target).toBuilder().warnings(warnings).build());
     }
 
     /** 2 つの枠が完全一致（同一日・同一開始・同一終了・同一 endsNextDay）か。 */
@@ -434,6 +574,7 @@ public class ShiftSlotService {
                         entity.getPositionId(), positionName, entity.getRequiredCount()))
                 .assignedUserIds(deserializeUserIds(entity.getAssignedUserIds()))
                 .note(entity.getNote())
+                .version(entity.getVersion())
                 .build();
     }
 
@@ -481,6 +622,15 @@ public class ShiftSlotService {
         }
 
         List<ShiftAssignmentEntity> existing = assignmentRepository.findAllBySlotId(slot.getId());
+        recordAssignmentHistory(slot, before, after, operatorId, existing);
+    }
+
+    /** 取得済み履歴を使って記録する。交代でも履歴SELECTを単票1回に保つための共通処理。 */
+    private void recordAssignmentHistory(
+            ShiftSlotEntity slot, List<Long> before, List<Long> after, Long operatorId,
+            List<ShiftAssignmentEntity> existing) {
+        List<Long> added = after.stream().filter(id -> !before.contains(id)).distinct().toList();
+        List<Long> removed = before.stream().filter(id -> !after.contains(id)).distinct().toList();
 
         List<ShiftAssignmentEntity> toSave = new ArrayList<>();
         for (Long addedUserId : added) {

@@ -125,9 +125,9 @@ class PersonalTimetableDashboardServiceLinkableSlotsTest {
         // 同じ科目「数学I」が月曜1限と水曜1限の2スロット
         PersonalTimetableSlotEntity slot1 = personalSlot(10L, "MON", 1, "数学I", "MA101", "田中先生");
         PersonalTimetableSlotEntity slot2 = personalSlot(20L, "WED", 1, "数学I", "MA101", "田中先生");
-        given(personalSlotRepository.findByPersonalTimetableIdOrderByDayOfWeekAscPeriodNumberAsc(1L))
+        given(personalSlotRepository.findByPersonalTimetableIdInOrderByDayOfWeekAscPeriodNumberAsc(List.of(1L)))
                 .willReturn(List.of(slot1, slot2));
-        given(personalPeriodRepository.findByPersonalTimetableIdOrderByPeriodNumberAsc(1L))
+        given(personalPeriodRepository.findByPersonalTimetableIdInOrderByPeriodNumberAsc(List.of(1L)))
                 .willReturn(List.of(period(1, "1限")));
         given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
 
@@ -152,9 +152,9 @@ class PersonalTimetableDashboardServiceLinkableSlotsTest {
         PersonalTimetableSlotEntity emptySlot = personalSlot(10L, "MON", 1, "", null, null);
         PersonalTimetableSlotEntity nullSlot = personalSlot(20L, "TUE", 1, null, null, null);
         PersonalTimetableSlotEntity validSlot = personalSlot(30L, "WED", 1, "英語", null, null);
-        given(personalSlotRepository.findByPersonalTimetableIdOrderByDayOfWeekAscPeriodNumberAsc(1L))
+        given(personalSlotRepository.findByPersonalTimetableIdInOrderByDayOfWeekAscPeriodNumberAsc(List.of(1L)))
                 .willReturn(List.of(emptySlot, nullSlot, validSlot));
-        given(personalPeriodRepository.findByPersonalTimetableIdOrderByPeriodNumberAsc(1L))
+        given(personalPeriodRepository.findByPersonalTimetableIdInOrderByPeriodNumberAsc(List.of(1L)))
                 .willReturn(List.of());
         given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
 
@@ -176,9 +176,9 @@ class PersonalTimetableDashboardServiceLinkableSlotsTest {
         // 同名科目「数学」で courseCode 違い（MA101 vs MA201）
         PersonalTimetableSlotEntity slot1 = personalSlot(10L, "MON", 1, "数学", "MA101", null);
         PersonalTimetableSlotEntity slot2 = personalSlot(20L, "TUE", 1, "数学", "MA201", null);
-        given(personalSlotRepository.findByPersonalTimetableIdOrderByDayOfWeekAscPeriodNumberAsc(1L))
+        given(personalSlotRepository.findByPersonalTimetableIdInOrderByDayOfWeekAscPeriodNumberAsc(List.of(1L)))
                 .willReturn(List.of(slot1, slot2));
-        given(personalPeriodRepository.findByPersonalTimetableIdOrderByPeriodNumberAsc(1L))
+        given(personalPeriodRepository.findByPersonalTimetableIdInOrderByPeriodNumberAsc(List.of(1L)))
                 .willReturn(List.of());
         given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
 

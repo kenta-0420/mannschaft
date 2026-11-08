@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261006-0632",
+  "scope": "app",
+  "implementation": {
+    "pr": 4160,
+    "sha": "903064839a1181d638259ff7d33ca6674c698768"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "M1",
+      "description": "旧A解決待ち→unmount→B→新A成功→旧応答でも遷移0・新Aを維持する",
+      "tests": [
+        {
+          "name": "両scope実page mountのdeferred応答",
+          "evidence": "frontend/app/pages/teams/[slug].moved.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "M2",
+      "description": "生存MOVEDの1回遷移・subpath/query/hash・301/replaceを維持する",
+      "tests": [
+        {
+          "name": "生存MOVED契約",
+          "evidence": "frontend/app/pages/teams/[slug].moved.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "M3",
+      "description": "unmount後のreject/CURRENT/NOT_FOUND/canonical欠落で遷移・旧エラー再表示なし",
+      "tests": [
+        {
+          "name": "破棄後の応答契約",
+          "evidence": "frontend/app/pages/teams/[slug].moved.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "M4",
+      "description": "同instanceの要求順序・A→B→A・チームwatchdog解除を維持する",
+      "tests": [
+        {
+          "name": "既存世代guardと15秒timer解除契約",
+          "evidence": "frontend/app/pages/teams/[slug].moved.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "M5",
+      "description": "両scopeの旧slug正常遷移・往復・権限あり/なし/他テナント直URLを確認する",
+      "tests": [
+        {
+          "name": "MOVED最終6件（共通実機合計15件）、初回失敗履歴と手動再実施1回を含む殿の判定",
+          "evidence": "docs/evidence/CMP-261006-0632-real.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 40449570283
+    },
+    {
+      "runId": 40449570170
+    },
+    {
+      "runId": 40449569970
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261006-0632-review.md"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261006-0632-real.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261006-0632-exploratory.md"
+    }
+  },
+  "regressions": [
+    {
+      "description": "破棄した旧shellの遅延MOVED/エラーが同slugへ戻った新shellへ干渉する",
+      "test": "両scopeの破棄後応答red6→green15",
+      "redEvidence": "docs/evidence/CMP-261006-0632-review.md",
+      "greenEvidence": "docs/evidence/CMP-261006-0632-review.md"
+    }
+  ]
+}

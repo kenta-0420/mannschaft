@@ -638,7 +638,7 @@ class BroadcastGroupPushIT extends AbstractBroadcastAudienceIT {
         Sc sc = scenario();
 
         broadcastToOrg(sc.xa, sc.org.getId(),
-                bulletinBody(Map.of("targetTeamIds", List.of(sc.t1.getId(), sc.t2.getId()))))
+                bulletinBody(Map.of("targetTeamIds", List.of(sc.t1.getSlug(), sc.t2.getSlug()))))
                 .andExpect(status().isCreated());
 
         assertThat(jobsAfterSettling(sc.org.getId())).isEmpty();
@@ -667,7 +667,7 @@ class BroadcastGroupPushIT extends AbstractBroadcastAudienceIT {
     void H27_MEMBERがチームを選ぶで送るとpushは出ずジョブも作られない() throws Exception {
         Sc sc = scenario();
 
-        long feedId = sendSurvey(sc.xm, sc, Map.of("targetTeamIds", List.of(sc.t1.getId(), sc.t2.getId())));
+        long feedId = sendSurvey(sc.xm, sc, Map.of("targetTeamIds", List.of(sc.t1.getSlug(), sc.t2.getSlug())));
 
         assertThat(savedTargetTeamIds(feedId)).as("表示の絞り込みは保存される")
                 .containsExactlyInAnyOrder(sc.t1.getId(), sc.t2.getId());
@@ -712,7 +712,7 @@ class BroadcastGroupPushIT extends AbstractBroadcastAudienceIT {
     @DisplayName("H18: 「チームを選ぶ」でも push は選んだチーム(T1・T2)と直属メンバーだけに届く。宛先集合の中身は選んだチーム ID")
     void H18_チームを選ぶでもpushは選んだチームと直属メンバーだけに届く() throws Exception {
         Sc sc = scenario();
-        long feedId = sendSurvey(sc.xa, sc, Map.of("targetTeamIds", List.of(sc.t1.getId(), sc.t2.getId())));
+        long feedId = sendSurvey(sc.xa, sc, Map.of("targetTeamIds", List.of(sc.t1.getSlug(), sc.t2.getSlug())));
 
         List<Map<String, Object>> all = jobsAfterSettling(sc.org.getId());
         assertThat(jobsOfType(all, ORG_SCOPE)).as("リスナーの ORGANIZATION fan-out は出さない").isEmpty();

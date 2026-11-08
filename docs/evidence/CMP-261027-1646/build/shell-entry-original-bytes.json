@@ -1,0 +1,10 @@
+{
+  "backend/gradlew": {
+    "bytes": 9316,
+    "sha256": "7301e006d31c9bed1c522ef4dba1e6050786ead469b5e9df0daf2c77e197a737"
+  },
+  "backend/scripts/gradle-turnstile.sh": {
+    "bytes": 24480,
+    "sha256": "02d5ebdb49ec0285372a7a7dac64fb646e765f56a5e59c10af02303cfc08db7c"
+  }
+}

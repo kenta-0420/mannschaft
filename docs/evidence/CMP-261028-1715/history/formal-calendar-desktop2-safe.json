@@ -1,0 +1,141 @@
+{
+  "kind": "formal-ui-not-performance",
+  "sourceHead": "c7879b0244b617ab363927122ab88f801413ecc1",
+  "mode": "desktop",
+  "startedAt": "2026-10-28T11:18:24.864Z",
+  "cases": [
+    {
+      "name": "owner-widget-month-and-personal-create",
+      "status": "failed",
+      "checkpoint": "month-restored",
+      "errorClass": "assertion-or-driver",
+      "strictLocatorFailure": false,
+      "matcher": "toHaveText"
+    }
+  ],
+  "checkpoints": [
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "case-start",
+      "at": "2026-10-28T11:18:48.288Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "owner-natural-login",
+      "at": "2026-10-28T11:18:48.289Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "identity-http",
+      "at": "2026-10-28T11:18:50.489Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "identity-shape",
+      "at": "2026-10-28T11:18:51.446Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "select-personal",
+      "at": "2026-10-28T11:18:51.467Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "widget-heading-visible",
+      "at": "2026-10-28T11:18:55.478Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "widget-42cells",
+      "at": "2026-10-28T11:18:56.937Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "widget-cells-visible",
+      "at": "2026-10-28T11:18:57.084Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-next",
+      "at": "2026-10-28T11:18:57.306Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-next-heading",
+      "at": "2026-10-28T11:18:58.202Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-previous",
+      "at": "2026-10-28T11:18:58.309Z"
+    },
+    {
+      "stage": "owner-widget-month-and-personal-create",
+      "name": "month-restored",
+      "at": "2026-10-28T11:18:58.707Z"
+    }
+  ],
+  "identityShapes": [
+    {
+      "actorAlias": "owner",
+      "httpStatus": 200,
+      "dataObject": true,
+      "idType": "number",
+      "idFinite": true,
+      "idDuplicate": false
+    }
+  ],
+  "ownCreates": 0,
+  "ownUpdates": 0,
+  "ownDeletes": 0,
+  "sharedWrites": 0,
+  "notificationsRequested": 0,
+  "trace": false,
+  "video": false,
+  "rawImages": false,
+  "screenshots": [],
+  "stage": "owner-widget-month-and-personal-create",
+  "checkpoint": "month-restored",
+  "status": "failed",
+  "errorClass": "precondition-assertion-or-driver",
+  "sessions": [
+    {
+      "actorAlias": "owner",
+      "sourceHead": "c7879b0244b617ab363927122ab88f801413ecc1",
+      "credentialsRead": true,
+      "businessMutations": 0,
+      "trace": false,
+      "video": false,
+      "pageErrorCount": 0,
+      "runtimeGuard": {
+        "sourceHead": "c7879b0244b617ab363927122ab88f801413ecc1",
+        "ownerAndSourceMatch": true,
+        "frontendIdentityMatches": true,
+        "frontendOwnedSocketMatches": true,
+        "runtimePublic8081Internal8080Match": true,
+        "existingMainApiIdentityMatches": true,
+        "rawArgvEnvironmentSaved": false
+      },
+      "initialCookieCount": 0,
+      "frontend200": true,
+      "frontendActual3011": true,
+      "frontendLogicalPreserved": true,
+      "apiHealth200": true,
+      "apiActual8080": true,
+      "publicRuntimeApiExpected": true,
+      "fixtureAliasesDistinct": true,
+      "configuredActorAliases": [
+        "owner",
+        "member",
+        "outsider"
+      ],
+      "loginDashboardReached": true,
+      "logoutStatus": 200,
+      "contextClosed": true,
+      "browserClosed": true,
+      "closed": true
+    }
+  ],
+  "allSessionsClosed": true,
+  "finishedAt": "2026-10-28T11:20:45.152Z"
+}

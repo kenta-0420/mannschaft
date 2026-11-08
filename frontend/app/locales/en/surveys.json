@@ -168,7 +168,7 @@
       "remindHint": "Send a reminder to {count} unresponded members (up to 3 times)",
       "remindButton": "Send reminder",
       "remindAutoNotice": "An auto reminder will be sent 24 hours before the deadline",
-      "remindSuccess": "Reminder sent to {count} member(s)",
+      "remindSuccess": "Reminder accepted for sending to {count} unanswered member(s)",
       "remindRemaining": "Remaining sends: {count}",
       "remindFailed": "Failed to send reminder",
       "remindFailedDetail": "Please check sending limit, cooldown and permissions",

@@ -44,13 +44,27 @@ const emit = defineEmits<{
         </span>
       </p>
 
-      <div v-if="items.length > 0" class="overflow-x-auto">
-        <table class="w-full text-sm">
+      <ul v-if="items.length > 0" class="space-y-2 md:hidden" data-testid="closure-preview-cards">
+        <!-- text-spacing-trim:space-all: Chromium の約物詰め（全角約物が隣り合う箇所の幅を詰める既定動作）を止める。
+             詰めると文字は収まっても scrollWidth が詰める前の幅を返し、見た目と計測がずれるため。 -->
+        <li
+          v-for="item in items"
+          :key="item.reservationId"
+          data-testid="closure-preview-card"
+          class="rounded-md border border-surface-200 p-3 text-sm [text-spacing-trim:space-all] dark:border-surface-700"
+        >
+          <p data-field="name" class="break-words font-medium [overflow-wrap:anywhere]">{{ item.userFullName || $t('emergency_closure.label.unknown_user') }}</p>
+          <p data-field="datetime" class="text-surface-600 dark:text-surface-300">{{ formatPreviewDateTime(item.slotDate, item.startTime, item.endTime) }}</p>
+          <div class="mt-1"><Tag :value="statusLabel(item.status)" :severity="statusSeverity(item.status)" /></div>
+        </li>
+      </ul>
+      <div v-if="items.length > 0" class="hidden overflow-x-auto md:block" data-testid="closure-preview-table">
+        <table class="w-full min-w-[22rem] text-sm">
           <thead>
             <tr class="border-b border-surface-200 dark:border-surface-600">
-              <th class="pb-2 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.patient_name') }}</th>
-              <th class="pb-2 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.datetime') }}</th>
-              <th class="pb-2 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.status') }}</th>
+              <th class="whitespace-nowrap pb-2 pr-4 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.patient_name') }}</th>
+              <th class="whitespace-nowrap pb-2 pr-4 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.datetime') }}</th>
+              <th class="whitespace-nowrap pb-2 pr-4 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.status') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -59,11 +73,11 @@ const emit = defineEmits<{
               :key="item.reservationId"
               class="border-b border-surface-100 last:border-0 dark:border-surface-700"
             >
-              <td class="py-2 pr-4">{{ item.userDisplayName }}</td>
-              <td class="py-2 pr-4 text-surface-600 dark:text-surface-300">
+              <td class="whitespace-nowrap py-2 pr-4">{{ item.userFullName || $t('emergency_closure.label.unknown_user') }}</td>
+              <td class="whitespace-nowrap py-2 pr-4 text-surface-600 dark:text-surface-300">
                 {{ formatPreviewDateTime(item.slotDate, item.startTime, item.endTime) }}
               </td>
-              <td class="py-2">
+              <td class="whitespace-nowrap py-2">
                 <Tag :value="statusLabel(item.status)" :severity="statusSeverity(item.status)" />
               </td>
             </tr>

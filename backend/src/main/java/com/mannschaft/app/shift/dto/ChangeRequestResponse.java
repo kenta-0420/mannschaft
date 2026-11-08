@@ -18,6 +18,12 @@ public class ChangeRequestResponse {
     Long scheduleId;
     Long slotId;
 
+    /**
+     * 依頼者の表示名（CMP-261010-1432 M）。退会者など解決できない場合は {@code null}。
+     * 一般メンバーの一覧は自分の依頼だけなので、露出する名前は増えない。
+     */
+    String requesterName;
+
     ChangeRequestTypeDto   requestInfo;  // requestType, reason, requestedBy
     ChangeRequestStatusDto reviewInfo;   // status, reviewerId, reviewComment, reviewedAt
     ChangeRequestTimingDto timing;       // expiresAt, createdAt

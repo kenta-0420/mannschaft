@@ -1,0 +1,209 @@
+{
+  "attemptId": "run08",
+  "owner": "cmp2116r-e2fea90be1",
+  "sourceHead": "ac49b5af784b79bade786ac0c82b9bb3822289f3",
+  "originalRun": {
+    "exitCode": 1,
+    "passed": false,
+    "failedPhase": "independent-three-ready",
+    "finishCreated": false,
+    "finisherExecuted": false,
+    "strictCloseGoalMissed": true,
+    "machineRuntimeStageDefaults": {
+      "real": "not-run",
+      "exploratory": "not-run"
+    },
+    "machineValuesUnchanged": true,
+    "explanation": "ownerの最終stage設定へ到達していない機械default not-runを保持。固定UI専用safe・三者safe・前後監査とrootの別裁定で実施を裏取る。"
+  },
+  "rootSeparateDecision": {
+    "review": "passed",
+    "real": "passed",
+    "exploratory": "passed",
+    "formalCompletionEligible": true,
+    "reason": "独立3住民の実探索・未達保全・気づき箱4観測の表示/出所/再読込非重複・自有browser閉鎖を確認。標準run成功・全目的達成とは分離する。"
+  },
+  "independentResidents": {
+    "A": {
+      "executionCompleted": true,
+      "goalsReached": false,
+      "currentConsultationStateVerified": false
+    },
+    "B": {
+      "executionCompleted": true,
+      "goalsReached": false,
+      "acceptCount": 0
+    },
+    "D": {
+      "executionCompleted": true,
+      "goalsReached": false,
+      "assignmentChangeVerified": true,
+      "unauthorizedBoundaryVerified": false,
+      "crossTenantBoundaryVerified": false
+    }
+  },
+  "allIndependentExecutionsCompleted": true,
+  "allGoalsReached": false,
+  "DRequiredSwitchGoalsReached": {
+    "unauthorized": false,
+    "crossTenant": false
+  },
+  "afterConditions": {
+    "snapshotRead": true,
+    "mysqlExactIdOwnerLabel": true,
+    "knownNonServiceGenerationsExited": true,
+    "externalRuntimeReferencesZero": true,
+    "unknownInaccessibleZero": true,
+    "sharedGenerationsPreserved": true,
+    "residentExecutionCompleted": true,
+    "unrelatedScopeUnchanged": true,
+    "CAllHistoryUnchanged": true
+  },
+  "afterObjectiveConditionsMet": true,
+  "registeredNonServiceGenerationsExited": 192,
+  "externalReferences": 0,
+  "unknownInaccessible": 0,
+  "referenceSurfaces": [
+    "cwd",
+    "exe",
+    "cmdline",
+    "fd",
+    "maps"
+  ],
+  "environmentStringsNotMeasured": true,
+  "dbObservations": {
+    "A": "相談提出・離席復帰、現在状態UI未確認",
+    "B": "受諾入口未発見・accept0",
+    "D": "承認と16–17のA/C→B/Cを確認、unauthorized loadingのみ・crossTenant未実施",
+    "unrelatedScopeUnchanged": true,
+    "CAllHistoryUnchanged": true
+  },
+  "cleanup": {
+    "originalExitCode": 1,
+    "originalCleanup": "removed",
+    "cleanupAuditPassed": true,
+    "conditions": {
+      "allKnownGenerationsExited": true,
+      "scratchRuntimeBrowserAbsent": true,
+      "runtimeBrowserReferencesZero": true,
+      "unknownInaccessibleZero": true,
+      "exactContainersAbsent": true,
+      "exactVolumeAbsent": true,
+      "sharedBaselinePreserved": true,
+      "actualWindowsFourPortsFree": true,
+      "actualWslFourPortsFree": true,
+      "residentSixFileManifestMatches": true
+    },
+    "knownUnionGenerations": 237,
+    "sameGenerationLiveCount": 0,
+    "runPassedClaimed": false,
+    "sharedGenerationsPreserved": true,
+    "environmentStringsMeasured": false,
+    "sourceCachesModified": false,
+    "productionOperations": 0
+  },
+  "priorAttempts": [
+    {
+      "attemptId": "run01",
+      "result": "failed",
+      "exitCode": 1,
+      "fixedUiPassed": false,
+      "note": "run01は残予算が固定1200+住民1200+監査180秒の条件を満たさず、owner.py491で失敗。固定UI起動前・3住民未実施・exit1。owner撤収attentionとrootの後続専有撤収成功を別に保持する。"
+    },
+    {
+      "attemptId": "run02",
+      "result": "failed",
+      "exitCode": 1,
+      "fixedUiPassed": false,
+      "note": "run02固定coreの部分成功はsafe証拠に保持するが、role境界未完了・overall false・exit1・3住民未実施。失敗行/HTTP/DOMを取得できず厳密根因は不明。v3のalert期待修正をrun02の動的失敗原因と断言しない。標準+root外部撤収完了を別記録。"
+    },
+    {
+      "attemptId": "run03",
+      "result": "failed",
+      "exitCode": 1,
+      "fixedUiPassed": false,
+      "note": "run03はsource準備が約31秒に短縮されたが、owner preflightのimage inspect15秒で早期exit1。UI/DB fixture/container/3住民すべて未起動。root調査中、次回再試行は未確定。"
+    },
+    {
+      "attemptId": "run04",
+      "result": "failed",
+      "exitCode": 1,
+      "fixedUiPassed": false,
+      "note": "run04は固定core/C・S3 UI各team/scheduleの4行部分成功。負API S3 resolveを403期待して失敗、非member404 SHIFT_005契約との不一致はsource確認済み。旧actual未保存のため遡及記録不可、exit1/3住民未実施を保持。外部cleanup PASS。"
+    },
+    {
+      "attemptId": "run05",
+      "result": "failed",
+      "exitCode": 1,
+      "fixedUiPassed": false,
+      "note": "v4/source ac49でpreflight image inspect15秒が再びTimeoutExpired。owner.py422→232、UI/fixture/container/住民は未起動でexit1。標準cleanup removed。v4修正のdynamic成功は未検証。"
+    },
+    {
+      "attemptId": "run06",
+      "result": "failed",
+      "exitCode": 1,
+      "fixedUiPassed": true,
+      "note": "固定UI実測成功と探索未完を分離。independent-three-readyでexit1、全run失敗。標準/runtime撤収とroot外部監査は完了。具体ユーザー承認は未回答。"
+    },
+    {
+      "attemptId": "run07",
+      "result": "failed",
+      "exitCode": 1,
+      "fixedUiPassed": true,
+      "note": "固定UI全pass・3住民実探索・前後監査全trueだが、after終了から約26秒内のroot finish作成が間に合わず期限失効、finishなしでowner RuntimeError/標準exit1。標準run成功へ読み替えない。外部撤収監査は別担当の後続。"
+    }
+  ],
+  "limits": [
+    "全3住民goals false。D切替非露出は未実証。固定境界8行とは別の観測。",
+    "B未発見だけで導線欠落を断定しない。source上の実装確認と通常navigation全面実証は異なる。",
+    "探索stage passedは実施・観測triage・気づき箱記録受入。全goal達成・全app無欠陥・標準run成功・coverage合格へは昇格しない。"
+  ],
+  "historicalRootPartialDecision": {
+    "review": "passed",
+    "real": "passed",
+    "exploratory": "pending",
+    "formalCompletionEligible": false,
+    "reasonExploratoryPending": "3住民の独立探索は実施済み。気づき箱の実UI取込・再読込確認と正式文書の最終検分待ち"
+  },
+  "rootFinalDecisionAtUtc": "2026-10-29T03:25:02.8495528Z",
+  "observationRegistration": {
+    "uiNewCount": 4,
+    "topRunIdPreserved": true,
+    "trusted": false,
+    "browserContextServerClosed": true,
+    "fullMeasuredElapsedSeconds": 102.758,
+    "plannedCleanupReserveExceeded": true,
+    "uiVisibleStageCount": 17,
+    "insights": 79,
+    "reloadNewCount": 4,
+    "oldValuesPreserved": true,
+    "status": "observed-unverified",
+    "personas": 36,
+    "actualCleanupSeconds": 74.024,
+    "journeys": 36,
+    "registrationSource": "actual-resident-artifacts",
+    "sourceHeadVisible": true,
+    "cleanupSafeSha256": "50c9159c1f1ac495dd9eb68243ceae5af5233246a8dd757f564b6b7daea09591",
+    "stage": "B4-existing-decision",
+    "budgetComplianceNotPromoted": true,
+    "originalRunVisible": true,
+    "browserPid59572Absent": true,
+    "plannedCleanupReserveSeconds": 60,
+    "sourceLabelsValid": true,
+    "uiSafeSha256": "e0cca540e6e524285b7dfd384a4d7e390c272a74389a01fa070f6925921e633e",
+    "reloadStageCount": 17,
+    "newInsights": 4,
+    "profileAbsent": true,
+    "publicProofSha256": "c847e8471cdf51e45b1d0ae0abe7dcc87a9167b69ca4065db8f7dea3c1c4ddf8"
+  },
+  "generatedDataScope": {
+    "otherCampaignsSynchronized": false,
+    "onlyB0RunOverlayChanged": true,
+    "selectedSafeSha256": "2ede5b49821e0c489c17917e92f55e0175f6a6fa96790e1f745ab0e625abe88b",
+    "globalValidatorPassed": false,
+    "canonicalOverlayDeepEqual": true,
+    "inventoryOrCoverageChanged": false,
+    "baselineOutsideOverlayDeepEqual": true,
+    "globalValidatorFailure": "existing-github-snapshot-reference-set-mismatch"
+  }
+}

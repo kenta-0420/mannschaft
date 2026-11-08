@@ -597,9 +597,9 @@ class ShiftUnpublishedScheduleVisibilityContractIT extends AbstractMySqlIntegrat
     @DisplayName("AC-12: 一覧認可403を維持し、未公開の単体参照は404")
     class Ac12AuthorizationUnchanged {
 
-        @ParameterizedTest(name = "SUPPORTER の {0} は一覧403・秘匿対象の単体404")
+        @ParameterizedTest(name = "SUPPORTER の {0} は一覧・単体とも403")
         @EnumSource(Fixture.class)
-        @DisplayName("SUPPORTER は一覧403、未公開の単体参照は404")
+        @DisplayName("SUPPORTER は一覧・単体とも公開状態に依らず403")
         void サポーターは常に403(Fixture fixture) throws Exception {
             assertAlwaysForbidden(supporterId, fixture);
         }
@@ -654,14 +654,14 @@ class ShiftUnpublishedScheduleVisibilityContractIT extends AbstractMySqlIntegrat
      * 一覧の認可は 403 を維持しつつ、単体参照では未公開の存在を 404 で秘匿する。
      *
      * <p>本メソッドは<b>同一チーム内で権限が足りないだけ</b>の利用者（SUPPORTER）専用。
-     * SUPPORTER は当該チームのメンバーであり存在自体を隠す理由が無いため、
-     * 公開済みは従来どおり 403、未公開だけ {@link #checkScheduleVisible} により 404 となる。
+     * SUPPORTER は当該チームのメンバーだが閲覧権限が無く、公開状態に依らず一律 403 とする
+     * （CMP-260826-2127 D-2127-1: 404/403 の差で公開状態を読ませない）。
      * 越境（別チーム/無所属）は {@link #assertCrossTeamAlwaysNotFound} を使うこと
      * （CMP-260917-1137: 越境と同一メソッドで畳むと存在オラクルが再発する）。</p>
      */
     private void assertAlwaysForbidden(Long userId, Fixture fixture) throws Exception {
         Long scheduleId = scheduleIds.get(fixture);
-        int detailStatus = fixture.visibility == Visibility.HIDDEN ? 404 : 403;
+        int detailStatus = 403;
 
         setAuth(userId);
         mockMvc.perform(get(SCHEDULES_PATH).param("teamId", teamId.toString()))

@@ -26,6 +26,18 @@ public interface PersonalTimetableSlotRepository extends JpaRepository<PersonalT
             Long personalTimetableId, String dayOfWeek);
 
     /**
+     * 個人時間割 ID 群 + 曜日でコマを一括取得（ダッシュボード N+1 解消用。時限順）。
+     */
+    List<PersonalTimetableSlotEntity> findByPersonalTimetableIdInAndDayOfWeekOrderByPeriodNumberAsc(
+            java.util.Collection<Long> personalTimetableIds, String dayOfWeek);
+
+    /**
+     * 個人時間割 ID 群でコマを全件一括取得（ダッシュボード N+1 解消用。曜日→時限順）。
+     */
+    List<PersonalTimetableSlotEntity> findByPersonalTimetableIdInOrderByDayOfWeekAscPeriodNumberAsc(
+            java.util.Collection<Long> personalTimetableIds);
+
+    /**
      * 個人時間割 ID でコマを一括削除。
      */
     @Modifying

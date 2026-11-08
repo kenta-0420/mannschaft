@@ -128,6 +128,8 @@
 | `items[].avatar_url` | アイコン URL（なければ null → FE でイニシャルアバター） |
 | `items[].unread_count` | 当該スコープの未読合計（タイムライン/掲示板/チャット + 要対応件数の総和。バッジ表示用。Valkey キャッシュ推奨） |
 | `items[].sort_order` | 現在の表示順 |
+
+タイムラインウィジェットの `GET /api/v1/timeline/feed` には、選択したタグの内部 `scopeId` を渡す。遷移先に使う公開 `slug` と分け、数字だけのslugも数値変換しない。内部IDが未取得の間はフィードを取得せず、追加の所属APIは呼ばない。通常のチーム・組織タイムラインも既存の詳細シェルの `numericId` をフィード・投稿・添付・お知らせ登録に使い、組織の権限確認URLだけは同じシェルの公開slugを使う。
 | `total_count` | フィルタ適用後の所属スコープ総数 |
 | `total_pages` | `ceil(total_count / 6)` |
 

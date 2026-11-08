@@ -1,5 +1,12 @@
 import type { TeamDashboardResponse, OrgDashboardResponse } from '~/types/dashboard-scope'
 import type { ActivityFeedDetail } from '~/types/dashboard'
+import type { components } from '~/types/generated'
+
+// BEのviewer_roleだけをAPI境界で既存FE型のviewerRoleへ正規化する。
+type RawTeamDashboardResponse = Omit<TeamDashboardResponse, 'viewerRole'> &
+  Pick<components['schemas']['TeamDashboardResponse'], 'viewer_role'>
+type RawOrgDashboardResponse = Omit<OrgDashboardResponse, 'viewerRole'> &
+  Pick<components['schemas']['OrgDashboardResponse'], 'viewer_role'>
 
 interface PlatformAnnouncement {
   id: number
@@ -180,12 +187,16 @@ export function useDashboardApi() {
   // === Scoped Dashboard ===
   async function getOrganizationDashboard(orgId: string, statsPeriod?: string) {
     const query = statsPeriod ? `?statsPeriod=${statsPeriod}` : ''
-    return api<{ data: OrgDashboardResponse }>(`/api/v1/dashboard/organization/${orgId}${query}`)
+    const response = await api<{ data: RawOrgDashboardResponse }>(`/api/v1/dashboard/organization/${orgId}${query}`)
+    const { viewer_role, ...data } = response.data
+    return { ...response, data: { ...data, viewerRole: viewer_role ?? null } }
   }
 
   async function getTeamDashboard(teamId: string, statsPeriod?: string) {
     const query = statsPeriod ? `?statsPeriod=${statsPeriod}` : ''
-    return api<{ data: TeamDashboardResponse }>(`/api/v1/dashboard/team/${teamId}${query}`)
+    const response = await api<{ data: RawTeamDashboardResponse }>(`/api/v1/dashboard/team/${teamId}${query}`)
+    const { viewer_role, ...data } = response.data
+    return { ...response, data: { ...data, viewerRole: viewer_role ?? null } }
   }
 
   // Widget settings

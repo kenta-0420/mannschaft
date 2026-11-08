@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261003-1229",
+  "scope": "app",
+  "implementation": {
+    "pr": 4259,
+    "sha": "71886d7eecd3fc9fececb485b302fc493844530e"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "braces の high 脆弱性による出荷CIの失敗が解消し、npm audit gate と関連CIが成功すること",
+      "tests": [
+        {
+          "name": "audit-with-exemption.test.mjs（除外ゼロでの high/critical 無条件拒否）",
+          "evidence": "frontend/scripts/audit-with-exemption.test.mjs"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 41614278490
+    },
+    {
+      "runId": 41614278393
+    },
+    {
+      "runId": 41614278260
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4259"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261003-1229-verification.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261003-1229-verification.md"
+    }
+  },
+  "regressions": []
+}

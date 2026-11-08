@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261004-1816",
+  "scope": "test-only",
+  "implementation": {
+    "pr": 4045,
+    "sha": "1487f99fbba85b10b6c1098a7e8f20109b13c296"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "archUnitTest と test の両経路で凍結ストアの行数が定数と一致し shard 5 が緑になる。減った行が事故（番人の検出範囲の縮小）でないことを確認する。",
+      "tests": [
+        {
+          "name": "ArchUnitFreezeStoreIntegrityTest（登録対応・七ストア健全性2件）",
+          "evidence": "docs/evidence/CMP-261004-1816-selected-proof.md"
+        },
+        {
+          "name": "ArchUnitFreezeStoreIntegritySelfTest（欠損・境界・形式など17件）",
+          "evidence": "docs/evidence/CMP-261004-1816-selected-proof.md"
+        },
+        {
+          "name": "D3/D5走査境界と削減原因の照合",
+          "evidence": "docs/evidence/CMP-261004-1816-selected-proof.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 40073246043
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261004-1816-selected-proof.md"
+    },
+    "real": {
+      "status": "not-applicable",
+      "scope": "test-only",
+      "reason": "実装PR4045は凍結ストアの試験基準・番人・検体・開発証拠記録の変更のみ。本番Java、画面、API、認可、利用者の操作経路を変更しないため、実機E2Eの対象となる製品挙動の差分がない。"
+    },
+    "exploratory": {
+      "status": "not-applicable",
+      "scope": "test-only",
+      "reason": "実装PR4045は試験用の上限・依存記録方式と番人の変更のみ。画面やAPIへの導線を追加・変更しないため、利用者の探索対象となる導線差分がない。"
+    }
+  },
+  "regressions": [
+    {
+      "description": "専用JVM分離後に台帳で報告された凍結件数不一致を、先行PR3635の専用Integrity必須stage・原因に対応するストア同期で修復。後続PR4045の裁可済上限方式を最終形として記録する。",
+      "test": "ArchUnitFreezeStoreIntegrityTest",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/blob/779dfe616e9113f32c85969bd6394a48cdb12431/docs/task-list.md",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40073246043"
+    }
+  ]
+}

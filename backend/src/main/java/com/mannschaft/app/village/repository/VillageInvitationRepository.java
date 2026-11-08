@@ -31,4 +31,9 @@ public interface VillageInvitationRepository extends JpaRepository<VillageInvita
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT i FROM VillageInvitationEntity i WHERE i.tokenHash = :tokenHash")
     Optional<VillageInvitationEntity> findByTokenHashForUpdate(@Param("tokenHash") String tokenHash);
+
+    /** 失効と受諾を同じ招待行で直列化する。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT i FROM VillageInvitationEntity i WHERE i.id = :invitationId")
+    Optional<VillageInvitationEntity> findByIdForUpdate(@Param("invitationId") UUID invitationId);
 }

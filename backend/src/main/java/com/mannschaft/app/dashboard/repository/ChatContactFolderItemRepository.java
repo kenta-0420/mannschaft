@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,6 +20,12 @@ public interface ChatContactFolderItemRepository extends JpaRepository<ChatConta
      * 指定フォルダのアイテム一覧を取得する。
      */
     List<ChatContactFolderItemEntity> findByFolderId(Long folderId);
+
+    /**
+     * 複数フォルダのアイテムを ID 昇順で一括取得する（フォルダ一覧・チャットハブの N+1 解消用）。
+     * 呼び出し側は {@code folderIds} が空の場合に本メソッドを呼ばないこと。
+     */
+    List<ChatContactFolderItemEntity> findByFolderIdInOrderByIdAsc(Collection<Long> folderIds);
 
     /**
      * アイテム種別×アイテムIDで取得する（1アイテム1フォルダの制約）。

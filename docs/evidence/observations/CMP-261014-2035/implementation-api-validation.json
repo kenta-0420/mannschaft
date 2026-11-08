@@ -1,0 +1,18 @@
+{
+  "repository": "kenta-0420/mannschaft",
+  "implementationHead": "41421e5b4734e05494f24290b164b30730611929",
+  "mergedAt": "2026-10-22T15:16:32Z",
+  "mergeCommit": "d61097a49227386d8b4044a2a6ced72fade5b50a",
+  "checkConclusions": {
+    "success": 15,
+    "skipped": 7
+  },
+  "acceptedCriteria": 47,
+  "ciRuns": [
+    39768140599,
+    39768140610,
+    39768140632,
+    39768210399
+  ],
+  "validated": true
+}

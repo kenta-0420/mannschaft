@@ -1,0 +1,378 @@
+{
+    "campaign":  "CMP-261027-1353",
+    "pr":  4166,
+    "runId":  40523313140,
+    "head":  "3db393c2e4e5608e0e168d59baba85e68342ae78",
+    "kind":  "selected-JUnit-XML-only-no-log-body",
+    "totals":  [
+                   {
+                       "class":  "com.mannschaft.app.timeline.TimelineReadScopeContractIT",
+                       "suites":  8,
+                       "tests":  35,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "class":  "com.mannschaft.app.dashboard.service.ActionRequiredCandidateQueryIT",
+                       "suites":  1,
+                       "tests":  4,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "class":  "com.mannschaft.app.inbox.AnnouncementInboxRoleBatchIT",
+                       "suites":  1,
+                       "tests":  19,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   }
+               ],
+    "suites":  [
+                   {
+                       "class":  "com.mannschaft.app.dashboard.service.ActionRequiredCandidateQueryIT",
+                       "target":  "com.mannschaft.app.dashboard.service.ActionRequiredCandidateQueryIT",
+                       "shard":  5,
+                       "tests":  4,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "cases":  [
+                                     {
+                                         "name":  "アンケ候補は本人未回答と論理削除を保ち期限やrecipient条件を足さない()",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "Inbox候補は全履歴を含め最終queryの期限削除可視性windowを変更しない()",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "回覧候補は本人PENDINGかつACTIVEと論理削除を旧queryと同じにする()",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "出欠候補は取消予定と過去時刻を保守的に残し回答済や論理削除は除外する()",
+                                         "status":  "passed"
+                                     }
+                                 ]
+                   },
+                   {
+                       "class":  "com.mannschaft.app.inbox.AnnouncementInboxRoleBatchIT",
+                       "target":  "com.mannschaft.app.inbox.AnnouncementInboxRoleBatchIT",
+                       "shard":  5,
+                       "tests":  19,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "cases":  [
+                                     {
+                                         "name":  "[1] type=TEAM, permission=-, membership=MEMBER, expected=MEMBER",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "[2] type=TEAM, permission=-, membership=SUPPORTER, expected=SUPPORTER",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "[3] type=TEAM, permission=ADMIN, membership=MEMBER, expected=ADMIN",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "[4] type=TEAM, permission=DEPUTY_ADMIN, membership=SUPPORTER, expected=DEPUTY_ADMIN",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "[5] type=TEAM, permission=GUEST, membership=-, expected=PUBLIC",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "[6] type=TEAM, permission=-, membership=-, expected=PUBLIC",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "[7] type=ORGANIZATION, permission=-, membership=MEMBER, expected=MEMBER",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "[8] type=ORGANIZATION, permission=-, membership=SUPPORTER, expected=SUPPORTER",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "[9] type=ORGANIZATION, permission=ADMIN, membership=MEMBER, expected=ADMIN",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "[10] type=ORGANIZATION, permission=GUEST, membership=-, expected=PUBLIC",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "systemAdminOverridesMissingScopeRole()",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "空の所属1件から21件へ増えてもrole照会と履歴候補SQLは一定、feed本体は取得しない",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "parentOrganizationAdminDoesNotOverrideDirectTeamSupporter()",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "inactiveUserIsPublicWithoutInboxScopes()",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "空の所属が増えても非空scopeのfeed集合を保ち、feed本体の取得は一回だけ",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "nonMemberCannotReadEvenPublicFeedInAnotherScope()",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "[1] source=MEMBERSHIP",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "[2] source=PERMISSION",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "emptyBatchAndZeroWindowIssueNoSql()",
+                                         "status":  "passed"
+                                     }
+                                 ]
+                   },
+                   {
+                       "class":  "配下配信の認可対称性",
+                       "target":  "com.mannschaft.app.timeline.TimelineReadScopeContractIT",
+                       "shard":  5,
+                       "tests":  13,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "cases":  [
+                                     {
+                                         "name":  "認AC-14 DIRECT の投稿を子組織所属者が直リンクで開くと404（POST_NOT_FOUND）",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "配権AC-4 SUPPORTER の DESCENDANTS 投稿も COMMON_002 で拒否される",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "配権AC-2 陽性対照: 組織 DEPUTY_ADMIN は DESCENDANTS で投稿できる",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "一般 MEMBER は初期設定では DIRECT 投稿もできない",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "認AC-13 DESCENDANTS の投稿は受信者が getPost で取得できる（404にならない）",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "認AC-31 陰性対照: 配信範囲外のユーザーからはその返信も見えない（404）",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "認AC-31 同じ配信範囲の他ユーザーからも、その返信を getPost で取得できる",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "配権AC-1 陽性対照: 組織 ADMIN は DESCENDANTS で投稿できる",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "認AC-31 配信で届いた投稿への返信が、返信者自身から getPost で取得できる（404にならない）",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "認AC-18 配信は入場権ではない: 上位組織のタイムライン画面は依然403",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "認AC-15/17 ユーザー投稿一覧: DESCENDANTS は出る・DIRECT は出ない",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "配権AC-5 CHILDREN でも同様: 一般 MEMBER は拒否・ADMIN は許可",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "配権AC-3/8 一般 MEMBER の DESCENDANTS 投稿は COMMON_002 で拒否され1件も保存されない",
+                                         "status":  "passed"
+                                     }
+                                 ]
+                   },
+                   {
+                       "class":  "getFeed",
+                       "target":  "com.mannschaft.app.timeline.TimelineReadScopeContractIT",
+                       "shard":  5,
+                       "tests":  6,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "cases":  [
+                                     {
+                                         "name":  "非メンバーがTEAMフィードを取得すると403（COMMON_002）",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "TEAMフィードをIDカーソルで取得すると重複・欠落なく終端へ到達する",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "正当メンバーはTEAMフィードを取得できる",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "正当な村人はVILLAGEフィードを取得できる",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "PUBLICフィードは所属を問わず取得できる",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "非メンバーがVILLAGEフィードを取得すると404相当（VILLAGE_007 NOT_MEMBER）",
+                                         "status":  "passed"
+                                     }
+                                 ]
+                   },
+                   {
+                       "class":  "getPinnedPosts",
+                       "target":  "com.mannschaft.app.timeline.TimelineReadScopeContractIT",
+                       "shard":  5,
+                       "tests":  2,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "cases":  [
+                                     {
+                                         "name":  "非メンバーのORGANIZATIONピン留め取得は403（COMMON_002）",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "正当メンバーはORGANIZATIONピン留めを取得できる",
+                                         "status":  "passed"
+                                     }
+                                 ]
+                   },
+                   {
+                       "class":  "getPost（投稿詳細・BOLA）",
+                       "target":  "com.mannschaft.app.timeline.TimelineReadScopeContractIT",
+                       "shard":  5,
+                       "tests":  6,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "cases":  [
+                                     {
+                                         "name":  "[BOLA] PERSONALスコープ投稿を本人以外が取得すると404（POST_NOT_FOUND）",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "[BOLA] VILLAGEスコープ投稿を非村人が取得すると404（POST_NOT_FOUND）",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "[BOLA] TEAMスコープ投稿を非メンバーが取得すると404（POST_NOT_FOUND）",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "正当メンバーはTEAMスコープ投稿詳細を取得できる",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "PUBLICスコープ投稿は誰でも取得できる",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "存在しない投稿IDは404（POST_NOT_FOUND、既存挙動の非回帰）",
+                                         "status":  "passed"
+                                     }
+                                 ]
+                   },
+                   {
+                       "class":  "getReplies（親投稿のBOLA）",
+                       "target":  "com.mannschaft.app.timeline.TimelineReadScopeContractIT",
+                       "shard":  5,
+                       "tests":  2,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "cases":  [
+                                     {
+                                         "name":  "正当メンバーは親投稿がTEAMスコープでもリプライを取得できる",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "[BOLA] 親投稿がTEAMスコープで非メンバーが取得すると404（POST_NOT_FOUND）",
+                                         "status":  "passed"
+                                     }
+                                 ]
+                   },
+                   {
+                       "class":  "getUserPosts",
+                       "target":  "com.mannschaft.app.timeline.TimelineReadScopeContractIT",
+                       "shard":  5,
+                       "tests":  4,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "cases":  [
+                                     {
+                                         "name":  "[BOLA根治] 無関係な第三者が閲覧するとPUBLICのみ・TEAM/PERSONALは出ない",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "本人が自分の投稿一覧を見ると全scopeの投稿が出る（TEAM/PERSONAL含む）",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "[BOLA根治] 同じ村に所属する第三者はそのVILLAGE投稿が見える",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "[BOLA根治] 同じTEAMに所属する第三者はそのTEAM投稿は見えるがPERSONAL/別TEAMは見えない",
+                                         "status":  "passed"
+                                     }
+                                 ]
+                   },
+                   {
+                       "class":  "ミュートと認可の分離",
+                       "target":  "com.mannschaft.app.timeline.TimelineReadScopeContractIT",
+                       "shard":  5,
+                       "tests":  2,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "cases":  [
+                                     {
+                                         "name":  "認AC-26 自分のミュートは他人のフィードに影響しない",
+                                         "status":  "passed"
+                                     },
+                                     {
+                                         "name":  "認AC-25 ミュート中スコープの投稿も getPost では 200 で取得できる",
+                                         "status":  "passed"
+                                     }
+                                 ]
+                   },
+                   {
+                       "class":  "timeline 読取経路 scope 認可契約テスト（認可根治 Wave3-B7-timeline）",
+                       "target":  "com.mannschaft.app.timeline.TimelineReadScopeContractIT",
+                       "shard":  5,
+                       "tests":  0,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "cases":  [
+
+                                 ]
+                   }
+               ]
+}

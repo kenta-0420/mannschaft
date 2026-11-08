@@ -1,0 +1,60 @@
+{
+  "kind": "秘密scan誤検知の限定是正",
+  "failure": {
+    "pr": 4112,
+    "runId": 40176107718,
+    "jobId": 121117020565,
+    "rule": "generic-api-key",
+    "file": "docs/evidence/CMP-261024-2051/schema-regression-red-green-summary.json",
+    "line": 8,
+    "sourceCommit": "efa2b77f6d98551be6e0672eaeea7d5ca6e95d10",
+    "status": "failure"
+  },
+  "verification": {
+    "field": "generatedOpenApiCommit",
+    "valuePrinted": false,
+    "format": "40桁小文字16進Git参照",
+    "gitObjectType": "commit",
+    "commitSubject": "生成: 同名確認と一般エラーを分離したOpenAPIを正規同期",
+    "changedFiles": [
+      "docs/openapi.json"
+    ],
+    "historicalAndCurrentValueEqual": true,
+    "openApiJsonParsed": true,
+    "openApiBytesHashMatchesExistingEvidence": true,
+    "conclusion": "公開docs/openapi.jsonだけを更新する実在生成commitであり、認証用秘密値ではない"
+  },
+  "fix": {
+    "file": ".gitleaks.toml",
+    "rule": "generic-api-key",
+    "condition": "AND",
+    "path": "対象ファイルの完全一致1個",
+    "value": "当該実測Git参照の完全一致1個（値は元証拠を参照）",
+    "genericPatternBroadening": false,
+    "historyRewritten": false,
+    "originalEvidenceEditedOrRemoved": false
+  },
+  "scopeAssertions": {
+    "exactPairAccepted": true,
+    "differentPathRejected": true,
+    "suffixPathRejected": true,
+    "prefixPathRejected": true,
+    "differentValueRejected": true,
+    "prefixValueRejected": true,
+    "suffixValueRejected": true
+  },
+  "localGitleaks": {
+    "available": false,
+    "status": "未実行。実際のGitleaks判定は正規CIの新runで確認する。"
+  },
+  "ciAfterFix": "未実行/未合格",
+  "tomlParse": {
+    "status": "成功",
+    "parser": "Python 3.12 tomllib",
+    "rule": "generic-api-key",
+    "condition": "AND",
+    "pathCount": 1,
+    "valueCount": 1,
+    "bothFullyAnchored": true
+  }
+}

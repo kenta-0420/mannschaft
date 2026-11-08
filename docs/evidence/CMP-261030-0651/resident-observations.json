@@ -1,0 +1,264 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261030-0651",
+  "runIds": [
+    "run-20261104-emergency-closure"
+  ],
+  "registrationSource": "actual-resident-artifacts",
+  "trusted": false,
+  "status": "observed-unverified",
+  "note": "緊急休業の戦役3件（送信理由・患者名・送信履歴の表）のアリシゼーション住民4体。画像実体は含めず、private 保管先 C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\（git 非追跡）への path 参照のみ。確定した不備4件は殿が裏取りし、新しい戦役として台帳末尾に起票した。確定に至らない観測（気づき）は台帳へ昇格せず、ここにだけ記録する。",
+  "privateEvidenceRoot": "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\",
+  "realE2eEvidencePath": "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\real-e2e\\",
+  "confirmedDefects": [
+    {
+      "id": "ALIC-1",
+      "title": "確認ダイアログの「送信する」を素早く3回押すと一括送信が3件作られる",
+      "observedBy": [
+        "足軽3"
+      ],
+      "status": "確定（殿が裏取り）。新しい戦役として台帳末尾に起票済み（未着手）",
+      "journeyId": "ALIC-EC-R3-J1",
+      "sourceHead": "4888152b533a6ce6ada7328475cb64798c344fdd",
+      "verification": "殿が DB の SELECT で裏取りした。emergency_closures の id 36・37・38 が team 1607 の同じ秒の行であることを確認。",
+      "evidenceFiles": [
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res3\\5-confirm-dialog.png",
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res3\\6-after-mash.png",
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res3\\7-history-after-toggle.png"
+      ],
+      "measurements": [
+        "一括送信の POST が3回とも 201",
+        "emergency_closures id 36・37・38（team 1607、同じ秒）",
+        "トーストが3回表示"
+      ]
+    },
+    {
+      "id": "ALIC-2",
+      "title": "緊急休業の日付表記が ja の直書き（de でも「11月9日（月）〜…」）",
+      "observedBy": [
+        "足軽4"
+      ],
+      "status": "確定（殿が裏取り）。新しい戦役として台帳末尾に起票済み（未着手）",
+      "journeyId": "ALIC-EC-R4-J1",
+      "sourceHead": "4888152b533a6ce6ada7328475cb64798c344fdd",
+      "verification": "殿がコード EmergencyClosureForm.vue:65-70 の formatDate（「m月d日（曜）」の組み立て）で裏取りした。",
+      "evidenceFiles": [
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res4\\04-preview-390.png",
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res4\\06-confirm-390.png",
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res4\\09-history-collapsed-390.png",
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res4\\10-history-expanded-390.png"
+      ]
+    },
+    {
+      "id": "ALIC-3",
+      "title": "390px で送信履歴・プレビュー表の主要な列と「確認状況を見る」が画面外で、横スクロールの手がかりも無い",
+      "observedBy": [
+        "足軽1",
+        "足軽2",
+        "足軽4",
+        "実機E2E"
+      ],
+      "status": "確定（殿が裏取り）。新しい戦役として台帳末尾に起票済み（未着手）",
+      "journeyId": "ALIC-EC-R1-J1",
+      "sourceHead": "4888152b533a6ce6ada7328475cb64798c344fdd",
+      "verification": "殿が画像を目で確かめた。足軽2・4 と実機E2E の画像でも同じ状態を確認。",
+      "evidenceFiles": [
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res1\\390-08-history-collapsed.png",
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res1\\390-09-history-expanded.png",
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res1\\390-05-preview.png",
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res2\\11-history.png",
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res2\\12-readstatus.png",
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res4\\09-history-collapsed-390.png",
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res4\\10-history-expanded-390.png",
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\real-e2e\\0651-history-collapsed-390x844.png",
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\real-e2e\\0651-history-expanded-390x844.png",
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\real-e2e\\0651-preview-390x844.png"
+      ],
+      "measurements": [
+        "履歴の表 793px に対して表示幅 240px",
+        "初期表示は「送信日時」「休業期間」の2列のみ"
+      ]
+    },
+    {
+      "id": "ALIC-4",
+      "title": "リロード・URL 直打ちの後、STOMP CONNECT のトークンが空で購読が拒否され、誤表示と無限再接続になる",
+      "observedBy": [
+        "殿の追加検証"
+      ],
+      "status": "確定（殿が裏取り）。新しい戦役として台帳末尾に起票済み（未着手）",
+      "journeyId": "ALIC-EC-V1-J1",
+      "sourceHead": "4888152b533a6ce6ada7328475cb64798c344fdd",
+      "verification": "別の足軽が WS フレームと BE ログを採取し、殿が確認した。",
+      "evidenceFiles": [
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\logs\\alic4-ws-frames.md",
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\logs\\alic4-be-log-excerpt.txt",
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res1\\390-09-history-expanded.png",
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res4\\10-history-expanded-390.png"
+      ],
+      "measurements": [
+        "CONNECT の Authorization が「Bearer 」（空のトークン）",
+        "BE ログ「購読を拒否（未認証）」",
+        "2秒ごとの再接続の繰り返し"
+      ],
+      "note": "検証専任の足軽E による WS フレームと BE ログの採取。住民の関連観測: 足軽1 は確認状況の展開時に「閲覧権限がありません」、足軽4 は同じ展開部に「Kein Zugriff」を観測した（住民報告は logs\\resident-reports.md）。画像は両者の展開時のもの。"
+    }
+  ],
+  "residents": [
+    {
+      "personaId": "ALIC-EC-R1",
+      "name": "足軽1",
+      "archetype": "スマホ片手×表示崩れ（390/360、ja）",
+      "runId": "run-20261104-emergency-closure",
+      "registrationSource": "アリシゼーションテスト",
+      "purpose": "スマホ片手で緊急休業を作成し、履歴・プレビューを見る",
+      "privateEvidencePath": "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res1\\",
+      "insights": [],
+      "journeyId": "ALIC-EC-R1-J1",
+      "sourceHead": "4888152b533a6ce6ada7328475cb64798c344fdd"
+    },
+    {
+      "personaId": "ALIC-EC-R2",
+      "name": "足軽2",
+      "archetype": "高齢・低リテラシー×素直（390、ja）",
+      "runId": "run-20261104-emergency-closure",
+      "registrationSource": "アリシゼーションテスト",
+      "purpose": "画面の指示どおりに素直に操作して緊急休業を送る",
+      "privateEvidencePath": "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res2\\",
+      "insights": [],
+      "journeyId": "ALIC-EC-R2-J1",
+      "sourceHead": "4888152b533a6ce6ada7328475cb64798c344fdd"
+    },
+    {
+      "personaId": "ALIC-EC-R3",
+      "name": "足軽3",
+      "archetype": "ADHD傾向×中断・連打（390、ja）",
+      "runId": "run-20261104-emergency-closure",
+      "registrationSource": "アリシゼーションテスト",
+      "purpose": "途中で離れる、ボタンを連打するなど落ち着かない操作をする",
+      "privateEvidencePath": "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res3\\",
+      "insights": [],
+      "journeyId": "ALIC-EC-R3-J1",
+      "sourceHead": "4888152b533a6ce6ada7328475cb64798c344fdd"
+    },
+    {
+      "personaId": "ALIC-EC-R4",
+      "name": "足軽4",
+      "archetype": "多言語(de)×表示崩れ（390/360）",
+      "runId": "run-20261104-emergency-closure",
+      "registrationSource": "アリシゼーションテスト",
+      "purpose": "de ロケールで表示の崩れと未翻訳を探す",
+      "privateEvidencePath": "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res4\\",
+      "insights": [],
+      "journeyId": "ALIC-EC-R4-J1",
+      "sourceHead": "4888152b533a6ce6ada7328475cb64798c344fdd"
+    }
+  ],
+  "unconfirmedInsights": [
+    {
+      "id": "ALIC-EC-INS-1",
+      "title": "de でボタン「Betroffene Reservierungen prüfen」が語の途中で折れ、placeholder が切れる",
+      "observedBy": "足軽4",
+      "verdict": "気づき（確定に至らず。台帳へは昇格しない）",
+      "journeyId": "ALIC-EC-R4-J1",
+      "evidenceFiles": [
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res4\\02-tab-390.png",
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res4\\04-preview-390.png"
+      ],
+      "sourceHead": "4888152b533a6ce6ada7328475cb64798c344fdd",
+      "measurements": [
+        "ボタン幅は約 115px で「Reservieru/ngen/prüfen」と折れる",
+        "placeholder「Grund der Schließung eingeben」は末尾が「einget」と切れる"
+      ]
+    },
+    {
+      "id": "ALIC-EC-INS-2",
+      "title": "日付 input が 151x40、チェックボックスが 20x20、タブ送りが 40x57 で、いずれも 44px 未満",
+      "observedBy": "足軽1",
+      "verdict": "気づき（確定に至らず。台帳へは昇格しない）",
+      "journeyId": "ALIC-EC-R1-J1",
+      "evidenceFiles": [
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res1\\390-02-emergency-input.png",
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res1\\360-02-emergency-input.png"
+      ],
+      "sourceHead": "4888152b533a6ce6ada7328475cb64798c344fdd",
+      "measurements": [
+        "日付 input 151x40",
+        "チェックボックス 20x20",
+        "タブ送り 40x57"
+      ]
+    },
+    {
+      "id": "ALIC-EC-INS-3",
+      "title": "理由が空のとき、エラーはトーストだけで欄の赤枠が無い",
+      "observedBy": [
+        "足軽2",
+        "足軽4"
+      ],
+      "verdict": "気づき（確定に至らず。台帳へは昇格しない）",
+      "journeyId": "ALIC-EC-R2-J1",
+      "evidenceFiles": [
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res2\\06-error-blank-reason.png",
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res4\\05-validation-390.png"
+      ],
+      "sourceHead": "4888152b533a6ce6ada7328475cb64798c344fdd"
+    },
+    {
+      "id": "ALIC-EC-INS-4",
+      "title": "テンプレートを選ぶと、書いた文面が確認なしで上書きされる",
+      "observedBy": "足軽3",
+      "verdict": "気づき（確定に至らず。台帳へは昇格しない）",
+      "journeyId": "ALIC-EC-R3-J1",
+      "evidenceFiles": [
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\logs\\resident-reports.md"
+      ],
+      "sourceHead": "4888152b533a6ce6ada7328475cb64798c344fdd",
+      "note": "住民報告のみ、画像なし。resident-reports.md の「足軽3」節、テンプレート「先生体調不良」を選ぶと書いた理由・件名・本文が確認なしで上書きされた、の項。"
+    },
+    {
+      "id": "ALIC-EC-INS-5",
+      "title": "別ページへ行って戻ると、書きかけが消える",
+      "observedBy": "足軽3",
+      "verdict": "気づき（確定に至らず。台帳へは昇格しない）",
+      "journeyId": "ALIC-EC-R3-J1",
+      "evidenceFiles": [
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res3\\3-after-leave-back.png"
+      ],
+      "sourceHead": "4888152b533a6ce6ada7328475cb64798c344fdd"
+    },
+    {
+      "id": "ALIC-EC-INS-6",
+      "title": "予約画面を初めて開くと「メンバーの権限を初期設定」モーダルが唐突に出る",
+      "observedBy": [
+        "足軽1",
+        "足軽2"
+      ],
+      "verdict": "気づき（確定に至らず。台帳へは昇格しない）",
+      "journeyId": "ALIC-EC-R1-J1",
+      "evidenceFiles": [
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res1\\390-01-initial.png",
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\alicization-0651\\res2\\02-after-modal.png"
+      ],
+      "sourceHead": "4888152b533a6ce6ada7328475cb64798c344fdd"
+    },
+    {
+      "id": "ALIC-EC-INS-7",
+      "title": "dev の初回描画が遅い",
+      "observedBy": [
+        "足軽2",
+        "足軽3",
+        "足軽4"
+      ],
+      "verdict": "気づき（確定に至らず。台帳へは昇格しない）",
+      "journeyId": "ALIC-EC-R1-J1",
+      "evidenceFiles": [
+        "C:\\Claude\\evidence-archive\\alicization\\run-20261104-emergency-closure\\logs\\resident-reports.md"
+      ],
+      "sourceHead": "4888152b533a6ce6ada7328475cb64798c344fdd",
+      "note": "住民報告のみ、画像なし（ログのみ）。resident-reports.md の「足軽2」「足軽3」「足軽4」各節の初回描画の遅さの項（足軽2: loading が1分以上、足軽3: 数十秒、足軽4: SSR が30秒超でタイムアウト）。"
+    }
+  ],
+  "sourceHeads": {
+    "run-20261104-emergency-closure": "4888152b533a6ce6ada7328475cb64798c344fdd"
+  },
+  "sourceHeadNote": "BE と FE は origin/main の 4888152b53（完全な SHA は 4888152b533a6ce6ada7328475cb64798c344fdd）から起動した。"
+}

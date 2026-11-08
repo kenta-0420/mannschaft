@@ -202,21 +202,116 @@ public class AnnouncementAudienceMatcher {
             if (!activeOrgs.contains(feed.getScopeId())) {
                 continue;
             }
-            boolean show;
-            if (hasTeamSelection(feed)) {
-                show = teamSelected(feed.getTargetTeamIds(), ctx.teamId());
-            } else if (isGroupAudience(feed)) {
-                show = matchesGroups(feed, ctx.groupByOrg().get(feed.getScopeId()), liveGroups,
-                        snapshotGroupsByFeed.getOrDefault(feed.getId(), Set.of()));
-            } else {
-                show = true;
-            }
-            if (show) {
+            if (judgeOne(feed, ctx.teamId(), ctx.groupByOrg().get(feed.getScopeId()), liveGroups,
+                    snapshotGroupsByFeed.getOrDefault(feed.getId(), Set.of()))) {
                 matched.add(feed.getId());
             }
         }
         return matched;
     }
+
+    /** 宛先の指定がある告知か（チームを選ぶ・グループ宛て。全チーム宛て＝宛先の記録なしは false）。 */
+    public static boolean isAudienceRestricted(AnnouncementFeedEntity feed) {
+        return hasTeamSelection(feed) || isGroupAudience(feed);
+    }
+
+    /**
+     * 1 件の告知が 1 つのチームを宛先に含むかの純関数（判定の意味の唯一の正。ダッシュボードの一覧・プレビュー・一括既読で共用する）。
+     *
+     * <p>呼び出し側が「チームが告知の組織に ACTIVE で加盟している（アーカイブ・論理削除を除く）」ことを確かめたうえで呼ぶ。
+     * 全チーム宛て＝true、チームを選ぶ＝選ばれていれば true（グループの移動・削除に影響されない）、グループ宛て＝
+     * 現在の所属グループ・未分類・スナップショットの OR。</p>
+     *
+     * @param currentGroup   チームの現在の所属グループ（未分類は null）
+     * @param liveGroups     組織の生存グループ
+     * @param snapshotGroups 送信時にこのチームが対象だったグループ ID（スナップショット）
+     */
+    static boolean judgeOne(AnnouncementFeedEntity feed, Long teamId, UUID currentGroup, Set<UUID> liveGroups,
+                            Set<String> snapshotGroups) {
+        if (hasTeamSelection(feed)) {
+            return teamSelected(feed.getTargetTeamIds(), teamId);
+        }
+        if (isGroupAudience(feed)) {
+            return matchesGroups(feed, currentGroup, liveGroups, snapshotGroups);
+        }
+        return true;
+    }
+
+    /**
+     * 1 件の告知について、候補チームのうち宛先に含まれるチームの ID を返す（プレビューの宛先資格 Qa。ALIC-1 §2.7）。
+     *
+     * <p>SQL はチーム数に依らず、加盟とグループ 1 本・生存グループ 0〜1 本（グループ宛て時）・スナップショット 0〜1 本。</p>
+     */
+    public Set<Long> matchingTeams(AnnouncementFeedEntity feed, Collection<Long> teamIds) {
+        if (feed == null || feed.getId() == null) {
+            return new LinkedHashSet<>();
+        }
+        Set<Long> teams = new LinkedHashSet<>();
+        matchingPairs(List.of(feed), teamIds).forEach((feedId, matched) -> teams.addAll(matched));
+        return teams;
+    }
+
+    /**
+     * 複数の告知について、候補チームのうち宛先に含まれるチームの ID を告知ごとに返す（一括既読 read-batch の判定。ALIC-1 §2.7）。
+     *
+     * <p>告知が属する組織ごとに SQL を発行する（read-batch は 1 組織のパス配下なので通常 1 組織）。
+     * 告知の件数・チーム数に比例して SQL は増えない。宛先に含まれるチームが無い告知はキーに現れない。</p>
+     *
+     * @return 告知 ID → 宛先に含まれる候補チーム ID
+     */
+    public Map<Long, Set<Long>> matchingPairs(Collection<AnnouncementFeedEntity> feeds, Collection<Long> teamIds) {
+        Map<Long, Set<Long>> result = new HashMap<>();
+        if (feeds == null || feeds.isEmpty() || teamIds == null || teamIds.isEmpty()) {
+            return result;
+        }
+        Map<Long, List<AnnouncementFeedEntity>> byOrg = new java.util.LinkedHashMap<>();
+        for (AnnouncementFeedEntity feed : feeds) {
+            if (feed != null && feed.getId() != null && feed.getScopeId() != null) {
+                byOrg.computeIfAbsent(feed.getScopeId(), k -> new ArrayList<>()).add(feed);
+            }
+        }
+        for (Map.Entry<Long, List<AnnouncementFeedEntity>> entry : byOrg.entrySet()) {
+            Long orgId = entry.getKey();
+            List<AnnouncementFeedEntity> orgFeeds = entry.getValue();
+            Map<Long, UUID> groupByTeam = new HashMap<>();
+            for (var a : membershipQueryService.findActiveTeamGroupAssignmentsIn(orgId, teamIds)) {
+                groupByTeam.put(a.teamId(), a.groupId());
+            }
+            if (groupByTeam.isEmpty()) {
+                continue;
+            }
+            List<AnnouncementFeedEntity> groupFeeds = orgFeeds.stream()
+                    .filter(f -> !hasTeamSelection(f) && isGroupAudience(f)).toList();
+            Set<UUID> liveGroups = Set.of();
+            Map<Long, Map<Long, Set<String>>> snapshots = Map.of();
+            if (!groupFeeds.isEmpty()) {
+                liveGroups = orgTeamGroupService.findLiveGroupIds(List.of(orgId));
+                snapshots = new HashMap<>();
+                List<Long> feedIds = groupFeeds.stream().map(AnnouncementFeedEntity::getId).toList();
+                for (int from = 0; from < feedIds.size(); from += SNAPSHOT_IN_CHUNK) {
+                    List<Long> chunk = feedIds.subList(from, Math.min(feedIds.size(), from + SNAPSHOT_IN_CHUNK));
+                    for (AnnouncementFeedGroupSnapshotEntity s
+                            : snapshotRepository.findByTeamIdInAndFeedIdIn(groupByTeam.keySet(), chunk)) {
+                        snapshots.computeIfAbsent(s.getFeedId(), k -> new HashMap<>())
+                                .computeIfAbsent(s.getTeamId(), k -> new HashSet<>()).add(s.getGroupId());
+                    }
+                }
+            }
+            for (AnnouncementFeedEntity feed : orgFeeds) {
+                for (Map.Entry<Long, UUID> team : groupByTeam.entrySet()) {
+                    Set<String> snapshotGroups = snapshots.getOrDefault(feed.getId(), Map.of())
+                            .getOrDefault(team.getKey(), Set.of());
+                    if (judgeOne(feed, team.getKey(), team.getValue(), liveGroups, snapshotGroups)) {
+                        result.computeIfAbsent(feed.getId(), k -> new LinkedHashSet<>()).add(team.getKey());
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
+    /** スナップショット取得の IN 句 1 回あたりのフィード数。 */
+    private static final int SNAPSHOT_IN_CHUNK = 500;
 
     private static boolean matchesGroups(AnnouncementFeedEntity feed, UUID currentGroup, Set<UUID> liveGroups,
                                          Set<String> snapshotGroupIds) {

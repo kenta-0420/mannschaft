@@ -13,6 +13,7 @@ import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * 受信WebhookトークンEntity。
@@ -32,6 +33,7 @@ public class IncomingWebhookTokenEntity extends BaseEntity {
     @Column(nullable = false)
     private Long scopeId;
 
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Column(nullable = false, length = 36, unique = true)
     private String token;
 

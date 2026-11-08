@@ -68,7 +68,8 @@ class ProvisioningAcceptanceConcurrencyIT extends AbstractMySqlIntegrationTest {
         transactionTemplate.executeWithoutResult(tx -> {
             insertRoleIfAbsent("SYSTEM_ADMIN", 1);
             insertRoleIfAbsent("ADMIN", 2);
-            insertRoleIfAbsent("MEMBER", 3);
+            // 本番 seed（V2.014）と同じ priority で入れる。roles は singleton container で全 IT が共有する参照表で、コミットした行は後続の IT にも残る（違う priority を残すと MeControllerMembershipIntegrationTest 等の前提を壊す）
+            insertRoleIfAbsent("MEMBER", 4);
         });
         adminRoleId = roleRepository.findByName("ADMIN").orElseThrow().getId();
 

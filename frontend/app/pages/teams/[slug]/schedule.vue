@@ -9,6 +9,7 @@ import {
 
 definePageMeta({ middleware: 'auth' })
 
+const { t } = useI18n()
 const route = useRoute()
 const teamSlug = String(route.params.slug)
 const scheduleApi = useScheduleApi()
@@ -75,7 +76,7 @@ function onEditEvent() {
 
 async function onDeleteEvent() {
   if (!canManageSchedule.value) return
-  if (!selectedEventId.value || !confirm('このイベントを削除しますか？')) return
+  if (!selectedEventId.value || !confirm(t('schedule.confirmDelete'))) return
   try {
     await scheduleApi.deleteSchedule('team', teamSlug, selectedEventId.value)
     showDetailPanel.value = false
@@ -104,13 +105,13 @@ onMounted(async () => {
 <template>
   <PageLoading v-if="loading" />
   <div v-else>
-    <div class="mb-4 flex items-center justify-between">
-      <PageHeader title="スケジュール" />
-      <div class="flex items-center gap-2">
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <PageHeader :title="$t('schedule.page_title')" />
+      <div class="flex min-w-0 flex-wrap items-center gap-2">
         <NuxtLink :to="`/teams/${teamSlug}/schedule-keeps`">
-          <Button :label="$t('scheduleKeep.title')" icon="pi pi-bookmark" outlined data-testid="schedule-keep-nav-link" />
+          <Button :label="$t('scheduleKeep.title')" icon="pi pi-bookmark" outlined class="min-h-11 min-w-11" data-testid="schedule-keep-nav-link" />
         </NuxtLink>
-        <Button v-if="canManageSchedule" label="予定を追加" icon="pi pi-plus" @click="onAddButtonClick" />
+        <Button v-if="canManageSchedule" :label="$t('schedule.event_add')" icon="pi pi-plus" class="min-h-11" @click="onAddButtonClick" />
       </div>
     </div>
 
@@ -179,7 +180,7 @@ onMounted(async () => {
           />
         </SectionCard>
         <SectionCard v-else class="p-8">
-          <DashboardEmptyState icon="pi pi-calendar" message="イベントを選択してください" />
+          <DashboardEmptyState icon="pi pi-calendar" :message="$t('schedule.selectEvent')" />
         </SectionCard>
       </div>
     </div>

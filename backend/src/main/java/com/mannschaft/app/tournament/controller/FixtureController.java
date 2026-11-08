@@ -14,6 +14,7 @@ import com.mannschaft.app.tournament.dto.RosterResponse;
 import com.mannschaft.app.tournament.dto.ScoreUpdateRequest;
 import com.mannschaft.app.tournament.dto.StatusChangeRequest;
 import com.mannschaft.app.tournament.service.FixtureService;
+import com.mannschaft.app.tournament.service.TournamentViewAccessGate;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -83,6 +84,8 @@ import java.util.List;
 public class FixtureController {
 
     private final FixtureService matchService;
+    /** 閲覧系 GET の入口で URL の組織と大会の所属を照合する認可ゲート（非トランザクション）。 */
+    private final TournamentViewAccessGate tournamentViewAccessGate;
 
     // ===== Matchday =====
 
@@ -91,6 +94,7 @@ public class FixtureController {
     public ResponseEntity<ApiResponse<List<MatchdayResponse>>> listMatchdays(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long divId) {
         Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        tournamentViewAccessGate.verifyViewable(orgId, tId, viewerUserId);
         return ResponseEntity.ok(ApiResponse.of(matchService.listMatchdays(tId, divId, viewerUserId)));
     }
 
@@ -122,6 +126,7 @@ public class FixtureController {
     public ResponseEntity<ApiResponse<FixtureResponse>> getMatch(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long matchId) {
         Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        tournamentViewAccessGate.verifyViewable(orgId, tId, viewerUserId);
         return ResponseEntity.ok(ApiResponse.of(matchService.getMatch(tId, matchId, viewerUserId)));
     }
 
@@ -220,6 +225,7 @@ public class FixtureController {
     public ResponseEntity<ApiResponse<List<RosterResponse>>> listRosters(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long matchId) {
         Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        tournamentViewAccessGate.verifyViewable(orgId, tId, viewerUserId);
         return ResponseEntity.ok(ApiResponse.of(matchService.listRosters(tId, matchId, viewerUserId)));
     }
 

@@ -46,6 +46,12 @@ interface InboxSourceAdapter {
 
 > **announcement の注意**: `PersonalAnnouncementController.getPersonalFeed` は未実装（空返却）のため依存しない。`AnnouncementFeedQueryRepository.findByScope`（`DashboardService` が使用中）を直接利用する。
 >
+> **Inboxの最新ロール一括解決（CMP-261026-1912）**: ACTIVE・非削除利用者の `user_roles ∪ current memberships` によるTEAM/ORGANIZATION列挙を維持し、`RoleResolver.resolveViewerRolesFresh` から既存 `MembershipBatchQueryService.snapshotForUser` をdirectスコープだけで1回呼ぶ。親組織・配下組織の所属を暗黙に継承しない。SYSTEM_ADMINを最優先とし、それ以外は利用者の活性を一度確認して既存ViewerRole正規化（GUEST・null・未知値はPUBLIC）を共有する。
+>
+> Inboxは毎回最新値で判定し、役割解除・降格を次の取得からタイトル・本文の可視性へ反映する。既存Dashboardの単件解決・60秒キャッシュ・失効処理は変更しない。スコープ順序、スコープ毎のwindow、feed取得、visibility・payment gate・既読・重複排除は従来どおりであり、feedのスコープ毎照会はrole照会の定数予算と分けて検証する。
+>
+> 同値性の前提は固定6ロールの正準priorityと、[F01.2 DB設計のuser_rolesスコープ規則](../F01.2_org_team_member_role/01_db_design.md)（team_idとorganization_idの同時非NULLを禁止）。既存snapshot全体の意味やDB制約は本対応で変更しない。
+>
 > **既読の取得**: 各アダプタはソース固有の既読（`is_read` / `announcement_read_status` の有無 / `is_confirmed`）を `InboxItemRaw.sourceRead` に載せる。TODO は既読概念がないため「完了=対象外」で表現。
 
 ---
@@ -64,7 +70,8 @@ interface InboxSourceAdapter {
 0. 取得ウィンドウを算出: window = (page+1)*size + SAFETY_MARGIN（= 20）
 1. 各アダプタを window 件で呼び InboxItemRaw を集める（境界付きウィンドウ・各アダプタは Pageable で window 件まで）
 2. オーバーレイをまとめ取り:
-     inbox_item_states を user_id で1クエリ取得 → Map<(sourceType,sourceId), state>
+     inbox_item_states を user_id + source_type + 出現source_idで取得 → Map<(sourceType,sourceId), state>
+       source_type別にsource_idを重複排除し、1000件ずつIN句へ渡す（空ならSQLなし）
      inbox_label_links（+ notification_labels 現役）を user_id で1クエリ取得 → Map<(sourceType,sourceId), List<label>>
    （★N+1回避の肝。item毎には引かない）
 3. 各 InboxItemRaw に state/labels を被せて InboxItem を確定:
@@ -113,6 +120,10 @@ interface InboxSourceAdapter {
 > **CONFIRMABLE / TODO_DUE の従来「無制限 fetch」を根絶**: 以前は MENTION/CONFIRMABLE/TODO_DUE が全件取得していた。Phase 3 ③ で全ソースを `Pageable`（または DB 側絞り込み＋ Pageable）に統一し、メモリに載る件数を `window` で境界付けた。TODO_DUE は従来 `findMyTodos` の全件取得＋Java フィルタだったが、DB 側で「未完了∧近接/超過」に絞ってから上限を掛ける `findMyDueTodos` に置換した。
 
 > **サマリ（タブ/バッジ）**: `getSummary` は概算で十分なため `SUMMARY_WINDOW`（500）の広めウィンドウで集計する。
+
+> **読込量の制限（CMP-261026-1912）**: 状態オーバーレイは出現した通知だけを本人・ソース種別・IDで検索し、1000件単位に分割する。SQL回数は出現IDのチャンク数に比例し、無関係なtriage履歴数には依存しない。サマリはラベルリンク・ラベル本体・自動提案を取得せず、ソース固有の既読、アーカイブ、スヌーズ、名寄せと代表選択は一覧と同じ規則を通す。ANNOUNCEMENTの上限は従来どおり**所属スコープごとに500件**であり、その和集合を全体500件に切り詰めない。
+
+> NOTIFICATIONの有界取得は`List`と`Pageable`を使い、取得条件・priority第一の順序・window上限を保つ。集約に総件数は不要なので、`Page`のページメタデータを作るためのCOUNT SQLは発行しない。
 
 - **孤児の除外**: アダプタが返すのは生存ソースのみ。オーバーレイにあってソースが消えた `(sourceType,sourceId)` はマージで自然に脱落（表示されない）。物理掃除は任意（Phase 3）。
 

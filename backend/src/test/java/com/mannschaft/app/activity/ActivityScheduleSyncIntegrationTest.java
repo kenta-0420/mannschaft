@@ -22,9 +22,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.bean.override.convention.TestBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -52,6 +55,15 @@ class ActivityScheduleSyncIntegrationTest extends AbstractMySqlIntegrationTest {
     @PersistenceContext private EntityManager em;
     private Long teamId;
     private Long scheduleId;
+
+    // 選択回（10/12）は終了済み、後続回（10/14）は未来の状態を実行日に依存させない。
+    @TestBean(name = "wallClock", methodName = "fixedWallClock")
+    private Clock wallClock;
+
+    static Clock fixedWallClock() {
+        return Clock.fixed(Instant.parse("2026-10-13T03:00:00Z"),
+                com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE);
+    }
 
     @BeforeEach
     void setup() {

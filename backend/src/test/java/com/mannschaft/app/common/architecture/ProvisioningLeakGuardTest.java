@@ -65,7 +65,9 @@ class ProvisioningLeakGuardTest {
                     "existsBySlugAndDeletedAtIsNull",
                     // 既存債務: BulletinScopeIdResolver / BlogPostService が直接使用中。
                     // 是正は別タスク（本 PR は resolveTeamId の入口のみを対象とする）。
-                    "findBySlugAndDeletedAtIsNull"
+                    "findBySlugAndDeletedAtIsNull",
+                    // CMP-260902-0059: SYSTEM_ADMIN認可後の復元専用。PROVISIONED/削除済みを含めて検索するが、通常公開resolverは使わない。
+                    "findIdBySlugIncludingDeleted"
             ),
             "OrganizationRepository", Set.of(
                     "existsBySlugAndDeletedAtIsNull",

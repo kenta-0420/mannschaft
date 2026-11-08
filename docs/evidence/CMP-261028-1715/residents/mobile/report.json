@@ -1,0 +1,46 @@
+{
+  "runId": "calendar-residual-20261028",
+  "personaId": "resident-mobile",
+  "journeyId": "mobile-calendar-local-1",
+  "locale": "ja",
+  "viewports": [
+    {
+      "width": 390,
+      "height": 844
+    },
+    {
+      "width": 360,
+      "height": 800
+    }
+  ],
+  "purpose": "外出先で直近1週間の自分が見られる予定を把握",
+  "outcome": "部分達成:個人の予定で10/28から11/3に表示行がないことを確認。チーム・組織のscopeは未探索",
+  "observations": [
+    "横overflowなし、doc幅は両viewportと一致",
+    "主要操作の外枠は44px以上、combobox内部は42pxだが外枠146x44",
+    "月の予定行button DOM383、入れ子button0、日付子要素383。実予定の一意件数は未検証",
+    "10月高さ36444px、初期先頭9/28。今日/週へのUIは見えるヘッダー範囲で見当たらず",
+    "タイトルpのscrollWidth超過は390で229行、360で383行。truncate CSSにより省略。表示仕様・不具合は未判定",
+    "11月は空状態文言を確認"
+  ],
+  "errors": {
+    "pageerror": 0,
+    "requestfailed": 0,
+    "http400plus": 0,
+    "automationTimeouts": 4
+  },
+  "cleanup": {
+    "businessMutations": 0,
+    "logoutStatus": 200,
+    "contextClosed": true,
+    "browserClosed": true,
+    "closed": true
+  },
+  "adoptedEvidence": [
+    "07-week-end-390",
+    "09-calendar-top-360",
+    "10-next-month-360",
+    "11-calendar-top-390"
+  ],
+  "privacy": "採用画像は予定タイトル・所属のカラムだけ一時CSS mask。実画像をview_imageで全件視認。初期json監査safe、初期/遷移証跡は自作分のみ撤去。"
+}

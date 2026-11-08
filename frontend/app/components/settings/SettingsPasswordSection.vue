@@ -1,5 +1,9 @@
 <script setup lang="ts">
-const passwordForm = defineModel<{ currentPassword: string; newPassword: string; confirmPassword: string }>('passwordForm', { required: true })
+const passwordForm = defineModel<{
+  currentPassword: string
+  newPassword: string
+  confirmPassword: string
+}>('passwordForm', { required: true })
 
 defineProps<{
   hasPassword: boolean
@@ -11,6 +15,10 @@ defineProps<{
 defineEmits<{
   submit: []
 }>()
+
+function applyGeneratedPassword(password: string): void {
+  passwordForm.value = { ...passwordForm.value, newPassword: password, confirmPassword: password }
+}
 </script>
 
 <template>
@@ -27,6 +35,7 @@ defineEmits<{
           toggle-mask
           class="w-full"
           input-class="w-full"
+          :input-props="{ autocomplete: 'current-password' }"
         />
       </div>
       <div>
@@ -36,6 +45,12 @@ defineEmits<{
           toggle-mask
           class="w-full"
           input-class="w-full"
+          :input-props="{ autocomplete: 'new-password' }"
+        />
+        <PasswordGeneratorActions
+          :password="passwordForm.newPassword"
+          :disabled="submittingPassword"
+          @generated="applyGeneratedPassword"
         />
         <p class="mt-1 text-xs text-surface-500">{{ $t('settings.password.policy_hint') }}</p>
       </div>
@@ -47,6 +62,7 @@ defineEmits<{
           toggle-mask
           class="w-full"
           input-class="w-full"
+          :input-props="{ autocomplete: 'new-password' }"
         />
       </div>
       <p v-if="passwordError" class="text-sm text-red-500">{{ passwordError }}</p>

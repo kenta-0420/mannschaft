@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260822-1243",
+  "scope": "app",
+  "implementation": {
+    "pr": 4251,
+    "sha": "a48f2904732c14dbd902d88831f1307217998316"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1243-1",
+      "description": "各表で退会者の行は0件、他人の行は残る",
+      "tests": [
+        {
+          "name": "PersonalSettingsAccountPurgeIT",
+          "evidence": "backend/src/test/java/com/mannschaft/app/gdpr/service/PersonalSettingsAccountPurgeIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-1243-4",
+      "description": "村 pin/nickname が強匿名化で消える",
+      "tests": [
+        {
+          "name": "PersonalSettingsAccountPurgeIT",
+          "evidence": "backend/src/test/java/com/mannschaft/app/gdpr/service/PersonalSettingsAccountPurgeIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-1243-5",
+      "description": "所有列の網羅番人が未分類表で赤",
+      "tests": [
+        {
+          "name": "WithdrawalPersonalDataListenerCoverageGuardTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/architecture/WithdrawalPersonalDataListenerCoverageGuardTest.java"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 41208469772
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4251"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260822-1243-real.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260822-1243-exploratory.md"
+    }
+  },
+  "regressions": []
+}

@@ -8,8 +8,13 @@ import type { Page } from '@playwright/test'
  * Vite dev サーバーの "Outdated Optimize Dep" 504 エラーで Vue マウントが止まる場合がある。
  * 15 秒以内に成功しなければページをリロードして再試行する（1 回のリロードで
  * Vite の再最適化が完了し、2 回目の試行で成功する）。
+ * URL から取り除いたトークンなど再読込で失われる状態を持つページでは、
+ * reloadOnTimeout: false を指定し、再読込せず最大 75 秒待つ。
  */
-export async function waitForHydration(page: Page): Promise<void> {
+export async function waitForHydration(
+  page: Page,
+  options: { reloadOnTimeout?: boolean } = {},
+): Promise<void> {
   const check = (timeout: number) =>
     page.waitForFunction(
       () => {
@@ -19,6 +24,11 @@ export async function waitForHydration(page: Page): Promise<void> {
       undefined,
       { timeout },
     )
+
+  if (options.reloadOnTimeout === false) {
+    await check(75_000)
+    return
+  }
 
   try {
     await check(15_000)
@@ -40,6 +50,9 @@ export async function waitForHydration(page: Page): Promise<void> {
  * （プロジェクト規約上のエラー握りつぶし原則禁止の例外）。
  */
 export async function waitForSpinnerGone(page: Page, timeout = 20_000): Promise<void> {
-  // eslint-disable-next-line no-restricted-syntax -- スピナーが最初から存在しないケース（データ取得が一瞬で終わる／該当ページにスピナーが無い）を許容するための例外。上記コメント参照。
-  await page.locator('.pi-spin').waitFor({ state: 'detached', timeout }).catch(() => {})
+  await page
+    .locator('.pi-spin')
+    .waitFor({ state: 'detached', timeout })
+    // eslint-disable-next-line no-restricted-syntax -- スピナーが最初から存在しないケース（データ取得が一瞬で終わる／該当ページにスピナーが無い）を許容するための例外。上記コメント参照。
+    .catch(() => {})
 }

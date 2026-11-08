@@ -94,6 +94,9 @@ class JobContractServiceTest {
         emField.setAccessible(true);
         emField.set(service, entityManager);
 
+        // 当事者判定は JobPolicy に一本化した（閲覧ガードと共有。CMP-260821-1027）。mock でも実判定を使う。
+        org.mockito.Mockito.lenient().when(jobPolicy.isContractParticipant(any(), any())).thenCallRealMethod();
+
         // GET_LOCK / RELEASE_LOCK の共通スタブ（成功ケース）。
         given(entityManager.createNativeQuery(anyString())).willReturn(nativeQuery);
         given(nativeQuery.setParameter(anyInt(), any())).willReturn(nativeQuery);

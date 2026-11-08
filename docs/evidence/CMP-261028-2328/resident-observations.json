@@ -1,0 +1,225 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261028-2328",
+  "relatedCmpIds": [
+    "CMP-261028-2329"
+  ],
+  "runId": "alicization-cmp2328-run-20261030",
+  "sourceHead": "ed8548d2cd0f6e35343c02ffcac8be088712c33a",
+  "registrationSource": "actual-resident-artifacts",
+  "trusted": false,
+  "status": "observed-unverified",
+  "note": "アリシゼーション run-20261030 の公開用選択観測。画像実体は含めず、private 原本への path 参照のみ。全観測は未実証。確定4件は台帳行を付記。",
+  "confirmedDefects": [
+    {
+      "ledgerId": "CMP-261030-0649",
+      "label": "ALIC-A"
+    },
+    {
+      "ledgerId": "CMP-261030-0650",
+      "label": "ALIC-B"
+    },
+    {
+      "ledgerId": "CMP-261030-0651",
+      "label": "ALIC-C"
+    },
+    {
+      "ledgerId": "CMP-261030-0652",
+      "label": "ALIC-D"
+    }
+  ],
+  "confirmedPaths": [
+    {
+      "ledgerId": "CMP-261028-2328",
+      "description": "3種の通知（リマインド・キャンセル待ち・キャンセル）から slug の予約画面に着地することを確認済み。",
+      "personaId": "ALIC-CMP2328-R1",
+      "evidenceFiles": [
+        "02-reminder-landing.png",
+        "02-waitlist-landing.png",
+        "02-cancelled-landing.png"
+      ]
+    },
+    {
+      "ledgerId": "CMP-261028-2329",
+      "description": "緊急休業の一括送信の件数表示が、トースト・画面・履歴の3か所すべてで「2件」であることを確認済み。",
+      "personaId": "ALIC-CMP2328-R2",
+      "evidenceFiles": [
+        "17-toast.png",
+        "18-after-send.png",
+        "22-history.png"
+      ]
+    }
+  ],
+  "residents": [
+    {
+      "personaId": "ALIC-CMP2328-R1",
+      "archetype": "一般×素直",
+      "role": "MEMBER",
+      "journeyId": "ALIC-CMP2328-R1-J1",
+      "registrationSource": "アリシゼーションテスト",
+      "purpose": "MEMBER として通知一覧・ベル・ダッシュボードから予約画面へ進み、予約・キャンセルまで素直に操作する",
+      "privateEvidencePath": ".claude/worktrees/agent-a83b04d8b26b39d7f/frontend/test-results/alicization/run-20261030/resident1/",
+      "insights": [
+        {
+          "id": "ALIC-CMP2328-R1-01",
+          "title": "既読の通知をもう一度クリックすると POST /notifications/{id}/read が 409 になり、コンソールにエラーが出る",
+          "detail": "WidgetNotices.vue の onMarkRead は既読でも POST しており、BE の NotificationService:187 は ALREADY_READ（INFO）を投げる。確定不具合として台帳 CMP-261030-0652（ALIC-D）に起票。殿が実機で 409 を再現。住民観測としては未実証ラベルを維持する。",
+          "registrationSource": "アリシゼーションテスト",
+          "personaId": "ALIC-CMP2328-R1",
+          "journeyId": "ALIC-CMP2328-R1-J1",
+          "evidenceFiles": [
+            "04-bell-open.png",
+            "04-bell-reminder.png"
+          ],
+          "ledgerId": "CMP-261030-0652",
+          "attribution": "画像ファイルは該当導線の近傍（ベル）を指す暫定紐付け"
+        },
+        {
+          "id": "ALIC-CMP2328-R1-02",
+          "title": "通知から着地しても、対象の予約が分からない",
+          "detail": "通知から予約画面（slug）には着地するが、どの予約に関する通知だったかが画面上で分からない。",
+          "registrationSource": "アリシゼーションテスト",
+          "personaId": "ALIC-CMP2328-R1",
+          "journeyId": "ALIC-CMP2328-R1-J1",
+          "evidenceFiles": [
+            "02-reminder-landing.png",
+            "02-waitlist-landing.png",
+            "02-cancelled-landing.png"
+          ],
+          "verified": false
+        }
+      ]
+    },
+    {
+      "personaId": "ALIC-CMP2328-R2",
+      "archetype": "スマホ片手操作×表示崩れ",
+      "role": "ADMIN",
+      "viewport": "390x844",
+      "journeyId": "ALIC-CMP2328-R2-J1",
+      "registrationSource": "アリシゼーションテスト",
+      "purpose": "ADMIN としてスマホ幅の片手操作で緊急休業の影響確認・一括送信・履歴確認を行う",
+      "privateEvidencePath": ".claude/worktrees/agent-a83b04d8b26b39d7f/frontend/test-results/alicization/run-20261030/resident2/",
+      "insights": [
+        {
+          "id": "ALIC-CMP2328-R2-01",
+          "title": "手入力や「カスタム」テンプレートで緊急休業を一括送信すると必ず 400「送信に失敗しました」になる",
+          "detail": "EmergencyClosureForm.vue では reason が applyTemplate でしか設定されず、カスタムのテンプレートは reason が空文字になる。BE の EmergencyClosure*Request の reason は @NotBlank。確定不具合として台帳 CMP-261030-0649（ALIC-A）に起票。殿がコードで裏を取った。",
+          "registrationSource": "アリシゼーションテスト",
+          "personaId": "ALIC-CMP2328-R2",
+          "journeyId": "ALIC-CMP2328-R2-J1",
+          "evidenceFiles": [
+            "19-template-selected.png",
+            "20-confirm-dialog-2.png",
+            "21-toast.png"
+          ],
+          "ledgerId": "CMP-261030-0649"
+        },
+        {
+          "id": "ALIC-CMP2328-R2-02",
+          "title": "「影響する予約の確認」で、患者名の列が空欄になる",
+          "detail": "BE の EmergencyClosurePreviewResponse.AffectedReservation.userFullName と FE の ClosurePreviewItem.userDisplayName が一致していない。確定不具合として台帳 CMP-261030-0650（ALIC-B）に起票。殿が BE と FE の型の不一致で裏を取った。",
+          "registrationSource": "アリシゼーションテスト",
+          "personaId": "ALIC-CMP2328-R2",
+          "journeyId": "ALIC-CMP2328-R2-J1",
+          "evidenceFiles": [
+            "15-impact-checked.png"
+          ],
+          "ledgerId": "CMP-261030-0650"
+        },
+        {
+          "id": "ALIC-CMP2328-R2-03",
+          "title": "送信履歴の表がモバイル（390px）で崩れる",
+          "detail": "理由の列は幅 31px で1文字ずつ縦に並び、「確認状況を見る」ボタンは 33x140。確定不具合として台帳 CMP-261030-0651（ALIC-C）に起票。殿が画像で確認した。",
+          "registrationSource": "アリシゼーションテスト",
+          "personaId": "ALIC-CMP2328-R2",
+          "journeyId": "ALIC-CMP2328-R2-J1",
+          "evidenceFiles": [
+            "22-history.png"
+          ],
+          "ledgerId": "CMP-261030-0651"
+        },
+        {
+          "id": "ALIC-CMP2328-R2-04",
+          "title": "予約タブがモバイルで画面外にある",
+          "detail": "スマホ幅でチームホームを開くと予約タブが画面外にあり、横スクロールかシェブロン操作をしないと到達できない。",
+          "registrationSource": "アリシゼーションテスト",
+          "personaId": "ALIC-CMP2328-R2",
+          "journeyId": "ALIC-CMP2328-R2-J1",
+          "evidenceFiles": [
+            "05-tab-chevron-tapped.png",
+            "05-tab-reservations-visible.png",
+            "05b-hamburger-tapped.png"
+          ],
+          "verified": false
+        },
+        {
+          "id": "ALIC-CMP2328-R2-05",
+          "title": "日付入力の高さが 40px",
+          "detail": "緊急休業フォームの日付入力の高さが 40px で、片手のタップ領域として小さい。",
+          "registrationSource": "アリシゼーションテスト",
+          "personaId": "ALIC-CMP2328-R2",
+          "journeyId": "ALIC-CMP2328-R2-J1",
+          "evidenceFiles": [
+            "12-dates-set.png"
+          ],
+          "verified": false
+        },
+        {
+          "id": "ALIC-CMP2328-R2-06",
+          "title": "「すべて表示」が縦に折れる",
+          "detail": "スマホ幅で「すべて表示」の文言が縦に折れる。",
+          "registrationSource": "アリシゼーションテスト",
+          "personaId": "ALIC-CMP2328-R2",
+          "journeyId": "ALIC-CMP2328-R2-J1",
+          "evidenceFiles": [
+            "11-closure-top.png"
+          ],
+          "verified": false,
+          "attribution": "画像ファイルは該当画面の近傍を指す暫定紐付け"
+        }
+      ]
+    },
+    {
+      "personaId": "ALIC-CMP2328-R3",
+      "archetype": "一般×隙間狙い",
+      "role": "部外者",
+      "journeyId": "ALIC-CMP2328-R3-J1",
+      "registrationSource": "アリシゼーションテスト",
+      "purpose": "所属しないチームの部外者として、実在 slug・不在 slug・数値 id・管理画面 URL を直打ちし、権限外の画面や操作に入れないかを確かめる",
+      "privateEvidencePath": ".claude/worktrees/agent-a83b04d8b26b39d7f/frontend/test-results/alicization/run-20261030/resident3/",
+      "insights": [
+        {
+          "id": "ALIC-CMP2328-R3-01",
+          "title": "権限外の画面・操作の成功は観測されなかった",
+          "detail": "管理画面 URL の直打ちは差し戻された（仕様どおり）。実在 slug と不在 slug で文言が分かれる点は、チーム slug の実在が 2026-08-04 に非機密と確定済みのため新規指摘としない。",
+          "registrationSource": "アリシゼーションテスト",
+          "personaId": "ALIC-CMP2328-R3",
+          "journeyId": "ALIC-CMP2328-R3-J1",
+          "evidenceFiles": [
+            "3_teams_g3457-alic-1793335745024_admin.png",
+            "12_teams_nonexistent-zz-98765.png"
+          ],
+          "verified": false
+        }
+      ]
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "title": "ウィジェットで「キャンセルが出ました」が遷移しなかった",
+      "reason": "殿が再現したところ、3種とも slug へ遷移した。描画を待つ時間が足りなかったことによる誤報。"
+    },
+    {
+      "title": "実在 slug と不在 slug で文言が分かれる",
+      "reason": "チーム slug の実在は 2026-08-04 に非機密と確定済み。"
+    },
+    {
+      "title": "管理画面 URL を直打ちしたときの差し戻し",
+      "reason": "仕様どおり。"
+    },
+    {
+      "title": "SYSTEM_ADMIN が緊急休業 API を通る",
+      "reason": "AccessGuard.isScopeAdmin の設計どおり。"
+    }
+  ]
+}

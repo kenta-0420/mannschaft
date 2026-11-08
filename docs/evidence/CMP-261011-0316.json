@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "scope": "app",
+  "implementation": {
+    "pr": 3652,
+    "sha": "48de137c9f4e29cc0f241adfac1b46aefc7c5249",
+    "mergedAt": "2026-10-15T23:08:13Z",
+    "mergeCommit": "05bbc3537f134904affde925e923de801a54ad76"
+  },
+  "ci": [
+    {
+      "runId": 38798725381
+    },
+    {
+      "runId": 38798725352
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/ranch-pr3652-20261016.md"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/ranch-pr3652-20261016.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/ranch-pr3652-20261016.md"
+    }
+  },
+  "limitations": [
+    "個別戦役の完了であり、Phase1全73AC達成・正式公開の完了を示さない。公開ゲートCLOSEDと親戦役の状態を維持する。",
+    "実機・探索の範囲と未実証項目は共通証拠文書に記録する。"
+  ],
+  "cmpId": "CMP-261011-0316",
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "新版24問の六軸一巡・交互表示・逆極性採点を維持する。",
+      "tests": [
+        {
+          "name": "新版は六軸一巡の24問で旧版の軸極性と採点を保持する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/diagnosis/service/DiagnosisQuestionnaireCatalogTest.java"
+        },
+        {
+          "name": "新版の交互表示を再開しても保持し逆極性回答を六軸へ正しく採点する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/diagnosis/DiagnosisQuizPersistenceIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "旧sessionを当時の設問で再開・完了し結果を保持する。",
+      "tests": [
+        {
+          "name": "新版稼働後も旧版の途中回答を当時の設問で再開完了し結果を保持する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/diagnosis/DiagnosisQuizPersistenceIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "旧新版・未知版を含むdraftの正式登録を拒否する。",
+      "tests": [
+        {
+          "name": "承認flagと翻訳flagと正しいdigestでも旧新版および未知draftは正式登録できない",
+          "evidence": "backend/src/test/java/com/mannschaft/app/diagnosis/service/DiagnosisApprovedQuestionnaireRegistryTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "実機の診断保存・保留・再開・同点・結果と独立3住民探索を確認する。",
+      "tests": [
+        {
+          "name": "診断実機と3住民探索、未保存離脱と保留復元の区別",
+          "evidence": "docs/evidence/ranch-pr3652-20261016.md"
+        }
+      ]
+    }
+  ],
+  "regressions": [
+    {
+      "description": "旧版と新版の設問・互換・draft拒否の差を追加5caseで検出。既存21passを保持し同じ26methodsがgreen。",
+      "test": "Catalog7＋Registry6＋Persistence13、実MySQL IT含む",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/38073294036",
+      "greenEvidence": "docs/evidence/ranch-pr3652-20261016.md"
+    }
+  ]
+}

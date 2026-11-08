@@ -10,6 +10,7 @@ import com.mannschaft.app.schedule.controller.OrgScheduleKeepController;
 import com.mannschaft.app.schedule.controller.TeamScheduleController;
 import com.mannschaft.app.schedule.controller.TeamScheduleKeepController;
 import com.mannschaft.app.team.controller.OrganizationTeamSearchController;
+import com.mannschaft.app.team.controller.TeamOrgMembershipLeaveController;
 import com.mannschaft.app.team.controller.TeamShiftSettingsController;
 import com.mannschaft.app.template.controller.OrganizationModuleController;
 import com.mannschaft.app.template.controller.TeamModuleController;
@@ -53,6 +54,7 @@ public class OpenApiConfig {
             OrganizationAnalyticsController.class,
             TeamAnalyticsController.class,
             OrganizationTeamSearchController.class,
+            TeamOrgMembershipLeaveController.class,
             TeamShiftSettingsController.class,
             OrganizationModuleController.class,
             TeamModuleController.class,
@@ -91,6 +93,9 @@ public class OpenApiConfig {
      * <p>CMP-260826-1921の試合記録・統計・エントリーテンプレートも、正準スコープ型の
      * パス変数は数値IDとslugを受け付けるためstringを維持する。テンプレート適用の
      * {@code Long orgId}など、正準スコープ型以外の数値専用変数は変更しない。</p>
+     *
+     * <p>組織離脱の {@link TeamOrgMembershipLeaveController} の {@code teamSlug} も
+     * 数値IDとslugを受け付けるため、同じくstringを維持する。</p>
      */
     @Bean
     public ParameterCustomizer scopeIdParameterCustomizer() {

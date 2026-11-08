@@ -16,8 +16,9 @@
  *  - E2E 専用フック（__corkboardE2eEmit）は本番環境では window.__E2E__ が
  *    未定義なため公開されない。
  */
-import { computed, watch, onMounted, onUnmounted } from 'vue'
+import { computed, shallowRef, watch, onMounted, onUnmounted } from 'vue'
 import type { Ref } from 'vue'
+import type { CorkboardConnectionState } from '~/composables/useCorkboardEventListener'
 import type { CorkboardDetail, CorkboardEventPayload } from '~/types/corkboard'
 
 export function useCorkboardWebSocketSync(
@@ -39,6 +40,18 @@ export function useCorkboardWebSocketSync(
 
   /** 現在アクティブな購読 listener（ボード切替時に旧 listener を必ず disconnect する） */
   let corkboardListener: ReturnType<typeof useCorkboardEventListener> | null = null
+  /** 画面に出すための現在の listener（停止状態の表示用・reactive）。 */
+  const activeListener = shallowRef<ReturnType<typeof useCorkboardEventListener> | null>(null)
+
+  /**
+   * リアルタイム同期の停止状態（画面表示用）。
+   * - OK:              通常（接続中・再接続中を含む）
+   * - DENIED:          閲覧権限がなく購読が拒否された（再接続しない）
+   * - UNAUTHENTICATED: ログインの有効期限切れなどで認証できず停止した（再接続しない）
+   */
+  const realtimeState = computed<CorkboardConnectionState>(
+    () => activeListener.value?.connectionState?.value ?? 'OK',
+  )
   /** 現在購読中のボード ID（再購読判定に使う） */
   let subscribedBoardId: number | null = null
 
@@ -227,6 +240,7 @@ export function useCorkboardWebSocketSync(
       if (corkboardListener) {
         corkboardListener.disconnect()
         corkboardListener = null
+        activeListener.value = null
         subscribedBoardId = null
       }
 
@@ -237,6 +251,7 @@ export function useCorkboardWebSocketSync(
           onEvent: handleCorkboardEvent,
         })
         corkboardListener.connect()
+        activeListener.value = corkboardListener
         subscribedBoardId = newBoardId
       }
     },
@@ -247,6 +262,7 @@ export function useCorkboardWebSocketSync(
     if (corkboardListener) {
       corkboardListener.disconnect()
       corkboardListener = null
+      activeListener.value = null
       subscribedBoardId = null
     }
     // E2E テストフック解除
@@ -283,6 +299,7 @@ export function useCorkboardWebSocketSync(
 
   return {
     isSharedBoard,
+    realtimeState,
     handleCorkboardEvent,
     setReloadFn,
   }

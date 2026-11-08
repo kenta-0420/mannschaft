@@ -1,0 +1,1103 @@
+{
+  "kind": "same-browser-clock-production-descriptive-comparison",
+  "heads": {
+    "baseline": "b7e4bcd07e2bb93899ea761736bdd6a413e41780",
+    "fixed": "c7879b0244b617ab363927122ab88f801413ecc1",
+    "nav-fixed": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6"
+  },
+  "driverSha256": "1780a87831160998fc882a3deaa44060d17ea3772964cbc4e3e77abaffdcc24d",
+  "navDriverSha256": "6f8b16a2659ffd5508d001b48f12beddacd86c3692b4e931e27d3181abc3be2e",
+  "observationLogicUnchanged": true,
+  "observerOS": "Windows",
+  "serviceWorkers": "block",
+  "viewport": {
+    "width": 1280,
+    "height": 900
+  },
+  "sameApiIdentity": true,
+  "actualFrontendPort": 3011,
+  "actualApiPort": 8080,
+  "logicalFrontendPort": 3000,
+  "logicalPublicApiPort": 8081,
+  "businessWritesRequested": 0,
+  "samples": [
+    {
+      "resourceCategoryCounts": {
+        "login": 1,
+        "static": 150,
+        "other": 27,
+        "widget-config": 1,
+        "organizations": 1,
+        "teams": 1,
+        "layers": 1,
+        "personal": 1,
+        "shared": 1,
+        "todos": 1
+      },
+      "resourceCategoriesBeforeLayers": {
+        "login": 1,
+        "static": 97,
+        "other": 17,
+        "widget-config": 1,
+        "organizations": 1,
+        "teams": 1,
+        "layers": 0,
+        "personal": 0,
+        "shared": 0,
+        "todos": 0
+      },
+      "phase": "baseline",
+      "sample": 1,
+      "sourceHead": "b7e4bcd07e2bb93899ea761736bdd6a413e41780",
+      "clock": "browser performance.now; click capture origin; 250ms limited DOM polling, eventloop delay included",
+      "marks": {
+        "loginHydrated": -773.5999999046326,
+        "click": 0,
+        "firstSubmit": 1.600000023841858,
+        "route": 2416.5,
+        "mainContainer": 2713.2000000476837,
+        "personalSelected": 4787.700000047684,
+        "widgetVisible": 8254.100000023842,
+        "calendarDOM": 11081.300000071526
+      },
+      "initialPanel": "PERSONAL",
+      "dateCellCount": 42,
+      "allFourCalendarHTTP200Observed": true,
+      "allFourCalendarResourcesFinishedByDOM": true,
+      "apis": {
+        "login": {
+          "count": 1,
+          "firstStartMs": 5.700000047683716,
+          "lastEndMs": 1260.5,
+          "durationTotalMs": 1254.7999999523163,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "widget-config": {
+          "count": 1,
+          "firstStartMs": 4738.600000023842,
+          "lastEndMs": 5651.600000023842,
+          "durationTotalMs": 913,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "layers": {
+          "count": 1,
+          "firstStartMs": 7997.300000071526,
+          "lastEndMs": 8370.100000023842,
+          "durationTotalMs": 372.7999999523163,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "personal": {
+          "count": 1,
+          "firstStartMs": 8737.100000023842,
+          "lastEndMs": 9321.300000071526,
+          "durationTotalMs": 584.2000000476837,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "shared": {
+          "count": 1,
+          "firstStartMs": 8737.600000023842,
+          "lastEndMs": 10075.200000047684,
+          "durationTotalMs": 1337.6000000238419,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "todos": {
+          "count": 1,
+          "firstStartMs": 8737.900000095367,
+          "lastEndMs": 9380.800000071526,
+          "durationTotalMs": 642.8999999761581,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "teams": {
+          "count": 1,
+          "firstStartMs": 4739.800000071526,
+          "lastEndMs": 6002.600000023842,
+          "durationTotalMs": 1262.7999999523163,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "organizations": {
+          "count": 1,
+          "firstStartMs": 4739.800000071526,
+          "lastEndMs": 5657.400000095367,
+          "durationTotalMs": 917.6000000238419,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        }
+      },
+      "intervals": {
+        "clickToDOMMs": 11081.300000071526,
+        "mainToPersonalSelectedMs": 2074.5,
+        "personalSelectedToWidgetVisibleMs": 3466.399999976158,
+        "widgetVisibleToDOMMs": 2827.2000000476837,
+        "layersToPersonalStartDeltaMs": 739.7999999523163,
+        "layersEndToCoreFirstStartGapMs": 367,
+        "coreFirstStartMs": 8737.100000023842,
+        "coreLastEndMs": 10075.200000047684,
+        "coreEndToDOMMs": 1006.1000000238419
+      },
+      "taggedModuleNetwork": [
+        {
+          "tag": "calendar-grid",
+          "entries": [
+            {
+              "startMs": 2749.100000023842,
+              "endMs": 4829,
+              "durationMs": 2079.899999976158,
+              "encodedBodySize": 10597,
+              "initiator": "script",
+              "completedByDOM": true
+            }
+          ]
+        },
+        {
+          "tag": "holidays",
+          "entries": [
+            {
+              "startMs": 2749.4000000953674,
+              "endMs": 4754.700000047684,
+              "durationMs": 2005.2999999523163,
+              "encodedBodySize": 738,
+              "initiator": "script",
+              "completedByDOM": true
+            }
+          ]
+        }
+      ],
+      "taggedModuleNetworkBeforeLayers": true,
+      "holidayDependencyCoverageProven": false,
+      "longTasks": {
+        "count": 16,
+        "totalMs": 2079,
+        "maxMs": 642
+      },
+      "nodeEventLoopLag": {
+        "intervalMs": 100,
+        "count": 94,
+        "medianMs": 10.595600000000559,
+        "maxMs": 695.2488000000012,
+        "over100ms": 4
+      },
+      "serverColdProven": false,
+      "runtimeStartedAt": "2026-10-28T09:12:38.034896+00:00",
+      "logout200": true,
+      "closed": true
+    },
+    {
+      "resourceCategoryCounts": {
+        "login": 1,
+        "other": 27,
+        "static": 150,
+        "widget-config": 1,
+        "organizations": 1,
+        "teams": 1,
+        "layers": 1,
+        "personal": 1,
+        "shared": 1,
+        "todos": 1
+      },
+      "resourceCategoriesBeforeLayers": {
+        "login": 1,
+        "other": 17,
+        "static": 97,
+        "widget-config": 1,
+        "organizations": 1,
+        "teams": 1,
+        "layers": 0,
+        "personal": 0,
+        "shared": 0,
+        "todos": 0
+      },
+      "phase": "baseline",
+      "sample": 2,
+      "sourceHead": "b7e4bcd07e2bb93899ea761736bdd6a413e41780",
+      "clock": "browser performance.now; click capture origin; 250ms limited DOM polling, eventloop delay included",
+      "marks": {
+        "loginHydrated": -521.9000000953674,
+        "click": 0,
+        "firstSubmit": 0.5,
+        "route": 1091.8999999761581,
+        "mainContainer": 1092.2999999523163,
+        "personalSelected": 3070.6999999284744,
+        "widgetVisible": 4691.699999928474,
+        "calendarDOM": 6932.699999928474
+      },
+      "initialPanel": "PERSONAL",
+      "dateCellCount": 42,
+      "allFourCalendarHTTP200Observed": true,
+      "allFourCalendarResourcesFinishedByDOM": true,
+      "apis": {
+        "login": {
+          "count": 1,
+          "firstStartMs": 5.099999904632568,
+          "lastEndMs": 296.5,
+          "durationTotalMs": 291.40000009536743,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "widget-config": {
+          "count": 1,
+          "firstStartMs": 3001.7999999523163,
+          "lastEndMs": 4003.6999999284744,
+          "durationTotalMs": 1001.8999999761581,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "layers": {
+          "count": 1,
+          "firstStartMs": 4321.599999904633,
+          "lastEndMs": 5147.899999976158,
+          "durationTotalMs": 826.3000000715256,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "personal": {
+          "count": 1,
+          "firstStartMs": 5180.099999904633,
+          "lastEndMs": 5374.5,
+          "durationTotalMs": 194.40000009536743,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "shared": {
+          "count": 1,
+          "firstStartMs": 5180.5,
+          "lastEndMs": 5795.899999976158,
+          "durationTotalMs": 615.3999999761581,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "todos": {
+          "count": 1,
+          "firstStartMs": 5180.799999952316,
+          "lastEndMs": 5402,
+          "durationTotalMs": 221.20000004768372,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "teams": {
+          "count": 1,
+          "firstStartMs": 3002.399999976158,
+          "lastEndMs": 4016.399999976158,
+          "durationTotalMs": 1014,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "organizations": {
+          "count": 1,
+          "firstStartMs": 3002.399999976158,
+          "lastEndMs": 4003.899999976158,
+          "durationTotalMs": 1001.5,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        }
+      },
+      "intervals": {
+        "clickToDOMMs": 6932.699999928474,
+        "mainToPersonalSelectedMs": 1978.3999999761581,
+        "personalSelectedToWidgetVisibleMs": 1621,
+        "widgetVisibleToDOMMs": 2241,
+        "layersToPersonalStartDeltaMs": 858.5,
+        "layersEndToCoreFirstStartGapMs": 32.199999928474426,
+        "coreFirstStartMs": 5180.099999904633,
+        "coreLastEndMs": 5795.899999976158,
+        "coreEndToDOMMs": 1136.7999999523163
+      },
+      "taggedModuleNetwork": [
+        {
+          "tag": "calendar-grid",
+          "entries": [
+            {
+              "startMs": 1144.7999999523163,
+              "endMs": 2912.399999976158,
+              "durationMs": 1767.6000000238419,
+              "encodedBodySize": 10597,
+              "initiator": "script",
+              "completedByDOM": true
+            }
+          ]
+        },
+        {
+          "tag": "holidays",
+          "entries": [
+            {
+              "startMs": 1145,
+              "endMs": 2911,
+              "durationMs": 1766,
+              "encodedBodySize": 738,
+              "initiator": "script",
+              "completedByDOM": true
+            }
+          ]
+        }
+      ],
+      "taggedModuleNetworkBeforeLayers": true,
+      "holidayDependencyCoverageProven": false,
+      "longTasks": {
+        "count": 12,
+        "totalMs": 1880,
+        "maxMs": 648
+      },
+      "nodeEventLoopLag": {
+        "intervalMs": 100,
+        "count": 59,
+        "medianMs": 9.19430000000284,
+        "maxMs": 210.00550000000658,
+        "over100ms": 4
+      },
+      "serverColdProven": false,
+      "runtimeStartedAt": "2026-10-28T09:12:38.034896+00:00",
+      "logout200": true,
+      "closed": true
+    },
+    {
+      "resourceCategoryCounts": {
+        "login": 1,
+        "other": 26,
+        "static": 151,
+        "widget-config": 1,
+        "teams": 1,
+        "organizations": 1,
+        "layers": 1,
+        "personal": 1,
+        "shared": 1,
+        "todos": 1
+      },
+      "resourceCategoriesBeforeLayers": {
+        "login": 1,
+        "other": 17,
+        "static": 128,
+        "widget-config": 1,
+        "teams": 1,
+        "organizations": 1,
+        "layers": 0,
+        "personal": 0,
+        "shared": 0,
+        "todos": 0
+      },
+      "phase": "fixed",
+      "sample": 1,
+      "sourceHead": "c7879b0244b617ab363927122ab88f801413ecc1",
+      "clock": "browser performance.now; click capture origin; 250ms limited DOM polling, eventloop delay included",
+      "marks": {
+        "loginHydrated": -395.6999999284744,
+        "click": 0,
+        "firstSubmit": 0.30000007152557373,
+        "route": 1421.3999999761581,
+        "mainContainer": 1421.6000000238419,
+        "personalSelected": 2897,
+        "widgetVisible": 3919.899999976158,
+        "calendarDOM": 5673.100000023842
+      },
+      "initialPanel": "PERSONAL",
+      "dateCellCount": 42,
+      "allFourCalendarHTTP200Observed": true,
+      "allFourCalendarResourcesFinishedByDOM": true,
+      "apis": {
+        "login": {
+          "count": 1,
+          "firstStartMs": 4.399999976158142,
+          "lastEndMs": 467.3000000715256,
+          "durationTotalMs": 462.90000009536743,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "widget-config": {
+          "count": 1,
+          "firstStartMs": 2802.600000023842,
+          "lastEndMs": 3216.2000000476837,
+          "durationTotalMs": 413.60000002384186,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "layers": {
+          "count": 1,
+          "firstStartMs": 3771.600000023842,
+          "lastEndMs": 4510.399999976158,
+          "durationTotalMs": 738.7999999523163,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "personal": {
+          "count": 1,
+          "firstStartMs": 3773,
+          "lastEndMs": 4367.399999976158,
+          "durationTotalMs": 594.3999999761581,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "shared": {
+          "count": 1,
+          "firstStartMs": 3774.100000023842,
+          "lastEndMs": 4956.800000071526,
+          "durationTotalMs": 1182.7000000476837,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "todos": {
+          "count": 1,
+          "firstStartMs": 3775.2000000476837,
+          "lastEndMs": 4409,
+          "durationTotalMs": 633.7999999523163,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "teams": {
+          "count": 1,
+          "firstStartMs": 2802.899999976158,
+          "lastEndMs": 3232.100000023842,
+          "durationTotalMs": 429.2000000476837,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "organizations": {
+          "count": 1,
+          "firstStartMs": 2802.899999976158,
+          "lastEndMs": 3994.399999976158,
+          "durationTotalMs": 1191.5,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        }
+      },
+      "intervals": {
+        "clickToDOMMs": 5673.100000023842,
+        "mainToPersonalSelectedMs": 1475.3999999761581,
+        "personalSelectedToWidgetVisibleMs": 1022.8999999761581,
+        "widgetVisibleToDOMMs": 1753.2000000476837,
+        "layersToPersonalStartDeltaMs": 1.399999976158142,
+        "layersEndToCoreFirstStartGapMs": -737.3999999761581,
+        "coreFirstStartMs": 3773,
+        "coreLastEndMs": 4956.800000071526,
+        "coreEndToDOMMs": 716.2999999523163
+      },
+      "taggedModuleNetwork": [
+        {
+          "tag": "calendar-grid",
+          "entries": [
+            {
+              "startMs": 1468,
+              "endMs": 2451.600000023842,
+              "durationMs": 983.6000000238419,
+              "encodedBodySize": 10597,
+              "initiator": "script",
+              "completedByDOM": true
+            }
+          ]
+        },
+        {
+          "tag": "holidays",
+          "entries": [
+            {
+              "startMs": 1468.1000000238419,
+              "endMs": 2437.2000000476837,
+              "durationMs": 969.1000000238419,
+              "encodedBodySize": 738,
+              "initiator": "script",
+              "completedByDOM": true
+            }
+          ]
+        }
+      ],
+      "taggedModuleNetworkBeforeLayers": true,
+      "holidayDependencyCoverageProven": false,
+      "longTasks": {
+        "count": 9,
+        "totalMs": 1340,
+        "maxMs": 562
+      },
+      "nodeEventLoopLag": {
+        "intervalMs": 100,
+        "count": 52,
+        "medianMs": 9.638600000005681,
+        "maxMs": 125.04149999999936,
+        "over100ms": 1
+      },
+      "serverColdProven": false,
+      "runtimeStartedAt": "2026-10-28T10:54:56.180423+00:00",
+      "logout200": true,
+      "closed": true
+    },
+    {
+      "resourceCategoryCounts": {
+        "login": 1,
+        "static": 131,
+        "other": 22,
+        "widget-config": 1,
+        "teams": 1,
+        "organizations": 1,
+        "layers": 1,
+        "personal": 1,
+        "shared": 1,
+        "todos": 1
+      },
+      "resourceCategoriesBeforeLayers": {
+        "login": 1,
+        "static": 127,
+        "other": 17,
+        "widget-config": 1,
+        "teams": 1,
+        "organizations": 1,
+        "layers": 0,
+        "personal": 0,
+        "shared": 0,
+        "todos": 0
+      },
+      "phase": "fixed",
+      "sample": 2,
+      "sourceHead": "c7879b0244b617ab363927122ab88f801413ecc1",
+      "clock": "browser performance.now; click capture origin; 250ms limited DOM polling, eventloop delay included",
+      "marks": {
+        "loginHydrated": -582.7999999523163,
+        "click": 0,
+        "firstSubmit": 0.7000000476837158,
+        "route": 2195.7999999523163,
+        "mainContainer": 2775.7999999523163,
+        "personalSelected": 7586.100000023842,
+        "widgetVisible": 12040.200000047684,
+        "calendarDOM": 14258.100000023842
+      },
+      "initialPanel": "PERSONAL",
+      "dateCellCount": 42,
+      "allFourCalendarHTTP200Observed": true,
+      "allFourCalendarResourcesFinishedByDOM": true,
+      "apis": {
+        "login": {
+          "count": 1,
+          "firstStartMs": 12.600000023841858,
+          "lastEndMs": 940.3999999761581,
+          "durationTotalMs": 927.7999999523163,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "widget-config": {
+          "count": 1,
+          "firstStartMs": 7065.799999952316,
+          "lastEndMs": 9957.5,
+          "durationTotalMs": 2891.7000000476837,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "layers": {
+          "count": 1,
+          "firstStartMs": 11896.799999952316,
+          "lastEndMs": 12590.100000023842,
+          "durationTotalMs": 693.3000000715256,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "personal": {
+          "count": 1,
+          "firstStartMs": 11897.100000023842,
+          "lastEndMs": 12567.299999952316,
+          "durationTotalMs": 670.1999999284744,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "shared": {
+          "count": 1,
+          "firstStartMs": 11897.299999952316,
+          "lastEndMs": 13503.299999952316,
+          "durationTotalMs": 1606,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "todos": {
+          "count": 1,
+          "firstStartMs": 11897.600000023842,
+          "lastEndMs": 12887,
+          "durationTotalMs": 989.3999999761581,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "teams": {
+          "count": 1,
+          "firstStartMs": 7066.299999952316,
+          "lastEndMs": 11906.5,
+          "durationTotalMs": 4840.200000047684,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "organizations": {
+          "count": 1,
+          "firstStartMs": 7067.899999976158,
+          "lastEndMs": 11916.799999952316,
+          "durationTotalMs": 4848.899999976158,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        }
+      },
+      "intervals": {
+        "clickToDOMMs": 14258.100000023842,
+        "mainToPersonalSelectedMs": 4810.300000071526,
+        "personalSelectedToWidgetVisibleMs": 4454.100000023842,
+        "widgetVisibleToDOMMs": 2217.899999976158,
+        "layersToPersonalStartDeltaMs": 0.30000007152557373,
+        "layersEndToCoreFirstStartGapMs": -693,
+        "coreFirstStartMs": 11897.100000023842,
+        "coreLastEndMs": 13503.299999952316,
+        "coreEndToDOMMs": 754.8000000715256
+      },
+      "taggedModuleNetwork": [
+        {
+          "tag": "calendar-grid",
+          "entries": [
+            {
+              "startMs": 2857,
+              "endMs": 4845.200000047684,
+              "durationMs": 1988.2000000476837,
+              "encodedBodySize": 10597,
+              "initiator": "script",
+              "completedByDOM": true
+            }
+          ]
+        },
+        {
+          "tag": "holidays",
+          "entries": [
+            {
+              "startMs": 2857.5,
+              "endMs": 4823.600000023842,
+              "durationMs": 1966.1000000238419,
+              "encodedBodySize": 738,
+              "initiator": "script",
+              "completedByDOM": true
+            }
+          ]
+        }
+      ],
+      "taggedModuleNetworkBeforeLayers": true,
+      "holidayDependencyCoverageProven": false,
+      "longTasks": {
+        "count": 20,
+        "totalMs": 3058,
+        "maxMs": 870
+      },
+      "nodeEventLoopLag": {
+        "intervalMs": 100,
+        "count": 110,
+        "medianMs": 10.64719999999943,
+        "maxMs": 905.078300000001,
+        "over100ms": 7
+      },
+      "serverColdProven": false,
+      "runtimeStartedAt": "2026-10-28T10:54:56.180423+00:00",
+      "logout200": true,
+      "closed": true
+    },
+    {
+      "resourceCategoryCounts": {
+        "login": 1,
+        "static": 88,
+        "other": 24,
+        "widget-config": 1,
+        "teams": 1,
+        "organizations": 1,
+        "layers": 1,
+        "personal": 1,
+        "shared": 1,
+        "todos": 1
+      },
+      "resourceCategoriesBeforeLayers": {
+        "login": 1,
+        "static": 65,
+        "other": 17,
+        "widget-config": 1,
+        "teams": 1,
+        "organizations": 1,
+        "layers": 0,
+        "personal": 0,
+        "shared": 0,
+        "todos": 0
+      },
+      "phase": "nav-fixed",
+      "sample": 1,
+      "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+      "clock": "browser performance.now; click capture origin; 250ms limited DOM polling, eventloop delay included",
+      "marks": {
+        "loginHydrated": -552,
+        "click": 0,
+        "firstSubmit": 0.30000007152557373,
+        "route": 1870.1000000238419,
+        "mainContainer": 2123.600000023842,
+        "personalSelected": 4380.5,
+        "widgetVisible": 7049.300000071526,
+        "calendarDOM": 10110.800000071526
+      },
+      "initialPanel": "PERSONAL",
+      "dateCellCount": 42,
+      "allFourCalendarHTTP200Observed": true,
+      "allFourCalendarResourcesFinishedByDOM": true,
+      "apis": {
+        "login": {
+          "count": 1,
+          "firstStartMs": 3.8000000715255737,
+          "lastEndMs": 1176.2000000476837,
+          "durationTotalMs": 1172.3999999761581,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "widget-config": {
+          "count": 1,
+          "firstStartMs": 4176.300000071526,
+          "lastEndMs": 5405.900000095367,
+          "durationTotalMs": 1229.6000000238419,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "layers": {
+          "count": 1,
+          "firstStartMs": 5953.300000071526,
+          "lastEndMs": 7800.700000047684,
+          "durationTotalMs": 1847.3999999761581,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "personal": {
+          "count": 1,
+          "firstStartMs": 5960.5,
+          "lastEndMs": 7357.900000095367,
+          "durationTotalMs": 1397.4000000953674,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "shared": {
+          "count": 1,
+          "firstStartMs": 5960.800000071526,
+          "lastEndMs": 8225.5,
+          "durationTotalMs": 2264.6999999284744,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "todos": {
+          "count": 1,
+          "firstStartMs": 5961,
+          "lastEndMs": 7833.400000095367,
+          "durationTotalMs": 1872.4000000953674,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "teams": {
+          "count": 1,
+          "firstStartMs": 4176.800000071526,
+          "lastEndMs": 5579.200000047684,
+          "durationTotalMs": 1402.3999999761581,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "organizations": {
+          "count": 1,
+          "firstStartMs": 4176.900000095367,
+          "lastEndMs": 5577.5,
+          "durationTotalMs": 1400.5999999046326,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        }
+      },
+      "intervals": {
+        "clickToDOMMs": 10110.800000071526,
+        "mainToPersonalSelectedMs": 2256.899999976158,
+        "personalSelectedToWidgetVisibleMs": 2668.8000000715256,
+        "widgetVisibleToDOMMs": 3061.5,
+        "layersToPersonalStartDeltaMs": 7.199999928474426,
+        "layersEndToCoreFirstStartGapMs": -1840.2000000476837,
+        "coreFirstStartMs": 5960.5,
+        "coreLastEndMs": 8225.5,
+        "coreEndToDOMMs": 1885.3000000715256
+      },
+      "taggedModuleNetwork": [
+        {
+          "tag": "calendar-grid",
+          "entries": [
+            {
+              "startMs": 5918.900000095367,
+              "endMs": 6970.5,
+              "durationMs": 1051.5999999046326,
+              "encodedBodySize": 10597,
+              "initiator": "script",
+              "completedByDOM": true
+            }
+          ]
+        },
+        {
+          "tag": "holidays",
+          "entries": [
+            {
+              "startMs": 5924.700000047684,
+              "endMs": 7102,
+              "durationMs": 1177.2999999523163,
+              "encodedBodySize": 738,
+              "initiator": "script",
+              "completedByDOM": true
+            }
+          ]
+        }
+      ],
+      "taggedModuleNetworkBeforeLayers": true,
+      "holidayDependencyCoverageProven": false,
+      "longTasks": {
+        "count": 18,
+        "totalMs": 3175,
+        "maxMs": 962
+      },
+      "nodeEventLoopLag": {
+        "intervalMs": 100,
+        "count": 63,
+        "medianMs": 24.977399999988847,
+        "maxMs": 1186.2270000000062,
+        "over100ms": 11
+      },
+      "serverColdProven": false,
+      "runtimeStartedAt": "2026-10-28T12:55:09.567413+00:00",
+      "logout200": true,
+      "closed": true
+    },
+    {
+      "resourceCategoryCounts": {
+        "login": 1,
+        "other": 27,
+        "static": 88,
+        "widget-config": 1,
+        "teams": 1,
+        "organizations": 1,
+        "layers": 1,
+        "personal": 1,
+        "shared": 1,
+        "todos": 1
+      },
+      "resourceCategoriesBeforeLayers": {
+        "login": 1,
+        "other": 17,
+        "static": 65,
+        "widget-config": 1,
+        "teams": 1,
+        "organizations": 1,
+        "layers": 0,
+        "personal": 0,
+        "shared": 0,
+        "todos": 0
+      },
+      "phase": "nav-fixed",
+      "sample": 2,
+      "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+      "clock": "browser performance.now; click capture origin; 250ms limited DOM polling, eventloop delay included",
+      "marks": {
+        "loginHydrated": -486.1999999284744,
+        "click": 0,
+        "firstSubmit": 0.30000007152557373,
+        "route": 896.8000000715256,
+        "mainContainer": 1139.7000000476837,
+        "personalSelected": 2298.5,
+        "widgetVisible": 2920.8000000715256,
+        "calendarDOM": 4741
+      },
+      "initialPanel": "PERSONAL",
+      "dateCellCount": 42,
+      "allFourCalendarHTTP200Observed": true,
+      "allFourCalendarResourcesFinishedByDOM": true,
+      "apis": {
+        "login": {
+          "count": 1,
+          "firstStartMs": 3.9000000953674316,
+          "lastEndMs": 206.5,
+          "durationTotalMs": 202.59999990463257,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "widget-config": {
+          "count": 1,
+          "firstStartMs": 2154.5,
+          "lastEndMs": 2331.8000000715256,
+          "durationTotalMs": 177.30000007152557,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "layers": {
+          "count": 1,
+          "firstStartMs": 2832.100000023842,
+          "lastEndMs": 3270.3000000715256,
+          "durationTotalMs": 438.2000000476837,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "personal": {
+          "count": 1,
+          "firstStartMs": 2832.2000000476837,
+          "lastEndMs": 3158.2000000476837,
+          "durationTotalMs": 326,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "shared": {
+          "count": 1,
+          "firstStartMs": 2832.3000000715256,
+          "lastEndMs": 3599.4000000953674,
+          "durationTotalMs": 767.1000000238419,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "todos": {
+          "count": 1,
+          "firstStartMs": 2832.4000000953674,
+          "lastEndMs": 3245.3000000715256,
+          "durationTotalMs": 412.89999997615814,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "teams": {
+          "count": 1,
+          "firstStartMs": 2158.4000000953674,
+          "lastEndMs": 2887.8000000715256,
+          "durationTotalMs": 729.3999999761581,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        },
+        "organizations": {
+          "count": 1,
+          "firstStartMs": 2158.5,
+          "lastEndMs": 2888.600000023842,
+          "durationTotalMs": 730.1000000238419,
+          "allCompletedByDOM": true,
+          "timingRestricted": true
+        }
+      },
+      "intervals": {
+        "clickToDOMMs": 4741,
+        "mainToPersonalSelectedMs": 1158.7999999523163,
+        "personalSelectedToWidgetVisibleMs": 622.3000000715256,
+        "widgetVisibleToDOMMs": 1820.1999999284744,
+        "layersToPersonalStartDeltaMs": 0.10000002384185791,
+        "layersEndToCoreFirstStartGapMs": -438.10000002384186,
+        "coreFirstStartMs": 2832.2000000476837,
+        "coreLastEndMs": 3599.4000000953674,
+        "coreEndToDOMMs": 1141.5999999046326
+      },
+      "taggedModuleNetwork": [
+        {
+          "tag": "calendar-grid",
+          "entries": [
+            {
+              "startMs": 2823.7000000476837,
+              "endMs": 3089,
+              "durationMs": 265.2999999523163,
+              "encodedBodySize": 10597,
+              "initiator": "script",
+              "completedByDOM": true
+            }
+          ]
+        },
+        {
+          "tag": "holidays",
+          "entries": [
+            {
+              "startMs": 2824.9000000953674,
+              "endMs": 3119.9000000953674,
+              "durationMs": 295,
+              "encodedBodySize": 738,
+              "initiator": "script",
+              "completedByDOM": true
+            }
+          ]
+        }
+      ],
+      "taggedModuleNetworkBeforeLayers": true,
+      "holidayDependencyCoverageProven": false,
+      "longTasks": {
+        "count": 9,
+        "totalMs": 1204,
+        "maxMs": 559
+      },
+      "nodeEventLoopLag": {
+        "intervalMs": 100,
+        "count": 42,
+        "medianMs": 9.374700000000303,
+        "maxMs": 293.3420000000042,
+        "over100ms": 3
+      },
+      "serverColdProven": false,
+      "runtimeStartedAt": "2026-10-28T12:55:09.567413+00:00",
+      "logout200": true,
+      "closed": true
+    }
+  ],
+  "aggregate": {
+    "baseline": {
+      "clickToDOMMs": {
+        "n": 2,
+        "min": 6932.699999928474,
+        "median": 9007,
+        "max": 11081.300000071526
+      },
+      "layersToPersonalStartDeltaMs": {
+        "n": 2,
+        "min": 739.7999999523163,
+        "median": 799.1499999761581,
+        "max": 858.5
+      },
+      "coreEndToDOMMs": {
+        "n": 2,
+        "min": 1006.1000000238419,
+        "median": 1071.449999988079,
+        "max": 1136.7999999523163
+      }
+    },
+    "fixed": {
+      "clickToDOMMs": {
+        "n": 2,
+        "min": 5673.100000023842,
+        "median": 9965.600000023842,
+        "max": 14258.100000023842
+      },
+      "layersToPersonalStartDeltaMs": {
+        "n": 2,
+        "min": 0.30000007152557373,
+        "median": 0.8500000238418579,
+        "max": 1.399999976158142
+      },
+      "coreEndToDOMMs": {
+        "n": 2,
+        "min": 716.2999999523163,
+        "median": 735.5500000119209,
+        "max": 754.8000000715256
+      }
+    },
+    "nav-fixed": {
+      "clickToDOMMs": {
+        "n": 2,
+        "min": 4741,
+        "median": 7425.900000035763,
+        "max": 10110.800000071526
+      },
+      "layersToPersonalStartDeltaMs": {
+        "n": 2,
+        "min": 0.10000002384185791,
+        "median": 3.649999976158142,
+        "max": 7.199999928474426
+      },
+      "coreEndToDOMMs": {
+        "n": 2,
+        "min": 1141.5999999046326,
+        "median": 1513.449999988079,
+        "max": 1885.3000000715256
+      }
+    }
+  },
+  "endToEndImprovementProven": false,
+  "descriptiveNavVsBaselineDOMMedianDeltaMs": -1581.0999999642372,
+  "descriptiveNavVsC787DOMMedianDeltaMs": -2539.699999988079,
+  "conditionsFile": "docs/evidence/CMP-261028-1715/performance/nav-fixed-performance-conditions-safe.json",
+  "limitations": [
+    "Each source has only two fresh-context samples; all variability and outliers are retained. These samples do not establish an end-to-end improvement guarantee.",
+    "Baseline Grid and tagged holiday-hook HTTP acquisition already started before layers; network fetching and module evaluation or mount are different observations.",
+    "Tagged holiday hook is not complete vendor dependency coverage. ResourceTiming is browser-native HTTP timing; status200 is a separate safe-enum response event.",
+    "DOM readiness means selected PERSONAL widget heading and 42 CSS-visible cells, not paint, intersection, or all backend data correctness.",
+    "Sequential sources share a retained API but server, OS, JIT and cache coldness are not proven. The source-preparation Git metadata work ended during nav sample1; sample2 began after heavy0 confirmation.",
+    "Node event-loop lag is recorded without attributing all waiting to Windows, network, observer or HTTP1 queues.",
+    "Old production12s and dev29s are historical diagnostics and are not used to calculate improvement.",
+    "Artifact source488 is distinct from later spec-only CI bridge heads. Nav hook counts do not equal network request counts or prove queue causality."
+  ]
+}

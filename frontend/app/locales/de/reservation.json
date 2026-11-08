@@ -11,19 +11,23 @@
       "confirmations": "Bestätigungsstatus"
     },
     "label": {
+      "unknown_user": "Unbekannter Benutzer",
       "start_date": "Startdatum",
       "end_date": "Enddatum",
       "partial_time": "Nur während bestimmter Stunden des Tages schließen",
       "start_time": "Startzeit",
       "end_time": "Endzeit",
+      "range_separator": "bis",
       "target_period": "Zielzeitraum",
       "subject": "Betreff",
+      "reason": "Schließungsgrund",
       "body": "Nachrichtentext",
       "cancel_reservations": "Betroffene Reservierungen stornieren"
     },
     "placeholder": {
       "select": "Bitte auswählen",
       "subject": "Betreff eingeben",
+      "reason": "Grund der Schließung eingeben",
       "body": "Nachrichtentext eingeben"
     },
     "hint": {
@@ -45,6 +49,7 @@
       "sent_at": "Gesendet am",
       "reason": "Grund",
       "count": "Anzahl",
+      "count_value": "{count} gesendet",
       "confirmation_status": "Bestätigungsstatus",
       "appointment_at": "Termindatum/-uhrzeit",
       "confirmed_header": "Bestätigt",
@@ -68,14 +73,16 @@
       "connecting": "Verbinden…",
       "reconnecting": "Erneut verbinden…",
       "offline": "Offline",
-      "denied": "Kein Zugriff"
+      "denied": "Kein Zugriff",
+      "unauthenticated": "Anmeldung erforderlich"
     },
     "dialog": {
       "title": "Versand bestätigen",
       "confirm_message": "Massenbenachrichtigung mit folgenden Details senden?",
       "cancel_warning": "※ Betroffene Reservierungen werden storniert",
       "label_period": "Zielzeitraum",
-      "label_subject": "Betreff"
+      "label_subject": "Betreff",
+      "label_reason": "Grund"
     },
     "error": {
       "time_range_required": "Bitte Start- und Endzeit auswählen",
@@ -84,7 +91,10 @@
       "preview_failed": "Vorschau konnte nicht geladen werden",
       "subject_required": "Bitte einen Betreff eingeben",
       "body_required": "Bitte einen Nachrichtentext eingeben",
+      "reason_required": "Bitte geben Sie den Grund der Schließung ein",
+      "history_failed": "Der Sendeverlauf konnte nicht geladen werden. Bitte neu laden.",
       "send_failed": "Versand fehlgeschlagen",
+      "idempotency_conflict": "Dieser Sendevorgang wurde bereits mit anderem Inhalt übermittelt. Bitte prüfen Sie die Angaben und versuchen Sie es erneut.",
       "confirmations_failed": "Bestätigungsstatus konnte nicht geladen werden",
       "info_missing": "Benachrichtigungsinformationen fehlen"
     },
@@ -182,6 +192,11 @@
         "exception_day": { "title": "Ausnahmetage", "description": "Bestimmte Tage anpassen" },
         "advanced": { "title": "Erweiterte Einstellungen", "description": "Sichtbarkeit und Benachrichtigungen" }
       }
+    },
+    "history": {
+      "date_unavailable": "Datum nicht verfügbar",
+      "time_unavailable": "Uhrzeit nicht verfügbar",
+      "line_unavailable": "Buchungsobjekt nicht verfügbar"
     },
     "column": {
       "datetime": "Datum & Uhrzeit",

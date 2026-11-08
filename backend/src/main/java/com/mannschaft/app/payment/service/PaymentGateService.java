@@ -260,6 +260,26 @@ public class PaymentGateService {
     public Map<Long, GateCheckResponse> checkAccessBatch(
             String contentType, Collection<Long> contentIds, Long viewerUserId,
             Map<Long, ContentGateTarget> targetsById) {
+        return checkAccessBatchBound(contentType, contentIds, viewerUserId, targetsById, false);
+    }
+
+    /**
+     * 厳格な一括判定（組織告知の一括既読 read-batch 用。ALIC-1 §2.7）。
+     *
+     * <p>{@link #checkAccessForPreview} の一括版。判定は {@link #checkAccessBatch(String, Collection, Long, Map)} と同じだが、
+     * 評価の障害（DB 例外・null 結果）を HIDDEN に変えず、そのまま呼び出し側へ伝播する。障害を HIDDEN に丸めると
+     * 「見えないので黙って除外」と「評価できなかった」が区別できなくなるため。SQL は 3 本
+     * （ゲート・課金項目・支払状況）で、ID 数に比例しない。</p>
+     */
+    public Map<Long, GateCheckResponse> checkAccessBatchForPreview(
+            String contentType, Collection<Long> contentIds, Long viewerUserId,
+            Map<Long, ContentGateTarget> targetsById) {
+        return checkAccessBatchBound(contentType, contentIds, viewerUserId, targetsById, true);
+    }
+
+    private Map<Long, GateCheckResponse> checkAccessBatchBound(
+            String contentType, Collection<Long> contentIds, Long viewerUserId,
+            Map<Long, ContentGateTarget> targetsById, boolean strict) {
         List<Long> ids = contentIds == null ? List.of() : contentIds.stream()
                 .filter(java.util.Objects::nonNull).distinct().toList();
         if (ids.isEmpty()) return Map.of();
@@ -268,6 +288,7 @@ public class PaymentGateService {
             gates = contentPaymentGateRepository.findByContentTypeAndContentIdIn(contentType, ids);
             if (gates == null) throw new IllegalStateException("gate query returned null");
         } catch (RuntimeException e) {
+            if (strict) throw e;
             return ids.stream().collect(Collectors.toMap(Function.identity(),
                     ignored -> new GateCheckResponse(false, true, List.of())));
         }
@@ -278,6 +299,7 @@ public class PaymentGateService {
             items = paymentItemRepository.findAllById(itemIds).stream()
                     .collect(Collectors.toMap(PaymentItemEntity::getId, Function.identity()));
         } catch (RuntimeException e) {
+            if (strict) throw e;
             return ids.stream().collect(Collectors.toMap(Function.identity(),
                     ignored -> new GateCheckResponse(false, true, List.of())));
         }
@@ -287,6 +309,7 @@ public class PaymentGateService {
                     : new HashSet<>(memberPaymentRepository.findValidPaidPaymentItemIds(
                             viewerUserId, itemIds.stream().toList()));
         } catch (RuntimeException e) {
+            if (strict) throw e;
             return ids.stream().collect(Collectors.toMap(Function.identity(),
                     ignored -> new GateCheckResponse(false, true, List.of())));
         }

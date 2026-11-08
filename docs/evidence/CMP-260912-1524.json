@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260912-1524",
+  "scope": "app",
+  "implementation": {
+    "pr": 3286,
+    "sha": "b60099ccf773a7f5b816f2ec5d43ce4cfffe66f4"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "3クラスの意図した伝播属性が実際にプロキシ経由で効いている",
+      "tests": [
+        {
+          "name": "実体を通す統合テスト（SpringCGLIB フレーム確認）",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/transaction/SelfInvocationRequiresNewTransactionIT.java"
+        },
+        {
+          "name": "実機E2E: 3クラスのスタックに CGLIB フレーム",
+          "evidence": "docs/evidence/CMP-260912-1524.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "途中失敗時に部分適用が残らないことが実 DB で実証されている",
+      "tests": [
+        {
+          "name": "AdMessagingBillingBridge の単体テスト",
+          "evidence": "backend/src/test/java/com/mannschaft/app/advertising/campaign/service/AdMessagingBillingBridgeTest.java"
+        },
+        {
+          "name": "PointCardRematchBatchService の単体テスト",
+          "evidence": "backend/src/test/java/com/mannschaft/app/pointcard/batch/PointCardRematchBatchServiceTest.java"
+        },
+        {
+          "name": "StoragePathMigrationBatchService の単体テスト",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/storage/migration/StoragePathMigrationBatchServiceTest.java"
+        },
+        {
+          "name": "実機E2E: MySQL トリガで失敗注入し、全巻き戻り・チャンク全体失敗・1ファイル単位を確認",
+          "evidence": "docs/evidence/CMP-260912-1524.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 34980098836
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260912-1524.md"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260912-1524.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260912-1524.md"
+    }
+  },
+  "regressions": []
+}

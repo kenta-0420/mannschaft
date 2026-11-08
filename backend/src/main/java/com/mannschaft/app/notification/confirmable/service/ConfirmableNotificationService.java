@@ -42,6 +42,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * F04.9 確認通知コアサービス（ファサード）。
@@ -404,6 +405,7 @@ public class ConfirmableNotificationService {
                 createdByUserId, recipientUserIds);
     }
 
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Transactional
     public ConfirmableNotificationEntity send(
             ScopeType scopeType,

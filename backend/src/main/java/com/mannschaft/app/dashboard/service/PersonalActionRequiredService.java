@@ -1,6 +1,7 @@
 package com.mannschaft.app.dashboard.service;
 
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.visibility.ScopeKey;
 import com.mannschaft.app.dashboard.dto.ActionRequiredSummaryResponse;
 import com.mannschaft.app.dashboard.dto.PersonalActionRequiredResponse;
 import com.mannschaft.app.organization.service.OrganizationService;
@@ -71,10 +72,15 @@ public class PersonalActionRequiredService {
         Map<Long, String> orgSlugs = organizationService.getSlugsByIds(orgIds);
         Map<Long, String> orgNames = organizationService.getNamesByIds(orgIds);
 
+        Set<ScopeKey> candidates = scopeActionRequiredFacade.findCandidateScopes(userId, teamIds, orgIds);
+
         // 各スコープの集計を CompletableFuture で並行実行する
         List<CompletableFuture<List<PersonalActionRequiredResponse.ActionItem>>> futures = new ArrayList<>();
 
         for (Long teamId : teamIds) {
+            if (!candidates.contains(new ScopeKey("TEAM", teamId))) {
+                continue;
+            }
             String slug = teamSlugs.get(teamId);
             String name = teamNames.get(teamId);
             if (slug == null) {
@@ -90,6 +96,9 @@ public class PersonalActionRequiredService {
         }
 
         for (Long orgId : orgIds) {
+            if (!candidates.contains(new ScopeKey("ORGANIZATION", orgId))) {
+                continue;
+            }
             String slug = orgSlugs.get(orgId);
             String name = orgNames.get(orgId);
             if (slug == null) {

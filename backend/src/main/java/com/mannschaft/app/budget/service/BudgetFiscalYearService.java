@@ -7,8 +7,10 @@ import com.mannschaft.app.budget.dto.CreateFiscalYearRequest;
 import com.mannschaft.app.budget.dto.FiscalYearResponse;
 import com.mannschaft.app.budget.entity.BudgetFiscalYearEntity;
 import com.mannschaft.app.budget.repository.BudgetFiscalYearRepository;
+import com.mannschaft.app.budget.repository.BudgetTransactionRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +29,7 @@ import java.util.List;
 public class BudgetFiscalYearService {
 
     private final BudgetFiscalYearRepository fiscalYearRepository;
+    private final BudgetTransactionRepository transactionRepository;
     private final BudgetCategoryService categoryService;
     private final BudgetMapper budgetMapper;
     private final AccessControlService accessControlService;
@@ -58,7 +61,7 @@ public class BudgetFiscalYearService {
                                          CreateFiscalYearRequest request, Long currentUserId) {
 
         if (!request.startDate().isBefore(request.endDate())) {
-            throw new BusinessException(BudgetErrorCode.BUDGET_001);
+            throw new BusinessException(CommonErrorCode.COMMON_001);
         }
 
         // 同一スコープ・期間の重複チェック
@@ -69,7 +72,7 @@ public class BudgetFiscalYearService {
                         && !fy.getStartDate().isAfter(request.endDate()))
                 .toList();
         if (!overlapping.isEmpty()) {
-            throw new BusinessException(BudgetErrorCode.BUDGET_002);
+            throw new BusinessException(BudgetErrorCode.BUDGET_016);
         }
 
         BudgetFiscalYearEntity entity = BudgetFiscalYearEntity.builder()
@@ -183,7 +186,11 @@ public class BudgetFiscalYearService {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         accessControlService.checkAdminOrAbove(currentUserId, entity.getScopeId(), entity.getScopeType());
 
-        fiscalYearRepository.delete(entity);
+        if (transactionRepository.countAllHistoryByFiscalYearId(id) > 0) {
+            throw new BusinessException(BudgetErrorCode.BUDGET_020);
+        }
+        entity.softDelete();
+        fiscalYearRepository.save(entity);
         log.info("会計年度を削除しました: id={}", id);
     }
 

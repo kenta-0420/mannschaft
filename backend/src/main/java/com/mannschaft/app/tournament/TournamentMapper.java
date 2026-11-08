@@ -184,6 +184,7 @@ public interface TournamentMapper {
     // ===== Participant =====
 
     @Mapping(target = "status", expression = "java(entity.getStatus().name())")
+    @Mapping(target = "teamName", ignore = true) // team ドメインの名前は DivisionService が一括解決して付与する
     ParticipantResponse toParticipantResponse(TournamentParticipantEntity entity);
 
     // ===== Matchday =====

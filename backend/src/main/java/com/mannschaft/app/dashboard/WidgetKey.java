@@ -65,6 +65,8 @@ public enum WidgetKey {
     MY_RECRUITMENTS(ScopeType.PERSONAL, true, 28),
     /** F02.2.2 C案: ピン留め村の井戸端在席ダイジェスト */
     VILLAGE_LOBBY_DIGEST(ScopeType.PERSONAL, true, 29),
+    /** F04.7 本人の恐竜牧場。FE dinosaur-ranch と同じ個人widget key。 */
+    PERSONAL_DINOSAUR_RANCH(ScopeType.PERSONAL, false, 30),
 
     // --- チームダッシュボード ---
     TEAM_NOTICES(ScopeType.TEAM, true, 0),

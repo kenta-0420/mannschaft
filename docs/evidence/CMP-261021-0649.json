@@ -1,0 +1,705 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261021-0649",
+  "scope": "app",
+  "implementation": {
+    "pr": 4137,
+    "sha": "1eaafc2cd843e198abcc4d414c4f250ecd05bd77"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC01",
+      "description": "未決0件のPUBLISHED本人担当からSPECIFIC/TEMPLATE由来/OPEN_CALLが201となり、本人・slot・宛先/理由を従来どおり保存する",
+      "tests": [
+        {
+          "name": "公開済みの本人担当枠は201（正常系）",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapScopeContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "既存CreateSwapRequest正常系1件のみ。この試験単独では3モードの保存を証明しない。"
+        },
+        {
+          "name": "旧0d5e実UIのSPECIFIC/TEMPLATE由来/OPEN_CALL各201とDB再読取",
+          "evidence": "docs/evidence/CMP-261021-0649-real.md",
+          "observedSourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+          "observation": "旧統合実機の3モード操作・保存結果。新84c8試験の結果へ付け替えない。"
+        }
+      ],
+      "sourcePaths": [
+        "backend/src/main/java/com/mannschaft/app/shift/service/ShiftSwapService.java",
+        "backend/src/main/java/com/mannschaft/app/shift/repository/ShiftSwapRequestRepository.java"
+      ],
+      "supportingSuites": [
+        "ShiftSwapCreationEligibilityContractIT（認可・資格の回帰だけを補助し、モード別保存の証明ではない）"
+      ],
+      "limits": "単一正常系caseと旧3mode実機を併用。独立mode-storage testcase名は未観測。",
+      "rootScopeAssessment": "対応greenと実装をroot検分で確認。元head/fresh/cache/個別観測限界を保持。"
+    },
+    {
+      "id": "AC02",
+      "description": "同slot/requesterにPENDINGが1件あると2件目は409 SHIFT_013。件数と既存全列は不変",
+      "tests": [
+        {
+          "name": "[1] state=PENDING, existingOpenCall=false",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        },
+        {
+          "name": "[2] state=PENDING, existingOpenCall=true",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        },
+        {
+          "name": "[3] state=ACCEPTED, existingOpenCall=false",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        },
+        {
+          "name": "[4] state=ACCEPTED, existingOpenCall=true",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        }
+      ],
+      "sourcePaths": [
+        "backend/src/main/java/com/mannschaft/app/shift/service/ShiftSwapService.java",
+        "backend/src/main/java/com/mannschaft/app/shift/repository/ShiftSwapRequestRepository.java"
+      ],
+      "supportingSuites": [],
+      "limits": "原sourceとfresh/cache区別を保持。既存0648 testcase AC番号は0649と同一視しない。",
+      "rootScopeAssessment": "対応greenと実装をroot検分で確認。元head/fresh/cache/個別観測限界を保持。"
+    },
+    {
+      "id": "AC03",
+      "description": "同条件ACCEPTEDでも409、担当JSON/割当履歴/既存受諾者は不変",
+      "tests": [
+        {
+          "name": "[1] state=PENDING, existingOpenCall=false",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        },
+        {
+          "name": "[2] state=PENDING, existingOpenCall=true",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        },
+        {
+          "name": "[3] state=ACCEPTED, existingOpenCall=false",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        },
+        {
+          "name": "[4] state=ACCEPTED, existingOpenCall=true",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        }
+      ],
+      "sourcePaths": [
+        "backend/src/main/java/com/mannschaft/app/shift/service/ShiftSwapService.java",
+        "backend/src/main/java/com/mannschaft/app/shift/repository/ShiftSwapRequestRepository.java"
+      ],
+      "supportingSuites": [],
+      "limits": "原sourceとfresh/cache区別を保持。既存0648 testcase AC番号は0649と同一視しない。",
+      "rootScopeAssessment": "対応greenと実装をroot検分で確認。元head/fresh/cache/個別観測限界を保持。"
+    },
+    {
+      "id": "AC04",
+      "description": "宛先差・順序差・理由差・SPECIFIC⇔OPEN_CALLの切替でAC-02/03を回避できない",
+      "tests": [
+        {
+          "name": "[1] state=PENDING, existingOpenCall=false",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        },
+        {
+          "name": "[2] state=PENDING, existingOpenCall=true",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        },
+        {
+          "name": "[3] state=ACCEPTED, existingOpenCall=false",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        },
+        {
+          "name": "[4] state=ACCEPTED, existingOpenCall=true",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        }
+      ],
+      "sourcePaths": [
+        "backend/src/main/java/com/mannschaft/app/shift/service/ShiftSwapService.java",
+        "backend/src/main/java/com/mannschaft/app/shift/repository/ShiftSwapRequestRepository.java"
+      ],
+      "supportingSuites": [],
+      "limits": "原sourceとfresh/cache区別を保持。既存0648 testcase AC番号は0649と同一視しない。",
+      "rootScopeAssessment": "対応greenと実装をroot検分で確認。元head/fresh/cache/個別観測限界を保持。"
+    },
+    {
+      "id": "AC05",
+      "description": "同slotの別の現在担当者は申請可能。同一人の別slotも可能（推奨粒度が裁可された場合）",
+      "tests": [
+        {
+          "name": "AC05_同枠の別担当者と同一担当の別枠は201()",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        }
+      ],
+      "sourcePaths": [
+        "backend/src/main/java/com/mannschaft/app/shift/service/ShiftSwapService.java",
+        "backend/src/main/java/com/mannschaft/app/shift/repository/ShiftSwapRequestRepository.java"
+      ],
+      "supportingSuites": [],
+      "limits": "原sourceとfresh/cache区別を保持。既存0648 testcase AC番号は0649と同一視しない。",
+      "rootScopeAssessment": "対応greenと実装をroot検分で確認。元head/fresh/cache/個別観測限界を保持。"
+    },
+    {
+      "id": "AC06",
+      "description": "terminal各状態だけなら新規201。APPROVED後の元担当は資格が失われていれば403、再割当後は201",
+      "tests": [
+        {
+          "name": "AC06_承認後の元担当は403で正当に再割当された後は201()",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        },
+        {
+          "name": "[1] state=APPROVED",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        },
+        {
+          "name": "[2] state=REJECTED",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        },
+        {
+          "name": "[3] state=CANCELLED",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        }
+      ],
+      "sourcePaths": [
+        "backend/src/main/java/com/mannschaft/app/shift/service/ShiftSwapService.java",
+        "backend/src/main/java/com/mannschaft/app/shift/repository/ShiftSwapRequestRepository.java"
+      ],
+      "supportingSuites": [],
+      "limits": "原sourceとfresh/cache区別を保持。既存0648 testcase AC番号は0649と同一視しない。",
+      "rootScopeAssessment": "対応greenと実装をroot検分で確認。元head/fresh/cache/個別観測限界を保持。"
+    },
+    {
+      "id": "AC07",
+      "description": "既存未決が2件以上でも新規409、既存行の削除/取消/更新が起きない",
+      "tests": [
+        {
+          "name": "AC07_既存未決が複数でも修復せず新規だけ409()",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        }
+      ],
+      "sourcePaths": [
+        "backend/src/main/java/com/mannschaft/app/shift/service/ShiftSwapService.java",
+        "backend/src/main/java/com/mannschaft/app/shift/repository/ShiftSwapRequestRepository.java"
+      ],
+      "supportingSuites": [],
+      "limits": "原sourceとfresh/cache区別を保持。既存0648 testcase AC番号は0649と同一視しない。",
+      "rootScopeAssessment": "対応greenと実装をroot検分で確認。元head/fresh/cache/個別観測限界を保持。"
+    },
+    {
+      "id": "AC08",
+      "description": "並行同一要求2本は正確に201×1・409×1となり1行だけcommit。片方が先にsnapshotを作り親lock待ちした後、先行作成commitを現在読取で認識する",
+      "tests": [
+        {
+          "name": "AC08_親lock待機前に枠を読取済みでも201と409が各一回()",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        }
+      ],
+      "sourcePaths": [
+        "backend/src/main/java/com/mannschaft/app/shift/service/ShiftSwapService.java",
+        "backend/src/main/java/com/mannschaft/app/shift/repository/ShiftSwapRequestRepository.java"
+      ],
+      "supportingSuites": [],
+      "limits": "原sourceとfresh/cache区別を保持。既存0648 testcase AC番号は0649と同一視しない。",
+      "rootScopeAssessment": "対応greenと実装をroot検分で確認。元head/fresh/cache/個別観測限界を保持。"
+    },
+    {
+      "id": "AC09",
+      "description": "同slot別申請者並行は両方成功、別scheduleは相互の親lockを取得しない。既存parent→slot→swap順でdeadlock/500を生じない",
+      "tests": [
+        {
+          "name": "AC09_同枠別担当者の同時依頼は両方201()",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        },
+        {
+          "name": "AC09_別scheduleの親lock保持中も他方を作成できる()",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        },
+        {
+          "name": "AC09_別scheduleの同時新規依頼は両方201で各一行commitする()",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        }
+      ],
+      "sourcePaths": [
+        "backend/src/main/java/com/mannschaft/app/shift/service/ShiftSwapService.java",
+        "backend/src/main/java/com/mannschaft/app/shift/repository/ShiftSwapRequestRepository.java"
+      ],
+      "supportingSuites": [],
+      "limits": "原sourceとfresh/cache区別を保持。既存0648 testcase AC番号は0649と同一視しない。",
+      "rootScopeAssessment": "対応greenと実装をroot検分で確認。元head/fresh/cache/個別観測限界を保持。"
+    },
+    {
+      "id": "AC10",
+      "description": "先行作成TXをsave後commit前にrollbackしたとき待機側は201、残る未決は1件。save/flush失敗時に中途行・担当履歴変更を残さず後続要求が永久blockedにならない",
+      "tests": [
+        {
+          "name": "AC10_実保存後rollbackした先行要求を待機側は未決と数えず201()",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        },
+        {
+          "name": "AC10_実DB保存失敗で中途行を残さず次の正常HTTP要求は201()",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        }
+      ],
+      "sourcePaths": [
+        "backend/src/main/java/com/mannschaft/app/shift/service/ShiftSwapService.java",
+        "backend/src/main/java/com/mannschaft/app/shift/repository/ShiftSwapRequestRepository.java"
+      ],
+      "supportingSuites": [],
+      "limits": "原sourceとfresh/cache区別を保持。既存0648 testcase AC番号は0649と同一視しない。",
+      "rootScopeAssessment": "対応greenと実装をroot検分で確認。元head/fresh/cache/個別観測限界を保持。"
+    },
+    {
+      "id": "AC11",
+      "description": "本人MEMBER/ADMIN/DEPUTY_ADMIN/SYSTEM_ADMINとも重複を拒否し、非本人担当403・非PUBLISHED409・未割当(SQL NULL/[]/JSON null)403を維持",
+      "tests": [
+        {
+          "name": "AC11_許可ロール全員が本人担当でも重複409()",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        },
+        {
+          "name": "AC11_未決があっても非公開と非本人担当は資格エラーを優先する()",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        },
+        {
+          "name": "AC11 既存作成資格16件・scope37件の挙動対応（補助証拠）",
+          "evidence": "docs/evidence/CMP-261021-0649-review.md",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "ac-test-evidence-24ceb.jsonの既存資格・scope結果を挙動で対応。全37件が当該条件を個別に検査するという意味ではない。既存0648のAC番号は0649へ対応付けない。"
+        }
+      ],
+      "sourcePaths": [
+        "backend/src/main/java/com/mannschaft/app/shift/service/ShiftSwapService.java",
+        "backend/src/main/java/com/mannschaft/app/shift/repository/ShiftSwapRequestRepository.java"
+      ],
+      "supportingSuites": [
+        "ShiftSwapCreationEligibilityContractIT",
+        "ShiftSwapScopeContractIT:CreateSwapRequest"
+      ],
+      "limits": "原sourceとfresh/cache区別を保持。既存0648 testcase AC番号は0649と同一視しない。",
+      "rootScopeAssessment": "対応greenと実装をroot検分で確認。元head/fresh/cache/個別観測限界を保持。"
+    },
+    {
+      "id": "AC12",
+      "description": "未認証401、SUPPORTER403、別チーム/別テナントは不在と完全一致404。重複有無・公開状態で越境応答が変わらず、認可失敗後はwrite Service/重複lockに到達しない",
+      "tests": [
+        {
+          "name": "AC12_重複があっても認可失敗は追加lockや重複照会へ到達しない()",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        },
+        {
+          "name": "AC12 既存作成資格16件・scope37件の挙動対応（補助証拠）",
+          "evidence": "docs/evidence/CMP-261021-0649-review.md",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "ac-test-evidence-24ceb.jsonの既存資格・scope結果を挙動で対応。全37件が当該条件を個別に検査するという意味ではない。既存0648のAC番号は0649へ対応付けない。"
+        }
+      ],
+      "sourcePaths": [
+        "backend/src/main/java/com/mannschaft/app/shift/service/ShiftSwapService.java",
+        "backend/src/main/java/com/mannschaft/app/shift/repository/ShiftSwapRequestRepository.java"
+      ],
+      "supportingSuites": [
+        "ShiftSwapCreationEligibilityContractIT",
+        "ShiftSwapScopeContractIT:CreateSwapRequest"
+      ],
+      "limits": "原sourceとfresh/cache区別を保持。既存0648 testcase AC番号は0649と同一視しない。",
+      "rootScopeAssessment": "対応greenと実装をroot検分で確認。元head/fresh/cache/個別観測限界を保持。"
+    },
+    {
+      "id": "AC13",
+      "description": "slotId未指定/null、不正JSONは既存400。存在しない0/負数/最大値slotは既存404。reason null/空/500文字は許容、501は400、targetUserIds nullの後方互換と空配列400を維持",
+      "tests": [
+        {
+          "name": "AC13_不正JSON必須slot理由超過と空宛先は400で全列不変()",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        },
+        {
+          "name": "[1] length=null",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        },
+        {
+          "name": "[2] length=0",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        },
+        {
+          "name": "[3] length=500",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        },
+        {
+          "name": "AC13 既存作成資格16件・scope37件の挙動対応（補助証拠）",
+          "evidence": "docs/evidence/CMP-261021-0649-review.md",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "ac-test-evidence-24ceb.jsonの既存資格・scope結果を挙動で対応。全37件が当該条件を個別に検査するという意味ではない。既存0648のAC番号は0649へ対応付けない。"
+        }
+      ],
+      "sourcePaths": [
+        "backend/src/main/java/com/mannschaft/app/shift/service/ShiftSwapService.java",
+        "backend/src/main/java/com/mannschaft/app/shift/repository/ShiftSwapRequestRepository.java"
+      ],
+      "supportingSuites": [
+        "ShiftSwapCreationEligibilityContractIT",
+        "ShiftSwapScopeContractIT:CreateSwapRequest"
+      ],
+      "limits": "原sourceとfresh/cache区別を保持。既存0648 testcase AC番号は0649と同一視しない。",
+      "rootScopeAssessment": "対応greenと実装をroot検分で確認。元head/fresh/cache/個別観測限界を保持。"
+    },
+    {
+      "id": "AC14",
+      "description": "FE全3モードでpending Promise中に2回以上直接click/同一tickイベントを入れてもPOSTは1回、loading/disabledが継続する",
+      "tests": [
+        {
+          "name": "disabledを無視するイベント経路でも送信中の再入を拒否する",
+          "evidence": "frontend/app/components/shift/ShiftSwapRequestFormDialog.spec.ts",
+          "observedSourceHead": "33a90ea9ca354bb234adac2aca62455803668ceb",
+          "observation": "ソース上のアサーション題名・群と対象ファイル34件成功の集計を対応。展開後の個別CIケース出力は未観測。",
+          "sourceLines": [
+            316,
+            331
+          ]
+        },
+        {
+          "name": "%sで同一tickの複数clickを1回の送信にし完了までボタンを無効にする",
+          "evidence": "frontend/app/components/shift/ShiftSwapRequestFormDialog.spec.ts",
+          "observedSourceHead": "33a90ea9ca354bb234adac2aca62455803668ceb",
+          "observation": "ソース上のアサーション題名・群と対象ファイル34件成功の集計を対応。展開後の個別CIケース出力は未観測。",
+          "sourceLines": [
+            316,
+            331
+          ]
+        }
+      ],
+      "sourcePaths": [
+        "frontend/app/components/shift/ShiftSwapRequestFormDialog.vue",
+        "frontend/app/components/shift/ShiftSwapRequestFormDialog.spec.ts"
+      ],
+      "supportingSuites": [],
+      "limits": "FE source assertionsとfile集計結果の対応。個別CI testcase実観測を主張しない。",
+      "rootScopeAssessment": "対応greenと実装をroot検分で確認。元head/fresh/cache/個別観測限界を保持。"
+    },
+    {
+      "id": "AC15",
+      "description": "FE成功で通知/submitted/閉鎖が各1回、finallyで解除。送信中のclose→reopenでも未完了送信を増やさない",
+      "tests": [
+        {
+          "name": "%sで同一tickの複数clickを1回の送信にし完了までボタンを無効にする",
+          "evidence": "frontend/app/components/shift/ShiftSwapRequestFormDialog.spec.ts",
+          "observedSourceHead": "33a90ea9ca354bb234adac2aca62455803668ceb",
+          "observation": "ソース上のアサーション題名・群と対象ファイル34件成功の集計を対応。展開後の個別CIケース出力は未観測。",
+          "sourceLines": [
+            331,
+            362
+          ]
+        },
+        {
+          "name": "送信中に閉じて再表示しても未完了の依頼を増やさない",
+          "evidence": "frontend/app/components/shift/ShiftSwapRequestFormDialog.spec.ts",
+          "observedSourceHead": "33a90ea9ca354bb234adac2aca62455803668ceb",
+          "observation": "ソース上のアサーション題名・群と対象ファイル34件成功の集計を対応。展開後の個別CIケース出力は未観測。",
+          "sourceLines": [
+            331,
+            362
+          ]
+        }
+      ],
+      "sourcePaths": [
+        "frontend/app/components/shift/ShiftSwapRequestFormDialog.vue",
+        "frontend/app/components/shift/ShiftSwapRequestFormDialog.spec.ts"
+      ],
+      "supportingSuites": [],
+      "limits": "FE source assertionsとfile集計結果の対応。個別CI testcase実観測を主張しない。",
+      "rootScopeAssessment": "対応greenと実装をroot検分で確認。元head/fresh/cache/個別観測限界を保持。"
+    },
+    {
+      "id": "AC16",
+      "description": "FEで409/403/500/通信失敗時に失敗通知が出て成功通知/閉鎖/submittedなし、finally解除後の明示再試行は可能。通信断でもサーバcommit済なら再試行でBEが重複を増やさない",
+      "tests": [
+        {
+          "name": "AC16_成功応答後に通信断を想定して再送しても新規行を増やさない()",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        },
+        {
+          "name": "送信失敗%sの後は開いたまま明示的に再試行できる",
+          "evidence": "frontend/app/components/shift/ShiftSwapRequestFormDialog.spec.ts",
+          "observedSourceHead": "33a90ea9ca354bb234adac2aca62455803668ceb",
+          "observation": "ソース上のアサーション題名・群と対象ファイル34件成功の集計を対応。展開後の個別CIケース出力は未観測。",
+          "sourceLines": [
+            382
+          ]
+        }
+      ],
+      "sourcePaths": [
+        "frontend/app/components/shift/ShiftSwapRequestFormDialog.vue",
+        "frontend/app/components/shift/ShiftSwapRequestFormDialog.spec.ts"
+      ],
+      "supportingSuites": [],
+      "limits": "FE source assertionsとfile集計結果の対応。個別CI testcase実観測を主張しない。",
+      "rootScopeAssessment": "対応greenと実装をroot検分で確認。元head/fresh/cache/個別観測限界を保持。"
+    },
+    {
+      "id": "AC17",
+      "description": "候補0/未選択のSPECIFIC、対象0のTEMPLATEは送信しない。OPEN_CALLは宛先空でも可。0647の候補再取得/slug/古い応答抑止を維持",
+      "tests": [
+        {
+          "name": "候補0件は失敗と区別して未選択の提出を無効にする",
+          "evidence": "frontend/app/components/shift/ShiftSwapRequestFormDialog.spec.ts",
+          "observedSourceHead": "33a90ea9ca354bb234adac2aca62455803668ceb",
+          "observation": "ソース上のアサーション題名・群と対象ファイル34件成功の集計を対応。展開後の個別CIケース出力は未観測。",
+          "sourceLines": [
+            147,
+            199,
+            212,
+            229,
+            245,
+            260,
+            275,
+            302,
+            407
+          ]
+        },
+        {
+          "name": "TEMPLATEに同日昼の対象が0人なら送信しない",
+          "evidence": "frontend/app/components/shift/ShiftSwapRequestFormDialog.spec.ts",
+          "observedSourceHead": "33a90ea9ca354bb234adac2aca62455803668ceb",
+          "observation": "ソース上のアサーション題名・群と対象ファイル34件成功の集計を対応。展開後の個別CIケース出力は未観測。",
+          "sourceLines": [
+            147,
+            199,
+            212,
+            229,
+            245,
+            260,
+            275,
+            302,
+            407
+          ]
+        },
+        {
+          "name": "候補再取得/slug/古い応答抑止・OPEN_CALLの既存試験",
+          "evidence": "frontend/app/components/shift/ShiftSwapRequestFormDialog.spec.ts",
+          "observedSourceHead": "33a90ea9ca354bb234adac2aca62455803668ceb",
+          "observation": "ソース上のアサーション題名・群と対象ファイル34件成功の集計を対応。展開後の個別CIケース出力は未観測。",
+          "sourceLines": [
+            147,
+            199,
+            212,
+            229,
+            245,
+            260,
+            275,
+            302,
+            407
+          ]
+        }
+      ],
+      "sourcePaths": [
+        "frontend/app/components/shift/ShiftSwapRequestFormDialog.vue",
+        "frontend/app/components/shift/ShiftSwapRequestFormDialog.spec.ts"
+      ],
+      "supportingSuites": [],
+      "limits": "FE source assertionsとfile集計結果の対応。個別CI testcase実観測を主張しない。",
+      "rootScopeAssessment": "対応greenと実装をroot検分で確認。元head/fresh/cache/個別観測限界を保持。"
+    },
+    {
+      "id": "AC18",
+      "description": "作成1回あたり重複判定は最大1SQL・返却最大1行、履歴/チーム人数に比例したループ照会なし。認可前追加lockなし。既存索引利用とロック範囲を確認",
+      "tests": [
+        {
+          "name": "AC18_履歴が多くても重複判定は非lockingで上限一行一SQL()",
+          "evidence": "backend/src/test/java/com/mannschaft/app/shift/ShiftSwapCreationDuplicateContractIT.java",
+          "observedSourceHead": "24ceb0588e2df2ca35bc87ef624cde8cc5620c81",
+          "observation": "24cebで新規実行した対象XMLの個別結果。後続headには限定的なソース対応だけを適用する。"
+        }
+      ],
+      "sourcePaths": [
+        "backend/src/main/java/com/mannschaft/app/shift/service/ShiftSwapService.java",
+        "backend/src/main/java/com/mannschaft/app/shift/repository/ShiftSwapRequestRepository.java"
+      ],
+      "supportingSuites": [],
+      "limits": "旧実行7SQL。bind未採取、fixture値EXPLAINは実行時lock直接測定ではない。",
+      "rootScopeAssessment": "対応greenと実装をroot検分で確認。元head/fresh/cache/個別観測限界を保持。"
+    },
+    {
+      "id": "AC19",
+      "description": "実UI `/my/shift` から依頼を作り高速連打して1行だけ表示/保存、再表示/別タブ再提出は失敗通知。受諾→管理者承認で0648の担当差替を維持。権限あり/なし/別テナントで入口・URL直打ちを検証",
+      "tests": [
+        {
+          "name": "旧0d5e core9/boundary11・別navigation/change-review（元source保持）",
+          "evidence": "docs/evidence/CMP-261021-0649-real.md",
+          "observation": "元sourceの実測と未達記録を対応。後続sourceへ付け替えない。"
+        },
+        {
+          "name": "第三run固定A提出1回→B受諾200→D承認200/B+C表示/C履歴保持/S3X readonly4表不変",
+          "evidence": "docs/evidence/CMP-261021-0649-real.md",
+          "observedSourceHead": "84c8c2fa422bab8dec5fe01e81a695e92db9911d",
+          "observation": "fixed-ui-safe passed=true。独立探索の成功や新全tree実機へ読み替えない。"
+        }
+      ],
+      "sourcePaths": [],
+      "supportingSuites": [],
+      "limits": "旧3モード・重複再提出等の0d5e実測と、新84c8のSPECIFIC固定追試を分離して対応。AC19は旧実測との組合せでrootが充足と裁定。",
+      "rootScopeAssessment": "旧0d5e実測と新84c8固定追試を組み合わせて確認。各元sourceと実行限界を保持。"
+    },
+    {
+      "id": "AC20",
+      "description": "実機後、3住民（申請者、指名受諾者、管理者）として各自の日常目的で探索し、依頼発見→状態確認→操作→戻り導線・空/失敗/再試行の欠落を記録。途中で権限なし・別テナントも切替し越境表示を確認",
+      "tests": [
+        {
+          "name": "旧I03独立A/B/D実施・全goalsReached false（旧source保持）",
+          "evidence": "docs/evidence/CMP-261021-0649-exploratory.md",
+          "observation": "元sourceの実測と未達記録を対応。後続sourceへ付け替えない。"
+        },
+        {
+          "name": "第三run新D独立探索実施完了・予定再訪・S3X予定API404/相談statusと担当者名および相談個別境界未達記録",
+          "evidence": "docs/evidence/CMP-261021-0649-exploratory.md",
+          "observedSourceHead": "84c8c2fa422bab8dec5fe01e81a695e92db9911d",
+          "observation": "executionCompleted=true/goalsReached=false/両switchGoals=false。欠落記録条件と目標達成を分離し、AC/stage最終判定はroot。"
+        }
+      ],
+      "sourcePaths": [],
+      "supportingSuites": [],
+      "limits": "旧3名の目的未達は不変。新Dも全目的未達を記録済み。固定A→B→Dを3名独立探索成功に代用しない。短命Node補助CLIのPID/start未登録は限界として保持。",
+      "rootScopeAssessment": "探索protocol実施と欠落記録を条件充足と裁定。旧3名/新Dの全goals falseと相談個別切替未達を保持。"
+    }
+  ],
+  "ci": [
+    {
+      "runId": 40564670324
+    },
+    {
+      "runId": 40564668001
+    },
+    {
+      "runId": 40564668009
+    },
+    {
+      "runId": 40564667931
+    },
+    {
+      "runId": 40564668113
+    },
+    {
+      "runId": 40564667924
+    },
+    {
+      "runId": 40564668013
+    },
+    {
+      "runId": 40564667958
+    },
+    {
+      "runId": 40564668063
+    },
+    {
+      "runId": 40564667959
+    },
+    {
+      "runId": 40564665118
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261021-0649-review.md"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261021-0649-real.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261021-0649-exploratory.md",
+      "meaning": "独立探索protocolの実施と欠落記録を確認。旧A/B/Dと新Dの全目的達成、相談個別切替、coverage合格を意味しない。"
+    }
+  },
+  "regressions": [
+    {
+      "description": "同slot/requester未決依頼の重複作成とFE送信中再入を防止。旧RED個別case名は不確定、元分類は保持し別裁定を併記。",
+      "test": "ShiftSwapCreationDuplicateContractIT / ShiftSwapRequestFormDialog.spec.ts",
+      "redEvidence": "docs/evidence/CMP-261021-0649/proofs/regression-provenance.json",
+      "greenEvidence": "docs/evidence/CMP-261021-0649-review.md"
+    }
+  ],
+  "completion": {
+    "mergedAt": "2026-10-27T19:26:12Z",
+    "mergeCommit": "e64f374896681a898bc6cb1d6bfe2fa14117b496",
+    "premergeChecks": {
+      "total": 27,
+      "success": 25,
+      "skipped": 2,
+      "failure": 0,
+      "pending": 0
+    },
+    "implementationCIProof": "docs/evidence/CMP-261021-0649/proofs/final-ci-merge.json",
+    "scope": "CMP-261021-0649のみ。1432全体は実装中を維持。",
+    "runtimeSourceHead": "84c8c2fa422bab8dec5fe01e81a695e92db9911d",
+    "runtimeOwner": "cmp1432f-e48ca45535",
+    "rootStageDecision": "review/realはpassed。exploratoryは独立探索protocol実施と欠落記録としてpassed。全目的未達・相談個別切替未達・第三run exit1は不変。",
+    "independentGoalsReached": false,
+    "switchConsultationSpecificGoalsReached": false,
+    "thirdRunExitCode": 1,
+    "coveragePromoted": false,
+    "production": false
+  }
+}

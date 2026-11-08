@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261101-1404",
+  "scope": "app",
+  "implementation": {
+    "pr": 4257,
+    "sha": "c74a8d8d5a0909e17940b47de6c6c29478d0edc9"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1404-1",
+      "description": "秋の重複時刻を実行日に依存せず先の側（夏時間側）に固定して範囲を保存する",
+      "tests": [
+        {
+          "name": "CalendarWeekGrid.dst.spec.ts",
+          "evidence": "frontend/tests/unit/components/schedule/CalendarWeekGrid.dst.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-1404-2",
+      "description": "週グリッドからフォーム保存まで同じ解決で往復する",
+      "tests": [
+        {
+          "name": "CalendarWeekGridToFormSave.dst.spec.ts",
+          "evidence": "frontend/tests/unit/components/schedule/CalendarWeekGridToFormSave.dst.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 41359956092
+    },
+    {
+      "runId": 41359956153
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4257"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261101-1404-real.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261101-1404-exploratory.md"
+    }
+  },
+  "regressions": []
+}

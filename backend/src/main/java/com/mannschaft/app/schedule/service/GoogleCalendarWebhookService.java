@@ -34,6 +34,7 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * Google Calendar Phase 4 — Webhook 受信処理・チャンネル管理サービス。
@@ -377,6 +378,7 @@ public class GoogleCalendarWebhookService {
      *
      * @param userId 対象ユーザーID
      */
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Transactional
     public void registerWebhookChannel(Long userId) {
         UserGoogleCalendarConnectionEntity connection = connectionRepository.findByUserId(userId)

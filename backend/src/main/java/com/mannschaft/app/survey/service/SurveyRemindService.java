@@ -2,20 +2,18 @@ package com.mannschaft.app.survey.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.survey.DistributionMode;
 import com.mannschaft.app.survey.SurveyErrorCode;
-import com.mannschaft.app.survey.SurveyNotificationType;
 import com.mannschaft.app.survey.SurveyStatus;
 import com.mannschaft.app.survey.dto.RemindResponse;
 import com.mannschaft.app.survey.entity.SurveyEntity;
 import com.mannschaft.app.survey.entity.SurveyResponseEntity;
+import com.mannschaft.app.survey.event.SurveyReminderNotificationEvent;
 import com.mannschaft.app.survey.repository.SurveyRepository;
 import com.mannschaft.app.survey.repository.SurveyResponseRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.MessageSource;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,17 +48,16 @@ public class SurveyRemindService {
     private final SurveyRepository surveyRepository;
     private final SurveyResponseRepository responseRepository;
     private final AccessControlService accessControlService;
-    private final NotificationHelper notificationHelper;
+    private final ApplicationEventPublisher eventPublisher;
     /** 母集団解決の唯一の窓口（公開時の target_count スナップショットと同一定義）。 */
     private final SurveyUniverseResolver universeResolver;
-    private final MessageSource messageSource;
 
     /**
      * 未回答者へ督促通知を送信する（F05.4 督促 API）。
      *
      * <p>認可・状態・クールダウン・上限を順にチェックし、未回答メンバーへ通知を送信する。
-     * 通知送信は {@link NotificationHelper#notifyAll} 経由で個別の失敗を握りつつ継続するため、
-     * 一部ユーザーへの送信失敗があっても全体ロールバックは発生しない（onboarding 流儀に準拠）。
+     * 通知は受信者を確定して publish するのみで、配送は AFTER_COMMIT の非同期リスナーが行う
+     * （Issue #2997 G5）。応答の件数は「対象人数」で、配送完了ではなく受付を意味する。
      * カウンタ更新（{@code lastRemindedAt} / {@code manualRemindCount}）は同一トランザクションで永続化する。</p>
      *
      * <p>母集団の決定（設計書 §1035-1036 に準拠）:
@@ -113,35 +110,21 @@ public class SurveyRemindService {
         // 未回答者抽出（distribution_mode に応じて母集団を切り替え。回答済みを除外）
         List<Long> unansweredUserIds = findUnansweredUserIds(survey);
 
-        // 通知送信（配信＝受信権 統一・関所(1)通知）:
-        // unansweredUserIds は配信母集団（resolveUniverseUserIds が includeSupporters トグル準拠で展開した
-        // 集合）から回答済みを除いたもので、全員が配信母集団として事前認可済み。よって notifyAllPreAuthorized
-        // を使い canView 絞り込み（SURVEY の ResultsVisibility 軸を含む）を通さない。これにより督促通知が
-        // 公開通知と同様に誤 deny で届かなくなる (B) レグを回避する。NotificationHelper が個別失敗を握り継続する。
-        NotificationScopeType notifScope = "TEAM".equals(survey.getScopeType())
-                ? NotificationScopeType.TEAM
-                : NotificationScopeType.ORGANIZATION;
+        // 通知（配信＝受信権 統一・関所(1)通知）:
+        // unansweredUserIds は配信母集団から回答済みを除いたもので、全員が事前認可済み。
+        // Issue #2997 G5: 業務TXは受信者を確定して publish するだけ。配送（事前認可バルク・locale 別文面）は
+        // AFTER_COMMIT の SurveyReminderNotificationListener が行う。これにより業務ロールバック時に通知だけが
+        // 残らず、通知側の失敗が督促カウンタの確定を巻き戻さない。0 人なら publish しない。
         if (!unansweredUserIds.isEmpty()) {
-            // Issue #2715 CMP-055 ロットC-5: 受信者 locale に応じて件名・本文を組み立てる
-            // （notifyAllPreAuthorizedLocalized は notifyAllPreAuthorized 同様 canView 絞り込みを通さない）。
-            notificationHelper.notifyAllPreAuthorizedLocalized(
-                    unansweredUserIds,
-                    SurveyNotificationType.SURVEY_RESPONSE_REMINDER.name(),
-                    "SURVEY",
+            eventPublisher.publishEvent(new SurveyReminderNotificationEvent(
+                    SurveyReminderNotificationEvent.Kind.REMIND,
                     surveyId,
-                    notifScope,
+                    survey.getScopeType(),
                     survey.getScopeId(),
-                    "/surveys/" + surveyId,
+                    survey.getTitle(),
+                    unansweredUserIds,
                     currentUserId,
-                    (userId, locale) -> new NotificationHelper.LocalizedMessage(
-                            messageSource.getMessage(
-                                    "notification.survey.remind.title", null,
-                                    "アンケート未回答のお知らせ", locale),
-                            messageSource.getMessage(
-                                    "notification.survey.remind.body",
-                                    new Object[]{survey.getTitle()},
-                                    "「" + survey.getTitle() + "」が未回答です。回答にご協力ください。",
-                                    locale)));
+                    null));
         }
 
         // カウンタ更新
@@ -151,7 +134,7 @@ public class SurveyRemindService {
         int remindedCount = unansweredUserIds.size();
         int newCount = survey.getManualRemindCount() != null ? survey.getManualRemindCount() : 0;
         int remainingQuota = MAX_MANUAL_REMIND_COUNT - newCount;
-        String message = remindedCount + "名の未回答メンバーにリマインドを送信しました。";
+        String message = remindedCount + "名の未回答メンバーにリマインドの送信を受け付けました。";
 
         log.info("アンケート督促: surveyId={}, remindedCount={}, manualRemindCount={}, by={}",
                 surveyId, remindedCount, newCount, currentUserId);

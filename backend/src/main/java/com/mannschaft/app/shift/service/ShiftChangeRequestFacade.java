@@ -3,6 +3,7 @@ package com.mannschaft.app.shift.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.ScopeConcealingAccessGate;
 import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.dto.ChangeRequestResponse;
@@ -12,6 +13,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * シフト変更依頼の <b>認可ファサード</b>（トランザクションの外）。
@@ -29,6 +33,7 @@ import java.util.List;
  * 同チーム一般メンバー        201               200(自分の分)    200(本人)/404 SHIFT_030(他人の依頼) 403 COMMON_002 403 SHIFT_019(他人の依頼)
  * チーム ADMIN/DEPUTY_ADMIN   201               200(全件)        200              200(状態次第)    403 SHIFT_019
  * 依頼者本人                  201               200(自分の分)    200              (一般なら 403)   204(OPEN のみ)
+ *                                                                                (管理者でも 403 SHIFT_045。CMP-261010-1432)
  * 非メンバーの SYSTEM_ADMIN   403 COMMON_002    200(全件)        200              200(状態次第)    403 SHIFT_019
  * メンバーの SYSTEM_ADMIN     201               200(全件)        200              200(状態次第)    403 SHIFT_019
  * user_roles のみの ADMIN     403 COMMON_002    200(全件)        200              200(状態次第)    403 SHIFT_019
@@ -46,12 +51,20 @@ public class ShiftChangeRequestFacade {
     private final ShiftChangeRequestService changeRequestService;
     private final ScopeConcealingAccessGate accessGate;
     private final AccessControlService accessControlService;
+    /**
+     * 依頼者の表示名解決（CMP-261010-1432 M）。users は auth ドメインのため、common の越境窓口を
+     * <b>トランザクションの外（本 Facade）</b>で呼ぶ（tx 入口から他ドメインの Repository へ到達させない＝D-3T）。
+     */
+    private final NameResolverService nameResolverService;
 
     /**
-     * 変更依頼を作成する（スケジュール所属チームのメンバー。SUPPORTER も可）。
+     * 変更依頼を作成する（スケジュール所属チームのメンバー。SUPPORTER は不可 403 COMMON_002）。
      *
      * <p>Gate は冒頭で SYSTEM_ADMIN を通すが、是正前は {@code checkMembership}（memberships のみ）で
      * 非メンバーの SYSTEM_ADMIN も 403 {@code COMMON_002} だった。挙動を変えないため先に弾く。</p>
+     *
+     * <p>SUPPORTER は仕様（F03.5 README: 変更依頼不可）どおり、シフト表のステータスを見る前に 403 で弾く
+     * （tx 本体のステータス判定の 201/409 の差で公開状態を読ませない。CMP-260826-2127 P2）。</p>
      *
      * @param request 作成リクエスト
      * @param userId  依頼者ユーザー ID
@@ -63,8 +76,8 @@ public class ShiftChangeRequestFacade {
             accessControlService.checkMembership(userId, teamId, TEAM);
         }
         accessGate.requireMemberOrConceal(
-                userId, teamId, TEAM, ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND, false);
-        return changeRequestService.create(request, userId);
+                userId, teamId, TEAM, ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND, true);
+        return withRequesterName(changeRequestService.create(request, userId));
     }
 
     /**
@@ -83,7 +96,7 @@ public class ShiftChangeRequestFacade {
                 userId, teamId, TEAM,
                 () -> accessControlService.isMember(userId, teamId, TEAM),
                 ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND, CommonErrorCode.COMMON_002);
-        return changeRequestService.list(scheduleId, userId, isScopeAdmin(userId, teamId));
+        return withRequesterNames(changeRequestService.list(scheduleId, userId, isScopeAdmin(userId, teamId)));
     }
 
     /**
@@ -97,11 +110,11 @@ public class ShiftChangeRequestFacade {
     public ChangeRequestResponse get(Long id, Long userId) {
         ShiftChangeRequestService.ChangeRequestHead head = changeRequestService.resolveHead(id);
         if (!head.requestedBy().equals(userId)
-                && !isScopeAdmin(userId, changeRequestService.resolveScheduleTeamId(head.scheduleId()))) {
+                && !isScopeAdmin(userId, resolveTeamIdOrConceal(head))) {
             // 越境は存在秘匿（未存在と同一応答）
             throw new BusinessException(ShiftErrorCode.CHANGE_REQUEST_NOT_FOUND);
         }
-        return changeRequestService.get(id, userId);
+        return withRequesterName(changeRequestService.get(id, userId));
     }
 
     /**
@@ -114,9 +127,17 @@ public class ShiftChangeRequestFacade {
      */
     public ChangeRequestResponse review(Long id, ReviewChangeRequestRequest request, Long userId) {
         ShiftChangeRequestService.ChangeRequestHead head = changeRequestService.resolveHead(id);
-        Long teamId = changeRequestService.resolveScheduleTeamId(head.scheduleId());
+        Long teamId = userId.equals(head.requestedBy())
+                ? changeRequestService.resolveScheduleTeamId(head.scheduleId())
+                : resolveTeamIdOrConceal(head);
         accessGate.requireAdminOrConceal(userId, teamId, TEAM, ShiftErrorCode.CHANGE_REQUEST_NOT_FOUND);
-        return changeRequestService.review(id, request, userId);
+        // CMP-261010-1432 B（マスター決裁 2026-10-12）: 依頼者本人による審査は禁止。SYSTEM_ADMIN も例外にしない。
+        // 認可（越境の存在秘匿）の後に置き、部外者には依頼者が誰かを観測させない。
+        // tx 本体の status・version 照合より先に判定する（version が古い自己審査も 403 SHIFT_045＝AC-B3）。
+        if (userId.equals(head.requestedBy())) {
+            throw new BusinessException(ShiftErrorCode.SELF_REVIEW_FORBIDDEN);
+        }
+        return withRequesterName(changeRequestService.review(id, request, userId));
     }
 
     /**
@@ -137,7 +158,7 @@ public class ShiftChangeRequestFacade {
             if (accessControlService.isSystemAdmin(userId)) {
                 throw new BusinessException(ShiftErrorCode.ACCESS_DENIED);
             }
-            Long teamId = changeRequestService.resolveScheduleTeamId(head.scheduleId());
+            Long teamId = resolveTeamIdOrConceal(head);
             if (accessControlService.isAdminOrAbove(userId, teamId, TEAM)
                     || accessControlService.isMember(userId, teamId, TEAM)) {
                 throw new BusinessException(ShiftErrorCode.ACCESS_DENIED);
@@ -145,6 +166,48 @@ public class ShiftChangeRequestFacade {
             throw new BusinessException(ShiftErrorCode.CHANGE_REQUEST_NOT_FOUND);
         }
         changeRequestService.withdraw(id, userId);
+    }
+
+    /**
+     * 依頼の親スケジュールのチーム ID を解決する。親が削除済み・不在なら、依頼者本人以外には
+     * 存在しない依頼と同じ {@code CHANGE_REQUEST_NOT_FOUND}（404 SHIFT_030）へ畳む。
+     * 親スケジュール不在の {@code SHIFT_SCHEDULE_NOT_FOUND}（SHIFT_001）をそのまま返すと、
+     * 「依頼は実在するが親が消えている」ことが不在依頼との差で読めるため（CMP-260826-2127）。
+     * 依頼者本人にはこれを使わず、従来の診断を残す。
+     */
+    private Long resolveTeamIdOrConceal(ShiftChangeRequestService.ChangeRequestHead head) {
+        try {
+            return changeRequestService.resolveScheduleTeamId(head.scheduleId());
+        } catch (BusinessException e) {
+            if (e.getErrorCode() == ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND) {
+                throw new BusinessException(ShiftErrorCode.CHANGE_REQUEST_NOT_FOUND);
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * 応答一覧に依頼者の表示名（{@code requesterName}）を付ける（CMP-261010-1432 M）。
+     *
+     * <p>名前解決は一覧 1 回のバッチ（件数に依らずクエリ数一定）。解決できない userId（退会者等）は
+     * {@code null}。返す範囲は認可済みの一覧そのものなので、露出する名前は増えない（一般メンバーは自分の依頼だけ）。</p>
+     */
+    private List<ChangeRequestResponse> withRequesterNames(List<ChangeRequestResponse> responses) {
+        if (responses.isEmpty()) {
+            return responses;
+        }
+        Set<Long> requesterIds = responses.stream()
+                .map(r -> r.getRequestInfo().requestedBy())
+                .collect(Collectors.toSet());
+        Map<Long, String> names = nameResolverService.resolveUserDisplayNames(requesterIds);
+        return responses.stream()
+                .map(r -> r.toBuilder().requesterName(names.get(r.getRequestInfo().requestedBy())).build())
+                .toList();
+    }
+
+    /** 単票版の {@link #withRequesterNames}。 */
+    private ChangeRequestResponse withRequesterName(ChangeRequestResponse response) {
+        return withRequesterNames(List.of(response)).get(0);
     }
 
     /**

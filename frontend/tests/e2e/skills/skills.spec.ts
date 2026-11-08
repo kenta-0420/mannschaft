@@ -16,65 +16,83 @@ const CATEGORY_ID = 1
 
 const MOCK_SKILL_CATEGORY = {
   id: CATEGORY_ID,
-  teamId: TEAM_ID,
   name: '技術系資格',
   description: '技術資格カテゴリ',
+  icon: null,
   sortOrder: 1,
-  createdAt: '2026-01-01T00:00:00Z',
+  isActive: true,
+  createdAt: '2026-01-01T00:00:00',
 }
 
+/** GET /skills/me・POST /skills・GET /skills/{id} の実形（MemberSkillResponse）。 */
 const MOCK_SKILL = {
   id: SKILL_ID,
-  teamId: TEAM_ID,
-  userId: 1,
-  userName: 'e2e_user',
-  categoryId: CATEGORY_ID,
+  skillCategoryId: CATEGORY_ID,
   categoryName: '技術系資格',
+  userId: 1,
+  scopeType: 'TEAM',
+  scopeId: 1,
   name: 'AWS認定ソリューションアーキテクト',
-  level: 'ADVANCED',
-  acquiredDate: '2026-01-15',
-  expiryDate: '2029-01-15',
-  certificateUrl: null,
+  issuer: 'AWS',
+  credentialNumber: null,
+  acquiredOn: '2026-01-15',
+  expiresAt: '2029-01-15',
+  status: 'ACTIVE',
+  hasCertificate: false,
   verifiedAt: null,
   verifiedBy: null,
-  notes: '資格取得',
-  createdAt: '2026-01-20T00:00:00Z',
-  updatedAt: '2026-01-20T00:00:00Z',
+  version: 1,
+  createdAt: '2026-01-20T00:00:00',
 }
 
-const MOCK_SKILL_2 = {
-  id: 2,
-  teamId: TEAM_ID,
-  userId: 2,
-  userName: '田中太郎',
+/**
+ * GET /skills/search の1件の実形（SkillSearchService）。
+ * memberSkillId / skillName / categoryId を使い、credentialNumber は含まれない（hasCertificate のみ）。
+ */
+const MOCK_SEARCH_ITEM = {
+  memberSkillId: SKILL_ID,
+  userId: 1,
+  displayName: 'e2e_user',
   categoryId: CATEGORY_ID,
-  categoryName: '技術系資格',
-  name: 'Google Cloud Professional',
-  level: 'INTERMEDIATE',
-  acquiredDate: '2025-12-01',
-  expiryDate: null,
-  certificateUrl: null,
-  verifiedAt: '2026-01-05T00:00:00Z',
-  verifiedBy: 1,
-  notes: null,
-  createdAt: '2026-01-10T00:00:00Z',
-  updatedAt: '2026-01-10T00:00:00Z',
+  skillName: 'AWS認定ソリューションアーキテクト',
+  issuer: 'AWS',
+  acquiredOn: '2026-01-15',
+  expiresAt: '2029-01-15',
+  status: 'ACTIVE',
+  hasCertificate: false,
+  verifiedAt: null,
+  expiringSoon: false,
 }
 
+const MOCK_SEARCH_ITEM_2 = {
+  memberSkillId: 2,
+  userId: 2,
+  displayName: '田中太郎',
+  categoryId: CATEGORY_ID,
+  skillName: 'Google Cloud Professional',
+  issuer: 'Google',
+  acquiredOn: '2025-12-01',
+  expiresAt: null,
+  status: 'ACTIVE',
+  hasCertificate: true,
+  verifiedAt: '2026-01-05T00:00:00',
+  expiringSoon: false,
+}
+
+/** GET /skill-matrix の実形（ピボット: categories + rows[].cells[categoryId]）。 */
 const MOCK_SKILL_MATRIX = {
   data: {
-    members: [
-      { id: 1, displayName: 'e2e_user' },
-      { id: 2, displayName: '田中太郎' },
-    ],
-    categories: [
+    categories: [MOCK_SKILL_CATEGORY],
+    rows: [
       {
-        id: CATEGORY_ID,
-        name: '技術系資格',
-        skills: [
-          { memberId: 1, skillName: 'AWS認定ソリューションアーキテクト', level: 'ADVANCED' },
-          { memberId: 2, skillName: 'Google Cloud Professional', level: 'INTERMEDIATE' },
-        ],
+        userId: 1,
+        displayName: 'e2e_user',
+        cells: { [CATEGORY_ID]: { memberSkillId: SKILL_ID, status: 'ACTIVE', expiresAt: '2029-01-15' } },
+      },
+      {
+        userId: 2,
+        displayName: '田中太郎',
+        cells: { [CATEGORY_ID]: { memberSkillId: 2, status: 'ACTIVE', expiresAt: null } },
       },
     ],
   },
@@ -106,7 +124,7 @@ async function mockSkillApis(page: Page): Promise<void> {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: [MOCK_SKILL, MOCK_SKILL_2] }),
+      body: JSON.stringify({ data: [MOCK_SEARCH_ITEM, MOCK_SEARCH_ITEM_2] }),
     })
   })
 
@@ -127,7 +145,7 @@ async function mockSkillApis(page: Page): Promise<void> {
       body: JSON.stringify({
         data: {
           roleName: 'ADMIN',
-          permissions: ['member.manage'],
+          permissions: ['MANAGE_MEMBER'],
         },
       }),
     })
@@ -204,7 +222,7 @@ test.describe('SKILL-001〜006: F07.5 スキル・資格管理', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ data: [MOCK_SKILL, MOCK_SKILL_2] }),
+        body: JSON.stringify({ data: [MOCK_SEARCH_ITEM, MOCK_SEARCH_ITEM_2] }),
       })
     })
 
@@ -235,7 +253,7 @@ test.describe('SKILL-001〜006: F07.5 スキル・資格管理', () => {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          data: { roleName: 'ADMIN', permissions: ['member.manage'] },
+          data: { roleName: 'ADMIN', permissions: ['MANAGE_MEMBER'] },
         }),
       })
     })
@@ -280,7 +298,7 @@ test.describe('SKILL-001〜006: F07.5 スキル・資格管理', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ data: [MOCK_SKILL, MOCK_SKILL_2] }),
+        body: JSON.stringify({ data: [MOCK_SEARCH_ITEM, MOCK_SEARCH_ITEM_2] }),
       })
     })
 
@@ -298,7 +316,7 @@ test.describe('SKILL-001〜006: F07.5 スキル・資格管理', () => {
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            data: { ...MOCK_SKILL, notes: '更新されたノート' },
+            data: { ...MOCK_SKILL, name: '更新された資格名' },
           }),
         })
       } else {
@@ -311,7 +329,7 @@ test.describe('SKILL-001〜006: F07.5 スキル・資格管理', () => {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          data: { roleName: 'ADMIN', permissions: ['member.manage'] },
+          data: { roleName: 'ADMIN', permissions: ['MANAGE_MEMBER'] },
         }),
       })
     })
@@ -347,7 +365,7 @@ test.describe('SKILL-001〜006: F07.5 スキル・資格管理', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ data: [MOCK_SKILL, MOCK_SKILL_2] }),
+        body: JSON.stringify({ data: [MOCK_SEARCH_ITEM, MOCK_SEARCH_ITEM_2] }),
       })
     })
 
@@ -372,7 +390,7 @@ test.describe('SKILL-001〜006: F07.5 スキル・資格管理', () => {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          data: { roleName: 'ADMIN', permissions: ['member.manage'] },
+          data: { roleName: 'ADMIN', permissions: ['MANAGE_MEMBER'] },
         }),
       })
     })

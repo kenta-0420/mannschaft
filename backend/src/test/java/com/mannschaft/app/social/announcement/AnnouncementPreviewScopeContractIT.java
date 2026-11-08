@@ -705,13 +705,29 @@ class AnnouncementPreviewScopeContractIT extends AbstractMySqlIntegrationTest {
         preview(item, viewer).andExpect(status().isOk());
     }
 
+    /**
+     * ALIC-1（CMP-261011-0035）で宛先の判定をダッシュボードの一覧と同じ {@code AnnouncementAudienceMatcher#judgeOne}
+     * （判定の意味の唯一の正）に統一した。「チームを選ぶ」と「グループ宛て」の併記は告知の作成時に 400 {@code BROADCAST_011}
+     * で拒否される（F01.2.1 AC-H12）ため実データには存在せず、旧 Guard の「チーム OR グループ」の合成は到達しない組み合わせだった。
+     * 併記された記録があってもチーム指定が優先される（Matcher の意味）ことを、選ばれたチームのメンバーが読めることで固定する。
+     */
     @Test
-    @DisplayName("PREVIEW-05 複数宛先はチーム OR グループ OR 未分類")
-    void 宛先条件をORで合成する() throws Exception {
+    @DisplayName("PREVIEW-05 チーム指定とグループ併記の記録はチーム指定が優先される（Matcher の意味。実データでは作成時に拒否される組み合わせ）")
+    void 宛先条件はチーム指定を優先する() throws Exception {
+        UUID group = saveGroup(false);
+        UUID otherGroup = saveGroup(false);
+        Long viewer = childViewer(group, TeamOrgMembershipEntity.Status.ACTIVE);
+        AnnouncementFeedEntity item = audienceFeed("[" + teamId + "]", "[\"" + otherGroup + "\"]", false);
+        preview(item, viewer).andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("PREVIEW-05 チーム指定とグループ併記の記録は、チーム不一致ならグループが一致しても 404（OR 判定への回帰を検出する逆側）")
+    void 宛先条件はチーム不一致ならグループ一致でも読めない() throws Exception {
         UUID group = saveGroup(false);
         Long viewer = childViewer(group, TeamOrgMembershipEntity.Status.ACTIVE);
-        AnnouncementFeedEntity item = audienceFeed("[" + otherTeamId + "]", "[\"" + group + "\"]", false);
-        preview(item, viewer).andExpect(status().isOk());
+        AnnouncementFeedEntity item = audienceFeed("[" + (teamId + 1_000_000L) + "]", "[\"" + group + "\"]", false);
+        preview(item, viewer).andExpect(status().isNotFound());
     }
 
     private AnnouncementFeedEntity audienceFeed(String teams, String groups, boolean unassigned) {

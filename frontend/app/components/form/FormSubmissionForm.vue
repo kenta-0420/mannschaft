@@ -40,11 +40,11 @@ function buildValidationSchema(fields: FormFieldResponse[]) {
     const label = field.fieldLabel || field.fieldKey
     if (field.fieldType === 'NUMBER') {
       shape[field.fieldKey] = field.isRequired
-        ? z.number({ required_error: `${label}は必須です` }).min(0, `${label}は必須です`)
+        ? z.number({ error: (issue) => issue.input === undefined ? `${label}は必須です` : undefined }).min(0, `${label}は必須です`)
         : z.number().nullable()
     } else if (field.fieldType === 'DATE') {
       shape[field.fieldKey] = field.isRequired
-        ? z.date({ required_error: `${label}は必須です` })
+        ? z.date({ error: (issue) => issue.input === undefined ? `${label}は必須です` : undefined })
         : z.date().nullable()
     } else {
       shape[field.fieldKey] = field.isRequired

@@ -8,11 +8,27 @@
  * 未設定の場合は 'Asia/Tokyo' をデフォルトとして使用する。
  */
 import dayjs from 'dayjs'
-import { toLocalDateString } from '~/utils/localDate'
+import {
+  formatCalendarDay as fmtCalendarDay,
+  formatCalendarDayRange as fmtCalendarDayRange,
+  formatClockTime as fmtClockTime,
+  formatInstantDate,
+  formatInstantDateTime,
+  formatInstantTime,
+  parseInstantStrict,
+  formatTimeRange as fmtTimeRange,
+  toLocalDateString,
+} from '~/utils/localDate'
+import { parseWallClockInTz } from '~/utils/wallClock'
 
 export function useDatetime() {
   const authStore = useAuthStore()
   const userTimezone = computed(() => authStore.user?.timezone ?? 'Asia/Tokyo')
+  // 現在の UI ロケール（ja/en/zh/ko/es/de）。関数内で .value を読むので、テンプレートから呼べば言語切替で再描画される
+  // Nuxt 文脈の外（素の vitest・ユーティリティからの呼び出し等）は正当な呼び出しとして ja 既定で動かす。
+  // useNuxtApp() は文脈が無いと例外を投げるため、投げない tryUseNuxtApp() を使う（握りつぶしではなく設計）。
+  const i18n = tryUseNuxtApp()?.$i18n as { locale?: { value: string } } | undefined
+  const currentLocale = (): string => i18n?.locale?.value ?? 'ja'
 
   /**
    * ISO-8601 文字列を安全にパースする。
@@ -20,18 +36,21 @@ export function useDatetime() {
    */
   function safeParse(iso: string | null | undefined): dayjs.Dayjs | null {
     if (!iso) return null
+    // dayjs は 2026-02-30 → 3/2、T25:00 → 翌日01:00 と自動補正するため、ISO 形式は実在検証を先に通す
+    if (/^\d{4}-\d{2}-\d{2}/.test(iso) && !parseInstantStrict(iso)) return null
     const d = dayjs(iso)
     return d.isValid() ? d : null
   }
 
   /**
    * 日付のみを表示する。
-   * @example formatDate("2026-05-22T09:15:20+09:00") → "2026/05/22"
+   * ja は YYYY/MM/DD、他ロケールは各言語の数値日付書式（en: MM/DD/YYYY 等）。
+   * @example formatDate("2026-05-22T09:15:20+09:00") → "2026/05/22"（ja）
    */
   function formatDate(iso: string | null | undefined): string {
     const d = safeParse(iso)
     if (!d) return ''
-    return d.tz(userTimezone.value).format('YYYY/MM/DD')
+    return formatInstantDate(d.toDate(), currentLocale(), userTimezone.value)
   }
 
   /**
@@ -41,7 +60,7 @@ export function useDatetime() {
   function formatDateTime(iso: string | null | undefined): string {
     const d = safeParse(iso)
     if (!d) return ''
-    return d.tz(userTimezone.value).format('YYYY/MM/DD HH:mm')
+    return formatInstantDateTime(d.toDate(), currentLocale(), userTimezone.value)
   }
 
   /**
@@ -51,7 +70,27 @@ export function useDatetime() {
   function formatTime(iso: string | null | undefined): string {
     const d = safeParse(iso)
     if (!d) return ''
-    return d.tz(userTimezone.value).format('HH:mm')
+    return formatInstantTime(d.toDate(), currentLocale(), userTimezone.value)
+  }
+
+  /** 暦日（'YYYY-MM-DD'）を曜日付きで整形する。UTC 暦日扱いのため TZ によるずれはない。 */
+  function formatCalendarDay(ymd: string | null | undefined): string {
+    return fmtCalendarDay(ymd, currentLocale())
+  }
+
+  /** 暦日の範囲を曜日付きで整形する（同日なら単日）。 */
+  function formatCalendarDayRange(startYmd: string | null | undefined, endYmd: string | null | undefined): string {
+    return fmtCalendarDayRange(startYmd, endYmd, currentLocale())
+  }
+
+  /** 時刻（'HH:mm' / 'H:mm'）を 24 時間表記で整形する。空・不正は ''。 */
+  function formatClockTime(hhmm: string | null | undefined): string {
+    return fmtClockTime(hhmm, currentLocale())
+  }
+
+  /** 時刻の範囲（'HH:mm' / 'HH:mm:ss'）を秒なしで整形する。 */
+  function formatTimeRange(startHhmm: string | null | undefined, endHhmm: string | null | undefined): string {
+    return fmtTimeRange(startHhmm, endHhmm, currentLocale())
   }
 
   /**
@@ -90,7 +129,7 @@ export function useDatetime() {
    *
    * よって本関数は `getFullYear()` / `getMonth()` / `getDate()`（time 省略時は
    * `getHours()` / `getMinutes()` / `getSeconds()` も）でローカル壁時計成分を取り出し、
-   * それを `dayjs.tz(壁時計文字列, userTimezone)` でユーザーTZの壁時計として解釈する。
+   * それを `parseWallClockInTz(壁時計文字列, userTimezone)`（`~/utils/wallClock`）でユーザーTZの壁時計として解釈する。
    * これにより「画面で見た値がそのまま送られる」（WYSIWYG）が保証される。
    * 同じ原則は {@link ~/utils/localDate#toLocalDateString}（`LocalDate` 用）にも記してある。
    *
@@ -113,7 +152,7 @@ export function useDatetime() {
             .join(':')
         // time 指定: 指定時刻を採用（'' は終日イベントの 00:00:00）
         : time ? `${time}:00` : '00:00:00'
-    return dayjs.tz(`${dateStr}T${timeStr}`, userTimezone.value).format()
+    return parseWallClockInTz(`${dateStr}T${timeStr}`, userTimezone.value).format()
   }
 
   /**
@@ -231,7 +270,7 @@ export function useDatetime() {
    * @example buildDayStartStr('2026-08-01') // JST → "2026-08-01T00:00:00+09:00"
    */
   function buildDayStartStr(ymd: string): string {
-    return dayjs.tz(`${ymd}T00:00:00`, userTimezone.value).format()
+    return parseWallClockInTz(`${ymd}T00:00:00`, userTimezone.value).format()
   }
 
   /**
@@ -241,7 +280,7 @@ export function useDatetime() {
    * @example buildDayEndStr('2026-08-31') // JST → "2026-08-31T23:59:59+09:00"
    */
   function buildDayEndStr(ymd: string): string {
-    return dayjs.tz(`${ymd}T23:59:59`, userTimezone.value).format()
+    return parseWallClockInTz(`${ymd}T23:59:59`, userTimezone.value).format()
   }
 
   return {
@@ -249,6 +288,10 @@ export function useDatetime() {
     formatDate,
     formatDateTime,
     formatTime,
+    formatCalendarDay,
+    formatCalendarDayRange,
+    formatTimeRange,
+    formatClockTime,
     fromNow,
     buildOffsetDateTimeStr,
     buildOffsetDateTimeFromLocalInput,

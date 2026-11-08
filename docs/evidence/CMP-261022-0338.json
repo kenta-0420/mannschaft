@@ -1,0 +1,97 @@
+{
+    "schemaVersion":  1,
+    "cmpId":  "CMP-261022-0338",
+    "scope":  "app",
+    "implementation":  {
+                           "pr":  4125,
+                           "sha":  "e202bb96c03fc1b9197bfad8d27217dc7b4e8687"
+                       },
+    "acceptanceCriteria":  [
+                               {
+                                   "id":  "AC-TL-1",
+                                   "description":  "連続ASCII、URL、日本語混在の2000文字コメントを360/390pxで欠落・横はみ出しなく折り返して読める。",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "SYSTEM_ADMINが自然導線からコメントを送り、長文を360/390pxで末尾まで読める",
+                                                     "evidence":  "frontend/tests/e2e/real/admin/error-report-timeline-wrap.real.spec.ts"
+                                                 },
+                                                 {
+                                                     "name":  "限定描画9測定のred→green",
+                                                     "evidence":  "docs/evidence/CMP-261022-0338/regressions.md"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "AC-TL-2",
+                                   "description":  "改行と空行、null/空文字、空状態を適切に表示する。",
+                                   "tests":  [
+                                                 {
+                                                     "evidence":  "frontend/scripts/verify-error-report-timeline-wrap.mjs",
+                                                     "name":  "改行・空行・null/空文字・空状態"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "AC-TL-3",
+                                   "description":  "仮想化・resize・追加取得/loadingを維持し、末尾まで到達できる。",
+                                   "tests":  [
+                                                 {
+                                                     "evidence":  "frontend/scripts/verify-error-report-timeline-wrap.mjs",
+                                                     "name":  "仮想化・resize・追加取得/loading・末尾表示"
+                                                 },
+                                                 {
+                                                     "evidence":  "frontend/tests/e2e/real/admin/error-report-timeline-wrap.real.spec.ts",
+                                                     "name":  "実機scroller内の末尾可視性・カード非重複"
+                                                 }
+                                             ]
+                               },
+                               {
+                                   "id":  "AC-TL-4",
+                                   "description":  "一般会員・組織管理者・別組織会員は詳細とtimelineを読めず、コメントを書けず、URL直打ちでも拒否される。",
+                                   "tests":  [
+                                                 {
+                                                     "name":  "一般会員は詳細URLと実APIへアクセスできない",
+                                                     "evidence":  "frontend/tests/e2e/real/admin/error-report-timeline-wrap.real.spec.ts"
+                                                 },
+                                                 {
+                                                     "name":  "組織管理者は詳細URLと実APIへアクセスできない",
+                                                     "evidence":  "frontend/tests/e2e/real/admin/error-report-timeline-wrap.real.spec.ts"
+                                                 },
+                                                 {
+                                                     "name":  "別組織会員は詳細URLと実APIへアクセスできない",
+                                                     "evidence":  "frontend/tests/e2e/real/admin/error-report-timeline-wrap.real.spec.ts"
+                                                 }
+                                             ]
+                               }
+                           ],
+    "ci":  [
+               {
+                   "runId":  40265342034
+               },
+               {
+                   "runId":  40265342068
+               }
+           ],
+    "stages":  {
+                   "review":  {
+                                  "status":  "passed",
+                                  "evidence":  "https://github.com/kenta-0420/mannschaft/pull/4125"
+                              },
+                   "real":  {
+                                "status":  "passed",
+                                "evidence":  "docs/evidence/CMP-261022-0338/real.md"
+                            },
+                   "exploratory":  {
+                                       "status":  "passed",
+                                       "evidence":  "docs/evidence/CMP-261022-0338/residents/overview.md"
+                                   }
+               },
+    "regressions":  [
+                        {
+                            "description":  "実Vue/DynamicScroller/Tailwind限定描画で、長い連続文字列の横溢出を再現し、折返しと仮想行レイアウトを検証する。",
+                            "test":  "node scripts/verify-error-report-timeline-wrap.mjs",
+                            "redEvidence":  "docs/evidence/CMP-261022-0338/regressions.md",
+                            "greenEvidence":  "docs/evidence/CMP-261022-0338/regressions.md"
+                        }
+                    ]
+}

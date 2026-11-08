@@ -1,0 +1,21 @@
+{
+  "artifactSourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+  "implementationHead": "4697a0f99045a2218dbfe6eb8c7e1d894962d8d0",
+  "adoptedMainHead": "2f524c7a19f8b928b0086ad700fe527e2d631843",
+  "implementationToMainDifferences": [
+    "docs/task-list.md"
+  ],
+  "ownEightPaths": [
+    "frontend/app/components/shell/GlobalNavItem.spec.ts",
+    "frontend/app/components/shell/GlobalNavItem.vue",
+    "frontend/app/components/widgets/WidgetMyCalendar.spec.ts",
+    "frontend/app/components/widgets/WidgetMyCalendar.vue",
+    "frontend/app/composables/useMyCalendarData.initialization.spec.ts",
+    "frontend/app/composables/useMyCalendarData.ts",
+    "frontend/app/pages/calendar.vue",
+    "docs/features/F03.19_unified_calendar_view.md"
+  ],
+  "ownEightContentsMatch": true,
+  "artifactToImplementationBridge": "root独立検分済み・後続spec-only変更のみ。artifact実sourceを4697へ書き換えない",
+  "runtimeChanged": false
+}

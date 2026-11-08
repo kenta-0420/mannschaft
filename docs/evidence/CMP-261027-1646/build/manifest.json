@@ -1,0 +1,316 @@
+{
+  "schemaVersion": 1,
+  "sourceImplementationHead": "a8b7d8b999973d2c138ffecce2fbe2233f6bb09a",
+  "integrationHead": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+  "records": [
+    {
+      "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-oldweights-1/candidate-comparison.json",
+      "path": "comparison/oldweights-candidate-comparison.json",
+      "sourceBytes": 32621,
+      "sourceSha256": "cbeaf468375e591023244178b52a537db720c161eb24b058d561a22418a2ae64",
+      "packagedSha256": "cbeaf468375e591023244178b52a537db720c161eb24b058d561a22418a2ae64",
+      "mode": "exact-copy"
+    },
+    {
+      "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-oldweights-1/raw-comparison-partial.json",
+      "path": "comparison/oldweights-raw-comparison-partial.json",
+      "sourceBytes": 2614,
+      "sourceSha256": "43581d52097eb1271dc7cfe9ec5ce49f0b7c4951b77581088b7a62bd88fcf9eb",
+      "packagedSha256": "43581d52097eb1271dc7cfe9ec5ce49f0b7c4951b77581088b7a62bd88fcf9eb",
+      "mode": "exact-copy"
+    },
+    {
+      "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-finalweights-1/candidate-comparison.json",
+      "path": "comparison/finalweights-candidate-comparison.json",
+      "sourceBytes": 32636,
+      "sourceSha256": "a4315901a5adca9497a29e630e152dd8869418dfed851494fab0c0aec6abc4cc",
+      "packagedSha256": "a4315901a5adca9497a29e630e152dd8869418dfed851494fab0c0aec6abc4cc",
+      "mode": "exact-copy"
+    },
+    {
+      "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-finalweights-1/raw-comparison-partial.json",
+      "path": "comparison/finalweights-raw-comparison-partial.json",
+      "sourceBytes": 2614,
+      "sourceSha256": "43581d52097eb1271dc7cfe9ec5ce49f0b7c4951b77581088b7a62bd88fcf9eb",
+      "packagedSha256": "43581d52097eb1271dc7cfe9ec5ce49f0b7c4951b77581088b7a62bd88fcf9eb",
+      "mode": "exact-copy"
+    },
+    {
+      "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-finalweights-1/weight-assignment-change.json",
+      "path": "comparison/weight-assignment-change.json",
+      "sourceBytes": 2029,
+      "sourceSha256": "609b9ce1a9d657a093f82b0adb484dbe942633473631987797354caaddecd249",
+      "packagedSha256": "609b9ce1a9d657a093f82b0adb484dbe942633473631987797354caaddecd249",
+      "mode": "exact-copy"
+    },
+    {
+      "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-oldweights-1/stripe-29-negative.xml",
+      "path": "negative/stripe-29-negative.xml",
+      "sourceBytes": 4967,
+      "sourceSha256": "8ad0e825ab1d7fdfe26f318e2fac07e71733ac2042cf66ca13279e85046572e0",
+      "packagedSha256": "0e4fcaaaf39a2b98a7df8e867bc490a8071f573246d1032c4240f76070640b6a",
+      "mode": "safe-xml-summary; system streams/properties/stack traces omitted"
+    },
+    {
+      "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-oldweights-1/stripe-missing-negative.xml",
+      "path": "negative/stripe-missing-negative.xml",
+      "sourceBytes": 2405,
+      "sourceSha256": "fba71890f501301af0bd5a096ef6fe7c6b066292061b7df29d72e68d50064124",
+      "packagedSha256": "ca5efe04e80be53cabf3555423a7f6976df7fd1797088e5bfbaf7943834cb3f3",
+      "mode": "safe-xml-summary; system streams/properties/stack traces omitted"
+    },
+    {
+      "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-arch-continue-1/arch-failure-freeze-finalizer.xml",
+      "path": "negative/arch-failure-freeze-finalizer.xml",
+      "sourceBytes": 800,
+      "sourceSha256": "d18eb66918a1ea2e4263110e84ac3441e820cfb28fb431536dc18d905865e776",
+      "packagedSha256": "2de6794f9113d03b4b5a927726f879a25f4ee19e5a019628e2cda6dec1144867",
+      "mode": "safe-xml-summary; system streams/properties/stack traces omitted"
+    },
+    {
+      "source": "/mnt/c/Claude/mannschaft/.claude/evidence/CMP-261027-1646-l1b-support/ci-final-40481639328/b7-summary.json",
+      "path": "b7/attempt1-b7-summary.json",
+      "sourceBytes": 28990,
+      "sourceSha256": "827312af04bf4478cb3fa5c940275d9975fe5295055b9747f9d03864a5beb7e6",
+      "packagedSha256": "bcd530aae7b666187646da08b31c729c41db80d2fcff52158dfca9e63e7601b3",
+      "mode": "exact-copy; adopted CRLF text normalized to LF for Git blob"
+    },
+    {
+      "source": "/mnt/c/Claude/mannschaft/.claude/evidence/CMP-261027-1646-l1b-support/ci-final-40481639328/shard5-incomplete-diagnostic.json",
+      "path": "b7/attempt1-shard5-incomplete-diagnostic.json",
+      "sourceBytes": 2532,
+      "sourceSha256": "80ab76b2a4c855504b9eda5eeac25f2e53a820d025a8a57019401833414d3daf",
+      "packagedSha256": "2b95f7ad2fe65f5c4286d8e7f968a070b7ad81dee61c6d906e4a7060171b47d0",
+      "mode": "exact-copy; adopted CRLF text normalized to LF for Git blob"
+    },
+    {
+      "source": "/mnt/c/Claude/mannschaft/.claude/evidence/CMP-261027-1646-l1b-support/ci-final-40481639328/shard5-xml-summary.json",
+      "path": "b7/attempt1-shard5-xml-summary.json",
+      "sourceBytes": 617,
+      "sourceSha256": "038236a82bf125a557c2956f0b5af108ce48d0416c319dd3cf32c2e98a2aeecf",
+      "packagedSha256": "dbf17ea14c0c097b2be4f15fdfb390285123daffed7ec9169df48987a8f4a88a",
+      "mode": "exact-copy; adopted CRLF text normalized to LF for Git blob"
+    },
+    {
+      "source": "/mnt/c/Claude/mannschaft/.claude/evidence/CMP-261027-1646-l1b-support/ci-final-40481639328/collection.json",
+      "path": "b7/attempt1-collection.json",
+      "sourceBytes": 2895,
+      "sourceSha256": "9443f1b73be2184ab26407ba61737c74dc127c91fd2223df05f2444ff29c35d6",
+      "packagedSha256": "9d40db23fac7e1f94cf504143379819513e6f3c7625d326ffa447cee8936bf04",
+      "mode": "exact-copy; adopted CRLF text normalized to LF for Git blob"
+    },
+    {
+      "source": "/mnt/c/Claude/mannschaft/.claude/evidence/CMP-261027-1646-l1b-support/ci-final-40481639328/job-log-collection.json",
+      "path": "b7/attempt1-job-log-collection.json",
+      "sourceBytes": 1077,
+      "sourceSha256": "9ff39c5f233a4102bc0c3a7f45000b6fa6f7179085d77d8ebe64a94c75d42fca",
+      "packagedSha256": "a352208c9ba337cecc52044773e9214f74bda2f20f7352ec0b8a106e179d5d06",
+      "mode": "exact-copy; adopted CRLF text normalized to LF for Git blob"
+    },
+    {
+      "source": "/mnt/c/Claude/mannschaft/.claude/evidence/CMP-261027-1646-l1b-support/ci-final-40481639328-attempt2/retry-summary.json",
+      "path": "b7/attempt2-retry-summary.json",
+      "sourceBytes": 3614,
+      "sourceSha256": "07ca463ebdc70ac40d25d721f7fb1c8e0b47f50555e9be1263fb34c374a0f875",
+      "packagedSha256": "205f24d7d8c932fbbbe15e3fa664e62ced5478ac85e6764ff7cc28621a9f8597",
+      "mode": "exact-copy; adopted CRLF text normalized to LF for Git blob"
+    },
+    {
+      "source": "/mnt/c/Claude/mannschaft/.claude/evidence/CMP-261027-1646-l1b-support/gate-input-evidence.json",
+      "path": "gate-input-evidence.json",
+      "sourceBytes": 21293,
+      "sourceSha256": "10f979c4ba797f6540c512b9f3cc74d7959783d65a2ada43ce97c75cb7f7fb08",
+      "packagedSha256": "10f979c4ba797f6540c512b9f3cc74d7959783d65a2ada43ce97c75cb7f7fb08",
+      "mode": "exact-copy"
+    },
+    {
+      "source": "/mnt/c/Claude/mannschaft/.claude/evidence/CMP-261027-1646-l1b-support/nightly-40413233675-artifact-metadata.json",
+      "path": "nightly-40413233675-artifact-metadata.json",
+      "sourceBytes": 26830,
+      "sourceSha256": "67dc200e37028f199a07274bda8c2c609c593425c3a8db638682bb6ed8d504d0",
+      "packagedSha256": "8f1ed290228e37bcfb7ab536d9020bcae80020fb345724d385b6f211225ff6b5",
+      "mode": "UTF16LE source JSON decoded and re-serialized as UTF8 for tracked docs; original byte count/SHA recorded"
+    },
+    {
+      "source": "/mnt/c/Claude/mannschaft/.claude/evidence/CMP-261027-1646-l1b-support/shell-entry-original-bytes.json",
+      "path": "shell-entry-original-bytes.json",
+      "sourceBytes": 288,
+      "sourceSha256": "12351153031574006c9ea6424e395846bd277a8eb72cc288029cc96bba1b06b7",
+      "packagedSha256": "263281a6e45da231520e1f669c2904405b596e2351c06d4f4dd77fce2ac0dfef",
+      "mode": "exact-copy; adopted CRLF text normalized to LF for Git blob"
+    },
+    {
+      "source": "/mnt/c/Claude/mannschaft/.claude/evidence/CMP-261027-1646-l1b-support/integration-261028-source-bridge.json",
+      "path": "integration-261028-source-bridge.json",
+      "sourceBytes": 3149,
+      "sourceSha256": "97362ea2f4e2976698651aa03487d46419b6ed32f41a22a51a0ac56d358f448b",
+      "packagedSha256": "97362ea2f4e2976698651aa03487d46419b6ed32f41a22a51a0ac56d358f448b",
+      "mode": "exact-copy"
+    },
+    {
+      "source": "/mnt/c/Claude/mannschaft/.claude/evidence/CMP-261027-1646-l1b-support/weights-classification.json",
+      "path": "weights-classification-summary.json",
+      "sourceBytes": 1182348,
+      "sourceSha256": "3fcf9a973ace663d9414f572b01ce838ff3effb7e3467afada9003e686eb4a1a",
+      "packagedSha256": "e29c358eabe014a6cf23ba9a38f1a72ec7c4b1be50bbad1149dadfb5d67c14ac",
+      "mode": "summary; per-class rows omitted"
+    },
+    {
+      "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-independent-1/arch-zero-negative.exit",
+      "sourceBytes": 2,
+      "sourceSha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "mode": "hash-only-source"
+    },
+    {
+      "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-independent-1/arch-zero-negative.stdout",
+      "sourceBytes": 1539,
+      "sourceSha256": "ad0d0f0c4f4f6dd36bc0ce96bde36e7cae29c2ba3a1b7780f0b51f53748337a8",
+      "mode": "hash-only-source"
+    },
+    {
+      "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-independent-1/arch-zero-negative.stderr",
+      "sourceBytes": 757,
+      "sourceSha256": "d604f9bf1071901e3a498816a4c30012bbdad07c4491953bbec2a90b3fb91942",
+      "mode": "hash-only-source"
+    },
+    {
+      "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-independent-1/receipt.json",
+      "sourceBytes": 438,
+      "sourceSha256": "8396e8df59016740384d1fa27e43d3f02282f7413eaf19099121389474da2c86",
+      "mode": "hash-only-source"
+    },
+    {
+      "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-freeze-openapi-1/freeze-missing-negative.exit",
+      "sourceBytes": 2,
+      "sourceSha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "mode": "hash-only-source"
+    },
+    {
+      "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-freeze-openapi-1/freeze-missing-negative.stdout",
+      "sourceBytes": 1179,
+      "sourceSha256": "d769bc2282cac52b1c1bf0231b1a814d912922e331790dabd7852c532e7d2bbc",
+      "mode": "hash-only-source"
+    },
+    {
+      "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-freeze-openapi-1/freeze-missing-negative.stderr",
+      "sourceBytes": 4542,
+      "sourceSha256": "35c36206937154d3a3d53d72ec9089c46952c19de72f7ca81bb8b12117ee434c",
+      "mode": "hash-only-source"
+    },
+    {
+      "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-freeze-openapi-1/required-freeze.before.sha256",
+      "sourceBytes": 168,
+      "sourceSha256": "fc108dce433a5c38034c7d338a5a9d555a635abff97e8fdba033a50afcbce24f",
+      "mode": "hash-only-source"
+    },
+    {
+      "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-freeze-openapi-1/required-freeze.after.sha256",
+      "sourceBytes": 168,
+      "sourceSha256": "fc108dce433a5c38034c7d338a5a9d555a635abff97e8fdba033a50afcbce24f",
+      "mode": "hash-only-source"
+    },
+    {
+      "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-freeze-openapi-1/openapi.exit",
+      "sourceBytes": 2,
+      "sourceSha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "mode": "hash-only-source"
+    },
+    {
+      "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-freeze-openapi-1/openapi.json",
+      "sourceBytes": 6378658,
+      "sourceSha256": "03ebfc14e16829cb1866e4c8d17aa3140e9ad1bd3dab047f45a6b069db9a34a0",
+      "mode": "hash-only-source"
+    },
+    {
+      "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-freeze-openapi-1/receipt.json",
+      "sourceBytes": 441,
+      "sourceSha256": "6980ee0d8691e8fea6cb0313f5951f1c7907f4dfa007dcba1f98f52a90ed32b1",
+      "mode": "hash-only-source"
+    },
+    {
+      "source": "/home/kenta/verification-evidence/CMP-261027-1646-before-4/openapi.json",
+      "sourceBytes": 6378658,
+      "sourceSha256": "03ebfc14e16829cb1866e4c8d17aa3140e9ad1bd3dab047f45a6b069db9a34a0",
+      "mode": "hash-only-source"
+    },
+    {
+      "source": "/home/kenta/verification-evidence/CMP-261027-1646-before-4/receipt.json",
+      "sourceBytes": 428,
+      "sourceSha256": "32feb6f9b13bf1a4b9adff2e147c0a1a45c9584cfa41c2f7181da68db2e2e3c8",
+      "mode": "hash-only-source"
+    },
+    {
+      "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-arch-continue-1/arch-failure-finalizer.exit",
+      "sourceBytes": 2,
+      "sourceSha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "mode": "hash-only-source"
+    },
+    {
+      "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-arch-continue-1/arch-failure-finalizer.stdout",
+      "sourceBytes": 1613,
+      "sourceSha256": "4a320ba212b2e366cd39db6e811d7608f69e59a45dbc6f62adaaa3e99acbbc10",
+      "mode": "hash-only-source"
+    },
+    {
+      "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-arch-continue-1/arch-failure-finalizer.stderr",
+      "sourceBytes": 843,
+      "sourceSha256": "044ab63e1074aed421db465102de3f26a93ba22b0eb997d0223935a1f38835b5",
+      "mode": "hash-only-source"
+    },
+    {
+      "source": "/home/kenta/verification-evidence/CMP-261027-1646-after-arch-continue-1/receipt.json",
+      "sourceBytes": 440,
+      "sourceSha256": "d2a1d3fbee77c4b43a8eee59147456a502186ad32938dd6bf7c7645e112c0b73",
+      "mode": "hash-only-source"
+    },
+    {
+      "path": "negative-and-openapi-observations.json",
+      "packagedSha256": "9238b023905d391d38bdd3c82f7389bbd45900c3ddd8aa3d2dcb20bade3b988c",
+      "mode": "asserted observations; source hashes listed separately"
+    },
+    {
+      "source": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-support\\integration-ci-40648568860\\summary.json",
+      "path": "integration-ci-40648568860-summary.json",
+      "sourceBytes": 40254,
+      "sourceSha256": "d4ff6833e4d21dac6d3483d143cda42fc09a7583cc846a04509d956daf5d84ad",
+      "packagedSha256": "2deab032d9fbefdc1a49854ba6b3494fa485d980de041afbd1024531d2e261f9",
+      "mode": "safe summary; CRLF normalized to LF for Git blob"
+    },
+    {
+      "source": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-support\\integration-e67-source-bridge.json",
+      "path": "integration-e67-source-bridge.json",
+      "sourceBytes": 7223,
+      "sourceSha256": "0ae045ff2f38a6ec870d0ca4754c419a67a72fd8f422d15aad1079bd75694de0",
+      "packagedSha256": "0ae045ff2f38a6ec870d0ca4754c419a67a72fd8f422d15aad1079bd75694de0",
+      "mode": "exact-copy safe summary"
+    },
+    {
+      "source": "C:\\Claude\\mannschaft\\.claude\\evidence\\CMP-261027-1646-l1b-support\\integration-ci-40662266445\\summary.json",
+      "path": "integration-ci-40662266445-summary.json",
+      "sourceBytes": 37343,
+      "sourceSha256": "4a0dce570ef90d3ca84c3731a98565da7ab9d91633ef80e0fd24fcc4b21d0478",
+      "packagedSha256": "145911acd88f475e0ee80a7a223643c3e27dbd504fa41c59f310fccb55947631",
+      "mode": "safe summary; CRLF normalized to LF for Git blob"
+    }
+  ],
+  "limits": [
+    "Original comparison/real/exploratory sources remain explicitly identified. f281 CI40648568860 sixfresh and e67 CI40662266445 sixcache both succeeded; PR4169 merged at e67.",
+    "B5 published diagnostics gap is approved for separate CMP-261028-1554 / Issue4200; this package does not claim missing-artifact gate strengthened.",
+    "Negative XML summaries preserve counts/test names/failure reason but omit raw system streams/properties/stack traces. Original SHA identifies collection-time source bytes; hash-only source content is not in Git and is scheduled for owned cleanup after durable evidence is finalized.",
+    "No large TSV/log/archive/OpenAPI bytes are republished. Absence records are not accepted as proof."
+  ],
+  "sourcePathSemantics": "Source paths identify collection-time locations, not permanent retention or current existence.",
+  "rawArtifactLifecycle": {
+    "status": "partially-removed-retained-awaiting-specific-user-approval",
+    "removedRootCount": 1,
+    "removedBytes": 6349,
+    "remainingRootCount": 14,
+    "remainingBytes": 888898616,
+    "ownerUuid": "9ec2bb94-5ba6-494b-9d4a-dd4ed47f29f5",
+    "recheckDeadline": "2026-10-29T10:00:00+09:00",
+    "policy": "Small evidence JSON/XML summaries/images are in Git. Remaining full raw is retained after automatic approval rejection; no further deletion without explicit user approval and fresh ownership/stopped/reference checks plus root release.",
+    "cleanupEvidence": "docs/evidence/CMP-261027-1646/cleanup.md",
+    "receipt": "docs/evidence/CMP-261027-1646/cleanup.json",
+    "sourcePathSemantics": "Collection-time locations; one source root has been removed and 14 remain held. No permanent retention or automatic deletion is promised."
+  }
+}

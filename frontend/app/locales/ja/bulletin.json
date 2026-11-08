@@ -1,5 +1,6 @@
 {
   "bulletin": {
+    "unknownAuthor": "投稿者不明",
     "title": "掲示板",
     "tab": {
       "threads": "一覧",

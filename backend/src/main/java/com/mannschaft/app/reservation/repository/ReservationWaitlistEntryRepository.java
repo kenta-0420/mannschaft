@@ -5,10 +5,12 @@ import com.mannschaft.app.reservation.entity.ReservationWaitlistEntryEntity;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
@@ -61,6 +63,35 @@ public interface ReservationWaitlistEntryRepository
             + "WHERE w.slotId = :slotId AND w.status = :status")
     List<ReservationWaitlistEntryEntity> findBySlotIdAndStatusForUpdate(
             @Param("slotId") Long slotId, @Param("status") WaitlistStatus status);
+
+    /**
+     * 空き通知の印（{@code notified_at}）を行ごとに条件付きで先取りする（配送リスナーが配送の前に呼ぶ）。
+     *
+     * <p>{@code WAITING} かつ（{@code notified_at} が NULL、または {@code suppressBefore} 以前）のときだけ
+     * {@code claimedAt} を書く（抑止期限ちょうどは通知する側）。別の配送が先に取っていれば 0 件になる。
+     * 戻り値が 1 のときだけ取得成功。</p>
+     */
+    @Modifying
+    @Query("UPDATE ReservationWaitlistEntryEntity w SET w.notifiedAt = :claimedAt, w.updatedAt = :updatedAt "
+            + "WHERE w.id = :id AND w.status = com.mannschaft.app.reservation.WaitlistStatus.WAITING "
+            + "AND (w.notifiedAt IS NULL OR w.notifiedAt <= :suppressBefore)")
+    int claimNotification(@Param("id") UUID id,
+                          @Param("claimedAt") LocalDateTime claimedAt,
+                          @Param("updatedAt") LocalDateTime updatedAt,
+                          @Param("suppressBefore") LocalDateTime suppressBefore);
+
+    /**
+     * 配送が失敗した行の {@code notified_at} を prev に戻す。
+     *
+     * <p>{@code WHERE notified_at = claimedAt} のため、自分が取った印だけを戻す。その後に別の周回が取り直した
+     * 新しい印は消さない（0 件更新）。</p>
+     */
+    @Modifying
+    @Query("UPDATE ReservationWaitlistEntryEntity w SET w.notifiedAt = :prev "
+            + "WHERE w.id = :id AND w.notifiedAt = :claimedAt")
+    int releaseNotification(@Param("id") UUID id,
+                            @Param("claimedAt") LocalDateTime claimedAt,
+                            @Param("prev") LocalDateTime prev);
 
     /**
      * ユーザーの指定状態のエントリ一覧（本人の待ち一覧・新しい順）。

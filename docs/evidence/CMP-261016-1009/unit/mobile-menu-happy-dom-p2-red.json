@@ -1,0 +1,207 @@
+{
+    "numTotalTestSuites":  2,
+    "numPassedTestSuites":  0,
+    "numFailedTestSuites":  2,
+    "numPendingTestSuites":  0,
+    "numTotalTests":  9,
+    "numPassedTests":  8,
+    "numFailedTests":  1,
+    "numPendingTests":  0,
+    "numTodoTests":  0,
+    "snapshot":  {
+                     "added":  0,
+                     "failure":  false,
+                     "filesAdded":  0,
+                     "filesRemoved":  0,
+                     "filesRemovedList":  [
+
+                                          ],
+                     "filesUnmatched":  0,
+                     "filesUpdated":  0,
+                     "matched":  0,
+                     "total":  0,
+                     "unchecked":  0,
+                     "uncheckedKeysByFile":  [
+
+                                             ],
+                     "unmatched":  0,
+                     "updated":  0,
+                     "didUpdate":  false
+                 },
+    "startTime":  1792117180513,
+    "success":  false,
+    "testResults":  [
+                        {
+                            "assertionResults":  [
+                                                     {
+                                                         "ancestorTitles":  [
+                                                                                "BaseSidebarの取得状態（Nuxt初期化から切り離した一時診断）"
+                                                                            ],
+                                                         "fullName":  "BaseSidebarの取得状態（Nuxt初期化から切り離した一時診断） ADMINの200応答を実useRoleAccessへ通すとリンクが表示される",
+                                                         "status":  "passed",
+                                                         "title":  "ADMINの200応答を実useRoleAccessへ通すとリンクが表示される",
+                                                         "duration":  734.3571000000011,
+                                                         "failureMessages":  [
+
+                                                                             ],
+                                                         "meta":  {
+
+                                                                  },
+                                                         "tags":  [
+
+                                                                  ]
+                                                     },
+                                                     {
+                                                         "ancestorTitles":  [
+                                                                                "BaseSidebarの取得状態（Nuxt初期化から切り離した一時診断）"
+                                                                            ],
+                                                         "fullName":  "BaseSidebarの取得状態（Nuxt初期化から切り離した一時診断） 取得中に読み込み状態を伝える",
+                                                         "status":  "passed",
+                                                         "title":  "取得中に読み込み状態を伝える",
+                                                         "duration":  108.5818999999974,
+                                                         "failureMessages":  [
+
+                                                                             ],
+                                                         "meta":  {
+
+                                                                  },
+                                                         "tags":  [
+
+                                                                  ]
+                                                     },
+                                                     {
+                                                         "ancestorTitles":  [
+                                                                                "BaseSidebarの取得状態（Nuxt初期化から切り離した一時診断）"
+                                                                            ],
+                                                         "fullName":  "BaseSidebarの取得状態（Nuxt初期化から切り離した一時診断） 権限取得失敗を表示し再試行で回復する",
+                                                         "status":  "passed",
+                                                         "title":  "権限取得失敗を表示し再試行で回復する",
+                                                         "duration":  296.1241000000009,
+                                                         "failureMessages":  [
+
+                                                                             ],
+                                                         "meta":  {
+
+                                                                  },
+                                                         "tags":  [
+
+                                                                  ]
+                                                     },
+                                                     {
+                                                         "ancestorTitles":  [
+                                                                                "BaseSidebarの取得状態（Nuxt初期化から切り離した一時診断）"
+                                                                            ],
+                                                         "fullName":  "BaseSidebarの取得状態（Nuxt初期化から切り離した一時診断） MEMBERにADMINリンクを追加しない",
+                                                         "status":  "passed",
+                                                         "title":  "MEMBERにADMINリンクを追加しない",
+                                                         "duration":  17.49279999999999,
+                                                         "failureMessages":  [
+
+                                                                             ],
+                                                         "meta":  {
+
+                                                                  },
+                                                         "tags":  [
+
+                                                                  ]
+                                                     },
+                                                     {
+                                                         "ancestorTitles":  [
+                                                                                "BaseSidebarの取得状態（Nuxt初期化から切り離した一時診断）"
+                                                                            ],
+                                                         "fullName":  "BaseSidebarの取得状態（Nuxt初期化から切り離した一時診断） SUPPORTERにADMINリンクを追加しない",
+                                                         "status":  "passed",
+                                                         "title":  "SUPPORTERにADMINリンクを追加しない",
+                                                         "duration":  28.687599999997474,
+                                                         "failureMessages":  [
+
+                                                                             ],
+                                                         "meta":  {
+
+                                                                  },
+                                                         "tags":  [
+
+                                                                  ]
+                                                     },
+                                                     {
+                                                         "ancestorTitles":  [
+                                                                                "BaseSidebarの取得状態（Nuxt初期化から切り離した一時診断）"
+                                                                            ],
+                                                         "fullName":  "BaseSidebarの取得状態（Nuxt初期化から切り離した一時診断） GUESTにADMINリンクを追加しない",
+                                                         "status":  "passed",
+                                                         "title":  "GUESTにADMINリンクを追加しない",
+                                                         "duration":  257.69550000000163,
+                                                         "failureMessages":  [
+
+                                                                             ],
+                                                         "meta":  {
+
+                                                                  },
+                                                         "tags":  [
+
+                                                                  ]
+                                                     },
+                                                     {
+                                                         "ancestorTitles":  [
+                                                                                "BaseSidebarの取得状態（Nuxt初期化から切り離した一時診断）"
+                                                                            ],
+                                                         "fullName":  "BaseSidebarの取得状態（Nuxt初期化から切り離した一時診断） 権限取得失敗はモジュール応答を待たずに表示する",
+                                                         "status":  "failed",
+                                                         "title":  "権限取得失敗はモジュール応答を待たずに表示する",
+                                                         "duration":  304.60199999999895,
+                                                         "failureMessages":  [
+                                                                                 "AssertionError: expected false to be true // Object.is equality"
+                                                                             ],
+                                                         "meta":  {
+
+                                                                  },
+                                                         "tags":  [
+
+                                                                  ]
+                                                     },
+                                                     {
+                                                         "ancestorTitles":  [
+                                                                                "BaseSidebarの取得状態（Nuxt初期化から切り離した一時診断）"
+                                                                            ],
+                                                         "fullName":  "BaseSidebarの取得状態（Nuxt初期化から切り離した一時診断） モジュール取得失敗も再試行で権限と一緒に取り直す",
+                                                         "status":  "passed",
+                                                         "title":  "モジュール取得失敗も再試行で権限と一緒に取り直す",
+                                                         "duration":  51.43370000000141,
+                                                         "failureMessages":  [
+
+                                                                             ],
+                                                         "meta":  {
+
+                                                                  },
+                                                         "tags":  [
+
+                                                                  ]
+                                                     },
+                                                     {
+                                                         "ancestorTitles":  [
+                                                                                "BaseSidebarの取得状態（Nuxt初期化から切り離した一時診断）"
+                                                                            ],
+                                                         "fullName":  "BaseSidebarの取得状態（Nuxt初期化から切り離した一時診断） スコープ変更後に新スコープのモジュールと業者リンクを使用する",
+                                                         "status":  "passed",
+                                                         "title":  "スコープ変更後に新スコープのモジュールと業者リンクを使用する",
+                                                         "duration":  942.9663999999975,
+                                                         "failureMessages":  [
+
+                                                                             ],
+                                                         "meta":  {
+
+                                                                  },
+                                                         "tags":  [
+
+                                                                  ]
+                                                     }
+                                                 ],
+                            "startTime":  1792117216270,
+                            "endTime":  1792117219012.9663,
+                            "status":  "failed",
+                            "message":  "",
+                            "name":  "frontend/app/components/BaseSidebar.temporary-diagnostic.spec.ts"
+                        }
+                    ],
+    "publicationNote":  "元Vitest JSONからローカル絶対パスとstack frameを除去。テスト名・実assert・成否・件数は保持。"
+}

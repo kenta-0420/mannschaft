@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260905-1415",
+  "scope": "tooling",
+  "implementation": {
+    "pr": 4332,
+    "sha": "5720ca8afdb4eae00a96ef83153a363c5b87ffeb"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "前提・設定の在処と秘密値を表示しない安全な持込が分かる",
+      "tests": [{ "name": "手動ソース照合: localプロファイル・暗号/HMAC・未追跡設定", "evidence": "docs/evidence/CMP-260905-1415-verification.md" }]
+    },
+    {
+      "id": "AC-2",
+      "description": "実機/生成ポートとCORSが明示されブラウザだけ403を切り分けられる",
+      "tests": [{ "name": "手動ソース照合: 8081/3001/生成8082・CORS・FE/SSR接続先", "evidence": "docs/evidence/CMP-260905-1415-verification.md" }]
+    },
+    {
+      "id": "AC-3",
+      "description": "Windows/WSL配置・clean固定source・turnstile・runnerとcleanup/checkが現行規約に一致する",
+      "tests": [{ "name": "手動ソース照合とbash -n: runner引数・所有/寿命・turnstile・4コードブロック", "evidence": "docs/evidence/CMP-260905-1415-verification.md" }]
+    },
+    {
+      "id": "AC-4",
+      "description": "起動成功をhealth・source/PID所有・FE実通信で判定し時間だけで合格にしない",
+      "tests": [{ "name": "手動照合: receipt保存時点・固定HEAD/PID・起動判定条件", "evidence": "docs/evidence/CMP-260905-1415-verification.md" }]
+    },
+    {
+      "id": "AC-5",
+      "description": "復号・プロファイル・DB・ポート異常を診断し既存資産や他人のプロセスを変更しない",
+      "tests": [{ "name": "手動照合: 症状別診断・秘密値/DB境界・PID世代と安全停止", "evidence": "docs/evidence/CMP-260905-1415-verification.md" }]
+    },
+    {
+      "id": "AC-6",
+      "description": "既存文書の入口から辿れ参照先が実在する",
+      "tests": [{ "name": "相対リンク11件の実在確認・入口確認・git diff --check", "evidence": "docs/evidence/CMP-260905-1415-verification.md" }]
+    }
+  ],
+  "ci": [{ "runId": 42242307061 }, { "runId": 42242307055 }, { "runId": 42242303203 }],
+  "stages": {
+    "review": { "status": "passed", "evidence": "docs/evidence/CMP-260905-1415-verification.md" },
+    "real": { "status": "not-applicable", "scope": "tooling", "reason": "手順文書だけの変更でアプリ・起動コードを変更しない。フル起動や実機E2Eは未実施で、ソース/構文/リンク照合を実施した" },
+    "exploratory": { "status": "not-applicable", "scope": "tooling", "reason": "手順文書だけの変更で画面導線を変更しない。アプリの探索は未実施であり文書整備の完了と区別する" }
+  },
+  "regressions": []
+}

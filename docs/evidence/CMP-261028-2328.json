@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261028-2328",
+  "scope": "app",
+  "implementation": {
+    "pr": 4226,
+    "sha": "2e7ebc01972dfe0d358ed6d660f2044d5164991e"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "予約者向け通知（リマインド・キャンセル待ち・強制キャンセル）の actionUrl が数値 teamId ではなく slug の予約画面になり、通知から予約画面に到達できる。slug が解決できないときは /notifications にし、取得で例外が出ても通知を失わない。",
+      "tests": [
+        {
+          "name": "ReservationReminderEventListenerTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/reservation/event/ReservationReminderEventListenerTest.java"
+        },
+        {
+          "name": "ReservationReminderDispatchNotificationListenerTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/reservation/event/ReservationReminderDispatchNotificationListenerTest.java"
+        },
+        {
+          "name": "ReservationReminderEventListenerContextTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/reservation/event/ReservationReminderEventListenerContextTest.java"
+        },
+        {
+          "name": "ReservationWaitlistNotificationEventListenerTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/reservation/event/ReservationWaitlistNotificationEventListenerTest.java"
+        },
+        {
+          "name": "ReservationWaitlistNotificationEventListenerContextTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/reservation/event/ReservationWaitlistNotificationEventListenerContextTest.java"
+        },
+        {
+          "name": "ReservationForceCancelNotificationEventListenerTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/reservation/event/ReservationForceCancelNotificationEventListenerTest.java"
+        },
+        {
+          "name": "ReservationForceCancelNotificationEventListenerContextTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/reservation/event/ReservationForceCancelNotificationEventListenerContextTest.java"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 40984689223
+    },
+    {
+      "runId": 40984689236
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4226"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4237"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261028-2328/resident-observations.json"
+    }
+  },
+  "regressions": [
+    {
+      "description": "red は「slug 解決を数値に戻した模擬 red（21 failed）」。修正前のコードに対する red ではなく、修正後のコードで slug 解決を数値へ戻して落ちることを確認したもの。green は 31 tests pass。",
+      "test": "backend/src/test/java/com/mannschaft/app/reservation/event/ReservationReminderEventListenerTest.java",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/pull/4226",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/pull/4226"
+    }
+  ],
+  "realE2e": {
+    "pr": 4237,
+    "result": "3種の通知（リマインド・キャンセル待ち・強制キャンセル）から slug の予約画面へ着地することを確認"
+  },
+  "exploratory": {
+    "runId": "alicization-cmp2328-run-20261030",
+    "observations": "docs/evidence/CMP-261028-2328/resident-observations.json",
+    "note": "住民1が3種の通知から slug の予約画面への着地を確認済み。観測はすべて observed-unverified。"
+  },
+  "outOfScopeDefects": [
+    {
+      "ledgerId": "CMP-261030-0648",
+      "description": "管理者向け予約通知（ReservationAdminNotificationEventListener）・問い合わせ通知（InquiryChatEventListener）・業務アラート（AdminBusinessAlertService）の actionUrl は数値 teamId のまま。凍結ストア記録移行の限定承認を要するため切り出した。",
+      "regressionPolicy": "切り出し先で回帰テストを先行させる"
+    },
+    {
+      "ledgerId": "CMP-261028-2328",
+      "description": "ReservationPendingExpireService:263 は PR #3721 の着地後に同じ型でそろえる。本 PR の範囲から除外し未了として残す。",
+      "regressionPolicy": "#3721 着地後に同じ型で対応する"
+    }
+  ]
+}

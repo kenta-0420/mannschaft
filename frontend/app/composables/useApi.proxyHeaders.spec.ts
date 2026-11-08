@@ -14,7 +14,11 @@ const captured = vi.hoisted(() => ({
   guardian: { isActingAs: false, activeChild: { childUserId: 17 } },
   impersonation: { isImpersonating: false, targetUserId: 19 },
   runtimeConfig: () => ({ public: {} }),
-  nuxtApp: () => ({ $i18n: { t: (key: string) => key } }),
+  nuxtApp: () => ({
+    $i18n: { t: (key: string) => key },
+    vueApp: { onUnmount: vi.fn() },
+    hook: vi.fn(),
+  }),
 }))
 vi.mock('ofetch', () => ({
   ofetch: {

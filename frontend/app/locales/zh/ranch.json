@@ -1,0 +1,201 @@
+{
+  "ranch": {
+    "guide": {
+      "title": "玩法",
+      "participationTitle": "按自己的节奏开始",
+      "eggTitle": "从蛋到自己的恐龙",
+      "eggBody": "开始后经过7天，并确认外观选择后，就可以取名并孵化。尚未选择的蛋会安全地等待。",
+      "growthTitle": "照顾与装饰积分",
+      "growthBody": "开放时可通过免费照顾成长。请查看可用状态和本周剩余额度。不加入团队也能使用免费的个人回忆练习。完成回忆等符合条件的活动可能获得装饰积分，但受开放设置和每周上限限制。仅登录不会获得奖励。",
+      "safetyTitle": "可以放心休息",
+      "safetyBody": "退出登录或一段时间不使用，不会失去已保存的恐龙、成长或积分。可以隐藏房间，也可以暂停后以同一只恐龙继续。",
+      "availabilityTitle": "关于准备中的内容",
+      "availabilityBody": "选择方式、恐龙对应关系或素材处于准备中时，只能使用已开放的内容。保存诊断结果与将结果对应到恐龙外观是两回事。"
+    },
+    "status": {"growth":"成长","points":"装饰积分余额","affinity":"亲密度","freeCare":"免费照料规则","careAvailable":"已发布","careStopped":"准备中或已停止","careRemaining":"本周免费照料剩余: {remaining} / {cap} XP","careUsed":"已用: {used} XP / 每次照料数量: {amount} XP","deliveryPaused":"积分配送已暂停，与免费照料是否可用相互独立。","deliveryActive":"积分反映可能需要时间。","pointRemaining":"本周活动积分剩余: {remaining}","personalReference":"个人回忆参考次数: {required} / 已完成: {completed}","referenceNotice":"次数仅供参考。来源上限、停止和配送情况可能影响获得全部积分，不作保证。","reward":{"ENABLED":"活动积分已启用。","DISABLED":"活动积分未注册或已禁用。","PAUSED":"活动奖励已暂停。"}},
+    "admin": {"developmentFixtureNotice":"DEV_ 奖励仅用于隔离开发验证，不代表正式问题或素材获批或发布。需要经过测量的配送设置。","title":"恐龙运营","controls":"使用控制","care":"启用免费照料","shop":"启用商店","deliveryPause":"暂停积分配送","rewardPause":"暂停发生的活动奖励","independent":"免费照料、兑换、活动奖励和配送相互独立。","reason":"原因代码","saved":"已保存。","health":"活动来源配送状态","pending":"等待数量","dead":"最终失败数量","oldest":"最早等待事件的时长","seconds":"{count} 秒","refresh":"重新获取","retrySource":"预约此事件的重新配送","retryNotice":"这是配送预约，不代表积分已发放。请勿输入正文或学习回答。","sourceLabel":"活动来源","eventId":"事件 ID","RETRY_SCHEDULED":"已预约重新配送。","ALREADY_TERMINAL":"此事件已处于终止状态。","source":{"ATTENDANCE_RESPONSE":"本人出勤回答","TIMELINE_ORIGINAL":"本人时间线发布","BLOG_FIRST_PUBLISH":"博客首次公开","PERSONAL_RECALL_COMPLETE":"个人回忆完成"},"publicationNotice":"注册在未来UTC星期一00:00生效的不可变版本。停用版本的所有数值也必须为正。启用奖励策略需要启用个人回忆、注册公开素材及经测量的配送范围。不会改变现有周快照或已获得数量。","publishCare":"发布照料规则","publishPolicy":"发布奖励策略","effectiveAt":"生效时间（未来UTC星期一00:00）","amountXp":"每次照料XP","weeklyCapXp":"每周照料XP上限","juvenileXp":"幼年阶段XP阈值","adultXp":"成年阶段XP阈值","policyEnabled":"启用活动积分","globalWeeklyCap":"每周积分总上限","amountPoints":"每次活动积分","countLimit":"每周活动次数上限","batchSize":"配送批次大小","leaseSeconds":"配送租约秒数","maxAttempts":"配送尝试次数上限","initialBackoffSeconds":"首次重试等待秒数","maxBackoffSeconds":"最长重试等待秒数","publicationSaved":"已保存版本 {version} · 生效 {effectiveAt}"},
+    "title": "恐龙房间",
+    "optional": "是否开始由你决定。仅靠免费照料就能养到成年，放着不管也不会失去它，亲密度不会随时间降低。",
+    "start": "从蛋开始",
+    "save": "保存",
+    "retry": "重试",
+    "next": "下一页",
+    "pause": "暂停",
+    "resume": "恢复",
+    "paused": "已暂停。仍可查看自己的结果和装饰品。",
+    "unavailable": "正在准备中。仍可查看自己的测试结果。",
+    "recall": "回想",
+    "avatar": {
+      "label": "自己的恐龙分身",
+      "description": "恐龙是你自己的分身。慢慢培育体现自己喜好和个性的形象。"
+    },
+    "stage": {
+      "EGG": "蛋",
+      "BABY": "幼体",
+      "JUVENILE": "年轻恐龙",
+      "ADULT": "成年体"
+    },
+    "egg": {
+      "INTACT": "蛋正在成长。",
+      "SMALL_CRACK": "出现了一道小裂纹。",
+      "WIDE_CRACK": "裂纹正在扩大。",
+      "READY": "在你确定名字和选择方式之前，蛋会安全地等待。"
+    },
+    "care": {
+      "eggTouch": "触摸",
+      "food": "喂食",
+      "touch": "互动",
+      "choose": "选择方式",
+      "status": "状态",
+      "fed": "已喂食。成长 {xp} XP。",
+      "touched": "你触摸了自己的分身。"
+    },
+    "scene": {
+      "staticFallback": "正在显示同一只恐龙的静态图像。",
+      "assetPreparing": "这个形象的素材正在准备中。仍可通过文字和操作使用。"
+    },
+    "style": {
+      "PIXEL": "96点像素",
+      "PAINT_2D": "普通2D"
+    },
+    "motion": {
+      "NORMAL": "正常",
+      "REDUCED": "减少动作",
+      "STOPPED": "停止动作"
+    },
+    "settings": {
+      "title": "恐龙房间设置",
+      "style": "绘制风格",
+      "motion": "动作",
+      "sound": "启用声音",
+      "volume": "音量",
+      "freewalkLater": "目前使用房间显示。自由漫步将在后续阶段开放。",
+      "hide": "隐藏",
+      "show": "显示",
+      "visibilityFailed": "蛋已创建，但显示设置保存失败。请只重试显示设置。"
+    },
+    "command": {
+      "failed": "无法保存。如果没有收到响应，请重试同一操作。",
+      "retryRequired": "保存结果尚未确认。请使用同一名字重试。"
+    },
+    "naming": {
+      "title": "起个名字",
+      "nameLabel": "恐龙名字",
+      "characterCount": "{count} / 10",
+      "irreversibleWarning": "名字一经确认便无法更改。请输入10个字符以内的名字。",
+      "checkName": "确认名字",
+      "confirmPrompt": "确定使用“{name}”吗？此名字以后无法更改。",
+      "confirm": "确定这个名字",
+      "back": "返回输入",
+      "invalid": "请输入1至10个字符。不能使用不可见字符、换行或控制字符。"
+    },
+    "habitat": {
+      "LAND": "随机陆地形象",
+      "SEA": "随机海洋形象",
+      "AIR": "随机天空形象"
+    },
+    "assignment": {
+      "title": "选择自己的恐龙形象",
+      "description": "可通过生日与姓名占卜、64类型测试，或随机陆地、海洋、天空形象来选择。",
+      "fromResult": "从自己的结果选择",
+      "mappingPending": "结果已保存。对应恐龙形象的映射正在准备中。",
+      "useResult": "用此结果选择形象"
+    },
+    "diagnosisResults": {
+      "title": "自己的测试结果",
+      "type64": "64类型测试",
+      "birthStyle": "生日与姓名占卜",
+      "notCompleted": "尚未完成",
+      "completedAt": "完成日期：{date}",
+      "retake": "测试或重新测试",
+      "avatarUnchanged": "即使结果发生变化，已孵化的恐龙分身的名字、形象和成长状态也不会改变。",
+      "typeCode": "类型：{code}",
+      "latest": "最新结果",
+      "history": "以往结果",
+      "tendencies": "你的六种倾向",
+      "labelsUnavailable": "此保存结果没有倾向标签。你仍可查看保存时的说明。",
+      "tieSelection": "回答得分相同，因此显示你本人选择的一侧。",
+      "draftNotice": "此结果使用初稿。问题内容和翻译尚未批准，外语显示中也包含日语初稿。",
+      "axes": {
+        "FAMILIAR_NEW": "熟悉与新鲜",
+        "FOCUS_VARIETY": "拓展兴趣",
+        "SPONTANEOUS_PLAN": "选择空闲活动",
+        "SOLO_TOGETHER": "舒适的相处方式",
+        "EXPRESSION": "表达感受",
+        "NOTICE": "欣赏景色"
+      }
+    },
+    "diagnosis": {
+      "description": "想象自己变成恐龙，选择最符合现在自己的生活方式。没有正确答案，也不分优劣。这不是对性格或能力的科学测量。",
+      "start": "开始测试",
+      "save": "保存当前回答",
+      "complete": "查看结果",
+      "hold": "保存并稍后继续",
+      "cancel": "取消测试",
+      "resume": "继续已保存的测试",
+      "tie": "在同分偏好之间选择",
+      "scale1": "更接近左侧",
+      "scale2": "稍偏左侧",
+      "scale3": "两边差不多",
+      "scale4": "稍偏右侧",
+      "scale5": "更接近右侧"
+    },
+    "birth": {
+      "purpose": "将使用本人资料中保存的姓名、假名读音和出生日期计算你自己的占卜结果。请确认下方已保存的信息。",
+      "rule": "这是自定义的占卜规则。将出生日期和姓名读音分别转换为数字，并归并为1至9。这不是科学测量。",
+      "profile": "本人资料",
+      "lastName": "姓",
+      "firstName": "名",
+      "lastNameKana": "姓的读音（假名）",
+      "firstNameKana": "名的读音（假名）",
+      "birthDate": "出生日期",
+      "save": "保存并确认本人信息",
+      "savedProfile": "计算所用的已保存信息",
+      "confirmUse": "我已确认保存的本人信息，并同意将其用于此次计算。",
+      "create": "生成自己的占卜结果",
+      "numbers": "生日数：{life} / 姓名数：{name}",
+      "reconfirm": "重新确认本人信息后选择",
+      "required": "请输入本人信息。",
+      "keyRotated": "保存密钥已更新。请重新读取本人资料，确认内容后再次保存。",
+      "reloadProfile": "重新读取本人资料",
+      "parentalConsentRequired": "保存此出生日期需要监护人批准。请前往监护人同意页面办理。",
+      "openConsent": "前往监护人同意"
+    },
+    "decorations": {
+      "importTitle": "导入纪念品",
+      "importDescription": "每次最多检查100枚已获得的徽章，导入已公开的纪念品。是否继续由你决定。",
+      "importStart": "导入纪念品",
+      "importContinue": "检查接下来的100枚徽章",
+      "importAgain": "从头再次检查",
+      "importResult": "已检查徽章：{processed} / 已导入纪念品：{imported}",
+      "title": "装饰与兑换",
+      "permanent": "积分只能用于永久装饰品，不会影响成长速度或使用权限。",
+      "slots": "3个装饰槽位",
+      "choose": "选择装饰品",
+      "slot": "槽位 {n}",
+      "placed": "已放置",
+      "empty": "空",
+      "place": "放置",
+      "remove": "移除",
+      "shop": "兑换永久装饰品",
+      "balance": "余额：{balance}",
+      "noItems": "尚无已登记的装饰品。",
+      "owned": "已拥有",
+      "purchase": "兑换"
+    },
+    "records": {
+      "title": "成长与兑换记录",
+      "empty": "暂无记录。",
+      "REWARD": "装饰积分",
+      "CARE": "免费照料",
+      "PURCHASE": "装饰兑换",
+      "amounts": "积分 {points} / 成长 {xp} XP",
+      "source": "查看原活动"
+    },
+    "affinity": {
+      "NEUTRAL": "初相识",
+      "WARM": "友好",
+      "CLOSE": "亲近"
+    }
+  }
+}

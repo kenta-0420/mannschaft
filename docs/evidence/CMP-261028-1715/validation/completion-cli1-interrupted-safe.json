@@ -1,0 +1,18 @@
+{
+  "status": "interrupted-unverified",
+  "os": "Windows-native",
+  "nodeVersion": "22.23.2",
+  "pid": 30544,
+  "creationUtc": "2026-10-28T15:03:10.2351920Z",
+  "ownerExactCliCreationOwnedWtGuardPassed": true,
+  "onlyOwnedNodeStopped": true,
+  "otherProcessSignals": 0,
+  "childrenStopped": 0,
+  "childCountBefore": 1,
+  "childrenRemaining": 0,
+  "cliPassedClaimed": false,
+  "head": "61f763407e4c160c480092e06cb63e4166768e9a",
+  "rawLogPreserved": true,
+  "headAndFilesFrozenUntilStop": true,
+  "finishedAt": "2026-10-28T15:17:29.5613857Z"
+}

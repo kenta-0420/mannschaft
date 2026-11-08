@@ -13,7 +13,9 @@ import com.mannschaft.app.jobmatching.entity.JobApplicationEntity;
 import com.mannschaft.app.jobmatching.entity.JobContractEntity;
 import com.mannschaft.app.jobmatching.mapper.JobMapper;
 import com.mannschaft.app.jobmatching.service.JobApplicationService;
+import com.mannschaft.app.jobmatching.service.JobApplicationViewAccessGuard;
 import com.mannschaft.app.jobmatching.service.JobContractService;
+import com.mannschaft.app.jobmatching.service.JobPostingViewAccessGuard;
 import com.mannschaft.app.jobmatching.service.command.ApplyCommand;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -63,6 +65,10 @@ public class JobApplicationController {
     private final JobApplicationService applicationService;
     private final JobContractService contractService;
     private final JobMapper jobMapper;
+    /** 求人の閲覧可否の門（知り得ない者には不在と同一応答。CMP-260821-1027）。 */
+    private final JobPostingViewAccessGuard postingViewGuard;
+    /** 応募の閲覧可否の門（閲覧できない者には不在と同一応答。TX・GET_LOCK より前に判定する。CMP-260821-1027）。 */
+    private final JobApplicationViewAccessGuard applicationViewGuard;
 
     // ========================================
     // 求人配下の応募操作
@@ -80,7 +86,9 @@ public class JobApplicationController {
     public ResponseEntity<PagedResponse<JobApplicationResponse>> listByPosting(
             @PathVariable Long jobId,
             Pageable pageable) {
-        List<JobApplicationEntity> all = applicationService.listByPosting(jobId, SecurityUtils.getCurrentUserId());
+        Long userId = SecurityUtils.getCurrentUserId();
+        postingViewGuard.requireVisible(jobId, userId);
+        List<JobApplicationEntity> all = applicationService.listByPosting(jobId, userId);
 
         int total = all.size();
         int pageNumber = pageable.getPageNumber();
@@ -108,7 +116,9 @@ public class JobApplicationController {
             @PathVariable Long jobId,
             @Valid @RequestBody ApplyRequest req) {
         ApplyCommand cmd = new ApplyCommand(req.selfPr());
-        JobApplicationEntity entity = applicationService.apply(jobId, cmd, SecurityUtils.getCurrentUserId());
+        Long userId = SecurityUtils.getCurrentUserId();
+        postingViewGuard.requireVisible(jobId, userId);
+        JobApplicationEntity entity = applicationService.apply(jobId, cmd, userId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.of(jobMapper.toApplicationResponse(entity)));
     }
@@ -169,7 +179,10 @@ public class JobApplicationController {
     @Operation(summary = "応募を採用確定（契約生成）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "採用成功・契約成立")
     public ResponseEntity<ApiResponse<JobContractResponse>> acceptApplication(@PathVariable Long id) {
-        JobContractEntity contract = contractService.acceptApplication(id, SecurityUtils.getCurrentUserId());
+        Long userId = SecurityUtils.getCurrentUserId();
+        // GET_LOCK・書込TXより前に閲覧可否を判定する（ロック競合の 409 を閲覧できない者に見せない）。
+        applicationViewGuard.requireVisible(id, userId);
+        JobContractEntity contract = contractService.acceptApplication(id, userId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.of(jobMapper.toContractResponse(contract)));
     }
@@ -184,24 +197,29 @@ public class JobApplicationController {
             @PathVariable Long id,
             @Valid @RequestBody(required = false) RejectApplicationRequest req) {
         String reason = req != null ? req.reason() : null;
-        JobApplicationEntity entity = applicationService.reject(id, reason, SecurityUtils.getCurrentUserId());
+        Long userId = SecurityUtils.getCurrentUserId();
+        applicationViewGuard.requireVisible(id, userId);
+        JobApplicationEntity entity = applicationService.reject(id, reason, userId);
         return ResponseEntity.ok(ApiResponse.of(jobMapper.toApplicationResponse(entity)));
     }
 
     /**
      * 応募を取り下げる（APPLIED → WITHDRAWN）。応募者本人のみ許可。
      *
-     * <p><b>認可の所在</b>: {@code JobApplicationService#withdraw}
-     * （{@code jobmatching/service/JobApplicationService.java:130}）が、対象応募を実体として
-     * ロードしたうえで {@code applicantUserId} と認証主体の一致を検証し、不一致は
-     * {@code JOB_PERMISSION_DENIED}（404。越境の存在秘匿）で拒否する。検証は状態遷移・永続化より<b>前</b>に位置する。</p>
+     * <p><b>認可の所在</b>: まず {@link JobApplicationViewAccessGuard} が、応募を閲覧できない者
+     * （応募者本人でも採否権限者でもない者）を不在と同一の {@code JOB_APPLICATION_NOT_FOUND} で拒否する
+     * （CMP-260821-1027）。次に {@code JobApplicationService#withdraw} が {@code applicantUserId} と認証主体の
+     * 一致を検証し、閲覧できる採否権限者の取り下げは従来の {@code JOB_PERMISSION_DENIED}（404 固定の写像）で拒否する。
+     * 検証は状態遷移・永続化より<b>前</b>に位置する。</p>
      */
     @AuthorizedInService
     @PostMapping("/api/v1/applications/{id}/withdraw")
     @Operation(summary = "応募を取り下げ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取り下げ成功")
     public ResponseEntity<ApiResponse<JobApplicationResponse>> withdrawApplication(@PathVariable Long id) {
-        JobApplicationEntity entity = applicationService.withdraw(id, SecurityUtils.getCurrentUserId());
+        Long userId = SecurityUtils.getCurrentUserId();
+        applicationViewGuard.requireVisible(id, userId);
+        JobApplicationEntity entity = applicationService.withdraw(id, userId);
         return ResponseEntity.ok(ApiResponse.of(jobMapper.toApplicationResponse(entity)));
     }
 }

@@ -73,10 +73,65 @@ public interface ScheduleRepository extends AbstractTenantAwareRepository<Schedu
             Long orgId, LocalDateTime from, LocalDateTime to);
 
     /**
+     * 複数組織スコープのスケジュールを期間指定で一括取得する（N+1 解消用）。
+     *
+     * <p>{@link #findByTeamIdInAndStartAtBetween} の組織版。個人ダッシュボードの「今後の予定」が
+     * 所属組織ごとに {@link #findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc} を呼んでいたのを 1 クエリにまとめる。
+     * 呼び出し側は {@code orgIds} が空の場合に本メソッドを呼ばないこと。</p>
+     *
+     * @param orgIds 取得対象の組織 ID 集合（空集合で呼ばないこと）
+     * @param from   期間開始
+     * @param to     期間終了
+     * @return 期間内の組織スケジュール（start_at 昇順）
+     */
+    @Query("SELECT s FROM ScheduleEntity s "
+            + "WHERE s.organizationId IN (:orgIds) AND s.startAt BETWEEN :from AND :to "
+            + "ORDER BY s.startAt ASC")
+    List<ScheduleEntity> findByOrganizationIdInAndStartAtBetween(
+            @Param("orgIds") Collection<Long> orgIds,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to);
+
+    /**
      * 個人スコープのスケジュールを期間指定で取得する。
      */
     List<ScheduleEntity> findByUserIdAndStartAtBetweenOrderByStartAtAsc(
             Long userId, LocalDateTime from, LocalDateTime to);
+
+    /**
+     * カレンダー表示期間に交差する本人所有の予定を取得する。
+     * 終了は排他、検索上端は既存一覧同様に包含し、終了なしは開始の単一点として扱う。
+     */
+    @Query("SELECT s FROM ScheduleEntity s WHERE s.userId = :userId AND s.startAt <= :to "
+            + "AND (s.endAt > :from OR (s.endAt IS NULL AND s.startAt >= :from)) ORDER BY s.startAt ASC")
+    List<ScheduleEntity> findCalendarByUserId(
+            @Param("userId") Long userId, @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    /** 複数チームのカレンダー予定を、継続予定を含む既存期間条件で一括取得する。 */
+    @Query("SELECT s FROM ScheduleEntity s WHERE s.teamId IN (:teamIds) AND s.startAt <= :to "
+            + "AND (s.endAt > :from OR (s.endAt IS NULL AND s.startAt >= :from)) ORDER BY s.startAt ASC")
+    List<ScheduleEntity> findCalendarByTeamIdIn(
+            @Param("teamIds") Collection<Long> teamIds,
+            @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    /** 複数組織のカレンダー予定を、継続予定を含む既存期間条件で一括取得する。 */
+    @Query("SELECT s FROM ScheduleEntity s WHERE s.organizationId IN (:orgIds) AND s.startAt <= :to "
+            + "AND (s.endAt > :from OR (s.endAt IS NULL AND s.startAt >= :from)) ORDER BY s.startAt ASC")
+    List<ScheduleEntity> findCalendarByOrganizationIdIn(
+            @Param("orgIds") Collection<Long> orgIds,
+            @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    /** 開始が表示期間より前の継続予定も含め、当該チームのカレンダー予定を取得する。 */
+    @Query("SELECT s FROM ScheduleEntity s WHERE s.teamId = :teamId AND s.startAt <= :to "
+            + "AND (s.endAt > :from OR (s.endAt IS NULL AND s.startAt >= :from)) ORDER BY s.startAt ASC")
+    List<ScheduleEntity> findCalendarByTeamId(
+            @Param("teamId") Long teamId, @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    /** 開始が表示期間より前の継続予定も含め、当該組織のカレンダー予定を取得する。 */
+    @Query("SELECT s FROM ScheduleEntity s WHERE s.organizationId = :orgId AND s.startAt <= :to "
+            + "AND (s.endAt > :from OR (s.endAt IS NULL AND s.startAt >= :from)) ORDER BY s.startAt ASC")
+    List<ScheduleEntity> findCalendarByOrganizationId(
+            @Param("orgId") Long orgId, @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 
     /**
      * チーム・組織に紐付かない純粋な個人スケジュールを期間指定で取得する。

@@ -86,7 +86,7 @@ const cards = computed<AdminConsoleCard[]>(() => [
     titleKey: 'adminConsole.cards.reservations.title',
     descKey: 'adminConsole.cards.reservations.desc',
     icon: 'pi pi-calendar-clock',
-    to: `${base.value}/reservations`,
+    to: `${base.value}/admin/reservations`,
   },
   {
     key: 'budget',
@@ -116,6 +116,13 @@ const cards = computed<AdminConsoleCard[]>(() => [
     titleKey: 'adminConsole.cards.members.title',
     descKey: 'adminConsole.cards.members.desc',
     icon: 'pi pi-users',
+    to: `${base.value}/members`,
+  },
+  {
+    key: 'member-cards',
+    titleKey: 'memberCardAdmin.title',
+    descKey: 'memberCardAdmin.description',
+    icon: 'pi pi-id-card',
     to: `${base.value}/member-cards`,
   },
   {
@@ -123,7 +130,7 @@ const cards = computed<AdminConsoleCard[]>(() => [
     titleKey: 'adminConsole.cards.settings.title',
     descKey: 'adminConsole.cards.settings.desc',
     icon: 'pi pi-cog',
-    to: `${base.value}/settings/shift`,
+    to: `${base.value}/admin/settings`,
   },
 ])
 

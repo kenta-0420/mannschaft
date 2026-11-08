@@ -1,5 +1,6 @@
 package com.mannschaft.app.auth.entity;
 
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -14,6 +15,7 @@ import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 /**
@@ -74,6 +76,15 @@ public class WebAuthnCredentialEntity {
      */
     public void incrementSignCount() {
         this.signCount++;
+    }
+
+    /**
+     * 検証済みassertionの署名カウンタと最終使用日時を、取得済みエンティティへ反映する。
+     */
+    public void recordAuthentication(long verifiedSignCount, Instant authenticatedAt) {
+        this.signCount = verifiedSignCount;
+        // 既存JPA列はサーバー壁時計を保持するため、瞬間の型はこの境界でだけ変換する。
+        this.lastUsedAt = LocalDateTime.ofInstant(authenticatedAt, UserZoneLocalDateTimeParser.SERVER_ZONE);
     }
 
     /**

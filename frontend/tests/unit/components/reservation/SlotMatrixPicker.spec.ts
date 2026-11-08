@@ -222,6 +222,35 @@ describe('SlotMatrixPicker.vue', () => {
     expect(findByTestId('waitlist-register')).toBeNull()
   })
 
+  it('R1(CMP-260824-2217): 自分の予約済みセルの aria-label はキャンセル待ち誘導を含まず、予約済みを案内する', async () => {
+    mockGetLines.mockResolvedValue({ data: [activeLine] })
+    mockGetSlotGrid.mockResolvedValue({
+      data: {
+        meta: null,
+        days: [{
+          date: tomorrow,
+          columns: [{
+            lineId: 1,
+            lineName: 'Seat1',
+            lineIds: [],
+            cells: [{ slotId: 901, startTime: '10:00', endTime: '10:30', state: 'BOOKED', reservedByCurrentUser: true }],
+          }],
+        }],
+      },
+    })
+    const wrapper = await mountSuspended(SlotMatrixPicker, {
+      props: { teamId: 'team-slug', isAdmin: false },
+    })
+    await flush(wrapper, tomorrow)
+
+    const cell = wrapper.findAll('button').find(b => b.attributes('aria-label')?.includes('10:00'))
+    expect(cell?.attributes('disabled')).toBeDefined()
+    const label = cell?.attributes('aria-label') ?? ''
+    expect(label).toContain('Booked by you')
+    expect(label).not.toContain(': ')
+    expect(label).not.toMatch(/waitlist/i)
+  })
+
   it('チームTZをviewer TZより優先し、週起点・API範囲・過去セルをチーム日付境界で判定する', async () => {
     // UTC 23:30 は viewer=Asia/Tokyo では翌日08:30だが、team=America/New_Yorkでは同日19:30。
     vi.setSystemTime(new Date('2026-08-09T23:30:00Z'))

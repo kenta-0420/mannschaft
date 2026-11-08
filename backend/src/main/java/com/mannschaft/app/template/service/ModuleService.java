@@ -434,6 +434,39 @@ public class ModuleService {
     }
 
     /**
+     * 複数チームについて {@link #isModuleEnabledForTeam} を一括判定する（N+1 解消用）。
+     *
+     * <p>判定規則は {@link #isModuleEnabledForTeam} と同一（モジュール不在・非アクティブは全チーム false、
+     * DEFAULT は全チーム true、OPTIONAL はチームの有効化行の {@code isEnabled}、行が無ければ false）。
+     * モジュール定義 1 クエリ + 有効化行 1 クエリで、チーム数に依存しない。</p>
+     *
+     * @param moduleSlug モジュールスラッグ
+     * @param teamIds    チーム ID 群（空なら空 Map を返す）
+     * @return チーム ID → 有効か。入力の全チーム ID をキーに持つ
+     */
+    public Map<Long, Boolean> isModuleEnabledForTeams(String moduleSlug, java.util.Collection<Long> teamIds) {
+        Map<Long, Boolean> result = new java.util.LinkedHashMap<>();
+        if (teamIds.isEmpty()) {
+            return result;
+        }
+        ModuleDefinitionEntity module = moduleDefinitionRepository.findBySlug(moduleSlug).orElse(null);
+        if (module == null || !module.getIsActive()) {
+            teamIds.forEach(id -> result.put(id, false));
+            return result;
+        }
+        if (module.getModuleType() == ModuleDefinitionEntity.ModuleType.DEFAULT) {
+            teamIds.forEach(id -> result.put(id, true));
+            return result;
+        }
+        Map<Long, Boolean> enabledByTeam = teamEnabledModuleRepository
+                .findByTeamIdInAndModuleId(teamIds, module.getId()).stream()
+                .collect(Collectors.toMap(TeamEnabledModuleEntity::getTeamId,
+                        TeamEnabledModuleEntity::getIsEnabled, (a, b) -> a));
+        teamIds.forEach(id -> result.put(id, Boolean.TRUE.equals(enabledByTeam.get(id))));
+        return result;
+    }
+
+    /**
      * モジュール無効理由を返す。有効な場合は null。
      *
      * @param moduleSlug モジュールスラッグ

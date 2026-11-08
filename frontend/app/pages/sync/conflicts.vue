@@ -143,7 +143,7 @@ onMounted(() => {
 
     <!-- コンフリクト解決モーダル -->
     <ClientOnly>
-      <PwaConflictResolverModal
+      <ConflictResolverModal
         v-if="selectedConflictId !== null"
         :conflict-id="selectedConflictId"
         :visible="showModal"

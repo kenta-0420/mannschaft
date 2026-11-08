@@ -7,6 +7,7 @@ import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
+import com.mannschaft.app.chat.service.ChatMemberBatchQueryService;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.dashboard.FolderItemType;
 import com.mannschaft.app.dashboard.dto.ChatHubResponse;
@@ -24,7 +25,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,6 +46,7 @@ import java.util.stream.Collectors;
 public class ChatHubService {
 
     private final ChatChannelMemberRepository chatChannelMemberRepository;
+    private final ChatMemberBatchQueryService chatMemberBatchQueryService;
     private final ChatChannelRepository chatChannelRepository;
     private final ChatContactFolderRepository chatContactFolderRepository;
     private final ChatContactFolderItemRepository chatContactFolderItemRepository;
@@ -88,26 +93,41 @@ public class ChatHubService {
                 .map(c -> c.getId())
                 .collect(Collectors.toSet());
 
-        // DM パートナーユーザーID収集 (チャンネルごとに自分以外の最初のメンバーを使用)
-        Map<Long, Long> dmChannelToPartnerUserId = dmChannelIdSet.stream()
-                .collect(Collectors.toMap(
-                        Function.identity(),
-                        channelId -> {
-                            List<ChatChannelMemberEntity> members =
-                                    chatChannelMemberRepository.findByChannelIdOrderByJoinedAtAsc(channelId);
-                            return members.stream()
-                                    .map(ChatChannelMemberEntity::getUserId)
-                                    .filter(uid -> !uid.equals(userId))
-                                    .findFirst()
-                                    .orElse(userId); // フォールバック: 自分自身（1人チャンネル等の異常系）
-                        }
-                ));
+        // DM パートナーユーザーID収集 (チャンネルごとに自分以外で参加日時が最も古いメンバーを使用)
+        // CMP-261103-1225: DM チャンネルごとのメンバー取得（N+1）を、全 DM チャンネル分の 1 クエリへまとめる
+        //（chat ドメインの照会 Service 経由。参加日時の古い順・同時刻は ID 順で、自分以外の先頭を相手とする）
+        Map<Long, Long> firstOtherMemberByChannel =
+                chatMemberBatchQueryService.findFirstOtherMemberUserIdByChannel(dmChannelIdSet, userId);
+        Map<Long, Long> dmChannelToPartnerUserId = new HashMap<>();
+        for (Long channelId : dmChannelIdSet) {
+            // フォールバック: 自分自身（1人チャンネル等の異常系）
+            dmChannelToPartnerUserId.put(channelId, firstOtherMemberByChannel.getOrDefault(channelId, userId));
+        }
 
-        // パートナーユーザーIDを一括取得
-        Set<Long> partnerUserIds = dmChannelToPartnerUserId.values().stream()
+        // ── 7 の準備. フォルダとアイテムを一括取得（CMP-261103-1225: フォルダごとの取得を 1 クエリへ） ──
+        List<ChatContactFolderEntity> folders =
+                chatContactFolderRepository.findByUserIdOrderBySortOrder(userId);
+        Map<Long, List<ChatContactFolderItemEntity>> itemsByFolderId = new HashMap<>();
+        if (!folders.isEmpty()) {
+            List<Long> folderIds = folders.stream().map(ChatContactFolderEntity::getId).toList();
+            for (ChatContactFolderItemEntity item : chatContactFolderItemRepository.findByFolderIdInOrderByIdAsc(folderIds)) {
+                itemsByFolderId.computeIfAbsent(item.getFolderId(), k -> new ArrayList<>()).add(item);
+            }
+        }
+        Set<Long> contactUserIds = itemsByFolderId.values().stream()
+                .flatMap(List::stream)
+                .filter(item -> FolderItemType.CONTACT.equals(item.getItemType()))
+                .map(ChatContactFolderItemEntity::getItemId)
                 .collect(Collectors.toSet());
-        Map<Long, UserEntity> partnerUserMap = userRepository.findAllById(partnerUserIds).stream()
-                .collect(Collectors.toMap(u -> u.getId(), Function.identity()));
+
+        // パートナー・連絡先ユーザーを 1 クエリで一括取得
+        Set<Long> userIdsToResolve = new HashSet<>(dmChannelToPartnerUserId.values());
+        userIdsToResolve.addAll(contactUserIds);
+        Map<Long, UserEntity> userMap = userIdsToResolve.isEmpty()
+                ? Map.of()
+                : userRepository.findAllById(userIdsToResolve).stream()
+                        .collect(Collectors.toMap(u -> u.getId(), Function.identity(), (a, b) -> a));
+        Map<Long, UserEntity> partnerUserMap = userMap;
 
         // ── 5. チームチャンネル DTO 組み立て ──────────────────────────────────────
         List<TeamChannelItemDto> teamChannels = teamChannelEntities.stream()
@@ -175,8 +195,6 @@ public class ChatHubService {
                 .toList();
 
         // ── 7. フォルダ別連絡先 DTO 組み立て ──────────────────────────────────────
-        List<ChatContactFolderEntity> folders =
-                chatContactFolderRepository.findByUserIdOrderBySortOrder(userId);
 
         // DM チャンネルを userId でマップ化（パートナーユーザーID → チャンネル）
         // userId が連絡先 itemId としてそのまま使われる
@@ -190,22 +208,10 @@ public class ChatHubService {
         List<ContactFolderDto> contacts = folders.stream()
                 .map(folder -> {
                     List<ChatContactFolderItemEntity> folderItems =
-                            chatContactFolderItemRepository.findByFolderId(folder.getId());
+                            itemsByFolderId.getOrDefault(folder.getId(), List.of());
+                    Map<Long, UserEntity> folderUserMap = userMap;
 
-                    // USER タイプのアイテムのみ対象とする
-                    List<Long> userItemIds = folderItems.stream()
-                            .filter(item -> FolderItemType.CONTACT.equals(item.getItemType()))
-                            .map(ChatContactFolderItemEntity::getItemId)
-                            .toList();
-
-                    Map<Long, UserEntity> folderUserMap = userRepository.findAllById(userItemIds).stream()
-                            .collect(Collectors.toMap(u -> u.getId(), Function.identity()));
-
-                    // folderItems を itemId でマップ化
-                    Map<Long, ChatContactFolderItemEntity> folderItemByUserId = folderItems.stream()
-                            .filter(item -> FolderItemType.CONTACT.equals(item.getItemType()))
-                            .collect(Collectors.toMap(ChatContactFolderItemEntity::getItemId, Function.identity()));
-
+                    // USER（CONTACT）タイプのアイテムのみ対象とする
                     List<ContactItemDto> items = folderItems.stream()
                             .filter(item -> FolderItemType.CONTACT.equals(item.getItemType()))
                             .map(item -> {

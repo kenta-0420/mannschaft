@@ -1,8 +1,13 @@
 package com.mannschaft.app.reservation.service;
 
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import com.mannschaft.app.reservation.ReservationStatus;
 import com.mannschaft.app.reservation.entity.ReservationEntity;
+import com.mannschaft.app.reservation.service.ReservationPendingExpireProgressService.RunState;
 import com.mannschaft.app.reservation.service.ReservationPendingExpireService.PendingExpireUnit;
+import com.mannschaft.app.reservation.service.ReservationPendingExpireService.ScanEntry;
+import com.mannschaft.app.reservation.service.ReservationPendingExpireService.ScanPlan;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,12 +16,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -37,6 +45,22 @@ class ReservationPendingExpireBatchServiceTest {
 
     @Mock
     private ReservationPendingExpireService pendingExpireService;
+
+    @Mock private ReservationPendingExpireProgressService progress;
+    @Mock private TeamTimezoneResolver timezoneResolver;
+    private final RunState run = new RunState(1, 10, 0, List.of());
+    private static final ZoneId ZONE = ZoneId.of("Asia/Tokyo");
+
+    @BeforeEach
+    void epochを取得する() { given(progress.beginRun()).willReturn(run); }
+
+    private void stubPlan(List<PendingExpireUnit> units) {
+        if (!units.isEmpty()) given(timezoneResolver.resolveZone(anyLong())).willReturn(ZONE);
+        var plan = new ScanPlan(units.stream().map(unit ->
+                new ScanEntry(unit.primary().getId(), false, true, unit)).toList(),
+                units.isEmpty() ? 0 : units.getLast().primary().getId(), false);
+        given(pendingExpireService.findScanPlan(run)).willReturn(plan);
+    }
 
     @InjectMocks
     private ReservationPendingExpireBatchService batchService;
@@ -62,7 +86,7 @@ class ReservationPendingExpireBatchServiceTest {
     @Test
     @DisplayName("AC-6-10: 対象0件なら副作用ゼロで 0 件を返す")
     void 対象0件は副作用ゼロ() {
-        given(pendingExpireService.findExpirableUnits()).willReturn(List.of());
+        stubPlan(List.of());
 
         int expired = batchService.expirePendingReservations();
 
@@ -74,7 +98,7 @@ class ReservationPendingExpireBatchServiceTest {
     @Test
     @DisplayName("AC-6-10: 対象0件でも例外を投げない")
     void 対象0件でも例外を投げない() {
-        given(pendingExpireService.findExpirableUnits()).willReturn(List.of());
+        stubPlan(List.of());
 
         assertThatCode(() -> batchService.expirePendingReservations()).doesNotThrowAnyException();
     }
@@ -89,13 +113,12 @@ class ReservationPendingExpireBatchServiceTest {
         PendingExpireUnit failing = unit(1L, 100L);
         PendingExpireUnit healthyA = unit(2L, 100L);
         PendingExpireUnit healthyB = unit(3L, 200L);
-        given(pendingExpireService.findExpirableUnits())
-                .willReturn(List.of(failing, healthyA, healthyB));
+        stubPlan(List.of(failing, healthyA, healthyB));
         // 1 件目で DB 障害等を注入する。
-        given(pendingExpireService.expireUnit(failing))
+        given(pendingExpireService.expireUnit(failing.withProgress(run.epoch(), 1, ZONE)))
                 .willThrow(new IllegalStateException("枠復帰で想定外の障害"));
-        given(pendingExpireService.expireUnit(healthyA)).willReturn(1);
-        given(pendingExpireService.expireUnit(healthyB)).willReturn(3);
+        given(pendingExpireService.expireUnit(healthyA.withProgress(run.epoch(), 2, ZONE))).willReturn(1);
+        given(pendingExpireService.expireUnit(healthyB.withProgress(run.epoch(), 3, ZONE))).willReturn(3);
 
         int expired = batchService.expirePendingReservations();
 
@@ -103,8 +126,8 @@ class ReservationPendingExpireBatchServiceTest {
                 .as("失敗した 1 件目を除き、2 件目(1行)＋3 件目(グループ3行)が計上される")
                 .isEqualTo(4);
         // 後続 2 単位が確かに処理されている（＝ループが中断していない）
-        verify(pendingExpireService, times(1)).expireUnit(healthyA);
-        verify(pendingExpireService, times(1)).expireUnit(healthyB);
+        verify(pendingExpireService, times(1)).expireUnit(healthyA.withProgress(run.epoch(), 2, ZONE));
+        verify(pendingExpireService, times(1)).expireUnit(healthyB.withProgress(run.epoch(), 3, ZONE));
     }
 
     @Test
@@ -112,7 +135,7 @@ class ReservationPendingExpireBatchServiceTest {
     void 全件失敗でもバッチは落ちない() {
         PendingExpireUnit a = unit(1L, 100L);
         PendingExpireUnit b = unit(2L, 100L);
-        given(pendingExpireService.findExpirableUnits()).willReturn(List.of(a, b));
+        stubPlan(List.of(a, b));
         given(pendingExpireService.expireUnit(any()))
                 .willThrow(new IllegalStateException("DB 障害"));
 

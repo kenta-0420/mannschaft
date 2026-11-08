@@ -1,0 +1,13 @@
+
+Running 5 tests using 1 worker
+
+  ok 1 [chromium-real] › tests\e2e\real\team-payment-access.real.spec.ts:177:3 › ADMIN: 管理ハブ→請求・再読込・立替・詳細URLへ到達する (1.3m)
+  ok 2 [chromium-real] › tests\e2e\real\team-payment-access.real.spec.ts:177:3 › DEPUTY_ADMIN: 管理ハブ→請求・再読込・立替・詳細URLへ到達する (1.5m)
+  ok 3 [chromium-real] › tests\e2e\real\team-payment-access.real.spec.ts:204:3 › MEMBER: 請求一覧/詳細/立替を直URLでも閲覧できない (46.5s)
+  ok 4 [chromium-real] › tests\e2e\real\team-payment-access.real.spec.ts:204:3 › SUPPORTER: 請求一覧/詳細/立替を直URLでも閲覧できない (56.7s)
+  ok 5 [chromium-real] › tests\e2e\real\team-payment-access.real.spec.ts:204:3 › OTHER_TEAM_ADMIN: 請求一覧/詳細/立替を直URLでも閲覧できない (53.3s)
+
+  Slow test file: [chromium-real] › tests\e2e\real\team-payment-access.real.spec.ts (5.4m)
+  Consider running tests from slow files in parallel. See: https://playwright.dev/docs/test-parallel
+  5 passed (6.8m)
+RUNNER_EXIT=0

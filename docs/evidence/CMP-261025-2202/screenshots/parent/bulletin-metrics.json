@@ -1,0 +1,68 @@
+[
+  {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "url": "/organizations/organizations-1792955082319/bulletin",
+    "clientWidth": 390,
+    "scrollWidth": 390,
+    "buttons": [
+      {
+        "text": "一覧",
+        "x": 40,
+        "y": 603,
+        "width": 72,
+        "height": 38,
+        "padding": "8px 12px",
+        "fontSize": "14px",
+        "minHeight": "auto",
+        "className": "-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors border-primary text-primary"
+      },
+      {
+        "text": "保管庫",
+        "x": 120,
+        "y": 603,
+        "width": 86,
+        "height": 38,
+        "padding": "8px 12px",
+        "fontSize": "14px",
+        "minHeight": "auto",
+        "className": "-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors border-transparent text-surface-500 hover:text-surface-700"
+      }
+    ]
+  },
+  {
+    "viewport": {
+      "width": 360,
+      "height": 800
+    },
+    "url": "/organizations/organizations-1792955082319/bulletin",
+    "clientWidth": 360,
+    "scrollWidth": 360,
+    "buttons": [
+      {
+        "text": "一覧",
+        "x": 40,
+        "y": 603,
+        "width": 72,
+        "height": 38,
+        "padding": "8px 12px",
+        "fontSize": "14px",
+        "minHeight": "auto",
+        "className": "-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors border-primary text-primary"
+      },
+      {
+        "text": "保管庫",
+        "x": 120,
+        "y": 603,
+        "width": 86,
+        "height": 38,
+        "padding": "8px 12px",
+        "fontSize": "14px",
+        "minHeight": "auto",
+        "className": "-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors border-transparent text-surface-500 hover:text-surface-700"
+      }
+    ]
+  }
+]

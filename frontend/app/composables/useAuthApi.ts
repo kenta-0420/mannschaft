@@ -1,3 +1,4 @@
+import { useApi } from './useApi'
 import type {
   TotpSetupResponse,
   BackupCodesResponse,
@@ -14,6 +15,20 @@ import type {
   UpdateWebAuthnCredentialRequest,
   MessageResponse,
 } from '~/types/auth'
+import type { components } from '~/types/generated'
+
+type Schemas = components['schemas']
+
+/** 2FA 要素。BE の MfaVerificationMethod に対応する。 */
+export type MfaVerificationMethod = NonNullable<Schemas['ValidateTotpLoginRequest']['method']>
+export type MfaLoginTokenResponse = Schemas['MfaLoginTokenResponse']
+export type MfaEmailSendResponse = Schemas['MfaEmailSendResponse']
+
+export interface MfaValidateRequest {
+  mfaSessionToken: string
+  method: MfaVerificationMethod
+  code: string
+}
 
 export function useAuthApi() {
   const api = useApi()
@@ -25,28 +40,51 @@ export function useAuthApi() {
     })
   }
 
-  async function regenerateBackupCodes() {
+  // 再生成は本人確認（パスワード＋有効要素）が必須（AC-44）。body を省略すると BE は 400 を返す。
+  async function regenerateBackupCodes(body: {
+    method: 'TOTP' | 'BACKUP_CODE' | 'EMAIL'
+    code: string
+    currentPassword?: string
+  }) {
     return api<{ data: BackupCodesResponse }>('/api/v1/auth/2fa/backup-codes/regenerate', {
       method: 'POST',
+      body,
     })
   }
 
+  /** リカバリーメール送信。mfaSessionToken は本文で送る（URL・アクセスログに残さない）。 */
   async function requestMfaRecovery(mfaSessionToken: string) {
-    return api<{ data: MessageResponse }>(
-      `/api/v1/auth/2fa/recovery/request?mfaSessionToken=${encodeURIComponent(mfaSessionToken)}`,
-      {
-        method: 'POST',
-      },
-    )
+    return api<{ data: MessageResponse }>('/api/v1/auth/2fa/recovery/request', {
+      method: 'POST',
+      body: { mfaSessionToken },
+    })
   }
 
+  /** リカバリー確認。メールのリンクで届いたトークンを本文で送る。 */
   async function confirmMfaRecovery(token: string) {
-    return api<{ data: TokenResponse }>(
-      `/api/v1/auth/2fa/recovery/confirm?token=${encodeURIComponent(token)}`,
-      {
-        method: 'POST',
-      },
-    )
+    return api<{ data: TokenResponse }>('/api/v1/auth/2fa/recovery/confirm', {
+      method: 'POST',
+      body: { token },
+    })
+  }
+
+  /**
+   * ログイン時の 2FA 検証（TOTP / メールOTP / バックアップコード）。
+   * 形式違反（桁数・数字以外）は BE が 400 で返し、試行回数には計上されない。
+   */
+  async function validateMfaLogin(body: MfaValidateRequest) {
+    return api<{ data: MfaLoginTokenResponse }>('/api/v1/auth/2fa/validate', {
+      method: 'POST',
+      body,
+    })
+  }
+
+  /** ログイン用メールOTPの送信。再送待ちは 429 AUTH_076 + Retry-After。 */
+  async function sendLoginEmailOtp(mfaSessionToken: string) {
+    return api<{ data: MfaEmailSendResponse }>('/api/v1/auth/2fa/email/send', {
+      method: 'POST',
+      body: { mfaSessionToken },
+    })
   }
 
   // === Sessions ===
@@ -91,9 +129,10 @@ export function useAuthApi() {
     })
   }
 
-  async function beginWebAuthnLogin() {
+  async function beginWebAuthnLogin(email: string) {
     return api<{ data: WebAuthnLoginBeginResponse }>('/api/v1/auth/webauthn/login/begin', {
       method: 'POST',
+      query: { email },
     })
   }
 
@@ -133,7 +172,7 @@ export function useAuthApi() {
 
   // === 2FA Setup Verify ===
   async function verifyTotpSetup(code: string) {
-    return api<{ data: MessageResponse }>('/api/v1/auth/2fa/verify', {
+    return api<{ data: BackupCodesResponse }>('/api/v1/auth/2fa/verify', {
       method: 'POST',
       body: { totpCode: code },
     })
@@ -177,6 +216,8 @@ export function useAuthApi() {
     regenerateBackupCodes,
     requestMfaRecovery,
     confirmMfaRecovery,
+    validateMfaLogin,
+    sendLoginEmailOtp,
     getSessions,
     revokeSession,
     revokeAllSessions,

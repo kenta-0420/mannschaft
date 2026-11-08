@@ -504,7 +504,10 @@ public class DashboardService {
                 .toList();
 
         // F02.8: チームスコープの告知フィードを取得
-        Set<String> allowedVisibilities = resolveVisibilityParam(viewerRole);
+        // 告知の可視性に使う役割はキャッシュ（60 秒）を使わない。降格・離脱の直後に会員限定の告知の title_cache・excerpt_cache・
+        // source_id などが見え続けるのを防ぐ（ALIC-1 §2.6）。ウィジェットの表示可否（viewerRole）はキャッシュのまま。
+        ViewerRole announcementRole = roleResolver.resolveViewerRoleForPreview(userId, "TEAM", teamId);
+        Set<String> allowedVisibilities = resolveVisibilityParam(announcementRole);
         List<AnnouncementFeedEntity> teamAnnouncementFeeds = announcementFeedQueryRepository
                 .findByScope(AnnouncementScopeType.TEAM, teamId, allowedVisibilities, null, 10);
 
@@ -526,15 +529,21 @@ public class DashboardService {
                         java.util.LinkedHashMap::new))
                 .values());
 
+        // 課金ゲートの ADMIN 素通しは、告知の所有スコープでの役割で決める。チーム告知はチームの役割、組織告知は組織での役割
+        // （キャッシュなし）。チームの ADMIN でも組織告知の課金は素通ししない（M2）。
+        Map<Long, ViewerRole> orgRolesOfFeeds = resolveOrgRolesFresh(userId, orgAnnouncementFeeds);
+
         // 結合して createdAt 降順で上位5件
         List<GatedAnnouncement> teamNoticeFeeds = java.util.stream.Stream.concat(
-                        filterAnnouncementGated(teamAnnouncementFeeds, userId, viewerRole).stream(),
-                        filterAnnouncementGated(orgAnnouncementFeeds, userId, viewerRole).stream())
+                        filterAnnouncementGated(teamAnnouncementFeeds, userId, feed -> announcementRole).stream(),
+                        filterAnnouncementGated(orgAnnouncementFeeds, userId,
+                                feed -> orgRolesOfFeeds.getOrDefault(feed.getScopeId(), ViewerRole.PUBLIC)).stream())
                 .sorted(java.util.Comparator.comparing(item -> item.feed().getCreatedAt(),
                         java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
                 .limit(DASHBOARD_ITEM_LIMIT)
                 .toList();
-        List<Map<String, Object>> teamNoticeItems = toAnnouncementFeedMaps(teamNoticeFeeds, userId);
+        // チームのダッシュボードには組織のグループ構成（宛先の記録）を出さない（チーム告知一覧の API と同じ）
+        List<Map<String, Object>> teamNoticeItems = toAnnouncementFeedMaps(teamNoticeFeeds, userId, false);
 
         // F02.2.1: 各ウィジェットを viewerRole.isAtLeast(min_role) で判定し、不可視は null にする
         // 管理者（DEPUTY_ADMIN/ADMIN/SYSTEM_ADMIN）は全ウィジェットをバイパスして閲覧可
@@ -642,13 +651,18 @@ public class DashboardService {
 
         // F02.8: 組織スコープの告知フィードを取得してお知らせウィジェットに連携
         LocalDateTime now = LocalDateTime.now();
-        Set<String> orgAllowedVisibilities = resolveVisibilityParam(viewerRole);
+        // 告知の可視性に使う役割はキャッシュなし（降格・離脱の直後に会員限定の項目が見え続けない。ALIC-1 §2.6）
+        ViewerRole orgAnnouncementRole = roleResolver.resolveViewerRoleForPreview(userId, "ORGANIZATION", orgId);
+        Set<String> orgAllowedVisibilities = resolveVisibilityParam(orgAnnouncementRole);
         List<AnnouncementFeedEntity> orgAnnouncementFeeds = announcementFeedQueryRepository
                 .findByScope(AnnouncementScopeType.ORGANIZATION, orgId, orgAllowedVisibilities, null, 10);
-        List<GatedAnnouncement> orgNoticeFeeds = filterAnnouncementGated(orgAnnouncementFeeds, userId, viewerRole).stream()
+        List<GatedAnnouncement> orgNoticeFeeds = filterAnnouncementGated(orgAnnouncementFeeds, userId,
+                        feed -> orgAnnouncementRole).stream()
                 .limit(DASHBOARD_ITEM_LIMIT)
                 .toList();
-        List<Map<String, Object>> orgNoticeItems = toAnnouncementFeedMaps(orgNoticeFeeds, userId);
+        // F01.2.1 AC-H17: 送信時の宛先の記録（「宛先: …（送信時 N チーム）」）を組織お知らせ一覧と同じ判定で載せる
+        List<Map<String, Object>> orgNoticeItems = toAnnouncementFeedMaps(
+                orgNoticeFeeds, userId, canViewTargetAudience(userId, orgId));
 
         // platform_announcements
         List<PlatformAnnouncementEntity> announcements = platformAnnouncementRepository
@@ -959,10 +973,16 @@ public class DashboardService {
      * F02.8: AnnouncementFeedEntity をダッシュボード表示用 Map に変換する。
      */
     private Map<String, Object> toAnnouncementFeedMap(AnnouncementFeedEntity feed) {
-        return toAnnouncementFeedMap(feed, false);
+        return toAnnouncementFeedMap(feed, false, false);
     }
 
-    private Map<String, Object> toAnnouncementFeedMap(AnnouncementFeedEntity feed, boolean locked) {
+    /**
+     * @param locked                課金ゲートで本文を見られない告知か（宛先の記録・要約などを伏せる）
+     * @param includeTargetAudience 送信時の宛先の記録（{@code target_audience}）を載せるか。
+     *                              呼び出し側が閲覧者ごとに判定する（{@link #canViewTargetAudience}）
+     */
+    private Map<String, Object> toAnnouncementFeedMap(
+            AnnouncementFeedEntity feed, boolean locked, boolean includeTargetAudience) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", feed.getId());
         map.put("scope_type", feed.getScopeType().name());
@@ -979,17 +999,36 @@ public class DashboardService {
             map.put("source_type", feed.getSourceType() != null ? feed.getSourceType().name() : null);
             map.put("source_id", feed.getSourceId());
             map.put("excerpt_cache", feed.getExcerptCache());
-            map.put("target_team_ids", feed.getTargetTeamIds());
+            // 値は告知 API（AnnouncementFeedItemDto#targetAudience）と同じ型・同じ読み方
+            map.put("target_audience", includeTargetAudience
+                    ? com.mannschaft.app.social.announcement.audience.TargetAudience.fromJson(feed.getTargetAudience())
+                    : null);
         }
         return map;
     }
 
-    private List<Map<String, Object>> toAnnouncementFeedMaps(List<GatedAnnouncement> feeds, Long userId) {
+    /**
+     * 閲覧者が、組織のお知らせの宛先の記録（チームグループ名・チーム数）を見てよいか。
+     *
+     * <p>組織お知らせ一覧（{@code AnnouncementFeedOrgController#canViewTargetAudience}）・チームグループの閲覧 API と
+     * 同じ判定: 組織の MEMBER 以上または SYSTEM_ADMIN（F01.2.1 §3.1・§10.1）。ダッシュボードの組織タブだけ
+     * 宛先が出ない食い違い（実機E2E #4009 D-2）を起こさないため、判定もそろえる。</p>
+     */
+    private boolean canViewTargetAudience(Long userId, Long orgId) {
+        if (userId == null) {
+            return false;
+        }
+        return accessControlService.isSystemAdmin(userId)
+                || accessControlService.hasRoleOrAbove(userId, orgId, "ORGANIZATION", "MEMBER");
+    }
+
+    private List<Map<String, Object>> toAnnouncementFeedMaps(
+            List<GatedAnnouncement> feeds, Long userId, boolean includeTargetAudience) {
         if (feeds.isEmpty()) return List.of();
         Set<Long> readIds = announcementReadService.fetchReadFeedIds(userId,
                 feeds.stream().map(item -> item.feed().getId()).toList());
         return feeds.stream().map(item -> {
-            Map<String, Object> map = toAnnouncementFeedMap(item.feed(), item.locked());
+            Map<String, Object> map = toAnnouncementFeedMap(item.feed(), item.locked(), includeTargetAudience);
             map.put("is_read", readIds.contains(item.feed().getId()));
             return map;
         }).toList();
@@ -997,7 +1036,8 @@ public class DashboardService {
 
     /** Dashboardの告知にも一覧と同じ課金軸を適用する（ゲート判定は1回のバッチ）。 */
     private List<GatedAnnouncement> filterAnnouncementGated(
-            List<AnnouncementFeedEntity> feeds, Long userId, ViewerRole viewerRole) {
+            List<AnnouncementFeedEntity> feeds, Long userId,
+            java.util.function.Function<AnnouncementFeedEntity, ViewerRole> ownerRoleOf) {
         if (feeds.isEmpty()) {
             return List.of();
         }
@@ -1013,16 +1053,37 @@ public class DashboardService {
         if (gates == null) {
             return List.of();
         }
-        if (viewerRole == ViewerRole.ADMIN || viewerRole == ViewerRole.SYSTEM_ADMIN) {
-            return feeds.stream().filter(feed -> {
-                GateCheckResponse gate = gates.get(feed.getId());
-                return gate != null && !gate.isTitleHidden();
-            }).map(feed -> new GatedAnnouncement(feed, false)).toList();
-        }
         return feeds.stream().filter(feed -> {
             GateCheckResponse gate = gates.get(feed.getId());
             return gate != null && !gate.isTitleHidden();
-        }).map(feed -> new GatedAnnouncement(feed, isAnnouncementLocked(gates.get(feed.getId())))).toList();
+        }).map(feed -> {
+            ViewerRole ownerRole = ownerRoleOf.apply(feed);
+            boolean adminBypass = ownerRole == ViewerRole.ADMIN || ownerRole == ViewerRole.SYSTEM_ADMIN;
+            return new GatedAnnouncement(feed, !adminBypass && isAnnouncementLocked(gates.get(feed.getId())));
+        }).toList();
+    }
+
+    /**
+     * 組織告知の所有組織での閲覧者の役割を、キャッシュなしで組織ごとに 1 回（SQL 定数本）まとめて解決する。
+     * 課金ゲートの ADMIN 素通しを組織での役割で決めるために使う（チームの役割は使わない）。
+     */
+    private Map<Long, ViewerRole> resolveOrgRolesFresh(Long userId, List<AnnouncementFeedEntity> orgFeeds) {
+        Set<com.mannschaft.app.common.visibility.ScopeKey> scopes = new java.util.LinkedHashSet<>();
+        for (AnnouncementFeedEntity feed : orgFeeds) {
+            if (feed.getScopeType() == AnnouncementScopeType.ORGANIZATION && feed.getScopeId() != null) {
+                scopes.add(new com.mannschaft.app.common.visibility.ScopeKey("ORGANIZATION", feed.getScopeId()));
+            }
+        }
+        if (scopes.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, ViewerRole> roles = new HashMap<>();
+        Map<com.mannschaft.app.common.visibility.ScopeKey, ViewerRole> resolved =
+                roleResolver.resolveViewerRolesFresh(userId, scopes);
+        if (resolved != null) {
+            resolved.forEach((scope, role) -> roles.put(scope.scopeId(), role));
+        }
+        return roles;
     }
 
     private boolean isAnnouncementLocked(GateCheckResponse gate) {

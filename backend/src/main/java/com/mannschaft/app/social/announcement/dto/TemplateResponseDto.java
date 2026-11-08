@@ -9,10 +9,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
+import java.util.function.Function;
 
 /**
  * F02.8 告知ウィザード範囲テンプレートレスポンス DTO。
@@ -41,8 +40,8 @@ public class TemplateResponseDto {
     /** 告知対象ロール（MEMBERS_AND_ABOVE / SUPPORTERS_AND_ABOVE / PUBLIC）。 */
     private String targetRole;
 
-    /** 組織告知でのチーム絞り込み対象 ID リスト（null = 全チーム対象）。 */
-    private List<Long> targetTeamIds;
+    /** 組織告知でのチーム絞り込み（チームの slug。null = 全チーム対象）。 */
+    private List<String> targetTeamIds;
 
     /** 個別に選んだチームグループ ID（null = 個別選択なし。F01.2.1 §5.6）。 */
     private List<UUID> targetGroupIds;
@@ -68,23 +67,16 @@ public class TemplateResponseDto {
     /**
      * {@link AnnouncementRangeTemplateEntity} からこの DTO を生成するファクトリメソッド。
      *
-     * <p>target_team_ids は DB に JSON 文字列（"[1,3,5]"）で保存されているため、
-     * {@code List<Long>} に変換して返す。</p>
+     * <p>target_team_ids は DB に内部 ID の JSON 配列（"[1,3,5]"）で保存されている。API ではチームの URL 識別子
+     * （slug）で返すため、ID → slug の写像を呼び出し側から受け取る（slug 一本化。DTO はドメインを引かない）。</p>
      *
-     * @param entity テンプレートエンティティ
+     * @param entity      テンプレートエンティティ
+     * @param teamSlugsOf 内部のチーム ID を slug へ写す関数（null を渡せば null を返すこと）
      * @return レスポンス DTO
      */
-    public static TemplateResponseDto from(AnnouncementRangeTemplateEntity entity) {
-        // target_team_ids: "[1,3,5]" → List<Long> に変換
-        List<Long> ids = null;
-        if (entity.getTargetTeamIds() != null && !entity.getTargetTeamIds().isBlank()) {
-            String raw = entity.getTargetTeamIds().replaceAll("[\\[\\]\\s]", "");
-            if (!raw.isBlank()) {
-                ids = Arrays.stream(raw.split(","))
-                        .map(Long::parseLong)
-                        .collect(Collectors.toList());
-            }
-        }
+    public static TemplateResponseDto from(AnnouncementRangeTemplateEntity entity,
+                                           Function<List<Long>, List<String>> teamSlugsOf) {
+        List<String> slugs = teamSlugsOf.apply(storedTeamIds(entity));
 
         return TemplateResponseDto.builder()
                 .id(entity.getId())
@@ -92,7 +84,7 @@ public class TemplateResponseDto {
                 .scopeId(entity.getScopeId())
                 .name(entity.getName())
                 .targetRole(entity.getTargetRole())
-                .targetTeamIds(ids)
+                .targetTeamIds(slugs)
                 .targetGroupIds(TemplateGroupItemsCodec.parseGroupIds(entity.getTargetGroupIds()))
                 .targetGroupRange(TemplateGroupItemsCodec.parseRange(entity.getTargetGroupRange()))
                 .includeUnassigned(Boolean.TRUE.equals(entity.getIncludeUnassigned()))
@@ -101,5 +93,11 @@ public class TemplateResponseDto {
                 .createdBy(entity.getCreatedBy())
                 .createdAt(entity.getCreatedAt())
                 .build();
+    }
+
+    /** 保存されている target_team_ids（内部 ID の JSON 配列）を読む。null・空は null（全チーム）。 */
+    public static List<Long> storedTeamIds(AnnouncementRangeTemplateEntity entity) {
+        List<Long> ids = TemplateGroupItemsCodec.parseTeamIds(entity.getTargetTeamIds());
+        return ids == null || ids.isEmpty() ? null : ids;
     }
 }

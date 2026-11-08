@@ -311,9 +311,9 @@ defineExpose({ focusToday })
     <!-- ヘッダー -->
     <div class="mb-4 flex items-center justify-between">
       <div class="flex items-center gap-1">
-        <Button icon="pi pi-chevron-left" text rounded @click="emit('prevMonth')" />
+        <Button icon="pi pi-chevron-left" class="min-h-11 min-w-11" text rounded @click="emit('prevMonth')" />
         <h2 class="text-lg font-extrabold">{{ monthLabel }}</h2>
-        <Button icon="pi pi-chevron-right" text rounded @click="emit('nextMonth')" />
+        <Button icon="pi pi-chevron-right" class="min-h-11 min-w-11" text rounded @click="emit('nextMonth')" />
       </div>
       <!-- 「今日」ボタン（§6.3・AC-12d）: 既に当月表示中でも押すたびフォーカスは今日のセルへ移る。
            showTodayButton=true の呼び出し元（統合カレンダー）でのみ表示する。 -->

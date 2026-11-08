@@ -1,0 +1,116 @@
+{
+  "runId": "CMP-261023-2217-resident-registration",
+  "registrationSource": "actual-resident-artifacts",
+  "trusted": false,
+  "status": "observed-unverified",
+  "idAssignment": "原記録にpersona/journey/insight IDがないため登録時にCMP固有IDを付与。元run名はprivate residentディレクトリ名を保持。固定P01等へ変換しない。",
+  "environment": {
+    "browser": "実BE/実UI・Playwright Chromium、専用利用者context。既存B0 runner/dynamic runner/coverage試験は未実行。",
+    "sourceHead": "3f719ee207966efcc8ed922adba8316de2c7885f"
+  },
+  "personas": [
+    {
+      "sourceHead": "3f719ee207966efcc8ed922adba8316de2c7885f",
+      "evidencePath": "docs/evidence/CMP-261023-2217-dashboard-preview.md",
+      "id": "CMP2217-general",
+      "runId": "resident-general",
+      "personaArchetype": "一般×素直"
+    },
+    {
+      "sourceHead": "3f719ee207966efcc8ed922adba8316de2c7885f",
+      "evidencePath": "docs/evidence/CMP-261023-2217-dashboard-preview.md",
+      "id": "CMP2217-interrupted",
+      "runId": "resident-interrupted",
+      "personaArchetype": "中断傾向×再開"
+    },
+    {
+      "sourceHead": "3f719ee207966efcc8ed922adba8316de2c7885f",
+      "evidencePath": "docs/evidence/CMP-261023-2217-dashboard-preview.md",
+      "id": "CMP2217-mobile",
+      "runId": "resident-mobile",
+      "personaArchetype": "スマホ片手×隙間利用"
+    }
+  ],
+  "journeys": [
+    {
+      "id": "CMP2217-general-journey",
+      "evidencePath": "docs/evidence/CMP-261023-2217-dashboard-preview.md",
+      "sourceHead": "3f719ee207966efcc8ed922adba8316de2c7885f",
+      "purpose": "所属の掲示板/TODOを読み所属先へ進む",
+      "runId": "resident-general",
+      "personaId": "CMP2217-general"
+    },
+    {
+      "id": "CMP2217-interrupted-journey",
+      "evidencePath": "docs/evidence/CMP-261023-2217-dashboard-preview.md",
+      "sourceHead": "3f719ee207966efcc8ed922adba8316de2c7885f",
+      "purpose": "中断や所属切替後に本文と元ページへ戻る",
+      "runId": "resident-interrupted",
+      "personaId": "CMP2217-interrupted"
+    },
+    {
+      "id": "CMP2217-mobile-journey",
+      "evidencePath": "docs/evidence/CMP-261023-2217-dashboard-preview.md",
+      "sourceHead": "3f719ee207966efcc8ed922adba8316de2c7885f",
+      "purpose": "360/390pxで本文とCTAを操作する",
+      "runId": "resident-mobile",
+      "personaId": "CMP2217-mobile"
+    }
+  ],
+  "results": [],
+  "insights": [
+    {
+      "id": "CMP-261023-2217-O1",
+      "featureDetail": "所属詳細モーダルと所属切替",
+      "journeyId": "CMP2217-interrupted-journey",
+      "originalRunId": "resident-interrupted",
+      "personaArchetype": "中断傾向×再開",
+      "priority": "could",
+      "title": "モーダルに所属名が明示されない",
+      "personaId": "CMP2217-interrupted",
+      "evidencePath": "docs/evidence/CMP-261023-2217-dashboard-preview.md",
+      "sourceHead": "3f719ee207966efcc8ed922adba8316de2c7885f",
+      "status": "observed-unverified",
+      "trusted": false,
+      "urgency": "when-free",
+      "detail": "中断後の文脈確認で所属名明示が無いと観測。目的は達成しておりnonblocking。仕様違反/今回bugとは認定しない。",
+      "featureKey": "dashboard",
+      "screenshotPath": "docs/evidence/CMP-261023-2217/images/explore-interrupted-org-todo-preview.png"
+    },
+    {
+      "id": "CMP-261023-2217-O2",
+      "featureDetail": "所属詳細モーダルと所属切替",
+      "journeyId": "CMP2217-mobile-journey",
+      "originalRunId": "resident-mobile",
+      "personaArchetype": "スマホ片手×隙間利用",
+      "priority": "could",
+      "title": "既存所属chipの高さ38pxを観測",
+      "personaId": "CMP2217-mobile",
+      "evidencePath": "docs/evidence/CMP-261023-2217-dashboard-preview.md",
+      "sourceHead": "3f719ee207966efcc8ed922adba8316de2c7885f",
+      "status": "observed-unverified",
+      "trusted": false,
+      "urgency": "when-free",
+      "screenshotPath": "docs/evidence/CMP-261023-2217/images/explore-mobile-390.png",
+      "detail": "360/390pxの目的達成とoverflow0、新規操作44pxを確認。既存所属chip38pxは今回変更外の未検証観測。",
+      "featureKey": "dashboard"
+    },
+    {
+      "id": "CMP-261023-2217-O3",
+      "featureDetail": "所属詳細モーダルと所属切替",
+      "journeyId": "CMP2217-mobile-journey",
+      "originalRunId": "resident-mobile",
+      "personaArchetype": "スマホ片手×隙間利用",
+      "priority": "could",
+      "title": "既存scope-tabsの一時timeoutを観測",
+      "personaId": "CMP2217-mobile",
+      "evidencePath": "docs/evidence/CMP-261023-2217-dashboard-preview.md",
+      "sourceHead": "3f719ee207966efcc8ed922adba8316de2c7885f",
+      "status": "observed-unverified",
+      "trusted": false,
+      "urgency": "when-free",
+      "detail": "mobile探索の3 browser contexts・large DB環境で既存GET /api/v1/dashboard/scope-tabsに15秒のRequestTimeoutError（scopeDashboard.loadTabs）が1件発生。pageerror0、再開後に目的達成。3 contexts/DB量との因果、今回実装の原因/再現性は未確定。360pxモーダル画像は回復後の表示でtimeoutの発生証拠ではない。",
+      "featureKey": "dashboard"
+    }
+  ]
+}

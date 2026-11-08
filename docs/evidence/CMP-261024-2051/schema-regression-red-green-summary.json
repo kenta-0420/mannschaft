@@ -1,0 +1,418 @@
+{
+  "schemaVersion": 1,
+  "kind": "schema-collision-regression",
+  "campaign": "CMP-261024-2051",
+  "description": "一般エラーと同名確認エラーのJava内部型名ErrorDetailがOpenAPIで衝突し、既存同名確認のdetails/候補schemaが消失した回帰",
+  "testFile": "backend/src/test/java/com/mannschaft/app/common/openapi/ErrorResponseOpenApiContractTest.java",
+  "fixCommit": "e1836e16b4",
+  "generatedOpenApiCommit": "5fe9c33d1af8c869c3b1154b3bfd60f3ef86d5b7",
+  "limitation": "BE契約修正と正規OpenAPI再生成の証拠。最新FE生成型のtypecheck成功や最終CI成功は未確認。",
+  "red": {
+    "summary": {
+      "sourceHead": "834a71df8395f49897593dd0e035051a90cf7af4",
+      "exitCode": 1,
+      "cleanup": "removed",
+      "suites": [
+        {
+          "name": "com.mannschaft.app.common.architecture.ArchUnitFreezeStoreIntegrityTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.PersistedEnumCompatibilityArchTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.ReceiptScopeTypeValueOfGuardTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.visibility.architecture.VisibilityArchitectureTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.ServiceApiEntityBoundaryArchTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.visibility.architecture.NotificationVisibilityArchitectureTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.ControllerEntityResponseArchTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.CacheableAuthzEnforcementGuardTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.CrossDomainTransactionalArchTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.CrossDomainMandatoryPropagationArchTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.CrossDomainTransactionalTransitiveArchTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.ScheduleKeepNoReminderArchTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.proxy.ProxyInputArchitectureTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.ScheduledBatchGuardTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.JsonRequestBodyCreatorArchTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.CrossDomainRepositoryDependencyArchTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.CrossDomainEntityImportArchTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.AuthzControllerGuardArchTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.EntityUuidV7ConventionArchTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "OpenAPIの一般エラーと同名確認エラーは独立した詳細契約を持つ",
+          "tests": 2,
+          "failures": 2,
+          "errors": 0,
+          "skipped": 0
+        }
+      ],
+      "counts": {
+        "tests": 41,
+        "failures": 2,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    "receipt": {
+      "sourceHead": "834a71df8395f49897593dd0e035051a90cf7af4",
+      "exitCode": 1,
+      "signal": null,
+      "cleanup": "removed",
+      "cleanupReason": null,
+      "error": null
+    },
+    "testCases": [
+      {
+        "name": "申請APIの一般エラーは同名確認の詳細と別schemaを参照する()",
+        "classname": "com.mannschaft.app.common.openapi.ErrorResponseOpenApiContractTest"
+      },
+      {
+        "name": "同名確認は候補一覧とfingerprintの詳細を保持する()",
+        "classname": "com.mannschaft.app.common.openapi.ErrorResponseOpenApiContractTest"
+      }
+    ],
+    "failureTypes": [
+      "java.lang.AssertionError",
+      "org.opentest4j.AssertionFailedError"
+    ]
+  },
+  "green": {
+    "summary": {
+      "sourceHead": "5880333e21fa0570f2c7b4b354de73c11f61b881",
+      "exitCode": 0,
+      "cleanup": "removed",
+      "suites": [
+        {
+          "name": "com.mannschaft.app.common.architecture.ArchUnitFreezeStoreIntegrityTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.PersistedEnumCompatibilityArchTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.ReceiptScopeTypeValueOfGuardTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.visibility.architecture.VisibilityArchitectureTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.ServiceApiEntityBoundaryArchTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.visibility.architecture.NotificationVisibilityArchitectureTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.ControllerEntityResponseArchTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.CacheableAuthzEnforcementGuardTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.CrossDomainTransactionalArchTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.CrossDomainMandatoryPropagationArchTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.CrossDomainTransactionalTransitiveArchTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.ScheduleKeepNoReminderArchTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.proxy.ProxyInputArchitectureTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.ScheduledBatchGuardTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.JsonRequestBodyCreatorArchTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.CrossDomainRepositoryDependencyArchTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.CrossDomainEntityImportArchTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.AuthzControllerGuardArchTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.mannschaft.app.common.architecture.EntityUuidV7ConventionArchTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "OpenAPIの一般エラーと同名確認エラーは独立した詳細契約を持つ",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ],
+      "counts": {
+        "tests": 41,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "originalSha256": "b773146251944012149159a56011c4da966b83edc57329d69eb85368b256a20d",
+      "bytes": 6367683,
+      "generalErrorReference": "#/components/schemas/CommonErrorDetail",
+      "duplicateErrorReference": "#/components/schemas/ErrorDetail",
+      "candidatePresent": true
+    },
+    "receipt": {
+      "sourceHead": "5880333e21fa0570f2c7b4b354de73c11f61b881",
+      "exitCode": 0,
+      "signal": null,
+      "cleanup": "removed",
+      "cleanupReason": null,
+      "error": null
+    },
+    "testCases": [
+      {
+        "name": "申請APIの一般エラーは同名確認の詳細と別schemaを参照する()",
+        "classname": "com.mannschaft.app.common.openapi.ErrorResponseOpenApiContractTest"
+      },
+      {
+        "name": "同名確認は候補一覧とfingerprintの詳細を保持する()",
+        "classname": "com.mannschaft.app.common.openapi.ErrorResponseOpenApiContractTest"
+      }
+    ],
+    "failureTypes": []
+  },
+  "comparison": {
+    "sourceHead": "5880333e21fa0570f2c7b4b354de73c11f61b881",
+    "duplicateSchemasUnchanged": {
+      "DuplicateNameConfirmationErrorResponse": true,
+      "ErrorDetail": true,
+      "DuplicateNameConfirmationDetails": true,
+      "DuplicateNameCandidateView": true
+    },
+    "generalErrorRef": "#/components/schemas/CommonErrorDetail",
+    "duplicateErrorRef": "#/components/schemas/ErrorDetail",
+    "commonFields": [
+      "code",
+      "fieldErrors",
+      "message"
+    ],
+    "candidatePresent": true,
+    "newPaths": true,
+    "sha256": "b773146251944012149159a56011c4da966b83edc57329d69eb85368b256a20d",
+    "bytes": 6367683,
+    "friendSchemasUnchanged": {
+      "FriendRequestSourceTeam": true,
+      "FriendRequestSourceTeamListResponse": true,
+      "IncomingTeamFollowView": true,
+      "IncomingTeamFollowListResponse": true,
+      "Pagination": true
+    },
+    "friendPathsUnchanged": {
+      "/api/v1/me/friend-request-source-teams": true,
+      "/api/v1/teams/{teamId}/friends/incoming": true
+    }
+  },
+  "generatedArtifact": {
+    "sha256": "b773146251944012149159a56011c4da966b83edc57329d69eb85368b256a20d",
+    "bytes": 6367683,
+    "originalWorktreeGitBlobEquality": {
+      "matched": true,
+      "basis": "殿の原本/WT/gitblob照合報告"
+    },
+    "fullOpenApiCopied": false
+  },
+  "campaignFinalization": {
+    "implementationPr": 4106,
+    "implementationHead": "4fd2c79aaf9ecc66267ba1556b03d226db15f857",
+    "mergedAt": "2026-10-25T08:07:52Z",
+    "mergeSha": "38d234363531593850493ff48259db33bdcc4bcf",
+    "finalCiStatus": "success",
+    "finalCiEvidence": "docs/evidence/CMP-261024-2051/final-ci-merge-metadata.json",
+    "review": "passed",
+    "real": "passed",
+    "exploratory": "passed",
+    "historicalFields": "Original source SHA, failures, pending statements and receipt snapshots retain their acquisition-time meaning; final campaign state is this metadata and validation opening."
+  }
+}

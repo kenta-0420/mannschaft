@@ -8,6 +8,7 @@ import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.role.dto.UserPermissionGroupAssignRequest;
+import com.mannschaft.app.role.dto.PermissionGroupRequest;
 import com.mannschaft.app.role.entity.PermissionEntity;
 import com.mannschaft.app.role.entity.PermissionGroupEntity;
 import com.mannschaft.app.role.entity.PermissionGroupPermissionEntity;
@@ -16,12 +17,16 @@ import com.mannschaft.app.role.entity.UserPermissionGroupEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.shiftbudget.service.ThresholdAlertEvaluationService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.team.entity.TeamEntity;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.util.AopTestUtils;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Propagation;
@@ -33,6 +38,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
@@ -74,6 +80,9 @@ class PermissionGroupScopeIntegrationTest extends AbstractMySqlIntegrationTest {
     /** AC-13 専用: テストトランザクションに依らず、実際にコミット／ロールバックさせるために使う。 */
     @Autowired
     private TransactionTemplate transactionTemplate;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     // ---------------------------------------------------------------------
     // 永続化ヘルパー
@@ -479,6 +488,177 @@ class PermissionGroupScopeIntegrationTest extends AbstractMySqlIntegrationTest {
                     .getSingleResult()).longValue();
         });
         return count == null ? 0L : count;
+    }
+
+    /** 実機の改名500回帰: 同じ権限の再登録でもコミットでき、他スコープを巻き込まない。 */
+    @ParameterizedTest
+    @EnumSource(value = ScopeType.class, names = {"TEAM", "ORGANIZATION"})
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    @DisplayName("CMP-261011-0035: 同じ権限を保持した改名をコミットし、紐付けは1件・他スコープは不変")
+    void 同じ権限を保持した改名が実MySQLで成功する(ScopeType scopeType) {
+        UpdateFixture fixture = persistUpdateFixture(scopeType);
+        try {
+            assertThatCode(() -> permissionGroupService.updatePermissionGroup(fixture.groupId(),
+                    new PermissionGroupRequest("改名後", "MEMBER", List.of(fixture.permissionId())),
+                    fixture.adminId())).doesNotThrowAnyException();
+
+            assertUpdatedGroup(fixture.groupId(), "改名後", List.of(fixture.permissionId()));
+            assertUpdatedGroup(fixture.otherGroupId(), fixture.otherName(), List.of(fixture.permissionId()));
+        } finally {
+            cleanupUpdateFixture(fixture);
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ScopeType.class, names = {"TEAM", "ORGANIZATION"})
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    @DisplayName("CMP-261011-0035: 一部の権限を保持して差し替えても重複せず、削除対象だけが消える")
+    void 一部保持する権限差替えが実MySQLで成功する(ScopeType scopeType) {
+        UpdateFixture fixture = persistUpdateFixture(scopeType);
+        try {
+            Long[] replacement = transactionTemplate.execute(status -> {
+                Long oldPermission = persistPermission("MANAGE_FILES");
+                Long newPermission = persistPermission("MANAGE_POSTS");
+                addPermissionToGroup(fixture.groupId(), oldPermission);
+                return new Long[]{oldPermission, newPermission};
+            });
+            assertThatCode(() -> permissionGroupService.updatePermissionGroup(fixture.groupId(),
+                    new PermissionGroupRequest("権限差替え後", "MEMBER",
+                            List.of(fixture.permissionId(), replacement[1])), fixture.adminId()))
+                    .doesNotThrowAnyException();
+
+            assertUpdatedGroup(fixture.groupId(), "権限差替え後",
+                    List.of(fixture.permissionId(), replacement[1]));
+            assertUpdatedGroup(fixture.otherGroupId(), fixture.otherName(), List.of(fixture.permissionId()));
+        } finally {
+            cleanupUpdateFixture(fixture);
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ScopeType.class, names = {"TEAM", "ORGANIZATION"})
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    @DisplayName("CMP-261011-0035: 更新後に同一TXをロールバックすると旧名と旧権限が残る")
+    void 削除確定後も更新全体のロールバックが保たれる(ScopeType scopeType) {
+        UpdateFixture fixture = persistUpdateFixture(scopeType);
+        try {
+            // flushはコミットではない。同じ業務TXが失敗すれば削除・再登録・改名を一緒に戻す。
+            assertThatThrownBy(() -> transactionTemplate.executeWithoutResult(status -> {
+                permissionGroupService.updatePermissionGroup(fixture.groupId(),
+                        new PermissionGroupRequest("巻き戻す改名", "MEMBER", List.of(fixture.permissionId())),
+                        fixture.adminId());
+                throw new IllegalStateException("更新後のロールバック");
+            })).isInstanceOf(IllegalStateException.class).hasMessage("更新後のロールバック");
+
+            assertUpdatedGroup(fixture.groupId(), fixture.originalName(), List.of(fixture.permissionId()));
+            assertUpdatedGroup(fixture.otherGroupId(), fixture.otherName(), List.of(fixture.permissionId()));
+        } finally {
+            cleanupUpdateFixture(fixture);
+        }
+    }
+
+    /** 独立Testcontainers内の新規groupだけを作る。利用者へのグループ割当は行わない。 */
+    private UpdateFixture persistUpdateFixture(ScopeType scopeType) {
+        prepareUpdateUniqueConstraint();
+        return transactionTemplate.execute(status -> {
+            Long scopeId = persistUpdateScope(scopeType);
+            Long otherScopeId = persistUpdateScope(scopeType);
+            Long adminId = persistActiveUser();
+            em.persist(UserRoleEntity.builder().userId(adminId)
+                    .roleId(persistRoleIfNeeded("ADMIN", 2))
+                    .teamId(scopeType == ScopeType.TEAM ? scopeId : null)
+                    .organizationId(scopeType == ScopeType.ORGANIZATION ? scopeId : null).build());
+            em.persist(MembershipEntity.builder().userId(adminId).scopeType(scopeType)
+                    .scopeId(scopeId).roleKind(RoleKind.MEMBER).joinedAt(LocalDateTime.now()).build());
+            Long permissionId = persistPermission("MANAGE_SCHEDULES");
+            PermissionGroupEntity group = persistUpdateGroup(scopeType, scopeId);
+            PermissionGroupEntity otherGroup = persistUpdateGroup(scopeType, otherScopeId);
+            addPermissionToGroup(group.getId(), permissionId);
+            addPermissionToGroup(otherGroup.getId(), permissionId);
+            return new UpdateFixture(scopeType, scopeId, otherScopeId, adminId, group.getId(),
+                    otherGroup.getId(), permissionId, group.getName(), otherGroup.getName());
+        });
+    }
+
+    /**
+     * ddl-auto=create は ID 参照の中間 Entity の一意制約を生成しないため、更新回帰の前提だけに
+     * 正式 V2.008__create_permission_group_permissions_table.sql の uq_pgp を再現する。
+     * 対象は再利用しない独立 Testcontainer のみで、実機 runtime の 13381 へは接続しない。
+     */
+    private void prepareUpdateUniqueConstraint() {
+        assertThat(MYSQL.getMappedPort(3306)).isNotEqualTo(13381);
+        jdbcTemplate.execute((org.springframework.jdbc.core.ConnectionCallback<Void>) connection -> {
+            assertThat(connection.getMetaData().getURL()).isEqualTo(MYSQL.getJdbcUrl());
+            return null;
+        });
+        assertThat(jdbcTemplate.queryForObject("SELECT DATABASE()", String.class))
+                .isEqualTo(MYSQL.getDatabaseName());
+        Integer existing = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM information_schema.statistics "
+                + "WHERE table_schema = DATABASE() AND table_name = 'permission_group_permissions' "
+                + "AND index_name = 'uq_pgp'", Integer.class);
+        if (existing == 0) {
+            jdbcTemplate.execute("ALTER TABLE permission_group_permissions "
+                    + "ADD CONSTRAINT uq_pgp UNIQUE (group_id, permission_id)");
+        }
+        System.out.printf("PG_UPDATE_TEST_DATABASE container=%s host=%s port=%d catalog=%s%n",
+                MYSQL.getContainerId(), MYSQL.getHost(), MYSQL.getMappedPort(3306), MYSQL.getDatabaseName());
+    }
+
+    private Long persistUpdateScope(ScopeType scopeType) {
+        if (scopeType == ScopeType.ORGANIZATION) return persistOrganization();
+        int n = nextSeq();
+        TeamEntity team = TeamEntity.builder().slug("pg-update-team-" + n).name("権限更新チーム" + n)
+                .visibility(TeamEntity.Visibility.MEMBERS_AND_ABOVE).supporterEnabled(true).build();
+        em.persist(team);
+        em.flush();
+        return team.getId();
+    }
+
+    private PermissionGroupEntity persistUpdateGroup(ScopeType scopeType, Long scopeId) {
+        PermissionGroupEntity group = PermissionGroupEntity.builder().name("権限更新束" + nextSeq())
+                .targetRole(PermissionGroupEntity.TargetRole.MEMBER)
+                .teamId(scopeType == ScopeType.TEAM ? scopeId : null)
+                .organizationId(scopeType == ScopeType.ORGANIZATION ? scopeId : null).build();
+        em.persist(group);
+        em.flush();
+        return group;
+    }
+
+    /** 更新TXと別の読取TXで一次キャッシュを捨て、名前・対象ロール・重複のない紐付けを再確認する。 */
+    private void assertUpdatedGroup(Long groupId, String name, List<Long> permissionIds) {
+        transactionTemplate.executeWithoutResult(status -> {
+            em.clear();
+            PermissionGroupEntity group = em.find(PermissionGroupEntity.class, groupId);
+            assertThat(group.getName()).isEqualTo(name);
+            assertThat(group.getTargetRole()).isEqualTo(PermissionGroupEntity.TargetRole.MEMBER);
+            List<Long> actual = em.createQuery("select p.permissionId from PermissionGroupPermissionEntity p "
+                            + "where p.groupId = :groupId", Long.class)
+                    .setParameter("groupId", groupId).getResultList();
+            assertThat(actual).containsExactlyInAnyOrderElementsOf(permissionIds);
+        });
+    }
+
+    /** コミットした自分のfixture行だけを片付ける。共通の権限・ロールmasterは保持する。 */
+    private void cleanupUpdateFixture(UpdateFixture fixture) {
+        transactionTemplate.executeWithoutResult(status -> {
+            em.createQuery("delete from PermissionGroupPermissionEntity p where p.groupId in :groupIds")
+                    .setParameter("groupIds", List.of(fixture.groupId(), fixture.otherGroupId())).executeUpdate();
+            em.remove(em.find(PermissionGroupEntity.class, fixture.groupId()));
+            em.remove(em.find(PermissionGroupEntity.class, fixture.otherGroupId()));
+            em.createQuery("delete from UserRoleEntity r where r.userId = :userId")
+                    .setParameter("userId", fixture.adminId()).executeUpdate();
+            em.createQuery("delete from MembershipEntity m where m.userId = :userId")
+                    .setParameter("userId", fixture.adminId()).executeUpdate();
+            em.remove(em.find(UserEntity.class, fixture.adminId()));
+            Class<?> scopeClass = fixture.scopeType() == ScopeType.TEAM ? TeamEntity.class : OrganizationEntity.class;
+            em.remove(em.find(scopeClass, fixture.scopeId()));
+            em.remove(em.find(scopeClass, fixture.otherScopeId()));
+        });
+    }
+
+    private record UpdateFixture(ScopeType scopeType, Long scopeId, Long otherScopeId, Long adminId,
+                                 Long groupId, Long otherGroupId, Long permissionId,
+                                 String originalName, String otherName) {
     }
 
     // =====================================================================

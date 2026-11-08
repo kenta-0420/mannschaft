@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useForm } from 'vee-validate'
-import { toTypedSchema } from '@vee-validate/zod'
+import { toTypedSchema } from '~/utils/toTypedSchema'
 import { z } from 'zod'
 
 definePageMeta({
@@ -94,6 +94,11 @@ const onSubmit = handleSubmit(async (values) => {
     loading.value = false
   }
 })
+
+function applyGeneratedPassword(value: string): void {
+  newPassword.value = value
+  confirmPassword.value = value
+}
 </script>
 
 <template>
@@ -113,6 +118,12 @@ const onSubmit = handleSubmit(async (values) => {
             toggle-mask
             fluid
             :invalid="!!errors.newPassword"
+            :input-props="{ autocomplete: 'new-password' }"
+          />
+          <PasswordGeneratorActions
+            :password="newPassword ?? ''"
+            :disabled="submitting"
+            @generated="applyGeneratedPassword"
           />
           <p class="mt-1 text-xs text-surface-500">{{ $t('settings.password.policy_hint') }}</p>
           <small v-if="errors.newPassword" class="text-red-500">{{ errors.newPassword }}</small>
@@ -127,6 +138,7 @@ const onSubmit = handleSubmit(async (values) => {
             toggle-mask
             fluid
             :invalid="!!errors.confirmPassword"
+            :input-props="{ autocomplete: 'new-password' }"
           />
           <small v-if="errors.confirmPassword" class="text-red-500">{{ errors.confirmPassword }}</small>
         </div>

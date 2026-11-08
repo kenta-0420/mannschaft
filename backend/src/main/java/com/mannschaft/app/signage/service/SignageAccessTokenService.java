@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * デジタルサイネージ アクセストークン管理サービス。
@@ -72,6 +73,7 @@ public class SignageAccessTokenService {
      * @param req       発行リクエスト
      * @return 発行したトークンレスポンス
      */
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Transactional
     public SignageAccessTokenResponse issueToken(Long screenId, Long createdBy, IssueSignageTokenRequest req) {
         // 画面の存在確認

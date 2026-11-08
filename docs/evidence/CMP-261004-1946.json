@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261004-1946",
+  "scope": "app",
+  "implementation": {
+    "pr": 3881,
+    "sha": "79c25a01675e1d72586b93cedb09f138043b0945"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-5",
+      "description": "en/es/deの360/390px header主要操作領域を44px以上に保つ",
+      "tests": [
+        {
+          "name": "CMP1131: en/es/deのモバイルヘッダーで単複形と44pxの操作領域を保つ",
+          "evidence": "docs/evidence/CMP-261010-1131-real.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 38731338367
+    }
+  ],
+  "ciObservation": {
+    "sha": "79c25a01675e1d72586b93cedb09f138043b0945",
+    "runId": 38731338367,
+    "conclusion": "success",
+    "mergedAt": "2026-10-15T12:23:20Z"
+  },
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261010-1131-review.md"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261010-1131-real.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/orphans-org-header-exploratory-20261015.md"
+    }
+  },
+  "regressions": [
+    {
+      "description": "mobileBack32pxを44px操作領域へ修正",
+      "test": "en/es/de mobile header操作領域",
+      "redEvidence": "docs/evidence/CMP-261010-1131-real.md",
+      "greenEvidence": "docs/evidence/CMP-261010-1131-real.md"
+    }
+  ]
+}

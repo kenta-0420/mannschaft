@@ -252,7 +252,8 @@
           "connecting": "연결 중…",
           "reconnecting": "재연결 중…",
           "offline": "오프라인",
-          "denied": "관전할 수 없습니다"
+          "denied": "관전할 수 없습니다",
+          "unauthenticated": "로그인이 필요합니다"
         },
         "status": {
           "SCHEDULED": "시작 전",
@@ -264,7 +265,8 @@
         "denied": {
           "title": "이 경기는 관전할 수 없습니다",
           "detail": "공개 범위 밖이므로 라이브 중계를 표시할 수 없습니다."
-        }
+        },
+        "unauthenticated_banner": "실시간 업데이트를 받으려면 로그인이 필요합니다."
       }
     },
     "analytics": {

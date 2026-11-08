@@ -1,0 +1,225 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261017-1726",
+  "scope": "app",
+  "implementation": {
+    "pr": 3963,
+    "sha": "5b4b9c3d4a63b60d2b1fdc6c42f37a0ab8a4d31a"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "TEAM/ORGの正規作成で両Booleanの全組合せを保存し、DB/詳細/一覧に一致する",
+      "tests": [
+        {
+          "name": "ScheduleProxySettingsContractIT AC1",
+          "evidence": "backend/src/test/java/com/mannschaft/app/schedule/ScheduleProxySettingsContractIT.java"
+        },
+        {
+          "name": "M scripted実機4 UI/4 API補完/8 foreign/PERSONAL（MEMBERは編集入口なし・保存未試行）",
+          "evidence": "docs/evidence/CMP-261017-1726-real.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "create省略/nullはfalse、PERSONALは作成/更新でもfalseを保つ",
+      "tests": [
+        {
+          "name": "ScheduleProxySettingsContractIT AC2",
+          "evidence": "backend/src/test/java/com/mannschaft/app/schedule/ScheduleProxySettingsContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "create/PATCHはsnake_case aliasを受け付ける",
+      "tests": [
+        {
+          "name": "ScheduleProxySettingsContractIT AC3",
+          "evidence": "backend/src/test/java/com/mannschaft/app/schedule/ScheduleProxySettingsContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "PATCH省略/nullは既存値を保持する",
+      "tests": [
+        {
+          "name": "ScheduleProxySettingsContractIT AC4/5",
+          "evidence": "backend/src/test/java/com/mannschaft/app/schedule/ScheduleProxySettingsContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "PATCH明示falseと片側指定は対象値だけ反映し、無関係なタイトル保存で設定を失わない",
+      "tests": [
+        {
+          "name": "ScheduleProxySettingsContractIT AC4/5",
+          "evidence": "backend/src/test/java/com/mannschaft/app/schedule/ScheduleProxySettingsContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-6",
+      "description": "手書きbuilder/Mapper/クロス招待受諾の応答が保存値を返す",
+      "tests": [
+        {
+          "name": "ScheduleProxySettingsContractIT AC6",
+          "evidence": "backend/src/test/java/com/mannschaft/app/schedule/ScheduleProxySettingsContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-7",
+      "description": "繰返し作成時の子継承とTHIS_ONLY/THIS_AND_FOLLOWING/ALL更新で指定範囲だけ設定を更新する",
+      "tests": [
+        {
+          "name": "ScheduleProxySettingsContractIT AC7",
+          "evidence": "backend/src/test/java/com/mannschaft/app/schedule/ScheduleProxySettingsContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-8",
+      "description": "OFF後も既存PENDING/ACCEPTEDと出欠4行を保持し、新規委任だけ拒否、既存pending承認は可能",
+      "tests": [
+        {
+          "name": "AC8_OFF後も既存の承認待ちと受諾済みを維持して新規だけ拒否する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/schedule/ScheduleProxySettingsContractIT.java"
+        },
+        {
+          "name": "M scripted実機4 UI/4 API補完/8 foreign/PERSONAL（MEMBERは編集入口なし・保存未試行）",
+          "evidence": "docs/evidence/CMP-261017-1726-real.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-9",
+      "description": "正規設定API保存値によりauto false=PENDING/true=ACCEPTEDを決める",
+      "tests": [
+        {
+          "name": "ScheduleProxySettingsContractIT AC9",
+          "evidence": "backend/src/test/java/com/mannschaft/app/schedule/ScheduleProxySettingsContractIT.java"
+        },
+        {
+          "name": "M scripted実機4 UI/4 API補完/8 foreign/PERSONAL（MEMBERは編集入口なし・保存未試行）",
+          "evidence": "docs/evidence/CMP-261017-1726-real.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-10",
+      "description": "管理権限とMANAGE_SCHEDULES MEMBERの許可、解除/非権限/部外者/別scope/未認証の拒否と値不変",
+      "tests": [
+        {
+          "name": "ScheduleProxySettingsContractIT AC10",
+          "evidence": "backend/src/test/java/com/mannschaft/app/schedule/ScheduleProxySettingsContractIT.java"
+        },
+        {
+          "name": "ActivityScheduleSyncConcurrencyIntegrationTest 権限境界",
+          "evidence": "backend/src/test/java/com/mannschaft/app/activity/ActivityScheduleSyncConcurrencyIntegrationTest.java"
+        },
+        {
+          "name": "M scripted実機4 UI/4 API補完/8 foreign/PERSONAL（MEMBERは編集入口なし・保存未試行）",
+          "evidence": "docs/evidence/CMP-261017-1726-real.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-11",
+      "description": "保存後の実同期validation失敗と自動活動INSERT失敗は設定/繰返し予定/活動を同じ作成TXでrollbackする",
+      "tests": [
+        {
+          "name": "予定保存後の同期検証失敗は両方rollbackする",
+          "evidence": "backend/src/test/java/com/mannschaft/app/activity/ActivityScheduleSyncConcurrencyIntegrationTest.java"
+        },
+        {
+          "name": "自動活動INSERT失敗は繰返し親子も同じ作成TXで全てrollbackする",
+          "evidence": "backend/src/test/java/com/mannschaft/app/activity/ActivityAutomaticCreationPathsIntegrationTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-12",
+      "description": "FE作成/編集は両設定を復元/送信し、個人非送信と許可OFF時auto=falseを保持する。実機往復も別途必須",
+      "tests": [
+        {
+          "name": "ScheduleEventForm 編集保持/OFF/個人 payload",
+          "evidence": "frontend/tests/unit/components/schedule/ScheduleEventForm.spec.ts"
+        },
+        {
+          "name": "M scripted実機4 UI/4 API補完/8 foreign/PERSONAL（MEMBERは編集入口なし・保存未試行）",
+          "evidence": "docs/evidence/CMP-261017-1726-real.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-13",
+      "description": "一覧の設定取得で予定件数比例のqueryを増やさない",
+      "tests": [
+        {
+          "name": "AC13_一覧の設定取得で予定件数比例のqueryを増やさない",
+          "evidence": "backend/src/test/java/com/mannschaft/app/schedule/ScheduleProxySettingsContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-14a",
+      "description": "既存Boolean変換が拒否する不正string/object/arrayは400、値不変",
+      "tests": [
+        {
+          "name": "ScheduleProxySettingsContractIT AC14a",
+          "evidence": "backend/src/test/java/com/mannschaft/app/schedule/ScheduleProxySettingsContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-14b",
+      "description": "既存syncConfirmation競合409では保存値を維持する",
+      "tests": [
+        {
+          "name": "ActivityScheduleSyncConcurrencyIntegrationTest stale confirmation",
+          "evidence": "backend/src/test/java/com/mannschaft/app/activity/ActivityScheduleSyncConcurrencyIntegrationTest.java"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 39102408984
+    },
+    {
+      "runId": 39102408996
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261017-1726-review.md"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261017-1726-real.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261017-1726-exploratory.md"
+    }
+  },
+  "regressions": [
+    {
+      "description": "正規予定作成/更新DTO・Service・Responseが代理設定を往復しない",
+      "test": "ScheduleProxySettingsContractIT / Activity連携2クラス",
+      "redEvidence": "docs/evidence/CMP-261017-1726-regressions.md",
+      "greenEvidence": "docs/evidence/CMP-261017-1726-regressions.md"
+    },
+    {
+      "description": "共有予定の編集で保持/OFFの代理設定payloadが欠落する",
+      "test": "ScheduleEventForm.spec.ts team/organization 編集保持とOFF",
+      "redEvidence": "docs/evidence/CMP-261017-1726-regressions.md",
+      "greenEvidence": "docs/evidence/CMP-261017-1726-regressions.md"
+    }
+  ]
+}

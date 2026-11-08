@@ -84,11 +84,7 @@ onUnmounted(() => {
             <LoadingBounce />
           </div>
           <div v-else-if="qrData" class="inline-block rounded-lg border border-surface-300 bg-white p-4 dark:border-surface-600">
-            <img
-              :src="`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData.token)}`"
-              alt="QRコード"
-              class="h-48 w-48"
-            >
+            <QrCodeImage :value="qrData.qrToken" :size="200" />
             <p class="mt-2 text-xs text-surface-400">5分ごとに自動更新</p>
           </div>
         </div>

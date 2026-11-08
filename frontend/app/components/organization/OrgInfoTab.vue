@@ -11,7 +11,12 @@ const props = defineProps<{
 const emit = defineEmits<{ updated: [] }>()
 
 const { t } = useI18n()
-const { visibilityLabel } = useScopeLabels()
+const visibilityLabel = computed(() => {
+  const visibility = props.org.visibility?.visibility
+  return visibility === 'PUBLIC' || visibility === 'PRIVATE'
+    ? t(`organization_visibility.${visibility}`)
+    : visibility
+})
 
 const ancestorList = computed<AncestorOrganization[]>(() => props.ancestors ?? [])
 
@@ -107,7 +112,7 @@ const showBasicInfoEdit = ref(false)
       <div>
         <label class="text-sm font-medium text-gray-500">公開設定</label>
         <p class="mt-1">
-          {{ visibilityLabel[org.visibility?.visibility ?? ''] ?? org.visibility?.visibility }}
+          {{ visibilityLabel }}
         </p>
       </div>
       <div>

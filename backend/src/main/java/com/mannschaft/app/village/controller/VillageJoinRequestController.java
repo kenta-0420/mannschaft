@@ -13,6 +13,8 @@ import com.mannschaft.app.village.dto.JoinRequestReviewRequest;
 import com.mannschaft.app.village.dto.MyJoinRequestResponse;
 import com.mannschaft.app.village.entity.enums.VillageRequestStatus;
 import com.mannschaft.app.village.service.VillageJoinRequestService;
+import com.mannschaft.app.village.service.VillageSubjectAuthorization;
+import com.mannschaft.app.village.service.VillageSubjectAuthorizationGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -51,6 +53,8 @@ import java.util.UUID;
 public class VillageJoinRequestController {
 
     private final VillageJoinRequestService service;
+    /** 主体の代表権限を取引の外で判定する（村の取引を role ドメインへ越境させないため。D-3T）。 */
+    private final VillageSubjectAuthorizationGuard subjectAuthorizationGuard;
 
     /**
      * 認証本人が申請した履歴を、村の公開状態や現在の代表者権限によらず取得する。
@@ -83,7 +87,9 @@ public class VillageJoinRequestController {
             @PathVariable("villageId") UUID villageId,
             @Valid @RequestBody JoinRequestCreateRequest request) {
         Long actorUserId = SecurityUtils.getCurrentUserId();
-        JoinRequestResponse response = service.createRequest(villageId, actorUserId, request);
+        VillageSubjectAuthorization authorization =
+                subjectAuthorizationGuard.judge(actorUserId, request.subjectType(), request.subjectId());
+        JoinRequestResponse response = service.createRequest(villageId, actorUserId, request, authorization);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

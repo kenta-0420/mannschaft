@@ -124,6 +124,10 @@ public class TeamOrgAffiliationCommandService {
                     .message(message)
                     .invitedBy(operatorUserId)
                     .invitedAt(LocalDateTime.now(wallClock))
+                    // 作成時点の閉鎖の世代（F01.2.1 §4.5）。チーム行・組織行のロックの下で読んだ値なので、閉鎖のコミットより
+                    // 前に作られた行は必ず古い世代を、後に作られた行はいまの世代を持つ（TeamOrgClosureGeneration）
+                    .orgClosureGeneration(organization.closureGeneration())
+                    .teamClosureGeneration(team.getClosureGeneration())
                     .build());
         } catch (DataIntegrityViolationException e) {
             throw new BusinessException(TeamErrorCode.TEAM_066, e);

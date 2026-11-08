@@ -1,0 +1,47 @@
+[Source tail excerpt. Original SHA256=2b4baa984c41a8141e3589abfb098e96254561e4c850a55c733ab788f7a45c58]
+[turnstile] ロック取得。コマンドを実行します: bash ./gradlew test --tests *ScheduleAuthzScopeContractIT* --tests *ScheduleQueryServiceTest* --tests *PersonalScheduleServiceTest* --tests *CalendarColorResolutionTest* --tests *PersonalScheduleColorTest* -Pfork.every=0 -Pmax.parallel.forks=1 --no-daemon
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.4/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build
+> Task :compileJava
+> Task :processResources UP-TO-DATE
+> Task :classes
+
+> Task :compileTestJava
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :processTestResources UP-TO-DATE
+> Task :testClasses
+
+> Task :archUnitTest
+[archunit-runtime] archunit-1.3.0.jar, archunit-junit5-1.3.0.jar, archunit-junit5-api-1.3.0.jar, archunit-junit5-engine-1.3.0.jar, archunit-junit5-engine-api-1.3.0.jar
+[test-jvm-heap] pid=59707 maxMemory=4096MB
+[test-jvm] タスク = archUnitTest
+[test-jvm] 起動したテスト JVM 数 = 1（forkEvery=0 / maxParallelForks=1） ※ forkEvery はワーカー単位で数える
+[test-jvm] 内訳: Gradle Test Executor 1
+[test-count] archUnitTest: 実行 37 件（成功 37 / 失敗 0 / skip 0）
+
+> Task :archUnitFreezeStoreIntegrityTest
+[test-jvm-heap] pid=59911 maxMemory=128MB
+[test-jvm] タスク = archUnitFreezeStoreIntegrityTest
+[test-jvm] 起動したテスト JVM 数 = 1（forkEvery=0 / maxParallelForks=1） ※ forkEvery はワーカー単位で数える
+[test-jvm] 内訳: Gradle Test Executor 2
+[test-count] archUnitFreezeStoreIntegrityTest: 実行 2 件（成功 2 / 失敗 0 / skip 0）
+
+> Task :test
+[test-jvm-heap] pid=59959 maxMemory=4096MB
+
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+
+> Task :test
+[test-jvm] タスク = test
+[test-jvm] 起動したテスト JVM 数 = 1（forkEvery=0 / maxParallelForks=1） ※ forkEvery はワーカー単位で数える
+[test-jvm] 内訳: Gradle Test Executor 3
+[test-count] test: 実行 127 件（成功 127 / 失敗 0 / skip 0）
+
+> Task :jacocoTestReport
+
+[Incubating] Problems report is available at: file:///tmp/dashboard-be-unit-261024/backend/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 7m 22s
+8 actionable tasks: 6 executed, 2 up-to-date

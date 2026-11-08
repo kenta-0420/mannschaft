@@ -285,7 +285,7 @@ const activeTab = ref('posts')
 
 <template>
   <div v-if="team" class="space-y-10">
-    <PublicTeamHeader :team="team" />
+    <PublicTeamHeader :team-slug="teamSlug" :team="team" />
 
     <!-- 2026-08-06 マスター御裁可（第三陣）: 投稿／タイムライン／イベント／活動記録を横並びの実タブで切り替える -->
     <Tabs v-model:value="activeTab">

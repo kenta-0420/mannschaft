@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -35,6 +36,23 @@ public interface ChatChannelMemberRepository extends JpaRepository<ChatChannelMe
      * チャンネル一覧の DM 相手解決を N+1 なしで行うために用いる。
      */
     List<ChatChannelMemberEntity> findByChannelIdInAndUserIdNot(List<Long> channelIds, Long userId);
+
+    /**
+     * 複数チャンネルの「指定ユーザー以外」のメンバー行を、参加日時の古い順に一括取得する。
+     *
+     * <p>チャットハブの DM 相手解決（チャンネルごとに参加日時が最も古い他者を相手とする）を
+     * N+1 なしで行うために用いる。同時刻参加の並びが決定的になるよう ID 昇順を併用する。</p>
+     */
+    List<ChatChannelMemberEntity> findByChannelIdInAndUserIdNotOrderByJoinedAtAscIdAsc(
+            Collection<Long> channelIds, Long userId);
+
+    /**
+     * 指定ユーザーの、指定チャンネル群におけるメンバー行を一括取得する。
+     *
+     * <p>スコープのチャンネル一覧について「自分が参加しているか・未読数」をチャンネルごとの
+     * {@link #findByChannelIdAndUserId} で引く N+1 を避けるために用いる。参加していないチャンネルの行は返らない。</p>
+     */
+    List<ChatChannelMemberEntity> findByUserIdAndChannelIdIn(Long userId, Collection<Long> channelIds);
 
     /**
      * 複数チャンネルのメンバー数をまとめて集計する（チャンネル数に依存しない 1 クエリ）。

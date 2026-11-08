@@ -1,0 +1,82 @@
+{
+  "sourceHead": "33a90ea9ca354bb234adac2aca62455803668ceb",
+  "sourceSpec": "frontend/app/components/shift/ShiftSwapRequestFormDialog.spec.ts",
+  "sourceSpecSha256": "387ed9dfd64a6a16963dd82eb158ac39ec9f69d9c4c99f94e01bc90cb7bb0b7e",
+  "ciRun": 40313932930,
+  "executionProof": "actual Vitest file34pass/0skip; individual expanded testcase output not retained",
+  "sourceAssertionMappings": [
+    {
+      "criteria": [
+        "AC14"
+      ],
+      "lines": [
+        316,
+        331
+      ],
+      "sourceTitles": [
+        "disabledを無視するイベント経路でも送信中の再入を拒否する",
+        "%sで同一tickの複数clickを1回の送信にし完了までボタンを無効にする"
+      ],
+      "parameters": [
+        "SPECIFIC",
+        "TEMPLATE",
+        "OPEN_CALL"
+      ]
+    },
+    {
+      "criteria": [
+        "AC15"
+      ],
+      "lines": [
+        331,
+        362
+      ],
+      "sourceTitles": [
+        "%sで同一tickの複数clickを1回の送信にし完了までボタンを無効にする",
+        "送信中に閉じて再表示しても未完了の依頼を増やさない"
+      ]
+    },
+    {
+      "criteria": [
+        "AC16"
+      ],
+      "lines": [
+        382
+      ],
+      "sourceTitles": [
+        "送信失敗%sの後は開いたまま明示的に再試行できる"
+      ],
+      "parameters": [
+        409,
+        403,
+        500,
+        "network"
+      ]
+    },
+    {
+      "criteria": [
+        "AC17"
+      ],
+      "lines": [
+        147,
+        199,
+        212,
+        229,
+        245,
+        260,
+        275,
+        302,
+        407
+      ],
+      "sourceTitles": [
+        "候補0件は失敗と区別して未選択の提出を無効にする",
+        "TEMPLATEに同日昼の対象が0人なら送信しない",
+        "候補再取得/slug/古い応答抑止・OPEN_CALLの既存試験"
+      ]
+    }
+  ],
+  "adjudicator": "root / Sol high",
+  "limitations": [
+    "source assertion mapping + whole target file green; not a separately observed per-method CI log"
+  ]
+}

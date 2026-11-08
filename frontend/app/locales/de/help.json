@@ -13,6 +13,8 @@
         "step3": "Scannen Sie den QR-Code mit Ihrer Authentifizierungs-App (falls das nicht möglich ist, geben Sie den geheimen Schlüssel manuell ein).",
         "step4": "Geben Sie den in der Authentifizierungs-App angezeigten 6-stelligen Code ein, um die Aktivierung abzuschließen."
       },
+      "email_title": "Zwei-Schritt-Bestätigung per E-Mail",
+      "email_desc": "Bestätigen Sie Ihre Identität mit einem 6-stelligen Code, der an Ihre registrierte E-Mail-Adresse gesendet wird. Wählen Sie in den Einstellungen „Per E-Mail aktivieren“ und geben Sie den erhaltenen Code ein. Beim Anmelden drücken Sie „Code per E-Mail senden“, um den Code zu erhalten. Kommt die E-Mail nicht an, wechseln Sie auf dem Anmeldebildschirm zu „Backup-Code“ und verwenden Sie einen Ihrer gespeicherten Backup-Codes.",
       "backup_title": "Über Backup-Codes",
       "backup_desc": "Backup-Codes sind ein Ersatzzugang, falls Sie Ihre Authentifizierungs-App nicht mehr nutzen können, zum Beispiel weil Sie Ihr Smartphone verloren haben. Bewahren Sie sie an einem sicheren Ort auf. Jeder Code kann nur einmal verwendet werden. Mit «Backup-Codes neu generieren» werden neue Codes ausgestellt und alle alten ungültig."
     },

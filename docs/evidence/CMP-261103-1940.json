@@ -1,0 +1,278 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261103-1940",
+  "scope": "app",
+  "implementation": {
+    "pr": 4268,
+    "sha": "30023af08587b1488aea543fd661abd5f718de25"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "README とドメイン単位ファイルが生成される",
+      "tests": [
+        {
+          "name": "README_とドメインファイルが生成される",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramFlywayIT.java"
+        },
+        {
+          "name": "ドメインファイルの生成規則",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramRendererTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "全テーブルの本体定義がちょうど1回出力される",
+      "tests": [
+        {
+          "name": "全テーブルの本体定義がちょうど1回",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramFlywayIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "未紐付けテーブルとビューを _unmapped 等で扱う",
+      "tests": [
+        {
+          "name": "未紐付けとビュー",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramRendererTest.java"
+        },
+        {
+          "name": "ビューだけのドメイン",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramRendererTest.java"
+        },
+        {
+          "name": "未紐付けの扱い",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramFlywayIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "ビューの出力規則",
+      "tests": [
+        {
+          "name": "未紐付けとビュー",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramRendererTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "FK の基数表現と他ドメイン参照のスタブ",
+      "tests": [
+        {
+          "name": "FKの基数",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramRendererTest.java"
+        },
+        {
+          "name": "他ドメイン参照はスタブ",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramRendererTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-6",
+      "description": "参照推定と型不一致の反例に線を引かない",
+      "tests": [
+        {
+          "name": "参照推定と型不一致",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramRendererTest.java"
+        },
+        {
+          "name": "型不一致の反例に線を引かない",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramFlywayIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-7",
+      "description": "多態参照を表に出す",
+      "tests": [
+        {
+          "name": "多態参照",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramRendererTest.java"
+        },
+        {
+          "name": "多態参照が表に出る",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramFlywayIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-8",
+      "description": "推定不能参照を表に出す",
+      "tests": [
+        {
+          "name": "推定不能参照",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramRendererTest.java"
+        },
+        {
+          "name": "推定不能参照が表に出る",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramFlywayIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-9",
+      "description": "自己参照の表現",
+      "tests": [
+        {
+          "name": "自己参照",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramRendererTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-10",
+      "description": "出力が決定的である（2回生成して一致）",
+      "tests": [
+        {
+          "name": "決定的な出力",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramRendererTest.java"
+        },
+        {
+          "name": "二回生成して一致する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramFlywayIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-11",
+      "description": "mermaid の字句規則に沿った正規化",
+      "tests": [
+        {
+          "name": "字句規則の正規化",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramRendererTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-12",
+      "description": "mermaid ブロックが上限 50,000 文字以下",
+      "tests": [
+        {
+          "name": "mermaid上限",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramRendererTest.java"
+        },
+        {
+          "name": "mermaidブロックが上限以下",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramFlywayIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-13",
+      "description": "書き出しと照合のタスク",
+      "tests": [
+        {
+          "name": "照合",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramRendererTest.java"
+        },
+        {
+          "name": "書き出しまたは照合",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramFlywayIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-14",
+      "description": "Docker 不在時の扱い（requireDocker で失敗）",
+      "tests": [
+        {
+          "name": "setUp",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramFlywayIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-15",
+      "description": "JUnit タグ er-diagram が通常 test/archTest から除外される",
+      "tests": [
+        {
+          "name": "ArchUnitTestTagGuardTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/architecture/ArchUnitTestTagGuardTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-16",
+      "description": "書き出しの原子性",
+      "tests": [
+        {
+          "name": "書き出しの原子性",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramRendererTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-17",
+      "description": "CI ワークフロー ER Diagram Drift Check が再生成漏れを検出する",
+      "tests": [
+        {
+          "name": "ER Diagram Drift Check",
+          "evidence": ".github/workflows/er-diagram-drift-check.yml"
+        }
+      ]
+    },
+    {
+      "id": "AC-18",
+      "description": "規約4文書（CLAUDE.md・backend/.claudecode.md・domain_db_design_principles.md・README）に所在と再生成手順を明示",
+      "tests": [
+        {
+          "name": "規約4文書の記載",
+          "evidence": "CLAUDE.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-19",
+      "description": "台帳に戦役行を登録し完了証拠で締める",
+      "tests": [
+        {
+          "name": "台帳行",
+          "evidence": "docs/task-list.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-20",
+      "description": "列定義表が information_schema と一致し、エスケープされる",
+      "tests": [
+        {
+          "name": "列定義表がinformation_schemaと一致する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramFlywayIT.java"
+        },
+        {
+          "name": "列定義表のエスケープ",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramRendererTest.java"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 41744744605
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4268",
+      "note": "Codex検分。軍議検分で指摘6件を受入条件へ反映。一次検分P2が3件を修正。再検分P3が3件を修正。最終検分は前回P3の3件すべて解消・新たな指摘なし。検分はephemeral実行でファイルは残らず、根拠はPR #4268。"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/41744744605",
+      "note": "PR上のER Diagram Drift Checkが合格（GitHubランナーの実MySQL 8.0へFlywayを全適用しE-R図を再生成、コミット済みer/と照合）。main push側の同チェック(run 41777801373、マージコミット上)もsuccess（ciには実装SHA不一致のため含めない）。WSLのクリーンコピーで2回生成しdiff -rが完全一致。mermaid@11.4.1パーサで113ブロックを検証しエラー0。GitHub上での描画の目視確認は未実施。"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4268",
+      "note": "新参開発者の人物設定エージェントが規約文書だけを手がかりに3課題（teamsを参照するテーブル一覧・新テーブル追加後の義務・手描き図と生成図のどちらを信じるか）を解き、導線は3課題とも到達できた。欠陥として逆引き索引の欠如と推定参照へのFKマーカー誤読を検出し、同PR内で修正（被参照節の追加、FKマーカーを実FKに限定、凡例の補足）。"
+    }
+  },
+  "regressions": []
+}

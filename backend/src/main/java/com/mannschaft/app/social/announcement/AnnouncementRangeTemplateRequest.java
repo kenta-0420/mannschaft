@@ -1,7 +1,7 @@
 package com.mannschaft.app.social.announcement;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import io.swagger.v3.oas.annotations.media.Schema;
 import com.mannschaft.app.social.announcement.audience.TargetGroupRange;
 import com.mannschaft.app.social.announcement.audience.TemplateGroupItemsCodec;
 import lombok.AllArgsConstructor;
@@ -21,8 +21,6 @@ import java.util.UUID;
 @Builder
 public class AnnouncementRangeTemplateRequest {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
     /** テンプレート名（1〜100文字） */
     private String name;
 
@@ -33,10 +31,20 @@ public class AnnouncementRangeTemplateRequest {
     private String targetRole;
 
     /**
-     * 組織告知でのチーム絞り込み対象 ID リスト。
-     * NULL = 全チーム対象。
+     * 組織告知でのチーム絞り込み（チームの URL 識別子＝slug。{@code GET /organizations/{slug}/teams} の {@code id}）。
+     * NULL・空 = 全チーム対象。保存時に内部 ID へ写して検証する（{@code BroadcastAudienceResolver#resolveTemplateTeams}）。
      */
-    private List<Long> targetTeamIds;
+    @Schema(description = "組織告知でのチーム絞り込み（チームの slug。組織所属チーム一覧の id と同じ値）。null・空は全チーム")
+    private List<String> targetTeamIds;
+
+    /**
+     * {@link #targetTeamIds}（slug）を検証して内部 ID へ写した結果（保存する値）。リクエストの JSON には現れない。
+     * 組織スコープの Controller が {@code BroadcastAudienceResolver#resolveTemplateTeams} の結果を
+     * {@link #applyResolvedTeamIds} で載せる。載せなければ（TEAM スコープ）「全チーム」（null）として保存する。
+     */
+    @JsonIgnore
+    @Schema(hidden = true)
+    private List<Long> resolvedTargetTeamIds;
 
     /** 個別に選んだチームグループ ID（組織スコープのみ。F01.2.1 §5.6）。 */
     private List<UUID> targetGroupIds;
@@ -64,6 +72,16 @@ public class AnnouncementRangeTemplateRequest {
                 || Boolean.TRUE.equals(includeUnassigned);
     }
 
+    /** 検証済みのチーム ID を載せる（{@link #resolvedTargetTeamIds}）。 */
+    public void applyResolvedTeamIds(List<Long> teamIds) {
+        this.resolvedTargetTeamIds = teamIds;
+    }
+
+    /** 保存する target_team_ids（検証済みのチーム ID の JSON 配列。未設定・空は「全チーム」として null）。 */
+    public String toStoredTargetTeamIdsJson() {
+        return TemplateGroupItemsCodec.teamIdsToJson(resolvedTargetTeamIds);
+    }
+
     /** targetGroupIds を JSON に変換する（空・null は null）。 */
     public String getTargetGroupIdsJson() {
         return TemplateGroupItemsCodec.groupIdsToJson(targetGroupIds);
@@ -72,22 +90,5 @@ public class AnnouncementRangeTemplateRequest {
     /** targetGroupRange を JSON に変換する（null は null）。 */
     public String getTargetGroupRangeJson() {
         return TemplateGroupItemsCodec.rangeToJson(targetGroupRange);
-    }
-
-    /**
-     * targetTeamIds を JSON 配列文字列に変換する。
-     * リストが null または空の場合は null を返す。
-     *
-     * @return JSON 配列文字列（例: "[1,3,5]"）、または null
-     */
-    public String getTargetTeamIdsJson() {
-        if (targetTeamIds == null || targetTeamIds.isEmpty()) {
-            return null;
-        }
-        try {
-            return OBJECT_MAPPER.writeValueAsString(targetTeamIds);
-        } catch (JsonProcessingException e) {
-            throw new IllegalStateException("targetTeamIds の JSON 変換に失敗しました", e);
-        }
     }
 }

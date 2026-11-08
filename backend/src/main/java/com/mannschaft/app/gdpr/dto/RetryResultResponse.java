@@ -10,11 +10,19 @@ package com.mannschaft.app.gdpr.dto;
  * @param newStatus  retry 後のステータス（SUCCESS / PENDING）
  * @param retryCount retry 累計回数（今回の実行後の値）
  * @param message    結果の説明メッセージ（日本語）
+ * @param queued     非同期再試行を受け付け、削除完了を待っているか（成功とは区別する）
  */
 public record RetryResultResponse(
         boolean succeeded,
         String domainName,
         String newStatus,
         Integer retryCount,
-        String message
-) {}
+        String message,
+        boolean queued
+) {
+    /** 既存の同期ドメインの返却契約を維持する。 */
+    public RetryResultResponse(boolean succeeded, String domainName, String newStatus,
+                               Integer retryCount, String message) {
+        this(succeeded, domainName, newStatus, retryCount, message, false);
+    }
+}

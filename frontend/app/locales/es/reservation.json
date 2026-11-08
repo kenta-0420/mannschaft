@@ -11,19 +11,23 @@
       "confirmations": "Estado de confirmación"
     },
     "label": {
+      "unknown_user": "Usuario desconocido",
       "start_date": "Fecha de inicio",
       "end_date": "Fecha de fin",
       "partial_time": "Cerrar solo durante ciertas horas del día",
       "start_time": "Hora de inicio",
       "end_time": "Hora de fin",
+      "range_separator": "a",
       "target_period": "Período objetivo",
       "subject": "Asunto",
+      "reason": "Motivo del cierre",
       "body": "Cuerpo",
       "cancel_reservations": "Cancelar reservas afectadas"
     },
     "placeholder": {
       "select": "Por favor, seleccione",
       "subject": "Ingrese el asunto",
+      "reason": "Introduzca el motivo del cierre",
       "body": "Ingrese el cuerpo del mensaje"
     },
     "hint": {
@@ -45,6 +49,7 @@
       "sent_at": "Enviado el",
       "reason": "Motivo",
       "count": "Cantidad",
+      "count_value": "{count} enviados",
       "confirmation_status": "Estado de confirmación",
       "appointment_at": "Fecha/Hora de cita",
       "confirmed_header": "Confirmado",
@@ -68,14 +73,16 @@
       "connecting": "Conectando…",
       "reconnecting": "Reconectando…",
       "offline": "Sin conexión",
-      "denied": "Sin acceso"
+      "denied": "Sin acceso",
+      "unauthenticated": "Inicio de sesión requerido"
     },
     "dialog": {
       "title": "Confirmar envío",
       "confirm_message": "¿Desea enviar el mensaje masivo con los siguientes detalles?",
       "cancel_warning": "※ Las reservas afectadas serán canceladas",
       "label_period": "Período objetivo",
-      "label_subject": "Asunto"
+      "label_subject": "Asunto",
+      "label_reason": "Motivo"
     },
     "error": {
       "time_range_required": "Por favor, seleccione la hora de inicio y fin",
@@ -84,7 +91,10 @@
       "preview_failed": "Error al cargar la vista previa",
       "subject_required": "Por favor, ingrese un asunto",
       "body_required": "Por favor, ingrese el cuerpo del mensaje",
+      "reason_required": "Introduzca el motivo del cierre",
+      "history_failed": "No se pudo cargar el historial de envíos. Vuelva a cargarlo.",
       "send_failed": "Error al enviar",
+      "idempotency_conflict": "Esta operación de envío ya se envió con un contenido distinto. Revise los datos e inténtelo de nuevo.",
       "confirmations_failed": "Error al cargar el estado de confirmación",
       "info_missing": "Falta información de la notificación"
     },
@@ -182,6 +192,11 @@
         "exception_day": { "title": "Días excepcionales", "description": "Ajusta fechas específicas" },
         "advanced": { "title": "Configuración avanzada", "description": "Configura visibilidad y avisos" }
       }
+    },
+    "history": {
+      "date_unavailable": "Fecha no disponible",
+      "time_unavailable": "Hora no disponible",
+      "line_unavailable": "Recurso de reserva no disponible"
     },
     "column": {
       "datetime": "Fecha y hora",

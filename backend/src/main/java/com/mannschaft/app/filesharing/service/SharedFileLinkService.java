@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * ファイル共有リンクサービス。外部共有用のトークンベースリンクを担当する。
@@ -67,6 +68,7 @@ public class SharedFileLinkService {
      * @param request 作成リクエスト
      * @return 作成されたリンクレスポンス
      */
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Transactional
     public LinkResponse createLink(Long fileId, Long userId, CreateLinkRequest request) {
         // PR-D 発行認可是正: 公開リンクを発行できるのはスコープの管理者（ADMIN/DEPUTY・PERSONAL は所有者）のみ。

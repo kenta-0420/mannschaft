@@ -1,8 +1,6 @@
 package com.mannschaft.app.auth.service;
 
 import com.mannschaft.app.auth.AuthErrorCode;
-import com.mannschaft.app.auth.entity.RefreshTokenEntity;
-import com.mannschaft.app.auth.repository.RefreshTokenRepository;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.entity.WebAuthnCredentialEntity;
@@ -18,7 +16,7 @@ import com.mannschaft.app.auth.dto.WebAuthnReauthenticateCompleteRequest;
 import com.mannschaft.app.auth.dto.WebAuthnReauthenticateCompleteResponse;
 import com.mannschaft.app.auth.dto.WebAuthnRegisterBeginResponse;
 import com.mannschaft.app.auth.dto.WebAuthnRegisterCompleteRequest;
-import com.mannschaft.app.auth.event.LoginSuccessEvent;
+import com.mannschaft.app.auth.event.LoginFailedEvent;
 import com.mannschaft.app.auth.event.WebAuthnCredentialRemovedEvent;
 import com.mannschaft.app.auth.event.WebAuthnLoginEvent;
 import com.mannschaft.app.auth.event.WebAuthnLoginFailedEvent;
@@ -39,18 +37,19 @@ import com.webauthn4j.data.client.Origin;
 import com.webauthn4j.data.client.challenge.DefaultChallenge;
 import com.webauthn4j.server.ServerProperty;
 import com.webauthn4j.verifier.exception.VerificationException;
+import com.webauthn4j.verifier.exception.MaliciousCounterValueException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
-import java.time.LocalDateTime;
+import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.Base64;
-import java.util.UUID;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -70,12 +69,11 @@ public class AuthWebAuthnService {
 
     private final WebAuthnCredentialRepository webAuthnCredentialRepository;
     private final UserRepository userRepository;
-    private final RefreshTokenRepository refreshTokenRepository;
-    private final AuthTokenService authTokenService;
+    private final AuthService authService;
+    private final RoleClaimResolver roleClaimResolver;
+    private final Clock clock;
     private final StringRedisTemplate redisTemplate;
     private final DomainEventPublisher eventPublisher;
-    private final RoleClaimResolver roleClaimResolver;
-    private final StatusClaimResolver statusClaimResolver;
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final String CHALLENGE_KEY_PREFIX = "mannschaft:auth:webauthn_challenge:";
@@ -291,12 +289,13 @@ public class AuthWebAuthnService {
 
         // 1. チャレンジ検証
         String challengeKey = CHALLENGE_KEY_PREFIX + "login:" + userId;
-        String storedChallenge = redisTemplate.opsForValue().get(challengeKey);
+        String storedChallenge = redisTemplate.opsForValue().getAndDelete(challengeKey);
         if (storedChallenge == null) {
             throw new BusinessException(AuthErrorCode.AUTH_027);
         }
-        redisTemplate.delete(challengeKey);
 
+        // チャレンジを原子的に消費し、同じassertionの並行完了を1回に限定する。
+        long verifiedSignCount;
         // WebAuthn4J 署名検証
         try {
             byte[] credentialIdBytes = Base64.getUrlDecoder().decode(req.getCredentialId());
@@ -333,37 +332,61 @@ public class AuthWebAuthnService {
                             null, credential.getSignCount());
 
             AuthenticationParameters authenticationParameters = new AuthenticationParameters(
-                    serverProperty, authenticator, null, false, false);
+                    serverProperty, authenticator, null, true, true);
 
             AuthenticationData authenticationData = webAuthnManager.parse(authenticationRequest);
             webAuthnManager.validate(authenticationData, authenticationParameters);
-        } catch (DataConversionException | VerificationException e) {
+            verifiedSignCount = authenticationData.getAuthenticatorData().getSignCount();
+        } catch (MaliciousCounterValueException e) {
+            eventPublisher.publish(new WebAuthnLoginFailedEvent(userId, ipAddress, userAgent, req.getCredentialId()));
+            throw new BusinessException(AuthErrorCode.AUTH_026, e);
+        } catch (DataConversionException | VerificationException | IllegalArgumentException e) {
             log.warn("WebAuthn署名検証失敗: credentialId={}", req.getCredentialId(), e);
             eventPublisher.publish(new WebAuthnLoginFailedEvent(userId, ipAddress, userAgent, req.getCredentialId()));
             throw new BusinessException(AuthErrorCode.AUTH_024, e);
         }
 
-        // 3. sign_count検証（リプレイ攻撃防止）
-        if (req.getSignCount() <= credential.getSignCount()) {
+        // カウンタを実装しない同期パスキーの0/0は許す。いずれかが正値なら非増加を拒否する。
+        // クライアント申告のsignCountではなく、署名検証済みauthenticatorDataだけを信用する。
+        if ((verifiedSignCount != 0 || credential.getSignCount() != 0)
+                && verifiedSignCount <= credential.getSignCount()) {
+            eventPublisher.publish(new WebAuthnLoginFailedEvent(userId, ipAddress, userAgent, req.getCredentialId()));
             throw new BusinessException(AuthErrorCode.AUTH_026);
         }
 
-        // 4. sign_count更新 + lastUsedAt更新
-        // sign_countはリクエストの値で上書き
-        WebAuthnCredentialEntity updated = credential.toBuilder()
-                .signCount(req.getSignCount())
-                .build();
-        updated.updateLastUsedAt();
-        webAuthnCredentialRepository.save(updated);
+        // 署名検証済みの入口で利用状態を確認し、復帰後の状態からJWT rolesを解決する。
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_015));
+        if (user.getStatus() == UserEntity.UserStatus.PENDING_VERIFICATION) {
+            eventPublisher.publish(new LoginFailedEvent(
+                    user.getEmail(), ipAddress, userAgent, "PENDING_VERIFICATION"));
+            throw new BusinessException(AuthErrorCode.AUTH_002);
+        }
+        if (user.getStatus() == UserEntity.UserStatus.FROZEN) {
+            eventPublisher.publish(new LoginFailedEvent(user.getEmail(), ipAddress, userAgent, "FROZEN"));
+            throw new BusinessException(AuthErrorCode.AUTH_003);
+        }
+        // 既存パスワードログインと同じValkey障害時fail-open方針でロックを確認する。
+        try {
+            if (Boolean.TRUE.equals(redisTemplate.hasKey(AuthService.ACCOUNT_LOCK_KEY_PREFIX + userId))) {
+                eventPublisher.publish(new LoginFailedEvent(user.getEmail(), ipAddress, userAgent, "ACCOUNT_LOCKED"));
+                throw new BusinessException(AuthErrorCode.AUTH_003);
+            }
+        } catch (DataAccessException e) {
+            log.warn("アカウントロックチェックをスキップ（Valkey接続失敗）: {}", e.getMessage());
+        }
+        if (user.getStatus() == UserEntity.UserStatus.ARCHIVED) {
+            user.unarchive();
+            // RoleClaimResolverのnative queryがACTIVE状態を読む前にDBへ反映する。
+            userRepository.saveAndFlush(user);
+        }
 
-        // 5. Access Token + Refresh Token発行
-        TokenResponse tokenResponse = issueTokenPair(userId, ipAddress, userAgent);
+        credential.recordAuthentication(verifiedSignCount, clock.instant());
+        TokenResponse tokenResponse = authService.completePasskeyLogin(
+                user, ipAddress, userAgent, roleClaimResolver.resolveRoles(userId));
 
-        // 6. イベント発行
-        eventPublisher.publish(new LoginSuccessEvent(userId, "WEBAUTHN", ipAddress, userAgent));
-        // WEBAUTHN_LOGIN として別途監査ログを記録する
+        // 共通のLoginSuccessEventはAuthServiceから1回だけ発行する。
         eventPublisher.publish(new WebAuthnLoginEvent(userId, ipAddress, userAgent, req.getCredentialId()));
-
         return ApiResponse.of(tokenResponse);
     }
 
@@ -617,31 +640,6 @@ public class AuthWebAuthnService {
     private UserEntity findUserOrThrow(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_015));
-    }
-
-    /**
-     * Access Token + Refresh Token のペアを発行する。
-     */
-    private TokenResponse issueTokenPair(Long userId, String ipAddress, String userAgent) {
-        // 認可基盤完全根治 Phase 1（§3.2）: RoleClaimResolver で SYSTEM_ADMIN を判定して roles に載せる。
-        String accessToken = authTokenService.issueAccessToken(userId, roleClaimResolver.resolveRoles(userId),
-                statusClaimResolver.isPendingParentalConsent(userId));
-        String refreshToken = authTokenService.generateRefreshToken();
-        String refreshTokenHash = authTokenService.hashToken(refreshToken);
-
-        String refreshTokenJti = UUID.randomUUID().toString();
-        RefreshTokenEntity refreshTokenEntity = RefreshTokenEntity.builder()
-                .userId(userId)
-                .tokenHash(refreshTokenHash)
-                .jti(refreshTokenJti)
-                .rememberMe(false)
-                .ipAddress(ipAddress)
-                .userAgent(userAgent)
-                .expiresAt(LocalDateTime.now().plusDays(7))
-                .build();
-        RefreshTokenEntity saved = refreshTokenRepository.save(refreshTokenEntity);
-
-        return new TokenResponse(accessToken, refreshToken, saved.getId(), 3600);
     }
 
     /**

@@ -103,7 +103,7 @@ class MemberSkillAccessConcealmentContractIT extends AbstractMySqlIntegrationTes
     private ApplicationEvents applicationEvents;
 
     @MockitoBean
-    private R2StorageService storageService;
+    private R2StorageService r2StorageService;
 
     @PersistenceContext
     private EntityManager em;
@@ -165,7 +165,7 @@ class MemberSkillAccessConcealmentContractIT extends AbstractMySqlIntegrationTes
         em.flush();
         em.clear();
 
-        given(storageService.generateDownloadUrl(anyString(), any(Duration.class))).willReturn(CERT_URL);
+        given(r2StorageService.generateDownloadUrl(anyString(), any(Duration.class))).willReturn(CERT_URL);
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -201,7 +201,7 @@ class MemberSkillAccessConcealmentContractIT extends AbstractMySqlIntegrationTes
             assertThat(missing).isEqualTo(CONCEALED);
             assertThat(existing).isEqualTo(missing);
             assertThat(snapshot(skillAId)).isEqualTo(before);
-            verify(storageService, never()).generateDownloadUrl(any(), any());
+            verify(r2StorageService, never()).generateDownloadUrl(any(), any());
         }
 
         @ParameterizedTest(name = "AC-3: 他チームADMINがpath=被害チームで{0}すると不在と完全一致")
@@ -216,7 +216,7 @@ class MemberSkillAccessConcealmentContractIT extends AbstractMySqlIntegrationTes
             assertThat(missing).isEqualTo(CONCEALED);
             assertThat(existing).isEqualTo(missing);
             assertThat(snapshot(skillAId)).isEqualTo(before);
-            verify(storageService, never()).generateDownloadUrl(any(), any());
+            verify(r2StorageService, never()).generateDownloadUrl(any(), any());
         }
 
         @ParameterizedTest(name = "AC-4: 他チームADMINがpath=自チームで他チーム資格を{0}すると404 SKILL_002")
@@ -231,7 +231,7 @@ class MemberSkillAccessConcealmentContractIT extends AbstractMySqlIntegrationTes
             assertThat(missing).isEqualTo(CONCEALED);
             assertThat(existing).isEqualTo(missing);
             assertThat(snapshot(skillAId)).isEqualTo(before);
-            verify(storageService, never()).generateDownloadUrl(any(), any());
+            verify(r2StorageService, never()).generateDownloadUrl(any(), any());
         }
     }
 
@@ -253,7 +253,7 @@ class MemberSkillAccessConcealmentContractIT extends AbstractMySqlIntegrationTes
 
             assertThat(actual).isEqualTo(FORBIDDEN);
             assertThat(snapshot(skillAId)).isEqualTo(before);
-            verify(storageService, never()).generateDownloadUrl(any(), any());
+            verify(r2StorageService, never()).generateDownloadUrl(any(), any());
         }
 
         @Test
@@ -358,7 +358,7 @@ class MemberSkillAccessConcealmentContractIT extends AbstractMySqlIntegrationTes
                         .isEqualTo(CONCEALED);
             }
             assertThat(snapshot(skillAId)).isEqualTo(before);
-            verify(storageService, never()).generateDownloadUrl(any(), any());
+            verify(r2StorageService, never()).generateDownloadUrl(any(), any());
         }
 
         @ParameterizedTest(name = "AC-11: 削除済み資格への {0} は404 SKILL_002")
@@ -377,7 +377,7 @@ class MemberSkillAccessConcealmentContractIT extends AbstractMySqlIntegrationTes
                         .isEqualTo(CONCEALED);
             }
             assertThat(snapshot(skillAId)).isEqualTo(before);
-            verify(storageService, never()).generateDownloadUrl(any(), any());
+            verify(r2StorageService, never()).generateDownloadUrl(any(), any());
         }
 
         @Test
@@ -388,7 +388,7 @@ class MemberSkillAccessConcealmentContractIT extends AbstractMySqlIntegrationTes
                         .as("actor=%d", actor)
                         .isEqualTo(CONCEALED);
             }
-            verify(storageService, never()).generateDownloadUrl(any(), any());
+            verify(r2StorageService, never()).generateDownloadUrl(any(), any());
         }
 
         @Test
@@ -404,7 +404,7 @@ class MemberSkillAccessConcealmentContractIT extends AbstractMySqlIntegrationTes
             assertThat(memberWithKey).isEqualTo(FORBIDDEN);
             assertThat(memberWithoutKey).isEqualTo(memberWithKey);
 
-            verify(storageService, never()).generateDownloadUrl(any(), any());
+            verify(r2StorageService, never()).generateDownloadUrl(any(), any());
         }
     }
 
@@ -490,7 +490,7 @@ class MemberSkillAccessConcealmentContractIT extends AbstractMySqlIntegrationTes
         @DisplayName("AC-13: 非メンバーが me / upload-url / search / skill-matrix / export を叩くと従来どおり 403 COMMON_002")
         void AC13_非メンバーは入口ガードで403(String endpoint) throws Exception {
             assertThat(callEndpoint(outsiderId, endpoint, teamAId)).isEqualTo(FORBIDDEN);
-            verify(storageService, never()).generateUploadUrl(any(), any(), any());
+            verify(r2StorageService, never()).generateUploadUrl(any(), any(), any());
         }
 
         @Test

@@ -1,3 +1,31 @@
+/**
+ * プロジェクト詳細 API（GET /api/v1/{teams|organizations}/.../projects/{id}）のレスポンス。
+ * BE の ProjectDetailResponse（Wave 1 第一陣でネスト化）。進捗率 progressRate は 0〜100 の百分率。
+ */
+export interface ProjectDetailMilestone {
+  id: number
+  title: string
+  dueDate: string | null
+  /** BE の `boolean isCompleted` は Jackson で `completed` として出力される */
+  completed: boolean
+  completedAt: string | null
+  progressRate: number
+  totalTodos: number
+  completedTodos: number
+  sortOrder: number
+}
+
+export interface ProjectDetailResponse {
+  id: number
+  meta: { status: string; visibility: string }
+  content: { title: string; description: string | null; emoji: string | null; color: string | null }
+  schedule: { dueDate: string | null; daysRemaining: number | null }
+  progress: { progressRate: number; totalTodos: number; completedTodos: number }
+  milestones: ProjectDetailMilestone[]
+  unassignedTodos: { total: number; completed: number }
+  audit: { createdBy: { id: number; displayName: string } }
+}
+
 export interface ProjectResponse {
   id: number
   title: string
@@ -68,7 +96,8 @@ export interface MilestoneResponse {
   updatedAt: string
   // F02.7 ゲート関連フィールド
   progressRate: number
-  isLocked: boolean
+  /** BE の JSON キーは Jackson の仕様で `locked`（Lombok の isLocked ゲッター由来）。`isLocked` ではない。 */
+  locked: boolean
   lockedByMilestoneId: number | null
   lockedByMilestoneTitle: string | null
   completionMode: MilestoneCompletionMode

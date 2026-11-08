@@ -1,5 +1,7 @@
 package com.mannschaft.app.role.controller;
 
+import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.entity.MembershipEntity;
@@ -16,9 +18,12 @@ import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.transaction.annotation.Transactional;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +34,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -71,6 +79,9 @@ class MeControllerMembershipIntegrationTest extends AbstractMySqlIntegrationTest
     private EntityManager em;
 
     @Autowired
+    private AccessControlService accessControlService;
+
+    @Autowired
     private RoleRepository roleRepository;
 
     @Autowired
@@ -88,6 +99,8 @@ class MeControllerMembershipIntegrationTest extends AbstractMySqlIntegrationTest
     /** ユニーク slug 生成用。テスト間でデータが残るため衝突を避ける。 */
     private static final AtomicInteger SLUG_SEQ = new AtomicInteger(0);
 
+    private Long deputyRoleId;
+    private Long systemRoleId;
     private Long memberRoleId;
     private Long adminRoleId;
 
@@ -112,9 +125,9 @@ class MeControllerMembershipIntegrationTest extends AbstractMySqlIntegrationTest
 
     /** 本番 V2.014 と同一 priority で固定 6 ロールを投入する（priority 小 = 強）。 */
     private void seedRoles() {
-        saveRole("SYSTEM_ADMIN", "システム管理者", 1, true);
+        systemRoleId = saveRole("SYSTEM_ADMIN", "システム管理者", 1, true);
         adminRoleId = saveRole("ADMIN", "管理者", 2, false);
-        saveRole("DEPUTY_ADMIN", "副管理者", 3, false);
+        deputyRoleId = saveRole("DEPUTY_ADMIN", "副管理者", 3, false);
         memberRoleId = saveRole("MEMBER", "メンバー", 4, false);
         saveRole("SUPPORTER", "サポーター", 5, false);
         saveRole("GUEST", "ゲスト", 6, false);
@@ -350,4 +363,106 @@ class MeControllerMembershipIntegrationTest extends AbstractMySqlIntegrationTest
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data", hasSize(0)));
     }
+    @ParameterizedTest
+    @CsvSource({"ADMIN,false,true", "DEPUTY_ADMIN,false,true", "MEMBER,false,false",
+            "ADMIN,true,true", "DEPUTY_ADMIN,true,true", "MEMBER,true,false"})
+    @WithMockUser(username = "1010")
+    @DisplayName("アーカイブ操作フラグは対象チーム割当に従いSYSTEM_ADMIN兼任で変化しない")
+    void archiveCapability_matchesScopeRole(String scopeRole, boolean systemAdmin, boolean allowed) throws Exception {
+        Long userId = 1010L;
+        TeamEntity team = saveTeam("アーカイブ操作チーム");
+        Long roleId = "ADMIN".equals(scopeRole) ? adminRoleId
+                : "DEPUTY_ADMIN".equals(scopeRole) ? deputyRoleId : memberRoleId;
+        saveTeamUserRole(userId, team.getId(), roleId);
+        if (systemAdmin) {
+            userRoleRepository.save(UserRoleEntity.builder().userId(userId).roleId(systemRoleId).build());
+        }
+        em.flush();
+        assertThat(accessControlService.isAdminOrAbove(userId, team.getId(), "TEAM")).isEqualTo(allowed);
+
+        mockMvc.perform(get("/api/v1/me/teams"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].role").value(systemAdmin ? "SYSTEM_ADMIN" : scopeRole))
+                .andExpect(jsonPath("$.data[0].canManageArchive").value(allowed))
+                .andExpect(jsonPath("$.data[0].isArchived").value(false));
+    }
+
+    @Test
+    @WithMockUser(username = "1011")
+    @DisplayName("アーカイブ済みチームはincludeArchived時だけ返し解除権限も返す")
+    void archivedTeam_onlyReturnedWhenRequested() throws Exception {
+        TeamEntity team = saveTeam("アーカイブ済みチーム");
+        saveTeamUserRole(1011L, team.getId(), adminRoleId);
+        team.archive();
+        em.flush();
+
+        mockMvc.perform(get("/api/v1/me/teams"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data", hasSize(0)));
+        mockMvc.perform(get("/api/v1/me/teams").param("includeArchived", "true"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].isArchived").value(true))
+                .andExpect(jsonPath("$.data[0].canManageArchive").value(true));
+    }
+
+    @Test
+    @WithMockUser(username = "1012")
+    @DisplayName("SYSTEM_ADMIN単独は他チームを一覧へ追加しない")
+    void systemAdminAlone_hasNoTeamCapability() throws Exception {
+        MembershipTestHelper.insertActiveUser(em, 1012L);
+        userRoleRepository.save(UserRoleEntity.builder().userId(1012L).roleId(systemRoleId).build());
+        saveTeam("未所属チーム");
+        em.flush();
+        mockMvc.perform(get("/api/v1/me/teams").param("includeArchived", "true"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data", hasSize(0)));
+    }
+
+    @Test
+    @WithMockUser(username = "1013")
+    @DisplayName("停止ユーザーのチームADMIN割当はアーカイブ操作不可")
+    void inactiveAdmin_hasNoArchiveCapability() throws Exception {
+        TeamEntity team = saveTeam("停止利用者チーム");
+        saveTeamUserRole(1013L, team.getId(), adminRoleId);
+        em.find(UserEntity.class, 1013L).freeze();
+        em.flush();
+        assertThat(accessControlService.isAdminOrAbove(1013L, team.getId(), "TEAM")).isFalse();
+        // WithMockUser は認証済みという前提のみ作る。操作可否は実 users 状態を使う。
+        mockMvc.perform(get("/api/v1/me/teams"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].canManageArchive").value(false));
+    }
+
+    @Test
+    @WithMockUser(username = "1014")
+    @DisplayName("チーム件数を増やしてもアーカイブ操作可否のSQL数を増やさない")
+    void archiveCapability_queryCountDoesNotGrowWithTeams() throws Exception {
+        TeamEntity first = saveTeam("一括権限判定チーム");
+        saveTeamUserRole(1014L, first.getId(), deputyRoleId);
+        em.flush();
+        em.clear();
+        var statistics = em.getEntityManagerFactory().unwrap(SessionFactory.class).getStatistics();
+        boolean wasEnabled = statistics.isStatisticsEnabled();
+        statistics.setStatisticsEnabled(true);
+        try {
+            long beforeOne = statistics.getPrepareStatementCount();
+            mockMvc.perform(get("/api/v1/me/teams"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.data", hasSize(1)));
+            long oneTeamQueries = statistics.getPrepareStatementCount() - beforeOne;
+            for (int i = 0; i < 20; i++) {
+                saveTeamUserRole(1014L, saveTeam("追加チーム").getId(), deputyRoleId);
+            }
+            em.flush();
+            em.clear();
+            long beforeMany = statistics.getPrepareStatementCount();
+            mockMvc.perform(get("/api/v1/me/teams"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.data", hasSize(21)))
+                    .andExpect(jsonPath("$.data[*].canManageArchive", hasSize(21)))
+                    .andExpect(jsonPath("$.data[*].canManageArchive", everyItem(is(true))));
+            long manyTeamQueries = statistics.getPrepareStatementCount() - beforeMany;
+            assertThat(manyTeamQueries).as("1チームと21チームの一覧SQL数").isLessThanOrEqualTo(oneTeamQueries);
+        } finally {
+            statistics.setStatisticsEnabled(wasEnabled);
+        }
+    }
+
 }

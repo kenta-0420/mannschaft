@@ -20,6 +20,13 @@ export function getLoadErrorHttpStatus(error: unknown): number | undefined {
   return candidate.statusCode ?? candidate.status ?? candidate.response?.status
 }
 
+/** BE のエラー応答（`data.error.code`）から業務エラーコード（例: ORG_065）を取り出す。 */
+export function getApiErrorCode(error: unknown): string | undefined {
+  if (!error || typeof error !== 'object') return undefined
+  const candidate = error as { data?: { error?: { code?: string } } }
+  return candidate.data?.error?.code
+}
+
 /**
  * 取得失敗を利用者向けの表示種別へ変換する。
  * 404 はリソース存在の漏えいを避けるため、常に「不存在または表示範囲外」として扱う。

@@ -217,4 +217,73 @@ class ConfirmableNotificationReminderBatchTransactionIT extends AbstractMySqlInt
                         + "（次回バッチで再送される）")
                 .isZero();
     }
+
+    private int countReminderNotifications() {
+        Integer n = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM notifications WHERE source_type = 'CONFIRMABLE_NOTIFICATION' "
+                        + "AND source_id = ? AND notification_type = 'CONFIRMABLE_NOTIFICATION_REMINDER_1'",
+                Integer.class, notificationId);
+        return n == null ? 0 : n;
+    }
+
+    private int countSentRecipients() {
+        Integer n = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM confirmable_notification_recipients "
+                        + "WHERE confirmable_notification_id = ? AND first_reminder_sent_at IS NOT NULL",
+                Integer.class, notificationId);
+        return n == null ? 0 : n;
+    }
+
+    private void deleteReminderNotifications() {
+        jdbc.update("DELETE FROM notifications WHERE source_type = 'CONFIRMABLE_NOTIFICATION' AND source_id = ?",
+                notificationId);
+    }
+
+    @Test
+    @DisplayName("CMP-260925-0905: runBatch 経由（スケジューラと同じ入口）で未確認者にリマインドが実際に送られる"
+            + "（トランザクション境界外の遅延読み込みで失敗しない）")
+    void runBatchActuallySendsReminders() {
+        List<Long> userIds = seed(3, LocalDateTime.now().minusMinutes(10));
+
+        reminderBatchService.runBatch();
+
+        // 通知行は送信済み記録と同じトランザクションで作成される（非同期の配信プールに依存しない）ため、
+        // runBatch が戻った時点で受信箱に存在する。
+        assertThat(countReminderNotifications()).as("受信箱に作られたリマインド通知の数").isEqualTo(userIds.size());
+        assertThat(countSentRecipients()).as("送信済みとして記録された受信者数").isEqualTo(userIds.size());
+
+        deleteReminderNotifications();
+    }
+
+    @Test
+    @DisplayName("CMP-260925-0905: 受信者1人の保存が DB 例外で失敗しても、残りの受信者の通知と送信済み記録は"
+            + "コミットされ、失敗した受信者にはコミット前の通知が出ない")
+    void oneRecipientFailureDoesNotRollBackOthers() {
+        List<Long> userIds = seed(3, LocalDateTime.now().minusMinutes(10));
+        List<ConfirmableNotificationRecipientEntity> recipients =
+                recipientRepository.findByConfirmableNotificationId(notificationId);
+        Long failingRecipientId = recipients.get(0).getId();
+        Long failingUserId = recipients.get(0).getUser().getId();
+        String failingToken = recipients.get(0).getConfirmToken();
+
+        // 特定の1行だけ「送信済み」を書けない CHECK 制約で、実 DB の例外を再現する（TRIGGER は権限不足で作れない）。
+        jdbc.execute("ALTER TABLE confirmable_notification_recipients ADD CONSTRAINT chk_cmp0905_fail "
+                + "CHECK (first_reminder_sent_at IS NULL OR confirm_token <> '" + failingToken + "')");
+        try {
+            reminderBatchService.runBatch();
+
+            assertThat(countReminderNotifications()).as("失敗した1人を除く受信者の通知行がコミットされる")
+                    .isEqualTo(userIds.size() - 1);
+            assertThat(countSentRecipients()).as("失敗した1人を除く受信者の送信済み記録がコミットされる")
+                    .isEqualTo(userIds.size() - 1);
+            Integer failedUserNotifications = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM notifications WHERE source_type = 'CONFIRMABLE_NOTIFICATION' "
+                            + "AND source_id = ? AND user_id = ?",
+                    Integer.class, notificationId, failingUserId);
+            assertThat(failedUserNotifications).as("コミットされなかった受信者には通知が作られない").isZero();
+        } finally {
+            jdbc.execute("ALTER TABLE confirmable_notification_recipients DROP CHECK chk_cmp0905_fail");
+            deleteReminderNotifications();
+        }
+    }
 }

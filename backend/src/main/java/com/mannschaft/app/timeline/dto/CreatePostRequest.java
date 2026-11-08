@@ -22,6 +22,41 @@ import java.util.UUID;
 @Getter
 public class CreatePostRequest {
 
+    /** Guard callbackだけが設定する私有捕捉。HTTP契約へ追加しない。 */
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @io.swagger.v3.oas.annotations.media.Schema(hidden = true)
+    private boolean ranchCaptureArmed;
+
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @io.swagger.v3.oas.annotations.media.Schema(hidden = true)
+    private TimelineRanchRewardPayload ranchCapturedPayload;
+
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @io.swagger.v3.oas.annotations.media.Schema(hidden = true)
+    private TimelineContentFingerprint ranchCapturedFingerprint;
+
+    /** request再利用時の古い候補を破棄して、今回だけ有効にする。 */
+    public void armRanchCapture() {
+        ranchCaptureArmed = true;
+        ranchCapturedPayload = null;
+        ranchCapturedFingerprint = null;
+    }
+
+    /** 本体保存TX内で資格と私有比較証跡を固定する。 */
+    public void recordRanchCapture(TimelineRanchRewardPayload payload, TimelineContentFingerprint fingerprint) {
+        if (ranchCaptureArmed) {
+            ranchCapturedPayload = payload;
+            ranchCapturedFingerprint = fingerprint;
+        }
+    }
+
+    /** proxy復帰後または失敗後に、候補を一回だけ消費する。 */
+    public void clearRanchCapture() {
+        ranchCaptureArmed = false;
+        ranchCapturedPayload = null;
+        ranchCapturedFingerprint = null;
+    }
+
     @NotBlank
     @Size(max = 5000)
     private final String content;

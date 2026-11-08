@@ -162,7 +162,7 @@ class ChatAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
      * （{@code BudgetFlatWriteScopeContractIT} / {@code CirculationExportScopeContractIT} と同一方針）。</p>
      */
     @MockitoBean
-    private R2StorageService storageService;
+    private R2StorageService r2StorageService;
 
     @PersistenceContext
     private EntityManager em;
@@ -496,19 +496,19 @@ class ChatAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
 
         @Test
         @DisplayName("非メンバーが他人の DM を指定→403（DM 相手の情報を返さない）")
-        void 非メンバーのDM閲覧は403() throws Exception {
+        void 非メンバーのDM閲覧は404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(get("/api/v1/chat/channels/{channelId}", dmChannelId))
-                    .andExpect(status().isForbidden())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.data").doesNotExist());
         }
 
         @Test
         @DisplayName("非メンバーがチームチャンネルを指定→403")
-        void 非メンバーのチームチャンネル閲覧は403() throws Exception {
+        void 非メンバーのチームチャンネル閲覧は404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(get("/api/v1/chat/channels/{channelId}", teamChannelId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
         }
 
         @Test
@@ -552,13 +552,13 @@ class ChatAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("非メンバーによる追加は403")
-        void 非メンバーの追加は403() throws Exception {
+        @DisplayName("非メンバーによる追加は不在と同一の404")
+        void 非メンバーの追加は404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(post("/api/v1/chat/channels/{channelId}/members", teamChannelId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(json(Map.of("userIds", List.of(outsiderId)))))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
 
             assertThat(memberRepository.existsByChannelIdAndUserId(teamChannelId, outsiderId)).isFalse();
         }
@@ -618,11 +618,11 @@ class ChatAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
 
         @Test
         @DisplayName("非メンバーが他人をキック→403")
-        void 非メンバーのキックは403() throws Exception {
+        void 非メンバーのキックは404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(delete("/api/v1/chat/channels/{channelId}/members/{userId}",
                             teamChannelId, memberId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
 
             assertThat(memberRepository.existsByChannelIdAndUserId(teamChannelId, memberId)).isTrue();
         }
@@ -767,15 +767,15 @@ class ChatAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("対象 Kabine の非メンバーによる招待は403（Zimmer も作られない）")
-        void 非メンバーの招待は403() throws Exception {
+        @DisplayName("対象 Kabine の非メンバーによる招待は不在と同一の404（Zimmer も作られない）")
+        void 非メンバーの招待は404() throws Exception {
             setAuth(outsiderId);
             int before = memberRepository.findByUserId(teamAdminId).size();
 
             mockMvc.perform(post("/api/v1/chat/channels/{channelId}/invite-to-zimmer", dmChannelId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(json(Map.of("userIds", List.of(teamAdminId)))))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
 
             assertThat(memberRepository.findByUserId(teamAdminId)).hasSize(before);
         }
@@ -921,13 +921,13 @@ class ChatAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("非メンバーは403")
-        void 非メンバーは403() throws Exception {
+        @DisplayName("非メンバーは不在と同一の404")
+        void 非メンバーは404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(post("/api/v1/chat/channels/{channelId}/icon/upload-url", teamChannelId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(iconRequestJson()))
-                    .andExpect(status().isForbidden())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.data").doesNotExist());
         }
 
@@ -978,13 +978,13 @@ class ChatAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("非メンバーによる編集は403（本文は書き換わらない）")
-        void 非メンバーの編集は403() throws Exception {
+        @DisplayName("非メンバーによる編集は不在と同一の404（本文は書き換わらない）")
+        void 非メンバーの編集は404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(patch("/api/v1/chat/messages/{messageId}", ownerMessageId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"body\":\"改竄\"}"))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
 
             assertThat(messageRepository.findById(ownerMessageId).orElseThrow().getBody())
                     .isEqualTo(OWNER_MESSAGE_BODY);
@@ -1032,11 +1032,11 @@ class ChatAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("非メンバーによる削除は403（論理削除もされない）")
-        void 非メンバーの削除は403() throws Exception {
+        @DisplayName("非メンバーによる削除は不在と同一の404（論理削除もされない）")
+        void 非メンバーの削除は404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(delete("/api/v1/chat/messages/{messageId}", ownerMessageId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
 
             assertThat(messageRepository.findById(ownerMessageId).orElseThrow().getDeletedAt()).isNull();
         }
@@ -1111,23 +1111,23 @@ class ChatAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
 
         @Test
         @DisplayName("非メンバーが他人のチャンネル ID を指定→403（署名 URL を返さない）")
-        void 非メンバーの署名URL取得は403() throws Exception {
+        void 非メンバーの署名URL取得は404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(post("/api/v1/chat/files/upload-url")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(uploadRequestJson(teamChannelId)))
-                    .andExpect(status().isForbidden())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.data").doesNotExist());
         }
 
         @Test
         @DisplayName("非メンバーが他人の DM チャンネル ID を指定→403")
-        void 非メンバーのDM指定は403() throws Exception {
+        void 非メンバーのDM指定は404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(post("/api/v1/chat/files/upload-url")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(uploadRequestJson(dmChannelId)))
-                    .andExpect(status().isForbidden())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.data").doesNotExist());
         }
 
@@ -1167,10 +1167,10 @@ class ChatAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
 
         @Test
         @DisplayName("非メンバーが他人のチャンネルの添付キーを指定→403（署名 URL を返さない）")
-        void 非メンバーの添付ダウンロードは403() throws Exception {
+        void 非メンバーの添付ダウンロードは404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(get("/api/v1/chat/files/{fileKey}/download-url", attachmentFileKey))
-                    .andExpect(status().isForbidden())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.data").doesNotExist());
         }
 
@@ -1237,11 +1237,11 @@ class ChatAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
 
     /** 署名 URL 発行が決定的な値を返すようにする（認可通過後に外部依存でステータスが揺れないようにする）。 */
     private void stubStorageService() {
-        given(storageService.generateUploadUrl(any(), any(), any()))
+        given(r2StorageService.generateUploadUrl(any(), any(), any()))
                 .willAnswer(invocation -> new PresignedUploadResult(
                         "https://storage.test.invalid/upload/" + invocation.getArgument(0),
                         invocation.getArgument(0), 900L));
-        given(storageService.generateDownloadUrl(any(), any()))
+        given(r2StorageService.generateDownloadUrl(any(), any()))
                 .willAnswer(invocation ->
                         "https://storage.test.invalid/download/" + invocation.getArgument(0));
     }

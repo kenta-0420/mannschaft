@@ -1,0 +1,135 @@
+{
+  "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+  "purpose": "read-only-corrected-visual-evidence-not-performance",
+  "businessWrites": 0,
+  "crudRepeated": false,
+  "trace": false,
+  "video": false,
+  "rawImages": false,
+  "images": [
+    {
+      "file": "未採用ローカル画像（公開証跡に含めない）",
+      "sha256": "4116a8d88fcfdb9c270369b2949e89fc552182f4e929a179ca8c76cd441b1509",
+      "width": 486,
+      "height": 986,
+      "masked": true,
+      "cellCount": 42,
+      "criticalPublicNodeCount": 46,
+      "criticalPublicNodesUnmasked": true,
+      "maskCount": 45,
+      "widgetWidth": 486,
+      "widgetHeight": 986,
+      "cellBoundsRelative": {
+        "right": 464.984375,
+        "bottom": 887
+      },
+      "elementCrop": true,
+      "all42CellsInsideCapturedImage": true
+    },
+    {
+      "file": "docs/evidence/CMP-261028-1715/images/formal-calendar-mobile-agenda-corrected1-masked.png",
+      "sha256": "195620db6a46e5e9afdcb0c3ab0a228369da0e7cc487c09567a12b55215af029",
+      "width": 390,
+      "height": 844,
+      "masked": true,
+      "bodyRendered": true,
+      "visibleDateLabelCount": 8,
+      "rowCount": 387,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "hasTouch": true,
+      "isMobile": true,
+      "agendaActive": true,
+      "dashboardNotVisited": true,
+      "privateTitleAndScopeTextOnlyInsideList": true
+    }
+  ],
+  "stage": "mobile-close",
+  "mobileLayerStateAbsentBeforeEntry": true,
+  "status": "completed",
+  "sessions": [
+    {
+      "actorAlias": "owner",
+      "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+      "credentialsRead": true,
+      "businessMutations": 0,
+      "trace": false,
+      "video": false,
+      "pageErrorCount": 0,
+      "runtimeGuard": {
+        "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+        "ownerAndSourceMatch": true,
+        "frontendIdentityMatches": true,
+        "frontendOwnedSocketMatches": true,
+        "runtimePublic8081Internal8080Match": true,
+        "existingMainApiIdentityMatches": true,
+        "rawArgvEnvironmentSaved": false
+      },
+      "initialCookieCount": 0,
+      "frontend200": true,
+      "frontendActual3011": true,
+      "frontendLogicalPreserved": true,
+      "apiHealth200": true,
+      "apiActual8080": true,
+      "publicRuntimeApiExpected": true,
+      "fixtureAliasesDistinct": true,
+      "configuredActorAliases": [
+        "owner",
+        "member",
+        "outsider"
+      ],
+      "loginDashboardReached": true,
+      "logoutStatus": 200,
+      "contextClosed": true,
+      "browserClosed": true,
+      "closed": true
+    },
+    {
+      "actorAlias": "owner",
+      "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+      "credentialsRead": true,
+      "businessMutations": 0,
+      "trace": false,
+      "video": false,
+      "pageErrorCount": 0,
+      "runtimeGuard": {
+        "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+        "ownerAndSourceMatch": true,
+        "frontendIdentityMatches": true,
+        "frontendOwnedSocketMatches": true,
+        "runtimePublic8081Internal8080Match": true,
+        "existingMainApiIdentityMatches": true,
+        "rawArgvEnvironmentSaved": false
+      },
+      "initialCookieCount": 0,
+      "frontend200": true,
+      "frontendActual3011": true,
+      "frontendLogicalPreserved": true,
+      "apiHealth200": true,
+      "apiActual8080": true,
+      "publicRuntimeApiExpected": true,
+      "fixtureAliasesDistinct": true,
+      "configuredActorAliases": [
+        "owner",
+        "member",
+        "outsider"
+      ],
+      "loginStatus": 200,
+      "apiPreconditionProfileStatus": 200,
+      "apiPreconditionIdentityMatches": true,
+      "apiPreconditionCookiePresent": true,
+      "apiPreconditionClientUserStored": true,
+      "apiPreconditionProjectionMatchesLoginSession": true,
+      "apiPreconditionLayerStateModified": false,
+      "apiPreconditionTokensStored": false,
+      "logoutStatus": 200,
+      "contextClosed": true,
+      "browserClosed": true,
+      "closed": true
+    }
+  ],
+  "allSessionsClosed": true,
+  "finishedAt": "2026-10-28T13:43:22.955Z"
+}

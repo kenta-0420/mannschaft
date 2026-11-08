@@ -11,6 +11,7 @@ import com.mannschaft.app.team.entity.TeamOrgAffiliationRestrictionReason;
 import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,6 +58,7 @@ public class OrgTeamApplicationReviewCommandService {
     private final TeamAffiliationNotifier notifier;
     private final TeamAffiliationAuditRecorder auditRecorder;
     private final MessageSource messageSource;
+    private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
     private final Duration rejectCooldown;
 
@@ -68,6 +70,7 @@ public class OrgTeamApplicationReviewCommandService {
             TeamAffiliationNotifier notifier,
             TeamAffiliationAuditRecorder auditRecorder,
             MessageSource messageSource,
+            ApplicationEventPublisher eventPublisher,
             Clock clock,
             @Value("${mannschaft.affiliation.reject-cooldown-days:30}") long rejectCooldownDays) {
         this.lockSupport = lockSupport;
@@ -77,6 +80,7 @@ public class OrgTeamApplicationReviewCommandService {
         this.notifier = notifier;
         this.auditRecorder = auditRecorder;
         this.messageSource = messageSource;
+        this.eventPublisher = eventPublisher;
         this.clock = clock;
         this.rejectCooldown = Duration.ofDays(rejectCooldownDays);
     }
@@ -109,6 +113,11 @@ public class OrgTeamApplicationReviewCommandService {
         if (team.getArchivedAt() != null) {
             throw new BusinessException(TeamErrorCode.TEAM_002);
         }
+        //    組織・チームの閉鎖より前に作られた申請（記録した閉鎖の世代がいまの世代より古い行）は、閉鎖の片付けの前に
+        //    解除・復元されて残った無効な行（§4.5。解除で復元しない）。承認せず（ACTIVE にしない）、行が無いのと同じ 404 で拒み、
+        //    ロールバックの後に片付けさせる。組織・チームの世代はどちらも行ロックの下で読んだ最新の値
+        TeamOrgClosureGeneration.rejectIfCreatedBeforeClosure(
+                row, organization.closureGeneration(), team, eventPublisher);
 
         // 3. 確定グループ（§6.2 step 4）
         UUID requestedGroupId = row.getGroupId();

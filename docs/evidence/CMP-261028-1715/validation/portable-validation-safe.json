@@ -1,0 +1,77 @@
+{
+  "baseCommit": "1d56fdd21f08262c310da2de3936bc8516c0a33a",
+  "baseOverlaySha256": "bdbbfa3238dce10ca83bf480805847a1de102dcb9041796772e0cdba547deee7",
+  "priorCounts": [
+    26,
+    26,
+    55
+  ],
+  "newCounts": [
+    29,
+    29,
+    56
+  ],
+  "allPriorOverlayFieldsDeepEqual": true,
+  "overlayOnly": {
+    "passed": true,
+    "trustedValidatorSha256": "0926e91ed34dd3aa026caf16111e7b4c2320278457bef4e02dd3a629d5ff5441",
+    "exactFunctionSha256": "0f7c57acc7ecd28ee38a634b64fea58138a7427887f8988f294ca8eb84d35ba6",
+    "negativeChecks": [
+      {
+        "name": "missing-evidence",
+        "rejected": true
+      },
+      {
+        "name": "journey-head-mismatch",
+        "rejected": true
+      },
+      {
+        "name": "insight-run-mismatch",
+        "rejected": true
+      },
+      {
+        "name": "invalid-urgency",
+        "rejected": true
+      }
+    ],
+    "executionOrCoverageClaimed": false
+  },
+  "portableReferences": {
+    "count": 29,
+    "missingCount": 0,
+    "passed": true
+  },
+  "standardValidator": {
+    "exitCode": 1,
+    "signal": null,
+    "errorCode": null,
+    "passed": false,
+    "reason": "existing-cmp-tasklist-reference-count-inconsistency",
+    "missingInputBasename": null,
+    "outputSha256": "ff0dbe1be038a0b2cc7621f3a7254d9efb03467eb7587cb35bef614cb359579c",
+    "boardDataNotRegenerated": true,
+    "newOverlayNotInjectedIntoGeneratedBoard": true,
+    "firstFailureWasSparseInputMissing": true,
+    "fixedPublicErrorLiteral": "CMP正本行数と参照抽出数が一致しません"
+  },
+  "adoptedFiles": 33,
+  "primaryCompletionJsonCreated": false,
+  "taskListChanged": false,
+  "runtimeChanged": false,
+  "committed": false,
+  "pushed": false,
+  "baselineWorktreeSha256": "de10d80723a3ac6bb90f41346f96d1f7f25dc3be37128d742d70bfd1bce0c57c",
+  "baselineGitBlobByteSha256": "bdbbfa3238dce10ca83bf480805847a1de102dcb9041796772e0cdba547deee7",
+  "baselineByteHashDifference": "Git blob LF bytes versus Windows worktree CRLF bytes; parsed full object unchanged",
+  "standardValidatorFirstAttempt": {
+    "exitCode": 1,
+    "signal": null,
+    "errorCode": null,
+    "passed": false,
+    "reason": "sparse-input-missing",
+    "outputSha256": "773e7332926da457d758b624b44416d5c0e763e6ce123541fa1c54e504cb1648",
+    "boardDataNotRegenerated": true,
+    "newOverlayNotInjectedIntoGeneratedBoard": true,
+    "adoptionEvidence": false
+  }
+}

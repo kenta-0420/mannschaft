@@ -34,19 +34,19 @@ const newToken = ref({
   maxUses: null as number | null,
 })
 
-const expiresOptions = [
-  { label: '1日', value: '1d' },
-  { label: '7日', value: '7d' },
-  { label: '30日', value: '30d' },
-  { label: '90日', value: '90d' },
-  { label: '無期限', value: null },
-]
+const expiresOptions = computed(() => [
+  { label: t('inviteToken.oneDay'), value: '1d' },
+  { label: t('inviteToken.sevenDays'), value: '7d' },
+  { label: t('inviteToken.thirtyDays'), value: '30d' },
+  { label: t('inviteToken.ninetyDays'), value: '90d' },
+  { label: t('inviteToken.never'), value: null },
+])
 
-const roleOptions = [
-  { label: 'メンバー', value: 4 },
-  { label: 'サポーター', value: 5 },
-  { label: 'ゲスト', value: 6 },
-]
+const roleOptions = computed(() => [
+  { label: t('role.MEMBER'), value: 4 },
+  { label: t('role.SUPPORTER'), value: 5 },
+  { label: t('role.GUEST'), value: 6 },
+])
 
 async function loadTokens() {
   loading.value = true
@@ -72,33 +72,33 @@ async function createToken() {
       method: 'POST',
       body: newToken.value,
     })
-    notification.success('招待リンクを作成しました')
+    notification.success(t('inviteToken.createSuccess'))
     showCreateDialog.value = false
     newToken.value = { roleId: 4, expiresIn: '7d', maxUses: null }
     await loadTokens()
   }
   catch {
-    notification.error('招待リンクの作成に失敗しました')
+    notification.error(t('inviteToken.createError'))
   }
 }
 
 async function revokeToken(tokenId: number) {
-  if (!confirm('この招待リンクを無効にしますか？')) return
+  if (!confirm(t('inviteToken.revokeConfirm'))) return
   try {
     const base = props.scopeType === 'team' ? 'teams' : 'organizations'
     await api(`/api/v1/${base}/${props.scopeId}/invite-tokens/${tokenId}`, { method: 'DELETE' })
-    notification.success('招待リンクを無効にしました')
+    notification.success(t('inviteToken.revokeSuccess'))
     await loadTokens()
   }
   catch {
-    notification.error('操作に失敗しました')
+    notification.error(t('inviteToken.revokeError'))
   }
 }
 
 function copyInviteUrl(token: string) {
   const url = `${window.location.origin}/invite/${token}`
   navigator.clipboard.writeText(url)
-  notification.success('招待URLをコピーしました')
+  notification.success(t('inviteToken.copied'))
 }
 
 async function downloadQrPdf(tokenId: number) {
@@ -128,7 +128,7 @@ function isExpired(token: InviteToken): boolean {
 }
 
 function formatTokenDate(dateStr: string | null): string {
-  if (!dateStr) return '無期限'
+  if (!dateStr) return t('inviteToken.never')
   return formatDate(dateStr)
 }
 
@@ -136,41 +136,56 @@ onMounted(() => loadTokens())
 </script>
 
 <template>
-  <div>
+  <div class="min-w-0 max-w-full">
     <div class="mb-4 flex items-center justify-between">
-      <h3 class="text-lg font-semibold">招待リンク</h3>
+      <h3 class="text-lg font-semibold">{{ t('inviteToken.title') }}</h3>
       <Button
-        label="新規作成"
+        :label="t('inviteToken.createNew')"
+        class="!min-h-11 !min-w-11"
         icon="pi pi-plus"
         size="small"
         @click="showCreateDialog = true"
       />
     </div>
 
-    <DataTable :value="tokens" :loading="loading" data-key="id">
-      <Column header="ロール" style="width: 120px">
+    <!-- 操作列を固定し、データ列は表の中で横スクロールして読む。 -->
+    <DataTable
+      :value="tokens"
+      :loading="loading"
+      data-key="id"
+      class="max-w-full"
+      table-class="min-w-[496px] sm:min-w-[680px]"
+      scrollable
+    >
+      <Column :header="t('inviteToken.role')" style="width: 120px">
         <template #body="{ data }">
           <RoleBadge :role="data.roleName" />
         </template>
       </Column>
-      <Column header="有効期限" style="width: 120px">
+      <Column :header="t('inviteToken.expiry')" style="width: 120px">
         <template #body="{ data }">
           <span :class="{ 'text-red-500 line-through': isExpired(data) }">
             {{ formatTokenDate(data.expiresAt) }}
           </span>
         </template>
       </Column>
-      <Column header="使用回数" style="width: 120px">
-        <template #body="{ data }">
-          {{ data.usedCount }} / {{ data.maxUses ?? '∞' }}
-        </template>
+      <Column :header="t('inviteToken.uses')" style="width: 120px">
+        <template #body="{ data }"> {{ data.usedCount }} / {{ data.maxUses ?? '∞' }} </template>
       </Column>
-      <Column header="操作" style="width: 120px">
+      <Column
+        :header="t('label.actions')"
+        header-class="w-[136px] whitespace-nowrap sm:w-80"
+        body-class="w-[136px] sm:w-80"
+        align-frozen="right"
+        frozen
+      >
         <template #body="{ data }">
-          <div class="flex gap-1">
+          <div class="flex flex-wrap gap-1">
             <Button
               v-if="!isExpired(data)"
-              v-tooltip.top="'URLをコピー'"
+              v-tooltip.top="t('inviteToken.copy')"
+              :aria-label="t('inviteToken.copy')"
+              class="!min-h-11 !min-w-11 shrink-0"
               icon="pi pi-copy"
               text
               rounded
@@ -179,7 +194,9 @@ onMounted(() => loadTokens())
             />
             <Button
               v-if="props.scopeType === 'team'"
-              v-tooltip.top="t('inviteToken.printQrPdf')"
+              :label="t('inviteToken.printQrPdf')"
+              :aria-label="t('inviteToken.printQrPdf')"
+              class="!min-h-11 !min-w-11 w-full shrink-0 whitespace-normal sm:w-auto sm:whitespace-nowrap"
               icon="pi pi-file-pdf"
               text
               rounded
@@ -189,7 +206,9 @@ onMounted(() => loadTokens())
             />
             <Button
               v-if="!isExpired(data)"
-              v-tooltip.top="'無効にする'"
+              v-tooltip.top="t('inviteToken.revoke')"
+              :aria-label="t('inviteToken.revoke')"
+              class="!min-h-11 !min-w-11 shrink-0"
               icon="pi pi-times"
               severity="danger"
               text
@@ -202,7 +221,7 @@ onMounted(() => loadTokens())
       </Column>
       <template #empty>
         <div class="p-4 text-center text-surface-500">
-          招待リンクはまだありません
+          {{ t('inviteToken.empty') }}
         </div>
       </template>
     </DataTable>
@@ -210,39 +229,53 @@ onMounted(() => loadTokens())
     <!-- 作成ダイアログ -->
     <Dialog
       v-model:visible="showCreateDialog"
-      header="招待リンクを作成"
+      :header="t('inviteToken.createTitle')"
+      :close-button-props="{ 'aria-label': t('button.close') }"
+      :pt="{ pcCloseButton: { root: { class: '!min-h-11 !min-w-11' } } }"
       :style="{ width: '400px' }"
       modal
     >
       <div class="flex flex-col gap-4">
         <div>
-          <label class="mb-1 block text-sm font-medium">招待ロール</label>
+          <label class="mb-1 block text-sm font-medium">{{ t('inviteToken.inviteRole') }}</label>
           <Select
             v-model="newToken.roleId"
             :options="roleOptions"
             option-label="label"
             option-value="value"
-            class="w-full"
+            class="min-h-11 w-full"
+            :pt="{ option: { class: 'min-h-11' } }"
           />
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium">有効期限</label>
+          <label class="mb-1 block text-sm font-medium">{{ t('inviteToken.expiry') }}</label>
           <Select
             v-model="newToken.expiresIn"
             :options="expiresOptions"
             option-label="label"
             option-value="value"
-            class="w-full"
+            class="min-h-11 w-full"
+            :pt="{ option: { class: 'min-h-11' } }"
           />
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium">最大使用回数（空欄で無制限）</label>
-          <InputNumber v-model="newToken.maxUses" :min="1" class="w-full" />
+          <label class="mb-1 block text-sm font-medium">{{ t('inviteToken.maxUses') }}</label>
+          <InputNumber v-model="newToken.maxUses" :min="1" class="w-full" input-class="min-h-11" />
         </div>
       </div>
       <template #footer>
-        <Button label="キャンセル" text @click="showCreateDialog = false" />
-        <Button label="作成" icon="pi pi-check" @click="createToken" />
+        <Button
+          :label="t('button.cancel')"
+          class="!min-h-11 !min-w-11"
+          text
+          @click="showCreateDialog = false"
+        />
+        <Button
+          :label="t('button.create')"
+          class="!min-h-11 !min-w-11"
+          icon="pi pi-check"
+          @click="createToken"
+        />
       </template>
     </Dialog>
   </div>

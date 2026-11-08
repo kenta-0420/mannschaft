@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261012-2338",
+  "scope": "app",
+  "implementation": {
+    "pr": 4156,
+    "sha": "0ac4c26439bbc837ca3214017d95ad0c323400b5"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "未使用toggleTeamModuleと専用specだけを削除し、残る4関数と3利用者を維持",
+      "tests": [
+        {
+          "name": "正味差分・対象blob・利用経路の読取照合",
+          "evidence": "docs/evidence/CMP-261012-2338-review.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "実UIのOPTIONAL切替・通知・カウンタ・reload永続化を維持",
+      "tests": [
+        {
+          "name": "S4-S6: OPTIONAL機能のスイッチ ON/OFF＋通知＋カウンタ＋永続化",
+          "evidence": "frontend/tests/e2e/real/module-settings-catalog.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "権限なしと別tenantの直URL・更新を拒否しcatalogを変えない",
+      "tests": [
+        {
+          "name": "fresh UI MEMBER/他team管理者・PUBLIC GET200・同値PATCH403",
+          "evidence": "docs/evidence/CMP-261012-2338-real.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 40454793387
+    },
+    {
+      "runId": 40454793400
+    },
+    {
+      "runId": 40454934952
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261012-2338-review.md"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261012-2338-real.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261012-2338-exploratory.md"
+    }
+  },
+  "regressions": []
+}

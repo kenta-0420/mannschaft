@@ -1,5 +1,5 @@
-import dayjs from 'dayjs'
 import type { Dayjs } from 'dayjs'
+import { parseWallClockInTz } from '~/utils/wallClock'
 import type { PersonalActionItem } from '~/composables/usePersonalActionRequired'
 import type { CirculationActionItem, SurveyActionItem, AttendanceActionItem } from '~/types/dashboard-scope'
 
@@ -83,7 +83,7 @@ export function classifyDeadline(
   timezone: string,
 ): DeadlineLabel {
   if (!deadline) return 'none'
-  const targetDate = dayjs.tz(deadline, timezone)
+  const targetDate = parseWallClockInTz(deadline, timezone)
   if (!targetDate.isValid()) return 'none'
   const todayStart = now.tz(timezone).startOf('day')
   const todayEnd = now.tz(timezone).endOf('day')

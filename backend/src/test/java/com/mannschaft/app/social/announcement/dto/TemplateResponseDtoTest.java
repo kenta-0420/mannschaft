@@ -35,7 +35,7 @@ class TemplateResponseDtoTest {
                 .scopeId(10L)
                 .name("既定テンプレート")
                 .targetRole("MEMBERS_AND_ABOVE")
-                .targetTeamIds(List.of(1L, 2L))
+                .targetTeamIds(List.of("team-a", "team-b"))
                 .preferredChannel("SCHEDULE")
                 .isDefault(true)
                 .createdBy(99L)

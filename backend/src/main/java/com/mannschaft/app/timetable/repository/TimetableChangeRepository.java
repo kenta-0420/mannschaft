@@ -14,6 +14,10 @@ public interface TimetableChangeRepository extends JpaRepository<TimetableChange
 
     List<TimetableChangeEntity> findByTimetableIdAndTargetDateOrderByPeriodNumber(Long timetableId, LocalDate targetDate);
 
+    /** 時間割 ID 群の当日の変更を一括取得する（ダッシュボード N+1 解消用）。 */
+    List<TimetableChangeEntity> findByTimetableIdInAndTargetDateOrderByPeriodNumber(
+            java.util.Collection<Long> timetableIds, LocalDate targetDate);
+
     List<TimetableChangeEntity> findByTimetableIdAndTargetDateBetweenOrderByTargetDateAscPeriodNumberAsc(
             Long timetableId, LocalDate from, LocalDate to);
 

@@ -1,0 +1,15 @@
+{
+  "sourceOverlay": "agent-october-wave2-register-20261026/docs/prototypes/.b0-local/run-october-wave2-20261026.json",
+  "personas": 6,
+  "journeys": 6,
+  "insights": 13,
+  "originalRedExit": 1,
+  "compositeSelfTestExit": 0,
+  "compositeNormalValidatorExit": 0,
+  "invalidOverlaysRejected": 10,
+  "generatedDataRestored": true,
+  "sourceBase": "092ca37a587f6b589df9234126d6f43916c036cc",
+  "sourceCommit": "5e86c0d018688cf7787ee743510a42c92da7bffe",
+  "registeredCommit": "870f039283",
+  "restoredNormalValidatorExit": 0
+}

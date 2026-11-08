@@ -78,6 +78,8 @@ public abstract class AbstractMySqlIntegrationTest {
             .withUsername("test")
             .withPassword("test")
             .withReuse(false)
+            // 専用Testcontainerで実SQLのtriggerを作成可能にし、既存Flyway試験と同じ条件に揃える。
+            .withCommand("--log-bin-trust-function-creators=1")
             // WSL2 環境でMySQL初期化がVHDのI/O待ちで2分超になりTestcontainersのタイムアウトを超える問題を回避するため、
             // /var/lib/mysql をtmpfs(RAM)に置くことで初期化を数秒に短縮する。
             .withTmpFs(java.util.Map.of("/var/lib/mysql", "rw"));
@@ -91,6 +93,19 @@ public abstract class AbstractMySqlIntegrationTest {
     /** Redis は外部依存のため Mock 化（全派生テストで共通に必要）。 */
     @MockitoBean
     protected org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+
+    /**
+     * Mock 化した {@code StringRedisTemplate} は既定で {@code opsForValue()} が null を返す。本番コードの Valkey 呼び出しが
+     * NPE になり、障害時フォールバック（DataAccessException の捕捉）と区別できなくなるため、実物と同じく
+     * {@code ValueOperations} を返す既定を共通設定として置く（get は null＝キー無し）。個別の試験は上書きしてよい。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void stubRedisTemplateValueOperations() {
+        @SuppressWarnings("unchecked")
+        org.springframework.data.redis.core.ValueOperations<String, String> ops =
+                org.mockito.Mockito.mock(org.springframework.data.redis.core.ValueOperations.class);
+        org.mockito.Mockito.when(redisTemplate.opsForValue()).thenReturn(ops);
+    }
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {

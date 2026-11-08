@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { setActivePinia, createPinia } from 'pinia'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, ref } from 'vue'
 import WidgetScheduleCalendar from '~/components/widgets/WidgetScheduleCalendar.vue'
 
 /**
@@ -23,6 +23,12 @@ const scheduleApiMock = {
   getMySchedules: vi.fn(),
 }
 const captureQuietMock = vi.fn()
+vi.mock('~/composables/useRoleAccess', () => ({
+  useRoleAccess: () => ({
+    isAdminOrDeputy: ref(true), roleName: ref('ADMIN'), can: vi.fn(), loading: ref(false),
+    loadPermissions: vi.fn().mockResolvedValue({ ok: true }),
+  }),
+}))
 
 vi.mock('~/composables/useScheduleApi', () => ({
   useScheduleApi: () => scheduleApiMock,
@@ -106,19 +112,13 @@ describe('WidgetScheduleCalendar.vue', () => {
       data: [
         {
           id: 1,
-          title: 'ミーティング',
-          startAt: `${currentYearMonth}-10T10:00:00`,
-          endAt: `${currentYearMonth}-10T11:00:00`,
-          allDay: false,
-          color: '#6366f1',
+          content: { title: 'ミーティング' },
+          time: { startAt: `${currentYearMonth}-10T10:00:00`, endAt: `${currentYearMonth}-10T11:00:00`, allDay: false },
         },
         {
           id: 2,
-          title: '社内研修',
-          startAt: `${currentYearMonth}-15T13:00:00`,
-          endAt: `${currentYearMonth}-15T15:00:00`,
-          allDay: false,
-          color: null,
+          content: { title: '社内研修' },
+          time: { startAt: `${currentYearMonth}-15T13:00:00`, endAt: `${currentYearMonth}-15T15:00:00`, allDay: false },
         },
       ],
       meta: { page: 0, size: 50, total: 2, totalPages: 1 },
@@ -198,7 +198,7 @@ describe('WidgetScheduleCalendar.vue', () => {
     expect(stub.attributes('data-month')).toBe(String(nextMonth))
   })
 
-  it('API エラー時に events が空配列になり captureQuiet が呼ばれる', async () => {
+  it('API エラー時に空カレンダーへ落とさず再試行可能なエラーを表示する', async () => {
     const apiError = new Error('boom')
     scheduleApiMock.listSchedules.mockRejectedValueOnce(apiError)
     scheduleApiMock.getMySchedules.mockResolvedValueOnce(emptyResponse)
@@ -218,7 +218,7 @@ describe('WidgetScheduleCalendar.vue', () => {
     )
 
     const stub = wrapper.find('[data-testid="calendar-grid-stub"]')
-    expect(stub.exists()).toBe(true)
-    expect(stub.attributes('data-event-count')).toBe('0')
+    expect(stub.exists()).toBe(false)
+    expect(wrapper.findComponent({ name: 'DashboardErrorState' }).exists()).toBe(true)
   })
 })

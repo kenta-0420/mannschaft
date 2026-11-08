@@ -185,7 +185,7 @@ const {
 } = useCorkboardPinManagement(board, boardId, t)
 
 // ----- WebSocket リアルタイム同期 -----
-const { setReloadFn } = useCorkboardWebSocketSync(board)
+const { setReloadFn, realtimeState } = useCorkboardWebSocketSync(board)
 
 // フルリロード関数を注入（eventType ごとのフォールバック用）
 setReloadFn(() => { void load() })
@@ -253,6 +253,17 @@ setReloadFn(() => { void load() })
         <i class="pi pi-folder text-[10px]" />
         {{ t('corkboard.sectionCount', { count: sections.length }) }}
       </span>
+    </div>
+
+    <!-- リアルタイム同期の停止（閲覧権限なし／認証切れを区別して表示） -->
+    <div
+      v-if="board && realtimeState !== 'OK'"
+      class="mb-3 flex items-start gap-2 rounded-lg border border-surface-200 bg-surface-50 p-2 text-xs text-surface-700"
+      role="status"
+      data-testid="corkboard-realtime-stopped"
+    >
+      <i :class="realtimeState === 'DENIED' ? 'pi pi-lock' : 'pi pi-sign-in'" class="mt-0.5" />
+      <span>{{ realtimeState === 'DENIED' ? t('corkboard.ws.denied') : t('corkboard.ws.unauthenticated') }}</span>
     </div>
 
     <!-- ローディング -->

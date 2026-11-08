@@ -1,0 +1,4 @@
+/test-fixtures/unicode/17.0.0/GraphemeBreakTest.txt text eol=lf
+
+# ER 図の自動生成物は LF 固定（バイト照合のため autocrlf で CRLF 化させない）
+docs/architecture/er/** text eol=lf

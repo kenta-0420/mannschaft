@@ -1,0 +1,67 @@
+{
+  "campaign": "CMP-261021-0649",
+  "sourceHead": "dd41b081219c1e8bb127b07f4086e2d104903a11",
+  "at": "2026-10-26T16:55:26.372Z",
+  "adjudicator": "root / Sol high",
+  "independentResidents": 3,
+  "explorationConducted": true,
+  "purposeOutcomes": {
+    "A": "partial:201/input retained/own schedule return; request status not found",
+    "B": "not-achieved:request not found/accept0; returned own schedule",
+    "D": "not-achieved:approval/old-new schedule; S3/X boundary observed"
+  },
+  "observations": [
+    {
+      "id": "A-state-discovery",
+      "classification": "observed-unverified",
+      "evidence": "resident-A-safe.json",
+      "reason": "探索範囲で未発見。UI不存在と断定しない"
+    },
+    {
+      "id": "B-received-discovery",
+      "classification": "observed-unverified",
+      "evidence": "resident-B-safe.json",
+      "reason": "探索範囲で未発見。受信相談自体はowned DB上でB宛PENDINGと確認"
+    },
+    {
+      "id": "D-dashboard-route",
+      "classification": "confirmed-existing-defect",
+      "existingCampaign": "CMP-261009-0616",
+      "existingPr": 3741,
+      "approvedForFix": false,
+      "residentEvidence": "resident-D-safe.json",
+      "independentEvidence": "evidence-real-dd41b081219c-02/d-card-reproduction-safe.json",
+      "reproduction": {
+        "clickedTestId": "command-center-admin-item-SHIFT_REQUEST-5",
+        "path": "/teams/cmp0649-79445b4f6a17-primary/admin/shifts/swap/5",
+        "heading": "このページは見つかりませんでした",
+        "independentHarnessExit": 1,
+        "harnessFailure": "bodyに404数字の表示を期待した条件不一致。exit1/passedfalseを保持。再現クリックと到達先見出しは観測済み",
+        "residentDocumentGet": 404,
+        "businessTableHashesUnchanged": true
+      },
+      "cause": "ShiftRequestAdminQueryService.java88生成detailRoute→PersonalAdminActionRequired→WidgetCommandCenter.vue96 navigateTo。Nuxt pages/teams/[slug]/adminにshifts routeなし",
+      "introducedBy0649": false,
+      "independentFailureClassification": "evidence-real-dd41b081219c-02/d-card-reproduction-classification-safe.json"
+    }
+  ],
+  "boundary": {
+    "S3Aux": "supporter表示/管理者入口拒否",
+    "S3Primary": "team403/shift404",
+    "XPrimary": "team403/shift404",
+    "missingSwapPageNotUsedAsAuthorizationProof": true,
+    "businessWritesByD": false
+  },
+  "visualInspection": false,
+  "gate": "hold-unfixed-existing-defect",
+  "productionOperations": false,
+  "pendingDecision": "CMP-261009-0616の追加着手裁可",
+  "originalHandoffRetained": true,
+  "residentCleanup": {
+    "externalAudit": "evidence-real-dd41b081219c-02/resident-and-reproduction-external-exit-audit-safe.json",
+    "threeNodesAbsent": true,
+    "seventeenKnownBrowserPidsAbsent": true,
+    "reproductionNodeAbsent": true,
+    "reproductionChildrenRemaining": 0
+  }
+}

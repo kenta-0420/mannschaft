@@ -3,7 +3,6 @@ package com.mannschaft.app.errorreport.service;
 import com.mannschaft.app.errorreport.ErrorReportProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -51,36 +50,61 @@ class ErrorReportAiAnalysisDispatcherTest {
         dispatcher = new ErrorReportAiAnalysisDispatcher(asyncRunner, budgetService, props);
     }
 
-    @Test
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(Entry.class)
     @DisplayName("AC-10: 予算超過時は非同期分析を起動しない")
-    void analyzeAfterCommit_skipsWhenBudgetExceeded() {
+    void analyzeAfterCommit_skipsWhenBudgetExceeded(Entry entry) {
         given(budgetService.canExpend(anyInt())).willReturn(false);
 
-        dispatcher.analyzeAfterCommit(REPORT_ID, null);
+        entry.dispatch(dispatcher);
 
         verify(asyncRunner, never()).analyzeAsync(any(), any());
         // 後追いバッチが翌期に拾えるよう実コスト計上もされない
         verify(budgetService, never()).recordExpense(anyInt());
     }
 
-    @Test
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(Entry.class)
     @DisplayName("AC-10: 予算内なら非同期 Runner へ委譲する（トランザクション同期が無い場合は即時起動）")
-    void analyzeAfterCommit_delegatesWhenWithinBudget() {
+    void analyzeAfterCommit_delegatesWhenWithinBudget(Entry entry) {
         given(budgetService.canExpend(anyInt())).willReturn(true);
 
-        dispatcher.analyzeAfterCommit(REPORT_ID, null);
+        entry.dispatch(dispatcher);
 
         // 自己呼び出しではなく別 Bean（プロキシ経由で @Async が効く）へ委譲していること
         verify(asyncRunner).analyzeAsync(REPORT_ID, null);
     }
 
-    @Test
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(Entry.class)
     @DisplayName("AC-10: 機能無効時は非同期分析を起動しない")
-    void analyzeAfterCommit_skipsWhenDisabled() {
+    void analyzeAfterCommit_skipsWhenDisabled(Entry entry) {
         props.getAi().setEnabled(false);
 
-        dispatcher.analyzeAfterCommit(REPORT_ID, null);
+        entry.dispatch(dispatcher);
 
         verify(asyncRunner, never()).analyzeAsync(any(), any());
+    }
+
+    /** 既存3条件を通常登録入口とcommit済み受信入口の両方へ適用する。 */
+    enum Entry {
+        DIRECT, COMMITTED_EVENT;
+
+        void dispatch(ErrorReportAiAnalysisDispatcher dispatcher) {
+            if (this == DIRECT) {
+                dispatcher.analyzeAfterCommit(REPORT_ID, null);
+                return;
+            }
+            // SpringのAFTER_COMMIT受信時にはsynchronizationがまだactiveの場合がある。
+            org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+            try {
+                dispatcher.onAnalysisRequested(
+                        new com.mannschaft.app.errorreport.event.ErrorReportAiAnalysisRequestedEvent(REPORT_ID));
+                org.assertj.core.api.Assertions.assertThat(org.springframework.transaction.support
+                        .TransactionSynchronizationManager.getSynchronizations()).isEmpty();
+            } finally {
+                org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+            }
+        }
     }
 }

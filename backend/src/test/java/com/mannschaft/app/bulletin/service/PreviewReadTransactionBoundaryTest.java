@@ -70,6 +70,9 @@ class PreviewReadTransactionBoundaryTest {
             var visibility = dependency(context, ContentVisibilityChecker.class);
             dependency(context, TeamService.class);
             dependency(context, OrganizationService.class);
+            // 委任経路（ALIC-1）の依存。この試験は通常経路の境界を見るので未使用だが Facade の生成に要る
+            dependency(context, com.mannschaft.app.bulletin.visibility.BulletinThreadVisibilityResolver.class);
+            dependency(context, BulletinAnnouncementPreviewReader.class);
             context.refresh();
             context.getBean(TxControl.class).check(); // annotation interceptor の陽性対照
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();

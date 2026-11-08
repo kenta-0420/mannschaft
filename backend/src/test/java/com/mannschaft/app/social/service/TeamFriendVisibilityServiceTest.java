@@ -110,8 +110,9 @@ class TeamFriendVisibilityServiceTest {
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
-    @DisplayName("私的な他チーム関係は要求公開値によらず不在コードで拒否する")
-    void IDOR_私的他チーム関係_不在と同じ例外(boolean requestedPublic) {
+    @DisplayName("私的な他チーム関係も、閲覧ガードを通った閲覧者には ADMIN 限定の拒否コードを返す（CMP-260821-1027）")
+    void IDOR_私的他チーム関係_閲覧者には権限不足コード(boolean requestedPublic) {
+        // 閲覧できない者は Controller が先に呼ぶ TeamFriendViewAccessGuard が不在と同一の SOCIAL_106 で拒否する。
         // given
         Long teamFriendId = 1L;
         // 自チーム=999 として、teamFriendEntity は他チームのペア
@@ -124,7 +125,7 @@ class TeamFriendVisibilityServiceTest {
                 teamFriendVisibilityService.setVisibility(TEAM_ID, teamFriendId, requestedPublic, USER_ID))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                        .isEqualTo(SocialErrorCode.FRIEND_RELATION_NOT_FOUND));
+                        .isEqualTo(SocialErrorCode.FRIEND_VISIBILITY_ADMIN_ONLY));
         assertThat(otherFriend.getIsPublic()).isFalse();
         verify(teamFriendRepository, never()).save(any());
         verifyNoInteractions(auditLogService);

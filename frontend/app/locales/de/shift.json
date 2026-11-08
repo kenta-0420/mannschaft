@@ -273,16 +273,17 @@
         "label": "Empfänger",
         "specific": "Mitglieder angeben",
         "template": "Nach Schichtzeit",
-        "openCall": "Für alle öffnen"
+        "openCall": "Offene Anfrage im Team"
       },
       "targetUsers": {
         "label": "Tauschkandidaten",
         "placeholder": "Mitglieder auswählen...",
         "dayShift": "Tagschicht-Mitglieder",
         "nightShift": "Nachtschicht-Mitglieder",
-        "selectedCount": "{count} ausgewählt"
+        "selectedCount": "{count} ausgewählt",
+        "empty": "Keine Mitglieder verfügbar"
       },
-      "templateHint": "An alle {period}-Schichtmitglieder im gleichen Plan senden",
+      "templateHint": "An alle {period} im gleichen Plan senden",
       "list": {
         "title": "Schichttausch-Anfragen",
         "requester": "Antragsteller #{id}",
@@ -467,7 +468,7 @@
       "title": "Schichtdetails ansehen",
       "body": "Tippen Sie auf ein bestimmtes Datum, um Details zur Schicht wie Teamname, Position, Uhrzeit und Planname anzuzeigen.",
       "steps": {
-        "step1": "[Monatsansicht] Tippen Sie auf ein Datumsfeld, um rechts auf dem Bildschirm das Detailfenster zu öffnen",
+        "step1": "[Monatsansicht] Tippen Sie auf ein Datumsfeld, um das Detailfenster für das ausgewählte Datum zu öffnen",
         "step2": "[Wochenansicht] Tippen Sie auf die Kopfzeile einer Datumskarte, um die Karte zu erweitern und die Schichtliste anzuzeigen",
         "step3": "In der Monatsansicht schließt ein erneutes Tippen auf dasselbe Datum das Detailfenster"
       }
@@ -477,7 +478,7 @@
       "body": "Wenn Sie eine bestätigte Schicht mit einem anderen Mitglied tauschen möchten, können Sie die Anfrage auf drei Arten senden. Nach dem Senden wird die Schichtliste automatisch aktualisiert.",
       "steps": {
         "step1": "Klicken Sie in den Schichtdetails auf die Schaltfläche „Tauschanfrage erstellen“",
-        "step2": "Wählen Sie die Sendeart: „Mitglieder festlegen“ (mindestens ein Mitglied auswählen) / „Nach Schichtzeit“ (alle, die am selben Tag in der Tag- oder Nachtschicht arbeiten) / „Für alle öffnen“ (jeder kann sich melden)",
+        "step2": "Wählen Sie die Sendeart: „Mitglieder festlegen“ (mindestens ein Mitglied auswählen) / „Nach Schichtzeit“ (alle, die am selben Tag in der Tag- oder Nachtschicht arbeiten) / „Offene Anfrage im Team“ (Teammitglieder können sich melden)",
         "step3": "Geben Sie bei Bedarf einen Grund an (optional)",
         "step4": "Klicken Sie zum Senden auf die Schaltfläche „Einreichen“"
       },

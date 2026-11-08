@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260826-1456",
+  "scope": "app",
+  "implementation": {
+    "pr": 3590,
+    "sha": "78242308a9505086cec01603fe43d7d1805b4faa"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1456-1",
+      "description": "UNLISTED 村へ申請した本人が、審査待ちの間も自分の申請履歴を引ける（GET /api/v1/village-join-requests/me）",
+      "tests": [
+        {
+          "name": "VillageJoinRequestHistoryContractIT#公開時の申請を非公開化後も確認できる",
+          "evidence": "backend/src/test/java/com/mannschaft/app/village/controller/VillageJoinRequestHistoryContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-1456-2",
+      "description": "申請していない第三者には村の存在・名前が漏れない（旧API 404 と存在しない村が同一応答）",
+      "tests": [
+        {
+          "name": "VillageJoinRequestHistoryContractIT#旧APIの存在秘匿を維持する / 第三者の履歴に他人の申請先の村名は出ない",
+          "evidence": "backend/src/test/java/com/mannschaft/app/village/controller/VillageJoinRequestHistoryContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-1456-3",
+      "description": "size 0/100 の丸め・並び順の安定・村名の追加 SELECT なし（N+1 なし）",
+      "tests": [
+        {
+          "name": "VillageJoinRequestHistoryContractIT#ページ境界を既存規約へ丸める / 同時刻をid降順で安定させる / 本人の履歴検索だけで一ページを取得する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/village/controller/VillageJoinRequestHistoryContractIT.java"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 38183026008
+    },
+    {
+      "runId": 38183026034
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/3590"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260826-1456-real.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260826-1456-exploratory.md"
+    }
+  },
+  "regressions": []
+}

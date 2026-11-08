@@ -5,6 +5,8 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.shift.dto.BulkCreateShiftSlotRequest;
 import com.mannschaft.app.shift.dto.CreateShiftSlotRequest;
 import com.mannschaft.app.shift.dto.ShiftSlotResponse;
+import com.mannschaft.app.shift.dto.SlotAssignmentMoveRequest;
+import com.mannschaft.app.shift.dto.SlotAssignmentMoveResponse;
 import com.mannschaft.app.shift.dto.SlotAssignmentPatchRequest;
 import com.mannschaft.app.shift.dto.UpdateShiftSlotRequest;
 import com.mannschaft.app.shift.service.ShiftSlotFacade;
@@ -128,6 +130,24 @@ public class ShiftSlotController {
             @PathVariable Long slotId,
             @Valid @RequestBody SlotAssignmentPatchRequest request) {
         ShiftSlotResponse response = slotFacade.patchSlotAssignments(
+                slotId, request, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 割当メンバーを同じシフト表の別の枠へ 1 トランザクションで移す（CMP-261010-1432 P）。
+     * 拒否（version 不一致・満員・移動元に不在等）ではどちらの枠も変わらない。
+     */
+    @PostMapping("/slots/{slotId}/assignments/move")
+    @Operation(summary = "スロット間の割当移動")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "移動成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409",
+            description = "競合（楽観ロック・移動元に不在・重複）")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<SlotAssignmentMoveResponse>> moveSlotAssignment(
+            @PathVariable Long slotId,
+            @Valid @RequestBody SlotAssignmentMoveRequest request) {
+        SlotAssignmentMoveResponse response = slotFacade.moveAssignment(
                 slotId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }

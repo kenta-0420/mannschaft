@@ -192,6 +192,49 @@ describe('BlogPostList タグ管理・記事モデレーション', () => {
   })
 
   it.each([
+    { scopeType: 'TEAM', scopeId: 'public-team-slug', requestScope: { teamId: 'public-team-slug' } },
+    {
+      scopeType: 'ORGANIZATION',
+      scopeId: 'public-org-slug',
+      requestScope: { organizationId: 'public-org-slug' },
+    },
+  ])('通常 $scopeType 作成 UI は正規スコープの下書きを作って編集へ進む', async ({ scopeType, scopeId, requestScope }) => {
+    apiMock.mockResolvedValue({ data: [] })
+    const wrapper = await mountSuspended(BlogPostList, {
+      props: { scopeType, scopeId, canCreate: true, canManage: false },
+      global: { stubs },
+    })
+    await flushPromises()
+    await wrapper.get('[data-testid="blog-post-create-button"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('input').setValue('本人の下書き')
+    apiMock.mockClear()
+    apiMock.mockResolvedValue({
+      data: makePost({
+        id: 9,
+        content: {
+          title: '本人の下書き',
+          slug: 'own-draft',
+          body: '.',
+          excerpt: null,
+          coverImageUrl: null,
+        },
+      }),
+    })
+
+    await wrapper.get('[data-testid="blog-post-create-submit"]').trigger('click')
+    await flushPromises()
+
+    expect(apiMock).toHaveBeenCalledExactlyOnceWith('/api/v1/blog/posts', {
+      method: 'POST',
+      body: { title: '本人の下書き', body: '.', ...requestScope },
+    })
+    expect(navigateMock).toHaveBeenCalledExactlyOnceWith(
+      `/blog/posts/9/edit?title=${encodeURIComponent('本人の下書き')}`,
+    )
+  })
+
+  it.each([
     { scope: { teamId: 42, organizationId: null, userId: null, authorId: 999 }, to: { path: '/blog/posts/same-slug', query: { teamId: '42' } } },
     { scope: { teamId: null, organizationId: 7, userId: null, authorId: 999 }, to: { path: '/blog/posts/same-slug', query: { organizationId: '7' } } },
     { scope: { teamId: null, organizationId: null, userId: 999, authorId: 999 }, to: { path: '/users/999/blog/posts/same-slug' } },

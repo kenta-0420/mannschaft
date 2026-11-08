@@ -89,6 +89,8 @@ access_token（JWT）の `roles` claim は **認可（authority）の起点**で
 - **リフレッシュトークンローテーション**: `AuthTokenRotationService` がリフレッシュ毎にトークンを再発行し、旧トークンに後継ポインタ（`replaced_by_token_hash`）を記録して失効させる。取得は DB 行ロック（`PESSIMISTIC_WRITE`）で直列化（詳細: [06 §7](06_business_logic_and_abuse_prevention.md#7-jwt-refresh-token-ローテーションの競合制御2026-07-02-実装済みに更新)）
 - **並行更新の正規化と真リプレイの区別（2026-07-02 実装済み）**: 失効済みトークンの再提示は一律リプレイ扱いにしない。後継ポインタ有り × grace window（既定 60 秒、`mannschaft.jwt.refresh-rotation-grace-seconds`）以内なら「並行更新の負け側」として正規化し新トークンを発行（全デバイス無効化しない）。grace window 超過の後継有りトークン再提示のみを真リプレイとして `AuthSessionService.logoutAllDevices()` で全デバイス無効化する
 - **JTI ブラックリスト**: ログアウト時、access_token の JTI を Valkey に残存 TTL 分だけ登録して無効化
+- **通常ログアウトの本人束縛**: `POST /api/v1/auth/logout` は発行済み `refresh_token` Cookie を SHA-256 化し、署名検証済み JWT の所有者とハッシュの組で対象を検索する。旧 `refresh_token_hash` Cookie は raw Cookie が無い場合のみ互換経路として使用する。任意の `userId` / `jti` / `exp` クエリは失効対象に使わない。
+- **Access Token の単独失効**: refresh Cookie が無い・不正・他人のものでも、現在の署名済み JTI と `exp` から残存 TTL を計算して失効する。管理者変身中も request 属性に保持した署名検証直後の所有者を使用する。認証不在・署名無効時は失効処理を実行せず、DB 失敗を成功扱いしない。Cookie の発行・削除属性と Valkey の fail-open 方針は維持する。
 - **全デバイス無効化**: ユーザー単位の無効化タイムスタンプを Valkey に保持
 - **セッション一覧・個別無効化・新規デバイス検知**: F12.4 を参照
 

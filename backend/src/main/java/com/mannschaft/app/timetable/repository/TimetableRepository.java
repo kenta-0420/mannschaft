@@ -35,4 +35,24 @@ public interface TimetableRepository extends JpaRepository<TimetableEntity, Long
             + " AND t.effectiveFrom <= :date"
             + " AND (t.effectiveUntil IS NULL OR t.effectiveUntil >= :date)")
     List<TimetableEntity> findEffective(@Param("teamId") Long teamId, @Param("date") LocalDate date);
+
+    /**
+     * {@link #findEffective} のチーム ID 群版（ダッシュボード N+1 解消用）。
+     * チーム ID・主キー順で返す。
+     */
+    @Query("SELECT t FROM TimetableEntity t WHERE t.teamId IN :teamIds"
+            + " AND t.status = 'ACTIVE'"
+            + " AND t.effectiveFrom <= :date"
+            + " AND (t.effectiveUntil IS NULL OR t.effectiveUntil >= :date)"
+            + " ORDER BY t.teamId ASC, t.id ASC")
+    List<TimetableEntity> findEffectiveByTeamIds(@Param("teamIds") java.util.Collection<Long> teamIds,
+                                                 @Param("date") LocalDate date);
+
+    /**
+     * 学期を参照する時間割の件数（論理削除済みを含む）。
+     * 論理削除行も fk_tm_term(ON DELETE RESTRICT) の参照元になるため、ネイティブクエリで
+     * {@code @SQLRestriction("deleted_at IS NULL")} を迂回して数える。
+     */
+    @Query(value = "SELECT COUNT(*) FROM timetables WHERE term_id = :termId", nativeQuery = true)
+    long countByTermIdIncludingDeleted(@Param("termId") Long termId);
 }

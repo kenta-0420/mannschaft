@@ -21,7 +21,9 @@ import org.springframework.stereotype.Service;
  *       当該スコープのメンバー全員（SUPPORTER/GUEST 等の非メンバーは拒否）</li>
  * </ul>
  *
- * <p>違反時は {@link CorkboardErrorCode#INSUFFICIENT_PERMISSION}（CORKBOARD_009 / 403）。</p>
+ * <p>違反時、当該ボードを閲覧できるメンバーには {@link CorkboardErrorCode#INSUFFICIENT_PERMISSION}
+ * （CORKBOARD_009 / 403）、閲覧できない者（非メンバー・他人の個人ボード）には不在と同一の
+ * {@link CorkboardErrorCode#BOARD_NOT_FOUND}（CORKBOARD_001 / 404）を返す（CMP-260820-1422 存在オラクル一掃）。</p>
  */
 @Slf4j
 @Service
@@ -39,7 +41,7 @@ public class CorkboardPermissionService {
 
     /**
      * 共有ボードのカード/セクション CRUD・位置更新の編集権限をチェックする。
-     * 違反時は {@link BusinessException}（CORKBOARD_009 / 403）。
+     * 違反時は {@link BusinessException}（メンバーは CORKBOARD_009 / 403、閲覧できない者は CORKBOARD_001 / 404）。
      *
      * @param board  対象ボードエンティティ
      * @param userId 操作ユーザーID
@@ -50,17 +52,18 @@ public class CorkboardPermissionService {
         }
         String scopeType = board.getScopeType();
 
-        // PERSONAL は呼び出し側（CorkboardService）で所有者チェック済み
+        // CMP-260820-1422 存在オラクル一掃: ボードを閲覧できない者（他人の個人ボード・非メンバー・
+        // 想定外スコープ）には不在と同一の BOARD_NOT_FOUND（404）を返し、boardId の実在を秘匿する。
         if (SCOPE_PERSONAL.equals(scopeType)) {
             if (board.getOwnerId() != null && !board.getOwnerId().equals(userId)) {
-                throw new BusinessException(CorkboardErrorCode.INSUFFICIENT_PERMISSION);
+                throw new BusinessException(CorkboardErrorCode.BOARD_NOT_FOUND);
             }
             return;
         }
 
         if (!SCOPE_TEAM.equals(scopeType) && !SCOPE_ORGANIZATION.equals(scopeType)) {
             // 想定外スコープ → 拒否
-            throw new BusinessException(CorkboardErrorCode.INSUFFICIENT_PERMISSION);
+            throw new BusinessException(CorkboardErrorCode.BOARD_NOT_FOUND);
         }
 
         Long scopeId = board.getScopeId();
@@ -75,7 +78,13 @@ public class CorkboardPermissionService {
         if (!allowed) {
             log.warn("コルクボード編集権限なし: boardId={}, userId={}, scope={}, policy={}",
                     board.getId(), userId, scopeType, policy);
-            throw new BusinessException(CorkboardErrorCode.INSUFFICIENT_PERMISSION);
+            // メンバーはボードを閲覧できるため 403 を返しても存在は漏れない。非メンバーは不在と同一の 404。
+            boolean member = POLICY_ALL_MEMBERS.equals(policy)
+                    ? false
+                    : accessControlService.isMember(userId, scopeId, scopeType);
+            throw new BusinessException(member
+                    ? CorkboardErrorCode.INSUFFICIENT_PERMISSION
+                    : CorkboardErrorCode.BOARD_NOT_FOUND);
         }
     }
 

@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260824-2217",
+  "scope": "app",
+  "implementation": {
+    "pr": 2934,
+    "sha": "edb7b98ad74dcfd87abe993a3b1d4c94edf47156"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-2217-1",
+      "description": "予約グリッドが本人の有効予約（PENDING/CONFIRMED）の枠だけ reservedByCurrentUser=true を返し、PII を含めない",
+      "tests": [
+        {
+          "name": "ReservationGridServiceTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/reservation/service/ReservationGridServiceTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-2217-2",
+      "description": "マトリクスで本人予約済みセルが「予約済み」表示かつ押せない",
+      "tests": [
+        {
+          "name": "SlotMatrixPicker 実機E2E",
+          "evidence": "frontend/tests/e2e/real/reservation-v2-d-group.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-2217-3",
+      "description": "本人が PENDING/CONFIRMED を持つ枠へのキャンセル待ち登録は 409 RESERVATION_013、重複登録は 409",
+      "tests": [
+        {
+          "name": "ReservationWaitlistServiceTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/reservation/service/ReservationWaitlistServiceTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-2217-4",
+      "description": "本人予約済み（disabled）セルの aria-label がキャンセル待ち登録を案内しない（R1。PR #4293 で是正）",
+      "tests": [
+        {
+          "name": "SlotMatrixPicker.spec.ts",
+          "evidence": "frontend/tests/unit/components/reservation/SlotMatrixPicker.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 32750842905
+    },
+    {
+      "runId": 32750842952
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/2934"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260824-2217-real.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260824-2217-exploratory.md"
+    }
+  },
+  "regressions": [
+    {
+      "description": "本人予約済みセルの aria-label が待機登録を誤案内していた（R1、PR #4293 で是正）",
+      "test": "frontend/tests/unit/components/reservation/SlotMatrixPicker.spec.ts",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/41886574308",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/41890867902"
+    }
+  ]
+}

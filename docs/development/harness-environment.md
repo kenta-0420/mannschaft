@@ -11,6 +11,8 @@
 5. DB・seedが必要な開発は、既存の [`CLAUDE.md` の開発環境コマンド](../../CLAUDE.md#よく使うコマンド)と `/陣立て` の手順に従う。この診断CLIからDBやseedを起動・変更しない。
 6. 画面台帳の宣言と実ファイルを確認するときは `node scripts/guard-coverage.mjs` を実行する。機械可読な全一覧は `--json` を付ける。
 
+固定コミットの BE・FE で実機確認する場合は、[ローカル検証環境の起動手順](local-verification.md)へ進む。追跡外の local 設定・鍵の安全な持込、検証用ポートと CORS、WSL の `verification-run`、起動確認と終了処理をまとめている。
+
 ## doctorの判定
 
 doctorはNode.js、npm、Java、Git、`gh`、Docker CLIの存在と、リポジトリで必要な設定ファイルを確認する。Node/npmは `frontend/package.json` の期待versionと照合し、Javaはmajor version 21を確認する。Node/npm/Java の不一致、コマンド欠損、timeoutは別のstatusで出す。version不一致では実versionと期待versionを表示する。

@@ -1,8 +1,40 @@
 {
   "skill": {
+    "form": {
+      "noCategoryAdmin": "此团队还没有可用的分类。请在“分类管理”标签页中创建分类。",
+      "noCategoryMember": "此团队还没有可用的分类。请联系团队管理员创建分类。"
+    },
+    "matrix": {
+      "refresh": "刷新",
+      "legendPendingNote": "待确认的资格将显示为未登记"
+    },
     "list": {
+      "actions": {
+        "search": "搜索",
+        "verify": "批准",
+        "edit": "编辑",
+        "delete": "删除",
+        "certificate": "查看证书"
+      },
       "loadDetailFailed": "加载技能详情失败",
-      "loadCategoriesFailed": "加载分类失败"
+      "loadCategoriesFailed": "加载分类失败",
+      "mineTitle": "我的技能与资格",
+      "deleteConfirm": "确定要删除“{name}”吗？此操作无法撤销。",
+      "deleteConfirmHeader": "删除资格"
+    },
+    "category": {
+      "actions": {
+        "edit": "编辑",
+        "delete": "删除"
+      },
+      "deleteConfirm": "确定要删除分类“{name}”吗？",
+      "deleteConfirmHeader": "删除分类"
+    },
+    "page": {
+      "permissionLoadFailed": "获取权限信息失败，请稍后重新加载",
+      "forbidden": "只有本团队成员才能使用技能与资格",
+      "mineTab": "我的技能与资格",
+      "categoriesReloadFailed": "重新加载分类失败"
     }
   },
   "chat": {
@@ -70,7 +102,9 @@
       "multiple": "{names}正在输入…"
     },
     "connection": {
-      "failed": "连接已断开。正在尝试重新连接…"
+      "failed": "连接已断开。正在尝试重新连接…",
+      "denied": "您没有查看此频道的权限",
+      "unauthenticated": "登录已过期，实时更新已停止。请重新登录"
     },
     "mobile": {
       "backToList": "返回频道列表",
@@ -113,6 +147,77 @@
         "joinFailed": "加入失败",
         "declineFailed": "谢绝失败"
       }
+    },
+    "channelList": {
+      "title": "聊天",
+      "newConversation": "新会话",
+      "addChannel": "添加频道",
+      "dmSection": "Kabine（私信）",
+      "noDm": "暂无私信",
+      "roomSection": "Zimmer（房间）",
+      "noRoom": "暂无房间",
+      "loadFailed": "获取房间列表失败",
+      "detailLoadFailed": "获取频道信息失败"
+    },
+    "create": {
+      "typeDm": "Kabine（私信）",
+      "typeRoom": "Zimmer（房间）",
+      "dmOpened": "已打开 Kabine（私信）",
+      "roomCreated": "已创建 Zimmer（房间）",
+      "conversationFailed": "创建会话失败",
+      "roomCreateFailed": "创建 Zimmer（房间）失败",
+      "header": "开始新会话",
+      "tabContacts": "从联系人中选择",
+      "tabCreateRoom": "创建 Zimmer（房间）",
+      "searchByName": "按名称搜索...",
+      "selectedSummary": "已选择 {count} 人 → 将作为 {type} 开始",
+      "startAs": "开始 {type}",
+      "roomName": "Zimmer（房间）名称",
+      "roomNamePlaceholder": "例如：general",
+      "descriptionOptional": "说明（可选）",
+      "descriptionPlaceholder": "Zimmer（房间）的说明",
+      "privateRoom": "私密 Zimmer（仅限邀请）",
+      "inviteMembersOptional": "邀请成员（可选）",
+      "create": "创建"
+    },
+    "inviteZimmer": {
+      "header": "邀请加入 Zimmer",
+      "tooltip": "邀请加入 Zimmer",
+      "failed": "邀请失败",
+      "noMembers": "没有可邀请的成员",
+      "shareQuestion": "是否共享现有聊天内容？",
+      "share": "共享",
+      "shareHint": "之前的消息将转入新的 Zimmer",
+      "noShare": "不共享",
+      "noShareHint": "新的 Zimmer 将从空白开始",
+      "createZimmer": "创建 Zimmer"
+    },
+    "memberSelect": {
+      "notFound": "未找到成员"
+    },
+    "activeThreadsEmpty": "没有进行中的话题",
+    "tabAriaLabel": "{name} 标签页",
+    "message": {
+      "deleted": "此消息已被删除",
+      "unknownSender": "未知",
+      "edited": "（已编辑）",
+      "loadOlder": "加载更早的消息",
+      "empty": "还没有消息",
+      "sendFailed": "发送消息失败",
+      "inputPlaceholder": "输入消息...",
+      "inputDisabled": "无法在此 Zimmer（房间）中发帖",
+      "loadFailed": "获取消息失败",
+      "reactionFailed": "回应失败",
+      "pinned": "已置顶",
+      "unpinned": "已取消置顶",
+      "pinFailed": "置顶操作失败",
+      "deleteSuccess": "消息已删除",
+      "deleteFailed": "删除失败",
+      "bookmarkFailed": "收藏操作失败",
+      "markReadFailed": "无法标记为已读",
+      "editHeader": "编辑消息",
+      "editSuccess": "消息已编辑",
+      "editFailed": "编辑失败"
     }
   },
   "button": {
@@ -123,6 +228,7 @@
     "create": "创建",
     "submit": "提交",
     "close": "关闭",
+    "open": "打开",
     "back": "返回",
     "help": "使用方法",
     "next": "下一步",
@@ -282,6 +388,8 @@
     "add_term": "添加学期",
     "term_success": "学期已创建",
     "term_error": "创建学期失败",
+    "term_academic_year_required": "请输入学年",
+    "term_has_timetables": "该学期下仍有课程表，无法删除。请先清理课程表",
     "no_period": "未定义节次",
     "no_term": "未定义学期",
     "current_week": "本周",
@@ -296,7 +404,19 @@
     "period_all": "所有课节",
     "period_number_placeholder": "课节编号",
     "period_suffix": "节",
-    "term_name_placeholder": "例: 第1学期"
+    "term_name_placeholder": "例: 第1学期",
+    "term_academic_year_range": "请输入 {min} 至 {max} 之间的学年",
+    "term_end_before_start": "结束日期必须晚于开始日期",
+    "term_date_overlap": "该学期的期间与其他学期重叠。请检查开始日期和结束日期",
+    "term_delete_confirm": "要删除学期“{name}”吗？此操作无法撤销。",
+    "term_delete_success": "已删除学期",
+    "term_load_error": "加载学期失败",
+    "team_term_hint": "这是本团队的学期。创建课程表时，从这里添加的学期中选择。",
+    "no_term_for_create": "还没有学期。请先在“学期”标签页中添加学期。",
+    "delete_timetable": "删除",
+    "delete_timetable_confirm": "要删除课程表“{name}”吗？此操作无法撤销。",
+    "delete_timetable_success": "已删除课程表",
+    "delete_timetable_error": "删除课程表失败"
   },
   "error": {
     "server": "服务器发生错误",
@@ -308,6 +428,8 @@
     "unauthorized": "请先登录",
     "section_load_failed": "该项目获取失败，请重新加载。",
     "unknown": "发生错误",
+    "TEAM_001": "未找到此团队。",
+    "TEAM_006": "此团队尚未删除，无法恢复。",
     "COMMON_001": "输入内容有误",
     "COMMON_002": "您没有执行此操作的权限",
     "COMMON_003": "已被其他用户更新，请刷新页面",
@@ -629,6 +751,7 @@
     }
   },
   "timeline": {
+    "refresh": "刷新",
     "detail": {
       "back": "返回",
       "loadFailed": "无法获取帖子",
@@ -1070,6 +1193,21 @@
     }
   },
   "project": {
+    "back_label": "项目列表",
+    "delete_aria": "删除{title}",
+    "delete_confirm": "确定要删除“{title}”吗？",
+    "delete_confirm_header": "确认删除",
+    "milestone_dialog": {
+      "add_title": "添加里程碑",
+      "edit_title": "编辑里程碑",
+      "title_label": "标题",
+      "title_placeholder": "里程碑名称",
+      "due_date_label": "截止日期",
+      "add": "添加"
+    },
+    "related_todo_no_due": "无截止日期",
+    "related_todo_no_assignee": "未分配负责人",
+    "related_todo_open": "打开待办详情",
     "milestones": "里程碑",
     "no_milestones": "暂无里程碑",
     "due_date": "截止日期",
@@ -1127,7 +1265,19 @@
       "none": "无",
       "custom_emoji": "自定义",
       "custom_color": "自定义颜色",
-      "current": "当前值"
+      "current": "当前值",
+      "colors": {
+        "blue": "蓝色",
+        "red": "红色",
+        "green": "绿色",
+        "amber": "琥珀色",
+        "violet": "紫色",
+        "pink": "粉色",
+        "cyan": "青色",
+        "teal": "蓝绿色",
+        "orange": "橙色",
+        "gray": "灰色"
+      }
     },
     "guide": {
       "button": "使用说明",
@@ -1179,7 +1329,10 @@
       "update_failed": "更新失败",
       "delete_failed": "删除失败",
       "status_change_failed": "更改状态失败",
-      "milestone_save_failed": "保存里程碑失败"
+      "milestone_save_failed": "保存里程碑失败",
+      "force_unlock_failed": "强制解锁失败",
+      "completion_mode_failed": "更改完成模式失败",
+      "gate_init_failed": "初始化关卡失败"
     },
     "status": {
       "active": "进行中",
@@ -1210,7 +1363,29 @@
   },
   "inviteToken": {
     "printQrPdf": "打印二维码PDF",
-    "printQrPdfError": "打印PDF失败"
+    "printQrPdfError": "打印PDF失败",
+    "title": "邀请链接",
+    "createNew": "新建邀请链接",
+    "createTitle": "创建邀请链接",
+    "role": "角色",
+    "expiry": "有效期",
+    "uses": "使用次数",
+    "inviteRole": "邀请角色",
+    "maxUses": "最多使用次数（留空表示不限）",
+    "empty": "暂无邀请链接",
+    "never": "永不过期",
+    "copy": "复制邀请链接",
+    "revoke": "撤销邀请链接",
+    "revokeConfirm": "确定要撤销此邀请链接吗？",
+    "createSuccess": "邀请链接已创建",
+    "createError": "创建邀请链接失败",
+    "revokeSuccess": "邀请链接已撤销",
+    "revokeError": "撤销邀请链接失败",
+    "copied": "邀请链接已复制",
+    "oneDay": "1天",
+    "sevenDays": "7天",
+    "thirtyDays": "30天",
+    "ninetyDays": "90天"
   },
   "visibilityTemplate": {
     "title": "可见范围模板",
@@ -1470,7 +1645,9 @@
     },
     "ws": {
       "disconnected": "连接已断开",
-      "reconnecting": "正在重新连接…"
+      "reconnecting": "正在重新连接…",
+      "denied": "您没有查看此看板的权限，实时更新已停止",
+      "unauthenticated": "登录已过期，实时更新已停止。请重新登录"
     },
     "validation": {
       "required": "此项为必填。",
@@ -1593,7 +1770,9 @@
       "more": "还有{count}项",
       "today": "今天",
       "dayDetail": {
-        "title": "{date} 的日程"
+        "title": "{date} 的日程",
+        "empty": "当天暂无日程",
+        "create": "添加当天日程"
       },
       "empty": "此期间没有日程",
       "view": {
@@ -2387,6 +2566,14 @@
     "SUPPORTERS_AND_ABOVE": "支持者及以上",
     "MEMBERS_AND_ABOVE": "成员及以上"
   },
+  "organization_visibility": {
+    "PUBLIC": "公开",
+    "PRIVATE": "限定公开"
+  },
+  "entity_create": {
+    "error_heading": "请检查输入内容",
+    "supporter_label": "启用支持者功能"
+  },
   "module_settings": {
     "enabled_count": "已启用的功能：{count} / {limit}",
     "fetch_error": "获取功能列表失败",
@@ -2446,6 +2633,21 @@
     }
   },
   "teamShell": {
+    "archive": {
+      "syncError": "更改已完成，但无法同步列表。请重新加载。",
+      "archive": "归档团队",
+      "unarchive": "取消团队归档",
+      "archiveConfirm": "要归档此团队吗？待处理的加入申请和邀请将被取消，已生效的加入关系将保留。归档后将无法查看团队详情。您可以在团队列表的已归档团队中取消归档。",
+      "unarchiveConfirm": "要取消团队归档吗？已取消的加入申请和邀请以及已失效的邀请链接不会恢复。",
+      "archived": "团队已归档",
+      "unarchived": "团队已取消归档",
+      "changed": "团队状态或操作权限已更改，请重新加载列表。",
+      "listTitle": "已归档团队",
+      "showList": "显示已归档团队",
+      "hideList": "关闭列表",
+      "fetchError": "无法加载已归档团队。",
+      "empty": "没有已归档团队。"
+    },
     "tab": {
       "affiliations": "所属组织",
       "permissionGroups": "权限组",
@@ -2887,5 +3089,254 @@
     "generic_title": "发生了错误",
     "generic_description": "请稍后再试。如果问题仍然存在，请联系管理员。",
     "back_home": "返回首页"
+  },
+  "loyalty": {
+    "memberQr": {
+      "title": "会员二维码",
+      "expiresIn": "剩余{seconds}秒",
+      "expired": "请刷新二维码",
+      "disabled": "此会员卡已停用或撤销，不会自动重新发行。"
+    },
+    "wallet": {
+      "title": "团队积分",
+      "empty": "暂无团队积分"
+    },
+    "balance": "{points}积分",
+    "remaining": "还需{points}积分",
+    "lifetime": "累计获得{points}积分",
+    "refresh": "刷新",
+    "more": "继续查看",
+    "confirm": "确认内容并提交",
+    "retrySame": "重试同一请求",
+    "save": "保存",
+    "saved": "已保存",
+    "cancel": "返回",
+    "name": "名称",
+    "description": "说明（可选）",
+    "active": "启用",
+    "externalCards": "开始使用外部积分卡",
+    "history": {
+      "title": "积分记录",
+      "award": "积分增加",
+      "redeem": "兑换奖励",
+      "empty": "暂无记录"
+    },
+    "audience": {
+      "title": "积分对象",
+      "allAuthenticated": "所有已登录个人（含非成员）",
+      "supportersAndAbove": "支持者及以上",
+      "membersAndAbove": "成员及以上"
+    },
+    "rule": {
+      "title": "积分规则",
+      "amount": "每次积分",
+      "points": "每次{points}积分",
+      "frequency": "频率",
+      "frequencyDaily": "每天一次（日本时间）",
+      "frequencyStaff": "每次员工确认",
+      "selfEnabled": "允许本人扫描接待二维码",
+      "selfDailyOnly": "自助接待仅支持每日一次规则"
+    },
+    "reward": {
+      "title": "奖励",
+      "add": "添加奖励",
+      "amount": "所需积分",
+      "required": "使用{points}积分兑换",
+      "confirm": "使用{points}积分兑换{reward}"
+    },
+    "scan": {
+      "title": "积分接待",
+      "camera": "使用相机扫描会员二维码",
+      "cameraDenied": "无法使用相机。请检查相机权限后重试。",
+      "confirmAward": "在{team}增加{points}积分",
+      "success": "积分操作完成",
+      "next": "开始下一次接待"
+    },
+    "self": {
+      "confirm": "确认接待信息",
+      "rescan": "请重新扫描接待二维码"
+    },
+    "error": {
+      "uncertain": "结果尚未确认。请重试同一请求。",
+      "alreadyAwarded": "今日已获得积分",
+      "ineligible": "目前不符合积分条件",
+      "changed": "内容已变更，请重新确认。",
+      "insufficient": "积分不足"
+    },
+    "program": {
+      "disabled": "积分计划已停用",
+      "closedTeam": "已关闭的团队"
+    },
+    "settings": {
+      "title": "团队积分设置",
+      "enabled": "启用积分计划"
+    },
+    "mode": {
+      "title": "自助接待模式",
+      "staffApproval": "员工审批（批准前不增加积分）",
+      "auto": "自动积分",
+      "autoWarning": "固定二维码可能被拍摄并远程重复使用。每日一次限制不能证明实际到访。"
+    },
+    "reception": {
+      "title": "积分接待二维码",
+      "location": "接待地点",
+      "newLocation": "新接待地点名称",
+      "create": "创建接待地点",
+      "preview": "预览二维码",
+      "print": "打印或分享",
+      "stop": "停用接待地点",
+      "sharedLocationStopWarning": "停用此地点也会停止签到。仅停止积分时请停用积分计划。",
+      "printTitle": "积分接待",
+      "printInstructions": "扫描、登录并确认内容后提交。每天一次（日本时间）。"
+    },
+    "requests": {
+      "title": "接待申请",
+      "empty": "暂无接待申请",
+      "submitted": "申请已提交（尚未增加积分）",
+      "code": "核对码：{code}",
+      "expiresAt": "有效期：{datetime}（日本时间午夜提前截止）",
+      "showStaff": "请向员工出示本人屏幕进行核对",
+      "approve": "批准并增加积分",
+      "reject": "拒绝",
+      "cancel": "取消申请",
+      "compareBeforeApprove": "批准前请核对申请人屏幕的名称和核对码",
+      "enterCode": "申请人屏幕上的核对码",
+      "moreCandidates": "此范围无有效申请，继续查看",
+      "selfApprovalForbidden": "无法批准此申请。请将本人申请出示给其他员工。",
+      "all": "所有状态",
+      "deletedUser": "已注销用户",
+      "closedLocation": "已关闭的接待地点",
+      "reapply": "确认当前内容后重新申请",
+      "status": {
+        "pending": "待审批",
+        "approved": "已批准",
+        "cancelled": "已取消",
+        "rejected": "已拒绝",
+        "expired": "已过期",
+        "invalidated": "已失效",
+        "superseded": "已通过其他途径积分"
+      },
+      "reason": {
+        "userCancelled": "申请人已取消",
+        "staffRejected": "员工已拒绝",
+        "ttlExpired": "已超过有效期",
+        "dayChanged": "日本时间日期已变更",
+        "versionChanged": "设置或规则已变更",
+        "locationInactive": "接待地点已停用",
+        "teamInactive": "团队已停用",
+        "userInactive": "用户已停用",
+        "ineligible": "不再符合积分条件",
+        "dailyAwarded": "今日已获得积分",
+        "pointLimit": "已达积分上限"
+      }
+    }
+  },
+  "budget_accounting": {
+    "title": "预算与会计",
+    "add_year": "添加会计年度",
+    "fiscal_year": "会计年度",
+    "default_name": "{year}会计年度",
+    "name": "年度名称（必填）",
+    "name_placeholder": "例如：2026会计年度",
+    "start_date": "开始日期（必填）",
+    "end_date": "结束日期（必填）",
+    "add": "添加",
+    "created": "已添加会计年度",
+    "empty_years": "暂无会计年度",
+    "empty_years_hint": "请通过“添加会计年度”登记需要汇总的期间。",
+    "totalIncome": "收入",
+    "totalExpense": "支出",
+    "balance": "余额",
+    "categories": "各科目的预算与实际金额",
+    "empty_categories": "本会计年度暂无科目",
+    "budget_amount": "预算 {amount}",
+    "actual_amount": "实际 {amount}",
+    "execution_rate": "预算使用率 {rate}%",
+    "validation": {
+      "name_required": "请输入年度名称。",
+      "name_max": "年度名称不得超过100个字符。",
+      "date_required": "请输入日期。",
+      "date_order": "结束日期必须晚于开始日期。"
+    }
+  },
+  "budget_guide": {
+    "title": "预算与会计使用指南",
+    "description": "选择会计年度，查看该期间的收入、支出和各科目的预算。本页面供管理员、副管理员等拥有查看权限的用户使用。普通成员无法查看。如需访问，请联系管理员。",
+    "what": {
+      "title": "什么是会计年度",
+      "body": "用于集中查看收支的期间。您可以根据团队活动设置开始和结束日期，不必限定为4月至次年3月。",
+      "steps": {
+        "step1": "首先查看页面顶部的年度列表，确认是否已有需要查看的期间。"
+      }
+    },
+    "create": {
+      "title": "添加会计年度",
+      "body": "管理员和副管理员可以操作。添加的是用于汇总收支的会计年度，而不是科目。",
+      "steps": {
+        "step1": "点击“添加会计年度”。",
+        "step2": "输入年度名称（1至100个字符，不能仅为空白）、开始日期和结束日期。结束日期必须晚于开始日期。",
+        "step3": "点击“添加”。成功后将选中新会计年度。如果尚未登记收支或科目，汇总金额显示为0日元，科目显示为未登记。"
+      }
+    },
+    "switch": {
+      "title": "切换会计年度",
+      "body": "选择页面顶部的年度名称，即可切换到该年度的汇总。",
+      "steps": {
+        "step1": "点击需要查看的年度名称。",
+        "step2": "加载完成后，查看收入、支出、余额及科目。"
+      }
+    },
+    "summary": {
+      "title": "了解汇总与科目",
+      "body": "收入是收到的钱，支出是花费的钱，余额是收入减去支出的金额。科目按资金用途分类。",
+      "steps": {
+        "step1": "每个科目的“预算”是计划金额，“实际”是已记录的金额。",
+        "step2": "“预算使用率”是实际金额占预算的比例。超过100%时以红色显示。",
+        "step3": "本页面可以添加会计年度，不能创建科目或直接录入收支。"
+      }
+    },
+    "trouble": {
+      "title": "遇到问题时",
+      "body": "没有数据和加载失败会显示不同的内容。",
+      "steps": {
+        "step1": "如果显示“暂无会计年度”，请通过“添加会计年度”登记第一个期间。",
+        "step2": "发生通信错误时，请点击“重试”。发生权限错误时，请联系团队管理员。",
+        "step3": "添加失败时，输入内容仍会保留。请检查显示的原因和输入内容，然后再次点击“添加”。"
+      }
+    }
+  },
+  "feature_display": {
+    "title": "常规功能显示",
+    "description": "整理导航入口和主页显示。直接链接和功能API的权限保持不变。管理员的常规视图不受影响。",
+    "feature": "功能",
+    "member": "向成员显示",
+    "supporter": "向支持者显示",
+    "member_label": "向成员显示{feature}",
+    "supporter_label": "向支持者显示{feature}",
+    "save_success": "显示设置已保存",
+    "nav": "导航"
+  },
+  "secret_token": {
+    "issued_dialog": {
+      "title": "链接已生成",
+      "once_warning": "此链接仅在此时显示。关闭后将不会再次显示。请先分享给需要的人，再关闭此窗口。",
+      "url_label": "已生成的链接",
+      "copy": "复制",
+      "copied": "已复制",
+      "copy_failed": "复制失败，请手动选择并复制链接",
+      "qr_label": "二维码",
+      "close": "关闭",
+      "pdf_download": "将二维码保存为 PDF"
+    },
+    "list": {
+      "not_shown_hint": "出于安全考虑，已生成的链接不会再次显示。如有需要，请重新生成。",
+      "revoked_by_migration": "因安全升级已失效",
+      "reissue": "重新生成",
+      "reissue_hint": "重新生成后会创建新链接，旧链接将无法使用。",
+      "label_with_id": "链接 #{id}",
+      "created_at": "生成时间",
+      "expires_at": "有效期限",
+      "used_count": "使用次数"
+    }
   }
 }

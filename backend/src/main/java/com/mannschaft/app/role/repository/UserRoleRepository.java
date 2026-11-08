@@ -22,6 +22,20 @@ import java.util.Set;
  */
 public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> {
 
+    /** 全体SYSTEM_ADMINを含まない当該TEAMの明示管理権限。 */
+    interface TeamAdminKeyRow {
+        Long getTeamId();
+        Long getUserId();
+    }
+
+    @Query("SELECT DISTINCT ur.teamId AS teamId, ur.userId AS userId "
+            + "FROM UserRoleEntity ur JOIN RoleEntity r ON r.id = ur.roleId "
+            + "WHERE ur.teamId IN :teamIds AND ur.userId IN :userIds "
+            + "AND ur.organizationId IS NULL AND r.name IN ('ADMIN', 'DEPUTY_ADMIN')")
+    List<TeamAdminKeyRow> findExplicitTeamAdminKeys(
+            @Param("teamIds") Collection<Long> teamIds, @Param("userIds") Collection<Long> userIds);
+
+
     /**
      * F03.16 §4.5.0 段1 — <b>1 スコープ × 複数ユーザー</b>の権限ロール一括解決（TEAM）。
      *
@@ -108,6 +122,17 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     Page<UserRoleEntity> findByOrganizationId(Long organizationId, Pageable pageable);
 
     Page<UserRoleEntity> findByTeamId(Long teamId, Pageable pageable);
+
+    /**
+     * 複数チームの user_roles 行を 1 クエリで取得する（CMP-261103-1225。{@link #findByTeamId} の一括版）。
+     *
+     * <p>チームごとに {@link #findByTeamId} を呼ぶとチーム数ぶんクエリが出る（N+1）。
+     * 並びはチーム ID・行 ID の昇順で、チーム単位に切り分けると {@link #findByTeamId} を
+     * チームごとに呼んだときと同じ行順になる。</p>
+     *
+     * @param teamIds 対象チーム ID（空を渡してはならない。呼び出し側で早期 return すること）
+     */
+    List<UserRoleEntity> findByTeamIdInOrderByTeamIdAscIdAsc(Collection<Long> teamIds);
 
     List<UserRoleEntity> findByUserIdAndTeamIdIsNotNull(Long userId);
 
@@ -2680,6 +2705,25 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             nativeQuery = true)
     List<Long> findDeputyAdminUserIdsByTeamIdAndPermission(@Param("teamId") Long teamId,
                                                             @Param("permissionName") String permissionName);
+
+    /**
+     * 指定チーム群のうち、指定ユーザーが ADMIN であるチーム ID を返す（F10.7 業務アラートの N+1 解消用）。
+     *
+     * <p>{@link #findAdminUserIdsByTeamId} をチームごとに呼んで {@code contains(userId)} を判定していたのを
+     * 1 クエリにまとめる。条件（ADMIN・非削除・ACTIVE ユーザー）は同メソッドと同一。
+     * 呼び出し側は {@code teamIds} が空の場合に本メソッドを呼ばないこと。</p>
+     */
+    @Query(value =
+            "SELECT DISTINCT ur.team_id FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE ur.user_id = :userId " +
+            "AND ur.team_id IN (:teamIds) " +
+            "AND r.name = 'ADMIN' " +
+            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+            nativeQuery = true)
+    List<Long> findAdminTeamIdsByUserIdAndTeamIds(@Param("userId") Long userId,
+                                                  @Param("teamIds") Collection<Long> teamIds);
 
     /**
      * F00.5 フェーズ 3 — {@link com.mannschaft.app.membership.batch.MembershipConsistencyChecker} 用:

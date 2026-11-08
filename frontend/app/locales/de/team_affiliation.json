@@ -77,7 +77,12 @@
     "restriction": {
       "kind_COOLDOWN": "In der Sperrfrist (bis {until})",
       "kind_BLOCK": "Blockiert",
-      "lift": "Aufheben"
+      "lift": "Aufheben",
+      "reason_REJECTED": "Antrag abgelehnt",
+      "reason_DECLINED": "Einladung abgelehnt",
+      "reason_WITHDRAWN": "Antrag zurückgezogen",
+      "reason_CANCELLED": "Einladung zurückgenommen",
+      "reason_UNKNOWN": "Anderer Grund"
     },
     "leave": {
       "button": "Diese Organisation verlassen",

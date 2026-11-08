@@ -15,6 +15,7 @@ import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
+import com.mannschaft.app.common.token.PlaintextSecretRequired;
 
 /**
  * LINE BOT設定エンティティ。
@@ -47,6 +48,7 @@ public class LineBotConfigEntity extends BaseEntity {
     @Builder.Default
     private Integer encryptionKeyVersion = 1;
 
+    @PlaintextSecretRequired(reason = "LINE の Webhook 署名検証（HMAC）に平文の鍵が要るため。暗号化保管の棚卸しは別 CMP で扱う")
     @Column(nullable = false, length = 64)
     private String webhookSecret;
 

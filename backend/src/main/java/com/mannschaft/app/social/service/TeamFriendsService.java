@@ -16,8 +16,7 @@ import com.mannschaft.app.social.entity.TeamFriendEntity;
 import com.mannschaft.app.social.repository.FollowRepository;
 import com.mannschaft.app.social.repository.FriendContentForwardRepository;
 import com.mannschaft.app.social.repository.TeamFriendRepository;
-import com.mannschaft.app.team.entity.TeamEntity;
-import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.timeline.PostScopeType;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
@@ -80,7 +79,7 @@ public class TeamFriendsService {
     private final TeamFriendRepository teamFriendRepository;
     private final FriendContentForwardRepository friendContentForwardRepository;
     private final TimelinePostRepository timelinePostRepository;
-    private final TeamRepository teamRepository;
+    private final TeamService teamService;
     private final AccessControlService accessControlService;
     private final AuditLogService auditLogService;
     private final TeamFriendQueryService teamFriendQueryService;
@@ -141,9 +140,11 @@ public class TeamFriendsService {
         // 2. 権限チェック（ADMIN または MANAGE_FRIEND_TEAMS 保持 DEPUTY_ADMIN）
         requireManageFriendTeams(userId, teamId);
 
-        // 3. 対象チームの存在確認（論理削除済みは @SQLRestriction により自動除外）
-        TeamEntity targetTeam = teamRepository.findById(targetTeamId)
-                .orElseThrow(() -> new BusinessException(SocialErrorCode.FRIEND_TARGET_TEAM_NOT_FOUND));
+        // 3. フォロー先の可否確認。不在・論理削除済み・アーカイブ済み・ACTIVE 以外（PROVISIONED）は
+        //    いずれも存在しないものとして 404 にする（判定は team ドメインの公開 Service に委ねる。CMP-261012-0315）
+        if (!teamService.isFollowableTeam(targetTeamId)) {
+            throw new BusinessException(SocialErrorCode.FRIEND_TARGET_TEAM_NOT_FOUND);
+        }
 
         // 4. 重複フォローチェック
         if (followRepository.existsByFollowerTypeAndFollowerIdAndFollowedTypeAndFollowedId(

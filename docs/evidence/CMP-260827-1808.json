@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260827-1808",
+  "scope": "app",
+  "implementation": { "pr": 4250, "sha": "03df7a7059eb5cd05d410634dace82eda270807b" },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "空DBからFlywayが通り(V255)、途中失敗後も再適用でき、現役所属の一意と100村上限がDB制約として張られる",
+      "tests": [
+        { "name": "FlywayFromScratchMigrationTest", "evidence": "backend/src/test/java/com/mannschaft/app/common/migration/FlywayFromScratchMigrationTest.java" },
+        { "name": "途中失敗後の再適用は冪等に完走する", "evidence": "backend/src/test/java/com/mannschaft/app/village/migration/VillageMembershipSlotMigrationTest.java" }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "既存の現役重複・101村所属を移行SQLが自動是正して制約が張れる",
+      "tests": [
+        { "name": "VillageMembershipSlotMigrationTest", "evidence": "backend/src/test/java/com/mannschaft/app/village/migration/VillageMembershipSlotMigrationTest.java" }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "同一ユーザーの同一村への同時入村は、招待・FREE参加・参加申請の全経路で現役1件",
+      "tests": [
+        { "name": "入村_同一村への同時入村は経路を問わず現役1件", "evidence": "backend/src/test/java/com/mannschaft/app/village/service/VillageMembershipAdmissionTransactionIT.java" }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "99村所属者が別々の村へ同時入村しても100村を超えず、100村ちょうどは成功し101村目は拒否される",
+      "tests": [
+        { "name": "入村_同USERの異なる入口を独立TXで競合させる", "evidence": "backend/src/test/java/com/mannschaft/app/village/service/VillageMembershipAdmissionTransactionIT.java" },
+        { "name": "百枠占有_全経路で上限拒否", "evidence": "backend/src/test/java/com/mannschaft/app/village/service/VillageMembershipAdmissionTransactionIT.java" }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "途中失敗で招待使用回数が巻き戻り、DB制約違反は500でなく業務コードへ写像される",
+      "tests": [
+        { "name": "admitMapsConstraintViolation", "evidence": "backend/src/test/java/com/mannschaft/app/village/service/VillageMembershipSlotServiceTest.java" }
+      ]
+    },
+    {
+      "id": "AC-6",
+      "description": "他人のsubjectIdでの参加は403、BAN済み主体は退村扱いの行でも再参加できない",
+      "tests": [
+        { "name": "BAN済み主体の再参加は拒否する", "evidence": "backend/src/test/java/com/mannschaft/app/village/service/VillageMembershipAdmissionTransactionIT.java" },
+        { "name": "bannedHistoryRejectsRejoin", "evidence": "backend/src/test/java/com/mannschaft/app/village/service/VillageMembershipSlotServiceTest.java" }
+      ]
+    }
+  ],
+  "ci": [{ "runId": 41601750835 }, { "runId": 41601751056 }],
+  "stages": {
+    "review": { "status": "passed", "evidence": "https://github.com/kenta-0420/mannschaft/pull/4250" },
+    "real": { "status": "passed", "evidence": "docs/evidence/CMP-260827-1808-real.md" },
+    "exploratory": { "status": "passed", "evidence": "docs/evidence/CMP-260827-1808-exploratory.md" }
+  },
+  "regressions": [
+    {
+      "description": "V1: 業務コード付き429(VILLAGE_012)で、個別のエラー表示に加え共通の「操作が集中しています」トーストが重なっていた",
+      "test": "業務固有コード付き 429（VILLAGE_012）では共通トーストを出さない",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/pull/4330",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/42238739737"
+    }
+  ]
+}

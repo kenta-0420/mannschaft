@@ -10,6 +10,8 @@ interface SettingsHubItem {
   description: string
   icon: string
   to: string
+  /** 検索だけに効かせる追加語（ラベル・説明に出ない言い方でも見つけられるようにする）。 */
+  keywords?: string
 }
 
 /**
@@ -42,6 +44,7 @@ const individualItems = computed<SettingsHubItem[]>(() => [
     description: t('settings.hub.security.description'),
     icon: 'pi pi-shield',
     to: '/settings/security',
+    keywords: t('settings.hub.security.keywords'),
   },
   {
     // account.vue の SettingsEmailSection と同じキー。
@@ -241,7 +244,10 @@ const allItems = computed<SettingsHubItem[]>(() => [accountItem.value, ...indivi
 const searchResults = computed(() => {
   const q = searchQuery.value.toLowerCase()
   return allItems.value.filter(
-    (item) => item.label.toLowerCase().includes(q) || item.description.toLowerCase().includes(q),
+    (item) =>
+      item.label.toLowerCase().includes(q)
+      || item.description.toLowerCase().includes(q)
+      || (item.keywords ?? '').toLowerCase().includes(q),
   )
 })
 </script>
@@ -254,6 +260,8 @@ const searchResults = computed(() => {
       <InputIcon class="pi pi-search" />
       <InputText v-model="searchQuery" :placeholder="t('settings.hub.searchPlaceholder')" class="w-full" />
     </IconField>
+
+    <SettingsRanchSection class="mb-6" />
 
     <!-- 検索結果モード -->
     <template v-if="isSearching">

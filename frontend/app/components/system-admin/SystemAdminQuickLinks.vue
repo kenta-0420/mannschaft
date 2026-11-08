@@ -13,6 +13,20 @@ interface QuickLink {
 
 const quickLinks: QuickLink[] = [
   {
+    label: t('deletedTeams.title'),
+    icon: 'pi pi-history',
+    to: '/system-admin/teams/deleted',
+    color: 'text-indigo-500',
+    bg: 'bg-indigo-50 dark:bg-indigo-900/20',
+  },
+  {
+    label: t('ranch.admin.title'),
+    icon: 'pi pi-sliders-h',
+    to: '/system-admin/ranch',
+    color: 'text-green-500',
+    bg: 'bg-green-50 dark:bg-green-900/20',
+  },
+  {
     label: t('admin.quickLinks.announcements'),
     icon: 'pi pi-megaphone',
     to: '/admin/announcements',
@@ -235,6 +249,13 @@ const quickLinks: QuickLink[] = [
     to: '/admin/appeals',
     color: 'text-red-500',
     bg: 'bg-red-50 dark:bg-red-900/20',
+  },
+  {
+    label: t('email_outbox.title'),
+    icon: 'pi pi-envelope',
+    to: '/system-admin/email-outbox',
+    color: 'text-blue-500',
+    bg: 'bg-blue-50 dark:bg-blue-900/20',
   },
 ]
 </script>

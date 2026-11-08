@@ -77,7 +77,12 @@
     "restriction": {
       "kind_COOLDOWN": "En período de espera (hasta {until})",
       "kind_BLOCK": "Bloqueado",
-      "lift": "Levantar"
+      "lift": "Levantar",
+      "reason_REJECTED": "Solicitud rechazada",
+      "reason_DECLINED": "Invitación declinada",
+      "reason_WITHDRAWN": "Solicitud retirada",
+      "reason_CANCELLED": "Invitación cancelada",
+      "reason_UNKNOWN": "Otro motivo"
     },
     "leave": {
       "button": "Salir de esta organización",

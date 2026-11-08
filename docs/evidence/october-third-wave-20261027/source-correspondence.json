@@ -1,0 +1,433 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-10-27T05:00:38.203Z",
+  "status": "0743-0632-2338-adopted",
+  "method": "read-only git diff and git ls-tree; exact Git blob identity per net PR target path",
+  "runtimeSourceHead": "d3d6d05f942cf1fcb7a5a77352d1593092e1c30d",
+  "runtimeBaseMain": "ef1e9e2ad2de973efba29f5ee380d03a8b60196e",
+  "lastSourceComparisonBaseMain": "5ffeb70d989dc9514594807260633d8681efe020",
+  "wholeRuntimeIdentity": false,
+  "implementations": [
+    {
+      "cmpId": "CMP-261002-0743",
+      "pr": 4143,
+      "head": "89f8a436354113d7e1affe101af0d06e86c10e68",
+      "expected": 14,
+      "files": [
+        {
+          "path": ".github/workflows/frontend-ci.yml",
+          "runtimeBlob": "42d6036f4252d56958478147d3993b0a33f27fea",
+          "implementationBlob": "42d6036f4252d56958478147d3993b0a33f27fea",
+          "equal": true
+        },
+        {
+          "path": "frontend/app/components/TournamentEntryModal.errors.spec.ts",
+          "runtimeBlob": "7d828e97859b29bbb452bb1857170fcb58299647",
+          "implementationBlob": "7d828e97859b29bbb452bb1857170fcb58299647",
+          "equal": true
+        },
+        {
+          "path": "frontend/app/components/TournamentEntryModal.vue",
+          "runtimeBlob": "06286c873ee5e43e638adac5160e9b8e8f6df4c3",
+          "implementationBlob": "06286c873ee5e43e638adac5160e9b8e8f6df4c3",
+          "equal": true
+        },
+        {
+          "path": "frontend/app/composables/useErrorHandler.tournament.spec.ts",
+          "runtimeBlob": "9b5de5f33bbae7c7d6b5be1a32534c7ce93c1862",
+          "implementationBlob": "9b5de5f33bbae7c7d6b5be1a32534c7ce93c1862",
+          "equal": true
+        },
+        {
+          "path": "frontend/app/composables/useErrorHandler.ts",
+          "runtimeBlob": "b8fc4424848a3004ad1a958c7a1c67db4c3c9719",
+          "implementationBlob": "b8fc4424848a3004ad1a958c7a1c67db4c3c9719",
+          "equal": true
+        },
+        {
+          "path": "frontend/app/locales/de/tournament.json",
+          "runtimeBlob": "b5e33996b658b845445c261ae2b4b4d7deb01c77",
+          "implementationBlob": "b5e33996b658b845445c261ae2b4b4d7deb01c77",
+          "equal": true
+        },
+        {
+          "path": "frontend/app/locales/en/tournament.json",
+          "runtimeBlob": "7b83871e8a77c4179e992d1ccc8fe31a0568f2bd",
+          "implementationBlob": "7b83871e8a77c4179e992d1ccc8fe31a0568f2bd",
+          "equal": true
+        },
+        {
+          "path": "frontend/app/locales/es/tournament.json",
+          "runtimeBlob": "50e774bc69acdcb8023d6de71364491141836273",
+          "implementationBlob": "50e774bc69acdcb8023d6de71364491141836273",
+          "equal": true
+        },
+        {
+          "path": "frontend/app/locales/ja/tournament.json",
+          "runtimeBlob": "a8d61a3919348a25cfa6d234e942f1a5cab59636",
+          "implementationBlob": "a8d61a3919348a25cfa6d234e942f1a5cab59636",
+          "equal": true
+        },
+        {
+          "path": "frontend/app/locales/ko/tournament.json",
+          "runtimeBlob": "d201838f448d086bc97a987db8391b01ff273649",
+          "implementationBlob": "d201838f448d086bc97a987db8391b01ff273649",
+          "equal": true
+        },
+        {
+          "path": "frontend/app/locales/zh/tournament.json",
+          "runtimeBlob": "5b6e9418c9fe9feccdbefd4c06d18722fa997fb3",
+          "implementationBlob": "5b6e9418c9fe9feccdbefd4c06d18722fa997fb3",
+          "equal": true
+        },
+        {
+          "path": "frontend/tests/e2e/real/tournament/cmp0743-entry-errors.real.spec.ts",
+          "runtimeBlob": "c7866a5b69b5d87377a5aac685c5bd0143773ff1",
+          "implementationBlob": "c7866a5b69b5d87377a5aac685c5bd0143773ff1",
+          "equal": true
+        },
+        {
+          "path": "frontend/tests/unit/helpers/tournamentErrorContract.spec.ts",
+          "runtimeBlob": "753331caa050f42f9d50ea3d4ec10fc49d9a683d",
+          "implementationBlob": "753331caa050f42f9d50ea3d4ec10fc49d9a683d",
+          "equal": true
+        },
+        {
+          "path": "frontend/tests/unit/helpers/tournamentErrorContract.ts",
+          "runtimeBlob": "fe0a6b48f3febdfa16ac90019c7b6b0b813a933e",
+          "implementationBlob": "fe0a6b48f3febdfa16ac90019c7b6b0b813a933e",
+          "equal": true
+        }
+      ],
+      "allTargetBlobsEqual": true,
+      "merge": {
+        "commit": "13b3698b1ac4d2c1ea0fa4491e0ab9847314ba7d",
+        "mergedAt": "2026-10-27T02:05:57Z",
+        "state": "MERGED"
+      },
+      "ci": [
+        {
+          "runId": 40434525496,
+          "headSha": "89f8a436354113d7e1affe101af0d06e86c10e68",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "runId": 40434525520,
+          "headSha": "89f8a436354113d7e1affe101af0d06e86c10e68",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "runId": 40435673624,
+          "headSha": "89f8a436354113d7e1affe101af0d06e86c10e68",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ],
+      "verification": "GitHub CLI pr view and individual run view by root/wave3_completion_prepare",
+      "comparisonBase": "fbca619e6522dfb5e5e7b3820b9069f4a2caae1b"
+    },
+    {
+      "cmpId": "CMP-261006-0632",
+      "pr": 4160,
+      "head": "903064839a1181d638259ff7d33ca6674c698768",
+      "status": "merged-and-at-merge-eligible",
+      "ci": [
+        {
+          "runId": 40449570283,
+          "headSha": "903064839a1181d638259ff7d33ca6674c698768",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "runId": 40449570170,
+          "headSha": "903064839a1181d638259ff7d33ca6674c698768",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "runId": 40449569970,
+          "headSha": "903064839a1181d638259ff7d33ca6674c698768",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ],
+      "historicalTargetCorrespondence": {
+        "pr": 4145,
+        "head": "0c5b1bed3be1d08379addf6dee3c382cc7b76817",
+        "comparisonBase": "5ffeb70d989dc9514594807260633d8681efe020",
+        "net": {
+          "files": 4,
+          "additions": 449,
+          "deletions": 1
+        },
+        "files": [
+          {
+            "path": "frontend/app/pages/organizations/[slug].vue",
+            "runtimeBlob": "75166c1350ac1ba2c34cccaea13282b183afec55",
+            "implementationBlob": "75166c1350ac1ba2c34cccaea13282b183afec55",
+            "equal": true
+          },
+          {
+            "path": "frontend/app/pages/teams/[slug].moved.spec.ts",
+            "runtimeBlob": "381a1f964e1b8ff4abaaf4a663da26dd1bd73805",
+            "implementationBlob": "381a1f964e1b8ff4abaaf4a663da26dd1bd73805",
+            "equal": true
+          },
+          {
+            "path": "frontend/app/pages/teams/[slug].vue",
+            "runtimeBlob": "a220c5d52ce5360c8f6672c7aa7b333313116bc8",
+            "implementationBlob": "a220c5d52ce5360c8f6672c7aa7b333313116bc8",
+            "equal": true
+          },
+          {
+            "path": "frontend/tests/e2e/real/scope-shell-moved.real.spec.ts",
+            "runtimeBlob": "ff520a1ccbd2a14568637c41f63193f0100b5466",
+            "implementationBlob": "ff520a1ccbd2a14568637c41f63193f0100b5466",
+            "equal": true
+          }
+        ],
+        "allTargetBlobsEqual": true,
+        "meaning": "Historical code correspondence only. PR4145 is ineligible completion evidence; compare new adoption PR again."
+      },
+      "rejectedAdoption": {
+        "pr": 4145,
+        "head": "0c5b1bed3be1d08379addf6dee3c382cc7b76817",
+        "mergeCommit": "fa8a6c6657ec486faed88fe4649d4059eb8b522d",
+        "mergedAt": "2026-10-27T03:22:37Z",
+        "method": "normal --auto, no --admin",
+        "reason": "Frontend/E2E/Lighthouse checks still running at merge. Trusted summarizeImplementationChecks rejects at-merge pending; later success cannot repair this adoption."
+      },
+      "repair": {
+        "status": "completed-with-new-adoption",
+        "revertPR": 4157,
+        "adoptionPR": 4160,
+        "adoptionHead": "903064839a1181d638259ff7d33ca6674c698768",
+        "mergeCommit": "6011154897ad62d6281da749b994fc754773d42e",
+        "mergedAt": "2026-10-27T04:52:59Z",
+        "meaning": "Old PR4145 remains ineligible. New PR4160 was merged after every check finished; trusted at-merge check passed."
+      },
+      "files": [
+        {
+          "path": "frontend/app/pages/organizations/[slug].vue",
+          "runtimeBlob": "75166c1350ac1ba2c34cccaea13282b183afec55",
+          "implementationBlob": "75166c1350ac1ba2c34cccaea13282b183afec55",
+          "equal": true
+        },
+        {
+          "path": "frontend/app/pages/teams/[slug].moved.spec.ts",
+          "runtimeBlob": "381a1f964e1b8ff4abaaf4a663da26dd1bd73805",
+          "implementationBlob": "381a1f964e1b8ff4abaaf4a663da26dd1bd73805",
+          "equal": true
+        },
+        {
+          "path": "frontend/app/pages/teams/[slug].vue",
+          "runtimeBlob": "a220c5d52ce5360c8f6672c7aa7b333313116bc8",
+          "implementationBlob": "a220c5d52ce5360c8f6672c7aa7b333313116bc8",
+          "equal": true
+        },
+        {
+          "path": "frontend/tests/e2e/real/scope-shell-moved.real.spec.ts",
+          "runtimeBlob": "ff520a1ccbd2a14568637c41f63193f0100b5466",
+          "implementationBlob": "ff520a1ccbd2a14568637c41f63193f0100b5466",
+          "equal": true
+        }
+      ],
+      "allTargetBlobsEqual": true,
+      "merge": {
+        "commit": "6011154897ad62d6281da749b994fc754773d42e",
+        "mergedAt": "2026-10-27T04:52:59Z",
+        "state": "MERGED"
+      },
+      "atMerge": {
+        "eligible": true,
+        "checks": 21,
+        "success": 14,
+        "skipped": 7,
+        "evidence": ".claude/runtime/october-third-wave-20261026/at-merge-audit-4160.json"
+      }
+    }
+  ],
+  "sourceDifferences": {
+    "prefetch": {
+      "fromMain": "ef1e9e2ad2de973efba29f5ee380d03a8b60196e",
+      "toMain": "fbca619e6522dfb5e5e7b3820b9069f4a2caae1b",
+      "files": [
+        {
+          "path": "frontend/README.md",
+          "additions": 4,
+          "deletions": 0,
+          "runtimeBlob": "f787de935cc94b1f972d568cc0aa76ef006f4d00",
+          "latestMainBlob": "45509163055dc1cef02acff52d19dd066273b442",
+          "runtimeExists": true
+        },
+        {
+          "path": "frontend/nuxt.config.ts",
+          "additions": 10,
+          "deletions": 0,
+          "runtimeBlob": "3410e49e6be77b7c54b1be3878e44c4d36dd63f9",
+          "latestMainBlob": "40d779251e6e7af90c14e450885bba719851e0b3",
+          "runtimeExists": true
+        },
+        {
+          "path": "frontend/tests/unit/build/manifest-prefetch.spec.ts",
+          "additions": 71,
+          "deletions": 0,
+          "runtimeBlob": null,
+          "latestMainBlob": "bc674eec5b0ac2350f88efb6038e8737badd80ab",
+          "runtimeExists": false
+        }
+      ],
+      "net": {
+        "files": 3,
+        "additions": 85,
+        "deletions": 0
+      }
+    },
+    "dashboard": {
+      "fromMain": "d96c2fc4afccc1efa680d81ac6bce28f95403956",
+      "toMain": "c6f33de14d2bb07d01449e8cc5f4144bc8d7e167",
+      "files": [
+        {
+          "path": "frontend/README.md",
+          "additions": 5,
+          "deletions": 0,
+          "runtimeBlob": "f787de935cc94b1f972d568cc0aa76ef006f4d00",
+          "latestMainBlob": "5838b7e350ff5bd455018fd5a1aa80e2e8a26eff",
+          "runtimeExists": true
+        },
+        {
+          "path": "frontend/app/components/dashboard/DashboardPersonalWidgetGrid.vue",
+          "additions": 23,
+          "deletions": 23,
+          "runtimeBlob": "272dd82abd4db86c5c2b36c6c923f06f8baad8c4",
+          "latestMainBlob": "114650b48a63d25caa953c10fc659e5b56398c8c",
+          "runtimeExists": true
+        },
+        {
+          "path": "frontend/app/stores/useTeamStore.spec.ts",
+          "additions": 164,
+          "deletions": 0,
+          "runtimeBlob": null,
+          "latestMainBlob": "799da11313577bad86e8a88d684f42d40e872966",
+          "runtimeExists": false
+        },
+        {
+          "path": "frontend/app/stores/useTeamStore.ts",
+          "additions": 19,
+          "deletions": 1,
+          "runtimeBlob": "7d5533fbf7657be700f85a6a7cbfcbec2021db05",
+          "latestMainBlob": "58798c0e58ac6a6225bf6a9a5aaec2b3fafdbc87",
+          "runtimeExists": true
+        }
+      ],
+      "net": {
+        "files": 4,
+        "additions": 211,
+        "deletions": 24
+      },
+      "overlapWith0632TargetPaths": 0
+    },
+    "subsequentDocsOnlyMain": "5ffeb70d989dc9514594807260633d8681efe020",
+    "note": "README appears in both delta groups. No global frontend identity or new-main runtime success is claimed."
+  },
+  "runtimeLifecycle": {
+    "reportedBy": "root",
+    "completedRunResultsRetained": true,
+    "thirdWaveFrontend": "ownership verified; SIGTERM then scratch removed; original manifest/history unchanged",
+    "backendRetention": {
+      "owner": "root",
+      "purpose": "fourth-wave real tests and three-resident exploration",
+      "apiPort": 8083,
+      "pid": 308358,
+      "startTicks": "6849288",
+      "backendTree": "f93385f15e46177a1815f2edc52b3ef670732d65",
+      "dedicatedDatabasePort": 13340,
+      "retainUntil": "2026-10-27T23:59:00+09:00",
+      "resumeCondition": "After fourth-wave real tests and exploration, verify ownership then stop and recover dedicated DB/volumes"
+    },
+    "otherOwnerAssets": {
+      "names": [
+        "run-55fg9V",
+        "run-8BA1u4"
+      ],
+      "modified": false,
+      "reason": "other-owner stale assets retained outside this campaign completion gate"
+    }
+  },
+  "overlayReconciliation": {
+    "main": "5ffeb70d989dc9514594807260633d8681efe020",
+    "docsHead": "38d4ad3c287b3b87fed56132ff4ff9f9ba66b554",
+    "baselineCounts": [
+      12,
+      12,
+      19
+    ],
+    "addedCounts": [
+      3,
+      3,
+      12
+    ],
+    "finalCounts": [
+      15,
+      15,
+      31
+    ],
+    "baselineObjectsDeepPreserved": true,
+    "baselineMetadataDeepPreserved": true,
+    "uniqueIDs": true,
+    "existingOverlayValidator": "passed",
+    "privateBackup": ".claude/runtime/october-third-wave-20261026/docs-rebase-main5ff-20261027/manifest.json"
+  },
+  "limitations": [
+    "Formal runtime source includes both app changes. Each implementation is traced only over its own target paths.",
+    "The first real-test failures remain unexplained after successful manual reruns.",
+    "All resident observations retain trusted:false/status:observed-unverified and partial objectives.",
+    "No future PR, later head CI, or next-campaign runtime is substituted for verified evidence."
+  ],
+  "finalIntegration": {
+    "main": "09854466d335cd5e99b9dc6b80d69e683d761644",
+    "docsHead": "9ea1705cbc59b4f6f407c75465f7212f0b54ef6e",
+    "residentOverlayCounts": [
+      18,
+      18,
+      42
+    ],
+    "observationsUnchanged": true,
+    "adoption2338": {
+      "pr": 4156,
+      "head": "0ac4c26439bbc837ca3214017d95ad0c323400b5",
+      "merge": "09854466d335cd5e99b9dc6b80d69e683d761644",
+      "mergedAt": "2026-10-27T05:49:03Z"
+    }
+  },
+  "finalLifecycle": {
+    "reportedBy": "root",
+    "scope": "第四波終了時の最終撤去状態。runtimeLifecycleは第三波終了時の貸出履歴として不変保持。",
+    "removed": {
+      "frontendPid": 347715,
+      "runnerPid": 347460,
+      "backendPid": 308358,
+      "managedScratch": "run-wQfk6z",
+      "mysqlPort": 13340,
+      "valkeyPort": 16340,
+      "dedicatedVolume": true
+    },
+    "ownVerifierResiduals": 0,
+    "otherOwnerPreserved": [
+      "run-55fg9V owner100682"
+    ],
+    "retained": "具体的な次0660用途のJAR/cacheのみowner root、2026-10-27T23:59JSTまで。元BE稼働中とは扱わない。",
+    "receipts": [
+      {
+        "path": ".claude/runtime/october-fourth-wave-20261027/runtime-cleanup/final-cleanup-receipt.json",
+        "sha256": "645971122b122a2083cd8221bcc13088f4d74df645fbdcfd7ae7560c48df5b9c"
+      },
+      {
+        "path": ".claude/runtime/october-fourth-wave-20261027/runtime-cleanup/retention-next-0660.json",
+        "sha256": "20f9349d39d4560295fb50d83b0152bfdff3115057e693e42b03ae8b7781ed4a"
+      }
+    ]
+  }
+}

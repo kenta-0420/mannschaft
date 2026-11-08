@@ -60,6 +60,15 @@ public interface TeamAffiliationOrganizationPort {
     Map<UUID, GroupRef> findAliveGroupRefs(Collection<UUID> groupIds);
 
     /**
+     * 指定のチームグループのうち<b>生存している</b>ものについて、グループ ID → 所属組織 ID を返す（削除済み・行の無いものは含めない。
+     * F01.2.1 7-A・孤児 group_id の修復バッチの判定）。
+     *
+     * <p>判定に使う読み取りなので {@code readOnly} にせずプライマリで読む（レプリカ遅延で、作ったばかりのグループを削除済みと
+     * 見誤って割当を消さないため。2-D と同じ）。書き込み・ロックはしない。</p>
+     */
+    Map<UUID, Long> findAliveGroupOrganizationIds(Collection<UUID> groupIds);
+
+    /**
      * 組織の現在の状態を<b>ロックせずに</b>読む（F01.2.1 2-C）。組織ドメインの読み取りトランザクションで完結し、
      * 呼び出し側のトランザクションには参加させない（チームの書き込みトランザクションの外で呼ぶ）。
      *
@@ -67,6 +76,45 @@ public interface TeamAffiliationOrganizationPort {
      * {@link OrganizationAffiliationState#archived()} で返し、応答の選択は呼び出し側が行う。</p>
      */
     Optional<OrganizationAffiliationState> findAffiliationState(Long organizationId);
+
+    /**
+     * 組織の状態を、組織行の<b>共有ロック</b>（{@code SELECT ... FOR SHARE}）を取って読み直す（F01.2.1 2-D・§6.9）。
+     *
+     * <p>招待の作成は組織行をロックしないため、コミットの後に組織の状態を読み直す。ロックしない読み取りでは、
+     * 並行する組織のアーカイブ（組織行の {@code PESSIMISTIC_WRITE}）がまだコミットされていないと見逃し、
+     * そのアーカイブの片付け（{@code OrganizationArchivedEvent}）との前後が時間の偶然に左右される。
+     * 共有ロックで読めば、アーカイブがロックを持っている間は待ち、コミット後の状態（アーカイブ済み）を見る。
+     * 組織ドメインの短いトランザクションで閉じ、呼び出し側のトランザクションには参加させない
+     * （チームの書き込みトランザクションの外で呼ぶ）。</p>
+     *
+     * <p>不在・論理削除済み・承諾前（PROVISIONED）は空を返す。</p>
+     */
+    Optional<OrganizationAffiliationState> recheckAffiliationStateLocked(Long organizationId);
+
+    /**
+     * slug で組織の表示用の最小情報を引く（可視性で絞らない。F01.2.1 2-D の離脱）。
+     *
+     * <p>離脱は、加盟している組織であれば非公開・アーカイブ済みでも行えるため、可視性では絞らない。
+     * 存在しない slug・論理削除済み・承諾前（PROVISIONED）は空（呼び出し側は「加盟していない」と同じ 404 に畳む）。</p>
+     */
+    Optional<OrganizationRef> findOrganizationRefBySlug(String slug);
+
+    /**
+     * 論理削除済みを含めて、組織の<b>いまコミットされている</b>閉鎖の状態（アーカイブ・論理削除）と表示名を返す
+     * （F01.2.1 2-D・加盟の片付け）。行が無いときだけ空を返す。
+     *
+     * <p>組織ドメインの<b>新しい</b>読み取りトランザクション（{@code REQUIRES_NEW}）で読み、呼び出し側（team ドメインの片付け）の
+     * トランザクションには参加しない。片付けは、消す加盟行を先に {@code FOR UPDATE} でロックしてから本メソッドで最新の状態を
+     * 確かめる（ロックした行は、確かめた時点のアーカイブより前に作られた行に限られるので、解除後の新しい申請を消さない）。
+     * 論理削除済みでも組織名を返すので、取消の通知の文面を省かずに済む。</p>
+     */
+    Optional<OrganizationClosureState> findClosureStateIncludingDeleted(Long organizationId);
+
+    /**
+     * 指定の組織の閉鎖の状態（論理削除済みを含む）をまとめて引く（ロックしない。F01.2.1 2-D・片付けの回復バッチの候補選び）。
+     * 行の無い組織はキーに含めない。最終的な判定は片付けの中で {@link #findClosureStateIncludingDeleted} により行う。
+     */
+    Map<Long, OrganizationClosureState> findClosureStatesIncludingDeleted(Collection<Long> organizationIds);
 
     /**
      * ロック時点の組織の状態。
@@ -78,14 +126,57 @@ public interface TeamAffiliationOrganizationPort {
      * @param applicationEnabled チームからの加盟申請を受け付けているか
      * @param groupsEnabled      チームグループ機能が有効か
      * @param groupMode          申請時のグループ選択の<b>保存値</b>（実効値は {@link #effectiveGroupMode()}）
+     * @param closureGeneration  閉鎖の世代番号（{@code organizations.closure_generation}。アーカイブ・論理削除のたびに +1、
+     *                           解除・復元では変えない。加盟の PENDING は作成時点のこの値を記録する）
      */
     record OrganizationAffiliationState(Long id, String slug, String name, boolean archived,
                                         boolean applicationEnabled, boolean groupsEnabled,
-                                        TeamApplicationGroupMode groupMode) {
+                                        TeamApplicationGroupMode groupMode, long closureGeneration) {
 
         /** 実効モード（§5.5）: グループ機能が off のときは保存値にかかわらず OFF として扱う。 */
         public TeamApplicationGroupMode effectiveGroupMode() {
             return groupsEnabled ? groupMode : TeamApplicationGroupMode.OFF;
+        }
+
+        /**
+         * 指定の世代を記録した PENDING の作成の後に、組織が閉鎖されたか（F01.2.1 §4.5。{@link TeamOrgClosureGeneration} と同じ規則）。
+         *
+         * @param recordedGeneration 加盟行が作成時点に記録した組織の世代
+         */
+        public boolean closedSince(long recordedGeneration) {
+            return TeamOrgClosureGeneration.closedSince(recordedGeneration, closureGeneration);
+        }
+    }
+
+    /**
+     * 組織の閉鎖の状態（論理削除済みを含む）。
+     *
+     * @param id           組織 ID
+     * @param slug         組織の slug
+     * @param name         組織名（取消の通知の文面に使う。論理削除済みでも引ける）
+     * @param archived     アーカイブ済みか
+     * @param deleted      論理削除済みか
+     * @param closureGeneration 閉鎖の世代番号（{@code organizations.closure_generation}。アーカイブ・論理削除のたびに +1、
+     *                          解除・復元では変えない）
+     */
+    record OrganizationClosureState(Long id, String slug, String name, boolean archived, boolean deleted,
+                                    long closureGeneration) {
+
+        /** 申請・招待を受け付けない状態（アーカイブ済みか論理削除済み）か。 */
+        public boolean closed() {
+            return archived || deleted;
+        }
+
+        /**
+         * 指定の世代を記録した PENDING の作成の後に、組織が閉鎖（アーカイブ・論理削除）されたか（F01.2.1 §4.5）。
+         * 片付けの前にアーカイブ解除・復元されても、閉鎖より前の申請・招待はこれで見分けて消す。
+         * 規則は {@link TeamOrgClosureGeneration}（承認・承諾の判定と同じ）。閉鎖の後に作られた行（解除後の申請・招待）は
+         * いまの世代を記録しているので必ず false になる（作成と閉鎖が同じ秒でも見分けられる）。
+         *
+         * @param recordedGeneration 加盟行が作成時点に記録した組織の世代
+         */
+        public boolean closedSince(long recordedGeneration) {
+            return TeamOrgClosureGeneration.closedSince(recordedGeneration, closureGeneration);
         }
     }
 

@@ -18,6 +18,8 @@ const props = defineProps<{
 
 const exports = ref<FriendForwardExportView[]>([])
 const loading = ref(true)
+const loadFailed = ref(false)
+const loadError = ref<unknown>(undefined)
 const currentPage = ref(0)
 const pageSize = 20
 const totalElements = ref(0)
@@ -27,6 +29,8 @@ const hasNext = ref(false)
 /** データ取得 */
 async function fetchExports() {
   loading.value = true
+  loadFailed.value = false
+  loadError.value = undefined
   try {
     const response = await listForwardExports(props.teamId, {
       page: currentPage.value,
@@ -38,6 +42,8 @@ async function fetchExports() {
     hasNext.value = response.pagination.hasNext
   }
   catch (error) {
+    loadFailed.value = true
+    loadError.value = error
     handleApiError(error, 'friend-forward-exports')
   }
   finally {
@@ -91,6 +97,14 @@ onMounted(() => {
   <div>
     <!-- ローディング -->
     <PageLoading v-if="loading" size="32px" />
+
+    <!-- 取得失敗（空状態に偽装しない） -->
+    <DashboardErrorState
+      v-else-if="loadFailed"
+      :error="loadError"
+      testid="forward-exports-error"
+      @retry="fetchExports"
+    />
 
     <!-- 空状態 -->
     <DashboardEmptyState
@@ -152,38 +166,39 @@ onMounted(() => {
           </tbody>
         </table>
       </div>
+    </div>
 
-      <!-- ページネーション -->
-      <div
-        v-if="totalPages > 1"
-        class="mt-4 flex items-center justify-between text-sm text-surface-500"
-      >
-        <span>
-          {{ t('forward_exports.pagination.showing', {
-            from: showingFrom,
-            to: showingTo,
-            total: totalElements,
-          }) }}
-        </span>
-        <div class="flex gap-2">
-          <Button
-            :label="t('forward_exports.pagination.prev')"
-            icon="pi pi-chevron-left"
-            size="small"
-            text
-            :disabled="currentPage === 0"
-            @click="goToPreviousPage"
-          />
-          <Button
-            :label="t('forward_exports.pagination.next')"
-            icon="pi pi-chevron-right"
-            icon-pos="right"
-            size="small"
-            text
-            :disabled="!hasNext"
-            @click="goToNextPage"
-          />
-        </div>
+    <!-- ページネーション（取得失敗時も前ページへ戻れるよう一覧外に置く） -->
+    <div
+      v-if="!loading && totalPages > 1"
+      class="mt-4 flex items-center justify-between text-sm text-surface-500"
+    >
+      <span v-if="!loadFailed">
+        {{ t('forward_exports.pagination.showing', {
+          from: showingFrom,
+          to: showingTo,
+          total: totalElements,
+        }) }}
+      </span>
+      <span v-else />
+      <div class="flex gap-2">
+        <Button
+          :label="t('forward_exports.pagination.prev')"
+          icon="pi pi-chevron-left"
+          size="small"
+          text
+          :disabled="currentPage === 0"
+          @click="goToPreviousPage"
+        />
+        <Button
+          :label="t('forward_exports.pagination.next')"
+          icon="pi pi-chevron-right"
+          icon-pos="right"
+          size="small"
+          text
+          :disabled="!hasNext || loadFailed"
+          @click="goToNextPage"
+        />
       </div>
     </div>
   </div>

@@ -19,6 +19,7 @@ import com.mannschaft.app.equipment.dto.ReturnEquipmentRequest;
 import com.mannschaft.app.equipment.dto.ReturnResponse;
 import com.mannschaft.app.equipment.dto.UpdateEquipmentItemRequest;
 import com.mannschaft.app.equipment.service.EquipmentAssignmentService;
+import com.mannschaft.app.equipment.service.EquipmentAssignmentViewAccessGuard;
 import com.mannschaft.app.equipment.service.EquipmentItemService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -54,6 +55,8 @@ public class TeamEquipmentController {
 
     private final EquipmentItemService itemService;
     private final EquipmentAssignmentService assignmentService;
+    /** 返却対象の貸出記録の閲覧可否の門（見えない記録は不在と同一応答。CMP-260821-1027）。 */
+    private final EquipmentAssignmentViewAccessGuard assignmentViewGuard;
 
 
     // ===================== 備品CRUD =====================
@@ -160,7 +163,9 @@ public class TeamEquipmentController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody ReturnEquipmentRequest request) {
-        ReturnResponse response = assignmentService.returnForTeam(teamId, id, SecurityUtils.getCurrentUserId(), request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        assignmentViewGuard.requireTeamItemAssignments(teamId, id, List.of(request.getAssignmentId()), userId);
+        ReturnResponse response = assignmentService.returnForTeam(teamId, id, userId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -284,7 +289,9 @@ public class TeamEquipmentController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody BulkReturnRequest request) {
-        BulkReturnResponse response = assignmentService.bulkReturnForTeam(teamId, id, SecurityUtils.getCurrentUserId(), request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        assignmentViewGuard.requireTeamItemAssignments(teamId, id, request.getAssignmentIds(), userId);
+        BulkReturnResponse response = assignmentService.bulkReturnForTeam(teamId, id, userId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

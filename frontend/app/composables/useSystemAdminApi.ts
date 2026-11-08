@@ -53,6 +53,7 @@ export function useSystemAdminApi() {
     freezeOrganization: dashboard.freezeOrganization,
     unfreezeOrganization: dashboard.unfreezeOrganization,
     getDashboardTeams: dashboard.getDashboardTeams,
+    getDeletedTeams: dashboard.getDeletedTeams,
     getDashboardUsers: dashboard.getDashboardUsers,
     // Batch Logs
     getBatchLogs: operations.getBatchLogs,

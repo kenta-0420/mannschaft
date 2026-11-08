@@ -11,19 +11,23 @@
       "confirmations": "確認状況"
     },
     "label": {
+      "unknown_user": "不明なユーザー",
       "start_date": "開始日",
       "end_date": "終了日",
       "partial_time": "一日のうち一部の時間帯のみ休業する",
       "start_time": "開始時刻",
       "end_time": "終了時刻",
+      "range_separator": "〜",
       "target_period": "対象期間",
       "subject": "件名",
+      "reason": "休業理由",
       "body": "本文",
       "cancel_reservations": "対象予約をキャンセルする"
     },
     "placeholder": {
       "select": "選択してください",
       "subject": "件名を入力してください",
+      "reason": "休業の理由を入力してください",
       "body": "本文を入力してください"
     },
     "hint": {
@@ -45,6 +49,7 @@
       "sent_at": "送信日時",
       "reason": "理由",
       "count": "件数",
+      "count_value": "{count}件",
       "confirmation_status": "確認状況",
       "appointment_at": "予約日時",
       "confirmed_header": "確認",
@@ -68,14 +73,16 @@
       "connecting": "接続中…",
       "reconnecting": "再接続中…",
       "offline": "オフライン",
-      "denied": "閲覧権限がありません"
+      "denied": "閲覧権限がありません",
+      "unauthenticated": "ログインが必要です"
     },
     "dialog": {
       "title": "送信確認",
       "confirm_message": "以下の内容で一括送信します。よろしいですか？",
       "cancel_warning": "※ 対象予約はキャンセルされます",
       "label_period": "対象期間",
-      "label_subject": "件名"
+      "label_subject": "件名",
+      "label_reason": "休業理由"
     },
     "error": {
       "time_range_required": "開始時刻と終了時刻を選択してください",
@@ -84,7 +91,10 @@
       "preview_failed": "プレビューの取得に失敗しました",
       "subject_required": "件名を入力してください",
       "body_required": "本文を入力してください",
+      "reason_required": "休業理由を入力してください",
+      "history_failed": "送信履歴の取得に失敗しました。再読み込みしてください",
       "send_failed": "送信に失敗しました",
+      "idempotency_conflict": "同じ送信操作で内容が異なっています。画面を確認し、送信内容を見直してもう一度お試しください",
       "confirmations_failed": "確認状況の取得に失敗しました",
       "info_missing": "通知情報が不足しています"
     },
@@ -182,6 +192,11 @@
         "exception_day": { "title": "例外日", "description": "特定日の営業を調整" },
         "advanced": { "title": "詳細設定", "description": "公開範囲や通知を設定" }
       }
+    },
+    "history": {
+      "date_unavailable": "日付不明",
+      "time_unavailable": "時刻不明",
+      "line_unavailable": "予約対象不明"
     },
     "column": {
       "datetime": "日時",

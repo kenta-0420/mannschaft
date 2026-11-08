@@ -387,10 +387,12 @@ function cellLabel(row: MatrixRowVM, headerIndex: number): string {
 /**
  * BOOKED セルの aria-label に「押すと何が起きるか」を追記する（検分是正・W2-4-FE）。
  * 押せない（slotId 不明）セルにはヒントを付けない。
+ * 本人が予約済みのセルは押せない（isCellDisabled）ためヒントを付けない。cellLabel が「予約済み」を伝える（R1 / CMP-260824-2217）。
  */
 function waitlistAriaHint(row: MatrixRowVM, headerIndex: number): string {
   const slot = row.aligned[headerIndex]
   if (!slot || slot.kind !== 'cell' || slot.cell.state !== 'BOOKED' || slot.cell.slotId == null) return ''
+  if (slot.cell.reservedByCurrentUser) return ''
   return myWaitlistSlotIds.value.has(slot.cell.slotId)
     ? t('reservation.waitlist.aria_hint_cancel')
     : t('reservation.waitlist.aria_hint_register')

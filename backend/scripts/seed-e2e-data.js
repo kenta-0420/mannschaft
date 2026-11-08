@@ -27,6 +27,24 @@ function generateSlug(name) {
 // 鍵は application-local.yml の `mannschaft.encryption.key`
 // （Base64 エンコードされた 32 バイト鍵）と同じ値を使用する。
 // ============================================================
+// ============================================================
+// F17 村の参加枠（CMP-260827-1808）
+// JS は Java の定数を読めないため、ここに1か所だけ名前付きで置く。値は
+// VillageParticipationLimits（DEFAULT_HARD_LIMIT / DB_SLOT_CEILING）と一致させ、
+// VillageParticipationLimitsMigrationConsistencyTest が照合する。
+// 現在の上限は BE の設定値 mannschaft.village.participation-hard-limit と同じ環境変数から読む。
+// ============================================================
+const VILLAGE_DEFAULT_PARTICIPATION_HARD_LIMIT = 100;
+const VILLAGE_DB_SLOT_CEILING = 1000;
+const VILLAGE_PARTICIPATION_HARD_LIMIT = (() => {
+  const raw = process.env.MANNSCHAFT_VILLAGE_PARTICIPATION_HARD_LIMIT;
+  const value = raw === undefined || raw === '' ? VILLAGE_DEFAULT_PARTICIPATION_HARD_LIMIT : Number(raw);
+  if (!Number.isInteger(value) || value < 1 || value > VILLAGE_DB_SLOT_CEILING) {
+    throw new Error(`MANNSCHAFT_VILLAGE_PARTICIPATION_HARD_LIMIT は 1 以上 ${VILLAGE_DB_SLOT_CEILING} 以下: ${raw}`);
+  }
+  return value;
+})();
+
 const F18_ENCRYPTION_KEY_BASE64 = 'pE8ozQmki8gdQ1nCFC86zcK1SSNJuVRLd7uhdpO4ihc=';
 const F18_KEY_BYTES = Buffer.from(F18_ENCRYPTION_KEY_BASE64, 'base64');
 if (F18_KEY_BYTES.length !== 32) {
@@ -840,35 +858,79 @@ function encryptForTest(plain) {
   // E2E_USER を COMMUNITY 村に VILLAGER として参加させる
   // 冪等性: E2E_USER × その村の既存メンバーシップを全削除
   const communityIdText = villageIds['e2e-test-community-village'];
-  await conn.execute(
-    `DELETE FROM village_memberships
-       WHERE village_id = UUID_TO_BIN(?)
-         AND subject_type = 'USER'
-         AND subject_id = ?`,
-    [communityIdText, E2E_USER]
-  );
-  await conn.execute(
-    `INSERT INTO village_memberships
-       (id, village_id, subject_type, subject_id, role, joined_at,
-        created_at, updated_at, version)
-     VALUES (UUID_TO_BIN(UUID()), UUID_TO_BIN(?), 'USER', ?, 'VILLAGER', ?, ?, ?, 0)`,
-    [communityIdText, E2E_USER, now, now, now]
-  );
-
-  // member_count_cache を再計算
-  for (const slug of Object.keys(villageIds)) {
-    const idText = villageIds[slug];
-    await conn.execute(
-      `UPDATE villages
-          SET member_count_cache = (
-            SELECT COUNT(*) FROM village_memberships
-             WHERE village_id = UUID_TO_BIN(?)
-               AND left_at IS NULL
-               AND banned_at IS NULL
-          )
-        WHERE id = UUID_TO_BIN(?)`,
-      [idText, idText]
+  // 業務writerと同じUSER行を根に、対象置換と全村slot割当を同一TXで確定する。
+  await conn.beginTransaction();
+  try {
+    const [[slotUser]] = await conn.execute(
+      'SELECT id, status, deleted_at FROM users WHERE id = ? FOR UPDATE',
+      [E2E_USER]
     );
+    if (!slotUser || slotUser.status !== 'ACTIVE' || slotUser.deleted_at !== null) {
+      throw new Error('F17 seed: 対象USERが現役ではない');
+    }
+    await conn.execute(
+      `DELETE FROM village_memberships
+         WHERE village_id = UUID_TO_BIN(?)
+           AND subject_type = 'USER'
+           AND subject_id = ?`,
+      [communityIdText, E2E_USER]
+    );
+    // BANも占有に含め、退村履歴だけを除く。通常RR snapshotで枠を数えない。
+    const [slotRows] = await conn.execute(
+      `SELECT user_slot FROM village_memberships
+         WHERE subject_type = 'USER' AND subject_id = ? AND left_at IS NULL
+         ORDER BY user_slot FOR UPDATE`,
+      [E2E_USER]
+    );
+    const occupiedSlots = new Set();
+    for (const { user_slot: slot } of slotRows) {
+      if (!Number.isInteger(slot) || slot < 1 || slot > VILLAGE_DB_SLOT_CEILING || occupiedSlots.has(slot)) {
+        throw new Error('F17 seed: 在籍USERのslotがNULL・範囲外・重複');
+      }
+      occupiedSlots.add(slot);
+    }
+    if (occupiedSlots.size >= VILLAGE_PARTICIPATION_HARD_LIMIT) {
+      throw new Error(`F17 seed: USERの現役所属が上限 ${VILLAGE_PARTICIPATION_HARD_LIMIT} に達している`);
+    }
+    let userSlot = 1;
+    while (userSlot <= VILLAGE_DB_SLOT_CEILING && occupiedSlots.has(userSlot)) {
+      userSlot++;
+    }
+    if (userSlot > VILLAGE_DB_SLOT_CEILING) {
+      throw new Error('F17 seed: USERの枠番号が天井まで占有済み');
+    }
+    await conn.execute(
+      `INSERT INTO village_memberships
+         (id, village_id, subject_type, subject_id, role, joined_at,
+          created_at, updated_at, version, user_slot)
+       VALUES (UUID_TO_BIN(UUID()), UUID_TO_BIN(?), 'USER', ?, 'VILLAGER', ?, ?, ?, 0, ?)`,
+      [communityIdText, E2E_USER, now, now, now, userSlot]
+    );
+
+    // member_count_cache を再計算
+    for (const slug of Object.keys(villageIds)) {
+      const idText = villageIds[slug];
+      await conn.execute(
+        `UPDATE villages
+            SET member_count_cache = (
+              SELECT COUNT(*) FROM village_memberships
+               WHERE village_id = UUID_TO_BIN(?)
+                 AND left_at IS NULL
+                 AND banned_at IS NULL
+            )
+          WHERE id = UUID_TO_BIN(?)`,
+        [idText, idText]
+      );
+    }
+    await conn.commit();
+  } catch (error) {
+    try {
+      await conn.rollback();
+    } catch (rollbackError) {
+      // rollbackの二次障害を記録し、FATALへ伝える元の障害を保持する。
+      console.error('F17 seed: rollbackに失敗:', rollbackError.message);
+    }
+    throw error;
   }
 
   console.log(`F17 villages inserted: 2 (OFFICIAL=${villageIds['e2e-test-official-village']}, COMMUNITY=${villageIds['e2e-test-community-village']})`);

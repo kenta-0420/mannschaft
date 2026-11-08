@@ -21,6 +21,13 @@ public interface ShiftSwapRequestRepository extends JpaRepository<ShiftSwapReque
     List<ShiftSwapRequestEntity> findBySlotId(Long slotId);
 
     /**
+     * 同じ枠・申請者の未決依頼が存在するか、最大1行の非ロック照会で確認する。
+     * 作成Serviceが親スケジュールを排他し、READ_COMMITTEDで待機後のcommitを参照する。
+     */
+    boolean existsBySlotIdAndRequesterIdAndStatusIn(
+            Long slotId, Long requesterId, List<SwapRequestStatus> statuses);
+
+    /**
      * リクエスターの交代リクエスト一覧をステータスでフィルタして取得する。
      */
     List<ShiftSwapRequestEntity> findByRequesterIdAndStatus(Long requesterId, SwapRequestStatus status);

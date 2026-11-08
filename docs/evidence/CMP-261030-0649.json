@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261030-0649",
+  "scope": "app",
+  "implementation": {
+    "pr": 4243,
+    "sha": "07f7aba8be899e5641dd36b96ca2e62351df2ba2"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "reason の入力欄が画面にあり、手入力とカスタムでも送信できる。201字目は打鍵・貼付とも入らない。空なら警告が出る。",
+      "tests": [
+        {
+          "name": "EmergencyClosureReason.spec.ts（reason の入力・上限・空の警告）",
+          "evidence": "frontend/tests/unit/components/reservation/EmergencyClosureReason.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 41123064058
+    },
+    {
+      "runId": 41123085329
+    },
+    {
+      "runId": 41123063958
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4243"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4273"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261030-0651/resident-observations.json"
+    }
+  },
+  "regressions": [
+    {
+      "description": "手入力・カスタムテンプレートで reason が空のまま送信され、必ず 400 になる。",
+      "test": "EmergencyClosureReason.spec.ts",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/pull/4243",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/41123085329"
+    }
+  ]
+}

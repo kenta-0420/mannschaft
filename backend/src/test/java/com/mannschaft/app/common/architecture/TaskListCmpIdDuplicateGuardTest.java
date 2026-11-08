@@ -239,6 +239,65 @@ class TaskListCmpIdDuplicateGuardTest {
         assertThat(mismatches).as(sb.toString()).isEmpty();
     }
 
+    /** 状態セルが優先度を持たなくてよい「完了系」の語（前方一致）。未完との境目が曖昧な語（実機検証待ち等）は含めない。 */
+    private static final Pattern STATUS_PRIORITY_OR_DONE = Pattern.compile(
+            "^(P[1-5] |完了|取り下げ|取下げ|取下|重複|不要|対応不要|検証済み|対応済み|合格)");
+
+    @Test
+    @DisplayName("CMP-IDを持つ行の状態セルが P1〜P5 で始まる、または完了系の語で始まること（優先度必須）")
+    void cmp行の状態セルは優先度か完了系で始まる() throws IOException {
+        Path taskList = resolveTaskListPath();
+        assertThat(Files.isRegularFile(taskList))
+                .as("docs/task-list.md が見つからない: " + taskList.toAbsolutePath())
+                .isTrue();
+
+        String content = Files.readString(taskList, StandardCharsets.UTF_8);
+
+        List<String> violations = new ArrayList<>();
+        int rowCount = 0;
+        for (String line : content.split("\n", -1)) {
+            if (!line.startsWith("|")) {
+                continue;
+            }
+            List<String> cells = splitTableRow(line);
+            if (cells.size() < 4) {
+                continue;
+            }
+            String id = cells.get(1).trim();
+            if (!Pattern.compile("^(" + CMP_ID_FORM + ")$").matcher(id).find()) {
+                continue;
+            }
+            rowCount++;
+            String status = cells.get(3).replace("*", "").trim();
+            if (!STATUS_PRIORITY_OR_DONE.matcher(status).find()) {
+                String head = status.length() > 30 ? status.substring(0, 30) + "…" : status;
+                violations.add(id + " → \"" + head + "\"");
+            }
+        }
+
+        assertThat(rowCount)
+                .as("docs/task-list.md から CMP-ID を持つ表の行を1件も見つけられなかった。走査経路が壊れている可能性がある。")
+                .isPositive();
+
+        if (violations.isEmpty()) {
+            return;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("docs/task-list.md に、優先度の無い未完の行が見つかりました。\n")
+                .append("規約: 未完の行は状態セルの先頭に P1〜P5 を必ず付ける（例: `P1 未着手`、`P3 保留（理由…）`）。")
+                .append("完了・取り下げ・重複・不要等の完了系の行は付けなくてよい。\n")
+                .append("基準（利用者への被害の大きさ）: P1 認可漏れ・情報漏えい（存在オラクル含む）・データ破損/消失・課金/金額の誤り / ")
+                .append("P2 主要機能が動かない・画面から到達できない（回避策なし） / P3 機能の不備・誤表示・未実装（回避策あり） / ")
+                .append("P4 技術負債・番人テスト・性能・開発基盤・CI・運用インフラ / P5 文言や見た目の軽微な崩れ・将来構想・調査メモ・方針の検討。\n")
+                .append("対処: 該当行の状態セルの先頭に優先度を書き足すこと。検出を緩めて通すことは禁止。\n")
+                .append("優先度の無い行一覧:\n");
+        for (String v : violations) {
+            sb.append("  ✗✗ ").append(v).append("\n");
+        }
+        assertThat(violations).as(sb.toString()).isEmpty();
+    }
+
     /**
      * Markdown 表の1行を GFM（GitHub Flavored Markdown）のレンダリングに合わせてセル分割する。
      *

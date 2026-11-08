@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260925-0905",
+  "scope": "app",
+  "implementation": {
+    "pr": 3817,
+    "sha": "a291ca5da60356da14a9f1ff623ae6b79cf1b218"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "runBatch（スケジューラと同じ入口）で、未確認者にリマインドが実際に送られる（遅延読み込みで失敗しない）",
+      "tests": [
+        {
+          "name": "CMP-260925-0905: runBatch 経由（スケジューラと同じ入口）で未確認者にリマインドが実際に送られる（トランザクション境界外の遅延読み込みで失敗しない）",
+          "evidence": "backend/src/test/java/com/mannschaft/app/notification/confirmable/service/ConfirmableNotificationReminderBatchTransactionIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "受信者1人の保存失敗が他の受信者の通知・送信済み記録を巻き戻さない",
+      "tests": [
+        {
+          "name": "CMP-260925-0905: 受信者1人の保存が DB 例外で失敗しても、残りの受信者の通知と送信済み記録はコミットされ、失敗した受信者にはコミット前の通知が出ない",
+          "evidence": "backend/src/test/java/com/mannschaft/app/notification/confirmable/service/ConfirmableNotificationReminderBatchTransactionIT.java"
+        },
+        {
+          "name": "チャンクの確定が失敗したら1人ずつに分けて再試行し、失敗した人以外は確定する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/notification/confirmable/service/ConfirmableNotificationReminderBatchServiceTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "バッチを2回連続で走らせても1回目リマインドが二重送信されない",
+      "tests": [
+        {
+          "name": "AC-50/AC-58: 未確認者が複数いる通知でリマインドバッチを2回連続で走らせても、各人への1回目リマインドはちょうど1回ずつになる（条件付きUPDATEで確定した人だけ送る）",
+          "evidence": "backend/src/test/java/com/mannschaft/app/notification/confirmable/service/ConfirmableNotificationReminderBatchTransactionIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "通知のトランザクション境界違反が凍結リストと完全一致する（番人）",
+      "tests": [
+        {
+          "name": "通知のトランザクション境界違反が baseline と完全一致する（増加も減少も fail）",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/architecture/NotificationTransactionBoundaryGuardTest.java"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 38493772025
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/3817"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260925-0905.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260925-0905.md"
+    }
+  },
+  "regressions": []
+}

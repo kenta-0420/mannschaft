@@ -476,6 +476,7 @@ export interface GdprPurgeStatusRow {
 
 /** Phase F: ドメイン単位の GDPR パージ手動 retry 結果 */
 export interface GdprPurgeRetryResult {
+  queued: boolean
   succeeded: boolean
   domainName: string
   newStatus: GdprPurgeStatus

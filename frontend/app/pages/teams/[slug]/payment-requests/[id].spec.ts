@@ -9,8 +9,8 @@ const source = readFileSync(
 
 describe('協会請求詳細・支払いページ', () => {
   it('詳細GETでVIEWED遷移をBEへ委ね、数値team IDを使う', () => {
-    expect(source).toContain("resolveScopeId('TEAM', teamSlug.value)")
-    expect(source).toContain('getTeamPaymentRequest(teamId.value, requestId.value)')
+    expect(source).toContain('useTeamPaymentPage(')
+    expect(source).toContain('getTeamPaymentRequest(id, requestId.value)')
   })
 
   it('支払い開始の二重送信を防ぎ、Stripe確認後だけpollを始める', () => {

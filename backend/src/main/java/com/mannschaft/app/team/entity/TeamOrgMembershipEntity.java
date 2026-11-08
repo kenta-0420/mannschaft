@@ -83,6 +83,29 @@ public class TeamOrgMembershipEntity {
     private java.time.Instant updatedAt;
 
     /**
+     * 招待の受信通知（{@code TEAM_ORG_INVITE_RECEIVED}）を outbox に予約した瞬間（F01.2.1 2-D・§4.5）。
+     * NULL の招待は、招待されたチームがまだ知らない（受信通知の予約の前）。書き込みはネイティブ SQL だけで行う
+     * （{@code TeamOrgMembershipRepository#markInviteNotified}）。申請（TEAM_APPLY）では使わない。
+     */
+    @Column(name = "invite_notified_at", insertable = false, updatable = false)
+    private java.time.Instant inviteNotifiedAt;
+
+    /**
+     * 作成時点の組織の閉鎖の世代（{@code organizations.closure_generation}。F01.2.1 2-D・§4.5）。作成後は変えない。
+     * 組織の世代がこれより進んでいれば（{@link #createdBeforeOrganizationClosure}）、この行は組織の閉鎖より前に作られた行で、
+     * 片付け・承認・承諾で無効として扱う（{@code TeamOrgClosureGeneration}）。
+     */
+    @Column(name = "org_closure_generation", nullable = false, updatable = false, columnDefinition = "BIGINT NOT NULL DEFAULT 0")
+    private long orgClosureGeneration;
+
+    /**
+     * 作成時点のチームの閉鎖の世代（{@code teams.closure_generation}。F01.2.1 2-D・§4.5）。作成後は変えない。
+     * チームの世代がこれより進んでいれば（{@link #createdBeforeTeamClosure}）、この行はチームの閉鎖より前に作られた行。
+     */
+    @Column(name = "team_closure_generation", nullable = false, updatable = false, columnDefinition = "BIGINT NOT NULL DEFAULT 0")
+    private long teamClosureGeneration;
+
+    /**
      * チーム−組織所属ステータス
      */
     public enum Status {
@@ -99,6 +122,24 @@ public class TeamOrgMembershipEntity {
     @jakarta.persistence.PreUpdate
     protected void onUpdate() {
         this.updatedAt = java.time.Instant.now();
+    }
+
+    /**
+     * 組織の閉鎖より前に作られた行か（記録した組織の世代 &lt; 組織のいまの世代。F01.2.1 §4.5）。
+     *
+     * @param currentOrganizationGeneration 組織のいまの閉鎖の世代
+     */
+    public boolean createdBeforeOrganizationClosure(long currentOrganizationGeneration) {
+        return orgClosureGeneration < currentOrganizationGeneration;
+    }
+
+    /**
+     * チームの閉鎖より前に作られた行か（記録したチームの世代 &lt; チームのいまの世代。F01.2.1 §4.5）。
+     *
+     * @param currentTeamGeneration チームのいまの閉鎖の世代
+     */
+    public boolean createdBeforeTeamClosure(long currentTeamGeneration) {
+        return teamClosureGeneration < currentTeamGeneration;
     }
 
     /**

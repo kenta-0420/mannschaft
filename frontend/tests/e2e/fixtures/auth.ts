@@ -51,6 +51,7 @@ export async function loginViaApi(
     avatarUrl: string | null
     systemRole: string | null
     timezone: string | null
+    locale?: string | null
   }
   const accessTokenCookie = (await page.context().cookies()).find(
     (cookie) => cookie.name === 'access_token',
@@ -68,6 +69,7 @@ export async function loginViaApi(
       profileImageUrl: me.avatarUrl,
       systemRole: me.systemRole ?? undefined,
       timezone: me.timezone ?? undefined,
+      locale: me.locale ?? undefined,
     },
     expiresAt: tokenExpiresAt,
   }

@@ -1,0 +1,122 @@
+{
+  "registrationSource": "actual-resident-artifacts",
+  "trusted": false,
+  "status": "observed-unverified",
+  "runId": "CMP1432A-I03-cmp0649-4c89611f1c78",
+  "sourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+  "idAssignment": "personaIdはresident-finish-root.jsonのroot付与値を保持。runIdはresident-purpose-contract.jsonの原値を保持。journeyIdは原住民報告にないため登録時付与。固定P01-P20へ変換しない。",
+  "provenance": [
+    {
+      "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-A-safe.json",
+      "sha256": "7ce372bbcd10efd9490b72723ec9efc0dfbea03e800c1af06ff7445bd3c76a91"
+    },
+    {
+      "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-B-safe.json",
+      "sha256": "372c4684e2c2fb0362ae78c35919727cbbc5fd10230b050fea9718dccf62ad1d"
+    },
+    {
+      "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-D-safe.json",
+      "sha256": "010a2b55f4fb4ca4a6d3e1216eb68c14aa5b405a8607efae6eff3fce355fb922"
+    },
+    {
+      "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-finish-root.json",
+      "sha256": "ae6a5c850cbea434c5e8f5cd51751b7d21ff30937399c5cb8e10560995ca6f55"
+    },
+    {
+      "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/status.json",
+      "sha256": "e3f63d8da56d6ed61f450c8ed94fa8eafd7f67cd9f5ac3bfc60ee3813bca2389"
+    },
+    {
+      "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-purpose-contract.json",
+      "sha256": "376fe8f1dfffcac4fe6cd64c3478e2d48709c8b9636b14c2d3ba1a0a2b78d3e0"
+    }
+  ],
+  "residents": [
+    {
+      "personaId": "CMP1432A-I03-A",
+      "journeyId": "CMP1432A-I03-A-journey",
+      "role": "A",
+      "personaArchetype": "ADHD傾向×中断・放棄",
+      "purpose": "10月29日18時の自分の担当をBへ相談し、中断復帰後に相談状態と自分の予定を確認する",
+      "originalPurpose": "自分の18時の担当を確認し、合成Bに指定理由で交代を相談する。途中で画面を離れて戻り、相談の状況と担当を再発見する。",
+      "executionCompleted": true,
+      "goalsReached": false,
+      "coveragePassed": false,
+      "outcome": {
+        "requestSubmittedViaUi": true,
+        "reasonExact": true,
+        "duplicateSubmission": false,
+        "ownDutyRediscovered": true,
+        "consultationStatusRediscovered": false,
+        "otherActorsOutcomeInferred": false
+      },
+      "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-A-safe.json"
+    },
+    {
+      "personaId": "CMP1432A-I03-B",
+      "journeyId": "CMP1432A-I03-B-journey",
+      "role": "B",
+      "personaArchetype": "高齢・低リテラシー×素直",
+      "purpose": "普段の画面からAの18時担当相談を探して受諾し、離脱復帰後に相談状態と新しい担当を確認する",
+      "originalPurpose": "自分宛ての合成Aからの18時の相談を探し、引き受ける。途中で別画面へ移動して戻り、相談の状況と自分の担当を確認する。",
+      "executionCompleted": true,
+      "goalsReached": false,
+      "coveragePassed": false,
+      "outcome": {
+        "findIncomingConsultation": false,
+        "acceptConsultation": false,
+        "leaveAndReturn": true,
+        "recheckOwnAssignment": true,
+        "confirmNew18Assignment": false,
+        "summary403UiCausalityVerified": false,
+        "visualInspectionPerformed": false
+      },
+      "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-B-safe.json"
+    },
+    {
+      "personaId": "CMP1432A-I03-D",
+      "journeyId": "CMP1432A-I03-D-journey",
+      "role": "D",
+      "personaArchetype": "一般×隙間狙い",
+      "purpose": "対象理由の相談を探しB受諾後に管理者承認し、旧新担当とCの保持を確認する。余裕時にS3/X境界を観測する",
+      "originalPurpose": "管理者として未処理の合成Aから合成Bへの18時の交代相談を探し、承認する。戻って承認後の担当と相談の状態を確認し、他の担当者が保持されているか確認する。",
+      "executionCompleted": true,
+      "goalsReached": false,
+      "coveragePassed": false,
+      "outcome": {
+        "targetReasonFound": true,
+        "preApproval18Assignment": [
+          "A",
+          "C"
+        ],
+        "approvalCompleted": false,
+        "postApprovalAssignmentsConfirmed": false,
+        "S3XPerformed": false,
+        "rawGoalsReachedPartialAchievements": [
+          "目的理由の未処理相談をUIで発見",
+          "承認前18-19時担当A+CをUI確認"
+        ],
+        "rawGoalsReachedInterpretation": "部分達成の列挙。bool trueへ変換しない。",
+        "goalsUnreached": [
+          "B受諾後の管理者承認",
+          "承認後の相談状態/B担当/C保持確認",
+          "余裕時S3/X境界"
+        ]
+      },
+      "sourceEvidencePath": ".claude/campaigns/cmp1432a-approved-20261027/resident-D-safe.json"
+    }
+  ],
+  "fixedFollowupV1": {
+    "passed": false,
+    "mutationExecuted": false,
+    "stage": "existing-request-identity",
+    "cause": "rootが旧target_user_idを検査した確認手順の誤り。正規保存はrecipient_mode=SPECIFIC / is_open_call=0 / target_user_ids=[4]。製品不具合とは扱わない。",
+    "independentResidentGoalsChanged": false
+  },
+  "limitations": [
+    "住民目的は全3名未達。実施完了と目的達成を分離する。",
+    "最新main全体との同一性・観測原因・回帰因果・coverage合格は未実証。",
+    "住民画像はprivate path参照のみ。画像を直接確認した視覚検査とは扱わない。",
+    "新CMP/blockers/完了台帳への昇格なし。"
+  ]
+}

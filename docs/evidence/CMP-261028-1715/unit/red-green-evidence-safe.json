@@ -1,0 +1,261 @@
+{
+  "source": "official-verification-run-safe-projection",
+  "privateLogsAdopted": false,
+  "runs": [
+    {
+      "runAlias": "CMP-261028-1715-fe-red-linux1",
+      "receiptSha256": "2ac286053c8ec32e1da52a8ba97d6d9f9921e8b3a1a0037235aa20a8990da95f",
+      "summarySha256": "c59f62b94d1de94eb20441865fd57e877b92776b450f159777764b37e0df36bb",
+      "receipt": {
+        "sourceHead": "b027c4babd3007c0b41fcba08f4f3997756a5fbe",
+        "exitCode": 1,
+        "signal": null,
+        "cleanup": "removed",
+        "errorPresent": false
+      },
+      "testLabelsOmitted": true,
+      "summary": {
+        "owner": "residual_frontend/CMP-261028-1715",
+        "sourceHead": "b027c4babd3007c0b41fcba08f4f3997756a5fbe",
+        "node": "v22.23.2",
+        "npm": "10.9.8",
+        "testExit": 1,
+        "resultExists": true,
+        "assertions": [
+          {
+            "file": "useMyCalendarData.initialization.spec.ts",
+            "status": "failed",
+            "kind": "missing-initialize",
+            "widgetPreparationContract": false
+          },
+          {
+            "file": "useMyCalendarData.initialization.spec.ts",
+            "status": "failed",
+            "kind": "missing-initialize",
+            "widgetPreparationContract": false
+          },
+          {
+            "file": "useMyCalendarData.initialization.spec.ts",
+            "status": "failed",
+            "kind": "missing-initialize",
+            "widgetPreparationContract": false
+          },
+          {
+            "file": "useMyCalendarData.initialization.spec.ts",
+            "status": "failed",
+            "kind": "missing-initialize",
+            "widgetPreparationContract": false
+          },
+          {
+            "file": "useMyCalendarData.initialization.spec.ts",
+            "status": "failed",
+            "kind": "missing-initialize",
+            "widgetPreparationContract": false
+          },
+          {
+            "file": "useMyCalendarData.initialization.spec.ts",
+            "status": "failed",
+            "kind": "missing-initialize",
+            "widgetPreparationContract": false
+          },
+          {
+            "file": "WidgetMyCalendar.spec.ts",
+            "status": "passed",
+            "kind": "passed",
+            "widgetPreparationContract": false
+          },
+          {
+            "file": "WidgetMyCalendar.spec.ts",
+            "status": "passed",
+            "kind": "passed",
+            "widgetPreparationContract": false
+          },
+          {
+            "file": "WidgetMyCalendar.spec.ts",
+            "status": "passed",
+            "kind": "passed",
+            "widgetPreparationContract": false
+          },
+          {
+            "file": "WidgetMyCalendar.spec.ts",
+            "status": "failed",
+            "kind": "spec-assertion",
+            "widgetPreparationContract": true
+          },
+          {
+            "file": "WidgetMyCalendar.spec.ts",
+            "status": "failed",
+            "kind": "other",
+            "widgetPreparationContract": false
+          }
+        ],
+        "meaningfulWidgetAssertionFailure": true,
+        "missingInitializeOnlyIsNotMeaningfulRed": true,
+        "numTotalTests": 11,
+        "numPassedTests": 3,
+        "numFailedTests": 8,
+        "numPendingTests": 0,
+        "success": false,
+        "suiteHookTimeoutCount": 0,
+        "assertionFailureCount": 1,
+        "missingInitializeFailureCount": 6
+      }
+    },
+    {
+      "runAlias": "CMP-261028-1715-fe-green-linux1",
+      "receiptSha256": "faa5d4344f8bc76626eecb3c3901b9f10bc97c7340ea5689496415a9acaed749",
+      "summarySha256": "9eefa43a53cbfb71dba69a6744ed6e415ff56f638bb0be21c89a1954b8d394f6",
+      "receipt": {
+        "sourceHead": "c7879b0244b617ab363927122ab88f801413ecc1",
+        "exitCode": 0,
+        "signal": null,
+        "cleanup": "removed",
+        "errorPresent": false
+      },
+      "testLabelsOmitted": true,
+      "summary": {
+        "owner": "residual_frontend/CMP-261028-1715",
+        "sourceHead": "c7879b0244b617ab363927122ab88f801413ecc1",
+        "node": "v22.23.2",
+        "npm": "10.9.8",
+        "testExit": 0,
+        "resultExists": true,
+        "assertions": [
+          {
+            "file": "useMyCalendarData.initialization.spec.ts",
+            "status": "passed",
+            "kind": "passed",
+            "widgetPreparationContract": false
+          },
+          {
+            "file": "useMyCalendarData.initialization.spec.ts",
+            "status": "passed",
+            "kind": "passed",
+            "widgetPreparationContract": false
+          },
+          {
+            "file": "useMyCalendarData.initialization.spec.ts",
+            "status": "passed",
+            "kind": "passed",
+            "widgetPreparationContract": false
+          },
+          {
+            "file": "useMyCalendarData.initialization.spec.ts",
+            "status": "passed",
+            "kind": "passed",
+            "widgetPreparationContract": false
+          },
+          {
+            "file": "useMyCalendarData.initialization.spec.ts",
+            "status": "passed",
+            "kind": "passed",
+            "widgetPreparationContract": false
+          },
+          {
+            "file": "useMyCalendarData.initialization.spec.ts",
+            "status": "passed",
+            "kind": "passed",
+            "widgetPreparationContract": false
+          },
+          {
+            "file": "useMyCalendarData.initialization.spec.ts",
+            "status": "passed",
+            "kind": "passed",
+            "widgetPreparationContract": false
+          },
+          {
+            "file": "useMyCalendarData.initialization.spec.ts",
+            "status": "passed",
+            "kind": "passed",
+            "widgetPreparationContract": false
+          },
+          {
+            "file": "WidgetMyCalendar.spec.ts",
+            "status": "passed",
+            "kind": "passed",
+            "widgetPreparationContract": false
+          },
+          {
+            "file": "WidgetMyCalendar.spec.ts",
+            "status": "passed",
+            "kind": "passed",
+            "widgetPreparationContract": false
+          },
+          {
+            "file": "WidgetMyCalendar.spec.ts",
+            "status": "passed",
+            "kind": "passed",
+            "widgetPreparationContract": false
+          },
+          {
+            "file": "WidgetMyCalendar.spec.ts",
+            "status": "passed",
+            "kind": "passed",
+            "widgetPreparationContract": true
+          },
+          {
+            "file": "WidgetMyCalendar.spec.ts",
+            "status": "passed",
+            "kind": "passed",
+            "widgetPreparationContract": false
+          }
+        ],
+        "allRequiredTestsPassed": true,
+        "numTotalTests": 13,
+        "numPassedTests": 13,
+        "numFailedTests": 0,
+        "numPendingTests": 0,
+        "success": true,
+        "suiteHookTimeoutCount": 0,
+        "assertionFailureCount": 0,
+        "missingInitializeFailureCount": 0
+      }
+    },
+    {
+      "runAlias": "CMP-261028-1715-nav-red-linux1",
+      "receiptSha256": "3a602450e762449b25c6a1d3b1f810226afa1ca74483400ba8cbcd623eeae5e9",
+      "summarySha256": "eaed2105eedff99583a5fc40e1ac8d18f107c6b8f21ded5fa0e16d9e01643d77",
+      "receipt": {
+        "sourceHead": "1569a6b80aae2f2c1560b00f4c5ef6f025907135",
+        "exitCode": 1,
+        "signal": null,
+        "cleanup": "removed",
+        "errorPresent": false
+      },
+      "testLabelsOmitted": true,
+      "summary": {
+        "owner": "calendar_parallel_worker/CMP-261028-1715",
+        "sourceHead": "1569a6b80aae2f2c1560b00f4c5ef6f025907135",
+        "node": "v22.23.2",
+        "npm": "10.9.8",
+        "testExit": 1,
+        "resultExists": true,
+        "assertions": [
+          {
+            "file": "GlobalNavItem.spec.ts",
+            "status": "failed",
+            "kind": "spec-assertion",
+            "zeroLengthExpectation": true
+          },
+          {
+            "file": "GlobalNavItem.spec.ts",
+            "status": "failed",
+            "kind": "spec-assertion",
+            "zeroLengthExpectation": true
+          }
+        ],
+        "numTotalTests": 2,
+        "numPassedTests": 0,
+        "numFailedTests": 2,
+        "numPendingTests": 0,
+        "success": false
+      }
+    }
+  ],
+  "navLatestTargetedGreen": "pending-not-claimed",
+  "limits": [
+    "Windows環境失敗を製品redに数えない",
+    "missing-initializeだけをmeaningful redに数えない",
+    "Nav後続spec-onlyの正式green/全CIは別ゲート"
+  ]
+}

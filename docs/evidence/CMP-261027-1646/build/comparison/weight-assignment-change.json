@@ -1,0 +1,79 @@
+{
+  "old": "/home/kenta/verification-evidence/CMP-261027-1646-after-oldweights-1",
+  "new": "/home/kenta/verification-evidence/CMP-261027-1646-after-finalweights-1",
+  "method": "実Gradle candidateClassFilesのindex集合を直接比較。割当helperの再実装なし。移設差分と区別した旧重み→新重みの差分。",
+  "rows": [
+    {
+      "migrationExcluded": false,
+      "task": "test",
+      "oldPaths": 9415,
+      "newPaths": 9415,
+      "oldOnly": 0,
+      "newOnly": 0,
+      "movedPaths": 7306,
+      "movedTopLevelClasses": 2595,
+      "exactlyOneOld": true,
+      "exactlyOneNew": true
+    },
+    {
+      "migrationExcluded": false,
+      "task": "archUnitTest",
+      "oldPaths": 9418,
+      "newPaths": 9418,
+      "oldOnly": 0,
+      "newOnly": 0,
+      "movedPaths": 7306,
+      "movedTopLevelClasses": 2595,
+      "exactlyOneOld": true,
+      "exactlyOneNew": true
+    },
+    {
+      "migrationExcluded": false,
+      "task": "perfTest",
+      "oldPaths": 9418,
+      "newPaths": 9418,
+      "oldOnly": 0,
+      "newOnly": 0,
+      "movedPaths": 7306,
+      "movedTopLevelClasses": 2595,
+      "exactlyOneOld": true,
+      "exactlyOneNew": true
+    },
+    {
+      "migrationExcluded": true,
+      "task": "test",
+      "oldPaths": 9328,
+      "newPaths": 9328,
+      "oldOnly": 0,
+      "newOnly": 0,
+      "movedPaths": 7404,
+      "movedTopLevelClasses": 2599,
+      "exactlyOneOld": true,
+      "exactlyOneNew": true
+    },
+    {
+      "migrationExcluded": true,
+      "task": "archUnitTest",
+      "oldPaths": 9331,
+      "newPaths": 9331,
+      "oldOnly": 0,
+      "newOnly": 0,
+      "movedPaths": 7404,
+      "movedTopLevelClasses": 2599,
+      "exactlyOneOld": true,
+      "exactlyOneNew": true
+    },
+    {
+      "migrationExcluded": true,
+      "task": "perfTest",
+      "oldPaths": 9331,
+      "newPaths": 9331,
+      "oldOnly": 0,
+      "newOnly": 0,
+      "movedPaths": 7404,
+      "movedTopLevelClasses": 2599,
+      "exactlyOneOld": true,
+      "exactlyOneNew": true
+    }
+  ]
+}

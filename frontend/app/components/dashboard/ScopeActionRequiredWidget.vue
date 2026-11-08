@@ -19,6 +19,7 @@ import type {
 const props = defineProps<{
   scopeType: ScopeTabType
   scopeId: string
+  sections?: { circulation: boolean; survey: boolean; attendance: boolean }
 }>()
 
 const { getActionRequired } = useScopeTabApi()
@@ -93,8 +94,14 @@ onBeforeUnmount(() => {
   observer?.disconnect()
 })
 
+const sectionVisible = (key: 'circulation' | 'survey' | 'attendance') => props.sections?.[key] ?? true
+const visibleActionCount = computed(() => !summary.value ? 0 :
+  (sectionVisible('circulation') ? summary.value.circulation.unconfirmedCount : 0)
+  + (sectionVisible('survey') ? summary.value.survey.unansweredCount : 0)
+  + (sectionVisible('attendance') ? summary.value.attendance.unansweredCount : 0),
+)
 const isEmpty = computed(
-  () => loaded.value && (summary.value?.totalActionCount ?? 0) === 0,
+  () => loaded.value && visibleActionCount.value === 0,
 )
 
 const surveyListPath = computed(() =>
@@ -176,7 +183,7 @@ function decrementAttendance() {
 
       <div v-else-if="summary" class="flex flex-col gap-3">
         <!-- 回覧板 -->
-        <div>
+        <div v-if="sectionVisible('circulation')">
           <button
             type="button"
             class="flex w-full items-center justify-between text-left text-sm font-medium hover:text-primary"
@@ -203,7 +210,7 @@ function decrementAttendance() {
         </div>
 
         <!-- アンケート -->
-        <div>
+        <div v-if="sectionVisible('survey')">
           <button
             type="button"
             class="flex w-full items-center justify-between text-left text-sm font-medium hover:text-primary"
@@ -230,7 +237,7 @@ function decrementAttendance() {
         </div>
 
         <!-- 出席確認 -->
-        <div>
+        <div v-if="sectionVisible('attendance')">
           <button
             type="button"
             class="flex w-full items-center justify-between text-left text-sm font-medium hover:text-primary"
@@ -261,7 +268,7 @@ function decrementAttendance() {
 
   <!-- 回覧板確認モーダル -->
   <CirculationConfirmModal
-    v-if="circulationModal.item"
+    v-if="sectionVisible('circulation') && circulationModal.item"
     :visible="circulationModal.visible"
     :item="circulationModal.item"
     :scope-type="scopeType"
@@ -272,7 +279,7 @@ function decrementAttendance() {
 
   <!-- アンケート回答モーダル -->
   <SurveyAnswerModal
-    v-if="surveyModal.item"
+    v-if="sectionVisible('survey') && surveyModal.item"
     :visible="surveyModal.visible"
     :item="surveyModal.item"
     :scope-type="scopeType"
@@ -283,7 +290,7 @@ function decrementAttendance() {
 
   <!-- 出席確認モーダル -->
   <AttendanceQuickModal
-    v-if="attendanceModal.item"
+    v-if="sectionVisible('attendance') && attendanceModal.item"
     :visible="attendanceModal.visible"
     :item="attendanceModal.item"
     :scope-type="scopeType"

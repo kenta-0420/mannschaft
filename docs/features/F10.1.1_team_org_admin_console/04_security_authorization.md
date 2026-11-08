@@ -30,17 +30,20 @@
 - **FE はあくまで表示制御**。`useRoleAccess` で取得したロールは「誤遷移の早期遮断」「ボタンの出し分け」にのみ使う（`useRoleAccess(scopeType, slug)`・第2引数は slug 文字列・R8）。
 - **すべての管理 API は BE で必ず `checkAdminOrAbove`（または権限グループ判定）を入口で通す**。本機能で新設する API（[03](./03_admin_action_required_api.md) の `admin-action-required`）はファサード入口で `checkAdminOrAbove` を呼ぶ。既存流用 API（予約・予算・メンバー）は各 Controller/Service が既に同等の認可を持つため、それを温存する。
 - FE の `admin-console` ミドルウェア（[01](./01_console_routes.md) §5）の遮断は UX 上の早期弾きであり、これだけに依存しない。仮に FE 判定を改ざんしても、BE が 403 を返すため情報は漏れない。
+- 組織の招待タブは既存 `admin-console`、権限グループタブは既存 `org-role-guard` をページメタに結線する（CMP-260917-1351）。権限取得が正常完了した `roleName=null` は非所属として組織トップへ戻し、取得前の null と区別する。取得失敗は既存どおり 503 として伝え、ページ内のロール変更監視も維持する。
 - `isAdmin` をハードコードで true にする・テストの便宜で常時許可する等は禁止（メモリ `feedback_visibility_bypass_f00_audit`）。
 
 ### 2.1 SYSTEM_ADMIN の扱い（FE トグル表示と BE 認可の食い違い解消）【C・SYSTEM_ADMIN 整合 根治】
 
-> **偵察で判明した食い違い（R7/R8）**: FE の `useRoleAccess.isAdminOrDeputy` は **SYSTEM_ADMIN でも true**（`isAdmin = roleName==='ADMIN' || roleName==='SYSTEM_ADMIN'`）。一方 BE の `AccessControlService.checkAdminOrAbove` / `isAdminOrAbove` は `getRoleName`（scope 内ロール）の結果を `ADMIN_ROLES = {"ADMIN","DEPUTY_ADMIN"}` で判定するため、**SYSTEM_ADMIN が当該 scope に ADMIN/DEPUTY ロールを持たない場合は false（403）**になる。FE はトグルを出すのに BE が API を 403 で弾く、という不整合が起きうる。
+> **2026-10-16 現行契約との照合**: `EffectivePermissionsResponse.roleName` は表示用の最強ロールで、`AccessControlService.resolveEffectiveRoleName` は SYSTEM_ADMIN を優先する。したがって、従来の「`me/permissions` は常に scope 内ロールを返す」という説明だけでは兼任者を正しく扱えない。スコープ ADMIN の割当は応答の `scopeAdmin`（BE の `AccessControlService.isAdmin` と同じ判定）で明示され、FE の既存 `useRoleAccess.isScopeAdmin` がこれを参照する。
 
-**確定ポリシー**: 「SYSTEM_ADMIN は scope 内ロールを別途持たない限り、チーム/組織の管理コンソールでは管理者として扱わない」。
+**確定ポリシー**: 管理集約API・管理者レンズは、SYSTEM_ADMINでもscope内ADMIN/DEPUTYの割当を必要とする。設定ハブは既存設定ページの認可を維持し、FAQ・公開設定に限り既存のSYSTEM_ADMIN例外を案内する。この例外を他の設定や集約APIへ一般化しない。
 
-- **BE**: 本機能の管理 API は `checkAdminOrAbove`（scope 内 ADMIN/DEPUTY のみ・SYSTEM_ADMIN を scope 管理者と見なさない）を入口に置く。SYSTEM_ADMIN がプラットフォーム横断で操作する用途は F10.1 区分 B（`/system-admin`）の責務であり、本コンソール（区分 A）の対象外（[README](./README.md) §2）。`me/permissions` の `roleName` が SYSTEM_ADMIN でも scope ロールが無ければ本 API は 403 を返す。
-- **FE**: `me/permissions` EP の `roleName` は scope 内の実効ロールを返す。SYSTEM_ADMIN がその scope に ADMIN/DEPUTY を持たない場合、`me/permissions` は scope ロール（`null`/`MEMBER` 等）を返すため `isAdminOrDeputy` は false になり、トグルも `admin-console` 通過も発生しない。**この前提（`me/permissions` が scope 実効ロールを返す）を満たす限り FE と BE は一致する**。
-- 念のため FE 側のレンズトグル表示条件は「`isAdminOrDeputy` かつ `roleName !== 'SYSTEM_ADMIN'` ではなく」**`me/permissions` の scope 実効 roleName が ADMIN/DEPUTY_ADMIN であること**に揃える（SYSTEM_ADMIN がグローバル権限だけで scope ロールを持たない場合はトグルを出さない）。これにより BE 403 とのちぐはぐ（トグルは出るが API で弾かれる）を根絶する。
+- **BE**: 本機能の管理 API は `checkAdminOrAbove`（scope 内 ADMIN/DEPUTY のみ）を入口に置く。現行 `isAdminOrAbove` は表示用最強ロールを流用せず、スコープ付き `user_roles` を直接確認する。SYSTEM_ADMIN 単独は 403、当該スコープの ADMIN/DEPUTY 兼任者は許可される。プラットフォーム横断操作は引き続き区分 B（`/system-admin`）の責務。
+- **設定ハブの ADMIN 条件**: 既存 `isScopeAdmin` を使う。`scopeAdmin=true` の SYSTEM_ADMIN 兼任者も許可し、ADMIN 専用リンクを表示する。`scopeAdmin` を返さない旧BEでは同 helper の既存フォールバック（`roleName==='ADMIN'`）に従う。グローバル SYSTEM_ADMIN を含む `isAdmin` だけで判定しない。
+- **設定ハブの DEPUTY 条件**: 通常の `roleName==='DEPUTY_ADMIN'` は許可する。`roleName==='SYSTEM_ADMIN'` かつ `isScopeAdmin=false` は、現行応答だけでは「単独 SYSTEM_ADMIN」と「スコープ DEPUTY 兼任」を識別できないため、既存 `getAdminActionRequired(scopeType, slug, 0)` で正準BE認可を確認する。`AdminActionRequiredFacade` の入口は `checkAdminOrAbove` を強制する。200なら副管理者向けのスコープ設定も表示し、403ならスコープ設定だけを正常拒否する。既存SYSTEM_ADMIN例外のFAQ・公開設定は両方の場合に表示する。それ以外の取得失敗はハブ全体のエラー表示とし、リンクを出さず同じ処理を再試行する。
+- **既存設定のSYSTEM_ADMIN例外**: FAQは `AdminFaqController` の `AccessGuard.isScopeAdmin` と `FaqAdminService.checkScopeAdminAccess`、公開設定は `AdminPublicSettingsService.checkScopeAdminAccess` がSYSTEM_ADMINを明示許可する。FEも `FaqSettingsEditor` の `isAdmin` と公開設定の `isAdminOrDeputy` が同じ例外を含むため、ハブはこの2リンクだけに `sysAllowed` を付ける。入口許可とスコープ管理権限を分け、シフト・TODO・通知クレジットには例外を流用しない。公開フラグはスコープ管理権限を持つチーム管理者だけが取得する。
+- 追加確認は曖昧な SYSTEM_ADMIN の場合だけ1回行い、`preview_size=0` で個人情報プレビューを取得しない。通常の ADMIN/DEPUTY と `scopeAdmin=true` の兼任者には追加GETを行わない。権限文字列からロールを推測せず、新API・DTO・共通権限helperの変更は行わない。スコープ変更時は要求番号と要求時slugを照合し、旧応答で新スコープの拒否やエラー状態を上書きしない。
 
 ---
 

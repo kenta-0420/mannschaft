@@ -1,0 +1,140 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261009-0616",
+  "runtimeSourceHead": "0d5e51da25054e379afd5db51da6afca6cd1cd2e",
+  "implementationHead": "f972720bc85a664df16d578c54061c2106c4bf31",
+  "provenance": [
+    {
+      "privateReference": ".claude/campaigns/cmp1432a-approved-20261027/evidence-continuation-0d5e-03/navigation-safe.json",
+      "sha256": "d181f4e8c687892213ad626ac39b9dcbd436147d4f82768bf3214b3eb6ced309"
+    },
+    {
+      "privateReference": ".claude/campaigns/cmp1432a-approved-20261027/evidence-continuation-0d5e-03/change-review-safe.json",
+      "sha256": "f076bcb38e49fbe2058168692681c3105259e3fdc136b8e8f26ac3218ff5fbef"
+    }
+  ],
+  "navigation": {
+    "passed": true,
+    "changeRequestId": 1,
+    "scheduleId": 4,
+    "previewCount": 3,
+    "dashboardCards": [
+      {
+        "kind": "change-dashboard-click",
+        "target": "/teams/cmp0649-4c89611f1c78-primary/shifts/4/change-requests",
+        "reached": true,
+        "targetApiStatus": 200,
+        "reviewControlsAvailable": true,
+        "reviewOperationExecuted": false,
+        "reviewedFeature": "CMP-261010-1432-A"
+      },
+      {
+        "kind": "swap-dashboard-click",
+        "target": "/teams/cmp0649-4c89611f1c78-primary/shifts?tab=swaps",
+        "reached": true,
+        "targetApiStatus": 200,
+        "selectedTab": "swaps",
+        "reviewOperationExecuted": false
+      }
+    ],
+    "listRoute": {
+      "contract": "existing team shifts list",
+      "httpStatus": 200,
+      "uiConsumerDiscovered": false,
+      "clickAttempted": false
+    },
+    "roleBoundary": [
+      {
+        "actor": "B",
+        "statuses": {
+          "scope-admin": 403,
+          "change-list": 200,
+          "change-detail": 404
+        },
+        "changeReasonLeak": false,
+        "reviewControls": 0
+      },
+      {
+        "actor": "S3",
+        "statuses": {
+          "scope-admin": 403,
+          "change-list": 404,
+          "change-detail": 404
+        },
+        "changeReasonLeak": false,
+        "reviewControls": 0
+      },
+      {
+        "actor": "X",
+        "statuses": {
+          "scope-admin": 403,
+          "change-list": 404,
+          "change-detail": 404
+        },
+        "changeReasonLeak": false,
+        "reviewControls": 0
+      },
+      {
+        "actor": "anonymous",
+        "statuses": {
+          "scope-admin": 401,
+          "change-list": 401,
+          "change-detail": 401
+        },
+        "changeReasonLeak": false,
+        "reviewControls": 0
+      }
+    ],
+    "fourTableHashesBefore": {
+      "shift_swap_requests": "87205ab7a1ec1f04f80f9956195a49820732cb5f1b47aba6787fb38308a3a39e",
+      "shift_slots": "f0845f3633aa2864643eb5eca1c9a31884dd58a9f98df21a502e7de4a7b20502",
+      "shift_assignments": "e4c637de28bf2107a40bb6b8fa32f7d0f5dbdb0838686dc2a28dfd9ddce17a2a",
+      "shift_change_requests": "781635a7746d7c9079f3d81d3c49b2f0b24cb1b5703e7ef5ad4392afe478968e"
+    },
+    "fourTableHashesAfter": {
+      "shift_swap_requests": "87205ab7a1ec1f04f80f9956195a49820732cb5f1b47aba6787fb38308a3a39e",
+      "shift_slots": "f0845f3633aa2864643eb5eca1c9a31884dd58a9f98df21a502e7de4a7b20502",
+      "shift_assignments": "e4c637de28bf2107a40bb6b8fa32f7d0f5dbdb0838686dc2a28dfd9ddce17a2a",
+      "shift_change_requests": "781635a7746d7c9079f3d81d3c49b2f0b24cb1b5703e7ef5ad4392afe478968e"
+    },
+    "fourTableHashesUnchanged": true,
+    "targetMutationCount": 0
+  },
+  "changeReview": {
+    "passed": true,
+    "pureTeamAdminActor": "D",
+    "systemRole": "MEMBER",
+    "requesterActor": "A",
+    "differentReviewerVerified": true,
+    "transitions": [
+      {
+        "id": 1,
+        "before": "OPEN",
+        "after": "ACCEPTED",
+        "requestVersion": 0,
+        "status": 200,
+        "reviewerActor": "D",
+        "requesterActor": "A",
+        "targetOperation": "DOM button -> dialog confirm -> PATCH -> UI and DB assertion"
+      },
+      {
+        "id": 2,
+        "before": "OPEN",
+        "after": "REJECTED",
+        "requestVersion": 0,
+        "status": 200,
+        "reviewerActor": "D",
+        "requesterActor": "A",
+        "targetOperation": "DOM button -> dialog confirm -> PATCH -> UI and DB assertion"
+      }
+    ],
+    "versionLimitation": "UI composable review defaults version=0; only newly created OPEN version0 requests tested",
+    "originalNavigationBaselineUnmodified": true
+  },
+  "limitations": [
+    "navigation原本campaignAcPassed=falseは保持し個別ACの根拠として参照",
+    "審査UIは新規OPEN/version0のみ実測",
+    "list_routeはAPI契約のみ、クリック成功ではない",
+    "本候補で新runtime/追加0649固定追試は実行していない"
+  ]
+}

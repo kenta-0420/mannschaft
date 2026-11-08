@@ -1,0 +1,45 @@
+{
+    "personaId":  "R2",
+    "personaType":  "ADHD傾向×中断・放棄",
+    "journeyId":  "member-menu-interruption",
+    "runId":  "CMP-261016-1009-R2",
+    "source":  "アリシゼーションテスト",
+    "sourceSha":  "12a58857f80535a8bc2f675eef0b74c4abf7e62a",
+    "role":  "member",
+    "goal":  "所属チーム・組織のメニューとメンバー情報を確認し、中断後に復帰する",
+    "outcome":  "チーム/組織とも上部メンバータブから2名を確認。組織メニュー内のメンバー一覧では達成できず、上部タブへ切替えて達成。",
+    "observations":  [
+                         {
+                             "id":  "R2-O1",
+                             "type":  "導線",
+                             "certainty":  "住民観測・root裏取り待ち",
+                             "state":  "18-org-members-after-close-360",
+                             "description":  "組織メニューのメンバー一覧で?tab=2へ変わるがダッシュボードが残る。上部タブなら/membersへ到達。"
+                         },
+                         {
+                             "id":  "R2-O2",
+                             "type":  "主要タップ寸法",
+                             "certainty":  "実測観測",
+                             "selector":  "[data-testid=scope-sidebar-toggle]",
+                             "dimensions":  {
+                                                "width":  32,
+                                                "height":  32
+                                            },
+                             "description":  "メニュー入口32x32、閉じる40x40。44px未満。"
+                         },
+                         {
+                             "id":  "R2-O3",
+                             "type":  "表示",
+                             "certainty":  "実測観測",
+                             "description":  "全保存状態でページscrollWidth=clientWidth。メンバー表はコンテナ内横スクロール、狭幅でロール/予定の色が縦に折り返す。主要画面の文字重なりやページ全体横パンは観測せず。"
+                         }
+                     ],
+    "limitations":  [
+                        "課金リンク遷移は自動承認レビュー拒否で未実施。表示は既存仕様とroot確認済。",
+                        "初期/遷移直後のloading画像も区別して保存。安定画面は別画像。",
+                        "チーム390x844、組織360x800を同一Contextで観測。"
+                    ],
+    "browserClosed":  true,
+    "dataMutation":  false,
+    "publicationNote":  "原報告から認証情報・コンソール・全DOM・API本文を除いた抜粋。原報告のIDを保持。"
+}

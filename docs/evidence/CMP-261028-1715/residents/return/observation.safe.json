@@ -1,0 +1,85 @@
+{
+  "runId": "calendar-residual-20261028",
+  "personaId": "resident-adhd-return",
+  "journeyId": "visible-schedule-interrupted-return",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "locale": "ja",
+  "state": "achieved",
+  "observations": [
+    {
+      "step": 1,
+      "state": "dashboard",
+      "action": "side_calendar"
+    },
+    {
+      "step": 2,
+      "state": "month",
+      "action": "list"
+    },
+    {
+      "step": 3,
+      "state": "list",
+      "visibleScheduleRows": 1,
+      "action": "blank_tab_attention_shift"
+    },
+    {
+      "step": 4,
+      "state": "returned",
+      "retained": [
+        "month",
+        "list",
+        "schedule_row"
+      ],
+      "action": "select_schedule_row"
+    },
+    {
+      "step": 5,
+      "state": "detail_panel",
+      "goal": "achieved"
+    }
+  ],
+  "visibleErrors": 0,
+  "unintendedNavigation": 0,
+  "limitations": [
+    "short_same_context_tab_interruption_only",
+    "no_source_or_spec_comparison",
+    "observation_not_bug_determination"
+  ],
+  "evidence": [
+    {
+      "file": "未採用ローカル画像（公開証跡に含めない）",
+      "sha256": "80a200b0611e788c6baf3b897e03c34e7079f5d098ea8248b2922045ebb23c39"
+    },
+    {
+      "file": "未採用ローカル画像（公開証跡に含めない）",
+      "sha256": "aaf9e41ac035eafd0eca0fe3983646ae5ad9db64543b4206845d99974f5828d5"
+    },
+    {
+      "file": "未採用ローカル画像（公開証跡に含めない）",
+      "sha256": "15ac6d39ba3f6338ca2ee7ce1b1d2a866ad5c4113acb3fd45338e4598ec5cfa4"
+    },
+    {
+      "file": "未採用ローカル画像（公開証跡に含めない）",
+      "sha256": "6bb642d5847822cdc1a1cdf1e501d11362916e67358adc1c0168b6de25aee5fe"
+    },
+    {
+      "file": "docs/evidence/CMP-261028-1715/residents/return/06-return-list.png",
+      "sha256": "6bb642d5847822cdc1a1cdf1e501d11362916e67358adc1c0168b6de25aee5fe"
+    },
+    {
+      "file": "未採用ローカル画像（公開証跡に含めない）",
+      "sha256": "21fba34468927ecb60592c26fe0092abf18b0f6a82a49e2d6d7fdc0732541d20"
+    }
+  ],
+  "cleanup": {
+    "logoutStatus": 200,
+    "contextClosed": true,
+    "browserClosed": true,
+    "closed": true,
+    "businessMutations": 0,
+    "pageErrorCount": 0
+  }
+}

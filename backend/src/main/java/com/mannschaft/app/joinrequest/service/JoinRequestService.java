@@ -38,7 +38,7 @@ import java.util.UUID;
  * 参加申請の受付・審査（承認/却下）を担う。金型: {@code VillageJoinRequestService}
  * （F17.1 Phase 1 B6）。</p>
  *
- * <p><strong>存在秘匿（IDOR/情報漏洩対策）:</strong> スコープが不存在・PRIVATE・PROVISIONED・
+ * <p><strong>申請受付・本人履歴・審査の存在秘匿（IDOR/情報漏洩対策）:</strong> スコープが不存在・PRIVATE・PROVISIONED・
  * アーカイブ済みのいずれであっても同一の {@link JoinRequestErrorCode#SCOPE_NOT_FOUND} を返す
  * （{@code VillageAccessGate} と同じ流儀。判定順序は不存在 → 可視性 → PROVISIONED/アーカイブ の順）。</p>
  *
@@ -141,12 +141,33 @@ public class JoinRequestService {
 
     /**
      * スコープの参加申請一覧を取得する。ADMIN/DEPUTY_ADMIN のみ閲覧可。
+     * 非公開化後も過去の申請を確認できるよう、新規申請の受付可否とは分離する。
      */
     @Transactional(readOnly = true)
     public Page<JoinRequestResponse> listForReviewers(String scopeType, Long scopeId, Long actorUserId,
                                                        JoinRequestStatus status, int page, int size) {
         String normalizedScopeType = validateScopeType(scopeType);
-        loadJoinableScope(normalizedScopeType, scopeId);
+        if (scopeId == null) {
+            throw new BusinessException(JoinRequestErrorCode.SCOPE_NOT_FOUND, HttpStatus.NOT_FOUND);
+        }
+        // 非稼働スコープは従来どおり秘匿し、非公開スコープだけ所属管理者の履歴閲覧を許可する。
+        if (SCOPE_TEAM.equals(normalizedScopeType)) {
+            var summary = teamService.findJoinabilitySummary(scopeId)
+                    .orElseThrow(() -> new BusinessException(JoinRequestErrorCode.SCOPE_NOT_FOUND, HttpStatus.NOT_FOUND));
+            if (summary.archived() || summary.provisioned()
+                    || (!summary.isPublic() && !accessControlService.isAdminOrAbove(
+                            actorUserId, scopeId, normalizedScopeType))) {
+                throw new BusinessException(JoinRequestErrorCode.SCOPE_NOT_FOUND, HttpStatus.NOT_FOUND);
+            }
+        } else {
+            var summary = organizationService.findJoinabilitySummary(scopeId)
+                    .orElseThrow(() -> new BusinessException(JoinRequestErrorCode.SCOPE_NOT_FOUND, HttpStatus.NOT_FOUND));
+            if (summary.archived() || summary.provisioned()
+                    || (!summary.isPublic() && !accessControlService.isAdminOrAbove(
+                            actorUserId, scopeId, normalizedScopeType))) {
+                throw new BusinessException(JoinRequestErrorCode.SCOPE_NOT_FOUND, HttpStatus.NOT_FOUND);
+            }
+        }
         accessControlService.checkAdminOrAbove(actorUserId, scopeId, normalizedScopeType);
 
         JoinRequestStatus targetStatus = status != null ? status : JoinRequestStatus.PENDING;

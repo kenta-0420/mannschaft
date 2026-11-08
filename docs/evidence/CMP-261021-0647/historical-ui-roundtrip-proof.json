@@ -1,0 +1,88 @@
+{
+  "sourceHead": "7f924ae77888926463b34145aeeda7e77183b7fc",
+  "executedAt": "2026-10-22T11:09:30.836119+00:00",
+  "finishedAt": "2026-10-22T11:13:01.496090+00:00",
+  "workers": 1,
+  "retries": 0,
+  "exitCode": 0,
+  "postRunDbObservationExit": 0,
+  "independentDbVerified": true,
+  "cleanupConfirmed": true,
+  "modes": [
+    {
+      "uiMode": "SPECIFIC",
+      "entry": "今日→交代依頼を作成",
+      "properSlugMembersAllRequests": 1,
+      "statuses": [
+        "PENDING",
+        "ACCEPTED",
+        "APPROVED"
+      ],
+      "dbStatus": "APPROVED"
+    },
+    {
+      "uiMode": "TEMPLATE",
+      "entry": "今日→交代依頼を作成",
+      "properSlugMembersAllRequests": 1,
+      "statuses": [
+        "PENDING",
+        "ACCEPTED",
+        "APPROVED"
+      ],
+      "dbStatus": "APPROVED"
+    },
+    {
+      "uiMode": "OPEN_CALL",
+      "entry": "今日→交代依頼を作成",
+      "properSlugMembersAllRequests": 1,
+      "statuses": [
+        "PENDING",
+        "ACCEPTED",
+        "APPROVED"
+      ],
+      "dbStatus": "APPROVED"
+    }
+  ],
+  "playwrightStats": {
+    "startTime": "2026-10-22T11:09:31.749Z",
+    "duration": 197464.23,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "originalHashes": [
+    {
+      "file": "ui-final-run-summary.json",
+      "bytes": 640,
+      "sha256": "5e4e65d3bad781069532d9e953038698a60c996b3d2e973492b433317b9fa5f9"
+    },
+    {
+      "file": "ui-db-verification-final.json",
+      "bytes": 776,
+      "sha256": "9120c817389ff1946a6366efa300bca25439f6b50a25969ea2ff8947a9da07ea"
+    },
+    {
+      "file": "ui-cleanup-final.json",
+      "bytes": 256,
+      "sha256": "5247c7097e4de21825951db23396c99077ba5cef1af8cc5d555f5d416b12b7e7"
+    },
+    {
+      "file": "playwright-final-results.json",
+      "bytes": 9571,
+      "sha256": "b084a3eb76df1243606b4a4516d3017b5624e5a9ffda7b5f5b8034cee6fe9bb7"
+    },
+    {
+      "file": "api-authz-supplement-final.json",
+      "bytes": 6637,
+      "sha256": "479e8648800ca515304b80895e91e7388bf0ec809fd80946a35290643ab2dbbe"
+    }
+  ],
+  "roleCrossing": "旧実UIで一般MEMBER/他組織の非公開直URL404、SUPPORTER/他組織のチーム画面403。別API補完15件（成功1＋拒否14）、拒否前後DB同値。",
+  "rootReview": "当時root-reviewとcampaign記録で主要PNG実視認・size/SHA照合。2026-10-25のreadbackで対応付け。",
+  "limitations": [
+    "7f実行の安全な選択抜粋。82dでcreate/accept/approveを再実行した証拠ではない",
+    "TEMPLATEはUI名であり、サーバーrecipientModeはSPECIFICとして保存される",
+    "原本のfixture/認証/全文ログは公開保全しない"
+  ]
+}

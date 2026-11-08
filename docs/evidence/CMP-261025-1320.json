@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261025-1320",
+  "scope": "app",
+  "implementation": {
+    "pr": 4119,
+    "sha": "35801c64f0a2aff9123a4bdcbd8b931776fc3a37"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC1",
+      "description": "360/390で全team/短名を含むteam filterの実button幅高さ44px以上",
+      "tests": [
+        {
+          "name": "CMP1320-360/390/767 native chip実寸",
+          "evidence": "docs/evidence/CMP-261025-1320/fixture-summary.json"
+        },
+        {
+          "name": "REAL-360/390 実BE本人2teamの実寸",
+          "evidence": "docs/evidence/CMP-261025-1320/real-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "AC2",
+      "description": "詳細close44px、painted領域内の端click/開閉、既存close翻訳名",
+      "tests": [
+        {
+          "name": "CMP1320-360/390/767 close実寸/accessibleName/端click",
+          "evidence": "docs/evidence/CMP-261025-1320/fixture-summary.json"
+        },
+        {
+          "name": "REAL-360/390 close44pxと端click",
+          "evidence": "docs/evidence/CMP-261025-1320/real-summary.json"
+        },
+        {
+          "name": "mobile360/390安定可視close44x44の実tap・root画像DOM照合",
+          "evidence": "docs/evidence/CMP-261025-1320/exploratory-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "AC3",
+      "description": "個別team絞り込み/全team復帰、月次/週次を維持",
+      "tests": [
+        {
+          "name": "fixture月週filter/復帰",
+          "evidence": "docs/evidence/CMP-261025-1320/fixture-summary.json"
+        },
+        {
+          "name": "REAL-360/390 本人2slotの月週filter",
+          "evidence": "docs/evidence/CMP-261025-1320/real-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "AC4",
+      "description": "767は44px、768/1280は旧desktop密度/computed維持",
+      "tests": [
+        {
+          "name": "CMP1320-767/DESKTOP-768/1280 greenと旧computed比較",
+          "evidence": "docs/evidence/CMP-261025-1320/fixture-summary.json"
+        }
+      ],
+      "limitations": "close x/yは旧取得時enter transition中のため同値判定対象外。実機5はdesktop再実行を含まない。"
+    },
+    {
+      "id": "AC5",
+      "description": "360/390で横パンなし、縦scrollでclose到達/操作可",
+      "tests": [
+        {
+          "name": "fixture横パン/scroll/端click",
+          "evidence": "docs/evidence/CMP-261025-1320/fixture-summary.json"
+        },
+        {
+          "name": "REAL-360/390 document幅/close端click",
+          "evidence": "docs/evidence/CMP-261025-1320/real-summary.json"
+        },
+        {
+          "name": "mobile360/390安定可視close44x44の実tap・root画像DOM照合",
+          "evidence": "docs/evidence/CMP-261025-1320/exploratory-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "AC6",
+      "description": "0件filter非表示/既存空状態、1teamは全team+1chip、空日のclose",
+      "tests": [
+        {
+          "name": "CMP1320-EMPTY-0/1と空日close",
+          "evidence": "docs/evidence/CMP-261025-1320/fixture-summary.json"
+        },
+        {
+          "name": "REAL-EMPTY/TENANT、本人空日close",
+          "evidence": "docs/evidence/CMP-261025-1320/real-summary.json"
+        },
+        {
+          "name": "ADHD attempt2 空勤務/週/月/5秒中断復帰",
+          "evidence": "docs/evidence/CMP-261025-1320/exploratory-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "AC7",
+      "description": "本人自然導線、未認証、同team別利用者、所属交差空の他tenantでself境界維持",
+      "tests": [
+        {
+          "name": "REAL本人自然導線/EMPTY0/TENANT1/UNAUTHlogin",
+          "evidence": "docs/evidence/CMP-261025-1320/real-summary.json"
+        },
+        {
+          "name": "root cookieなしGET confirmed-slots=401",
+          "evidence": "docs/evidence/CMP-261025-1320/root-unauth-probe.json"
+        },
+        {
+          "name": "scope attempt2実tap・他user/team queryでもbaselineと同じT3slot1",
+          "evidence": "docs/evidence/CMP-261025-1320/exploratory-summary.json"
+        }
+      ],
+      "limitations": "self-only routeのquery観測。任意ID path/未公開schedule/業務writeの包括的認可保証ではない。"
+    }
+  ],
+  "ci": [
+    {
+      "runId": 40200753771,
+      "name": "Frontend E2E PR",
+      "result": "101 passed内で新spec7 passed"
+    },
+    {
+      "runId": 40200753781,
+      "name": "Frontend CI PR",
+      "result": "success"
+    }
+  ],
+  "ciSnapshot": {
+    "checks": 21,
+    "success": 14,
+    "skipped": 7,
+    "observedAtUtc": "2026-10-25T14:32:09.7621934Z"
+  },
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261025-1320/review-summary.json"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261025-1320/real-summary.json"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261025-1320/exploratory-summary.json"
+    }
+  },
+  "regressions": [
+    {
+      "description": "既存モバイルnative filter32px/短名33.296875pxとclose32x32の不足を44px化",
+      "test": "frontend/tests/e2e/mobile/my-shift-touch-targets.spec.ts",
+      "redEvidence": "docs/evidence/CMP-261025-1320/fixture-summary.json",
+      "greenEvidence": "docs/evidence/CMP-261025-1320/fixture-summary.json",
+      "redResult": "旧UI4失敗/3成功・timeoutなし・実寸assert失敗",
+      "greenResult": "修正後7成功、正式E2E runでも同7成功"
+    }
+  ],
+  "writeAccounting": {
+    "setup": "正規API35操作・3actor/3team/3slot。内部SHIFT_PUBLISHED4/outbox3。SQLwrites0、交換/決済0。",
+    "real": "画面業務write0、auth新端末内部通知NEW_DEVICE_LOGIN各actor1計3。pushsubscription0/outbox不変/配送OFF。",
+    "exploratory": "mobileは自動CSP POST1件のみguardで未送信、業務APIは実BE。ADHD/scope attempt2は各自動CSP POST204が1件。auth内部通知/診断を業務writeと区別。"
+  },
+  "history": {
+    "preserved": "WSL停止による初回3住民login0/UI0と、復旧後ハーネス不備attempt1の独立失敗receiptを維持",
+    "wslCause": "正常shutdown連鎖/OOMreaper記録なし、発火元未特定。根治済みとは主張しない。"
+  },
+  "limits": [
+    "物理端末未試験",
+    "WSL停止発火元未確定",
+    "BackButtonは/my URL遷移までで安定描画未確認",
+    "2観測はimport-ready/trustedfalseで気づき箱UIへ未反映",
+    "週次full-history secret scanは未実行"
+  ],
+  "mainCi": {
+    "sha": "67ec2f72889612e916bda97b68f30db4ecb5f8a9",
+    "evidence": "docs/evidence/CMP-261025-1320/ci-summary.json",
+    "runs": [
+      40206539292,
+      40206539213,
+      40206539110
+    ],
+    "result": "FE unit/Docker実containerHTTPhealth/差分secret scan成功。AWScheck成功後cloud実steps全skipped、本番変更なし。"
+  }
+}

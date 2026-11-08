@@ -440,6 +440,30 @@ public interface TimelinePostRepository extends JpaRepository<TimelinePostEntity
             @Param("villageId") UUID villageId, Pageable pageable);
 
     /**
+     * {@link #findLatestByVillageId} の村 ID 群版（ダッシュボード村フィードの N+1 解消用）。
+     *
+     * <p>村ごとに最新 {@code perVillage} 件を window 関数で切り出す（村数によらず SQL は 1 本）。
+     * 条件・並び順（created_at 降順）は単一版と同一。native のため {@code @SQLRestriction} は効かず、
+     * {@code deleted_at IS NULL} を明示する。</p>
+     */
+    @Query(value = """
+            SELECT x.* FROM (
+              SELECT p.*, ROW_NUMBER() OVER (
+                       PARTITION BY p.scope_village_id ORDER BY p.created_at DESC, p.id DESC) AS rn
+              FROM timeline_posts p
+              WHERE p.scope_village_id IN (:villageIds)
+                AND p.parent_id IS NULL
+                AND p.status = 'PUBLISHED'
+                AND p.deleted_at IS NULL
+            ) x
+            WHERE x.rn <= :perVillage
+            ORDER BY x.created_at DESC, x.id DESC
+            """, nativeQuery = true)
+    List<TimelinePostEntity> findLatestByVillageIds(
+            @Param("villageIds") java.util.Collection<UUID> villageIds,
+            @Param("perVillage") int perVillage);
+
+    /**
      * 村スコープ（scope_village_id）でタイムラインフィードを取得する。
      *
      * <p>getFeed エンドポイントから scopeType=VILLAGE で呼ばれる。

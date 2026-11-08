@@ -100,6 +100,47 @@ class ReservationMapperTest {
     // ========================================
 
     @Nested
+    @DisplayName("toReservationResponse（スロットサマリ）")
+    class ToReservationResponseSlotSummary {
+
+        @Test
+        @DisplayName("R3: 日跨ぎ枠のスロットサマリに終了日（endDate）が入る")
+        void toReservationResponse_日跨ぎ枠_endDateが入る() {
+            ReservationSlotEntity slot = ReservationSlotEntity.builder()
+                    .teamId(10L)
+                    .slotDate(LocalDate.of(2026, 11, 3))
+                    .endDate(LocalDate.of(2026, 11, 4))
+                    .startTime(LocalTime.of(23, 0))
+                    .endTime(LocalTime.of(1, 0))
+                    .slotStatus(SlotStatus.AVAILABLE)
+                    .build();
+            ReservationEntity reservation = ReservationEntity.builder().teamId(10L).build();
+
+            ReservationResponse response = reservationMapper.toReservationResponse(reservation, slot, null);
+
+            assertThat(response.getSlot().slotDate()).isEqualTo(LocalDate.of(2026, 11, 3));
+            assertThat(response.getSlot().endDate()).isEqualTo(LocalDate.of(2026, 11, 4));
+        }
+
+        @Test
+        @DisplayName("R3: 日を跨がない枠は endDate が slotDate と同日になる")
+        void toReservationResponse_同日枠_endDateはslotDate() {
+            ReservationSlotEntity slot = ReservationSlotEntity.builder()
+                    .teamId(10L)
+                    .slotDate(LocalDate.of(2026, 11, 3))
+                    .startTime(LocalTime.of(10, 0))
+                    .endTime(LocalTime.of(11, 0))
+                    .slotStatus(SlotStatus.AVAILABLE)
+                    .build();
+            ReservationEntity reservation = ReservationEntity.builder().teamId(10L).build();
+
+            ReservationResponse response = reservationMapper.toReservationResponse(reservation, slot, null);
+
+            assertThat(response.getSlot().endDate()).isEqualTo(LocalDate.of(2026, 11, 3));
+        }
+    }
+
+    @Nested
     @DisplayName("toSlotResponse")
     class ToSlotResponse {
 

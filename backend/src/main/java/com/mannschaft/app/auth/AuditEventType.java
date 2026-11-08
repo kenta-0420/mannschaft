@@ -62,11 +62,20 @@ public enum AuditEventType {
     MFA_BACKUP_CODES_REGENERATED(AuditEventCategory.MFA),
     MFA_RECOVERY_REQUESTED(AuditEventCategory.MFA),
     MFA_RECOVERY_COMPLETED(AuditEventCategory.MFA),
+    /** CMP-261012-0910: ログイン時にバックアップコードを 1 件消費した（AC-12）。 */
+    MFA_BACKUP_CODE_USED(AuditEventCategory.MFA),
+    /**
+     * CMP-261012-0910: 2FA 検証に失敗した（ログイン時の TOTP / バックアップコード / メールOTP 不一致）。
+     * 失敗応答の TX ロールバックで消えないよう、記録経路は失敗 TX から独立させる（AC-49）。
+     */
+    MFA_FAILED(AuditEventCategory.MFA),
 
     // ─── ADMIN_ACTION ────────────────────────────────────────
     USER_FROZEN(AuditEventCategory.ADMIN_ACTION),
     USER_UNFROZEN(AuditEventCategory.ADMIN_ACTION),
     ACCOUNT_UNLOCKED(AuditEventCategory.ADMIN_ACTION),
+    /** SYSTEM_ADMINによる牧場規則公開と運営制御の適用。最小metadataのみ。 */
+    RANCH_ADMIN_ACTION_APPLIED(AuditEventCategory.ADMIN_ACTION),
 
     // ─── LIFECYCLE ───────────────────────────────────────────
     USER_ARCHIVED(AuditEventCategory.LIFECYCLE),
@@ -83,6 +92,7 @@ public enum AuditEventType {
     TEAM_MEMBER_REMOVED(AuditEventCategory.TEAM),
     TEAM_CREATED(AuditEventCategory.TEAM),
     TEAM_DELETED(AuditEventCategory.TEAM),
+    TEAM_RESTORED(AuditEventCategory.TEAM),
     TEAM_MEMBER_BLOCKED(AuditEventCategory.TEAM),
     TEAM_MEMBER_UNBLOCKED(AuditEventCategory.TEAM),
     TEAM_INVITE_TOKEN_CREATED(AuditEventCategory.TEAM),
@@ -111,6 +121,16 @@ public enum AuditEventType {
     TEAM_ORG_MEMBERSHIP_CREATED(AuditEventCategory.TEAM),
     /** F01.2.1 §4.1: 組織 ADMIN が加盟チームのグループ割当を変更した（単体・一括。1チームにつき1行。metadata: from・to のグループ ID）。 */
     TEAM_ORG_GROUP_CHANGED(AuditEventCategory.TEAM),
+    /**
+     * F01.2.1 §6.6（F01.2 ⑤⑥）: ACTIVE の加盟が消えた（metadata.reason: TEAM_LEFT＝チームの離脱 / ORG_REMOVED＝組織の除名・
+     * 加盟 ID・group_id）。
+     */
+    TEAM_ORG_MEMBERSHIP_REMOVED(AuditEventCategory.TEAM),
+    /**
+     * F01.2.1 §4.1・§6.8（7-A）: 応答の無いまま期限（既定60日）を過ぎた PENDING（申請・招待）を夜間バッチが消した
+     * （操作者なし。metadata: 加盟 ID・組織・チーム・direction・group_id）。
+     */
+    TEAM_ORG_PENDING_EXPIRED(AuditEventCategory.TEAM),
 
     // ─── ORGANIZATION (Phase 2+) ──────────────────────────────
     ORGANIZATION_CREATED(AuditEventCategory.ORGANIZATION),

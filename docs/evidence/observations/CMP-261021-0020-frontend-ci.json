@@ -1,0 +1,53 @@
+{
+  "head": "fd54c73af1abc2e1dc48be434905f6060a5bffad",
+  "run": 39564699382,
+  "status": "success",
+  "checkoutBase": "652ae37f778dcd59eb0a5115cc98800d34c31e6e",
+  "checkoutMergePrefix": "ef2c22ac",
+  "node": "22.23.2",
+  "files": 665,
+  "tests": 6529,
+  "ownSuites": [
+    {
+      "name": "FriendFollowDialog",
+      "tests": 13
+    },
+    {
+      "name": "nav-friend-toolbar",
+      "tests": 15
+    },
+    {
+      "name": "TeamFriendPendingFollowList",
+      "tests": 8
+    },
+    {
+      "name": "TeamFriendList",
+      "tests": 8
+    },
+    {
+      "name": "TeamFriendFollowButton",
+      "tests": 7
+    }
+  ],
+  "ownTests": 51,
+  "failed": 0,
+  "skipped": 0,
+  "sourceLogSha256": "698fcff88d0ad86fbd0bdd786ee1ca7134a51c267b2cd2dec8f6369452d053c1",
+  "sourceLines": [
+    "Install\tUnit test (vitest)\t2026-10-21T08:00:08.0491001Z  ✓ tests/unit/components/friends/FriendFollowDialog.spec.ts (13 tests) 2716ms",
+    "Install\tUnit test (vitest)\t2026-10-21T08:00:51.8293950Z  ✓ tests/unit/pages/teams/nav-friend-toolbar.spec.ts (15 tests) 1928ms",
+    "Install\tUnit test (vitest)\t2026-10-21T08:02:50.8065858Z  ✓ app/components/friends/TeamFriendPendingFollowList.spec.ts (8 tests) 2087ms",
+    "Install\tUnit test (vitest)\t2026-10-21T08:03:29.4985388Z  ✓ tests/unit/components/friends/TeamFriendList.spec.ts (8 tests) 2317ms",
+    "Install\tUnit test (vitest)\t2026-10-21T08:03:30.9063392Z  ✓ tests/unit/components/friends/TeamFriendFollowButton.spec.ts (7 tests) 2249ms",
+    "Install\tUnit test (vitest)\t2026-10-21T08:09:35.3034811Z  Test Files  665 passed (665)",
+    "Install\tUnit test (vitest)\t2026-10-21T08:09:35.3068013Z       Tests  6529 passed (6529)"
+  ],
+  "url": "https://github.com/kenta-0420/mannschaft/actions/runs/39564699382",
+  "frontendTree": "ceca7924e24f59cfca0badb3062a94c6b4b13ae6",
+  "mainFollowup": {
+    "head": "0872146200da916249f7c3575626fe09dfb5ccb6",
+    "main": "7e9f82b3cae1ddd89b8a18add75217adcc811ce1",
+    "productTreesUnchanged": true
+  },
+  "scope": "FE CI観測。全工程の完了証拠ではない"
+}

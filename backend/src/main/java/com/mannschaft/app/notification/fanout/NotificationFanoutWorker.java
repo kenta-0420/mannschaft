@@ -73,7 +73,7 @@ public class NotificationFanoutWorker {
      * <p>Spring が {@link FanoutChunkSink} 実装のすべてを自動収集する。{@code job.getNotificationType()} に
      * 一致する実装があれば {@link #processOne} 内でそちらへ委譲し（{@link ConfirmableFanoutChunkSink} 等）、
      * 無ければ既存の {@link #bulkFanoutService} 経路（{@code insertAndDispatchChunk}）を使う。
-     * 一致する実装が無い既存ジョブの挙動は 1 バイトも変わらない（陣立て書 §3.4「既存は無変更」）。</p>
+     * 一致する実装が無いジョブは、受信者戦略に応じた保存スコープを既定のバルク経路へ渡す。</p>
      */
     private final List<FanoutChunkSink> chunkSinks;
     /** ロケール別・描画済み文面の子表リポジトリ（Issue #2871）。 */
@@ -199,6 +199,16 @@ public class NotificationFanoutWorker {
                 return;
             }
 
+            // F01.2.1 §6.7: 加盟通知は受信者側のスコープで本人フォルダから検索できるよう保存する。
+            // custom sink の契約には介入せず、既定経路でジョブ1件につき1回だけ解決する。
+            NotificationScopeType scopeType = switch (job.getScopeType()) {
+                case "TEAM_AFFILIATION_OPS" -> NotificationScopeType.TEAM;
+                case "ORGANIZATION_ADMINS" -> NotificationScopeType.ORGANIZATION;
+                default -> NotificationScopeType.SYSTEM;
+            };
+            Long scopeId = scopeType == NotificationScopeType.SYSTEM
+                    ? null : Long.parseLong(job.getScopeRef());
+
             // Issue #2871: ロケール別の描画済み文面をジョブ 1 件につき 1 回だけ読む（高々 6 行）。
             // チャンクごと・受信者ごとに引かない（チャンク数にも受信者数にも比例させない）。
             Map<String, NotificationFanoutJobMessage> messagesByLocale = loadMessages(job.getId());
@@ -219,7 +229,7 @@ public class NotificationFanoutWorker {
                     break;
                 }
                 // P1 バルク INSERT ＋ チャンクコミット ＋ 専用プール配信を再利用。
-                // 通知行の per-row スコープは現行の村行事還流と同一（SYSTEM / scopeId=null）。
+                // 同一ジョブの全チャンクへ同じ保存スコープを渡す。他の戦略は従来の SYSTEM / null。
                 //
                 // Issue #2871: 行ごとに title / body を差し替える。notifications への多値 INSERT は
                 // 元から 1 行 14 列で title / body を per-row に持っており、共有引数になっていたのは
@@ -229,7 +239,7 @@ public class NotificationFanoutWorker {
                         toRows(page, messagesByLocale),
                         job.getNotificationType(), job.getPriority(),
                         job.getSourceType(), job.getSourceId(),
-                        NotificationScopeType.SYSTEM, null,
+                        scopeType, scopeId,
                         job.getActionUrl(), job.getActorId(), job.getOrganizationId());
 
                 // 再開カーソルは user_id ただ 1 本のまま（locale はカーソルに含めない・AC-4）。

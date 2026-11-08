@@ -302,11 +302,7 @@ public class JobContractService {
      * 契約の Requester または Worker 本人であるかを判定する。
      */
     private boolean isParticipant(Long userId, JobContractEntity contract) {
-        if (userId == null || contract == null) {
-            return false;
-        }
-        return userId.equals(contract.getRequesterUserId())
-                || userId.equals(contract.getWorkerUserId());
+        return jobPolicy.isContractParticipant(userId, contract);
     }
 
     /**

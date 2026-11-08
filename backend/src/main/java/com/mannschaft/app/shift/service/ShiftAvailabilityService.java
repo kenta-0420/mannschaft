@@ -14,6 +14,9 @@ import com.mannschaft.app.shift.entity.MemberAvailabilityDefaultEntity;
 import com.mannschaft.app.shift.repository.MemberAvailabilityDefaultRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -70,35 +73,48 @@ public class ShiftAvailabilityService {
         // 入力検証も delete より前に行う（拒否経路で既存行を破壊的に消さないため。CMP-260912-1758）
         validateAvailabilities(req.getAvailabilities());
 
-        // 既存データを全削除
-        // 【根治治療 CMP-260923】deleteByUserIdAndTeamId は導出delete（select→remove）のため、
-        // DELETE の実SQLはこの時点では発行されず flush まで遅延される。一方、下記 saveAll の
-        // 対象エンティティは @GeneratedValue(IDENTITY) のため、Hibernate は persist() 時点で
-        // INSERT を即時発行する（IDENTITY 採番の仕様上、通常の flush キュー順序に従わない）。
-        // その結果、同一 (user_id, team_id, day_of_week, start_time, end_time) の内容で
-        // 保存ボタンを2回連続で押すと、古い行がまだ削除されていない状態で同じ内容の行を
-        // INSERT しようとし、UNIQUE 制約 uq_mad_user_team_dow_time に衝突して 500 になっていた
-        // （内容が1文字でも違えば一意キーが衝突しないため症状が出ず、気づかれにくかった）。
-        // ここで明示的に flush して DELETE を先に確定させることで、PUT の冪等性を保証する。
-        availabilityRepository.deleteByUserIdAndTeamId(userId, teamId);
-        availabilityRepository.flush();
+        // 【CMP-261010-1432 欠陥 H】同一ユーザー×同一チームの一括保存を直列化する。
+        // 自ドメインの member_availability_defaults の (user_id, team_id) 範囲を FOR UPDATE で現在読み取りし、
+        // 行ロック＋ギャップロックを取る（他ドメインの行はロックしない）。前例: UserCalendarLayerSettingRepository
+        // #countByUserIdForUpdate。直列化しないと、行が空の状態で重なった 2 本が双方「消す行なし」と見て
+        // INSERT し、一意キー違反で 500（同内容）／両方の行が混ざって残る（内容違い・AC-H6）。
+        // 削除対象は必ずこのロッキングリードで得た行とする。導出 delete（deleteByUserIdAndTeamId）の
+        // SELECT はスナップショット読み（REPEATABLE-READ）なので、先着がコミットした行を見落として
+        // 楽観ロック例外（COMMON_003）や行の混在を招く。
+        //
+        // 行が空のときのギャップロックは互いに互換のため、2 本とも INSERT に進むとデッドロックになり、
+        // InnoDB が片方をロールバックする。これは「同時に保存された」という競合そのものなので、
+        // 一意キー違反・楽観ロック失敗と同じくシフトの競合コード SHIFT_018（409）へ写す（握り潰さない）。
+        try {
+            List<MemberAvailabilityDefaultEntity> existing =
+                    availabilityRepository.findAllForUpdateByUserIdAndTeamId(userId, teamId);
+            availabilityRepository.deleteAll(existing);
+            // 【根治治療 CMP-260923】IDENTITY 採番の INSERT は persist 時点で即時発行され flush 順序に従わない。
+            // 同内容の再保存で旧行が残ったまま INSERT して一意キーに衝突しないよう、DELETE を先に確定させる。
+            availabilityRepository.flush();
 
-        // 新規作成
-        List<MemberAvailabilityDefaultEntity> entities = req.getAvailabilities().stream()
-                .map(avail -> (MemberAvailabilityDefaultEntity) MemberAvailabilityDefaultEntity.builder()
-                        .userId(userId)
-                        .teamId(teamId)
-                        .dayOfWeek(avail.getDayOfWeek())
-                        .startTime(avail.getStartTime())
-                        .endTime(avail.getEndTime())
-                        .preference(ShiftPreference.valueOf(avail.getPreference()))
-                        .note(avail.getNote())
-                        .build())
-                .toList();
-
-        entities = availabilityRepository.saveAll(entities);
-        log.info("デフォルト勤務可能時間設定: userId={}, teamId={}, count={}", userId, teamId, entities.size());
-        return shiftMapper.toAvailabilityResponseList(entities);
+            List<MemberAvailabilityDefaultEntity> entities = req.getAvailabilities().stream()
+                    .map(avail -> (MemberAvailabilityDefaultEntity) MemberAvailabilityDefaultEntity.builder()
+                            .userId(userId)
+                            .teamId(teamId)
+                            .dayOfWeek(avail.getDayOfWeek())
+                            .startTime(avail.getStartTime())
+                            .endTime(avail.getEndTime())
+                            .preference(ShiftPreference.valueOf(avail.getPreference()))
+                            .note(avail.getNote())
+                            .build())
+                    .toList();
+            // IDENTITY 採番のため INSERT は saveAll の中で即時発行される（一意キー違反・デッドロックはここで表面化し、
+            // 下の catch で SHIFT_018 に写る）。
+            entities = availabilityRepository.saveAll(entities);
+            log.info("デフォルト勤務可能時間設定: userId={}, teamId={}, count={}", userId, teamId, entities.size());
+            return shiftMapper.toAvailabilityResponseList(entities);
+        } catch (DataIntegrityViolationException | PessimisticLockingFailureException
+                 | OptimisticLockingFailureException e) {
+            log.info("デフォルト勤務可能時間の並行保存を競合として拒否: userId={}, teamId={}, cause={}",
+                    userId, teamId, e.getClass().getSimpleName());
+            throw new BusinessException(ShiftErrorCode.OPTIMISTIC_LOCK_CONFLICT, e);
+        }
     }
 
     /**

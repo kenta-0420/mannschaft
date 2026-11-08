@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261004-1818",
+  "scope": "test-only",
+  "implementation": {
+    "pr": 4182,
+    "sha": "6315ce7e17531733464fedb9baf2cf0e88f87008"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "javac bridge(Object)の反射・ArchUnit双方での実在を確認し、有効公開入口が子generic(Long)1件だけとなり、親の消去後宣言とbridgeが結果に残らない",
+      "tests": [
+        {
+          "name": "総称 override: javac の bridge は親の消去後宣言を遮蔽し、具体型の子入口だけが残る",
+          "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40551206185/job/122367022115"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "子が総称メソッドを認可付きでoverrideした場合、R3で隠れた親を誤検出せず違反0件となる",
+      "tests": [
+        {
+          "name": "R3 陰性: 総称メソッドを子が認可付きで override すれば、隠れた親を誤検出しない",
+          "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40551206185/job/122367022115"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "子が認可なしでoverrideした場合、R3が子の具体型入口1件を検出する",
+      "tests": [
+        {
+          "name": "R3 陽性: 総称メソッドを子が認可なしで override すれば、子の具体型入口を検出する",
+          "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40551206185/job/122367022115"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "既存の継承・通常override・interface defaultを含む23テストが同名で残り、全26件がfailure/error/skipなしで成功する",
+      "tests": [
+        {
+          "name": "AuthzTxFacadeRegistryScanningLogicTest 全26件、既存23件の名前集合欠落0",
+          "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40551206185/job/122367022115"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 40551206185
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4182"
+    },
+    "real": {
+      "status": "not-applicable",
+      "scope": "test-only",
+      "reason": "番人・メタテスト・テスト規約の説明だけの変更であり、アプリのroute/API/runtime/UIの動作を変更せず、対象となる実機操作がないため"
+    },
+    "exploratory": {
+      "status": "not-applicable",
+      "scope": "test-only",
+      "reason": "利用者の画面・導線・操作の変更がなく探索対象がないため。CI成功を実機・探索の代替とは扱わない"
+    }
+  },
+  "regressions": [
+    {
+      "description": "syntheticを遮蔽判定前に除外すると、子のbridge(Object)が消えて隠れた親generic(Object)が残り、認可付き子でもR3偽陽性になる。先行26件中新3件だけが実AssertionErrorでredとなり、最小修正後は全26件greenを確認した",
+      "test": "総称 override: javac の bridge は親の消去後宣言を遮蔽し、具体型の子入口だけが残る / R3 陰性: 総称メソッドを子が認可付きで override すれば、隠れた親を誤検出しない / R3 陽性: 総称メソッドを子が認可なしで override すれば、子の具体型入口を検出する",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40530916480/job/122283408100",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40551206185/job/122367022115"
+    }
+  ]
+}

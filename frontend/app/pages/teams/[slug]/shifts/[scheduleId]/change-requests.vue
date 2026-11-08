@@ -6,12 +6,14 @@ const teamSlug = computed(() => String(route.params.slug))
 const scheduleId = computed(() => Number(route.params.scheduleId))
 
 const authStore = useAuthStore()
-const isAdmin = computed(() => authStore.currentUser?.systemRole === 'ADMIN')
+const { roleName, loadPermissions } = useRoleAccess('team', teamSlug)
+// 運営専用のSYSTEM_ADMINは業務導線に含めない（docs/security/03_role_authority_model.md §3.5）。
+const isAdmin = computed(() => roleName.value === 'ADMIN' || roleName.value === 'DEPUTY_ADMIN')
 
 const { requests, isLoading, fetchRequests, review, withdraw } =
   useChangeRequest(scheduleId)
 
-onMounted(() => fetchRequests())
+onMounted(() => Promise.all([fetchRequests(), loadPermissions()]))
 
 async function onSubmitted(): Promise<void> {
   await fetchRequests()

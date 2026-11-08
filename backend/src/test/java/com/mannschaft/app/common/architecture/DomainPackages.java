@@ -12,7 +12,7 @@ package com.mannschaft.app.common.architecture;
  * <b>判定ロジック・除外規則は抽出前と完全に同一であり、凍結ストアの照合キーや
  * 既存ルールの挙動には一切影響しない</b>。
  */
-final class DomainPackages {
+public final class DomainPackages {
 
     /** アプリのルートパッケージ。ドメイン名抽出の基点。 */
     static final String ROOT_PACKAGE = "com.mannschaft.app";
@@ -34,7 +34,7 @@ final class DomainPackages {
      * @param packageName 判定対象のパッケージ名（{@code null} 可）
      * @return ドメイン名、またはアプリ配下でなければ {@code null}
      */
-    static String domainOf(String packageName) {
+    public static String domainOf(String packageName) {
         if (packageName == null || !packageName.startsWith(ROOT_PACKAGE)) {
             return null;
         }

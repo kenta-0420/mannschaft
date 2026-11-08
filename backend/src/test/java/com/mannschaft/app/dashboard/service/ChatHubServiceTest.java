@@ -42,6 +42,7 @@ class ChatHubServiceTest {
     @Mock private ChatContactFolderItemRepository chatContactFolderItemRepository;
     @Mock private UserRepository userRepository;
     @Mock private MediaUrlResolver mediaUrlResolver;
+    @Mock private com.mannschaft.app.chat.service.ChatMemberBatchQueryService chatMemberBatchQueryService;
     @InjectMocks private ChatHubService service;
 
     private static final Long USER_ID = 42L;
@@ -65,10 +66,9 @@ class ChatHubServiceTest {
         given(dmChannel.getLastMessageAt()).willReturn(null);
         given(chatChannelRepository.findByMemberUserId(USER_ID)).willReturn(List.of(dmChannel));
 
-        ChatChannelMemberEntity partnerMember = org.mockito.Mockito.mock(ChatChannelMemberEntity.class);
-        given(partnerMember.getUserId()).willReturn(PARTNER_ID);
-        given(chatChannelMemberRepository.findByChannelIdOrderByJoinedAtAsc(DM_CHANNEL_ID))
-                .willReturn(List.of(partnerMember));
+        // CMP-261103-1225: DM 相手は全 DM チャンネル分を chat ドメインの照会 Service で一括取得する
+        given(chatMemberBatchQueryService.findFirstOtherMemberUserIdByChannel(Set.of(DM_CHANNEL_ID), USER_ID))
+                .willReturn(java.util.Map.of(DM_CHANNEL_ID, PARTNER_ID));
 
         UserEntity partner = UserEntity.builder()
                 .email("partner@example.com")

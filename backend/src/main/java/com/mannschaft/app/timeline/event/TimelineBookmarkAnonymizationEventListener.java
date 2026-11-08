@@ -54,6 +54,7 @@ public class TimelineBookmarkAnonymizationEventListener {
     private final AccountPurgeCompletionService completionService;
 
     private final TimelineBookmarkRepository timelineBookmarkRepository;
+    private final com.mannschaft.app.timeline.repository.TimelineRanchTransportRepository ranchTransport;
 
     /** 30日後の強匿名化。所有データの削除コミット後にのみ完了を記録する。 */
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
@@ -83,5 +84,6 @@ public class TimelineBookmarkAnonymizationEventListener {
     private void purgeSettings(Long userId) {
         timelineBookmarkRepository.deleteByUserId(userId);
         userMuteRepository.deleteByUserId(userId);
+        ranchTransport.deleteForUser(userId);
     }
 }

@@ -1,0 +1,74 @@
+[
+  {
+    "label": "tasks",
+    "equal": true,
+    "beforeBytes": 5028,
+    "afterBytes": 5028,
+    "beforeSha256": "4e8ab3df4d7e1177c7131c4a79c4d6e64af6f466dbdbeb916307d65991b81ad5",
+    "afterSha256": "4e8ab3df4d7e1177c7131c4a79c4d6e64af6f466dbdbeb916307d65991b81ad5"
+  },
+  {
+    "label": "dependencies-compileClasspath",
+    "equal": true,
+    "beforeBytes": 69250,
+    "afterBytes": 69250,
+    "beforeSha256": "e9d656f8152ccf68638186b7ffedf4d37ace5443f0f0d4e3d013b9b9d1cedb63",
+    "afterSha256": "e9d656f8152ccf68638186b7ffedf4d37ace5443f0f0d4e3d013b9b9d1cedb63"
+  },
+  {
+    "label": "dependencies-runtimeClasspath",
+    "equal": true,
+    "beforeBytes": 76617,
+    "afterBytes": 76617,
+    "beforeSha256": "b982e20586fd8fbe328e4166724adf85050a12f30615ec853e24f93636a53166",
+    "afterSha256": "b982e20586fd8fbe328e4166724adf85050a12f30615ec853e24f93636a53166"
+  },
+  {
+    "label": "dependencies-annotationProcessor",
+    "equal": true,
+    "beforeBytes": 503,
+    "afterBytes": 503,
+    "beforeSha256": "a59d316d1aa67354b9c387e51a1059ca44cb63adfa4e1004534c7c2c328b30b1",
+    "afterSha256": "a59d316d1aa67354b9c387e51a1059ca44cb63adfa4e1004534c7c2c328b30b1"
+  },
+  {
+    "label": "dependencies-testCompileClasspath",
+    "equal": true,
+    "beforeBytes": 74389,
+    "afterBytes": 74389,
+    "beforeSha256": "ec5d641a14807087d9ee88f31e250323ea3cd80b1e6fb0496f5cb20c36f8f566",
+    "afterSha256": "ec5d641a14807087d9ee88f31e250323ea3cd80b1e6fb0496f5cb20c36f8f566"
+  },
+  {
+    "label": "dependencies-testRuntimeClasspath",
+    "equal": true,
+    "beforeBytes": 82554,
+    "afterBytes": 82554,
+    "beforeSha256": "4a9cb14d0f0e6410736e8eaca29ad3363fcf2bd13c684410c1e702d496b56d20",
+    "afterSha256": "4a9cb14d0f0e6410736e8eaca29ad3363fcf2bd13c684410c1e702d496b56d20"
+  },
+  {
+    "label": "graph-test",
+    "equal": true,
+    "beforeBytes": 244,
+    "afterBytes": 244,
+    "beforeSha256": "ad99034b14e569dfe89afee1dbf254ed119015a2acdbec6403d718b8baeaa790",
+    "afterSha256": "ad99034b14e569dfe89afee1dbf254ed119015a2acdbec6403d718b8baeaa790"
+  },
+  {
+    "label": "graph-check",
+    "equal": true,
+    "beforeBytes": 277,
+    "afterBytes": 277,
+    "beforeSha256": "1ab486d9a4890ab05a999bc78f9953ac867024f2aaa8b904f7a5dc9915feef66",
+    "afterSha256": "1ab486d9a4890ab05a999bc78f9953ac867024f2aaa8b904f7a5dc9915feef66"
+  },
+  {
+    "label": "graph-archUnitTest",
+    "equal": true,
+    "beforeBytes": 204,
+    "afterBytes": 204,
+    "beforeSha256": "80d8b7cb21b98cd411094fc6e0c492126269d5e9a8e2155bd3790418fa5d299e",
+    "afterSha256": "80d8b7cb21b98cd411094fc6e0c492126269d5e9a8e2155bd3790418fa5d299e"
+  }
+]

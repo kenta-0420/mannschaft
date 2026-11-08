@@ -1,4 +1,5 @@
 import { test, expect, type Page, type Route } from '@playwright/test'
+import type { components } from '../../app/types/generated'
 
 /**
  * F15.3 マイスコープフォルダ統合UX — E2E 一連シナリオ
@@ -22,16 +23,18 @@ import { test, expect, type Page, type Route } from '@playwright/test'
 
 const VALID_TOKEN = 'valid-folder-integration-token'
 
-/** モックチーム情報（招待プレビュー & マイチーム） */
+/** マイチームなどの資源情報。招待プレビューとは異なる契約。 */
 const MOCK_TEAM = {
   id: 9001,
   name: 'テスト部活チーム',
   type: 'TEAM' as const,
-  description: 'F15.3 E2E 用',
-  iconUrl: null,
+}
+
+const MOCK_INVITE_PREVIEW: components['schemas']['InvitePreviewResponse'] = {
+  targetName: MOCK_TEAM.name,
+  targetType: MOCK_TEAM.type,
   roleName: 'MEMBER',
-  expiresAt: null,
-  isValid: true,
+  valid: true,
 }
 
 /** マイスコープフォルダのモック（フォルダ「部活」(id=11) と 未分類(id=99)） */
@@ -111,7 +114,7 @@ async function mockBackendApis(
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ data: MOCK_TEAM }),
+        body: JSON.stringify({ data: MOCK_INVITE_PREVIEW }),
       })
     } else {
       await route.continue()
@@ -143,8 +146,7 @@ async function mockBackendApis(
 
         await route.fulfill({
           status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: { success: true } }),
+          body: '',
         })
       } else {
         await route.continue()

@@ -117,7 +117,9 @@ class SystemAdminScopeForceUnarchiveControllerTest {
         controller.forceUnarchive("TEAM", SCOPE_ID, req);
 
         verify(accessControlService).checkSystemAdmin(SYSTEM_ADMIN_ID);
-        verify(teamService).unarchiveTeam(SCOPE_ID);
+        // F01.2.1 2-D D-3T: 加盟の片付けを admin の tx に持ち込まない解除を使う（片付けは team ドメインがコミット後に行う）
+        verify(teamService).unarchiveTeamDeferringAffiliationCleanup(SCOPE_ID);
+        verify(teamService, never()).unarchiveTeam(org.mockito.ArgumentMatchers.any());
         verify(roleSuccessionService).forceAssignInitialAdminOnUnarchive(
                 SCOPE_ID, "TEAM", NEW_ADMIN_ID, SYSTEM_ADMIN_ID);
         verify(organizationService, never()).unarchiveOrganization(org.mockito.ArgumentMatchers.any());
@@ -138,6 +140,7 @@ class SystemAdminScopeForceUnarchiveControllerTest {
                 .isInstanceOf(com.mannschaft.app.common.BusinessException.class);
 
         verify(teamService, never()).unarchiveTeam(eq(SCOPE_ID));
+        verify(teamService, never()).unarchiveTeamDeferringAffiliationCleanup(eq(SCOPE_ID));
         verify(roleSuccessionService, times(0)).forceAssignInitialAdminOnUnarchive(
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());

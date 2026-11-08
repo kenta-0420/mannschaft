@@ -316,6 +316,19 @@ public class MatchProposalService {
                 read.independentReader(), requestingAdmin, proposingAdmin, canceller, cancellerAdmin);
     }
 
+    /**
+     * 応募を閲覧できることを確かめる（書込前の閲覧ガード {@link MatchProposalViewAccessGuard} 用。CMP-260821-1027）。
+     *
+     * <p>取引を持たない。判定はキャンセル・合意承認と同じ {@code checkProposalReadAccess} であり、
+     * 閲覧できない者・不在は同一の {@link MatchingErrorCode#PROPOSAL_NOT_FOUND}（404）になる。</p>
+     *
+     * @param proposalId  応募ID
+     * @param actorUserId 操作ユーザーID
+     */
+    public void assertProposalReadable(Long proposalId, Long actorUserId) {
+        checkProposalReadAccess(findProposalOrThrow(proposalId), actorUserId);
+    }
+
     /** readerの由来を保持し、募集親が消えた場合の002と既存診断→001を区別する。 */
     private ReadAccess checkProposalReadAccess(MatchProposalEntity proposal, Long actorUserId) {
         if (accessControlService.isSystemAdmin(actorUserId)

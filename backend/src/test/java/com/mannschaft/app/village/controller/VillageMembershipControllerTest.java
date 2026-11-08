@@ -71,6 +71,10 @@ class VillageMembershipControllerTest {
     @MockitoBean
     private VillageMembershipService membershipService;
 
+    /** 取引の外の代表権限判定（判定内容は VillageSubjectAuthorizationGuardTest で検証する）。 */
+    @MockitoBean
+    private com.mannschaft.app.village.service.VillageSubjectAuthorizationGuard subjectAuthorizationGuard;
+
     @MockitoBean
     private AuthTokenService authTokenService;
 
@@ -112,7 +116,7 @@ class VillageMembershipControllerTest {
     @Test
     @DisplayName("POST /memberships: 参加成功で 201 + メンバーシップ JSON 返却")
     void join_201() throws Exception {
-        given(membershipService.join(eq(VILLAGE_ID), eq(USER_ID), any(MembershipJoinRequest.class)))
+        given(membershipService.join(eq(VILLAGE_ID), eq(USER_ID), any(MembershipJoinRequest.class), any()))
                 .willReturn(sampleResponse());
 
         String body = objectMapper.writeValueAsString(
@@ -129,7 +133,7 @@ class VillageMembershipControllerTest {
     @DisplayName("POST /memberships: APPROVAL 村への直接参加で 409 VILLAGE_019")
     void join_approvalDenied_409() throws Exception {
         willThrow(new BusinessException(VillageErrorCode.VILLAGE_JOIN_REQUIRES_APPROVAL))
-                .given(membershipService).join(eq(VILLAGE_ID), eq(USER_ID), any(MembershipJoinRequest.class));
+                .given(membershipService).join(eq(VILLAGE_ID), eq(USER_ID), any(MembershipJoinRequest.class), any());
 
         String body = objectMapper.writeValueAsString(
                 new MembershipJoinRequest(VillageSubjectType.USER, USER_ID));
@@ -155,7 +159,7 @@ class VillageMembershipControllerTest {
     @DisplayName("DELETE /memberships/{id}: 既退村は 404 VILLAGE_007 (IDOR)")
     void leave_alreadyLeft_404() throws Exception {
         willThrow(new BusinessException(VillageErrorCode.NOT_MEMBER))
-                .given(membershipService).leave(eq(VILLAGE_ID), eq(MEMBERSHIP_ID), eq(USER_ID));
+                .given(membershipService).leave(eq(VILLAGE_ID), eq(MEMBERSHIP_ID), eq(USER_ID), any());
 
         mockMvc.perform(delete("/api/v1/villages/{vid}/memberships/{mid}", VILLAGE_ID, MEMBERSHIP_ID))
                 .andExpect(status().isNotFound())

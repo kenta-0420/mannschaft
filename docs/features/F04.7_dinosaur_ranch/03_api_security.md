@@ -27,8 +27,11 @@ UUIDはcanonical小文字ハイフン形式のstring、Java UUID/MySQL BINARY(16
 | GET | `/api/v1/me/ranch/commands/{commandId}` | UUID path | 200 CommandResult。非所有/不在404 |
 | GET | `/api/v1/me/ranch/records` | cursor:string?、limit:int=20、1〜100 | 200 CursorPagedResponse<Record>。body/回答内容なし |
 | GET | `/api/v1/me/ranch/collectibles` | cursor:string?、limit:int=20、1〜100 | 200 inventory。復元前/0件は[] |
+| POST | `/api/v1/me/ranch/collectibles/sync` | `{afterAwardId:string}`、0以上の正準decimal string、Idempotency-Key | 200 `{commandId,nextAfterAwardId,processedCount,importedCount,hasNext,completedAt}`。旧取得を最大100件明示取込。未参加404 |
 | PUT | `/api/v1/me/ranch/room/slots/{slotKey}` | `{inventoryId:UUID,version:string}`、Idempotency-Key | 200配置結果。所有/未取消/slot許可を検証 |
 | DELETE | `/api/v1/me/ranch/room/slots/{slotKey}` | versionをIf-Matchにdecimal string、Idempotency-Key | 204。置物はinventoryへ戻り消えない。空slotでもversion一致なら204/version+1、同key再送は元204 |
+
+参加POSTの成功command.result_jsonには、取引時serverTime（MICROS）を含む完全なRanchStateを不変snapshotとして保存する。初回は201、既ownerへの別keyは現在の自行状態から200の新成功snapshotを保存する。同key再送は現在の成長・表示設定・rule変更を再評価せず、保存済みsnapshotを200で返す。FEは成功後にGETで最新状態を取得する。Writerは自domain Repoと純粋mapperのみを使用し、Auth Runnerの保持中に独立PRIMARY Readerを呼び直して同時3接続へ増やさない。外domain widget visibility/報酬状態/承認mappingの投影は、auth認可後に正規facadeから得た固定DTOだけを使用し、client値や仮のtrueで補完しない。
 
 | メソッド | パス | Request | Response / status |
 |---|---|---|---|
@@ -61,6 +64,10 @@ FeedingResult=`{commandId:UUID,dinosaurId:UUID,careKind:FREE_BASIC,costPoints:st
 
 Inventory=`{id:UUID,collectibleKey:string,labelKey:string,assetKey:string,acquisitionKind:SHOP|LEGACY_BADGE,awardedAt:Instant,isRevoked:boolean,placedSlotKey:string|null}`。旧team名/旧badge自由説明を非メンバーに返さない。既存system badgeを運営承認label/assetへadapterする。Phase 1はuser uploadした置物asset/URLを受けない。
 
+旧バッジ取込は本人の明示操作だけで行い、GETでは同期しない。source所有の本人取得行を `awardRowId` 昇順で最大101件取得し、先頭100件を処理、101件目があるとき `hasNext=true`。`nextAfterAwardId` は最後に処理したID（空ページでは入力値）で、継続ページは新Idempotency-Keyを使う。同key同bodyはsourceの現在値や承認catalogを再読せず保存済み結果を返し、別bodyは409。source read TXを閉じてからRanch writer TXに入り、成功commandとinventoryを同TXで保存する。未参加ownerを取込で作らない。
+
+内部catalog key `LEGACY_BADGE:<canonical decimal badgeId>` は運営承認済み `source_kind=LEGACY_BADGE` の行だけに対応し、source badgeが取得時点で利用可能な場合だけ保存する。元の名前・自由説明・icon URLは転用しない。取得のbinary同一性は型付きIDと元period UTF-8 bytesを無paddingBase64urlで符号化したASCIIのLB1 keyに固定し、period欠損は空文字。catalog未承認の行はその回に0だが、後日承認後に新keyとcursor `"0"` から再走査して回収できる。旧earnedOnはLocalDateなので実時刻へ変換せず、inventory.awardedAtは取込時のUTC MICROSとする。旧badge授与とbeta entitlementは独立に維持する。
+
 CareBudget=`{weekStartsOn:DATE,weekEndsAt:Instant,weeklyCapXp:string,awardedXp:string,remainingXp:string,amountXp:string,ruleVersion:string}`。activity pointsのWeekBudgetとは別。ShopItem=`{skuKey:string,collectibleKey:string,labelKey:string,assetKey:string,pricePoints:string,priceVersion:string,isOwned:boolean}`、価格/ruleはserver確定。PurchaseResult=`{commandId:UUID,inventoryId:UUID,skuKey:string,costPoints:string,priceVersion:string,balanceAfter:string,completedAt:Instant}`、不変結果。
 ## 3. 想起session API（新規reflection内契約）
 
@@ -84,9 +91,12 @@ SYSTEM_ADMIN限定。新permissionを使う場合は権限catalog/Flyway/正規�
 |---|---|---|
 | GET | `/api/v1/system-admin/ranch/policies` | policy summary一覧、cursor方式 |
 | POST | `/api/v1/system-admin/ranch/policies` | 完全policy+effectiveAt。201不変version。次のUTC週境界以降のみ |
-| PUT | `/api/v1/system-admin/ranch/operational-controls` | `{version:string,isCareEnabled:boolean,isShopEnabled:boolean,isDeliveryPaused:boolean,isRewardsPaused:boolean,reasonCode:string}`。200状態/有効時刻 |
-| GET | `/api/v1/system-admin/ranch/outbox-health` | sourceごとのpending/deadCount/oldestAge。本文なし |
-| POST | `/api/v1/system-admin/ranch/outboxes/{sourceType}/{eventId}/retry` | `{reasonCode:string}` + Idempotency-Key。200同event再送予約。scopeType詐称/不在404 |
+| GET | `/api/v1/system-admin/ranch/operational-controls` | fresh SYSTEM_ADMIN+ACTIVE。private,no-store。`{version:string,isCareEnabled:boolean,isShopEnabled:boolean,isDeliveryPaused:boolean,isRewardsPaused:boolean,updatedAt:Instant}`。本人owner生成なし |
+| PUT | `/api/v1/system-admin/ranch/operational-controls` | `{version:string,isCareEnabled:boolean,isShopEnabled:boolean,isDeliveryPaused:boolean,isRewardsPaused:boolean,reasonCode:string}`。Idempotency-Key必須、200はGETと同じ6項目の保存ACK。理由1..40文字、trim一致。停止期間は発生時刻の[start,end)で判定 |
+| GET | `/api/v1/system-admin/ranch/outbox-health` | `{sources:[{sourceType,pendingCount:string,deadCount:string,oldestAgeSeconds:nullable}],observedAt}`。4源の有限集計、本文なし |
+| POST | `/api/v1/system-admin/ranch/outboxes/{sourceType}/{eventId}/retry` | bodyは`{reasonCode:string}`のみ、`[A-Z][A-Z0-9_]{0,79}`。Idempotency-Key UUID。200保存ACKは`{commandId,sourceType,eventId,disposition,completedAt}`。dispositionはRETRY_SCHEDULED/ALREADY_TERMINAL、不在404 |
+
+source管理はfresh SYSTEM_ADMIN+ACTIVEを確認した後、Ranch取引を保持せず源の公開facadeから源自身の独立取引へ渡す。actorは認証主体だけ、未知body項目は400。4源不足/窓口不在/保存ACK照会不能はSOURCEOUTBOX_001/503で、正常ゼロや確定拒否RANCH_004へ変換しない。応答不明のFE再送は同じkey/bodyを保持する。源側が保存済みACKを先に読み、別bodyはSOURCEOUTBOX_003/409、現有効lease中はSOURCEOUTBOX_004/409で命令未保存。報酬配送の完了と再予約ACKの時刻を混同しない。
 
 PolicyRequest=`{effectiveAt:Instant,enabled:boolean,globalWeeklyCap:string,sources:SourceRule[4],delivery:{batchSize:int,leaseSeconds:int,maxAttempts:int,initialBackoffSeconds:int,maxBackoffSeconds:int},reasonCode:string}`。SourceRule=`{sourceType:四enum,enabled:boolean,amountPoints:string,countLimit:int}`。全源を一回ずつ必須、欠落/重複拒否。無効源も量/容量の型を検証。globalCap>0かつenabledならpersonalON。全利用者quotaに対する満額capacity invariantは設けない。care ruleとshop価格はpoint policyから独立。delivery各値は正でinitial<=max、batch<=運営安全上限（実装時負荷測定で値登録）、retry/lease値未登録でenabled拒否。Response=`{id:UUID,version:string,contentHash:string,effectiveAt:Instant,settings:PolicyRequest,publishedAt:Instant,publishedBy:string}`、公開済み変更DELETEなし。
 
@@ -100,6 +110,8 @@ adminの冪等scopeは管理shardまたは各source facadeごと（分散共通s
 `common/security/SelfScopedEndpoint` は実在しmethod対象/value必須。root/本人collectionのIDを受けないendpointだけへ理由を付ける（feedingも一頭をprincipalから決定）。commandId/slotKey/inventoryId等を検索に受けるendpointには一括でself markerを付けず、RanchAccessGuardがresource ID+principal user IDを同時条件にlookupして本人所有を確定し、正規resource-owner例外/EP契約ITを登録する。ARはReflectionAccessGuardとsession owner guardを適用。架空のContentVisibilityResolverを作って本人の残高を公開コンテンツ扱いしない。sourceの資料リンク/記事/投稿の閲覧は既存F00 ContentVisibilityResolver/ContentVisibilityCheckerを必ず経由し、独自role比較をしない。退会・source削除・所属離脱・可視性変更後はリンクをnullにし、元報酬台帳を戻さない。源事実はsourceドメインの本来認可成功後のみ生成する。
 
 他人のdinosaur/inventory/command/session UUIDは404。同じレスポンス形で存在を秘匿する。認証なし401。残高不足409。feature OFFでも予定/出欠/投稿/ブログ/学習へのアクセス制限を追加しない。
+
+記録GETの製造境界は `UserOperationGuard` の本人lock内で `RanchRecordQueryReader.readPage` の独立PRIMARY TXを完了し、その後 `RanchRecordSourceLinkResolver` が源所有の `SourceRewardLinkProvider` へ技術IDだけを渡す。源providerが現在のF00認可と実画面routeを決め、Ranchは本文・名称・slug・所属情報を取得しない。保存済み正準キーの本人/owner/REWARD対応が不一致、ARのUUIDv7または他源のLONG対応が不正、provider欠落/重複、源の不在/拒否/既知の取得不能ではlinkをnullにして元台帳とcursorを維持する。毎回再判定し許可済みリンクをキャッシュしない。源providerの実Bean・実ACL試験が揃うまではリンク機能の完成/合格とは扱わない。
 
 | 状態 | create/free care | shop purchase | settings/置物 | pause/resume | read |
 |---|---|---|---|---|---|
@@ -133,7 +145,7 @@ adminの冪等scopeは管理shardまたは各source facadeごと（分散共通s
 
 COMMON_001は型/必須/不正JSON（WARN/400）、COMMON_003は共通楽観競合（WARN/409）に再利用可。基準コミットcommon/ErrorResponseの返却は `{error:{code:string,message:string,fieldErrors:[{field:string,message:string}]}}`、fieldErrorsは常に配列（対象なし[]、null/省略なし）。成功common/ApiResponse={data:T}、common/CursorPagedResponse={data:T[],meta:{nextCursor:string|null,hasNext:boolean,limit:int}}。useApiはwrapperをunwrapしないためFEはresponse.data、useErrorHandlerはFetchError.data.errorを扱う。内部SQL/stack/source本文/ID入力値をechoしない。上限到達はAPI errorでなく正常0decision、運営履歴ではCAPPEDとして観測する。
 
-PromptDTO=`{id:UUID,kind:FREE_TEXT|QA,direction:QUESTION_TO_ANSWER|ANSWER_TO_QUESTION|FREE,promptText:string,required:boolean}`。全field必須/null不可、idはsession開始時サーバー発行、required=true。prompt数1〜100、promptText1〜10000 Unicode文字、回答textはtrim後1〜10000文字。超過entryのsession開始400で無報酬、切り捨てない。FREE_TEXTはdirection=FREEの一prompt。Session.originalは開始時ReflectionEntryResponseのsnapshot（OpenAPI components.schemas.ReflectionEntryResponseへの$ref）。reflection側original_snapshot JSONへ保存し、complete後だけ開示。開始後編集されたcurrent entry内容へ差し替えず、source outboxへ複製しない。原文開示にも取得時本人所有を再照合する。
+PromptDTO=`{id:UUID,kind:TERM_CARD|FREE_RECALL,heading:string,promptSide:TERM|MEANING|null,promptText:string,maxAnswerLength:number}`。idは開始時サーバー発行、開始時設問を凍結する。TERM_CARDは既存cue側だけを提示して上限200、FREE_RECALLはkindラベルと空promptText/side=null、上限10000。0promptは400、TERM_CARD最大1500とFREE_RECALL最大1で合計1501。回答textは既存HtmlSanitizer後のJava String.length（UTF16）で上限を検証し、ANSWEREDは非空、FORGOTはtext=null。途中保存と完了の全設問回答を区別し、既存attempt圧縮JSONは実UTF8 bytesで65536以下を検証する。Session.originalは開始時ReflectionEntryResponseの凍結snapshot、COMPLETED本人だけへ開示しcurrent entryから再生成しない。
 
 既存ソース型根拠: `backend/src/main/java/com/mannschaft/app/reflection/controller/ReflectionEntryController.java` のGET `/api/v1/me/reflections/entries/{entryId}` とPOST `/entries/{entryId}/recall` は `ReflectionEntryResponse`（`reflection/dto/ReflectionEntryResponse.java`）。資料REFLECTION_ENTRYは既存UUID ReferenceTypeとして `common/visibility/ContentVisibilityChecker.java:336` のcanViewUuid、`:364` filterAccessibleUuid、`:413` decideUuidへ渡す。canViewUuid=falseならsourceLink=null。存在しないassertCanViewUuidは作らない。sourceLink.urlは既存frontendルートhelperから生成し推測URLを返さない。resource Controller→RanchService→RanchAccessGuardの具体的depth2呼出を `AuthzControllerGuardArchTest.java:220-295` とendpoint契約ITで検証する。self markerはIDなしの自己root/settingsだけへvalue理由を付ける。
 
@@ -141,7 +153,7 @@ PromptDTO=`{id:UUID,kind:FREE_TEXT|QA,direction:QUESTION_TO_ANSWER|ANSWER_TO_QUE
 
 ### 卵/選定API
 
-RanchState.assignment=`{availableMethods:AssignmentMethod[],selectionConfirmed:boolean,confirmedMethod:AssignmentMethod|null}`（未参加null）。DinosaurSummary.egg=`{startedAt:Instant,readyAt:Instant,crackStage:INTACT|SMALL_CRACK|WIDE_CRACK|READY,hatchReady:boolean,hatchedAt:Instant|null}`、EGG以外egg=null。serverTimeによるelapsedだけ、client timestampで進めない。
+RanchState.assignment=`{availableMethods:AssignmentMethod[],selectionConfirmed:boolean,confirmedMethod:AssignmentMethod|null}`（未参加null）。DinosaurSummary.egg=`{startedAt:Instant,readyAt:Instant,crackStage:INTACT|SMALL_CRACK|WIDE_CRACK|READY,hatchReady:boolean,hatchedAt:Instant|null}`、EGG以外egg=null。DinosaurSummary.affinityBand=`NEUTRAL|WARM|CLOSE` は個体保存値と凍結rule閾値からGET時に算出し、EGGでも返す。数値親密度・公開ゲージは返さない。serverTimeによるelapsedだけ、client timestampで進めない。
 
 | メソッド | パス | Request | Response / status |
 |---|---|---|---|
@@ -159,9 +171,9 @@ nameは02の正規化・1〜10書記素・保存上限をserverで検証する�
 
 DinosaurSummaryはEGGでname/namedAt=null、BABY以降で必須。孵化responseはHatchResponse=`{kind:HATCH_RESULT|CURRENT_STATE,result:HatchResult|null,state:RanchState|null}`。初回/同keyはkind=HATCH_RESULT/result非null/state=null、別key同名はkind=CURRENT_STATE/result=null/state非null。不変HatchResultはcommandId/dinosaur ID/stage/name/namedAt/hatchedAt/versionを含み、同key再送で成長後のstateへ置換しない。現在stateはGETで別取得する。孵化後のnew key同名再要求は最新stateを返し、この成功commandも保存する。Settingsや選定APIにnameを渡すと400、rename endpointなし。表示OFF/style変更/成長/休止再開でも名前は変わらない。GETには書込を追加せず、出生割当用名を恐竜名として自動保存しない。
 
-### 本人の診断結果閲覧API（採択契約・未実装）
+### 本人の診断結果閲覧API（DiagnosisController・OpenAPI契約）
 
-GET /api/v1/me/ranch/diagnosis-results?method=DIAGNOSIS|BIRTH_STYLE&cursor=...&limit=20 を本人結果一覧へのranch読取facadeとする。method省略時は両方式、limitは1〜100。認証principalから本人IDを得て診断ドメインの読取Serviceへ渡し、組織ID・userId・result typeをclient入力で指定させない。成功は既存CursorPagedResponse、0件は200 data=[]。completedAt降順・id降順、cursorはopaqueな版付き値で本人とfilterに結び付け、別filter/不正cursorは400。詳細GET /api/v1/me/ranch/diagnosis-results/{resultId} は本人完成resultだけを返し、他人/不在/未完了は同形404、未認証401。
+GET /api/v1/me/diagnoses/results?method=DIAGNOSIS|BIRTH_STYLE&cursor=...&limit=20 を既存DiagnosisControllerの本人結果一覧APIとする。method省略時は両方式、limitは1〜100。認証principalから本人IDを得て診断ドメインの読取Serviceへ渡し、組織ID・userId・result typeをclient入力で指定させない。成功は既存CursorPagedResponse、0件は200 data=[]。completedAt降順・id降順、cursorはopaqueな版付き値で本人とfilterに結び付け、別filter/不正cursorは400。詳細GET /api/v1/me/diagnoses/results/{resultId} は本人完成resultだけを返し、他人/不在/未完了は同形404、未認証401。
 
 一覧Summaryと詳細resultSnapshotは§7の採択済み単一契約を参照する。raw生年月日・名前・全回答を返さず、内部metadataを公開Summaryへ追加しない。誕生に利用したresultの参照を保持しても、本人向けの最新結果と恐竜アバターの確定済み外見を同じ「現在の診断」として上書きしない。
 
@@ -181,17 +193,25 @@ GET /api/v1/me/ranch/diagnosis-results?method=DIAGNOSIS|BIRTH_STYLE&cursor=...&l
 | auth | POST `/api/v1/me/birth-profile/confirmations` | {revision,useConfirmed:true}→{confirmationRef,expiresAt,profileRevision}。opaque UUID、auth行参照、TTL10分。本人/用途/revision/nonce/withdrawalAttemptId/期限を既存HMACで検査 |
 | diagnosis | POST `/api/v1/me/diagnoses/birth-style-results` | {confirmationRef}→派生数と説明snapshotを持つ本人resultId。未知/他人ref同形404、期限切れ/版変更409、成功同keyは旧result |
 | diagnosis | POST `/api/v1/me/diagnoses/sessions` | {}→201{id,status:STARTED,version,answerRevision,questionnaireVersion,scoringVersion,questions[24],answers:[],tieQuestions:[]}。回答3を自動投入しない |
+| diagnosis | GET `/api/v1/me/diagnoses/sessions/pending` | 本人のSTARTED/TIE_BREAK_REQUIREDからupdatedAt降順・UUIDのunsigned降順で最新1件。各状態の索引先頭だけを読み最大2行で選択。200 `{data:session snapshot}`、未完了なしは省略せず `{data:null}`。no-store、認証/変身/ACTIVE本人境界は他の本人診断APIと同じ。牧場参加不要 |
 | diagnosis | GET `/api/v1/me/diagnoses/sessions/{id}` | 本人session snapshotと途中回答、no-store、出生rawなし |
 | diagnosis | PUT `/api/v1/me/diagnoses/sessions/{id}/answers` | {version,answers:[{questionId,value:1..5}]}。途中部分回答可、questionId/valueの欠落・未知/重複/null/小数/booleanは不正。answerRevision++で旧tie無効 |
 | diagnosis | POST `/api/v1/me/diagnoses/sessions/{id}/complete` | {version,answerRevision,tieAnswers:[{axisId,value:0..1}]}。24required不足400、必要tie不足はTIE_BREAK_REQUIRED/result=null/tieQuestions。全tie後COMPLETED/resultId、非tie/未知/重複400、古いanswerRevision409 |
 | diagnosis | POST `/api/v1/me/diagnoses/sessions/{id}/cancel` | {version}→CANCELLED/resultなし/獲得0。保留は別でSTARTED/TIE_BREAK_REQUIRED保持、期限なし |
-| ranch | POST `/api/v1/me/ranch/interactions` | {kind:TOUCH,version}→InteractionResult={commandId,dinosaurId,reactionKey,affinityBand,affinityChanged,completedAt}。EGG可、cost/XP/points0。PAUSED/care OFFは反応のみ/愛着加算0 |
+| ranch | POST `/api/v1/me/ranch/interactions` | {kind:TOUCH,version}→InteractionResult={commandId,dinosaurId,reactionKey,affinityBand,affinityChanged,completedAt}。新command保存201、同key同body成功再送200で保存済み本文不変。EGG可、cost/XP/points0。PAUSED/care OFFは反応のみ/愛着加算0 |
 
 result summaryは{id,method,completedAt,resultSchemaVersion,ruleVersion,questionnaireVersion?,scoringVersion?,normalizationVersion?,mappingVersion?,typeCode?,axes?,numberSummary?,descriptionSnapshot}。raw回答/姓名/カナ/DOB/profile fingerprintなし。6言語説明と質問/採点/正規化版を不変snapshot、mapping未登録NULLでも本人resultを保存可、恐竜割当/公開有効化不可。完成typeCodeはserverの6bit文字列。本人診断開始・result作成・閲覧はranch参加不要。
 
-mapping未登録時の割当不可は、その時点で互換な承認mappingが存在しないことを指す。後日mappingを承認しても保存済みResultSummaryを改変しない。画面は方式全体の可否を現在のRanchState.assignment.availableMethodsで判断し、saved mappingVersionの有無だけで旧結果を永久に準備中にしない。初回選定時、serverは保存結果のrule/scoring/normalization版に互換な承認mappingを検証し、利用したmapping版を個体へ凍結する。互換mappingがなければ503。同方式が利用可能でも、すべての過去結果の適合を保証するものではない。確定済み個体のmapping/外見は変更しない。
+六軸の表示契約は optional `axisSelections`（軸ID → `{side: 0|1, zero: localeText, one: localeText}`）を追加する。両方式とも `diagnosis-result-v1` を維持し、開始時の不変definitionの極ラベルと完成typeCodeをDIAGNOSISの結果snapshotへ保存する。算法・typeCode・masterの単一結果版契約は変更しない。bit順は FAMILIAR_NEW / FOCUS_VARIETY / SPONTANEOUS_PLAN / SOLO_TOGETHER / EXPRESSION / NOTICE。Map順序や説明文の区切りは使わない。`axes[axis] == 0` でも `side` は完成時の本人二択を保持する。BIRTH_STYLEと旧JSONはnull/省略を許す。primary ObjectMapperで旧14field record読取形が追加optionalを許容することと、新コードが旧JSONを読むことを試練で検証する。旧readerの配布・読取互換確認を先に行い、新しいsnapshotの書込みはその後に有効化する。
+
+旧 `diagnosis-result-v1` の詳細GETは本人結果の所有条件を満たした後にのみ、同じ `resultId` と `userId` のCOMPLETED sessionから凍結済みdefinitionを読む。保存snapshot版・質問版・採点版が一致し、既知 `signed-centered-v1` の6bit/6軸/極ラベルが揃う場合に表示値だけ補足する。現在masterから再構成せず、保存resultのJSON・版・説明は変更しない。元sessionや版が欠ける場合は補足なしを返し、画面が情報不足を明示する。sessionとresultの最終削除は既存の同一診断purge TXで行う。
+
+正式質問catalogのsoftware登録境界: `mannschaft.diagnosis.approved-catalog.resource/version/sha256` を一組で明示し、resourceは `diagnosis/approved/*.json` 配下の実バイトを指定する。全設定欠落は未登録、部分設定・不正path・実バイトSHA不一致は起動拒否。resourceの `approved=true` と `translationsApproved=true`、`catalogs` 配列に含まれる各不変Definitionの既知snapshot schema/scoring版、24問（6軸各4問、sign±1、一意ID）、6軸同点表示、全6言語の質問・説明・同点表示を検証する。DRAFT版を正式版へ読み替えない。明示versionに一致する定義から新sessionを開始し、readinessも同じ登録正本を参照する。恐竜全64mapping/素材の公開gateは引き続き別途必要。
+
+開始済みsessionは保存Definitionを変更・再構成しない。正式resourceを更新する場合は既存sessionが参照する旧承認Definitionを `catalogs` に保持し、保存Definitionとの完全一致で旧snapshotの読取・mutationを許可する。保存APPROVED flagやversionだけでは承認せず、改竄・未知版は拒否する。旧版をcatalogから除去するとその版の操作は不可になるため、保持を登録更新の条件とする。DRAFTの保存読取と開発profileでのmutation制限は維持する。現時点では本物質問・翻訳の承認0、正式resource/設定登録0、全64mapping/素材承認0で公開OFF。合成UTのAPPROVED値は登録機構の試験だけで、実原稿の承認証跡ではない。
 
 mapping未登録時の割当不可は、その時点で互換な承認mappingが存在しないことを指す。後日mappingを承認しても保存済みResultSummaryを改変しない。画面は方式全体の可否を現在のRanchState.assignment.availableMethodsで判断し、saved mappingVersionの有無だけで旧結果を永久に準備中にしない。初回選定時、serverは保存結果のrule/scoring/normalization版に互換な承認mappingを検証し、利用したmapping版を個体へ凍結する。互換mappingがなければ503。同方式が利用可能でも、すべての過去結果の適合を保証するものではない。確定済み個体のmapping/外見は変更しない。
+
 
 RanchCommand.idはUUIDv7の公開commandId、idempotencyKeyは別UNIQUE(user,idempotency_key)。二重command_uuid列を追加しない。応答喪失は元key/body/versionで同mutationを再送し、成功resultの後GET現在state。commandIdとkeyを同値と仮定しない。各domain/admin/sourceのkey scopeは独立。全mutationの成功lookupを現在version/profile検査より先に置き、別hash409。
 
@@ -218,3 +238,44 @@ sequenceDiagram
 全姓名/カナ/DOB更新経路（登録・本人補完・admin訂正等）でrevision++。確認参照はraw PIIをtoken/HMAC/history/logへ含めない。既存HMAC鍵rotation後の旧refは10分内でもfail closedで本人再確認、旧verify-key受理機構を追加しない。constant-time比較、用途/nonce/revision/本人binding。malformed JSONの例外ログにも入力断片/ref/fingerprintを複製しない。出生結果のreplay順序はACTIVEユーザー先lock→PRIMARY独立TXで成功履歴lookup→既successならliveプロフィール検査前に当時result返却→初回だけref/revision検証・派生計算。replayと直後のresult採用はREQUIRES_NEW/readOnly=falseのSELECT-only処理でPRIMARYへ送り、readOnly=trueによるreplica遅延を避ける。既存ReplicaRoutingAspectは変更しない。出生選定はACTIVE auth lock→Ranch成功commandのPRIMARY replay lookupを最優先とし、既successはliveプロフィール検査前に当時resultを返す。初回のみlive確認refのrevision Rを検証し、PRIMARYで本人COMPLETED BIRTH_STYLE resultの内部sourceProfileRevision=Rを照合して固定DTOを独立Ranch writerへ渡す。新refでも旧プロフィール由来resultの採用は409。診断のOwnedResult内部metadataにsourceProfileRevisionを持たせ、DIAGNOSISはnull、BIRTH_STYLEは0以上とする。公開Summaryには追加しない。本人履歴閲覧は維持し、既存guard内でguardを再帰呼出ししない。
 
 退会照合は既存withdrawalAttemptIdと現在auth状態が正本。汎用authgeneration表を先行追加しない。申請は保持・停止、同ID取消で元ACTIVE/PAUSED復帰、再申請後の古通知は無効。最終purge前にPURGING拒否barrierを永続化し、ranch/diagnosis/source/reflection cleanupを既存purge固定list/retry dispatchへ統合する。UserAnonymizedEventを取消可能申請の即削除入口にしない。cleanupは冪等、late配送後再作成0、全control OFFでもALWAYS実行。最終markerの配置/cleanup/consumer競合は後続統合と実MySQL race検証が未完了。
+
+### UI72の源所有公開契約
+
+SourceOutboxAdminFacade（common.ranchsource.api）は非TX公開契約。fresh SYSTEM_ADMIN+ACTIVEの管理窓口がhealth()とretry(actorUserId,sourceType,eventId,key,request)を呼ぶ。四源自身の読取/再予約TXを順次実行し、Ranch管理TXやsourceロックを保持してconsumerを呼ばない。HealthSummary={sources:4rows,observedAt}、row={sourceType,pendingCount:string,deadCount:string,oldestAgeSeconds:nullまたは非負整数}、pendingはPENDING/RETRY、deadはDEAD_LETTER。本文、利用者ID、私有hash、lease tokenは含めない。RetryRequest={reasonCode:[A-Z][A-Z0-9_]{0,79}}のみ。RetryAck={commandId,sourceType,eventId,disposition:RETRY_SCHEDULED|ALREADY_TERMINAL,completedAt}は管理命令の保存応答で、報酬完了の証明ではない。source-own command/key/bodyhash比較→成功ACK→live再予約の順序、不在404/別body409/稼働lease競合409、terminalを復活させない。source SPI実装/Controller認可/lease/ACKは後続製造であり、このinterface/DTOだけで稼働を主張しない。
+
+
+### 源配送leaseの内部公開値契約
+
+SourceOutboxLeaseRequest(serverTime, batchSize, leaseSeconds, maxAttempts) の4値はCOREが公開policyから検証して渡す。源は既定設定で補完しない。source own短TXのcurrent lockで未配達/期限切れLEASEDだけを回収し、attempt上限到達行をDEAD_LETTERへ遷移する。現在有効な別workerのleaseを終端化しない。DEFERは当token・LEASED・未期限切れ一致時に増算分を一回だけ戻し、公開maxBackoffSeconds内の有限futureへ延期する。真の障害retryだけを失敗budgetに含める。ACK/延期/障害処理はpurge済み・旧token行を再作成しない。
+
+CMS実BeanはBlogRanchOutboxDeliveryService。現checkpointは製造済み/compile・実MySQL未実行で、残三源の配送Bean・管理health/retryは未完成。壊れたpayloadは固定PAYLOAD_INVALIDでdead-letterへ隔離し、本文・cause・私有hashを返さず同batch正常行を続ける。
+
+
+### 四源管理aggregateの不確実性分類
+
+SourceOutboxAdminServiceは非TX aggregateで、各SourceOutboxAdminProviderの独立PRIMARY短TXを順次呼ぶ。healthは四源のproviderが全て一意に揃うまで SOURCEOUTBOX_001/503 とし、未取得を健康なゼロへ偽装しない。fresh SYSTEM_ADMIN+ACTIVEを保持する本人入口から呼び、source側は認可済みactorの監査命令を保存する。SOURCEOUTBOX_001はprovider不足・保存ACK照会不可等のgeneric unavailableで、同key/bodyを維持する不確実性でありRANCH_004確定拒否へ変換しない。SOURCEOUTBOX_002は対象行不在404、_003は同key別body409、_004はsavedACK照会後の現有効lease処理中409で新命令未保存。
+
+CMS再処理はsource/event/reasonを正準length-prefix SHA256で比較し、同actor/keyの保存ACKを現在行の状態より先に返す。ACKEDはALREADY_TERMINAL、他の再予約可能行だけRETRYへ移し、新event/canonical key/報酬を生成しない。DEAD_LETTERの明示管理再処理はattempt budgetを0へ戻す。私有hash・recipient・payload・tokenはhealth/ACKへ出さない。今回CMS provider一件のみ製造済み/実MySQL未実行、残三源provider・HTTP SYSTEM_ADMIN/filter実証は未完成。
+
+
+ReflectionRanchOutboxDeliveryService / ReflectionRanchOutboxAdminService は V246 の reflection-own短TXで同じ公開配送・管理契約を実装する。admin保存kindは既CHECKのOUTBOX_RETRY。payloadはReflectionRecallRewardPayloadで厳格復元し、DB技術headerと一致するものだけleaseする。今回までCMS/Reflectionの二源だけ実Bean設置、TL/出欠が未完成なのでaggregate healthは引き続き001/503。各receiver・lease・再処理ITはprepared/not-runで、実HTTP認可・本番availabilityと区別する。
+
+### F00 源所有リンク境界（実ACL Bean未接続）
+
+公開SPIは common.ranchsource.api.SourceRewardLinkProvider#resolve(viewerUserId,SourceRewardReference):Optional<SourceRewardLink>。参照は sourceType/idType/sourceId の正準技術IDのみ。ARはUUIDv7 entry、TL/出欠/CMSは正準正整数LONG。出欠源がresponse IDをschedule IDへ変換し、CMS源が現scope/slugから実画面ルートを決定する。返却kindはTIMELINE/SCHEDULE/BLOG/REFLECTION_ENTRY、本文/名称/recipientを含めない。Ranch TX終了後に呼び、現在のF00認可・削除・実存を通過した時だけリンクを返す。欠落provider、不在、認可拒否、取得不能はnull。現時点は公開型と純粋型試験のみで、四源ACL実Bean/第三接続の閉包/実HTTPは未検証。
+
+TLのSourceOutboxDeliveryFacade/SourceOutboxAdminProvider実BeanはTimelineRanchOutboxDeliveryService/TimelineRanchOutboxAdminService。公開署名変更0。残出欠providerが欠落する間、四源healthはSOURCEOUTBOX_001/503で取得不能を保持し、健康な4件ゼロを捏造しない。TL本人PUBLIC/PERSONAL本文新規以外は従来認可/保存経路を維持し、今回のfallbackに報酬資格を与えない。
+
+
+### 記録リンクの源所有読取境界（製造中）
+
+台帳読取TX終了後、非TXの SourceRewardLinkProvider が源所有 metadata の短い PRIMARY REQUIRES_NEW を終了し、ContentVisibilityChecker.canViewIsolated / canViewUuidIsolated を Spring proxy 経由で順次呼ぶ。CVC は readOnly=false の独立 PRIMARY TX で既存 resolver の全閲覧条件を再評価する。源TXを保持してCVCへ入り、第三接続を要求する構成は禁止する。静的最大は外auth1＋内1だが実pool2測定は未検証。
+
+出欠は回答LONGから予定LONGへ、想起はエントリUUIDへ解決する。ブログは現在の永続slugと源scopeの実画面経路を使い、本文・タイトルをリンクDTOへ含めない。欠落/現在ACL拒否は空、既知のDB停止は固定分類を記録して空とし、プログラム誤りを無条件に黙殺しない。現実装はブログGLOBAL/PERSONAL/TEAM/ORG、出欠、想起の3provider。TEAM記事は /blog/posts/{encodedSlug}?teamId={現在の内部Long}、ORG記事は同 organizationId 一つだけを渡し、既controllerのscope解決と現在ACLを維持する。FE閲覧pageのquery接続は別担当・未実証。SOCIALブログとTL未登録正準resolverは未対応として保持する。新provider MySQL4ケースは準備済み・未実行であり、HTTP/台帳cursor保持/pool2証明とは分離する。
+
+TL source linkも非TX providerからnative ID metadata PRIMARY読取終了後、ContentVisibilityChecker.canViewTimelineIsolatedの独立proxyへ渡す。既TimelinePostVisibilityAccessGuard.requireVisiblePostが正準で、POST_NOT_FOUNDだけemptyへ対応する。generic TIMELINE_POST resolver/batch登録の完成を意味せず、実pool2・HTTP・membership変更競合は未検証。本文はmetadata読取に含めない。
+
+
+### 隔離開発の報酬検証候補
+
+既公開 API と SYSTEM_ADMIN/ACTIVE admission を維持する。DEV 新規公開は explicit fixture gate、既成功 replay は先行。OFF mode は保存 DEV/frozen policy の新規 credit・配送設定を拒否し、本人履歴は残す。新 endpoint や承認回避用公開 flag は追加しない。 実測 bounds と実 UI/worker の検証は未実行。

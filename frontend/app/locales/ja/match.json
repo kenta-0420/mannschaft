@@ -252,7 +252,8 @@
           "connecting": "接続中…",
           "reconnecting": "再接続中…",
           "offline": "オフライン",
-          "denied": "観戦できません"
+          "denied": "観戦できません",
+          "unauthenticated": "ログインが必要です"
         },
         "status": {
           "SCHEDULED": "開始前",
@@ -264,7 +265,8 @@
         "denied": {
           "title": "この試合は観戦できません",
           "detail": "公開範囲外のため、ライブ配信を表示できません。"
-        }
+        },
+        "unauthenticated_banner": "ライブ更新を受け取るにはログインが必要です。"
       }
     },
     "analytics": {

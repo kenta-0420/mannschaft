@@ -151,6 +151,18 @@ public class VillageAccessGate {
      * @return 可視なら true
      */
     public boolean isVisibleTo(@Nullable VillageEntity village, @Nullable Long actorUserId) {
+        Boolean decided = visibilityWithoutAdminCheck(village, actorUserId);
+        return decided != null ? decided : accessControlService.isSystemAdmin(actorUserId);
+    }
+
+    /**
+     * SYSTEM_ADMIN 判定を使わずに決まる可視性。決まらない（非 PUBLIC の村の非メンバー）ときは null。
+     *
+     * <p>{@link #isVisibleTo} と、取引の外で判定した SYSTEM_ADMIN 判定を受け取る
+     * {@link #loadActiveVillage(UUID, Long, boolean)} の共通部分。</p>
+     */
+    @Nullable
+    private Boolean visibilityWithoutAdminCheck(@Nullable VillageEntity village, @Nullable Long actorUserId) {
         if (village == null) {
             return false;
         }
@@ -168,7 +180,31 @@ public class VillageAccessGate {
             // メンバーに該当した時点で SYSTEM_ADMIN 問い合わせは行わない（追加 1 クエリの節約）。
             return true;
         }
-        return accessControlService.isSystemAdmin(actorUserId);
+        return null;
+    }
+
+    /**
+     * 取引の外で判定した SYSTEM_ADMIN 判定を使って、操作者に可視な稼働中の村をロードする（CMP-260827-1808）。
+     *
+     * <p>判定順序と応答は {@link #loadActiveVillage(UUID, Long)} と同一。違いは SYSTEM_ADMIN の判定を
+     * 呼出側が取引の外で済ませた値で受け取る点だけで、村の取引から role ドメインの Repository へ
+     * 到達しない（D-3T、CLAUDE.md DB 設計の原則 #5）。判定値は {@link VillageSubjectAuthorizationGuard} が作る。</p>
+     *
+     * <p>Entity を返すため package-private とし、同じ village.service の入口からだけ呼ぶ（D-1）。</p>
+     *
+     * @param actorIsSystemAdmin 操作者が SYSTEM_ADMIN か（取引の外で判定済みの値）
+     */
+    VillageEntity loadActiveVillage(UUID villageId, @Nullable Long actorUserId, boolean actorIsSystemAdmin) {
+        VillageEntity village = loadExistingVillage(villageId);
+        Boolean decided = visibilityWithoutAdminCheck(village, actorUserId);
+        boolean visible = decided != null ? decided : actorIsSystemAdmin;
+        if (!visible) {
+            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
+        }
+        if (village.getArchivedAt() != null) {
+            throw new BusinessException(VillageErrorCode.VILLAGE_ALREADY_ARCHIVED);
+        }
+        return village;
     }
 
     /**
@@ -366,6 +402,17 @@ public class VillageAccessGate {
      * 凍結（4）の扱いだけが呼び出し元で分かれる。
      */
     private VillageEntity loadVisibleVillage(UUID villageId, @Nullable Long actorUserId) {
+        VillageEntity village = loadExistingVillage(villageId);
+
+        // 3. 可視性ゲート。非可視は「不在側のコードそのもの」を投げ、架空 ID への応答と完全に一致させる。
+        if (!isVisibleTo(village, actorUserId)) {
+            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
+        }
+        return village;
+    }
+
+    /** 1・2: null ID・不在・論理削除済みは 404（応答は不在と同一）。 */
+    private VillageEntity loadExistingVillage(UUID villageId) {
         // 1. null ID は不在と同じ扱い（NPE を投げず、応答も不在と同一にする）。
         if (villageId == null) {
             throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
@@ -375,11 +422,6 @@ public class VillageAccessGate {
         VillageEntity village = villageRepository.findById(villageId)
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
         if (village.getDeletedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
-        }
-
-        // 3. 可視性ゲート。非可視は「不在側のコードそのもの」を投げ、架空 ID への応答と完全に一致させる。
-        if (!isVisibleTo(village, actorUserId)) {
             throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
         }
         return village;

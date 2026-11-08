@@ -1,0 +1,46 @@
+{
+  "registrationSource": "actual-resident-artifacts",
+  "status": "observed-unverified",
+  "trusted": false,
+  "originalRunId": "CMP0649-R02-cmp0649-79445b4f6a17",
+  "productSourceHead": "dd41b081219c1e8bb127b07f4086e2d104903a11",
+  "documentationBaseHead": "abaab7f7d9320ca4bae33faed8819e41cc98d17a",
+  "topRunId": "october-wave2-login-resident-overlay-20261026",
+  "existingEntriesDeepEqual": true,
+  "beforeCount": 13,
+  "afterCount": 16,
+  "reloadCount": 16,
+  "newIdsEachOnce": [
+    "ALI-october-wave2-login-resident-overlay-20261026-CMP0649-R02-OBS-A1",
+    "ALI-october-wave2-login-resident-overlay-20261026-CMP0649-R02-OBS-B1",
+    "ALI-october-wave2-login-resident-overlay-20261026-CMP0649-R02-OBS-D1"
+  ],
+  "uiVisible": true,
+  "uiStage": "B4",
+  "uiScreenshot": "board-registration.png",
+  "isolatedBrowser": true,
+  "existingUserBrowserUpdated": false,
+  "actualProductScreenshots": false,
+  "coverageChanged": false,
+  "fullValidatorPassed": false,
+  "fullValidatorFailure": "既存GitHubスナップショットの参照集合が現main正本と不一致。元HEADでも同一参照集合checkが失敗。",
+  "overlayOnlySelfTest": {
+    "passed": true,
+    "logs": [
+      {
+        "residentOverlayAccepted": true,
+        "emptyInsightsAccepted": true,
+        "syntheticBaselineAccepted": true,
+        "multipleSourceHeadsAndRunsAccepted": true,
+        "invalidOverlaysRejected": 10
+      }
+    ]
+  },
+  "cleanup": {
+    "browserClosed": true,
+    "remainingChildren": "",
+    "tempRemoved": true,
+    "nodeAbsentVerified": true
+  },
+  "runIdDisplayLimitation": "既存HTMLはIndexedDB.runIdにoverlayトップrunIdを保存する。原runIdは各detailとevidenceへ明記。originalRunId専用欄への保存は行われない。"
+}

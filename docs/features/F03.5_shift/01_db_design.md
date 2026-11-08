@@ -223,7 +223,7 @@ INDEX idx_shift_swap_requests_target (target_user_id, status)         -- 【v2.1
   - **個別交代（is_open_call=FALSE, target_user_id=NOT NULL）**: `PENDING` → `ACCEPTED`（指名相手が引き受け）→ `APPROVED`（管理者承認）/ `REJECTED`（管理者却下）/ `CANCELLED`（依頼者取下）
   - **オープンコール（is_open_call=TRUE, target_user_id=NULL）**: `PENDING`（募集中）→ `ACCEPTED` → `APPROVED` / `REJECTED` / `CANCELLED`。**【CMP-260903-0655】** 当初設計の `OPEN_CALL` → `CLAIMED`（手挙げ→候補者選定）の2段階は、作成経路が status を `PENDING` のままにしており到達不能な半実装だったため削除した。`claimed_by` / `claimed_at` / `version` 列と `PATCH /{id}/claim` の記述も同時に失効している
 - `APPROVED` 時の処理: スロットの `assigned_user_ids` から `requester_id` を除去し `accepter_id` を追加（1トランザクション内）。両メンバーにプッシュ通知
-- 同一スロットに `PENDING` / `ACCEPTED` の交代リクエストは1件のみ（Service 層バリデーション）
+- 同一スロット・同一申請者に `PENDING` / `ACCEPTED` の交代リクエストは最大1件。宛先・理由・募集モードは同一性に含めず、別の現在担当者の依頼は共存できる（CMP-261021-0649）。Serviceで親スケジュールの排他をcommitまで保持し、作成メソッド限定のREAD_COMMITTEDで未決を最大1行照会する。DB一意制約の追加や既存重複行の修復は行わない
 - `PUBLISHED` 状態のスケジュールに属するスロットのみ交代リクエスト可能
 - **【v2.1】`is_open_call` と `target_user_id` の排他**: CHECK 制約で `(is_open_call = TRUE AND target_user_id IS NULL) OR (is_open_call = FALSE)` を強制
 - ~~**【v2.1】`claimed_by` のレース条件対策**~~ → **廃止（CMP-260903-0655）**。手挙げ API ごと削除したため、`claimed_by` / `claimed_at` は書き込まれない（列は既存行のため残置）
@@ -342,6 +342,7 @@ INDEX idx_hourly_rates_team (team_id, user_id)                                 -
 - 時給は履歴管理。改定時は新しい `effective_from` のレコードを追加し、過去の時給は保持（過去シフトの給与概算に使用）
 - 現在の時給 = `effective_from <= TODAY` の最新レコード
 - 時給の閲覧権限: **本人 + ADMIN / DEPUTY_ADMIN（MANAGE_SHIFTS）のみ**。他メンバーの時給は非公開
+- 時給の登録・同日訂正: 当該チームの **ADMIN / DEPUTY_ADMIN** に限定し、対象メンバーの在籍を確認する。一般メンバーは本人の時給も変更できない。SYSTEM_ADMIN の既存例外は維持する（CMP-261021-0659。閲覧権限とは分離）
 - 時給未設定のメンバーには給与概算を表示しない（`null` として返却）
 - 給与概算の計算: スロットの勤務時間（hours）× 適用時給。深夜跨ぎスロットの勤務時間は実時間で計算
 

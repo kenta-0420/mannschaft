@@ -5,6 +5,7 @@ import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import com.mannschaft.app.matching.dto.CreateReviewRequest;
 import com.mannschaft.app.matching.dto.ReviewCreateResponse;
 import com.mannschaft.app.matching.dto.TeamReviewSummaryResponse;
+import com.mannschaft.app.matching.service.MatchProposalViewAccessGuard;
 import com.mannschaft.app.matching.service.MatchReviewService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -30,6 +31,8 @@ import com.mannschaft.app.common.SecurityUtils;
 public class MatchReviewController {
 
     private final MatchReviewService reviewService;
+    /** 応募の閲覧可否の門（閲覧できない者には不在と同一応答。CMP-260821-1027）。 */
+    private final MatchProposalViewAccessGuard proposalViewGuard;
 
 
     /**
@@ -43,6 +46,8 @@ public class MatchReviewController {
         // 認可根治: 認証プリンシパルは userID。レビュアーチームの特定と管理者/副管理者判定は
         // proposal 経由で Service 内で行う（userID を teamId として扱う誤りを撤廃）。
         Long currentUserId = SecurityUtils.getCurrentUserId();
+        // 応募を閲覧できない者には、応募の実在・状態・親募集の有無を明かさない（不在と同一の MATCHING_002）。
+        proposalViewGuard.requireVisible(request.getProposalId(), currentUserId);
         ReviewCreateResponse response = reviewService.createReview(currentUserId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }

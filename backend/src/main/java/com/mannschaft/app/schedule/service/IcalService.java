@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * iCal配信サービス。iCalトークン管理・VCALENDARフィード生成を担当する。
@@ -231,6 +232,7 @@ public class IcalService {
     /**
      * セキュアなランダムトークンを生成する。
      */
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     private String generateSecureToken() {
         SecureRandom random = new SecureRandom();
         byte[] bytes = new byte[TOKEN_BYTE_LENGTH];

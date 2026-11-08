@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261004-1945",
+  "scope": "app",
+  "implementation": {
+    "pr": 3970,
+    "sha": "848c88e36d581fe30e3d271a90a188da8244ce32"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "非所属PUBLICの組織/チームdashboardで対象名に合う案内を6言語表示し、翻訳キーを露出しない",
+      "tests": [
+        {
+          "name": "ScopeDashboard.spec.ts 19件/6言語dev UI/production org-team hint",
+          "evidence": "docs/evidence/CMP-261018-1329.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "personal/PUBLIC以外の非表示、閉じる後の同scope再読込非表示と別scope分離を維持する",
+      "tests": [
+        {
+          "name": "ScopeDashboard回帰とdev dismiss・scope分離・personal/nonPUBLIC、production member非表示",
+          "evidence": "docs/evidence/CMP-261018-1329.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 39112070194
+    },
+    {
+      "runId": 39111833497
+    },
+    {
+      "runId": 39111833503
+    },
+    {
+      "runId": 39111833504
+    },
+    {
+      "runId": 39111833490
+    },
+    {
+      "runId": 39111833471
+    },
+    {
+      "runId": 39111833445
+    },
+    {
+      "runId": 39111833448
+    },
+    {
+      "runId": 39111833442
+    },
+    {
+      "runId": 39111833477
+    },
+    {
+      "runId": 39111833441
+    }
+  ],
+  "ciObservation": {
+    "sha": "848c88e36d581fe30e3d271a90a188da8244ce32",
+    "workflowRunsCompletedSuccess": 11,
+    "checksSuccess": 15,
+    "checksSkipped": 7,
+    "testFilesPassed": 630,
+    "testsPassed": 6223,
+    "mergedAt": "2026-10-18T08:51:37Z"
+  },
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261018-1329.md"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261018-1329.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261018-1329.md"
+    }
+  },
+  "regressions": [
+    {
+      "description": "組織公開非所属案内がチーム文言になる既存不具合。scope-r4有効RED6件からexact-head Scope19件CI GREENとdev6言語DOM一致、production org/team案内へ",
+      "test": "ScopeDashboard.spec.ts / organization hint ja,en,zh,ko,es,de",
+      "redEvidence": "docs/evidence/CMP-261018-1329.md",
+      "greenEvidence": "docs/evidence/CMP-261018-1329.md"
+    }
+  ]
+}

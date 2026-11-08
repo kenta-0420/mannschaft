@@ -13,6 +13,8 @@
         "step3": "Scan the QR code with your authenticator app (if you cannot scan it, enter the secret key manually).",
         "step4": "Enter the 6-digit code shown in the authenticator app to finish enabling."
       },
+      "email_title": "Two-step verification by email",
+      "email_desc": "Verify your identity with a 6-digit code sent to your registered email address. Choose \"Enable with email\" in settings and enter the code you receive to turn it on. When you log in, press \"Send a code by email\" to receive the code. If the email does not arrive, switch to \"Backup code\" on the login screen and use one of the backup codes you saved.",
       "backup_title": "About backup codes",
       "backup_desc": "Backup codes are a spare way in when you can no longer use your authenticator app, for example because you lost your smartphone. Store them in a safe place. Each code can be used only once. Pressing \"Regenerate backup codes\" issues new codes and invalidates all old ones."
     },

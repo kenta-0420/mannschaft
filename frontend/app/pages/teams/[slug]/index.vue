@@ -13,6 +13,7 @@ definePageMeta({
 })
 
 const route = useRoute()
+const auth = useAuthStore()
 const teamSlug = computed(() => String(route.params.slug))
 
 const {
@@ -34,7 +35,7 @@ const teamScopeNumericId = computed(() =>
 <template>
   <div class="mt-4">
     <ScopeDashboard
-      :key="teamSlug"
+      :key="[teamSlug, auth.user?.id].join(':')"
       scope-type="team"
       :scope-id="teamSlug"
       :scope-numeric-id="teamScopeNumericId"

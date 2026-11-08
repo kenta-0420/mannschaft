@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
+import ShiftScheduleList from '~/components/shift/ShiftScheduleList.vue'
 definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
@@ -78,9 +79,17 @@ const isScopeAdmin = computed(() => roleName.value === 'ADMIN' || roleName.value
 const { userTimezone } = useDatetime()
 
 const activeTab = ref(0)
+watch(
+  () => route.query.tab,
+  tab => {
+    activeTab.value = tab === 'swaps' ? 1 : 0
+  },
+  { immediate: true },
+)
 const showCreateDialog = ref(false)
 const showRequestDialog = ref(false)
 const selectedScheduleId = ref<number | null>(null)
+const scheduleList = ref<InstanceType<typeof ShiftScheduleList> | null>(null)
 
 // シフト表作成フォーム
 const createForm = ref({
@@ -108,6 +117,7 @@ async function createSchedule() {
     notification.success('シフト表を作成しました')
     showCreateDialog.value = false
     createForm.value = { title: '', periodStart: null, periodEnd: null }
+    await scheduleList.value?.refresh()
   } catch {
     notification.error('作成に失敗しました')
   } finally {
@@ -165,6 +175,7 @@ onMounted(() => {
           <TabPanels>
             <TabPanel :value="0">
               <ShiftScheduleList
+                ref="scheduleList"
                 :team-id="teamNumericId"
                 :team-slug="teamSlug"
                 :can-manage="isAdminOrDeputy"

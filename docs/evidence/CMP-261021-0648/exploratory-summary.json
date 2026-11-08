@@ -1,0 +1,73 @@
+{
+  "head": "22844f91b189ab22596e41ee0a5d767418b8e3b2",
+  "status": "passed",
+  "result": "3独立personaの探索実施・観測裏取り・記録をrootが合格判定。A/B目的成功とは分離。",
+  "note": "独立3住民の目的・観察・実行結果・限界・未達を記録する。",
+  "evidence": [
+    "docs/evidence/CMP-261021-0648/resident-requester-summary.json",
+    "docs/evidence/CMP-261021-0648/resident-accepter-summary.json",
+    "docs/evidence/CMP-261021-0648/resident-admin-summary.json"
+  ],
+  "limitations": [
+    "Aの公開募集提出とBの受諾は実行前審査拒否。目的成功を主張しない。Bの同一経路再審査も拒否、その後追加再試行なし。",
+    "既存UI観測はobserved-unverified。氏名ellipsis/横タブscrollは意図的候補。",
+    "root observer申請者dialogは候補loading中。元住民の安定公開募集フォームと区別。",
+    "受諾者390画像は初期一覧/対象card一部の限界を持つ。360画像で本人PENDING cardと承諾導線を確認。",
+    "旧基盤停止契機未確定。初回ready前接続拒否/login0履歴を保持し根治済みとはしない。",
+    "物理端末ではない。全利用者目的達成・全UI経路・全任意IDの包括保証ではない。"
+  ],
+  "incompleteAttempt": {
+    "residentsAttempted": 2,
+    "successfulLogins": 0,
+    "businessOperations": 0,
+    "remainingBrowserContexts": 0,
+    "outcome": "ready前の接続拒否。住民探索は未実施。",
+    "environment": "専有BE/FEが21:24頃に消滅。OOM記録0、BEはgraceful停止。停止契機は未確定。",
+    "rootFollowup": "primary所有の同候補gen2で検証再開準備中。新世代成功を先取りしない。",
+    "successClaimed": false
+  },
+  "gen2Performed": {
+    "reportedIndependentPersonas": 3,
+    "reportedFreshDomAndImages": true,
+    "reportedLoginCountPerPersona": 1,
+    "reportedParallelExecution": true,
+    "reportedCloseRpcSuccesses": 3,
+    "rootAdjudication": "passed-performed-with-limits",
+    "rootVisualReproduction": "passed-with-limits",
+    "pidClosureVerification": "browser-process-absence-verified",
+    "purposeSuccessIsSeparate": true,
+    "allPurposesAchieved": false,
+    "requesterOutcome": "中断/復帰/再入力到達、公開募集送信は審査拒否で未実行",
+    "accepterOutcome": "390/360同context実tap/表示観察、受諾は同一経路再審査も拒否され未実行",
+    "adminOutcome": "不整合409不変と正常200置換/同僚保持、generic409理由判断は未達",
+    "remainingDedicatedBrowserProcesses": 0
+  },
+  "overlay": {
+    "evidence": "docs/evidence/CMP-261021-0648/resident-observations.overlay.json",
+    "trusted": false,
+    "status": "observed-unverified",
+    "importExecuted": false
+  },
+  "independentObserver": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "closedContexts": 3,
+    "targetMutationsExcludingAuth": 0,
+    "rootImagesActuallyViewed": 5,
+    "limits": [
+      "申請者dialogは候補loading中で候補描画完了の証拠としない。",
+      "受諾者390は本人card一部、360はcard/受諾導線を確認。",
+      "元申請者の安定公開募集フォームはroot実視。追加送信なし。"
+    ]
+  },
+  "sqlReadback": {
+    "passed": true,
+    "sqlWrites": 0,
+    "mainEvidenceTablesUnchangedAfterResidents": true,
+    "residentHistoryOperatorAndVersionExact": true,
+    "allResidentContextsClosed": true,
+    "remainingDedicatedBrowserProcesses": 0,
+    "note": "既存7枠の住民開始後比較と、実機開始前SQL-before全件未採取の限界は別の時間範囲。"
+  }
+}

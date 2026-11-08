@@ -1,0 +1,20 @@
+{
+    "frontend":  "http://localhost:3001",
+    "backendSha256":  "906d0e6a8a6bf758d5544972b60bb005c8f0e2b03e85e698cef36243dfae498d",
+    "owner":  "october0839-0338-20261026",
+    "backendProductSource":  "d969c21a5ef184112bdd50957e20d6e7f73f4b1a",
+    "seedResult":  "PASS（既存seedのみ）",
+    "frontendManagementRouteStatus":  200,
+    "valkey":  "127.0.0.1:16339",
+    "frontendReceipt":  "fe-verification-r6/receipt.json",
+    "apiHealth":  "UP",
+    "credentials":  "timeline-real-env.json（値非出力）",
+    "api":  "http://localhost:8083",
+    "failures":  "environment-failures.json",
+    "frontendSource":  "e202bb96c03fc1b9197bfad8d27217dc7b4e8687",
+    "mysql":  "127.0.0.1:13339/october_first_wave",
+    "rolesProof":  "fixture-proof.json",
+    "retention":  "T/C実機・3住民探索のため保持",
+    "recoveredLifetime":  "runtime-outage-recovery.json",
+    "latestSchema":  "V253 applied, failed0, seed preserved"
+}

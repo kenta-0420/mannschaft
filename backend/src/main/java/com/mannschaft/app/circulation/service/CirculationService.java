@@ -206,6 +206,14 @@ public class CirculationService {
         return new UnconfirmedCirculations(all.size(), List.copyOf(items));
     }
 
+    /** 個人横断集計の候補投影。所属集合内の候補であり、最終取得の認可を代替しない。 */
+    public List<Long> findUnconfirmedScopeIds(String scopeType, List<Long> scopeIds, Long userId) {
+        if (scopeIds.isEmpty()) {
+            return List.of();
+        }
+        return recipientRepository.findUnconfirmedScopeIds(scopeType, scopeIds, userId);
+    }
+
     /**
      * F22.1 第二波: 未確認回覧文書の集計結果（件数 + 直近アイテム）。
      *

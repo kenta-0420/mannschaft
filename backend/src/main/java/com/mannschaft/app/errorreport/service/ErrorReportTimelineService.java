@@ -26,6 +26,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -46,6 +47,7 @@ import java.util.Set;
 public class ErrorReportTimelineService {
 
     private final ErrorReportRepository errorReportRepository;
+    private final ErrorReportManagementService managementService;
     private final ErrorReportActivityRepository activityRepository;
     private final ErrorReportOccurrenceRepository occurrenceRepository;
     private final ErrorReportActivityService activityService;
@@ -86,42 +88,44 @@ public class ErrorReportTimelineService {
      * @param actorId  操作者ユーザーID
      * @return 更新後のエラーレポートエンティティ
      */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public ErrorReportEntity updateWorkflowStage(Long id, ErrorReportWorkflowStage newStage, Long actorId) {
         accessControlService.checkSystemAdmin(actorId);
-        ErrorReportEntity report = findByIdOrThrow(id);
-        ErrorReportWorkflowStage oldStage = report.getWorkflowStage();
-        ErrorReportStatus oldStatus = report.getStatus();
+        return managementService.update(id, report -> {
+            ErrorReportWorkflowStage oldStage = report.getWorkflowStage();
+            ErrorReportStatus oldStatus = report.getStatus();
 
-        // P2-E — IGNORED に対する Kanban / 工程更新は引き続き拒否（誤操作防止）
-        if (oldStatus == ErrorReportStatus.IGNORED) {
-            throw new BusinessException(ErrorReportErrorCode.ERROR_REPORT_005);
-        }
-
-        // status を新ステージに合わせて自動遷移
-        ErrorReportStatus newStatus = inferStatusFromStage(oldStatus, newStage);
-
-        if (newStatus != oldStatus) {
-            report.setStatus(newStatus);
-            // RESOLVED に昇格する場合は resolve() で resolvedBy/resolvedAt も更新
-            if (newStatus == ErrorReportStatus.RESOLVED) {
-                report.resolve(actorId);
+            // P2-E — IGNORED に対する Kanban / 工程更新は引き続き拒否（誤操作防止）
+            if (oldStatus == ErrorReportStatus.IGNORED) {
+                throw new BusinessException(ErrorReportErrorCode.ERROR_REPORT_005);
             }
-            Map<String, Object> statusMetadata = new HashMap<>();
-            statusMetadata.put("from", oldStatus.name());
-            statusMetadata.put("to", newStatus.name());
-            activityService.record(id, actorId, ErrorReportActivityType.STATUS_CHANGED, null, statusMetadata);
-        }
 
-        report.setWorkflowStage(newStage);
+            // status を新ステージに合わせて自動遷移
+            ErrorReportStatus newStatus = inferStatusFromStage(oldStatus, newStage);
 
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("from", oldStage != null ? oldStage.name() : null);
-        metadata.put("to", newStage != null ? newStage.name() : null);
-        activityService.record(id, actorId, ErrorReportActivityType.WORKFLOW_CHANGED, null, metadata);
+            if (newStatus != oldStatus) {
+                report.setStatus(newStatus);
+                // RESOLVED に昇格する場合は resolve() で resolvedBy/resolvedAt も更新
+                if (newStatus == ErrorReportStatus.RESOLVED) {
+                    report.resolve(actorId);
+                }
+                Map<String, Object> statusMetadata = new HashMap<>();
+                statusMetadata.put("from", oldStatus.name());
+                statusMetadata.put("to", newStatus.name());
+                activityService.record(id, actorId, ErrorReportActivityType.STATUS_CHANGED, null, statusMetadata);
+            }
 
-        log.info("エラーレポートワークフロー更新: id={}, from={}, to={}, status={}→{}, actorId={}",
-                id, oldStage, newStage, oldStatus, newStatus, actorId);
-        return report;
+            report.setWorkflowStage(newStage);
+
+            Map<String, Object> metadata = new HashMap<>();
+            metadata.put("from", oldStage != null ? oldStage.name() : null);
+            metadata.put("to", newStage != null ? newStage.name() : null);
+            activityService.record(id, actorId, ErrorReportActivityType.WORKFLOW_CHANGED, null, metadata);
+
+            log.info("エラーレポートワークフロー更新: id={}, from={}, to={}, status={}→{}, actorId={}",
+                    id, oldStage, newStage, oldStatus, newStatus, actorId);
+            return report;
+        });
     }
 
     /**
@@ -166,31 +170,33 @@ public class ErrorReportTimelineService {
      * @param actorId     操作者ユーザーID
      * @return 更新後のエラーレポートエンティティ
      */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public ErrorReportEntity assign(Long id, Long assigneeId, Long actorId) {
         accessControlService.checkSystemAdmin(actorId);
-        ErrorReportEntity report = findByIdOrThrow(id);
-        Long oldAssigneeId = report.getAssigneeId();
+        return managementService.update(id, report -> {
+            Long oldAssigneeId = report.getAssigneeId();
 
-        if (assigneeId != null) {
-            if (!accessControlService.isSystemAdmin(assigneeId)) {
-                throw new BusinessException(ErrorReportErrorCode.ERROR_REPORT_006);
+            if (assigneeId != null) {
+                if (!accessControlService.isSystemAdmin(assigneeId)) {
+                    throw new BusinessException(ErrorReportErrorCode.ERROR_REPORT_006);
+                }
             }
-        }
 
-        report.setAssigneeId(assigneeId);
+            report.setAssigneeId(assigneeId);
 
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("from", oldAssigneeId);
-        metadata.put("to", assigneeId);
-        activityService.record(id, actorId, ErrorReportActivityType.ASSIGNEE_CHANGED, null, metadata);
+            Map<String, Object> metadata = new HashMap<>();
+            metadata.put("from", oldAssigneeId);
+            metadata.put("to", assigneeId);
+            activityService.record(id, actorId, ErrorReportActivityType.ASSIGNEE_CHANGED, null, metadata);
 
-        if (assigneeId != null) {
-            eventPublisher.publishEvent(new ErrorReportAssignedEvent(id, assigneeId));
-        }
+            if (assigneeId != null) {
+                eventPublisher.publishEvent(new ErrorReportAssignedEvent(id, assigneeId));
+            }
 
-        log.info("エラーレポート担当者更新: id={}, from={}, to={}, actorId={}",
-                id, oldAssigneeId, assigneeId, actorId);
-        return report;
+            log.info("エラーレポート担当者更新: id={}, from={}, to={}, actorId={}",
+                    id, oldAssigneeId, assigneeId, actorId);
+            return report;
+        });
     }
 
     /**

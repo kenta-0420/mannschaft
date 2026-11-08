@@ -189,6 +189,25 @@ public class ReservationEntity extends BaseEntity {
     }
 
     /**
+     * 来店完了・ノーショーへ遷移できるかを判定する（F03.4 §3: {@code CONFIRMED} → {@code COMPLETED} / {@code NO_SHOW}）。
+     *
+     * @return CONFIRMED ステータスの場合 true
+     */
+    public boolean isAttendanceRecordable() {
+        return this.status == ReservationStatus.CONFIRMED;
+    }
+
+    /**
+     * リスケジュールできるかを判定する（F03.4 リスケ API: 現在が {@code PENDING} / {@code CONFIRMED} 以外は 400）。
+     *
+     * @return PENDING または CONFIRMED ステータスの場合 true
+     */
+    public boolean isReschedulable() {
+        return this.status == ReservationStatus.PENDING
+                || this.status == ReservationStatus.CONFIRMED;
+    }
+
+    /**
      * 定期予約の series を解除する（F03.4.5 §6.2・AC-5-13）。
      *
      * <p>「毎週繰り返す」で 2 週目以降が全てスキップされ、成立が起点週の 1 件だけになった場合に呼ぶ。

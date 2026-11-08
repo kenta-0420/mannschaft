@@ -30,9 +30,6 @@ onMounted(async () => {
     const res = await loginWithOAuth('google', { code })
     const tokenData = res.data
     authStore.setTokens(tokenData.accessToken, tokenData.refreshToken)
-    // OAuth ログイン成立直後に先回りリフレッシュタイマーを武装する（capture 済み runtimeConfig を渡す）。
-    armProactiveRefresh(runtimeConfig, authStore)
-
     // プロフィールを取得してユーザー情報を更新
     try {
       const profile = await api<{
@@ -61,6 +58,9 @@ onMounted(async () => {
     } catch {
       // プロフィール取得失敗はサイレント（トークンは取得済み）
     }
+
+    // 本人の復元による世代更新が終わってからタイマーを武装する。
+    armProactiveRefresh(runtimeConfig, authStore)
 
     // ログイン成立直後にアカウント設定（外観・ナビ）をサーバーから同期する。
     // 新ブラウザ（シークレット等）で localStorage が空でも BEの保存済み設定が反映される。

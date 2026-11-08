@@ -5,7 +5,6 @@ import com.mannschaft.app.bulletin.dto.CreateThreadRequest;
 import com.mannschaft.app.bulletin.service.BulletinThreadService;
 import com.mannschaft.app.chat.ChatErrorCode;
 import com.mannschaft.app.chat.entity.ChatMessageEntity;
-import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -46,8 +45,7 @@ public class ChatBoardMigrationService {
 
     private final ChatMessageRepository messageRepository;
     private final BulletinThreadService bulletinThreadService;
-    private final ChatMessageService chatMessageService;
-    private final ChatChannelMemberRepository memberRepository;
+    private final ChatChannelAccessGuard channelAccessGuard;
 
     /**
      * チャットスレッドを掲示板スレッドに移行する。
@@ -74,10 +72,9 @@ public class ChatBoardMigrationService {
         ChatMessageEntity root = messageRepository.findById(rootMessageId)
                 .orElseThrow(() -> new BusinessException(ChatErrorCode.MESSAGE_NOT_FOUND));
 
-        // チャンネルメンバーシップ確認
-        if (!memberRepository.existsByChannelIdAndUserId(root.getChannelId(), requesterId)) {
-            throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
-        }
+        // チャンネルメンバーシップ確認（存在を知り得ない利用者は不在メッセージと同一応答・CMP-261105-1507）
+        channelAccessGuard.requireMembershipRowOrConceal(
+                channelAccessGuard.channelOfMessage(root), requesterId, ChatErrorCode.MESSAGE_NOT_FOUND);
 
         // 本文の構築（コピーあり: チャット履歴を引用形式で結合）
         String body = buildBoardBody(root, copyHistory);
@@ -121,7 +118,7 @@ public class ChatBoardMigrationService {
             // root_id でスレッド全返信を取得（最大500件）
             Pageable pageable = PageRequest.of(0, 500);
             List<ChatMessageEntity> replies = messageRepository
-                    .findByRootIdAndDeletedAtIsNullOrderByCreatedAtAsc(root.getId(), pageable)
+                    .findByRootIdAndDeletedAtIsNullOrderByCreatedAtAscIdAsc(root.getId(), pageable)
                     .getContent();
 
             if (!replies.isEmpty()) {

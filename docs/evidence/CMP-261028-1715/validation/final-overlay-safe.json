@@ -1,0 +1,86 @@
+{
+  "adoptedMainHead": "2f524c7a19f8b928b0086ad700fe527e2d631843",
+  "priorCounts": [
+    26,
+    26,
+    55
+  ],
+  "newCounts": [
+    29,
+    29,
+    56
+  ],
+  "priorAllFieldsDeepEqual": true,
+  "baselineGitBlobByteSha256": "bdbbfa3238dce10ca83bf480805847a1de102dcb9041796772e0cdba547deee7",
+  "baselineWorktreeByteSha256": "de10d80723a3ac6bb90f41346f96d1f7f25dc3be37128d742d70bfd1bce0c57c",
+  "allExistingDeclarationsAndEnvironmentPreserved": true,
+  "canonicalGeneratorOverlayGeneratedDataMatch": true,
+  "otherDataFieldsDeepEqual": true,
+  "exactExistingOverlayValidatorPassed": true,
+  "featureKey": "village-events-calendar-view",
+  "featureDetail": "統合カレンダー閲覧",
+  "status": "observed-unverified",
+  "trusted": false,
+  "coveragePassedClaimed": false,
+  "htmlChanged": false,
+  "standardValidator": {
+    "passed": false,
+    "reason": "既存CMP正本行数と参照抽出数が一致しません。overlay限定検証とは別結果。"
+  },
+  "localTargetedGreen": {
+    "testsExecuted": false,
+    "originalReceiptRetained": true,
+    "adoptedGreen": "remote CI own15pass/0skip"
+  },
+  "originalRootAssignedPurposesRestoredExactly": true,
+  "purposes": {
+    "plain": "近日と来月の自分が見られる予定を把握し、使いやすい表示で確認を終える",
+    "return": "途中で別タブへ注意が逸れても、自分が見られる予定の確認を終える",
+    "mobile": "外出先で直近1週間の自分が見られる予定を把握したい"
+  },
+  "previous26_26_55ProofIsHistorical": true,
+  "latestMainIntegration": {
+    "latestMainHead": "8b8c563e44d593301fac8e25b7cc6ec8d70b6089",
+    "priorDocsHead": "3b15d50fdb936b04437a15cb2cb4359b4eeacf1b",
+    "mainOverlayGitBlobSha256": "86df7b1caa57f8f9237a3ca62048d2700986088bd0ec9c49350664343748bcba",
+    "latestMainCounts": [
+      30,
+      30,
+      74
+    ],
+    "mergedCounts": [
+      33,
+      33,
+      75
+    ],
+    "ownAdditions": [
+      3,
+      3,
+      1
+    ],
+    "allLatestMainOverlayFieldsDeepEqualAfterRemovingOwnAdditions": true,
+    "allLatestMainTaskListLinesPreservedExceptOwnOneRow": true,
+    "automaticTableMergeMatchedExpected": true,
+    "pastCMP260827EvidenceLinkPreservedExactly": true,
+    "ownOriginalPurposesAndPartialOutcomeRetained": true,
+    "newPrivatePayloadIntroduced": false,
+    "otherMainChangesAlreadyPublic": true,
+    "canonicalGeneratorExit": 0,
+    "overlayExactExistingFunctionPassed": true,
+    "generatedOverlaySourceDataEqual": true,
+    "otherDataFieldsDeepEqual": true,
+    "htmlChanged": false,
+    "originalRootAssignedPurposesExactlyPreserved": true,
+    "mobilePartialOutcomePreserved": true,
+    "completionGuard": {
+      "trustedSourceSha256": "6827e0432fa58bb8db240f8fa6f76ac239146e97fdae56aa06b3ed559fbfe244",
+      "selectEvidencePathsPassed": true,
+      "selectedEvidenceCount": 1,
+      "validateCompletionChangesPassed": true,
+      "pastEvidenceBlobExactlyLatestMain": true,
+      "standardCliExecuted": false,
+      "githubApiVerifiedLocally": false,
+      "finalHeadGitHubGateRequired": true
+    }
+  }
+}

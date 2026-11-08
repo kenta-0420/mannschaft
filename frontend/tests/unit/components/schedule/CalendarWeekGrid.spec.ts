@@ -1,5 +1,5 @@
 import { defineComponent, h } from 'vue'
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import CalendarWeekGrid from '~/components/schedule/CalendarWeekGrid.vue'
 import type { CalendarEventItem } from '~/composables/useCalendarEvents'
@@ -15,6 +15,12 @@ import { todayInTimezone, weekStartOf } from '~/utils/calendarWeek'
 
 mockNuxtImport('useDatetime', () => () => ({ userTimezone: { value: 'Asia/Tokyo' } }))
 mockNuxtImport('useHolidays', () => () => ({ getHoliday: () => null }))
+
+// 共通mount helperの初回準備を、対象コンポーネントの描画検証から分離する。
+beforeAll(async () => {
+  const wrapper = await mountSuspended(defineComponent({ render: () => h('div') }))
+  wrapper.unmount()
+})
 
 const WEEK_START = '2026-08-02'
 

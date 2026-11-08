@@ -73,7 +73,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 /**
  * CMP-260821-1027: 私的フレンド子IDの本文秘匿と既存認可のHTTP契約。
  * 実JWT/filter/controller/service/GHE/MySQLを通す。私的foreign本文のみRED対象で、
- * public107・非ADMIN107・正常204は現契約の固定。公開例外の裁可を新たに主張しない。
+ * 非ADMIN107・正常204は現契約の固定。関係を閲覧できない ADMIN には、公開・非公開を問わず不在と同一本文
+ * （閲覧ガード TeamFriendViewAccessGuard）。関係を一覧で閲覧できる者（関係の片側の所属者）には従来の 107（CMP-260821-1027）。
  * 共通MOCKを継承し、fixtureを明示commitするため非同期監査も実DBで観測できる。
  * testのDDLはentity由来であり、本番FlywayのFK適用証明ではない。
  */
@@ -148,6 +149,14 @@ class TeamFriendVisibilityScopeContractIT extends AbstractMySqlIntegrationTest {
             actor("A-member", null, a, RoleKind.MEMBER);
             actor("A-supporter", null, a, RoleKind.SUPPORTER);
             actor("outsider", null, null, null);
+            // 関係 A–B を一覧で閲覧できる A の所属者で、かつ別チーム C の ADMIN（閲覧者の診断の確認用）。
+            Long viewerAdmin = actor("A-member-C-admin", "ADMIN", c, null);
+            memberships.save(MembershipEntity.builder().userId(viewerAdmin).scopeType(ScopeType.TEAM).scopeId(a)
+                    .roleKind(RoleKind.MEMBER).joinedAt(LocalDateTime.now()).build());
+            // A の SUPPORTER は私的な関係を一覧で閲覧できない（非閲覧者）。
+            Long supporterAdmin = actor("A-supporter-C-admin", "ADMIN", c, null);
+            memberships.save(MembershipEntity.builder().userId(supporterAdmin).scopeType(ScopeType.TEAM).scopeId(a)
+                    .roleKind(RoleKind.SUPPORTER).joinedAt(LocalDateTime.now()).build());
             actor("C-admin", "ADMIN", c, null);
             actor("system-only", "SYSTEM_ADMIN", null, null);
             ownPrivate = relation(a, b, false);
@@ -221,11 +230,39 @@ class TeamFriendVisibilityScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
-    void 公開foreignは107を維持し拒否による変更なし(boolean requestedPublic) throws Exception {
+    void 公開foreignも不在と完全同一で副作用なし(boolean requestedPublic) throws Exception {
+        // CMP-260821-1027: 関係を閲覧できない ADMIN（B の ADMIN は A–C の所属者でない）には、公開済みでも不在と同一。
         Map<String, String> before = snapshot();
         try {
-            assertError(http(actors.get("B-admin-role"), b, foreignPublic, Map.of("isPublic", requestedPublic)),
+            MvcResult missing = http(actors.get("B-admin-role"), b, MISSING, Map.of("isPublic", requestedPublic));
+            MvcResult foreign = http(actors.get("B-admin-role"), b, foreignPublic, Map.of("isPublic", requestedPublic));
+            assertError(missing, "SOCIAL_106", "フレンド関係が見つかりません");
+            assertError(foreign, "SOCIAL_106", "フレンド関係が見つかりません");
+            assertThat(json(foreign)).isEqualTo(json(missing));
+        } finally { assertUnchanged(before); }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void 関係を閲覧できる他チームADMINは従来の107で副作用なし(boolean requestedPublic) throws Exception {
+        // A の MEMBER は A–B の私的な関係を一覧で閲覧できる。C のパスから変更しても存在情報は新たに漏れない。
+        Map<String, String> before = snapshot();
+        try {
+            assertError(http(actors.get("A-member-C-admin"), c, ownPrivate, Map.of("isPublic", requestedPublic)),
                     "SOCIAL_107", "公開設定の変更には ADMIN 権限が必要です");
+        } finally { assertUnchanged(before); }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void 私的関係を閲覧できないSUPPORTER兼他チームADMINは不在と完全同一(boolean requestedPublic) throws Exception {
+        Map<String, String> before = snapshot();
+        try {
+            MvcResult missing = http(actors.get("A-supporter-C-admin"), c, MISSING, Map.of("isPublic", requestedPublic));
+            MvcResult hidden = http(actors.get("A-supporter-C-admin"), c, ownPrivate, Map.of("isPublic", requestedPublic));
+            assertError(missing, "SOCIAL_106", "フレンド関係が見つかりません");
+            assertThat(json(hidden)).isEqualTo(json(missing));
+            assertThat(hidden.getResponse().getStatus()).isEqualTo(missing.getResponse().getStatus());
         } finally { assertUnchanged(before); }
     }
 

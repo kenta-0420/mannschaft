@@ -733,8 +733,34 @@ class NotificationTransactionBoundaryGuardTest {
      */
     static Set<String> transactionalClosure(List<MethodBlock> methods, String classAnnotations) {
         return sameClassClosure(methods, methods.stream()
-                .filter(m -> hasTransactional(m.annotations()) || hasTransactional(classAnnotations))
+                .filter(m -> startsTransactionContext(m.annotations(), classAnnotations))
                 .collect(Collectors.toList()));
+    }
+
+    /**
+     * そのメソッドが「業務TXの文脈の起点」か（Issue #2997 G4-b / M5）。
+     *
+     * <p>{@code @Transactional} を持つメソッド（またはクラス）が起点だが、メソッド自身が
+     * {@code propagation = NEVER / NOT_SUPPORTED} を宣言している場合は<b>起点にしない</b>。
+     * {@code NEVER} は「TX が無いこと」を要求し、{@code NOT_SUPPORTED} は TX を中断する宣言なので、
+     * そこから同一クラス内で到達する先は業務TXの内側ではない
+     * （例: {@code NotificationFanoutWorker#poll} は {@code @Transactional(propagation = NEVER)} の入口で、
+     * そこから到達する {@code processOne} を TX 内と誤検知していた）。</p>
+     *
+     * <p>外すのは<b>起点</b>だけである。REQUIRED な入口から自己呼出で到達した先に付いた
+     * {@code NEVER} / {@code NOT_SUPPORTED} は、プロキシを経ないため効かず入口のTXが生きている。
+     * 閉包の伝播（{@link #sameClassClosure}）はそのまま通すので、
+     * 「REQUIRED の入口 -> 自己呼出の NEVER/NOT_SUPPORTED -> 通知」は引き続き違反として挙がる。
+     * 自己呼出で効かない宣言を免除の根拠にはしない。</p>
+     */
+    static boolean startsTransactionContext(String methodAnnotations, String classAnnotations) {
+        if (hasTransactional(methodAnnotations)) {
+            return !TX_SUSPENDING_PROPAGATION.matcher(methodAnnotations).find();
+        }
+        if (hasTransactional(classAnnotations)) {
+            return !TX_SUSPENDING_PROPAGATION.matcher(classAnnotations).find();
+        }
+        return false;
     }
 
     /** {@code seeds} から同一クラス内の無修飾呼び出しで到達できるメソッド名の推移閉包。 */
@@ -2412,7 +2438,46 @@ class NotificationTransactionBoundaryGuardTest {
      * 通知発火点を持つファイルは 2 減 1 増で -1。下限は余裕ゼロで実数に合わせる。
      * 構造条件を通過した発火点（STRUCTURAL）も同じ差分（-2）。</p>
      */
-    static final long RAW_CANDIDATE_HITS_MIN = 166L;
+    /**
+     * CMP-260925-0905（確認型通知リマインダーのTX境界修正）: 実数 165 / 145 / 94 に固定（最新 main 上の実測）。
+     * 消えた 2 件（{@code ConfirmableNotificationReminderBatchService} の {@code notificationHelper.notify}
+     * 1回目リマインド・2回目リマインドの 2 箇所。旧 126 / 148 行）と、
+     * 増えた 1 件（1回目・2回目を集約した commit 後の {@code dispatchService.dispatchBatch} 1 箇所）で差し引き -1
+     * （送信者アラートの {@code notificationHelper.notify} は旧 220 行から残存）。
+     * つまりリマインド 2 箇所が 1 箇所の dispatchBatch に集約されたことによる減少であり、説明の付かない消失は無い。
+     * 構造条件を通過した発火点（STRUCTURAL）も同じ差分（-1）。通知発火点を持つファイル数は不変。
+     * 語彙（{@link #NOTIFY_METHOD_VOCABULARY}）も構造条件（{@link #notifyCallOffsets}）も無変更。下限は余裕ゼロで実数に合わせる。
+     */
+    // Issue #2997 G7-a（digest / timetable）: 上記（165 / 145 / 94）から 164 / 144 / 94 へ（最新 main 上の実測）。
+    //   消えた 3 件（DigestAsyncExecutor の notificationHelper.notify 2 箇所、TeamSlotNoteNotifyListener の notify 1 箇所）と、
+    //   増えた 2 件（DigestGenerationNotificationListener / TeamSlotNoteNotifyListener の notificationDeliveryRunner.sendOne 各 1 箇所）で
+    //   差し引き -1。構造条件を通過した発火点も同じ差分（-1）。通知発火点を持つファイルは DigestAsyncExecutor が消え
+    //   DigestGenerationNotificationListener が増えて差し引きゼロのため NOTIFY_BEARING_FILES_MIN は 94 のまま。
+    // Issue #2997 G3（reservation: 臨時休業・予約リマインド・キャンセル待ち）: 上記（164 / 144 / 94）から 163 / 143 / 93 へ（最新 main 基準の実測）。
+    //   消えた 3 点（EmergencyClosureService#sendClosure の notificationHelper.notifyAll、
+    //   ReservationReminderDispatchBatchService#sendReminder の notificationHelper.notify、
+    //   ReservationWaitlistService#notifySlotReopened の notificationHelper.notify）と、
+    //   増えた 2 点（新設の EmergencyClosureNotificationListener / ReservationReminderDispatchNotificationListener の
+    //   notificationDeliveryRunner.sendOne 各 1 箇所）で差し引き -1。
+    //   ReservationWaitlistNotificationEventListener は waitlistService.notifySlotReopened(...) の呼び出しが
+    //   notificationDeliveryRunner.sendOne(...) に置き換わっただけで発火点は 1 のまま不変。
+    //   構造条件を通過した発火点（STRUCTURAL）も同じ差分（-1）。
+    //   通知発火点を持つファイルは EmergencyClosureService / ReservationReminderDispatchBatchService /
+    //   ReservationWaitlistService の 3 本が消え、新設リスナー 2 本が加わり -1（94 -> 93。NOTIFY_BEARING_FILES_MIN 参照）。
+    /**
+     * Issue #2997 G5（survey / role）: 実数 161 / 141 / 92 に固定（G3 を取り込んだ最新 main 上の実測。G3 の 163 / 143 / 93 から -2 / -2 / -1）。
+     * 消えた 4 件（{@code SurveyRemindService#remind} / {@code SurveyService#extendDeadline} の
+     * {@code notificationHelper.notifyAllPreAuthorizedLocalized}、{@code OwnershipTransferOfferService} の
+     * {@code createOffer} / {@code declineOffer} の {@code notificationHelper.notify}）と、
+     * 増えた 2 件（{@code SurveyReminderNotificationListener} の {@code notifyAllPreAuthorizedLocalized} 1 箇所、
+     * {@code OwnershipTransferNotificationListener} の {@code notificationDeliveryRunner.sendOne} 1 箇所）で差し引き -2。
+     * survey の 2 箇所は 1 つのリスナーに集約された（督促と締切延長を種別で分岐）ための減少である。
+     * 構造条件を通過した発火点（STRUCTURAL）も同じ差分（-2）。通知発火点を持つファイルは
+     * 3 減（SurveyRemindService / SurveyService / OwnershipTransferOfferService）2 増
+     * （各リスナー）の差し引き -1 で {@link #NOTIFY_BEARING_FILES_MIN} は 93。
+     * 語彙（{@link #NOTIFY_METHOD_VOCABULARY}）も構造条件（{@link #notifyCallOffsets}）も無変更。下限は余裕ゼロで実数に合わせる。
+     */
+    static final long RAW_CANDIDATE_HITS_MIN = 161L;
 
     /**
      * 実測 149（2026-09-04 / Issue #2990 L5 の是正後）。158 -> 149 の根拠は
@@ -2437,7 +2502,7 @@ class NotificationTransactionBoundaryGuardTest {
      *
      * @see #RAW_CANDIDATE_HITS_MIN
      */
-    static final long STRUCTURAL_NOTIFY_CALLS_MIN = 146L;
+    static final long STRUCTURAL_NOTIFY_CALLS_MIN = 141L;
 
     /**
      * 実測 17309（2026-09-01 main 取り込み後）。<b>ここだけは 6% ほどの余裕を持たせて 16000 とする</b>。
@@ -2526,7 +2591,11 @@ class NotificationTransactionBoundaryGuardTest {
      *
      * @see #RAW_CANDIDATE_HITS_MIN
      */
-    static final long NOTIFY_BEARING_FILES_MIN = 94L;
+    // Issue #2997 G3（reservation）: 94 -> 93。EmergencyClosureService / ReservationReminderDispatchBatchService /
+    //   ReservationWaitlistService の 3 本が発火ありから発火なしへ（-3）、EmergencyClosureNotificationListener /
+    //   ReservationReminderDispatchNotificationListener が新規に発火あり（+2）。
+    //   ReservationWaitlistNotificationEventListener は発火あり（notifySlotReopened）から発火あり（sendOne）で不変。
+    static final long NOTIFY_BEARING_FILES_MIN = 92L;
 
     /** 検出力の実測値。 */
     record DetectionPower(long rawCandidateHits, long structuralNotifyCalls, long parsedMethods) {}

@@ -14,11 +14,6 @@
       "count": 2
     }
   },
-  "tests/e2e/committee/COMMITTEE-001.spec.ts": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
   "tests/e2e/corkboard/corkboard-websocket.spec.ts": {
     "no-restricted-syntax": {
       "count": 1

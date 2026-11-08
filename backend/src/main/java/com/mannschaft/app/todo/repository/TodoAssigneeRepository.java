@@ -17,6 +17,13 @@ public interface TodoAssigneeRepository extends JpaRepository<TodoAssigneeEntity
     List<TodoAssigneeEntity> findByTodoId(Long todoId);
 
     /**
+     * 複数TODOの担当者を一括取得する（一覧変換の N+1 回避用）。
+     * 並びは担当者ID昇順で、{@link #findByTodoId(Long)} の PK 順と一致させる。
+     * 呼び出し側で空コレクションを渡さないこと。
+     */
+    List<TodoAssigneeEntity> findByTodoIdInOrderByIdAsc(java.util.Collection<Long> todoIds);
+
+    /**
      * TODO内の特定ユーザーの割り当てを取得する。
      */
     Optional<TodoAssigneeEntity> findByTodoIdAndUserId(Long todoId, Long userId);

@@ -1,11 +1,12 @@
 package com.mannschaft.app.match.live;
 
+import com.mannschaft.app.common.websocket.StompErrorCode;
+import com.mannschaft.app.common.websocket.StompRejectedException;
 import com.mannschaft.app.match.service.MatchAccessService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
-import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
@@ -22,14 +23,15 @@ import java.util.regex.Pattern;
  * <p>STOMP {@code SUBSCRIBE} フレームのうち <b>{@code /topic/matches/{matchId}/live} 宛先のみ</b>を
  * 認可対象とし、{@link MatchAccessService#canView}（F00 {@code MatchVisibilityResolver} へ委譲・03 §C.3.2）で
  * 可視性を検証する。可視性が無い者（他テナント・非公開試合の未認証者など）の購読は
- * {@link MessagingException} をスローして拒否する（ERROR フレーム返却・購読不成立）。</p>
+ * {@link StompRejectedException} をスローして拒否する（ERROR フレーム返却・購読不成立）。</p>
  *
  * <h3>設計上の不変条件（07 §J.3）</h3>
  * <ul>
  *   <li><b>match live 宛先以外（chat / lobby / corkboard 等）は素通し</b>する。宛先プレフィックス判定で
  *       本機能のトピックに限定し、既存購読を壊さない（§J.3.2）。</li>
- *   <li><b>CONNECT フェイルオープンは是正しない</b>（既存 {@link com.mannschaft.app.config.WebSocketAuthChannelInterceptor}
- *       の挙動を変えない）。接続は緩いままでも、SUBSCRIBE 時点で {@code canView} を必ず通すため可視性の穴は生じない。</li>
+ *   <li><b>資格情報なしの CONNECT は匿名として許可</b>される（{@link com.mannschaft.app.config.WebSocketAuthChannelInterceptor}・
+ *       websocket_external_broker_valkey.md §2.3.1）。接続は匿名でも、SUBSCRIBE 時点で {@code canView} を必ず通すため可視性の穴は生じない。</li>
+ *   <li>拒否時は未認証なら {@code UNAUTHENTICATED}、認証済みなら {@code FORBIDDEN} を {@code x-error-code} で返す（§2.3.2）。</li>
  *   <li>認可の正準は {@code MatchAccessService.canView} → F00 へ委譲。独自 visibility 述語は書かない
  *       （メモリ教訓「可視性は必ず F00 ContentVisibilityResolver 経由」）。</li>
  *   <li>未認証（session userId=null）は {@code canView(null, matchId)} に委譲し、F00 の未ログイン可視性
@@ -85,7 +87,8 @@ public class MatchLiveSubscriptionInterceptor implements ChannelInterceptor {
             matchId = UUID.fromString(matcher.group(1));
         } catch (IllegalArgumentException e) {
             // 正規表現を通過しているため通常到達しないが、念のため不正 matchId の購読は拒否する。
-            throw new MessagingException("ライブ観戦の購読先 matchId が不正です: " + destination);
+            throw new StompRejectedException(StompErrorCode.INVALID_DESTINATION,
+                    "ライブ観戦の購読先 matchId が不正です: " + destination);
         }
 
         Long userId = resolveUserId(accessor);
@@ -95,7 +98,10 @@ public class MatchLiveSubscriptionInterceptor implements ChannelInterceptor {
         if (!matchAccessService.canView(userId, matchId)) {
             log.debug("ライブ観戦の購読を拒否: userId={}, matchId={}, destination={}", userId, matchId, destination);
             // 購読を不成立にする（ERROR フレームが返り SUBSCRIBE は確立しない）。
-            throw new MessagingException("ライブ観戦の購読権限がありません");
+            // 未認証ならログインで解消しうるため UNAUTHENTICATED、認証済みなら FORBIDDEN（設計書 §2.3.2）。
+            throw new StompRejectedException(
+                    userId == null ? StompErrorCode.UNAUTHENTICATED : StompErrorCode.FORBIDDEN,
+                    "ライブ観戦の購読権限がありません");
         }
 
         log.debug("ライブ観戦の購読を許可: userId={}, matchId={}", userId, matchId);

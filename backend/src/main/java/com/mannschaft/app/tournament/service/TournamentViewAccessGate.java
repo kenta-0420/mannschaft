@@ -51,12 +51,20 @@ public class TournamentViewAccessGate {
     }
 
     /**
-     * 大会が閲覧可能であることを検証する。不在・不可視はどちらも 404（TOURNAMENT_NOT_FOUND）。
+     * 大会が閲覧可能であり、かつ URL の組織配下の大会であることを検証する。
      *
+     * <p>大会が不在、または大会の主催組織がパスの {@code orgId} と異なる場合は、可視性判定へ進まず
+     * 不在と同一の 404（TOURNAMENT_NOT_FOUND）を投げる（他組織の URL 経由で大会の存在・内容を
+     * 応答差から推測させない。変更系の {@code findTournamentInOrgOrThrow} と同じ畳み方）。
+     * その後に既存の可視性判定を行い、不可視もまた同じ 404 とする。</p>
+     *
+     * @param orgId        URL パスの組織 ID
+     * @param tournamentId 対象大会 ID
      * @param viewerUserId 閲覧者 user_id（未認証は null）
      */
-    public void verifyViewable(Long tournamentId, Long viewerUserId) {
+    public void verifyViewable(Long orgId, Long tournamentId, Long viewerUserId) {
         TournamentEntity tournament = tournamentRepository.findById(tournamentId)
+                .filter(t -> orgId != null && orgId.equals(t.getOrganizationId()))
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND));
         if (!isViewableBy(tournamentId, tournament.getOrganizationId(), viewerUserId)) {
             throw new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND);

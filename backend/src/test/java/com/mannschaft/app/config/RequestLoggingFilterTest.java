@@ -88,7 +88,9 @@ class RequestLoggingFilterTest {
         // MDC に duration_ms / method / path / status が含まれること
         assertThat(event.getMDCPropertyMap()).containsKey("duration_ms");
         assertThat(event.getMDCPropertyMap().get("method")).isEqualTo("GET");
-        assertThat(event.getMDCPropertyMap().get("path")).isEqualTo("/api/v1/todos");
+        // ルート テンプレートが無い（ハンドラ未解決）ので、生の URI ではなくセグメントを固定記号に置換した値になる
+        // （CMP-260826-1457: パスに含まれうる平文の秘密をログへ残さない）
+        assertThat(event.getMDCPropertyMap().get("path")).isEqualTo("/{segment}/{segment}/{segment}");
         assertThat(event.getMDCPropertyMap().get("status")).isEqualTo("200");
         // 通常リクエストでは slow フラグは付かない
         assertThat(event.getMDCPropertyMap()).doesNotContainKey("slow");
@@ -254,8 +256,8 @@ class RequestLoggingFilterTest {
     }
 
     @Test
-    @DisplayName("F10.5 Phase 10-β 後続-②: BEST_MATCHING_PATTERN_ATTRIBUTE 未セット時は raw path にフォールバック")
-    void fallback_to_raw_path_when_no_pattern_attribute() throws ServletException, IOException {
+    @DisplayName("F10.5 Phase 10-β 後続-②: BEST_MATCHING_PATTERN_ATTRIBUTE 未セット時はセグメントを固定記号に置換（生の URI を通知に渡さない）")
+    void fallback_to_masked_path_when_no_pattern_attribute() throws ServletException, IOException {
         PerformanceMonitoringProperties props = new PerformanceMonitoringProperties();
         props.getRequest().setWarnMs(10L);
         props.getRequest().setErrorMs(20L);
@@ -275,8 +277,8 @@ class RequestLoggingFilterTest {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/static/asset.png");
         wired.doFilter(request, new MockHttpServletResponse(), (q, s) -> sleepQuietly(50));
 
-        // raw path にフォールバック
-        verify(notifier).notifySlowRequest(eq("GET"), eq("/static/asset.png"), anyLong(), any());
+        // 生の URI にはトークン等の平文が含まれうるため、固定記号へ置換した値で通知する（CMP-260826-1457）
+        verify(notifier).notifySlowRequest(eq("GET"), eq("/{segment}/{segment}"), anyLong(), any());
     }
 
     @Test

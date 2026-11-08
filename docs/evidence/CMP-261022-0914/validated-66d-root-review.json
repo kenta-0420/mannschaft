@@ -1,0 +1,104 @@
+{
+  "status": "passed",
+  "reviewer": "root本人",
+  "head": "66d07b0ed9f6d0196a42287d3b3ad4208931686d",
+  "run": 40283924552,
+  "attempt": 1,
+  "checkedAt": "2026-10-26T08:45:39.056Z",
+  "findings": [],
+  "acceptanceCriteria": 12,
+  "rootXml": {
+    "files": 1073,
+    "scopeClasses": 159,
+    "scopeXml": 980,
+    "scopeCases": 4384,
+    "archXml": 46,
+    "archCases": 347,
+    "all159HaveActualCases": true,
+    "selectedHeaders": 47,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "stores": {
+    "matched": 48,
+    "priorA363Removed": 0,
+    "preL1Baseline": "17cab5899b86216190b2c13d31c19812d88593d5",
+    "baselineComparisons": [
+      {
+        "path": "backend/src/test/resources/archunit_store/296295dd-06cf-4f7b-bf82-315ba12ff501",
+        "oldOccurrences": 7322,
+        "currentOccurrences": 7352,
+        "added": 30,
+        "removed": 0,
+        "allAddedFromMovedImplementation": true
+      },
+      {
+        "path": "backend/src/test/resources/archunit_store/2c0ba995-682e-4f80-a5a5-f68c835b720d",
+        "oldOccurrences": 569,
+        "currentOccurrences": 569,
+        "added": 0,
+        "removed": 0,
+        "allAddedFromMovedImplementation": true
+      },
+      {
+        "path": "backend/src/test/resources/archunit_store/427c445d-37ce-4d6e-b095-a1733efe209f",
+        "oldOccurrences": 1876,
+        "currentOccurrences": 1897,
+        "added": 21,
+        "removed": 0,
+        "allAddedFromMovedImplementation": true
+      },
+      {
+        "path": "backend/src/test/resources/archunit_store/584c3a46-b9c1-4cc2-bf74-e0a18eab1bef",
+        "oldOccurrences": 2157,
+        "currentOccurrences": 2157,
+        "added": 0,
+        "removed": 0,
+        "allAddedFromMovedImplementation": true
+      },
+      {
+        "path": "backend/src/test/resources/archunit_store/93124b52-f328-4f09-8c4f-6d022519fae2",
+        "oldOccurrences": 600,
+        "currentOccurrences": 600,
+        "added": 0,
+        "removed": 0,
+        "allAddedFromMovedImplementation": true
+      },
+      {
+        "path": "backend/src/test/resources/archunit_store/9ed4737d-c74f-4374-923e-4663d3c9e256",
+        "oldOccurrences": 0,
+        "currentOccurrences": 0,
+        "added": 0,
+        "removed": 0,
+        "allAddedFromMovedImplementation": true
+      },
+      {
+        "path": "backend/src/test/resources/archunit_store/f14374b1-655e-4df2-8e82-2d79c8df9174",
+        "oldOccurrences": 1325,
+        "currentOccurrences": 1346,
+        "added": 21,
+        "removed": 0,
+        "allAddedFromMovedImplementation": true
+      },
+      {
+        "path": "backend/src/test/resources/archunit_store/stored.rules",
+        "oldOccurrences": 9,
+        "currentOccurrences": 9,
+        "added": 0,
+        "removed": 0,
+        "allAddedFromMovedImplementation": true
+      }
+    ]
+  },
+  "runtime": {
+    "uiPassed": 12,
+    "exploratoryResidents": 3,
+    "sourceBridge": "33a→66dはdocs/task-list.mdのみ"
+  },
+  "limits": [
+    "physical replication対象外、Spring AOP datasource route契約を検証",
+    "repo admin-console実機specはtypecheck/list、custom actualUI12件で実機検証",
+    "旧r6copy保持条件は別記"
+  ]
+}

@@ -1,6 +1,6 @@
 {
   "contact_invite": {
-    "page_title": "邀请链接管理",
+    "page_title": "邀请链接与联系人二维码管理",
     "page_description": "发行和管理用于添加联系人的邀请链接。收到链接的人可以将您添加为联系人。",
     "create_button": "发行新链接",
     "form": {
@@ -44,7 +44,8 @@
       "revoke_error": "撤销失败",
       "copy_success": "链接已复制",
       "copy_error": "复制失败"
-    }
+    },
+    "my_qr": "我的联系人二维码"
   },
   "contact_invite_guide": {
     "title": "邀请链接管理使用指南",

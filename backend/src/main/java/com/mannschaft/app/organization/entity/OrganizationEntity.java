@@ -97,6 +97,15 @@ public class OrganizationEntity extends BaseEntity {
 
     private LocalDateTime deletedAt;
 
+    /**
+     * 閉鎖の世代番号（F01.2.1 2-D・§4.5）。アーカイブ・論理削除（＝閉鎖）のたびに +1 し、アーカイブ解除・論理削除の取消では変えない。
+     * team ドメインの加盟の PENDING は作成時点の世代を記録し、「記録した世代 &lt; この値」の PENDING を閉鎖より前に作られた行として
+     * 片付け・承認・承諾で無効として扱う（ポート越しに読む）。時刻の比較は秒精度で同じ秒の前後を見分けられないので使わない。
+     * 書き換えは組織行のロック（{@code OrganizationRepository#findByIdForUpdate}）の下で行う。
+     */
+    @Column(name = "closure_generation", nullable = false, columnDefinition = "BIGINT NOT NULL DEFAULT 0")
+    private long closureGeneration;
+
     // --- F01.2 拡張プロフィールフィールド ---
 
     @Column(name = "icon_url", length = 512)
@@ -254,12 +263,14 @@ public class OrganizationEntity extends BaseEntity {
      */
     public void archive() {
         this.archivedAt = LocalDateTime.now();
+        this.closureGeneration++;
     }
 
     /**
      * 組織のアーカイブを解除する。
      */
     public void unarchive() {
+        // closureGeneration は変えない（解除の前の PENDING を加盟の片付け・承認・承諾が見分けられるように。F01.2.1 §4.5）
         this.archivedAt = null;
     }
 
@@ -268,6 +279,7 @@ public class OrganizationEntity extends BaseEntity {
      */
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
+        this.closureGeneration++;
     }
 
     /**

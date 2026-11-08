@@ -1,0 +1,94 @@
+{
+  "base": "54923edd410412cb371e46b49a505918f3171b37",
+  "method": "task-list/生成boardを基準blobへ一時復元し、同じnode validator commandを実行後finallyで作業内容のbytesを復元。他依存は基準と同内容（Windows checkout CRLFは改行正規化して比較）。",
+  "runs": [
+    {
+      "scope": "baseline",
+      "command": "node docs/prototypes/validate-beta-inventory-board.mjs",
+      "exitCode": 1,
+      "errorMessage": "GitHubスナップショットの参照集合が正本と不一致です",
+      "validatorFile": "docs/prototypes/validate-beta-inventory-board.mjs",
+      "line": 46
+    },
+    {
+      "scope": "baseline",
+      "command": "node docs/prototypes/validate-beta-inventory-board.mjs --self-test-overlay",
+      "exitCode": 1,
+      "errorMessage": "GitHubスナップショットの参照集合が正本と不一致です",
+      "validatorFile": "docs/prototypes/validate-beta-inventory-board.mjs",
+      "line": 46
+    },
+    {
+      "scope": "registered",
+      "command": "node docs/prototypes/validate-beta-inventory-board.mjs",
+      "exitCode": 1,
+      "errorMessage": "GitHubスナップショットの参照集合が正本と不一致です",
+      "validatorFile": "docs/prototypes/validate-beta-inventory-board.mjs",
+      "line": 46
+    },
+    {
+      "scope": "registered",
+      "command": "node docs/prototypes/validate-beta-inventory-board.mjs --self-test-overlay",
+      "exitCode": 1,
+      "errorMessage": "GitHubスナップショットの参照集合が正本と不一致です",
+      "validatorFile": "docs/prototypes/validate-beta-inventory-board.mjs",
+      "line": 46
+    }
+  ],
+  "dependenciesEqualAfterCheckoutEolNormalization": true,
+  "registeredProvenance": {
+    "registeredEvidenceCommit": "a4cd6b91ff8453b9732f21874cf81c22d9f9ff62",
+    "executionHead": "fd6cc48fcf",
+    "sourceFieldsEquivalent": true,
+    "note": "元4run証拠のregisteredはmain追従前の登録状態。実行時HEADはfd6cc48fcf、記録追加commit a4cd6b91のvalidator入力5fileは同一Git blob。元runsは変更しない。"
+  },
+  "finalHeadValidation": {
+    "measuredHead": "5d76dd31ad8bb7c7b15e971ce8ca7067eb8e008a",
+    "mainFollowed": "9eb2dbb58214a802d72440c61b301ce53d3e8358",
+    "runs": [
+      {
+        "command": "node docs/prototypes/validate-beta-inventory-board.mjs",
+        "exitCode": 1,
+        "errorMessage": "GitHubスナップショットの参照集合が正本と不一致です",
+        "validatorFile": "docs/prototypes/validate-beta-inventory-board.mjs",
+        "line": 46
+      },
+      {
+        "command": "node docs/prototypes/validate-beta-inventory-board.mjs --self-test-overlay",
+        "exitCode": 1,
+        "errorMessage": "GitHubスナップショットの参照集合が正本と不一致です",
+        "validatorFile": "docs/prototypes/validate-beta-inventory-board.mjs",
+        "line": 46
+      }
+    ],
+    "inputFiles": [
+      {
+        "path": "docs/task-list.md",
+        "sha256": "c4e310ff400c3c9f920b825551e1c9714c5f69a399bc3d0b9adcebd29436ec3c",
+        "gitBlob": "4f3fb873ca9e9acb7663a2c8c01ab609f3c09dac"
+      },
+      {
+        "path": "docs/prototypes/beta-inventory-board-data.js",
+        "sha256": "83447e6925ec8b4c93cf92dc9b5d6f8bfa5a386c2a5abd80c5047484619638db",
+        "gitBlob": "1c150fa4f1942f917d2a334fafd053029be7838b"
+      },
+      {
+        "path": "docs/prototypes/validate-beta-inventory-board.mjs",
+        "sha256": "0926e91ed34dd3aa026caf16111e7b4c2320278457bef4e02dd3a629d5ff5441",
+        "gitBlob": "c24d1c762bbfed4b0216d5ff3bed0ebec34efbb2"
+      },
+      {
+        "path": "docs/prototypes/beta-inventory-board-github.json",
+        "sha256": "d1f8c98920a0ffb28039184907dee2dbf3e973ba74fe2ff1dbe76fa6971b710e",
+        "gitBlob": "cb593db972aac9ba432332ce58c46d55ee08d809"
+      },
+      {
+        "path": "docs/prototypes/beta-inventory-board-github-status.json",
+        "sha256": "c5eb04dd7146706e7824cd2fcbdc25ebf1a6a3bac50849fbb848f8756aff1e9f",
+        "gitBlob": "a29609f0c07622dc947fd3b9b03a034c922cbc2a"
+      }
+    ],
+    "recordingScope": "本記録追加は証拠JSONとregistration.mdだけ。validator入力5file/sourcefieldsは測定HEADから変更しない。",
+    "referenceProvenance": "新CMP-261028-0513由来のGitHub参照追加0。main追従でCMP-261004-1818の参照が3623から4182へ更新された。基準54923eddとの集合不変は主張しない。"
+  }
+}

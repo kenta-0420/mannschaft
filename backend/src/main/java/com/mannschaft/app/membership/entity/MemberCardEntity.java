@@ -19,6 +19,7 @@ import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import com.mannschaft.app.common.token.PlaintextSecretRequired;
 
 /**
  * デジタル会員証エンティティ。ユーザーがチーム/組織に所属した際に自動発行される。
@@ -71,6 +72,7 @@ public class MemberCardEntity {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal totalSpend;
 
+    @PlaintextSecretRequired(reason = "会員証の QR を保有者本人に何度でも見せるため平文で保持する。署名付き短命 QR への移行は別 CMP")
     @Column(nullable = false, length = 64)
     private String qrSecret;
 

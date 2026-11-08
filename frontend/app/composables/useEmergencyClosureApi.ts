@@ -5,7 +5,8 @@
 export interface ClosurePreviewItem {
   reservationId: number
   userId: number
-  userDisplayName: string
+  /** 氏名（姓 名）。ユーザーが見つからない場合は空文字。 */
+  userFullName: string
   userEmail: string
   /** "yyyy-MM-dd" */
   slotDate: string
@@ -49,7 +50,7 @@ export interface ClosureSendBody {
 
 export interface ClosureSendResponse {
   data: {
-    notifiedCount: number
+    sentCount: number
   }
 }
 
@@ -69,7 +70,7 @@ export interface ClosureHistoryItem {
   endTime: string | null
   reason: string
   subject: string
-  notifiedCount: number
+  sentCount: number
   createdAt: string
 }
 
@@ -79,7 +80,8 @@ export interface ClosureHistoryResponse {
 
 export interface ClosureConfirmationItem {
   userId: number
-  userDisplayName: string
+  /** 氏名（姓 名）。ユーザーが見つからない場合は空文字。 */
+  userFullName: string
   userEmail: string
   appointmentAt: string
   confirmed: boolean
@@ -148,10 +150,15 @@ export function useEmergencyClosureApi() {
     return api<ClosurePreviewResponse>(`${base(teamId)}/emergency-closures/preview?${query}`)
   }
 
-  async function sendClosure(teamId: string, body: ClosureSendBody) {
+  /**
+   * 一括送信。`idempotencyKey` は連打・再送の二重送信防止用（BE が同キー同内容なら既存結果を返す）。
+   * 同じ送信操作の再送には同じキーを渡すこと。
+   */
+  async function sendClosure(teamId: string, body: ClosureSendBody, idempotencyKey?: string) {
     return api<ClosureSendResponse>(`${base(teamId)}/emergency-closures`, {
       method: 'POST',
       body,
+      headers: { 'Idempotency-Key': idempotencyKey ?? crypto.randomUUID() },
     })
   }
 

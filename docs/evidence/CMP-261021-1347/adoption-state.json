@@ -1,0 +1,67 @@
+{
+  "kind": "MERGED_IMPLEMENTATION_CLOSURE_EVIDENCE",
+  "implementationHeadCandidate": "6d0b8ec4f6c98fe014bd79a20ac96b402d78b0a4",
+  "githubPrHeadSync": "EXACT_HEAD_CONFIRMED",
+  "finalHeadCiResult": "SUCCESS",
+  "mergedImplementationHeadSha": "6d0b8ec4f6c98fe014bd79a20ac96b402d78b0a4",
+  "mergedAt": "2026-10-22T10:21:33Z",
+  "finalReviewSeal": "PASSED",
+  "realFiniteScopeRootAdopted": true,
+  "threePersonaExplorationRootAdopted": true,
+  "oldAirLoginRejectionPreserved": true,
+  "currentAirExplorationNotExecutedBlockResolved": true,
+  "productRegressions": [
+    "CLIP-VISIBILITY-01",
+    "DARK-BACKGROUND-01"
+  ],
+  "formal64Gate": "CLOSED",
+  "public512Gate": "CLOSED",
+  "remainingEvidenceCaveats": [
+    "歴史的unit-only境界・元失敗・代表実機matrixの限界を維持",
+    "正式64対応／512公開は対象外でCLOSED"
+  ],
+  "ciHarnessRepair": {
+    "commit": "a9a25a4ebc",
+    "productChanged": false,
+    "assertionsChanged": false,
+    "casesChanged": false,
+    "officialFinalHeadCi": "SUCCESS"
+  },
+  "finalHeadCiRunIdsStatus": "ACTUAL_EXACT_HEAD_IDS_CONFIRMED_SUCCESS",
+  "finalSourceLayerProof": "docs/evidence/CMP-261021-1347/collected/clip-final-source-layer-post4795-20261022.json",
+  "supersededHeadCiHistory": {
+    "head": "0fbc96871872fdf1773ff652c8ea5911114bca1c",
+    "basis": "Root direct coordination update; no old raw CI proof copied in this step",
+    "backend": "All six jobs success; superseded head only",
+    "frontend": "Attempt1 success observed but stale job persisted about50min; legitimate attempt2 rerun; superseded by docs-only new-main merge",
+    "finalHeadPassClaim": false
+  },
+  "sourceAdoptionScope": "WHOLE_FE_BE_IDENTICAL_TO_4795_THEN_NARROW_38_RANCH_FE_AND_BACKEND_RANCH_RESOURCES_BUILD_ADOPTION_TO_ACTUAL_RUNTIME",
+  "backendNarrowProof": "docs/evidence/CMP-261021-1347/collected/clip-backend-4795-narrow-adoption-20261022.json",
+  "historicalWholeTreeEqualityProof": "docs/evidence/CMP-261021-1347/collected/clip-final-source-layer-89925d-20261022.json",
+  "wholeFrontendBackendIdentityAtFinalHeadClaimed": false,
+  "finalHeadRuntimeRebuilt": false,
+  "latestMainMerged": "ef382d8f034e0d60e6fcc62c572b321bcb03c3d5",
+  "mergeabilityCorrectionProof": "docs/evidence/CMP-261021-1347/collected/clip-pr-89925d-mergeability-refresh-20261022.json",
+  "wholeFrontendBackendIdenticalToPriorHead4795": true,
+  "prior4795Ci": {
+    "checks": {
+      "success": 26,
+      "skipped": 2
+    },
+    "backendJobs": {
+      "success": 12
+    },
+    "backendTestShards": {
+      "success": 6
+    },
+    "scope": "HISTORICAL_4795_ONLY_NOT_CURRENT_HEAD_SUCCESS",
+    "checksEvidence": "docs/evidence/CMP-261021-1347/collected/clip-checks-4795da-fresh-20261022.safe.json",
+    "backendEvidence": "docs/evidence/CMP-261021-1347/collected/clip-backend-4795da-final-20261022.safe.json"
+  },
+  "finalHeadCiRunIds": [
+    39750789775,
+    39750790040,
+    39750789723
+  ]
+}

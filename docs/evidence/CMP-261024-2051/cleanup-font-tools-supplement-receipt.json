@@ -1,0 +1,62 @@
+{
+  "sourceFile": "cleanup-font-tools-supplement-receipt.json",
+  "sourceSha256": "35cc3579e387d6c27900cd9f9bc5acce779a6d8af897908a35ff249b8f22e6a1",
+  "at": "2026-10-25T06:11:52.403454+00:00",
+  "completedAt": "2026-10-25T06:11:52.643037+00:00",
+  "supplements": "cleanup-final-receipt.json",
+  "priorReceiptSha256": "8388d966f1b08d02de833f97bea79b07beaba7516e3d01d700b2fe81e440b8f5",
+  "holdReleasedByParent": true,
+  "unit": {
+    "receiptSha256": "8e038dae3824cd1239f41817c3ee47bb237bbd0f435836bfd18c4222120a92f8",
+    "exitCode": 0,
+    "cleanup": "removed",
+    "scratchAbsent": true
+  },
+  "ownership": {
+    "toolOwnership": "setup-manifest + explicit parent FE tool ownership + exact package versions + UID1000",
+    "deletionUid": 1000,
+    "allBeforeOwnersUid1000": true,
+    "references": [],
+    "unresolved": [],
+    "privilegedChecksReadOnly": true,
+    "privilegedCheckedProcessCount": 3,
+    "allChecksExactTaskPathsOnly": true
+  },
+  "actions": [
+    {
+      "asset": "task-fonts",
+      "removed": true,
+      "afterAbsent": true
+    },
+    {
+      "asset": "task-font-cache",
+      "removed": true,
+      "afterAbsent": true
+    },
+    {
+      "asset": "task-runtime-npm-tools",
+      "removed": true,
+      "afterAbsent": true
+    },
+    {
+      "asset": "task-FE-npm-tools",
+      "removed": true,
+      "afterAbsent": true
+    }
+  ],
+  "retainedInThisSupplement": [],
+  "excluded": [
+    "Windows font targets",
+    "Meiryo",
+    "globalPWcache",
+    "Node",
+    "Gradle",
+    "sharedValkey",
+    "Redis unknown18 and reservation",
+    "oldshared3306",
+    "all evidence/proofs",
+    "worktrees/branches"
+  ],
+  "priorReceiptUnchanged": true,
+  "WindowsFontTargetsUnchanged": true
+}

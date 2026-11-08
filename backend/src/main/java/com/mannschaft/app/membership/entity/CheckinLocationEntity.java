@@ -17,6 +17,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
+import com.mannschaft.app.common.token.PlaintextSecretRequired;
 
 /**
  * セルフチェックイン拠点エンティティ。店舗の受付やジムの入口等にQRポップとして掲示する。
@@ -45,6 +46,7 @@ public class CheckinLocationEntity {
     @Column(nullable = false, length = 36)
     private String locationCode;
 
+    @PlaintextSecretRequired(reason = "チェックイン拠点の QR を管理者に何度でも見せるため平文で保持する。署名付き短命 QR への移行は別 CMP")
     @Column(nullable = false, length = 64)
     private String locationSecret;
 

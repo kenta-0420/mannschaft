@@ -1,0 +1,123 @@
+{
+  "status": "observed-unverified",
+  "trusted": false,
+  "oldCounts": [
+    21,
+    21,
+    48
+  ],
+  "newCounts": [
+    22,
+    22,
+    49
+  ],
+  "oldOverlaySha256": "db618d92b24c7d31b25ffd5bc89bda00371aff298eaa9bcd7dfd0db2f6bc9bbf",
+  "newOverlaySha256": "3016a9b702aa3e3eecd7f34408cc7c367c251eaec2dc2c4cf2a66b9afb985a94",
+  "oldValuesPreserved": true,
+  "canonicalIgnoredGeneratedSame": true,
+  "generationExitCode": 0,
+  "initialGenerationExitCode": 1,
+  "initialGenerationFailure": "疎checkoutで参照spec未展開。既存検査を維持し疎対象へ追加後に再生成。",
+  "limitedValidator": "pass",
+  "negativeCasesRejected": 10,
+  "fullValidator": [
+    {
+      "args": [],
+      "exitCode": 1,
+      "error": "Error: GitHubスナップショットの参照集合が正本と不一致です",
+      "passed": false
+    },
+    {
+      "args": [
+        "--self-test-overlay"
+      ],
+      "exitCode": 1,
+      "error": "Error: GitHubスナップショットの参照集合が正本と不一致です",
+      "passed": false
+    }
+  ],
+  "uiVerified": false,
+  "coveragePromoted": false,
+  "runnerExecuted": false,
+  "production": false,
+  "generatedMainLedgerCatchup": {
+    "sourceTaskListCommit": "7dd793916526111903964e11e86d24b47dced84e",
+    "campaigns": [
+      {
+        "id": "CMP-261002-1343",
+        "beforeStatus": "not-started",
+        "afterStatus": "working",
+        "changedKeys": [
+          "status",
+          "statusLabel",
+          "tags"
+        ]
+      },
+      {
+        "id": "CMP-261004-1818",
+        "beforeStatus": "not-started",
+        "afterStatus": "working",
+        "changedKeys": [
+          "status",
+          "statusLabel",
+          "tags"
+        ]
+      },
+      {
+        "id": "CMP-261009-0616",
+        "beforeStatus": "working",
+        "afterStatus": "done",
+        "changedKeys": [
+          "status",
+          "statusLabel",
+          "issues",
+          "prs",
+          "tags",
+          "githubRefs",
+          "github"
+        ]
+      },
+      {
+        "id": "CMP-261010-1432",
+        "beforeStatus": "working",
+        "afterStatus": "working",
+        "changedKeys": [
+          "issues",
+          "prs",
+          "githubRefs",
+          "github"
+        ]
+      },
+      {
+        "id": "CMP-261027-1353",
+        "beforeStatus": "working",
+        "afterStatus": "done",
+        "changedKeys": [
+          "status",
+          "statusLabel",
+          "issues",
+          "prs",
+          "refs",
+          "tags",
+          "githubRefs",
+          "github"
+        ]
+      }
+    ],
+    "reason": "最新main台帳の既存裁定を通常生成器で追従した。今回新たに完了へ遷移したのは0649だけ。"
+  },
+  "currentCompletionTransition": {
+    "id": "CMP-261021-0649",
+    "beforeStatus": "working",
+    "afterStatus": "done",
+    "changedKeys": [
+      "status",
+      "statusLabel",
+      "issues",
+      "prs",
+      "tags",
+      "githubRefs",
+      "github"
+    ]
+  }
+}

@@ -8,11 +8,13 @@ import com.mannschaft.app.shiftbudget.repository.ShiftBudgetAllocationRepository
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetConsumptionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -48,6 +50,10 @@ public class ShiftBudgetConsumptionService {
 
     private final ShiftBudgetConsumptionRepository consumptionRepository;
     private final ShiftBudgetAllocationRepository allocationRepository;
+
+    /** 既存LocalDateTime列と同じ業務壁時計を使う。 */
+    @Qualifier("wallClock")
+    private final Clock wallClock;
 
     /**
      * 単一 (slot, user) 分の消化を記録する。
@@ -132,15 +138,20 @@ public class ShiftBudgetConsumptionService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int cancelAllForShift(Long shiftScheduleId) {
-        var consumptions = consumptionRepository.findByShiftIdAndDeletedAtIsNull(shiftScheduleId);
+        var consumptions = consumptionRepository.findByShiftIdAndDeletedAtIsNullOrderByIdAsc(shiftScheduleId);
         int cancelledCount = 0;
         for (ShiftBudgetConsumptionEntity c : consumptions) {
             // CONFIRMED は変更不可（取消仕訳パターンが必要だが Phase 9-β スコープ外）
             if (c.getStatus() != ShiftBudgetConsumptionStatus.PLANNED) {
                 continue;
             }
-            c.cancel(ShiftBudgetCancelReason.SHIFT_DELETED);
-            consumptionRepository.save(c);
+            // 並行するバッチ/リスナーのうち、PLANNEDを実際に取り消したTXだけが減算する。
+            // 取消と減算は同一REQUIRES_NEW内なので、減算失敗時はclaimも巻き戻る。
+            int claimed = consumptionRepository.cancelPlannedById(
+                    c.getId(), ShiftBudgetCancelReason.SHIFT_DELETED, LocalDateTime.now(wallClock));
+            if (claimed != 1) {
+                continue;
+            }
             allocationRepository.decrementConsumedAmount(c.getAllocationId(), c.getAmount());
             cancelledCount++;
         }

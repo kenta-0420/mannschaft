@@ -1,0 +1,343 @@
+{
+  "probe": "nuxt-link-prefetch-hook-only",
+  "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+  "bootstrapShaVerified": true,
+  "manifestShaVerified": true,
+  "businessMutations": 0,
+  "trace": false,
+  "video": false,
+  "routeValuesSaved": false,
+  "rawDOMSaved": false,
+  "rawStacksSaved": false,
+  "networkRequestCountMeasured": false,
+  "routeSpecificChunkAcquisitionProven": false,
+  "queueCausalityProven": false,
+  "readyMeaning": "CSS rendered personal calendar with month heading, 42 cells, and no skeleton; viewport intersection and paint are not guaranteed; 50ms sampling is not a performance comparison",
+  "nativeApiTimingDiagnostic": {
+    "notABPerformanceSample": true,
+    "clock": "Playwright Request.timing: startTime is Unix epoch milliseconds; remaining fields are milliseconds relative to that request startTime",
+    "phaseMeaning": "phase enum captured at request event, not finished callback",
+    "unknownValue": null,
+    "rows": [
+      {
+        "category": "widget-config",
+        "phase": "initial-dashboard",
+        "status": 200,
+        "startTimeEpochMs": 1793193788772.479,
+        "domainLookupStartMs": null,
+        "domainLookupEndMs": null,
+        "connectStartMs": null,
+        "secureConnectionStartMs": null,
+        "connectEndMs": null,
+        "requestStartMs": 11.127,
+        "responseStartMs": 99.675,
+        "responseEndMs": 278.23,
+        "ttfbMs": 88.548,
+        "responseDownloadMs": 178.555,
+        "requestFinishedObserved": true
+      },
+      {
+        "category": "personal",
+        "phase": "initial-dashboard",
+        "status": 200,
+        "startTimeEpochMs": 1793193789366.465,
+        "domainLookupStartMs": null,
+        "domainLookupEndMs": null,
+        "connectStartMs": null,
+        "secureConnectionStartMs": null,
+        "connectEndMs": null,
+        "requestStartMs": 136.037,
+        "responseStartMs": 278.976,
+        "responseEndMs": 412.11,
+        "ttfbMs": 142.939,
+        "responseDownloadMs": 133.13400000000001,
+        "requestFinishedObserved": true
+      },
+      {
+        "category": "layers",
+        "phase": "initial-dashboard",
+        "status": 200,
+        "startTimeEpochMs": 1793193789347.946,
+        "domainLookupStartMs": null,
+        "domainLookupEndMs": null,
+        "connectStartMs": null,
+        "secureConnectionStartMs": null,
+        "connectEndMs": null,
+        "requestStartMs": 149.509,
+        "responseStartMs": 520.381,
+        "responseEndMs": 638.24,
+        "ttfbMs": 370.87199999999996,
+        "responseDownloadMs": 117.85900000000004,
+        "requestFinishedObserved": true
+      },
+      {
+        "category": "todos",
+        "phase": "initial-dashboard",
+        "status": 200,
+        "startTimeEpochMs": 1793193789374.4412,
+        "domainLookupStartMs": null,
+        "domainLookupEndMs": null,
+        "connectStartMs": null,
+        "secureConnectionStartMs": null,
+        "connectEndMs": null,
+        "requestStartMs": 370.373,
+        "responseStartMs": 525.424,
+        "responseEndMs": 662.936,
+        "ttfbMs": 155.051,
+        "responseDownloadMs": 137.51200000000006,
+        "requestFinishedObserved": true
+      },
+      {
+        "category": "shared",
+        "phase": "initial-dashboard",
+        "status": 200,
+        "startTimeEpochMs": 1793193789371.488,
+        "domainLookupStartMs": null,
+        "domainLookupEndMs": null,
+        "connectStartMs": null,
+        "secureConnectionStartMs": null,
+        "connectEndMs": null,
+        "requestStartMs": 134.836,
+        "responseStartMs": 1028.252,
+        "responseEndMs": 1299.359,
+        "ttfbMs": 893.4159999999999,
+        "responseDownloadMs": 271.10699999999997,
+        "requestFinishedObserved": true
+      },
+      {
+        "category": "personal",
+        "phase": "calendar-page-after-click",
+        "status": 200,
+        "startTimeEpochMs": 1793193795302.1118,
+        "domainLookupStartMs": null,
+        "domainLookupEndMs": null,
+        "connectStartMs": null,
+        "secureConnectionStartMs": null,
+        "connectEndMs": null,
+        "requestStartMs": 11.906,
+        "responseStartMs": 60.811,
+        "responseEndMs": 96.888,
+        "ttfbMs": 48.905,
+        "responseDownloadMs": 36.077000000000005,
+        "requestFinishedObserved": true
+      },
+      {
+        "category": "todos",
+        "phase": "calendar-page-after-click",
+        "status": 200,
+        "startTimeEpochMs": 1793193795336.715,
+        "domainLookupStartMs": null,
+        "domainLookupEndMs": null,
+        "connectStartMs": null,
+        "secureConnectionStartMs": null,
+        "connectEndMs": null,
+        "requestStartMs": 15.119,
+        "responseStartMs": 93.86,
+        "responseEndMs": 154.515,
+        "ttfbMs": 78.741,
+        "responseDownloadMs": 60.65499999999999,
+        "requestFinishedObserved": true
+      },
+      {
+        "category": "layers",
+        "phase": "calendar-page-after-click",
+        "status": 200,
+        "startTimeEpochMs": 1793193795300.3208,
+        "domainLookupStartMs": null,
+        "domainLookupEndMs": null,
+        "connectStartMs": null,
+        "secureConnectionStartMs": null,
+        "connectEndMs": null,
+        "requestStartMs": 0.734,
+        "responseStartMs": 184.145,
+        "responseEndMs": 212.883,
+        "ttfbMs": 183.411,
+        "responseDownloadMs": 28.738,
+        "requestFinishedObserved": true
+      },
+      {
+        "category": "shared",
+        "phase": "calendar-page-after-click",
+        "status": 200,
+        "startTimeEpochMs": 1793193795303.17,
+        "domainLookupStartMs": null,
+        "domainLookupEndMs": null,
+        "connectStartMs": null,
+        "secureConnectionStartMs": null,
+        "connectEndMs": null,
+        "requestStartMs": 35.084,
+        "responseStartMs": 444.954,
+        "responseEndMs": 475.02,
+        "ttfbMs": 409.87,
+        "responseDownloadMs": 30.065999999999974,
+        "requestFinishedObserved": true
+      }
+    ]
+  },
+  "publicShape": {
+    "vueAppAvailable": true,
+    "nuxtAppAvailable": true,
+    "hookFunction": true,
+    "removeHookFunction": true,
+    "probeSlotUnused": true
+  },
+  "hookInstalled": true,
+  "observation": {
+    "upcoming": {
+      "sectionPresent": true,
+      "sectionRendered": true,
+      "buttonPresent": true,
+      "expanded": false,
+      "calendarAnchorPresent": false,
+      "uiExpandedByProbe": false,
+      "initialResidualHookCauseProven": false
+    },
+    "initialCalendarDOM": true,
+    "initialPersonalPanel": true,
+    "stayedDashboard": true,
+    "visitedDestinationCount": 2,
+    "visibleNavDestinationCount": 15,
+    "visibleGlobalNavDestinationCount": 15,
+    "eventOriginAttribution": "unattributed",
+    "initialVisibleUnvisitedRouteEnums": [
+      {
+        "category": "calendar",
+        "hookCount": 0
+      },
+      {
+        "category": "other",
+        "hookCount": 1
+      }
+    ],
+    "visibleGlobalNavUnvisitedBeforeInitialDOM": {
+      "hookCount": 1,
+      "uniqueDestinationCount": 1,
+      "visibleNavMatchHookCount": 1,
+      "unvisitedDestinationHookCount": 1,
+      "firstHookMs": 1641,
+      "lastHookMs": 1641
+    },
+    "postDOMObservationMs": 1149,
+    "all": {
+      "hookCount": 4,
+      "uniqueDestinationCount": 4,
+      "visibleNavMatchHookCount": 1,
+      "unvisitedDestinationHookCount": 4,
+      "firstHookMs": 1641,
+      "lastHookMs": 2911
+    },
+    "beforeInitialDOM": {
+      "hookCount": 4,
+      "uniqueDestinationCount": 4,
+      "visibleNavMatchHookCount": 1,
+      "unvisitedDestinationHookCount": 4,
+      "firstHookMs": 1641,
+      "lastHookMs": 2911
+    },
+    "afterInitialDOM": {
+      "hookCount": 0,
+      "uniqueDestinationCount": 0,
+      "visibleNavMatchHookCount": 0,
+      "unvisitedDestinationHookCount": 0,
+      "firstHookMs": null,
+      "lastHookMs": null
+    },
+    "categories": [
+      {
+        "category": "current-dashboard",
+        "beforeInitialDOM": {
+          "hookCount": 0,
+          "uniqueDestinationCount": 0,
+          "visibleNavMatchHookCount": 0,
+          "unvisitedDestinationHookCount": 0,
+          "firstHookMs": null,
+          "lastHookMs": null
+        },
+        "afterInitialDOM": {
+          "hookCount": 0,
+          "uniqueDestinationCount": 0,
+          "visibleNavMatchHookCount": 0,
+          "unvisitedDestinationHookCount": 0,
+          "firstHookMs": null,
+          "lastHookMs": null
+        }
+      },
+      {
+        "category": "visible-nav-unvisited-route",
+        "beforeInitialDOM": {
+          "hookCount": 1,
+          "uniqueDestinationCount": 1,
+          "visibleNavMatchHookCount": 1,
+          "unvisitedDestinationHookCount": 1,
+          "firstHookMs": 1641,
+          "lastHookMs": 1641
+        },
+        "afterInitialDOM": {
+          "hookCount": 0,
+          "uniqueDestinationCount": 0,
+          "visibleNavMatchHookCount": 0,
+          "unvisitedDestinationHookCount": 0,
+          "firstHookMs": null,
+          "lastHookMs": null
+        }
+      },
+      {
+        "category": "other",
+        "beforeInitialDOM": {
+          "hookCount": 3,
+          "uniqueDestinationCount": 3,
+          "visibleNavMatchHookCount": 0,
+          "unvisitedDestinationHookCount": 3,
+          "firstHookMs": 2316,
+          "lastHookMs": 2911
+        },
+        "afterInitialDOM": {
+          "hookCount": 0,
+          "uniqueDestinationCount": 0,
+          "visibleNavMatchHookCount": 0,
+          "unvisitedDestinationHookCount": 0,
+          "firstHookMs": null,
+          "lastHookMs": null
+        }
+      }
+    ]
+  },
+  "interactions": [
+    {
+      "alias": "hover",
+      "targetHookObserved": true,
+      "noEarlierDestinationHookObserved": true,
+      "eventOriginAttribution": "unattributed",
+      "hookCountIncrease": 1,
+      "destinationValueSaved": false
+    },
+    {
+      "alias": "focus",
+      "targetHookObserved": true,
+      "noEarlierDestinationHookObserved": true,
+      "eventOriginAttribution": "unattributed",
+      "hookCountIncrease": 1,
+      "destinationValueSaved": false
+    }
+  ],
+  "hookRemoved": true,
+  "calendarClickReachedCanonicalRoute": true,
+  "interactionDistinctGlobalNavTargets": true,
+  "nativeApiTimingListenersRemoved": true,
+  "session": {
+    "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+    "frontend200": true,
+    "frontendActual3011": true,
+    "apiHealth200": true,
+    "apiActual8080": true,
+    "publicRuntimeApiExpected": true,
+    "credentialsRead": true,
+    "loginDashboardReached": true,
+    "logoutStatus": 200,
+    "contextClosed": true,
+    "browserClosed": true,
+    "closed": true
+  },
+  "nativeApiTimingLimitation": "No API interception or mocks. URL classification is memory-only; only five fixed enums and numeric native timings are saved. API transport timing belongs to this one diagnostic session, not the frozen n2 A/B samples.",
+  "limitation": "Counts existing NuxtLink link:prefetch hook invocations only. The hook shares a Promise.all branch with preloadRouteComponents, but no network-request count, route-specific chunk acquisition, queue causality, or total-time comparison is established."
+}

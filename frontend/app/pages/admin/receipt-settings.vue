@@ -293,9 +293,7 @@ onBeforeRouteLeave(() => {
       size="sm"
       back-to="/admin/receipts"
       :back-label="t('receipt.settings.backToList')"
-    >
-      <p class="text-sm text-surface-500">{{ t('receipt.settings.description') }}</p>
-    </PageHeader>
+     :subtitle="t('receipt.settings.description')" />
 
     <PageLoading v-if="loading" />
 

@@ -20,6 +20,14 @@ useHead(() => ({
     </template>
   </Toast>
   <ConfirmDialog />
+  <ConfirmDialog
+    group="team-archive"
+    :pt="{ pcCloseButton: { root: { class: 'min-h-11 min-w-11' } } }"
+  />
+  <ConfirmDialog
+    group="team-affiliation-remove"
+    :pt="{ pcCloseButton: { root: { class: 'min-h-11 min-w-11' } } }"
+  />
   <DynamicDialog />
   <ClientOnly>
     <ErrorReportDialog />

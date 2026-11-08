@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261105-0755",
+  "scope": "test-only",
+  "implementation": { "pr": 4300, "sha": "daf25f889559d14cd32782ed5a7fa1f8af2a4be4" },
+  "acceptanceCriteria": [
+    {"id":"AC-1","description":"全7 storeの登録・実測・自然順・重複と上限を照合しstoreを維持する","tests":[{"name":"固定blob集計と専用Integrity XML","evidence":"docs/evidence/CMP-261105-0755/verification.md"}]},
+    {"id":"AC-2","description":"減少・置換と先8件後2件の限定裁可を分離しドメイン別推移を親に報告する","tests":[{"name":"履歴とドメイン推移報告","evidence":"https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6646795431"}]},
+    {"id":"AC-3","description":"最新適格nightlyの同一run/attemptの全6 fresh runtimeを検証して重みを再生成する","tests":[{"name":"再生成原本検証と失敗時の保護","evidence":"docs/evidence/CMP-261105-0755/verification.md"}]},
+    {"id":"AC-4","description":"重みと現sourceの静的分類及び未計測を示し実candidateと区別する","tests":[{"name":"source分類とCI XML照合","evidence":"docs/evidence/CMP-261105-0755/verification.md"}]},
+    {"id":"AC-5","description":"実classの4 profileで取りこぼし・重複・migration漏れ・nested分断を検査する","tests":[{"name":"Shard coverage guard","evidence":"https://github.com/kenta-0420/mannschaft/actions/runs/41956802436/job/127013693064"}]},
+    {"id":"AC-6","description":"Integrityの正常・境界・形式・登録の既存負例を維持する","tests":[{"name":"ArchUnitFreezeStoreIntegritySelfTest 17件","evidence":"docs/evidence/CMP-261105-0755/verification.md"}]},
+    {"id":"AC-7","description":"同一実装headの必須CIと独立検分を確認する","tests":[{"name":"実装CIと検分","evidence":"docs/evidence/CMP-261105-0755/verification.md"}]},
+    {"id":"AC-8","description":"実装merge後に子CMPだけを完了し実装headと証拠を記録する","tests":[{"name":"実装PRと完了証拠ゲート","evidence":"https://github.com/kenta-0420/mannschaft/pull/4300"}]}
+  ],
+  "ci": [{"runId":41956802436}],
+  "stages": {
+    "review":{"status":"passed","evidence":"docs/evidence/CMP-261105-0755/verification.md"},
+    "real":{"status":"not-applicable","scope":"test-only","reason":"テスト側の上限・重みと履歴の更新で画面・API・業務認可を変更しない"},
+    "exploratory":{"status":"not-applicable","scope":"test-only","reason":"test-onlyの変更で画面や業務導線を変更しない"}
+  },
+  "regressions": []
+}

@@ -23,8 +23,9 @@ import org.springframework.web.bind.annotation.RestController;
  * フロントエンドの nuxt.config.ts に設定された report-uri からの
  * ブラウザ自動送信を受け付ける。認証不要エンドポイント。
  *
- * <p>ブラウザは {@code application/csp-report} または {@code application/json} で送信する。
- * 両 Content-Type に対応し、"csp-report" ラッパーあり・なし両形式を処理する。</p>
+ * <p>{@code application/csp-report}、{@code application/reports+json}、{@code application/json}
+ * を受理し、"csp-report" ラッパーあり・なし両形式を処理する。
+ * Reporting API の配列形式は保存せず、パース失敗として記録する。</p>
  *
  * <p><b>公開根拠（{@link IntentionallyPublic} クラス付与・凍結ストア該当 1 EP）</b>:
  * 本 Controller の全 Mapping エンドポイントは {@code SecurityConfig} で
@@ -36,7 +37,7 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p><b>公開してよいと判断した理由</b>:
  * CSP 違反レポートは<b>ブラウザが自動送信</b>するもので、認証情報を添付できない（認証を課すと違反検知そのものが機能しない）
- * 。書込専用かつ応答は 204 固定で、情報を一切返さない。
+ * 。書込専用かつ受信処理の応答は 204 で、情報を一切返さない。前段のレート制限は維持する。
  * </p>
  *
  * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
@@ -62,14 +63,16 @@ public class CspReportController {
      *   <li>簡易形式: {@code {...}} のラッパーなし形式</li>
      * </ul>
      *
-     * <p>パース失敗や空ボディは WARNING ログのみ記録し、必ず 204 を返す。
+     * <p>受信処理は空ボディを無視し、パース失敗を WARNING ログに記録して 204 を返す。
+     * 前段のレート制限などによる拒否はこの保証の対象外。
      * ブラウザはレスポンスを無視するため、エラー伝播は不要。</p>
      */
     @PostMapping(
             value = "/csp-reports",
             consumes = {
                 MediaType.APPLICATION_JSON_VALUE,
-                "application/csp-report"  // 一部ブラウザが送る MIME 型
+                "application/csp-report",
+                "application/reports+json"
             }
     )
     @ResponseStatus(HttpStatus.NO_CONTENT)

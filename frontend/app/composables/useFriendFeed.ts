@@ -19,7 +19,11 @@ export function useFriendFeed(teamId: string) {
   const posts = ref<FriendFeedPost[]>([])
   const meta = ref<FriendFeedMeta | null>(null)
   const loading = ref(false)
-  const error = ref<string | null>(null)
+  const { handleApiError } = useErrorHandler()
+  /** 取得失敗時の元のエラー（種別判定に使う） */
+  const error = ref<unknown>(undefined)
+  /** 取得失敗フラグ */
+  const failed = ref(false)
 
   /**
    * フレンドフィードを取得する。
@@ -28,7 +32,8 @@ export function useFriendFeed(teamId: string) {
    */
   async function fetchFeed(params?: FriendFeedParams) {
     loading.value = true
-    error.value = null
+    error.value = undefined
+    failed.value = false
     try {
       const query = new URLSearchParams()
       if (params?.folderId !== undefined) query.set('folder_id', String(params.folderId))
@@ -43,8 +48,11 @@ export function useFriendFeed(teamId: string) {
       posts.value = res.data
       meta.value = res.meta
     }
-    catch {
-      error.value = '投稿の取得に失敗しました'
+    catch (e) {
+      // 握りつぶさず、元のエラーを保持して画面の再試行表示（DashboardErrorState）に渡す
+      error.value = e
+      failed.value = true
+      handleApiError(e, 'friend-feed')
     }
     finally {
       loading.value = false
@@ -71,5 +79,5 @@ export function useFriendFeed(teamId: string) {
     }
   }
 
-  return { posts, meta, loading, error, fetchFeed, markAsForwarded }
+  return { posts, meta, loading, error, failed, fetchFeed, markAsForwarded }
 }

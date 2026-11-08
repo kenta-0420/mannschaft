@@ -56,7 +56,7 @@ async function onUndoClick() {
         v-if="undoData"
         type="button"
         data-testid="undo-toast-button"
-        class="mt-1 self-start rounded-md border border-current px-3 py-1 text-sm font-medium underline-offset-2 transition-opacity hover:opacity-80"
+        class="mt-1 min-h-11 min-w-11 self-start rounded-md border border-current px-3 py-1 text-sm font-medium underline-offset-2 transition-opacity hover:opacity-80"
         @click="onUndoClick"
       >
         <i class="pi pi-undo mr-1 text-xs" aria-hidden="true" />

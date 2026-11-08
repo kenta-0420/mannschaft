@@ -1,0 +1,52 @@
+{
+  "kind": "完了文書ローカル検証",
+  "base": "origin/main（実装PR merge済み38d234363531593850493ff48259db33bdcc4bcf）",
+  "scope": "文書＋秘密scan設定（アプリ変更なし）",
+  "checks": {
+    "validatorSelfTests": {
+      "passed": 21,
+      "failed": 0,
+      "exitCode": 0,
+      "initialHarnessFailures": "疎checkoutのworkflow不足2件とcommit前新証拠参照1件で初回3失敗。tracked .github展開と証拠commit後の正規再試験21/21で解消。"
+    },
+    "validatorTransition": {
+      "status": "成功",
+      "method": "正規validateCompletionChanges関数。main台帳と現在台帳・完了JSONを読み、HEAD tracked参照集合で検証。",
+      "acceptanceCriteria": 15,
+      "regressions": 5,
+      "githubApiChecked": false
+    },
+    "otherCampaignRows": {
+      "count": 593,
+      "preserved": true,
+      "comparison": "改行差を除く全行完全一致"
+    },
+    "jsonParse": {
+      "files": 44,
+      "failed": 0
+    },
+    "secretValuePatternCheck": {
+      "jwtPrivateKeyBearerHits": 0,
+      "limitation": "秘密scan CLIではなく限定パターン確認。正規gitleaksはPR CIで検証する。"
+    },
+    "docsOnlyDiff": false,
+    "gitDiffCheck": "成功",
+    "applicationProductionDiff": false,
+    "currentDiff": "文書と.gitleaks.tomlの完全一致限定例外のみ"
+  },
+  "fullCli": {
+    "command": "node scripts/completion-evidence.mjs --base origin/main --head HEAD",
+    "status": "成功",
+    "exitCode": 0,
+    "output": "完了証拠の構造を確認しました。GitHub API上のPR/CI状態を検証していません。"
+  },
+  "notes": [
+    "ローカル正規構造照合はGitHub APIでのmerge/CI照合をしない。実装のmerge/CIは殿の直接GitHub再読と最終メタ情報へ別記。",
+    "限定パターン確認と正規秘密scanの同等性は主張しない。"
+  ],
+  "historicalDocsOnlyCheck": {
+    "sourceHead": "7b5be3e8d84291f433f89f69f3731e95967f3bc3",
+    "docsOnlyDiff": true,
+    "scope": "取得時は文書のみ。その後の77668204dbで秘密scan設定の限定修正を追加。"
+  }
+}

@@ -115,8 +115,11 @@ class VillageInvitationContractTest {
         VillageAccessGate gate = new VillageAccessGate(
                 villageRepository, membershipRepository,
                 Mockito.mock(com.mannschaft.app.common.AccessControlService.class));
+        var admissionLocks = Mockito.mock(com.mannschaft.app.village.repository.VillageUserAdmissionLockRepository.class);
+        var slots = new com.mannschaft.app.village.service.VillageMembershipSlotService(admissionLocks, membershipRepository,
+                new com.mannschaft.app.village.service.VillageParticipationLimitProvider(null));
         VillageInvitationService real = new VillageInvitationService(
-                invitationRepository, membershipRepository, gate,
+                invitationRepository, membershipRepository, slots, Mockito.mock(jakarta.persistence.EntityManager.class), gate,
                 // 金庫は状態を持たない共通部品なので実物を渡す（モックだとトークンが null になる）。
                 new com.mannschaft.app.common.token.SecretTokenVault(),
                 java.time.Clock.systemUTC());
@@ -326,9 +329,9 @@ class VillageInvitationContractTest {
                 .joinedAt(LocalDateTime.now().minusDays(3))
                 .build();
         existing.setId(UUID.randomUUID());
-        lenient().when(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
-                        VILLAGE_ID, VillageSubjectType.USER, VILLAGER_ID))
-                .thenReturn(Optional.of(existing));
+        lenient().when(membershipRepository.findAdmissionPresenceForUpdate(
+                        VILLAGE_ID, "USER", VILLAGER_ID))
+                .thenReturn(List.of(com.mannschaft.app.village.service.VillageMembershipSlotTestFixture.presence(existing.getBannedAt() != null)));
         lenient().when(membershipRepository.findActiveByVillageIdAndSubject(
                         VILLAGE_ID, VillageSubjectType.USER, VILLAGER_ID))
                 .thenReturn(Optional.of(existing));

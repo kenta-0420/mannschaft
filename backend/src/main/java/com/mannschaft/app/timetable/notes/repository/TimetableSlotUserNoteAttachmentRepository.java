@@ -25,6 +25,13 @@ public interface TimetableSlotUserNoteAttachmentRepository
     long countByNoteIdAndDeletedAtIsNull(Long noteId);
 
     /**
+     * メモ ID 群のうち未削除添付を持つものの ID を返す（ダッシュボード N+1 解消用）。
+     */
+    @Query("SELECT DISTINCT a.noteId FROM TimetableSlotUserNoteAttachmentEntity a"
+            + " WHERE a.noteId IN :noteIds AND a.deletedAt IS NULL")
+    List<Long> findNoteIdsHavingAttachments(@Param("noteIds") java.util.Collection<Long> noteIds);
+
+    /**
      * 指定メモの未削除添付一覧。
      */
     List<TimetableSlotUserNoteAttachmentEntity> findByNoteIdAndDeletedAtIsNullOrderByCreatedAtAsc(Long noteId);

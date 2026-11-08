@@ -96,10 +96,24 @@ class TournamentViewAccessGateTest {
         void 大会不存在は404() {
             given(tournamentRepository.findById(TOURNAMENT_ID)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> gate.verifyViewable(TOURNAMENT_ID, USER_ID))
+            assertThatThrownBy(() -> gate.verifyViewable(ORG_ID, TOURNAMENT_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("パスの組織と大会の所属組織が違えば、可視性判定へ進まず不在と同じ 404")
+        void 組織不一致は404() {
+            given(tournamentRepository.findById(TOURNAMENT_ID))
+                    .willReturn(Optional.of(TournamentEntity.builder().organizationId(ORG_ID).build()));
+
+            assertThatThrownBy(() -> gate.verifyViewable(ORG_ID + 1, TOURNAMENT_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
+            verify(contentVisibilityChecker, never()).canView(any(), any(), any());
+            verify(accessControlService, never()).isAdminOrAbove(any(), any(), any());
         }
 
         @Test
@@ -110,7 +124,7 @@ class TournamentViewAccessGateTest {
             given(contentVisibilityChecker.canView(ReferenceType.TOURNAMENT, TOURNAMENT_ID, USER_ID))
                     .willReturn(false);
 
-            assertThatThrownBy(() -> gate.verifyViewable(TOURNAMENT_ID, USER_ID))
+            assertThatThrownBy(() -> gate.verifyViewable(ORG_ID, TOURNAMENT_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
@@ -123,7 +137,7 @@ class TournamentViewAccessGateTest {
                     .willReturn(Optional.of(TournamentEntity.builder().organizationId(ORG_ID).build()));
             given(accessControlService.isAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(true);
 
-            gate.verifyViewable(TOURNAMENT_ID, USER_ID);
+            gate.verifyViewable(ORG_ID, TOURNAMENT_ID, USER_ID);
         }
     }
 }

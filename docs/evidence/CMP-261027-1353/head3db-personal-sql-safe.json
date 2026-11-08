@@ -1,0 +1,11 @@
+{
+    "campaign":  "CMP-261027-1353",
+    "runId":  40523313140,
+    "head":  "3db393c2e4e5608e0e168d59baba85e68342ae78",
+    "class":  "PersonalActionRequiredBatchQueryIT",
+    "kind":  "only known numeric SQL evidence lines; no system-out body",
+    "sqlLines":  [
+                     "action-required SQL scopes=2,42 statements=28,28",
+                     "action-required SQL scopes=417 statements=28"
+                 ]
+}

@@ -59,7 +59,6 @@ class ErrorReportTimelineServiceTest {
     @Mock
     private ObjectMapper objectMapper;
 
-    @InjectMocks
     private ErrorReportTimelineService service;
 
     private static final Long REPORT_ID = 100L;
@@ -305,4 +304,22 @@ class ErrorReportTimelineServiceTest {
                     .isEqualTo(ErrorReportErrorCode.ERROR_REPORT_NOT_FOUND);
         }
     }
+    @org.junit.jupiter.api.BeforeEach
+    void connectR1Boundaries() {
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        var retry = new ErrorReportWriteRetry(new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
+        var management = new ErrorReportManagementService(new ErrorReportManagementTx(errorReportRepository, new ErrorReportIngestHook()), retry);
+        service = new ErrorReportTimelineService(errorReportRepository, management, activityRepository, occurrenceRepository,
+                activityService, accessControlService, userRepository, objectMapper, eventPublisher);
+        org.mockito.Mockito.lenient().when(errorReportRepository.findErrorHashById(org.mockito.ArgumentMatchers.anyLong()))
+                .thenAnswer(call -> errorReportRepository.findById(call.getArgument(0)).map(ErrorReportEntity::getErrorHash));
+        org.mockito.Mockito.lenient().when(errorReportRepository.findByIdForUpdate(org.mockito.ArgumentMatchers.anyLong()))
+                .thenAnswer(call -> errorReportRepository.findById(call.getArgument(0)));
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void clearR1Synchronization() {
+        org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+    }
+
 }

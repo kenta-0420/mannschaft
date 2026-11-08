@@ -1,0 +1,2353 @@
+{
+  "kind": "移行前モック画像の数値台帳。green完了証拠ではない",
+  "provenance": {
+    "baseCommit": "c7cd45baf29f466224e023a339fd127b69aa13ae",
+    "baseArchiveSha256": "90a19aa62e09d1e10901c688d858e515611aac0f9195786c2eac0bf8aef49c64",
+    "productInputs": [
+      {
+        "path": "frontend/app/components/PageHeader.vue",
+        "sha256Lf": "afe46263c83c4f461eedd689d127abf40d368ba9edad76967abd05b4f8b0ce87"
+      },
+      {
+        "path": "frontend/app/components/team/TeamPageHeader.vue",
+        "sha256Lf": "0ebefe4ddc1e364129a258564a1f6ce48eb3bd14d301cc5a87dea85c5cd589f1"
+      },
+      {
+        "path": "frontend/app/composables/useErrorHandler.ts",
+        "sha256Lf": "4771e603d4411e087bc3d440a03e1538ff3e854ddb3b05e5db81b51f725d9892"
+      },
+      {
+        "path": "frontend/app/pages/teams/[slug]/friend-forward-exports.vue",
+        "sha256Lf": "24725f83db6f04690c026e06f16eed85cbcc4b3f23b867fee80e99e381e5469a"
+      },
+      {
+        "path": "frontend/app/pages/teams/[slug]/friend-feed.vue",
+        "sha256Lf": "978e8d6a12ae6389dc2a98afbea7592613eebc46a0331b46aab6a33a2e522941"
+      },
+      {
+        "path": "frontend/app/pages/teams/[slug]/friend-folders.vue",
+        "sha256Lf": "e7cb276d24142dad16f4a870f19304d463aec35ab47261c560fc3df5d3404a5c"
+      },
+      {
+        "path": "frontend/app/pages/teams/[slug]/announcements.vue",
+        "sha256Lf": "24bf0c43bc9b599ca849273df302fad65916b15b9a1418ca3d1b1704a767d6b7"
+      },
+      {
+        "path": "frontend/app/pages/admin/line-settings.vue",
+        "sha256Lf": "668af85d4b7c10912e24410d834f71423830de3734b9186ed0be64a686e37401"
+      },
+      {
+        "path": "frontend/app/pages/admin/member-permissions.vue",
+        "sha256Lf": "2f7e8d53f4f34a1fb762e5a056db86e7f1a191ef6dbd97032232323fffb52d1d"
+      },
+      {
+        "path": "frontend/app/pages/admin/receipt-settings.vue",
+        "sha256Lf": "129d9c8ec2eefc0093f858b562d46bcae454a3c179d042b81d93c9478e5bdd01"
+      },
+      {
+        "path": "frontend/app/pages/admin/sns-settings.vue",
+        "sha256Lf": "01e145d43df970c3dc537f6415d9691c6b2d84df1df67fd2f5b0763de2e3bb46"
+      },
+      {
+        "path": "frontend/app/components/ScopeGuideContent.vue",
+        "sha256Lf": "01deb1f37b399ffee5af881e4d5be37754cfa66947d68d92db02640d58e30ee9"
+      },
+      {
+        "path": "frontend/app/pages/billing/plans.vue",
+        "sha256Lf": "a300102a1b2b8160f7f5d5597289cec05c38301f7ccde5ac6cf69cf06848b98b"
+      },
+      {
+        "path": "frontend/app/pages/blog/index.vue",
+        "sha256Lf": "b945b97ef1fff5d9899e4085ff2bbd7e89d20af3d884b0f1743961a74ae8ac40"
+      },
+      {
+        "path": "frontend/app/pages/market/listings/[id].vue",
+        "sha256Lf": "5eef8c434920796974c0a77b9d01f56d86d181a7d4b3957847f9d6b662cb302e"
+      },
+      {
+        "path": "frontend/app/pages/organizations/index.vue",
+        "sha256Lf": "846cb94bce4906aa0610eaebd7b234a2d34882b89cf02b3459241c427037b432"
+      },
+      {
+        "path": "frontend/app/pages/admin/reports.vue",
+        "sha256Lf": "1199fa663915a9a0e49b9dad8047dc970d5bf18c13c55300d17cab50ce0cdb7d"
+      },
+      {
+        "path": "frontend/app/pages/surveys/[surveyId].vue",
+        "sha256Lf": "513d8b9546062a97d8a90cdd4306b891cd03088a3f064204f86611d2f00c3e57"
+      },
+      {
+        "path": "frontend/app/pages/teams/[slug]/advertiser/campaigns/[campaignId].vue",
+        "sha256Lf": "a01e6c622ec477be2745f823ce0e6fdbe382456acbc71ab6d3ee5b2df59f2ddc"
+      },
+      {
+        "path": "frontend/app/pages/me/care-links/index.vue",
+        "sha256Lf": "6548f707cbd676a97b2b189940160c026ed283ca6e36bb5da4f5cecce709a6d7"
+      }
+    ],
+    "checkedProductInputs": 20,
+    "mismatches": []
+  },
+  "testOverlay": [
+    {
+      "path": "frontend/tests/unit/helpers/pageHeaderSubtitleGuard.ts",
+      "sha256Lf": "25f3e182e557c2a912ea5daaec5b83e5e2b6eafa4ad748ac93a5209673f08363"
+    },
+    {
+      "path": "frontend/tests/unit/helpers/pageHeaderSubtitleGuard.spec.ts",
+      "sha256Lf": "8f74feea606b8840e4f2a43dde530704dc38bc989d193b6f390b00c8594ef59c"
+    },
+    {
+      "path": "frontend/tests/unit/helpers/friendI18nContract.ts",
+      "sha256Lf": "df690a1dc17baa10349356b8095b3d16e65b6e50f06120144a9e44269f572bfd"
+    },
+    {
+      "path": "frontend/tests/unit/helpers/friendI18nContract.spec.ts",
+      "sha256Lf": "58507211faf0182b4356d8cf0bb0d3e538fd720b488a89861714114f81cf8029"
+    },
+    {
+      "path": "frontend/tests/unit/helpers/pageHeaderGeometry.ts",
+      "sha256Lf": "1dc60fd9b8ddc68a119cd6bbab5b64575177f767504566725d3b5edc9609f601"
+    },
+    {
+      "path": "frontend/tests/unit/helpers/pageHeaderGeometry.spec.ts",
+      "sha256Lf": "e7ede8064a38b5ec558e46d86d56b2c3357a1c1b9a329c1091d8604cf58bfdb0"
+    },
+    {
+      "path": "frontend/tests/unit/components/PageHeader.spec.ts",
+      "sha256Lf": "03c1b582dce87b843e7c94654c86ed0a93aa5f8cd8d84c6a13162302beb81a31"
+    },
+    {
+      "path": "frontend/tests/unit/composables/useErrorHandler.spec.ts",
+      "sha256Lf": "5977e005186abcfbbca8c4494f69787d06fd4b6da321d68a0a3a06331404fa16"
+    },
+    {
+      "path": "frontend/app/composables/friendFeedForwardContract.spec.ts",
+      "sha256Lf": "1f1038915396d4a4a4a2c98f3cfaaf297a624de6bfd4b6c65ea4b1c0ddc5f73c"
+    },
+    {
+      "path": "frontend/tests/unit/components/friends/FriendFollowDialog.spec.ts",
+      "sha256Lf": "797d4d60b14452807559aeb576dc8d85871f37586d2418e4977813eec1393b19"
+    },
+    {
+      "path": "frontend/tests/unit/components/friends/friendFollowLocale.spec.ts",
+      "sha256Lf": "e59f8c87fb0d8ac7d0496f1da60f6bf1f8fb794fe19f298b618e981fdbac2f56"
+    },
+    {
+      "path": "frontend/tests/unit/pages/admin/member-permissions.spec.ts",
+      "sha256Lf": "452f545b5052f41f6eaec1540d9c09a806b50539131259b3c26e4a188761e006"
+    },
+    {
+      "path": "frontend/tests/unit/pages/teams/friend-folders-header.spec.ts",
+      "sha256Lf": "8b1c39e33df053f5381f5da488c05682f5a42f1823f80ffa3e1641075f1054eb"
+    },
+    {
+      "path": "frontend/tests/unit/pages/admin/settings-header-actions.spec.ts",
+      "sha256Lf": "890070cd9aae2f4abaf81f63f5a975dce03e8a88695619ce7019e164d07d4abe"
+    },
+    {
+      "path": "frontend/tests/unit/pages/organizations/advertiser-campaign-header.spec.ts",
+      "sha256Lf": "78824f37488fdee76938d38ec70798b6d1a1b6113c64faa9d68aeed209ff23ee"
+    }
+  ],
+  "windowsImageDirectory": "C:/Claude/mannschaft/.claude/worktrees/agent-friend-2035-20261021/.claude/cmp2035-verify/pre-final",
+  "baseline": {
+    "baseCommit": "c7cd45baf29f466224e023a339fd127b69aa13ae",
+    "kind": "移行前モック画面",
+    "engine": "v22.23.2",
+    "viewport": "1280x800",
+    "results": [
+      {
+        "name": "P8-billing-plans",
+        "route": "/billing/plans?scope=team&slug=1",
+        "locale": "ja",
+        "width": 1280,
+        "file": "P8-billing-plans-ja-1280.png",
+        "url": "http://localhost:3002/billing/plans?scope=team&slug=1",
+        "measurement": {
+          "title": "料金プラン",
+          "h1": {
+            "x": 276,
+            "y": 124,
+            "left": 276,
+            "right": 422.25,
+            "top": 124,
+            "bottom": 160,
+            "width": 146.25,
+            "height": 36
+          },
+          "h1ScrollWidth": 146,
+          "h1ClientWidth": 146,
+          "h1Class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200",
+          "elements": [
+            {
+              "tag": "H1",
+              "text": "料金プラン",
+              "rect": {
+                "x": 276,
+                "y": 124,
+                "left": 276,
+                "right": 422.25,
+                "top": 124,
+                "bottom": 160,
+                "width": 146.25,
+                "height": 36
+              },
+              "scrollWidth": 146,
+              "clientWidth": 146,
+              "class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200"
+            },
+            {
+              "tag": "DIV",
+              "text": "使い方",
+              "rect": {
+                "x": 1178,
+                "y": 125,
+                "left": 1178,
+                "right": 1264,
+                "top": 125,
+                "bottom": 160,
+                "width": 86,
+                "height": 35
+              },
+              "scrollWidth": 86,
+              "clientWidth": 86,
+              "class": "ml-auto flex items-center gap-2"
+            }
+          ],
+          "titleRow": {
+            "x": 276,
+            "y": 124,
+            "left": 276,
+            "right": 1264,
+            "top": 124,
+            "bottom": 160,
+            "width": 988,
+            "height": 36
+          },
+          "root": {
+            "x": 276,
+            "y": 80,
+            "left": 276,
+            "right": 1264,
+            "top": 80,
+            "bottom": 160,
+            "width": 988,
+            "height": 80
+          },
+          "back": {
+            "x": 268,
+            "y": 72,
+            "left": 268,
+            "right": 328,
+            "top": 72,
+            "bottom": 116,
+            "width": 60,
+            "height": 44
+          },
+          "backMarginBottom": "8px",
+          "rowGap": "12px",
+          "subtitles": [],
+          "actions": [],
+          "documentWidth": 1280,
+          "viewportWidth": 1280
+        },
+        "errors": []
+      },
+      {
+        "name": "P8-blog",
+        "route": "/blog",
+        "locale": "ja",
+        "width": 1280,
+        "file": "P8-blog-ja-1280.png",
+        "url": "http://localhost:3002/blog",
+        "measurement": {
+          "title": "マイブログ",
+          "h1": {
+            "x": 292,
+            "y": 162,
+            "left": 292,
+            "right": 438.25,
+            "top": 162,
+            "bottom": 198,
+            "width": 146.25,
+            "height": 36
+          },
+          "h1ScrollWidth": 146,
+          "h1ClientWidth": 146,
+          "h1Class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200",
+          "elements": [
+            {
+              "tag": "H1",
+              "text": "マイブログ",
+              "rect": {
+                "x": 292,
+                "y": 162,
+                "left": 292,
+                "right": 438.25,
+                "top": 162,
+                "bottom": 198,
+                "width": 146.25,
+                "height": 36
+              },
+              "scrollWidth": 146,
+              "clientWidth": 146,
+              "class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200"
+            },
+            {
+              "tag": "DIV",
+              "text": "使い方ブログ設定新規記事",
+              "rect": {
+                "x": 902,
+                "y": 156,
+                "left": 902,
+                "right": 1248,
+                "top": 156,
+                "bottom": 198,
+                "width": 346,
+                "height": 42
+              },
+              "scrollWidth": 346,
+              "clientWidth": 346,
+              "class": "ml-auto flex items-center gap-2"
+            }
+          ],
+          "titleRow": {
+            "x": 292,
+            "y": 156,
+            "left": 292,
+            "right": 1248,
+            "top": 156,
+            "bottom": 198,
+            "width": 956,
+            "height": 42
+          },
+          "root": {
+            "x": 292,
+            "y": 112,
+            "left": 292,
+            "right": 1248,
+            "top": 112,
+            "bottom": 198,
+            "width": 956,
+            "height": 86
+          },
+          "back": {
+            "x": 284,
+            "y": 104,
+            "left": 284,
+            "right": 344,
+            "top": 104,
+            "bottom": 148,
+            "width": 60,
+            "height": 44
+          },
+          "backMarginBottom": "8px",
+          "rowGap": "12px",
+          "subtitles": [],
+          "actions": [],
+          "documentWidth": 1280,
+          "viewportWidth": 1280
+        },
+        "errors": []
+      },
+      {
+        "name": "P8-market-detail",
+        "route": "/market/listings/1",
+        "locale": "ja",
+        "width": 1280,
+        "file": "P8-market-detail-ja-1280.png",
+        "url": "http://localhost:3002/market/listings/1",
+        "measurement": {
+          "title": "Baseline Market Listing",
+          "h1": {
+            "x": 410,
+            "y": 148,
+            "left": 410,
+            "right": 628.5,
+            "top": 148,
+            "bottom": 176,
+            "width": 218.5,
+            "height": 28
+          },
+          "h1ScrollWidth": 219,
+          "h1ClientWidth": 219,
+          "h1Class": "text-xl font-bold tracking-tight text-surface-900 dark:text-surface-200",
+          "elements": [
+            {
+              "tag": "H1",
+              "text": "Baseline Market Listing",
+              "rect": {
+                "x": 410,
+                "y": 148,
+                "left": 410,
+                "right": 628.5,
+                "top": 148,
+                "bottom": 176,
+                "width": 218.5,
+                "height": 28
+              },
+              "scrollWidth": 219,
+              "clientWidth": 219,
+              "class": "text-xl font-bold tracking-tight text-surface-900 dark:text-surface-200"
+            }
+          ],
+          "titleRow": {
+            "x": 410,
+            "y": 148,
+            "left": 410,
+            "right": 1130,
+            "top": 148,
+            "bottom": 176,
+            "width": 720,
+            "height": 28
+          },
+          "root": {
+            "x": 410,
+            "y": 104,
+            "left": 410,
+            "right": 1130,
+            "top": 104,
+            "bottom": 176,
+            "width": 720,
+            "height": 72
+          },
+          "back": {
+            "x": 402,
+            "y": 96,
+            "left": 402,
+            "right": 462,
+            "top": 96,
+            "bottom": 140,
+            "width": 60,
+            "height": 44
+          },
+          "backMarginBottom": "8px",
+          "rowGap": "12px",
+          "subtitles": [],
+          "actions": [],
+          "documentWidth": 1280,
+          "viewportWidth": 1280
+        },
+        "errors": []
+      },
+      {
+        "name": "P8-organizations",
+        "route": "/organizations",
+        "locale": "ja",
+        "width": 1280,
+        "file": "P8-organizations-ja-1280.png",
+        "url": "http://localhost:3002/organizations",
+        "measurement": {
+          "title": "マイ組織",
+          "h1": {
+            "x": 300,
+            "y": 148,
+            "left": 300,
+            "right": 417,
+            "top": 148,
+            "bottom": 184,
+            "width": 117,
+            "height": 36
+          },
+          "h1ScrollWidth": 117,
+          "h1ClientWidth": 117,
+          "h1Class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200",
+          "elements": [
+            {
+              "tag": "H1",
+              "text": "マイ組織",
+              "rect": {
+                "x": 300,
+                "y": 148,
+                "left": 300,
+                "right": 417,
+                "top": 148,
+                "bottom": 184,
+                "width": 117,
+                "height": 36
+              },
+              "scrollWidth": 117,
+              "clientWidth": 117,
+              "class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200"
+            }
+          ],
+          "titleRow": {
+            "x": 300,
+            "y": 148,
+            "left": 300,
+            "right": 417,
+            "top": 148,
+            "bottom": 184,
+            "width": 117,
+            "height": 36
+          },
+          "root": {
+            "x": 300,
+            "y": 104,
+            "left": 300,
+            "right": 417,
+            "top": 104,
+            "bottom": 204,
+            "width": 117,
+            "height": 100
+          },
+          "back": {
+            "x": 292,
+            "y": 96,
+            "left": 292,
+            "right": 352,
+            "top": 96,
+            "bottom": 140,
+            "width": 60,
+            "height": 44
+          },
+          "backMarginBottom": "8px",
+          "rowGap": "12px",
+          "subtitles": [],
+          "actions": [],
+          "documentWidth": 1280,
+          "viewportWidth": 1280
+        },
+        "errors": []
+      },
+      {
+        "name": "P8-admin-reports",
+        "route": "/admin/reports",
+        "locale": "ja",
+        "width": 1280,
+        "file": "P8-admin-reports-ja-1280.png",
+        "url": "http://localhost:3002/admin/reports",
+        "measurement": {
+          "title": "レポート管理",
+          "h1": {
+            "x": 276,
+            "y": 124,
+            "left": 276,
+            "right": 451.5,
+            "top": 124,
+            "bottom": 160,
+            "width": 175.5,
+            "height": 36
+          },
+          "h1ScrollWidth": 176,
+          "h1ClientWidth": 176,
+          "h1Class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200",
+          "elements": [
+            {
+              "tag": "H1",
+              "text": "レポート管理",
+              "rect": {
+                "x": 276,
+                "y": 124,
+                "left": 276,
+                "right": 451.5,
+                "top": 124,
+                "bottom": 160,
+                "width": 175.5,
+                "height": 36
+              },
+              "scrollWidth": 176,
+              "clientWidth": 176,
+              "class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200"
+            }
+          ],
+          "titleRow": {
+            "x": 276,
+            "y": 124,
+            "left": 276,
+            "right": 1264,
+            "top": 124,
+            "bottom": 160,
+            "width": 988,
+            "height": 36
+          },
+          "root": {
+            "x": 276,
+            "y": 80,
+            "left": 276,
+            "right": 1264,
+            "top": 80,
+            "bottom": 160,
+            "width": 988,
+            "height": 80
+          },
+          "back": {
+            "x": 268,
+            "y": 72,
+            "left": 268,
+            "right": 328,
+            "top": 72,
+            "bottom": 116,
+            "width": 60,
+            "height": 44
+          },
+          "backMarginBottom": "8px",
+          "rowGap": "12px",
+          "subtitles": [],
+          "actions": [],
+          "documentWidth": 1280,
+          "viewportWidth": 1280
+        },
+        "errors": []
+      },
+      {
+        "name": "P8-survey",
+        "route": "/surveys/1?scope=TEAM&scopeId=1",
+        "locale": "ja",
+        "width": 1280,
+        "file": "P8-survey-ja-1280.png",
+        "url": "http://localhost:3002/surveys/1?scope=TEAM&scopeId=1",
+        "measurement": {
+          "title": "Baseline Survey",
+          "h1": {
+            "x": 402,
+            "y": 140,
+            "left": 402,
+            "right": 553.5,
+            "top": 140,
+            "bottom": 168,
+            "width": 151.5,
+            "height": 28
+          },
+          "h1ScrollWidth": 152,
+          "h1ClientWidth": 152,
+          "h1Class": "text-xl font-bold tracking-tight text-surface-900 dark:text-surface-200",
+          "elements": [
+            {
+              "tag": "H1",
+              "text": "Baseline Survey",
+              "rect": {
+                "x": 402,
+                "y": 140,
+                "left": 402,
+                "right": 553.5,
+                "top": 140,
+                "bottom": 168,
+                "width": 151.5,
+                "height": 28
+              },
+              "scrollWidth": 152,
+              "clientWidth": 152,
+              "class": "text-xl font-bold tracking-tight text-surface-900 dark:text-surface-200"
+            },
+            {
+              "tag": "SPAN",
+              "text": "受付中",
+              "rect": {
+                "x": 565.5,
+                "y": 144,
+                "left": 565.5,
+                "right": 623.5,
+                "top": 144,
+                "bottom": 168,
+                "width": 58,
+                "height": 24
+              },
+              "scrollWidth": 58,
+              "clientWidth": 58,
+              "class": "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-200 shrink-0 whitespace-nowrap rounded px-2 py-0.5 text-xs font-medium"
+            }
+          ],
+          "titleRow": {
+            "x": 402,
+            "y": 140,
+            "left": 402,
+            "right": 1138,
+            "top": 140,
+            "bottom": 168,
+            "width": 736,
+            "height": 28
+          },
+          "root": {
+            "x": 402,
+            "y": 96,
+            "left": 402,
+            "right": 1138,
+            "top": 96,
+            "bottom": 168,
+            "width": 736,
+            "height": 72
+          },
+          "back": {
+            "x": 394,
+            "y": 88,
+            "left": 394,
+            "right": 454,
+            "top": 88,
+            "bottom": 132,
+            "width": 60,
+            "height": 44
+          },
+          "backMarginBottom": "8px",
+          "rowGap": "12px",
+          "subtitles": [
+            {
+              "text": "受付中",
+              "rect": {
+                "x": 565.5,
+                "y": 144,
+                "left": 565.5,
+                "right": 623.5,
+                "top": 144,
+                "bottom": 168,
+                "width": 58,
+                "height": 24
+              },
+              "lineHeight": "20px"
+            }
+          ],
+          "actions": [],
+          "documentWidth": 1280,
+          "viewportWidth": 1280
+        },
+        "errors": []
+      },
+      {
+        "name": "P8-team-advertiser",
+        "route": "/teams/1/advertiser/campaigns/7",
+        "locale": "ja",
+        "width": 1280,
+        "file": "P8-team-advertiser-ja-1280.png",
+        "url": "http://localhost:3002/teams/1/advertiser/campaigns/7",
+        "measurement": {
+          "title": "Baseline Campaign",
+          "h1": {
+            "x": 84,
+            "y": 186,
+            "left": 84,
+            "right": 351.25,
+            "top": 186,
+            "bottom": 222,
+            "width": 267.25,
+            "height": 36
+          },
+          "h1ScrollWidth": 267,
+          "h1ClientWidth": 267,
+          "h1Class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200",
+          "elements": [
+            {
+              "tag": "H1",
+              "text": "Baseline Campaign",
+              "rect": {
+                "x": 84,
+                "y": 186,
+                "left": 84,
+                "right": 351.25,
+                "top": 186,
+                "bottom": 222,
+                "width": 267.25,
+                "height": 36
+              },
+              "scrollWidth": 267,
+              "clientWidth": 267,
+              "class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200"
+            },
+            {
+              "tag": "SPAN",
+              "text": "ACTIVE",
+              "rect": {
+                "x": 363.25,
+                "y": 193,
+                "left": 363.25,
+                "right": 429.25,
+                "top": 193,
+                "bottom": 222,
+                "width": 66,
+                "height": 29
+              },
+              "scrollWidth": 66,
+              "clientWidth": 66,
+              "class": "p-tag p-component p-tag-success"
+            },
+            {
+              "tag": "DIV",
+              "text": "〜CSV",
+              "rect": {
+                "x": 866,
+                "y": 180,
+                "left": 866,
+                "right": 1264,
+                "top": 180,
+                "bottom": 222,
+                "width": 398,
+                "height": 42
+              },
+              "scrollWidth": 398,
+              "clientWidth": 398,
+              "class": "ml-auto flex items-center gap-2"
+            }
+          ],
+          "titleRow": {
+            "x": 84,
+            "y": 180,
+            "left": 84,
+            "right": 1264,
+            "top": 180,
+            "bottom": 222,
+            "width": 1180,
+            "height": 42
+          },
+          "root": {
+            "x": 84,
+            "y": 136,
+            "left": 84,
+            "right": 1264,
+            "top": 136,
+            "bottom": 222,
+            "width": 1180,
+            "height": 86
+          },
+          "back": {
+            "x": 76,
+            "y": 128,
+            "left": 76,
+            "right": 136,
+            "top": 128,
+            "bottom": 172,
+            "width": 60,
+            "height": 44
+          },
+          "backMarginBottom": "8px",
+          "rowGap": "12px",
+          "subtitles": [
+            {
+              "text": "ACTIVE",
+              "rect": {
+                "x": 363.25,
+                "y": 193,
+                "left": 363.25,
+                "right": 429.25,
+                "top": 193,
+                "bottom": 222,
+                "width": 66,
+                "height": 29
+              },
+              "lineHeight": "21px"
+            },
+            {
+              "text": "ACTIVE",
+              "rect": {
+                "x": 371.25,
+                "y": 197,
+                "left": 371.25,
+                "right": 421.25,
+                "top": 197,
+                "bottom": 218,
+                "width": 50,
+                "height": 21
+              },
+              "lineHeight": "21px"
+            },
+            {
+              "text": "〜",
+              "rect": {
+                "x": 1018,
+                "y": 189,
+                "left": 1018,
+                "right": 1034,
+                "top": 189,
+                "bottom": 213,
+                "width": 16,
+                "height": 24
+              },
+              "lineHeight": "24px"
+            }
+          ],
+          "actions": [
+            {
+              "text": "CSV",
+              "rect": {
+                "x": 1194,
+                "y": 183.5,
+                "left": 1194,
+                "right": 1264,
+                "top": 183.5,
+                "bottom": 218.5,
+                "width": 70,
+                "height": 35
+              },
+              "icon": "p-button-icon p-button-icon-left pi pi-download",
+              "disabled": false
+            }
+          ],
+          "documentWidth": 1280,
+          "viewportWidth": 1280
+        },
+        "errors": []
+      },
+      {
+        "name": "P8-care-links",
+        "route": "/me/care-links",
+        "locale": "ja",
+        "width": 1280,
+        "file": "P8-care-links-ja-1280.png",
+        "url": "http://localhost:3002/me/care-links",
+        "measurement": {
+          "title": "ケアリンク管理",
+          "h1": {
+            "x": 338,
+            "y": 140,
+            "left": 338,
+            "right": 542.75,
+            "top": 140,
+            "bottom": 176,
+            "width": 204.75,
+            "height": 36
+          },
+          "h1ScrollWidth": 205,
+          "h1ClientWidth": 205,
+          "h1Class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200",
+          "elements": [
+            {
+              "tag": "H1",
+              "text": "ケアリンク管理",
+              "rect": {
+                "x": 338,
+                "y": 140,
+                "left": 338,
+                "right": 542.75,
+                "top": 140,
+                "bottom": 176,
+                "width": 204.75,
+                "height": 36
+              },
+              "scrollWidth": 205,
+              "clientWidth": 205,
+              "class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200"
+            }
+          ],
+          "titleRow": {
+            "x": 338,
+            "y": 140,
+            "left": 338,
+            "right": 1202,
+            "top": 140,
+            "bottom": 176,
+            "width": 864,
+            "height": 36
+          },
+          "root": {
+            "x": 338,
+            "y": 96,
+            "left": 338,
+            "right": 1202,
+            "top": 96,
+            "bottom": 176,
+            "width": 864,
+            "height": 80
+          },
+          "back": {
+            "x": 330,
+            "y": 88,
+            "left": 330,
+            "right": 390,
+            "top": 88,
+            "bottom": 132,
+            "width": 60,
+            "height": 44
+          },
+          "backMarginBottom": "8px",
+          "rowGap": "12px",
+          "subtitles": [],
+          "actions": [],
+          "documentWidth": 1280,
+          "viewportWidth": 1280
+        },
+        "errors": []
+      },
+      {
+        "name": "P9-friend-folders",
+        "route": "/teams/1/friend-folders",
+        "locale": "ja",
+        "width": 1280,
+        "file": "P9-friend-folders-ja-1280.png",
+        "url": "http://localhost:3002/teams/1/friend-folders",
+        "measurement": {
+          "title": "フレンドフォルダ",
+          "h1": {
+            "x": 84,
+            "y": 180,
+            "left": 84,
+            "right": 318,
+            "top": 180,
+            "bottom": 216,
+            "width": 234,
+            "height": 36
+          },
+          "h1ScrollWidth": 234,
+          "h1ClientWidth": 234,
+          "h1Class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200",
+          "elements": [
+            {
+              "tag": "H1",
+              "text": "フレンドフォルダ",
+              "rect": {
+                "x": 84,
+                "y": 180,
+                "left": 84,
+                "right": 318,
+                "top": 180,
+                "bottom": 216,
+                "width": 234,
+                "height": 36
+              },
+              "scrollWidth": 234,
+              "clientWidth": 234,
+              "class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200"
+            }
+          ],
+          "titleRow": {
+            "x": 84,
+            "y": 180,
+            "left": 84,
+            "right": 318,
+            "top": 180,
+            "bottom": 216,
+            "width": 234,
+            "height": 36
+          },
+          "root": {
+            "x": 84,
+            "y": 136,
+            "left": 84,
+            "right": 318,
+            "top": 136,
+            "bottom": 216,
+            "width": 234,
+            "height": 80
+          },
+          "back": {
+            "x": 76,
+            "y": 128,
+            "left": 76,
+            "right": 136,
+            "top": 128,
+            "bottom": 172,
+            "width": 60,
+            "height": 44
+          },
+          "backMarginBottom": "8px",
+          "rowGap": "12px",
+          "subtitles": [],
+          "actions": [
+            {
+              "text": "フォルダ作成",
+              "rect": {
+                "x": 1118,
+                "y": 136,
+                "left": 1118,
+                "right": 1264,
+                "top": 136,
+                "bottom": 178,
+                "width": 146,
+                "height": 42
+              },
+              "icon": "p-button-icon p-button-icon-left pi pi-plus",
+              "disabled": false
+            }
+          ],
+          "documentWidth": 1280,
+          "viewportWidth": 1280
+        },
+        "errors": []
+      },
+      {
+        "name": "P9-friend-forward-exports",
+        "route": "/teams/1/friend-forward-exports",
+        "locale": "ja",
+        "width": 1280,
+        "file": "P9-friend-forward-exports-ja-1280.png",
+        "url": "http://localhost:3002/teams/1/friend-forward-exports",
+        "measurement": {
+          "title": "逆転送履歴",
+          "h1": {
+            "x": 84,
+            "y": 180,
+            "left": 84,
+            "right": 230.25,
+            "top": 180,
+            "bottom": 216,
+            "width": 146.25,
+            "height": 36
+          },
+          "h1ScrollWidth": 146,
+          "h1ClientWidth": 146,
+          "h1Class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200",
+          "elements": [
+            {
+              "tag": "H1",
+              "text": "逆転送履歴",
+              "rect": {
+                "x": 84,
+                "y": 180,
+                "left": 84,
+                "right": 230.25,
+                "top": 180,
+                "bottom": 216,
+                "width": 146.25,
+                "height": 36
+              },
+              "scrollWidth": 146,
+              "clientWidth": 146,
+              "class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200"
+            },
+            {
+              "tag": "SPAN",
+              "text": "自チーム投稿がどのフレンドに転送されたか",
+              "rect": {
+                "x": 242.25,
+                "y": 196,
+                "left": 242.25,
+                "right": 522.25,
+                "top": 196,
+                "bottom": 216,
+                "width": 280,
+                "height": 20
+              },
+              "scrollWidth": 280,
+              "clientWidth": 280,
+              "class": "text-sm text-surface-400"
+            }
+          ],
+          "titleRow": {
+            "x": 84,
+            "y": 180,
+            "left": 84,
+            "right": 522.25,
+            "top": 180,
+            "bottom": 216,
+            "width": 438.25,
+            "height": 36
+          },
+          "root": {
+            "x": 84,
+            "y": 136,
+            "left": 84,
+            "right": 522.25,
+            "top": 136,
+            "bottom": 236,
+            "width": 438.25,
+            "height": 100
+          },
+          "back": {
+            "x": 76,
+            "y": 128,
+            "left": 76,
+            "right": 136,
+            "top": 128,
+            "bottom": 172,
+            "width": 60,
+            "height": 44
+          },
+          "backMarginBottom": "8px",
+          "rowGap": "12px",
+          "subtitles": [
+            {
+              "text": "自チーム投稿がどのフレンドに転送されたか",
+              "rect": {
+                "x": 242.25,
+                "y": 196,
+                "left": 242.25,
+                "right": 522.25,
+                "top": 196,
+                "bottom": 216,
+                "width": 280,
+                "height": 20
+              },
+              "lineHeight": "20px"
+            }
+          ],
+          "actions": [],
+          "documentWidth": 1280,
+          "viewportWidth": 1280
+        },
+        "errors": []
+      },
+      {
+        "name": "P9-friend-feed",
+        "route": "/teams/1/friend-feed",
+        "locale": "ja",
+        "width": 1280,
+        "file": "P9-friend-feed-ja-1280.png",
+        "url": "http://localhost:3002/teams/1/friend-feed",
+        "measurement": {
+          "title": "管理者フィード",
+          "h1": {
+            "x": 84,
+            "y": 180,
+            "left": 84,
+            "right": 287.75,
+            "top": 180,
+            "bottom": 216,
+            "width": 203.75,
+            "height": 36
+          },
+          "h1ScrollWidth": 204,
+          "h1ClientWidth": 204,
+          "h1Class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200",
+          "elements": [
+            {
+              "tag": "H1",
+              "text": "管理者フィード",
+              "rect": {
+                "x": 84,
+                "y": 180,
+                "left": 84,
+                "right": 287.75,
+                "top": 180,
+                "bottom": 216,
+                "width": 203.75,
+                "height": 36
+              },
+              "scrollWidth": 204,
+              "clientWidth": 204,
+              "class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200"
+            },
+            {
+              "tag": "SPAN",
+              "text": "フレンドチームの投稿を確認・転送",
+              "rect": {
+                "x": 299.75,
+                "y": 196,
+                "left": 299.75,
+                "right": 523.75,
+                "top": 196,
+                "bottom": 216,
+                "width": 224,
+                "height": 20
+              },
+              "scrollWidth": 224,
+              "clientWidth": 224,
+              "class": "text-sm text-surface-400"
+            }
+          ],
+          "titleRow": {
+            "x": 84,
+            "y": 180,
+            "left": 84,
+            "right": 523.75,
+            "top": 180,
+            "bottom": 216,
+            "width": 439.75,
+            "height": 36
+          },
+          "root": {
+            "x": 84,
+            "y": 136,
+            "left": 84,
+            "right": 523.75,
+            "top": 136,
+            "bottom": 236,
+            "width": 439.75,
+            "height": 100
+          },
+          "back": {
+            "x": 76,
+            "y": 128,
+            "left": 76,
+            "right": 136,
+            "top": 128,
+            "bottom": 172,
+            "width": 60,
+            "height": 44
+          },
+          "backMarginBottom": "8px",
+          "rowGap": "12px",
+          "subtitles": [
+            {
+              "text": "フレンドチームの投稿を確認・転送",
+              "rect": {
+                "x": 299.75,
+                "y": 196,
+                "left": 299.75,
+                "right": 523.75,
+                "top": 196,
+                "bottom": 216,
+                "width": 224,
+                "height": 20
+              },
+              "lineHeight": "20px"
+            }
+          ],
+          "actions": [],
+          "documentWidth": 1280,
+          "viewportWidth": 1280
+        },
+        "errors": []
+      },
+      {
+        "name": "P9-announcements",
+        "route": "/teams/1/announcements",
+        "locale": "ja",
+        "width": 1280,
+        "file": "P9-announcements-ja-1280.png",
+        "url": "http://localhost:3002/teams/1/announcements",
+        "measurement": {
+          "title": "お知らせ",
+          "h1": {
+            "x": 306,
+            "y": 196,
+            "left": 306,
+            "right": 422,
+            "top": 196,
+            "bottom": 232,
+            "width": 116,
+            "height": 36
+          },
+          "h1ScrollWidth": 116,
+          "h1ClientWidth": 116,
+          "h1Class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200",
+          "elements": [
+            {
+              "tag": "H1",
+              "text": "お知らせ",
+              "rect": {
+                "x": 306,
+                "y": 196,
+                "left": 306,
+                "right": 422,
+                "top": 196,
+                "bottom": 232,
+                "width": 116,
+                "height": 36
+              },
+              "scrollWidth": 116,
+              "clientWidth": 116,
+              "class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200"
+            },
+            {
+              "tag": "SPAN",
+              "text": "すべてのお知らせ",
+              "rect": {
+                "x": 434,
+                "y": 212,
+                "left": 434,
+                "right": 544,
+                "top": 212,
+                "bottom": 232,
+                "width": 110,
+                "height": 20
+              },
+              "scrollWidth": 110,
+              "clientWidth": 110,
+              "class": "text-sm text-surface-400"
+            }
+          ],
+          "titleRow": {
+            "x": 306,
+            "y": 196,
+            "left": 306,
+            "right": 544,
+            "top": 196,
+            "bottom": 232,
+            "width": 238,
+            "height": 36
+          },
+          "root": {
+            "x": 306,
+            "y": 152,
+            "left": 306,
+            "right": 544,
+            "top": 152,
+            "bottom": 252,
+            "width": 238,
+            "height": 100
+          },
+          "back": {
+            "x": 298,
+            "y": 144,
+            "left": 298,
+            "right": 358,
+            "top": 144,
+            "bottom": 188,
+            "width": 60,
+            "height": 44
+          },
+          "backMarginBottom": "8px",
+          "rowGap": "12px",
+          "subtitles": [
+            {
+              "text": "すべてのお知らせ",
+              "rect": {
+                "x": 434,
+                "y": 212,
+                "left": 434,
+                "right": 544,
+                "top": 212,
+                "bottom": 232,
+                "width": 110,
+                "height": 20
+              },
+              "lineHeight": "20px"
+            }
+          ],
+          "actions": [],
+          "documentWidth": 1280,
+          "viewportWidth": 1280
+        },
+        "errors": []
+      },
+      {
+        "name": "P9-line-settings",
+        "route": "/admin/line-settings",
+        "locale": "ja",
+        "width": 1280,
+        "file": "P9-line-settings-ja-1280.png",
+        "url": "http://localhost:3002/admin/line-settings",
+        "measurement": {
+          "title": "LINE設定",
+          "h1": {
+            "x": 434,
+            "y": 124,
+            "left": 434,
+            "right": 556.5,
+            "top": 124,
+            "bottom": 160,
+            "width": 122.5,
+            "height": 36
+          },
+          "h1ScrollWidth": 123,
+          "h1ClientWidth": 123,
+          "h1Class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200",
+          "elements": [
+            {
+              "tag": "H1",
+              "text": "LINE設定",
+              "rect": {
+                "x": 434,
+                "y": 124,
+                "left": 434,
+                "right": 556.5,
+                "top": 124,
+                "bottom": 160,
+                "width": 122.5,
+                "height": 36
+              },
+              "scrollWidth": 123,
+              "clientWidth": 123,
+              "class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200"
+            },
+            {
+              "tag": "P",
+              "text": "LINE Messaging API との連携設定",
+              "rect": {
+                "x": 568.5,
+                "y": 140,
+                "left": 568.5,
+                "right": 783.5,
+                "top": 140,
+                "bottom": 160,
+                "width": 215,
+                "height": 20
+              },
+              "scrollWidth": 215,
+              "clientWidth": 215,
+              "class": "text-sm text-surface-500"
+            }
+          ],
+          "titleRow": {
+            "x": 434,
+            "y": 124,
+            "left": 434,
+            "right": 783.5,
+            "top": 124,
+            "bottom": 160,
+            "width": 349.5,
+            "height": 36
+          },
+          "root": {
+            "x": 434,
+            "y": 80,
+            "left": 434,
+            "right": 783.5,
+            "top": 80,
+            "bottom": 160,
+            "width": 349.5,
+            "height": 80
+          },
+          "back": {
+            "x": 426,
+            "y": 72,
+            "left": 426,
+            "right": 486,
+            "top": 72,
+            "bottom": 116,
+            "width": 60,
+            "height": 44
+          },
+          "backMarginBottom": "8px",
+          "rowGap": "12px",
+          "subtitles": [
+            {
+              "text": "LINE Messaging API との連携設定",
+              "rect": {
+                "x": 568.5,
+                "y": 140,
+                "left": 568.5,
+                "right": 783.5,
+                "top": 140,
+                "bottom": 160,
+                "width": 215,
+                "height": 20
+              },
+              "lineHeight": "20px"
+            }
+          ],
+          "actions": [
+            {
+              "text": "削除",
+              "rect": {
+                "x": 965,
+                "y": 109,
+                "left": 965,
+                "right": 1015,
+                "top": 109,
+                "bottom": 151,
+                "width": 50,
+                "height": 42
+              },
+              "disabled": false
+            },
+            {
+              "text": "保存",
+              "rect": {
+                "x": 1023,
+                "y": 109,
+                "left": 1023,
+                "right": 1106,
+                "top": 109,
+                "bottom": 151,
+                "width": 83,
+                "height": 42
+              },
+              "icon": "p-button-icon p-button-icon-left pi pi-check",
+              "disabled": false
+            }
+          ],
+          "documentWidth": 1280,
+          "viewportWidth": 1280
+        },
+        "errors": []
+      },
+      {
+        "name": "P9-member-permissions",
+        "route": "/admin/member-permissions",
+        "locale": "ja",
+        "width": 1280,
+        "file": "P9-member-permissions-ja-1280.png",
+        "url": "http://localhost:3002/admin/member-permissions",
+        "measurement": {
+          "title": "MEMBER既定権限",
+          "h1": {
+            "x": 386,
+            "y": 124,
+            "left": 386,
+            "right": 626.5,
+            "top": 124,
+            "bottom": 160,
+            "width": 240.5,
+            "height": 36
+          },
+          "h1ScrollWidth": 241,
+          "h1ClientWidth": 241,
+          "h1Class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200",
+          "elements": [
+            {
+              "tag": "H1",
+              "text": "MEMBER既定権限",
+              "rect": {
+                "x": 386,
+                "y": 124,
+                "left": 386,
+                "right": 626.5,
+                "top": 124,
+                "bottom": 160,
+                "width": 240.5,
+                "height": 36
+              },
+              "scrollWidth": 241,
+              "clientWidth": 241,
+              "class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200"
+            },
+            {
+              "tag": "P",
+              "text": "このチーム・組織に参加するMEMBERの既定権限を設定します。",
+              "rect": {
+                "x": 638.5,
+                "y": 140,
+                "left": 638.5,
+                "right": 1043.5,
+                "top": 140,
+                "bottom": 160,
+                "width": 405,
+                "height": 20
+              },
+              "scrollWidth": 405,
+              "clientWidth": 405,
+              "class": "text-sm text-surface-500"
+            }
+          ],
+          "titleRow": {
+            "x": 386,
+            "y": 124,
+            "left": 386,
+            "right": 1043.5,
+            "top": 124,
+            "bottom": 160,
+            "width": 657.5,
+            "height": 36
+          },
+          "root": {
+            "x": 386,
+            "y": 80,
+            "left": 386,
+            "right": 1043.5,
+            "top": 80,
+            "bottom": 180,
+            "width": 657.5,
+            "height": 100
+          },
+          "back": {
+            "x": 378,
+            "y": 72,
+            "left": 378,
+            "right": 438,
+            "top": 72,
+            "bottom": 116,
+            "width": 60,
+            "height": 44
+          },
+          "backMarginBottom": "8px",
+          "rowGap": "12px",
+          "subtitles": [
+            {
+              "text": "このチーム・組織に参加するMEMBERの既定権限を設定します。",
+              "rect": {
+                "x": 638.5,
+                "y": 140,
+                "left": 638.5,
+                "right": 1043.5,
+                "top": 140,
+                "bottom": 160,
+                "width": 405,
+                "height": 20
+              },
+              "lineHeight": "20px"
+            }
+          ],
+          "actions": [
+            {
+              "text": "保存",
+              "rect": {
+                "x": 1071,
+                "y": 80,
+                "left": 1071,
+                "right": 1154,
+                "top": 80,
+                "bottom": 124,
+                "width": 83,
+                "height": 44
+              },
+              "icon": "p-button-icon p-button-icon-left pi pi-check",
+              "disabled": false
+            }
+          ],
+          "documentWidth": 1280,
+          "viewportWidth": 1280
+        },
+        "errors": []
+      },
+      {
+        "name": "P9-receipt-settings",
+        "route": "/admin/receipt-settings",
+        "locale": "ja",
+        "width": 1280,
+        "file": "P9-receipt-settings-ja-1280.png",
+        "url": "http://localhost:3002/admin/receipt-settings",
+        "measurement": {
+          "title": "領収書発行者設定",
+          "h1": {
+            "x": 322,
+            "y": 124,
+            "left": 322,
+            "right": 478,
+            "top": 124,
+            "bottom": 152,
+            "width": 156,
+            "height": 28
+          },
+          "h1ScrollWidth": 156,
+          "h1ClientWidth": 156,
+          "h1Class": "text-xl font-bold tracking-tight text-surface-900 dark:text-surface-200",
+          "elements": [
+            {
+              "tag": "H1",
+              "text": "領収書発行者設定",
+              "rect": {
+                "x": 322,
+                "y": 124,
+                "left": 322,
+                "right": 478,
+                "top": 124,
+                "bottom": 152,
+                "width": 156,
+                "height": 28
+              },
+              "scrollWidth": 156,
+              "clientWidth": 156,
+              "class": "text-xl font-bold tracking-tight text-surface-900 dark:text-surface-200"
+            },
+            {
+              "tag": "P",
+              "text": "領収書の発行に使う発行者情報・インボイス対応・番号体系・PDF体裁を設定します。",
+              "rect": {
+                "x": 490,
+                "y": 132,
+                "left": 490,
+                "right": 1034,
+                "top": 132,
+                "bottom": 152,
+                "width": 544,
+                "height": 20
+              },
+              "scrollWidth": 544,
+              "clientWidth": 544,
+              "class": "text-sm text-surface-500"
+            }
+          ],
+          "titleRow": {
+            "x": 322,
+            "y": 124,
+            "left": 322,
+            "right": 1218,
+            "top": 124,
+            "bottom": 152,
+            "width": 896,
+            "height": 28
+          },
+          "root": {
+            "x": 322,
+            "y": 80,
+            "left": 322,
+            "right": 1218,
+            "top": 80,
+            "bottom": 152,
+            "width": 896,
+            "height": 72
+          },
+          "back": {
+            "x": 314,
+            "y": 72,
+            "left": 314,
+            "right": 470,
+            "top": 72,
+            "bottom": 116,
+            "width": 156,
+            "height": 44
+          },
+          "backMarginBottom": "8px",
+          "rowGap": "12px",
+          "subtitles": [
+            {
+              "text": "領収書の発行に使う発行者情報・インボイス対応・番号体系・PDF体裁を設定します。",
+              "rect": {
+                "x": 490,
+                "y": 132,
+                "left": 490,
+                "right": 1034,
+                "top": 132,
+                "bottom": 152,
+                "width": 544,
+                "height": 20
+              },
+              "lineHeight": "20px"
+            }
+          ],
+          "actions": [
+            {
+              "text": "保存する",
+              "rect": {
+                "x": 1103,
+                "y": 1234,
+                "left": 1103,
+                "right": 1218,
+                "top": 1234,
+                "bottom": 1276,
+                "width": 115,
+                "height": 42
+              },
+              "icon": "p-button-icon p-button-icon-left pi pi-check",
+              "disabled": false
+            }
+          ],
+          "documentWidth": 1280,
+          "viewportWidth": 1280
+        },
+        "errors": []
+      },
+      {
+        "name": "P9-sns-settings",
+        "route": "/admin/sns-settings",
+        "locale": "ja",
+        "width": 1280,
+        "file": "P9-sns-settings-ja-1280.png",
+        "url": "http://localhost:3002/admin/sns-settings",
+        "measurement": {
+          "title": "SNS設定",
+          "h1": {
+            "x": 322,
+            "y": 124,
+            "left": 322,
+            "right": 438.25,
+            "top": 124,
+            "bottom": 160,
+            "width": 116.25,
+            "height": 36
+          },
+          "h1ScrollWidth": 116,
+          "h1ClientWidth": 116,
+          "h1Class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200",
+          "elements": [
+            {
+              "tag": "H1",
+              "text": "SNS設定",
+              "rect": {
+                "x": 322,
+                "y": 124,
+                "left": 322,
+                "right": 438.25,
+                "top": 124,
+                "bottom": 160,
+                "width": 116.25,
+                "height": 36
+              },
+              "scrollWidth": 116,
+              "clientWidth": 116,
+              "class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200"
+            },
+            {
+              "tag": "P",
+              "text": "Instagram・X のフィード連携を管理します",
+              "rect": {
+                "x": 450.25,
+                "y": 140,
+                "left": 450.25,
+                "right": 724.25,
+                "top": 140,
+                "bottom": 160,
+                "width": 274,
+                "height": 20
+              },
+              "scrollWidth": 274,
+              "clientWidth": 274,
+              "class": "text-sm text-surface-500"
+            }
+          ],
+          "titleRow": {
+            "x": 322,
+            "y": 124,
+            "left": 322,
+            "right": 724.25,
+            "top": 124,
+            "bottom": 160,
+            "width": 402.25,
+            "height": 36
+          },
+          "root": {
+            "x": 322,
+            "y": 80,
+            "left": 322,
+            "right": 724.25,
+            "top": 80,
+            "bottom": 160,
+            "width": 402.25,
+            "height": 80
+          },
+          "back": {
+            "x": 314,
+            "y": 72,
+            "left": 314,
+            "right": 374,
+            "top": 72,
+            "bottom": 116,
+            "width": 60,
+            "height": 44
+          },
+          "backMarginBottom": "8px",
+          "rowGap": "12px",
+          "subtitles": [
+            {
+              "text": "Instagram・X のフィード連携を管理します",
+              "rect": {
+                "x": 450.25,
+                "y": 140,
+                "left": 450.25,
+                "right": 724.25,
+                "top": 140,
+                "bottom": 160,
+                "width": 274,
+                "height": 20
+              },
+              "lineHeight": "20px"
+            }
+          ],
+          "actions": [
+            {
+              "text": "アカウントを追加",
+              "rect": {
+                "x": 1040,
+                "y": 109,
+                "left": 1040,
+                "right": 1218,
+                "top": 109,
+                "bottom": 151,
+                "width": 178,
+                "height": 42
+              },
+              "icon": "p-button-icon p-button-icon-left pi pi-plus",
+              "disabled": false
+            }
+          ],
+          "documentWidth": 1280,
+          "viewportWidth": 1280
+        },
+        "errors": []
+      },
+      {
+        "name": "P9-scope-guide",
+        "route": "/teams/1/guide",
+        "locale": "ja",
+        "width": 1280,
+        "file": "P9-scope-guide-ja-1280.png",
+        "url": "http://localhost:3002/teams/1/guide",
+        "measurement": {
+          "title": "チームの使い方と上限",
+          "h1": {
+            "x": 108,
+            "y": 562,
+            "left": 108,
+            "right": 397.5625,
+            "top": 562,
+            "bottom": 634,
+            "width": 289.5625,
+            "height": 72
+          },
+          "h1ScrollWidth": 290,
+          "h1ClientWidth": 290,
+          "h1Class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200",
+          "elements": [
+            {
+              "tag": "H1",
+              "text": "チームの使い方と上限",
+              "rect": {
+                "x": 108,
+                "y": 562,
+                "left": 108,
+                "right": 397.5625,
+                "top": 562,
+                "bottom": 634,
+                "width": 289.5625,
+                "height": 72
+              },
+              "scrollWidth": 290,
+              "clientWidth": 290,
+              "class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200"
+            },
+            {
+              "tag": "P",
+              "text": "チームでは日々の予定、試合、タスク、資料などをメンバーと共有できます。使える機能は管理者が選んだ設定によって異なります。",
+              "rect": {
+                "x": 409.5625,
+                "y": 594,
+                "left": 409.5625,
+                "right": 1240,
+                "top": 594,
+                "bottom": 634,
+                "width": 830.4375,
+                "height": 40
+              },
+              "scrollWidth": 830,
+              "clientWidth": 830,
+              "class": "text-sm text-surface-600 dark:text-surface-300"
+            }
+          ],
+          "titleRow": {
+            "x": 108,
+            "y": 562,
+            "left": 108,
+            "right": 1240,
+            "top": 562,
+            "bottom": 634,
+            "width": 1132,
+            "height": 72
+          },
+          "root": {
+            "x": 108,
+            "y": 518,
+            "left": 108,
+            "right": 1240,
+            "top": 518,
+            "bottom": 634,
+            "width": 1132,
+            "height": 116
+          },
+          "back": {
+            "x": 100,
+            "y": 510,
+            "left": 100,
+            "right": 160,
+            "top": 510,
+            "bottom": 554,
+            "width": 60,
+            "height": 44
+          },
+          "backMarginBottom": "8px",
+          "rowGap": "12px",
+          "subtitles": [
+            {
+              "text": "チームでは日々の予定、試合、タスク、資料などをメンバーと共有できます。使える機能は管理者が選んだ設定によって異なります。",
+              "rect": {
+                "x": 409.5625,
+                "y": 594,
+                "left": 409.5625,
+                "right": 1240,
+                "top": 594,
+                "bottom": 634,
+                "width": 830.4375,
+                "height": 40
+              },
+              "lineHeight": "20px"
+            }
+          ],
+          "actions": [],
+          "documentWidth": 1280,
+          "viewportWidth": 1280
+        },
+        "errors": []
+      },
+      {
+        "name": "C4-team-header",
+        "route": "/teams/1/nav",
+        "locale": "de",
+        "width": 360,
+        "file": "C4-team-header-de-360.png",
+        "url": "http://localhost:3002/teams/1/nav",
+        "measurement": {
+          "title": "Freundschaftsteams Fußballverein Musterstadt",
+          "h1": {
+            "x": 108,
+            "y": 204,
+            "left": 108,
+            "right": 332,
+            "top": 204,
+            "bottom": 232,
+            "width": 224,
+            "height": 28
+          },
+          "h1ScrollWidth": 466,
+          "h1ClientWidth": 224,
+          "h1Class": "min-w-0 max-w-full text-xl sm:text-2xl font-bold truncate text-surface-900",
+          "elements": [
+            {
+              "tag": "BUTTON",
+              "text": "",
+              "rect": {
+                "x": 108,
+                "y": 152,
+                "left": 108,
+                "right": 152,
+                "top": 152,
+                "bottom": 196,
+                "width": 44,
+                "height": 44
+              },
+              "scrollWidth": 42,
+              "clientWidth": 42,
+              "class": "p-button p-component p-button-icon-only p-button-rounded p-button-text p-button-sm"
+            },
+            {
+              "tag": "H1",
+              "text": "Freundschaftsteams Fußballverein Musterstadt",
+              "rect": {
+                "x": 108,
+                "y": 204,
+                "left": 108,
+                "right": 332,
+                "top": 204,
+                "bottom": 232,
+                "width": 224,
+                "height": 28
+              },
+              "scrollWidth": 466,
+              "clientWidth": 224,
+              "class": "min-w-0 max-w-full text-xl sm:text-2xl font-bold truncate text-surface-900"
+            },
+            {
+              "tag": "SPAN",
+              "text": "SPORTS",
+              "rect": {
+                "x": 108,
+                "y": 240,
+                "left": 108,
+                "right": 180,
+                "top": 240,
+                "bottom": 269,
+                "width": 72,
+                "height": 29
+              },
+              "scrollWidth": 72,
+              "clientWidth": 72,
+              "class": "p-tag p-component p-tag-info"
+            },
+            {
+              "tag": "SPAN",
+              "text": "Administrator",
+              "rect": {
+                "x": 188,
+                "y": 240,
+                "left": 188,
+                "right": 300,
+                "top": 240,
+                "bottom": 269,
+                "width": 112,
+                "height": 29
+              },
+              "scrollWidth": 112,
+              "clientWidth": 112,
+              "class": "p-tag p-component p-tag-warn shrink-0 whitespace-nowrap"
+            }
+          ],
+          "titleRow": {
+            "x": 108,
+            "y": 152,
+            "left": 108,
+            "right": 332,
+            "top": 152,
+            "bottom": 269,
+            "width": 224,
+            "height": 117
+          },
+          "root": {
+            "x": 108,
+            "y": 152,
+            "left": 108,
+            "right": 332,
+            "top": 152,
+            "bottom": 293,
+            "width": 224,
+            "height": 141
+          },
+          "back": {
+            "x": 108,
+            "y": 152,
+            "left": 108,
+            "right": 152,
+            "top": 152,
+            "bottom": 196,
+            "width": 44,
+            "height": 44
+          },
+          "backMarginBottom": "0px",
+          "rowGap": "8px",
+          "subtitles": [
+            {
+              "text": "SPORTS",
+              "rect": {
+                "x": 108,
+                "y": 240,
+                "left": 108,
+                "right": 180,
+                "top": 240,
+                "bottom": 269,
+                "width": 72,
+                "height": 29
+              },
+              "lineHeight": "21px"
+            },
+            {
+              "text": "SPORTS",
+              "rect": {
+                "x": 116,
+                "y": 244,
+                "left": 116,
+                "right": 172,
+                "top": 244,
+                "bottom": 265,
+                "width": 56,
+                "height": 21
+              },
+              "lineHeight": "21px"
+            },
+            {
+              "text": "Administrator",
+              "rect": {
+                "x": 188,
+                "y": 240,
+                "left": 188,
+                "right": 300,
+                "top": 240,
+                "bottom": 269,
+                "width": 112,
+                "height": 29
+              },
+              "lineHeight": "21px"
+            },
+            {
+              "text": "Administrator",
+              "rect": {
+                "x": 196,
+                "y": 244,
+                "left": 196,
+                "right": 292,
+                "top": 244,
+                "bottom": 265,
+                "width": 96,
+                "height": 21
+              },
+              "lineHeight": "21px"
+            },
+            {
+              "text": "5 Mitglieder",
+              "rect": {
+                "x": 140,
+                "y": 273,
+                "left": 140,
+                "right": 237,
+                "top": 273,
+                "bottom": 293,
+                "width": 97,
+                "height": 20
+              },
+              "lineHeight": "20px"
+            }
+          ],
+          "actions": [],
+          "documentWidth": 360,
+          "viewportWidth": 360
+        },
+        "errors": []
+      }
+    ]
+  },
+  "folderSubtitleSupplement": {
+    "name": "P9-friend-folders",
+    "route": "/teams/1/friend-folders",
+    "locale": "ja",
+    "width": 1280,
+    "file": "P9-friend-folders-ja-1280.png",
+    "url": "http://localhost:3002/teams/1/friend-folders",
+    "measurement": {
+      "title": "フレンドフォルダ",
+      "h1": {
+        "x": 84,
+        "y": 180,
+        "left": 84,
+        "right": 318,
+        "top": 180,
+        "bottom": 216,
+        "width": 234,
+        "height": 36
+      },
+      "h1ScrollWidth": 234,
+      "h1ClientWidth": 234,
+      "h1Class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200",
+      "elements": [
+        {
+          "tag": "H1",
+          "text": "フレンドフォルダ",
+          "rect": {
+            "x": 84,
+            "y": 180,
+            "left": 84,
+            "right": 318,
+            "top": 180,
+            "bottom": 216,
+            "width": 234,
+            "height": 36
+          },
+          "scrollWidth": 234,
+          "clientWidth": 234,
+          "class": "text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-200"
+        }
+      ],
+      "titleRow": {
+        "x": 84,
+        "y": 180,
+        "left": 84,
+        "right": 318,
+        "top": 180,
+        "bottom": 216,
+        "width": 234,
+        "height": 36
+      },
+      "root": {
+        "x": 84,
+        "y": 136,
+        "left": 84,
+        "right": 318,
+        "top": 136,
+        "bottom": 216,
+        "width": 234,
+        "height": 80
+      },
+      "back": {
+        "x": 76,
+        "y": 128,
+        "left": 76,
+        "right": 136,
+        "top": 128,
+        "bottom": 172,
+        "width": 60,
+        "height": 44
+      },
+      "backMarginBottom": "8px",
+      "rowGap": "12px",
+      "subtitles": [
+        {
+          "text": "残り20個作成可能（最大20個）",
+          "rect": {
+            "x": 84,
+            "y": 236,
+            "left": 84,
+            "right": 318,
+            "top": 236,
+            "bottom": 256,
+            "width": 234,
+            "height": 20
+          },
+          "lineHeight": "20px"
+        }
+      ],
+      "actions": [
+        {
+          "text": "フォルダ作成",
+          "rect": {
+            "x": 1118,
+            "y": 136,
+            "left": 1118,
+            "right": 1264,
+            "top": 136,
+            "bottom": 178,
+            "width": 146,
+            "height": 42
+          },
+          "icon": "p-button-icon p-button-icon-left pi pi-plus",
+          "disabled": false
+        }
+      ],
+      "documentWidth": 1280,
+      "viewportWidth": 1280
+    },
+    "errors": []
+  },
+  "folderComparison": {
+    "sameH1": true,
+    "sameActions": true
+  },
+  "C4Decision": "取り下げ。意図したtruncate。document/viewportとも360px、親内の全要素を実見確認",
+  "testOverlayVerification": {
+    "checked": 15,
+    "mismatches": []
+  }
+}

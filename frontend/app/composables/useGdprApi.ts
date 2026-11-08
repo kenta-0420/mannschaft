@@ -2,9 +2,9 @@ export interface DataExportResponse {
   exportId: number
   status: string
   progressPercent: number
-  currentStep: string
-  fileSizeBytes: number
-  expiresAt: string
+  currentStep: string | null
+  fileSizeBytes: number | null
+  expiresAt: string | null
   createdAt: string
 }
 

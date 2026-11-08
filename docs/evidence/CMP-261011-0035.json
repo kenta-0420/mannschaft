@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261011-0035",
+  "scope": "app",
+  "implementation": {
+    "pr": 4240,
+    "sha": "f72ca9872a6901bd3aaacb92df7cd9ac48881d6d"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "組織告知の一覧・プレビュー・既読が同じ宛先資格判定で揃う。宛先外の人に宛先指定の告知が出ず、一覧に出る告知とプレビューが読める告知が一致する（設計書 docs/features/F01.2.1_org_team_groups.md §16 の宛先系受け入れ条件を代表）。",
+      "tests": [
+        { "name": "OrgAnnouncementFeedAudienceIT（実 MySQL。全人物x全告知で一覧に出る=プレビューが読める、未読件数の一致）", "evidence": "backend/src/test/java/com/mannschaft/app/social/announcement/OrgAnnouncementFeedAudienceIT.java" },
+        { "name": "OrgAnnouncementFeedBoundaryIT（ページ境界・カーソル）", "evidence": "backend/src/test/java/com/mannschaft/app/social/announcement/OrgAnnouncementFeedBoundaryIT.java" },
+        { "name": "OrgAnnouncementDelegatedPreviewIT（宛先チーム経由の委任閲覧）", "evidence": "backend/src/test/java/com/mannschaft/app/social/announcement/OrgAnnouncementDelegatedPreviewIT.java" },
+        { "name": "OrgAnnouncementReadBatchIT（既読バッチの宛先資格）", "evidence": "backend/src/test/java/com/mannschaft/app/social/announcement/OrgAnnouncementReadBatchIT.java" },
+        { "name": "OrgAnnouncementQueryCountIT（SQL 本数が件数に比例しない）", "evidence": "backend/src/test/java/com/mannschaft/app/social/announcement/OrgAnnouncementQueryCountIT.java" }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "組織に加盟するチームのグループ作成・改名・並び替え・削除・割当と、グループ宛ての告知が、権限あり・権限なし・他テナントの各ロールで契約どおり動く。",
+      "tests": [
+        { "name": "OrgTeamGroupScopeContractIT（CRUD・割当の IT 群を代表）", "evidence": "backend/src/test/java/com/mannschaft/app/organization/teamgroup/OrgTeamGroupScopeContractIT.java" },
+        { "name": "AnnouncementAudienceDisplayIT（宛先表示）", "evidence": "backend/src/test/java/com/mannschaft/app/social/announcement/audience/AnnouncementAudienceDisplayIT.java" },
+        { "name": "OrgTeamGroupErrorCodeContractTest", "evidence": "backend/src/test/java/com/mannschaft/app/common/architecture/OrgTeamGroupErrorCodeContractTest.java" }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "委任閲覧の経路が番人で固定されている（読み手が必ず新鮮なロール判定を通る）。",
+      "tests": [
+        { "name": "AnnouncementDelegatedAccessGuardArchTest", "evidence": "backend/src/test/java/com/mannschaft/app/common/architecture/AnnouncementDelegatedAccessGuardArchTest.java" },
+        { "name": "AnnouncementViewerRoleFreshnessIT", "evidence": "backend/src/test/java/com/mannschaft/app/social/announcement/AnnouncementViewerRoleFreshnessIT.java" }
+      ]
+    }
+  ],
+  "ci": [
+    { "runId": 41249102515 },
+    { "runId": 41249102494 },
+    { "runId": 41249100877 }
+  ],
+  "stages": {
+    "review": { "status": "passed", "evidence": "https://github.com/kenta-0420/mannschaft/pull/4240" },
+    "real": { "status": "passed", "evidence": "frontend/tests/e2e/real/f0121-org-groups.jikki-report.md" },
+    "exploratory": { "status": "passed", "evidence": "docs/evidence/CMP-261011-0035/resident-observations.json" }
+  },
+  "regressions": [
+    {
+      "description": "ALIC-1/ALIC-2: 宛先チーム経由の委任閲覧が通らない、権限名が未翻訳で表示される。",
+      "test": "OrgAnnouncementDelegatedPreviewIT / AnnouncementDelegatedAccessGuardArchTest / permission-names-coverage.spec.ts",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/pull/4206",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/pull/4206"
+    },
+    {
+      "description": "ダッシュボードの告知カード見出しが描画されない不具合。",
+      "test": "WidgetAnnouncementsHeader.spec.ts",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/pull/4229",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/pull/4229"
+    },
+    {
+      "description": "告知カードの見出し行がスマホ幅で潰れる。",
+      "test": "WidgetAnnouncementsHeader.spec.ts（スマホ幅の追加ケース）",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/pull/4236",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/pull/4236"
+    },
+    {
+      "description": "スマホ幅で告知カードの一覧が1件しか見えない。",
+      "test": "WidgetAnnouncementsHeader.spec.ts（一覧の表示件数ケース）",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/pull/4239",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/pull/4239"
+    },
+    {
+      "description": "組織告知一覧が宛先外の人に宛先指定の告知を出す。",
+      "test": "OrgAnnouncementFeedAudienceIT（修正前に 5 件中 3 件が assertion で red、修正後 green）",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/pull/4240",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/41249102515"
+    }
+  ]
+}

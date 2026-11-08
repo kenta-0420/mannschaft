@@ -29,7 +29,7 @@ mockNuxtImport('useErrorHandler', () => () => ({ handleApiError: vi.fn() }))
 mockNuxtImport('useRoleAccess', () => () => ({ isAdminOrDeputy: ref(false), loadPermissions: vi.fn(async () => {}) }))
 
 beforeAll(async () => {
-  listCommittees.mockResolvedValue({ data: [] })
+  listCommittees.mockResolvedValue({ data: [], meta: { page: 0, size: 20, total: 0, totalPages: 0 } })
   const warmup = await mountSuspended(CommitteesPage)
   warmup.unmount()
 })
@@ -48,7 +48,7 @@ describe('pages/organizations/[slug]/committees.vue — 取得失敗時のエラ
   })
 
   it('CM-002（対照）: 取得成功・0件時はエラー状態を出さない', async () => {
-    listCommittees.mockResolvedValue({ data: [] })
+    listCommittees.mockResolvedValue({ data: [], meta: { page: 0, size: 20, total: 0, totalPages: 0 } })
     const wrapper = await mountSuspended(CommitteesPage)
     await flushMicrotasks()
 
@@ -61,7 +61,7 @@ describe('pages/organizations/[slug]/committees.vue — 取得失敗時のエラ
     await flushMicrotasks()
     expect(wrapper.find('[data-testid="committees-list-error-state"]').exists()).toBe(true)
 
-    listCommittees.mockResolvedValueOnce({ data: [] })
+    listCommittees.mockResolvedValueOnce({ data: [], meta: { page: 0, size: 20, total: 0, totalPages: 0 } })
     const callsBefore = listCommittees.mock.calls.length
     await wrapper.find('[data-testid="committees-list-error-state-retry"]').trigger('click')
     await flushMicrotasks()

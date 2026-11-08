@@ -81,7 +81,7 @@ class ReceiptPdfArchiveContractIT extends AbstractMySqlIntegrationTest {
      * {@code mannschaft.storage.endpoint} 未設定時に最大 90 秒ハングするため
      * （設計書 §9 実測）、インメモリの Map で upload/download を模倣する。
      */
-    @MockitoBean private R2StorageService storageService;
+    @MockitoBean private R2StorageService r2StorageService;
     private final Map<String, byte[]> storageStub = new ConcurrentHashMap<>();
 
     @PersistenceContext private EntityManager em;
@@ -96,8 +96,8 @@ class ReceiptPdfArchiveContractIT extends AbstractMySqlIntegrationTest {
             byte[] data = inv.getArgument(1);
             storageStub.put(key, data);
             return null;
-        }).when(storageService).upload(anyString(), any(byte[].class), anyString());
-        lenient().when(storageService.download(anyString()))
+        }).when(r2StorageService).upload(anyString(), any(byte[].class), anyString());
+        lenient().when(r2StorageService.download(anyString()))
                 .thenAnswer(inv -> storageStub.get((String) inv.getArgument(0)));
 
         MembershipTestHelper.insertActiveUser(em, ADMIN_USER);

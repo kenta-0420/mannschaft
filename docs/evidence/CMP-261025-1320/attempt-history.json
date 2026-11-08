@@ -1,0 +1,128 @@
+{
+  "initialRun": {
+    "at": "2026-10-25T14:39:17.312Z",
+    "owner": "cmp1320-mobile-20261025",
+    "head": "35801c64f0a2aff9123a4bdcbd8b931776fc3a37",
+    "frontendHttp": 200,
+    "backend": "HTTP200UP Windows/WSL",
+    "loopback": true,
+    "counts": {
+      "users": 5,
+      "teams": 3,
+      "memberships": 4,
+      "roles": 4,
+      "schedules": 3,
+      "slots": 3,
+      "swaps": 0,
+      "notifications": 7,
+      "outbox": 3,
+      "errors": 1,
+      "pushSubscriptions": 0
+    },
+    "notificationTypes": {
+      "SHIFT_PUBLISHED": 4,
+      "NEW_DEVICE_LOGIN": 3
+    },
+    "externalDeliveryOff": true,
+    "adapterSha256": "32eda54be521938f6fabba5714642cb8b12275a3eee5ee84a6d7ba072956d824",
+    "personas": [
+      {
+        "alias": "primary",
+        "personality": "スマホ片手操作",
+        "attack": "表示崩れ",
+        "goal": "自分の複数チームの確定勤務を把握して帰る"
+      },
+      {
+        "alias": "empty",
+        "personality": "ADHD傾向",
+        "attack": "中断・放棄",
+        "goal": "自分のシフトを確かめ、中断後も見た内容と現在位置を把握する"
+      },
+      {
+        "alias": "outsider",
+        "personality": "一般",
+        "attack": "隙間狙い",
+        "goal": "自分の確定勤務を把握し、他scopeに迷い込まないか観察する"
+      }
+    ],
+    "rules": "3独立agent/別context/別login並列、目的だけ、DB直接禁止、業務write/交換禁止、観測のみ、画像+DOM実測"
+  },
+  "initialMobileBlocked": {
+    "journeyId": "mobile-onehand",
+    "browserContextClosed": true,
+    "loginSuccessCount": 0,
+    "viewportPlanned": [
+      "360x800",
+      "390x844"
+    ],
+    "personaId": "mobile-visual",
+    "visualChecked": false,
+    "appChanges": false,
+    "source": "アリシゼーションテスト",
+    "goalAchieved": false,
+    "status": "blocked-before-login",
+    "runId": "cmp1320-20261025-real",
+    "locale": "ja",
+    "dbDirectAccess": false,
+    "observations": [
+      "既設Chromiumの専有パスを指定済み",
+      "newResident primary loginはECONNREFUSED ::1:18032で未成功",
+      "127.0.0.1:18032 healthも接続不可、HTTP応答なし"
+    ],
+    "businessWrites": 0
+  },
+  "initialAdhdBlocked": {
+    "runId": "cmp1320-20261025-real",
+    "journeyId": "adhd-return",
+    "personaId": "adhd-interrupt",
+    "viewport": {
+      "width": 390,
+      "height": 844,
+      "isMobile": true,
+      "hasTouch": true,
+      "locale": "ja-JP"
+    },
+    "result": "環境起因で未実施",
+    "observations": [
+      "通常exec helperはsetup refreshエラー。最小require_escalatedへ代替。",
+      "既存専有ブラウザーをPLAYWRIGHT_BROWSERS_PATHで指定し起動。",
+      "独立empty住民の初回ログインPOST /api/v1/auth/loginはECONNREFUSED ::1:18032。HTTP応答なし。",
+      "IPv4優先指定を一度付けても同じ接続拒否。",
+      "WSL curl http://127.0.0.1:18032/actuator/healthもHTTP000、exit1。"
+    ],
+    "successfulLoginCount": 0,
+    "businessWriteCount": 0,
+    "uiActions": [],
+    "screenshots": [],
+    "limitations": "myshift入口、空状態、中断復帰、DOM寸法、視覚確認を未実施。アプリの不具合とは断定しない。"
+  },
+  "initialScopeBlocked": {
+    "runId": "cmp1320-20261025-real",
+    "journeyId": "scope-own-shift",
+    "personaId": "general-gap",
+    "source": "アリシゼーションテスト",
+    "actor": "outsider",
+    "viewport": {
+      "width": 360,
+      "height": 800
+    },
+    "locale": "ja-JP",
+    "isMobile": true,
+    "hasTouch": true,
+    "status": "blocked-before-login",
+    "loginSuccess": 0,
+    "businessWrites": 0,
+    "uiReached": 0,
+    "screenshots": [],
+    "observations": [
+      "通常exec helperが起動失敗したため最小の昇格読み取りで規約とadapterを確認した。",
+      "専有Node22.23.2と専有Chromiumで自分用Playwrightを起動した。初回Chromiumパス不一致は既存browsersパスの指定で解消した。",
+      "adapterのlogin POST http://localhost:18032/api/v1/auth/login は connect ECONNREFUSED ::1:18032。HTTPレスポンスstatusなし。",
+      "NODE_OPTIONS=--dns-result-order=ipv4firstを指定した有限の再試行でも同じ接続拒否。login成功0回。",
+      "root指示により追加retryを止めた。UI到達・自分の勤務把握・他team/user ID変更試行はいずれも未実施。"
+    ],
+    "result": "目的未達。実UI観測なし。不具合を断定しない。BE到達正常化後の別runで再開が必要。"
+  },
+  "preservation": "初回3住民はlogin0/UI到達0の未達として保持。復旧後attempt1のrunner不備/中断終了は各最終receiptの履歴に保持し、製品回帰redや探索成功に数えない。",
+  "rootCause": "WSL正常shutdown連鎖、OOMreaper記録なし、発火元未特定。"
+}

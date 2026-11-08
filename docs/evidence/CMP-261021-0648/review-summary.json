@@ -1,0 +1,87 @@
+{
+  "head": "22844f91b189ab22596e41ee0a5d767418b8e3b2",
+  "status": "passed",
+  "reviewer": "root Codex",
+  "codeFindings": [],
+  "blockingFindings": 0,
+  "acceptanceCriteria": "AC01〜18を実装・新受入71・関連回帰・実機・独立探索の射程と照合。",
+  "independentObserver": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "closedContexts": 3,
+    "targetMutationsExcludingAuth": 0,
+    "imagesActuallyViewedByRoot": 5
+  },
+  "explorationStageMeaning": "3独立personaの探索実施と観測裏取り・記録が合格。全目的達成や未実行の送信/受諾成功を意味しない。",
+  "approvalReviewLimitations": "申請者の公開募集送信と受諾者の受諾は自動審査拒否で未実行。迂回/追加再試行なし。",
+  "uiDisposition": "FE/DTO変更なし。日時/氏名識別・generic409・desktop操作高さ等は既存UI観測で新規0648回帰やblockerと断定しない。",
+  "runtimeStop": "旧BE/FE停止の契機は未確定。OOM根拠なし/BE正常終了。同候補のroot所有次世代で検証を完了したが、原因を修正済みとはしない。",
+  "implementationMerge": {
+    "pr": 4122,
+    "head": "22844f91b189ab22596e41ee0a5d767418b8e3b2",
+    "mergeCommit": "15366b4200bc77513a7d36ff41d88fd4bd49f655",
+    "mergedAt": "2026-10-25T22:10:43Z"
+  },
+  "remaining": [
+    "証拠登録PR #4123の更新CI、root独立最終reviewと通常merge。本番作成・外部配送は対象外。"
+  ],
+  "cleanupBoundary": {
+    "status": "passed",
+    "safeEvidencePreservation": {
+      "files": 114,
+      "newCopies": 28,
+      "alreadyPreserved": 86,
+      "rootIndependentAllShaVerified": true,
+      "secretsOrRawLogsCopied": false
+    },
+    "dedicatedEnvironmentRetained": false,
+    "stopOrDeleteExecuted": true,
+    "automaticApprovalReview": {
+      "outcome": "rejected-before-execution",
+      "scope": "専有runtimeの具体的な停止・削除対象",
+      "statedReason": "具体的な対象へのユーザー明示承認を確認できないという自動審査判断。",
+      "followup": "具体的対象を提示後、ユーザーが明示承認。初回拒否を保持し、承認後に撤去を実行した。"
+    },
+    "distinctFromResidentRefusals": "A/Bの公開募集提出・受諾の業務状態変更拒否とは別のcleanup操作の審査。",
+    "note": "安全証拠114件の保全と0648専有環境撤去を別々に確認。標準全体checkは別所有run保全のため非0であり、green扱いしない。共有資産・製品・本番環境は変更していない。",
+    "userExplicitApproval": true,
+    "rootIndependentReceiptVerified": true,
+    "execution": {
+      "dedicatedApplicationProcessesAbsent": true,
+      "dedicatedContainersRemoved": 2,
+      "dedicatedVolumeRemoved": true,
+      "dedicatedPortsNotListening": 4,
+      "dedicatedRuntimeDirectoriesRemoved": 2,
+      "ownedTemporaryArchivesRemoved": 3,
+      "sharedMysqlRemainedExited": true,
+      "rootMutation": false,
+      "safeEvidenceFilesPreserved": 114,
+      "initialPartialFailure": "保護プロセスの読取権限不足により2ディレクトリが一時未撤去。固定の読取検証と通常所有者による後続撤去で完了。",
+      "immutablePartialReceiptSha256": "36cb5abc754f4fd7782316ca8417edd8c22127b79a4aa875b846f0ef79ea4fa5",
+      "finishReceiptSha256": "f0a0a494b084d7a5b6e85beb5354704fb8efc2d2460d916d17ca8c53dc4946cf",
+      "orchestratorReceiptSha256": "bd59769b804e5758c2da8a6b8a9cda1fe97c16df27734d380ea9259f9d65997c"
+    },
+    "finalOwnedReadOnlyPostcheck": {
+      "passed": true,
+      "receiptSha256": "bb78947d7580e10c01e05fc9e1aa456a57dd6587157af39c6d05ba31fb17e5c3"
+    },
+    "standardGlobalCheck": {
+      "exitCode": 1,
+      "passed": false,
+      "reason": "別所有の検証runに要処置があり保全した。0648専有資産の残存を示すものではない。"
+    }
+  },
+  "mainCiConfirmed": {
+    "head": "15366b4200bc77513a7d36ff41d88fd4bd49f655",
+    "backendRun": 40238964218,
+    "status": "passed",
+    "sixActualTestTasks": true,
+    "architectureSeparateJvmActualStep": "success",
+    "mainSeparateJvmCaseCountExtracted": false,
+    "productionChanged": false,
+    "gitleaksRun": 40238964223,
+    "realSmokeRun": 40239293867,
+    "evidence": "docs/evidence/CMP-261021-0648/ci-summary.json"
+  }
+}

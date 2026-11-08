@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260913-1251",
+  "scope": "app",
+  "implementation": {
+    "pr": 3284,
+    "sha": "28d20b50fd7886367e7ba4b40c4a50ba532ecb3d"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "権限の無い利用者には「月次締め実行」の導線自体が出ない",
+      "tests": [
+        {
+          "name": "予算管理権限の出し分けの単体テスト（組織切替・並行取得の追随を含む）",
+          "evidence": "frontend/app/composables/shift/useShiftBudgetAdminAccess.spec.ts"
+        },
+        {
+          "name": "実機E2E: 一般メンバー・他テナントでボタン非表示、権限ありで表示・実行成功",
+          "evidence": "docs/evidence/CMP-260913-1251.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "予算ダッシュボード上の他の操作導線についても同様に出し分けされている",
+      "tests": [
+        {
+          "name": "割当一覧・警告履歴・失敗イベントの出し分け（実装）",
+          "evidence": "frontend/app/pages/admin/shift-budget/allocations.vue"
+        },
+        {
+          "name": "実機E2E: 割当一覧の「新規割当」は権限者のみ",
+          "evidence": "docs/evidence/CMP-260913-1251.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "BE の 403 による防御を外していない",
+      "tests": [
+        {
+          "name": "実機E2E: 権限なし・他テナントの月次締め直叩きが 403、未ログインは 401",
+          "evidence": "docs/evidence/CMP-260913-1251.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 34982266435
+    },
+    {
+      "runId": 34982266547
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/3284"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260913-1251.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260913-1251.md"
+    }
+  },
+  "regressions": []
+}

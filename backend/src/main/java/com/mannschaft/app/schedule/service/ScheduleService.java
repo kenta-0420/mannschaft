@@ -927,6 +927,10 @@ public class ScheduleService {
                 .status(ScheduleStatus.SCHEDULED)
                 .attendanceStatus(AttendanceGenerationStatus.READY)
                 .attendanceRequired(req.getAttendanceRequired())
+                .allowProxyAttendance(!SCOPE_TYPE_PERSONAL.equals(scopeType)
+                        && Boolean.TRUE.equals(req.getAllowProxyAttendance()))
+                .isProxyAutoAccept(!SCOPE_TYPE_PERSONAL.equals(scopeType)
+                        && Boolean.TRUE.equals(req.getIsProxyAutoAccept()))
                 .includeSupporters(req.getIncludeSupporters() != null
                         ? req.getIncludeSupporters() : false)
                 .teamBreakdownEnabled(req.getTeamBreakdownEnabled() != null
@@ -990,6 +994,10 @@ public class ScheduleService {
                     MinResponseRole.class, req.getMinResponseRole(), "minResponseRole"));
         }
         if (req.getAttendanceRequired() != null) builder.attendanceRequired(req.getAttendanceRequired());
+        if (!schedule.isPersonal()) {
+            if (req.getAllowProxyAttendance() != null) builder.allowProxyAttendance(req.getAllowProxyAttendance());
+            if (req.getIsProxyAutoAccept() != null) builder.isProxyAutoAccept(req.getIsProxyAutoAccept());
+        }
         if (req.getAttendanceDeadline() != null) builder.attendanceDeadline(toJst(req.getAttendanceDeadline()));
         if (req.getCommentOption() != null) {
             builder.commentOption(EnumInputParser.parse(CommentOption.class, req.getCommentOption(), "commentOption"));
@@ -1140,6 +1148,8 @@ public class ScheduleService {
                         List.of()));
         return ScheduleResponse.builder()
                 .id(entity.getId())
+                .allowProxyAttendance(entity.getAllowProxyAttendance())
+                .isProxyAutoAccept(entity.getIsProxyAutoAccept())
                 .content(new ScheduleResponse.ScheduleContentDto(
                         entity.getTitle(),
                         entity.getStatus().name(),

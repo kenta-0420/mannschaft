@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260910-0045",
+  "scope": "app",
+  "implementation": {
+    "pr": 3807,
+    "sha": "faecf6fef06a8da20281b3c0027e772318831318"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "postal_codes の created_at/updated_at が SQL 側の UTC_TIMESTAMP() で充填され、セッションTZ依存の NOW() を使わない",
+      "tests": [
+        {
+          "name": "CMP-260910-0045: postal_codes の時刻列は UTC_TIMESTAMP() で充填され、セッションTZ依存の NOW() を使わない",
+          "evidence": "backend/src/test/java/com/mannschaft/app/weather/service/GeonamesImportServiceTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "番人の凍結台帳から本行の返済対象が外れ、件数がスナップショットと一致する",
+      "tests": [
+        {
+          "name": "凍結件数が記録済みスナップショットと一致している（増減とも検知）",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/architecture/RawSqlTimeColumnGuardTest.java"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 38249913499
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/3807"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260910-0045.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260910-0045.md"
+    }
+  },
+  "regressions": []
+}

@@ -668,21 +668,36 @@ test.describe('チームに告知を送る（F02.8 告知ウィザード）実�
     await expect(page.locator('#target_role_MEMBERS_AND_ABOVE')).toBeAttached({ timeout: 10_000 })
   })
 
-  test('ANNC-UI-002: 使い方ガイドのトグルで内容が展開表示される', async ({ page }) => {
+  test('ANNC-UI-002: 使い方ガイドをモーダルで開閉できる', async ({ page }) => {
     ensureUiReady()
     await loginUi(page, E2E_USER.email, E2E_USER.password)
     await page.goto(`${FRONTEND_URL}/teams/${TEAM_SLUG}`)
     await settle(page)
     await openWizard(page)
+    await page.setViewportSize({ width: 390, height: 844 })
 
-    // グリッド折りたたみ（grid-rows-[0fr]＋opacity-0）は Playwright 上は visible 判定になるため、
-    // 展開状態はトグルの aria-expanded で判定する（描画上の真の状態シグナル）。
+    await page.getByRole('dialog').getByRole('button', { name: TXT.next }).click()
+
     const toggle = page.getByTestId(TXT.guideToggleTestId)
-    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    const guide = page.getByTestId('broadcast-guide-modal')
+    await expect(guide).toBeHidden()
     await toggle.click()
-    await expect(toggle).toHaveAttribute('aria-expanded', 'true')
-    // 展開後はガイド見出しが表示される
-    await expect(page.getByText(TXT.guideAudienceTitle)).toBeVisible({ timeout: 5_000 })
+    await expect(guide).toBeVisible()
+    await expect(guide.getByText(TXT.guideAudienceTitle)).toBeVisible({ timeout: 5_000 })
+    const close = guide.locator('.p-dialog-footer').getByRole('button', { name: '閉じる', exact: true })
+    for (const { name, button } of [
+      { name: '使い方を開く', button: toggle },
+      { name: 'ガイドを閉じる', button: close },
+      { name: 'ガイド右上の閉じる', button: guide.locator('.p-dialog-header-actions button') },
+    ]) {
+      const box = await button.boundingBox()
+      expect(box, name).not.toBeNull()
+      expect(box!.width, `${name}の幅`).toBeGreaterThanOrEqual(44)
+      expect(box!.height, `${name}の高さ`).toBeGreaterThanOrEqual(44)
+    }
+    await close.click()
+    await expect(guide).toBeHidden()
+    await expect(toggle).toBeVisible()
   })
 
   test('ANNC-UI-005: MEMBER の Step3 では優先度セレクトが表示されない', async ({ page }) => {
@@ -698,8 +713,7 @@ test.describe('チームに告知を送る（F02.8 告知ウィザード）実�
     // Step2 → タイムライン選択 → 次へ
     await dialog.getByRole('button', { name: TXT.channelTimeline }).click()
     await dialog.getByRole('button', { name: TXT.next }).click()
-    // Step3 到達確認（送信ボタンが出る）。使い方ガイドは常時 DOM 上に存在するため、
-    // フォーム要素は <label> 要素に限定して判定する（ガイドは h2/li/p のみで label を持たない）。
+    // Step3 到達確認（送信ボタンが出る）。フォームのラベルを確認する。
     await expect(dialog.getByRole('button', { name: TXT.submitButton })).toBeVisible({ timeout: 10_000 })
     await expect(dialog.locator('label', { hasText: TXT.expiresLabel })).toBeVisible()
     // 優先度セレクトの label は ADMIN のみ描画される（MEMBER は 0 件）

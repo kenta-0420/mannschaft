@@ -24,7 +24,7 @@ const props = withDefaults(
 )
 
 // setup 内で安全に composable を呼び出す（フックのルール遵守）
-const { sortedWidgets, isVisible, toggleWidget, reorder } = useDashboardWidgets(
+const { sortedWidgets, isVisible, toggleWidget, reorder, ready } = useDashboardWidgets(
   props.scopeType,
   props.scopeId,
   props.viewerRole,
@@ -69,8 +69,9 @@ function onDragEnd() {
 
 <template>
   <div>
+    <PageLoading v-if="!ready" />
     <div
-      v-if="sortedWidgets.length === 0"
+      v-else-if="sortedWidgets.length === 0"
       class="rounded-lg border border-surface-200 p-8 text-center text-sm text-surface-400 dark:border-surface-600"
     >
       {{ $t('dashboard.widget_settings.no_widgets_message') }}

@@ -1,5 +1,8 @@
 {
   "appearance": {
+    "themeLabel": "テーマ",
+    "themeLightLabel": "ライト",
+    "themeDarkLabel": "ダーク",
     "bgColorLabel": "背景色",
     "darkBgColorLabel": "ダーク背景色",
     "color": {

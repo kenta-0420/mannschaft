@@ -1,5 +1,6 @@
 {
   "bulletin": {
+    "unknownAuthor": "Unknown author",
     "title": "Bulletin Board",
     "tab": {
       "threads": "Threads",

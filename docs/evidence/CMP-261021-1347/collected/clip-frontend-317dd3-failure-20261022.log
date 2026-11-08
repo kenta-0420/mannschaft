@@ -1,0 +1,11 @@
+Smoke E2E (F15.4 + F22.1 + 拡大予定)	Install Playwright Chromium (with system deps)	﻿2026-10-21T23:37:35.2521286Z ##[group]Run npx playwright install --with-deps chromium
+Smoke E2E (F15.4 + F22.1 + 拡大予定)	Install Playwright Chromium (with system deps)	2026-10-21T23:37:35.2521763Z ^[[36;1mnpx playwright install --with-deps chromium^[[0m
+Smoke E2E (F15.4 + F22.1 + 拡大予定)	Install Playwright Chromium (with system deps)	2026-10-21T23:37:35.2583772Z shell: /usr/bin/bash -e {0}
+Smoke E2E (F15.4 + F22.1 + 拡大予定)	Install Playwright Chromium (with system deps)	2026-10-21T23:37:35.2584064Z env:
+Smoke E2E (F15.4 + F22.1 + 拡大予定)	Install Playwright Chromium (with system deps)	2026-10-21T23:37:35.2584284Z   NODE_VERSION: 22.23.2
+Smoke E2E (F15.4 + F22.1 + 拡大予定)	Install Playwright Chromium (with system deps)	2026-10-21T23:37:35.2584543Z ##[endgroup]
+Smoke E2E (F15.4 + F22.1 + 拡大予定)	Install Playwright Chromium (with system deps)	2026-10-21T23:37:36.0454728Z BEWARE: your OS is not officially supported by Playwright; installing dependencies for ubuntu26.04-x64 as a fallback.
+Smoke E2E (F15.4 + F22.1 + 拡大予定)	Install Playwright Chromium (with system deps)	2026-10-21T23:37:36.0456538Z Cannot install dependencies for ubuntu26.04-x64 with Playwright 1.60.0!
+Smoke E2E (F15.4 + F22.1 + 拡大予定)	Install Playwright Chromium (with system deps)	2026-10-21T23:37:36.0577383Z Failed to install browsers
+Smoke E2E (F15.4 + F22.1 + 拡大予定)	Install Playwright Chromium (with system deps)	2026-10-21T23:37:36.0578673Z Error: ERROR: Playwright does not support chromium on ubuntu26.04-x64
+Smoke E2E (F15.4 + F22.1 + 拡大予定)	Install Playwright Chromium (with system deps)	2026-10-21T23:37:36.0866784Z ##[error]Process completed with exit code 1.

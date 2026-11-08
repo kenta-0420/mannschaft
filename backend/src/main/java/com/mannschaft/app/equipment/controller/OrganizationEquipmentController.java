@@ -20,6 +20,7 @@ import com.mannschaft.app.equipment.dto.ReturnEquipmentRequest;
 import com.mannschaft.app.equipment.dto.ReturnResponse;
 import com.mannschaft.app.equipment.dto.UpdateEquipmentItemRequest;
 import com.mannschaft.app.equipment.service.EquipmentAssignmentService;
+import com.mannschaft.app.equipment.service.EquipmentAssignmentViewAccessGuard;
 import com.mannschaft.app.equipment.service.EquipmentItemService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -55,6 +56,8 @@ public class OrganizationEquipmentController {
 
     private final EquipmentItemService itemService;
     private final EquipmentAssignmentService assignmentService;
+    /** 返却対象の貸出記録の閲覧可否の門（見えない記録は不在と同一応答。CMP-260821-1027）。 */
+    private final EquipmentAssignmentViewAccessGuard assignmentViewGuard;
 
 
     // ===================== 備品CRUD =====================
@@ -162,7 +165,9 @@ public class OrganizationEquipmentController {
             @PathVariable Long orgId,
             @PathVariable Long id,
             @Valid @RequestBody ReturnEquipmentRequest request) {
-        ReturnResponse response = assignmentService.returnForOrganization(orgId, id, SecurityUtils.getCurrentUserId(), request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        assignmentViewGuard.requireOrganizationItemAssignments(orgId, id, List.of(request.getAssignmentId()), userId);
+        ReturnResponse response = assignmentService.returnForOrganization(orgId, id, userId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -286,7 +291,9 @@ public class OrganizationEquipmentController {
             @PathVariable Long orgId,
             @PathVariable Long id,
             @Valid @RequestBody BulkReturnRequest request) {
-        BulkReturnResponse response = assignmentService.bulkReturnForOrganization(orgId, id, SecurityUtils.getCurrentUserId(), request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        assignmentViewGuard.requireOrganizationItemAssignments(orgId, id, request.getAssignmentIds(), userId);
+        BulkReturnResponse response = assignmentService.bulkReturnForOrganization(orgId, id, userId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

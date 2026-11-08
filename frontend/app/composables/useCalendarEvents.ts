@@ -72,6 +72,7 @@ export function useCalendarEvents(
   const allEvents = ref<CalendarEventItem[]>([])
   const loading = ref(true)
   const calendarLoading = ref(false)
+  const loadError = ref(false)
   const cacheFrom = ref<{ year: number; month: number } | null>(null)
   const cacheTo = ref<{ year: number; month: number } | null>(null)
 
@@ -117,13 +118,13 @@ export function useCalendarEvents(
 
   const events = computed<CalendarEventItem[]>(() => {
     const { from, to } = buildGridRange(currentYear.value, currentMonth.value)
-    // from/to はオフセット付きになったため、文字列の辞書順比較では意味が壊れる（BE 応答と
-    // オフセットが異なりうる）。瞬間（epoch ミリ秒）に落として比較する。
     const fromMs = Date.parse(from)
     const toMs = Date.parse(to)
     return allEvents.value.filter((e) => {
-      const at = Date.parse(e.startAt)
-      return at >= fromMs && at <= toMs
+      // オフセットが異なる応答も瞬間で比較し、開始が範囲外でも排他的終了が交差すれば残す。
+      const startMs = Date.parse(e.startAt)
+      const endMs = Date.parse(e.endAt)
+      return startMs <= toMs && (startMs >= fromMs || endMs > fromMs)
     })
   })
 
@@ -150,6 +151,7 @@ export function useCalendarEvents(
     allEvents.value = fetched
     cacheFrom.value = start
     cacheTo.value = end
+    loadError.value = false
   }
 
   async function loadEvents(): Promise<void> {
@@ -157,6 +159,7 @@ export function useCalendarEvents(
     try {
       await fetchAndCache(currentYear.value, currentMonth.value)
     } catch (error) {
+      loadError.value = true
       onError?.(error)
       allEvents.value = []
     } finally {
@@ -165,10 +168,14 @@ export function useCalendarEvents(
   }
 
   async function refresh(): Promise<void> {
+    calendarLoading.value = true
     try {
       await fetchAndCache(currentYear.value, currentMonth.value)
     } catch (error) {
+      loadError.value = true
       onError?.(error)
+    } finally {
+      calendarLoading.value = false
     }
   }
 
@@ -183,12 +190,16 @@ export function useCalendarEvents(
    * 後から読む形だと、月移動など並行する別の取得の結果で上書きされ、取り違える。
    */
   async function refreshWithResult(): Promise<{ ok: boolean; error?: unknown }> {
+    calendarLoading.value = true
     try {
       await fetchAndCache(currentYear.value, currentMonth.value)
       return { ok: true }
     } catch (error) {
+      loadError.value = true
       onError?.(error)
       return { ok: false, error }
+    } finally {
+      calendarLoading.value = false
     }
   }
 
@@ -200,7 +211,7 @@ export function useCalendarEvents(
     if (cacheHalfMonths === 0 || !isWithinCache(currentYear.value, currentMonth.value)) {
       calendarLoading.value = true
       fetchAndCache(currentYear.value, currentMonth.value)
-        .catch((error) => { onError?.(error) })
+        .catch((error) => { loadError.value = true; onError?.(error) })
         .finally(() => { calendarLoading.value = false })
     }
   }
@@ -237,6 +248,7 @@ export function useCalendarEvents(
     events,
     loading,
     calendarLoading,
+    loadError,
     loadEvents,
     refresh,
     refreshWithResult,

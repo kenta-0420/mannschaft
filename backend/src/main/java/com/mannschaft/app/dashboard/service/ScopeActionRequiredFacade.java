@@ -3,6 +3,7 @@ package com.mannschaft.app.dashboard.service;
 import com.mannschaft.app.circulation.entity.CirculationDocumentEntity;
 import com.mannschaft.app.circulation.service.CirculationService;
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.visibility.ScopeKey;
 import com.mannschaft.app.dashboard.dto.ActionRequiredSummaryResponse;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.service.ScheduleAttendanceService;
@@ -13,6 +14,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -52,6 +56,42 @@ public class ScopeActionRequiredFacade {
 
     /** 各区分の直近アイテム最大件数（04 §5.1: 直近 3 件）。 */
     private static final int RECENT_ITEM_LIMIT = 3;
+    private static final int CANDIDATE_BATCH_SIZE = 1000;
+
+    /** 空scopeの集計だけを省く候補集合。実データ取得と認可は従来のfacadeを使う。 */
+    public Set<ScopeKey> findCandidateScopes(Long userId, Set<Long> teamIds, Set<Long> orgIds) {
+        Set<ScopeKey> all = new LinkedHashSet<>();
+        teamIds.forEach(id -> all.add(new ScopeKey("TEAM", id)));
+        orgIds.forEach(id -> all.add(new ScopeKey("ORGANIZATION", id)));
+        Set<ScopeKey> candidates = new LinkedHashSet<>();
+        candidates.addAll(candidateScopes(all, "circulation",
+                (type, ids) -> circulationService.findUnconfirmedScopeIds(type, ids, userId)));
+        candidates.addAll(candidateScopes(all, "survey",
+                (type, ids) -> surveyService.findUnansweredScopeIds(type, ids, userId)));
+        candidates.addAll(candidateScopes(all, "attendance",
+                (type, ids) -> scheduleAttendanceService.findUnansweredScopeIds(type, ids, userId)));
+        return candidates;
+    }
+
+    private Set<ScopeKey> candidateScopes(Set<ScopeKey> all, String domain,
+            BiFunction<String, List<Long>, List<Long>> query) {
+        Set<ScopeKey> result = new LinkedHashSet<>();
+        try {
+            for (String type : List.of("TEAM", "ORGANIZATION")) {
+                List<Long> ids = all.stream().filter(scope -> type.equals(scope.scopeType()))
+                        .map(ScopeKey::scopeId).toList();
+                for (int offset = 0; offset < ids.size(); offset += CANDIDATE_BATCH_SIZE) {
+                    List<Long> chunk = ids.subList(offset, Math.min(offset + CANDIDATE_BATCH_SIZE, ids.size()));
+                    query.apply(type, chunk).forEach(id -> result.add(new ScopeKey(type, id)));
+                }
+            }
+            return result;
+        } catch (RuntimeException ex) {
+            // 一部chunkの成功を確定ゼロと扱わず、当該domainは元の全所属を従来経路へ渡す。
+            log.warn("ScopeActionRequiredFacade: '{}' の候補取得に失敗。元の全所属で集計します。", domain, ex);
+            return all;
+        }
+    }
 
     /**
      * 指定スコープ・ユーザーの統合「要対応」集計を取得する。

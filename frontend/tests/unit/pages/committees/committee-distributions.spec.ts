@@ -25,7 +25,7 @@ mockNuxtImport('useErrorHandler', () => () => ({ handleApiError: vi.fn() }))
 mockNuxtImport('useDatetime', () => () => ({ userTimezone: ref('Asia/Tokyo') }))
 
 beforeAll(async () => {
-  listDistributions.mockResolvedValue({ data: [] })
+  listDistributions.mockResolvedValue({ data: [], meta: { page: 0, size: 20, total: 0, totalPages: 0 } })
   const warmup = await mountSuspended(DistributionsPage)
   warmup.unmount()
 })
@@ -44,7 +44,7 @@ describe('pages/committees/[id]/distributions.vue — 取得失敗時のエラ�
   })
 
   it('CD-002（対照）: 取得成功・0件時はエラー状態を出さない', async () => {
-    listDistributions.mockResolvedValue({ data: [] })
+    listDistributions.mockResolvedValue({ data: [], meta: { page: 0, size: 20, total: 0, totalPages: 0 } })
     const wrapper = await mountSuspended(DistributionsPage)
     await flushMicrotasks()
 
@@ -57,7 +57,7 @@ describe('pages/committees/[id]/distributions.vue — 取得失敗時のエラ�
     await flushMicrotasks()
     expect(wrapper.find('[data-testid="committee-distributions-error-state"]').exists()).toBe(true)
 
-    listDistributions.mockResolvedValueOnce({ data: [] })
+    listDistributions.mockResolvedValueOnce({ data: [], meta: { page: 0, size: 20, total: 0, totalPages: 0 } })
     const callsBefore = listDistributions.mock.calls.length
     await wrapper.find('[data-testid="committee-distributions-error-state-retry"]').trigger('click')
     await flushMicrotasks()

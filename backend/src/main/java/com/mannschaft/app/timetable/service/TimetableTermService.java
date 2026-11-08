@@ -2,6 +2,8 @@ package com.mannschaft.app.timetable.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.ErrorResponse;
 import com.mannschaft.app.team.service.TeamOrgMembershipQueryService;
 import com.mannschaft.app.timetable.TimetableErrorCode;
 import com.mannschaft.app.timetable.entity.TimetableTermEntity;
@@ -45,7 +47,10 @@ public class TimetableTermService {
 
     /**
      * チームの学期一覧を取得する。
-     * チーム固有の学期と親組織の学期をマージし、チーム固有が優先される。
+     *
+     * <p>{@code organizationId} が {@code null}（省略）のときは、チーム固有の学期だけを返す。
+     * チームは組織に所属していなくても自分で学期を作り時間割を作れる（CMP-261105-1507 D4）。
+     * 指定されたときは、チーム固有の学期と親組織の学期をマージし、チーム固有が優先される。</p>
      *
      * <p>★BOLA厳禁★: {@code organizationId} はクライアント供給の request param であり、
      * teamId のチームメンバーであっても無関係な組織の学期情報を読める余地があるため鵜呑みにしない。
@@ -55,13 +60,17 @@ public class TimetableTermService {
     public List<TimetableTermEntity> getTeamTerms(Long teamId, Long organizationId, Long actorUserId) {
         accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
 
+        List<TimetableTermEntity> teamTerms =
+                termRepository.findByTeamIdOrderByAcademicYearDescSortOrder(teamId);
+        if (organizationId == null) {
+            return List.copyOf(teamTerms);
+        }
+
         List<Long> activeOrgIds = teamOrgMembershipQueryService.findActiveOrganizationIds(teamId);
         if (!activeOrgIds.contains(organizationId)) {
             throw new BusinessException(TimetableErrorCode.TERM_NOT_FOUND);
         }
 
-        List<TimetableTermEntity> teamTerms =
-                termRepository.findByTeamIdOrderByAcademicYearDescSortOrder(teamId);
         List<TimetableTermEntity> orgTerms =
                 termRepository.findByOrganizationIdOrderByAcademicYearDescSortOrder(organizationId);
 
@@ -97,6 +106,7 @@ public class TimetableTermService {
         // createは作成先スコープ（path scopeId）で checkAdminOrAbove。
         accessControlService.checkAdminOrAbove(actorUserId, scopeId, isTeam ? SCOPE_TEAM : SCOPE_ORGANIZATION);
 
+        validateDateOrder(data.startDate(), data.endDate());
         validateTermUniqueness(scopeId, isTeam, data.academicYear(), data.name(), null);
         validateTermDateRange(scopeId, isTeam, data.academicYear(), data.startDate(), data.endDate(), null);
 
@@ -107,7 +117,7 @@ public class TimetableTermService {
                 .name(data.name())
                 .startDate(data.startDate())
                 .endDate(data.endDate())
-                .sortOrder(data.sortOrder())
+                .sortOrder(data.sortOrder() != null ? data.sortOrder() : 0)
                 .build();
 
         return termRepository.save(entity);
@@ -126,13 +136,19 @@ public class TimetableTermService {
         // 変更系は entity 由来 scope（team/organization どちらに属するかも entity 由来）で checkAdminOrAbove。
         accessControlService.checkAdminOrAbove(actorUserId, scopeId, isTeam ? SCOPE_TEAM : SCOPE_ORGANIZATION);
 
-        validateTermUniqueness(scopeId, isTeam, entity.getAcademicYear(), data.name(), termId);
-        validateTermDateRange(scopeId, isTeam, entity.getAcademicYear(),
-                data.startDate(), data.endDate(), termId);
+        // PATCH は部分更新。省略された項目は既存値を保つ（null を NOT NULL 列へ書いて 500 になるのを防ぐ）。
+        String name = data.name() != null ? data.name() : entity.getName();
+        LocalDate startDate = data.startDate() != null ? data.startDate() : entity.getStartDate();
+        LocalDate endDate = data.endDate() != null ? data.endDate() : entity.getEndDate();
+        Integer sortOrder = data.sortOrder() != null ? data.sortOrder() : entity.getSortOrder();
+
+        validateDateOrder(startDate, endDate);
+        validateTermUniqueness(scopeId, isTeam, entity.getAcademicYear(), name, termId);
+        validateTermDateRange(scopeId, isTeam, entity.getAcademicYear(), startDate, endDate, termId);
 
         // toBuilder().build() で作り直すと id=null の新インスタンスになり INSERT 化するため、
         // managed entity を直接ミューテートして UPDATE に固定する（#1643 同型バグ根治）。
-        entity.applyUpdate(data.name(), data.startDate(), data.endDate(), data.sortOrder());
+        entity.applyUpdate(name, startDate, endDate, sortOrder);
         return termRepository.save(entity);
     }
 
@@ -148,17 +164,9 @@ public class TimetableTermService {
         // 変更系は entity 由来 scope で checkAdminOrAbove。
         accessControlService.checkAdminOrAbove(actorUserId, scopeId, isTeam ? SCOPE_TEAM : SCOPE_ORGANIZATION);
 
-        // 紐づく時間割の存在チェック
-        List<?> timetables = timetableRepository.findByTeamIdOrderByEffectiveFromDesc(
-                entity.getTeamId() != null ? entity.getTeamId() : 0L);
-        boolean hasTimetables = timetables.stream()
-                .anyMatch(t -> {
-                    if (t instanceof com.mannschaft.app.timetable.entity.TimetableEntity tt) {
-                        return termId.equals(tt.getTermId());
-                    }
-                    return false;
-                });
-        if (hasTimetables) {
+        // 紐づく時間割の存在チェック。論理削除済みの時間割も fk_tm_term(RESTRICT) の参照元として残るため
+        // @SQLRestriction を迂回して数える。チーム・組織どちらの学期でも termId で判定する。
+        if (timetableRepository.countByTermIdIncludingDeleted(termId) > 0) {
             throw new BusinessException(TimetableErrorCode.TERM_HAS_TIMETABLES);
         }
 
@@ -166,6 +174,18 @@ public class TimetableTermService {
     }
 
     // ---- Validation Helpers ----
+
+    /**
+     * 開始日が終了日より前であることを検証する。DB の CHECK（{@code start_date < end_date}）と同じく同日も不可。
+     * 違反を DB まで流すと CHECK 違反が 500 で漏れるため、400 の fieldErrors（endDate）で返す（CMP-261105-1507 A2）。
+     * PATCH では省略項目を既存値で補ってから呼ぶ。
+     */
+    private void validateDateOrder(LocalDate startDate, LocalDate endDate) {
+        if (startDate != null && endDate != null && !startDate.isBefore(endDate)) {
+            throw new BusinessException(CommonErrorCode.COMMON_001,
+                    List.of(new ErrorResponse.FieldError("endDate", "終了日は開始日より後の日付にしてください")));
+        }
+    }
 
     private void validateTermUniqueness(Long scopeId, boolean isTeam, Integer academicYear,
                                         String name, Long excludeTermId) {

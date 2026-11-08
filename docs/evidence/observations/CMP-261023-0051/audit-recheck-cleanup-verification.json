@@ -1,0 +1,11 @@
+{
+  "operation": "read-only post-run residual verification",
+  "runMarker": "TL-REFRESH-1792717603620-f925d1e2",
+  "scope": "所有者の所属チーム一覧。全DB復元は主張しない。投稿/招待IDは成功spec外に未記録で推測しない。",
+  "specCleanup": "作成直後IDのみを使用した投稿2件/招待/TEAM DELETE204assertと全contextcloseが成功。後から削除前GET照合を行ったとは主張しない。",
+  "ownerIdentityVerified": true,
+  "listStatus": 200,
+  "remaining": [],
+  "completed": true,
+  "time": "2026-10-23T01:10:29.388Z"
+}

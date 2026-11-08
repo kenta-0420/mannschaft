@@ -1,0 +1,169 @@
+{
+  "schemaVersion": 1,
+  "kind": "selected-frontend-test-summary",
+  "campaign": "CMP-261024-2051",
+  "basis": "FE担当campaign記録および selected-run-receipts.json の直接読取",
+  "fullRun": {
+    "runId": "friend-fe-2051-261025-green1",
+    "tests": 131,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "typecheck": {
+      "exitCode": 0,
+      "heapMiB": 8192
+    },
+    "eslint": {
+      "errors": 0,
+      "warnings": 1
+    }
+  },
+  "regressions": [
+    {
+      "description": "pending取消後に自一覧まで重複再取得",
+      "test": "tests/unit/pages/teams/nav-friend-toolbar.spec.ts AC18/24",
+      "redRun": "run4",
+      "greenRun": "green1"
+    },
+    {
+      "description": "離脱後の遅延202でtimer再生成/追加POST",
+      "test": "app/components/friends/TeamFriendFollowButton.spec.ts",
+      "redRun": "unmount-red",
+      "greenRun": "green1"
+    },
+    {
+      "description": "busy中page/元選択イベントで候補再取得・元変更",
+      "test": "app/components/friends/FriendFollowDialog.spec.ts",
+      "redRun": "busy-red",
+      "greenRun": "busy-green"
+    },
+    {
+      "description": "source切替後に旧counts/error/遅延世代が残る",
+      "test": "app/components/friends/FriendFollowDialog.spec.ts",
+      "redRun": "status-red",
+      "greenRun": "409-green"
+    },
+    {
+      "description": "受信日時本文が利用者タイムゾーンに整形されない",
+      "test": "app/components/friends/TeamFriendIncomingFollowList.spec.ts",
+      "redRun": "status-date-red",
+      "greenRun": "409-green"
+    },
+    {
+      "description": "固定元409で二重refresh",
+      "test": "app/components/friends/FriendFollowDialog.spec.ts",
+      "redRun": "409-red",
+      "greenRun": "409-green"
+    },
+    {
+      "description": "busy中Paginatorの実buttonに物理無効化がない",
+      "test": "app/components/friends/FriendFollowDialog.spec.ts",
+      "redRun": "pager-red",
+      "greenRun": "pager-green"
+    }
+  ],
+  "regressionRunPrefix": "friend-fe-2051-261025-",
+  "latestGeneratedTypes": {
+    "sourceHead": "e2545f9d8bf5100791d820043ccfeb84138b1ba1",
+    "runId": "friend-fe-2051-261025-types-green2",
+    "tests": 22,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "typecheck": {
+      "exitCode": 0,
+      "heapMiB": 8192,
+      "basis": "殿の正式green報告、全runner receipt exit0、原本nuxt typecheck/TS error行0を確認"
+    },
+    "eslint": {
+      "exitCode": 0,
+      "maxWarnings": 0,
+      "basis": "殿の正式green報告、全runner receipt exit0、原本eslint.logは0bytes"
+    },
+    "cleanup": "removed",
+    "logs": {
+      "typecheck.log": {
+        "sha256": "2a17cd73a3626a013056f10b1b57fd9cc756698796567de7670c0df80c39309e",
+        "bytes": 1328,
+        "invocation": "nuxt typecheck",
+        "typescriptErrorLines": 0,
+        "knownWarnings": [
+          "Duplicated imports OrgTeamGroup",
+          "Duplicated imports isForbiddenError"
+        ]
+      },
+      "vitest.log": {
+        "sha256": "23fac550951b66ad1994ae904400695f7fff54bb5b27f953413e92d32e15d85b",
+        "bytes": 2881
+      },
+      "eslint.log": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    }
+  },
+  "initialCi": {
+    "pr": 4106,
+    "runId": 40149069435,
+    "jobId": 121036557968,
+    "status": "failure",
+    "basis": "殿からの報告",
+    "reason": "新E2E spec async ({}, info) の no-empty-pattern 7件",
+    "followup": "E2E lint 7件は9eec97be14で修正、2files max-warnings=0 exit0。最終統合SHAの再CIは未確認。"
+  },
+  "limits": [
+    "component/DOMイベント契約であり実ブラウザ到達を証明しない",
+    "実機8シナリオ、Flyway実測、3住民探索は未実行",
+    "最新FE型検査成功はe2545f9d8bf5100791d820043ccfeb84138b1ba1時点。統合HEADのCI成功とは区別する。"
+  ],
+  "e2eLintFix": {
+    "sourceHead": "9eec97be14",
+    "command": "node eslint/bin/eslint.js --stdin --stdin-filename <target> --max-warnings=0",
+    "results": [
+      {
+        "file": "tests/e2e/real/team-friend-request-flow.spec.ts",
+        "exitCode": 0,
+        "output": ""
+      },
+      {
+        "file": "tests/e2e/real/helpers/team-friend-request-fixture.ts",
+        "exitCode": 0,
+        "output": ""
+      }
+    ],
+    "basis": "private e2e-lint-results.json直接読取、commitは殿報告",
+    "limitation": "lint成功。実機試験実行や最終CI成功を意味しない。"
+  },
+  "generatedTypesFailureHistory": {
+    "sourceHead": "0c8444c0d534f3d1a31f429cae67c6d67f47cd0e",
+    "runId": "friend-fe-2051-261025-types-green",
+    "tests": 22,
+    "failures": 0,
+    "typecheck": {
+      "exitCode": 2,
+      "errors": 3,
+      "description": "EntityCreateDialog: DuplicateNameCandidateView欠落とerror.details欠落。OpenAPI schema衝突の追加対応待ち。",
+      "followup": {
+        "status": "resolved",
+        "runId": "friend-fe-2051-261025-types-green2",
+        "description": "schema是正後の正規生成型でtypecheck0、関連22件green。"
+      }
+    },
+    "eslint": {
+      "exitCode": 0
+    }
+  },
+  "implementationHeadAtRuntimeStart": "46deae93b5591fcb9bd4aae59bd68aa7157b0918",
+  "campaignFinalization": {
+    "implementationPr": 4106,
+    "implementationHead": "4fd2c79aaf9ecc66267ba1556b03d226db15f857",
+    "mergedAt": "2026-10-25T08:07:52Z",
+    "mergeSha": "38d234363531593850493ff48259db33bdcc4bcf",
+    "finalCiStatus": "success",
+    "finalCiEvidence": "docs/evidence/CMP-261024-2051/final-ci-merge-metadata.json",
+    "review": "passed",
+    "real": "passed",
+    "exploratory": "passed",
+    "historicalFields": "Original source SHA, failures, pending statements and receipt snapshots retain their acquisition-time meaning; final campaign state is this metadata and validation opening."
+  }
+}

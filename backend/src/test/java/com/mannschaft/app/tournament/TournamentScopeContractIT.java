@@ -223,8 +223,10 @@ class TournamentScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("正当ADMINの参加チーム追加は201")
+        @DisplayName("正当ADMINの参加チーム追加は201（チームは主催組織に ACTIVE 加盟済み）")
         void 正当ADMINの参加チーム追加は201() throws Exception {
+            insertActiveTeamOrgMembership(teamAId, orgAId);
+            em.flush();
             setAuthentication(adminAId);
 
             Map<String, Object> body = new LinkedHashMap<>();
@@ -236,6 +238,23 @@ class TournamentScopeContractIT extends AbstractMySqlIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(body)))
                     .andExpect(status().isCreated());
+        }
+
+        @Test
+        @DisplayName("主催組織に未加盟のチームの参加追加は404 TOUR_026（存在しないチームと同じ応答）")
+        void 未加盟チームの参加チーム追加は404() throws Exception {
+            setAuthentication(adminAId);
+
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("teamId", teamAId);
+
+            mockMvc.perform(post(
+                            "/api/v1/organizations/{orgId}/tournaments/{tId}/divisions/{divId}/participants",
+                            orgAId, tPubA, divPubA)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("TOUR_026"));
         }
 
         @Test
@@ -576,6 +595,133 @@ class TournamentScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // 閲覧系 GET の URL 組織↔大会所属 束縛（CMP-261006-0901）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("閲覧系GETのURL組織と大会所属の照合")
+    class ViewOrgBinding {
+
+        /** 存在しない大会 ID（不在応答との完全一致比較用）。 */
+        private static final long ABSENT_TOURNAMENT_ID = 987654321L;
+
+        private Long matchInPubA;
+
+        @BeforeEach
+        void seedMatch() {
+            matchInPubA = insertFixture(matchdayPubA);
+            em.flush();
+            em.clear();
+        }
+
+        /** 大会 tId 配下の閲覧系 GET（orgId・tId を差し替えられるテンプレート）。 */
+        private List<String> viewGetPaths() {
+            String base = "/api/v1/organizations/%d/tournaments/%d";
+            return List.of(
+                    base + "/divisions",
+                    base + "/divisions/" + divPubA + "/participants",
+                    base + "/divisions/" + divPubA + "/matchdays",
+                    base + "/matches/" + matchInPubA,
+                    base + "/matches/" + matchInPubA + "/rosters",
+                    base + "/divisions/" + divPubA + "/standings",
+                    base + "/divisions/" + divPubA + "/matrix",
+                    base + "/rankings/goals",
+                    base + "/rankings",
+                    base + "/promotions");
+        }
+
+        private String path(String template, Long orgId, long tId) {
+            return String.format(template, orgId, tId);
+        }
+
+        @Test
+        @DisplayName("他組織パスの閲覧系GETはすべて404 TOUR_001（匿名・他組織ADMINとも）")
+        void 他組織パスは全GETが404() throws Exception {
+            for (Long viewer : new Long[] {null, adminBId}) {
+                if (viewer == null) {
+                    clearAuthentication();
+                } else {
+                    setAuthentication(viewer);
+                }
+                for (String template : viewGetPaths()) {
+                    mockMvc.perform(get(path(template, orgBId, tPubA)))
+                            .andExpect(status().isNotFound())
+                            .andExpect(jsonPath("$.error.code").value("TOUR_001"));
+                }
+            }
+        }
+
+        @Test
+        @DisplayName("越境応答は不在大会応答と status・error.code・message まで完全一致する")
+        void 越境応答は不在大会と完全一致() throws Exception {
+            clearAuthentication();
+            for (String template : viewGetPaths()) {
+                var cross = mockMvc.perform(get(path(template, orgBId, tPubA))).andReturn().getResponse();
+                var absent = mockMvc.perform(get(path(template, orgBId, ABSENT_TOURNAMENT_ID)))
+                        .andReturn().getResponse();
+                assertThat(cross.getStatus()).as(template).isEqualTo(absent.getStatus());
+                var crossErr = objectMapper.readTree(cross.getContentAsString()).path("error");
+                var absentErr = objectMapper.readTree(absent.getContentAsString()).path("error");
+                assertThat(crossErr.path("code").asText()).as(template).isEqualTo(absentErr.path("code").asText());
+                assertThat(crossErr.path("message").asText()).as(template).isEqualTo(absentErr.path("message").asText());
+                assertThat(crossErr.path("code").asText()).as(template).isEqualTo("TOUR_001");
+            }
+        }
+
+        @Test
+        @DisplayName("正規の組織パスでは公開大会の閲覧系GETが匿名でも200")
+        void 正規パスは匿名でも200() throws Exception {
+            clearAuthentication();
+            for (String template : viewGetPaths()) {
+                mockMvc.perform(get(path(template, orgAId, tPubA)))
+                        .andExpect(status().isOk());
+            }
+        }
+
+        @Test
+        @DisplayName("非公開大会の非メンバーは正規パスでも404のまま")
+        void 非公開大会の非メンバーは404() throws Exception {
+            setAuthentication(outsiderId);
+            mockMvc.perform(get(path("/api/v1/organizations/%d/tournaments/%d/divisions", orgAId, tPrivA)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("TOUR_001"));
+        }
+
+        @Test
+        @DisplayName("別大会のdivIdは正規パスでもDIVISION_NOT_FOUND（TOUR_002）のまま")
+        void 別大会divIdはTOUR_002() throws Exception {
+            clearAuthentication();
+            mockMvc.perform(get(path("/api/v1/organizations/%d/tournaments/%d/divisions/" + divPrivB + "/matchdays",
+                            orgAId, tPubA)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("TOUR_002"));
+        }
+
+        @Test
+        @DisplayName("部門0件の大会は200の空配列")
+        void 部門0件は200空配列() throws Exception {
+            setAuthentication(adminAId);
+            mockMvc.perform(get(path("/api/v1/organizations/%d/tournaments/%d/divisions", orgAId, tPrivA)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data").isEmpty());
+        }
+
+        @Test
+        @DisplayName("不正な orgId（0・負数・Long上限）は404 TOUR_001、非数値は未解決スラッグとして404 COMMON_005")
+        void 不正orgIdの挙動を固定() throws Exception {
+            clearAuthentication();
+            for (long bad : new long[] {0L, -1L, Long.MAX_VALUE}) {
+                mockMvc.perform(get(path("/api/v1/organizations/%d/tournaments/%d/divisions", bad, tPubA)))
+                        .andExpect(status().isNotFound())
+                        .andExpect(jsonPath("$.error.code").value("TOUR_001"));
+            }
+            mockMvc.perform(get("/api/v1/organizations/abc/tournaments/" + tPubA + "/divisions"))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_005"));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // Template（大会テンプレート）
     // ═════════════════════════════════════════════════════════════════════
 
@@ -865,6 +1011,15 @@ class TournamentScopeContractIT extends AbstractMySqlIntegrationTest {
                         "SELECT MAX(id) FROM tournament_matches WHERE matchday_id = :mdId")
                 .setParameter("mdId", matchdayId)
                 .getSingleResult()).longValue();
+    }
+
+    private void insertActiveTeamOrgMembership(Long teamId, Long orgId) {
+        em.createNativeQuery(
+                        "INSERT INTO team_org_memberships (team_id, organization_id, status, invited_at, created_at) "
+                                + "VALUES (:teamId, :orgId, 'ACTIVE', NOW(), NOW())")
+                .setParameter("teamId", teamId)
+                .setParameter("orgId", orgId)
+                .executeUpdate();
     }
 
     private Long insertParticipant(Long divisionId, Long teamId) {

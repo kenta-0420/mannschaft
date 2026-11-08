@@ -1,0 +1,139 @@
+{
+  "sourceHead": "a8b7d8b999973d2c138ffecce2fbe2233f6bb09a",
+  "derivation": "allowlist抽出/状態集計+root確認済み報告の目的/限界。全原本のコピーではない。",
+  "originals": [
+    {
+      "path": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final2/real/real-ui-results.json",
+      "bytes": 21124,
+      "sha256": "c57f3c1352098025e4921ff14fce6c2668dd1268c55af8c715b102aec0024fb1"
+    },
+    {
+      "path": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final2/exploratory/admin/summary.json",
+      "bytes": 4497,
+      "sha256": "71980f9f5564c7e0e1f0b84d1de582243e8b286623acd7ad257077fd634661bf"
+    },
+    {
+      "path": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final2/exploratory/member/observations-restart2.json",
+      "bytes": 94987,
+      "sha256": "4d7bb4acda012a64ff78336c66e43e77617d4ee3acb484376d216c8651ead830"
+    },
+    {
+      "path": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final2/exploratory/outsider/observations.json",
+      "bytes": 53298,
+      "sha256": "6327e5c5e2dcfab2b083d358c8c7ae3aa81e1d160b40d859a4f99af4f8a721b7"
+    },
+    {
+      "path": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final2/runtime-identity.json",
+      "bytes": 1760,
+      "sha256": "2096723e8e561440e3f13c54b3309f95beaeff4e26d3d5a6acd33eefcd782761"
+    },
+    {
+      "path": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final2/receipt.json",
+      "bytes": 508,
+      "sha256": "c6110b763fcd4e548bc3eb80d410c87fdab994587f6682109d5bd1bd3b68d057"
+    },
+    {
+      "path": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final2/root-resume-manifest.json",
+      "bytes": 999,
+      "sha256": "7bc364d53323d2a68a5ea8800073ec5f3662229f88d28a39e32511f914f6bc47"
+    },
+    {
+      "path": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final2/root-resume-readiness.json",
+      "bytes": 232,
+      "sha256": "a67c781ae0161ee274601bc6ebdea57fc710292f720c496e0957435d9fe98d2f"
+    },
+    {
+      "path": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final2/root-recovery-cleanup.json",
+      "bytes": 409,
+      "sha256": "b5f968c66347488a60ae1fc83ef68fcf72f53be2923d312e74fd7d12fa981e72"
+    },
+    {
+      "path": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final2/support-assets-final-verification.json",
+      "bytes": 461,
+      "sha256": "eabe13137a8863e43dbfc13c01359e2f24bab098274b7dff7eeec3bda2c1f259"
+    },
+    {
+      "path": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final2/fixture-schema-proof.json",
+      "bytes": 325,
+      "sha256": "456675366f490f5ac8db89098e3b80fa8bcf47e3629570faaf020ba9d14fc62e"
+    },
+    {
+      "path": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final2/fixture-role-proof.json",
+      "bytes": 1317,
+      "sha256": "9b48382bd1021d5dee2016e4c42d0cf06f40229e81c719bb2531d2b2f55bf8ba"
+    },
+    {
+      "path": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final2/http-configuration-proof.json",
+      "bytes": 707,
+      "sha256": "1f6bc773d7bee9c38a813e9a8ff46c0a05aa9f71e661d67a3903b0527afb414a"
+    },
+    {
+      "path": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final2/exploratory/admin/report.md",
+      "bytes": 1705,
+      "sha256": "0af92b9c165a1ea1a4f967c93dc1ddea9fef73612aa705f033bb69f1e49969f8"
+    },
+    {
+      "path": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final2/exploratory/member/report.md",
+      "bytes": 3363,
+      "sha256": "6e49fceaab09b06dd28cd13553d79f3cf1297ef7d96b7b290b03b7dbd88e9094"
+    },
+    {
+      "path": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final2/exploratory/outsider/report.md",
+      "bytes": 3171,
+      "sha256": "63736f4dea2eb0e6c248c5f6906e67b37fa9e077ca94e484eae3e2b03be2dd36"
+    },
+    {
+      "path": "/mnt/c/Claude/mannschaft/.claude/evidence/CMP-261027-1646-l1b-real-support/real-ui-review.md",
+      "bytes": 3866,
+      "sha256": "e059145a9fae47fc268f69f7fffc5b1cd42cb7adcc92730cb3b778f599e1e883"
+    },
+    {
+      "path": "/mnt/c/Claude/mannschaft/.claude/evidence/CMP-261027-1646-l1b-real-support/runtime-worktree-cleanup.json",
+      "bytes": 479,
+      "sha256": "192901a3a96d65405d76dc3ac24c96b7a5234142fcc870aea6281373439a25d6"
+    },
+    {
+      "path": "/mnt/c/Claude/mannschaft/.claude/evidence/CMP-261027-1646-l1b-real-support/runtime-support-cleanup-summary.json",
+      "bytes": 1010,
+      "sha256": "a46f4ca04d732888ad28d1c0a0e06acf24d3329f4f99573fdee6b3a1509857f0"
+    },
+    {
+      "path": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final2/real/anonymous-denied.png",
+      "bytes": 36220,
+      "sha256": "f902f6268e21bea2a68590efb7c597666ea9af8fbab791cd1e11eeab6ab21e69"
+    },
+    {
+      "path": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final2/exploratory/member/schedule-before-interruption.png",
+      "bytes": 207653,
+      "sha256": "210e8659844c91927648a356d8b94694a8005b0f50056d43f6b39a3458307e0d"
+    },
+    {
+      "path": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final2/exploratory/outsider/state-13.png",
+      "bytes": 218995,
+      "sha256": "3695ca81f5c0c91ec158efa3a7bf780ae429f3100879a6ce5d5be827c460f396"
+    }
+  ],
+  "candidateImageCopies": [
+    {
+      "file": "anonymous-denied.png",
+      "original": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final2/real/anonymous-denied.png",
+      "sha256": "f902f6268e21bea2a68590efb7c597666ea9af8fbab791cd1e11eeab6ab21e69",
+      "bytes": 36220,
+      "visualPrivacyReview": "2026-10-28画像を視覚確認: 個人名/メール/資格値なし。テスト団体表示あり。原本画像を無加工コピー。"
+    },
+    {
+      "file": "member-schedule.png",
+      "original": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final2/exploratory/member/schedule-before-interruption.png",
+      "sha256": "210e8659844c91927648a356d8b94694a8005b0f50056d43f6b39a3458307e0d",
+      "bytes": 207653,
+      "visualPrivacyReview": "2026-10-28画像を視覚確認: 個人名/メール/資格値なし。テスト団体表示あり。原本画像を無加工コピー。"
+    },
+    {
+      "file": "third-org-denied-stable.png",
+      "original": "/home/kenta/verification-evidence/CMP261027-l1b-runtime-final2/exploratory/outsider/state-13.png",
+      "sha256": "3695ca81f5c0c91ec158efa3a7bf780ae429f3100879a6ce5d5be827c460f396",
+      "bytes": 218995,
+      "visualPrivacyReview": "2026-10-28画像を視覚確認: 個人名/メール/資格値なし。テスト団体表示あり。原本画像を無加工コピー。"
+    }
+  ]
+}

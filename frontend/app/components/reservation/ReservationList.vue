@@ -300,13 +300,26 @@ watch(statusFilter, () => {
 })
 onMounted(loadReservations)
 
+/**
+ * 終了時刻の表示。単枠で endDate が slotDate と異なる日跨ぎ枠は「翌 HH:mm:ss」表記にする
+ * （SlotMatrixPicker / WeeklyScheduleManager と同じ reservation.template.next_day_time を再利用）。
+ * グループ予約は groupEndTime が時刻のみで終了日を持たないため従来どおり。
+ */
+function endTimeLabel(data: { group?: { groupEndTime?: string | null } | null, slot?: { slotDate?: string, endDate?: string, endTime?: string } | null }): string {
+  const time = data.group ? data.group.groupEndTime : data.slot?.endTime
+  if (!time) return t('reservation.history.time_unavailable')
+  const slot = data.slot
+  const endsNextDay = !data.group && !!slot?.endDate && !!slot.slotDate && slot.endDate !== slot.slotDate
+  return endsNextDay ? t('reservation.template.next_day_time', { time }) : time
+}
+
 // 予約直後に親（TeamReservationsPanel）から一覧を再読込させるための公開メソッド。
 // 既存の MatchRequestList 等と同一パターン（defineExpose({ refresh })＋親は ref 経由で呼ぶ）。
 defineExpose({ refresh: loadReservations })
 </script>
 
 <template>
-  <div>
+  <div data-testid="reservation-list">
     <div class="mb-4">
       <Select v-model="statusFilter" :options="statusOptions" option-label="label" option-value="value" class="w-40" />
     </div>
@@ -314,9 +327,9 @@ defineExpose({ refresh: loadReservations })
       <Column :header="t('reservation.column.datetime')" style="width: 200px">
         <template #body="{ data }">
           <div class="text-sm">
-            <p class="font-medium">{{ data.slot?.slotDate }}</p>
+            <p class="font-medium">{{ data.slot?.slotDate || t('reservation.history.date_unavailable') }}</p>
             <p class="text-surface-500">
-              {{ data.slot?.startTime }} - {{ data.group?.groupEndTime ?? data.slot?.endTime }}
+              {{ data.slot?.startTime || t('reservation.history.time_unavailable') }} - {{ endTimeLabel(data) }}
             </p>
             <!-- F03.4.3 §5.6#10: グループ予約はメニュー名・枠数を併記（単枠は group=null） -->
             <p v-if="data.group" class="mt-0.5 text-xs text-primary">
@@ -336,7 +349,7 @@ defineExpose({ refresh: loadReservations })
         </template>
       </Column>
       <Column :header="t('reservation.column.line')" style="width: 120px">
-        <template #body="{ data }">{{ data.slot?.lineName }}</template>
+        <template #body="{ data }">{{ data.slot?.lineName || t('reservation.history.line_unavailable') }}</template>
       </Column>
       <Column v-if="mode === 'team'" :header="t('reservation.column.reserver')" style="width: 140px">
         <template #body="{ data }">{{ data.identifier?.userName }}</template>

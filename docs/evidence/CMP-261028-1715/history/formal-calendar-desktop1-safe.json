@@ -1,0 +1,65 @@
+{
+  "kind": "formal-ui-not-performance",
+  "sourceHead": "c7879b0244b617ab363927122ab88f801413ecc1",
+  "mode": "desktop",
+  "startedAt": "2026-10-28T11:05:04.440Z",
+  "cases": [
+    {
+      "name": "owner-widget-month-and-personal-create",
+      "status": "failed",
+      "errorClass": "assertion-or-driver"
+    }
+  ],
+  "ownCreates": 0,
+  "ownUpdates": 0,
+  "ownDeletes": 0,
+  "sharedWrites": 0,
+  "notificationsRequested": 0,
+  "trace": false,
+  "video": false,
+  "rawImages": false,
+  "screenshots": [],
+  "stage": "owner-widget-month-and-personal-create",
+  "status": "failed",
+  "errorClass": "precondition-assertion-or-driver",
+  "sessions": [
+    {
+      "actorAlias": "owner",
+      "sourceHead": "c7879b0244b617ab363927122ab88f801413ecc1",
+      "credentialsRead": true,
+      "businessMutations": 0,
+      "trace": false,
+      "video": false,
+      "pageErrorCount": 0,
+      "runtimeGuard": {
+        "sourceHead": "c7879b0244b617ab363927122ab88f801413ecc1",
+        "ownerAndSourceMatch": true,
+        "frontendIdentityMatches": true,
+        "frontendOwnedSocketMatches": true,
+        "runtimePublic8081Internal8080Match": true,
+        "existingMainApiIdentityMatches": true,
+        "rawArgvEnvironmentSaved": false
+      },
+      "initialCookieCount": 0,
+      "frontend200": true,
+      "frontendActual3011": true,
+      "frontendLogicalPreserved": true,
+      "apiHealth200": true,
+      "apiActual8080": true,
+      "publicRuntimeApiExpected": true,
+      "fixtureAliasesDistinct": true,
+      "configuredActorAliases": [
+        "owner",
+        "member",
+        "outsider"
+      ],
+      "loginDashboardReached": true,
+      "logoutStatus": 200,
+      "contextClosed": true,
+      "browserClosed": true,
+      "closed": true
+    }
+  ],
+  "allSessionsClosed": true,
+  "finishedAt": "2026-10-28T11:06:18.171Z"
+}

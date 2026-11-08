@@ -480,7 +480,7 @@ class PersonalScheduleServiceTest {
         void 一覧取得_正常_スケジュール一覧を返す() {
             // given
             ScheduleEntity entity = createPersonalScheduleEntity();
-            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(USER_ID, START, END))
+            given(scheduleRepository.findCalendarByUserId(USER_ID, START, END))
                     .willReturn(List.of(entity));
 
             // when
@@ -497,7 +497,7 @@ class PersonalScheduleServiceTest {
         void 一覧取得_キーワード検索_一致するもののみ返す() {
             // given
             ScheduleEntity entity = createPersonalScheduleEntity();
-            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(USER_ID, START, END))
+            given(scheduleRepository.findCalendarByUserId(USER_ID, START, END))
                     .willReturn(List.of(entity));
 
             // when
@@ -513,7 +513,7 @@ class PersonalScheduleServiceTest {
         void 一覧取得_キーワード不一致_空リスト() {
             // given
             ScheduleEntity entity = createPersonalScheduleEntity();
-            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(USER_ID, START, END))
+            given(scheduleRepository.findCalendarByUserId(USER_ID, START, END))
                     .willReturn(List.of(entity));
 
             // when

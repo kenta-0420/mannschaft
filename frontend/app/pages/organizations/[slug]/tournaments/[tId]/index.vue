@@ -95,7 +95,7 @@ async function loadParticipantsForDivision(divId: number) {
     participantsMap.value[divId] = res.data
     // 管理者のみエントリーサマリーを取得
     if (isAdminOrDeputy.value) {
-      const summary = await getEntrySummary(orgId, tId, divId)
+      const { data: summary } = await getEntrySummary(orgId, tId, divId)
       entrySummaryMap.value[divId] = summary
     }
   } catch {
@@ -120,7 +120,7 @@ async function onEntrySaved() {
   const divId = selectedDivisionId.value
   if (divId && isAdminOrDeputy.value) {
     try {
-      const summary = await getEntrySummary(orgId, tId, divId)
+      const { data: summary } = await getEntrySummary(orgId, tId, divId)
       entrySummaryMap.value[divId] = summary
     } catch {
       // サマリー更新失敗はサイレントで続行
@@ -208,8 +208,8 @@ onMounted(async () => {
 
 <template>
   <div>
-    <div class="mb-4 flex items-center justify-between gap-3">
-      <BackButton :to="`/organizations/${orgId}/tournaments`" label="大会一覧に戻る" />
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-2 sm:gap-3">
+      <BackButton :to="`/organizations/${orgId}/tournaments`" :label="t('tournament.detail.backToList')" />
       <NuxtLink
         :to="`/organizations/${orgId}/tournaments/${tId}/standings`"
         class="ml-auto flex items-center gap-1.5 rounded-lg border border-surface-300 px-3 py-1.5 text-sm text-surface-600 transition hover:border-primary-400 hover:text-primary"
@@ -366,7 +366,7 @@ onMounted(async () => {
                 <DashboardEmptyState
                   v-if="!participantsMap[div.id] || participantsMap[div.id]!.length === 0"
                   icon="pi pi-users"
-                  message="参加チームがいません"
+                  :message="t('tournament.detail.noParticipants')"
                 />
                 <DataTable
                   v-else
@@ -374,16 +374,16 @@ onMounted(async () => {
                   class="text-sm"
                   striped-rows
                 >
-                  <Column field="teamName" header="チーム名" />
-                  <Column header="エントリー数">
+                  <Column field="teamName" :header="t('tournament.detail.teamName')" />
+                  <Column :header="t('tournament.detail.entryCount')">
                     <template #body="{ data }">
                       {{ getEntryCount(div.id, data.id) }}
                     </template>
                   </Column>
-                  <Column v-if="isAdminOrDeputy" header="操作" style="width: 8rem">
+                  <Column v-if="isAdminOrDeputy" :header="t('tournament.detail.actions')" style="width: 8rem">
                     <template #body="{ data }">
                       <Button
-                        label="エントリー管理"
+                        :label="t('tournament.detail.manageEntry')"
                         icon="pi pi-list"
                         size="small"
                         text
@@ -419,6 +419,7 @@ onMounted(async () => {
       modal
       :header="$t('tournament.visibility.title')"
       :style="{ width: '32rem' }"
+      :breakpoints="{ '640px': '95vw' }"
     >
       <div class="flex flex-col gap-4 py-2">
         <p class="text-sm text-surface-500">{{ $t('tournament.visibility.description') }}</p>

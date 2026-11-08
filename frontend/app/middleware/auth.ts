@@ -3,11 +3,17 @@
 export default defineNuxtRouteMiddleware((to) => {
   if (import.meta.server) return
 
+  const nuxtApp = useNuxtApp()
   const authStore = useAuthStore()
   if (!authStore.isAuthenticated) {
+    // 初回SSRは異なるレイアウトのDOMをhydrateせず、ログイン文書へ置換する。
+    const isInitialSsrNavigation = nuxtApp.isHydrating && nuxtApp.payload.serverRendered
     return navigateTo({
       path: '/login',
       query: { redirect: to.fullPath },
+    }, {
+      external: isInitialSsrNavigation,
+      replace: isInitialSsrNavigation,
     })
   }
 })

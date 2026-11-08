@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261030-0650",
+  "scope": "app",
+  "implementation": {
+    "pr": 4247,
+    "sha": "042189c98b048f95f414776c9b78796b4cec0818"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "プレビュー表と確認状況パネルに患者のフルネームが出る。ユーザー取得は UserService.getFullNamesAndEmails の一括取得で N+1 にならない。",
+      "tests": [
+        {
+          "name": "EmergencyClosureServiceTest（フルネーム・メールの一括取得）",
+          "evidence": "backend/src/test/java/com/mannschaft/app/reservation/EmergencyClosureServiceTest.java"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 41602590583
+    },
+    {
+      "runId": 41602590514
+    },
+    {
+      "runId": 41602590582
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4247"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4273"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261030-0651/resident-observations.json"
+    }
+  },
+  "regressions": [
+    {
+      "description": "BE の userFullName と FE の userDisplayName の不一致で患者名が空欄になる。あわせて archunit_store の越境17行を削除（D-3T の4行はトランザクション境界の見直しが要るため別件で残置）。",
+      "test": "EmergencyClosureServiceTest",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/pull/4247",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/41602590583"
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-10-28T07:12:41.987Z",
+  "sourceHead": "a8b7d8b999973d2c138ffecce2fbe2233f6bb09a",
+  "integrationHead": "f2817eb94326b413122c69f4b0c409288c8982a6",
+  "upstreamMain": "b7e4bcd07e2bb93899ea761736bdd6a413e41780",
+  "originalBase": "a073644f7a2780b68e26446954df5af807750151",
+  "scope": "L1-B original changed non-Markdown files only",
+  "allEqual": true,
+  "files": [
+    {
+      "path": ".github/scripts/migration-sensitive-paths.regex",
+      "sourceBlob": "f09913896897a1eb1a1e1c14323115eabcdce9a1",
+      "integrationBlob": "f09913896897a1eb1a1e1c14323115eabcdce9a1"
+    },
+    {
+      "path": ".github/workflows/common-freeze-graph.yml",
+      "sourceBlob": "3666ef90d369c3ae1f1ffff3b34fa7adf0d4da79",
+      "integrationBlob": "3666ef90d369c3ae1f1ffff3b34fa7adf0d4da79"
+    },
+    {
+      "path": ".github/workflows/openapi-drift-check.yml",
+      "sourceBlob": "06bf15b1a68b38c55822bf0211a3e92fe7de1e4d",
+      "integrationBlob": "06bf15b1a68b38c55822bf0211a3e92fe7de1e4d"
+    },
+    {
+      "path": "backend/build-logic/build.gradle.kts",
+      "sourceBlob": "e4a377cb50c8aa6c871ce15883c32c5230b43f7e",
+      "integrationBlob": "e4a377cb50c8aa6c871ce15883c32c5230b43f7e"
+    },
+    {
+      "path": "backend/build-logic/settings.gradle.kts",
+      "sourceBlob": "db3c9fccc0bd7511ba8cf637e1b6e337447f63d7",
+      "integrationBlob": "db3c9fccc0bd7511ba8cf637e1b6e337447f63d7"
+    },
+    {
+      "path": "backend/build-logic/src/main/kotlin/ShardAssignment.kt",
+      "sourceBlob": "51f721c1878a1a9bc4bee2a7addfe75a7cd717cc",
+      "integrationBlob": "51f721c1878a1a9bc4bee2a7addfe75a7cd717cc"
+    },
+    {
+      "path": "backend/build-logic/src/main/kotlin/mannschaft.backend-conventions.gradle.kts",
+      "sourceBlob": "38d517c7a81f4fdc564766cdc4a8b3a505633fd6",
+      "integrationBlob": "38d517c7a81f4fdc564766cdc4a8b3a505633fd6"
+    },
+    {
+      "path": "backend/build.gradle.kts",
+      "sourceBlob": "94feeb337483f2145901e8b7b0f409c213bfcdd2",
+      "integrationBlob": "94feeb337483f2145901e8b7b0f409c213bfcdd2"
+    },
+    {
+      "path": "backend/settings.gradle.kts",
+      "sourceBlob": "d1730505ac09a3d0abbe765b093963b3766923a9",
+      "integrationBlob": "d1730505ac09a3d0abbe765b093963b3766923a9"
+    },
+    {
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/StripeJavaVersionGuardTest.java",
+      "sourceBlob": "d080edb88dac3d6fd3a320faf905ce9c5b2bd6b3",
+      "integrationBlob": "d080edb88dac3d6fd3a320faf905ce9c5b2bd6b3"
+    },
+    {
+      "path": "backend/src/test/resources/shard-weights.properties",
+      "sourceBlob": "dd8cf26bdb058c2eb6ca1995457050c7294e3fed",
+      "integrationBlob": "dd8cf26bdb058c2eb6ca1995457050c7294e3fed"
+    }
+  ],
+  "limits": [
+    "Upstream application/test/resource/HTTP/UI files changed; original before/after comparison, real and exploratory evidence still targets sourceHead.",
+    "This bridge proves original L1-B code blobs unchanged, not all application bytes identical or final integrated CI success.",
+    "README/TEST_CONVENTION and plan merge retain both upstream and L1-B text; excluded from byte identity."
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "checkedAtUtc": "2026-10-25T15:39:03.230Z",
+  "repository": "kenta-0420/mannschaft",
+  "implementation": {
+    "pr": 4119,
+    "head": "35801c64f0a2aff9123a4bdcbd8b931776fc3a37",
+    "mergedAt": "2026-10-25T15:21:21Z",
+    "mergeCommit": "67ec2f72889612e916bda97b68f30db4ecb5f8a9",
+    "changedFiles": 6
+  },
+  "checksAtMerge": [
+    "success",
+    "success",
+    "success",
+    "skipped",
+    "skipped",
+    "skipped",
+    "skipped",
+    "skipped",
+    "success",
+    "skipped",
+    "skipped",
+    "success",
+    "success",
+    "success",
+    "success",
+    "success",
+    "success",
+    "success",
+    "success",
+    "success",
+    "success"
+  ],
+  "runs": [
+    {
+      "runId": 40200753771,
+      "repository": "kenta-0420/mannschaft",
+      "sha": "35801c64f0a2aff9123a4bdcbd8b931776fc3a37",
+      "conclusion": "success"
+    },
+    {
+      "runId": 40200753781,
+      "repository": "kenta-0420/mannschaft",
+      "sha": "35801c64f0a2aff9123a4bdcbd8b931776fc3a37",
+      "conclusion": "success"
+    }
+  ],
+  "mainCi": {
+    "actualApiRuns": [
+      {
+        "runId": 40206539292,
+        "sha": "67ec2f72889612e916bda97b68f30db4ecb5f8a9",
+        "conclusion": "success"
+      },
+      {
+        "runId": 40206539213,
+        "sha": "67ec2f72889612e916bda97b68f30db4ecb5f8a9",
+        "conclusion": "success"
+      },
+      {
+        "runId": 40206539110,
+        "sha": "67ec2f72889612e916bda97b68f30db4ecb5f8a9",
+        "conclusion": "success"
+      }
+    ],
+    "observedSteps": {
+      "sha": "67ec2f72889612e916bda97b68f30db4ecb5f8a9",
+      "observedAtUtc": "2026-10-25T15:36:00Z",
+      "observationTimePrecision": "minute",
+      "evidence": "docs/evidence/CMP-261025-1320/main-ci-receipt.md",
+      "runs": [
+        {
+          "runId": 40206539292,
+          "conclusion": "success",
+          "workflow": "Frontend CI",
+          "unitCompletedAtUtc": "2026-10-25T15:35:41Z",
+          "dockerImageBuildCompletedAtUtc": "2026-10-25T15:34:22Z",
+          "selfContained": "success 15:34:23Z",
+          "actualContainerHttpAndHealth": "success 15:34:29Z",
+          "completedAtUtc": "2026-10-25T15:35:45Z"
+        },
+        {
+          "runId": 40206539213,
+          "conclusion": "success",
+          "workflow": "Frontend Build & Deploy",
+          "awsCredentialCheck": "success",
+          "cloudSteps": "Checkout/Node/deps/AWSconfigure/ECRlogin/buildpush/ECStaskdefinition/downloadupdate/deploy all skipped",
+          "productionChanges": false
+        },
+        {
+          "runId": 40206539110,
+          "conclusion": "success",
+          "workflow": "gitleaks",
+          "regression": "success",
+          "diffScan": "success",
+          "weeklyFullHistory": "skipped"
+        }
+      ],
+      "limitations": "step/job metadataで確認。通常ログ本文とsecret値は取得していない。週次full-history scan未実行。"
+    }
+  },
+  "completionEvidence": "validateEvidence + validateCompletionChanges passed with live GitHub API metadata, current main tasklist and working-tree evidence references",
+  "overlay": "既存validateRunOverlayを無変更抽出して新run payloadのみpassed。board-data/既存overlay/IndexedDB不変更、UI未反映。",
+  "productionSideEffects": false
+}

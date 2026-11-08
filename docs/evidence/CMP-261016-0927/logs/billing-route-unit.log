@@ -1,0 +1,26 @@
+node.exe : Duplicated imports "OrgTeamGroup", the one from "<workspace>/.claude/worktrees/agent-billing-access
+-fix-20261016/frontend/app/composables/useBroadcastAudience.ts" has been ignored and "<workspace>/.claude/work
+trees/agent-billing-access-fix-20261016/frontend/app/composables/useOrgTeamMembershipApi.ts" is used
+発生場所 行:1 文字:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Duplicated impo...Api.ts" is used:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+Duplicated imports "isForbiddenError", the one from "<workspace>/.claude/worktrees/agent-billing-access-fix-20
+261016/frontend/app/composables/useAttendancePermissions.ts" has been ignored and "<workspace>/.claude/worktre
+es/agent-billing-access-fix-20261016/frontend/app/utils/tournamentScoreEntry.ts" is used
+Duplicated imports "OrgTeamGroup", the one from "<workspace>/.claude/worktrees/agent-billing-access-fix-202610
+16/frontend/app/composables/useBroadcastAudience.ts" has been ignored and "<workspace>/.claude/worktrees/agent
+-billing-access-fix-20261016/frontend/app/composables/useOrgTeamMembershipApi.ts" is used
+Duplicated imports "isForbiddenError", the one from "<workspace>/.claude/worktrees/agent-billing-access-fix-20
+261016/frontend/app/composables/useAttendancePermissions.ts" has been ignored and "<workspace>/.claude/worktre
+es/agent-billing-access-fix-20261016/frontend/app/utils/tournamentScoreEntry.ts" is used
+
+ RUN  v4.1.11 <workspace>/frontend
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  10:58:40
+   Duration  16.37s (transform 1.69s, setup 1.95s, import 242ms, tests 12.80s, environment 1ms)

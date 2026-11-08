@@ -1,0 +1,52 @@
+{
+  "runId": "clipv3-1792574010514-3a8a8367",
+  "category": "SUPPLEMENTAL_API_CONTRACT_NOT_UI_E2E",
+  "callsPurpose": "通常login/最小前提result作成/実private GETの所有境界。牧場feed/touch等の対象操作は0。",
+  "status": "PASS",
+  "cases": {
+    "dinosaurIdInjection": {
+      "status": "NOT_APPLICABLE",
+      "reason": "feed={version},touch={kind,version}でdinosaurId入力なし。不存在field/query/架空routeを作らない。"
+    },
+    "ownResult": {
+      "status": "PASS",
+      "cases": 2,
+      "route": "/api/v1/me/diagnoses/results/{actual-own-resultId}"
+    },
+    "otherResult": {
+      "status": "PASS",
+      "cases": 2,
+      "route": "/api/v1/me/diagnoses/results/{actual-other-fresh-resultId}",
+      "result": "404 DIAGNOSIS_002 with no result data"
+    }
+  },
+  "accounts": [
+    {
+      "alias": "land-baby",
+      "ownResultId": "synthetic-id-004",
+      "ownStatus": 200,
+      "otherResultStatus": 404,
+      "otherResultErrorCode": "DIAGNOSIS_002"
+    },
+    {
+      "alias": "sea-juvenile",
+      "ownResultId": "synthetic-id-005",
+      "ownStatus": 200,
+      "otherResultStatus": 404,
+      "otherResultErrorCode": "DIAGNOSIS_002"
+    }
+  ],
+  "source": {
+    "frontend": "28389c61f505e877702e5572d21476d68747aead",
+    "backend": "2bd44c9b4e6d6de9f4dfc615c200ea2253f8d538",
+    "jarSha256": "9147dcf8a62d1818c20c51501afec76392cd8e4e346d8d53977371829cfe58c3"
+  },
+  "identity": {
+    "windowsTcpProvider": "IP_HELPER_API_DUALSTACK",
+    "windowsPidScope": "ROOT_PID_ONLY_CHILDREN_REJECTED",
+    "backendHeaderWindows": true,
+    "backendHeaderWsl": true,
+    "backendPidAndSocket": true,
+    "frontendPidAndSocket": true
+  }
+}

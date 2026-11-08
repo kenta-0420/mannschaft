@@ -1,5 +1,6 @@
 package com.mannschaft.app.social.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -32,18 +33,23 @@ public class TeamFriendListResponse {
     public static class Pagination {
 
         /** 現在のページ番号（0 始まり） */
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         private final int page;
 
         /** 1 ページあたりの件数 */
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         private final int size;
 
         /** 総件数 */
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         private final long totalElements;
 
         /** 総ページ数 */
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         private final int totalPages;
 
         /** 次ページが存在するか */
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         private final boolean hasNext;
     }
 }

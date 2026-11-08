@@ -1,0 +1,40 @@
+{
+  "source": "formal-final-c717",
+  "sourceHead": "c717d0ac54695df915879aa28f6123cfbc9c363b",
+  "finalProductHead": "0042f17ea50daf539e1c16ddfc0d123ecbc0726b",
+  "images": [
+    {
+      "path": "docs/evidence/CMP-261015-1510/screenshots/login-360-ja.png",
+      "sha256": "d2eb352bdae0274c934fdae8bd21ea4aab2cf19055bd64118039792621afeeb5",
+      "condition": "360x ja notice=false",
+      "sourceRun": "formal-final-c717",
+      "sourceHead": "c717d0ac54695df915879aa28f6123cfbc9c363b",
+      "sourceAnonymousPath": ".claude/runtime/october-login-1510-20261026/formal-final-c717/anonymous-png/login-01.png",
+      "sourceIndexSha256": "66d8b6c79bc1e042a25e4a2beaf45ecf87a593f4e000e3e83bc0bc9f73055d18",
+      "sourcePngSha256": "D2EB352BDAE0274C934FDAE8BD21EA4AAB2CF19055BD64118039792621AFEEB5",
+      "provenance": "anonymous PNG decoded from base64 attachment in formal-final-c717 results.json"
+    },
+    {
+      "path": "docs/evidence/CMP-261015-1510/screenshots/login-360-de-notice.png",
+      "sha256": "bd50e0f91a5bafa68686db6d5f8da41b4bb7c3190fdd0273a86be9b52d4ff7c9",
+      "condition": "360x de notice=true",
+      "sourceRun": "formal-final-c717",
+      "sourceHead": "c717d0ac54695df915879aa28f6123cfbc9c363b",
+      "sourceAnonymousPath": ".claude/runtime/october-login-1510-20261026/formal-final-c717/anonymous-png/login-06.png",
+      "sourceIndexSha256": "66d8b6c79bc1e042a25e4a2beaf45ecf87a593f4e000e3e83bc0bc9f73055d18",
+      "sourcePngSha256": "BD50E0F91A5BAFA68686DB6D5F8DA41B4BB7C3190FDD0273A86BE9B52D4FF7C9",
+      "provenance": "anonymous PNG decoded from base64 attachment in formal-final-c717 results.json"
+    },
+    {
+      "path": "docs/evidence/CMP-261015-1510/screenshots/login-390-de-notice.png",
+      "sha256": "816d3687b769bae650a20e1bcbaeda383e27d4a5151b9f7fb20c0facd0a7d7d2",
+      "condition": "390x de notice=true",
+      "sourceRun": "formal-final-c717",
+      "sourceHead": "c717d0ac54695df915879aa28f6123cfbc9c363b",
+      "sourceAnonymousPath": ".claude/runtime/october-login-1510-20261026/formal-final-c717/anonymous-png/login-12.png",
+      "sourceIndexSha256": "66d8b6c79bc1e042a25e4a2beaf45ecf87a593f4e000e3e83bc0bc9f73055d18",
+      "sourcePngSha256": "816D3687B769BAE650A20E1BCBAEDA383E27D4A5151B9F7FB20C0FACD0A7D7D2",
+      "provenance": "anonymous PNG decoded from base64 attachment in formal-final-c717 results.json"
+    }
+  ]
+}

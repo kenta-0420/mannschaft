@@ -392,6 +392,8 @@ INDEX idx_rl_payee_user (payee_user_id);
 
 ## 6. ER 図
 
+> 現在のスキーマは [payment](../../../architecture/er/payment.md)（実スキーマからの自動生成）を参照。この図は設計時点の意図。
+
 ```mermaid
 erDiagram
     connect_accounts {

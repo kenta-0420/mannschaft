@@ -168,7 +168,7 @@
       "remindHint": "可向 {count} 名未回答者发送提醒（最多3次）",
       "remindButton": "发送提醒",
       "remindAutoNotice": "提醒通知将在截止时间24小时前自动发送",
-      "remindSuccess": "已向 {count} 人发送提醒",
+      "remindSuccess": "已受理向 {count} 位未回复成员发送提醒",
       "remindRemaining": "剩余可发送：{count}次",
       "remindFailed": "提醒发送失败",
       "remindFailedDetail": "请确认发送上限、冷却时间与权限",

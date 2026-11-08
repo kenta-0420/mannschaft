@@ -1,0 +1,84 @@
+{
+  "version": "3.4.17",
+  "lockChange": {
+    "fields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "changedNode": "node_modules/dompurify",
+    "otherNodeChanges": 0,
+    "packageJsonChanged": false,
+    "existingRange": "^3.4.16",
+    "origin": "独立npm10.9.8 resolverの正規出力からDOMPurify nodeを限定反映。他platform nodeを保持。"
+  },
+  "actualSanitize": {
+    "version": "3.4.17",
+    "environment": "独立jsdom27.4.0、実アプリsanitizeHtml関数、DOMPurify importのみ新配布物に差替",
+    "passed": 7,
+    "failed": 0,
+    "checks": [
+      "通常文字列",
+      "許可装飾",
+      "危険タグ",
+      "危険属性",
+      "javascript URL",
+      "allowSvg装飾",
+      "allowSvg危険属性"
+    ]
+  },
+  "markdownUnit": {
+    "passed": 22,
+    "failed": 0,
+    "note": "DOMPurifyをmockする既存回帰。実配布物確認とは区別。"
+  },
+  "independentInstall": {
+    "exitCode": 0,
+    "packages": 1401,
+    "duration": "約5分",
+    "npm": "10.9.8",
+    "node": "24.15.0",
+    "projectNode": "22.23.2",
+    "engineWarning": true,
+    "scripts": false,
+    "nuxtPrepare": false,
+    "lockHashUnchanged": true,
+    "note": "独立resolverのみ。共有depsは3.4.16のまま無変更。実機には新depsのpostinstall/厳格互換patch/nuxt prepareが別途必要。"
+  },
+  "audit": {
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 3,
+      "high": 16,
+      "critical": 0,
+      "total": 19
+    },
+    "dompurifyEntry": false,
+    "remainingHighGhsa": [
+      "GHSA-86w9-cpqp-85rv",
+      "GHSA-vfj7-8cjw-p6xm"
+    ],
+    "newExemption": false
+  },
+  "runtimeRevalidation": {
+    "observed": "passed",
+    "head": "b1cfd1f80997434e539ee5495f29b0a0fcd1ac4b",
+    "dompurify": "3.4.17",
+    "passed": 1,
+    "exitCode": 0,
+    "skipped": 0,
+    "totalDuration": "3.3m",
+    "evidence": "docs/evidence/observations/CMP-261023-0051/audit-recheck-real-run.log",
+    "note": "最初のcold360s timeoutは未合格、限定cleanup後に同spec/timeout不変で温再実行。"
+  },
+  "advisories": [
+    "https://github.com/cure53/DOMPurify/security/advisories/GHSA-cg2g-xh64-v4q7",
+    "https://github.com/cure53/DOMPurify/security/advisories/GHSA-mrv2-3pqr-j5jr"
+  ],
+  "subsequentRuntimePrep": {
+    "strictPatchApplied": true,
+    "nuxtPrepareExitCode": 0,
+    "evidence": "docs/evidence/observations/CMP-261023-0051/audit-recheck-nuxt-prepare-receipt.json"
+  }
+}

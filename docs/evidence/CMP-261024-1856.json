@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261024-1856",
+  "scope": "tooling",
+  "implementation": { "pr": 4090, "sha": "80303ddcd88135499600fc82522fe421f592b267" },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "clean Git HEADを固定して直接展開し、dirty・untracked・gitlinkを作成前に拒否する",
+      "tests": [
+        { "name": "dirty sourceは作成前に拒否 / untracked sourceは作成前に拒否 / gitlink sourceは作成前に拒否", "evidence": "scripts/verification-run.test.mjs" },
+        { "name": "HEADは実行途中でsourceが更新されても最初のSHAに固定", "evidence": "scripts/verification-run.test.mjs" }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "生成物・.gitを複製せず、元sourceを変更しない",
+      "tests": [{ "name": "clean HEADだけ展開し生成物を除外、証跡保存後に撤去する", "evidence": "scripts/verification-run.test.mjs" }]
+    },
+    {
+      "id": "AC-3",
+      "description": "所有境界を検証し、自分の一時領域だけを撤去する",
+      "tests": [
+        { "name": "並行実行は別scratchを持ち互いを撤去しない", "evidence": "scripts/verification-run.test.mjs" },
+        { "name": "tracked symlinkの外部ターゲットを削除しない", "evidence": "scripts/verification-run.test.mjs" },
+        { "name": "所有marker変更は削除せず理由を返す", "evidence": "scripts/verification-run.test.mjs" }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "外部の新規evidence-dirを必須とし、全量退避せず必要証跡を保存する",
+      "tests": [
+        { "name": "evidence既存・source内・管理親内と空/不正引数を拒否", "evidence": "scripts/verification-run.test.mjs" },
+        { "name": "receipt保存不能ではscratchを保持し正確な理由を表示", "evidence": "scripts/verification-run.test.mjs" }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "成功・失敗・展開/起動途中失敗でも撤去し、元終了値と撤去結果を記録する",
+      "tests": [
+        { "name": "非0終了でもreceiptと撤去結果を残す / 起動失敗でもreceiptと撤去結果を残す", "evidence": "scripts/verification-run.test.mjs" },
+        { "name": "展開失敗でも作成済みscratchを撤去する", "evidence": "scripts/verification-run.test.mjs" }
+      ]
+    },
+    {
+      "id": "AC-6",
+      "description": "中断時は子孫停止を確認し、停止や参照を確認できなければ保持して非0終了する",
+      "tests": [
+        { "name": "SIGTERMでは子孫groupを停止してから撤去する", "evidence": "scripts/verification-run.test.mjs" },
+        { "name": "端末切断SIGHUPでも子を停止しreceipt保存後に撤去する", "evidence": "scripts/verification-run.test.mjs" },
+        { "name": "SIGTERM停止不能は有界待機で保持し終了、動作中checkは削除しない", "evidence": "scripts/verification-run.test.mjs" },
+        { "name": "開始前EACCESだけをPID世代一致で除外し新規/途中失敗は除外しない", "evidence": "scripts/verification-run.test.mjs" }
+      ]
+    },
+    {
+      "id": "AC-7",
+      "description": "checkは管理下の残存を検知し、稼働中を保護して削除を行わない",
+      "tests": [
+        { "name": "脱走daemonがscratchを参照中なら保持しcheckが検知する", "evidence": "scripts/verification-run.test.mjs" },
+        { "name": "SIGTERM停止不能は有界待機で保持し終了、動作中checkは削除しない", "evidence": "scripts/verification-run.test.mjs" }
+      ]
+    },
+    {
+      "id": "AC-8",
+      "description": "コマンド正本へ完了時撤去・証跡選別・中断時の期限付き保持を接続する",
+      "tests": [{ "name": "rootによる正本文書と凱旋の上奏前ゲートの検分", "evidence": "docs/evidence/CMP-261024-1856-verification-lifecycle.md" }]
+    }
+  ],
+  "ci": [{ "runId": 40086796884 }],
+  "stages": {
+    "review": { "status": "passed", "evidence": "docs/evidence/CMP-261024-1856-verification-lifecycle.md" },
+    "real": { "status": "passed", "evidence": "docs/evidence/CMP-261024-1856-verification-lifecycle.md" },
+    "exploratory": { "status": "not-applicable", "scope": "tooling", "reason": "製品UI/APIや利用者導線の変更なし。実WSLの正常・失敗・中断・端末切断はrealへ記録した" }
+  },
+  "regressions": [
+    {
+      "description": "検分中の初期実装でSIGHUPにより撤去が実行されない問題をred再現して修正",
+      "test": "端末切断SIGHUPでも子を停止しreceipt保存後に撤去する",
+      "redEvidence": "docs/evidence/CMP-261024-1856-verification-lifecycle.md",
+      "greenEvidence": "scripts/verification-run.test.mjs"
+    }
+  ]
+}

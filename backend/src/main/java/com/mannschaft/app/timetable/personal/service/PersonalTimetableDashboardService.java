@@ -1,7 +1,6 @@
 package com.mannschaft.app.timetable.personal.service;
 
 import com.mannschaft.app.common.MembershipScopeQueryService;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.timetable.TimetableChangeType;
 import com.mannschaft.app.timetable.WeekPattern;
 import com.mannschaft.app.timetable.entity.TimetableChangeEntity;
@@ -34,6 +33,8 @@ import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -64,7 +65,6 @@ public class PersonalTimetableDashboardService {
     private final TimetableSlotRepository teamSlotRepository;
     private final TimetableSlotUserNoteRepository userNoteRepository;
     private final TimetableSlotUserNoteAttachmentRepository attachmentRepository;
-    private final UserRoleRepository userRoleRepository;
     private final MembershipScopeQueryService membershipScopeQueryService;
     private final TimetableChangeRepository timetableChangeRepository;
 
@@ -87,24 +87,22 @@ public class PersonalTimetableDashboardService {
         List<TimetableWeekSlotInfo> result = new ArrayList<>();
 
         // ---- PERSONAL: 自分の ACTIVE・today effective 範囲内の個人時間割の全曜日スロット ----
-        List<PersonalTimetableEntity> activePersonals = personalTimetableRepository
-                .findByUserIdAndStatusAndDeletedAtIsNull(userId, PersonalTimetableStatus.ACTIVE);
-        for (PersonalTimetableEntity personal : activePersonals) {
-            if (personal.getEffectiveFrom() != null && today.isBefore(personal.getEffectiveFrom())) continue;
-            if (personal.getEffectiveUntil() != null && today.isAfter(personal.getEffectiveUntil())) continue;
-
-            // 全曜日・全時限のスロットをまとめて取得（重い副問い合わせなし）
-            List<PersonalTimetableSlotEntity> slots = personalSlotRepository
-                    .findByPersonalTimetableIdOrderByDayOfWeekAscPeriodNumberAsc(personal.getId());
-
-            // periodLabel 用に period マップを取得
-            Map<Integer, PersonalTimetablePeriodEntity> periodMap = personalPeriodRepository
-                    .findByPersonalTimetableIdOrderByPeriodNumberAsc(personal.getId())
-                    .stream()
-                    .collect(java.util.stream.Collectors.toMap(
-                            PersonalTimetablePeriodEntity::getPeriodNumber, p -> p, (a, b) -> a));
-
-            for (PersonalTimetableSlotEntity slot : slots) {
+        List<PersonalTimetableEntity> personals = effectivePersonals(userId, today);
+        // 時間割数に比例して SQL が増えないよう、スロット・時限は ID 群でまとめて取得する
+        Map<Long, List<PersonalTimetableSlotEntity>> slotsByPersonal = new HashMap<>();
+        Map<Long, Map<Integer, PersonalTimetablePeriodEntity>> periodsByPersonal = new HashMap<>();
+        if (!personals.isEmpty()) {
+            List<Long> ids = personals.stream().map(PersonalTimetableEntity::getId).toList();
+            for (PersonalTimetableSlotEntity slot : personalSlotRepository
+                    .findByPersonalTimetableIdInOrderByDayOfWeekAscPeriodNumberAsc(ids)) {
+                slotsByPersonal.computeIfAbsent(slot.getPersonalTimetableId(), k -> new ArrayList<>()).add(slot);
+            }
+            periodsByPersonal = loadPeriods(ids);
+        }
+        for (PersonalTimetableEntity personal : personals) {
+            Map<Integer, PersonalTimetablePeriodEntity> periodMap =
+                    periodsByPersonal.getOrDefault(personal.getId(), Map.of());
+            for (PersonalTimetableSlotEntity slot : slotsByPersonal.getOrDefault(personal.getId(), List.of())) {
                 String subjectName = slot.getSubjectName();
                 if (subjectName == null || subjectName.isBlank()) continue;
                 String courseCode = slot.getCourseCode();
@@ -125,13 +123,24 @@ public class PersonalTimetableDashboardService {
 
         // ---- TEAM: 所属チームの ACTIVE 時間割（today effective）の全曜日スロット ----
         List<Long> joinedTeamIds = listJoinedTeamIds(userId);
+        Map<Long, List<TimetableEntity>> timetablesByTeam = loadEffectiveTimetables(joinedTeamIds, today);
+        List<Long> timetableIds = timetablesByTeam.values().stream()
+                .flatMap(List::stream).map(TimetableEntity::getId).toList();
+        // timetableId -> dayOfWeek -> slots（曜日はメモリ上で振り分ける）
+        Map<Long, Map<String, List<TimetableSlotEntity>>> slotsByTimetable = new HashMap<>();
+        if (!timetableIds.isEmpty()) {
+            for (TimetableSlotEntity slot : teamSlotRepository
+                    .findByTimetableIdInOrderByTimetableIdAscIdAsc(timetableIds)) {
+                slotsByTimetable.computeIfAbsent(slot.getTimetableId(), k -> new HashMap<>())
+                        .computeIfAbsent(slot.getDayOfWeek(), k -> new ArrayList<>()).add(slot);
+            }
+        }
         for (Long teamId : joinedTeamIds) {
-            List<TimetableEntity> active = teamTimetableRepository.findEffective(teamId, today);
-            for (TimetableEntity timetable : active) {
+            for (TimetableEntity timetable : timetablesByTeam.getOrDefault(teamId, List.of())) {
+                Map<String, List<TimetableSlotEntity>> byDow =
+                        slotsByTimetable.getOrDefault(timetable.getId(), Map.of());
                 for (String dow : WEEK_DOWS) {
-                    List<TimetableSlotEntity> slots = teamSlotRepository
-                            .findByTimetableIdAndDayOfWeek(timetable.getId(), dow);
-                    for (TimetableSlotEntity slot : slots) {
+                    for (TimetableSlotEntity slot : byDow.getOrDefault(dow, List.of())) {
                         String subjectName = slot.getSubjectName();
                         if (subjectName == null || subjectName.isBlank()) continue;
                         // TEAM は courseCode なし → キーは subjectName のみ
@@ -154,8 +163,20 @@ public class PersonalTimetableDashboardService {
         return result;
     }
 
+    /** 今日の 1 コマ（個人）。一括取得前の素材。 */
+    private record PersonalEntry(PersonalTimetableEntity personal, PersonalTimetableSlotEntity slot,
+                                 PersonalTimetablePeriodEntity period) {
+    }
+
+    /** 今日の 1 コマ（チーム）。一括取得前の素材。 */
+    private record TeamEntry(Long teamId, TimetableEntity timetable, TimetableSlotEntity slot) {
+    }
+
     /**
      * 「今日の時間割」を取得する。
+     *
+     * <p>SQL 数は所属チーム数・時間割数・コマ数に依存しない。コマごとのメモ・添付・臨時変更・
+     * 所属判定は、スロット ID 群／時間割 ID 群でまとめて取得して Map 化し、メモリ上で突き合わせる。</p>
      *
      * @param userId   対象ユーザー
      * @param today    今日の日付（テスト容易性のため引数化）
@@ -163,53 +184,82 @@ public class PersonalTimetableDashboardService {
     public DashboardTimetableTodayResponse getTimetableToday(Long userId, LocalDate today) {
         String todayDow = WEEK_DOWS.get(today.getDayOfWeek().getValue() - 1);
 
-        List<DashboardTimetableTodayResponse.TimetableTodayItem> items = new ArrayList<>();
         WeekPattern firstActivePattern = WeekPattern.EVERY;
 
         // ---- PERSONAL: 自分のACTIVE個人時間割の今日のコマ ----
-        List<PersonalTimetableEntity> activePersonals = personalTimetableRepository
-                .findByUserIdAndStatusAndDeletedAtIsNull(userId, PersonalTimetableStatus.ACTIVE);
-        for (PersonalTimetableEntity personal : activePersonals) {
-            // 適用期間内チェック
-            if (personal.getEffectiveFrom() != null && today.isBefore(personal.getEffectiveFrom())) continue;
-            if (personal.getEffectiveUntil() != null && today.isAfter(personal.getEffectiveUntil())) continue;
-
-            WeekPattern current = resolveWeekPattern(personal, today);
-            if (firstActivePattern == WeekPattern.EVERY && current != WeekPattern.EVERY) {
-                firstActivePattern = current;
+        List<PersonalTimetableEntity> personals = effectivePersonals(userId, today);
+        List<PersonalEntry> personalEntries = new ArrayList<>();
+        if (!personals.isEmpty()) {
+            List<Long> ids = personals.stream().map(PersonalTimetableEntity::getId).toList();
+            Map<Long, List<PersonalTimetableSlotEntity>> slotsByPersonal = new HashMap<>();
+            for (PersonalTimetableSlotEntity slot : personalSlotRepository
+                    .findByPersonalTimetableIdInAndDayOfWeekOrderByPeriodNumberAsc(ids, todayDow)) {
+                slotsByPersonal.computeIfAbsent(slot.getPersonalTimetableId(), k -> new ArrayList<>()).add(slot);
             }
-
-            List<PersonalTimetableSlotEntity> slots = personalSlotRepository
-                    .findByPersonalTimetableIdAndDayOfWeekOrderByPeriodNumberAsc(
-                            personal.getId(), todayDow);
-            Map<Integer, PersonalTimetablePeriodEntity> periodMap = personalPeriodRepository
-                    .findByPersonalTimetableIdOrderByPeriodNumberAsc(personal.getId())
-                    .stream()
-                    .collect(java.util.stream.Collectors.toMap(
-                            PersonalTimetablePeriodEntity::getPeriodNumber, p -> p, (a, b) -> a));
-
-            for (PersonalTimetableSlotEntity slot : slots) {
-                if (slot.getWeekPattern() != WeekPattern.EVERY && slot.getWeekPattern() != current) {
-                    continue;
+            Map<Long, Map<Integer, PersonalTimetablePeriodEntity>> periodsByPersonal = loadPeriods(ids);
+            for (PersonalTimetableEntity personal : personals) {
+                WeekPattern current = resolveWeekPattern(personal, today);
+                if (firstActivePattern == WeekPattern.EVERY && current != WeekPattern.EVERY) {
+                    firstActivePattern = current;
                 }
-                PersonalTimetablePeriodEntity period = periodMap.get(slot.getPeriodNumber());
-
-                items.add(buildPersonalItem(userId, personal, slot, period, today));
+                Map<Integer, PersonalTimetablePeriodEntity> periodMap =
+                        periodsByPersonal.getOrDefault(personal.getId(), Map.of());
+                for (PersonalTimetableSlotEntity slot : slotsByPersonal.getOrDefault(personal.getId(), List.of())) {
+                    if (slot.getWeekPattern() != WeekPattern.EVERY && slot.getWeekPattern() != current) {
+                        continue;
+                    }
+                    personalEntries.add(new PersonalEntry(personal, slot, periodMap.get(slot.getPeriodNumber())));
+                }
             }
         }
 
         // ---- TEAM: 所属チームの ACTIVE 時間割の今日のコマ ----
-        // ユーザーが所属する team_id 一覧を user_roles から取得
+        // ユーザーが所属する team_id 一覧（link_revoked 判定にも使い回す）
         List<Long> joinedTeamIds = listJoinedTeamIds(userId);
+        Set<Long> joinedTeamIdSet = new HashSet<>(joinedTeamIds);
+        Map<Long, List<TimetableEntity>> timetablesByTeam = loadEffectiveTimetables(joinedTeamIds, today);
+        List<Long> timetableIds = timetablesByTeam.values().stream()
+                .flatMap(List::stream).map(TimetableEntity::getId).toList();
+        Map<Long, List<TimetableSlotEntity>> teamSlotsByTimetable = new HashMap<>();
+        if (!timetableIds.isEmpty()) {
+            for (TimetableSlotEntity slot : teamSlotRepository
+                    .findByTimetableIdInAndDayOfWeekOrderByTimetableIdAscIdAsc(timetableIds, todayDow)) {
+                teamSlotsByTimetable.computeIfAbsent(slot.getTimetableId(), k -> new ArrayList<>()).add(slot);
+            }
+        }
+        List<TeamEntry> teamEntries = new ArrayList<>();
         for (Long teamId : joinedTeamIds) {
-            List<TimetableEntity> active = teamTimetableRepository.findEffective(teamId, today);
-            for (TimetableEntity timetable : active) {
-                List<TimetableSlotEntity> slots = teamSlotRepository
-                        .findByTimetableIdAndDayOfWeek(timetable.getId(), todayDow);
-                for (TimetableSlotEntity slot : slots) {
-                    items.add(buildTeamItem(userId, teamId, timetable, slot, today));
+            for (TimetableEntity timetable : timetablesByTeam.getOrDefault(teamId, List.of())) {
+                for (TimetableSlotEntity slot : teamSlotsByTimetable.getOrDefault(timetable.getId(), List.of())) {
+                    teamEntries.add(new TeamEntry(teamId, timetable, slot));
                 }
             }
+        }
+
+        // ---- コマごとの付随情報を一括取得（ループ内クエリ禁止） ----
+        Map<Long, Long> personalNotes = loadNoteIds(userId, TimetableSlotKind.PERSONAL,
+                personalEntries.stream().map(e -> e.slot().getId()).toList(), today);
+        Map<Long, Long> teamNotes = loadNoteIds(userId, TimetableSlotKind.TEAM,
+                teamEntries.stream().map(e -> e.slot().getId()).toList(), today);
+        Set<Long> noteIdsWithAttachments = loadNoteIdsHavingAttachments(personalNotes, teamNotes);
+        Map<Long, List<TimetableChangeEntity>> changesByTimetable = loadChanges(
+                personalEntries.stream().map(e -> e.slot().getLinkedTimetableId()).toList(), today);
+
+        List<DashboardTimetableTodayResponse.TimetableTodayItem> items = new ArrayList<>();
+        for (PersonalEntry e : personalEntries) {
+            Long noteId = personalNotes.get(e.slot().getId());
+            items.add(buildPersonalItem(e.personal(), e.slot(), e.period(), noteId,
+                    noteId != null && noteIdsWithAttachments.contains(noteId),
+                    // 未リンク(null)で検索すると、空時の Map.of() が null キーで NPE を投げるため分岐する
+                    e.slot().getLinkedTimetableId() == null
+                            ? List.of()
+                            : changesByTimetable.getOrDefault(e.slot().getLinkedTimetableId(), List.of()),
+                    joinedTeamIdSet));
+        }
+        for (TeamEntry e : teamEntries) {
+            Long noteId = teamNotes.get(e.slot().getId());
+            items.add(buildTeamItem(e.teamId(), e.timetable(), e.slot(), noteId,
+                    noteId != null && noteIdsWithAttachments.contains(noteId)));
         }
 
         // 開始時刻ソート（null は末尾）
@@ -218,6 +268,89 @@ public class PersonalTimetableDashboardService {
                 Comparator.nullsLast(Comparator.naturalOrder())));
 
         return new DashboardTimetableTodayResponse(today, firstActivePattern.name(), items);
+    }
+
+    /** 本人の ACTIVE かつ today が適用期間内の個人時間割。 */
+    private List<PersonalTimetableEntity> effectivePersonals(Long userId, LocalDate today) {
+        List<PersonalTimetableEntity> result = new ArrayList<>();
+        for (PersonalTimetableEntity personal : personalTimetableRepository
+                .findByUserIdAndStatusAndDeletedAtIsNull(userId, PersonalTimetableStatus.ACTIVE)) {
+            if (personal.getEffectiveFrom() != null && today.isBefore(personal.getEffectiveFrom())) continue;
+            if (personal.getEffectiveUntil() != null && today.isAfter(personal.getEffectiveUntil())) continue;
+            result.add(personal);
+        }
+        return result;
+    }
+
+    /** 個人時間割 ID 群の時限を ID 別の period_number マップにする（同一番号の重複は先頭を採用）。 */
+    private Map<Long, Map<Integer, PersonalTimetablePeriodEntity>> loadPeriods(List<Long> personalIds) {
+        Map<Long, Map<Integer, PersonalTimetablePeriodEntity>> result = new HashMap<>();
+        for (PersonalTimetablePeriodEntity p : personalPeriodRepository
+                .findByPersonalTimetableIdInOrderByPeriodNumberAsc(personalIds)) {
+            result.computeIfAbsent(p.getPersonalTimetableId(), k -> new HashMap<>())
+                    .putIfAbsent(p.getPeriodNumber(), p);
+        }
+        return result;
+    }
+
+    /** 所属チーム群の有効なチーム時間割をチーム ID 別に返す（チームが空なら SQL を撃たない）。 */
+    private Map<Long, List<TimetableEntity>> loadEffectiveTimetables(List<Long> teamIds, LocalDate today) {
+        Map<Long, List<TimetableEntity>> result = new HashMap<>();
+        if (teamIds.isEmpty()) {
+            return result;
+        }
+        for (TimetableEntity t : teamTimetableRepository.findEffectiveByTeamIds(teamIds, today)) {
+            result.computeIfAbsent(t.getTeamId(), k -> new ArrayList<>()).add(t);
+        }
+        return result;
+    }
+
+    /** スロット ID -> メモ ID（当日限定メモを常設メモより優先。重複行は先頭を採用）。 */
+    private Map<Long, Long> loadNoteIds(Long userId, TimetableSlotKind kind, List<Long> slotIds, LocalDate today) {
+        if (slotIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, Long> dated = new HashMap<>();
+        Map<Long, Long> standing = new HashMap<>();
+        for (TimetableSlotUserNoteEntity n : userNoteRepository.findForSlots(userId, kind, slotIds, today)) {
+            if (n.getTargetDate() != null) {
+                dated.putIfAbsent(n.getSlotId(), n.getId());
+            } else {
+                standing.putIfAbsent(n.getSlotId(), n.getId());
+            }
+        }
+        Map<Long, Long> result = new HashMap<>(standing);
+        result.putAll(dated);
+        return result;
+    }
+
+    /** 未削除の添付を 1 件以上持つメモ ID の集合。 */
+    private Set<Long> loadNoteIdsHavingAttachments(Map<Long, Long> personalNotes, Map<Long, Long> teamNotes) {
+        Set<Long> noteIds = new HashSet<>(personalNotes.values());
+        noteIds.addAll(teamNotes.values());
+        if (noteIds.isEmpty()) {
+            return Set.of();
+        }
+        return new HashSet<>(attachmentRepository.findNoteIdsHavingAttachments(noteIds));
+    }
+
+    /** 時間割 ID -> 当日の臨時変更一覧（linked_timetable_id が null のものは対象外）。 */
+    private Map<Long, List<TimetableChangeEntity>> loadChanges(List<Long> linkedTimetableIds, LocalDate today) {
+        Set<Long> ids = new HashSet<>();
+        for (Long id : linkedTimetableIds) {
+            if (id != null) {
+                ids.add(id);
+            }
+        }
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, List<TimetableChangeEntity>> result = new HashMap<>();
+        for (TimetableChangeEntity c : timetableChangeRepository
+                .findByTimetableIdInAndTargetDateOrderByPeriodNumber(ids, today)) {
+            result.computeIfAbsent(c.getTimetableId(), k -> new ArrayList<>()).add(c);
+        }
+        return result;
     }
 
     /**
@@ -229,14 +362,13 @@ public class PersonalTimetableDashboardService {
     }
 
     private DashboardTimetableTodayResponse.TimetableTodayItem buildPersonalItem(
-            Long userId,
             PersonalTimetableEntity personal,
             PersonalTimetableSlotEntity slot,
             PersonalTimetablePeriodEntity period,
-            LocalDate today) {
-        Long noteId = findNoteId(userId, TimetableSlotKind.PERSONAL, slot.getId(), today);
-        boolean hasAttachments = noteId != null
-                && attachmentRepository.countByNoteIdAndDeletedAtIsNull(noteId) > 0;
+            Long noteId,
+            boolean hasAttachments,
+            List<TimetableChangeEntity> changes,
+            Set<Long> joinedTeamIds) {
         LocalTime startTime = period != null ? period.getStartTime() : null;
         LocalTime endTime = period != null ? period.getEndTime() : null;
         String periodLabel = period != null ? period.getLabel() : null;
@@ -245,8 +377,6 @@ public class PersonalTimetableDashboardService {
         Boolean isChanged = Boolean.FALSE;
         Object change = null;
         if (slot.getLinkedTimetableId() != null) {
-            List<TimetableChangeEntity> changes = timetableChangeRepository
-                    .findByTimetableIdAndTargetDateOrderByPeriodNumber(slot.getLinkedTimetableId(), today);
             // DAY_OFF 優先
             TimetableChangeEntity dayOff = changes.stream()
                     .filter(c -> c.getChangeType() == TimetableChangeType.DAY_OFF)
@@ -265,9 +395,9 @@ public class PersonalTimetableDashboardService {
         }
 
         // F03.15 Phase 4: linked_team_id がセットされているのに自分が現在 MEMBER でない場合は link_revoked
+        // （所属判定は existsByUserIdAndTeamId と同一条件の findTeamIdsByUserId の結果で行う）
         Boolean linkRevoked = Boolean.FALSE;
-        if (slot.getLinkedTeamId() != null
-                && !userRoleRepository.existsByUserIdAndTeamId(userId, slot.getLinkedTeamId())) {
+        if (slot.getLinkedTeamId() != null && !joinedTeamIds.contains(slot.getLinkedTeamId())) {
             linkRevoked = Boolean.TRUE;
         }
 
@@ -307,14 +437,11 @@ public class PersonalTimetableDashboardService {
     }
 
     private DashboardTimetableTodayResponse.TimetableTodayItem buildTeamItem(
-            Long userId,
             Long teamId,
             TimetableEntity timetable,
             TimetableSlotEntity slot,
-            LocalDate today) {
-        Long noteId = findNoteId(userId, TimetableSlotKind.TEAM, slot.getId(), today);
-        boolean hasAttachments = noteId != null
-                && attachmentRepository.countByNoteIdAndDeletedAtIsNull(noteId) > 0;
+            Long noteId,
+            boolean hasAttachments) {
         return new DashboardTimetableTodayResponse.TimetableTodayItem(
                 "TEAM",
                 teamId,
@@ -339,19 +466,6 @@ public class PersonalTimetableDashboardService {
                 noteId,
                 hasAttachments
         );
-    }
-
-    /**
-     * 該当スロットのメモ ID を返す（target_date 限定 → 常設 の優先順）。
-     */
-    private Long findNoteId(Long userId, TimetableSlotKind kind, Long slotId, LocalDate today) {
-        return userNoteRepository
-                .findByUserIdAndSlotKindAndSlotIdAndTargetDate(userId, kind, slotId, today)
-                .map(TimetableSlotUserNoteEntity::getId)
-                .or(() -> userNoteRepository
-                        .findByUserIdAndSlotKindAndSlotIdAndTargetDateIsNull(userId, kind, slotId)
-                        .map(TimetableSlotUserNoteEntity::getId))
-                .orElse(null);
     }
 
     /**

@@ -253,13 +253,15 @@ circulation / shift / chat / faq の一部 EP は、`@EnableMethodSecurity` 未�
 
 `isAuthenticated()` のみの 36 EP（§5）は「ログインさえしていれば誰でも」を意味するため、**本来は所有者ガードが必要な EP が紛れていないか Phase 3 で個別精査**する（特に media upload・personal timetable・announcement feed 系）。
 
-### 3.5 SYSTEM_ADMIN の UI 表示方針 — 「BE は常に通す」と「FE はスコープ管理者導線に出さない」は別の設計判断（CMP-260909-1509）
+### 3.5 SYSTEM_ADMIN の UI 表示方針 — BEの許可経路とFEのスコープ管理者導線（CMP-260909-1509）
 
 **マスター判断（2026-09-09）**: プラットフォーム管理者（SYSTEM_ADMIN）は**運営専用の特別なアカウント**を想定しており、一般利用者アカウントとは**別の動作をするのが正**である。これは欠陥ではなく意図した設計であり、本節で明文化する。
 
 #### BE 側（不変・本節では変更しない）
 
-§3.3.1 のとおり、`AccessGuard` / `AccessControlService` 系の per-scope 判定は **SYSTEM_ADMIN を常に通す**（`isSystemAdmin(userId)` が true なら無条件許可）。この方針は変更しない。実例: `ShiftAutoAssignService`（`backend/src/main/java/com/mannschaft/app/shift/service/ShiftAutoAssignService.java:353,356,381,384,405,408`）は各 public 入口で `accessControlService.isSystemAdmin(userId)` を先に確認し、true なら即許可、false ならチームの `checkAdminOrAbove` / `isAdminOrAbove` へフォールバックする。**SYSTEM_ADMIN は当該チームの ADMIN/DEPUTY_ADMIN でなくても BE API は通る。**
+§3.3.1 のとおり、`AccessGuard` やSYSTEM_ADMIN短絡を明示したロール判定経路は **SYSTEM_ADMIN を通す**（`isSystemAdmin(userId)` が true なら無条件許可）。この方針は変更しない。実例: `ShiftAutoAssignService`（`backend/src/main/java/com/mannschaft/app/shift/service/ShiftAutoAssignService.java:353,356,381,384,405,408`）は各 public 入口で `accessControlService.isSystemAdmin(userId)` を先に確認し、true なら即許可、false ならチームの `checkAdminOrAbove` / `isAdminOrAbove` へフォールバックする。**SYSTEM_ADMIN は当該チームの ADMIN/DEPUTY_ADMIN でなくても BE API は通る。**
+
+**実効権限経路の区別（CMP-261021-0020）**: `AccessControlService.checkPermission` は対象チームの実効権限を判定し、SYSTEM_ADMIN 単独を無条件に許可しない。フレンドの follow/unfollow と `GET /teams/{id}/friends/pending` は `MANAGE_FRIEND_TEAMS` があれば MEMBER も許可し、SYSTEM_ADMIN 兼任者も対象チームの実効権限がある場合だけ許可する。この経路の FE は `can('MANAGE_FRIEND_TEAMS')` に合わせ、以下のロール限定 UI 方針を適用しない。ほかの API のロール方針は本変更の対象外。
 
 #### FE 側（本節で新規に明文化する方針）
 

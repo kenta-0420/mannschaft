@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261015-1421",
+  "scope": "app",
+  "implementation": {
+    "pr": 3888,
+    "sha": "0f56a0c8bfecf9fb27eba07983b3315cb66662b3"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "招待QR PDFが通常・無期限・失効・長い和文など8条件でA4 1ページに収まる。",
+      "tests": [
+        {
+          "name": "PDFテンプレート契約テストと最終PDF実機出力",
+          "evidence": "backend/src/test/java/com/mannschaft/app/role/InviteQrPdfTemplateContractTest.java"
+        },
+        {
+          "name": "正式Backend CI・全6 shardsとCompile & Test",
+          "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/38695920196"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "BE/FE中央バッジを左右半円のカプセル形状にし、QRサイズを維持する。",
+      "tests": [
+        {
+          "name": "BE PNGバッジ形状・350px生成・復号テスト",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/qr/BrandedQrImageWriterTest.java"
+        },
+        {
+          "name": "FE部品のbadge shape・余白・保存SVG座標テスト（5件、画面QR復号は未実施）",
+          "evidence": "frontend/app/components/qr/QrCodeImage.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "BE生成PNGと実PDF内QRから期待URLを復号できる。画面QRの実機復号は未確認として区別する。",
+      "tests": [
+        {
+          "name": "BE画像生成テストとPDF実機取得・期待URL復号",
+          "evidence": "docs/evidence/CMP-261015-1421-review.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "FE共通部品の画面QR本体をinline SVGで表示し、Mannschaftバッジを別HTML overlayとして維持する。SVG exportは別経路とする。",
+      "tests": [
+        {
+          "name": "Vue component sourceとshape/余白/保存SVG spec（QR復号は含まない）",
+          "evidence": "frontend/app/components/qr/QrCodeImage.vue"
+        },
+        {
+          "name": "FE部品spec 5件と正式CI",
+          "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/38695920349"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "管理者は招待を作成してPDFを取得し、MEMBERは招待管理画面からチームrootへredirectして拒否され、別tenantのPDF取得も拒否される。",
+      "tests": [
+        {
+          "name": "隔離dev実機CORE: ADMIN PDF 200、MEMBER redirect、他tenant拒否UIとPDF直URL 403",
+          "evidence": "docs/evidence/CMP-261015-1421-review.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-6",
+      "description": "正式CIが最終PR HEADで成功する。",
+      "tests": [
+        {
+          "name": "Backend Compile & Test、全6 shards、check 25 pass・条件付き2 skip・pending/failure 0",
+          "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/38695920196"
+        }
+      ]
+    },
+    {
+      "id": "AC-7",
+      "description": "3別account・各1 contextで住民探索を完了し、達成と未達/未検証を分けて記録する。stage完了は全探索目標のgreenを意味しない。",
+      "tests": [
+        {
+          "name": "紙PDF取得成功、英語UIで日本語の招待一覧/dialog・英語persona停止、mobile連絡先QR入口未発見、contact直接画面loading未検証",
+          "evidence": "docs/evidence/CMP-261015-1421-review.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 38695920196
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261015-1421-review.md"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261015-1421-review.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261015-1421-review.md"
+    }
+  },
+  "regressions": []
+}

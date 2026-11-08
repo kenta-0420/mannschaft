@@ -123,10 +123,24 @@ class ShiftPdfFacadeAuthzTest {
         }
 
         @Test
-        @DisplayName("未公開は SUPPORTER でも 403 でなく 404（認可結果より先に隠す）")
-        void 未公開はSUPPORTERにも404() {
+        @DisplayName("SUPPORTER は未公開でも公開済みと同じ 403（D-2127-1: 応答差で公開状態を漏らさない）")
+        void 未公開でもSUPPORTERは403() {
             given(scheduleService.resolveScope(SCHEDULE_ID))
                     .willReturn(scope(ShiftScheduleStatus.DRAFT, null));
+            given(accessControlService.isMember(REQUESTER, TEAM_ID, "TEAM")).willReturn(true);
+            given(accessControlService.isSupporter(REQUESTER, TEAM_ID, "TEAM")).willReturn(true);
+
+            assertCode(org.assertj.core.api.Assertions.catchThrowable(
+                    () -> facade.generateTeamPdf(SCHEDULE_ID, REQUESTER)), CommonErrorCode.COMMON_002);
+            verifyNoInteractions(pdfService);
+        }
+
+        @Test
+        @DisplayName("一般メンバーには未公開は 404（認可結果の後に隠す）")
+        void 未公開は一般メンバーに404() {
+            given(scheduleService.resolveScope(SCHEDULE_ID))
+                    .willReturn(scope(ShiftScheduleStatus.DRAFT, null));
+            given(accessControlService.isMember(REQUESTER, TEAM_ID, "TEAM")).willReturn(true);
 
             Throwable thrown = org.assertj.core.api.Assertions.catchThrowable(
                     () -> facade.generateTeamPdf(SCHEDULE_ID, REQUESTER));

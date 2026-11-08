@@ -1,0 +1,25 @@
+{
+  "runtimeSourceHead": "af5373aa64252c615067ac965b687067e49ba09a",
+  "rawSource": ".claude/evidence/CMP-261024-1830/attendance-playwright-attempt6.json",
+  "stats": {
+    "startTime": "2026-10-24T11:01:38.754Z",
+    "duration": 377462.69499999995,
+    "expected": 4,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "errors": [],
+  "scope": [
+    "team",
+    "organization"
+  ],
+  "roles": [
+    "管理者",
+    "一般メンバー",
+    "非所属",
+    "別テナント",
+    "未認証"
+  ],
+  "apiUse": "認証・前提作成・後始末のみ。画面確認をAPI結果で代替しない。"
+}

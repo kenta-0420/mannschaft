@@ -100,6 +100,8 @@ class DashboardControllerTest {
     @Mock private ReservationRepository reservationRepository;
     @Mock private TeamService teamService;
     @Mock private OrganizationService organizationService;
+    @Mock private com.mannschaft.app.schedule.service.ScheduleScopeQueryService scheduleScopeQueryService;
+    @Mock private com.mannschaft.app.bulletin.service.BulletinUnreadQueryService bulletinUnreadQueryService;
     @Mock private ScopeActionRequiredFacade scopeActionRequiredFacade;
 
     @InjectMocks
@@ -520,10 +522,11 @@ class DashboardControllerTest {
                     .willReturn(List.of(TEAM_ID));
             given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID))
                     .willReturn(List.of(ORG_ID));
-            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(eq(TEAM_ID), any(), any()))
-                    .willReturn(List.of(teamVisible, teamHidden));
-            given(scheduleRepository.findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(eq(ORG_ID), any(), any()))
-                    .willReturn(List.of(orgVisible, orgHidden));
+            // CMP-261103-1225: 所属スコープごとではなく schedule ドメインの照会 Service で一括取得する
+            given(scheduleScopeQueryService.findTeamSchedulesBetween(eq(List.of(TEAM_ID)), any(), any()))
+                    .willReturn(List.of(toView(teamVisible), toView(teamHidden)));
+            given(scheduleScopeQueryService.findOrganizationSchedulesBetween(eq(List.of(ORG_ID)), any(), any()))
+                    .willReturn(List.of(toView(orgVisible), toView(orgHidden)));
 
             // filterAccessible は teamVisible / orgVisible のみを可視とする
             given(contentVisibilityChecker.filterAccessible(
@@ -579,6 +582,14 @@ class DashboardControllerTest {
                     .build();
             ReflectionTestUtils.setField(entity, "id", id);
             return entity;
+        }
+
+        private com.mannschaft.app.schedule.dto.ScopeScheduleView toView(ScheduleEntity e) {
+            return new com.mannschaft.app.schedule.dto.ScopeScheduleView(e.getId(), e.getTeamId(),
+                    e.getOrganizationId(), e.getTitle(),
+                    e.getStartAt().toLocalDate(), e.getStartAt().toLocalTime(),
+                    e.getEndAt().toLocalDate(), e.getEndAt().toLocalTime(),
+                    e.getLocation(), e.getAllDay());
         }
 
         private ScheduleEntity buildScheduleAt(Long id, LocalDateTime startAt) {

@@ -7,6 +7,7 @@
  * MEMBER_AND_SUPPORTER は Phase 3 で解禁予定（disabled + ツールチップ表示）。
  */
 import type { ForwardTarget } from '~/types/friendForward'
+import { getLoadErrorHttpStatus } from '~/utils/loadError'
 
 const { t } = useI18n()
 const notification = useNotification()
@@ -23,6 +24,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
   'success': [forwardId: number]
+  /** 409（既に転送済み）を受けた。親は一覧を再取得する */
+  'alreadyForwarded': []
 }>()
 
 const visible = computed({
@@ -49,6 +52,8 @@ watch(visible, (v) => {
 
 async function onSubmit() {
   if (!props.postId) return
+  // 再入防止: ボタンの disabled は再描画後に効くため、連打の2打目以降はここで止める
+  if (submitting.value) return
   submitting.value = true
   try {
     const result = await forward(props.teamId, props.postId, {
@@ -60,7 +65,15 @@ async function onSubmit() {
     visible.value = false
   }
   catch (error) {
-    handleApiError(error, 'friend-forward')
+    if (getLoadErrorHttpStatus(error) === 409) {
+      // 既に転送済み: 汎用エラーにせず専用文言で伝え、親に一覧を再取得させる
+      notification.warn(t('friend_feed.forward.already_forwarded'))
+      emit('alreadyForwarded')
+      visible.value = false
+    }
+    else {
+      handleApiError(error, 'friend-forward')
+    }
   }
   finally {
     submitting.value = false

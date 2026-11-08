@@ -1,0 +1,186 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261027-1311",
+  "scope": "app",
+  "implementation": {
+    "pr": 4163,
+    "sha": "1a10ca038ffb4a215d4b1b44242ff4ef68275607"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "C1",
+      "description": "C1 正常可視集合。非ADMIN JPQLのvisibility/本人現役EXISTSをPage前に適用、同述語count、Controllerは非null PageをDTO map",
+      "tests": [
+        {
+          "name": "CommitteeListVisibilityIntegrationTest#可視二種と本人現役HIDDENだけを返しDTO内nullableは保持する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/committee/CommitteeListVisibilityIntegrationTest.java"
+        },
+        {
+          "name": "CommitteeListVisibilityIntegrationTest#実ServiceのPageもnullマーカーを含まず可視総件数を返す",
+          "evidence": "backend/src/test/java/com/mannschaft/app/committee/CommitteeListVisibilityIntegrationTest.java"
+        }
+      ]
+    },
+    {
+      "id": "C2",
+      "description": "C2 空/0。空組織/全非所属HIDDENを可視0としてPage化",
+      "tests": [
+        {
+          "name": "CommitteeListVisibilityIntegrationTest#空または全件非所属HIDDENなら空配列と総件数ゼロ",
+          "evidence": "backend/src/test/java/com/mannschaft/app/committee/CommitteeListVisibilityIntegrationTest.java"
+        }
+      ]
+    },
+    {
+      "id": "C3",
+      "description": "C3 可視21以上と境界。可視集合を先に絞りsize20、先頭HIDDEN群/交互、末尾/ページ外も可視総数を保持",
+      "tests": [
+        {
+          "name": "CommitteeListVisibilityIntegrationTest#不可視行をページング前に除外し境界でも可視行を欠落させない",
+          "evidence": "backend/src/test/java/com/mannschaft/app/committee/CommitteeListVisibilityIntegrationTest.java"
+        }
+      ]
+    },
+    {
+      "id": "C4",
+      "description": "C4 status/null。status未指定/指定ともcontent/count同条件、ARCHIVEDをsoftdeleteと混同しない",
+      "tests": [
+        {
+          "name": "CommitteeListVisibilityIntegrationTest#status指定は可視集合のcontentとcount双方へ適用する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/committee/CommitteeListVisibilityIntegrationTest.java"
+        }
+      ]
+    },
+    {
+      "id": "C5",
+      "description": "C5 管理者。既存membership→isAdminOrAbove順序、ADMIN/DEPUTY_ADMINはHIDDEN含む全未削除",
+      "tests": [
+        {
+          "name": "CommitteeListVisibilityIntegrationTest#組織管理者は委員会非所属でもHIDDENを含む全件を表示する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/committee/CommitteeListVisibilityIntegrationTest.java"
+        }
+      ]
+    },
+    {
+      "id": "C6",
+      "description": "C6 本人/履歴/重複。userId一致かつleftAt nullのEXISTS、履歴や重複現役でもc行とcountは1",
+      "tests": [
+        {
+          "name": "CommitteeListVisibilityIntegrationTest#本人離脱と他人現役を除き履歴と重複現役があっても委員会は一件",
+          "evidence": "backend/src/test/java/com/mannschaft/app/committee/CommitteeListVisibilityIntegrationTest.java"
+        }
+      ]
+    },
+    {
+      "id": "C7",
+      "description": "C7 scope/認可。org所属を先行確認、他org/離脱/非所属/SYSTEM_ADMIN単独は従来403",
+      "tests": [
+        {
+          "name": "CommitteeListVisibilityIntegrationTest#組織非所属は委員会現役でも先行認可で403",
+          "evidence": "backend/src/test/java/com/mannschaft/app/committee/CommitteeListVisibilityIntegrationTest.java"
+        },
+        {
+          "name": "CommitteeListVisibilityIntegrationTest#未認証は実Securityで401",
+          "evidence": "backend/src/test/java/com/mannschaft/app/committee/CommitteeListVisibilityIntegrationTest.java"
+        }
+      ]
+    },
+    {
+      "id": "C8",
+      "description": "C8 論理削除。Entity SQLRestrictionをJPQL/派生queryのcontent/count双方に適用",
+      "tests": [
+        {
+          "name": "CommitteeListVisibilityIntegrationTest#論理削除行は非管理者と管理者のcontentとcount双方から除外する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/committee/CommitteeListVisibilityIntegrationTest.java"
+        }
+      ]
+    },
+    {
+      "id": "C9",
+      "description": "C9 nullable/HTTP W。`data`内SpringPage契約、content配列要素null0、仕様scalar nullable維持",
+      "tests": [
+        {
+          "name": "CommitteeListVisibilityIntegrationTest#可視二種と本人現役HIDDENだけを返しDTO内nullableは保持する",
+          "evidence": "backend/src/test/java/com/mannschaft/app/committee/CommitteeListVisibilityIntegrationTest.java"
+        }
+      ]
+    },
+    {
+      "id": "C10",
+      "description": "C10 性能/拒否境界。拒否時repository0、許可時memberRepo全委員会IDロード0、org/user/status/HIDDEN/Pageableを正しいqueryへ",
+      "tests": [
+        {
+          "name": "CommitteeServiceToBuilderTest#一覧の組織所属拒否は管理者判定と全Repository参照より先に行う",
+          "evidence": "backend/src/test/java/com/mannschaft/app/committee/CommitteeServiceToBuilderTest.java"
+        },
+        {
+          "name": "CommitteeServiceToBuilderTest#管理者一覧は既存status検索を使い本人委員会IDをロードしない",
+          "evidence": "backend/src/test/java/com/mannschaft/app/committee/CommitteeServiceToBuilderTest.java"
+        },
+        {
+          "name": "CommitteeServiceToBuilderTest#非管理者一覧は可視Page検索だけを使い本人委員会IDをロードしない",
+          "evidence": "backend/src/test/java/com/mannschaft/app/committee/CommitteeServiceToBuilderTest.java"
+        }
+      ]
+    },
+    {
+      "id": "SORT",
+      "description": "追加sort integration AC。Serviceだけで不足するid ASCを末尾補完、既存id指定identity/Order/size/page/unpaged保持、global仕様変更なし",
+      "tests": [
+        {
+          "name": "CommitteeListVisibilityIntegrationTest#通常queryと同値createdAt指定でも全ページの集合を欠落させない",
+          "evidence": "backend/src/test/java/com/mannschaft/app/committee/CommitteeListVisibilityIntegrationTest.java"
+        },
+        {
+          "name": "CommitteeListVisibilityIntegrationTest#実Serviceはsort未指定の空Pageにも一意ID順序を持たせる",
+          "evidence": "backend/src/test/java/com/mannschaft/app/committee/CommitteeListVisibilityIntegrationTest.java"
+        },
+        {
+          "name": "CommitteeServiceToBuilderTest#一覧はcallerSortとページを保ち不足するID順序だけ補う",
+          "evidence": "backend/src/test/java/com/mannschaft/app/committee/CommitteeServiceToBuilderTest.java"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 40552419310
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4163"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261027-1311/selected-proof.json",
+      "reason": "consumer FE8f/BE1aの原51件50PASS/1FAIL・匿名0を保持。通常dialog終了後追補と、別匿名補足3case（API401/FEログイン遷移/非露出）を選択証拠に分離。"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261027-1311/selected-proof.json",
+      "reason": "rootは委員会目的3独立assignmentの探索実施・triage・正常閉鎖を受入。全目的達成false/coveragefalse、別件detail不具合と部分未達は保持。"
+    }
+  },
+  "regressions": [
+    {
+      "description": "非所属HIDDENがnullマーカーと過大countとして残る一覧を、DBページング前の可視集合検索へ修復。正式red25中13assert失敗と新head実XML48成功を区別して保持。",
+      "test": "CommitteeListVisibilityIntegrationTest",
+      "redEvidence": "docs/evidence/CMP-261027-1311/selected-proof.json",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40552419310"
+    },
+    {
+      "description": "通常sortなしADMIN41件の重複欠落を、委員会一覧2経路のid末尾補完で修復。local sort48中10assert失敗と新CI48成功。localGitadapter違反・独立CI red未取得を保持。",
+      "test": "CommitteeListVisibilityIntegrationTest / CommitteeServiceToBuilderTest",
+      "redEvidence": "docs/evidence/CMP-261027-1311/selected-proof.json",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40552419310"
+    }
+  ],
+  "selectedProof": "docs/evidence/CMP-261027-1311/selected-proof.json",
+  "anonymousSupplementRef": {
+    "path": ".claude/runtime/october-fifth-wave-20261027/ui-prepare/anonymous-supplement-8f671-1a10-v1-observations.json",
+    "sha256": "123c0068e9f2801bb5f938dd1b8ae64efdf288534ab7d89e4af8dadb28277d16"
+  },
+  "completionScope": "委員会一覧Page可視性・count・安定sortの修復。root受入済み探索stageは実施・triage・正常閉鎖であり全目的/coverage合格を意味しない。NAME_ONLY詳細は別CMP未着手。"
+}

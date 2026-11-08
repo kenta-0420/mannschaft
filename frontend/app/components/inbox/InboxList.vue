@@ -289,14 +289,14 @@ const snoozePresets: SnoozePresetDef[] = [
 </script>
 
 <template>
-  <div>
+  <div class="min-w-0">
     <!-- ヘッダー（状態タブ + ラベル管理ボタン + bulk 選択トグル） -->
-    <div class="mb-4 flex items-center gap-2 border-b border-surface-200 dark:border-surface-700">
+    <div class="mb-4 flex flex-wrap items-center justify-end gap-2 border-b border-surface-200 dark:border-surface-700 md:flex-nowrap">
       <!-- 状態タブ -->
       <div
         role="tablist"
         :aria-label="t('inbox.title')"
-        class="flex flex-1 gap-1"
+        class="flex w-full min-w-0 flex-wrap gap-1 md:w-auto md:flex-1"
       >
         <button
           v-for="tab in tabs"
@@ -305,7 +305,7 @@ const snoozePresets: SnoozePresetDef[] = [
           role="tab"
           :aria-selected="inboxStore.currentTab === tab.key ? 'true' : 'false'"
           :data-testid="`inbox-tab-${tab.key.toLowerCase()}`"
-          class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors"
+          class="flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap px-2 py-2 text-sm font-medium transition-colors md:px-4"
           :class="
             inboxStore.currentTab === tab.key
               ? 'border-b-2 border-primary text-primary'
@@ -318,7 +318,7 @@ const snoozePresets: SnoozePresetDef[] = [
             v-if="tab.count > 0"
             :value="tab.count"
             severity="danger"
-            class="!min-w-[1.25rem] !text-[0.625rem]"
+            class="!min-w-[1.25rem] shrink-0 !text-[0.625rem]"
           />
         </button>
       </div>
@@ -330,6 +330,7 @@ const snoozePresets: SnoozePresetDef[] = [
         :title="t('inbox.label.manage')"
         :aria-label="t('inbox.label.manage')"
         data-testid="inbox-label-manage-btn"
+        class="!min-h-11 !min-w-11 shrink-0"
         @click.stop="toggleLabelManager"
       />
       <!-- bulk 選択モードトグル -->
@@ -340,6 +341,7 @@ const snoozePresets: SnoozePresetDef[] = [
         :title="inboxStore.selectionMode ? t('inbox.bulk.exit') : t('inbox.bulk.selectMode')"
         :aria-label="inboxStore.selectionMode ? t('inbox.bulk.exit') : t('inbox.bulk.selectMode')"
         data-testid="inbox-bulk-mode-btn"
+        class="!min-h-11 !min-w-11 shrink-0"
         @click="inboxStore.toggleSelectionMode()"
       />
     </div>

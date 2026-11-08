@@ -1,0 +1,182 @@
+{
+  "kind": "formal-ui-not-performance",
+  "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+  "mode": "mobile",
+  "startedAt": "2026-10-28T13:30:09.367Z",
+  "cases": [
+    {
+      "name": "mobile-fresh-direct-calendar-agenda",
+      "status": "passed",
+      "isMobile": true,
+      "hasTouch": true,
+      "layerStateAbsentBeforeEntry": true,
+      "dashboardNotVisited": true,
+      "agendaState": true,
+      "mobileListBodyVisible": true
+    },
+    {
+      "name": "mobile-saved-view-ui-reload-and-gantt-query",
+      "status": "passed",
+      "savedViewSelectedByUI": true,
+      "savedViewRetainedOnMobile": true,
+      "mobileListBodyVisible": true,
+      "weekBodyVisibleAtDesktopWidth": true,
+      "weekHiddenAtMobileWidthByExistingDesign": true,
+      "ganttQueryEntry": true,
+      "returnedToCalendarByUI": true,
+      "viewRoleDifference": "Personal view preference is account-local browser state; management role is not applicable"
+    }
+  ],
+  "checkpoints": [
+    {
+      "stage": "mobile-fresh-direct-calendar-agenda",
+      "name": "case-start",
+      "at": "2026-10-28T13:30:35.515Z"
+    },
+    {
+      "stage": "mobile-fresh-direct-calendar-agenda",
+      "name": "mobile-api-login-precondition",
+      "at": "2026-10-28T13:30:35.520Z"
+    },
+    {
+      "stage": "mobile-fresh-direct-calendar-agenda",
+      "name": "mobile-layer-key-absent",
+      "at": "2026-10-28T13:30:36.653Z"
+    },
+    {
+      "stage": "mobile-fresh-direct-calendar-agenda",
+      "name": "calendar-view-attached",
+      "at": "2026-10-28T13:30:37.389Z"
+    },
+    {
+      "stage": "mobile-fresh-direct-calendar-agenda",
+      "name": "mobile-agenda-initialized",
+      "at": "2026-10-28T13:30:44.278Z"
+    },
+    {
+      "stage": "mobile-fresh-direct-calendar-agenda",
+      "name": "mobile-agenda-body-visible",
+      "at": "2026-10-28T13:30:44.579Z"
+    },
+    {
+      "stage": "mobile-saved-view-ui-reload-and-gantt-query",
+      "name": "case-start",
+      "at": "2026-10-28T13:30:45.226Z"
+    },
+    {
+      "stage": "mobile-saved-view-ui-reload-and-gantt-query",
+      "name": "desktop-width-week-ui",
+      "at": "2026-10-28T13:30:45.227Z"
+    },
+    {
+      "stage": "mobile-saved-view-ui-reload-and-gantt-query",
+      "name": "week-body-visible",
+      "at": "2026-10-28T13:30:46.186Z"
+    },
+    {
+      "stage": "mobile-saved-view-ui-reload-and-gantt-query",
+      "name": "calendar-view-attached",
+      "at": "2026-10-28T13:30:47.337Z"
+    },
+    {
+      "stage": "mobile-saved-view-ui-reload-and-gantt-query",
+      "name": "mobile-week-restored",
+      "at": "2026-10-28T13:30:50.348Z"
+    },
+    {
+      "stage": "mobile-saved-view-ui-reload-and-gantt-query",
+      "name": "mobile-list-body-visible",
+      "at": "2026-10-28T13:30:50.675Z"
+    },
+    {
+      "stage": "mobile-saved-view-ui-reload-and-gantt-query",
+      "name": "calendar-view-attached",
+      "at": "2026-10-28T13:30:52.299Z"
+    },
+    {
+      "stage": "mobile-saved-view-ui-reload-and-gantt-query",
+      "name": "mobile-gantt-query-active",
+      "at": "2026-10-28T13:30:54.992Z"
+    },
+    {
+      "stage": "mobile-saved-view-ui-reload-and-gantt-query",
+      "name": "mobile-calendar-tab-return",
+      "at": "2026-10-28T13:30:55.668Z"
+    }
+  ],
+  "identityShapes": [],
+  "ownCreates": 0,
+  "ownUpdates": 0,
+  "ownDeletes": 0,
+  "sharedWrites": 0,
+  "notificationsRequested": 0,
+  "trace": false,
+  "video": false,
+  "rawImages": false,
+  "screenshots": [
+    {
+      "file": "未採用ローカル画像（公開証跡に含めない）",
+      "masked": true,
+      "width": 390,
+      "height": 844,
+      "bodyOverflowPx": 0
+    },
+    {
+      "file": "未採用ローカル画像（公開証跡に含めない）",
+      "masked": true,
+      "width": 390,
+      "height": 844,
+      "bodyOverflowPx": 0
+    }
+  ],
+  "stage": "mobile-saved-view-ui-reload-and-gantt-query",
+  "checkpoint": "mobile-calendar-tab-return",
+  "status": "completed",
+  "sessions": [
+    {
+      "actorAlias": "owner",
+      "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+      "credentialsRead": true,
+      "businessMutations": 0,
+      "trace": false,
+      "video": false,
+      "pageErrorCount": 0,
+      "runtimeGuard": {
+        "sourceHead": "488e4b9bf284bb6c996c2b87a09d37ad06a10bd6",
+        "ownerAndSourceMatch": true,
+        "frontendIdentityMatches": true,
+        "frontendOwnedSocketMatches": true,
+        "runtimePublic8081Internal8080Match": true,
+        "existingMainApiIdentityMatches": true,
+        "rawArgvEnvironmentSaved": false
+      },
+      "initialCookieCount": 0,
+      "frontend200": true,
+      "frontendActual3011": true,
+      "frontendLogicalPreserved": true,
+      "apiHealth200": true,
+      "apiActual8080": true,
+      "publicRuntimeApiExpected": true,
+      "fixtureAliasesDistinct": true,
+      "configuredActorAliases": [
+        "owner",
+        "member",
+        "outsider"
+      ],
+      "loginStatus": 200,
+      "apiPreconditionProfileStatus": 200,
+      "apiPreconditionIdentityMatches": true,
+      "apiPreconditionCookiePresent": true,
+      "apiPreconditionClientUserStored": true,
+      "apiPreconditionProjectionMatchesLoginSession": true,
+      "apiPreconditionLayerStateModified": false,
+      "apiPreconditionTokensStored": false,
+      "logoutStatus": 200,
+      "contextClosed": true,
+      "browserClosed": true,
+      "closed": true
+    }
+  ],
+  "allSessionsClosed": true,
+  "finishedAt": "2026-10-28T13:31:01.545Z"
+}

@@ -13,6 +13,8 @@
         "step3": "Escanea el código QR con la aplicación de autenticación (si no puedes escanearlo, introduce la clave secreta manualmente).",
         "step4": "Introduce el código de 6 dígitos que muestra la aplicación de autenticación para completar la activación."
       },
+      "email_title": "Verificación en dos pasos por correo",
+      "email_desc": "Verifica tu identidad con un código de 6 dígitos enviado a tu correo electrónico registrado. Elige \"Activar con correo\" en los ajustes e introduce el código recibido para activarla. Al iniciar sesión, pulsa \"Enviar un código por correo\" para recibir el código. Si el correo no llega, cambia a \"Código de respaldo\" en la pantalla de inicio de sesión y usa uno de los códigos de respaldo que guardaste.",
       "backup_title": "Acerca de los códigos de respaldo",
       "backup_desc": "Los códigos de respaldo son una vía de acceso de reserva para cuando ya no puedes usar la aplicación de autenticación, por ejemplo si pierdes el smartphone. Guárdalos en un lugar seguro. Cada código solo se puede usar una vez. Al pulsar «Regenerar códigos de respaldo» se emiten códigos nuevos y todos los anteriores quedan invalidados."
     },

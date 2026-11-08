@@ -11,6 +11,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * iCal購読URLトークンエンティティ。
@@ -25,6 +26,7 @@ public class UserIcalTokenEntity extends BaseEntity {
     @Column(nullable = false)
     private Long userId;
 
+    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Column(nullable = false, length = 64)
     private String token;
 

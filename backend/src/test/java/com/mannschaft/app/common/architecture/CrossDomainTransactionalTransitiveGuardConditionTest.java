@@ -115,6 +115,6 @@ class CrossDomainTransactionalTransitiveGuardConditionTest {
     private List<CrossDomainTransactionalTransitiveArchTest.TransitiveViolation> detect(
             Class<?> fixtureType) {
         JavaClass fixture = fixtureClasses.get(fixtureType);
-        return CrossDomainTransactionalTransitiveArchTest.findViolations(fixture);
+        return CrossDomainTransactionalTransitiveArchTest.findViolations(fixture, fixtureClasses);
     }
 }

@@ -1,0 +1,26 @@
+{
+  "runId": "CMP0649-R02-cmp0649-79445b4f6a17",
+  "personaId": "CMP0649-D-boundary",
+  "journeyId": "CMP0649-R02-D-boundary",
+  "personaArchetype": "高齢・低リテラシー×隙間狙い",
+  "sourceHead": "dd41b081219c1e8bb127b07f4086e2d104903a11",
+  "registrationSource": "actual-resident-artifacts",
+  "status": "observed-unverified",
+  "trusted": false,
+  "purpose": "18時の承認待ち相談を処理し旧新担当予定を確認。後半S3所属aux権限不足とprimary越境、X他チーム境界を観測",
+  "result": {
+    "approval": "未達",
+    "oldNewSchedule": "未達",
+    "businessMutation": false,
+    "visualConfirmation": false,
+    "boundary": "S3 aux管理者入口拒否を観測。S3/X primaryチーム403・シフト404。相談URLはDも404のため境界成立の単独根拠にはしない。"
+  },
+  "visualConfirmation": false,
+  "coveragePassed": false,
+  "observation": "/dashboardの「シフト交代申請」カードからprimaryのswap/3へ進み404。後半swap/5もHTTP 404を観測し、承認と旧新担当予定の確認は未達。業務更新なし。S3のaux管理入口拒否、S3/Xのprimaryチーム403とシフト404を観測。相談URLは管理側Dでも404となるため、それだけを境界成立の根拠にしない。未実証の住民観測として保持し、殿の別裁定はroot-adjudication.json参照。原runId: CMP0649-R02-cmp0649-79445b4f6a17。sourceHead: dd41b081219c1e8bb127b07f4086e2d104903a11。DOM探索のみ、画像視覚確認なし。",
+  "observedAt": "2026-10-26T16:46:38.011Z",
+  "page": "/teams/cmp0649-79445b4f6a17-primary/admin/shifts/swap/5",
+  "privateEvidenceSha256": "6b98e3858a9c81db201a29a123bf66f81320358360bcadd77584817542cf8dbf",
+  "privateEvidencePath": ".claude/campaigns/cmp0649-next-20261026/resident-D-safe.json",
+  "note": "住民が独立UI探索で得た未実証観測。裏取り・製品修正・coverage合格を表さない。元private証跡全量は公開しない。"
+}

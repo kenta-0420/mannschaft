@@ -1,0 +1,413 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260902-0059",
+  "scope": "app",
+  "implementation": {
+    "pr": 3918,
+    "sha": "46d9ec59b1de525c8fb8f278694bb91507f9b907"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "R1",
+      "description": "削除済ACTIVE復元204と状態保持",
+      "tests": [
+        {
+          "name": "TeamRestoreSecurityFilterContractIT#実JWTで削除済チームを復元して予定を掃除すると元利用者のcalendarから消える",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/backend/src/test/java/com/mannschaft/app/team/TeamRestoreSecurityFilterContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "R2",
+      "description": "未認証401、非SYSは存在/削除/不在とも403・更新なし",
+      "tests": [
+        {
+          "name": "JWT無しの復元は401で対象チームと予定を更新しない／非SYSの実JWTは不存在チームの復元を403で拒否する",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/backend/src/test/java/com/mannschaft/app/team/TeamRestoreSecurityFilterContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "R3",
+      "description": "不在404、未削除/再復元409と承認文言",
+      "tests": [
+        {
+          "name": "SYSの実JWTで不存在チームの復元は404の既存契約を保つ／SYSの実JWTで未削除チームの復元は409TEAM006の既存契約を保つ",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/backend/src/test/java/com/mannschaft/app/team/TeamRestoreSecurityFilterContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "R4",
+      "description": "PROVISIONED・非公開保持、通常GET/予定404",
+      "tests": [
+        {
+          "name": "実JWTで復元してもPROVISIONEDと非公開範囲を保ち通常導線から隠す",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/backend/src/test/java/com/mannschaft/app/team/TeamRestoreSecurityFilterContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "R5",
+      "description": "予定/加盟0、archivedAt null/非null",
+      "tests": [
+        {
+          "name": "予定も加盟も無い削除済チームはアーカイブ状態を保って復元し再復元は409",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/backend/src/test/java/com/mannschaft/app/team/TeamRestoreSecurityFilterContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "R6",
+      "description": "削除前加盟/制限を戻さない",
+      "tests": [
+        {
+          "name": "チームの復元は削除前の加盟を戻さない",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/backend/src/test/java/com/mannschaft/app/team/affiliation/TeamOrgLifecycleCleanupCommittedIT.java"
+        }
+      ]
+    },
+    {
+      "id": "R7",
+      "description": "cleanup/outbox/update途中失敗はrollback・成功監査0",
+      "tests": [
+        {
+          "name": "チーム復元の更新失敗は加盟片付けと通知予約も巻き戻す",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/backend/src/test/java/com/mannschaft/app/team/affiliation/TeamOrgLifecycleCleanupCommittedIT.java"
+        }
+      ]
+    },
+    {
+      "id": "R8",
+      "description": "同時復元204/409各1・成功監査1",
+      "tests": [
+        {
+          "name": "同時復元は204と409を一件ずつ返し成功監査も一件だけ",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/backend/src/test/java/com/mannschaft/app/team/TeamRestoreSecurityFilterContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "R9",
+      "description": "commit後actor/team/元deletedAt監査、失敗0",
+      "tests": [
+        {
+          "name": "同時復元は204と409を一件ずつ返し成功監査も一件だけ／R7 rollback case",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/backend/src/test/java/com/mannschaft/app/team/TeamRestoreSecurityFilterContractIT.java"
+        },
+        {
+          "name": "同時復元は204と409を一件ずつ返し成功監査も一件だけ／R7 rollback case",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/backend/src/test/java/com/mannschaft/app/team/affiliation/TeamOrgLifecycleCleanupCommittedIT.java"
+        }
+      ]
+    },
+    {
+      "id": "R10",
+      "description": "削除→復元→予定掃除→calendar消滅と役割境界",
+      "tests": [
+        {
+          "name": "実HTTPで復元後の予定を掃除すると元利用者のcalendarから消える",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/backend/src/test/java/com/mannschaft/app/team/TeamRestoreHttpContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "R11",
+      "description": "通常resolverの削除済/PROVISIONED拒否維持",
+      "tests": [
+        {
+          "name": "実HTTP caseのDELETE直後通常GET404/予定一覧404、PROVISIONED case",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/backend/src/test/java/com/mannschaft/app/team/TeamRestoreHttpContractIT.java"
+        },
+        {
+          "name": "実HTTP caseのDELETE直後通常GET404/予定一覧404、PROVISIONED case",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/backend/src/test/java/com/mannschaft/app/team/TeamRestoreSecurityFilterContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "R12",
+      "description": "専用slug単票/既存一意索引、予定新規列挙なし",
+      "tests": [
+        {
+          "name": "復元専用param queryと既存uq_teams_slugの静的確認。EXPLAIN/benchmark未実施",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/backend/src/main/java/com/mannschaft/app/team/repository/TeamRepository.java"
+        }
+      ]
+    },
+    {
+      "id": "U01",
+      "description": "SYS入口、未認証/非SYS/他アカウント直URL拒否",
+      "tests": [
+        {
+          "name": "004 case1/2＋005 case6-8＋境界住人",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/frontend/tests/e2e/real/team-restore-ui.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "U02",
+      "description": "専用GET401/403/200・情報非露出",
+      "tests": [
+        {
+          "name": "削除済チーム一覧はJWT無しを401で拒否する／削除済チーム一覧は非SYSに内容を返さず403にする",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/backend/src/test/java/com/mannschaft/app/team/TeamRestoreSecurityFilterContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "U03",
+      "description": "deleted-only・専用4項目・日時Instant",
+      "tests": [
+        {
+          "name": "SYSの削除済一覧は公開非公開と利用状態を問わず専用4項目だけ返す",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/backend/src/test/java/com/mannschaft/app/team/TeamRestoreSecurityFilterContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "U04",
+      "description": "DB page/count・固定順/tie・size100・外部sort無視",
+      "tests": [
+        {
+          "name": "削除済一覧は空と固定順の各頁と範囲外を返し外部sortを無視する／削除済一覧のsizeは共通上限100で丸める",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/backend/src/test/java/com/mannschaft/app/team/TeamRestoreSecurityFilterContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "U05",
+      "description": "loading/0件/error分離・同関数再試行",
+      "tests": [
+        {
+          "name": "loadingと取得成功0件を区別する／GET失敗は空表示にせず同じ取得関数で再試行する",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/frontend/app/pages/system-admin/teams/deleted.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "U06",
+      "description": "name/slug確認、取消/close/Escape PATCH0",
+      "tests": [
+        {
+          "name": "確認にはnameとslugを表示しキャンセルではPATCHしない／004 case2",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/frontend/app/pages/system-admin/teams/deleted.spec.ts"
+        },
+        {
+          "name": "確認にはnameとslugを表示しキャンセルではPATCHしない／004 case2",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/frontend/tests/e2e/real/team-restore-ui.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "U07",
+      "description": "選択slugへ1PATCH・全行多重送信抑止",
+      "tests": [
+        {
+          "name": "選択slugへ一回だけPATCHし処理中は別行も無効化する",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/frontend/app/pages/system-admin/teams/deleted.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "U08",
+      "description": "204成功/行消滅/再読込/最終頁補正",
+      "tests": [
+        {
+          "name": "最終頁の最後の行を復元したら有効頁へ補正して取得する／004 case3/4",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/frontend/app/pages/system-admin/teams/deleted.spec.ts"
+        },
+        {
+          "name": "最終頁の最後の行を復元したら有効頁へ補正して取得する／004 case3/4",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/frontend/tests/e2e/real/team-restore-ui.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "U09",
+      "description": "409/404/通信500と成功後GET失敗を区別",
+      "tests": [
+        {
+          "name": "英語409/404、PATCH server/network失敗、204後GET失敗のunit各case",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/frontend/app/pages/system-admin/teams/deleted.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "U10",
+      "description": "ACTIVE通常導線、PROVISIONED非誘導、R契約保持",
+      "tests": [
+        {
+          "name": "PROVISIONED成功には通常チームへの導線を出さない／004 case3-5",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/frontend/app/pages/system-admin/teams/deleted.spec.ts"
+        },
+        {
+          "name": "PROVISIONED成功には通常チームへの導線を出さない／004 case3-5",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/frontend/tests/e2e/real/team-restore-ui.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "U11",
+      "description": "6言語・360/390主要44px/意味名/横パンなし/keyboard",
+      "tests": [
+        {
+          "name": "004 case2、独立menu1＋pager/detail2。既存de予定翻訳負債は別フォロー",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/frontend/tests/e2e/real/team-restore-ui.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "U12",
+      "description": "入口から復元・一覧再読込まで実UI/実DB",
+      "tests": [
+        {
+          "name": "004採用5件＋005採用3件＋geometry3件の分割証拠",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/frontend/tests/e2e/real/team-restore-ui.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "U13",
+      "description": "対象予定を既存UIで削除し元calendarから消滅",
+      "tests": [
+        {
+          "name": "004公開/非公開各経路＋住人安全停止後のroot意味locator再実証",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/46d9ec59b1de525c8fb8f278694bb91507f9b907/frontend/tests/e2e/real/team-restore-ui.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "U14",
+      "description": "実機後3住人・独立Context/目的探索・root裏取り/回帰",
+      "tests": [
+        {
+          "name": "mobile/DE/boundary3名＋root追補。8回帰と別の観測登録4件",
+          "evidence": "docs/evidence/CMP-260902-0059-exploratory.md"
+        },
+        {
+          "name": "mobile/DE/boundary3名＋root追補。8回帰と別の観測登録4件",
+          "evidence": "docs/evidence/CMP-260902-0059-regressions.md"
+        }
+      ]
+    },
+    {
+      "id": "U15",
+      "description": "最終head CI/検分/実装mergeと正式化",
+      "tests": [
+        {
+          "name": "最終46d9のCI成功、root検分finding 0、PR #3918の通常mergeを確認",
+          "evidence": "docs/evidence/CMP-260902-0059-review.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 38981488022
+    },
+    {
+      "runId": 38981488009
+    },
+    {
+      "runId": 38981488124
+    },
+    {
+      "runId": 38981488040
+    },
+    {
+      "runId": 38981488036
+    },
+    {
+      "runId": 38981488098
+    },
+    {
+      "runId": 38981488090
+    },
+    {
+      "runId": 38981488149
+    },
+    {
+      "runId": 38981488012
+    },
+    {
+      "runId": 38981488068
+    },
+    {
+      "runId": 38981488112
+    },
+    {
+      "runId": 38983339800
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260902-0059-review.md"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260902-0059-real.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260902-0059-exploratory.md"
+    }
+  },
+  "regressions": [
+    {
+      "description": "英語409が日本語",
+      "test": "英語画面の409は英語で表示する",
+      "redEvidence": "docs/evidence/CMP-260902-0059-regressions.md",
+      "greenEvidence": "docs/evidence/CMP-260902-0059-regressions.md"
+    },
+    {
+      "description": "英語404が日本語",
+      "test": "英語画面の404は英語で表示する",
+      "redEvidence": "docs/evidence/CMP-260902-0059-regressions.md",
+      "greenEvidence": "docs/evidence/CMP-260902-0059-regressions.md"
+    },
+    {
+      "description": "API Gate宣言とHTTP本数台帳漏れ",
+      "test": "ApiGateDeclarationGuardTest",
+      "redEvidence": "docs/evidence/CMP-260902-0059-regressions.md",
+      "greenEvidence": "docs/evidence/CMP-260902-0059-regressions.md"
+    },
+    {
+      "description": "SYS復元後sidebarで不要modules403",
+      "test": "BaseSidebar.spec.ts",
+      "redEvidence": "docs/evidence/CMP-260902-0059-regressions.md",
+      "greenEvidence": "docs/evidence/CMP-260902-0059-regressions.md"
+    },
+    {
+      "description": "初期直URLの認可拒否toast消失",
+      "test": "system-admin-toast.spec.ts",
+      "redEvidence": "docs/evidence/CMP-260902-0059-regressions.md",
+      "greenEvidence": "docs/evidence/CMP-260902-0059-regressions.md"
+    },
+    {
+      "description": "復元後メニュー44px未満",
+      "test": "復元後メニューの360/390px主要操作は44px以上で予定へ進める",
+      "redEvidence": "docs/evidence/CMP-260902-0059-regressions.md",
+      "greenEvidence": "docs/evidence/CMP-260902-0059-regressions.md"
+    },
+    {
+      "description": "ページ送り44px未満",
+      "test": "復元一覧のページ操作は360/390pxで44px以上",
+      "redEvidence": "docs/evidence/CMP-260902-0059-regressions.md",
+      "greenEvidence": "docs/evidence/CMP-260902-0059-regressions.md"
+    },
+    {
+      "description": "予定詳細44px未満と意味名欠落",
+      "test": "予定詳細の編集と削除は360/390pxで44px以上かつ操作名を持つ",
+      "redEvidence": "docs/evidence/CMP-260902-0059-regressions.md",
+      "greenEvidence": "docs/evidence/CMP-260902-0059-regressions.md"
+    },
+    {
+      "description": "原初R1の削除済みチーム復元404",
+      "test": "実JWTで削除済チームを復元して予定を掃除すると元利用者のcalendarから消える",
+      "redEvidence": "docs/evidence/CMP-260902-0059-regressions.md",
+      "greenEvidence": "docs/evidence/CMP-260902-0059-regressions.md"
+    }
+  ]
+}

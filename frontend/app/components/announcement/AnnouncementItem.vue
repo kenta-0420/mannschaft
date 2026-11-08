@@ -135,6 +135,9 @@ function handleClick(event: MouseEvent | KeyboardEvent) {
         {{ item.excerpt }}
       </p>
 
+      <!-- 送信時の宛先（チームグループ宛ての告知のみ。F01.2.1 AC-H17） -->
+      <BroadcastAudienceSummary v-if="item.targetAudience" class="mt-1" :audience="item.targetAudience" />
+
       <!-- メタ情報 -->
       <div class="mt-1 flex items-center gap-2 text-xs text-surface-400">
         <span>{{ item.sourceType ? t(`announcement.source_type.${item.sourceType}`) : t('announcement.preview.locked') }}</span>

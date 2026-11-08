@@ -29,6 +29,10 @@ export function useHolidays() {
     return 'JP'
   })
 
+  // カレンダーの42日分を描画するたびに同じ祝日定義を構築しない。
+  // 言語未指定（国既定）と指定言語は交互に呼ばれるため、別インスタンスで保持する。
+  const holidayInstances = new Map<string, Holidays>()
+
   /**
    * 指定した日付が祝日であれば祝日名を返す。祝日でなければ null を返す。
    * @param dateStr - "YYYY-MM-DD" 形式の日付文字列
@@ -41,11 +45,16 @@ export function useHolidays() {
     const day = parts[2] ?? 1
     // タイムゾーン問題を避けるためローカル日付で生成する
     const date = new Date(year, month - 1, day)
-    const hd = new Holidays(countryCode.value)
     // date-holidays の祝日名は国により ja/en 等のみ。未提供言語は国既定言語に戻るため [lang, 'en'] で英語へフォールバックさせる
     // date-holidays は日本語を 'jp' で持つ（i18n locale 'ja' と不一致）。他言語は locale と同コード
     const hdLang = lang === 'ja' ? 'jp' : lang
-    if (hdLang) hd.setLanguages(hdLang === 'en' ? ['en'] : [hdLang, 'en'])
+    const cacheKey = JSON.stringify([countryCode.value, hdLang || null])
+    let hd = holidayInstances.get(cacheKey)
+    if (!hd) {
+      hd = new Holidays(countryCode.value)
+      if (hdLang) hd.setLanguages(hdLang === 'en' ? ['en'] : [hdLang, 'en'])
+      holidayInstances.set(cacheKey, hd)
+    }
     const results = hd.isHoliday(date)
     if (!results) return null
     // public（法定祝日）を優先し、なければ最初の結果を使用する

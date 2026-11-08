@@ -1,0 +1,178 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261026-1912",
+  "scope": "app",
+  "implementation": {
+    "pr": 4153,
+    "sha": "03866c0456dbf69dec3950e7225001d8fc45483a"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "組織一覧の既存DTO・所属/役割/人数/順序/空・size/metaを保ちSQL回数を固定する。",
+      "tests": [
+        {
+          "name": "組織数1→21のSQL一定と既存一覧契約",
+          "evidence": "backend/src/test/java/com/mannschaft/app/role/controller/MeOrganizationsBatchQueryIT.java"
+        },
+        {
+          "name": "DB失敗を空成功にしない",
+          "evidence": "backend/src/test/java/com/mannschaft/app/role/controller/MeOrganizationsFailureTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "Inboxのwindow/名寄せ/状態/本人認可と全map同値を保ち、有界overlay・ラベルSQL0・ロール一括解決を実現する。",
+      "tests": [
+        {
+          "name": "summary読取コスト・空/途中失敗/500件超",
+          "evidence": "backend/src/test/java/com/mannschaft/app/inbox/service/InboxAggregationReadCostTest.java"
+        },
+        {
+          "name": "本人/ソース/対象IDの実SQL境界",
+          "evidence": "backend/src/test/java/com/mannschaft/app/inbox/InboxScopeContractIT.java"
+        },
+        {
+          "name": "直接所属・解除即時反映・多scopeの一定SQL",
+          "evidence": "backend/src/test/java/com/mannschaft/app/inbox/AnnouncementInboxRoleBatchIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "初期timelineのscope/my双方へlimitを伝播し通常ページングを維持する。",
+      "tests": [
+        {
+          "name": "limit・cursor・終端・再試行",
+          "evidence": "frontend/tests/unit/components/timeline/TimelineFeed.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "組織storeの同時取得共有・clear失効・再試行・別store分離を維持する。",
+      "tests": [
+        {
+          "name": "同時取得/旧成功・失敗破棄/空/別Pinia",
+          "evidence": "frontend/app/stores/useOrganizationStore.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "BE配信元enum全値と互換値を6言語で表示する。",
+      "tests": [
+        {
+          "name": "BE enum/FE型と6localeの契約",
+          "evidence": "frontend/app/components/announcement/AnnouncementItem.source-type.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-6",
+      "description": "全PostResponse経路と詳細reloadで実みたよ件数/操作者状態を保持しN+1を増やさない。",
+      "tests": [
+        {
+          "name": "全読取JSON・対象投稿/閲覧者・0/匿名/非所属",
+          "evidence": "backend/src/test/java/com/mannschaft/app/timeline/TimelineMitayoContractIT.java"
+        },
+        {
+          "name": "詳細loadのカード正規化と再読込",
+          "evidence": "frontend/app/pages/timeline/[postId].spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-7",
+      "description": "lockに沿うlocal依存を復旧し実useForm/SSR/nonceとMinIO healthを確認する。CSPを緩めない。",
+      "tests": [
+        {
+          "name": "root確認済み正規npmci・実useForm7件・SSR/nonce・MinIO運用確認",
+          "evidence": "docs/evidence/CMP-261026-1912/validation.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-8",
+      "description": "権限横断実機と実機後探索、条件を区別した性能再計測を確認し、部分旅程や残存遅延を隠さない。",
+      "tests": [
+        {
+          "name": "3ロール実機・旧8b完全3旅程・最新2e部分旅程/DOMと4file source bridge",
+          "evidence": "docs/evidence/CMP-261026-1912/real-exploratory-summary.json"
+        },
+        {
+          "name": "最新約7/14秒を保持する小標本と実行ソース対応",
+          "evidence": "docs/evidence/CMP-261026-1912/source-bridge.json"
+        }
+      ]
+    },
+    {
+      "id": "AC-9",
+      "description": "通常fetchMyTeams無signal wrapperだけ共有し直接WithResult freshness・signal中断/last-wins・clear失効を維持する。",
+      "tests": [
+        {
+          "name": "正式8件:空/再試行/旧応答破棄/signal/更新後fresh/別Pinia",
+          "evidence": "frontend/app/stores/useTeamStore.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 40437841436
+    },
+    {
+      "runId": 40437841246
+    },
+    {
+      "runId": 40437841184
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4153"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261026-1912/real-exploratory-summary.json"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261026-1912/real-exploratory-summary.json"
+    }
+  },
+  "regressions": [
+    {
+      "description": "組織/Inboxの件数比例SQLと不要読取を実DB/コスト試験で検出して固定化。",
+      "test": "MeOrganizationsBatchQueryIT・InboxAggregationReadCostTest",
+      "redEvidence": "docs/evidence/CMP-261026-1912/validation.md",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40344558901"
+    },
+    {
+      "description": "詳細画面の実みたよ状態がreloadでカードへ反映されない問題を修正。",
+      "test": "frontend/app/pages/timeline/[postId].spec.ts",
+      "redEvidence": "docs/evidence/CMP-261026-1912/validation.md",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40359090017"
+    },
+    {
+      "description": "scope数に比例したInbox role照会を一括化し、合法状態の認可と解除即時反映を保持。",
+      "test": "AnnouncementInboxRoleBatchIT・RoleResolverBatchTest",
+      "redEvidence": "docs/evidence/CMP-261026-1912/validation.md",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40370850099"
+    },
+    {
+      "description": "新active照会の公開契約catalog欠落を旧39保持/新40完全一致へ同期。",
+      "test": "AccessControlServiceInterfaceContractTest",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40359117329",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40370850099"
+    },
+    {
+      "description": "不要SSR prefetch hintを抑制しpreload/scripts/import契約を保持。速度因果の不成立controlは根拠にしない。",
+      "test": "frontend/tests/unit/build/manifest-prefetch.spec.ts",
+      "redEvidence": "docs/evidence/CMP-261026-1912/validation.md",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/40429713586"
+    }
+  ]
+}

@@ -63,6 +63,8 @@
   - デスクトップの視覚密度を崩さない範囲であればブレークポイント指定なしで適用してよい。タブバーの「＋」ボタンのようにチュラム（chrome）自体の高さが変わり密度が崩れる場合のみ `max-md:` を付けてモバイル限定にする。
 - **横スクロール（横パン）禁止**: 390px 幅（iPhone SE 相当）でページ全体が横に伸びてはならない。flex の子要素には `min-w-0` を付けて縮小可能にし、本来横に伸びる要素（テーブル・タブ列・コード表示等）は自コンテナ内に `overflow-x-auto` を付けて横スクロールを閉じ込める。
 - **ブレークポイント境界**: `md`（768px）を FE のモバイル/デスクトップの正の境界とする。レイアウト切り替え（サイドバーの折りたたみ等）の判定はこれに揃える。
+  - 共通PrimeVue Button/InputText/Paginator/ToggleSwitchの操作領域は `main.css` の `screen`・767px以下で44pxを下限とし、768px以上と印刷には適用しない。ToggleSwitchは透明inputの領域を広げ、既存slider/handleの視覚サイズとchecked位置を維持する。領収書一覧の見出しと操作群は同じ境界で縦積みにし、長い翻訳と操作領域の合算による横はみ出しを防ぐ。
+  - 寸法と通常操作の回帰は `tests/e2e/mobile/common-controls.spec.ts` を既存Smoke E2Eで検証する。API境界をstubしたviewport・mouse/keyboardの試験であり、モックなしの認可・自然導線・実タッチ確認は別途行う。
 - **入力要素のフォントサイズは 16px 以上**: `<input>` / `<textarea>` 等の `font-size` が 16px 未満だと iOS Safari がフォーカス時に自動ズームする。Tailwind の `text-sm`（デフォルト14px）を入力欄に直接使わず、`text-base` 以上を使うか、`tailwind.config.ts` の `fontSize.xs` のように明示的に上書きされたスケールを使うこと。
 
 ## 4. ディレクトリ構成と責務 (Directory Structure)
@@ -344,6 +346,7 @@ watch(isDragging, (dragging, wasDragging) => {
 - **Lazy Loading**: ページ下部の重いコンポーネントは `Lazy` プレフィックスコンポーネント（例: `<LazyHeavyChart />`）として読み込む。
 - **`<ClientOnly>`**: SSR 不要なコンポーネント（チャート、地図、WebSocket 接続 UI 等）は `<ClientOnly>` でラップし、サーバー側レンダリングをスキップする。
 - **SEO メタタグ**: SSR ページでは `useHead` / `useSeoMeta` を使用して `title`, `description`, OGP タグを設定する。SPA ページでも `useHead` で基本的な `title` を設定すること。
+- **STOMP（WebSocket）接続の認証**: CONNECT ヘッダは `~/composables/stomp/stompAuth` の `buildStompConnectHeaders(accessToken)` で組み立てる。`Authorization: Bearer ${token ?? ''}` のような**空 Bearer の直書きは禁止**（トークンが無いときはヘッダを付けず Cookie 認証に任せる）。ERROR フレームは `x-error-code` を `handleStompErrorFrame` / `readStompErrorCode` で読み分け、`FORBIDDEN` / `INVALID_DESTINATION` は再接続を止めて「閲覧権限なし」、`UNAUTHENTICATED` は既存の `performTokenRefresh` で 1 回だけ更新して再接続（失敗時は `handleAuthFailureLogout`）、未知のコードは従来どおり自動再接続とする。匿名で成り立つ接続ではログアウトさせない。詳細: `docs/architecture/websocket_external_broker_valkey.md` §2.3.3。
 
 ## 11. テスト (Testing)
 - **基本ツール**: **Vitest** と **Vue Test Utils** を採用する。
@@ -536,6 +539,19 @@ date.toLocaleDateString(locale.value, { weekday: 'short' })
 ```
 
 また、`'ja-JP'` などロケールをハードコードしないこと。ユーザーの言語設定に追従させるため、必ず `locale.value` を使用する。
+
+### 日時の表示整形は共通関数を使う（自前で整形しない）**【必須】**
+
+画面に出す日付・時刻・期間の整形は **`useDatetime()`**（`app/composables/useDatetime.ts`）と純関数群 `app/utils/localDate.ts` に一本化する。両者は現在の UI ロケールとユーザーTZ（`authStore.user.timezone`）に従う。**曜日配列・`m月d日`・`YYYY/MM/DD` 文字列の組み立て・「〜」の直書きを画面側に書いてはならない**（ロケールごとの書式が二重管理になり、ja 以外で日本語が残る。緊急休業 CMP-261104-0335 の実例）。
+
+| 用途 | 使うもの |
+|---|---|
+| 瞬間（ISO-8601）の日付／日時／時刻 | `formatDate` / `formatDateTime` / `formatTime`（ja は `YYYY/MM/DD`・`YYYY/MM/DD HH:mm`・`HH:mm`、他言語は各言語の数値書式） |
+| 暦日（`yyyy-MM-dd`）の曜日付き表示・範囲 | `formatCalendarDay` / `formatCalendarDayRange`（UTC 暦日として扱うので西側TZでも前日にならない。`new Date('YYYY-MM-DD')` を直接読まない） |
+| 時刻（`HH:mm[:ss]`）の範囲（秒は出さない） | `formatTimeRange` |
+| 範囲の区切りを画面で出す必要がある場合 | i18n キー（例: `emergency_closure.label.range_separator`）。直書きしない |
+
+足りない書式は画面に自前実装せず、共通側（`utils/localDate.ts` の純関数 + `useDatetime` の薄いラッパ）に足す。
 
 ### i18n ファイル追加時のガードレール
 

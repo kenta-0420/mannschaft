@@ -1,8 +1,40 @@
 {
   "skill": {
+    "form": {
+      "noCategoryAdmin": "Dieses Team hat noch keine aktiven Kategorien. Erstellen Sie im Tab „Kategorienverwaltung“ eine Kategorie.",
+      "noCategoryMember": "Dieses Team hat noch keine aktiven Kategorien. Bitten Sie einen Team-Administrator, eine Kategorie zu erstellen."
+    },
+    "matrix": {
+      "refresh": "Aktualisieren",
+      "legendPendingNote": "Zertifikate, die noch geprüft werden, werden als nicht registriert angezeigt"
+    },
     "list": {
+      "actions": {
+        "search": "Suchen",
+        "verify": "Genehmigen",
+        "edit": "Bearbeiten",
+        "delete": "Löschen",
+        "certificate": "Zertifikat anzeigen"
+      },
       "loadDetailFailed": "Die Details der Qualifikation konnten nicht geladen werden",
-      "loadCategoriesFailed": "Die Kategorien konnten nicht geladen werden"
+      "loadCategoriesFailed": "Die Kategorien konnten nicht geladen werden",
+      "mineTitle": "Meine Fähigkeiten und Zertifikate",
+      "deleteConfirm": "„{name}“ löschen? Dies kann nicht rückgängig gemacht werden.",
+      "deleteConfirmHeader": "Zertifikat löschen"
+    },
+    "category": {
+      "actions": {
+        "edit": "Bearbeiten",
+        "delete": "Löschen"
+      },
+      "deleteConfirm": "Kategorie „{name}“ löschen?",
+      "deleteConfirmHeader": "Kategorie löschen"
+    },
+    "page": {
+      "permissionLoadFailed": "Die Berechtigungen konnten nicht geladen werden. Bitte später neu laden",
+      "forbidden": "Nur Mitglieder dieses Teams können Fähigkeiten und Zertifikate nutzen",
+      "mineTab": "Meine Fähigkeiten und Zertifikate",
+      "categoriesReloadFailed": "Die Kategorien konnten nicht neu geladen werden"
     }
   },
   "chat": {
@@ -70,7 +102,9 @@
       "multiple": "{names} tippen…"
     },
     "connection": {
-      "failed": "Verbindung unterbrochen. Verbindungsversuch läuft…"
+      "failed": "Verbindung unterbrochen. Verbindungsversuch läuft…",
+      "denied": "Du hast keine Berechtigung, diesen Kanal anzuzeigen",
+      "unauthenticated": "Deine Anmeldung ist abgelaufen, daher wurden die Echtzeit-Updates gestoppt. Bitte melde dich erneut an"
     },
     "mobile": {
       "backToList": "Zurück zur Kanalliste",
@@ -113,6 +147,77 @@
         "joinFailed": "Beitritt fehlgeschlagen",
         "declineFailed": "Ablehnen fehlgeschlagen"
       }
+    },
+    "channelList": {
+      "title": "Chat",
+      "newConversation": "Neue Unterhaltung",
+      "addChannel": "Kanal hinzufügen",
+      "dmSection": "Kabine (DM)",
+      "noDm": "Keine Direktnachrichten",
+      "roomSection": "Zimmer (Räume)",
+      "noRoom": "Keine Räume vorhanden",
+      "loadFailed": "Raumliste konnte nicht geladen werden",
+      "detailLoadFailed": "Kanaldetails konnten nicht geladen werden"
+    },
+    "create": {
+      "typeDm": "Kabine (DM)",
+      "typeRoom": "Zimmer (Raum)",
+      "dmOpened": "Kabine (DM) geöffnet",
+      "roomCreated": "Zimmer (Raum) erstellt",
+      "conversationFailed": "Unterhaltung konnte nicht gestartet werden",
+      "roomCreateFailed": "Zimmer (Raum) konnte nicht erstellt werden",
+      "header": "Neue Unterhaltung beginnen",
+      "tabContacts": "Aus Kontakten wählen",
+      "tabCreateRoom": "Zimmer (Raum) erstellen",
+      "searchByName": "Nach Namen suchen...",
+      "selectedSummary": "{count} ausgewählt → wird als {type} gestartet",
+      "startAs": "{type} starten",
+      "roomName": "Name des Zimmers (Raum)",
+      "roomNamePlaceholder": "z. B. general",
+      "descriptionOptional": "Beschreibung (optional)",
+      "descriptionPlaceholder": "Beschreibung des Zimmers (Raum)",
+      "privateRoom": "Privates Zimmer (nur auf Einladung)",
+      "inviteMembersOptional": "Mitglieder einladen (optional)",
+      "create": "Erstellen"
+    },
+    "inviteZimmer": {
+      "header": "In ein Zimmer einladen",
+      "tooltip": "In ein Zimmer einladen",
+      "failed": "Einladung fehlgeschlagen",
+      "noMembers": "Keine Mitglieder zum Einladen",
+      "shareQuestion": "Bisherigen Chatverlauf teilen?",
+      "share": "Teilen",
+      "shareHint": "Bisherige Nachrichten werden in das neue Zimmer übernommen",
+      "noShare": "Nicht teilen",
+      "noShareHint": "Das neue Zimmer beginnt leer",
+      "createZimmer": "Zimmer erstellen"
+    },
+    "memberSelect": {
+      "notFound": "Keine Mitglieder gefunden"
+    },
+    "activeThreadsEmpty": "Keine aktiven Threads",
+    "tabAriaLabel": "Tab {name}",
+    "message": {
+      "deleted": "Diese Nachricht wurde gelöscht",
+      "unknownSender": "Unbekannt",
+      "edited": "(bearbeitet)",
+      "loadOlder": "Ältere Nachrichten laden",
+      "empty": "Noch keine Nachrichten",
+      "sendFailed": "Nachricht konnte nicht gesendet werden",
+      "inputPlaceholder": "Nachricht eingeben...",
+      "inputDisabled": "In diesem Zimmer (Raum) kannst du nicht posten",
+      "loadFailed": "Nachrichten konnten nicht geladen werden",
+      "reactionFailed": "Reaktion fehlgeschlagen",
+      "pinned": "Angeheftet",
+      "unpinned": "Nicht mehr angeheftet",
+      "pinFailed": "Anheften fehlgeschlagen",
+      "deleteSuccess": "Nachricht gelöscht",
+      "deleteFailed": "Löschen fehlgeschlagen",
+      "bookmarkFailed": "Lesezeichen fehlgeschlagen",
+      "markReadFailed": "Konnte nicht als gelesen markiert werden",
+      "editHeader": "Nachricht bearbeiten",
+      "editSuccess": "Nachricht bearbeitet",
+      "editFailed": "Bearbeiten fehlgeschlagen"
     }
   },
   "button": {
@@ -123,6 +228,7 @@
     "create": "Erstellen",
     "submit": "Senden",
     "close": "Schließen",
+    "open": "Öffnen",
     "back": "Zurück",
     "help": "Anleitung",
     "next": "Weiter",
@@ -282,6 +388,8 @@
     "add_term": "Semester hinzufügen",
     "term_success": "Semester erstellt",
     "term_error": "Erstellung des Semesters fehlgeschlagen",
+    "term_academic_year_required": "Bitte das Schuljahr eingeben",
+    "term_has_timetables": "Dieses Semester kann nicht gelöscht werden, da noch Stundenpläne vorhanden sind. Bitte zuerst entfernen",
     "no_period": "Keine Stunden definiert",
     "no_term": "Keine Semester definiert",
     "current_week": "Diese Woche",
@@ -296,7 +404,19 @@
     "period_all": "Alle Stunden",
     "period_number_placeholder": "Stundennummer",
     "period_suffix": ". Stunde",
-    "term_name_placeholder": "z.B. 1. Quartal"
+    "term_name_placeholder": "z.B. 1. Quartal",
+    "term_academic_year_range": "Bitte ein Schuljahr zwischen {min} und {max} eingeben",
+    "term_end_before_start": "Das Enddatum muss nach dem Startdatum liegen",
+    "term_date_overlap": "Dieses Semester überschneidet sich mit einem anderen. Bitte Start- und Enddatum prüfen",
+    "term_delete_confirm": "Semester „{name}“ löschen? Dies kann nicht rückgängig gemacht werden.",
+    "term_delete_success": "Semester gelöscht",
+    "term_load_error": "Semester konnten nicht geladen werden",
+    "team_term_hint": "Semester dieses Teams. Beim Erstellen eines Stundenplans wählen Sie eines der hier hinzugefügten Semester.",
+    "no_term_for_create": "Noch keine Semester vorhanden. Fügen Sie zuerst im Semester-Tab ein Semester hinzu.",
+    "delete_timetable": "Löschen",
+    "delete_timetable_confirm": "Stundenplan „{name}“ löschen? Dies kann nicht rückgängig gemacht werden.",
+    "delete_timetable_success": "Stundenplan gelöscht",
+    "delete_timetable_error": "Stundenplan konnte nicht gelöscht werden"
   },
   "error": {
     "server": "Ein Serverfehler ist aufgetreten",
@@ -308,6 +428,8 @@
     "unauthorized": "Bitte melden Sie sich an",
     "section_load_failed": "Dieser Abschnitt konnte nicht geladen werden. Bitte neu laden.",
     "unknown": "Ein Fehler ist aufgetreten",
+    "TEAM_001": "Das Team wurde nicht gefunden.",
+    "TEAM_006": "Dieses Team kann nicht wiederhergestellt werden, da es nicht gelöscht wurde.",
     "COMMON_001": "Die Eingaben sind fehlerhaft",
     "COMMON_002": "Sie haben keine Berechtigung für diese Aktion",
     "COMMON_003": "Von einem anderen Benutzer aktualisiert. Bitte aktualisieren Sie die Seite",
@@ -629,6 +751,7 @@
     }
   },
   "timeline": {
+    "refresh": "Aktualisieren",
     "detail": {
       "back": "Zurück",
       "loadFailed": "Beitrag konnte nicht geladen werden",
@@ -1070,6 +1193,21 @@
     }
   },
   "project": {
+    "back_label": "Projektliste",
+    "delete_aria": "{title} löschen",
+    "delete_confirm": "„{title}“ löschen?",
+    "delete_confirm_header": "Löschen bestätigen",
+    "milestone_dialog": {
+      "add_title": "Meilenstein hinzufügen",
+      "edit_title": "Meilenstein bearbeiten",
+      "title_label": "Titel",
+      "title_placeholder": "Name des Meilensteins",
+      "due_date_label": "Fällig am",
+      "add": "Hinzufügen"
+    },
+    "related_todo_no_due": "Kein Fälligkeitsdatum",
+    "related_todo_no_assignee": "Nicht zugewiesen",
+    "related_todo_open": "TODO-Details öffnen",
     "milestones": "Meilensteine",
     "no_milestones": "Keine Meilensteine",
     "due_date": "Fälligkeitsdatum",
@@ -1127,7 +1265,19 @@
       "none": "Keines",
       "custom_emoji": "Benutzerdefiniert",
       "custom_color": "Benutzerdefinierte Farbe",
-      "current": "Aktuell"
+      "current": "Aktuell",
+      "colors": {
+        "blue": "Blau",
+        "red": "Rot",
+        "green": "Grün",
+        "amber": "Bernstein",
+        "violet": "Violett",
+        "pink": "Rosa",
+        "cyan": "Cyan",
+        "teal": "Petrol",
+        "orange": "Orange",
+        "gray": "Grau"
+      }
     },
     "guide": {
       "button": "Anleitung",
@@ -1179,7 +1329,10 @@
       "update_failed": "Aktualisierung fehlgeschlagen",
       "delete_failed": "Löschen fehlgeschlagen",
       "status_change_failed": "Statusänderung fehlgeschlagen",
-      "milestone_save_failed": "Meilenstein konnte nicht gespeichert werden"
+      "milestone_save_failed": "Meilenstein konnte nicht gespeichert werden",
+      "force_unlock_failed": "Erzwungenes Entsperren fehlgeschlagen",
+      "completion_mode_failed": "Abschlussmodus konnte nicht geändert werden",
+      "gate_init_failed": "Gates konnten nicht initialisiert werden"
     },
     "status": {
       "active": "Aktiv",
@@ -1210,7 +1363,29 @@
   },
   "inviteToken": {
     "printQrPdf": "QR PDF drucken",
-    "printQrPdfError": "Fehler beim Drucken des PDF"
+    "printQrPdfError": "Fehler beim Drucken des PDF",
+    "title": "Einladungslinks",
+    "createNew": "Neuer Einladungslink",
+    "createTitle": "Einladungslink erstellen",
+    "role": "Rolle",
+    "expiry": "Gültigkeitsdauer",
+    "uses": "Nutzungen",
+    "inviteRole": "Rolle der eingeladenen Person",
+    "maxUses": "Maximale Nutzungen (leer lassen für unbegrenzt)",
+    "empty": "Noch keine Einladungslinks",
+    "never": "Unbegrenzt gültig",
+    "copy": "Einladungs-URL kopieren",
+    "revoke": "Einladungslink widerrufen",
+    "revokeConfirm": "Diesen Einladungslink widerrufen?",
+    "createSuccess": "Einladungslink erstellt",
+    "createError": "Einladungslink konnte nicht erstellt werden",
+    "revokeSuccess": "Einladungslink widerrufen",
+    "revokeError": "Einladungslink konnte nicht widerrufen werden",
+    "copied": "Einladungs-URL kopiert",
+    "oneDay": "1 Tag",
+    "sevenDays": "7 Tage",
+    "thirtyDays": "30 Tage",
+    "ninetyDays": "90 Tage"
   },
   "visibilityTemplate": {
     "title": "Sichtbarkeitsvorlagen",
@@ -1242,7 +1417,7 @@
     "preset": {
       "PRESET_TRAINING_PARTNERS": {
         "name": "Trainingspartner",
-        "description": "Alle befreundeten Teams"
+        "description": "Alle Freundschaftsteams"
       },
       "PRESET_LOCAL_TEAMS": {
         "name": "Lokale Teams",
@@ -1250,7 +1425,7 @@
       },
       "PRESET_ALL_FRIENDS": {
         "name": "Alle Freunde",
-        "description": "Alle befreundeten Teammitglieder"
+        "description": "Alle Mitglieder von Freundschaftsteams"
       }
     }
   },
@@ -1470,7 +1645,9 @@
     },
     "ws": {
       "disconnected": "Verbindung verloren",
-      "reconnecting": "Verbindung wird wiederhergestellt…"
+      "reconnecting": "Verbindung wird wiederhergestellt…",
+      "denied": "Die Echtzeit-Updates wurden gestoppt, weil du keine Berechtigung hast, diese Pinnwand anzuzeigen",
+      "unauthenticated": "Deine Anmeldung ist abgelaufen, daher wurden die Echtzeit-Updates gestoppt. Bitte melde dich erneut an"
     },
     "validation": {
       "required": "Pflichtfeld.",
@@ -1593,7 +1770,9 @@
       "more": "+{count} weitere",
       "today": "Heute",
       "dayDetail": {
-        "title": "Termine am {date}"
+        "title": "Termine am {date}",
+        "empty": "Keine Termine an diesem Tag",
+        "create": "Termin für diesen Tag hinzufügen"
       },
       "empty": "Keine Termine in diesem Zeitraum",
       "view": {
@@ -1782,8 +1961,8 @@
     },
     "menu": "Menü",
     "scopeShell": {
-      "memberCount": "{count} Mitglieder",
-      "supporterCount": "{count} Unterstützer",
+      "memberCount": "{count} Mitglied | {count} Mitglieder",
+      "supporterCount": "{count} Unterstützer | {count} Unterstützer",
       "supporter_cancel_confirm_title": "Unterstützung beenden?",
       "supporter_cancel_confirm_body": "Du beendest die Unterstützung von {name}. Bist du sicher?",
       "supporter_cancel_action": "Beenden",
@@ -2387,6 +2566,14 @@
     "SUPPORTERS_AND_ABOVE": "Unterstützer und höher",
     "MEMBERS_AND_ABOVE": "Mitglieder und höher"
   },
+  "organization_visibility": {
+    "PUBLIC": "Öffentlich",
+    "PRIVATE": "Eingeschränkt"
+  },
+  "entity_create": {
+    "error_heading": "Bitte überprüfen Sie Ihre Eingaben",
+    "supporter_label": "Unterstützer-Funktion aktivieren"
+  },
   "module_settings": {
     "enabled_count": "Aktive Funktionen: {count} / {limit}",
     "fetch_error": "Die Funktionsliste konnte nicht geladen werden",
@@ -2446,6 +2633,21 @@
     }
   },
   "teamShell": {
+    "archive": {
+      "syncError": "Die Änderung ist abgeschlossen, aber die Liste konnte nicht synchronisiert werden. Laden Sie sie erneut.",
+      "archive": "Team archivieren",
+      "unarchive": "Team wiederherstellen",
+      "archiveConfirm": "Dieses Team archivieren? Offene Beitrittsanträge und Einladungen werden storniert. Aktive Zugehörigkeiten bleiben bestehen. Die Teamdetails sind danach nicht mehr zugänglich. Sie können das Team unter Archivierte Teams in der Teamliste wiederherstellen.",
+      "unarchiveConfirm": "Dieses Team wiederherstellen? Stornierte Beitrittsanträge und Einladungen sowie abgelaufene Einladungslinks werden nicht wiederhergestellt.",
+      "archived": "Team archiviert",
+      "unarchived": "Team wiederhergestellt",
+      "changed": "Der Teamstatus oder Ihre Berechtigung hat sich geändert. Laden Sie die Liste erneut.",
+      "listTitle": "Archivierte Teams",
+      "showList": "Archivierte Teams anzeigen",
+      "hideList": "Liste schließen",
+      "fetchError": "Archivierte Teams konnten nicht geladen werden.",
+      "empty": "Keine archivierten Teams."
+    },
     "tab": {
       "affiliations": "Zugehörige Organisationen",
       "permissionGroups": "Berechtigungsgruppen",
@@ -2887,5 +3089,254 @@
     "generic_title": "Es ist ein Fehler aufgetreten",
     "generic_description": "Bitte versuchen Sie es in Kürze erneut. Besteht das Problem weiterhin, wenden Sie sich an Ihre Administration.",
     "back_home": "Zurück zur Startseite"
+  },
+  "loyalty": {
+    "memberQr": {
+      "title": "Mitglieds-QR",
+      "expiresIn": "Noch {seconds} Sekunden",
+      "expired": "QR aktualisieren",
+      "disabled": "Diese Mitgliedskarte ist gesperrt oder widerrufen. Sie wird nicht automatisch neu ausgestellt."
+    },
+    "wallet": {
+      "title": "Teampunkte",
+      "empty": "Noch keine Teampunkte"
+    },
+    "balance": "{points} Punkte",
+    "remaining": "Noch {points} Punkte nötig",
+    "lifetime": "Insgesamt: {points} Punkte",
+    "refresh": "Aktualisieren",
+    "more": "Weiter",
+    "confirm": "Angaben bestätigen",
+    "retrySame": "Dieselbe Anfrage wiederholen",
+    "save": "Speichern",
+    "saved": "Gespeichert",
+    "cancel": "Zurück",
+    "name": "Name",
+    "description": "Beschreibung (optional)",
+    "active": "Aktiv",
+    "externalCards": "Externe Punktekarten aktivieren",
+    "history": {
+      "title": "Punkteverlauf",
+      "award": "Gutschrift",
+      "redeem": "Prämie einlösen",
+      "empty": "Noch kein Verlauf"
+    },
+    "audience": {
+      "title": "Berechtigte Personen",
+      "allAuthenticated": "Alle angemeldeten Personen (auch Nichtmitglieder)",
+      "supportersAndAbove": "Unterstützer und höher",
+      "membersAndAbove": "Mitglieder und höher"
+    },
+    "rule": {
+      "title": "Gutschriftregel",
+      "amount": "Punkte je Besuch",
+      "points": "{points} Punkte je Besuch",
+      "frequency": "Häufigkeit",
+      "frequencyDaily": "Einmal täglich (JST)",
+      "frequencyStaff": "Bei jeder Personalbestätigung",
+      "selfEnabled": "Selbstbedienungs-QR zulassen",
+      "selfDailyOnly": "Selbstbedienung erfordert die tägliche Regel"
+    },
+    "reward": {
+      "title": "Prämien",
+      "add": "Prämie hinzufügen",
+      "amount": "Benötigte Punkte",
+      "required": "Für {points} Punkte einlösen",
+      "confirm": "{points} Punkte für {reward} verwenden"
+    },
+    "scan": {
+      "title": "Punkteannahme",
+      "camera": "Mitglieds-QR mit Kamera scannen",
+      "cameraDenied": "Kamera nicht verfügbar. Browserberechtigung prüfen und erneut versuchen.",
+      "confirmAward": "{points} Punkte bei {team} gutschreiben",
+      "success": "Punktevorgang abgeschlossen",
+      "next": "Nächste Annahme starten"
+    },
+    "self": {
+      "confirm": "Annahme bestätigen",
+      "rescan": "Bitte Annahme-QR erneut scannen"
+    },
+    "error": {
+      "uncertain": "Ergebnis unklar. Dieselbe Anfrage erneut senden.",
+      "alreadyAwarded": "Heute bereits gutgeschrieben",
+      "ineligible": "Derzeit nicht berechtigt",
+      "changed": "Angaben geändert. Bitte erneut prüfen.",
+      "insufficient": "Nicht genügend Punkte"
+    },
+    "program": {
+      "disabled": "Punkteprogramm deaktiviert",
+      "closedTeam": "Geschlossenes Team"
+    },
+    "settings": {
+      "title": "Teampunkte-Einstellungen",
+      "enabled": "Punkteprogramm aktivieren"
+    },
+    "mode": {
+      "title": "Selbstbedienungsmodus",
+      "staffApproval": "Personalbestätigung (Punkte erst nach Freigabe)",
+      "auto": "Automatische Gutschrift",
+      "autoWarning": "Ein fester QR kann fotografiert und aus der Ferne genutzt werden. Ein Tageslimit beweist keinen Besuch."
+    },
+    "reception": {
+      "title": "Punkteannahme-QR",
+      "location": "Annahmestelle",
+      "newLocation": "Name der neuen Annahmestelle",
+      "create": "Annahmestelle erstellen",
+      "preview": "QR-Vorschau",
+      "print": "Drucken oder teilen",
+      "stop": "Annahmestelle deaktivieren",
+      "sharedLocationStopWarning": "Das Deaktivieren stoppt auch den Check-in. Nur Punkte stoppen: Punkteprogramm deaktivieren.",
+      "printTitle": "Punkteannahme",
+      "printInstructions": "Scannen, anmelden, Angaben prüfen und bestätigen. Einmal täglich (JST)."
+    },
+    "requests": {
+      "title": "Annahmeanträge",
+      "empty": "Keine Annahmeanträge",
+      "submitted": "Antrag eingereicht (noch keine Gutschrift)",
+      "code": "Prüfcode: {code}",
+      "expiresAt": "Gültig bis: {datetime} (spätestens Mitternacht JST)",
+      "showStaff": "Eigenen Bildschirm dem Personal zur Prüfung zeigen",
+      "approve": "Freigeben und gutschreiben",
+      "reject": "Ablehnen",
+      "cancel": "Antrag stornieren",
+      "compareBeforeApprove": "Vor Freigabe Namen und Code mit dem Bildschirm der antragstellenden Person vergleichen",
+      "enterCode": "Code vom Bildschirm der antragstellenden Person",
+      "moreCandidates": "Keine gültigen Anträge in diesem Bereich. Weiter.",
+      "selfApprovalForbidden": "Dieser Antrag kann nicht freigegeben werden. Eigene Anträge anderem Personal zeigen.",
+      "all": "Alle Status",
+      "deletedUser": "Ausgeschiedene Person",
+      "closedLocation": "Geschlossene Annahmestelle",
+      "reapply": "Angaben prüfen und erneut beantragen",
+      "status": {
+        "pending": "Ausstehend",
+        "approved": "Freigegeben",
+        "cancelled": "Storniert",
+        "rejected": "Abgelehnt",
+        "expired": "Abgelaufen",
+        "invalidated": "Ungültig",
+        "superseded": "Über anderen Weg gutgeschrieben"
+      },
+      "reason": {
+        "userCancelled": "Von antragstellender Person storniert",
+        "staffRejected": "Vom Personal abgelehnt",
+        "ttlExpired": "Antrag abgelaufen",
+        "dayChanged": "JST-Datum hat gewechselt",
+        "versionChanged": "Einstellungen oder Regel geändert",
+        "locationInactive": "Annahmestelle deaktiviert",
+        "teamInactive": "Team ist inaktiv",
+        "userInactive": "Person ist inaktiv",
+        "ineligible": "Nicht mehr berechtigt",
+        "dailyAwarded": "Heute bereits gutgeschrieben",
+        "pointLimit": "Punktegrenze erreicht"
+      }
+    }
+  },
+  "budget_accounting": {
+    "title": "Budget und Buchhaltung",
+    "add_year": "Geschäftsjahr hinzufügen",
+    "fiscal_year": "Geschäftsjahr",
+    "default_name": "Geschäftsjahr {year}",
+    "name": "Name des Geschäftsjahres (erforderlich)",
+    "name_placeholder": "z. B. Geschäftsjahr 2026",
+    "start_date": "Startdatum (erforderlich)",
+    "end_date": "Enddatum (erforderlich)",
+    "add": "Hinzufügen",
+    "created": "Geschäftsjahr hinzugefügt",
+    "empty_years": "Keine Geschäftsjahre vorhanden",
+    "empty_years_hint": "Wählen Sie „Geschäftsjahr hinzufügen“, um den auszuwertenden Zeitraum anzulegen.",
+    "totalIncome": "Einnahmen",
+    "totalExpense": "Ausgaben",
+    "balance": "Saldo",
+    "categories": "Budget und Istbeträge nach Kategorie",
+    "empty_categories": "Keine Kategorien für dieses Geschäftsjahr",
+    "budget_amount": "Budget {amount}",
+    "actual_amount": "Istbetrag {amount}",
+    "execution_rate": "Budgetauslastung {rate}%",
+    "validation": {
+      "name_required": "Geben Sie einen Namen für das Geschäftsjahr ein.",
+      "name_max": "Der Name des Geschäftsjahres darf höchstens 100 Zeichen lang sein.",
+      "date_required": "Geben Sie ein Datum ein.",
+      "date_order": "Das Enddatum muss nach dem Startdatum liegen."
+    }
+  },
+  "budget_guide": {
+    "title": "Anleitung zu Budget und Buchhaltung",
+    "description": "Wähle ein Geschäftsjahr aus, um Einnahmen, Ausgaben und Budgets nach Kategorie für diesen Zeitraum einzusehen. Diese Seite ist für Administratoren, stellvertretende Administratoren und andere Nutzer mit Leseberechtigung bestimmt. Reguläre Mitglieder können sie nicht einsehen. Wende dich bei Bedarf an einen Administrator.",
+    "what": {
+      "title": "Was ist ein Geschäftsjahr?",
+      "body": "Ein Zeitraum zur gemeinsamen Auswertung von Einnahmen und Ausgaben. Start- und Enddatum können an die Aktivitäten Ihres Teams angepasst werden; der Zeitraum muss nicht von April bis zum folgenden März reichen.",
+      "steps": {
+        "step1": "Prüfen Sie zunächst in der Liste oben auf der Seite, ob das gewünschte Geschäftsjahr vorhanden ist."
+      }
+    },
+    "create": {
+      "title": "Ein Geschäftsjahr hinzufügen",
+      "body": "Administratoren und stellvertretende Administratoren können diese Aktion ausführen. Sie legen ein Geschäftsjahr zur Auswertung von Einnahmen und Ausgaben an, keine Kategorie.",
+      "steps": {
+        "step1": "Wählen Sie „Geschäftsjahr hinzufügen“.",
+        "step2": "Geben Sie einen Namen (1–100 Zeichen, nicht nur Leerzeichen), ein Startdatum und ein Enddatum ein. Das Enddatum muss nach dem Startdatum liegen.",
+        "step3": "Wählen Sie „Hinzufügen“. Nach erfolgreichem Anlegen wird das neue Geschäftsjahr ausgewählt. Ohne erfasste Einnahmen, Ausgaben oder Kategorien werden Summen von 0 Yen und keine registrierten Kategorien angezeigt."
+      }
+    },
+    "switch": {
+      "title": "Geschäftsjahr wechseln",
+      "body": "Wählen Sie oben auf der Seite den Namen eines Geschäftsjahres, um dessen Summen anzuzeigen.",
+      "steps": {
+        "step1": "Wählen Sie das gewünschte Geschäftsjahr.",
+        "step2": "Prüfen Sie nach dem Laden Einnahmen, Ausgaben, Saldo und Kategorien."
+      }
+    },
+    "summary": {
+      "title": "Summen und Kategorien verstehen",
+      "body": "Einnahmen sind erhaltenes Geld, Ausgaben sind ausgegebenes Geld. Der Saldo ergibt sich aus Einnahmen minus Ausgaben. Kategorien ordnen Geld nach seinem Verwendungszweck.",
+      "steps": {
+        "step1": "„Budget“ ist der geplante Betrag einer Kategorie, „Istbetrag“ der bereits erfasste Betrag.",
+        "step2": "„Budgetauslastung“ zeigt den Istbetrag als Prozentsatz des Budgets. Werte über 100% werden rot dargestellt.",
+        "step3": "Auf dieser Seite können Sie Geschäftsjahre hinzufügen. Kategorien lassen sich hier nicht erstellen und Einnahmen oder Ausgaben nicht direkt erfassen."
+      }
+    },
+    "trouble": {
+      "title": "Hilfe bei Problemen",
+      "body": "Fehlende Daten und Fehler beim Laden werden unterschiedlich angezeigt.",
+      "steps": {
+        "step1": "Bei „Keine Geschäftsjahre vorhanden“ wählen Sie „Geschäftsjahr hinzufügen“, um den ersten Zeitraum anzulegen.",
+        "step2": "Wählen Sie bei einem Verbindungsfehler „Erneut versuchen“. Wenden Sie sich bei einem Berechtigungsfehler an die Teamadministration.",
+        "step3": "Ihre Eingaben bleiben bei einem Fehler erhalten. Prüfen Sie die angezeigte Ursache und Ihre Eingaben und wählen Sie erneut „Hinzufügen“."
+      }
+    }
+  },
+  "feature_display": {
+    "title": "Sichtbarkeit allgemeiner Funktionen",
+    "description": "Ordnet Navigation und Startseite. Berechtigungen für direkte URLs und APIs bleiben unverändert. Die gewohnte Administratoransicht bleibt erhalten.",
+    "feature": "Funktion",
+    "member": "Für Mitglieder",
+    "supporter": "Für Unterstützer",
+    "member_label": "{feature} für Mitglieder anzeigen",
+    "supporter_label": "{feature} für Unterstützer anzeigen",
+    "save_success": "Sichtbarkeit gespeichert",
+    "nav": "Navigation"
+  },
+  "secret_token": {
+    "issued_dialog": {
+      "title": "Link erstellt",
+      "once_warning": "Dieser Link wird nur jetzt angezeigt. Nach dem Schließen wird er nie wieder angezeigt. Geben Sie ihn an die Berechtigten weiter, bevor Sie das Fenster schließen.",
+      "url_label": "Erstellter Link",
+      "copy": "Kopieren",
+      "copied": "Kopiert",
+      "copy_failed": "Kopieren fehlgeschlagen. Bitte markieren Sie den Link und kopieren Sie ihn manuell",
+      "qr_label": "QR-Code",
+      "close": "Schließen",
+      "pdf_download": "QR-Code als PDF speichern"
+    },
+    "list": {
+      "not_shown_hint": "Aus Sicherheitsgründen werden erstellte Links nicht erneut angezeigt. Erstellen Sie bei Bedarf einen neuen.",
+      "revoked_by_migration": "Wegen einer Sicherheitsverbesserung widerrufen",
+      "reissue": "Neu erstellen",
+      "reissue_hint": "Beim Neuerstellen entsteht ein neuer Link, und der alte Link funktioniert nicht mehr.",
+      "label_with_id": "Link #{id}",
+      "created_at": "Erstellt am",
+      "expires_at": "Gültig bis",
+      "used_count": "Anzahl der Nutzungen"
+    }
   }
 }

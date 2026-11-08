@@ -90,7 +90,7 @@ class CirculationExportScopeContractIT extends AbstractMySqlIntegrationTest {
      * 具象型でモックすれば interface 消費者・具象型消費者の双方を満たす。</p>
      */
     @MockitoBean
-    private R2StorageService storageService;
+    private R2StorageService r2StorageService;
 
     private Long teamAId;
     private Long teamBId;
@@ -132,7 +132,7 @@ class CirculationExportScopeContractIT extends AbstractMySqlIntegrationTest {
         em.flush();
         em.clear();
 
-        given(storageService.generateDownloadUrl(anyString(), any(Duration.class)))
+        given(r2StorageService.generateDownloadUrl(anyString(), any(Duration.class)))
                 .willReturn("https://r2.example.com/circexport-signed-url");
     }
 

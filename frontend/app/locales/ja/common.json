@@ -1,8 +1,40 @@
 {
   "skill": {
+    "form": {
+      "noCategoryAdmin": "このチームにはまだ有効なカテゴリがありません。「カテゴリ管理」タブでカテゴリを作成してください。",
+      "noCategoryMember": "このチームにはまだ有効なカテゴリがありません。チームの管理者にカテゴリの作成を依頼してください。"
+    },
+    "matrix": {
+      "refresh": "更新",
+      "legendPendingNote": "確認待ちの資格は未登録として表示されます"
+    },
     "list": {
+      "actions": {
+        "search": "検索",
+        "verify": "承認",
+        "edit": "編集",
+        "delete": "削除",
+        "certificate": "証明書を表示"
+      },
       "loadDetailFailed": "スキルの詳細取得に失敗しました",
-      "loadCategoriesFailed": "カテゴリの取得に失敗しました"
+      "loadCategoriesFailed": "カテゴリの取得に失敗しました",
+      "mineTitle": "自分のスキル・資格",
+      "deleteConfirm": "「{name}」を削除しますか？この操作は取り消せません。",
+      "deleteConfirmHeader": "資格の削除"
+    },
+    "category": {
+      "actions": {
+        "edit": "編集",
+        "delete": "削除"
+      },
+      "deleteConfirm": "カテゴリ「{name}」を削除しますか？",
+      "deleteConfirmHeader": "カテゴリの削除"
+    },
+    "page": {
+      "permissionLoadFailed": "権限情報の取得に失敗しました。時間をおいて再読み込みしてください",
+      "forbidden": "このチームのメンバーのみ、スキル・資格を利用できます",
+      "mineTab": "自分のスキル・資格",
+      "categoriesReloadFailed": "カテゴリの再取得に失敗しました"
     }
   },
   "chat": {
@@ -70,7 +102,9 @@
       "multiple": "{names}が入力中…"
     },
     "connection": {
-      "failed": "接続が切れています。再接続を試みています…"
+      "failed": "接続が切れています。再接続を試みています…",
+      "denied": "このチャンネルを閲覧する権限がありません",
+      "unauthenticated": "ログインの有効期限が切れたため、リアルタイム更新を停止しました。再度ログインしてください"
     },
     "mobile": {
       "backToList": "チャンネル一覧に戻る",
@@ -113,6 +147,77 @@
         "joinFailed": "参加に失敗しました",
         "declineFailed": "辞退に失敗しました"
       }
+    },
+    "channelList": {
+      "title": "チャット",
+      "newConversation": "新しい会話",
+      "addChannel": "チャンネル追加",
+      "dmSection": "Kabine(DM)",
+      "noDm": "DMはありません",
+      "roomSection": "Zimmer(部屋)",
+      "noRoom": "Zimmer(部屋)がありません",
+      "loadFailed": "Zimmer一覧の取得に失敗しました",
+      "detailLoadFailed": "チャンネル情報の取得に失敗しました"
+    },
+    "create": {
+      "typeDm": "Kabine(DM)",
+      "typeRoom": "Zimmer(部屋)",
+      "dmOpened": "Kabine(DM)を開きました",
+      "roomCreated": "Zimmer(部屋)を作成しました",
+      "conversationFailed": "会話の作成に失敗しました",
+      "roomCreateFailed": "Zimmer(部屋)の作成に失敗しました",
+      "header": "新しい会話を始める",
+      "tabContacts": "連絡先から選ぶ",
+      "tabCreateRoom": "Zimmer(部屋)を作成",
+      "searchByName": "名前で検索...",
+      "selectedSummary": "{count}人選択中 → {type}として開始されます",
+      "startAs": "{type}を開始",
+      "roomName": "Zimmer(部屋)名",
+      "roomNamePlaceholder": "例: general",
+      "descriptionOptional": "説明（任意）",
+      "descriptionPlaceholder": "Zimmer(部屋)の説明",
+      "privateRoom": "プライベートZimmer(部屋)（招待制）",
+      "inviteMembersOptional": "メンバーを招待（任意）",
+      "create": "作成"
+    },
+    "inviteZimmer": {
+      "header": "Zimmerに招待する",
+      "tooltip": "Zimmerに招待",
+      "failed": "招待に失敗しました",
+      "noMembers": "招待できるメンバーがいません",
+      "shareQuestion": "既存のチャット内容を共有しますか？",
+      "share": "共有する",
+      "shareHint": "これまでのメッセージが新しいZimmerに引き継がれます",
+      "noShare": "共有しない",
+      "noShareHint": "新しいZimmerは空の状態で始まります",
+      "createZimmer": "Zimmerを作成"
+    },
+    "memberSelect": {
+      "notFound": "メンバーが見つかりません"
+    },
+    "activeThreadsEmpty": "進行中のスレッドはありません",
+    "tabAriaLabel": "{name} のタブ",
+    "message": {
+      "deleted": "このメッセージは削除されました",
+      "unknownSender": "不明",
+      "edited": "(編集済み)",
+      "loadOlder": "過去のメッセージを読み込む",
+      "empty": "まだメッセージがありません",
+      "sendFailed": "メッセージの送信に失敗しました",
+      "inputPlaceholder": "メッセージを入力...",
+      "inputDisabled": "このZimmer(部屋)には投稿できません",
+      "loadFailed": "メッセージの取得に失敗しました",
+      "reactionFailed": "リアクションに失敗しました",
+      "pinned": "ピン留めしました",
+      "unpinned": "ピン解除しました",
+      "pinFailed": "ピン操作に失敗しました",
+      "deleteSuccess": "メッセージを削除しました",
+      "deleteFailed": "削除に失敗しました",
+      "bookmarkFailed": "ブックマークに失敗しました",
+      "markReadFailed": "既読にできませんでした",
+      "editHeader": "メッセージを編集",
+      "editSuccess": "メッセージを編集しました",
+      "editFailed": "編集に失敗しました"
     }
   },
   "button": {
@@ -123,6 +228,7 @@
     "create": "作成",
     "submit": "送信",
     "close": "閉じる",
+    "open": "開く",
     "back": "戻る",
     "help": "使い方",
     "next": "次へ",
@@ -282,6 +388,8 @@
     "add_term": "学期追加",
     "term_success": "学期を作成しました",
     "term_error": "学期の作成に失敗しました",
+    "term_academic_year_required": "年度を入力してください",
+    "term_has_timetables": "時間割が残っているため、この学期は削除できません。先に時間割を整理してください",
     "no_period": "時限が定義されていません",
     "no_term": "学期が定義されていません",
     "current_week": "今週",
@@ -296,7 +404,19 @@
     "period_all": "全コマ",
     "period_number_placeholder": "時限番号",
     "period_suffix": "限",
-    "term_name_placeholder": "例: 1学期"
+    "term_name_placeholder": "例: 1学期",
+    "term_academic_year_range": "年度は{min}〜{max}の範囲で入力してください",
+    "term_end_before_start": "終了日は開始日より後の日付にしてください",
+    "term_date_overlap": "学期の期間が他の学期と重なっています。開始日と終了日を見直してください",
+    "term_delete_confirm": "学期「{name}」を削除しますか？この操作は取り消せません。",
+    "term_delete_success": "学期を削除しました",
+    "term_load_error": "学期の読み込みに失敗しました",
+    "team_term_hint": "このチームの学期です。時間割を作るときは、ここで追加した学期から選びます。",
+    "no_term_for_create": "学期がまだありません。先に「学期」タブで学期を追加してください。",
+    "delete_timetable": "削除",
+    "delete_timetable_confirm": "時間割「{name}」を削除しますか？この操作は取り消せません。",
+    "delete_timetable_success": "時間割を削除しました",
+    "delete_timetable_error": "時間割の削除に失敗しました"
   },
   "error": {
     "server": "サーバーエラーが発生しました",
@@ -308,6 +428,8 @@
     "unauthorized": "ログインが必要です",
     "section_load_failed": "この項目の取得に失敗しました（再読み込みしてください）",
     "unknown": "エラーが発生しました",
+    "TEAM_001": "チームが見つかりません",
+    "TEAM_006": "このチームは削除されていないため、復元できません",
     "COMMON_001": "入力内容に不備があります",
     "COMMON_002": "この操作を行う権限がありません",
     "COMMON_003": "他のユーザーによって更新されました。画面を更新してください",
@@ -629,6 +751,7 @@
     }
   },
   "timeline": {
+    "refresh": "更新",
     "detail": {
       "back": "戻る",
       "loadFailed": "投稿を取得できませんでした",
@@ -1070,6 +1193,21 @@
     }
   },
   "project": {
+    "back_label": "プロジェクト一覧",
+    "delete_aria": "{title}を削除",
+    "delete_confirm": "「{title}」を削除しますか？",
+    "delete_confirm_header": "削除の確認",
+    "milestone_dialog": {
+      "add_title": "マイルストーン追加",
+      "edit_title": "マイルストーン編集",
+      "title_label": "タイトル",
+      "title_placeholder": "マイルストーン名",
+      "due_date_label": "期限",
+      "add": "追加"
+    },
+    "related_todo_no_due": "期限なし",
+    "related_todo_no_assignee": "担当者なし",
+    "related_todo_open": "TODO詳細を開く",
     "milestones": "マイルストーン",
     "no_milestones": "マイルストーンがありません",
     "due_date": "期限",
@@ -1127,7 +1265,19 @@
       "none": "なし",
       "custom_emoji": "カスタム",
       "custom_color": "カスタムカラー",
-      "current": "現在の値"
+      "current": "現在の値",
+      "colors": {
+        "blue": "ブルー",
+        "red": "レッド",
+        "green": "グリーン",
+        "amber": "アンバー",
+        "violet": "バイオレット",
+        "pink": "ピンク",
+        "cyan": "シアン",
+        "teal": "ティール",
+        "orange": "オレンジ",
+        "gray": "グレー"
+      }
     },
     "guide": {
       "button": "使い方",
@@ -1179,7 +1329,10 @@
       "update_failed": "更新に失敗しました",
       "delete_failed": "削除に失敗しました",
       "status_change_failed": "ステータスの変更に失敗しました",
-      "milestone_save_failed": "マイルストーンの保存に失敗しました"
+      "milestone_save_failed": "マイルストーンの保存に失敗しました",
+      "force_unlock_failed": "強制アンロックに失敗しました",
+      "completion_mode_failed": "完了モードの変更に失敗しました",
+      "gate_init_failed": "ゲートの初期化に失敗しました"
     },
     "status": {
       "active": "進行中",
@@ -1210,7 +1363,29 @@
   },
   "inviteToken": {
     "printQrPdf": "QRコードPDF印刷",
-    "printQrPdfError": "PDF印刷に失敗しました"
+    "printQrPdfError": "PDF印刷に失敗しました",
+    "title": "招待リンク",
+    "createNew": "新規作成",
+    "createTitle": "招待リンクを作成",
+    "role": "ロール",
+    "expiry": "有効期限",
+    "uses": "使用回数",
+    "inviteRole": "招待ロール",
+    "maxUses": "最大使用回数（空欄で無制限）",
+    "empty": "招待リンクはまだありません",
+    "never": "無期限",
+    "copy": "招待URLをコピー",
+    "revoke": "招待リンクを無効にする",
+    "revokeConfirm": "この招待リンクを無効にしますか？",
+    "createSuccess": "招待リンクを作成しました",
+    "createError": "招待リンクの作成に失敗しました",
+    "revokeSuccess": "招待リンクを無効にしました",
+    "revokeError": "招待リンクの無効化に失敗しました",
+    "copied": "招待URLをコピーしました",
+    "oneDay": "1日",
+    "sevenDays": "7日",
+    "thirtyDays": "30日",
+    "ninetyDays": "90日"
   },
   "visibilityTemplate": {
     "title": "公開範囲テンプレート",
@@ -1470,7 +1645,9 @@
     },
     "ws": {
       "disconnected": "接続が切れました",
-      "reconnecting": "再接続中…"
+      "reconnecting": "再接続中…",
+      "denied": "このボードを閲覧する権限がないため、リアルタイム更新を停止しました",
+      "unauthenticated": "ログインの有効期限が切れたため、リアルタイム更新を停止しました。再度ログインしてください"
     },
     "validation": {
       "required": "必須項目です",
@@ -1593,7 +1770,9 @@
       "more": "他{count}件",
       "today": "今日",
       "dayDetail": {
-        "title": "{date} の予定"
+        "title": "{date} の予定",
+        "empty": "この日の予定はありません",
+        "create": "この日に予定を追加"
       },
       "empty": "この期間に予定はありません",
       "view": {
@@ -2387,6 +2566,14 @@
     "SUPPORTERS_AND_ABOVE": "サポーター以上",
     "MEMBERS_AND_ABOVE": "メンバー以上"
   },
+  "organization_visibility": {
+    "PUBLIC": "公開",
+    "PRIVATE": "限定公開"
+  },
+  "entity_create": {
+    "error_heading": "入力内容を確認してください",
+    "supporter_label": "サポーター機能を有効にする"
+  },
   "module_settings": {
     "enabled_count": "有効な機能: {count} / {limit}",
     "fetch_error": "機能一覧の取得に失敗しました",
@@ -2446,6 +2633,21 @@
     }
   },
   "teamShell": {
+    "archive": {
+      "syncError": "変更は完了しましたが、一覧を同期できませんでした。再取得してください。",
+      "archive": "チームをアーカイブ",
+      "unarchive": "アーカイブを解除",
+      "archiveConfirm": "このチームをアーカイブします。加盟申請・招待は取り消され、成立済みの加盟は維持されます。チーム詳細は閲覧できなくなります。解除はチーム一覧の「アーカイブ済みチーム」から行えます。",
+      "unarchiveConfirm": "アーカイブを解除します。取り消された加盟申請・招待や失効した招待リンクは復元されません。",
+      "archived": "チームをアーカイブしました",
+      "unarchived": "アーカイブを解除しました",
+      "changed": "チームの状態または操作権限が変わりました。一覧を再取得してください。",
+      "listTitle": "アーカイブ済みチーム",
+      "showList": "アーカイブ済みチームを表示",
+      "hideList": "一覧を閉じる",
+      "fetchError": "アーカイブ済みチームを取得できませんでした。",
+      "empty": "アーカイブ済みチームはありません。"
+    },
     "tab": {
       "affiliations": "所属組織",
       "permissionGroups": "権限グループ",
@@ -2887,5 +3089,254 @@
     "generic_title": "エラーが発生しました",
     "generic_description": "しばらくしてからもう一度お試しください。問題が続く場合は、管理者へお問い合わせください。",
     "back_home": "ホームへ戻る"
+  },
+  "loyalty": {
+    "memberQr": {
+      "title": "会員QR",
+      "expiresIn": "残り{seconds}秒",
+      "expired": "QRを更新してください",
+      "disabled": "この会員証は停止または無効になっています。自動では再発行されません"
+    },
+    "wallet": {
+      "title": "チームポイント",
+      "empty": "まだチームポイントがありません"
+    },
+    "balance": "{points}ポイント",
+    "remaining": "あと{points}ポイント",
+    "lifetime": "累計獲得 {points}ポイント",
+    "refresh": "更新",
+    "more": "続きを確認",
+    "confirm": "内容を確認して確定",
+    "retrySame": "同じ内容で結果を確認",
+    "save": "保存",
+    "saved": "保存しました",
+    "cancel": "戻る",
+    "name": "名称",
+    "description": "説明（任意）",
+    "active": "有効",
+    "externalCards": "外部ポイントカードの利用を開始",
+    "history": {
+      "title": "加算・交換履歴",
+      "award": "加算",
+      "redeem": "特典交換",
+      "empty": "履歴がありません"
+    },
+    "audience": {
+      "title": "付与対象",
+      "allAuthenticated": "全認証済み個人（非所属を含む）",
+      "supportersAndAbove": "サポーター以上",
+      "membersAndAbove": "メンバー以上"
+    },
+    "rule": {
+      "title": "付与ルール",
+      "amount": "1回の加算数",
+      "points": "1回{points}ポイント",
+      "frequency": "頻度",
+      "frequencyDaily": "JSTで一日一回",
+      "frequencyStaff": "スタッフ確認ごと",
+      "selfEnabled": "本人による受付QR読取を許可",
+      "selfDailyOnly": "本人受付は一日一回のルールのみ利用できます"
+    },
+    "reward": {
+      "title": "特典",
+      "add": "特典を追加",
+      "amount": "必要ポイント",
+      "required": "{points}ポイントで交換",
+      "confirm": "{reward}に{points}ポイント使用"
+    },
+    "scan": {
+      "title": "ポイント受付",
+      "camera": "会員QRをカメラで読取",
+      "cameraDenied": "カメラを利用できません。ブラウザのカメラ許可を確認して再試行してください",
+      "confirmAward": "{team}で{points}ポイント加算",
+      "success": "ポイント処理が完了しました",
+      "next": "次の受付を開始"
+    },
+    "self": {
+      "confirm": "受付内容の確認",
+      "rescan": "受付QRをもう一度読み取ってください"
+    },
+    "error": {
+      "uncertain": "結果は未確定です。同じ内容で再送して結果を確認してください",
+      "alreadyAwarded": "本日は加算済みです",
+      "ineligible": "現在の付与対象ではありません",
+      "changed": "内容が変更されました。再確認してください",
+      "insufficient": "ポイントが不足しています"
+    },
+    "program": {
+      "disabled": "ポイントプログラムは停止中です",
+      "closedTeam": "利用終了したチーム"
+    },
+    "settings": {
+      "title": "チームポイント設定",
+      "enabled": "ポイントプログラムを有効化"
+    },
+    "mode": {
+      "title": "本人受付の方式",
+      "staffApproval": "スタッフ承認（確定まで加算なし）",
+      "auto": "自動加算",
+      "autoWarning": "固定QRの撮影・遠隔再利用は防げず、同日1回の制限でも来店そのものは証明できません"
+    },
+    "reception": {
+      "title": "ポイント受付QR",
+      "location": "受付拠点",
+      "newLocation": "新しい受付拠点名",
+      "create": "受付拠点を作成",
+      "preview": "QRプレビュー",
+      "print": "印刷・共有",
+      "stop": "受付拠点を停止",
+      "sharedLocationStopWarning": "この拠点を停止すると、同じ拠点のチェックインも停止します。ポイントだけ止める場合はプログラムを停止してください",
+      "printTitle": "ポイント受付",
+      "printInstructions": "QRを読み取り、ログインして内容を確認後、確定してください。JSTで一日一回です"
+    },
+    "requests": {
+      "title": "受付申請",
+      "empty": "受付申請がありません",
+      "submitted": "申請しました（まだ加算されていません）",
+      "code": "照合コード {code}",
+      "expiresAt": "有効期限 {datetime}（JST日跨ぎで短縮）",
+      "showStaff": "本人画面をスタッフに提示して確認を受けてください",
+      "approve": "承認して加算",
+      "reject": "却下",
+      "cancel": "申請を取り消す",
+      "compareBeforeApprove": "本人画面の表示名と照合コードを比較してから承認してください",
+      "enterCode": "本人画面の照合コード",
+      "moreCandidates": "この範囲に有効申請なし・続きを確認",
+      "selfApprovalForbidden": "この申請は承認できません。自分の申請は別のスタッフへ提示してください",
+      "all": "全状態",
+      "deletedUser": "退会済み利用者",
+      "closedLocation": "利用終了した受付",
+      "reapply": "現在の内容を確認して再申請",
+      "status": {
+        "pending": "承認待ち",
+        "approved": "承認済み",
+        "cancelled": "取消済み",
+        "rejected": "却下済み",
+        "expired": "期限切れ",
+        "invalidated": "内容変更等で無効",
+        "superseded": "別経路で加算済み"
+      },
+      "reason": {
+        "userCancelled": "本人が取り消しました",
+        "staffRejected": "スタッフが却下しました",
+        "ttlExpired": "有効期限を過ぎました",
+        "dayChanged": "JSTの日付が変わりました",
+        "versionChanged": "設定・ルールが変更されました",
+        "locationInactive": "受付拠点が停止しました",
+        "teamInactive": "チームが停止しました",
+        "userInactive": "利用者が無効になりました",
+        "ineligible": "現在の付与対象ではありません",
+        "dailyAwarded": "本日は加算済みです",
+        "pointLimit": "ポイント上限に達しました"
+      }
+    }
+  },
+  "budget_accounting": {
+    "title": "予算・会計",
+    "add_year": "年度を追加",
+    "fiscal_year": "会計年度",
+    "default_name": "{year}年度",
+    "name": "年度名（必須）",
+    "name_placeholder": "例: 2026年度",
+    "start_date": "開始日（必須）",
+    "end_date": "終了日（必須）",
+    "add": "追加",
+    "created": "年度を追加しました",
+    "empty_years": "会計年度がありません",
+    "empty_years_hint": "「年度を追加」から、集計したい期間を登録してください。",
+    "totalIncome": "収入",
+    "totalExpense": "支出",
+    "balance": "残高",
+    "categories": "費目別の予算と実績",
+    "empty_categories": "この年度には費目がありません",
+    "budget_amount": "予算 {amount}",
+    "actual_amount": "実績 {amount}",
+    "execution_rate": "消化率 {rate}%",
+    "validation": {
+      "name_required": "年度名を入力してください。",
+      "name_max": "年度名は100文字以内で入力してください。",
+      "date_required": "日付を入力してください。",
+      "date_order": "終了日は開始日より後の日付にしてください。"
+    }
+  },
+  "budget_guide": {
+    "title": "予算・会計の使い方",
+    "description": "年度を選び、その期間の収入・支出と費目別の予算を確認します。この画面は管理者・副管理者など閲覧権限を持つ利用者向けです。一般メンバーは閲覧できません。必要な場合は管理者に相談してください。",
+    "what": {
+      "title": "会計年度とは",
+      "body": "収支をまとめて確認する期間です。4月から翌年3月に限らず、チームの活動に合う開始日と終了日を設定できます。",
+      "steps": {
+        "step1": "まず、確認したい期間の年度があるか、画面上部の年度一覧を見ます。"
+      }
+    },
+    "create": {
+      "title": "年度を追加する",
+      "body": "管理者・副管理者が操作できます。追加するのは費目ではなく、収支を集計する年度です。",
+      "steps": {
+        "step1": "「年度を追加」を押します。",
+        "step2": "年度名（空白以外の1〜100文字）、開始日、終了日を入力します。終了日は開始日より後にします。",
+        "step3": "「追加」を押します。成功すると新しい年度が選ばれます。収支や費目が未登録なら集計は0円、費目は未登録と表示されます。"
+      }
+    },
+    "switch": {
+      "title": "確認する年度を切り替える",
+      "body": "画面上部の年度名を選ぶと、その年度の集計に切り替わります。",
+      "steps": {
+        "step1": "確認したい年度名を押します。",
+        "step2": "読み込みが終わったら、収入・支出・残高と費目を確認します。"
+      }
+    },
+    "summary": {
+      "title": "集計と費目の読み方",
+      "body": "収入は入ったお金、支出は使ったお金、残高は収入から支出を引いた金額です。費目はお金の用途ごとの分類です。",
+      "steps": {
+        "step1": "費目ごとの「予算」は予定額、「実績」は記録済みの金額です。",
+        "step2": "「消化率」は予算に対する実績の割合です。100%を超えると赤字で表示されます。",
+        "step3": "この画面で行える登録は年度追加です。費目作成や収支の直接入力はこの画面にはありません。"
+      }
+    },
+    "trouble": {
+      "title": "困ったとき",
+      "body": "データがない場合と、読み込みに失敗した場合は表示が異なります。",
+      "steps": {
+        "step1": "「会計年度がありません」と出たら、「年度を追加」から最初の期間を登録します。",
+        "step2": "通信エラーでは「再試行」を押します。権限エラーではチームの管理者に確認してください。",
+        "step3": "追加に失敗しても入力は残ります。表示された理由や入力内容を確認してから、もう一度「追加」を押します。"
+      }
+    }
+  },
+  "feature_display": {
+    "title": "一般機能の表示",
+    "description": "画面の入口・ホーム表示を整理する設定です。直URLや機能APIの権限は変わりません。管理者の通常表示には影響しません。",
+    "feature": "機能",
+    "member": "メンバーに表示",
+    "supporter": "サポータに表示",
+    "member_label": "{feature}をメンバーに表示",
+    "supporter_label": "{feature}をサポータに表示",
+    "save_success": "表示設定を保存しました",
+    "nav": "ナビ"
+  },
+  "secret_token": {
+    "issued_dialog": {
+      "title": "リンクを発行しました",
+      "once_warning": "このリンクは今だけ表示されます。閉じると二度と表示されません。必要な方へ共有してから閉じてください。",
+      "url_label": "発行されたリンク",
+      "copy": "コピー",
+      "copied": "コピーしました",
+      "copy_failed": "コピーできませんでした。手動で選択してコピーしてください",
+      "qr_label": "QRコード",
+      "close": "閉じる",
+      "pdf_download": "QRコードをPDFで保存"
+    },
+    "list": {
+      "not_shown_hint": "セキュリティのため、発行済みのリンクは再表示されません。必要な場合は再発行してください。",
+      "revoked_by_migration": "セキュリティ強化のため失効しました",
+      "reissue": "再発行",
+      "reissue_hint": "再発行すると新しいリンクが作られ、古いリンクは使えなくなります。",
+      "label_with_id": "リンク #{id}",
+      "created_at": "発行日時",
+      "expires_at": "有効期限",
+      "used_count": "利用回数"
+    }
   }
 }

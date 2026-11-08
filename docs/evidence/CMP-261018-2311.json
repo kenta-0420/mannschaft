@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261018-2311",
+  "scope": "app",
+  "implementation": {
+    "pr": 3991,
+    "sha": "d72d4f57290e423780a85f3339541cd0c36c2a95"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "HOST/PORTとhealth時間設定を維持し、標準health URLを127.0.0.1へ合わせる。",
+      "tests": [{ "name": "旧localhost REDとIPv4 health GREENの実Docker比較", "evidence": "docs/evidence/CMP-261018-2311.md" }]
+    },
+    {
+      "id": "AC-2",
+      "description": "公開HTTP成功とrunning/healthyの両立時だけ成功し、healthy判定直前も公開HTTPを再確認する。",
+      "tests": [{ "name": "最終本体の実Docker healthy成功とstale healthy後HTTP失敗のBash分岐", "evidence": "docs/evidence/CMP-261018-2311.md" }]
+    },
+    {
+      "id": "AC-3",
+      "description": "HTTP60秒とhealth180秒の期限を設け、unhealthy・非running・health欠損・inspect失敗・期限超過を失敗にしてState/logsを出力する。",
+      "tests": [{ "name": "実Docker無応答/終了REDと実Bashの異常・期限・残秒0境界9分岐", "evidence": "docs/evidence/CMP-261018-2311.md" }]
+    },
+    {
+      "id": "AC-4",
+      "description": "成否にかかわらず所有コンテナだけを撤去する。",
+      "tests": [{ "name": "各case所有label確認後finally撤去・専有ポート閉鎖・main停止step成功", "evidence": "docs/evidence/CMP-261018-2311.md" }]
+    },
+    {
+      "id": "AC-5",
+      "description": "実Dockerでhealth修正前後の差と、無応答・サーバー終了の赤検知を確認する。",
+      "tests": [{ "name": "old-health-red / ipv4-health-green / no-response-red / final-ipv4-health-green / exited-red", "evidence": "docs/evidence/CMP-261018-2311.md" }]
+    },
+    {
+      "id": "AC-6",
+      "description": "main push限定Docker方針を維持し、merge後exact mainの標準本番Docker jobとrun全体の実成功を確認する。",
+      "tests": [{ "name": "main65c/run39138430534の標準build・自己完結・公開HTTP/healthy・State/logs・停止の実成功", "evidence": "docs/evidence/CMP-261018-2311.md" }]
+    }
+  ],
+  "ci": [
+    { "runId": 39136068688, "note": "実装PR head一致のFrontend CI、648files/6330tests全passed。" },
+    { "runId": 39136068676, "note": "同一実装headのSmoke E2E成功。" },
+    { "runId": 39136068781, "note": "同一実装headのLighthouse成功。" }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261018-2311.md",
+      "note": "ROOT検分の残秒0無制限指摘を修正し、実Bash境界検証で再確認後finding0。"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261018-2311.md",
+      "note": "local旧成果物metadata比較と、exact main標準本番成果物のHTTP/healthy成功を区別して確認。UI・API認可・導線変更なし、全UI実機と3ロールは対象外。"
+    },
+    "exploratory": {
+      "status": "passed",
+      "kind": "operator-exploration",
+      "evidence": "docs/evidence/CMP-261018-2311.md",
+      "note": "main実機成功後のUTC15:30:51～15:31:22、目的だけを受けた独立運用者がGET/HEADと通常stop/startを自律選択。古い成功health履歴の残存、現在State/Health、新しいprobe、公開HTTPで停止と回復を判断し、再起動後healthy/probe0/HTTP200を観測。ROOTが原記録とcleanupを直接照合し、今回health metadata範囲の探索として評価。予定済み9分岐を探索根拠にしない。",
+      "limitations": "local ba085成果物へ最終health定義のみ適用した限定運用探索。全UIアリシゼーション・3住民・3ロール・最新main全アプリ探索ではない。初回healthy移行瞬間は未保存、再起動後healthyは実測。"
+    }
+  },
+  "regressions": [
+    {
+      "description": "IPv4待受に対してlocalhostのIPv6解決でhealthが接続拒否する既存不具合と再発防止。導入時点は未特定。公開HTTP成功でも旧healthはunhealthy/CI exit1、IPv4 healthはhealthy/exit0。",
+      "test": "old-health-red / ipv4-health-green / final-ipv4-health-green",
+      "redEvidence": "docs/evidence/CMP-261018-2311.md",
+      "greenEvidence": "docs/evidence/CMP-261018-2311.md"
+    },
+    {
+      "description": "HTTP期限判定直後に秒が進みmax-time0を渡す境界。実Bash DEBUG trapで再現し、guardなしは不正exit0、guard追加後はcurl起動なしexit1。未コミットのローカル運用試験で、永続CIの境界テストとは扱わない。",
+      "test": "http-deadline-boundary",
+      "redEvidence": "docs/evidence/CMP-261018-2311.md",
+      "greenEvidence": "docs/evidence/CMP-261018-2311.md"
+    }
+  ],
+  "mainVerification": {
+    "sha": "65c8670375ad99eb0871580c25adc4c0f366e8c0",
+    "runId": 39138430534,
+    "dockerJobId": 117707656524,
+    "status": "completed",
+    "conclusion": "success",
+    "stateStatus": "running",
+    "healthStatus": "healthy",
+    "probeExits": [0],
+    "note": "merge SHAのrunなので実装PR head一致を要求するci[]へ混ぜない。ROOTがjob/runと実成功出力行を独立照合。"
+  }
+}

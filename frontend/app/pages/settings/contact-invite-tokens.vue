@@ -8,12 +8,13 @@ definePageMeta({
 </script>
 
 <template>
-  <div class="mx-auto max-w-2xl p-6">
-    <PageHeader :title="$t('contact_invite.page_title')" help @help="showGuide = true">
+  <div class="contact-invite-page mx-auto max-w-2xl p-6">
+    <PageHeader class="contact-invite-header" :title="$t('contact_invite.page_title')" help @help="showGuide = true">
       <template #actions>
         <Button
           :label="$t('contact_invite.create_button')"
           icon="pi pi-plus"
+          class="min-h-11"
           @click="showCreateForm = !showCreateForm"
         />
       </template>
@@ -25,3 +26,49 @@ definePageMeta({
     <ContactInviteGuideModal v-model:visible="showGuide" />
   </div>
 </template>
+
+<style scoped>
+.contact-invite-page :deep(.contact-invite-header) {
+  flex-wrap: wrap;
+}
+
+.contact-invite-page :deep(.contact-invite-header h1) {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.contact-invite-page :deep(.contact-invite-header h1 + div) {
+  width: 100%;
+  min-width: 0;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.contact-invite-page :deep(.contact-invite-header .p-button) {
+  min-width: 44px;
+  min-height: 44px;
+  max-width: 100%;
+  flex-shrink: 0;
+}
+
+.contact-invite-page :deep(.contact-invite-header .p-button-label) {
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 640px) {
+  .contact-invite-page :deep(.contact-invite-header) {
+    flex-wrap: nowrap;
+  }
+
+  .contact-invite-page :deep(.contact-invite-header h1) {
+    flex: 0 1 auto;
+  }
+
+  .contact-invite-page :deep(.contact-invite-header h1 + div) {
+    width: auto;
+  }
+}
+</style>

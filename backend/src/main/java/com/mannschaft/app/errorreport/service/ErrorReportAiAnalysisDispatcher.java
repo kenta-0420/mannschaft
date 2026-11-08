@@ -1,11 +1,16 @@
 package com.mannschaft.app.errorreport.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.errorreport.ErrorReportProperties;
+import com.mannschaft.app.errorreport.event.ErrorReportAiAnalysisRequestedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * エラーレポート AI 即時分析の起動 Bean（Issue #2990 L4）。
@@ -36,8 +41,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * <h2>L3 の {@code recordBackendException} 監査済み例外とは事情が異なる</h2>
  * <p>L3 では {@code ErrorReportService#recordBackendException} を「業務TXがロールバック済みの後に
  * 走るので AFTER_COMMIT にすると永久に発火しない」として監査済み例外にした。本件の呼び出し元は
- * {@code createOrAggregate}（{@code ErrorReportService} の 95 行目・169 行目の2箇所のみ。
- * {@code recordBackendException} からは呼ばれない）であり、こちらは正常にコミットする業務経路である。
+ * FE の新規・再発に限られ、{@code recordBackendException} からは呼ばれない。
+ * R1ではIDだけの要求イベントを正常commit後に受信する。
  * よって AFTER_COMMIT 起動は正しく、L3 の例外事由は当てはまらない。</p>
  */
 @Slf4j
@@ -59,20 +64,7 @@ public class ErrorReportAiAnalysisDispatcher {
      * @param createdBy     操作者ユーザー ID（システム自動なら NULL）
      */
     public void analyzeAfterCommit(Long errorReportId, Long createdBy) {
-        // AC-10: 即時分析パスにも予算チェックを適用する。
-        // 予算超過時は Claude API を発火させず、警告ログのみ残してスキップする。
-        // last_ai_analysis_at は更新しないため、後追いの自動分析バッチが翌期に拾える設計を壊さない。
-        if (!props.getAi().isEnabled()) {
-            log.debug("AI 即時分析スキップ（機能無効）: errorReportId={}", errorReportId);
-            return;
-        }
-        if (!budgetService.canExpend(ErrorReportAiAnalysisService.CONSERVATIVE_COST_ESTIMATE_JPY)) {
-            log.warn("AI 即時分析スキップ（月次予算超過・コストガード）: errorReportId={}, "
-                            + "monthlyExpenseJpy={}, budgetJpy={}。後追いバッチが翌期に再評価する。",
-                    errorReportId, budgetService.currentMonthlyExpense(),
-                    props.getAi().getMonthlyBudgetJpy());
-            return;
-        }
+        if (!canAnalyze(errorReportId)) return;
 
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -83,8 +75,35 @@ public class ErrorReportAiAnalysisDispatcher {
                 }
             });
         } else {
-            // トランザクションが無い場合は直接非同期化
             asyncRunner.analyzeAsync(errorReportId, createdBy);
         }
+    }
+
+    /** 既に commit 済みのイベントでは synchronization を再登録せず、既存 Async proxy へ渡す。 */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "停止用の gate_key を持たない運用基盤として、commit済みFE障害の即時AI分析要求を受ける。"
+                    + "要求は再生されないため入口では破棄せず、既存のAI有効設定と月次予算で実行可否を判定する")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onAnalysisRequested(ErrorReportAiAnalysisRequestedEvent event) {
+        if (canAnalyze(event.reportId())) asyncRunner.analyzeAsync(event.reportId(), null);
+    }
+
+    private boolean canAnalyze(Long errorReportId) {
+        // AC-10: 即時分析パスにも予算チェックを適用する。
+        // 予算超過時は Claude API を発火させず、警告ログのみ残してスキップする。
+        // last_ai_analysis_at は更新しないため、後追いの自動分析バッチが翌期に拾える設計を壊さない。
+        if (!props.getAi().isEnabled()) {
+            log.debug("AI 即時分析スキップ（機能無効）: errorReportId={}", errorReportId);
+            return false;
+        }
+        if (!budgetService.canExpend(ErrorReportAiAnalysisService.CONSERVATIVE_COST_ESTIMATE_JPY)) {
+            log.warn("AI 即時分析スキップ（月次予算超過・コストガード）: errorReportId={}, "
+                            + "monthlyExpenseJpy={}, budgetJpy={}。後追いバッチが翌期に再評価する。",
+                    errorReportId, budgetService.currentMonthlyExpense(),
+                    props.getAi().getMonthlyBudgetJpy());
+            return false;
+        }
+
+        return true;
     }
 }

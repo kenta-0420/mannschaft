@@ -114,7 +114,7 @@ function validateRunOverlay(overlay) {
     }
     for (const journey of journeys) {
       const persona = overlayPersonas.get(journey.personaId);
-      if (!journey.id || !persona || !journey.purpose || !journey.runId || !journey.sourceHead || !journey.evidencePath || journey.sourceHead !== overlay.environment.sourceHead || journey.runId !== persona.runId || journey.sourceHead !== persona.sourceHead) throw new Error('住民journeyの宣言・目的・runId・source・証拠が不整合です');
+      if (!journey.id || !persona || !journey.purpose || !journey.runId || !journey.sourceHead || !journey.evidencePath || journey.runId !== persona.runId || journey.sourceHead !== persona.sourceHead) throw new Error('住民journeyの宣言・目的・runId・source・証拠が不整合です');
     }
   }
   for (const insight of overlay?.insights || []) {
@@ -153,6 +153,28 @@ if (process.argv.includes('--self-test-overlay')) {
     status: 'observed-unverified',
   }];
   validateRunOverlay(baseline);
+  const multiRun = structuredClone(baseline);
+  multiRun.personas = ['a', 'b'].map((suffix) => ({
+    ...persona,
+    id: `self-test-persona-${suffix}`,
+    runId: `self-test-run-${suffix}`,
+    sourceHead: suffix.repeat(40),
+  }));
+  multiRun.journeys = multiRun.personas.map((item) => ({
+    ...journey,
+    id: `self-test-journey-${item.id}`,
+    personaId: item.id,
+    runId: item.runId,
+    sourceHead: item.sourceHead,
+  }));
+  multiRun.insights = multiRun.journeys.map((item) => ({
+    ...baseline.insights[0],
+    id: `self-test-insight-${item.id}`,
+    personaId: item.personaId,
+    journeyId: item.id,
+    originalRunId: item.runId,
+  }));
+  validateRunOverlay(multiRun);
   const mutations = [
     (overlay) => { overlay.insights[0].personaId = 'undeclared-persona'; },
     (overlay) => { overlay.insights[0].journeyId = 'undeclared-journey'; },
@@ -162,6 +184,8 @@ if (process.argv.includes('--self-test-overlay')) {
     (overlay) => { overlay.insights[0].evidencePath = ''; },
     (overlay) => { overlay.personas.push({ ...overlay.personas[0] }); },
     (overlay) => { overlay.trusted = true; },
+    (overlay) => { overlay.journeys[0].sourceHead = 'mismatched-persona-head'; },
+    (overlay) => { overlay.insights[0].originalRunId = 'mismatched-journey-run'; },
   ];
   for (const mutate of mutations) {
     const invalid = structuredClone(baseline);
@@ -170,7 +194,7 @@ if (process.argv.includes('--self-test-overlay')) {
     try { validateRunOverlay(invalid); } catch { rejected = true; }
     if (!rejected) throw new Error('住民overlayの不正な宣言を拒否できませんでした');
   }
-  console.log(JSON.stringify({ residentOverlayAccepted: true, emptyInsightsAccepted: true, syntheticBaselineAccepted: true, invalidOverlaysRejected: mutations.length }));
+  console.log(JSON.stringify({ residentOverlayAccepted: true, emptyInsightsAccepted: true, syntheticBaselineAccepted: true, multipleSourceHeadsAndRunsAccepted: true, invalidOverlaysRejected: mutations.length }));
 }
 if (!Array.isArray(strategy.timeline) || strategy.timeline.length < 6 || !Array.isArray(strategy.evidence) || strategy.evidence.length < 4) throw new Error('B0自律テスト戦略の時間軸・証拠定義が不足しています');
 if (strategy.safety?.database !== '開発DB限定' || strategy.safety?.externalSending !== false || strategy.safety?.cookies !== 'personaごとに分離' || !String(strategy.safety?.passCriteria || '').includes('0件・全skip・途中停止は非合格')) throw new Error('B0自律テスト戦略の安全条件が不正です');

@@ -9,6 +9,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import com.mannschaft.app.common.token.PlaintextSecretRequired;
 
 /**
  * 順番待ちQRコードエンティティ。カテゴリまたはカウンターへの発券用QRコードを管理する。
@@ -24,6 +25,7 @@ public class QueueQrCodeEntity extends BaseEntity {
 
     private Long counterId;
 
+    @PlaintextSecretRequired(reason = "待ち行列の QR を運営者に何度でも見せるため平文で保持する。署名付き短命 QR への移行は別 CMP")
     @Column(nullable = false, unique = true, length = 64)
     private String qrToken;
 

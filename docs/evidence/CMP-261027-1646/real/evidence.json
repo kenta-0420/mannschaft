@@ -1,0 +1,718 @@
+{
+  "sourceHead": "a8b7d8b999973d2c138ffecce2fbe2233f6bb09a",
+  "scope": "既存管理導線の実機4caseおよび3独立persona探索。追加runtime試験なし。",
+  "method": {
+    "backendPort": 18082,
+    "frontendPort": 18083,
+    "isolatedDatabase": true,
+    "profile": "ci",
+    "ordinaryUiLoginAndCookies": true,
+    "mockRouteOrAuthHeaderInjection": false,
+    "independentAccountsAndBrowserContexts": 3
+  },
+  "real": {
+    "passed": true,
+    "caseCount": 4,
+    "cases": [
+      {
+        "case": "admin-allowed",
+        "role": "admin",
+        "status": "passed",
+        "finalPath": "/organizations/s-c6151c64/admin",
+        "observations": [
+          {
+            "action": "UIログイン",
+            "role": "admin",
+            "path": "/dashboard"
+          },
+          {
+            "action": "管理URL直打ち",
+            "scope": "team",
+            "result": "管理コンソール表示"
+          },
+          {
+            "action": "管理URL直打ち",
+            "scope": "organization",
+            "result": "管理コンソール表示"
+          }
+        ],
+        "apiResponses": [
+          {
+            "path": "/api/v1/active-incidents",
+            "status": 200,
+            "count": 4
+          },
+          {
+            "path": "/api/v1/admin/business-alerts/summary",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/auth/login",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/chat/channels",
+            "status": 200,
+            "count": 3
+          },
+          {
+            "path": "/api/v1/dashboard/action-required",
+            "status": 200,
+            "count": 2
+          },
+          {
+            "path": "/api/v1/dashboard/admin-action-required",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/dashboard/announcements",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/dashboard/notices",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/dashboard/organization/s-c6151c64",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/dashboard/organization/s-c6151c64/admin-action-required",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/dashboard/scope-tabs",
+            "status": 200,
+            "count": 5
+          },
+          {
+            "path": "/api/v1/dashboard/team/fc-u-18",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/dashboard/team/fc-u-18/admin-action-required",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/dashboard/todos",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/dashboard/widgets",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/feature-flags",
+            "status": 200,
+            "count": 2
+          },
+          {
+            "path": "/api/v1/inbox/summary",
+            "status": 200,
+            "count": 3
+          },
+          {
+            "path": "/api/v1/master/prefectures",
+            "status": 200,
+            "count": 2
+          },
+          {
+            "path": "/api/v1/me/calendar-layers",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/me/organizations",
+            "status": 200,
+            "count": 3
+          },
+          {
+            "path": "/api/v1/me/schedules",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/me/scope-folders",
+            "status": 200,
+            "count": 4
+          },
+          {
+            "path": "/api/v1/me/scope-folders/notifications/summary",
+            "status": 200,
+            "count": 2
+          },
+          {
+            "path": "/api/v1/me/storage/usage",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/me/teams",
+            "status": 200,
+            "count": 3
+          },
+          {
+            "path": "/api/v1/mentions",
+            "status": 200,
+            "count": 3
+          },
+          {
+            "path": "/api/v1/my/calendar",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/notifications/unread-count",
+            "status": 200,
+            "count": 3
+          },
+          {
+            "path": "/api/v1/organizations/s-c6151c64/feature-display-policies",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/organizations/s-c6151c64/me/permissions",
+            "status": 200,
+            "count": 4
+          },
+          {
+            "path": "/api/v1/security/csp-reports",
+            "status": 204,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/settings/appearance",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/settings/nav",
+            "status": 200,
+            "count": 3
+          },
+          {
+            "path": "/api/v1/spotlight/content",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/teams/fc-u-18/feature-display-policies",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/teams/fc-u-18/me/permissions",
+            "status": 200,
+            "count": 4
+          },
+          {
+            "path": "/api/v1/timeline/feed",
+            "status": 200,
+            "count": 2
+          },
+          {
+            "path": "/api/v1/todos/my/calendar",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/users/me",
+            "status": 200,
+            "count": 2
+          }
+        ],
+        "browserErrorCount": 0,
+        "httpStatusCounts": {
+          "200": 74,
+          "204": 1
+        }
+      },
+      {
+        "case": "member-denied",
+        "role": "member",
+        "status": "passed",
+        "finalPath": "/teams/fc-u-18",
+        "observations": [
+          {
+            "action": "UIログイン",
+            "role": "member",
+            "path": "/dashboard"
+          },
+          {
+            "action": "管理URL直打ち",
+            "result": "スコープトップへ遷移・拒否通知1回",
+            "apiStatus": 403
+          }
+        ],
+        "apiResponses": [
+          {
+            "path": "/api/v1/active-incidents",
+            "status": 200,
+            "count": 3
+          },
+          {
+            "path": "/api/v1/auth/login",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/chat/channels",
+            "status": 200,
+            "count": 2
+          },
+          {
+            "path": "/api/v1/dashboard/scope-tabs",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/dashboard/team/fc-u-18/widget-visibility",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/dashboard/widgets",
+            "status": 200,
+            "count": 2
+          },
+          {
+            "path": "/api/v1/feature-flags",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/inbox/summary",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/master/prefectures",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/me/favorites/check",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/me/scope-folders",
+            "status": 200,
+            "count": 2
+          },
+          {
+            "path": "/api/v1/me/storage/usage",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/me/teams",
+            "status": 200,
+            "count": 2
+          },
+          {
+            "path": "/api/v1/mentions",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/notifications/unread-count",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/security/csp-reports",
+            "status": 204,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/settings/appearance",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/settings/nav",
+            "status": 200,
+            "count": 2
+          },
+          {
+            "path": "/api/v1/spotlight/content",
+            "status": 200,
+            "count": 2
+          },
+          {
+            "path": "/api/v1/teams/fc-u-18",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/teams/fc-u-18/feature-display-policies",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/teams/fc-u-18/follow/status",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/teams/fc-u-18/me/permissions",
+            "status": 200,
+            "count": 2
+          },
+          {
+            "path": "/api/v1/teams/fc-u-18/modules",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/users/me",
+            "status": 200,
+            "count": 1
+          }
+        ],
+        "browserErrorCount": 3,
+        "httpStatusCounts": {
+          "200": 33,
+          "204": 1
+        }
+      },
+      {
+        "case": "foreign-tenant-denied",
+        "role": "admin",
+        "status": "passed",
+        "finalPath": "/organizations/s-d13e6cff",
+        "observations": [
+          {
+            "action": "UIログイン",
+            "role": "admin",
+            "path": "/dashboard"
+          },
+          {
+            "action": "非所属組織の管理URL直打ち",
+            "result": "スコープトップへ遷移・拒否通知1回",
+            "apiStatus": 403
+          }
+        ],
+        "apiResponses": [
+          {
+            "path": "/api/v1/active-incidents",
+            "status": 200,
+            "count": 3
+          },
+          {
+            "path": "/api/v1/auth/login",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/chat/channels",
+            "status": 200,
+            "count": 2
+          },
+          {
+            "path": "/api/v1/dashboard/scope-tabs",
+            "status": 200,
+            "count": 3
+          },
+          {
+            "path": "/api/v1/dashboard/todos",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/dashboard/widgets",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/feature-flags",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/inbox/summary",
+            "status": 200,
+            "count": 2
+          },
+          {
+            "path": "/api/v1/master/prefectures",
+            "status": 200,
+            "count": 2
+          },
+          {
+            "path": "/api/v1/me/organizations",
+            "status": 200,
+            "count": 2
+          },
+          {
+            "path": "/api/v1/me/scope-folders",
+            "status": 200,
+            "count": 3
+          },
+          {
+            "path": "/api/v1/me/storage/usage",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/me/teams",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/mentions",
+            "status": 200,
+            "count": 2
+          },
+          {
+            "path": "/api/v1/notifications/unread-count",
+            "status": 200,
+            "count": 2
+          },
+          {
+            "path": "/api/v1/organizations/s-d13e6cff",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/organizations/s-d13e6cff/me/permissions",
+            "status": 200,
+            "count": 2
+          },
+          {
+            "path": "/api/v1/security/csp-reports",
+            "status": 204,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/settings/appearance",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/settings/nav",
+            "status": 200,
+            "count": 2
+          },
+          {
+            "path": "/api/v1/spotlight/content",
+            "status": 200,
+            "count": 1
+          },
+          {
+            "path": "/api/v1/users/me",
+            "status": 200,
+            "count": 1
+          }
+        ],
+        "browserErrorCount": 3,
+        "httpStatusCounts": {
+          "200": 35,
+          "204": 1
+        }
+      },
+      {
+        "case": "anonymous-denied",
+        "role": null,
+        "status": "passed",
+        "finalPath": "/login",
+        "observations": [
+          {
+            "action": "未ログインで管理URL直打ち",
+            "result": "ログイン画面へ遷移"
+          }
+        ],
+        "apiResponses": [
+          {
+            "path": "/api/v1/me/teams",
+            "status": 401,
+            "count": 1
+          }
+        ],
+        "browserErrorCount": 1,
+        "httpStatusCounts": {
+          "401": 1
+        }
+      }
+    ]
+  },
+  "exploration": [
+    {
+      "role": "admin",
+      "persona": "一般・素直",
+      "goal": "ダッシュボードからチーム管理/メンバー一覧/所属組織管理へ進み帰還",
+      "goalAchieved": true,
+      "observationCount": 21,
+      "consoleErrorCount": 0,
+      "requestFailedCount": 0,
+      "httpErrorCount": 0,
+      "limits": [
+        "初期設定modalは後で決めるで閉じた。PUT保存は別。",
+        "非選択パネルselectorでpointer遮蔽、通常UIで組織へ切替後成功。瞬間画像/rectなく製品不具合と確定しない。",
+        "画像なし。視覚確認済みとはしない。"
+      ],
+      "observedPathSequence": [
+        "/dashboard",
+        "/dashboard",
+        "/dashboard",
+        "/teams/fc-u-18/admin",
+        "/teams/fc-u-18/admin",
+        "/teams/fc-u-18/members",
+        "/teams/fc-u-18/members",
+        "/teams/fc-u-18/members",
+        "/teams/fc-u-18/members",
+        "/teams/fc-u-18/members",
+        "/organizations/s-c6151c64",
+        "/organizations/s-c6151c64",
+        "/organizations/s-c6151c64",
+        "/organizations/s-c6151c64",
+        "/dashboard",
+        "/dashboard",
+        "/dashboard",
+        "/organizations/s-c6151c64/admin",
+        "/dashboard",
+        "/dashboard",
+        "/dashboard"
+      ],
+      "observationRowCount": 21
+    },
+    {
+      "role": "member",
+      "persona": "ADHD傾向・中断復帰",
+      "goal": "予定画面と活動詳細を読み、別ページ/別タブから戻る",
+      "goalAchieved": true,
+      "httpStatuses": {
+        "200": 188,
+        "204": 2
+      },
+      "errorCount": 0,
+      "limits": [
+        "表示月に予定項目がなく個別予定詳細の復帰は未検証。",
+        "前段の接続拒否/load timeout/支援driver selector missは完了探索の成功に含めない。"
+      ],
+      "observedPathSequence": [
+        "/dashboard",
+        "/teams/fc-u-18",
+        "/teams/fc-u-18",
+        "/teams/fc-u-18/schedule",
+        "/teams/fc-u-18/schedule",
+        "/teams/fc-u-18/info",
+        "/teams/fc-u-18/schedule",
+        "/help/qa",
+        "/help/qa",
+        "/teams/fc-u-18/schedule",
+        "/dashboard",
+        "/teams/fc-u-18/schedule",
+        "/teams/fc-u-18",
+        "/teams/fc-u-18",
+        "/teams/fc-u-18/activities",
+        "/activities/1",
+        "/help/qa",
+        "/activities/1",
+        "/activities/1",
+        "/activities/1",
+        "/activities/1"
+      ],
+      "observationRowCount": 21,
+      "countReconciliation": "保存原本のresponses全行を再集計すると200=188/204=2。住民reportとroot統合報告は採取時点200=183/204=2。完了探索後の同原本追加5responseと整合するが、その発生時刻/因果は未確定。188を183の同一snapshotと扱わない。"
+    },
+    {
+      "role": "third",
+      "persona": "一般・隙間狙い",
+      "goal": "非所属公開scopeから管理URLを直打ちし、拒否後に公開基本情報へ進む",
+      "goalAchieved": true,
+      "httpStatuses": {
+        "200": 157,
+        "204": 1,
+        "403": 2
+      },
+      "errorCount": 2,
+      "limits": [
+        "modules403とconsole403は認可拒否として観測、pageerrorなし。",
+        "拒否toastは採取時点で未観測。実機でのtoast観測と混同しない。",
+        "最初のtimeout/支援driver停止は未実施前段として除外。"
+      ],
+      "observedPathSequence": [
+        "/dashboard",
+        "/dashboard",
+        "/teams",
+        "/teams/search",
+        "/teams/fc-u-18",
+        "/teams/fc-u-18",
+        "/teams/fc-u-18/admin",
+        "/teams/fc-u-18",
+        "/teams/fc-u-18/info",
+        "/organizations/s-c6151c64",
+        "/organizations/s-c6151c64",
+        "/organizations/s-c6151c64/admin",
+        "/organizations/s-c6151c64",
+        "/organizations/s-c6151c64/info"
+      ],
+      "observationRowCount": 14
+    }
+  ],
+  "environmentProof": {
+    "jarSha256": "127c7bc6b561010d1d4cc091e2a63ac3c35f69dc999f870c20a09fda32d8c527",
+    "fixtureSha256": "cdba25afbd4d2367dae42b3a4eaa21d8d894a2d0b72b5516214362aece20d719",
+    "schemaMatch": true,
+    "credentialsMatch": true,
+    "privateFileMode": "600",
+    "adminIsSystemAdmin": false,
+    "memberHasTeamMemberRole": true,
+    "thirdHasRoles": false,
+    "healthHttp": 200,
+    "healthStatus": "UP",
+    "corsHttp": 200,
+    "allowOrigin": "http://localhost:18083",
+    "allowCredentials": "true",
+    "noLoginOrSeedRepeatedDuringRecovery": true,
+    "adminForeignOrganizationNoMembershipConfirmed": true,
+    "cookieAttributeProof": "HttpOnly=true, Secure=false, Domain=null, SameSite=Strict（localhost隔離実機）。Cookie名/値は未収録。"
+  },
+  "lifecycle": {
+    "originalSignal": "SIGHUP",
+    "originalCleanup": "retained",
+    "originalReceiptPreserved": true,
+    "recoveryPhase": "stopped",
+    "unexpectedChildExit": false,
+    "stillLiveAfterStop": [],
+    "scratchCleanup": "removed",
+    "scratchReferenceCount": 0,
+    "containersAbsent": {
+      "mannschaft-l1b-261027-real-mysql": true,
+      "mannschaft-l1b-261027-real-valkey": true
+    },
+    "ownLabelContainerCount": 0,
+    "dedicatedVolumeAbsent": true,
+    "dedicatedToolsAbsent": true,
+    "scratchAbsent": true,
+    "dedicatedListeners": [],
+    "sharedBrowserCacheRetained": true,
+    "sharedGradleCacheRetained": true
+  },
+  "failedPreconditionsExcluded": [
+    "初回npm準備失敗は実機成功に含めない。",
+    "実機4case後のSIGHUP/connection refused時点の3住民は未実施停止。",
+    "root管理で同scratchを再利用後の完了探索だけを探索成果へ含める。"
+  ],
+  "limits": [
+    "billing Checkout/Portal署名鍵未設定はfail-closed。課金成功を主張しない。",
+    "実機の速い遷移時Failed to fetchは安定admin/member探索で継続再現しなかったが、原因未確定。",
+    "全viewport/全画面の視覚監査・性能保証・CI最終green/merge完了の証明ではない。",
+    "確定不具合0は今回の観測範囲に限る。通常auth以外の業務データ更新は行っていない。"
+  ],
+  "privacy": "アカウント名/メール/資格値/認証cookie値/fixture内容/外部キーを抽出しない。URLはquery/fragmentを除外。"
+}

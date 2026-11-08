@@ -5,6 +5,7 @@ import com.mannschaft.app.bulletin.dto.CreateReplyRequest;
 import com.mannschaft.app.bulletin.dto.ReplyResponse;
 import com.mannschaft.app.bulletin.dto.UpdateReplyRequest;
 import com.mannschaft.app.bulletin.service.BulletinReplyService;
+import com.mannschaft.app.bulletin.service.BulletinReplyResponseEnricher;
 import com.mannschaft.app.bulletin.service.BulletinScopeIdResolver;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
@@ -37,6 +38,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class BulletinReplyController {
 
     private final BulletinReplyService replyService;
+    private final BulletinReplyResponseEnricher responseEnricher;
     private final BulletinScopeIdResolver scopeIdResolver;
 
 
@@ -54,7 +56,8 @@ public class BulletinReplyController {
             @RequestParam(defaultValue = "20") int size) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
         Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
-        Page<ReplyResponse> result = replyService.listReplies(type, resolvedScopeId, threadId, SecurityUtils.getCurrentUserId(), PageRequest.of(page, size));
+        Page<ReplyResponse> result = responseEnricher.enrich(replyService.listReplies(
+                type, resolvedScopeId, threadId, SecurityUtils.getCurrentUserId(), PageRequest.of(page, size)));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -73,7 +76,8 @@ public class BulletinReplyController {
             @Valid @RequestBody CreateReplyRequest request) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
         Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
-        ReplyResponse response = replyService.createReply(type, resolvedScopeId, threadId, SecurityUtils.getCurrentUserId(), request);
+        ReplyResponse response = responseEnricher.enrich(replyService.createReply(
+                type, resolvedScopeId, threadId, SecurityUtils.getCurrentUserId(), request));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -91,7 +95,8 @@ public class BulletinReplyController {
             @Valid @RequestBody UpdateReplyRequest request) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
         Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
-        ReplyResponse response = replyService.updateReply(type, resolvedScopeId, threadId, replyId, SecurityUtils.getCurrentUserId(), request);
+        ReplyResponse response = responseEnricher.enrich(replyService.updateReply(
+                type, resolvedScopeId, threadId, replyId, SecurityUtils.getCurrentUserId(), request));
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260909-2150",
+  "scope": "app",
+  "implementation": {
+    "pr": 3247,
+    "sha": "681f289be4f6d45454230fb323ce88ea40fcfff3"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "有効時給が未設定のメンバーを0円勤務として記録せず、当該消化記録をスキップする。",
+      "tests": [
+        {
+          "name": "時給未設定_0円で記録しない（記録・閾値評価の不呼出）",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/588407f98b2b7aecd99897c26bdd3b6129768a82/backend/src/test/java/com/mannschaft/app/shiftbudget/listener/ShiftBudgetPublishedEventListenerTest.java"
+        },
+        {
+          "name": "run11 missing-ui-publication-warning：実UI公開後の対象0円消化行なし、既存実機の限定再利用",
+          "evidence": "docs/evidence/CMP-260910-1555-real.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "未設定によるスキップを警告し、予算管理者が通知から時給設定へ到達できる。",
+      "tests": [
+        {
+          "name": "時給欠落skipと警告イベント・設定済み非通知",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/588407f98b2b7aecd99897c26bdd3b6129768a82/backend/src/test/java/com/mannschaft/app/shiftbudget/listener/ShiftBudgetPublishedEventListenerTest.java"
+        },
+        {
+          "name": "受信者/導線・空・個別配送失敗・locale失敗・受信者0",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/588407f98b2b7aecd99897c26bdd3b6129768a82/backend/src/test/java/com/mannschaft/app/shiftbudget/listener/ShiftBudgetHourlyRateMissingNotificationListenerTest.java"
+        },
+        {
+          "name": "run11実UI: missing-ui-publication-warning",
+          "evidence": "docs/evidence/CMP-260910-1555-real.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 34701282751
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260909-2150-review.md"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260910-1555-real.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260910-1555-exploratory.md"
+    }
+  },
+  "regressions": [],
+  "evidenceReuse": {
+    "campaign": "CMP-260910-1555",
+    "sourceHead": "588407f98b2b7aecd99897c26bdd3b6129768a82",
+    "comparedBase": "3b4526ddf5007d48e29064062b85cc046204f313",
+    "criticalBlobs": [
+      {
+        "path": "backend/src/main/java/com/mannschaft/app/shiftbudget/listener/ShiftBudgetConsumptionRecordListener.java",
+        "blob": "9210a151826ad11110c7adcdc6a31225a6b06560"
+      },
+      {
+        "path": "backend/src/main/java/com/mannschaft/app/shiftbudget/listener/ShiftBudgetHourlyRateMissingNotificationListener.java",
+        "blob": "bc31a644fcf7a28180ba6f4d72bff248c5429760"
+      },
+      {
+        "path": "backend/src/main/java/com/mannschaft/app/shiftbudget/event/ShiftBudgetHourlyRateMissingEvent.java",
+        "blob": "8a69ed1c2f26b66b4ccba4e964e2f5ec3d772564"
+      },
+      {
+        "path": "backend/src/main/java/com/mannschaft/app/shift/service/ShiftScheduleService.java",
+        "blob": "ee7bb919a2b6e5d972340ebab0333ff473b1f437"
+      },
+      {
+        "path": "backend/src/main/java/com/mannschaft/app/shift/service/ShiftHourlyRateService.java",
+        "blob": "690b7a9c1fcfaa0c4045a470e9febc5370897d94"
+      },
+      {
+        "path": "backend/src/main/java/com/mannschaft/app/shift/repository/ShiftHourlyRateRepository.java",
+        "blob": "1f5c6e7e6d79ec7b5b49d5372893da09178b943a"
+      },
+      {
+        "path": "frontend/app/pages/teams/[slug]/shifts.vue",
+        "blob": "410e2dcd8af7fe6b432cfa82a15f665d1164b4da"
+      },
+      {
+        "path": "frontend/app/pages/teams/[slug]/shifts/[scheduleId]/board.vue",
+        "blob": "e0975e42aadfb1d0d1d85ab0e1f3065f2913cb53"
+      },
+      {
+        "path": "frontend/app/pages/teams/[slug]/settings/hourly-rate.vue",
+        "blob": "00e00ff696984d31eeb88b9ce3ce2b2749b7ab71"
+      },
+      {
+        "path": "frontend/app/components/shift/ShiftScheduleList.vue",
+        "blob": "fcb9043297f06f7984428ee5e58707679ed0a64f"
+      },
+      {
+        "path": "frontend/app/components/TeamSidebar.vue",
+        "blob": "3c97f8d0ee297b18de9544eebae180743ce6a74a"
+      },
+      {
+        "path": "frontend/app/components/notification/NotificationList.vue",
+        "blob": "280062370069f071cb4c0deb1263a65edd621093"
+      },
+      {
+        "path": "frontend/app/components/notification/NotificationBell.vue",
+        "blob": "5ce51cf87172f17fbc98033f31f82aab79b60737"
+      },
+      {
+        "path": "frontend/app/composables/shift/useShiftApi.ts",
+        "blob": "a4f3ee0e53d0e8af5b222f6a8319905ec5e39689"
+      },
+      {
+        "path": "frontend/app/composables/shift/useShiftHourlyRateApi.ts",
+        "blob": "0cc266dc143784e85e4280cb62c1172665890b92"
+      },
+      {
+        "path": "frontend/app/composables/useNotificationApi.ts",
+        "blob": "0faa5e87337be656a66b22e25e2420a3b0581802"
+      },
+      {
+        "path": "frontend/app/composables/useNotification.ts",
+        "blob": "d0d37effb3a641353fb4a58a14e4be5fa11eb94a"
+      }
+    ],
+    "acceptanceReviewer": "root",
+    "findingCount": 0,
+    "scope": "未設定で0円勤務行を作らず、記録スキップと予算管理者警告を行う原ACだけ",
+    "originalRuntimeRecordsUnchanged": true,
+    "freshRuntimeExecuted": false,
+    "parentAcceptanceArtifactId": "run11-root-parent-adjudication-safe.json",
+    "parentAcceptanceArtifactSha256": "c8774a9b86a82cb620ca9578aaa9ac4b9c2bed9deff9064f08d4c4adfed80291"
+  },
+  "limitations": [
+    "CMP-261021-0651の汎用拒否UX、CMP-260907-1038の小さな日付タップ領域、optional副管理者メニュー未達を保持する。SYSTEM_ADMIN/DEPUTY予算UIの観測を一般成功へ拡張しない。",
+    "Bの自分時給導線発見は目的未達。探索passedは独立3人の実探索・機械閉鎖・root裏取り・観測登録を意味し、全目的達成や製品無欠陥ではない。",
+    "固定source588の現organization方式だけを受入対象とする。team-owned v2は設計のみ/未実装で準拠を主張しない。",
+    "閾値N±1の直前/直後境界は未確認。既存120名のテストは入力130%であり、実run11のexact120%と区別する。CI集計成功を個別test XMLの実行証明へ置き換えない。",
+    "小規模合成fixtureの応答/通知時間のみ。負荷・SLA・物理端末/Safariは未試験、125%条件はviewport近似。",
+    "通常board validatorはbaseline同一のCMP/GitHub参照集合不一致で停止し、残global条件未到達。ローカルUIの82→82取込・再読込非重複と分離する。",
+    "既存board importerのstored runIdはoctober-wave2-login-resident-overlay-20261026。originalRunIdPrecisionPassed=falseで、元runはdetail/選別証拠に保持する。",
+    "検証後のworktree切替/sparse操作後、11候補package原本が喪失した。別元3UI scriptは残存・root保全済みだが、v12完全原本による再現は未確認。実行時SHA・外部safe・選別PNGは保持。消失時点/Windows stage同時消失は未確定で、事故を正常cleanupや削除許可済としない。",
+    "旧run失敗・起動前timeout・fixture/UI/harness失敗は履歴として保持し、run11成功で上書きしない。原ownerの既定not-run/campaignAcPassed=false等は書換えず、root別受入記録で原3ACを裁定した。",
+    "実機source588と正式文書base1d9はBE/FE全tree同一ではない。rootは親shift/shiftbudget関連経路の差分なしと変わった二次依存の範囲を確認したが、最新main全体を実機済みとは主張しない。same-tree CI橋渡しは588と4214/4221に限定する。",
+    "今回の2150同期で新たな実機・探索・製品テストは実行していない。既存1555のorganization所有方式の観測を原ACに限定して再利用する。",
+    "最新main全体のsame-head実機成功や個別テストXMLの実行件数を主張しない。公開世代変更PR #4308は未マージ・別担当のため証拠に含めない。"
+  ],
+  "productionChanges": 0
+}

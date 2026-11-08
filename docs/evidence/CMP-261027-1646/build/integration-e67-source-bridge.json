@@ -1,0 +1,230 @@
+{
+  "schemaVersion": 1,
+  "sourceHead": "f2817eb94326b413122c69f4b0c409288c8982a6",
+  "targetHead": "e67a77172f67ddbacfe4c8d8f9504eae8f54b004",
+  "mergedMain": "83877c756647c06f1f829ab4257b7171525e5d03",
+  "createdAt": "2026-10-28T09:11:45.529Z",
+  "allRepositoryRootEntriesExceptDocsEqual": true,
+  "rootEntriesCompared": 30,
+  "entries": [
+    {
+      "path": ".agents",
+      "mode": "040000",
+      "type": "tree",
+      "sourceOid": "c2c100014ddcca54038fe5097c23b35ecb0a1749",
+      "targetOid": "c2c100014ddcca54038fe5097c23b35ecb0a1749"
+    },
+    {
+      "path": ".claude",
+      "mode": "040000",
+      "type": "tree",
+      "sourceOid": "6d53583563e2c10317acfb98303b6e6f4ca985df",
+      "targetOid": "6d53583563e2c10317acfb98303b6e6f4ca985df"
+    },
+    {
+      "path": ".gitattributes",
+      "mode": "100644",
+      "type": "blob",
+      "sourceOid": "c081b723962c7eed5f42f0877a396544a042c5bb",
+      "targetOid": "c081b723962c7eed5f42f0877a396544a042c5bb"
+    },
+    {
+      "path": ".githooks",
+      "mode": "040000",
+      "type": "tree",
+      "sourceOid": "53059f0f5984ac8ac6767c40ff0305480c44df22",
+      "targetOid": "53059f0f5984ac8ac6767c40ff0305480c44df22"
+    },
+    {
+      "path": ".github",
+      "mode": "040000",
+      "type": "tree",
+      "sourceOid": "ab721547611a21e97d1de7da5bba18bf76dd2b77",
+      "targetOid": "ab721547611a21e97d1de7da5bba18bf76dd2b77"
+    },
+    {
+      "path": ".gitignore",
+      "mode": "100644",
+      "type": "blob",
+      "sourceOid": "bbe8229249b3fdcee6b2422a90920e33d1732226",
+      "targetOid": "bbe8229249b3fdcee6b2422a90920e33d1732226"
+    },
+    {
+      "path": ".gitleaks.toml",
+      "mode": "100644",
+      "type": "blob",
+      "sourceOid": "4479a7c55d4752d5268af72bd76bc880543b1270",
+      "targetOid": "4479a7c55d4752d5268af72bd76bc880543b1270"
+    },
+    {
+      "path": ".gradle-home",
+      "mode": "040000",
+      "type": "tree",
+      "sourceOid": "c946413fd3c367475aa623e46cd10d0e7531a714",
+      "targetOid": "c946413fd3c367475aa623e46cd10d0e7531a714"
+    },
+    {
+      "path": ".nvmrc",
+      "mode": "100644",
+      "type": "blob",
+      "sourceOid": "c94711948a665d304dfc7016e1bebc497162b451",
+      "targetOid": "c94711948a665d304dfc7016e1bebc497162b451"
+    },
+    {
+      "path": "AGENTS.md",
+      "mode": "100644",
+      "type": "blob",
+      "sourceOid": "5a1ac46e32d8684ed732625ce2c12408da209e6c",
+      "targetOid": "5a1ac46e32d8684ed732625ce2c12408da209e6c"
+    },
+    {
+      "path": "CLAUDE.md",
+      "mode": "100644",
+      "type": "blob",
+      "sourceOid": "8a2e3640185e858b083f95290c2d2b028267c8a9",
+      "targetOid": "8a2e3640185e858b083f95290c2d2b028267c8a9"
+    },
+    {
+      "path": "FUTURE_CONSIDERATIONS.md",
+      "mode": "100644",
+      "type": "blob",
+      "sourceOid": "1b7232633dcb2132c4f2d1ce03397d4d59fd01b4",
+      "targetOid": "1b7232633dcb2132c4f2d1ce03397d4d59fd01b4"
+    },
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sourceOid": "38c86f88ddefb829e625a338224163df0a954188",
+      "targetOid": "38c86f88ddefb829e625a338224163df0a954188"
+    },
+    {
+      "path": "TEST_CONVENTION.md",
+      "mode": "100644",
+      "type": "blob",
+      "sourceOid": "e0740878b1192c0784f08b5ce0ebc9ca5f4d9323",
+      "targetOid": "e0740878b1192c0784f08b5ce0ebc9ca5f4d9323"
+    },
+    {
+      "path": "backend-loop.sh",
+      "mode": "100644",
+      "type": "blob",
+      "sourceOid": "11e0ae208705716230a0981f83b73a18911d18ab",
+      "targetOid": "11e0ae208705716230a0981f83b73a18911d18ab"
+    },
+    {
+      "path": "backend",
+      "mode": "040000",
+      "type": "tree",
+      "sourceOid": "93ebe9a5343babcc7debbe887919d65cec0b0331",
+      "targetOid": "93ebe9a5343babcc7debbe887919d65cec0b0331"
+    },
+    {
+      "path": "config",
+      "mode": "040000",
+      "type": "tree",
+      "sourceOid": "7e9f42e2356c393e1f4d68dd83b4dc1db1ba25cf",
+      "targetOid": "7e9f42e2356c393e1f4d68dd83b4dc1db1ba25cf"
+    },
+    {
+      "path": "docker-compose.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sourceOid": "bfa7da7f026f9fabc67b9d397f83c70c2b39d5b7",
+      "targetOid": "bfa7da7f026f9fabc67b9d397f83c70c2b39d5b7"
+    },
+    {
+      "path": "e2e-test-instructions.md",
+      "mode": "100644",
+      "type": "blob",
+      "sourceOid": "253e8d047e4561ccfe1601ce0c0129b1fff96a6a",
+      "targetOid": "253e8d047e4561ccfe1601ce0c0129b1fff96a6a"
+    },
+    {
+      "path": "frontend",
+      "mode": "040000",
+      "type": "tree",
+      "sourceOid": "b4c3e5184336350c282f2e8733550e572e8f9741",
+      "targetOid": "b4c3e5184336350c282f2e8733550e572e8f9741"
+    },
+    {
+      "path": "infra",
+      "mode": "040000",
+      "type": "tree",
+      "sourceOid": "65afd3877b911a1b21cadee55c3bea624855e07b",
+      "targetOid": "65afd3877b911a1b21cadee55c3bea624855e07b"
+    },
+    {
+      "path": "k6",
+      "mode": "040000",
+      "type": "tree",
+      "sourceOid": "498e466d38b554bdbfcb8e16a6fe98f511ea79b5",
+      "targetOid": "498e466d38b554bdbfcb8e16a6fe98f511ea79b5"
+    },
+    {
+      "path": "public",
+      "mode": "040000",
+      "type": "tree",
+      "sourceOid": "e2d8f1b3328c086c0c31b500b1b5f69b8893ad52",
+      "targetOid": "e2d8f1b3328c086c0c31b500b1b5f69b8893ad52"
+    },
+    {
+      "path": "qiita_claudecode_assets_to_codex_bridge.md",
+      "mode": "100644",
+      "type": "blob",
+      "sourceOid": "8f59ae4a4e5a6e5389333e99e5b9b23eaf174316",
+      "targetOid": "8f59ae4a4e5a6e5389333e99e5b9b23eaf174316"
+    },
+    {
+      "path": "renovate.json",
+      "mode": "100644",
+      "type": "blob",
+      "sourceOid": "9cfb935bdcbb7563e3c59b781348e344cff9a05a",
+      "targetOid": "9cfb935bdcbb7563e3c59b781348e344cff9a05a"
+    },
+    {
+      "path": "scripts",
+      "mode": "040000",
+      "type": "tree",
+      "sourceOid": "1dc3fe3844162bb3191da97e0281f31653160a9e",
+      "targetOid": "1dc3fe3844162bb3191da97e0281f31653160a9e"
+    },
+    {
+      "path": "skills-lock.json",
+      "mode": "100644",
+      "type": "blob",
+      "sourceOid": "4222a0c539d22baee119da5a64f4ca204c135cbb",
+      "targetOid": "4222a0c539d22baee119da5a64f4ca204c135cbb"
+    },
+    {
+      "path": "start-backend.ps1",
+      "mode": "100644",
+      "type": "blob",
+      "sourceOid": "cf113db7d14664c761b0f3a73dfa7bc9001a585d",
+      "targetOid": "cf113db7d14664c761b0f3a73dfa7bc9001a585d"
+    },
+    {
+      "path": "start-backend.vbs",
+      "mode": "100644",
+      "type": "blob",
+      "sourceOid": "1cc5367f64c83eb73b59e73b46fc1c9604e95959",
+      "targetOid": "1cc5367f64c83eb73b59e73b46fc1c9604e95959"
+    },
+    {
+      "path": "test-fixtures",
+      "mode": "040000",
+      "type": "tree",
+      "sourceOid": "060e7fd092353fbd3960814e5ffb32eae38817fb",
+      "targetOid": "060e7fd092353fbd3960814e5ffb32eae38817fb"
+    }
+  ],
+  "changedDocs": [
+    "docs/evidence/CMP-261001-0838-plan.md",
+    "docs/task-list.md"
+  ],
+  "limits": [
+    "Tree object equality proves all repository paths outside docs unchanged, including all product/test/build/CI/frontend bytes.",
+    "f281 fresh CI remains evidence for that SHA; targetHead still requires its own successful CI and merge confirmation.",
+    "Old real/exploration targets a8b; this bridge does not claim UI rerun."
+  ]
+}

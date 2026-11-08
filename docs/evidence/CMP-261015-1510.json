@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261015-1510",
+  "scope": "app",
+  "implementation": {
+    "pr": 4133,
+    "sha": "0042f17ea50daf539e1c16ddfc0d123ecbc0726b"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "L1",
+      "description": "360x800・390x844 × ja/en/de × 案内有無の12条件で実input2と補助link3の幅高さ各44px以上。desktop768/1280のinput42px・submit44pxを維持する。",
+      "tests": [
+        {
+          "name": "mobile寸法12case、768/1280px desktop2case",
+          "evidence": "docs/evidence/CMP-261015-1510/verification.md"
+        },
+        {
+          "name": "formal-final-c717",
+          "evidence": "docs/evidence/CMP-261015-1510/verification-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "L2",
+      "description": "同mobile12条件で文字切れ・中心hit・重なり・横パンなし・縦到達を確認する。",
+      "tests": [
+        {
+          "name": "mobile寸法12case（L1と共通）",
+          "evidence": "docs/evidence/CMP-261015-1510/verification.md"
+        },
+        {
+          "name": "formal-final-c717",
+          "evidence": "docs/evidence/CMP-261015-1510/verification-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "L3",
+      "description": "補助3リンクを360/390で各1case自然tapし、トップ・再設定・登録の実URL遷移を維持する。",
+      "tests": [
+        {
+          "name": "360/390px補助3リンク自然tap各1case",
+          "evidence": "docs/evidence/CMP-261015-1510/verification.md"
+        },
+        {
+          "name": "formal-final-c717",
+          "evidence": "docs/evidence/CMP-261015-1510/verification-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "L4",
+      "description": "3roleで表示切替・実login200・実header・guest guard。MEMBER不正400かつAUTH_001→入力保持・通知→正200。",
+      "tests": [
+        {
+          "name": "MEMBER、ADMIN、OTHER_TENANT各1case",
+          "evidence": "docs/evidence/CMP-261015-1510/verification.md"
+        },
+        {
+          "name": "formal-final-c717",
+          "evidence": "docs/evidence/CMP-261015-1510/verification-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "L5",
+      "description": "空・不正email等はHTML検証でPOST0。既存3方式・MFA・busyを既存UTで維持する。",
+      "tests": [
+        {
+          "name": "HTML送信抑止1case、既存認証UT（0042 Frontend CI成功）",
+          "evidence": "docs/evidence/CMP-261015-1510/verification.md"
+        },
+        {
+          "name": "formal-final-c717",
+          "evidence": "docs/evidence/CMP-261015-1510/verification-summary.json"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 40305628270
+    },
+    {
+      "runId": 40305628263
+    },
+    {
+      "runId": 40305628387
+    },
+    {
+      "runId": 40305628186
+    },
+    {
+      "runId": 40305628173
+    },
+    {
+      "runId": 40305628471
+    },
+    {
+      "runId": 40305628314
+    },
+    {
+      "runId": 40305628545
+    },
+    {
+      "runId": 40305628215
+    },
+    {
+      "runId": 40305628217
+    },
+    {
+      "runId": 40305645334
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261015-1510/validation.md"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261015-1510/verification.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261015-1510/verification.md"
+    }
+  },
+  "regressions": [
+    {
+      "description": "旧CSSではログイン画面の「←トップページへ」a[href='/']の高さ20px対要求44pxでRED。トップ画面loginリンクではない。復旧linkは最初のassert停止によりこのREDで未計測。grep不一致0件はRED外。",
+      "test": "360px ja 案内false: 実入力と補助リンク44px・文字切れなし",
+      "redEvidence": "docs/evidence/CMP-261015-1510/verification.md",
+      "greenEvidence": "docs/evidence/CMP-261015-1510/verification.md"
+    }
+  ]
+}

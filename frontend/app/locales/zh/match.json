@@ -252,7 +252,8 @@
           "connecting": "连接中…",
           "reconnecting": "重新连接中…",
           "offline": "离线",
-          "denied": "无法观战"
+          "denied": "无法观战",
+          "unauthenticated": "需要登录"
         },
         "status": {
           "SCHEDULED": "未开始",
@@ -264,7 +265,8 @@
         "denied": {
           "title": "无法观战此比赛",
           "detail": "由于超出可见范围，无法显示实时直播。"
-        }
+        },
+        "unauthenticated_banner": "登录后即可接收实时更新。"
       }
     },
     "analytics": {

@@ -2,7 +2,9 @@ package com.mannschaft.app.shift.repository;
 
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -10,11 +12,27 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * シフト枠リポジトリ。
  */
 public interface ShiftSlotRepository extends JpaRepository<ShiftSlotEntity, Long> {
+
+    /**
+     * 枠の所属スケジュール ID だけを読む（エンティティを永続化コンテキストに載せない。CMP-261010-1432 P）。
+     *
+     * <p>枠間移動は「親スケジュールを FOR UPDATE → 両枠を FOR UPDATE」の順でロックする（既存の枠更新と同じ
+     * 親→子の順序でデッドロックを避ける）。親の ID を知るために枠エンティティを先に読むと、後の FOR UPDATE が
+     * 永続化コンテキスト上の古い状態を返してしまうため、スカラーで読む。</p>
+     */
+    @Query("SELECT s.scheduleId FROM ShiftSlotEntity s WHERE s.id = :id")
+    Optional<Long> findScheduleIdById(@Param("id") Long id);
+
+    /** 枠を排他ロック付きで読む（最新のコミット済みの version・割当を読む。CMP-261010-1432 P）。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM ShiftSlotEntity s WHERE s.id = :id")
+    Optional<ShiftSlotEntity> findByIdForUpdate(@Param("id") Long id);
 
     /** 親削除のみの連鎖。割当JSON・業務値・更新日時は保持する。 */
     @Modifying(flushAutomatically = true)
@@ -34,6 +52,20 @@ public interface ShiftSlotRepository extends JpaRepository<ShiftSlotEntity, Long
             WHERE id = :slotId AND deleted_at IS NULL
             """, nativeQuery = true)
     int softDeleteById(@Param("slotId") Long slotId);
+
+    /**
+     * スケジュールの全シフト枠を共有ロック付き（現在読み取り）で日付・開始時刻順に取得する。
+     *
+     * <p>割当の重なり判定（完全一致の二重割当の拒否）専用。MySQL の REPEATABLE READ では通常の SELECT は
+     * トランザクション最初の読み取りで確定したスナップショットを返すため、親スケジュールのロック待機中に
+     * 別操作がコミットした割当を見逃す。ロッキングリード（FOR SHARE）はスナップショットではなく最新のコミット済み
+     * 状態を読むので、<b>親スケジュールを FOR UPDATE で取得した後</b>に呼ぶこと。親ロックで割当操作は直列化済みのため、
+     * 書込ロックではなく共有ロックで足りる。</p>
+     */
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    @Query("SELECT s FROM ShiftSlotEntity s WHERE s.scheduleId = :scheduleId "
+            + "ORDER BY s.slotDate ASC, s.startTime ASC, s.id ASC")
+    List<ShiftSlotEntity> findByScheduleIdForShare(@Param("scheduleId") Long scheduleId);
 
     /**
      * スケジュールの全シフト枠を日付・開始時刻順で取得する。

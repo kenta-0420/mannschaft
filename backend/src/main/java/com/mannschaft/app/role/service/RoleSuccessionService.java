@@ -581,11 +581,18 @@ public class RoleSuccessionService {
         cacheGenerationService.incrementGeneration(scopeType, scopeId);
     }
 
-    /** AC8: 候補資格者が1人もいないスコープを archive する（既存 archive API を再利用）。 */
+    /**
+     * AC8: 候補資格者が1人もいないスコープを archive する（既存 archive API を再利用）。
+     *
+     * <p>チームは {@code archiveTeamDeferringAffiliationCleanup} を使う。チーム自身の API（{@code archiveTeam}）は
+     * 加盟（team_org_memberships）の片付けを同じトランザクションで行うため、role のトランザクションから呼ぶと team ドメインの
+     * 書き込みを持ち込む（CLAUDE.md 原則5・D-3T）。加盟の片付けは team ドメインがコミット後に自分の tx で行う（F01.2.1 2-D）。
+     * 組織のアーカイブは加盟の片付けを元々コミット後のイベントで行う。</p>
+     */
     private void archiveScope(Long scopeId, String scopeType) {
         try {
             if (SCOPE_TEAM.equals(scopeType)) {
-                teamService.archiveTeam(scopeId);
+                teamService.archiveTeamDeferringAffiliationCleanup(scopeId);
             } else {
                 organizationService.archiveOrganization(scopeId);
             }
