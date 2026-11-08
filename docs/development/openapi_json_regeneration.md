@@ -60,28 +60,83 @@ WSL_RC=$?
 [ "$WSL_RC" -ne 0 ] && { echo "[!] WSL 側の列挙に失敗 (rc=$WSL_RC) → 確認不能。起動しない"; exit 2; }
 
 HIT=0
+# Windowsのコマンドラインを引数単位で読む。evalも生コマンドラインの表示もしない。
+# 引用符が閉じない等、判別できない入力はUNKNOWNとして待つ。
+openapi_mode() {
+  awk '
+    function take() {
+      if (arg == "") return
+      name = arg
+      for (k = length(arg); k > 0; k--) {
+        ch = substr(arg, k, 1)
+        if (ch == "/" || ch == "\\") { name = substr(arg, k + 1); break }
+      }
+      if (previous == "-jar" && name == "gradle-wrapper.jar") wrapper = 1
+      if (arg == "--dry-run") {
+        dry = 1
+        if (previous ~ /^-/ && previous !~ /=/) ambiguous = 1
+      }
+      if (arg ~ /^(:?[[:alnum:]_.-]+:)*generateOpenApiDocs$/) task = 1
+      if (arg == "-Dspring.profiles.active=openapi-gen") fork = 1
+      previous = arg; arg = ""
+    }
+    NR > 1 { invalid = 1; next }
+    {
+      for (i = 1; i <= length($0); i++) {
+        c = substr($0, i, 1)
+        if (c == "\\") {
+          n = 0
+          while (substr($0, i, 1) == "\\") { n++; i++ }
+          c = substr($0, i, 1)
+          if (c == "\"") {
+            for (j = 0; j < int(n / 2); j++) arg = arg "\\"
+            if (n % 2) { arg = arg "\""; continue }
+          } else {
+            for (j = 0; j < n; j++) arg = arg "\\"
+            i--; continue
+          }
+        }
+        if (c == "\"") {
+          if (quoted && substr($0, i + 1, 1) == "\"") { arg = arg "\""; i++ }
+          else quoted = !quoted
+        } else if (!quoted && c ~ /[[:space:]]/) take()
+        else arg = arg c
+      }
+      take()
+    }
+    END {
+      if (invalid || quoted || ambiguous) print "UNKNOWN"
+      else if (fork) print "GENERATE"
+      else if (wrapper && task) print dry ? "DRY_RUN" : "GENERATE"
+      else print "UNKNOWN"
+    }'
+}
 while IFS='|' read -r PID CMD; do
   [ -z "$PID" ] && continue
   WT=$(printf '%s' "$CMD" | grep -o 'worktrees[/\][A-Za-z0-9_-]*' | head -1 | sed 's|worktrees[/\]||')
   if [ -z "$WT" ]; then
-    JAR=$(printf '%s' "$CMD" | tr ' ' '\n' | grep -o '[A-Za-z]:.*gradle-javaexec-classpath[0-9]*\.jar' | head -1 | tr '\' '/')
+    JAR=$(printf '%s' "$CMD" | tr ' ' '\n' | grep -o '[A-Za-z]:.*gradle-javaexec-classpath[0-9]*\.jar' | head -1 | tr '\\' '/')
     [ -n "$JAR" ] && [ -f "$JAR" ] && WT=$(unzip -p "$JAR" META-INF/MANIFEST.MF 2>/dev/null | sed -e ':a' -e 'N' -e '$!ba' -e 's/\r//g' -e 's/\n //g' | tr ' ' '\n' | grep -o 'worktrees/[A-Za-z0-9_-]*' | head -1 | cut -d/ -f2)
   fi
   case "$CMD" in *generateOpenApiDocs*) KIND="Gradle 実行" ;; *) KIND="フォーク" ;; esac
-  if [ -z "$WT" ]; then echo "  PID=$PID ($KIND) worktree=不明 → 確認不能"; HIT=1
-  elif [ "$WT" = "$MINE_NAME" ]; then echo "  PID=$PID ($KIND) → ★自分の worktree で生成が進行中"; HIT=1
-  else echo "  PID=$PID ($KIND) worktree=$WT → 他 worktree"; fi
+  MODE=$(printf '%s' "$CMD" | openapi_mode) || MODE=UNKNOWN
+  if [ -z "$WT" ]; then echo "  PID=$PID ($KIND) mode=$MODE worktree=不明 → 確認不能"; HIT=1
+  elif [ "$WT" = "$MINE_NAME" ]; then
+    if [ "$MODE" = DRY_RUN ]; then echo "  PID=$PID ($KIND) mode=DRY_RUN → 自分の worktree の下見（出力先を占有しない）"
+    else echo "  PID=$PID ($KIND) mode=$MODE → ★自分の worktree。実生成または区分不明のため待つ"; HIT=1; fi
+  else echo "  PID=$PID ($KIND) mode=$MODE worktree=$WT → 他 worktree"; fi
 done < "$WIN_TMP"
 
 while read -r PID CW; do
   [ -z "$PID" ] && continue
-  case "$CW" in *"$MINE_NAME"*) echo "  WSL PID=$PID → ★自分の worktree で生成が進行中"; HIT=1 ;;
+  # この列挙ではargvを得ていないため、dry-runと推測して進めない。
+  case "$CW" in *"$MINE_NAME"*) echo "  WSL PID=$PID mode=UNKNOWN → ★自分の worktree。区分未確認のため待つ"; HIT=1 ;;
     "") echo "  WSL PID=$PID cwd 取得不可 → 確認不能"; HIT=1 ;;
     *) echo "  WSL PID=$PID worktree=$CW → 他 worktree" ;; esac
 done < "$WSL_TMP"
 
 rm -f "$WIN_TMP" "$WSL_TMP"
-[ "$HIT" -eq 0 ] && echo "  該当なし → 出力先は競合しない。手順2 へ" || echo "  ★または確認不能あり → 起動しない（待つ）。ただし★の主が --dry-run なら占有しないので進めてよい"
+[ "$HIT" -eq 0 ] && echo "  実生成・確認不能なし → 出力先は競合しない。手順2 へ" || echo "  ★または確認不能あり → 起動しない（待つ）"
 ```
 
 > **なぜ「Gradle 実行そのもの」も探すのか（2026-09-16 実測）。**
@@ -106,14 +161,19 @@ rm -f "$WIN_TMP" "$WSL_TMP"
 >
 > （`./gradlew` 以外の起動方法を使う場合はこの目印が変わる点に注意）
 
-> **安全側に倒したぶんの偽陽性について。**
-> この手順はタスク名 `generateOpenApiDocs` を持つ Gradle 実行を一律に★と答えるので、
-> **`--dry-run`（タスクを実行しない下見）でも★が出る**（実測: フォーク 0 件、
+> **旧版でdry-runを実生成と取り違えた記録。**
+> 旧手順はタスク名 `generateOpenApiDocs` を持つ Gradle 実行を一律に★と答えたため、
+> **`--dry-run`（タスクを実行しない下見）でも★が出た**（実測: フォーク 0 件、
 > `PID=107528 (Gradle 実行) → ★進行中`）。
 > `--dry-run` は `docs/openapi.json` も `backend/build` も**占有しない**ため、
-> **これは競合ではなく、待つ必要はない**。★の主が `--dry-run` だと分かっているなら
-> そのまま進めてよい。実行中かどうかを厳密に見分けるより、
-> **実行しているかもしれないものを一律に止めるほうが安全**という判断でこうしてある。
+> これは競合ではない。現在のWindows側は正規wrapperの `-jar .../gradle-wrapper.jar` と
+> 対象task、引数tokenとしての `--dry-run` を確認して
+> `mode=DRY_RUN` を表示する。`"--dry-run"` も単独tokenだが、`-Pnote=--dry-run` や
+> `"-Pnote= --dry-run "` は別の引数値なので実生成を示す `mode=GENERATE` のまま待つ。
+> `openapi-gen` のforkは `--dry-run` が見えても下見扱いにしない。
+> 値を別tokenで取る可能性があるflagの直後など、下見optionと断定できない並びはUNKNOWNに倒す。
+> 引用符不正・認識できない起動形やtask・argvを取得していないWSL側は `mode=UNKNOWN` として待つ。
+> 生コマンドラインは表示せず、所有不明はDRY_RUNと表示されても起動しない。
 
 > **なぜポートではなくプロセスを見るのか（2026-09-16 実測）。**
 > `-PopenApiPort=8098` で生成を走らせた状態で、両方を試した:
@@ -126,11 +186,13 @@ rm -f "$WIN_TMP" "$WSL_TMP"
 > ポートだけを見ると**二重起動を勧めてしまう**。出力先の競合はポートでは測れない。
 
 - **★が 1 つでもあれば起動しない。既存の生成の完了を待つ。**
-  - **例外はひとつだけ。★の主が `--dry-run`（タスクを実行しない下見）だと確認できた場合は、
-    出力先を占有しないので待たずに進めてよい。** 確認は上で表示された PID の
-    コマンドラインに `--dry-run` があるかで行う（無ければ本物の生成として待つ）。
+  - 自分のworktreeと確認できた `mode=DRY_RUN` は★を付けず、待つ対象に含めない。
+    同時に `mode=GENERATE`／`mode=UNKNOWN` の★があれば、そちらが解消するまで待つ。
 - **「確認不能」が出たときも起動しない**（自分の生成でない保証が無い）。
-- 何も出なければ、出力先は競合しない。手順2 へ進む。
+- ★も確認不能も無ければ、出力先は競合しない。手順2 へ進む。
+
+手順1の分類と停止境界は `node --test scripts/openapi-preflight.test.mjs` で検証できる。
+文書のbashブロックを直接使い、OS列挙だけを固定fixtureへ置き換えるため、実生成・実WSL・プロセス停止は行わない。
 
 > `pgrep -f` のパターンを素の `-Dspring...` にすると、**検索している `sh` 自身の
 > コマンドラインに一致して常に 1 件ヒットする**（実測で踏んだ）。先頭を `[-]` に
