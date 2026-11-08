@@ -6,6 +6,7 @@ import com.mannschaft.app.scopefolder.ScopeFolderErrorCode;
 import com.mannschaft.app.scopefolder.dto.BulkAssignRequest;
 import com.mannschaft.app.scopefolder.dto.BulkAssignResponse;
 import com.mannschaft.app.scopefolder.dto.CreateFolderRequest;
+import com.mannschaft.app.scopefolder.dto.InviteFolderCheck;
 import com.mannschaft.app.scopefolder.dto.ReorderFoldersRequest;
 import com.mannschaft.app.scopefolder.dto.ScopeFolderResponse;
 import com.mannschaft.app.scopefolder.dto.UpdateFolderRequest;
@@ -468,6 +469,23 @@ public class MyScopeFolderService {
      * <p>取得クエリ自体が {@code user_id} を結合条件に含み、さらにガードが取得結果と
      * 操作者を突き合わせる二重構造とする。不存在と他者所有は同一のエラーへ畳む。</p>
      */
+    /**
+     * 招待承諾の前に、配置先フォルダが本人のものでスコープ種別が一致するかを確かめる（CMP-260826-1457）。
+     *
+     * <p>例外を投げず結果を返す。所有・種別の確認だけで、書き込みはしない
+     * （{@code folderRepository} のみを使う。コンストラクタ注入は増やさない）。</p>
+     *
+     * @param userId    承諾するユーザー
+     * @param folderId  配置先フォルダ
+     * @param scopeType 招待先のスコープ種別
+     */
+    public InviteFolderCheck inspectInviteFolder(Long userId, Long folderId, ScopeType scopeType) {
+        return folderRepository.findByIdAndUserIdAndDeletedAtIsNull(folderId, userId)
+                .map(folder -> folder.getScopeType() == scopeType
+                        ? InviteFolderCheck.OK : InviteFolderCheck.TYPE_MISMATCH)
+                .orElse(InviteFolderCheck.NOT_FOUND);
+    }
+
     private MyScopeFolderEntity findOwnedFolder(Long userId, Long folderId) {
         MyScopeFolderEntity folder = folderRepository
                 .findByIdAndUserIdAndDeletedAtIsNull(folderId, userId)
