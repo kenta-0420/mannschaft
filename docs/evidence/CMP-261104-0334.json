@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261104-0334",
+  "scope": "app",
+  "implementation": {
+    "pr": 4290,
+    "sha": "e944e8e70e081d790b258aa25974d44fb1a03a3a"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "「送信する」を連打しても送信は1回だけ（FE の再入防止）",
+      "tests": [
+        {
+          "name": "EmergencyClosureDoubleSubmit.spec",
+          "evidence": "frontend/tests/unit/components/reservation/EmergencyClosureDoubleSubmit.spec.ts"
+        },
+        {
+          "name": "useEmergencyClosureApi.spec",
+          "evidence": "frontend/tests/unit/composables/useEmergencyClosureApi.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "同じ Idempotency-Key の再送・同時送信で休業は1件だけ。同キー別内容は409で副作用なし（BE の冪等）",
+      "tests": [
+        {
+          "name": "EmergencyClosureIdempotencyIT",
+          "evidence": "backend/src/test/java/com/mannschaft/app/reservation/EmergencyClosureIdempotencyIT.java"
+        },
+        {
+          "name": "EmergencyClosureSendServiceTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/reservation/service/EmergencyClosureSendServiceTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "実機で連打しても POST は1回・休業1件・トースト1件（1440px と 390px）",
+      "tests": [
+        {
+          "name": "0334/0335(ja) ADMIN 連打",
+          "evidence": "frontend/tests/e2e/real/emergency-closure-cmp261104.real.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 42446868534
+    },
+    {
+      "runId": 42446868554
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4290"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4404"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261104-0334-exploratory.md"
+    }
+  },
+  "regressions": []
+}
