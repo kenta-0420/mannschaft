@@ -1,0 +1,24 @@
+{
+  "head": "9e8e9ba15cc7040d88d88067646be2d6a51ec862",
+  "build": {
+    "status": 4294967295,
+    "signal": null
+  },
+  "scan": null,
+  "sourceClean": true,
+  "depsEqual": true,
+  "donorDependenciesAfter": {
+    "files": 50455,
+    "bytes": 550292699,
+    "metadataSha256": "6ff821e2936abace888fb6d897f57f442c29381680cf28031d911967483db946"
+  },
+  "artifact": null,
+  "resourcesAfter": {
+    "at": "2026-11-07T19:51:16.099Z",
+    "freeMemory": 20614529024,
+    "totalMemory": 68108480512,
+    "diskFree": 3971280896
+  },
+  "buildLogSha256": "ea81c84b1cbbf0b07468a7ae2e98ea221eef4704fd74dda5560790bdc0930dc4",
+  "scanLogSha256": null
+}
