@@ -1215,6 +1215,7 @@ CI では `openapi.json` と生成型の乖離を自動検出します。`docs/o
 | `/撤収` | 開発環境の終了 |
 
 開発ハーネスの診断・検査範囲・再現性計測は [`docs/development/harness-engineering.md`](docs/development/harness-engineering.md) を参照。環境準備は [`docs/development/harness-environment.md`](docs/development/harness-environment.md)。
+生SQL時刻列・日時のソース番人は、走査を30秒のプリエンプティブな上限と割込み可能な正規表現入力で打ち切る。凍結件数・検出パターンは維持し、キャンセルを正常な空結果へ変えない。
 
 ---
 
