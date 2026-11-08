@@ -15,6 +15,7 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -34,11 +35,14 @@ import org.springframework.core.task.TaskRejectedException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.util.AopTestUtils;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Duration;
+import java.net.URI;
+import java.sql.Connection;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
@@ -92,6 +96,32 @@ class AuditLogSingleAsyncBoundaryIT extends AbstractMySqlIntegrationTest {
     private CountDownLatch blockersRelease;
     private Long actorId;
 
+    @BeforeAll
+    void recordOwnedMySqlTrace() throws Exception {
+        URI expected = sanitizedJdbcEndpoint(MYSQL.getJdbcUrl());
+        String containerId = MYSQL.getContainerId();
+        assertThat(containerId).matches("[a-f0-9]{64}");
+        assertThat(expected.getHost()).isIn("localhost", "127.0.0.1", "[::1]");
+        assertThat(expected.getPort()).isBetween(1, 65535).isNotIn(3306, 13371, 6379);
+        assertThat(expected.getPath()).isEqualTo("/mannschaft_test");
+        try (Connection connection = jdbc.getDataSource().getConnection()) {
+            assertThat(sanitizedJdbcEndpoint(connection.getMetaData().getURL())).isEqualTo(expected);
+            assertThat(connection.getCatalog()).isEqualTo("mannschaft_test");
+        }
+        // 接続資格情報・queryは出さず、このJUnitが実際に接続した所有DBだけを記録する。
+        System.out.println("CMP2127_OWN_MYSQL " + objectMapper.writeValueAsString(Map.of(
+                "containerId", containerId, "host", expected.getHost(),
+                "port", expected.getPort(), "database", "mannschaft_test")));
+    }
+
+    private static URI sanitizedJdbcEndpoint(String jdbcUrl) {
+        assertThat(jdbcUrl).startsWith("jdbc:mysql://");
+        URI endpoint = URI.create(jdbcUrl.substring(5).split("\\?", 2)[0]);
+        assertThat(endpoint.getUserInfo()).isNull();
+        assertThat(endpoint.getFragment()).isNull();
+        return endpoint;
+    }
+
     @BeforeEach
     void prepareOwnedFixtureAndObservation() throws Exception {
         awaitIdle();
@@ -106,8 +136,12 @@ class AuditLogSingleAsyncBoundaryIT extends AbstractMySqlIntegrationTest {
         syncCompleted.set(0);
         listenerThread.set(0);
         syncThread.set(0);
-        doAnswer(this::observeListener).when(listener).handleLoginSuccess(any(LoginSuccessEvent.class));
-        doAnswer(this::observeListener).when(listener)
+        AuditLogEventListener listenerTarget = AopTestUtils.getUltimateTargetObject(listener);
+        AuditLogService serviceTarget = AopTestUtils.getUltimateTargetObject(auditLogService);
+        assertThat(Mockito.mockingDetails(listenerTarget).isSpy()).isTrue();
+        assertThat(Mockito.mockingDetails(serviceTarget).isSpy()).isTrue();
+        doAnswer(this::observeListener).when(listenerTarget).handleLoginSuccess(any(LoginSuccessEvent.class));
+        doAnswer(this::observeListener).when(listenerTarget)
                 .handleCirculationExportRequested(any(CirculationExportRequestedEvent.class));
         doAnswer(invocation -> {
             syncThread.set(Thread.currentThread().getId());
@@ -116,7 +150,7 @@ class AuditLogSingleAsyncBoundaryIT extends AbstractMySqlIntegrationTest {
             } finally {
                 syncCompleted.incrementAndGet();
             }
-        }).when(auditLogService).recordSync(anyString(), any(), any(), any(), any(),
+        }).when(serviceTarget).recordSync(anyString(), any(), any(), any(), any(),
                 any(), any(), any(), any());
     }
 
