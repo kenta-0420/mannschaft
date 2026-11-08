@@ -39,7 +39,7 @@ APIで確認した最新成功nightlyは[run 42416993329](https://github.com/ken
 
 実測3181件から、現sourceにない旧 `chat.ChatChannelAccessGuardTest` 1件を除外し、現存する未計測2件の旧歴史値を維持した3182件を適用する。歴史値は `reservation.EmergencyClosureIdempotencyIT=87.709` と `reservation.migration.FlywayExistingDataEmergencyClosureIdempotencyMigrationTest=117.981`。この2値を本nightly実測とは記載しない。移動後 `chat.service.ChatChannelAccessGuardTest` へ旧値を転記せず、未計測の新FQCNは既存hash fallbackに任せる。
 
-適用ファイルSHAは `cc907fedc56c93ee133684fb363064f3660c9070c61939866c2c0d9ebe24d462`。現表3161件に対し追加22・更新3128・同値32・削除1。全3182keyの秒数・実測/歴史値の由来・現sourceパス/SHA/直接annotation分類を[全key TSV](weights-provenance.tsv)に置き、[source/filter manifest](weights-source-manifest.json)へ未計測・arch/perf/abstract/条件付き/専用Integrity/補助sourceの一覧と適用判断を記録する。3506はsourceファイルの棚卸数であり、実行クラス数ではない。継承tag、補助class、package-info等の最終的な実class集合は既存compiled coverageで判定する。
+私有authoring-copyはCRLF 3193・235274 bytes・SHA256 `cc907fedc56c93ee133684fb363064f3660c9070c61939866c2c0d9ebe24d462`。Gitの通常EOL正規化後、exact実装commitのcanonical LF blobは232081 bytes・SHA256 `74be9c96f7883cec63ab7f6d8a9a0fd293512296802881104a8074590b024676`（Git blob `5966c9195a8c5dff161cb8094317c770bfe76e0e`）。両者はCRLF→LF後に全bytes一致し、3182 key/秒数は全件同一である。先報の「Git内容SHA cc907」は誤りとして[訂正原本](eol-normalization.json)へ分離する。元の生成・訂正receiptはauthoring-copyの証拠として保持する。現表3161件に対し追加22・更新3128・同値32・削除1。全3182keyの秒数・実測/歴史値の由来・現sourceパス/SHA/直接annotation分類を[全key TSV](weights-provenance.tsv)に置き、[source/filter manifest](weights-source-manifest.json)へ未計測・arch/perf/abstract/条件付き/専用Integrity/補助sourceの一覧と適用判断を記録する。3506はsourceファイルの棚卸数であり、実行クラス数ではない。継承tag、補助class、package-info等の最終的な実class集合は既存compiled coverageで判定する。
 
 headerのmigrationSecondsはmigration小計で、全classのtotalSecondsとは別である。[訂正receipt](header-correction-receipt.json)によりheader修正前後でweights本文SHA `fd702f1e7a845bf865c8c46b5d67c24e950d7aa6c7708f688640c5cf7c2ad836` が不変と確認する。generator/ShardAssignment/CI/timeout/6shard/2fork/番人を変更しない。この更新だけで85分内完走を保証しない。
 
@@ -56,3 +56,10 @@ headerのmigrationSecondsはmigration小計で、全classのtotalSecondsとは�
 | 独立検分 | rootが本差分・AC・原本・同head CIを照合 | 未完了 |
 
 [ローカル検証記録](local-validation.json)。ローカルGradle/heavy実行は0。新しい検出分岐やgeneratorを実装しておらず、既存の意味ある回帰と全CIを使用する。実機/画面探索は製品UI/API/DB・認可・画面導線を変更しないtest-onlyのため理由付き対象外で、passedへ読み替えない。全CIまたは独立検分が未完了の間は出荷/レーンdoneとしない。
+
+
+### 原実装commitのCI終端結果（訂正資料作成時点）
+
+原実装 `57f72bf0e089c81f453bcaee417f87435571c3cb` のBackend run [42477757763](https://github.com/kenta-0420/mannschaft/actions/runs/42477757763) は失敗で終端した。actual checkoutは `7ef41b707df173923eaf2e0b157bd51fdb5196f2`、全treeは原実装と一致する。6 shardのXMLヘッダ合計は33,110件、failure 1、error 0、skip 17（各shardで反復するIntegrity検査等を含む）。5 shardは成功、shard 3は `InviteAcceptanceConcurrencyIT.blockCommittedAfterBlockCheck` のORGANIZATIONで10秒以内の実ロック待機を観測できず失敗した。原因は未特定であり、この文書訂正がC7を修正したとは扱わない。
+
+未計測16クラス中14クラスは実XMLとcase classname/件数を照合した（Concurrencyの46件中1件は上記失敗）。`ErDiagramFlywayIT` は専用ER図タスク、`FlywayInviteTokenClaimsMigrationTest` は正常PRのmigration除外により未実行であり、成功扱いにしない。compiled 4 profile guardの成功は対象割当の証拠として区別する。17 skipは12外側クラスの既存Disabled注釈に対応し、skipを成功実行に数えない。[公開CI原本参照と限定](ci-terminal-57f.json)にartifact digestと集計資格を保存した。旧失敗原本を保持し、本訂正資料は新commitのCI合格を証明しない。
