@@ -211,6 +211,14 @@ matcher 式は行挿入で腐らず、`SecurityConfig` を Ctrl+F すれば人�
 - 公開されているリソース（PUBLIC のチーム・公開中の募集など）と、§3.3.1 の `?teamId=` 一覧型には使わない（非メンバーに常に同一の 403 のまま）。
 - 採用には、試練の前に「EP 別許可主体表」（EP / 許可主体 / 同一スコープの権限不足 / 越境 / 不在 / ID 省略・null の期待値）を作り、契約 IT で実在 ID と不在 ID の応答を並べて比較する（一致だけでは両方壊れたとき偽 green になるので絶対値も固定する）。初出の適用先はシフト希望・ポジション（`ShiftRequestPositionScopeContractIT`）。
 
+**チャット（F04.2）への適用（CMP-261105-1507）**: チャットのスコープはチーム・組織ではなく**チャンネル**（`chat_channel_members`）であり、DM のようにスコープを持たないチャンネルもあるため、`ScopeConcealingAccessGate` をそのまま使わず、同じ判定順の流儀を `ChatChannelAccessGuard`（`concealOrForbid` / `isAwareOfChannel`）に実装している。
+
+- 「存在を知り得る」利用者 = チャンネルメンバー / SYSTEM_ADMIN / スコープチャンネルのスコープ ADMIN・DEPUTY_ADMIN / 公開スコープチャンネル（`TEAM_PUBLIC`・`ORG_PUBLIC` かつ非 private）のスコープ所属者（F04.2 §5「パブリックチャンネルは非メンバーでも存在を確認可能、プライベートは完全非公開」）。この利用者の権限不足だけを 403（`CHAT_005`〜`CHAT_007`・`CHAT_023`・`COMMON_002`）とする。
+- それ以外（他人の DM・グループ DM、非公開チャンネルの非メンバー、他スコープの利用者、村ロビー・イベント・大会チャットの非該当者）への拒否は、チャンネル ID 指定系は `CHAT_001`（404）、メッセージ ID 指定系は子リソースの不在コード `CHAT_002`（404）と完全一致させる。
+- 種別の判定（「DM ではない」等）や転送先の解決は、当事者確認・転送元の秘匿より**後**に置く（先に置くと種別・実在が漏れる）。
+- 判定は**トランザクションの外**で行う。チャンネル ID・メッセージ ID 指定の EP は「Controller（REST・WebSocket）→ `ChatChannelFacade` / `ChatMessageFacade`（tx なし・`ChatChannelAccessGuard` で認可と存在秘匿）→ tx 本体（`ChatChannelService` / `ChatMemberService` / `ChatMessageService`・認可なし）」の形とし、認可が読む他ドメイン（membership / role / tournament / event / village）の行をチャットの書き込みトランザクションに巻き込まない（CLAUDE.md DB 設計の原則 #5・番人 D-3T）。型は `AuthzTxFacadeRegistryArchTest` の登録表（W8）が固定する。自己参加のスコープ在籍だけは、離脱処理との競合を直列化するため tx 本体が行ロックつきで再確認する（事前判定を通った利用者なので、再確認の拒否 `COMMON_002` は実在を漏らさない）。
+- 契約は `ChatExistenceConcealmentContractIT` が全 EP について実在 ID と不在 ID の応答を並べて固定する。
+
 ### 3.4 広告（F09.7 / F09.17・IP レート制限あり）
 `POST /api/v1/ads/*/click`、`GET/POST /api/v1/ads/unsubscribe`、`GET /api/v1/ads/pixels/open`。
 

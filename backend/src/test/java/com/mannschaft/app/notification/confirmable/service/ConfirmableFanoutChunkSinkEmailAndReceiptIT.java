@@ -80,6 +80,7 @@ class ConfirmableFanoutChunkSinkEmailAndReceiptIT extends AbstractMySqlIntegrati
     @AfterEach
     void cleanUp() {
         if (notificationId != null) {
+            ConfirmableFanoutFixture.deleteFanoutJobsForNotification(jdbc, notificationId);
             jdbc.update("DELETE FROM confirmable_notification_recipients WHERE confirmable_notification_id = ?",
                     notificationId);
             jdbc.update("DELETE FROM notifications WHERE source_type = 'CONFIRMABLE_NOTIFICATION' AND source_id = ?",

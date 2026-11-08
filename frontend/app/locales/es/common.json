@@ -147,6 +147,77 @@
         "joinFailed": "No se pudo unir",
         "declineFailed": "No se pudo rechazar"
       }
+    },
+    "channelList": {
+      "title": "Chat",
+      "newConversation": "Nueva conversación",
+      "addChannel": "Añadir canal",
+      "dmSection": "Kabine (MD)",
+      "noDm": "No hay mensajes directos",
+      "roomSection": "Zimmer (salas)",
+      "noRoom": "No hay salas",
+      "loadFailed": "No se pudo cargar la lista de salas",
+      "detailLoadFailed": "No se pudo cargar la información del canal"
+    },
+    "create": {
+      "typeDm": "Kabine (MD)",
+      "typeRoom": "Zimmer (sala)",
+      "dmOpened": "Kabine (MD) abierto",
+      "roomCreated": "Zimmer (sala) creado",
+      "conversationFailed": "No se pudo iniciar la conversación",
+      "roomCreateFailed": "No se pudo crear el Zimmer (sala)",
+      "header": "Iniciar una nueva conversación",
+      "tabContacts": "Elegir de los contactos",
+      "tabCreateRoom": "Crear Zimmer (sala)",
+      "searchByName": "Buscar por nombre...",
+      "selectedSummary": "{count} seleccionados → se iniciará como {type}",
+      "startAs": "Iniciar {type}",
+      "roomName": "Nombre del Zimmer (sala)",
+      "roomNamePlaceholder": "p. ej. general",
+      "descriptionOptional": "Descripción (opcional)",
+      "descriptionPlaceholder": "Descripción del Zimmer (sala)",
+      "privateRoom": "Zimmer privado (solo por invitación)",
+      "inviteMembersOptional": "Invitar miembros (opcional)",
+      "create": "Crear"
+    },
+    "inviteZimmer": {
+      "header": "Invitar a un Zimmer",
+      "tooltip": "Invitar a un Zimmer",
+      "failed": "No se pudo enviar la invitación",
+      "noMembers": "No hay miembros que se puedan invitar",
+      "shareQuestion": "¿Compartir el historial del chat?",
+      "share": "Compartir",
+      "shareHint": "Los mensajes anteriores pasan al nuevo Zimmer",
+      "noShare": "No compartir",
+      "noShareHint": "El nuevo Zimmer empieza vacío",
+      "createZimmer": "Crear Zimmer"
+    },
+    "memberSelect": {
+      "notFound": "No se encontraron miembros"
+    },
+    "activeThreadsEmpty": "No hay hilos activos",
+    "tabAriaLabel": "Pestaña {name}",
+    "message": {
+      "deleted": "Este mensaje fue eliminado",
+      "unknownSender": "Desconocido",
+      "edited": "(editado)",
+      "loadOlder": "Cargar mensajes anteriores",
+      "empty": "Todavía no hay mensajes",
+      "sendFailed": "No se pudo enviar el mensaje",
+      "inputPlaceholder": "Escribe un mensaje...",
+      "inputDisabled": "No puedes publicar en este Zimmer (sala)",
+      "loadFailed": "No se pudieron cargar los mensajes",
+      "reactionFailed": "No se pudo actualizar la reacción",
+      "pinned": "Fijado",
+      "unpinned": "Desfijado",
+      "pinFailed": "No se pudo actualizar el fijado",
+      "deleteSuccess": "Mensaje eliminado",
+      "deleteFailed": "No se pudo eliminar",
+      "bookmarkFailed": "No se pudo actualizar el marcador",
+      "markReadFailed": "No se pudo marcar como leído",
+      "editHeader": "Editar mensaje",
+      "editSuccess": "Mensaje editado",
+      "editFailed": "No se pudo editar"
     }
   },
   "button": {
@@ -333,7 +404,19 @@
     "period_all": "Todos los períodos",
     "period_number_placeholder": "Número de período",
     "period_suffix": "º",
-    "term_name_placeholder": "ej: 1er Trimestre"
+    "term_name_placeholder": "ej: 1er Trimestre",
+    "term_academic_year_range": "Introduzca un año académico entre {min} y {max}",
+    "term_end_before_start": "La fecha de fin debe ser posterior a la fecha de inicio",
+    "term_date_overlap": "Este trimestre se superpone con otro. Revise las fechas de inicio y fin",
+    "term_delete_confirm": "¿Eliminar el trimestre \"{name}\"? Esta acción no se puede deshacer.",
+    "term_delete_success": "Trimestre eliminado",
+    "term_load_error": "No se pudieron cargar los trimestres",
+    "team_term_hint": "Trimestres de este equipo. Al crear un horario, se elige uno de los trimestres añadidos aquí.",
+    "no_term_for_create": "Todavía no hay trimestres. Añada primero un trimestre en la pestaña Trimestre.",
+    "delete_timetable": "Eliminar",
+    "delete_timetable_confirm": "¿Eliminar el horario \"{name}\"? Esta acción no se puede deshacer.",
+    "delete_timetable_success": "Horario eliminado",
+    "delete_timetable_error": "No se pudo eliminar el horario"
   },
   "error": {
     "server": "Se produjo un error del servidor",

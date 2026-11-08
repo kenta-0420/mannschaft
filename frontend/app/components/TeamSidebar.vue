@@ -25,6 +25,8 @@ const categories = computed<SidebarCategory[]>(() => [
     items: [
       { labelKey: 'teamSidebar.item.schedule', icon: 'pi pi-calendar', path: 'schedule', moduleSlug: 'schedule', requiredRole: 'MEMBER' },
       { labelKey: 'teamSidebar.item.shifts', icon: 'pi pi-clock', path: 'shifts', moduleSlug: 'shift', requiredRole: 'MEMBER' },
+      // 時間割は OPTIONAL モジュール（既定 OFF）。組織と同じくモジュール有効時だけ出す（CMP-261105-1507 A6）。
+      { labelKey: 'teamSidebar.item.timetable', icon: 'pi pi-table', path: 'timetable', moduleSlug: 'timetable', requiredRole: 'MEMBER' },
       { labelKey: 'teamSidebar.item.duties', icon: 'pi pi-list', path: 'duties', moduleSlug: null, requiredRole: 'MEMBER' },
       { labelKey: 'teamSidebar.item.annual_plan', icon: 'pi pi-calendar-plus', path: 'annual-plan', moduleSlug: null, requiredRole: 'MEMBER' },
     ],

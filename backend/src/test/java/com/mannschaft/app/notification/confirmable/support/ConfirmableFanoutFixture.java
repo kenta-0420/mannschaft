@@ -5,6 +5,7 @@ import com.mannschaft.app.notification.fanout.NotificationFanoutJob;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobRepository;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobStatus;
 import jakarta.persistence.EntityManager;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -134,5 +135,14 @@ public final class ConfirmableFanoutFixture {
                 .createdAt(now)
                 .updatedAt(now)
                 .build());
+    }
+
+    /**
+     * {@link #insertFanoutJobRow} で作った確認通知 fanout ジョブを、通知 ID（scope_ref）に絞って削除する
+     * （{@code @AfterEach} 用。ワイルドカード削除はしない。テスト間のジョブ汚染防止）。
+     */
+    public static void deleteFanoutJobsForNotification(JdbcTemplate jdbc, Long notificationId) {
+        jdbc.update("DELETE FROM notification_fanout_jobs WHERE scope_type = 'CONFIRMABLE_TARGETS' "
+                + "AND source_type = 'CONFIRMABLE_NOTIFICATION' AND scope_ref = ?", String.valueOf(notificationId));
     }
 }

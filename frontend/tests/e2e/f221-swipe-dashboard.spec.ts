@@ -885,6 +885,7 @@ for (const width of [360, 390, 1280]) {
         await expect(all.locator('span')).toHaveText('すべて（一覧）')
         await expect(all).toBeVisible()
         await page.evaluate(() => document.fonts.ready.then(() => true))
+        await expect(menu.panel).not.toHaveClass(/\bp-anchored-overlay-enter-active\b/)
         const labelElement = await all.locator('span').elementHandle()
         const allElement = await all.elementHandle()
         const jumpElement = await menu.jump.elementHandle()

@@ -147,6 +147,77 @@
         "joinFailed": "Beitritt fehlgeschlagen",
         "declineFailed": "Ablehnen fehlgeschlagen"
       }
+    },
+    "channelList": {
+      "title": "Chat",
+      "newConversation": "Neue Unterhaltung",
+      "addChannel": "Kanal hinzufügen",
+      "dmSection": "Kabine (DM)",
+      "noDm": "Keine Direktnachrichten",
+      "roomSection": "Zimmer (Räume)",
+      "noRoom": "Keine Räume vorhanden",
+      "loadFailed": "Raumliste konnte nicht geladen werden",
+      "detailLoadFailed": "Kanaldetails konnten nicht geladen werden"
+    },
+    "create": {
+      "typeDm": "Kabine (DM)",
+      "typeRoom": "Zimmer (Raum)",
+      "dmOpened": "Kabine (DM) geöffnet",
+      "roomCreated": "Zimmer (Raum) erstellt",
+      "conversationFailed": "Unterhaltung konnte nicht gestartet werden",
+      "roomCreateFailed": "Zimmer (Raum) konnte nicht erstellt werden",
+      "header": "Neue Unterhaltung beginnen",
+      "tabContacts": "Aus Kontakten wählen",
+      "tabCreateRoom": "Zimmer (Raum) erstellen",
+      "searchByName": "Nach Namen suchen...",
+      "selectedSummary": "{count} ausgewählt → wird als {type} gestartet",
+      "startAs": "{type} starten",
+      "roomName": "Name des Zimmers (Raum)",
+      "roomNamePlaceholder": "z. B. general",
+      "descriptionOptional": "Beschreibung (optional)",
+      "descriptionPlaceholder": "Beschreibung des Zimmers (Raum)",
+      "privateRoom": "Privates Zimmer (nur auf Einladung)",
+      "inviteMembersOptional": "Mitglieder einladen (optional)",
+      "create": "Erstellen"
+    },
+    "inviteZimmer": {
+      "header": "In ein Zimmer einladen",
+      "tooltip": "In ein Zimmer einladen",
+      "failed": "Einladung fehlgeschlagen",
+      "noMembers": "Keine Mitglieder zum Einladen",
+      "shareQuestion": "Bisherigen Chatverlauf teilen?",
+      "share": "Teilen",
+      "shareHint": "Bisherige Nachrichten werden in das neue Zimmer übernommen",
+      "noShare": "Nicht teilen",
+      "noShareHint": "Das neue Zimmer beginnt leer",
+      "createZimmer": "Zimmer erstellen"
+    },
+    "memberSelect": {
+      "notFound": "Keine Mitglieder gefunden"
+    },
+    "activeThreadsEmpty": "Keine aktiven Threads",
+    "tabAriaLabel": "Tab {name}",
+    "message": {
+      "deleted": "Diese Nachricht wurde gelöscht",
+      "unknownSender": "Unbekannt",
+      "edited": "(bearbeitet)",
+      "loadOlder": "Ältere Nachrichten laden",
+      "empty": "Noch keine Nachrichten",
+      "sendFailed": "Nachricht konnte nicht gesendet werden",
+      "inputPlaceholder": "Nachricht eingeben...",
+      "inputDisabled": "In diesem Zimmer (Raum) kannst du nicht posten",
+      "loadFailed": "Nachrichten konnten nicht geladen werden",
+      "reactionFailed": "Reaktion fehlgeschlagen",
+      "pinned": "Angeheftet",
+      "unpinned": "Nicht mehr angeheftet",
+      "pinFailed": "Anheften fehlgeschlagen",
+      "deleteSuccess": "Nachricht gelöscht",
+      "deleteFailed": "Löschen fehlgeschlagen",
+      "bookmarkFailed": "Lesezeichen fehlgeschlagen",
+      "markReadFailed": "Konnte nicht als gelesen markiert werden",
+      "editHeader": "Nachricht bearbeiten",
+      "editSuccess": "Nachricht bearbeitet",
+      "editFailed": "Bearbeiten fehlgeschlagen"
     }
   },
   "button": {
@@ -333,7 +404,19 @@
     "period_all": "Alle Stunden",
     "period_number_placeholder": "Stundennummer",
     "period_suffix": ". Stunde",
-    "term_name_placeholder": "z.B. 1. Quartal"
+    "term_name_placeholder": "z.B. 1. Quartal",
+    "term_academic_year_range": "Bitte ein Schuljahr zwischen {min} und {max} eingeben",
+    "term_end_before_start": "Das Enddatum muss nach dem Startdatum liegen",
+    "term_date_overlap": "Dieses Semester überschneidet sich mit einem anderen. Bitte Start- und Enddatum prüfen",
+    "term_delete_confirm": "Semester „{name}“ löschen? Dies kann nicht rückgängig gemacht werden.",
+    "term_delete_success": "Semester gelöscht",
+    "term_load_error": "Semester konnten nicht geladen werden",
+    "team_term_hint": "Semester dieses Teams. Beim Erstellen eines Stundenplans wählen Sie eines der hier hinzugefügten Semester.",
+    "no_term_for_create": "Noch keine Semester vorhanden. Fügen Sie zuerst im Semester-Tab ein Semester hinzu.",
+    "delete_timetable": "Löschen",
+    "delete_timetable_confirm": "Stundenplan „{name}“ löschen? Dies kann nicht rückgängig gemacht werden.",
+    "delete_timetable_success": "Stundenplan gelöscht",
+    "delete_timetable_error": "Stundenplan konnte nicht gelöscht werden"
   },
   "error": {
     "server": "Ein Serverfehler ist aufgetreten",

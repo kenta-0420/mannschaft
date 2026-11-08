@@ -15,15 +15,23 @@ import java.util.Optional;
 /**
  * 招待トークンリポジトリ。
  */
-public interface InviteTokenRepository extends JpaRepository<InviteTokenEntity, Long> {
+public interface InviteTokenRepository extends JpaRepository<InviteTokenEntity, Long>, InviteTokenRepositoryCustom {
 
     Optional<InviteTokenEntity> findByToken(String token);
 
+    /**
+     * 管理下に古い Entity が残っていると、それをそのまま返す（ロックは取れるが値は古い）。
+     * 承諾・失効の経路では使わず {@link InviteTokenRepositoryCustom#lockFreshByToken(String)} を使うこと
+     * （CMP-260826-1457 §8.2）。
+     */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT t FROM InviteTokenEntity t WHERE t.token = :token")
     Optional<InviteTokenEntity> findByTokenForUpdate(@Param("token") String token);
 
-    /** 失効同士の競合でも既失効日時を保持するcurrent read。 */
+    /**
+     * 管理下に古い Entity が残っていると、それをそのまま返す。
+     * 失効経路では使わず {@link InviteTokenRepositoryCustom#lockFreshById(Long)} を使うこと。
+     */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT t FROM InviteTokenEntity t WHERE t.id = :id")
     Optional<InviteTokenEntity> findByIdForUpdate(@Param("id") Long id);
