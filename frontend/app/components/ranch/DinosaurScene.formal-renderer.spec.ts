@@ -9,6 +9,11 @@ import { productionRanchAssets } from '~/utils/ranch-production-assets'
 import { developmentRanchAssets } from '~/utils/ranch-assets'
 import type { DinosaurSummary } from '~/types/ranch'
 import ja from '~/locales/ja/ranch.json'
+import en from '~/locales/en/ranch.json'
+import zh from '~/locales/zh/ranch.json'
+import ko from '~/locales/ko/ranch.json'
+import es from '~/locales/es/ranch.json'
+import de from '~/locales/de/ranch.json'
 
 const entry = productionRanchAssets.find(value => value.speciesKey === 'allosaurus' && value.variantKey === 'V1' && value.stage === 'BABY' && value.renderStyle === 'PIXEL')!
 const dinosaur: DinosaurSummary = { id: '11111111-1111-4111-8111-111111111111', speciesKey: entry.speciesKey,
@@ -56,7 +61,7 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals() })
 function scene(motionMode: 'NORMAL' | 'REDUCED') {
   return mount(DinosaurScene, {
-    global: { plugins: [createI18n({ legacy: false, locale: 'ja', messages: { ja } })] },
+    global: { plugins: [createI18n({ legacy: false, locale: 'ja', messages: { ja, en, zh, ko, es, de } })] },
     props: { dinosaur, renderStyle: 'PIXEL', motionMode,
       assetContext: { production: true, isolatedDevelopment: false, publicationEnabled: true } },
   })
