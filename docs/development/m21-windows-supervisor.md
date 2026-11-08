@@ -12,7 +12,7 @@ full productionCP/明示3source JAR、実App/FE、Chrome nested Job/Sky GUI、�
 
 ## Windows production assets（生成未実行）
 
-CP initの固定ownerは現正式runの 1d767b20-825c-4edc-b397-8d4367036462 に一致させる。旧d724 ownerはdummy既定値の互換用途に限り、CP initでは旧owner・別UUID・nullを許可しない。owner literal一箇所以外のnonce/purpose/sourceCommit/path/CREATE_NEW/main CP境界は変更しない。この補正は静的契約の整合だけで、実Gradle/CP/JAR生成やowner/creator実検証の合格ではない。実検証は既存前提が満たされた正式Runの別GO後に行う。
+CP initの固定ownerは現正式runの f6efb6d3-51e1-4408-a760-92f7d3642122 に一致させる。Supervisor/probeの既定ownerと有限fixtureの固定ownerも同じ新実行主体へ揃え、CP initでは旧owner・別UUID・nullを許可しない。nonce/purpose/sourceCommit/path/CREATE_NEW/main CP境界は変更しない。この補正は静的契約の整合だけで、実Gradle/CP/JAR生成やowner/creator実検証の合格ではない。実検証は既存前提が満たされた正式Runの別GO後に行う。
 
 `New-M21ProductionAssetContext` はACK後のSupervisor/自隊Jobだけで呼ぶ。新規owned `run/assets` とownerを作り、固定Git実体によるHEAD・全backend/Gradle入力・launcher/initのtracked manifest、実在/reparse/raw SHA256、同HEADとのGit diffを照合する。main/resources/build-logic/wrapperとtest source/resourcesの欠落や未追跡sourceを拒否する。CRLF checkoutのraw SHAとGit blobは別記する。Gitの暗黙取得/認証promptは無効化し、既存M21Child/Remaining/Captureで自分のGit子だけを有限回収する。JDK21/Node22は既存固定path/SHAを検証し、追加downloadしない。
 
@@ -152,7 +152,7 @@ Javaが探索完了markerを先に読みhelper cleanupへ進んだ場合、Super
 
 有限契約fixture（正式App/Gradle/Docker/Chrome起動0）:
 
-    node scripts/m21-windows-supervisor.probe.cjs --formal-entry-contract --owner-id 1d767b20-825c-4edc-b397-8d4367036462
+    node scripts/m21-windows-supervisor.probe.cjs --formal-entry-contract --owner-id f6efb6d3-51e1-4408-a760-92f7d3642122
 
 | 境界 | fixtureで実assertする範囲 | 未実証 |
 |---|---|---|
@@ -172,7 +172,7 @@ StartBridgeだけは固定prefix `-d Ubuntu-24.04 --exec /usr/bin/python3 -I` �
 
 212a入力ではbridge ready後terminal/relay actual1となり、Linux子proofを採取できなかった。既定stdinのBOMが原因だったとは未確定である。一方、Frameworkのbuffered BaseStreamにWriteAsyncだけを行いFlushしない不足は独立して補完する。固定bridgeのProcess.Start周囲だけ、既知65001のpreambleがある場合にUTF8NoBOMへ保存・finally復元し、未知preambleは起動前拒否する。Start直後に保持Startedを記録し、起動と復元の二重失敗は起動をprimary・復元をsecondaryへ残す。通常Start/OS設定ファイルは変更しない。各frameは同じ単一cap内でwriteとflushのRanToCompletionを確認し、失敗後の再送を拒否する。B4には固定phaseとcodepage/preamble長/write-flush完了状態だけを追加し、原因未確定の旧失敗を成功へ置換しない。
 
-private Node22で `node scripts/m21-windows-supervisor.probe.cjs --wsl-relay-loss-fixture --owner-id 1d767b20-825c-4edc-b397-8d4367036462` を実行する。`M21_INPUT_COMMIT` にclean統合HEADを指定する。既存readiness runnerとM21Childを再利用する独立1caseであり、通常17件を呼ばない。Windows側はG60秒/W40秒/R20秒、Linux initは残量へclampしたG4秒/W3秒と固定request cap1秒を使う。
+private Node22で `node scripts/m21-windows-supervisor.probe.cjs --wsl-relay-loss-fixture --owner-id f6efb6d3-51e1-4408-a760-92f7d3642122` を実行する。`M21_INPUT_COMMIT` にclean統合HEADを指定する。既存readiness runnerとM21Childを再利用する独立1caseであり、通常17件を呼ばない。Windows側はG60秒/W40秒/R20秒、Linux initは残量へclampしたG4秒/W3秒と固定request cap1秒を使う。
 
 固定test CLIはproductionのguard/bridge loopを使い、外部Docker command/preflight境界だけを固定Python dummyへ置換する。Linuxのfork/setsid ACK/pidfd/subreaper/独立watchdog/reap/両EOFは実物である。実Docker/Java/FE/Chromeは起動しない。request-started.jsonのowner/nonce/run/source/request/世代とsession ACKを確認してから、保持した同じwsl.exeだけをKillする。Windows actual exit/各EOFと、その後の独立Linux receiptのCLI子集合reap/各EOFを別に検査する。
 
@@ -188,9 +188,9 @@ B4のWindows phaseは同じStopwatchのelapsed ticksとfrequencyで最大10点�
 
 通常kentaの既存ExecutionPolicy、固定Node `C:/Claude/mannschaft/.claude/runtime-assets/node22-d7249e88-6cfac601/node-v22.23.2-win-x64/node.exe`（SHA256 `0d0f5e39f9f3d9587bc19f73eab3c2c9c4903fd02d6dbf9c853dd81b3d95fad4`）で、clean統合HEADの40桁を `M21_INPUT_COMMIT` に設定し、同じownerを明示する。rootの別GO後、順に各1回だけ実行する。
 
-    node scripts/m21-windows-supervisor.probe.cjs --formal-contract-fixture --owner-id 1d767b20-825c-4edc-b397-8d4367036462
-    node scripts/m21-windows-supervisor.probe.cjs --readiness-fixture --owner-id 1d767b20-825c-4edc-b397-8d4367036462
-    node scripts/m21-windows-supervisor.probe.cjs --owner-id 1d767b20-825c-4edc-b397-8d4367036462
+    node scripts/m21-windows-supervisor.probe.cjs --formal-contract-fixture --owner-id f6efb6d3-51e1-4408-a760-92f7d3642122
+    node scripts/m21-windows-supervisor.probe.cjs --readiness-fixture --owner-id f6efb6d3-51e1-4408-a760-92f7d3642122
+    node scripts/m21-windows-supervisor.probe.cjs --owner-id f6efb6d3-51e1-4408-a760-92f7d3642122
 
 順に正式契約3、readiness4、通常10。`--formal-entry-contract` は別の60秒関数診断、B4/Chromiumも別suiteであり17件へ混ぜない。stdout/stderrとexit codeを新nonceのprivate採取先へ保存し、packet内retained/exact runのrawを保全する。過去の失敗Temp、15秒timeout、policy拒否、source別の中間greenを上書き・削除しない。成功時のrunner自身による所有照合済みTemp回収だけを既存動作として認める。
 
@@ -202,7 +202,7 @@ callerは既存Job/Remaining/M21Child/Register-Child/Captureを用いて、sourc
 
 今回の所有者を使うprobeの形（実行には別GOが必要）:
 
-    node scripts/m21-windows-supervisor.probe.cjs --owner-id 1d767b20-825c-4edc-b397-8d4367036462
+    node scripts/m21-windows-supervisor.probe.cjs --owner-id f6efb6d3-51e1-4408-a760-92f7d3642122
 
 asset生成・変更後dummy回帰・実Java/Gradle・正式環境・実UIは未実行。CP task outcomeの実ログ形式、実machine gate、途中失敗時の停止/EOF/publication/held解除は実測合格としていない。
 
@@ -210,7 +210,7 @@ PS Parser.ParseFile、Node --check、diffの静的確認後、rootの限定GOご
 
 ### 固定Chromium fixture（実起動は別GO）
 
-`node scripts/m21-windows-supervisor.probe.cjs --chromium-fixture --owner-id 1d767b20-825c-4edc-b397-8d4367036462` は通常10caseを呼ばず、固定2caseだけを同じG420000/R18000内で実行する。`M21_INPUT_COMMIT` はrootの確定40桁HEADを必須とし、PS/probe/adapter/readinessの固定4file SHAを前・case間・後で照合する。既存private Node22とbundled chromium-1223/chrome-win64/chrome.exeの固定SHAを起動前に検査する。新engine・任意exe/path・UI操作は追加しない。**有限Chromium異常caseだけ**は、既存M21Jobを使うouter witnessを一つ追加する例外とする。正式入口の単一Job、通常dummy/P4、通常Chromium closeの機構・予算は変えない。
+`node scripts/m21-windows-supervisor.probe.cjs --chromium-fixture --owner-id f6efb6d3-51e1-4408-a760-92f7d3642122` は通常10caseを呼ばず、固定2caseだけを同じG420000/R18000内で実行する。`M21_INPUT_COMMIT` はrootの確定40桁HEADを必須とし、PS/probe/adapter/readinessの固定4file SHAを前・case間・後で照合する。既存private Node22とbundled chromium-1223/chrome-win64/chrome.exeの固定SHAを起動前に検査する。新engine・任意exe/path・UI操作は追加しない。**有限Chromium異常caseだけ**は、既存M21Jobを使うouter witnessを一つ追加する例外とする。正式入口の単一Job、通常dummy/P4、通常Chromium closeの機構・予算は変えない。
 
 Supervisorのhello→Parent exact Job assign→ACKが済んだ後だけ、既存M21Child.Startで3rootを起動する。0budgetは既存Require-Workで停止し、ACK不成立時のChrome spawnは0。新owned run/profiles直下のsystem/admin-de/memberだけを新規作成し、既存path・reparse・範囲外を拒否する。引数はuser-data-dir/no-first-run/no-default-browser-check/new-windowと非秘密nonce+role titleのdata-pageだけ。sandbox/security/breakawayの変更はない。
 
