@@ -234,7 +234,7 @@ class ShiftSwapApprovalAtomicityConcurrencyIT extends ShiftSwapApprovalTestSuppo
     private void applyChange(Change change, Long slot, Long extra) {
         switch (change) {
             case PATCH_KEEP_SOURCE -> slotService.patchSlotAssignments(slot,
-                    new SlotAssignmentPatchRequest(List.of(d), List.of(), 0), admin);
+                    new SlotAssignmentPatchRequest(List.of(d), List.of(), 0L), admin);
             case MOVE_SOURCE -> slotService.moveAssignment(slot,
                     new SlotAssignmentMoveRequest(extra, a, 0L, 0L), admin);
             case UPDATE_SLOT -> slotService.updateSlot(slot, new UpdateShiftSlotRequest(null,
@@ -242,7 +242,7 @@ class ShiftSwapApprovalAtomicityConcurrencyIT extends ShiftSwapApprovalTestSuppo
             case DELETE_SLOT -> slotService.deleteSlot(slot);
             case DELETE_PARENT -> scheduleService.deleteSchedule(scheduleOf(slot), admin);
             case THIRD_DUPLICATE -> slotService.patchSlotAssignments(extra,
-                    new SlotAssignmentPatchRequest(List.of(b), List.of(), 0), admin);
+                    new SlotAssignmentPatchRequest(List.of(b), List.of(), 0L), admin);
             default -> throw new IllegalStateException();
         }
     }

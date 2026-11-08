@@ -73215,7 +73215,7 @@ export interface components {
         SlotAssignmentPatchRequest: {
             addUserIds?: number[];
             removeUserIds?: number[];
-            /** Format: int32 */
+            /** Format: int64 */
             slotVersion: number;
         };
         UpdateShiftScheduleRequest: {

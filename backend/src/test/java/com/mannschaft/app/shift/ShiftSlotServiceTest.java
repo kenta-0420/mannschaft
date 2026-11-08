@@ -240,7 +240,7 @@ class ShiftSlotServiceTest {
                     new UpdateShiftSlotRequest(null, null, null, null, null, null, "メモ"), ACTOR),
                     ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
             assertCode(() -> shiftSlotService.patchSlotAssignments(SLOT_ID,
-                    new SlotAssignmentPatchRequest(List.of(1L), List.of(), 0), ACTOR),
+                    new SlotAssignmentPatchRequest(List.of(1L), List.of(), 0L), ACTOR),
                     ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
             assertCode(() -> shiftSlotService.deleteSlot(SLOT_ID), ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
 
@@ -504,7 +504,7 @@ class ShiftSlotServiceTest {
             ShiftSlotEntity existing = existingSlotWithId();
             ReflectionTestUtils.setField(existing, "version", 0L);
             SlotAssignmentPatchRequest request =
-                    new SlotAssignmentPatchRequest(List.of(101L), List.of(), 0);
+                    new SlotAssignmentPatchRequest(List.of(101L), List.of(), 0L);
 
             given(slotRepository.findById(SLOT_ID)).willReturn(Optional.of(existing));
             given(slotRepository.save(any(ShiftSlotEntity.class))).willAnswer(inv -> inv.getArgument(0));
@@ -558,7 +558,7 @@ class ShiftSlotServiceTest {
                     .willReturn(Optional.of(createPositionEntity()));
 
             shiftSlotService.patchSlotAssignments(
-                    SLOT_ID, new SlotAssignmentPatchRequest(List.of(101L), List.of(), 0), ACTOR);
+                    SLOT_ID, new SlotAssignmentPatchRequest(List.of(101L), List.of(), 0L), ACTOR);
 
             List<com.mannschaft.app.shift.entity.ShiftAssignmentEntity> saved = captureSaved();
             assertThat(saved).singleElement().satisfies(a -> {
@@ -588,7 +588,7 @@ class ShiftSlotServiceTest {
                     .willReturn(Optional.of(createPositionEntity()));
 
             shiftSlotService.patchSlotAssignments(
-                    SLOT_ID, new SlotAssignmentPatchRequest(List.of(), List.of(101L), 0), ACTOR);
+                    SLOT_ID, new SlotAssignmentPatchRequest(List.of(), List.of(101L), 0L), ACTOR);
 
             assertThat(captureSaved()).singleElement()
                     .extracting(com.mannschaft.app.shift.entity.ShiftAssignmentEntity::getStatus)
@@ -614,7 +614,7 @@ class ShiftSlotServiceTest {
                     .willReturn(Optional.of(createPositionEntity()));
 
             shiftSlotService.patchSlotAssignments(
-                    SLOT_ID, new SlotAssignmentPatchRequest(List.of(101L), List.of(), 0), ACTOR);
+                    SLOT_ID, new SlotAssignmentPatchRequest(List.of(101L), List.of(), 0L), ACTOR);
 
             verify(assignmentRepository, never()).saveAll(anyList());
             assertThat(history.getStatus()).isEqualTo(status);
@@ -631,7 +631,7 @@ class ShiftSlotServiceTest {
                     .willReturn(Optional.of(createPositionEntity()));
 
             shiftSlotService.patchSlotAssignments(
-                    SLOT_ID, new SlotAssignmentPatchRequest(List.of(101L), List.of(), 0), ACTOR);
+                    SLOT_ID, new SlotAssignmentPatchRequest(List.of(101L), List.of(), 0L), ACTOR);
 
             verifyNoInteractions(assignmentRepository);
         }
