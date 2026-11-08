@@ -1,0 +1,158 @@
+{
+  "schemaVersion": 1,
+  "kind": "STATIC_UI_INPUT_SEMANTIC_BRIDGE_AFTER_MAIN_FOLLOW",
+  "sourceHead": "af13a156be7ba03a2367c3ad92759c7d6ce3fb47",
+  "sourceBase": "038079b8c401645622024a5e6a6250be6c60b1a7",
+  "acceptedStaticSourceHead": "fa5aa4fae6b5ac04c1fbe632028f1c4b8d8129b1",
+  "realSourceHead": "f93884c6a43ae9be5973cf005dfe52ebef7d1262",
+  "acceptedStaticPublicProof": {
+    "path": "docs/evidence/CMP-261008-1253/board-ui-r25-20261109.json",
+    "sha256": "9562c7280a28a8d5f7cd0afed97edcc8c9422e05933e01e355a99d00d89a228a"
+  },
+  "acceptedInputManifest": {
+    "privatePath": ".claude/campaigns/cmp1253-r25-static-board-20261109/accepted-input-4191/manifest.json",
+    "sha256": "f1a434492266e743b27186d7c1286846ab9210b02b97715103127e536ffcc95d"
+  },
+  "oldGeneratedSha256": "06c1aee980e985a4ab7270c38bade1e4879a1f366ce51ad9cd7c52c88fd2c2b6",
+  "newGeneratedSha256": "07591fb6498abc4a8a05ff4d6c9dd2892c56463c06936c66441585e5cb67d7a7",
+  "selectedLocalOverlayCopy": "docs/prototypes/.b0-local/run-cmp1253-r24-observations-20261108.json",
+  "normalGenerator": {
+    "exitCode": 0,
+    "output": "生成: C:\\Claude\\mannschaft\\.claude\\worktrees\\agent-sept-cmp1253-r25-integration-20261109\\docs\\prototypes\\beta-inventory-board-data.js\n{\"features\": 44, \"capabilities\": 95, \"splitParents\": 33, \"campaigns\": 680, \"layer\": {\"能力\": 26, \"ドメイン\": 18}, \"blockers\": 23, \"coreStatus\": {\"blocked\": 5, \"unknown\": 0, \"incomplete\": 0, \"verifying\": 19, \"ready\": 1}}\n"
+  },
+  "normalValidator": {
+    "exitCode": 1,
+    "output": "file:///C:/Claude/mannschaft/.claude/worktrees/agent-sept-cmp1253-r25-integration-20261109/docs/prototypes/validate-beta-inventory-board.mjs:46\nif (github.status === 'synced' && github.lastAttempt?.status !== 'error' && JSON.stringify(actualGithubNumbers) !== JSON.stringify(expectedGithubNumbers)) throw new Error('GitHubスナップショットの参照集合が正本と不一致です');\n                                                                                                                                                                 ^\n\nError: GitHubスナップショットの参照集合が正本と不一致です\n    at file:///C:/Claude/mannschaft/.claude/worktrees/agent-sept-cmp1253-r25-integration-20261109/docs/prototypes/validate-beta-inventory-board.mjs:46:162\n    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)\n    at async node:internal/modules/esm/loader:639:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)\n\nNode.js v24.15.0\n"
+  },
+  "normalSelfTestOverlay": {
+    "exitCode": 1,
+    "output": "file:///C:/Claude/mannschaft/.claude/worktrees/agent-sept-cmp1253-r25-integration-20261109/docs/prototypes/validate-beta-inventory-board.mjs:46\nif (github.status === 'synced' && github.lastAttempt?.status !== 'error' && JSON.stringify(actualGithubNumbers) !== JSON.stringify(expectedGithubNumbers)) throw new Error('GitHubスナップショットの参照集合が正本と不一致です');\n                                                                                                                                                                 ^\n\nError: GitHubスナップショットの参照集合が正本と不一致です\n    at file:///C:/Claude/mannschaft/.claude/worktrees/agent-sept-cmp1253-r25-integration-20261109/docs/prototypes/validate-beta-inventory-board.mjs:46:162\n    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)\n    at async node:internal/modules/esm/loader:639:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)\n\nNode.js v24.15.0\n"
+  },
+  "samePreexistingL46FailureGate": true,
+  "failureAttribution": "同じL46参照集合不一致を旧proofと新bytesで確認。GitHub参照集合の旧新差分はpureComparison.githubReferenceDiagnosticsに記録し、製品由来のredへ昇格しない。",
+  "pureComparison": {
+    "passed": true,
+    "comparisonScope": "accepted 120-row import/reload and new two card inspection inputs only; existing pure project; no browser/server/API/SQL",
+    "allScreenEquivalentClaim": false,
+    "fullDataJsBytesEqual": false,
+    "globalSourceHeader": {
+      "old": {
+        "sourceCounts": {
+          "features": 44,
+          "capabilities": 95,
+          "splitParents": 33,
+          "campaigns": 680,
+          "layer": {
+            "能力": 26,
+            "ドメイン": 18
+          },
+          "blockers": 23,
+          "coreStatus": {
+            "blocked": 5,
+            "unknown": 0,
+            "incomplete": 0,
+            "verifying": 19,
+            "ready": 1
+          }
+        },
+        "generatedAt": "2026-11-08T17:53:12+00:00",
+        "proposedFeatureDecisions": 44
+      },
+      "new": {
+        "sourceCounts": {
+          "features": 44,
+          "capabilities": 95,
+          "splitParents": 33,
+          "campaigns": 680,
+          "layer": {
+            "能力": 26,
+            "ドメイン": 18
+          },
+          "blockers": 23,
+          "coreStatus": {
+            "blocked": 5,
+            "unknown": 0,
+            "incomplete": 0,
+            "verifying": 19,
+            "ready": 1
+          }
+        },
+        "generatedAt": "2026-11-08T19:20:39+00:00",
+        "proposedFeatureDecisions": 44
+      },
+      "deepEqual": false,
+      "meaning": "global source-count/time header differences are reported; no full-screen equivalence claim"
+    },
+    "extractedProjectSha256": "6b37c86b2cff3216f5dce7fd254299909003a691a81246d5d663f54de69ee5f4",
+    "htmlRawBytesEqual": true,
+    "canonicalAndOldNewOverlayDeepEqual": true,
+    "fullB0AlicizationDeepEqual": true,
+    "projectionCount": 120,
+    "uniqueProjectionIds": 120,
+    "projectionFieldCount": 25,
+    "full120ProjectionDeepEqual": true,
+    "projectionSha256": "2b972aa528a02a3a562ced9e5350533b570a94a8c0cc9dd8c2b22617fe83ccc5",
+    "timestampFallbackNullRows": 114,
+    "timestampMeaning": "Date.now fallback represented as null by unchanged existing pure project; old actual IDB import-range/reload receipt retained, no new IDB run",
+    "newCards": [
+      {
+        "id": "ALIC-CMP1253-R24-B-20261108-I001",
+        "featureKey": "shift-shift",
+        "stage": "B4",
+        "findingAndFeatureCapabilityDecisionFullEqual": true
+      },
+      {
+        "id": "ALIC-CMP1253-R24-C-20261108-I001",
+        "featureKey": "shift-shift",
+        "stage": "B4",
+        "findingAndFeatureCapabilityDecisionFullEqual": true
+      }
+    ],
+    "counts": {
+      "campaigns": 680,
+      "features": 44,
+      "capabilities": 95,
+      "b0Personas": 64,
+      "b0Journeys": 64,
+      "b0Insights": 120
+    },
+    "githubReferenceDiagnostics": {
+      "snapshotDeepEqual": true,
+      "oldExpectedCount": 778,
+      "newExpectedCount": 778,
+      "oldActualCount": 670,
+      "newActualCount": 670,
+      "expectedAdded": [],
+      "expectedRemoved": [],
+      "oldMissingCount": 108,
+      "newMissingCount": 108,
+      "newlyMissing": []
+    }
+  },
+  "currentTaskListCmpRows": 680,
+  "currentUniqueTaskListCmpIds": 680,
+  "acceptedPriorStaticUiReused": true,
+  "newBrowserStaticUiRun": false,
+  "browserServerApiSqlDeployStartedByBridge": false,
+  "oldStaticJsonPngAndProofHistoryUnchanged": {
+    "docs/evidence/CMP-261008-1253/board-ui-r25-20261109.json": "9562c7280a28a8d5f7cd0afed97edcc8c9422e05933e01e355a99d00d89a228a",
+    "docs/evidence/CMP-261008-1253/board-r25-B.png": "823a0527f8c48375c42f0dd9550a61bd6031a27df5f61a2eaadbe760b1c46523",
+    "docs/evidence/CMP-261008-1253/board-r25-C.png": "e423f8d7d29ed724662fa207f250060e4478e9169db264682e0c75acfa913850",
+    "docs/evidence/CMP-261008-1253/resident-observations-r24-20261108.json": "23d4f2c03f4f40dc72ff845e375a6aeb27c185a6405c2348805c4b16faddde95",
+    "docs/evidence/CMP-261015-1510/resident-overlay.json": "ecbcdd27f7560eaf410c9be2033fe664e1e3655ed728e348528994cbe0f8d199",
+    "docs/prototypes/beta-inventory-board.html": "8c4dff12b553433a6d37660ecfad1dd421af161794dcf41db8881285f911ec5a",
+    "docs/evidence/CMP-261008-1253/b0-main-follow-normal-output-r25.json": "c73ad36c82da39bcab1b2d859e6e2179a21c22f4d4d68ba46a56e5f16b68862a",
+    "docs/evidence/CMP-261008-1253/b0-final-normal-output-r25.json": "5215e7e29e4fe45da8252c0e642154fdd4d9a6e30c2a32ea01b852a8fc4a1293",
+    "docs/evidence/CMP-261008-1253/b0-final-normal-output-r24.json": "4ca9e131ac3455d835d90fd62e513ee4ce1a1ce977bbcd0334d28622ffc86b63",
+    "docs/evidence/CMP-261008-1253/b0-overlay-checks-r24.json": "c138099c5df1a83d7f7b40d511c755e97a36fa6cd1f112ce030ff6e9d8939314"
+  },
+  "originalStaticReceiptNotReassigned": true,
+  "globalValidatorPassed": false,
+  "newHeadDirectRealTest": false,
+  "freshFEAndNormalCI": "後続ゲート",
+  "limits": [
+    "HTML raw同一、overlay/全B0 plan/120件25field純粋投影/新B・C findingとfeature/capability/decision/stageの厳密同値に限定して既存静的UIを採用。",
+    "新sourceでIndexedDBを実測したとは主張せず、元fa5/data06cの実測とPNGをその来歴のまま保持。",
+    "全棚卸表示・全歴史run意味精度・製品実機/coverage全体の合格とはしない。"
+  ]
+}

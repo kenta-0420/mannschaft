@@ -1,0 +1,273 @@
+{
+  "schemaVersion": 1,
+  "kind": "ROOT_ACCEPTED_STATIC_PROTOTYPE_BOARD_UI",
+  "cmpId": "CMP-261008-1253",
+  "sourceHead": "fa5aa4fae6b5ac04c1fbe632028f1c4b8d8129b1",
+  "baselineB0Head": "de0cdda46ff29c304efd9279d07e0d0dcf722187",
+  "realSourceHead": "f93884c6a43ae9be5973cf005dfe52ebef7d1262",
+  "privateResult": {
+    "path": ".claude/campaigns/cmp1253-r25-static-board-20261109/r25-static-b3081fb15c16ff6b68e579be/result.json",
+    "sha256": "4191fff65dc4e8465aaf115e8f4fd3416aa108c29ffdf3eb440b6d1c1311b1d0"
+  },
+  "scriptSha256": "9784df201ccb2cdf422f83508f0e96064c76d38641bf71bcd6b222db8d798a5a",
+  "prepareSha256": "b17768d7b7022c590105921737ca8e27d41f674a19d9c13cf246ac0eac0ec115",
+  "goSha256": "9a7ea78222eb715abaf3f2ce0f996030238cbd9c30522a626b33826ba7d83b57",
+  "inputRawSha256": {
+    "html": "8c4dff12b553433a6d37660ecfad1dd421af161794dcf41db8881285f911ec5a",
+    "data": "06c1aee980e985a4ab7270c38bade1e4879a1f366ce51ad9cd7c52c88fd2c2b6",
+    "overlay": "ecbcdd27f7560eaf410c9be2033fe664e1e3655ed728e348528994cbe0f8d199"
+  },
+  "baselineRawSha256": {
+    "data": "3b68ff9658e81ecb4bc33359690430dfd1fdce22bf67f53e49ee9136e92ec1fb",
+    "overlay": "72e62eee4f3489998b8493ebd959bf98c4f4641d39b46903c448e91454933322"
+  },
+  "inputRawSha256AtEnd": {
+    "html": "8c4dff12b553433a6d37660ecfad1dd421af161794dcf41db8881285f911ec5a",
+    "data": "06c1aee980e985a4ab7270c38bade1e4879a1f366ce51ad9cd7c52c88fd2c2b6",
+    "overlay": "ecbcdd27f7560eaf410c9be2033fe664e1e3655ed728e348528994cbe0f8d199"
+  },
+  "publicObservationSha256": "23d4f2c03f4f40dc72ff845e375a6aeb27c185a6405c2348805c4b16faddde95",
+  "rootAccepted": true,
+  "passed": true,
+  "counts": {
+    "personas": 64,
+    "journeys": 64,
+    "insights": 120,
+    "oldInsights": 118
+  },
+  "additions": {
+    "personas": [
+      "ALIC-CMP1253-R24-A-20261108",
+      "ALIC-CMP1253-R24-B-20261108",
+      "ALIC-CMP1253-R24-C-20261108"
+    ],
+    "journeys": [
+      "ALIC-CMP1253-R24-A-20261108-J1",
+      "ALIC-CMP1253-R24-B-20261108-J1",
+      "ALIC-CMP1253-R24-C-20261108-J1"
+    ],
+    "insights": [
+      "ALIC-CMP1253-R24-B-20261108-I001",
+      "ALIC-CMP1253-R24-C-20261108-I001"
+    ]
+  },
+  "firstCount": 120,
+  "reloadCount": 120,
+  "projectionFieldCount": 25,
+  "projectionFields": [
+    "id",
+    "featureKey",
+    "featureDetail",
+    "priority",
+    "urgency",
+    "title",
+    "page",
+    "detail",
+    "status",
+    "registrationSource",
+    "personaId",
+    "personaArchetype",
+    "journeyId",
+    "runId",
+    "originalRunId",
+    "sourceHead",
+    "trusted",
+    "sourceStatus",
+    "sourceEvidencePath",
+    "evidencePath",
+    "screenshotPath",
+    "createdAt",
+    "updatedAt",
+    "screenshot",
+    "screenshotName"
+  ],
+  "all120FullProjectionDeepEqual": true,
+  "old118OriginalFullFieldsPreserved": true,
+  "old118FullProjectionPreserved": true,
+  "reloadAllValuesDeepEqual": true,
+  "firstProjectionSha256": "dfc18c07c5105c3e457390f7311f775ef1c8bb843079b799dfc7f3843356d53c",
+  "timestampFallbackCount": 114,
+  "timestampFallbackPolicy": "sourceに日時が無い行だけ初回import時刻範囲/createdAt=updatedAtを検証し、reloadは実値を含む全字段deep一致",
+  "declaredRunIdStorageContractPassed": true,
+  "currentHtmlRunStorageContract": "runId = finding.originalRunId || finding.runId || overlay.runId; originalRunId/sourceHead/trusted/sourceStatus/sourceEvidencePathも保存。今回120件のsource保持を確認。",
+  "originalRunIdPrecisionPassed": false,
+  "originalRunIdPrecisionDefinition": "歴史的全runIDの意味精度を本静的試験で一括保証しない",
+  "newBCSourceIdStoragePassed": true,
+  "cards": [
+    {
+      "id": "ALIC-CMP1253-R24-B-20261108-I001",
+      "projectedId": "ALI-october-wave2-login-resident-overlay-20261026-ALIC-CMP1253-R24-B-20261108-I001",
+      "stage": "B4",
+      "originalRunId": "cmp1253-r21-B-925566af-50d0-4d4f-ac86-8e012558586e",
+      "storedRunId": "cmp1253-r21-B-925566af-50d0-4d4f-ac86-8e012558586e",
+      "runIdVisibleOnCard": false,
+      "originalRunIdVisibleOnCard": false,
+      "screenshotPath": ".claude/campaigns/cmp1253-real-r24-entry-budget-20261108/resident-images/B-7.png",
+      "fieldsPassed": true
+    },
+    {
+      "id": "ALIC-CMP1253-R24-C-20261108-I001",
+      "projectedId": "ALI-october-wave2-login-resident-overlay-20261026-ALIC-CMP1253-R24-C-20261108-I001",
+      "stage": "B4",
+      "originalRunId": "cmp1253-r21-C-b3cbd8ea-f282-4819-9331-63881e6ce81a",
+      "storedRunId": "cmp1253-r21-C-b3cbd8ea-f282-4819-9331-63881e6ce81a",
+      "runIdVisibleOnCard": false,
+      "originalRunIdVisibleOnCard": false,
+      "screenshotPath": ".claude/campaigns/cmp1253-real-r24-entry-budget-20261108/resident-images/C-4.png",
+      "fieldsPassed": true
+    }
+  ],
+  "cardBodyFieldsChecked": [
+    "title",
+    "sourceLabel",
+    "persona",
+    "journey",
+    "evidencePath",
+    "screenshotPath"
+  ],
+  "runValuesVisibleOnCard": false,
+  "rootViewedPngCount": 2,
+  "screenshots": [
+    {
+      "resident": "B",
+      "publicPath": "docs/evidence/CMP-261008-1253/board-r25-B.png",
+      "sha256": "823a0527f8c48375c42f0dd9550a61bd6031a27df5f61a2eaadbe760b1c46523",
+      "privateSourcePath": ".claude/campaigns/cmp1253-r25-static-board-20261109/r25-static-b3081fb15c16ff6b68e579be/new-card-1.png",
+      "byteIdenticalCopy": true,
+      "exclusiveCreate": true,
+      "rootViewed": true,
+      "imageScope": "個人情報なしの公開prototypeボード。住民private PNG本体のコピーではない。"
+    },
+    {
+      "resident": "C",
+      "publicPath": "docs/evidence/CMP-261008-1253/board-r25-C.png",
+      "sha256": "e423f8d7d29ed724662fa207f250060e4478e9169db264682e0c75acfa913850",
+      "privateSourcePath": ".claude/campaigns/cmp1253-r25-static-board-20261109/r25-static-b3081fb15c16ff6b68e579be/new-card-2.png",
+      "byteIdenticalCopy": true,
+      "exclusiveCreate": true,
+      "rootViewed": true,
+      "imageScope": "個人情報なしの公開prototypeボード。住民private PNG本体のコピーではない。"
+    }
+  ],
+  "freshLocalIndexedDbUsed": true,
+  "freshContext": true,
+  "storageStateInitiallyEmpty": true,
+  "productAppStarted": false,
+  "productApiCalls": 0,
+  "productSqlCalls": 0,
+  "deployCalls": 0,
+  "externalBlockedCount": 0,
+  "pageErrors": [],
+  "steps": [
+    {
+      "name": "static-server",
+      "state": "started"
+    },
+    {
+      "name": "static-server",
+      "state": "passed"
+    },
+    {
+      "name": "fresh-owned-browser",
+      "state": "started"
+    },
+    {
+      "name": "fresh-owned-browser",
+      "state": "passed"
+    },
+    {
+      "name": "initial-import120",
+      "state": "started"
+    },
+    {
+      "name": "initial-import120",
+      "state": "passed"
+    },
+    {
+      "name": "reload-dedup120",
+      "state": "started"
+    },
+    {
+      "name": "reload-dedup120",
+      "state": "passed"
+    },
+    {
+      "name": "new-two-visible-cards",
+      "state": "started"
+    },
+    {
+      "name": "new-two-visible-cards",
+      "state": "passed"
+    }
+  ],
+  "budgets": {
+    "stepMs": 15000,
+    "workMs": 180000,
+    "cleanupMs": 120000,
+    "totalMs": 300000
+  },
+  "elapsedMs": 28488.102700000003,
+  "cleanup": {
+    "contextClosed": true,
+    "browserClosed": true,
+    "browserServerClosed": true,
+    "serverClosed": true,
+    "browserChildTerminal": true,
+    "ownedPidAbsent": true,
+    "ownedPidReused": false,
+    "profileAbsent": true,
+    "ownPortReleased": true,
+    "elapsedMs": 4070.9426999999996,
+    "withinBudget": true,
+    "completed": true,
+    "browserExitCode": 0
+  },
+  "sourceInputsUnchanged": true,
+  "nativeNodeExitCode": 0,
+  "outerExitCode": 0,
+  "terminalEvidence": {
+    "source": "operator報告とRootのsource/JSON整合確認",
+    "rootVerification": "functions2092 -> native bec17d/exit0",
+    "rootViewedBothImages": true
+  },
+  "historicalFailedAttempts": [
+    {
+      "privateResultPath": ".claude/campaigns/cmp1253-r25-static-board-20261109/r25-static-49bb0fee96634ed73fcb2d30/result.json",
+      "sha256": "e039783fdf4ea23b3cfb7c2d081b8e2ebc8ddd2070985462b18d23c716bf5e12",
+      "status": "historical-failed",
+      "nativeNodeExitCode": 1,
+      "exitCodeEvidence": "Root/operator報告",
+      "sanitizedReason": "initial-import120で8!==120。helperのasync待機誤用による途中件数読取。",
+      "cleanupCompleted": true,
+      "cleanupWithinBudget": true,
+      "pngCount": 0,
+      "productRed": false,
+      "appBugPromoted": false
+    },
+    {
+      "privateResultPath": ".claude/campaigns/cmp1253-r25-static-board-20261109/r25-static-8bd91c8c6ae78bf199893e3d/result.json",
+      "sha256": "398b4a9d0e84393389707405e2ffbf4ebd2c79ab9b06888cd34ff56d14a624c5",
+      "status": "historical-failed",
+      "nativeNodeExitCode": 1,
+      "exitCodeEvidence": "Root/operator報告",
+      "sanitizedReason": "current HTMLの保存schemaに対するhelper期待field欠落。期待schema同期で是正。",
+      "cleanupCompleted": true,
+      "cleanupWithinBudget": true,
+      "pngCount": 0,
+      "productRed": false,
+      "appBugPromoted": false
+    }
+  ],
+  "helperFixScope": [
+    "async待機誤用の修正",
+    "current HTML保存schemaへの期待値同期"
+  ],
+  "oldGoReplayCount": 0,
+  "goalsOrCoveragePromoted": false,
+  "limits": [
+    "静的prototype取込UIだけの受入。製品実機/SQL/API/B0 coverage合格ではない。",
+    "generic originalRunIdPrecisionPassed=falseは全歴史runIDの意味精度を一括保証しない意味。新B/Cの宣言runID保存契約passedと区別する。",
+    "現在HTMLへ旧版の「保存runIdは常にoverlayトップ旧値」という制限を適用しない。",
+    "private原本のbrowser profile/PID/WS token等を公開copyせず、private result hashを参照する。"
+  ]
+}
