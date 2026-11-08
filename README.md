@@ -22,7 +22,7 @@
 
 本人の未完了診断は `GET /api/v1/me/diagnoses/sessions/pending` で最新の途中回答を取得して再開します。未完了がない場合は200の `data: null`、取得失敗は再試行として区別します。既存セッションの質問定義と回答を保持し、牧場参加を必要としません。
 
-承認素材の登録は `frontend/scripts/verify-ranch-production-assets.mjs` に pack directory・manifest SHA256・master file/SHA256 を明示して行います。全512組の実 bytes・hash・PNG atlas/fallback を照合し、`--repository` に指定した隔離 checkout 内へ同じ artifact の BE classpath/FE public と有限 TS registry を配置します。TS は両配置の後に原子的に置換し、別 bytes の既存 pack は上書きしません。現在の対応形式は静的8bit RGB/RGBA・非 interlace PNG の均等 atlas（PIXEL は96×96）です。care 公開設定とは独立した素材登録であり、検証器の合成試験は素材承認を代行しません。
+承認素材の登録は `frontend/scripts/verify-ranch-production-assets.mjs` に pack directory・manifest SHA256・master file/SHA256 を明示して行います。全512組の実 bytes・hash・PNG atlas/fallback を照合し、隔離 checkout 内へ同じ artifact の BE classpath/FE public と有限 TS registry を配置します。v2は512tuple内に4動作を保持し、PIXEL96/PAINT_2D384の元cellと112/448の描画面を区別します。正式素材は承認済み6144frameを変更せず再利用し、卵128tupleは従来SVG由来の共通PNG2件を参照します。`--frontend-only`で担当外のBE配置を省けます。BEの明示的な素材可用性が無効・未取得・取得失敗なら同梱512件があっても正式描画・新規割当を無効に保ちます。本人結果の保存説明は公開状態に関係なく閲覧できます。[正式素材pack v2](docs/features/F04.7_dinosaur_ranch/approved_visual_pack_v2.md)を参照してください。
 Scene は登録された同個体・同段階の静止 fallback を動き抑制時と atlas 取得失敗時に使用し、静止画像も失敗した場合は状態文字を保ちます。初回非表示では画像を取得せず、公開素材 pack 未登録の現在は本番表示 gate が閉じています。canvas の実画素・実ブラウザ資源停止は別の実機確認対象です。
 運営の源配送集計・明示再予約は現在の SYSTEM_ADMIN/ACTIVE 資格で源の専用窓口へ接続します。4源の実 provider が未閉束の間は利用不可として表示し、正常なゼロ件を捏造しません。保存 ACK を照会できない503では同じ再送 key/body を保持します。実 HTTP のロール横断・4源配送と E2E の全体合格は未証明です。
 ログインはメール＋パスワード、パスキー、Googleの順に利用できる。パスキーはメールだけで開始し、署名・UP/UVと一回限りのチャレンジを検証する。通常ログインと同じ状態確認・セッション管理・認証Cookieを適用する。詳細は[F01.1 認証](docs/features/F01.1_auth.md#webauthn-ログインフロー)を参照。

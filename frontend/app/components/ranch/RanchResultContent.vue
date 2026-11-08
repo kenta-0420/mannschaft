@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { DiagnosisResult } from '~/types/ranch'
+import { resultHasSavedMapping, savedMappingDescription } from '~/utils/ranch-result-mapping'
+import { approvedRanchVisualsEnabled } from '~/utils/ranch-assets'
 const { t, locale } = useI18n(); useHead({ title: t('ranch.diagnosisResults.title') })
 const { formatDateTime } = useDatetime()
 const route = useRoute(); const api = useDiagnosisApi(); const ranch = useRanchState(); const { handleApiError } = useErrorHandler()
@@ -26,10 +28,12 @@ async function load() {
  } finally { if (api.isCurrent() && run === resultRun) loading.value = false }
 }
 async function assign() {
- const value = result.value; const version = ranch.state.value?.owner?.version; if (!value || !version || value.method !== 'DIAGNOSIS') return
+ const value = result.value; const version = ranch.state.value?.owner?.version; if (!value || !version || value.method !== 'DIAGNOSIS' || !assignmentAvailable.value) return
  try { await ranch.act(() => ranch.api.assignment({ method: 'DIAGNOSIS', resultId: value.id, version })); if (api.isCurrent()) await navigateTo('/my/ranch') } catch { if (api.isCurrent()) message.value = t('ranch.command.failed') }
 }
-const assignmentAvailable = computed(() => !ranchLoading.value && !ranchFailed.value && !!result.value && !!ranch.state.value?.assignment?.availableMethods.includes(result.value.method))
+const hasMapping = computed(() => resultHasSavedMapping(result.value))
+const mappingDescription = computed(() => savedMappingDescription(result.value, locale.value))
+const assignmentAvailable = computed(() => !ranchLoading.value && !ranchFailed.value && !ranch.failed.value && hasMapping.value && approvedRanchVisualsEnabled(ranch.state.value?.approvedVisualsAvailable, !ranch.loading.value) && ranch.state.value?.dinosaur?.stage === 'EGG' && ranch.state.value?.assignment?.selectionConfirmed === false && !!result.value && !!ranch.state.value?.assignment?.availableMethods.includes(result.value.method))
 onMounted(load)
 </script>
 <template>
@@ -40,12 +44,20 @@ onMounted(load)
   <SectionCard v-else-if="result" :title="t(result.method === 'DIAGNOSIS' ? 'ranch.diagnosisResults.type64' : 'ranch.diagnosisResults.birthStyle')">
    <p>{{ t('ranch.diagnosisResults.completedAt', { date: formatDateTime(result.completedAt) }) }}</p>
    <p class="whitespace-pre-wrap my-3">{{ result.descriptionSnapshot[locale] ?? result.descriptionSnapshot.ja }}</p>
+   <div v-if="mappingDescription" class="my-3 space-y-2">
+    <h2 class="font-medium">{{ t('ranch.diagnosisResults.savedMapping') }}</h2>
+    <p class="whitespace-pre-wrap">{{ mappingDescription }}</p>
+   </div>
    <RanchAxisResults v-if="result.method === 'DIAGNOSIS'" :result="result" />
    <p v-if="result.typeCode">{{ t('ranch.diagnosisResults.typeCode', { code: result.typeCode }) }}</p>
    <p v-if="result.numberSummary">{{ t('ranch.birth.numbers', { life: result.numberSummary.lifePathNumber, name: result.numberSummary.nameNumber }) }}</p>
    <ul v-if="result.axisDescriptions" class="space-y-2 my-3"><li v-for="(description,axis) in result.axisDescriptions" :key="axis">{{ description[locale] ?? description.ja }}</li></ul>
    <p>{{ t('ranch.diagnosisResults.avatarUnchanged') }}</p>
+   <NuxtLink :to="result.method === 'DIAGNOSIS' ? '/my/ranch/diagnosis' : '/my/ranch/birth-profile'" class="flex min-h-11 items-center text-primary">{{ t('ranch.diagnosisResults.createMappedResult') }}</NuxtLink>
    <PageLoading v-if="ranchLoading" /><DashboardErrorState v-else-if="ranchFailed || ranch.failed.value" @retry="loadRanch" />
+   <div v-else-if="!hasMapping" class="mt-3 space-y-2" role="status">
+    <p>{{ t('ranch.diagnosisResults.legacyMapping') }}</p>
+   </div>
    <p v-else-if="!assignmentAvailable" class="mt-3" role="status">{{ t('ranch.assignment.mappingPending') }}</p>
    <Button v-if="result.method === 'DIAGNOSIS' && assignmentAvailable && ranch.state.value?.dinosaur?.stage === 'EGG'" class="mt-3 min-h-11" :label="t('ranch.assignment.useResult')" @click="assign" />
    <NuxtLink v-if="result.method === 'BIRTH_STYLE' && assignmentAvailable && ranch.state.value?.dinosaur?.stage === 'EGG'" to="/my/ranch/birth-profile" class="flex min-h-11 items-center text-primary">{{ t('ranch.birth.reconfirm') }}</NuxtLink>

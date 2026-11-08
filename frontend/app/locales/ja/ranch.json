@@ -102,6 +102,9 @@
       "useResult": "この結果で姿を選ぶ"
     },
     "diagnosisResults": {
+      "savedMapping": "保存時の分身の対応",
+      "legacyMapping": "この過去の結果には分身の対応が保存されていないため、新しい割り当てには使えません。結果は引き続き見返せます。",
+      "createMappedResult": "新しい結果を作成する",
       "title": "自分の診断結果",
       "type64": "64タイプ診断",
       "birthStyle": "生年月日・名前占い",

@@ -4,6 +4,7 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import assert from 'node:assert/strict'
 import { fileURLToPath } from 'node:url'
+import { verifyProductionPack, verifiedProductionArtifactHashes } from './verify-ranch-production-assets.mjs'
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const output = path.join(frontend, '.output')
 const manifest = JSON.parse(
@@ -24,12 +25,14 @@ const forbidden = [
   'outputs/dinosaur-care-complete16-20261106',
   ...(frontend === '/app' ? [] : [frontend, frontend.replaceAll('\\', '/')]),
 ]
-export function inspectArtifact(directory, blockedHashes, markers) {
+export function inspectArtifact(directory, blockedHashes, markers, verifiedPack = null) {
   assert.ok(fs.existsSync(directory), 'production buildが必要')
   let files = 0
   const root = fs.realpathSync(directory)
   const visited = new Set()
   const active = new Set()
+  const approved = verifiedPack ? verifiedProductionArtifactHashes(verifiedPack) : new Map()
+  const approvedSeen = new Set()
   function check(target) {
     fs.lstatSync(target) // 壊れたリンクも失敗させる。
     const resolved = fs.realpathSync(target)
@@ -50,7 +53,11 @@ export function inspectArtifact(directory, blockedHashes, markers) {
       files++
       const bytes = fs.readFileSync(resolved)
       const hash = crypto.createHash('sha256').update(bytes).digest('hex')
-      assert.ok(!blockedHashes.has(hash), `開発PNG混入: ${target}`)
+      const relativeFile = path.relative(root, resolved).split(path.sep).join('/')
+      const expected = approved.get(relativeFile)
+      if (relativeFile.startsWith('public/ranch/approved/')) assert.equal(hash, expected, `未登録/改竄正式素材: ${target}`)
+      if (expected === hash) approvedSeen.add(relativeFile)
+      assert.ok(!blockedHashes.has(hash) || expected === hash, `開発PNG混入: ${target}`)
       assert.ok(
         !markers.some((marker) => bytes.includes(Buffer.from(marker))),
         `開発path混入: ${target}`,
@@ -58,9 +65,18 @@ export function inspectArtifact(directory, blockedHashes, markers) {
     } else assert.fail(`通常ファイル以外: ${target}`)
   }
   check(directory)
+  assert.equal(approvedSeen.size, approved.size, '正式packの配布coverage不足')
   assert.ok(files > 0)
   return files
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  console.log(`production artifact: ${inspectArtifact(output, hashes, forbidden)} files checked`)
+  const registration = path.join(frontend, 'app/utils/ranch-production-pack-registration.json')
+  let verifiedPack = null
+  if (fs.existsSync(registration)) {
+    const metadata = JSON.parse(fs.readFileSync(registration, 'utf8'))
+    assert.match(metadata.packVersion, /^[A-Za-z0-9_-]+$/)
+    verifiedPack = verifyProductionPack({ packDirectory: path.join(frontend, 'public/ranch/approved', metadata.packVersion),
+      manifestSha256: metadata.manifestSha256, masterFile: path.join(frontend, 'scripts/fixtures/ranch-production-master.json'), masterSha256: metadata.masterSha256 })
+  }
+  console.log(`production artifact: ${inspectArtifact(output, hashes, forbidden, verifiedPack)} files checked`)
 }

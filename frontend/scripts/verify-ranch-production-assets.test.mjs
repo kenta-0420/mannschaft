@@ -6,10 +6,21 @@ import { createHash } from 'node:crypto'
 import { deflateSync } from 'node:zlib'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { verifyProductionPack, installVerifiedPack } from './verify-ranch-production-assets.mjs'
+import { verifyProductionPack, installVerifiedPack, accountProductionImageBytes } from './verify-ranch-production-assets.mjs'
+import { inspectArtifact } from './verify-ranch-production-artifact.mjs'
 
 // 合成の透明PNGと512tupleは検証器のfixture。実承認素材・本番公開packではない。
 const hash = bytes => createHash('sha256').update(bytes).digest('hex')
+test('画像累積byte境界はv1の256MiBを維持しv2だけ320MiBとする', () => {
+  for (const [version, limit] of [[1, 256 * 1024 * 1024], [2, 320 * 1024 * 1024]]) {
+    const before = accountProductionImageBytes(0, limit - 1, version)
+    assert.equal(before, limit - 1)
+    assert.equal(accountProductionImageBytes(before, 1, version), limit)
+    assert.throws(() => accountProductionImageBytes(before, 2, version), /memory bound/)
+  }
+  assert.throws(() => accountProductionImageBytes(0, 280355204, 1), /memory bound/)
+  assert.equal(accountProductionImageBytes(0, 280355204, 2), 280355204)
+})
 function crc32(bytes) {
   let crc = 0xffffffff
   for (const byte of bytes) {
@@ -56,6 +67,87 @@ function fixture() {
   }
   return { root, pack, manifest, master, persist, source }
 }
+
+function clipFixture() {
+  const data = fixture()
+  fs.unlinkSync(path.join(data.pack, 'sheet.png'))
+  fs.unlinkSync(path.join(data.pack, 'fallback.png'))
+  data.manifest.schemaVersion = 2
+  const images = {}
+  for (const [style, cell] of [['PIXEL', 96], ['PAINT_2D', 384]]) {
+    for (const [kind, width] of [['atlas', cell * 4], ['static', cell]]) {
+      const name = `${style}-${kind}.png`, bytes = png(width, cell)
+      writeFileSync(path.join(data.pack, name), bytes)
+      images[name] = hash(bytes)
+    }
+  }
+  for (const row of data.manifest.entries) {
+    row.variantKey = `V${Number(row.variantKey.slice(1)) + 1}`
+    const cell = row.renderStyle === 'PIXEL' ? 96 : 384
+    const egg = row.stage === 'EGG'
+    row.filePath = `${row.renderStyle}-${egg ? 'static' : 'atlas'}.png`
+    row.sourceSha256 = images[row.filePath]
+    row.fallbackPath = `${row.renderStyle}-static.png`
+    row.fallbackSha256 = images[row.fallbackPath]
+    row.frameWidth = row.frameHeight = cell
+    row.frameCount = egg ? 1 : 4
+    row.sourceSpeciesKey = row.speciesKey
+    row.habitat = 'LAND'
+    row.logicalCanvas = { width: egg ? 96 : 112, height: egg ? 96 : 112 }
+    row.careSpriteRect = { x: egg ? 0 : 8, y: egg ? 0 : 8, width: 96, height: 96 }
+    row.rendererProfile = egg ? 'COMMON_EGG_SVG_V1' : 'APPROVED_APPEARANCE_V4'
+    row.clips = egg ? null : Object.fromEntries(['idle', 'walk', 'feed', 'happy'].map(action => [action, {
+      filePath: row.filePath, sourceSha256: row.sourceSha256, frameWidth: cell, frameHeight: cell,
+      frameCount: 4, durationMs: 4500, phaseStarts: [0, 0.78, 0.84, 0.88],
+      phaseMs: [3510, 269.9999999999997, 180.00000000000017, 540],
+      loop: action === 'idle' || action === 'walk', returnTo: action === 'idle' || action === 'walk' ? null : 'idle',
+      floorByFrame: null, sourceFloor384: null, sourceFloorByFrame384: null,
+      tailMarks: null, shadowByFrame: null,
+    }]))
+  }
+  data.master.assets = data.manifest.entries.map(row => ({ speciesKey: row.speciesKey,
+    variantKey: row.variantKey, stage: row.stage, style: row.renderStyle, assetKey: row.assetKey,
+    sha256: row.sourceSha256, staticFallbackSha256: row.fallbackSha256 }))
+  return data
+}
+
+test('v2の512tuple内384個体が原本小数timingの4動作と128卵を保持する', () => {
+  const data = clipFixture(), verified = verifyProductionPack(data.persist())
+  assert.equal(verified.entries.length, 512)
+  const clips = verified.entries.filter(row => row.clipEntry)
+  assert.equal(clips.length, 384)
+  assert.equal(clips[0].clipEntry.clips.idle.phaseMs[1], 269.9999999999997)
+  assert.equal(clips[0].clipEntry.rendererProfile, 'APPROVED_APPEARANCE_V4')
+})
+
+test('承認元と同bytesでも検証済み正式namespaceだけproduction配布を許可する', () => {
+  const data = fixture(), verified = verifyProductionPack(data.persist())
+  const artifact = path.join(data.root, 'artifact')
+  const output = path.join(artifact, 'public/ranch/approved/synthetic-test-only')
+  mkdirSync(output, { recursive: true })
+  writeFileSync(path.join(output, 'sheet.png'), data.source)
+  writeFileSync(path.join(output, 'fallback.png'), readFileSync(path.join(data.pack, 'fallback.png')))
+  writeFileSync(path.join(output, 'manifest.json'), readFileSync(path.join(data.pack, 'manifest.json')))
+  assert.equal(inspectArtifact(artifact, new Set([hash(data.source)]), [], verified), 3)
+  writeFileSync(path.join(output, 'sheet.png'), 'tampered')
+  assert.throws(() => inspectArtifact(artifact, new Set([hash(data.source)]), [], verified))
+  writeFileSync(path.join(output, 'sheet.png'), data.source)
+  writeFileSync(path.join(output, 'unregistered.png'), data.source)
+  assert.throws(() => inspectArtifact(artifact, new Set([hash(data.source)]), [], verified))
+})
+
+test('v2の不足動作・余剰field・位相逆転・idle anchor不一致を拒否する', () => {
+  for (const change of [
+    row => { delete row.clips.happy },
+    row => { row.clips.walk.extra = 1 },
+    row => { row.clips.idle.phaseStarts[2] = 0.5 },
+    row => { row.clips.idle.filePath = 'PAINT_2D-atlas.png' },
+  ]) {
+    const data = clipFixture()
+    change(data.manifest.entries.find(row => row.stage === 'BABY'))
+    assert.throws(() => verifyProductionPack(data.persist()))
+  }
+})
 
 test('同じ検証済みartifact bytesをBE classpathとFE有限moduleへ配置する', () => {
   const data = fixture(), verified = verifyProductionPack(data.persist())

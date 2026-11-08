@@ -102,6 +102,9 @@
       "useResult": "用此结果选择形象"
     },
     "diagnosisResults": {
+      "savedMapping": "此结果保存时的分身对应",
+      "legacyMapping": "此历史结果未保存分身对应，无法用于新的分配。您仍可查看结果。",
+      "createMappedResult": "创建新结果",
       "title": "自己的测试结果",
       "type64": "64类型测试",
       "birthStyle": "生日与姓名占卜",

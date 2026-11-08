@@ -84,6 +84,7 @@ const { clipAsset, playback, clipAtlas, nativeReaction, reactionKey } = useRanch
   renderStyle: () => props.renderStyle,
   motion: () => props.motionMode,
   context: () => props.clipContext,
+  assetContext: () => props.assetContext,
   enabled: () => activity.enabled.value,
   ambient: () => activity.backgroundMoving.value,
   reduced: () => reaction.reduced.value,

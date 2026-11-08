@@ -102,6 +102,9 @@
       "useResult": "Mit diesem Ergebnis die Gestalt wählen"
     },
     "diagnosisResults": {
+      "savedMapping": "Mit diesem Ergebnis gespeicherte Avatarzuordnung",
+      "legacyMapping": "Dieses ältere Ergebnis enthält keine gespeicherte Avatarzuordnung und kann nicht für eine neue Zuweisung verwendet werden. Du kannst es weiterhin ansehen.",
+      "createMappedResult": "Neues Ergebnis erstellen",
       "title": "Meine Ergebnisse",
       "type64": "Quiz mit 64 Typen",
       "birthStyle": "Geburtsdatum- und Namensnumerologie",

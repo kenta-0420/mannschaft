@@ -102,6 +102,9 @@
       "useResult": "Usar este resultado para elegir forma"
     },
     "diagnosisResults": {
+      "savedMapping": "Correspondencia del avatar guardada con este resultado",
+      "legacyMapping": "Este resultado anterior no tiene una correspondencia de avatar guardada y no puede usarse para una nueva asignación. Puedes seguir consultándolo.",
+      "createMappedResult": "Crear un nuevo resultado",
       "title": "Mis resultados",
       "type64": "Cuestionario de 64 tipos",
       "birthStyle": "Numerología de nacimiento y nombre",
