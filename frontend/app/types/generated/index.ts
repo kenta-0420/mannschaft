@@ -63203,6 +63203,14 @@ export interface components {
             startTime?: string;
             subject?: string;
         };
+        CommonErrorDetail: {
+            code?: string;
+            fieldErrors?: components["schemas"]["FieldError"][];
+            message?: string;
+        };
+        ErrorResponse: {
+            error?: components["schemas"]["CommonErrorDetail"];
+        };
         ApiResponseEmergencyClosureResponse: {
             data?: components["schemas"]["EmergencyClosureResponse"];
         };
@@ -77127,14 +77135,6 @@ export interface components {
             sourceTeamId: number;
             sourceTeamName: string | null;
             sourceTeamSlug: string | null;
-        };
-        CommonErrorDetail: {
-            code?: string;
-            fieldErrors?: components["schemas"]["FieldError"][];
-            message?: string;
-        };
-        ErrorResponse: {
-            error?: components["schemas"]["CommonErrorDetail"];
         };
         FriendFeedForwardStatus: {
             /** Format: int64 */
@@ -115053,7 +115053,10 @@ export interface operations {
     sendClosure: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description 送信の冪等キー（UUID）。同じ送信者・同じチームで同じキーの再送は先の結果を返す。形式不正は 400（RESERVATION_056） */
+                "Idempotency-Key"?: string;
+            };
             path: {
                 teamId: number;
             };
@@ -115065,6 +115068,15 @@ export interface operations {
             };
         };
         responses: {
+            /** @description 同じ Idempotency-Key・同じ内容の再送。新規作成せず先の送信結果を返す */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseEmergencyClosureResponse"];
+                };
+            };
             /** @description 送信成功 */
             201: {
                 headers: {
@@ -115072,6 +115084,24 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseEmergencyClosureResponse"];
+                };
+            };
+            /** @description Idempotency-Key の形式が不正（RESERVATION_056） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 同じ Idempotency-Key で内容が異なる（RESERVATION_055） */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ErrorResponse"];
                 };
             };
         };
