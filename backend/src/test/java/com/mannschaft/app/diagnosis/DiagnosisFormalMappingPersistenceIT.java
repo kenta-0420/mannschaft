@@ -12,6 +12,8 @@ import com.mannschaft.app.diagnosis.entity.DiagnosisResultEntity;
 import com.mannschaft.app.diagnosis.repository.DiagnosisResultRepository;
 import com.mannschaft.app.diagnosis.service.DiagnosisBirthResultWriter;
 import com.mannschaft.app.diagnosis.service.DiagnosisPurgeService;
+import com.mannschaft.app.ranch.entity.RanchOperationalControlEntity;
+import com.mannschaft.app.ranch.repository.RanchOperationalControlRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,11 +62,14 @@ class DiagnosisFormalMappingPersistenceIT extends AbstractMySqlIntegrationTest {
     @Autowired private DiagnosisResultRepository results;
     @Autowired private DiagnosisBirthResultWriter birthWriter;
     @Autowired private DiagnosisPurgeService purge;
+    @Autowired private RanchOperationalControlRepository controls;
     private Long owner;
     private Long other;
+    private boolean createdOperationalControl;
 
     @BeforeEach
     void 本人二人だけを作成する() {
+        seedOperationalControlIfMissing();
         owner = createUser();
         other = createUser();
     }
@@ -76,6 +81,18 @@ class DiagnosisFormalMappingPersistenceIT extends AbstractMySqlIntegrationTest {
             purge.purgeUser(id);
             users.deleteById(id);
         }
+        if (createdOperationalControl) controls.deleteById(1);
+    }
+
+    private void seedOperationalControlIfMissing() {
+        createdOperationalControl = controls.findById(1).isEmpty();
+        if (!createdOperationalControl) return;
+        // 本番はV245で初期化するが、test profileはFlyway無効・Hibernate createのため初期行がない。
+        // 既存RanchTestFixtureと同じV245初期値だけを補い、この試験が作った行だけを撤去する。
+        Instant seededAt = Instant.parse("2026-10-04T00:00:00Z");
+        controls.saveAndFlush(RanchOperationalControlEntity.builder().id(1)
+                .careEnabled(false).shopEnabled(false).deliveryPaused(true)
+                .version(0).createdAt(seededAt).updatedAt(seededAt).build());
     }
 
     @Test
