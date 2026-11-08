@@ -7,7 +7,7 @@ import com.mannschaft.app.provisioning.service.ProvisioningGate;
 import com.mannschaft.app.role.dto.CreateInviteTokenRequest;
 import com.mannschaft.app.role.dto.InvitePreviewResponse;
 import com.mannschaft.app.role.dto.InviteTokenIssuedResponse;
-import com.mannschaft.app.role.dto.InviteTokenSummary;
+import com.mannschaft.app.role.dto.InviteTokenResponse;
 import com.mannschaft.app.role.dto.InviteScopeState;
 import com.mannschaft.app.role.dto.SharedInviteTokenCommand;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
@@ -166,10 +166,10 @@ class InviteServiceTest {
             given(roleRepository.findById(ROLE_ID)).willReturn(Optional.of(role));
             given(sharedTokenIssuer.issue(any(SharedInviteTokenCommand.class))).willAnswer(invocation -> {
                 SharedInviteTokenCommand command = invocation.getArgument(0);
-                return new InviteTokenIssuedResponse(TOKEN_ID, TOKEN_STR, command.roleName(),
+                return new InviteTokenIssuedResponse(TOKEN_STR, new InviteTokenResponse(TOKEN_ID, command.roleName(),
                         command.expiresAt() == null ? null : LocalDateTime.ofInstant(command.expiresAt(),
                                 com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE),
-                        command.maxUses(), 0, null, null);
+                        command.maxUses(), 0, null, null));
             });
 
             // When
@@ -178,9 +178,9 @@ class InviteServiceTest {
 
             // Then
             InviteTokenIssuedResponse data = response.getData();
-            assertThat(data.roleName()).isEqualTo(ROLE_NAME);
-            assertThat(data.maxUses()).isEqualTo(10);
-            assertThat(data.usedCount()).isZero();
+            assertThat(data.invite().roleName()).isEqualTo(ROLE_NAME);
+            assertThat(data.invite().maxUses()).isEqualTo(10);
+            assertThat(data.invite().usedCount()).isZero();
             assertThat(data.token()).isNotNull();
             var command = org.mockito.ArgumentCaptor.forClass(SharedInviteTokenCommand.class);
             verify(sharedTokenIssuer).issue(command.capture());
@@ -222,7 +222,7 @@ class InviteServiceTest {
             given(roleRepository.findById(ROLE_ID)).willReturn(Optional.of(createRole()));
 
             // When
-            List<InviteTokenSummary> result = inviteService.getInviteTokens(TEAM_ID, "TEAM", USER_ID);
+            List<InviteTokenResponse> result = inviteService.getInviteTokens(TEAM_ID, "TEAM", USER_ID);
 
             // Then
             assertThat(result).hasSize(1);
@@ -239,7 +239,7 @@ class InviteServiceTest {
             given(roleRepository.findById(ROLE_ID)).willReturn(Optional.of(createRole()));
 
             // When
-            List<InviteTokenSummary> result = inviteService.getInviteTokens(ORG_ID, "ORGANIZATION", USER_ID);
+            List<InviteTokenResponse> result = inviteService.getInviteTokens(ORG_ID, "ORGANIZATION", USER_ID);
 
             // Then
             assertThat(result).hasSize(1);

@@ -105,21 +105,30 @@ class InviteTokenHashContractTest {
     class ResponseSplit {
 
         @Test
-        @DisplayName("発行応答 InviteTokenIssuedResponse は平文 token を持つ")
-        void 発行応答は平文を持つ() {
+        @DisplayName("発行応答 InviteTokenIssuedResponse は平文 token を持ち、JSON は id・token・roleName 等を平らに返す（形は変わらない）")
+        void 発行応答は平文を持つ() throws Exception {
             Optional<Class<?>> issued = loadClass("com.mannschaft.app.role.dto.InviteTokenIssuedResponse");
             assertThat(issued).as("発行応答 DTO InviteTokenIssuedResponse が無い").isPresent();
-            assertThat(fieldNames(issued.orElseThrow()))
-                    .containsExactlyInAnyOrder("id", "token", "roleName", "expiresAt", "maxUses",
-                            "usedCount", "revokedAt", "createdAt");
+            // 日時のフィールドは一覧と同じ InviteTokenResponse だけが持ち、発行応答は平文 token と合成するだけ。
+            assertThat(fieldNames(issued.orElseThrow())).containsExactlyInAnyOrder("token", "invite");
+
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+            com.fasterxml.jackson.databind.JsonNode json = mapper.valueToTree(new com.mannschaft.app.role.dto.InviteTokenIssuedResponse(
+                    "plain", new com.mannschaft.app.role.dto.InviteTokenResponse(1L, "MEMBER", null, null, 0, null, null)));
+            java.util.Set<String> keys = new java.util.TreeSet<>();
+            json.fieldNames().forEachRemaining(keys::add);
+            assertThat(keys).containsExactlyInAnyOrder("id", "token", "roleName", "expiresAt", "maxUses",
+                    "usedCount", "revokedAt", "createdAt");
+            assertThat(json.get("token").asText()).isEqualTo("plain");
         }
 
         @Test
-        @DisplayName("一覧応答 InviteTokenSummary は平文を持たない（許可フィールドの完全一致）")
+        @DisplayName("一覧応答 InviteTokenResponse は平文を持たない（許可フィールドの完全一致）")
         void 一覧応答は平文を持たない() {
-            Optional<Class<?>> summary = loadClass("com.mannschaft.app.role.dto.InviteTokenSummary");
-            assertThat(summary).as("一覧応答 DTO InviteTokenSummary が無い").isPresent();
-            assertThat(fieldNames(summary.orElseThrow()))
+            Optional<Class<?>> list = loadClass("com.mannschaft.app.role.dto.InviteTokenResponse");
+            assertThat(list).as("一覧応答 DTO InviteTokenResponse が無い").isPresent();
+            assertThat(fieldNames(list.orElseThrow()))
                     .containsExactlyInAnyOrder("id", "roleName", "expiresAt", "maxUses",
                             "usedCount", "revokedAt", "createdAt");
         }

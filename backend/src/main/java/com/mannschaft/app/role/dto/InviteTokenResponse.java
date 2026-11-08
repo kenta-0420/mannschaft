@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
  * @param revokedAt 失効日時
  * @param createdAt 発行日時
  */
-public record InviteTokenSummary(
+public record InviteTokenResponse(
         Long id,
         String roleName,
         LocalDateTime expiresAt,

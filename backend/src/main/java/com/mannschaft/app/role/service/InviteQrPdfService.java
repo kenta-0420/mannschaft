@@ -5,7 +5,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.pdf.PdfFileNameBuilder;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.common.pdf.PdfResponseHelper;
-import com.mannschaft.app.role.dto.InviteTokenSummary;
+import com.mannschaft.app.role.dto.InviteTokenResponse;
 import com.mannschaft.app.team.TeamErrorCode;
 import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
@@ -44,7 +44,7 @@ public class InviteQrPdfService {
 
         // トークン取得（IDORチェック: 平文から引いた招待が teamId に属することを確認。
         // 他チームの有効な平文も不明な平文も、同じ 404 ROLE_002 で拒否する）
-        InviteTokenSummary token = inviteService.findByPlaintextAndTeamId(plaintextToken, teamId);
+        InviteTokenResponse token = inviteService.findByPlaintextAndTeamId(plaintextToken, teamId);
 
         // チーム情報取得
         // 他ドメイン（team）は Service 経由で取得する（Entity / Repository を直接参照しない）

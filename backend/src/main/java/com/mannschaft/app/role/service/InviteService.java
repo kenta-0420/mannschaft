@@ -17,7 +17,7 @@ import com.mannschaft.app.role.dto.InvitePreviewResponse;
 import com.mannschaft.app.common.token.SecretTokenVault;
 import com.mannschaft.app.role.dto.BetaInviteScope;
 import com.mannschaft.app.role.dto.InviteTokenIssuedResponse;
-import com.mannschaft.app.role.dto.InviteTokenSummary;
+import com.mannschaft.app.role.dto.InviteTokenResponse;
 import com.mannschaft.app.role.dto.SharedInviteTokenCommand;
 import com.mannschaft.app.organization.service.OrganizationInviteQueryService;
 import com.mannschaft.app.team.service.TeamInviteQueryService;
@@ -92,14 +92,14 @@ public class InviteService {
             stillCurrent = scopeStates.recheckIssued(scopeType, scopeId, scope.closureGeneration());
         } catch (RuntimeException failure) {
             try {
-                sharedTokenIssuer.revokeForCompensation(token.id());
+                sharedTokenIssuer.revokeForCompensation(token.invite().id());
             } catch (RuntimeException compensationFailure) {
                 failure.addSuppressed(compensationFailure);
             }
             throw failure;
         }
         if (!stillCurrent) {
-            sharedTokenIssuer.revokeForCompensation(token.id());
+            sharedTokenIssuer.revokeForCompensation(token.invite().id());
             throw new BusinessException(RoleErrorCode.ROLE_002);
         }
 
@@ -110,7 +110,7 @@ public class InviteService {
     /**
      * スコープ内の有効な招待トークン一覧を取得する。
      */
-    public List<InviteTokenSummary> getInviteTokens(Long scopeId, String scopeType, Long actorUserId) {
+    public List<InviteTokenResponse> getInviteTokens(Long scopeId, String scopeType, Long actorUserId) {
         // 束1 権限昇格根治: 招待トークン一覧は当該スコープの ADMIN/DEPUTY_ADMIN のみ閲覧できる。
         accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType);
 
@@ -268,7 +268,7 @@ public class InviteService {
      * @return 招待の概要（Entity は返さない）
      * @throws BusinessException ROLE_002（存在しない、またはチームに属さない。両者は区別しない）
      */
-    public InviteTokenSummary findByPlaintextAndTeamId(String plaintextToken, Long teamId) {
+    public InviteTokenResponse findByPlaintextAndTeamId(String plaintextToken, Long teamId) {
         InviteTokenEntity token = inviteTokenRepository.findByTokenHash(vault.hash(plaintextToken))
             .filter(found -> teamId.equals(found.getTeamId()))
             .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
@@ -276,8 +276,8 @@ public class InviteService {
         return toResponse(token, roleName);
     }
 
-    private InviteTokenSummary toResponse(InviteTokenEntity token, String roleName) {
-        return new InviteTokenSummary(
+    private InviteTokenResponse toResponse(InviteTokenEntity token, String roleName) {
+        return new InviteTokenResponse(
                 token.getId(), roleName,
                 token.getExpiresAt(), token.getMaxUses(), token.getUsedCount(),
                 token.getRevokedAt(), token.getCreatedAt());

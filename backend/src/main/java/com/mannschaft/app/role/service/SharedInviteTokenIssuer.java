@@ -3,6 +3,7 @@ package com.mannschaft.app.role.service;
 import com.mannschaft.app.common.token.IssuedToken;
 import com.mannschaft.app.common.token.SecretTokenVault;
 import com.mannschaft.app.role.dto.InviteTokenIssuedResponse;
+import com.mannschaft.app.role.dto.InviteTokenResponse;
 import com.mannschaft.app.role.dto.SharedInviteTokenCommand;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
 import com.mannschaft.app.role.repository.InviteTokenRepository;
@@ -45,8 +46,8 @@ public class SharedInviteTokenIssuer {
         } else {
             events.publishEvent(new OrganizationInviteTokenCreatedEvent(command.createdBy(), command.scopeId(), token.getId()));
         }
-        return new InviteTokenIssuedResponse(token.getId(), issued.plaintext(), command.roleName(), token.getExpiresAt(),
-                token.getMaxUses(), token.getUsedCount(), token.getRevokedAt(), token.getCreatedAt());
+        return new InviteTokenIssuedResponse(issued.plaintext(), new InviteTokenResponse(token.getId(), command.roleName(),
+                token.getExpiresAt(), token.getMaxUses(), token.getUsedCount(), token.getRevokedAt(), token.getCreatedAt()));
     }
 
     /** 発行後の親閉鎖検出時は監査可能なtoken行を残し、既失効日時を上書きしない。 */

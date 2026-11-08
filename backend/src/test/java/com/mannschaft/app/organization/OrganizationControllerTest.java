@@ -384,7 +384,7 @@ class OrganizationControllerTest {
     @DisplayName("createInviteToken: 201 Created")
     void createInviteToken_201() {
         CreateInviteTokenRequest req = new CreateInviteTokenRequest(5L, "7d", null);
-        InviteTokenIssuedResponse tokenResp = new InviteTokenIssuedResponse(1L, "token", "ADMIN", null, null, 0, null, LocalDateTime.now());
+        InviteTokenIssuedResponse tokenResp = new InviteTokenIssuedResponse("token", new com.mannschaft.app.role.dto.InviteTokenResponse(1L, "ADMIN", null, null, 0, null, LocalDateTime.now()));
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
         given(inviteService.createInviteToken(ORG_ID, "ORGANIZATION", req, USER_ID)).willReturn(ApiResponse.of(tokenResp));
         assertThat(controller.createInviteToken(ORG_SLUG, req).getStatusCode()).isEqualTo(HttpStatus.CREATED);

@@ -33,7 +33,7 @@ import com.mannschaft.app.role.dto.BlockResponse;
 import com.mannschaft.app.role.dto.CreateInviteTokenRequest;
 import com.mannschaft.app.role.dto.EffectivePermissionsResponse;
 import com.mannschaft.app.role.dto.InviteTokenIssuedResponse;
-import com.mannschaft.app.role.dto.InviteTokenSummary;
+import com.mannschaft.app.role.dto.InviteTokenResponse;
 import com.mannschaft.app.role.dto.MemberResponse;
 import com.mannschaft.app.role.dto.PermissionGroupRequest;
 import com.mannschaft.app.role.dto.PermissionGroupResponse;
@@ -457,7 +457,7 @@ public class OrganizationController {
     @GetMapping("/{slug}/invite-tokens")
     @Operation(summary = "招待トークン一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<List<InviteTokenSummary>>> getInviteTokens(@PathVariable String slug) {
+    public ResponseEntity<ApiResponse<List<InviteTokenResponse>>> getInviteTokens(@PathVariable String slug) {
         Long id = organizationService.resolveOrgId(slug);
         return ResponseEntity.ok(ApiResponse.of(
                 inviteService.getInviteTokens(id, SCOPE_TYPE, SecurityUtils.getCurrentUserId())));
