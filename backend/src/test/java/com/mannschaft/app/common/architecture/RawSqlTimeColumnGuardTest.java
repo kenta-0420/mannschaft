@@ -22,7 +22,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertTimeout;
 
 /**
  * 番人（CMP-260909-1446）: <b>JPA を迂回する生 SQL が時刻列の格納基準を割る</b>書き方が
@@ -142,9 +141,11 @@ class RawSqlTimeColumnGuardTest {
      * Java コードそのものが対象なので、リテラルの<b>外側</b>だけを見る。</p>
      */
     static List<Violation> collectViolationsInFile(String raw, String fqcn) {
+        checkInterrupted();
         if (!mayContainAnyTrigger(raw)) {
             // 走査の手がかりが 1 つも無いファイルはマスク処理そのものを省く。全 production ソース
             // （数千ファイル）に 2 回のマスク走査を掛けると 30 秒の上限を超えるため（初版で実測）。
+            checkInterrupted();
             return List.of();
         }
         List<Violation> violations = new ArrayList<>();
@@ -162,6 +163,7 @@ class RawSqlTimeColumnGuardTest {
             addViolations(violations, maskedLiterals, ENTITY_TIME_GETTER,
                     Category.RAW_SQL_ENTITY_TIME_GETTER, fqcn, raw, maskedLiterals, false, false);
         }
+        checkInterrupted();
         return violations;
     }
 
@@ -238,7 +240,10 @@ class RawSqlTimeColumnGuardTest {
     @DisplayName("生SQLの時刻列まわりの違反がクラス単位の凍結件数から増えていない")
     void noNewRawSqlTimeColumnViolations() throws IOException {
         Path root = sourceRoot();
+        long startNanos = System.nanoTime();
         List<Violation> all = scanWithinTimeout(Duration.ofSeconds(30), () -> collectViolations(root));
+        System.out.printf("[生SQL時刻列番人] 検出 %d 件／走査境界 %d ms%n",
+                all.size(), (System.nanoTime() - startNanos) / 1_000_000L);
 
         assertThat(all)
                 .as("production コードから走査対象を1件も検出できなかった（走査パスの前提が壊れた可能性）")
@@ -301,21 +306,32 @@ class RawSqlTimeColumnGuardTest {
     // ────────────────────────────────────────────────────────────
 
     static List<Violation> collectViolations(Path root) {
+        checkInterrupted();
         List<Violation> violations = new ArrayList<>();
         for (Path file : javaFiles(root)) {
+            checkInterrupted();
             violations.addAll(collectViolationsInFile(read(file), toFqcn(root, file)));
         }
+        checkInterrupted();
         return violations;
     }
 
-    /** 既存の非プリエンプティブな境界を抽出。打切り契約は別の回帰試験で検証する。 */
+    /** Flyway番人と同じプリエンプティブな時間制限を使い、閾値は呼出元の値を維持する。 */
     static <T> T scanWithinTimeout(Duration timeout, Supplier<T> scan) {
-        return assertTimeout(timeout, scan::get);
+        return FlywayMigrationTimeFunctionGuardTest.scanWithinTimeout(timeout, scan::get);
     }
 
-    /** 実走査の matcher 生成入口。抽出時点では元の入力をそのまま使う。 */
+    /** 実走査の全matcherが割込み可能な入力を使う。部分列も既存wrapperが保護する。 */
     static Matcher scanMatcher(Pattern pattern, CharSequence text) {
-        return pattern.matcher(text);
+        checkInterrupted();
+        return pattern.matcher(FlywayMigrationTimeFunctionGuardTest.interruptible(text));
+    }
+
+    /** ファイル境界と結果返却前でも、キャンセルを正常な部分結果へ変えない。 */
+    private static void checkInterrupted() {
+        if (Thread.currentThread().isInterrupted()) {
+            throw new FlywayMigrationTimeFunctionGuardTest.ScanInterruptedException();
+        }
     }
 
     private static Map<String, Integer> countByFqcn(List<Violation> all, Category category) {

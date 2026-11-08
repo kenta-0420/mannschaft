@@ -220,7 +220,8 @@ class DateTimeAndZoneGuardTest {
      * 「空白を含む文字クラス」を持つ正規表現による指数的バックトラック（31.7 秒 → 3.16 秒に是正した
      * 前例がある）であり、それは<b>パターンの形</b>として決定的に検査できる。</p>
      *
-     * <p>走査そのもの（{@link #collectViolations}）には一切手を入れていないため、検出力は不変である。</p>
+     * <p>この形状検査は時間制限とは独立して維持する。走査はFlyway番人と同じプリエンプティブな
+     * 上限と割込み可能な入力で打ち切るが、検出パターンと凍結件数は変更しない。</p>
      */
     @Test
     @DisplayName("走査正規表現に破滅的バックトラックの形（空白を含む文字クラス）が無い")
@@ -239,7 +240,10 @@ class DateTimeAndZoneGuardTest {
     @DisplayName("引数なしnow()/ZoneId.systemDefault()/ZoneIdリテラル/LocalDateTimeフィールドの新規追加は無い（既存は種別ごとの凍結リストのクラス単位件数のみ許容）")
     void noNewOldStyleDateTimeUsage() throws IOException {
         Path root = sourceRoot();
+        long startNanos = System.nanoTime();
         List<Violation> all = scanWithinTimeout(Duration.ofSeconds(30), () -> collectViolations(root));
+        System.out.printf("[日時番人] 検出 %d 件／走査境界 %d ms%n",
+                all.size(), (System.nanoTime() - startNanos) / 1_000_000L);
 
         assertThat(all)
                 .as("production コードから時刻関連の走査対象を1件も検出できなかった"
@@ -388,21 +392,32 @@ class DateTimeAndZoneGuardTest {
     // 検出本体（package-private: スキャンロジックテストから直接呼び出す）
     // ────────────────────────────────────────────────────────────
 
-    /** 既存の上限なし実行を抽出。timeout は是正前の挙動どおりまだ適用しない。 */
+    /** Flyway番人と同じプリエンプティブな時間制限を使い、閾値は呼出元の値を維持する。 */
     static <T> T scanWithinTimeout(Duration timeout, Supplier<T> scan) {
-        return scan.get();
+        return FlywayMigrationTimeFunctionGuardTest.scanWithinTimeout(timeout, scan::get);
     }
 
-    /** 実走査の matcher 生成入口。抽出時点では元の入力をそのまま使う。 */
+    /** 実走査の全matcherが割込み可能な入力を使う。record部分列も同じ入口を通す。 */
     static Matcher scanMatcher(Pattern pattern, CharSequence text) {
-        return pattern.matcher(text);
+        checkInterrupted();
+        return pattern.matcher(FlywayMigrationTimeFunctionGuardTest.interruptible(text));
+    }
+
+    /** ファイル境界と結果返却前でも、キャンセルを正常な部分結果へ変えない。 */
+    private static void checkInterrupted() {
+        if (Thread.currentThread().isInterrupted()) {
+            throw new FlywayMigrationTimeFunctionGuardTest.ScanInterruptedException();
+        }
     }
 
     static List<Violation> collectViolations(Path root) {
+        checkInterrupted();
         List<Violation> violations = new ArrayList<>();
         for (Path file : javaFiles(root)) {
+            checkInterrupted();
             violations.addAll(collectViolationsInFile(read(file), toFqcn(root, file)));
         }
+        checkInterrupted();
         return violations;
     }
 
@@ -420,6 +435,7 @@ class DateTimeAndZoneGuardTest {
 
     /** 1ファイル分の走査。スキャンロジックの回帰テストから合成ソースに対しても直接呼べる。 */
     static List<Violation> collectViolationsInFile(String raw, String fqcn) {
+        checkInterrupted();
         List<Violation> violations = new ArrayList<>();
 
         // コメント・文字列/テキストブロックの中身を消した版（now()/systemDefault()/フィールド宣言用）。
@@ -435,6 +451,7 @@ class DateTimeAndZoneGuardTest {
         addCallViolations(violations, maskedComments, ZONE_LITERAL, Category.ZONE_LITERAL, fqcn, frames, raw);
         addFieldViolations(violations, maskedLiterals, fqcn, frames, parenDepth, raw);
 
+        checkInterrupted();
         return violations;
     }
 
