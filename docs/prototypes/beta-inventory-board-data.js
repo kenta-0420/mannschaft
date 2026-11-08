@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-11-08T17:22:44+00:00",
+  "generatedAt": "2026-11-08T17:53:12+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,9 +8,9 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "d61097a49227386d8b4044a2a6ced72fade5b50a",
-    "taskListCommit": "de0cdda46ff29c304efd9279d07e0d0dcf722187",
+    "taskListCommit": "fa5aa4fae6b5ac04c1fbe632028f1c4b8d8129b1",
     "inventorySha256": "b0a1f97197840c865756a40f12f577cfeb10aa8083dc95f2932f7b3a7f90528a",
-    "taskListSha256": "2b8179ff55e1bfeead78dbd8998b719c49b899f4d8879d4764dc34225dd667c2",
+    "taskListSha256": "91ebed26e29071d7da0c56e9fe3d732f0f7dd274aec869689a275636287e2019",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
@@ -34150,8 +34150,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260916-0056",
       "title": "番人テストの `assertTimeout` が非プリエンプティブで、ハング時こそ機能しない（既存2クラス）",
-      "status": "working",
-      "statusLabel": "P4 実装中",
+      "status": "done",
+      "statusLabel": "P4 完了",
       "stage": "未設定",
       "priority": "未設定",
       "taskPriority": "P4",
@@ -34166,12 +34166,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "—",
+          "label": "[実装PR #4403](https://github.com/kenta-0420/mannschaft/pull/4403)・[完了証拠](evidence/CMP-260916-0056.json)・[検証記録](evidence/CMP-260916-0056-validation.md)。実機・探索はtest-onlyのため対象外（製品UI/API/認可/schema/利用者データ不変）",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "[実装PR #4403](https://github.com/kenta-0420/mannschaft/pull/4403)・[完了証拠](evidence/CMP-260916-0056.json)・[検証記録](evidence/CMP-260916-0056-validation.md)。実機・探索はtest-onlyのため対象外（製品UI/API/認可/schema/利用者データ不変）"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -34182,10 +34182,11 @@ window.BETA_INVENTORY_DATA = {
         "assertTimeout"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
       "githubRefs": [
-        3283
+        3283,
+        4403
       ],
       "github": [
         {
@@ -34201,6 +34202,15 @@ window.BETA_INVENTORY_DATA = {
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
+        },
+        {
+          "number": 4403,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
         }
       ]
     },
