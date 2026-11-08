@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -157,7 +158,7 @@ class RawSqlTimeColumnGuardTest {
         addViolations(violations, maskedComments, TIME_COLUMN_JAVA_BOUND,
                 Category.TIME_COLUMN_JAVA_BOUND, fqcn, raw, maskedLiterals, true, true);
 
-        if (RAW_SQL_MARKER.matcher(maskedLiterals).find()) {
+        if (scanMatcher(RAW_SQL_MARKER, maskedLiterals).find()) {
             addViolations(violations, maskedLiterals, ENTITY_TIME_GETTER,
                     Category.RAW_SQL_ENTITY_TIME_GETTER, fqcn, raw, maskedLiterals, false, false);
         }
@@ -174,7 +175,7 @@ class RawSqlTimeColumnGuardTest {
                                       Category category, String fqcn, String raw,
                                       String maskedLiterals, boolean insideLiteralOnly,
                                       boolean requirePrecedingWord) {
-        Matcher m = pattern.matcher(scanText);
+        Matcher m = scanMatcher(pattern, scanText);
         while (m.find()) {
             int start = m.start();
             if (requirePrecedingWord && !precededByWordChar(scanText, start)) {
@@ -237,7 +238,7 @@ class RawSqlTimeColumnGuardTest {
     @DisplayName("生SQLの時刻列まわりの違反がクラス単位の凍結件数から増えていない")
     void noNewRawSqlTimeColumnViolations() throws IOException {
         Path root = sourceRoot();
-        List<Violation> all = assertTimeout(Duration.ofSeconds(30), () -> collectViolations(root));
+        List<Violation> all = scanWithinTimeout(Duration.ofSeconds(30), () -> collectViolations(root));
 
         assertThat(all)
                 .as("production コードから走査対象を1件も検出できなかった（走査パスの前提が壊れた可能性）")
@@ -305,6 +306,16 @@ class RawSqlTimeColumnGuardTest {
             violations.addAll(collectViolationsInFile(read(file), toFqcn(root, file)));
         }
         return violations;
+    }
+
+    /** 既存の非プリエンプティブな境界を抽出。打切り契約は別の回帰試験で検証する。 */
+    static <T> T scanWithinTimeout(Duration timeout, Supplier<T> scan) {
+        return assertTimeout(timeout, scan::get);
+    }
+
+    /** 実走査の matcher 生成入口。抽出時点では元の入力をそのまま使う。 */
+    static Matcher scanMatcher(Pattern pattern, CharSequence text) {
+        return pattern.matcher(text);
     }
 
     private static Map<String, Integer> countByFqcn(List<Violation> all, Category category) {

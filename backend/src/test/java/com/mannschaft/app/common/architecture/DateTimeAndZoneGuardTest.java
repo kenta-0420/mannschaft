@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -17,6 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -237,7 +239,7 @@ class DateTimeAndZoneGuardTest {
     @DisplayName("引数なしnow()/ZoneId.systemDefault()/ZoneIdリテラル/LocalDateTimeフィールドの新規追加は無い（既存は種別ごとの凍結リストのクラス単位件数のみ許容）")
     void noNewOldStyleDateTimeUsage() throws IOException {
         Path root = sourceRoot();
-        List<Violation> all = collectViolations(root);
+        List<Violation> all = scanWithinTimeout(Duration.ofSeconds(30), () -> collectViolations(root));
 
         assertThat(all)
                 .as("production コードから時刻関連の走査対象を1件も検出できなかった"
@@ -386,6 +388,16 @@ class DateTimeAndZoneGuardTest {
     // 検出本体（package-private: スキャンロジックテストから直接呼び出す）
     // ────────────────────────────────────────────────────────────
 
+    /** 既存の上限なし実行を抽出。timeout は是正前の挙動どおりまだ適用しない。 */
+    static <T> T scanWithinTimeout(Duration timeout, Supplier<T> scan) {
+        return scan.get();
+    }
+
+    /** 実走査の matcher 生成入口。抽出時点では元の入力をそのまま使う。 */
+    static Matcher scanMatcher(Pattern pattern, CharSequence text) {
+        return pattern.matcher(text);
+    }
+
     static List<Violation> collectViolations(Path root) {
         List<Violation> violations = new ArrayList<>();
         for (Path file : javaFiles(root)) {
@@ -428,7 +440,7 @@ class DateTimeAndZoneGuardTest {
 
     private static void addCallViolations(List<Violation> violations, String scanText, Pattern pattern,
             Category category, String fqcn, List<BraceFrame> frames, String raw) {
-        Matcher m = pattern.matcher(scanText);
+        Matcher m = scanMatcher(pattern, scanText);
         Map<String, Integer> seqByLocation = new HashMap<>();
         while (m.find()) {
             String location = enclosingLabel(frames, m.start());
@@ -452,7 +464,7 @@ class DateTimeAndZoneGuardTest {
             List<BraceFrame> frames, int[] parenDepth, String raw) {
         List<int[]> fieldSpans = new ArrayList<>(); // {start, end}
 
-        Matcher m = LOCAL_DATE_TIME_DECL.matcher(scanText);
+        Matcher m = scanMatcher(LOCAL_DATE_TIME_DECL, scanText);
         while (m.find()) {
             int offset = m.start();
             if (parenDepth[offset] != 0) {
@@ -465,14 +477,14 @@ class DateTimeAndZoneGuardTest {
             fieldSpans.add(new int[]{offset, m.end()});
         }
 
-        Matcher recordHeader = RECORD_HEADER.matcher(scanText);
+        Matcher recordHeader = scanMatcher(RECORD_HEADER, scanText);
         while (recordHeader.find()) {
             int openParen = recordHeader.end() - 1;
             int closeParen = findMatchingParen(scanText, openParen);
             if (closeParen < 0) {
                 continue;
             }
-            Matcher component = LOCAL_DATE_TIME_DECL.matcher(scanText.substring(openParen, closeParen + 1));
+            Matcher component = scanMatcher(LOCAL_DATE_TIME_DECL, scanText.substring(openParen, closeParen + 1));
             while (component.find()) {
                 fieldSpans.add(new int[]{openParen + component.start(), openParen + component.end()});
             }
@@ -537,14 +549,14 @@ class DateTimeAndZoneGuardTest {
             j--;
         }
         String header = code.substring(j + 1, bracePos);
-        if (TYPE_BODY_HEAD.matcher(header).find()) {
+        if (scanMatcher(TYPE_BODY_HEAD, header).find()) {
             return new BraceFrame(bracePos, endExclusive, FrameKind.TYPE_BODY, "(class-level)");
         }
         return new BraceFrame(bracePos, endExclusive, FrameKind.CODE_BODY, extractLabel(header));
     }
 
     private static String extractLabel(String header) {
-        Matcher m = TRAILING_CALL_NAME.matcher(header);
+        Matcher m = scanMatcher(TRAILING_CALL_NAME, header);
         if (m.find()) {
             String name = m.group(1);
             if (CONTROL_KEYWORDS.contains(name)) {
