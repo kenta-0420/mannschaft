@@ -6,6 +6,8 @@ catalog `20261108`、pack `ranch-approved-20261108-v1` は、承認済み16種×
 
 PIXELの元cellは96、PAINT_2Dは384。各action atlasは横4frame。素材をlogical112×112のrect(8,8,96,96)へ描き、表示canvasは112/448。元cellと描画面を分ける。`APPROVED_APPEARANCE_V4` profileで従来v4の海happy回転・影・接地・tail表示を保持し、正式catalog番号で動作を分岐させない。
 
+正式clipが選ばれたSceneではlegacy atlasへasset=null/enabled=falseを渡し、loaderとcanvasの描画主体を1つにする。動き抑制中のtouchでcanvasが再生成されても、legacyの遅延paintが影やpaddingを上書きしない。clipを持たないv1/DEV2は従来のlegacy描画を使う。
+
 EGG128tupleは`COMMON_EGG_SVG_V1` profile、clips=null、frameCount=1で画風別共通PNG2件を参照する。PNGは既存SVGのpath/fill/strokeから技術生成する。実画面の卵は従来SVG・crack反応を保持する。
 
 manifestルートは`schemaVersion,catalogVersion,packVersion,approvalStatus,environment,entries`。v2 entryは従来の12fieldsに`sourceSpeciesKey,habitat,logicalCanvas,careSpriteRect,rendererProfile,clips`を追加する。clipsは`idle,walk,feed,happy`完全一致。各clipは次の15fieldsを持つ。
@@ -25,6 +27,8 @@ idleのpath/hash/geometryはentryの従来anchorと一致し、master.assetsのs
 `verify-ranch-production-assets.mjs`はpack/masterの明示SHAと実bytesで512tupleを検証し、有限TS registryと配布検査用のregistration/masterfixtureを同一入力から生成する。`--frontend-only`はFEだけを配置し、BE resourceは統合担当が同一artifactから配置する。既存packに同bytesがある場合は巨大stageへ重複copyしない。未検証objectをinstallerやartifact例外へ通さない。
 
 `verify-ranch-production-artifact.mjs`は登録metadataとmaster/manifestの実hashを再検証する。元DEVと同じPNGbytesでも、検証済み正式namespaceの厳密path+hashでのみ配布を許可する。未登録・改竄・不足正式fileとDEV namespace/import/pathの混入を拒否する。
+
+別名リンクはrealpathによる重複排除より前に論理pathを検査する。正式file/正式directory/その祖先への未登録aliasへ正式namespaceの例外を引き継がせず、走査順による拒否漏れを防ぐ。内部の通常node_modulesリンクは従来どおり許容し、外部リンクと循環は拒否する。
 
 1922PNGの実測合計は280355204bytes、manifest込み282754797bytesで、v1の256MiB上限を超える。原本bytesを再圧縮せず保持するため、v1の256MiBは維持し、512tuple/4clip契約のv2だけ累積PNG320MiBを上限とする。同pathはhash一致を検査して一度だけ計上する。perfile20MiB・PNG展開128MiB・次元/件数/path検査は維持し、境界直前/ちょうど/超過は巨大ファイルを生成しないbytecounter試験で確認する。
 
