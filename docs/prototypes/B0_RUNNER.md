@@ -1,5 +1,13 @@
 # B0 Phase 3B runner
 
+## CMP-261107-0551 正式3住民の観測追記準備（2026-11-08）
+
+累積正本 `docs/evidence/CMP-261015-1510/resident-overlay.json` の旧58/58/114全fieldとトップrunId/environmentを保持し、実住民3 persona/3 journey/4 insightだけ追記して61/61/118とした。元runは `ranch64-3fe7b1454ec1c5086db2c581`、個別sourceHeadは `4ce3aa26785871ee363c90b0a514f023ca20723a`。persona/journey IDは原reportの一意IDを維持し、固定P01–P20へ変換しない。選択証拠は `docs/evidence/CMP-261107-0551/resident-observations-20261108.json`。3人全目的達成・正式探索実施完了のroot採択と、4観測の `actual-resident-artifacts` / `trusted=false` / `observed-unverified` / coverage=falseを分ける。
+
+小領域は実寸観測有効だが今回未変更component。mobile touch直後の素材準備中は原PNGを残し、root再試行では持続欠落非再現・元直接原因UNKNOWNとする。裁定は同directoryの `resident-root-disposition.md`。新確定bug0であり、未実証観測を修復済みへ昇格しない。
+
+ignored `.b0-local/run-cmp0551-observations-20261108.json` を正本同一copyとし、通常generatorはsparse spec未配置の初回失敗を保持後、frontend/tests展開で正規実行成功。無関係global同期diffを採用せずbaselineのb0RunOverlayだけを生成overlayへ置換し、overlay外deepEqual・正本/copy/通常生成/採用overlay deepEqualを確認した。通常validator/自己検証全体は既知snapshot参照集合不一致FAIL、baseline保持の限定出力は既存CMP行数不一致FAIL。overlay限定宣言検査と不正10例拒否の合格は全体合格ではない。静的ボードUIはroot GO下で初回118/reload118・全行deepEqual・重複0、旧114投影保持/新4を確認。現HTMLのnew4 runId/originalRunId/sourceHead保存はexact、旧版のトップrunId保存制限は今回へ持ち込まない。カードpersona/journey/evidence/登録元とdrawer元runの表示を確認し、sourceHead専用UI欄なしは保存検証と分ける。board-ui-safe.jsonに12.223秒・所有資源0を記録し、先行2失敗も保持。実装PR #4353の新CI/build/mergeと正式完了JSON・task-list更新は別ゲートであり、この追記時点はIN_PROGRESS。
+
 既存の `beta-inventory-board-b0-coverage.json` をspecの唯一の正本として、journey単位でPlaywrightを実行します。
 
 ```powershell
@@ -104,3 +112,19 @@ rootは3住民の原session正常終了、cleanup=removed、専用scratchと内�
 初回UIは旧featureKeyがcanonical capabilityに無く、未設定stageへfallbackしたため新3件がB4検索で見つからず失敗した（receipt SHA256 `695478ce29b22ce92b707307d3185c00b0f4c117a065c6c3bc6436d370f25c30`）。新3件のみを既存capability keyへ合わせてB4解決し、再確認は全成功（receipt SHA256 `37efbc8824c455fd6850f1dea3a41a727547cf8dc2c3fbd2ba84cb54e771231f`）。最終runは50.060秒、撤収30.399秒で各予算180秒/120秒/全体300秒内。既知browser generation live0、profile不在、port解放、各client/server正常終了を確認し、generation snapshot欠落なし。外部通信は0件だった。
 
 保存済みrunIdは累積overlayのトップ旧runIdとなる既存importer仕様のため `originalRunIdPrecisionPassed=false` を維持する。元runIdは各カード詳細・証拠に保持する。これは静的ボードの証拠であり、製品実機・DB検証やB0 coverage合格を意味しない。実装PR #4291が未mergeのため、task-listと正式完了JSON/MDはこのdocs PRにまだ含めない。docs PRもコードPRの全gate/merge後に正式完了内容を追加するまではdraftとする。
+
+### CMP-261008-1253 R24 部分住民観測（2026-11-09）
+
+前回登録時点の履歴（最新採用は次段）: 実結果:Cの人数表現を原表示「0件未割当」へ訂正後、通常generatorを1回実行してexit0の全量680 campaignを最終採用した。生成JS SHA256は `7f72c3725b73184e511c4b704ff161060e5317ec2d56e01b0195a9f1584eb938`。この新bytesで通常validator/自己検証全体を再実行し、L46 GitHub参照集合不一致で各exit1。602行baseline保持案は現台帳680行の78行を欠落させるため棄却し、途中候補のL37 CMP行数不一致FAILは `b0-overlay-checks-r24.json` に保存した。最終証拠は `b0-final-normal-output-r25.json`。overlay限定のコード抜き出し自己検証も取り直してexit0（empty・複数head/run受理、不正10例拒否）。正本/copy/通常生成overlayのdeepEqual、旧全field/トップrunId/environment保持を確認した。global snapshot同期済や全体greenへ読み替えない。
+
+前回統合 `fa5aa4fae6b5ac04c1fbe632028f1c4b8d8129b1`／main `7dde81a72240a61650cafd0f78c4ee848da9df87` 追従後、通常generatorを1回実行して680 campaign（台帳CMP 680行／一意680件）を採用した。最新proofは `b0-main-follow-normal-output-r25.json`、生成JS SHA256 `06c1aee980e985a4ab7270c38bade1e4879a1f366ce51ad9cd7c52c88fd2c2b6`。実機はf938、初回de0は履歴、fresh CIは後続。64/64/120・旧61/61/118全field・run/environment・観測内容は不変。新bytesの通常validator/自己検証全体を各1回実行しactual結果を新proofへ保存した。overlay/validator hash不変により既存抜出しself-test exit0を同値再利用し重複実行しない。旧proofと候補を保持し、global検査とoverlay限定検査を区別する。
+
+旧61 persona / 61 journey / 118 insightの全fieldとトップrunId/environmentをdeep保持し、実3 persona / 3 journey / B・Cの実観測2 insightだけ追加して64/64/120とした。選別証拠は `docs/evidence/CMP-261008-1253/resident-observations-r24-20261108.json`、部分採択は同directoryの `r24-partial-evidence.md`。persona/journey IDは登録時付与、原runId（r21 prefix）とsource f938を保持し、新integration de0cと混同しない。actual-resident-artifacts / trusted=false / observed-unverified / coverage=falseを維持する。A達成・B未達・C読み取り範囲達成、約44分、初期HTTP metadata中継の制約を保持する。新規確定bug0、正式完了・Issue close・台帳状態変更は行わない。ignored `.b0-local/run-cmp1253-r24-observations-20261108.json` は累積正本同一copy。生成とvalidatorの実結果は選別検証 `b0-overlay-checks-r24.json` へ記録し、既知global snapshot不一致FAILとoverlay限定検査を分ける。
+
+
+### CMP-261008-1253 R25 静的ボードUI受入（2026-11-09）
+
+静的ボードUIはRoot受入済み。`docs/evidence/CMP-261008-1253/board-ui-r25-20261109.json` に初回120/reload120、全25field deep一致、旧118原本/IDB投影保持、新B/CのB4カード表示を記録した。prototypeボード画像 `board-r25-B.png`・`board-r25-C.png` は原bytes/hashを保持しRoot実閲覧済み。住民private PNG本体は公開していない。current HTMLはrunId=originalRunId優先でoriginalRunId/sourceHead/trusted/sourceStatus/sourceEvidencePathも実保存し、今回120件のsource保持を確認した。run値そのものはカード本文に表示されない。generic originalRunIdPrecisionPassed=falseは全歴史runの意味精度を一括保証しない意味で、新B/C保存契約passedと分ける。旧版の常にトップrunIdを保存する制限を今回へ持ち込まない。fresh local IndexedDBを使用し、製品app/API/SQL/deployは0。total28.488秒/cleanup4.071秒、全cleanup検査合格、native Node/outer exit0をRootが確認した。旧2失敗は各Node1/cleanup正常/PNG0のhelper起因履歴として保持し、製品redへ昇格しない。最新通常生成/通常validator L46 FAIL/overlay限定passと、この静的UI passは別判定である。R24の3run/source f938/約44分/A達成・B未達・C読取範囲のみ/PDF取得未知/trusted=falseは不変。
+
+
+最新main追従の採用は `docs/evidence/CMP-261008-1253/board-ui-main-bridge-r25-20261109.json`。現在統合 `af13a156be7ba03a2367c3ad92759c7d6ce3fb47`／main `038079b8c401645622024a5e6a6250be6c60b1a7`、通常generator1回exit0、台帳680行・一意680、生成680 campaign、生成JS SHA256 `07591fb6498abc4a8a05ff4d6c9dd2892c56463c06936c66441585e5cb67d7a7`。HTML raw同一、overlay/全B0 plan/120件25field純粋投影/新B・Cのfinding・feature/capability/decision/stage（B4）が旧受入入力と厳密同値のため、fa5/data06cの既存静的UI証拠を来歴不変で採用し、新ブラウザを実行していない。新bytesの通常validator/自己検証全体は各exit1/1で既存L46 FAILを保持する。実機は旧f938と差分影響評価を用い、fresh FE/通常CIは後続ゲート。

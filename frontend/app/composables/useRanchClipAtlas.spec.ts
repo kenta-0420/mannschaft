@@ -298,3 +298,53 @@ describe('CLIP08/09 native paint', () => {
     expect(ctx.translate).toHaveBeenLastCalledWith(Math.sin(Math.PI / 2) * Math.sin(Math.PI / 8), 0)
   })
 })
+
+describe('v4 接地影', () => {
+  it('fallbackは要求actionにかかわらずidle Aの影を使い、海と空には影を描かない', () => {
+    const ctx = context()
+    const node = document.createElement('canvas')
+    vi.spyOn(node, 'getContext').mockReturnValue(ctx as unknown as CanvasRenderingContext2D)
+    const v4 = {
+      ...entry,
+      catalogVersion: '4',
+      clips: {
+        ...entry.clips,
+        idle: { ...entry.clips.idle, shadowByFrame: [{ x: 20, y: 80, radius: 12 }] },
+        happy: { ...entry.clips.happy, shadowByFrame: [{ x: 40, y: 90, radius: 20 }] },
+      },
+    } as unknown as RanchDevelopmentClipEntry
+    paintRanchClip(node, new TestImage() as unknown as HTMLImageElement, v4, 'happy', 0, 0, true)
+    expect(ctx.ellipse).toHaveBeenCalledWith(28, 87.75, 12, 1.5, 0, 0, Math.PI * 2)
+    for (const habitat of ['SEA', 'AIR'] as const) {
+      ctx.ellipse.mockClear()
+      paintRanchClip(
+        node,
+        new TestImage() as unknown as HTMLImageElement,
+        { ...v4, habitat },
+        'happy',
+        0,
+        0,
+        true,
+      )
+      expect(ctx.ellipse).not.toHaveBeenCalled()
+    }
+  })
+})
+
+it('v4 SEAはplesiosaurusを7度、他種を5度とし承認viewerの軸を使う', () => {
+  const node = document.createElement('canvas')
+  const ctx = context()
+  vi.spyOn(node, 'getContext').mockReturnValue(ctx as unknown as CanvasRenderingContext2D)
+  const image = new TestImage() as unknown as HTMLImageElement
+  const sea = {
+    ...entry,
+    catalogVersion: '4',
+    habitat: 'SEA',
+    sourceSpecies: 'archelon',
+  } as unknown as RanchDevelopmentClipEntry
+  paintRanchClip(node, image, sea, 'happy', 1, 2 / 12, false)
+  expect(ctx.rotate).toHaveBeenLastCalledWith((-5 * Math.PI) / 180)
+  expect(ctx.translate).toHaveBeenCalledWith(-56, -59)
+  paintRanchClip(node, image, { ...sea, sourceSpecies: 'plesiosaurus' }, 'happy', 1, 2 / 12, false)
+  expect(ctx.rotate).toHaveBeenLastCalledWith((-7 * Math.PI) / 180)
+})

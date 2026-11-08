@@ -5,6 +5,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
+import com.mannschaft.app.role.service.InviteAcceptanceFacade;
 import com.mannschaft.app.role.service.InviteService;
 import com.mannschaft.app.scopefolder.ScopeFolderErrorCode;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,7 +45,7 @@ import com.mannschaft.app.common.security.AccessGuard;
  * </ul>
  *
  * <p>サービスは {@link MockitoBean} で差し替え、Controller の DTO 受領 + 引数渡しのみを検証する。
- * 実際の参加処理・フォルダ配置ロジックは {@code InviteServiceTest} / {@code MyScopeFolderServiceTest} の責務。</p>
+ * 実際の参加処理・フォルダ配置ロジックは {@code InviteAcceptanceFacadeTest} / {@code MyScopeFolderServiceTest} の責務。</p>
  */
 @WebMvcTest(InviteController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -60,6 +61,10 @@ class InviteControllerFolderTest {
 
     @MockitoBean
     private InviteService inviteService;
+
+    /** 承諾・辞退の入口（CMP-260826-1457: InviteService から Facade へ移した）。 */
+    @MockitoBean
+    private InviteAcceptanceFacade inviteAcceptanceFacade;
 
     // JwtAuthenticationFilter / UserLocaleFilter / ProxyInputContextFilter の依存解決用
     @MockitoBean
@@ -91,9 +96,9 @@ class InviteControllerFolderTest {
     class WithFolderId {
 
         @Test
-        @DisplayName("正常系: folderId 指定 → InviteService.joinByInvite(token, userId, folderId) が呼ばれる")
+        @DisplayName("正常系: folderId 指定 → InviteAcceptanceFacade.joinByInvite(token, userId, folderId) が呼ばれる")
         void joinByInvite_folderId指定_200() throws Exception {
-            willDoNothing().given(inviteService).joinByInvite(eq(TOKEN), eq(USER_ID), eq(FOLDER_ID));
+            willDoNothing().given(inviteAcceptanceFacade).joinByInvite(eq(TOKEN), eq(USER_ID), eq(FOLDER_ID));
 
             String body = """
                     {
@@ -106,14 +111,14 @@ class InviteControllerFolderTest {
                             .content(body))
                     .andExpect(status().isOk());
 
-            verify(inviteService).joinByInvite(TOKEN, USER_ID, FOLDER_ID);
+            verify(inviteAcceptanceFacade).joinByInvite(TOKEN, USER_ID, FOLDER_ID);
         }
 
         @Test
         @DisplayName("異常系: 他人所有のフォルダID → SCOPE_FOLDER_NOT_FOUND がレスポンスに反映")
         void joinByInvite_他人のフォルダ_SCOPE_FOLDER_NOT_FOUND() throws Exception {
             willThrow(new BusinessException(ScopeFolderErrorCode.SCOPE_FOLDER_NOT_FOUND))
-                    .given(inviteService).joinByInvite(eq(TOKEN), eq(USER_ID), eq(FOLDER_ID));
+                    .given(inviteAcceptanceFacade).joinByInvite(eq(TOKEN), eq(USER_ID), eq(FOLDER_ID));
 
             String body = """
                     {
@@ -133,7 +138,7 @@ class InviteControllerFolderTest {
         @DisplayName("異常系: scope_type 不一致（TEAM 招待で ORGANIZATION フォルダ指定）→ SCOPE_FOLDER_TYPE_MISMATCH")
         void joinByInvite_scope_type不一致_TYPE_MISMATCH() throws Exception {
             willThrow(new BusinessException(ScopeFolderErrorCode.SCOPE_FOLDER_TYPE_MISMATCH))
-                    .given(inviteService).joinByInvite(eq(TOKEN), eq(USER_ID), eq(FOLDER_ID));
+                    .given(inviteAcceptanceFacade).joinByInvite(eq(TOKEN), eq(USER_ID), eq(FOLDER_ID));
 
             String body = """
                     {
@@ -159,9 +164,9 @@ class InviteControllerFolderTest {
     class WithoutFolderId {
 
         @Test
-        @DisplayName("正常系: folderId=null → InviteService.joinByInvite(token, userId, null) が呼ばれる")
+        @DisplayName("正常系: folderId=null → InviteAcceptanceFacade.joinByInvite(token, userId, null) が呼ばれる")
         void joinByInvite_folderId未指定_null渡し() throws Exception {
-            willDoNothing().given(inviteService).joinByInvite(anyString(), eq(USER_ID), eq(null));
+            willDoNothing().given(inviteAcceptanceFacade).joinByInvite(anyString(), eq(USER_ID), eq(null));
 
             String body = """
                     {
@@ -173,18 +178,18 @@ class InviteControllerFolderTest {
                             .content(body))
                     .andExpect(status().isOk());
 
-            verify(inviteService).joinByInvite(TOKEN, USER_ID, null);
+            verify(inviteAcceptanceFacade).joinByInvite(TOKEN, USER_ID, null);
         }
 
         @Test
         @DisplayName("後方互換: ボディ自体が無くても 200 OK で参加できる")
         void joinByInvite_ボディ無し_後方互換() throws Exception {
-            willDoNothing().given(inviteService).joinByInvite(anyString(), eq(USER_ID), eq(null));
+            willDoNothing().given(inviteAcceptanceFacade).joinByInvite(anyString(), eq(USER_ID), eq(null));
 
             mockMvc.perform(post("/api/v1/invite/{token}/join", TOKEN))
                     .andExpect(status().isOk());
 
-            verify(inviteService).joinByInvite(TOKEN, USER_ID, null);
+            verify(inviteAcceptanceFacade).joinByInvite(TOKEN, USER_ID, null);
         }
     }
 }

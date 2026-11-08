@@ -6,7 +6,7 @@ param(
  [Parameter(Mandatory=$true)][ValidateSet('normal','pre-ack','wrong-ack','assign-fail','host-fail','stdio-eof','cleanup-fail','save-fail','owner-mismatch','kill-close','formal-m21')][string]$Scenario,
  [Parameter(Mandatory=$true)][string]$RunDirectory,
  [Parameter(Mandatory=$true)][ValidatePattern('^[a-f0-9]{32}$')][string]$Nonce,
- [ValidatePattern('^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$')][string]$OwnerId='d7249e88-1678-4e0c-ae21-a550989098a6',
+ [ValidatePattern('^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$')][string]$OwnerId='f6efb6d3-51e1-4408-a760-92f7d3642122',
  [Parameter(Mandatory=$true)][string]$NodePath,
  [Parameter(Mandatory=$true)][ValidateRange(0,3000000)][int]$WorkRemainingMs,
  [Parameter(Mandatory=$true)][ValidateRange(0,3300000)][int]$TotalRemainingMs

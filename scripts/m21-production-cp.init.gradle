@@ -33,7 +33,7 @@ gradle.projectsEvaluated {
     }
     def runOwner = parseOwner(assets.parent.resolve('owner.json'))
     def assetOwner = parseOwner(assets.resolve('owner.json'))
-    if (runOwner.owner != '1d767b20-825c-4edc-b397-8d4367036462' ||
+    if (runOwner.owner != 'f6efb6d3-51e1-4408-a760-92f7d3642122' ||
             !(runOwner.nonce instanceof String) || !(runOwner.nonce ==~ /[a-f0-9]{32}/) || assetOwner.owner != runOwner.owner ||
             assetOwner.nonce != runOwner.nonce || assetOwner.purpose != 'm21-production-assets' ||
             !(assetOwner.sourceCommit instanceof String) || !(assetOwner.sourceCommit ==~ /[a-f0-9]{40}/)) {

@@ -39,7 +39,8 @@ const channelLabel = computed<string>(() => {
 })
 
 /** aria-label 用の完全ラベル */
-const ariaLabel = computed<string>(() => `${channelLabel.value} のタブ`)
+const { t } = useI18n()
+const ariaLabel = computed<string>(() => t('chat.tabAriaLabel', { name: channelLabel.value }))
 
 // -----------------------------------------------------------------------
 // 未読バッジ

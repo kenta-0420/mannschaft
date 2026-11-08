@@ -885,30 +885,24 @@ for (const width of [360, 390, 1280]) {
         await expect(all.locator('span')).toHaveText('すべて（一覧）')
         await expect(all).toBeVisible()
         await page.evaluate(() => document.fonts.ready.then(() => true))
-        // Popoverの拡大中に異なるフレームの矩形を比較しないよう、完了後に一括計測する。
+        // Popover の拡大遷移が終わってから、同一フレームの文字行と矩形を比較する。
+        await expect(menu.panel).not.toHaveClass(/\bp-anchored-overlay-enter-active\b/)
         // Transitionのクラス除去でキャンセルされるAnimationのPromiseを保持せず、現在の描画状態を待つ。
         await expect.poll(() => menu.panel.evaluate(element =>
           element.getAnimations().filter(animation => animation.playState === 'running' || animation.pending).length,
         )).toBe(0)
-        const { lines, foldersBox, jumpBox, documentSize } = await all.evaluate(
-          (element, jumpElement) => {
-            const range = document.createRange()
-            range.selectNodeContents(element.querySelector('span')!)
-            const folders = element.parentElement!.parentElement!.getBoundingClientRect()
-            const jump = jumpElement!.parentElement!.getBoundingClientRect()
-            return {
-              lines: [...range.getClientRects()].map(rect => ({ top: rect.top, left: rect.left, right: rect.right })),
-              foldersBox: { x: folders.x, y: folders.y, width: folders.width, height: folders.height },
-              jumpBox: { x: jump.x, y: jump.y, width: jump.width, height: jump.height },
-              documentSize: {
-                width: document.documentElement.clientWidth,
-                scrollWidth: document.documentElement.scrollWidth,
-                bodyWidth: document.body.scrollWidth,
-              },
-            }
-          },
-          await menu.jump.elementHandle(),
-        )
+        const { lines, foldersBox, jumpBox, documentSize } = await all.evaluate((element, jumpTestId) => {
+          const range = document.createRange()
+          range.selectNodeContents(element.querySelector('span')!)
+          const folders = element.parentElement!.parentElement!.getBoundingClientRect()
+          const jump = element.closest('.p-popover')!.querySelector(`[data-testid="${jumpTestId}"]`)!.parentElement!.getBoundingClientRect()
+          return {
+            lines: [...range.getClientRects()].map(rect => ({ top: rect.top, left: rect.left, right: rect.right })),
+            foldersBox: { x: folders.x, y: folders.y, width: folders.width, height: folders.height },
+            jumpBox: { x: jump.x, y: jump.y, width: jump.width, height: jump.height },
+            documentSize: { width: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth, bodyWidth: document.body.scrollWidth },
+          }
+        }, `scope-nav-dropdown-scope-${scope.id}`)
         await testInfo.attach('scope-navigation-geometry', { body: JSON.stringify({ width, scopeType, lines, foldersBox, jumpBox, documentSize }), contentType: 'application/json' })
         expect(lines, 'ALL_LIST_TEXT_HORIZONTAL: 一覧の文字が複数行に縦折返ししている').toHaveLength(1)
         if (mobile) {

@@ -31,6 +31,7 @@ jobs:
           scripts/guard-coverage.test.mjs
           scripts/boundary-coordination.test.mjs
           scripts/unicode-checkout.test.mjs
+          scripts/openapi-preflight.test.mjs
       - name: Run CI test observability fixtures
         run: python3 backend/scripts/test_ci_observability.py
       - name: Run M21 Linux finite bridge suite

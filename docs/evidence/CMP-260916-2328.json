@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260916-2328",
+  "scope": "tooling",
+  "implementation": {
+    "pr": 4396,
+    "sha": "bdc14c7f33ac7dd5afd7816db876733258eef720",
+    "mergeCommit": "0ec2bb04ba90116b9dd3fd3a7ac865a53ba97b8d"
+  },
+  "scopeReason": "実装PRは開発手順docs・scriptsの回帰テスト・.githubの既存Harness CI呼出だけを変更し、製品UI・API・認可・利用者データを変更しない。",
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "手順1の出力だけで正規wrapperの下見と実生成を区別でき、単独token・引用符・backslash・project修飾taskを扱う。",
+      "tests": [
+        { "name": "通常のdry-runをDRY_RUNとして表示し進行可否を区別する", "evidence": "scripts/openapi-preflight.test.mjs" },
+        { "name": "引用符で囲まれた単独tokenをDRY_RUNとして表示し進行可否を区別する", "evidence": "scripts/openapi-preflight.test.mjs" },
+        { "name": "Windowsのbackslashを含む引数をDRY_RUNとして表示し進行可否を区別する", "evidence": "scripts/openapi-preflight.test.mjs" },
+        { "name": "閉じ引用符の直前の偶数backslashをDRY_RUNとして表示し進行可否を区別する", "evidence": "scripts/openapi-preflight.test.mjs" },
+        { "name": "project修飾taskをDRY_RUNとして表示し進行可否を区別する", "evidence": "scripts/openapi-preflight.test.mjs" },
+        { "name": "実生成をGENERATEとして表示し進行可否を区別する", "evidence": "scripts/openapi-preflight.test.mjs" }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "値内の偽dry-run、実fork、別Javaを下見と誤認せず、不完全な引用符や曖昧な引数はUNKNOWNとして待つ。分類fixtureは原コマンドラインを新たに表示しないことも確認する。",
+      "tests": [
+        { "name": "escaped引用符内の偽tokenをGENERATEとして表示し進行可否を区別する", "evidence": "scripts/openapi-preflight.test.mjs" },
+        { "name": "二重引用符内の偽tokenをGENERATEとして表示し進行可否を区別する", "evidence": "scripts/openapi-preflight.test.mjs" },
+        { "name": "値の一部はdry-runではないをGENERATEとして表示し進行可否を区別する", "evidence": "scripts/openapi-preflight.test.mjs" },
+        { "name": "quoted値内の単語はdry-runではないをGENERATEとして表示し進行可否を区別する", "evidence": "scripts/openapi-preflight.test.mjs" },
+        { "name": "別の引数値はdry-runではないをGENERATEとして表示し進行可否を区別する", "evidence": "scripts/openapi-preflight.test.mjs" },
+        { "name": "別flagの値になり得るtokenは断定しないをUNKNOWNとして表示し進行可否を区別する", "evidence": "scripts/openapi-preflight.test.mjs" },
+        { "name": "不完全な引用符をUNKNOWNとして表示し進行可否を区別する", "evidence": "scripts/openapi-preflight.test.mjs" },
+        { "name": "task名が別の値に埋まるをUNKNOWNとして表示し進行可否を区別する", "evidence": "scripts/openapi-preflight.test.mjs" },
+        { "name": "forkの引数はGradleのdry-runではないをGENERATEとして表示し進行可否を区別する", "evidence": "scripts/openapi-preflight.test.mjs" },
+        { "name": "Gradle以外のJavaの引数を下見と誤認しない", "evidence": "scripts/openapi-preflight.test.mjs" }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "空・別worktree・所有不明・実生成との混在・列挙失敗・WSLの未確認区分を区別し、既存の停止境界を維持する。他プロセスの停止を行わない。",
+      "tests": [
+        { "name": "所有不明はdry-runでも停止する", "evidence": "scripts/openapi-preflight.test.mjs" },
+        { "name": "別worktreeは区分を示して所有する出力先を妨げない", "evidence": "scripts/openapi-preflight.test.mjs" },
+        { "name": "混在する自分の実生成があればdry-runがあっても停止する", "evidence": "scripts/openapi-preflight.test.mjs" },
+        { "name": "WSLで区分を観測できない自分のprocessはUNKNOWNとして停止する", "evidence": "scripts/openapi-preflight.test.mjs" },
+        { "name": "WSLのcwd不明は停止し、別worktreeだけなら進める", "evidence": "scripts/openapi-preflight.test.mjs" },
+        { "name": "Windows列挙失敗はexit2で停止する", "evidence": "scripts/openapi-preflight.test.mjs" },
+        { "name": "WSL列挙失敗はexit2で停止する", "evidence": "scripts/openapi-preflight.test.mjs" },
+        { "name": "対象なしなら次の手順へ進める", "evidence": "scripts/openapi-preflight.test.mjs" }
+      ]
+    }
+  ],
+  "ci": [{ "runId": 42454616580 }],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4396",
+      "notes": "全差分・AC・24fixtureと既存Harness CIの呼出を確認し、指摘0。独立した文書読解も具体的指摘0だが、実機操作やアプリ探索のpassedには算入しない。"
+    },
+    "real": {
+      "status": "not-applicable",
+      "scope": "tooling",
+      "reason": "docs/scripts/.githubだけの変更で製品UI・API・認可・利用者データは不変。文書のbash原文をstdinで渡し、OS列挙を固定fixtureに置き換えた24件を確認した。実CIM・実WSL・実OpenAPI生成は未実施であり、fixtureの通過や文書読解を実機passedとは扱わない。"
+    },
+    "exploratory": {
+      "status": "not-applicable",
+      "scope": "tooling",
+      "reason": "変更対象に製品画面・API・認可・利用者の導線・データの変更がない。別利用者による文書読解は具体的指摘0だが、アプリの独立探索ではなく、探索passedとは扱わない。"
+    }
+  },
+  "verificationNotes": {
+    "uniqueFixtureCount": 24,
+    "localResult": { "passed": 24, "failed": 0, "skipped": 0, "exitCode": 0 },
+    "ciReference": "https://github.com/kenta-0420/mannschaft/actions/runs/42454616580",
+    "sourceDocument": "docs/development/openapi_json_regeneration.md",
+    "osEnumerationStubbed": true,
+    "actualCimExecuted": false,
+    "actualWslExecuted": false,
+    "actualOpenApiGenerationExecuted": false,
+    "otherProcessStopped": false,
+    "privateRawArtifactsPublished": false
+  },
+  "regressions": []
+}

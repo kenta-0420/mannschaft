@@ -20,6 +20,7 @@ const teamApi = useTeamApi()
 const orgApi = useOrganizationApi()
 const authStore = useAuthStore()
 const notification = useNotification()
+const { t } = useI18n()
 
 const members = ref<MemberResponse[]>([])
 const membersLoading = ref(false)
@@ -74,11 +75,11 @@ async function onSubmit() {
       userIds: selectedMembers.value.map((m) => m.userId),
       shareHistory: shareHistory.value,
     })
-    notification.success('Zimmer(部屋)を作成しました')
+    notification.success(t('chat.create.roomCreated'))
     visible.value = false
     emit('created', res.data)
   } catch {
-    notification.error('招待に失敗しました')
+    notification.error(t('chat.inviteZimmer.failed'))
   } finally {
     submitting.value = false
   }
@@ -95,10 +96,10 @@ watch(visible, (v) => {
 </script>
 
 <template>
-  <Dialog v-model:visible="visible" header="Zimmerに招待する" modal class="w-full max-w-md">
+  <Dialog v-model:visible="visible" :header="$t('chat.inviteZimmer.header')" modal class="w-full max-w-md">
     <div class="flex flex-col gap-4 mt-3">
       <!-- メンバー検索 -->
-      <InputText v-model="memberSearch" placeholder="名前で検索..." class="w-full" />
+      <InputText v-model="memberSearch" :placeholder="$t('chat.create.searchByName')" class="w-full" />
 
       <!-- 選択中 -->
       <div v-if="selectedMembers.length > 0" class="flex flex-wrap gap-1">
@@ -127,7 +128,7 @@ watch(visible, (v) => {
           v-else-if="filteredMembers.length === 0"
           class="py-6 text-center text-sm text-surface-400"
         >
-          招待できるメンバーがいません
+          {{ $t('chat.inviteZimmer.noMembers') }}
         </div>
         <button
           v-for="m in filteredMembers"
@@ -149,22 +150,22 @@ watch(visible, (v) => {
 
       <!-- 履歴共有の選択 -->
       <div class="rounded-lg border border-surface-300 p-4 dark:border-surface-600">
-        <p class="mb-3 text-sm font-medium">既存のチャット内容を共有しますか？</p>
+        <p class="mb-3 text-sm font-medium">{{ $t('chat.inviteZimmer.shareQuestion') }}</p>
         <div class="flex flex-col gap-2">
           <div class="flex items-start gap-3 cursor-pointer" @click="shareHistory = true">
             <RadioButton v-model="shareHistory" :value="true" input-id="share-yes" />
             <label for="share-yes" class="cursor-pointer">
-              <span class="text-sm font-medium">共有する</span>
+              <span class="text-sm font-medium">{{ $t('chat.inviteZimmer.share') }}</span>
               <p class="text-xs text-surface-400">
-                これまでのメッセージが新しいZimmerに引き継がれます
+                {{ $t('chat.inviteZimmer.shareHint') }}
               </p>
             </label>
           </div>
           <div class="flex items-start gap-3 cursor-pointer" @click="shareHistory = false">
             <RadioButton v-model="shareHistory" :value="false" input-id="share-no" />
             <label for="share-no" class="cursor-pointer">
-              <span class="text-sm font-medium">共有しない</span>
-              <p class="text-xs text-surface-400">新しいZimmerは空の状態で始まります</p>
+              <span class="text-sm font-medium">{{ $t('chat.inviteZimmer.noShare') }}</span>
+              <p class="text-xs text-surface-400">{{ $t('chat.inviteZimmer.noShareHint') }}</p>
             </label>
           </div>
         </div>
@@ -172,9 +173,9 @@ watch(visible, (v) => {
     </div>
 
     <div class="mt-4 flex justify-end gap-2">
-      <Button label="キャンセル" text @click="visible = false" />
+      <Button :label="$t('common.cancel')" text @click="visible = false" />
       <Button
-        label="Zimmerを作成"
+        :label="$t('chat.inviteZimmer.createZimmer')"
         :loading="submitting"
         :disabled="selectedMembers.length === 0"
         @click="onSubmit"

@@ -10,6 +10,8 @@ import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotific
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import com.mannschaft.app.notification.confirmable.support.ConfirmableFanoutFixture;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -17,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -56,8 +59,13 @@ class ConfirmableNotificationCreateAtomicityIT extends AbstractMySqlIntegrationT
     private ConfirmableNotificationTargetRepository targetRepository;
     @Autowired
     private PlatformTransactionManager transactionManager;
+    @Autowired
+    private JdbcTemplate jdbc;
     @PersistenceContext
     private EntityManager em;
+
+    /** 正常系が確定させた通知 ID（@AfterEach で本体・targets・fanoutジョブを自分の分だけ消す）。 */
+    private Long createdNotificationId;
 
     private TransactionTemplate txTemplate;
     private Long orgId;
@@ -116,6 +124,16 @@ class ConfirmableNotificationCreateAtomicityIT extends AbstractMySqlIntegrationT
         setupTx.setPropagationBehavior(TransactionTemplate.PROPAGATION_REQUIRES_NEW);
         orgId = setupTx.execute(status -> insertOrganization());
         adminUserId = setupTx.execute(status -> insertUser());
+    }
+
+    @AfterEach
+    void cleanUp() {
+        if (createdNotificationId != null) {
+            ConfirmableFanoutFixture.deleteFanoutJobsForNotification(jdbc, createdNotificationId);
+            jdbc.update("DELETE FROM confirmable_notification_targets WHERE confirmable_notification_id = ?",
+                    createdNotificationId);
+            jdbc.update("DELETE FROM confirmable_notifications WHERE id = ?", createdNotificationId);
+        }
     }
 
     @Test
@@ -203,6 +221,7 @@ class ConfirmableNotificationCreateAtomicityIT extends AbstractMySqlIntegrationT
                         ConfirmableNotificationPriority.NORMAL, null, null, null,
                         UnconfirmedVisibility.CREATOR_AND_ADMIN, adminUserId, validTargets).getId());
 
+        createdNotificationId = notificationId;
         assertThat(notificationRepository.findById(notificationId)).isPresent();
         assertThat(targetRepository.findByConfirmableNotificationId(notificationId)).hasSize(1);
         long jobCount = ((Number) em.createNativeQuery(

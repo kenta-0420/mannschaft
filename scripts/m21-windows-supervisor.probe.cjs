@@ -8,7 +8,7 @@ const crypto = require('node:crypto');
 const { spawn } = require('node:child_process');
 const net = require('node:net');
 // 所有者選択だけを末尾で受ける。既存fixture引数・期待値はそのまま検査する。
-let OWNER = 'd7249e88-1678-4e0c-ae21-a550989098a6';
+let OWNER = 'f6efb6d3-51e1-4408-a760-92f7d3642122';
 if (process.argv.at(-2) === '--owner-id') {
   OWNER = process.argv.at(-1);
   assert.match(OWNER, /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/);
@@ -165,7 +165,7 @@ async function readinessFixtureSuite(kind = 'readiness') {
   if (inputCommit !== null) assert.match(inputCommit, /^[0-9a-f]{40}$/);
   if (relay) {
     assert.match(inputCommit ?? '', /^[0-9a-f]{40}$/);
-    assert.equal(OWNER, '1d767b20-825c-4edc-b397-8d4367036462');
+    assert.equal(OWNER, 'f6efb6d3-51e1-4408-a760-92f7d3642122');
     assert.equal(crypto.createHash('sha256').update(fs.readFileSync(process.execPath)).digest('hex'), '0d0f5e39f9f3d9587bc19f73eab3c2c9c4903fd02d6dbf9c853dd81b3d95fad4');
   }
   const script = path.join(__dirname, 'm21-windows-supervisor.ps1');
@@ -378,7 +378,7 @@ foreach($name in @('Assert-ChromiumWitnessAck','Test-ChromiumWitnessQualificatio
  if($functions.Count -ne 1){throw ('missing-pure-'+$name)}
  . ([ScriptBlock]::Create($functions[0].Extent.Text))
 }
-$owner='1d767b20-825c-4edc-b397-8d4367036462';$Nonce='0123456789abcdef0123456789abcdef'
+$owner='f6efb6d3-51e1-4408-a760-92f7d3642122';$Nonce='0123456789abcdef0123456789abcdef'
 $identity=@{owner=$owner;nonce=$Nonce;pid=71;creation='123456789'}
 $ack=@{owner=$owner;nonce=$Nonce;pid=71;creation='123456789';ownedJobVerified=$true}
 Assert-ChromiumWitnessAck ([pscustomobject]$ack) ([pscustomobject]$identity)
@@ -449,7 +449,7 @@ foreach($stage in @($compile[0],$innerCreate[0],$innerChild[0])){if($calls[0].Ex
 async function chromiumFixtureSuite() {
   assert.equal(process.platform, 'win32');
   assert.equal(process.argv.length, 3);
-  assert.equal(OWNER, '1d767b20-825c-4edc-b397-8d4367036462');
+  assert.equal(OWNER, 'f6efb6d3-51e1-4408-a760-92f7d3642122');
   const inputCommit = process.env.M21_INPUT_COMMIT;
   assert.match(inputCommit ?? '', /^[a-f0-9]{40}$/);
   const totalDeadline = performance.now() + LIMIT.total;

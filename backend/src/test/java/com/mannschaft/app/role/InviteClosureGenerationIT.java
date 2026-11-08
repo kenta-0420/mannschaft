@@ -4,6 +4,7 @@ import com.mannschaft.app.role.entity.InviteTokenEntity;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.repository.InviteTokenRepository;
 import com.mannschaft.app.role.repository.RoleRepository;
+import com.mannschaft.app.role.service.InviteAcceptanceFacade;
 import com.mannschaft.app.role.service.InviteService;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
@@ -43,6 +44,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class InviteClosureGenerationIT extends AbstractMySqlIntegrationTest {
 
     @Autowired private InviteService inviteService;
+    @Autowired private InviteAcceptanceFacade acceptance;
     @Autowired private InviteTokenRepository tokenRepository;
     @Autowired private RoleRepository roleRepository;
     @Autowired private TeamRepository teamRepository;
@@ -133,7 +135,7 @@ class InviteClosureGenerationIT extends AbstractMySqlIntegrationTest {
             jdbc.update("UPDATE " + fixture.table() + " SET archived_at = NULL WHERE id = ?", fixture.scopeId());
         }
 
-        assertThatThrownBy(() -> inviteService.joinByInvite(fixture.token(), userId))
+        assertThatThrownBy(() -> acceptance.joinByInvite(fixture.token(), userId))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).getErrorCode()).isEqualTo(RoleErrorCode.ROLE_002));
 

@@ -937,6 +937,7 @@ commit して戻った後にだけ SUCCESS を保存する。対象0件でも SU
 | `incident_comments` | `user_id` | 保持 | 共有本文・反応（投稿は残し著者表示を共通ラベル化する既決。CMP-261011-0124） |
 | `incident_maintenance_schedules` | `default_assignee_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
 | `invite_tokens` | `target_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
+| `invite_token_claims` | `user_id` | 保持 | 業務・契約・申請の記録（招待の使用回数を消費した確保記録。マスター裁可 2026-11-08）。行を消すと不変式 `used_count = 基数 + CLAIMED と GRANTED の件数` が崩れて上限保証を失う。氏名などの個人情報は持たず、users 側の強匿名化で個人に辿れなくなる |
 | `job_applications` | `applicant_user_id` / `decided_by_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
 | `job_check_ins` | `worker_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
 | `job_contracts` | `requester_user_id` / `worker_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
