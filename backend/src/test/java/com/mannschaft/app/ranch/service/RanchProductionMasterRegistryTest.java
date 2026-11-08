@@ -155,6 +155,36 @@ class RanchProductionMasterRegistryTest {
         }
     }
 
+    @Test
+    void 出生81入力が揃っても全64外見を覆わなければ登録を拒否する() {
+        var source = complete();
+        source.path("birthMappings").forEach(row -> {
+            ((ObjectNode) row).put("speciesKey", "SPECIES_0").put("variantKey", "VARIANT_0");
+        });
+
+        assertThatThrownBy(() -> RanchProductionMasterRegistry.validateStructure(source, VERSION,
+                "a".repeat(64))).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void 対応版nullの旧診断結果は新規割当へ読み替えない() {
+        var master = RanchProductionMasterRegistry.validateStructure(complete(), VERSION, "a".repeat(64));
+        var rules = mock(RanchRuleProvider.class);
+        when(rules.currentCareRule(any())).thenReturn(java.util.Optional.of(
+                new RanchRuleProvider.CareRuleSnapshot(UUID.randomUUID(), "care-synthetic-v1",
+                        20, 100, 60, 100, 1, 3, 6)));
+        var diagnosis = mock(DiagnosisPublicationReadiness.class);
+        when(diagnosis.approvedVersionAvailable(master.questionnaireVersion(), master.scoringVersion())).thenReturn(true);
+        var resolver = new RanchVerifiedAssignmentResolver(null, null, null, diagnosis, rules, Clock.systemUTC());
+        UUID id = UUID.randomUUID();
+        var legacy = new DiagnosisResultSummary(id, DiagnosisMethod.DIAGNOSIS, Instant.EPOCH,
+                "diagnosis-result-v1", master.questionnaireVersion(), master.scoringVersion(),
+                null, null, null, "000001", Map.of(), null, Map.of(), Map.of());
+        var request = new RanchAssignmentRequest(AssignmentMethod.DIAGNOSIS, null, id, null, "1");
+
+        assertThatThrownBy(() -> resolver.resolveApproved(request, legacy, null, master))
+                .isInstanceOf(com.mannschaft.app.common.BusinessException.class);
+    }
     private MockEnvironment registered(String packVersion, String overridePackHash)
             throws IOException, NoSuchAlgorithmException {
         return new MockEnvironment()
