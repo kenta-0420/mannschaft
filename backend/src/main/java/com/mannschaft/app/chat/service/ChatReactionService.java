@@ -28,6 +28,7 @@ public class ChatReactionService {
     private final ChatMessageReactionRepository reactionRepository;
     private final ChatMessageRepository messageRepository;
     private final ChatMessageService messageService;
+    private final ChatChannelAccessGuard channelAccessGuard;
     private final ChatMapper chatMapper;
     /** F04.2: WebSocket STOMP でリアクションイベントをチャンネル参加者に配信する。 */
     private final ChatMessagePublisher chatMessagePublisher;
@@ -44,8 +45,8 @@ public class ChatReactionService {
     public ReactionResponse addReaction(Long messageId, AddReactionRequest request, Long userId) {
         ChatMessageEntity message = messageService.findMessageOrThrow(messageId);
         // F08.7.1: 大会/ディビジョン連絡チャットは閲覧権限（canView）が無ければリアクション付与不可。
-        // リアクションは閲覧者が押せるのが自然（設計書 §4.1）。通常チャンネルは no-op。
-        messageService.checkChannelViewAccess(message.getChannelId(), userId);
+        // リアクションは閲覧者が押せるのが自然（設計書 §4.1）。拒否は不在メッセージと同一応答。
+        channelAccessGuard.checkMessageViewAccess(message, userId);
 
         if (reactionRepository.existsByMessageIdAndUserIdAndEmoji(messageId, userId, request.getEmoji())) {
             throw new BusinessException(ChatErrorCode.REACTION_ALREADY_EXISTS);
@@ -82,8 +83,8 @@ public class ChatReactionService {
     @Transactional
     public void removeReaction(Long messageId, String emoji, Long userId) {
         ChatMessageEntity message = messageService.findMessageOrThrow(messageId);
-        // F08.7.1: 大会/ディビジョン連絡チャットは閲覧権限（canView）が無ければ操作不可。通常チャンネルは no-op。
-        messageService.checkChannelViewAccess(message.getChannelId(), userId);
+        // F08.7.1: 閲覧権限が無ければ操作不可。拒否は不在メッセージと同一応答。
+        channelAccessGuard.checkMessageViewAccess(message, userId);
 
         if (!reactionRepository.existsByMessageIdAndUserIdAndEmoji(messageId, userId, emoji)) {
             throw new BusinessException(ChatErrorCode.REACTION_NOT_FOUND);
