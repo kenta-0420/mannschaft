@@ -186,7 +186,7 @@ onBeforeUnmount(() => {
       table-style="min-width: 48rem"
     >
       <template #empty>
-        <div class="py-8 text-center text-surface-500">{{ $t('timeline_digest.empty') }}</div>
+        <div class="py-8 text-left text-surface-500">{{ $t('timeline_digest.empty') }}</div>
       </template>
 
       <Column :header="$t('timeline_digest.column_period')">

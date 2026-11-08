@@ -147,6 +147,34 @@ test.describe('DIGEST-001〜005: タイムラインダイジェスト', () => {
         else await expect(page.getByRole('cell', { name: '5', exact: true })).toBeVisible()
         await page.evaluate(() => document.fonts.ready)
 
+        if (empty) {
+          const emptyBounds = await page.getByText('ダイジェストがありません', { exact: true }).evaluate(element => {
+            const table = element.closest('.p-datatable-table-container')
+            if (!table) throw new Error('空表示のスクロール領域が見つかりません')
+            const range = document.createRange()
+            range.selectNodeContents(element)
+            const rect = table.getBoundingClientRect()
+            return {
+              textRects: Array.from(range.getClientRects())
+                .filter(item => item.width > 0 && item.height > 0)
+                .map(item => ({ left: item.left, right: item.right, top: item.top, bottom: item.bottom })),
+              scrollport: {
+                left: rect.left + table.clientLeft,
+                right: rect.left + table.clientLeft + table.clientWidth,
+                top: rect.top + table.clientTop,
+                bottom: rect.top + table.clientTop + table.clientHeight,
+              },
+            }
+          })
+          expect(emptyBounds.textRects.length).toBeGreaterThan(0)
+          for (const rect of emptyBounds.textRects) {
+            expect(rect.left).toBeGreaterThanOrEqual(emptyBounds.scrollport.left)
+            expect(rect.right).toBeLessThanOrEqual(emptyBounds.scrollport.right)
+            expect(rect.top).toBeGreaterThanOrEqual(emptyBounds.scrollport.top)
+            expect(rect.bottom).toBeLessThanOrEqual(emptyBounds.scrollport.bottom)
+          }
+        }
+
         // 実際の文字の行位置を測り、要素の高さだけでは見逃す日本語の縦折返しを検出する。
         const measurement = await page.evaluate(() => {
           const lineCount = (element: Element) => {
