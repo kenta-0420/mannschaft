@@ -1846,6 +1846,7 @@
     }
   },
   "common": {
+    "back": "Volver",
     "cancel": "Cancelar",
     "search": "Buscar",
     "edit": "Editar",
