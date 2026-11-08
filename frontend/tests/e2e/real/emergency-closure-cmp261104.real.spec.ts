@@ -45,8 +45,8 @@ function loadLocale(lang: 'ja' | 'de'): { rsv: Dict; common: Dict } {
   const dir = join(process.cwd(), 'app/locales', lang)
   return {
     // ロケールファイルには BOM 付きのものがある
-    rsv: JSON.parse(readFileSync(join(dir, 'reservation.json'), 'utf8').replace(/^FEFF/, '')) as Dict,
-    common: JSON.parse(readFileSync(join(dir, 'common.json'), 'utf8').replace(/^FEFF/, '')) as Dict,
+    rsv: JSON.parse(readFileSync(join(dir, 'reservation.json'), 'utf8').replace(/^\uFEFF/, '')) as Dict,
+    common: JSON.parse(readFileSync(join(dir, 'common.json'), 'utf8').replace(/^\uFEFF/, '')) as Dict,
   }
 }
 function pick(d: Dict, path: string): string {
