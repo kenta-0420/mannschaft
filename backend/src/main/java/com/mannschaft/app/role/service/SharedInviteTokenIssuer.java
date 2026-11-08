@@ -52,6 +52,6 @@ public class SharedInviteTokenIssuer {
     /** 発行後の親閉鎖検出時は監査可能なtoken行を残し、既失効日時を上書きしない。 */
     @Transactional
     public void revokeForCompensation(Long id) {
-        tokens.findByIdForUpdate(id).ifPresent(InviteTokenEntity::revoke);
+        tokens.lockFreshById(id).ifPresent(InviteTokenEntity::revoke);
     }
 }

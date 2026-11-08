@@ -1,28 +1,17 @@
 package com.mannschaft.app.role.service;
 
-import com.mannschaft.app.auth.AuditEventType;
-import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.repository.InviteTokenRepository;
 import com.mannschaft.app.role.repository.RoleRepository;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.RoleErrorCode;
-import com.mannschaft.app.scopefolder.ScopeFolderErrorCode;
-import com.mannschaft.app.scopefolder.entity.AssignedVia;
-import com.mannschaft.app.scopefolder.entity.MyScopeFolderEntity;
-import com.mannschaft.app.scopefolder.repository.MyScopeFolderRepository;
-import com.mannschaft.app.scopefolder.service.MyScopeFolderService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.provisioning.service.ProvisioningGate;
-import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.common.qr.BrandedQrImageWriter;
 import org.springframework.beans.factory.annotation.Value;
-import com.mannschaft.app.organization.entity.OrganizationEntity;
-import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.role.dto.CreateInviteTokenRequest;
 import com.mannschaft.app.role.dto.InvitePreviewResponse;
 import com.mannschaft.app.common.token.SecretTokenVault;
@@ -30,14 +19,10 @@ import com.mannschaft.app.role.dto.BetaInviteScope;
 import com.mannschaft.app.role.dto.InviteTokenIssuedResponse;
 import com.mannschaft.app.role.dto.InviteTokenSummary;
 import com.mannschaft.app.role.dto.SharedInviteTokenCommand;
-import com.mannschaft.app.team.TeamErrorCode;
-import com.mannschaft.app.team.entity.TeamEntity;
-import com.mannschaft.app.team.repository.TeamRepository;
-import com.mannschaft.app.team.repository.TeamBlockRepository;
-import com.mannschaft.app.organization.repository.OrganizationBlockRepository;
+import com.mannschaft.app.organization.service.OrganizationInviteQueryService;
+import com.mannschaft.app.team.service.TeamInviteQueryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Propagation;
@@ -47,7 +32,11 @@ import java.util.Base64;
 import java.util.List;
 
 /**
- * 招待トークンサービス。トークン作成・プレビュー・参加・失効を管理する。
+ * 招待トークンサービス。トークン作成・プレビュー・失効を管理する。
+ *
+ * <p>招待の承諾・辞退は {@link InviteAcceptanceFacade} へ移した（CMP-260826-1457。承諾・辞退を本クラスの
+ * 単一トランザクションで行うと user ロック、ブロック判定、memberships、フォルダ、監査にトランザクションが
+ * 越境していたため）。</p>
  */
 @Service
 @Transactional(readOnly = true)
@@ -62,29 +51,16 @@ public class InviteService {
     private static final int QR_MIN_SIZE = 64;
     private static final int QR_MAX_SIZE = 1024;
 
-    /** F04.12 特権ロール（承諾型招待では付与不可・join 側の保険ガード用）。 */
-    private static final java.util.Set<String> PRIVILEGED_INVITE_ROLES = java.util.Set.of("ADMIN", "DEPUTY_ADMIN");
-
     private final InviteTokenRepository inviteTokenRepository;
     private final RoleRepository roleRepository;
-    private final UserRoleRepository userRoleRepository;
-    private final OrganizationRepository organizationRepository;
-    private final TeamRepository teamRepository;
-    private final TeamBlockRepository teamBlockRepository;
-    private final OrganizationBlockRepository organizationBlockRepository;
-    private final ApplicationEventPublisher eventPublisher;
-    private final MyScopeFolderService myScopeFolderService;
-    private final MyScopeFolderRepository myScopeFolderRepository;
-    private final MembershipGrantService membershipGrantService;
     private final BrandedQrImageWriter brandedQrImageWriter;
     private final AccessControlService accessControlService;
-    private final UserRowLockService userRowLockService;
-    private final AuditLogService auditLogService;
     private final ProvisioningGate provisioningGate;
     private final InviteScopeStateService scopeStates;
     private final SharedInviteTokenIssuer sharedTokenIssuer;
-    /** 状態を持たない金庫。注入にすると既存のコンストラクタ署名（ArchUnit 凍結行）が変わるため、初期化済みフィールドで持つ。 */
-    private final SecretTokenVault vault = new SecretTokenVault();
+    private final TeamInviteQueryService teamInviteQueryService;
+    private final OrganizationInviteQueryService organizationInviteQueryService;
+    private final SecretTokenVault vault;
 
     /**
      * 招待トークンを作成する。
@@ -165,7 +141,7 @@ public class InviteService {
      */
     @Transactional
     public void revokeInviteToken(Long tokenId, Long actorUserId) {
-        InviteTokenEntity token = inviteTokenRepository.findByIdForUpdate(tokenId)
+        InviteTokenEntity token = inviteTokenRepository.lockFreshById(tokenId)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
 
         // 束1 BOLA 根治: トークンが属するスコープ（team/org）を entity から導出し、
@@ -174,72 +150,6 @@ public class InviteService {
 
         token.revoke();
         log.info("招待トークン失効完了: tokenId={}", tokenId);
-    }
-
-    /**
-     * 承諾型招待を辞退する（F04.12）。
-     *
-     * <p>宛先本人のみ。{@code revoked_at = NOW()} を立て（カードは REVOKED 表示に導出）、
-     * audit_logs に理由 {@code DECLINED} を記録する。宛先不一致は 403（{@link RoleErrorCode#ROLE_009}）。</p>
-     *
-     * @param tokenStr トークン文字列
-     * @param userId   実行ユーザー ID（宛先本人）
-     */
-    @Transactional
-    public void declineInvite(String tokenStr, Long userId) {
-        InviteTokenEntity token = inviteTokenRepository.findByTokenHashForUpdate(vault.hash(tokenStr))
-                .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
-
-        Long targetUserId = token.getTargetUserId();
-        // 宛先本人のみ辞退可（宛先なし共有リンク型は辞退の概念を持たない）。宛先不一致は 403 ROLE_009（IDOR 防止）。
-        if (targetUserId == null || !targetUserId.equals(userId)) {
-            throw new BusinessException(RoleErrorCode.ROLE_009, org.springframework.http.HttpStatus.FORBIDDEN);
-        }
-        declineLocked(token, userId);
-    }
-
-    /**
-     * 承諾型招待を招待 ID で辞退する（CMP-260826-1457）。平文トークンを持ち回らないための入口。
-     *
-     * <p>ID は推測できるため、宛先本人でない・共有リンク型・存在しない ID は区別せず
-     * いずれも 404 {@link RoleErrorCode#ROLE_002} にする（存在オラクルを作らない）。</p>
-     */
-    @Transactional
-    public void declineInvitationById(Long tokenId, Long userId) {
-        InviteTokenEntity token = inviteTokenRepository.findByIdForUpdate(tokenId)
-                .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
-        if (token.getTargetUserId() == null || !token.getTargetUserId().equals(userId)) {
-            throw new BusinessException(RoleErrorCode.ROLE_002);
-        }
-        declineLocked(token, userId);
-    }
-
-    private void declineLocked(InviteTokenEntity token, Long userId) {
-        // 既に失効済み（辞退/取消/補償）なら冪等に扱う（二重 accept を防ぐ revoked_at は既に立っている）。
-        if (token.getRevokedAt() != null) {
-            return;
-        }
-
-        token.revoke(); // revoked_at = NOW()（永続・REVOKED。理由 DECLINED は audit で保持する想定）
-        recordMembershipInviteAudit(token, userId, "DECLINED");
-        log.info("承諾型招待を辞退（DECLINED）: tokenId={}, userId={}", token.getId(), userId);
-    }
-
-    private void recordMembershipInviteAudit(InviteTokenEntity token, Long actorUserId, String reason) {
-        boolean team = token.getTeamId() != null;
-        AuditEventType event = team
-                ? AuditEventType.TEAM_MEMBERSHIP_INVITE_DECLINED
-                : AuditEventType.ORGANIZATION_MEMBERSHIP_INVITE_DECLINED;
-        auditLogService.record(
-                event.name(),
-                actorUserId,
-                token.getTargetUserId(),
-                token.getTeamId(),
-                token.getOrganizationId(),
-                null,
-                null,
-                null,
-                "{\"token_id\":" + token.getId() + ",\"reason\":\"" + reason + "\"}");
     }
 
     /**
@@ -261,178 +171,18 @@ public class InviteService {
 
         String scopeType = resolveScopeType(token);
         Long scopeId = resolveScopeId(token);
-        String targetName = resolveTargetName(scopeId, scopeType);
+        String targetName = switch (scopeType) {
+            // team / organization の Repository には触れず、各ドメインの読み取り窓口へ委譲する
+            case "ORGANIZATION" -> organizationInviteQueryService.findName(scopeId);
+            case "TEAM" -> teamInviteQueryService.findName(scopeId);
+            default -> null;
+        };
         String roleName = roleRepository.findById(token.getRoleId())
                 .map(RoleEntity::getName).orElse(null);
 
         return ApiResponse.of(new InvitePreviewResponse(
                 targetName, scopeType, roleName, token.isValid()
                         && scopeStates.isCurrent(scopeType, scopeId, token.getScopeClosureGeneration())));
-    }
-
-    /**
-     * 招待トークンを使用してスコープに参加する（後方互換版）。
-     * F15.3 で folderId 受領版が追加されたが、folderId=null と等価。
-     */
-    @Transactional
-    public void joinByInvite(String tokenStr, Long userId) {
-        joinByInvite(tokenStr, userId, null);
-    }
-
-    /**
-     * 招待トークンを使用してスコープに参加する（F15.3 §5.1.1: folderId 受領版）。
-     * FOR UPDATEでロック取得し、ブロック・重複・有効性をチェック。
-     *
-     * <p>参加成功後、{@code folderId} 指定時はそのフォルダへ配置 (assignedVia=INVITE)、
-     * 未指定時は「未分類」フォルダへ自動配置 (assignedVia=DEFAULT) する。</p>
-     *
-     * <p>{@code folderId} の scope_type と招待 scope が不一致の場合、参加自体は完了するが
-     * フォルダ配置で {@link ScopeFolderErrorCode#SCOPE_FOLDER_TYPE_MISMATCH} が発生する。
-     * 厳密にはチェックを参加前に行うことで「参加せずエラー返却」も可能だが、設計書 §5.1.1 は
-     * 「参加→配置失敗時にエラー」の振る舞いを許容するため、現実装は本流に従う。</p>
-     */
-    @Transactional
-    // TODO: RoleドメインとOrganizationドメイン・Teamドメイン・ScopeFolderドメインをまたいでいる。
-    //       将来はInviteJoinedEventで分離予定
-    public void joinByInvite(String tokenStr, Long userId, Long folderId) {
-        // user行を先にlockし、同一Tx内でtokenをFOR UPDATEするcanonical順序。
-        lockActiveUser(userId);
-        // FOR UPDATEでロック取得（同時参加の排他制御）。平文は金庫でハッシュ化して引く。
-        InviteTokenEntity token = inviteTokenRepository.findByTokenHashForUpdate(vault.hash(tokenStr))
-                .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
-        joinLocked(token, userId, folderId);
-    }
-
-    /**
-     * 承諾型招待を招待 ID で承諾して参加する（CMP-260826-1457）。平文トークンを持ち回らないための入口。
-     *
-     * <p>宛先本人でない・共有リンク型・存在しない ID は、区別せずいずれも 404 {@link RoleErrorCode#ROLE_002}
-     * （ID は推測できるため存在オラクルを作らない）。以降の有効性判定はトークン入口と同じ {@link #joinLocked}。</p>
-     */
-    @Transactional
-    public void acceptInvitationById(Long tokenId, Long userId, Long folderId) {
-        lockActiveUser(userId);
-        InviteTokenEntity token = inviteTokenRepository.findByIdForUpdate(tokenId)
-                .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
-        if (token.getTargetUserId() == null || !token.getTargetUserId().equals(userId)) {
-            throw new BusinessException(RoleErrorCode.ROLE_002);
-        }
-        joinLocked(token, userId, folderId);
-    }
-
-    private void lockActiveUser(Long userId) {
-        if (userRowLockService.lock(userId) != UserRowLockService.UserState.ACTIVE) {
-            // inactive/absent userの存在をtoken検証前にoracle化させない。
-            throw new BusinessException(RoleErrorCode.ROLE_002);
-        }
-    }
-
-    /** user 行と token 行をロックした状態で、両入口が共通で行う検証・付与。 */
-    private void joinLocked(InviteTokenEntity token, Long userId, Long folderId) {
-        // 有効性チェック
-        if (!token.isValid()) {
-            if (token.getMaxUses() != null && token.getUsedCount() >= token.getMaxUses()) {
-                throw new BusinessException(RoleErrorCode.ROLE_003);
-            }
-            throw new BusinessException(RoleErrorCode.ROLE_002);
-        }
-
-        // F04.12 宛先照合（IDOR 防止）: 宛先付きトークン（target_user_id 非 NULL）は指名相手のみ承諾可。
-        // 不一致は 403 ROLE_009。NULL（共有リンク型）は従来どおり照合スキップ（既存挙動維持）。
-        Long tokenTargetUserId = token.getTargetUserId();
-        if (tokenTargetUserId != null && !tokenTargetUserId.equals(userId)) {
-            throw new BusinessException(RoleErrorCode.ROLE_009, org.springframework.http.HttpStatus.FORBIDDEN);
-        }
-
-        // F04.12 特権ロール付与の保険ガード（C-1）: 発行入口で弾いているが、既存の join は token.roleId を
-        // 無検証で user_roles に INSERT するため、join 側にも特権ロール（ADMIN/DEPUTY_ADMIN）付与拒否の保険を置く。
-        RoleEntity grantRole = roleRepository.findById(token.getRoleId()).orElse(null);
-        if (grantRole != null && PRIVILEGED_INVITE_ROLES.contains(grantRole.getName())) {
-            throw new BusinessException(RoleErrorCode.ROLE_009, org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY);
-        }
-
-        String scopeType = resolveScopeType(token);
-        Long scopeId = resolveScopeId(token);
-
-        // 判定点は親専属のfresh primary nonlocking read。重なる閉鎖には受諾先行が成立しうる。
-        // 親共有lockをここで取ると既存force-unarchiveのscope→user順と循環するため取得しない。
-        if (!scopeStates.isCurrent(scopeType, scopeId, token.getScopeClosureGeneration())) {
-            throw new BusinessException(RoleErrorCode.ROLE_002);
-        }
-
-        // ブロックチェック
-        checkNotBlocked(userId, scopeId, scopeType);
-
-        // 重複参加チェック（CMP-027: user_roles ∪ memberships の在籍で判定。
-        // ORG 側も exists 版へ揃え、memberships 専属の素メンバーの再参加を正しく検出する）
-        boolean alreadyJoined = "TEAM".equals(scopeType)
-                ? userRoleRepository.existsByUserIdAndTeamId(userId, scopeId)
-                : userRoleRepository.existsByUserIdAndOrganizationId(userId, scopeId);
-        if (alreadyJoined) {
-            // 既メンバーの二重参加はリソース競合として 409（既存の共有リンク型 join・F04.12 承諾型 join 共通）。
-            throw new BusinessException(TeamErrorCode.TEAM_003, org.springframework.http.HttpStatus.CONFLICT);
-        }
-
-        // ロール割当 ＋ 入会（role ドメイン user_roles ＋ membership ドメイン memberships）。
-        // 認可（AccessControlService.isMember）は memberships を真実の源とするため、
-        // user_roles だけでは招待参加者が当該スコープから 403 で締め出される構造的欠陥を防ぐ。
-        // 招待トークンが配布するのは常に権限ロール（user_roles）であり SUPPORTER は配布しないため、
-        // membership の role_kind は MEMBER 固定とする（在籍有無のみを表す）。
-        // 参加申請承認（柱③-A・CMP-260901-1538）と共通の付与経路（重複実装しない）。
-        membershipGrantService.grantRole(scopeType, scopeId, userId, token.getRoleId(), token.getCreatedBy(), "INVITE_TOKEN");
-
-        // 使用回数をインクリメント
-        token.incrementUsedCount();
-
-        // 監査ログ用イベント発行（招待者 = トークン作成者、参加者 = userId）
-        if ("TEAM".equals(scopeType)) {
-            eventPublisher.publishEvent(new com.mannschaft.app.team.event.TeamMemberAuditEvent(
-                    token.getCreatedBy(), userId, scopeId,
-                    com.mannschaft.app.team.event.TeamMemberAuditEvent.SubType.INVITED));
-        } else {
-            eventPublisher.publishEvent(new com.mannschaft.app.organization.event.OrganizationMemberAuditEvent(
-                    token.getCreatedBy(), userId, scopeId,
-                    com.mannschaft.app.organization.event.OrganizationMemberAuditEvent.SubType.JOINED));
-        }
-
-        log.info("招待トークンによる参加完了: userId={}, scopeType={}, scopeId={}",
-                userId, scopeType, scopeId);
-
-        // F15.3 §5.1.1: マイスコープフォルダ配置
-        assignToFolder(userId, scopeType, scopeId, folderId);
-    }
-
-    /**
-     * 招待参加後のフォルダ配置を行う（F15.3 §5.1.1）。
-     *
-     * <p>{@code folderId} 指定時は当該フォルダへ (INVITE)、未指定時は未分類フォルダへ (DEFAULT) 配置。
-     * フォルダの scope_type が招待 scope と不一致なら {@code SCOPE_FOLDER_TYPE_MISMATCH} を投げる。</p>
-     */
-    private void assignToFolder(Long userId, String scopeType, Long scopeId, Long folderId) {
-        com.mannschaft.app.scopefolder.entity.enums.ScopeType folderScope = "TEAM".equals(scopeType)
-                ? com.mannschaft.app.scopefolder.entity.enums.ScopeType.TEAM
-                : com.mannschaft.app.scopefolder.entity.enums.ScopeType.ORGANIZATION;
-
-        if (folderId != null) {
-            // フォルダの存在と scope_type 整合チェック（IDOR 含む）
-            MyScopeFolderEntity folder = myScopeFolderRepository
-                    .findByIdAndUserIdAndDeletedAtIsNull(folderId, userId)
-                    .orElseThrow(() -> new com.mannschaft.app.common.BusinessException(
-                            ScopeFolderErrorCode.SCOPE_FOLDER_NOT_FOUND));
-            if (folder.getScopeType() != folderScope) {
-                throw new com.mannschaft.app.common.BusinessException(
-                        ScopeFolderErrorCode.SCOPE_FOLDER_TYPE_MISMATCH);
-            }
-            myScopeFolderService.addItemWithAssignedVia(userId, folderId, scopeId, AssignedVia.INVITE);
-            log.info("招待時フォルダ配置(INVITE): userId={}, folderId={}, scopeId={}", userId, folderId, scopeId);
-        } else {
-            MyScopeFolderEntity defaultFolder =
-                    myScopeFolderService.findOrCreateDefaultInternal(userId, folderScope);
-            myScopeFolderService.addItemWithAssignedVia(
-                    userId, defaultFolder.getId(), scopeId, AssignedVia.DEFAULT);
-            log.info("招待時フォルダ配置(DEFAULT): userId={}, defaultFolderId={}, scopeId={}",
-                    userId, defaultFolder.getId(), scopeId);
-        }
     }
 
     // ========================================
@@ -473,33 +223,6 @@ public class InviteService {
             return token.getTeamId();
         }
         return token.getOrganizationId();
-    }
-
-    /**
-     * スコープの名前を解決する。
-     */
-    private String resolveTargetName(Long scopeId, String scopeType) {
-        return switch (scopeType) {
-            case "ORGANIZATION" -> organizationRepository.findById(scopeId)
-                    .map(OrganizationEntity::getName).orElse(null);
-            case "TEAM" -> teamRepository.findById(scopeId)
-                    .map(TeamEntity::getName).orElse(null);
-            default -> null;
-        };
-    }
-
-    /**
-     * ブロックされていないかチェックする。
-     */
-    private void checkNotBlocked(Long userId, Long scopeId, String scopeType) {
-        boolean blocked = switch (scopeType) {
-            case "TEAM" -> teamBlockRepository.existsByTeamIdAndUserId(scopeId, userId);
-            case "ORGANIZATION" -> organizationBlockRepository.existsByOrganizationIdAndUserId(scopeId, userId);
-            default -> false;
-        };
-        if (blocked) {
-            throw new BusinessException(TeamErrorCode.TEAM_004);
-        }
     }
 
     /**

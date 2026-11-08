@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { MilestoneCompletionMode, MilestoneResponse } from '~/types/project'
 import type { TodoResponse } from '~/types/todo'
+import { normalizeProjectRelatedTodo } from '~/utils/projectRelatedTodo'
 
 const props = withDefaults(
   defineProps<{
@@ -62,6 +63,10 @@ watch(
   { immediate: true, deep: true },
 )
 
+function statusOf(todo: TodoResponse) {
+  return normalizeProjectRelatedTodo(todo)
+}
+
 function todosFor(milestoneId: number): TodoResponse[] {
   return localTodosByMilestone.value[milestoneId] ?? []
 }
@@ -75,7 +80,7 @@ const dropTargetIndex = ref<number | null>(null)
 function isDraggable(ms: MilestoneResponse): boolean {
   // MEMBER は不可、ロック中マイルストーン配下も不可
   if (!props.canEdit) return false
-  if (ms.isLocked) return false
+  if (ms.locked) return false
   return true
 }
 
@@ -192,17 +197,6 @@ async function onDrop(ms: MilestoneResponse, toIndex: number) {
     }
   }
 }
-
-function todoStatusSeverity(status: TodoResponse['status'] | undefined): 'secondary' | 'info' | 'success' {
-  switch (status) {
-    case 'COMPLETED':
-      return 'success'
-    case 'IN_PROGRESS':
-      return 'info'
-    default:
-      return 'secondary'
-  }
-}
 </script>
 
 <template>
@@ -223,14 +217,14 @@ function todoStatusSeverity(status: TodoResponse['status'] | undefined): 'second
         v-for="ms in milestones"
         :key="ms.id"
         class="rounded-xl border border-surface-300 bg-surface-0 p-3 dark:border-surface-600 dark:bg-surface-800"
-        :class="ms.isLocked ? 'opacity-60' : ''"
+        :class="ms.locked ? 'opacity-60' : ''"
       >
         <div class="flex items-center justify-between">
           <div class="flex flex-1 items-center gap-3">
             <Checkbox
               :model-value="ms.completed"
               :binary="true"
-              :disabled="ms.isLocked"
+              :disabled="ms.locked"
               @update:model-value="emit('toggleComplete', ms)"
             />
             <div class="flex-1">
@@ -239,7 +233,7 @@ function todoStatusSeverity(status: TodoResponse['status'] | undefined): 'second
                   {{ ms.title }}
                 </p>
                 <LockedTodoBadge
-                  :locked="ms.isLocked"
+                  :locked="ms.locked"
                   :locked-by-title="ms.lockedByMilestoneTitle"
                 />
                 <Tag
@@ -282,7 +276,7 @@ function todoStatusSeverity(status: TodoResponse['status'] | undefined): 'second
           </div>
           <div v-if="canEdit" class="flex gap-1">
             <Button
-              v-if="ms.isLocked && canForceUnlock"
+              v-if="ms.locked && canForceUnlock"
               icon="pi pi-unlock"
               text
               rounded
@@ -363,14 +357,13 @@ function todoStatusSeverity(status: TodoResponse['status'] | undefined): 'second
             >
               <i class="pi pi-lock text-sm" />
             </span>
-            <Tag
-              :severity="todoStatusSeverity(todo.status)"
-              :value="todo.status"
-              class="text-xs"
+            <TodoStatusLabelBadge
+              :label="statusOf(todo).statusLabel"
+              :fallback-bucket="statusOf(todo).statusBucket"
             />
             <span
               class="flex-1 truncate text-sm"
-              :class="todo.status === 'COMPLETED' ? 'text-surface-400 line-through' : ''"
+              :class="statusOf(todo).isCompleted ? 'text-surface-400 line-through' : ''"
             >
               {{ todo.content?.title }}
             </span>

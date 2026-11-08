@@ -1641,10 +1641,11 @@ class FlywayFromScratchMigrationTest {
     //   }
 
     /**
-     * P1（系統1）の移行直前の版。origin/main の最大版（W0 #4262 マージ後）で、invite_tokens.token が平文のまま残っている。
-     * P1 の移行 migration はこれより後の版になる（採番はマージ時点の最大 major+1）。
+     * P1（系統1）の移行直前の版。origin/main の最大版（#4371 招待承諾の分離で入った invite_token_claims 作成）で、
+     * invite_tokens.token が平文のまま残っている。P1 の移行 migration（V258）はこれより後の版になる
+     * （採番はマージ時点の最大 major+1）。
      */
-    private static final String INVITE_TOKENS_PRE_HASH_TARGET = "256.20261103144645";
+    private static final String INVITE_TOKENS_PRE_HASH_TARGET = "257.20261107130657";
 
     @Test
     @Order(28)

@@ -4,6 +4,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.role.dto.InviteScopeState;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
 import com.mannschaft.app.role.service.InviteScopeStatePort;
+import com.mannschaft.app.role.service.InviteAcceptanceFacade;
 import com.mannschaft.app.role.service.InviteService;
 import com.mannschaft.app.role.service.InviteTokenClosureCleanupRunner;
 import com.mannschaft.app.role.service.MembershipInviteTokenIssuer;
@@ -45,6 +46,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class InviteGenerationConsistencyIT extends InviteGenerationItSupport {
     @Autowired private List<InviteScopeStatePort> ports;
     @Autowired private InviteService invites;
+    @Autowired private InviteAcceptanceFacade acceptance;
     @Autowired private InviteTokenClosureCleanupRunner cleanup;
     @Autowired private ConfigurableApplicationContext context;
     @Autowired private MembershipInviteTokenIssuer tokenIssuer;
@@ -128,7 +130,7 @@ class InviteGenerationConsistencyIT extends InviteGenerationItSupport {
         ApplicationEventMulticaster multicaster = context.getBean("applicationEventMulticaster", ApplicationEventMulticaster.class);
         multicaster.addApplicationListener(listener);
         try {
-            invites.joinByInvite(plaintext(token), target);
+            acceptance.joinByInvite(plaintext(token), target);
         } finally {
             multicaster.removeApplicationListener(listener);
         }
@@ -203,7 +205,7 @@ class InviteGenerationConsistencyIT extends InviteGenerationItSupport {
                         Long.class, scope.id())).isZero();
                 snapshotEstablished.countDown();
                 await(closureCommitted);
-                invites.joinByInvite(plaintext(token), userId);
+                acceptance.joinByInvite(plaintext(token), userId);
             }));
             assertThat(snapshotEstablished.await(15, TimeUnit.SECONDS)).isTrue();
             jdbc.update("UPDATE " + scope.table()

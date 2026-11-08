@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ChatChannelResponse } from '~/types/chat'
+import { useChatReadSync } from '~/composables/chat/useChatReadSync'
 
 const props = defineProps<{
   teamId?: string
@@ -15,6 +16,8 @@ const emit = defineEmits<{
 
 const { getChannels } = useChatApi()
 const { showError } = useNotification()
+const { t } = useI18n()
+const { onChannelRead } = useChatReadSync()
 
 const channels = ref<ChatChannelResponse[]>([])
 const loading = ref(false)
@@ -38,7 +41,7 @@ async function loadChannels() {
     channels.value = res.data
     emit('loaded', channels.value.length)
   } catch {
-    showError('Zimmer一覧の取得に失敗しました')
+    showError(t('chat.channelList.loadFailed'))
     emit('loaded', 0)
   } finally {
     loading.value = false
@@ -76,6 +79,16 @@ function getPreview(ch: ChatChannelResponse): string | null {
 
 onMounted(() => loadChannels())
 
+/**
+ * 既読に成功したチャンネルの未読バッジを消す（CMP-261105-1507）。
+ * 一覧は onMounted で一度しか取得しないため、既読の結果をここで反映しないとバッジが残り続ける。
+ */
+const offChannelRead = onChannelRead((channelId) => {
+  const ch = channels.value.find((c) => c.id === channelId)
+  if (ch?.viewer) ch.viewer.unreadCount = 0
+})
+onUnmounted(() => offChannelRead())
+
 async function refreshAndSelect(channelId: number) {
   await loadChannels()
   const ch = channels.value.find((c) => c.id === channelId)
@@ -88,11 +101,11 @@ defineExpose({ refresh: loadChannels, refreshAndSelect })
 <template>
   <div class="flex h-full flex-col">
     <div class="flex items-center justify-between border-b border-surface-200 dark:border-surface-700 px-3 py-2">
-      <span class="text-sm font-semibold">チャット</span>
+      <span class="text-sm font-semibold">{{ $t('chat.channelList.title') }}</span>
       <Button
-        v-tooltip.right="'新しい会話'"
+        v-tooltip.right="$t('chat.channelList.newConversation')"
         icon="pi pi-plus"
-        aria-label="チャンネル追加"
+        :aria-label="$t('chat.channelList.addChannel')"
         class="!min-h-11 !min-w-11 shrink-0"
         text
         rounded
@@ -110,13 +123,14 @@ defineExpose({ refresh: loadChannels, refreshAndSelect })
         <!-- Kabine(DM) セクション -->
         <div class="border-b border-surface-200 dark:border-surface-700">
           <div class="flex items-center justify-between p-3">
-            <h2 class="text-base font-semibold"><i class="pi pi-user mr-1 text-sm" />Kabine(DM)</h2>
+            <h2 class="text-base font-semibold"><i class="pi pi-user mr-1 text-sm" />{{ $t('chat.channelList.dmSection') }}</h2>
           </div>
           <div
             v-if="dmChannels.length === 0"
             class="px-4 pb-3 text-center text-sm text-surface-400"
+            data-testid="chat-channel-list-no-dm"
           >
-            DMはありません
+            {{ $t('chat.channelList.noDm') }}
           </div>
           <button
             v-for="ch in dmChannels"
@@ -135,7 +149,12 @@ defineExpose({ refresh: loadChannels, refreshAndSelect })
                 >
                   {{ getDisplayName(ch) }}
                 </span>
-                <Badge v-if="getUnread(ch) > 0" :value="getUnread(ch)" severity="danger" />
+                <Badge
+                  v-if="getUnread(ch) > 0"
+                  :value="getUnread(ch)"
+                  severity="danger"
+                  data-testid="chat-channel-unread"
+                />
               </div>
               <p v-if="getPreview(ch)" class="truncate text-xs text-surface-400">
                 {{ getPreview(ch) }}
@@ -148,14 +167,15 @@ defineExpose({ refresh: loadChannels, refreshAndSelect })
         <div>
           <div class="p-3">
             <h2 class="text-base font-semibold">
-              <i class="pi pi-hashtag mr-1 text-sm" />Zimmer(部屋)
+              <i class="pi pi-hashtag mr-1 text-sm" />{{ $t('chat.channelList.roomSection') }}
             </h2>
           </div>
           <div
             v-if="roomChannels.length === 0"
             class="px-4 pb-3 text-center text-sm text-surface-400"
+            data-testid="chat-channel-list-no-room"
           >
-            Zimmer(部屋)がありません
+            {{ $t('chat.channelList.noRoom') }}
           </div>
           <button
             v-for="ch in roomChannels"
@@ -174,7 +194,12 @@ defineExpose({ refresh: loadChannels, refreshAndSelect })
                 >
                   {{ getDisplayName(ch) }}
                 </span>
-                <Badge v-if="getUnread(ch) > 0" :value="getUnread(ch)" severity="danger" />
+                <Badge
+                  v-if="getUnread(ch) > 0"
+                  :value="getUnread(ch)"
+                  severity="danger"
+                  data-testid="chat-channel-unread"
+                />
               </div>
               <p v-if="getPreview(ch)" class="truncate text-xs text-surface-400">
                 {{ getPreview(ch) }}

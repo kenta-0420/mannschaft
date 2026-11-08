@@ -5,6 +5,7 @@ import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.role.service.InviteAcceptanceFacade;
 import com.mannschaft.app.role.service.InviteService;
 import com.mannschaft.app.role.service.MembershipInviteService;
 import org.junit.jupiter.api.DisplayName;
@@ -23,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class InviteGenerationReadPathsIT extends InviteGenerationItSupport {
     @Autowired private InviteService invites;
+    @Autowired private InviteAcceptanceFacade acceptance;
     @Autowired private MembershipInviteService membershipInvites;
     @Autowired private MembershipRepository memberships;
 
@@ -91,7 +93,7 @@ class InviteGenerationReadPathsIT extends InviteGenerationItSupport {
         }
 
         assertThat(invites.previewInvite(plaintext(token)).getData().isValid()).isFalse();
-        assertThatThrownBy(() -> invites.joinByInvite(plaintext(token), target)).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> acceptance.joinByInvite(plaintext(token), target)).isInstanceOf(BusinessException.class);
         assertThat(tokens.findById(token.getId()).orElseThrow().getUsedCount()).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM memberships WHERE user_id = ?", Long.class, target)).isZero();
     }
@@ -106,7 +108,7 @@ class InviteGenerationReadPathsIT extends InviteGenerationItSupport {
         var current = token(scope, 1);
 
         assertThat(invites.previewInvite(plaintext(current)).getData().isValid()).isTrue();
-        invites.joinByInvite(plaintext(current), target);
+        acceptance.joinByInvite(plaintext(current), target);
         assertThat(tokens.findById(current.getId()).orElseThrow().getUsedCount()).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM memberships WHERE user_id = ? AND left_at IS NULL", Long.class, target)).isEqualTo(1);
     }

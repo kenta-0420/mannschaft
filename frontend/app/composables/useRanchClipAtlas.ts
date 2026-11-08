@@ -36,12 +36,24 @@ export function paintRanchClip(
   if (entry.habitat === 'LAND') {
     context.fillStyle = '#c4cda8'
     context.beginPath()
-    context.ellipse(54, 97, 22, 1.5, 0, 0, Math.PI * 2)
+    const shadow = fallback ? entry.clips.idle.shadowByFrame?.[0] : clip?.shadowByFrame?.[frame]
+    context.ellipse(
+      shadow ? shadow.x + 8 : 54,
+      shadow ? shadow.y + 8 - 0.25 : 97,
+      shadow?.radius ?? 22,
+      1.5,
+      0,
+      0,
+      Math.PI * 2,
+    )
     context.fill()
   }
   context.save()
   if (!fallback && action === 'happy' && entry.habitat === 'SEA') {
-    const angles = [0, -4, -7, -4, 0, 4, 7, 4, 0, -3, 0, 0, 0]
+    const angles =
+      entry.sourceSpecies === 'plesiosaurus' || entry.catalogVersion !== '4'
+        ? [0, -4, -7, -4, 0, 4, 7, 4, 0, -3, 0, 0, 0]
+        : [0, -3, -5, -3, 0, 3, 5, 3, 0, -2, 0, 0, 0]
     const offsets = [0, -1, -2, -1, 0, 1, 2, 1, 0, -1, 0, 0, 0]
     const step = Math.min(11, Math.floor(phase * 12))
     const mix = entry.renderStyle === 'PIXEL' ? 0 : phase * 12 - step

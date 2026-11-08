@@ -1,5 +1,6 @@
 package com.mannschaft.app.role.controller;
 
+import com.mannschaft.app.role.service.InviteAcceptanceFacade;
 import com.mannschaft.app.role.service.InviteService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
@@ -34,6 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class InviteController {
 
     private final InviteService inviteService;
+    private final InviteAcceptanceFacade inviteAcceptanceFacade;
 
 
     /**
@@ -80,7 +82,7 @@ public class InviteController {
      * 未指定時はサーバー側で「未分類」フォルダへ自動配置される。
      * ボディ全体も任意（後方互換）。</p>
      */
-    @SelfScopedEndpoint("InviteService#joinByInvite が参加者として "
+    @SelfScopedEndpoint("InviteAcceptanceFacade#joinByInvite が参加者として "
             + "SecurityUtils.getCurrentUserId() のみを使用し、招待トークン自体が対象スコープを決める "
             + "capability であるため他人の識別子を指定する余地が無い")
     @PostMapping("/{token}/join")
@@ -91,7 +93,7 @@ public class InviteController {
             @PathVariable String token,
             @RequestBody(required = false) InviteJoinRequest req) {
         Long folderId = req != null ? req.folderId() : null;
-        inviteService.joinByInvite(token, SecurityUtils.getCurrentUserId(), folderId);
+        inviteAcceptanceFacade.joinByInvite(token, SecurityUtils.getCurrentUserId(), folderId);
         return ResponseEntity.ok().build();
     }
 
@@ -109,7 +111,7 @@ public class InviteController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "辞退成功")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> declineInvite(@PathVariable String token) {
-        inviteService.declineInvite(token, SecurityUtils.getCurrentUserId());
+        inviteAcceptanceFacade.declineInvite(token, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok().build();
     }
 
@@ -119,7 +121,7 @@ public class InviteController {
      * <p>宛先指定型の招待は平文トークンを持ち回らない。宛先本人でない・共有リンク型・存在しない ID は
      * 区別せずいずれも 404 ROLE_002（ID は推測できるため存在オラクルを作らない）。</p>
      */
-    @SelfScopedEndpoint("InviteService#acceptInvitationById が参加者として SecurityUtils.getCurrentUserId() のみを使用し、"
+    @SelfScopedEndpoint("InviteAcceptanceFacade#acceptInvitationById が参加者として SecurityUtils.getCurrentUserId() のみを使用し、"
             + "招待の宛先本人（target_user_id）と一致しなければ不在と同じ 404 で拒否するため他人の識別子を指定する余地が無い")
     @AlwaysReachable(category = AlwaysReachableCategory.CORE,
             reason = "指名型メンバー招待の承諾は中核の所属管理機能として常時提供する")
@@ -132,14 +134,14 @@ public class InviteController {
             @PathVariable Long tokenId,
             @RequestBody(required = false) InviteJoinRequest req) {
         Long folderId = req != null ? req.folderId() : null;
-        inviteService.acceptInvitationById(tokenId, SecurityUtils.getCurrentUserId(), folderId);
+        inviteAcceptanceFacade.acceptInvitationById(tokenId, SecurityUtils.getCurrentUserId(), folderId);
         return ResponseEntity.ok().build();
     }
 
     /**
      * 承諾型招待を招待 ID で辞退する（CMP-260826-1457）。宛先本人のみ。
      */
-    @SelfScopedEndpoint("InviteService#declineInvitationById が SecurityUtils.getCurrentUserId() のみを使用し、"
+    @SelfScopedEndpoint("InviteAcceptanceFacade#declineInvitationById が SecurityUtils.getCurrentUserId() のみを使用し、"
             + "招待の宛先本人（target_user_id）と一致しなければ不在と同じ 404 で拒否するため他人の識別子を指定する余地が無い")
     @AlwaysReachable(category = AlwaysReachableCategory.CORE,
             reason = "指名型メンバー招待の辞退は中核の所属管理機能として常時提供する")
@@ -149,7 +151,7 @@ public class InviteController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "辞退成功")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> declineInvitation(@PathVariable Long tokenId) {
-        inviteService.declineInvitationById(tokenId, SecurityUtils.getCurrentUserId());
+        inviteAcceptanceFacade.declineInvitationById(tokenId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok().build();
     }
 }

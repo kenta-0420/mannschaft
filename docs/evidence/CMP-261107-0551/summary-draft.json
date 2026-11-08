@@ -1,0 +1,96 @@
+{
+  "draftFormatVersion": 1,
+  "campaign": "CMP-261107-0551",
+  "status": "HISTORICAL_DRAFT_SUPERSEDED_BY_FORMAL_REVIEW_PROPOSAL",
+  "scope": "app",
+  "implementationPr": 4353,
+  "oldEvidenceHead": "4ce3aa26785871ee363c90b0a514f023ca20723a",
+  "mainFollowupHead": "9e8e9ba15cc7040d88d88067646be2d6a51ec862",
+  "mainFollowupFrontendTree": "ccdb9b22051266c89b9bfbe1c5eb8f6a712e2936",
+  "mainFollowupBackendTree": "4bd7a289c1683dff8992916ddeb04ef190975644",
+  "oldFrontendTree": "c77565c428a494a4217483255c183d193f7be866",
+  "oldBackendTree": "68de27ec5ad5fc1db8abaa35ed18ad4bcdf25b25",
+  "mainFollowupAudit": {
+    "protectedFiles": 4309,
+    "mismatches": [],
+    "scope": "source drift audit only; no automatic promotion of old CI/build to new head"
+  },
+  "intendedRepositoryDirectory": "docs/evidence/CMP-261107-0551/",
+  "selectedEvidence": [
+    "docs/evidence/CMP-261107-0551/renderer-summary.json",
+    "docs/evidence/CMP-261107-0551/coverage.jsonl",
+    "docs/evidence/CMP-261107-0551/root-visual-review.json",
+    "docs/evidence/CMP-261107-0551/backend-summary.json",
+    "docs/evidence/CMP-261107-0551/ui-status-extract.json",
+    "docs/evidence/CMP-261107-0551/ac-map.md",
+    "docs/evidence/CMP-261107-0551/source-manifest.json",
+    "docs/evidence/CMP-261107-0551/resident-observations-20261108.json"
+  ],
+  "lifecycle": {
+    "assessment": "LIMITED_COMPOSITE_ACCEPTANCE",
+    "unitTests": 28,
+    "evidence": "source + existing deterministic unit + actual UI stop/resume",
+    "rawUnexecuted": [
+      "stale-onload",
+      "inactive-raf-timers",
+      "identity-cache-release",
+      "real document.hidden transition"
+    ],
+    "limits": "scene-owned schedulers and app cache reference release; no browser-wide scheduler/forced-GC/global cache release claim"
+  },
+  "oldCi": {
+    "head": "4ce3aa26785871ee363c90b0a514f023ca20723a",
+    "scope": "historical source-bound success snapshot; not current main-followup CI"
+  },
+  "production": {
+    "status": "SUCCESS_MAIN_PUSH_DOCKER_JOB",
+    "evidence": "docs/evidence/CMP-261107-0551/production-M-proof.json",
+    "inputScopeBridge": "docs/evidence/CMP-261107-0551/postmerge-production-input-bridge.json",
+    "orderDecision": "docs/evidence/CMP-261107-0551/production-order-scope-bridge.md",
+    "parentWorkflow": "SUCCESS; Docker and Install both completed/success, production-M-workflow-final.json",
+    "windowsAttempt": "INTERRUPTED_NONPASS; source/donor preserved and generated cleanup verified"
+  },
+  "remaining": [
+    "docs PR trusted gate and root final review/merge"
+  ],
+  "completionGate": "No completion-evidence schema JSON or successful stages generated; this draft cannot close campaign.",
+  "formalResidents": {
+    "count": 3,
+    "allGoalsReachedPerSourceReports": true,
+    "rootTriage": {
+      "status": "ROOT_DISPOSITION_RECORDED",
+      "evidence": "docs/evidence/CMP-261107-0551/resident-root-disposition.md",
+      "resultSha256": "0dc7b3bef3f4ae897792781c52af17add5989dfbd202f054ca2752cfc9c9ef35",
+      "newConfirmedBugs": 0,
+      "observationsRemainUnverified": true,
+      "executionStageAcceptedByRoot": true,
+      "limits": "小領域は実寸有効・今回未変更。MOB07非再現・元直接原因UNKNOWN。100ms未満変化の不在は主張しない。"
+    },
+    "evidence": "docs/evidence/CMP-261107-0551/resident-observations-20261108.json"
+  },
+  "ownedRuntimeCleanup": "docs/evidence/CMP-261107-0551/runtime-cleanup.json",
+  "staticBoardUi": "docs/evidence/CMP-261107-0551/board-ui-safe.json",
+  "sourceScope": {
+    "actualProofHead": "4ce3aa26785871ee363c90b0a514f023ca20723a",
+    "currentHead": "9e8e9ba15cc7040d88d88067646be2d6a51ec862",
+    "protectedScopeBlobsMatched": 4309,
+    "fullFrontendBackendTreesEqual": false,
+    "newHeadCiAndBuildSuccessNotInferred": true
+  },
+  "currentHeadCi": {
+    "headSha": "9e8e9ba15cc7040d88d88067646be2d6a51ec862",
+    "status": "SUCCESS",
+    "pullRequestWorkflowCount": 12,
+    "checksSuccess": 27,
+    "checksSkipped": 2,
+    "checksPending": 0,
+    "checksFailure": 0,
+    "evidence": "docs/evidence/CMP-261107-0551/ci-current-head.json",
+    "pullRequestTargetGateSeparate": true
+  },
+  "implementationPrState": "MERGED",
+  "implementationMergeCommit": "e2b4744f438d0d376fb3c243e28aaa5ad2ff545d",
+  "supersededBy": "docs/evidence/CMP-261107-0551.md",
+  "windowsInterruptionReceipt": "docs/evidence/CMP-261107-0551/windows-build-interruption.json",
+  "generatedCleanupEvidence": "docs/evidence/CMP-261107-0551/generated-cleanup-verification.json"
+}
