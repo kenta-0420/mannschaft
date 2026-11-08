@@ -204,6 +204,8 @@ erDiagram
 | `created_by` | `bigint unsigned` | NO | （なし） |  |
 | `created_at` | `datetime` | NO | `CURRENT_TIMESTAMP` （式） |  |
 | `updated_at` | `datetime` | NO | `CURRENT_TIMESTAMP` （式） |  |
+| `idempotency_key` | `char(36)` | YES | NULL | 送信の冪等キー（Idempotency-Keyヘッダ・UUID小文字）。ヘッダ無しの送信はNULL |
+| `request_hash` | `char(64)` | YES | NULL | 正規化した要求内容のSHA-256（16進）。同一キーで内容が異なる再送の判別に使う |
 
 ### `reservation_blocked_times`
 
