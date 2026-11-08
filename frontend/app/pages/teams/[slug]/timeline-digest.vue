@@ -151,11 +151,15 @@ onBeforeUnmount(() => {
     @retry="resolveScopeId"
   />
   <PageLoading v-else-if="!numericScopeId" />
-  <div v-else>
-    <div class="mb-6 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">{{ $t('timeline_digest.title') }}</h1>
-      <div class="flex gap-2">
+  <div v-else class="min-w-0">
+    <PageHeader
+      :title="$t('timeline_digest.title')"
+      :back="false"
+      class="mb-6 items-center [&_h1]:text-2xl"
+    >
+      <template #actions>
         <Button
+          class="shrink-0 whitespace-nowrap"
           :label="$t('timeline_digest.button_config')"
           icon="pi pi-cog"
           severity="secondary"
@@ -163,15 +167,24 @@ onBeforeUnmount(() => {
           @click="showConfigDialog = true"
         />
         <Button
+          class="shrink-0 whitespace-nowrap"
           :label="$t('timeline_digest.button_generate')"
           icon="pi pi-bolt"
           @click="showGenerateDialog = true"
         />
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <DashboardErrorState v-if="loadFailed" @retry="loadDigests" />
-    <DataTable v-else :value="digests" :loading="loading" data-key="id" striped-rows :rows="20">
+    <DataTable
+      v-else
+      :value="digests"
+      :loading="loading"
+      data-key="id"
+      striped-rows
+      :rows="20"
+      table-style="min-width: 48rem"
+    >
       <template #empty>
         <div class="py-8 text-center text-surface-500">{{ $t('timeline_digest.empty') }}</div>
       </template>

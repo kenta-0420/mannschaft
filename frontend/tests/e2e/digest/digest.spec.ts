@@ -127,6 +127,69 @@ test.describe('DIGEST-001〜005: タイムラインダイジェスト', () => {
     expect(requestUrl.searchParams.get('scopeId')).toBe(String(TEAM_ID))
     expect(requestUrl.searchParams.get('limit')).toBe('20')
   })
+
+  for (const width of [360, 390, 1280]) {
+    for (const empty of [true, false]) {
+      test(`DIGEST-006: ${width}px・${empty ? '空一覧' : '履歴あり'}でも操作と見出しが読める`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 844 })
+        await page.route('**/api/v1/timeline-digest?**', async (route) => {
+          await route.fulfill({
+            json: {
+              data: empty ? [] : [{ ...MOCK_DIGEST_LIST.data[0], digestStyle: 'SUMMARY', postCount: 5 }],
+            },
+          })
+        })
+        await page.goto(`/teams/${TEAM_ID}/timeline-digest`)
+        await waitForHydration(page)
+        await expect(page.getByRole('heading', { name: 'タイムラインダイジェスト' })).toBeVisible()
+        await expect(page.getByRole('columnheader')).toHaveCount(6)
+        if (empty) await expect(page.getByText('ダイジェストがありません')).toBeVisible()
+        else await expect(page.getByRole('cell', { name: '5', exact: true })).toBeVisible()
+        await page.evaluate(() => document.fonts.ready)
+
+        // 実際の文字の行位置を測り、要素の高さだけでは見逃す日本語の縦折返しを検出する。
+        const measurement = await page.evaluate(() => {
+          const lineCount = (element: Element) => {
+            const range = document.createRange()
+            range.selectNodeContents(element)
+            return new Set(Array.from(range.getClientRects(), rect => Math.round(rect.top))).size
+          }
+          const buttons = ['設定', '生成'].map(label => {
+            const button = Array.from(document.querySelectorAll('button')).find(item => item.textContent?.trim() === label)!
+            const rect = button.getBoundingClientRect()
+            return {
+              label, lines: lineCount(button.querySelector('.p-button-label')!),
+              left: rect.left, right: rect.right, width: rect.width, height: rect.height,
+            }
+          })
+          const headings = Array.from(document.querySelectorAll('th .p-datatable-column-title'), element => ({
+            text: element.textContent, lines: lineCount(element),
+          }))
+          const table = document.querySelector('.p-datatable-table-container')!
+          table.scrollLeft = table.scrollWidth
+          return {
+            buttons, headings, scrollLeft: table.scrollLeft,
+            tableWidth: table.clientWidth, tableScrollWidth: table.scrollWidth,
+            documentWidth: document.documentElement.scrollWidth,
+            viewportWidth: document.documentElement.clientWidth,
+          }
+        })
+        expect(measurement.documentWidth).toBeLessThanOrEqual(measurement.viewportWidth)
+        for (const button of measurement.buttons) {
+          expect(button.lines, button.label).toBe(1)
+          expect(button.left).toBeGreaterThanOrEqual(0)
+          expect(button.right).toBeLessThanOrEqual(measurement.viewportWidth)
+          if (width < 768) {
+            expect(button.width).toBeGreaterThanOrEqual(44)
+            expect(button.height).toBeGreaterThanOrEqual(44)
+          }
+        }
+        expect(measurement.headings).toHaveLength(6)
+        for (const heading of measurement.headings) expect(heading.lines, heading.text ?? '').toBe(1)
+        if (measurement.tableScrollWidth > measurement.tableWidth) expect(measurement.scrollLeft).toBeGreaterThan(0)
+      })
+    }
+  }
   test('DIGEST-003: ダイジェストを生成できる（POST /timeline-digest/generate）', async ({
     page,
   }) => {
