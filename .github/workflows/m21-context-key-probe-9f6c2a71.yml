@@ -1,0 +1,109 @@
+name: M21 context key probe 9f6c2a71
+
+on:
+  push:
+    branches:
+      - feature/4022-context-key-probe-9f6c2a71
+
+permissions:
+  contents: read
+
+jobs:
+  context-key-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: 固定 source を取得
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: 6bb と新規2fileの境界を確認
+        working-directory: .
+        run: |
+          test "$(git rev-parse HEAD^)" = 6bb4e4fbfd341ee7b948fd51433f92e940b638cd
+          python3 - <<'PY'
+          import json, pathlib, subprocess
+          base = '6bb4e4fbfd341ee7b948fd51433f92e940b638cd'
+          expected = {
+              '.github/workflows/m21-context-key-probe-9f6c2a71.yml',
+              'backend/src/test/java/com/mannschaft/app/moduleevent/M21ContextKeyDiagnosticTest.java',
+          }
+          changes = subprocess.check_output(['git', 'diff', '--name-status', base, 'HEAD'], text=True).splitlines()
+          assert len(changes) == 2 and {line.split('\t')[1] for line in changes} == expected
+          assert all(line.startswith('A\t') for line in changes)
+          out = pathlib.Path('backend/build/context-key-probe')
+          out.mkdir(parents=True, exist_ok=True)
+          binding = {'base': base, 'producer': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
+                     'run': '${{ github.run_id }}', 'attempt': '${{ github.run_attempt }}', 'newFilesOnly': sorted(expected)}
+          (out / 'source-binding.json').write_text(json.dumps(binding, indent=2))
+          PY
+
+      - name: Java 21
+        uses: actions/setup-java@v6
+        with:
+          java-version: '21'
+          distribution: temurin
+
+      - name: 既存と同じ Gradle cache 方式
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: true
+          gradle-home-cache-includes: |
+            caches
+            notifications
+
+      - name: 固定 probe 1case だけを実行
+        id: probe
+        run: |
+          chmod +x gradlew
+          set +e
+          ./gradlew test --no-daemon --build-cache \
+            --tests com.mannschaft.app.moduleevent.M21ContextKeyDiagnosticTest \
+            -x archUnitTest -x archUnitFreezeStoreIntegrityTest
+          code=$?
+          printf '%s\n' "$code" > build/context-key-probe/gradle-exit-code
+          exit "$code"
+
+      - name: 実件数と終了を結合
+        if: always()
+        env:
+          PROBE_OUTCOME: ${{ steps.probe.outcome }}
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, xml.etree.ElementTree as ET
+          out = pathlib.Path('build/context-key-probe')
+          out.mkdir(parents=True, exist_ok=True)
+          code_file = out / 'gradle-exit-code'
+          code = int(code_file.read_text()) if code_file.exists() else None
+          xml = pathlib.Path('build/test-results/test/TEST-com.mannschaft.app.moduleevent.M21ContextKeyDiagnosticTest.xml')
+          counts = None
+          if xml.exists():
+              suite = ET.parse(xml).getroot()
+              cases = list(suite.iter('testcase'))
+              counts = {'tests': len(cases), 'failures': sum(len(c.findall('failure')) for c in cases),
+                        'errors': sum(len(c.findall('error')) for c in cases), 'skipped': sum(len(c.findall('skipped')) for c in cases)}
+              assert all(int(suite.get(key, '0')) == value for key, value in counts.items())
+          receipt = {'gradleExitCode': code, 'stepOutcome': os.environ['PROBE_OUTCOME'], 'counts': counts}
+          (out / 'receipt.json').write_text(json.dumps(receipt, indent=2))
+          assert code == 0 and os.environ['PROBE_OUTCOME'] == 'success'
+          assert counts == {'tests': 1, 'failures': 0, 'errors': 0, 'skipped': 0}
+          result = json.loads((out / 'result.json').read_text())
+          assert len(result['classes']) == 5 and result['staticProbeInitialized'] is False
+          print(json.dumps({'receipt': receipt, 'measurement': result}, ensure_ascii=False))
+          PY
+
+      - name: 小 JSON と指定 JUnit XML だけを保存
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: m21-context-key-probe-9f6c2a71-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            backend/build/context-key-probe/*.json
+            backend/build/test-results/test/TEST-com.mannschaft.app.moduleevent.M21ContextKeyDiagnosticTest.xml
+          if-no-files-found: warn
+          retention-days: 7
