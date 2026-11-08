@@ -1,5 +1,6 @@
 package com.mannschaft.app.role.controller;
 
+import com.mannschaft.app.role.service.InviteAcceptanceFacade;
 import com.mannschaft.app.role.service.InviteService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
@@ -34,6 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class InviteController {
 
     private final InviteService inviteService;
+    private final InviteAcceptanceFacade inviteAcceptanceFacade;
 
 
     /**
@@ -80,7 +82,7 @@ public class InviteController {
      * 未指定時はサーバー側で「未分類」フォルダへ自動配置される。
      * ボディ全体も任意（後方互換）。</p>
      */
-    @SelfScopedEndpoint("InviteService#joinByInvite が参加者として "
+    @SelfScopedEndpoint("InviteAcceptanceFacade#joinByInvite が参加者として "
             + "SecurityUtils.getCurrentUserId() のみを使用し、招待トークン自体が対象スコープを決める "
             + "capability であるため他人の識別子を指定する余地が無い")
     @PostMapping("/{token}/join")
@@ -91,7 +93,7 @@ public class InviteController {
             @PathVariable String token,
             @RequestBody(required = false) InviteJoinRequest req) {
         Long folderId = req != null ? req.folderId() : null;
-        inviteService.joinByInvite(token, SecurityUtils.getCurrentUserId(), folderId);
+        inviteAcceptanceFacade.joinByInvite(token, SecurityUtils.getCurrentUserId(), folderId);
         return ResponseEntity.ok().build();
     }
 
@@ -109,7 +111,7 @@ public class InviteController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "辞退成功")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> declineInvite(@PathVariable String token) {
-        inviteService.declineInvite(token, SecurityUtils.getCurrentUserId());
+        inviteAcceptanceFacade.declineInvite(token, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok().build();
     }
 }
