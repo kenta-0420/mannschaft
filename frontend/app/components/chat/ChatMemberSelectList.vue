@@ -26,7 +26,7 @@ const emit = defineEmits<{
       v-else-if="members.length === 0"
       class="py-6 text-center text-sm text-surface-400"
     >
-      メンバーが見つかりません
+      {{ $t('chat.memberSelect.notFound') }}
     </div>
     <button
       v-for="m in members"
