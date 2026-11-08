@@ -48,7 +48,7 @@ const { t } = useI18n()
       />
       <Button
         v-if="channel.identity.channelType === 'DM'"
-        v-tooltip.bottom="'Zimmerに招待'"
+        v-tooltip.bottom="t('chat.inviteZimmer.tooltip')"
         icon="pi pi-user-plus"
         text
         rounded

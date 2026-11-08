@@ -1,0 +1,128 @@
+{
+  "status": "UI_CHECKS_PASSED",
+  "budget": {
+    "workMs": 180000,
+    "cleanupMs": 120000,
+    "totalMs": 300000
+  },
+  "externalRequestsBlocked": 0,
+  "externalRequestsSucceeded": 0,
+  "pageErrors": [],
+  "httpErrors": [],
+  "nodePid": 42540,
+  "boardUiOnly": true,
+  "productAppStarted": false,
+  "sources": {
+    "/beta-inventory-board.html": {
+      "sha256": "8c4dff12b553433a6d37660ecfad1dd421af161794dcf41db8881285f911ec5a"
+    },
+    "/beta-inventory-board-data.js": {
+      "sha256": "3b68ff9658e81ecb4bc33359690430dfd1fdce22bf67f53e49ee9136e92ec1fb"
+    }
+  },
+  "ownedPort": 52263,
+  "browserPid": 42712,
+  "profileName": "playwright_chromiumdev_profile-iyPN3R",
+  "initialCount": 118,
+  "old114ImportProjectionPreserved": true,
+  "new4ImportProjectionPreserved": true,
+  "originalRunIdPrecisionPassed": true,
+  "sourceHeadStoragePrecisionPassed": true,
+  "cards": [
+    {
+      "id": "ALI-october-wave2-login-resident-overlay-20261026-ALIC-CMP0551-MOBILE-20261108-I001",
+      "personaId": "ALIC-CMP0551-MOBILE-20261108",
+      "journeyId": "ALIC-CMP0551-MOBILE-J1-20261108",
+      "runId": "ranch64-3fe7b1454ec1c5086db2c581",
+      "originalRunId": "ranch64-3fe7b1454ec1c5086db2c581",
+      "sourceHead": "4ce3aa26785871ee363c90b0a514f023ca20723a",
+      "evidencePath": "docs/evidence/CMP-261107-0551/resident-observations-20261108.json",
+      "screenshotPath": "docs/evidence/CMP-261107-0551/resident-mobile-10-status360.png",
+      "personaJourneyEvidenceSourceLabelShown": true,
+      "runIdShownInPrompt": true,
+      "sourceHeadDedicatedUiField": false
+    },
+    {
+      "id": "ALI-october-wave2-login-resident-overlay-20261026-ALIC-CMP0551-MOBILE-20261108-I002",
+      "personaId": "ALIC-CMP0551-MOBILE-20261108",
+      "journeyId": "ALIC-CMP0551-MOBILE-J1-20261108",
+      "runId": "ranch64-3fe7b1454ec1c5086db2c581",
+      "originalRunId": "ranch64-3fe7b1454ec1c5086db2c581",
+      "sourceHead": "4ce3aa26785871ee363c90b0a514f023ca20723a",
+      "evidencePath": "docs/evidence/CMP-261107-0551/resident-observations-20261108.json",
+      "screenshotPath": "docs/evidence/CMP-261107-0551/resident-mobile-19-dashboard-pet360.png",
+      "personaJourneyEvidenceSourceLabelShown": true,
+      "runIdShownInPrompt": true,
+      "sourceHeadDedicatedUiField": false
+    },
+    {
+      "id": "ALI-october-wave2-login-resident-overlay-20261026-ALIC-CMP0551-PC-20261108-I001",
+      "personaId": "ALIC-CMP0551-PC-20261108",
+      "journeyId": "ALIC-CMP0551-PC-J1-20261108",
+      "runId": "ranch64-3fe7b1454ec1c5086db2c581",
+      "originalRunId": "ranch64-3fe7b1454ec1c5086db2c581",
+      "sourceHead": "4ce3aa26785871ee363c90b0a514f023ca20723a",
+      "evidencePath": "docs/evidence/CMP-261107-0551/resident-observations-20261108.json",
+      "screenshotPath": "",
+      "personaJourneyEvidenceSourceLabelShown": true,
+      "runIdShownInPrompt": true,
+      "sourceHeadDedicatedUiField": false
+    },
+    {
+      "id": "ALI-october-wave2-login-resident-overlay-20261026-ALIC-CMP0551-RETURN-20261108-I001",
+      "personaId": "ALIC-CMP0551-RETURN-20261108",
+      "journeyId": "ALIC-CMP0551-RETURN-J1-20261108",
+      "runId": "ranch64-3fe7b1454ec1c5086db2c581",
+      "originalRunId": "ranch64-3fe7b1454ec1c5086db2c581",
+      "sourceHead": "4ce3aa26785871ee363c90b0a514f023ca20723a",
+      "evidencePath": "docs/evidence/CMP-261107-0551/resident-observations-20261108.json",
+      "screenshotPath": "",
+      "personaJourneyEvidenceSourceLabelShown": true,
+      "runIdShownInPrompt": true,
+      "sourceHeadDedicatedUiField": false
+    }
+  ],
+  "screenshot": {
+    "path": "outputs/ranch-approved64-board-ui-20261108/board-new-four.png",
+    "sha256": "4d527d291c9e8a81cda219b85436c57bcf6cc2faf366b72106bf7f6de1974d7b"
+  },
+  "reloadCount": 118,
+  "reloadRowsDeepEqual": true,
+  "duplicateIds": 0,
+  "knownBrowserProcesses": [
+    {
+      "ProcessId": 42712,
+      "ParentProcessId": 42540,
+      "CreationDate": "/Date(1794075673800)/"
+    },
+    {
+      "ProcessId": 35640,
+      "ParentProcessId": 42712,
+      "CreationDate": "/Date(1794075674188)/"
+    },
+    {
+      "ProcessId": 44684,
+      "ParentProcessId": 42712,
+      "CreationDate": "/Date(1794075674242)/"
+    },
+    {
+      "ProcessId": 22064,
+      "ParentProcessId": 42712,
+      "CreationDate": "/Date(1794075678368)/"
+    }
+  ],
+  "workElapsedMs": 11951,
+  "contextClosed": true,
+  "remainingContexts": 0,
+  "browserClientClosed": true,
+  "browserServerClosed": true,
+  "staticServerClosed": true,
+  "profileAbsent": true,
+  "knownBrowserProcessesRemaining": 0,
+  "browserRootRemaining": false,
+  "portReleased": true,
+  "cleanupElapsedMs": 272,
+  "totalElapsedMs": 12223,
+  "budgetsMet": true,
+  "selfResourcesZero": true
+}
