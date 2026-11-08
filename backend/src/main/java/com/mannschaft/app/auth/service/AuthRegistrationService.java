@@ -20,7 +20,7 @@ import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.common.util.AgeGroupCalculator;
 import com.mannschaft.app.postal.CountryResolver;
 import com.mannschaft.app.postal.PostalCodePolicyRegistry;
-import com.mannschaft.app.role.service.InviteService;
+import com.mannschaft.app.role.service.InviteAcceptanceFacade;
 import com.mannschaft.app.weather.event.UserPostalCodeUpdatedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -59,7 +59,7 @@ public class AuthRegistrationService {
     private final StringRedisTemplate redisTemplate;
     private final EncryptionService encryptionService;
     private final BetaRestrictionService betaRestrictionService;
-    private final InviteService inviteService;
+    private final InviteAcceptanceFacade inviteAcceptanceFacade;
     private final CountryResolver countryResolver;
     private final PostalCodePolicyRegistry postalCodePolicyRegistry;
 
@@ -93,7 +93,7 @@ public class AuthRegistrationService {
      * @return 登録完了メッセージ
      */
     @Transactional
-    // TODO: authドメインとroleドメインをまたいでいる（InviteService.joinByInviteを直接呼び出し）。将来はUserRegisteredEventで分離予定
+    // TODO: authドメインとroleドメインをまたいでいる（InviteAcceptanceFacade.joinByInviteを直接呼び出し）。将来はUserRegisteredEventで分離予定。現行はPENDING_VERIFICATIONのためT1でROLE_002となり登録ごと巻き戻る（別戦役 CMP-261107-1833・F2特性試験で固定）
     public ApiResponse<MessageResponse> register(RegisterRequest req, String ipAddress) {
         // 1. レートリミットチェック
         String rateLimitKey = "mannschaft:auth:register_attempt:" + ipAddress;
@@ -182,7 +182,7 @@ public class AuthRegistrationService {
 
         // 4.5. ベータ招待トークンがあれば自動参加
         if (req.getInviteToken() != null && !req.getInviteToken().isBlank()) {
-            inviteService.joinByInvite(req.getInviteToken(), user.getId());
+            inviteAcceptanceFacade.joinByInvite(req.getInviteToken(), user.getId());
         }
 
         // 5. メール認証トークン生成（SHA-256ハッシュをDB保存、平文はイベントで送信）
