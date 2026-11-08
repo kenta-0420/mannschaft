@@ -1,3 +1,5 @@
+> 最新の追加証拠は [R24部分証拠](CMP-261008-1253/r24-partial-evidence.md)。以下のR20実機1194等は当時の履歴である。R24 source `f93884c6a43ae9be5973cf005dfe52ebef7d1262` と新integration `de0cdda46ff29c304efd9279d07e0d0dcf722187` を区別し、新headのfresh CIは未取得。
+
 # CMP-261008-1253 — slot version前提修正の部分証拠（部分採択）
 
 対象は #4308 の前提となる最小FE修正。初回slotVersion=0を有効値として送信し、確定応答を次操作へ反映する範囲に限る。全CMP-261008-1253・P2の完了宣言、正式完了JSON、Issue closeではない。R20の正規3runを含む部分証拠として採択された。出荷・mergeの状態は別管理である。
