@@ -2,7 +2,6 @@
 export const V2_ENTRY_FIELDS = ['sourceSpeciesKey', 'habitat', 'logicalCanvas', 'careSpriteRect', 'rendererProfile', 'clips']
 export const CLIP_FIELDS = ['filePath', 'sourceSha256', 'frameWidth', 'frameHeight', 'frameCount', 'durationMs', 'phaseStarts', 'phaseMs', 'loop', 'returnTo', 'floorByFrame', 'sourceFloor384', 'sourceFloorByFrame384', 'tailMarks', 'shadowByFrame']
 export function verifyClipEntry(item, packVersion, { exact, fail, image, files }) {
-  const same = (actual, expected) => JSON.stringify(actual) === JSON.stringify(expected)
   const finite = (value, min, max) => typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max
   const shape = (value, expected) => {
     exact(value, Object.keys(expected))
@@ -59,7 +58,8 @@ export function verifyClipEntry(item, packVersion, { exact, fail, image, files }
     }
     const source = imageValue(clip.filePath, clip.sourceSha256)
     if (source.sourceWidth !== cell * 4 || source.sourceHeight !== cell) fail('v2 atlas geometry')
-    const { filePath, frameWidth, frameHeight, frameCount, ...metadata } = clip
+    const metadata = { ...clip }
+    for (const field of ['filePath', 'frameWidth', 'frameHeight', 'frameCount']) delete metadata[field]
     clips[action] = { ...metadata, ...source, action, cell, frames: 4 }
   }
   const idle = item.clips.idle
