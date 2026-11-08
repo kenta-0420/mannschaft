@@ -8,6 +8,8 @@ import {
   type BeReaction,
 } from '~/composables/chat/chatMessageMapper'
 import { useChatMembershipInvite } from '~/composables/chat/useChatMembershipInvite'
+import { useChatReadSync } from '~/composables/chat/useChatReadSync'
+import { isMembershipGatedChannelType } from '~/utils/chatChannelType'
 import type { ActiveThreadItem } from './message-panel/ChatActiveThreadsDrawer.vue'
 
 const props = defineProps<{
@@ -31,10 +33,10 @@ const { t } = useI18n()
 const {
   getMessages,
   sendTyping,
-  markAsRead,
   addReaction,
   removeReaction,
   togglePin,
+  editMessage,
   deleteMessage,
   bookmarkMessage,
   removeBookmark,
@@ -49,6 +51,16 @@ const {
 const channelDenied = computed(() => isChannelDenied(props.channel.id))
 const { showSuccess, showError } = useNotification()
 const authStore = useAuthStore()
+const { markChannelRead } = useChatReadSync()
+
+/**
+ * 他人の投稿も削除できるか（F04.2 §5）。ページが渡す管理者フラグ（スコープ ADMIN）に加え、
+ * チャンネルの OWNER / ADMIN も他人の投稿を削除できる。本人の投稿は ChatMessageList が isMine で判定する。
+ */
+const canDeleteOthers = computed(() => {
+  const role = props.channel.viewer?.role
+  return Boolean(props.canDelete) || role === 'OWNER' || role === 'ADMIN'
+})
 
 useChatChannelEventListener(props.channel.id)
 
@@ -135,11 +147,28 @@ async function loadMessages(cursor?: string) {
     }
     nextCursor.value = res.meta.nextCursor
     hasMore.value = res.meta.hasMore
-    markAsRead(props.channel.id)
   } catch {
-    showError('メッセージの取得に失敗しました')
+    showError(t('chat.message.loadFailed'))
+    return
   } finally {
     loading.value = false
+  }
+  await markCurrentChannelRead()
+}
+
+/**
+ * 表示中チャンネルを既読にする（CMP-261105-1507）。完了を待ち、成功したら一覧・タブの未読バッジを消す。
+ * 既読の対象はメンバー行を持つ種別（DM・グループ DM・チーム/組織チャンネル）だけ。本文を読めた時点で利用者は
+ * メンバーである。村ロビー・イベント・大会チャットはメンバー行を持たないので対象外。
+ * viewer の有無では判定しない（作成・招待の応答は viewer を持たないため、正規のメンバーでも既読にならなかった）。
+ * 失敗は握りつぶさずに通知する。
+ */
+async function markCurrentChannelRead() {
+  if (!isMembershipGatedChannelType(props.channel.identity?.channelType)) return
+  try {
+    await markChannelRead(props.channel.id)
+  } catch {
+    showError(t('chat.message.markReadFailed'))
   }
 }
 
@@ -168,7 +197,7 @@ async function onReaction(messageId: number, emoji: string) {
       msg.reactionSummary[emoji] = (msg.reactionSummary[emoji] || 0) + 1
     }
   } catch {
-    showError('リアクションに失敗しました')
+    showError(t('chat.message.reactionFailed'))
   }
 }
 
@@ -178,9 +207,9 @@ async function onPin(messageId: number) {
   try {
     await togglePin(messageId, !msg.isPinned)
     msg.isPinned = !msg.isPinned
-    showSuccess(msg.isPinned ? 'ピン留めしました' : 'ピン解除しました')
+    showSuccess(msg.isPinned ? t('chat.message.pinned') : t('chat.message.unpinned'))
   } catch {
-    showError('ピン操作に失敗しました')
+    showError(t('chat.message.pinFailed'))
   }
 }
 
@@ -193,9 +222,44 @@ async function onDelete(messageId: number) {
       msg.body = null
       msg.sender = null
     }
-    showSuccess('メッセージを削除しました')
+    showSuccess(t('chat.message.deleteSuccess'))
   } catch {
-    showError('削除に失敗しました')
+    showError(t('chat.message.deleteFailed'))
+  }
+}
+
+// --- 本人の投稿の編集（CMP-261105-1507） ---
+const editingMessageId = ref<number | null>(null)
+const editingBody = ref('')
+const editSaving = ref(false)
+const showEditDialog = computed({
+  get: () => editingMessageId.value !== null,
+  set: (open: boolean) => {
+    if (!open) editingMessageId.value = null
+  },
+})
+
+function onEdit(messageId: number) {
+  const msg = messages.value.find((m) => m.id === messageId)
+  if (!msg) return
+  editingBody.value = msg.body ?? ''
+  editingMessageId.value = messageId
+}
+
+async function onEditSave(body: string) {
+  const messageId = editingMessageId.value
+  if (messageId === null) return
+  editSaving.value = true
+  try {
+    const res = await editMessage(messageId, body)
+    const idx = messages.value.findIndex((m) => m.id === messageId)
+    if (idx !== -1) messages.value[idx] = res.data
+    editingMessageId.value = null
+    showSuccess(t('chat.message.editSuccess'))
+  } catch {
+    showError(t('chat.message.editFailed'))
+  } finally {
+    editSaving.value = false
   }
 }
 
@@ -211,7 +275,7 @@ async function onBookmark(messageId: number) {
       msg.isBookmarked = true
     }
   } catch {
-    showError('ブックマークに失敗しました')
+    showError(t('chat.message.bookmarkFailed'))
   }
 }
 
@@ -413,12 +477,13 @@ onUnmounted(() => {
           :has-more="hasMore"
           :next-cursor="nextCursor"
           :can-pin="canPin"
-          :can-delete="canDelete"
+          :can-delete="canDeleteOthers"
           :pending-invite-token="pendingInviteToken"
           @load-more="(cursor: string) => loadMessages(cursor)"
           @reaction="onReaction"
           @pin="onPin"
           @delete="onDelete"
+          @edit="onEdit"
           @bookmark="onBookmark"
           @reply="openThread"
           @invite-join="onInviteJoin"
@@ -446,6 +511,7 @@ onUnmounted(() => {
           <ChatThreadPanel
             :root-message-id="threadRootMessageId"
             :channel-id="channel.id"
+            :can-delete="canDeleteOthers"
             @close="closeThread"
           />
         </div>
@@ -472,6 +538,13 @@ onUnmounted(() => {
     :team-id="teamId"
     :organization-id="organizationId"
     @created="(ch) => emit('channelCreated', ch)"
+  />
+
+  <ChatMessageEditDialog
+    v-model:visible="showEditDialog"
+    :initial-body="editingBody"
+    :saving="editSaving"
+    @save="onEditSave"
   />
 
   <!-- チーム/組織への承諾型招待モーダル（F04.12）。発行後にメッセージを再取得してカードを反映する -->
