@@ -995,3 +995,15 @@ PR の検分でオーナーの裁可を得ること。裁可が無い場合は�
 PR #4288 の固定親blobでの D-5 1889→1883・D-3 1338→1337 は、前節およびPR本文の1892→1886・1341→1340と異なる。固定blob値を採る。constructor occurrence 7行（D-5 6・D-3 1）の実減と署名置換25行（D-5 18・D-3 7）を区別する。同じRepositoryに対するField/Method行は残り、class-pairの全解消を意味しない。
 
 PR #4294 は D-1 の旧7行を新3行へ、D-3/D-5の旧9行を新7行へ置換した。D-1はUserEntity getter 4行とTeamEntity.getIdの第2 occurrence 1行の消失、RoleEntity.getNameの参照2→呼出1への統合、新getter 2件。D-3/D-5は各々findById各2→findAllById各1などの一括呼出への置換で、call occurrence減少は越境先の全解消を意味しない。PR本文のD-3 1338→1336・D-5 1889→1887は#4288先行前のsnapshotであり、固定blob比較は1337→1335・1883→1881。詳細と再生成原本の範囲は [締め証拠](../evidence/CMP-261105-0755/summary.md) に記す。
+
+## 2026-11-08 CMP-261108-2000 L-SHIME 早期締め
+
+[対象宣言](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6720882910)に基づき、前回締めmain `2557ef2a314076683df993376a8f4d0e4ac6da1f` から登録採用main `a91bc4ccf063a615a54b7e4cf178d03dafc7ce61` までの全7storeを照合した。前回11月5日から週次期限前の締めであり、計画§7.4の週1回以上の監査と全出口を維持する。
+
+ストア変更は PR #4394（`bce74a785016f24da1a2097b0be49b24ce90759a`）の削除58行のみで、追加・置換は0。原因 PR #4371（`c65748ecfcbcaa07a6c8dfaa522400f09e042a5f`）で `InviteService` の承諾・辞退・配置・監査の旧入口と他ドメインRepository注入が撤去され、D-1 7行、D-3 15行、D-3T 21行、D-5 15行が消えた。削除行原文と原因対応は[照合証拠](../evidence/CMP-261108-2000/store-audit.json)に保持する。
+
+上限を D-1 2153→2146、D-3 1335→1320、D-3T 7352→7331、D-5 1881→1866へ下げる。他3値は AUTHZ 0・D-2b 569・ServiceAPI 600のまま、全7上限がmain実測と一致する。store本体、判定・除外・タグ・UUID・`stored.rules` は変更しない。既存L0-Cの前後集計は両方exit0で、[親Issueの推移報告](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6720913549)の全非0差分はroleのみ、合計13890→13832（-58）。
+
+移設先の `InviteAcceptanceFacade` と `InviteFolderPlacementService` はトランザクションを持たず、`InviteAcceptanceWriter` はrole内Repositoryを扱う。`MembershipGrantService` のrole/membership越境や、別の旧入口由来の残存記録は保持されている。58行の記録減少をrole全域の負債0、class-pair全解消、既知後続課題CMP-261107-1832/1833の解消と扱わない。
+
+weightsは適格成功nightly `42416993329`（`bf427ea138eaa9e2ff31b85d469f19137fbea51a`、attempt1）の実測3181件から削除済み旧FQCN1件を除き、現存未計測2件の歴史値を維持した3182件とする。全keyの由来と現source分類、既存generatorの無改変再検証とcompiled全4profile/Integrity/全CIの検証範囲は[締め証拠](../evidence/CMP-261108-2000/summary.md)に分離する。failed/partial入力は使わず、85分内完走をこの更新だけで保証しない。親CMPとL5-Iの完了ではない。

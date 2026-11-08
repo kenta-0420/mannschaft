@@ -1,0 +1,14 @@
+{
+  "run": 42416993329,
+  "head": "bf427ea138eaa9e2ff31b85d469f19137fbea51a",
+  "attempt": 1,
+  "generatorSha256": "b4f8815711b6e459d4df754e412a8fb0eaac0b95c591a3bd1452479620b30602",
+  "generatorUnmodified": true,
+  "shards": 6,
+  "everySavedMemberMatchesOriginalProof": true,
+  "officialGuardReexecuted": true,
+  "officialCount": 3181,
+  "officialRenderSha256": "8707e251c88532e6b7fe436516210cd0a5496a86af59f66b964f15cfc49d5a87",
+  "originalArtifactDigestProofSha256": "076619c05bfe33b432fc7408e23de283de9af84f3751de3a395562a7b968331c",
+  "qualification": "Original ZIP digest/safe_zip validation is retained from the original proof; this run rechecks all extracted members and reexecutes unchanged build_weights/render without network or partial PR input."
+}

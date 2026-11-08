@@ -1,0 +1,29 @@
+{
+  "oldAppliedSha256": "0ddc31cf3c94991cf04288be397451c44a7847840df31d64ed3580f67d308a5a",
+  "newAppliedSha256": "cc907fedc56c93ee133684fb363064f3660c9070c61939866c2c0d9ebe24d462",
+  "officialOriginalSha256": "8707e251c88532e6b7fe436516210cd0a5496a86af59f66b964f15cfc49d5a87",
+  "weightsBodySha256": "fd702f1e7a845bf865c8c46b5d67c24e950d7aa6c7708f688640c5cf7c2ad836",
+  "weightsBodyUnchanged": true,
+  "stats": {
+    "current": {
+      "classes": 3161,
+      "totalSeconds": "51787.517",
+      "migrationClasses": 81,
+      "migrationSeconds": "11720.187"
+    },
+    "officialMeasured": {
+      "classes": 3181,
+      "totalSeconds": "47601.425",
+      "migrationClasses": 80,
+      "migrationSeconds": "10163.309"
+    },
+    "sourceApplied": {
+      "classes": 3182,
+      "totalSeconds": "47806.972",
+      "migrationClasses": 81,
+      "migrationSeconds": "10281.290"
+    }
+  },
+  "officialRenderSecondsMeaning": "sum(migration.values()) / 1000; migration subtotal, not full total",
+  "generatorModified": false
+}
