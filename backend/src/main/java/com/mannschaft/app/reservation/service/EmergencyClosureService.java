@@ -33,6 +33,7 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -97,6 +98,19 @@ public class EmergencyClosureService {
      */
     @Transactional
     public EmergencyClosureResponse sendClosure(Long teamId, Long operatorUserId, CreateEmergencyClosureRequest request) {
+        // CMP-261104-0334: 冪等キー付きの送信は EmergencyClosureSendService が IdempotentEmergencyClosureRequest で渡す。
+        // キーとハッシュを休業行に保存し、同じ (チーム, 送信者, キー) の行が既にあれば休業行の INSERT が一意制約
+        // EmergencyClosureEntity#IDEMPOTENCY_UNIQUE_CONSTRAINT で失敗して本 TX（予約取消・枠減算・outbox・確認行を含む）は
+        // 丸ごと巻き戻る（通知配送は AFTER_COMMIT のため発火しない）。重複の判別と既存結果の返却は TX の外の
+        // EmergencyClosureSendService が行う（本メソッドは別 Bean からプロキシ越しに呼ばれる。自己呼び出しでは
+        // TX 境界の外で例外を捕捉できない）。引数で渡さず型で渡すのは、本メソッドのシグネチャを変えずに
+        // 既存の D-3T 凍結キー（推移的クロスドメイン TX の既存負債）を据え置くため。
+        String idempotencyKey = null;
+        String requestHash = null;
+        if (request instanceof IdempotentEmergencyClosureRequest idempotent) {
+            idempotencyKey = idempotent.getIdempotencyKey();
+            requestHash = idempotent.getRequestHash();
+        }
         validateDateRange(request.getStartDate(), request.getEndDate());
         validateTimeRange(request.getStartTime(), request.getEndTime());
 
@@ -150,6 +164,8 @@ public class EmergencyClosureService {
                 .sentCount(targetUserIds.size())
                 .cancelReservations(request.isCancelReservations())
                 .createdBy(operatorUserId)
+                .idempotencyKey(idempotencyKey)
+                .requestHash(requestHash)
                 .build();
 
         EmergencyClosureEntity saved = emergencyClosureRepository.save(entity);
@@ -212,6 +228,31 @@ public class EmergencyClosureService {
         }
 
         return toResponse(saved);
+    }
+
+    /**
+     * 冪等キーで送信済みの臨時休業と、その要求内容のハッシュを取得する（CMP-261104-0334）。
+     *
+     * <p>読み取り専用の新しい TX で読むため、同時送信で先着が commit した行も見える。</p>
+     *
+     * @param teamId         チームID
+     * @param operatorUserId 送信者ユーザーID
+     * @param idempotencyKey 正規化済みの冪等キー
+     * @return 送信済みなら結果とハッシュ
+     */
+    public Optional<IdempotentClosure> findIdempotentClosure(Long teamId, Long operatorUserId, String idempotencyKey) {
+        return emergencyClosureRepository
+                .findByTeamIdAndCreatedByAndIdempotencyKey(teamId, operatorUserId, idempotencyKey)
+                .map(entity -> new IdempotentClosure(toResponse(entity), entity.getRequestHash()));
+    }
+
+    /**
+     * 冪等キーで送信済みの臨時休業の結果と要求内容のハッシュ。
+     *
+     * @param response    臨時休業レスポンス
+     * @param requestHash 先に受け付けた要求内容の SHA-256
+     */
+    public record IdempotentClosure(EmergencyClosureResponse response, String requestHash) {
     }
 
     /**

@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261108-1635",
+  "scope": "tooling",
+  "implementation": {
+    "pr": 4400,
+    "sha": "f051a06cad7441934585ee7dab6e921ca09e549d"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "全6軸の順序・0/1の意味が実ソースと一致する",
+      "tests": [
+        {
+          "name": "実enum/scoringとdraft極ラベル全件照合",
+          "evidence": "docs/features/F04.7_dinosaur_ranch/diagnosis64_species_mapping_v1.json"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "6bitの全64codeと64targetが過不足・重複なく1対1である",
+      "tests": [
+        {
+          "name": "64全件集合・対象組の一意性検査",
+          "evidence": "docs/features/F04.7_dinosaur_ranch/diagnosis64_species_mapping_v1.json"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "採択済み16種の性格イメージ・群と4外見を維持する",
+      "tests": [
+        {
+          "name": "元採択案と16種/4外見・群件数照合",
+          "evidence": "docs/features/F04.7_dinosaur_ranch/diagnosis64_species_mapping_v1.json"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "prefix16行の実傾向・編集理由とsuffix4外見を分離して説明する",
+      "tests": [
+        {
+          "name": "実傾向とキャラクター像の別field・文書独立レビュー",
+          "evidence": "docs/features/F04.7_dinosaur_ranch/diagnosis64_species_mapping.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "版付きdocs正本を固定しruntime/正式master未登録を区別する",
+      "tests": [
+        {
+          "name": "仕様版・FIXED/NOT_REGISTEREDとsymbolicキー照合",
+          "evidence": "docs/features/F04.7_dinosaur_ranch/diagnosis64_species_mapping_v1.json"
+        }
+      ]
+    },
+    {
+      "id": "AC-6",
+      "description": "既存snapshot/個体・出生81別定義・本番512閉鎖・質問未承認を維持する",
+      "tests": [
+        {
+          "name": "境界記述と未知/不足/nullのない現データ制約確認",
+          "evidence": "docs/features/F04.7_dinosaur_ranch/diagnosis64_species_mapping.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-7",
+      "description": "docs入口へ参照し、製品runtimeや既存個体を変更しない",
+      "tests": [
+        {
+          "name": "4 docs filesのdiff/checkと独立レビュー",
+          "evidence": "docs/evidence/CMP-261108-1635.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-8",
+      "description": "日本語commit・通常PR/CIで正本化し登録前候補の履歴を保持する",
+      "tests": [
+        {
+          "name": "登録PR4401先行・PR4400通常mergeとCI一次メタ照合",
+          "evidence": "docs/evidence/CMP-261108-1635.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 42459214887
+    },
+    {
+      "runId": 42459214917
+    },
+    {
+      "runId": 42459214881
+    },
+    {
+      "runId": 42459214940
+    },
+    {
+      "runId": 42459214913
+    },
+    {
+      "runId": 42459214883
+    },
+    {
+      "runId": 42459214857
+    },
+    {
+      "runId": 42459214869
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261108-1635.md"
+    },
+    "real": {
+      "status": "not-applicable",
+      "scope": "tooling",
+      "reason": "docs仕様データの正本化のみで画面・API・runtimeの挙動を変更しない。"
+    },
+    "exploratory": {
+      "status": "not-applicable",
+      "scope": "tooling",
+      "reason": "docs正本と入口参照のみで利用者の画面導線・API挙動を変更しない。"
+    }
+  },
+  "regressions": []
+}
