@@ -54,6 +54,16 @@ class RanchApprovedAssetPackValidatorTest {
         return (ObjectNode) manifest.path("entries").get(0);
     }
 
+    @Test
+    void 数値から文字列へ暗黙変換した素材keyやpack版を受け入れない() throws Exception {
+        var key = manifest();
+        first(key).put("assetKey", 17);
+        rejected(key);
+        var version = manifest();
+        version.put("packVersion", 1);
+        rejected(version);
+    }
+
     private ObjectNode manifest() throws Exception {
         try (var source = new ClassPathResource(ROOT + "manifest.json").getInputStream()) {
             return (ObjectNode) json.readTree(source);

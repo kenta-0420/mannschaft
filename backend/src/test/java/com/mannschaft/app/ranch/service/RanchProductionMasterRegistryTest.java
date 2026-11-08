@@ -136,6 +136,10 @@ class RanchProductionMasterRegistryTest {
         ((ObjectNode) birthText.path("birthMappings").get(0)).put("lifePathNumber", "1");
         assertThatThrownBy(() -> RanchProductionMasterRegistry.validateStructure(
                 birthText, VERSION, "a".repeat(64))).isInstanceOf(IllegalArgumentException.class);
+        ObjectNode assetNumber = complete();
+        ((ObjectNode) assetNumber.path("assets").get(0)).put("assetKey", 17);
+        assertThatThrownBy(() -> RanchProductionMasterRegistry.validateStructure(
+                assetNumber, VERSION, "a".repeat(64))).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

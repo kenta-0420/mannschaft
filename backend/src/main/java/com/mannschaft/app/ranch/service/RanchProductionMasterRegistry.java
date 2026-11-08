@@ -175,6 +175,7 @@ public final class RanchProductionMasterRegistry {
             if (!pairs.contains(pair) || stage == null || style == null
                     || !STAGES.contains(stage) || !STYLES.contains(style)
                     || !requiredReaction(stage).equals(item.path("reactionKey").asText(null))
+                    || !item.path("assetKey").isTextual()
                     || !token(item.path("assetKey").asText(null))
                     || !assetKeys.add(item.path("assetKey").asText())
                     || !digest(item.path("sha256").asText(null))

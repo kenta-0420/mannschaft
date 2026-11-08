@@ -29,6 +29,9 @@ final class RanchApprovedAssetPackValidator {
 
     static void validate(JsonNode manifest, String root) throws IOException, NoSuchAlgorithmException {
         exact(manifest, ROOT);
+        for (String field : Set.of("packVersion", "approvalStatus", "environment")) {
+            if (!manifest.path(field).isTextual()) throw invalid();
+        }
         Images images = new Images();
         for (JsonNode entry : manifest.path("entries")) validateEntry(entry, root, images);
 
@@ -37,6 +40,10 @@ final class RanchApprovedAssetPackValidator {
     private static void validateEntry(JsonNode entry, String root, Images images)
             throws IOException, NoSuchAlgorithmException {
         exact(entry, ENTRY);
+        for (String field : Set.of("speciesKey", "variantKey", "stage", "renderStyle", "assetKey",
+                "sourceSpeciesKey", "habitat", "rendererProfile")) {
+            if (!entry.path(field).isTextual()) throw invalid();
+        }
         if (!entry.path("speciesKey").isTextual()
                 || !entry.path("speciesKey").equals(entry.path("sourceSpeciesKey"))
                 || !Set.of("LAND", "SEA", "AIR").contains(entry.path("habitat").asText())) throw invalid();

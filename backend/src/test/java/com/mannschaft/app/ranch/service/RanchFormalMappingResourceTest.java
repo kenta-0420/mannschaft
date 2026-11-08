@@ -1,6 +1,7 @@
 package com.mannschaft.app.ranch.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.mannschaft.app.diagnosis.service.DiagnosisApprovedQuestionnaireRegistry;
 import com.mannschaft.app.diagnosis.service.DiagnosisQuestionnaireCatalog;
 import org.junit.jupiter.api.Test;
@@ -71,8 +72,10 @@ class RanchFormalMappingResourceTest {
         assertThat(current.questionnaireVersion()).isEqualTo("diagnosis-20261108-v1");
         assertThat(current.scoringVersion()).isEqualTo("signed-centered-v1");
         var source = json.readTree(bytes("diagnosis/questionnaire-draft-20261010.json"));
-        assertThat(json.valueToTree(current.questions())).isEqualTo(source.path("questions"));
-        assertThat(json.valueToTree(current.ties())).isEqualTo(source.path("ties"));
+        JsonNode questions = json.valueToTree(current.questions());
+        JsonNode ties = json.valueToTree(current.ties());
+        assertThat(questions).isEqualTo(source.path("questions"));
+        assertThat(ties).isEqualTo(source.path("ties"));
         assertThat(current.questions()).hasSize(24);
         assertThat(current.ties()).hasSize(6);
         assertThat(current.approval()).isEqualTo(DiagnosisQuestionnaireCatalog.SnapshotApproval.APPROVED);
