@@ -147,7 +147,7 @@ class AuditLogSingleAsyncBoundaryIT extends AbstractMySqlIntegrationTest {
                 .as("専用spy構成のcontext poolが有限時間内に終了する").isTrue();
     }
 
-    @ParameterizedTest
+    @ParameterizedTest(name = "飽和 [{index}] {0}")
     @EnumSource(Probe.class)
     @DisplayName("AC-1/2 受理済listener内でpoolが満杯でも再投入せず監査を1行保存する")
     void acceptedListenerSavesOnceWithoutSecondSubmission(Probe probe) throws Exception {
@@ -171,7 +171,7 @@ class AuditLogSingleAsyncBoundaryIT extends AbstractMySqlIntegrationTest {
         }
     }
 
-    @ParameterizedTest
+    @ParameterizedTest(name = "正常commit [{index}] {0}")
     @EnumSource(Probe.class)
     @DisplayName("対照 通常commitは元イベントの全引数・null・metadataを1行へ保存する")
     void normalCommitPreservesPayload(Probe probe) throws Exception {
