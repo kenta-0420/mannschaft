@@ -34,8 +34,6 @@ import com.mannschaft.app.role.dto.InviteCardData;
 import com.mannschaft.app.event.service.EventScopeAccessGuard;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.service.MembershipInviteService;
-import com.mannschaft.app.tournament.ContactSpaceKind;
-import com.mannschaft.app.tournament.ContactSpaceScopeType;
 import com.mannschaft.app.tournament.service.TournamentContactAccessService;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.service.PostingIdentityService;
@@ -61,6 +59,14 @@ import java.util.stream.Collectors;
 
 /**
  * チャットメッセージサービス。メッセージの送受信・編集・削除・検索を担当する。
+ *
+ * <p><b>認可の置き場所（CMP-261105-1507）</b>: チャンネル ID・メッセージ ID を指定するメッセージ操作
+ * （一覧・送信・編集・削除・スレッド・ピン留め・転送・検索・アクティブスレッド）の認可と存在秘匿は、
+ * tx を持たない {@link ChatMessageFacade} が {@link ChatChannelAccessGuard} で済ませてから本クラスを呼ぶ。
+ * 閲覧・投稿の認可が読む他ドメイン（membership / role / tournament / event / village）の行を、
+ * チャットのトランザクションに巻き込まないためである（CLAUDE.md DB 設計の原則 #5・番人 D-3T）。
+ * 本クラスのそれらのメソッドは認可を持たない tx 本体であり、Controller（REST・WebSocket）から直接呼んではならない
+ * （番人 {@code AuthzTxFacadeRegistryArchTest}）。</p>
  */
 @Slf4j
 @Service
@@ -99,7 +105,12 @@ public class ChatMessageService {
     private final NameResolverService nameResolver;
     /** F10.7: 送信者の ADMIN / DEPUTY_ADMIN ロール確認用。 */
     private final UserRoleRepository userRoleRepository;
-    /** F08.7.1 連絡機能: 大会/ディビジョンチャットの閲覧・投稿認可を委譲する（クロスドメイン・原則1）。 */
+    /**
+     * 未使用（CMP-261105-1507 で認可を {@link ChatMessageFacade} へ移した）。ただしコンストラクタの引数並びが凍結ストア
+     * （D-3 / D-5）の照合キーに含まれており、ここで外すと既存の越境依存が新規違反として再計上されるため残している。
+     * 凍結ストアの棚卸し（別任務）で、ストアの該当行と一緒に外すこと。
+     */
+    @SuppressWarnings("unused")
     private final TournamentContactAccessService tournamentContactAccessService;
     /**
      * F04.12: 招待カード（{@code message_type = 'INVITE_CARD'}）の描画契約 inviteData を role ドメインから
@@ -107,9 +118,11 @@ public class ChatMessageService {
      */
     private final MembershipInviteService membershipInviteService;
     /**
-     * 裏目付A: {@code EVENT_CHAT} の閲覧・投稿認可を event ドメインのアクセスモデルへ委譲する
-     * （クロスドメイン・原則1／Service 経由）。当該イベントスコープ（team/org）のメンバーのみに限定する。
+     * 未使用（CMP-261105-1507 で認可を {@link ChatMessageFacade} へ移した）。ただしコンストラクタの引数並びが凍結ストア
+     * （D-3 / D-5）の照合キーに含まれており、ここで外すと既存の越境依存が新規違反として再計上されるため残している。
+     * 凍結ストアの棚卸し（別任務）で、ストアの該当行と一緒に外すこと。
      */
+    @SuppressWarnings("unused")
     private final EventScopeAccessGuard eventScopeAccessGuard;
 
     /**
@@ -119,20 +132,18 @@ public class ChatMessageService {
      * それ以外（"before" または null）は従来通り cursor より古いメッセージを降順で返す。
      * </p>
      *
-     * <p><b>認可根治 Wave 6</b>: 「呼び出し元まかせ認可」は呼び忘れ・実装漏れが即 IDOR になるため、
-     * <b>閲覧者 ID を必須引数として受け取り、サービス自身が入口で認可する</b>構造とする。</p>
+     * <p><b>認可</b>: 閲覧認可は {@link ChatMessageFacade#listMessages} がトランザクションの外で済ませる。
+     * 本メソッドは認可を持たない tx 本体である。</p>
      *
      * @param channelId チャンネルID
-     * @param viewerId  閲覧ユーザーID（認可判定に使用）
+     * @param viewerId  閲覧ユーザーID（viewer ごとの付加情報に使用）
      * @param cursor    カーソル（メッセージID）。null の場合は最新から取得
      * @param limit     取得件数
      * @param direction 取得方向。"after" で cursor より新しいメッセージを昇順取得。それ以外は従来の降順取得
      * @return カーソルページネーション付きメッセージレスポンス
-     * @throws BusinessException 閲覧権限がない場合（{@link ChatErrorCode#CHANNEL_ACCESS_DENIED}）
      */
     public CursorPagedResponse<MessageResponse> listMessages(
             Long channelId, Long viewerId, Long cursor, Integer limit, String direction) {
-        checkChannelViewAccess(channelId, viewerId);
         int effectiveLimit = resolveLimit(limit);
         Pageable pageable = PageRequest.of(0, effectiveLimit + 1);
 
@@ -189,12 +200,9 @@ public class ChatMessageService {
      */
     @Transactional
     public MessageResponse sendMessage(Long channelId, SendMessageRequest request, Long senderId) {
+        // 投稿認可（大会連絡チャットは connack 認可 canPost、通常チャンネルはチャンネルメンバー）は
+        // ChatMessageFacade#sendMessage がトランザクションの外で済ませる（REST・WebSocket の両経路）。
         ChatChannelEntity channel = channelService.findChannelOrThrow(channelId);
-
-        // F08.7.1: 大会/ディビジョン連絡チャットへの投稿は connack 認可（canPost）に委譲する（§4.2）。
-        // 投稿者＝チーム代表/副代表 or 主催組織 ADMIN/SYSTEM_ADMIN。PUBLIC は常に read-only。
-        // 認可根治 Wave6: 通常チャンネルはチャンネルメンバーであることを要求する（他人の DM への投稿を閉塞）。
-        checkChannelPostAccess(channel, senderId);
 
         // スレッドネスト計算: 親メッセージが存在する場合に rootId・depth を設定
         Long rootId = null;
@@ -202,6 +210,10 @@ public class ChatMessageService {
         ChatMessageEntity parentMessage = null;
         if (request.getParentId() != null) {
             parentMessage = findMessageOrThrow(request.getParentId());
+            // 親は同一チャンネル内に限る。他チャンネル（存在を知り得ないものを含む）の ID は不在と同一に扱う。
+            if (!channel.getId().equals(parentMessage.getChannelId())) {
+                throw new BusinessException(ChatErrorCode.MESSAGE_NOT_FOUND);
+            }
             // rootId: 親がルートなら親のID、親がネストなら親の rootId を継承
             rootId = parentMessage.getRootId() != null ? parentMessage.getRootId() : parentMessage.getId();
             depth = (parentMessage.getDepth() != null ? parentMessage.getDepth() : 0) + 1;
@@ -295,8 +307,8 @@ public class ChatMessageService {
      */
     @Transactional
     public MessageResponse editMessage(Long messageId, EditMessageRequest request, Long userId) {
+        // 送信者本人であることは ChatMessageFacade#editMessage がトランザクションの外で保証する。
         ChatMessageEntity message = findMessageOrThrow(messageId);
-        validateMessageOwner(message, userId);
 
         message.editBody(request.getBody());
         ChatMessageEntity saved = messageRepository.save(message);
@@ -316,13 +328,14 @@ public class ChatMessageService {
      */
     @Transactional
     public void deleteMessage(Long messageId, Long userId) {
+        // F04.2 §5 の削除権限（投稿者本人 / チャンネル OWNER・ADMIN / スコープ ADMIN / SYSTEM_ADMIN）と
+        // 監査ログ（CHAT_MESSAGE_DELETED_BY_ADMIN）は ChatMessageFacade#deleteMessage が担う。
         ChatMessageEntity message = findMessageOrThrow(messageId);
-        validateMessageOwner(message, userId);
+        ChatChannelEntity channel = findChannelOfMessage(message);
 
         // F13 Phase 4-β: 論理削除前に添付ファイル一覧を取得し、各添付の使用量を減算
         List<ChatMessageAttachmentEntity> attachments = attachmentRepository.findByMessageId(messageId);
         if (!attachments.isEmpty()) {
-            ChatChannelEntity channel = channelService.findChannelOrThrow(message.getChannelId());
             for (ChatMessageAttachmentEntity attachment : attachments) {
                 chatAttachmentService.recordAttachmentDeletion(
                         channel, attachment, userId, message.getSenderId());
@@ -363,7 +376,8 @@ public class ChatMessageService {
     public List<MessageResponse> listThreadReplies(Long parentId, Long userId) {
         ChatMessageEntity parent = findMessageOrThrow(parentId);
         // F08.7.1: 大会/ディビジョン連絡チャットの返信一覧も canView を通す（メッセージ本文の漏洩防止）。
-        checkChannelViewAccess(parent.getChannelId(), userId);
+        // 本メソッドは Controller から呼ばれない後方互換の入口のため、認可を自身で持つ。
+        channelAccessGuard.checkMessageViewAccess(parent, userId);
         List<ChatMessageEntity> replies = messageRepository.findByParentIdOrderByCreatedAtAscIdAsc(parentId);
         return enrichMessages(replies, userId);
     }
@@ -377,9 +391,8 @@ public class ChatMessageService {
      * @return スレッドレスポンス
      */
     public ThreadResponse getThread(Long messageId, String cursor, Integer limit, Long userId) {
+        // 閲覧認可（拒否は不在メッセージと同一応答）は ChatMessageFacade#getThread が済ませる。
         ChatMessageEntity root = findMessageOrThrow(messageId);
-        // F08.7.1: 大会/ディビジョン連絡チャットのスレッド取得も canView を通す（メッセージ本文の漏洩防止）。
-        checkChannelViewAccess(root.getChannelId(), userId);
         int effectiveLimit = resolveLimit(limit);
 
         // カーソルをページ番号に変換（簡易実装: cursor は "page_N" 形式）
@@ -414,9 +427,8 @@ public class ChatMessageService {
      */
     public CursorPagedResponse<ActiveThreadItemResponse> getActiveThreads(
             Long channelId, Long userId, String cursor, Integer limit) {
-        // 認可根治 Wave6: 従来ここに直書きされていた「大会は canView / それ以外はメンバーシップ」の分岐は
-        // checkChannelViewAccess に一本化した（同じ意味論が 2 箇所に分かれていると片方だけ直され認可が割れるため）。
-        checkChannelViewAccess(channelId, userId);
+        // 閲覧認可は ChatMessageFacade#getActiveThreads が ChatChannelAccessGuard#checkChannelViewAccess で済ませる
+        // （大会は canView / それ以外はメンバーシップの分岐を 1 箇所に保つ）。
         int effectiveLimit = resolveLimit(limit);
         int page = parseCursorAsPage(cursor);
         Pageable pageable = PageRequest.of(page, effectiveLimit + 1);
@@ -481,11 +493,9 @@ public class ChatMessageService {
      */
     @Transactional
     public MessageResponse togglePin(Long messageId, boolean pinned, Long userId) {
+        // ピン留めはモデレーション相当として投稿認可（大会は canPost、通常はチャンネルメンバー）を要求する。
+        // 認可は ChatMessageFacade#togglePin がトランザクションの外で済ませる。
         ChatMessageEntity message = findMessageOrThrow(messageId);
-        // F08.7.1: 大会/ディビジョン連絡チャットのピン留めはモデレーション相当＝canPost（代表/主催者）を要求する。
-        // 認可根治 Wave6: 通常チャンネルもチャンネルメンバーであることを要求する。
-        ChatChannelEntity channel = channelService.findChannelOrThrow(message.getChannelId());
-        checkChannelPostAccess(channel, userId);
         if (pinned) {
             message.pin();
         } else {
@@ -506,14 +516,9 @@ public class ChatMessageService {
      */
     @Transactional
     public MessageResponse forwardMessage(Long messageId, ForwardMessageRequest request, Long userId) {
+        // 転送元の閲覧認可（拒否は不在メッセージと同一応答）と転送先の投稿認可は、この順で
+        // ChatMessageFacade#forwardMessage がトランザクションの外で済ませる。
         ChatMessageEntity original = findMessageOrThrow(messageId);
-        ChatChannelEntity targetChannel = channelService.findChannelOrThrow(request.getTargetChannelId());
-
-        // F08.7.1: 転送元が大会連絡チャットなら閲覧権限（canView）を要求する（非権限者が本文を持ち出せない）。
-        checkChannelViewAccess(original.getChannelId(), userId);
-        // F08.7.1: 転送先が大会連絡チャットなら投稿権限（canPost）を要求する（投稿バイパス防止）。
-        // 認可根治 Wave6: 通常チャンネルへの転送も転送先のメンバーであることを要求する。
-        checkChannelPostAccess(targetChannel, userId);
 
         String body = request.getAdditionalComment() != null
                 ? request.getAdditionalComment() + "\n\n" + original.getBody()
@@ -541,9 +546,7 @@ public class ChatMessageService {
      * @return メッセージレスポンスリスト
      */
     public List<MessageResponse> searchMessages(Long channelId, String keyword, Integer limit, Long userId) {
-        // F08.7.1: 大会/ディビジョン連絡チャットは閲覧認可（canView）を前段で通す（通常チャンネルは no-op）。
-        // 通さないと非権限者にメッセージ本文が漏れる（情報漏洩）。
-        checkChannelViewAccess(channelId, userId);
+        // 閲覧認可は ChatMessageFacade#searchMessages がトランザクションの外で済ませる。
         int effectiveLimit = resolveLimit(limit);
         Pageable pageable = PageRequest.of(0, effectiveLimit);
         List<ChatMessageEntity> messages = messageRepository.searchByKeyword(channelId, keyword, pageable);
@@ -551,44 +554,11 @@ public class ChatMessageService {
     }
 
     /**
-     * チャンネルの閲覧認可を検証する。
-     *
-     * <p><b>認可根治 Wave 6</b>: 種別ごとに実際の認可を行う（メソッド名と実態を一致させる）。</p>
-     *
-     * <p>種別ごとの意味論（{@link ChannelType#isMembershipGated()} を単一の出所とする）:</p>
-     * <ul>
-     *   <li><b>{@code TOURNAMENT_CHAT} / {@code TOURNAMENT_DIVISION_CHAT}</b> —
-     *       {@link TournamentContactAccessService#checkView} に委譲（F08.7.1 §4.1・従来どおり）。
-     *       これらは {@code chat_channel_members} 行を持たない横断スペースのため、
-     *       メンバーシップ検査を適用すると正当な利用者まで一律 403 になる。</li>
-     *   <li><b>メンバーシップ管理種別（TEAM_PUBLIC / TEAM_PRIVATE / ORG_PUBLIC / ORG_PRIVATE / DM / GROUP_DM）</b> —
-     *       {@code chat_channel_members} にメンバー行が存在することを要求する。
-     *       {@code TEAM_PUBLIC} も対象である点に注意（「公開」＝チームメンバーが自分で参加できる、の意。
-     *       未参加のまま本文を読めることは意味しない）。</li>
-     *   <li><b>{@code VILLAGE_LOBBY} / {@code EVENT_CHAT}</b>（裏目付A で素通し根治）— village / event ドメイン側の
-     *       アクセスモデルで認可する。{@code VILLAGE_LOBBY} は当該村の現役メンバー
-     *       （{@link PostingIdentityService#isUserVillageMember}）、{@code EVENT_CHAT} は当該イベントスコープのメンバー
-     *       （{@link EventScopeAccessGuard#isEventScopeMember}）を要求し、非該当は {@link ChatErrorCode#CHANNEL_ACCESS_DENIED}（403）。
-     *       非メンバーが本文を閲覧できないことを保証する（{@code requireChannelMembership} 参照）。
-     *       なお WS 購読認可 {@code ChatChannelSubscriptionInterceptor} 側の同種別強化は引き続き既知課題（別スコープ）。</li>
-     * </ul>
-     *
-     * <p><b>正準の根拠</b>: {@code ChatMessageVisibilityResolver} の危険注記が
-     * 「本 Resolver の canView をチャット本文可視の単独ゲートに使用してはならない。本文読取・WS 購読の認可は
-     * {@code ChatChannelMemberRepository} 直参照を正とする」と明記しており、本実装はこれに従う。</p>
-     *
-     * @param channelId チャンネル ID
-     * @param userId    閲覧ユーザー ID
-     * @throws BusinessException 閲覧権限がない場合（{@link ChatErrorCode#CHANNEL_ACCESS_DENIED}）
+     * メッセージが属するチャンネルを取得する。チャンネルが不在（論理削除済み）なら、メッセージも不在として扱う。
      */
-    public void checkChannelViewAccess(Long channelId, Long userId) {
-        ChatChannelEntity channel = channelService.findChannelOrThrow(channelId);
-        ContactSpaceScopeType scope = tournamentScopeOf(channel);
-        if (scope != null) {
-            tournamentContactAccessService.checkView(scope, channel.getSourceId(), ContactSpaceKind.CHAT, userId);
-            return;
-        }
-        requireChannelMembership(channel, userId);
+    private ChatChannelEntity findChannelOfMessage(ChatMessageEntity message) {
+        return channelRepository.findById(message.getChannelId())
+                .orElseThrow(() -> new BusinessException(ChatErrorCode.MESSAGE_NOT_FOUND));
     }
 
     /**
@@ -596,7 +566,7 @@ public class ChatMessageService {
      * 閲覧してよいことを保証する。
      *
      * <p>オブジェクトキーからそれが属するチャンネルを解決し、本文閲覧と同一の判定
-     * （{@link #checkChannelViewAccess}）を適用する。対象はメッセージ添付
+     * （{@link ChatChannelAccessGuard#checkChannelViewAccess}）を適用する。対象はメッセージ添付
      * （{@code chat_message_attachments.file_key}）とチャンネルアイコン
      * （{@code chat_channels.icon_key}）であり、いずれにも該当しないキーは
      * チャットが管理するオブジェクトではないため拒否する（fail-closed）。</p>
@@ -614,7 +584,7 @@ public class ChatMessageService {
                 return null;
             }
             ChatChannelEntity channel = channelService.findChannelOrThrow(message.getChannelId());
-            checkChannelViewAccess(channel.getId(), userId);
+            channelAccessGuard.checkChannelViewAccess(channel, userId, ChatErrorCode.CHANNEL_NOT_FOUND);
             return new StorageAclDownloadRequest(fileKey,
                     chatAttachmentService.resolveAclScope(channel, message.getSenderId()),
                     new StorageAclContentReference("CHAT_CHANNEL", channel.getId().toString()),
@@ -623,7 +593,7 @@ public class ChatMessageService {
 
         return channelRepository.findFirstByIconKey(fileKey)
                 .map(channel -> {
-                    checkChannelViewAccess(channel.getId(), userId);
+                    channelAccessGuard.checkChannelViewAccess(channel, userId, ChatErrorCode.CHANNEL_NOT_FOUND);
                     return new StorageAclDownloadRequest(fileKey,
                             chatAttachmentService.resolveAclScope(channel, channel.getCreatedBy()),
                             new StorageAclContentReference("CHAT_CHANNEL", channel.getId().toString()),
@@ -643,78 +613,6 @@ public class ChatMessageService {
         }
         return storageAccessService.generateDownloadUrl(fileKey, request.scope(),
                 request.parentContentReference(), request.attachmentBinding(), ttl);
-    }
-
-    /**
-     * チャンネルへの投稿・モデレーション操作の認可を検証する。
-     *
-     * <p><b>認可根治 Wave 6</b>: 大会チャットの既存経路（{@link TournamentContactAccessService#checkPost}）は
-     * 維持したまま、通常チャンネル向けにもメンバーシップ検査を適用する。</p>
-     *
-     * @param channel  対象チャンネル
-     * @param senderId 操作ユーザー ID
-     * @throws BusinessException 投稿権限がない場合（{@link ChatErrorCode#CHANNEL_ACCESS_DENIED}）
-     */
-    public void checkChannelPostAccess(ChatChannelEntity channel, Long senderId) {
-        ContactSpaceScopeType scope = tournamentScopeOf(channel);
-        if (scope != null) {
-            tournamentContactAccessService.checkPost(scope, channel.getSourceId(), senderId);
-            return;
-        }
-        requireChannelMembership(channel, senderId);
-    }
-
-    /**
-     * チャンネル種別ごとの閲覧・投稿認可を検証する。非該当は {@link ChatErrorCode#CHANNEL_ACCESS_DENIED}（403）。
-     *
-     * <p><b>裏目付A（VILLAGE_LOBBY / EVENT_CHAT）:</b>
-     * {@code isMembershipGated()} でない種別（{@code VILLAGE_LOBBY} / {@code EVENT_CHAT}）についても、
-     * 種別ごとに各ドメインの正準アクセス判定へ委譲する。既定は fail-closed（拒否）とする。</p>
-     *
-     * <ul>
-     *   <li><b>メンバーシップ管理種別</b>（{@link ChannelType#isMembershipGated()}）—
-     *       {@code chat_channel_members} にメンバー行が存在することを要求する（従来どおり）。</li>
-     *   <li><b>{@code VILLAGE_LOBBY}</b> — 当該村（{@code chat_channels.village_id}）の現役 USER メンバーを要求する。
-     *       判定は village ドメインの正準
-     *       {@link PostingIdentityService#isUserVillageMember(java.util.UUID, Long)}（退会・BAN 済みは非メンバー）へ委譲。</li>
-     *   <li><b>{@code EVENT_CHAT}</b> — 当該イベント（{@code chat_channels.source_id}）のスコープ（team/org）
-     *       メンバーを要求する。判定は event ドメインの正準
-     *       {@link EventScopeAccessGuard#isEventScopeMember(Long, Long)}（{@code EventChatController} と同一の認可モデル）へ委譲。</li>
-     *   <li><b>{@code TOURNAMENT_CHAT} / {@code TOURNAMENT_DIVISION_CHAT}</b> — 本メソッド到達前に
-     *       {@code checkChannelViewAccess} / {@code checkChannelPostAccess} 側の {@code tournamentScopeOf} 分岐で
-     *       委譲済みのため、ここには到達しない。将来種別が増えた場合を含め、未知種別は既定で拒否する（fail-closed）。</li>
-     * </ul>
-     */
-    private void requireChannelMembership(ChatChannelEntity channel, Long userId) {
-        ChannelType type = channel.getChannelType();
-        if (type.isMembershipGated()) {
-            if (userId == null || !memberRepository.existsByChannelIdAndUserId(channel.getId(), userId)) {
-                throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
-            }
-            return;
-        }
-        boolean allowed = switch (type) {
-            case VILLAGE_LOBBY -> channel.getVillageId() != null
-                    && userId != null
-                    && postingIdentityService.isUserVillageMember(channel.getVillageId(), userId);
-            case EVENT_CHAT -> eventScopeAccessGuard.isEventScopeMember(userId, channel.getSourceId());
-            // TOURNAMENT_* は前段で委譲済みのため未到達。未知種別は fail-closed で拒否する。
-            default -> false;
-        };
-        if (!allowed) {
-            throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
-        }
-    }
-
-    /**
-     * チャンネルが大会連絡チャットなら対応する連絡スペーススコープを返す。そうでなければ null。
-     */
-    private static ContactSpaceScopeType tournamentScopeOf(ChatChannelEntity channel) {
-        return switch (channel.getChannelType()) {
-            case TOURNAMENT_CHAT -> ContactSpaceScopeType.TOURNAMENT;
-            case TOURNAMENT_DIVISION_CHAT -> ContactSpaceScopeType.TOURNAMENT_DIVISION;
-            default -> null;
-        };
     }
 
     /**
@@ -870,10 +768,6 @@ public class ChatMessageService {
         }
         MessageResponse.SenderDto dto = resolved.get(senderId);
         return dto != null ? dto : new MessageResponse.SenderDto(senderId, DEFAULT_SENDER_DISPLAY_NAME, null);
-    }
-
-    private void validateMessageOwner(ChatMessageEntity message, Long userId) {
-        channelAccessGuard.requireMessageOwner(message, userId);
     }
 
     private int resolveLimit(Integer limit) {
