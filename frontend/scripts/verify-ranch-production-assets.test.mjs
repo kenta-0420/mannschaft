@@ -136,6 +136,24 @@ test('承認元と同bytesでも検証済み正式namespaceだけproduction配�
   assert.throws(() => inspectArtifact(artifact, new Set([hash(data.source)]), [], verified))
 })
 
+for (const kind of ['file', 'directory']) for (const order of ['alias-first', 'canonical-first']) {
+  test(`正式素材への${kind} aliasを${order}の走査順でも拒否する`, () => {
+    const data = fixture(), verified = verifyProductionPack(data.persist())
+    const artifact = path.join(data.root, 'alias-artifact')
+    const output = path.join(artifact, 'public/ranch/approved/synthetic-test-only')
+    mkdirSync(output, { recursive: true })
+    for (const name of ['sheet.png', 'fallback.png', 'manifest.json']) writeFileSync(path.join(output, name), readFileSync(path.join(data.pack, name)))
+    const alias = path.join(artifact, 'public', `${order === 'alias-first' ? 'a' : 'z'}-alias${kind === 'file' ? '.png' : ''}`)
+    fs.symlinkSync(kind === 'file' ? path.join(output, 'sheet.png') : output, alias, kind === 'file' ? 'file' : 'junction')
+    try {
+      assert.throws(() => inspectArtifact(artifact, new Set([hash(data.source)]), [], verified), /alias|開発PNG|未登録/)
+    } finally {
+      if (kind === 'file' || process.platform !== 'win32') fs.unlinkSync(alias)
+      else fs.rmdirSync(alias)
+    }
+  })
+}
+
 test('v2の不足動作・余剰field・位相逆転・idle anchor不一致を拒否する', () => {
   for (const change of [
     row => { delete row.clips.happy },

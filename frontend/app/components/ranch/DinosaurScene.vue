@@ -64,21 +64,6 @@ const reaction = useRanchFiniteReaction({
   contextEnabled: () => activity.enabled.value,
   osReduced: () => activity.osReduced.value,
 })
-let previousAsset: BoundRanchAsset | null = null
-const asset = computed(() => {
-  const next = resolveRanchAsset(props.dinosaur, props.renderStyle, props.assetContext)
-  if (next && previousAsset?.dinosaurId === next.dinosaurId && previousAsset.entry === next.entry)
-    return previousAsset
-  previousAsset = next
-  return next
-})
-const atlas = useRanchAtlas(
-  canvas,
-  () => asset.value,
-  () => activity.enabled.value,
-  () => reaction.pilotFrame.value,
-  () => props.motionMode !== 'NORMAL' || activity.osReduced.value,
-)
 const { clipAsset, playback, clipAtlas, nativeReaction, reactionKey } = useRanchSceneClips(canvas, {
   dinosaur: () => props.dinosaur,
   renderStyle: () => props.renderStyle,
@@ -90,6 +75,22 @@ const { clipAsset, playback, clipAtlas, nativeReaction, reactionKey } = useRanch
   reduced: () => reaction.reduced.value,
   legacyReaction: () => reaction.reaction.value,
 })
+let previousAsset: BoundRanchAsset | null = null
+const asset = computed(() => {
+  // 同じcanvasをlegacyとclipで描かない。queued paintもasset=nullで止める。
+  const next = clipAsset.value ? null : resolveRanchAsset(props.dinosaur, props.renderStyle, props.assetContext)
+  if (next && previousAsset?.dinosaurId === next.dinosaurId && previousAsset.entry === next.entry)
+    return previousAsset
+  previousAsset = next
+  return next
+})
+const atlas = useRanchAtlas(
+  canvas,
+  () => asset.value,
+  () => !clipAsset.value && activity.enabled.value,
+  () => reaction.pilotFrame.value,
+  () => props.motionMode !== 'NORMAL' || activity.osReduced.value,
+)
 const shownAtlas = computed(() => (clipAsset.value ? clipAtlas : atlas))
 const nativeSequence = ref(0)
 const shownSequence = computed(() =>

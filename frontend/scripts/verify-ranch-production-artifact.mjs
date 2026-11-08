@@ -28,18 +28,31 @@ const forbidden = [
 export function inspectArtifact(directory, blockedHashes, markers, verifiedPack = null) {
   assert.ok(fs.existsSync(directory), 'production buildが必要')
   let files = 0
+  const lexicalRoot = path.resolve(directory)
   const root = fs.realpathSync(directory)
   const visited = new Set()
   const active = new Set()
   const approved = verifiedPack ? verifiedProductionArtifactHashes(verifiedPack) : new Map()
+  const approvedDirectories = new Set([...approved.keys()].flatMap(file => {
+    const parts = file.split('/')
+    return parts.slice(0, -1).map((_part, index) => parts.slice(0, index + 1).join('/'))
+  }))
   const approvedSeen = new Set()
   function check(target) {
     fs.lstatSync(target) // 壊れたリンクも失敗させる。
     const resolved = fs.realpathSync(target)
     const relative = path.relative(root, resolved)
+    const relativeFile = path.relative(lexicalRoot, path.resolve(target)).split(path.sep).join('/')
+    const resolvedFile = relative.split(path.sep).join('/')
     assert.ok(
       relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative),
       `成果物外へのリンク: ${target}`,
+    )
+    // 正式namespaceの例外を別名へ移せない。canonical先でもdedup前に判定する。
+    assert.ok(
+      relativeFile === resolvedFile || !(approved.has(resolvedFile) || approvedDirectories.has(resolvedFile)
+        || relativeFile.startsWith('public/ranch/approved/')),
+      `正式素材への未登録alias: ${target}`,
     )
     assert.ok(!active.has(resolved), `成果物内の循環リンク: ${target}`)
     if (visited.has(resolved)) return
@@ -47,13 +60,12 @@ export function inspectArtifact(directory, blockedHashes, markers, verifiedPack 
     const stat = fs.statSync(resolved)
     if (stat.isDirectory()) {
       active.add(resolved)
-      for (const name of fs.readdirSync(resolved)) check(path.join(resolved, name))
+      for (const name of fs.readdirSync(target)) check(path.join(target, name))
       active.delete(resolved)
     } else if (stat.isFile()) {
       files++
       const bytes = fs.readFileSync(resolved)
       const hash = crypto.createHash('sha256').update(bytes).digest('hex')
-      const relativeFile = path.relative(root, resolved).split(path.sep).join('/')
       const expected = approved.get(relativeFile)
       if (relativeFile.startsWith('public/ranch/approved/')) assert.equal(hash, expected, `未登録/改竄正式素材: ${target}`)
       if (expected === hash) approvedSeen.add(relativeFile)
