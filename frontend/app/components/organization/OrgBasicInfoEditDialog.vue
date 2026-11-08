@@ -134,7 +134,7 @@ watch(selectedPref, async (pref) => {
     cities.value = []
   }
   if (pref) await loadCities(pref.code)
-})
+}, { flush: 'sync' })
 
 const canSubmit = computed(() => !initializing.value && form.value.name.trim().length > 0 && !saving.value)
 
