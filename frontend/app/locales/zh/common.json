@@ -147,6 +147,77 @@
         "joinFailed": "加入失败",
         "declineFailed": "谢绝失败"
       }
+    },
+    "channelList": {
+      "title": "聊天",
+      "newConversation": "新会话",
+      "addChannel": "添加频道",
+      "dmSection": "Kabine（私信）",
+      "noDm": "暂无私信",
+      "roomSection": "Zimmer（房间）",
+      "noRoom": "暂无房间",
+      "loadFailed": "获取房间列表失败",
+      "detailLoadFailed": "获取频道信息失败"
+    },
+    "create": {
+      "typeDm": "Kabine（私信）",
+      "typeRoom": "Zimmer（房间）",
+      "dmOpened": "已打开 Kabine（私信）",
+      "roomCreated": "已创建 Zimmer（房间）",
+      "conversationFailed": "创建会话失败",
+      "roomCreateFailed": "创建 Zimmer（房间）失败",
+      "header": "开始新会话",
+      "tabContacts": "从联系人中选择",
+      "tabCreateRoom": "创建 Zimmer（房间）",
+      "searchByName": "按名称搜索...",
+      "selectedSummary": "已选择 {count} 人 → 将作为 {type} 开始",
+      "startAs": "开始 {type}",
+      "roomName": "Zimmer（房间）名称",
+      "roomNamePlaceholder": "例如：general",
+      "descriptionOptional": "说明（可选）",
+      "descriptionPlaceholder": "Zimmer（房间）的说明",
+      "privateRoom": "私密 Zimmer（仅限邀请）",
+      "inviteMembersOptional": "邀请成员（可选）",
+      "create": "创建"
+    },
+    "inviteZimmer": {
+      "header": "邀请加入 Zimmer",
+      "tooltip": "邀请加入 Zimmer",
+      "failed": "邀请失败",
+      "noMembers": "没有可邀请的成员",
+      "shareQuestion": "是否共享现有聊天内容？",
+      "share": "共享",
+      "shareHint": "之前的消息将转入新的 Zimmer",
+      "noShare": "不共享",
+      "noShareHint": "新的 Zimmer 将从空白开始",
+      "createZimmer": "创建 Zimmer"
+    },
+    "memberSelect": {
+      "notFound": "未找到成员"
+    },
+    "activeThreadsEmpty": "没有进行中的话题",
+    "tabAriaLabel": "{name} 标签页",
+    "message": {
+      "deleted": "此消息已被删除",
+      "unknownSender": "未知",
+      "edited": "（已编辑）",
+      "loadOlder": "加载更早的消息",
+      "empty": "还没有消息",
+      "sendFailed": "发送消息失败",
+      "inputPlaceholder": "输入消息...",
+      "inputDisabled": "无法在此 Zimmer（房间）中发帖",
+      "loadFailed": "获取消息失败",
+      "reactionFailed": "回应失败",
+      "pinned": "已置顶",
+      "unpinned": "已取消置顶",
+      "pinFailed": "置顶操作失败",
+      "deleteSuccess": "消息已删除",
+      "deleteFailed": "删除失败",
+      "bookmarkFailed": "收藏操作失败",
+      "markReadFailed": "无法标记为已读",
+      "editHeader": "编辑消息",
+      "editSuccess": "消息已编辑",
+      "editFailed": "编辑失败"
     }
   },
   "button": {
@@ -333,7 +404,19 @@
     "period_all": "所有课节",
     "period_number_placeholder": "课节编号",
     "period_suffix": "节",
-    "term_name_placeholder": "例: 第1学期"
+    "term_name_placeholder": "例: 第1学期",
+    "term_academic_year_range": "请输入 {min} 至 {max} 之间的学年",
+    "term_end_before_start": "结束日期必须晚于开始日期",
+    "term_date_overlap": "该学期的期间与其他学期重叠。请检查开始日期和结束日期",
+    "term_delete_confirm": "要删除学期“{name}”吗？此操作无法撤销。",
+    "term_delete_success": "已删除学期",
+    "term_load_error": "加载学期失败",
+    "team_term_hint": "这是本团队的学期。创建课程表时，从这里添加的学期中选择。",
+    "no_term_for_create": "还没有学期。请先在“学期”标签页中添加学期。",
+    "delete_timetable": "删除",
+    "delete_timetable_confirm": "要删除课程表“{name}”吗？此操作无法撤销。",
+    "delete_timetable_success": "已删除课程表",
+    "delete_timetable_error": "删除课程表失败"
   },
   "error": {
     "server": "服务器发生错误",
@@ -1110,6 +1193,18 @@
     }
   },
   "project": {
+    "back_label": "项目列表",
+    "delete_aria": "删除{title}",
+    "delete_confirm": "确定要删除“{title}”吗？",
+    "delete_confirm_header": "确认删除",
+    "milestone_dialog": {
+      "add_title": "添加里程碑",
+      "edit_title": "编辑里程碑",
+      "title_label": "标题",
+      "title_placeholder": "里程碑名称",
+      "due_date_label": "截止日期",
+      "add": "添加"
+    },
     "related_todo_no_due": "无截止日期",
     "related_todo_no_assignee": "未分配负责人",
     "related_todo_open": "打开待办详情",
@@ -1170,7 +1265,19 @@
       "none": "无",
       "custom_emoji": "自定义",
       "custom_color": "自定义颜色",
-      "current": "当前值"
+      "current": "当前值",
+      "colors": {
+        "blue": "蓝色",
+        "red": "红色",
+        "green": "绿色",
+        "amber": "琥珀色",
+        "violet": "紫色",
+        "pink": "粉色",
+        "cyan": "青色",
+        "teal": "蓝绿色",
+        "orange": "橙色",
+        "gray": "灰色"
+      }
     },
     "guide": {
       "button": "使用说明",
@@ -1222,7 +1329,10 @@
       "update_failed": "更新失败",
       "delete_failed": "删除失败",
       "status_change_failed": "更改状态失败",
-      "milestone_save_failed": "保存里程碑失败"
+      "milestone_save_failed": "保存里程碑失败",
+      "force_unlock_failed": "强制解锁失败",
+      "completion_mode_failed": "更改完成模式失败",
+      "gate_init_failed": "初始化关卡失败"
     },
     "status": {
       "active": "进行中",

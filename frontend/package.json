@@ -14,14 +14,15 @@
     "lint:fix": "eslint . --fix",
     "lint:prune": "eslint . --prune-suppressions",
     "test": "npm run test:unit && playwright test",
-    "test:unit": "npm run verify:ranch-development-clips && vitest run && npm run test:ranch-clips",
+    "test:unit": "npm run verify:ranch-development-clips && npm run verify:ranch-development-appearances && vitest run && npm run test:ranch-clips",
     "test:ranch-clips": "vitest run --config vitest.ranch-clips.config.ts",
     "verify:ranch-development-clips": "node scripts/verify-ranch-development-clips.mjs",
     "test:unit:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
-    "generate:types": "npx openapi-typescript ../docs/openapi.json -o app/types/generated/index.ts"
+    "generate:types": "npx openapi-typescript ../docs/openapi.json -o app/types/generated/index.ts",
+    "verify:ranch-development-appearances": "node --test scripts/verify-ranch-development-appearances.test.mjs && node scripts/verify-ranch-development-appearances.mjs"
   },
   "lint-staged": {
     "*.{ts,vue}": [
