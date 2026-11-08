@@ -15,13 +15,13 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertTimeout;
 
 /**
  * 番人（CMP-260909-1446）: <b>JPA を迂回する生 SQL が時刻列の格納基準を割る</b>書き方が
@@ -141,9 +141,11 @@ class RawSqlTimeColumnGuardTest {
      * Java コードそのものが対象なので、リテラルの<b>外側</b>だけを見る。</p>
      */
     static List<Violation> collectViolationsInFile(String raw, String fqcn) {
+        checkInterrupted();
         if (!mayContainAnyTrigger(raw)) {
             // 走査の手がかりが 1 つも無いファイルはマスク処理そのものを省く。全 production ソース
             // （数千ファイル）に 2 回のマスク走査を掛けると 30 秒の上限を超えるため（初版で実測）。
+            checkInterrupted();
             return List.of();
         }
         List<Violation> violations = new ArrayList<>();
@@ -157,10 +159,11 @@ class RawSqlTimeColumnGuardTest {
         addViolations(violations, maskedComments, TIME_COLUMN_JAVA_BOUND,
                 Category.TIME_COLUMN_JAVA_BOUND, fqcn, raw, maskedLiterals, true, true);
 
-        if (RAW_SQL_MARKER.matcher(maskedLiterals).find()) {
+        if (scanMatcher(RAW_SQL_MARKER, maskedLiterals).find()) {
             addViolations(violations, maskedLiterals, ENTITY_TIME_GETTER,
                     Category.RAW_SQL_ENTITY_TIME_GETTER, fqcn, raw, maskedLiterals, false, false);
         }
+        checkInterrupted();
         return violations;
     }
 
@@ -174,7 +177,7 @@ class RawSqlTimeColumnGuardTest {
                                       Category category, String fqcn, String raw,
                                       String maskedLiterals, boolean insideLiteralOnly,
                                       boolean requirePrecedingWord) {
-        Matcher m = pattern.matcher(scanText);
+        Matcher m = scanMatcher(pattern, scanText);
         while (m.find()) {
             int start = m.start();
             if (requirePrecedingWord && !precededByWordChar(scanText, start)) {
@@ -237,7 +240,10 @@ class RawSqlTimeColumnGuardTest {
     @DisplayName("生SQLの時刻列まわりの違反がクラス単位の凍結件数から増えていない")
     void noNewRawSqlTimeColumnViolations() throws IOException {
         Path root = sourceRoot();
-        List<Violation> all = assertTimeout(Duration.ofSeconds(30), () -> collectViolations(root));
+        long startNanos = System.nanoTime();
+        List<Violation> all = scanWithinTimeout(Duration.ofSeconds(30), () -> collectViolations(root));
+        System.out.printf("[生SQL時刻列番人] 検出 %d 件／走査境界 %d ms%n",
+                all.size(), (System.nanoTime() - startNanos) / 1_000_000L);
 
         assertThat(all)
                 .as("production コードから走査対象を1件も検出できなかった（走査パスの前提が壊れた可能性）")
@@ -300,11 +306,32 @@ class RawSqlTimeColumnGuardTest {
     // ────────────────────────────────────────────────────────────
 
     static List<Violation> collectViolations(Path root) {
+        checkInterrupted();
         List<Violation> violations = new ArrayList<>();
         for (Path file : javaFiles(root)) {
+            checkInterrupted();
             violations.addAll(collectViolationsInFile(read(file), toFqcn(root, file)));
         }
+        checkInterrupted();
         return violations;
+    }
+
+    /** Flyway番人と同じプリエンプティブな時間制限を使い、閾値は呼出元の値を維持する。 */
+    static <T> T scanWithinTimeout(Duration timeout, Supplier<T> scan) {
+        return FlywayMigrationTimeFunctionGuardTest.scanWithinTimeout(timeout, scan::get);
+    }
+
+    /** 実走査の全matcherが割込み可能な入力を使う。部分列も既存wrapperが保護する。 */
+    static Matcher scanMatcher(Pattern pattern, CharSequence text) {
+        checkInterrupted();
+        return pattern.matcher(FlywayMigrationTimeFunctionGuardTest.interruptible(text));
+    }
+
+    /** ファイル境界と結果返却前でも、キャンセルを正常な部分結果へ変えない。 */
+    private static void checkInterrupted() {
+        if (Thread.currentThread().isInterrupted()) {
+            throw new FlywayMigrationTimeFunctionGuardTest.ScanInterruptedException();
+        }
     }
 
     private static Map<String, Integer> countByFqcn(List<Violation> all, Category category) {

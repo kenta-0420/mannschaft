@@ -1,0 +1,209 @@
+{
+  "schemaVersion": 1,
+  "kind": "SELECTED_R24_PARTIAL_RESIDENT_OBSERVATIONS",
+  "cmpId": "CMP-261008-1253",
+  "sourceHead": "f93884c6a43ae9be5973cf005dfe52ebef7d1262",
+  "sourceBase": "63d88c1eb4172b3df689d5cfc7a62602436c82e5",
+  "newIntegratedHead": "de0cdda46ff29c304efd9279d07e0d0dcf722187",
+  "newHeadDirectRealTest": false,
+  "freshHeadCI": "未取得・後続ゲート",
+  "registrationSource": "actual-resident-artifacts",
+  "trusted": false,
+  "status": "observed-unverified",
+  "coveragePassed": false,
+  "formalCompletion": false,
+  "rootAdoption": {
+    "privatePath": ".claude/campaigns/cmp1253-r24-root-review-20261108/root-r24-final-partial-adoption.json",
+    "sha256": "4c4cd3233c728bee2ef36a3b21b77dcec13d9bae54122b99f7d3878b3e8ca16f"
+  },
+  "residents": [
+    {
+      "resident": "A",
+      "personaId": "ALIC-CMP1253-R24-A-20261108",
+      "journeyId": "ALIC-CMP1253-R24-A-20261108-J1",
+      "personaArchetype": "一般×素直（担当チーム管理者）",
+      "originalRunId": "cmp1253-r21-A-768ed983-14b4-4b33-8962-501a6bc6e7bd",
+      "sourceHead": "f93884c6a43ae9be5973cf005dfe52ebef7d1262",
+      "purpose": "自分のチームのシフトを開き、担当者の割当を変更し、再訪後の状態を確認する",
+      "summary": "12月15日09時〜17時の空欄へ担当者を追加し、ボードを再訪後も割当表示を確認。通知・確定操作は未確認。名前locatorの0件は自動化制約であり製品不具合としない。",
+      "executionCompleted": true,
+      "allGoalsReached": true,
+      "goalScope": "原住民目的",
+      "coveragePassed": false,
+      "trusted": false,
+      "status": "observed-unverified",
+      "sourceReport": {
+        "privatePath": ".claude/campaigns/cmp1253-r24-root-review-20261108/actor-full-final-A.md",
+        "sha256": "f53a706fdd19fbdb3e4c2232380a5d2c14d8fb61725f5593f1a648d55c81ff6c"
+      },
+      "canonicalSnapshot": {
+        "privatePath": ".claude/campaigns/cmp1253-r24-root-review-20261108/owned-end-evidence/canonical-resident-run-A.json",
+        "sha256": "c235666bfdb660635faf67f404a72f4652e58950cb7120f25d42b12ae688c72e",
+        "kind": "LIFECYCLE_FIELD_SNAPSHOT_NOT_SEPARATE_PRODUCER_FILE",
+        "sourceLifecycleSha256": "48386bc4bb30298d647bf5c2ef279ed47743a45aea68ad929026aecaccf18e75",
+        "note": "lifecycle内の派生field snapshot。独立producer原本ではない。"
+      },
+      "images": [
+        {
+          "privatePath": ".claude/campaigns/cmp1253-real-r24-entry-budget-20261108/resident-images/A-1.png",
+          "sha256": "c3d2709535370b2b687039bfe235f87be8399e07bad43f3eaa206fa7b31fccda",
+          "requestId": "A_002",
+          "rootViewed": true,
+          "actorViewed": true
+        },
+        {
+          "privatePath": ".claude/campaigns/cmp1253-real-r24-entry-budget-20261108/resident-images/A-5.png",
+          "sha256": "3f84d65519e9b8f9e7b136e5b0acc8b7d4d602df746834067df75f3028a0d047",
+          "requestId": "A_009",
+          "rootViewed": true,
+          "actorViewed": true
+        },
+        {
+          "privatePath": ".claude/campaigns/cmp1253-real-r24-entry-budget-20261108/resident-images/A-6.png",
+          "sha256": "20a1681f0a457cb879f4c31db68ff7e995fa91ab9f3ba5cce5b1293b8762db3b",
+          "requestId": "A_013",
+          "rootViewed": true,
+          "actorViewed": true
+        }
+      ]
+    },
+    {
+      "resident": "B",
+      "personaId": "ALIC-CMP1253-R24-B-20261108",
+      "journeyId": "ALIC-CMP1253-R24-B-20261108-J1",
+      "personaArchetype": "高齢・低リテラシー（チーム一般メンバー）",
+      "originalRunId": "cmp1253-r21-B-925566af-50d0-4d4f-ac86-8e012558586e",
+      "sourceHead": "f93884c6a43ae9be5973cf005dfe52ebef7d1262",
+      "purpose": "自分の所属チームのシフトを探し、自分の予定を確認する",
+      "summary": "チーム選択後のシフト管理・一覧と12月のマイシフトが空で、自分の予定や次の相談先を確認できなかった。fixtureはDRAFTかつ未割当であり、予定非表示を製品不具合と断定しない。",
+      "executionCompleted": true,
+      "allGoalsReached": false,
+      "goalScope": "原住民目的",
+      "coveragePassed": false,
+      "trusted": false,
+      "status": "observed-unverified",
+      "sourceReport": {
+        "privatePath": ".claude/campaigns/cmp1253-r24-root-review-20261108/actor-full-final-B.md",
+        "sha256": "c9b5c42ed2eff4555da3b9f34a6d3230f9f2e5cf4bed5f3cc39157651e83296b"
+      },
+      "canonicalSnapshot": {
+        "privatePath": ".claude/campaigns/cmp1253-r24-root-review-20261108/owned-end-evidence/canonical-resident-run-B.json",
+        "sha256": "639bb6a057a333a7158e9a8b24e1db656962943938318aacb94787a4665a828e",
+        "kind": "LIFECYCLE_FIELD_SNAPSHOT_NOT_SEPARATE_PRODUCER_FILE",
+        "sourceLifecycleSha256": "48386bc4bb30298d647bf5c2ef279ed47743a45aea68ad929026aecaccf18e75",
+        "note": "lifecycle内の派生field snapshot。独立producer原本ではない。"
+      },
+      "images": [
+        {
+          "privatePath": ".claude/campaigns/cmp1253-real-r24-entry-budget-20261108/resident-images/B-2.png",
+          "sha256": "55576da672a1eca74c2cc7cdcf29ecfa43cc0e1a471d1ad93ad1d23d325ec924",
+          "requestId": "B_002",
+          "rootViewed": true,
+          "actorViewed": true
+        },
+        {
+          "privatePath": ".claude/campaigns/cmp1253-real-r24-entry-budget-20261108/resident-images/B-7.png",
+          "sha256": "da8f3b6e98ed2c51673155661a498a64ad7aa7bf0995fad4793941c1013d579c",
+          "requestId": "B_016",
+          "rootViewed": true,
+          "actorViewed": true
+        }
+      ]
+    },
+    {
+      "resident": "C",
+      "personaId": "ALIC-CMP1253-R24-C-20261108",
+      "journeyId": "ALIC-CMP1253-R24-C-20261108-J1",
+      "personaArchetype": "一般×隙間狙い（別組織管理者）",
+      "originalRunId": "cmp1253-r21-C-b3cbd8ea-f282-4819-9331-63881e6ce81a",
+      "sourceHead": "f93884c6a43ae9be5973cf005dfe52ebef7d1262",
+      "purpose": "案内された他組織のシフトを自分の画面から読み取り専用でどこまで確認できるか調べる",
+      "summary": "他組織一覧は再試行・権限の案内、詳細は見つからない表示、ボードは空で「0件未割当」と表示。権限によるものか一時的不調かは画面から不明。PDFクリック後の生成中表示が元に戻ったが、取得成否・内容は未確認で、漏洩なしとは断定しない。",
+      "executionCompleted": true,
+      "allGoalsReached": true,
+      "goalScope": "読み取り確認範囲のみ",
+      "coveragePassed": false,
+      "trusted": false,
+      "status": "observed-unverified",
+      "sourceReport": {
+        "privatePath": ".claude/campaigns/cmp1253-r24-root-review-20261108/actor-full-final-C.md",
+        "sha256": "0fbcaaecb033c827a946544b8c2ae871b892831454f1119e4d375f2aa3aeb9c9"
+      },
+      "canonicalSnapshot": {
+        "privatePath": ".claude/campaigns/cmp1253-r24-root-review-20261108/owned-end-evidence/canonical-resident-run-C.json",
+        "sha256": "fb3657d87906b6cda2a33d70f6e927110ebafe6d6d9c6e542d4ebb7ce78b0a0e",
+        "kind": "LIFECYCLE_FIELD_SNAPSHOT_NOT_SEPARATE_PRODUCER_FILE",
+        "sourceLifecycleSha256": "48386bc4bb30298d647bf5c2ef279ed47743a45aea68ad929026aecaccf18e75",
+        "note": "lifecycle内の派生field snapshot。独立producer原本ではない。"
+      },
+      "images": [
+        {
+          "privatePath": ".claude/campaigns/cmp1253-real-r24-entry-budget-20261108/resident-images/C-3.png",
+          "sha256": "8d15c96aae32d5fb35679d85845cd1562685149d460870643bbebe82951f358d",
+          "requestId": "C_002",
+          "rootViewed": true,
+          "actorViewed": true
+        },
+        {
+          "privatePath": ".claude/campaigns/cmp1253-real-r24-entry-budget-20261108/resident-images/C-4.png",
+          "sha256": "3e6daba0c1b134dd9dce2976308727e76b78073d7d79bcd61480c42d668068c9",
+          "requestId": "C_008",
+          "rootViewed": true,
+          "actorViewed": true
+        }
+      ]
+    }
+  ],
+  "insights": [
+    {
+      "id": "ALIC-CMP1253-R24-B-20261108-I001",
+      "featureKey": "shift-shift",
+      "featureDetail": "シフト閲覧・空状態の説明",
+      "personaId": "ALIC-CMP1253-R24-B-20261108",
+      "journeyId": "ALIC-CMP1253-R24-B-20261108-J1",
+      "personaArchetype": "高齢・低リテラシー（チーム一般メンバー）",
+      "originalRunId": "cmp1253-r21-B-925566af-50d0-4d4f-ac86-8e012558586e",
+      "sourceHead": "f93884c6a43ae9be5973cf005dfe52ebef7d1262",
+      "evidencePath": "docs/evidence/CMP-261008-1253/resident-observations-r24-20261108.json",
+      "title": "予定が空のときに理由と次の相談先が分からない",
+      "detail": "チーム選択後のシフト管理・一覧と12月のマイシフトが空で、自分の予定や次の相談先を確認できなかった。fixtureはDRAFTかつ未割当であり、予定非表示を製品不具合と断定しない。",
+      "page": "/my/shifts",
+      "screenshotPath": ".claude/campaigns/cmp1253-real-r24-entry-budget-20261108/resident-images/B-7.png",
+      "urgency": "normal",
+      "priority": "should",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false
+    },
+    {
+      "id": "ALIC-CMP1253-R24-C-20261108-I001",
+      "featureKey": "shift-shift",
+      "featureDetail": "シフト閲覧・空状態の説明",
+      "personaId": "ALIC-CMP1253-R24-C-20261108",
+      "journeyId": "ALIC-CMP1253-R24-C-20261108-J1",
+      "personaArchetype": "一般×隙間狙い（別組織管理者）",
+      "originalRunId": "cmp1253-r21-C-b3cbd8ea-f282-4819-9331-63881e6ce81a",
+      "sourceHead": "f93884c6a43ae9be5973cf005dfe52ebef7d1262",
+      "evidencePath": "docs/evidence/CMP-261008-1253/resident-observations-r24-20261108.json",
+      "title": "他組織の一覧案内と空ボードの意味を判別できない",
+      "detail": "他組織一覧は再試行・権限の案内、詳細は見つからない表示、ボードは空で「0件未割当」と表示。権限によるものか一時的不調かは画面から不明。PDFクリック後の生成中表示が元に戻ったが、取得成否・内容は未確認で、漏洩なしとは断定しない。",
+      "page": "/teams/[private-team]/shifts/board",
+      "screenshotPath": ".claude/campaigns/cmp1253-real-r24-entry-budget-20261108/resident-images/C-4.png",
+      "urgency": "normal",
+      "priority": "should",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false
+    }
+  ],
+  "limitations": [
+    "住民phaseは約44分。15分以内・SLA合格を主張しない。",
+    "初期root中継にHTTPメタデータが含まれた。途中以後は無視し、ARIA・画像のみで探索するよう指示された。完全な無介入探索とはしない。",
+    "3runIdのr21 prefixは実IDでありR24へ書き換えない。",
+    "全viewport・mobile・Safari・負荷網羅、B0 coverage合格、long整数契約完了、CMP1253正式完了を主張しない。",
+    "coded15 PNGとresident7 PNGはroot実閲覧済み。原visuallyChecked=falseは変更せず、画像実体は公開しない。",
+    "R20旧実機1194は歴史として保持。R21 FE240 timeout、R22 Q archive60 timeout、R23 P entry30102 failの根因解決をR24成功から推定しない。"
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260916-0056",
+  "scope": "test-only",
+  "implementation": {
+    "pr": 4403,
+    "sha": "4c07f4250917a979862fc54299d809e10a2d9647"
+  },
+  "scopeReason": "テスト3ファイルとREADME・開発文書だけを変更し、製品UI/API/認可/schema/利用者データは不変。",
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "実regexの走査が短い上限で制御を戻し、workerが有限時間内に終了する。",
+      "tests": [
+        {
+          "name": "realRegexReturnsControlAtTimeout",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/architecture/SourceGuardCancellationTest.java"
+        },
+        {
+          "name": "interruptedRegexWorkerActuallyStops",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/architecture/SourceGuardCancellationTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "既存2番人の実11patternとファイル境界を割込み応答化し、キャンセルを空/部分成功に変えない。",
+      "tests": [
+        {
+          "name": "eachMatcherRejectsInterruptedScan",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/architecture/SourceGuardCancellationTest.java"
+        },
+        {
+          "name": "interruptedEmptyDirectoryDoesNotReturnPartialSuccess",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/architecture/SourceGuardCancellationTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "正常検出・IO失敗伝播・既存検出集合/凍結・patternshapeを保ち、既存フル走査の件数と時間を確認する。",
+      "tests": [
+        {
+          "name": "normalScanRetainsDetection",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/architecture/SourceGuardCancellationTest.java"
+        },
+        {
+          "name": "ioFailureIsNotReturnedAsEmptyResult",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/architecture/SourceGuardCancellationTest.java"
+        },
+        {
+          "name": "RawSqlTimeColumnGuardTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/architecture/RawSqlTimeColumnGuardTest.java"
+        },
+        {
+          "name": "DateTimeAndZoneGuardTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/architecture/DateTimeAndZoneGuardTest.java"
+        },
+        {
+          "name": "RawSqlTimeColumnGuardScanningLogicTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/architecture/RawSqlTimeColumnGuardScanningLogicTest.java"
+        },
+        {
+          "name": "DateTimeAndZoneGuardScanningLogicTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/architecture/DateTimeAndZoneGuardScanningLogicTest.java"
+        },
+        {
+          "name": "FlywayMigrationTimeFunctionGuardTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/architecture/FlywayMigrationTimeFunctionGuardTest.java"
+        },
+        {
+          "name": "FlywayMigrationTimeFunctionGuardScanningLogicTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/architecture/FlywayMigrationTimeFunctionGuardScanningLogicTest.java"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 42496576449
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4403"
+    },
+    "real": {
+      "status": "not-applicable",
+      "scope": "test-only",
+      "reason": "テスト3ファイルとREADME・開発文書だけの変更で、製品UI/API/認可/schema/利用者データは不変。JUnitの制御復帰・割込みworker終了が受入対象のため実機は対象外。"
+    },
+    "exploratory": {
+      "status": "not-applicable",
+      "scope": "test-only",
+      "reason": "テスト3ファイルとREADME・開発文書だけの変更で、製品UI/API/認可/schema/利用者データと利用者導線は不変のため探索は対象外。"
+    }
+  },
+  "regressions": []
+}
