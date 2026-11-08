@@ -17,10 +17,10 @@ public record DiagnosisResultSummary(UUID id, DiagnosisMethod method, Instant co
         @Schema(description = "保存時の六軸の極ラベルと本人の選択側。旧結果やBIRTH_STYLEではnullを許す",
                 types = {"object", "null"}, nullable = true)
         Map<DiagnosisAxis,DiagnosisAxisSelection> axisSelections,
-        @Schema(nullable = true) String speciesKey,
-        @Schema(nullable = true) String variantKey,
-        @Schema(nullable = true, description = "保存時の種カタログ版。decimal string") String catalogVersion,
-        @Schema(nullable = true, description = "保存時の種・外見名を含む六言語の対応説明")
+        @Schema(types = {"string", "null"}, nullable = true) String speciesKey,
+        @Schema(types = {"string", "null"}, nullable = true) String variantKey,
+        @Schema(types = {"string", "null"}, nullable = true, description = "保存時の種カタログ版。decimal string") String catalogVersion,
+        @Schema(types = {"object", "null"}, nullable = true, description = "保存時の種・外見名を含む六言語の対応説明")
         Map<String,String> mappingDescriptionSnapshot) {
     /** 追加identityを持たない旧結果・既存fixtureの互換constructor。 */
     public DiagnosisResultSummary(UUID id, DiagnosisMethod method, Instant completedAt,
