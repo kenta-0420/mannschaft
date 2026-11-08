@@ -147,6 +147,77 @@
         "joinFailed": "参加に失敗しました",
         "declineFailed": "辞退に失敗しました"
       }
+    },
+    "channelList": {
+      "title": "チャット",
+      "newConversation": "新しい会話",
+      "addChannel": "チャンネル追加",
+      "dmSection": "Kabine(DM)",
+      "noDm": "DMはありません",
+      "roomSection": "Zimmer(部屋)",
+      "noRoom": "Zimmer(部屋)がありません",
+      "loadFailed": "Zimmer一覧の取得に失敗しました",
+      "detailLoadFailed": "チャンネル情報の取得に失敗しました"
+    },
+    "create": {
+      "typeDm": "Kabine(DM)",
+      "typeRoom": "Zimmer(部屋)",
+      "dmOpened": "Kabine(DM)を開きました",
+      "roomCreated": "Zimmer(部屋)を作成しました",
+      "conversationFailed": "会話の作成に失敗しました",
+      "roomCreateFailed": "Zimmer(部屋)の作成に失敗しました",
+      "header": "新しい会話を始める",
+      "tabContacts": "連絡先から選ぶ",
+      "tabCreateRoom": "Zimmer(部屋)を作成",
+      "searchByName": "名前で検索...",
+      "selectedSummary": "{count}人選択中 → {type}として開始されます",
+      "startAs": "{type}を開始",
+      "roomName": "Zimmer(部屋)名",
+      "roomNamePlaceholder": "例: general",
+      "descriptionOptional": "説明（任意）",
+      "descriptionPlaceholder": "Zimmer(部屋)の説明",
+      "privateRoom": "プライベートZimmer(部屋)（招待制）",
+      "inviteMembersOptional": "メンバーを招待（任意）",
+      "create": "作成"
+    },
+    "inviteZimmer": {
+      "header": "Zimmerに招待する",
+      "tooltip": "Zimmerに招待",
+      "failed": "招待に失敗しました",
+      "noMembers": "招待できるメンバーがいません",
+      "shareQuestion": "既存のチャット内容を共有しますか？",
+      "share": "共有する",
+      "shareHint": "これまでのメッセージが新しいZimmerに引き継がれます",
+      "noShare": "共有しない",
+      "noShareHint": "新しいZimmerは空の状態で始まります",
+      "createZimmer": "Zimmerを作成"
+    },
+    "memberSelect": {
+      "notFound": "メンバーが見つかりません"
+    },
+    "activeThreadsEmpty": "進行中のスレッドはありません",
+    "tabAriaLabel": "{name} のタブ",
+    "message": {
+      "deleted": "このメッセージは削除されました",
+      "unknownSender": "不明",
+      "edited": "(編集済み)",
+      "loadOlder": "過去のメッセージを読み込む",
+      "empty": "まだメッセージがありません",
+      "sendFailed": "メッセージの送信に失敗しました",
+      "inputPlaceholder": "メッセージを入力...",
+      "inputDisabled": "このZimmer(部屋)には投稿できません",
+      "loadFailed": "メッセージの取得に失敗しました",
+      "reactionFailed": "リアクションに失敗しました",
+      "pinned": "ピン留めしました",
+      "unpinned": "ピン解除しました",
+      "pinFailed": "ピン操作に失敗しました",
+      "deleteSuccess": "メッセージを削除しました",
+      "deleteFailed": "削除に失敗しました",
+      "bookmarkFailed": "ブックマークに失敗しました",
+      "markReadFailed": "既読にできませんでした",
+      "editHeader": "メッセージを編集",
+      "editSuccess": "メッセージを編集しました",
+      "editFailed": "編集に失敗しました"
     }
   },
   "button": {

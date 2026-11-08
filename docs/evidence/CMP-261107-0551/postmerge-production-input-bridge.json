@@ -1,0 +1,36 @@
+{
+  "draftFormatVersion": 1,
+  "campaign": "CMP-261107-0551",
+  "campaignStatus": "IN_PROGRESS",
+  "implementationPr": 4353,
+  "implementationPrState": "MERGED",
+  "mergedAtUtc": "2026-11-07T19:28:24Z",
+  "mergedAtPrecision": "root primary get_pr_info confirmed exact GitHub merged_at; prior minute precision superseded",
+  "implementationHead": "9e8e9ba15cc7040d88d88067646be2d6a51ec862",
+  "mergeCommit": "e2b4744f438d0d376fb3c243e28aaa5ad2ff545d",
+  "headTree": "f7db2d502d907e1e8f805cd3ebc7dfe3a9fb9d99",
+  "mergedTree": "43fab9bb5c64fad377a66f8163a14d7ecf17ae6c",
+  "repositoryTreesEqual": false,
+  "deltaFromH": [
+    "docs/task-list.md"
+  ],
+  "frontendTree": "ccdb9b22051266c89b9bfbe1c5eb8f6a712e2936",
+  "backendTree": "4bd7a289c1683dff8992916ddeb04ef190975644",
+  "frontendWorkflowBlob": "f7b79f1564e0aac5ee74ea6d23a4f5d05af2021e",
+  "productionInputSame": true,
+  "productionInputScope": "tracked frontend Docker context ./frontend and Dockerfile/package/lock/config/scanner/renderer/assets/locales; workflow blob and normal build conditions equal",
+  "proofSource": {
+    "source": "outputs/ranch-approved64-main-followup-20261108/postmerge-input-bridge.json",
+    "sha256": "eb6a50681fbdb3fd44f49f3e513e85760f6d2ab035094a8d2ba00e267e6c96ad",
+    "bytes": 475
+  },
+  "gitVerification": "actual M verified locally, not premerge merge-tree prediction",
+  "limits": [
+    "H and M full repository tree differ; exactness applies to stated production input scope.",
+    "implementation.sha remains H; M-push run must not be placed in H-bound completion ci[].",
+    "Docker standard build does not assert DEVflag=true input or Windows identical toolchain/artifact bytes.",
+    "No production success inferred before Docker build/scanner/self-contained/HTTP/health job completes successfully."
+  ],
+  "implementationChangedFiles": 1946,
+  "implementationCommits": 14
+}

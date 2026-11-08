@@ -6,6 +6,7 @@ import com.mannschaft.app.chat.dto.UploadUrlResponse;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.service.ChatAttachmentService;
 import com.mannschaft.app.chat.service.ChatChannelService;
+import com.mannschaft.app.chat.service.ChatChannelAccessGuard;
 import com.mannschaft.app.chat.service.ChatMessageService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
@@ -44,6 +45,7 @@ public class ChatUploadController {
     private final ChatChannelService chatChannelService;
     private final ChatAttachmentService chatAttachmentService;
     private final ChatMessageService chatMessageService;
+    private final ChatChannelAccessGuard chatChannelAccessGuard;
     private final StorageAclService storageAclService;
 
     private static final long DEFAULT_EXPIRY_SECONDS = 3600L;
@@ -53,7 +55,7 @@ public class ChatUploadController {
      *
      * <p>本エンドポイントは、リクエストの {@code channelId} が指すチャンネルへ
      * <b>呼出ユーザーが投稿してよいこと</b>を、本文投稿と同一の判定
-     * （{@link ChatMessageService#checkChannelPostAccess(ChatChannelEntity, Long)}）で保証してから署名 URL を発行する。
+     * （{@link ChatChannelAccessGuard#requireChannelPostAccess(Long, Long)}）で保証してから署名 URL を発行する。
      * 署名 URL の書き込み先はチャンネルのスコープ（TEAM / ORGANIZATION / PERSONAL）配下であり、
      * 認可はスコープをリクエストから受け取らずチャンネルエンティティから解決する。</p>
      *
@@ -65,10 +67,9 @@ public class ChatUploadController {
     public ResponseEntity<ApiResponse<UploadUrlResponse>> generateUploadUrl(
             @Valid @RequestBody UploadUrlRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
+        // 認可: 当該チャンネルへの投稿権限を本文投稿と同一の判定で保証する（不在・越境は同一の 404 CHAT_001）。
+        chatChannelAccessGuard.requireChannelPostAccess(request.getChannelId(), currentUserId);
         ChatChannelEntity channel = chatChannelService.findChannelOrThrow(request.getChannelId());
-
-        // 認可: 当該チャンネルへの投稿権限を本文投稿と同一の判定で保証する。
-        chatMessageService.checkChannelPostAccess(channel, currentUserId);
 
         // F13 Phase 4-β: UX ガード 500MB（413） + F13 統合クォータ（409）の事前チェック
         long fileSize = request.getFileSize() != null ? request.getFileSize() : 0L;
