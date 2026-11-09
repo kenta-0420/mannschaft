@@ -18,11 +18,17 @@ import java.util.UUID;
  */
 public interface InviteTokenRepositoryCustom {
 
-    /** 招待の所属先を、行ロックなしの通常読みで引く。 */
-    Optional<InviteScopeRef> findScopeByToken(String token);
+    /** 招待の所属先を、トークンのハッシュで行ロックなしの通常読みで引く。 */
+    Optional<InviteScopeRef> findScopeByTokenHash(String tokenHash);
 
-    /** 招待行を {@code FOR UPDATE} で読み、最新値を Entity を介さず射影で返す。 */
-    Optional<InviteTokenSnapshot> lockSnapshotByToken(String token);
+    /** 招待の所属先を、招待 ID で行ロックなしの通常読みで引く。 */
+    Optional<InviteScopeRef> findScopeById(Long id);
+
+    /** 招待行をトークンのハッシュで {@code FOR UPDATE} で読み、最新値を Entity を介さず射影で返す。 */
+    Optional<InviteTokenSnapshot> lockSnapshotByTokenHash(String tokenHash);
+
+    /** {@link #lockSnapshotByTokenHash(String)} の招待 ID 版。 */
+    Optional<InviteTokenSnapshot> lockSnapshotById(Long id);
 
     /**
      * 未失効かつ上限未満のときだけ使用回数を1進める条件付き UPDATE。
@@ -40,8 +46,8 @@ public interface InviteTokenRepositoryCustom {
     /** 外側トランザクションのスナップショットや一次キャッシュに左右されず、最新値で行をロックして返す。 */
     Optional<InviteTokenEntity> lockFreshById(Long id);
 
-    /** {@link #lockFreshById(Long)} のトークン文字列版。 */
-    Optional<InviteTokenEntity> lockFreshByToken(String token);
+    /** {@link #lockFreshById(Long)} のトークンハッシュ版。 */
+    Optional<InviteTokenEntity> lockFreshByTokenHash(String tokenHash);
 
     /** CLAIMED の確保記録を1行挿入して主キー（UUIDv7）を返す。 */
     UUID insertClaim(Long tokenId, Long userId);

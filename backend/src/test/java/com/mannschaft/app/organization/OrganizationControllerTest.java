@@ -19,7 +19,7 @@ import com.mannschaft.app.role.dto.BlockRequest;
 import com.mannschaft.app.role.dto.BlockResponse;
 import com.mannschaft.app.role.dto.CreateInviteTokenRequest;
 import com.mannschaft.app.role.dto.EffectivePermissionsResponse;
-import com.mannschaft.app.role.dto.InviteTokenResponse;
+import com.mannschaft.app.role.dto.InviteTokenIssuedResponse;
 import com.mannschaft.app.role.dto.MemberResponse;
 import com.mannschaft.app.role.dto.PermissionGroupRequest;
 import com.mannschaft.app.role.dto.PermissionGroupResponse;
@@ -384,7 +384,7 @@ class OrganizationControllerTest {
     @DisplayName("createInviteToken: 201 Created")
     void createInviteToken_201() {
         CreateInviteTokenRequest req = new CreateInviteTokenRequest(5L, "7d", null);
-        InviteTokenResponse tokenResp = new InviteTokenResponse(1L, "token", "ADMIN", null, null, 0, null, LocalDateTime.now());
+        InviteTokenIssuedResponse tokenResp = new InviteTokenIssuedResponse("token", new com.mannschaft.app.role.dto.InviteTokenResponse(1L, "ADMIN", null, null, 0, null, LocalDateTime.now()));
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
         given(inviteService.createInviteToken(ORG_ID, "ORGANIZATION", req, USER_ID)).willReturn(ApiResponse.of(tokenResp));
         assertThat(controller.createInviteToken(ORG_SLUG, req).getStatusCode()).isEqualTo(HttpStatus.CREATED);
