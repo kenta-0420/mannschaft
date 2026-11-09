@@ -175,7 +175,7 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
     }
 
     /** AC01陽性対照。fixture自体が既存modern選択器の適格判定を満たすことを実証する。 */
-    @ParameterizedTest
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
     @EnumSource(EntitlementScopeKind.class)
     void 同じfixtureは既存modern選択器でも新ACTIVE税込3630として適格である(EntitlementScopeKind scope) {
         BillingPriceSelector.SelectedPrice selected = priceSelector
@@ -191,7 +191,7 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
     }
 
     /** AC01/06。実在team/orgと実membershipのcommit後に人数を数え直す。 */
-    @ParameterizedTest
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
     @CsvSource({"TEAM,1,3630", "TEAM,19,3630", "TEAM,20,3630", "TEAM,21,4840",
             "TEAM,49,4840", "TEAM,50,4840", "TEAM,51,6050",
             "ORG,1,3630", "ORG,19,3630", "ORG,20,3630", "ORG,21,4840",
@@ -207,7 +207,7 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
     }
 
     /** AC03/06。人数0と保存済帯のgapを旧baseへfallbackさせない。 */
-    @ParameterizedTest
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
     @CsvSource({"TEAM,0,false", "ORG,0,false", "TEAM,21,true", "ORG,21,true"})
     void 対象人数を覆わない場合は旧baseでなく未設定040で拒否する(
             EntitlementScopeKind scope, int members, boolean gap) {
@@ -218,7 +218,7 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
     }
 
     /** AC06。保存済gapは帯一覧全体を不適格にしない（create APIの連続条件とは別）。 */
-    @ParameterizedTest
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
     @EnumSource(value = EntitlementScopeKind.class, names = {"TEAM", "ORG"})
     void 保存済の人数gapがあってもそのscopeの適格な帯一覧は全て表示する(EntitlementScopeKind scope) {
         splitActiveMemberBands(scope, true);
@@ -241,7 +241,7 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
     }
 
     /** AC03。PLAN不在nullとは異なり、存在するPLANの価格欠損は040。 */
-    @ParameterizedTest
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
     @EnumSource(EntitlementScopeKind.class)
     void ACTIVE不在の存在PLANは契約価格未設定040で拒否する(EntitlementScopeKind scope) {
         removeActivePrices();
@@ -250,7 +250,7 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
     }
 
     /** AC03/05。NOT NULLを破らず保存可能な不適格値を既存scalarと同じく拒否する。 */
-    @ParameterizedTest
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
     @ValueSource(strings = {"emptyTaxName", "inconsistentTotal", "retiredBand", "emptyBands"})
     void 不適格な新価格は旧baseへfallbackせず未設定040で拒否する(String defect) {
         transactions.executeWithoutResult(tx -> {
@@ -286,7 +286,7 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
     }
 
     /** AC04の既存ADDON互換characterization。価格正本をPLANへ巻き込まない。 */
-    @ParameterizedTest
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
     @CsvSource({"NULL,", "ZERO,0", "PAID,300"})
     void ADDONのnullと0と有料は既存互換を維持する(String suffix, Integer expected) {
         String featureKey = planKey.toLowerCase(java.util.Locale.ROOT) + "." + suffix.toLowerCase(java.util.Locale.ROOT);

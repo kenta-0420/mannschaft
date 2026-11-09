@@ -95,7 +95,7 @@ class BillingLegacyPlanPromotionIT extends AbstractMySqlIntegrationTest {
     }
 
     /** AC07/08。月末/年末の同InstantをUTC/JST双方で独立して実行する。 */
-    @ParameterizedTest
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
     @CsvSource({
             "catalog,2026-11-30T15:00:00Z,UTC,-1", "catalog,2026-11-30T15:00:00Z,UTC,0",
             "catalog,2026-11-30T15:00:00Z,UTC,1", "catalog,2026-11-30T15:00:00Z,Asia/Tokyo,-1",
@@ -126,7 +126,7 @@ class BillingLegacyPlanPromotionIT extends AbstractMySqlIntegrationTest {
     }
 
     /** AC07。effectiveUntilちょうどのAを復活させず、ACTIVE不在を販売不能にする。 */
-    @ParameterizedTest
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
     @ValueSource(strings = {"catalog", "resolver"})
     void 期限ちょうどのAは新たな適格版が無ければ販売しない(String entry) {
         createPrices(DEFAULT_BOUNDARY);
@@ -150,7 +150,7 @@ class BillingLegacyPlanPromotionIT extends AbstractMySqlIntegrationTest {
     }
 
     /** AC11。曖昧な複数dueを勝手に一つ選ばず、既存promoterの単一条件を維持する。 */
-    @ParameterizedTest
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
     @ValueSource(strings = {"catalog", "resolver"})
     void dueが複数なら販売せず親子のどの版も勝手に昇格しない(String entry) {
         createPrices(DEFAULT_BOUNDARY);
