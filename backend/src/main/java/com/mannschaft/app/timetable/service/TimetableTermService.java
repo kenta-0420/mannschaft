@@ -167,12 +167,16 @@ public class TimetableTermService {
         // 未削除の時間割が残るときだけ拒否する。論理削除済みの時間割は fk_tm_term(RESTRICT) の参照元として残るが、
         // 学期自体も論理削除（行は残す）なので FK 違反にならず、削除を妨げない（CMP-261105-1507 B1）。
         // チーム・組織どちらの学期でも termId で判定する。
-        if (timetableRepository.countByTermId(termId) > 0) {
+        // 並行した時間割の作成・複製と直列化するため、学期の行を悲観ロックで取り直し、ロック下で参照を数える。
+        // ロック待ちの間に別トランザクションが学期を論理削除していれば取得できず 404（二重削除）。
+        TimetableTermEntity locked = termRepository.findByIdForUpdate(termId)
+                .orElseThrow(() -> new BusinessException(TimetableErrorCode.TERM_NOT_FOUND));
+        if (timetableRepository.countLiveByTermIdLocked(termId) > 0) {
             throw new BusinessException(TimetableErrorCode.TERM_HAS_TIMETABLES);
         }
 
-        entity.softDelete();
-        termRepository.save(entity);
+        locked.softDelete();
+        termRepository.save(locked);
     }
 
     // ---- Validation Helpers ----

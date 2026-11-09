@@ -50,7 +50,7 @@ public class TimetableController {
             @PathVariable Long teamId) {
         List<TimetableEntity> entities = timetableService.getByTeamId(teamId, SecurityUtils.getCurrentUserId());
         // 学期名は 1 クエリでまとめて引く（N+1 回避）
-        Map<Long, String> termNames = timetableService.getTermNames(
+        Map<Long, String> termNames = timetableService.getTermNames(teamId,
                 entities.stream().map(TimetableEntity::getTermId).toList());
         List<TimetableResponse> timetables = entities.stream()
                 .map(e -> toResponse(e, termNames))
@@ -233,7 +233,7 @@ public class TimetableController {
 
     /** 単一の時間割を応答へ変換する（学期名を 1 件引く）。 */
     private TimetableResponse toResponse(TimetableEntity entity) {
-        return toResponse(entity, timetableService.getTermNames(List.of(entity.getTermId())));
+        return toResponse(entity, timetableService.getTermNames(entity.getTeamId(), List.of(entity.getTermId())));
     }
 
     private TimetableResponse toResponse(TimetableEntity entity, Map<Long, String> termNames) {

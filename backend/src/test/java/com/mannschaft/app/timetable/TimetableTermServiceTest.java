@@ -239,7 +239,8 @@ class TimetableTermServiceTest {
         void 未削除の時間割あり_409() {
             TimetableTermEntity term = teamTerm();
             given(termRepository.findById(10L)).willReturn(Optional.of(term));
-            given(timetableRepository.countByTermId(10L)).willReturn(1L);
+            given(termRepository.findByIdForUpdate(10L)).willReturn(Optional.of(term));
+            given(timetableRepository.countLiveByTermIdLocked(10L)).willReturn(1L);
 
             assertThatThrownBy(() -> service.deleteTerm(10L, ACTOR_USER_ID))
                     .isInstanceOf(BusinessException.class)
@@ -254,7 +255,8 @@ class TimetableTermServiceTest {
         void 論理削除済み時間割のみ_学期を論理削除() {
             TimetableTermEntity term = teamTerm();
             given(termRepository.findById(10L)).willReturn(Optional.of(term));
-            given(timetableRepository.countByTermId(10L)).willReturn(0L);
+            given(termRepository.findByIdForUpdate(10L)).willReturn(Optional.of(term));
+            given(timetableRepository.countLiveByTermIdLocked(10L)).willReturn(0L);
 
             service.deleteTerm(10L, ACTOR_USER_ID);
 
@@ -262,6 +264,22 @@ class TimetableTermServiceTest {
             verify(termRepository).save(term);
             verify(termRepository, never()).delete(any(TimetableTermEntity.class));
             verify(accessControlService).checkAdminOrAbove(ACTOR_USER_ID, 1L, "TEAM");
+            // P2: 時間割の作成と直列化するため、学期の行を悲観ロックで取り、ロック下で参照を数える
+            verify(termRepository).findByIdForUpdate(10L);
+            verify(timetableRepository).countLiveByTermIdLocked(10L);
+        }
+
+        @Test
+        @DisplayName("ロック取得後に学期が既に論理削除されていれば TIMETABLE_002（二重削除）")
+        void ロック後に消えていれば404() {
+            TimetableTermEntity term = teamTerm();
+            given(termRepository.findById(10L)).willReturn(Optional.of(term));
+            given(termRepository.findByIdForUpdate(10L)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.deleteTerm(10L, ACTOR_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TIMETABLE_002"));
         }
 
         @Test
@@ -272,7 +290,8 @@ class TimetableTermServiceTest {
                     .startDate(LocalDate.of(2025, 4, 1))
                     .endDate(LocalDate.of(2025, 9, 30)).sortOrder(1).build();
             given(termRepository.findById(11L)).willReturn(Optional.of(term));
-            given(timetableRepository.countByTermId(11L)).willReturn(0L);
+            given(termRepository.findByIdForUpdate(11L)).willReturn(Optional.of(term));
+            given(timetableRepository.countLiveByTermIdLocked(11L)).willReturn(0L);
 
             service.deleteTerm(11L, ACTOR_USER_ID);
 

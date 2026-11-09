@@ -302,6 +302,96 @@ class TimetableTermContractIT extends AbstractMySqlIntegrationTest {
                 .andExpect(status().isNoContent());
     }
 
+    // ---- P1: 学期スコープ検証（他チーム・無関係な組織の学期 ID を使わせない） ----
+
+    private String createTimetableBody(Long termId) throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "TTTERM 越境");
+        body.put("termId", termId);
+        body.put("effectiveFrom", LocalDate.of(2025, 4, 1).toString());
+        body.put("effectiveUntil", LocalDate.of(2025, 9, 30).toString());
+        return objectMapper.writeValueAsString(body);
+    }
+
+    private org.springframework.test.web.servlet.MvcResult postTimetable(Long termId) throws Exception {
+        return mockMvc.perform(post("/api/v1/teams/{id}/timetables", teamId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createTimetableBody(termId)))
+                .andReturn();
+    }
+
+    private void assertSameRejection(org.springframework.test.web.servlet.MvcResult a,
+                                     org.springframework.test.web.servlet.MvcResult b) throws Exception {
+        assertThat(a.getResponse().getStatus()).isEqualTo(404);
+        assertThat(b.getResponse().getStatus()).isEqualTo(a.getResponse().getStatus());
+        var ja = objectMapper.readTree(a.getResponse().getContentAsString()).path("error");
+        var jb = objectMapper.readTree(b.getResponse().getContentAsString()).path("error");
+        assertThat(ja.path("code").asText()).isEqualTo("TIMETABLE_002");
+        assertThat(jb.path("code").asText()).isEqualTo(ja.path("code").asText());
+        assertThat(jb.path("message").asText()).isEqualTo(ja.path("message").asText());
+        assertThat(a.getResponse().getContentAsString()).doesNotContain("越境される");
+    }
+
+    @Test
+    @DisplayName("P1: 他チームの学期 ID で時間割を作ると、存在しない ID と同じ応答で拒否され、学期名は漏れない")
+    void 他チームの学期IDは存在しないIDと同じ応答で拒否() throws Exception {
+        Long otherTeamId = insertTeam("TTTERM 他チーム");
+        Long otherTermId = termRepository.save(TimetableTermEntity.builder()
+                .teamId(otherTeamId).academicYear(2025).name("越境される学期")
+                .startDate(LocalDate.of(2025, 4, 1)).endDate(LocalDate.of(2025, 9, 30))
+                .sortOrder(1).build()).getId();
+        em.flush();
+        em.clear();
+        setAuth(adminTeamId);
+        assertSameRejection(postTimetable(otherTermId), postTimetable(9_999_999L));
+        Number cnt = (Number) em.createNativeQuery("SELECT COUNT(*) FROM timetables WHERE team_id = :t")
+                .setParameter("t", teamId).getSingleResult();
+        assertThat(cnt.longValue()).isZero();
+    }
+
+    @Test
+    @DisplayName("P1: 所属していない組織の学期 ID も、存在しない ID と同じ応答で拒否される")
+    void 無関係な組織の学期IDは拒否() throws Exception {
+        Long strangerOrgId = insertOrganization("TTTERM 無関係な組織");
+        Long strangerTermId = termRepository.save(TimetableTermEntity.builder()
+                .organizationId(strangerOrgId).academicYear(2025).name("越境される学期")
+                .startDate(LocalDate.of(2025, 4, 1)).endDate(LocalDate.of(2025, 9, 30))
+                .sortOrder(1).build()).getId();
+        em.flush();
+        em.clear();
+        setAuth(adminTeamId);
+        assertSameRejection(postTimetable(strangerTermId), postTimetable(9_999_999L));
+    }
+
+    @Test
+    @DisplayName("P1: 自チームの学期と、所属組織の学期では作成できる（201）")
+    void 自チームと所属組織の学期は作成できる() throws Exception {
+        Long teamTermId = saveTeamTerm();
+        Long orgTermId = termRepository.save(TimetableTermEntity.builder()
+                .organizationId(orgId).academicYear(2025).name("TTTERM 所属組織の学期")
+                .startDate(LocalDate.of(2025, 4, 1)).endDate(LocalDate.of(2025, 9, 30))
+                .sortOrder(1).build()).getId();
+        em.flush();
+        em.clear();
+        setAuth(adminTeamId);
+        assertThat(postTimetable(teamTermId).getResponse().getStatus()).isEqualTo(201);
+        assertThat(postTimetable(orgTermId).getResponse().getStatus()).isEqualTo(201);
+    }
+
+    @Test
+    @DisplayName("P2: 論理削除済みの学期で時間割は作れない（404 TIMETABLE_002）")
+    void 論理削除済みの学期では作れない() throws Exception {
+        Long termId = saveTeamTerm();
+        em.flush();
+        em.clear();
+        setAuth(adminTeamId);
+        mockMvc.perform(delete("/api/v1/timetable-terms/{id}", termId)).andExpect(status().isNoContent());
+        em.flush();
+        em.clear();
+        var result = postTimetable(termId);
+        assertThat(result.getResponse().getStatus()).isEqualTo(404);
+    }
+
     // ---- D4: チーム単独の学期一覧（organizationId 任意） ----
 
     @Test
