@@ -159,7 +159,8 @@ class BillingLegacyPlanPromotionIT extends AbstractMySqlIntegrationTest {
                 .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
 
         assertStates(BillingPriceVersionStatus.ACTIVE, BillingPriceVersionStatus.SCHEDULED);
-        transactions.executeWithoutResult(tx -> assertThat(versions.findAllById(versionIds)).hasSize(2));
+        transactions.executeWithoutResult(tx -> assertThat(versions.findByProductKindAndProductKeyAndScopeKindAndDeletedAtIsNullOrderByRevisionNoDesc(
+                BillingProductKind.PLAN, planKey, EntitlementScopeKind.USER)).hasSize(2));
     }
 
     /** AC11。内部Beanの差替えを行わず、legacy入口の同時/反復読取で状態を再読込する。 */
