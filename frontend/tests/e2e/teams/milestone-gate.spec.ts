@@ -32,7 +32,7 @@ interface MilestoneFixture {
   createdAt: string
   updatedAt: string
   progressRate: number
-  isLocked: boolean
+  locked: boolean
   lockedByMilestoneId: number | null
   lockedByMilestoneTitle: string | null
   completionMode: 'AUTO' | 'MANUAL'
@@ -118,7 +118,7 @@ function buildInitialMilestones(): MilestoneFixture[] {
       createdAt: '2026-01-01T00:00:00Z',
       updatedAt: '2026-01-01T00:00:00Z',
       progressRate: 0.0,
-      isLocked: false,
+      locked: false,
       lockedByMilestoneId: null,
       lockedByMilestoneTitle: null,
       completionMode: 'AUTO',
@@ -138,7 +138,7 @@ function buildInitialMilestones(): MilestoneFixture[] {
       createdAt: '2026-01-01T00:00:00Z',
       updatedAt: '2026-01-01T00:00:00Z',
       progressRate: 0.0,
-      isLocked: true,
+      locked: true,
       lockedByMilestoneId: MILESTONE_A_ID,
       lockedByMilestoneTitle: '企画書完成',
       completionMode: 'AUTO',
@@ -158,7 +158,7 @@ function buildInitialMilestones(): MilestoneFixture[] {
       createdAt: '2026-01-01T00:00:00Z',
       updatedAt: '2026-01-01T00:00:00Z',
       progressRate: 0.0,
-      isLocked: true,
+      locked: true,
       lockedByMilestoneId: MILESTONE_B_ID,
       lockedByMilestoneTitle: '会場・備品手配',
       completionMode: 'AUTO',
@@ -417,7 +417,7 @@ test.describe('F02.7 マイルストーンゲート基本フロー', () => {
     unlockedMilestones[0]!.completed = true
     unlockedMilestones[0]!.completedAt = '2026-04-20T12:00:00Z'
     unlockedMilestones[0]!.progressRate = 100.0
-    unlockedMilestones[1]!.isLocked = false
+    unlockedMilestones[1]!.locked = false
     unlockedMilestones[1]!.lockedByMilestoneId = null
     unlockedMilestones[1]!.lockedByMilestoneTitle = null
     unlockedMilestones[1]!.lockedTodoCount = 0
@@ -476,7 +476,7 @@ test.describe('F02.7 マイルストーンゲート基本フロー', () => {
     milestones[0]!.progressRate = 100.0
     milestones[0]!.completedAt = '2026-04-20T12:00:00Z'
     milestones[1]!.completionMode = 'MANUAL'
-    milestones[1]!.isLocked = false
+    milestones[1]!.locked = false
     milestones[1]!.lockedByMilestoneId = null
     milestones[1]!.lockedByMilestoneTitle = null
     milestones[1]!.lockedTodoCount = 0
@@ -762,7 +762,7 @@ test.describe('F02.7 GateProgressGauge 表示', () => {
     const advancedMilestones = buildInitialMilestones()
     advancedMilestones[0]!.completed = true
     advancedMilestones[0]!.progressRate = 100.0
-    advancedMilestones[1]!.isLocked = false
+    advancedMilestones[1]!.locked = false
     advancedMilestones[1]!.lockedByMilestoneId = null
     advancedMilestones[1]!.lockedByMilestoneTitle = null
 

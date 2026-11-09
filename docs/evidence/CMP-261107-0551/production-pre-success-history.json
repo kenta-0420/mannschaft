@@ -1,0 +1,82 @@
+{
+  "draftFormatVersion": 1,
+  "campaign": "CMP-261107-0551",
+  "status": "HISTORICAL_PRE_DOCKER_SUCCESS_SNAPSHOT",
+  "implementationHead": "9e8e9ba15cc7040d88d88067646be2d6a51ec862",
+  "mergeCommit": "e2b4744f438d0d376fb3c243e28aaa5ad2ff545d",
+  "sourceArtifact": {
+    "source": "outputs/ranch-approved64-main-followup-20261108/main-push-runs-M-root.json",
+    "sha256": "e440f2e11239a1c9108c0b7d41d0479bbf740a3d63d8e735c803ec9fcc958f55",
+    "bytes": 878
+  },
+  "runsSnapshot": [
+    {
+      "databaseId": 42406375715,
+      "event": "push",
+      "headSha": "e2b4744f438d0d376fb3c243e28aaa5ad2ff545d",
+      "name": "Frontend — CI (PR Check)",
+      "status": "in_progress",
+      "conclusion": ""
+    },
+    {
+      "databaseId": 42406375652,
+      "event": "push",
+      "headSha": "e2b4744f438d0d376fb3c243e28aaa5ad2ff545d",
+      "name": "ER Diagram Drift Check",
+      "status": "in_progress",
+      "conclusion": ""
+    },
+    {
+      "databaseId": 42406375664,
+      "event": "push",
+      "headSha": "e2b4744f438d0d376fb3c243e28aaa5ad2ff545d",
+      "name": "Frontend — Build & Deploy",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "databaseId": 42406375678,
+      "event": "push",
+      "headSha": "e2b4744f438d0d376fb3c243e28aaa5ad2ff545d",
+      "name": "秘密情報スキャン（gitleaks）",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "databaseId": 42406375635,
+      "event": "push",
+      "headSha": "e2b4744f438d0d376fb3c243e28aaa5ad2ff545d",
+      "name": "Backend — Build, Test & Deploy",
+      "status": "in_progress",
+      "conclusion": ""
+    }
+  ],
+  "requiredProductionJob": {
+    "runId": 42406375715,
+    "jobId": 128504862033,
+    "name": "docker-build-verify",
+    "statusAtRootReport": "in_progress",
+    "requiredSuccess": [
+      "Docker build",
+      "production artifact scanner",
+      "runtime self-contained vue entry",
+      "container root HTTP",
+      "container health",
+      "post-healthy root HTTP"
+    ]
+  },
+  "otherBuildDeployRun": {
+    "runId": 42406375664,
+    "status": "success",
+    "ecrPushStep": "SKIPPED_ROOT_PRIMARY_CHECK",
+    "ecsDeployStep": "SKIPPED_ROOT_PRIMARY_CHECK",
+    "productionDeploymentClaim": false
+  },
+  "localAttempts": {
+    "windowsHBuild": "still live / not passed at root snapshot; untouched by closure worker",
+    "additionalNative": "preflight NO_START; no source copy/resources created; not product failure; thresholds unchanged"
+  },
+  "formalCompletion": false,
+  "limits": "Historical pending snapshot retained. Required M Docker job subsequently succeeded; parent workflow Install was still running at root success snapshot.",
+  "supersededBy": "docs/evidence/CMP-261107-0551/production-M-proof.json"
+}

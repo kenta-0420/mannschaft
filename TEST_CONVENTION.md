@@ -155,12 +155,14 @@ afterAll(() => {
 実効レベルを明示的に設定**し、`@AfterEach` で**元のレベルへ確実に復元**すること（取得した
 `getLevel()` の戻り値をそのまま戻す。null なら null に戻し、継承状態へ戻す）。
 
-**理由**: `backend/build.gradle.kts` の `setForkEvery` により、同一 gradle テストフォーク内で複数
-のテストクラスが JVM を共有する。先に `@ActiveProfiles("test")` の `@SpringBootTest`（`test`
-プロファイルは `logback-spring.xml` で root レベルを WARN に設定）が走ると、その状態が同一フォーク
-内の後続のプレーン単体テストへ持ち越され、`log.info` 等が実効レベル未達で握りつぶされて
-`ListAppender` に何も届かない。**ローカルで対象クラス単体だけを実行すると Spring コンテキストが
-起動しないため再現せず、CI 特有の実行順依存ですり抜ける。**
+**既定の出力**: `backend/src/test/resources/logback-test.xml` は Spring 起動前の native 初期化から
+root を WARN にし、既存 `logback-spring.xml` の test プロファイルと同じ Console pattern、
+WARN/ERROR と例外スタックを保持する。個別ロガーの INFO/DEBUG を明示すれば収集できる。
+
+**理由**: 同一 Gradle テストフォーク内では複数のテストクラスが JVM を共有する。
+既定 WARN のままでは `log.info` 等が実効レベル未達で `ListAppender` に届かず、先行テストの
+レベル変更を引き継いでも実行順に依存する。ログが無いことを検証する場合も、検査対象の
+レベルを明示し、意図せず低レベルの漏出を見逃す空虚な緑を避ける。
 
 ---
 

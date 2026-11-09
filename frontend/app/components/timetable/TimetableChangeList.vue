@@ -67,7 +67,7 @@ const emit = defineEmits<{
       </Column>
       <Column field="subjectName" :header="$t('timetable.change_subject')" />
       <Column field="reason" :header="$t('timetable.change_reason')" />
-      <Column v-if="canManage" :header="$t('common.label.actions')" style="width: 80px">
+      <Column v-if="canManage" :header="$t('label.actions')" style="width: 80px">
         <template #body="{ data }">
           <Button
             icon="pi pi-trash"

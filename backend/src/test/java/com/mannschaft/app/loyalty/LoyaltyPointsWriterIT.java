@@ -22,7 +22,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @org.springframework.boot.test.context.SpringBootTest(classes = LoyaltyPointsWriterIT.PersistenceConfiguration.class, properties = {
-        "spring.flyway.enabled=true", "spring.jpa.hibernate.ddl-auto=none"})
+        "spring.flyway.enabled=true", "spring.jpa.hibernate.ddl-auto=none",
+        // AC19 は200要求を同時にDBへ到達させる試験。既定プール(最大50・取得3秒・増設は逐次)だと、混雑したrunnerで
+        // 150本超が接続待ちで3秒を超え CannotCreateTransactionException になる(コード欠陥ではなく試験前提の不足)。
+        // 200本を起動時に確保して全要求が接続待ちなしでDBロック競合へ入る形にする。担い手を200本の
+        // プラットフォームスレッドにした後も、200要求の同時到達には200本の接続が要るので維持する。
+        // 取得待ち30秒は並列試験の期限(PARALLEL_DEADLINE=180秒)より短く、待ちは必ず失敗として表に出る。
+        "spring.datasource.hikari.maximum-pool-size=200", "spring.datasource.hikari.minimum-idle=200",
+        "spring.datasource.hikari.connection-timeout=30000",
+        // Connector/J の socketTimeout 既定は0(無期限)。応答の来ない読込みが試験を CI 打ち切りまで止めないよう、
+        // 当試練で最長の照会(AC30 十万件、ローカル実測43秒)より十分長い5分で切る。
+        "spring.datasource.hikari.data-source-properties[socketTimeout]=300000"})
 @org.springframework.test.context.ActiveProfiles("test")
 @org.springframework.context.annotation.Import(LoyaltyPointsWriterIT.FixedClockConfiguration.class)
 @org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
@@ -43,7 +53,7 @@ class LoyaltyPointsWriterIT {
                     .withDatabaseName("loyalty_writer_flyway")
                     .withUsername("test").withPassword("test")
                     .withTmpFs(java.util.Map.of("/var/lib/mysql", "rw"))
-                    .withCommand("--log_bin_trust_function_creators=1");
+                    .withCommand("--log_bin_trust_function_creators=1", "--max_connections=400");
     static {
         if (AbstractMySqlIntegrationTest.isDockerAvailable()) {
             MYSQL.start();
@@ -466,6 +476,35 @@ class LoyaltyPointsWriterIT {
     }
 
     @Test
+    void 試験基盤_並列試験の待ちは有限でありプールは200本で駆動側の読込みにも上限がある() throws Exception {
+        // 止まった要求がCIの打ち切りまで黙って待たないための前提(CMP-261107-0740)を、設定の綴り違いで黙って失わない。
+        var pool = jdbc.getDataSource().unwrap(com.zaxxer.hikari.HikariDataSource.class);
+        assertThat(pool.getMaximumPoolSize()).isEqualTo(200);
+        assertThat(pool.getConnectionTimeout()).isLessThan(PARALLEL_DEADLINE.toMillis());
+        assertThat(pool.getDataSourceProperties().getProperty("socketTimeout")).isEqualTo("300000");
+        // 担い手が実際に終わらなければ、期限で失敗として抜け、状態を理由に載せる。
+        var gate = new java.util.concurrent.CountDownLatch(1);
+        try {
+            assertThatThrownBy(() -> parallel(2, index -> { awaitUninterruptibly(gate); return index; }, java.time.Duration.ofSeconds(2)))
+                    .isInstanceOf(AssertionError.class)
+                    .hasMessageContaining("2並列の要求が2秒以内に終わらない(完了0件)")
+                    .hasMessageContaining("loyalty-it-parallel-")
+                    .hasMessageContaining("== MySQL processlist ==");
+        } finally {
+            gate.countDown();
+        }
+    }
+    private static void awaitUninterruptibly(java.util.concurrent.CountDownLatch gate) {
+        // shutdownNow の割込みでも抜けない待ち(応答の来ないsocket読込みの代役)。
+        boolean interrupted = false;
+        while (true) {
+            try { gate.await(); break; }
+            catch (InterruptedException ignored) { interrupted = true; }
+        }
+        if (interrupted) Thread.currentThread().interrupt();
+    }
+
+    @Test
     void AC19_別人初回200並列はprogram共有lock下で全員一回だけ作成する() throws Exception {
         var results = parallel(200, index -> attempt(() -> writer.award(new LoyaltyWriteCommand(
                 teamId, 10L, 1000L + index, ruleId, 0, 0, RequestOperation.STAFF_AWARD,
@@ -561,10 +600,34 @@ class LoyaltyPointsWriterIT {
     }
     private record WriteAttempt(Object value, com.mannschaft.app.common.ErrorCode error) { }
 
+    /** 並列試験1回の上限。超えたら黙って待ち続けず、担い手とDB側の状態を添えて失敗させる。 */
+    private static final java.time.Duration PARALLEL_DEADLINE = java.time.Duration.ofSeconds(180);
+
+    /**
+     * count本の要求を同時に開始し、結果を投入順で返す。
+     * <p>担い手は count 本の専用プラットフォームスレッドとする。JDBC/Hikari/Hibernate を叩く処理を
+     * 仮想スレッドに載せると、待ちが carrier(CPU数ぶん)の空き具合に左右され、試験の成否が runner の
+     * 混み具合という試験対象外の要因を含んでしまう。試験の意図(count要求の同時到達)はスレッド種別に依存しない。</p>
+     * <p>ExecutorService#close() は全タスクの終了を無期限に待つため使わない(CMP-261107-0740 で、止まった
+     * 要求を close() が待ち続け、失敗ではなく CI の105分打ち切りになった)。期限超過時はスレッドダンプと
+     * MySQL の processlist/InnoDB 状態を失敗理由に載せ、shutdownNow で抜ける。担い手は daemon なので、
+     * 割り込めない待ちに入っていても JVM の終了は妨げない。</p>
+     */
     private <T> java.util.List<T> parallel(int count, java.util.function.IntFunction<T> action) throws Exception {
+        return parallel(count, action, PARALLEL_DEADLINE);
+    }
+    private <T> java.util.List<T> parallel(int count, java.util.function.IntFunction<T> action,
+            java.time.Duration limit) throws Exception {
         var ready = new java.util.concurrent.CountDownLatch(count);
         var start = new java.util.concurrent.CountDownLatch(1);
-        try (var workers = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
+        String prefix = "loyalty-it-parallel-" + UUID.randomUUID() + "-";
+        var sequence = new java.util.concurrent.atomic.AtomicInteger();
+        var workers = java.util.concurrent.Executors.newFixedThreadPool(count, runnable -> {
+            Thread thread = new Thread(runnable, prefix + sequence.getAndIncrement());
+            thread.setDaemon(true);
+            return thread;
+        });
+        try {
             var futures = new java.util.ArrayList<java.util.concurrent.Future<T>>();
             for (int index = 0; index < count; index++) {
                 final int task = index;
@@ -572,10 +635,55 @@ class LoyaltyPointsWriterIT {
             }
             try { assertThat(ready.await(30, java.util.concurrent.TimeUnit.SECONDS)).as("全要求を同時開始前に準備").isTrue(); }
             finally { start.countDown(); }
+            long deadline = System.nanoTime() + limit.toNanos();
             var results = new java.util.ArrayList<T>();
-            for (var future : futures) results.add(future.get(120, java.util.concurrent.TimeUnit.SECONDS));
+            for (var future : futures) {
+                try {
+                    results.add(future.get(Math.max(0L, deadline - System.nanoTime()), java.util.concurrent.TimeUnit.NANOSECONDS));
+                } catch (java.util.concurrent.TimeoutException timeout) {
+                    throw new AssertionError(count + "並列の要求が" + limit.toSeconds() + "秒以内に終わらない(完了"
+                            + results.size() + "件)。\n" + stalledDiagnostics(prefix), timeout);
+                }
+            }
             return results;
+        } finally {
+            workers.shutdownNow();
+            workers.awaitTermination(10, java.util.concurrent.TimeUnit.SECONDS);
         }
+    }
+
+    /** 止まった並列試験の調査材料。担い手の全スタックとロック、MySQL側で誰が何を待っているかを返す。 */
+    private static String stalledDiagnostics(String prefix) {
+        var text = new StringBuilder("== 担い手スレッド ==\n");
+        for (var info : java.lang.management.ManagementFactory.getThreadMXBean().dumpAllThreads(true, true)) {
+            if (!info.getThreadName().startsWith(prefix)) continue;
+            text.append('"').append(info.getThreadName()).append("\" ").append(info.getThreadState());
+            if (info.getLockName() != null) text.append(" on ").append(info.getLockName());
+            if (info.getLockOwnerName() != null) text.append(" owned by \"").append(info.getLockOwnerName()).append('"');
+            text.append('\n');
+            for (var frame : info.getStackTrace()) text.append("    at ").append(frame).append('\n');
+            for (var monitor : info.getLockedMonitors()) text.append("    - locked ").append(monitor).append('\n');
+            for (var synchronizer : info.getLockedSynchronizers()) text.append("    - locked ").append(synchronizer).append('\n');
+        }
+        // プールが使い切られていても読めるよう、Hikari を経ずにコンテナへ直接つなぐ。
+        // 全接続の processlist と InnoDB 状態には PROCESS 権限が要るため root で読む(Testcontainers は root にも同じ password を設定する)。
+        try (var connection = java.sql.DriverManager.getConnection(MYSQL.getJdbcUrl(), "root", MYSQL.getPassword());
+             var statement = connection.createStatement()) {
+            text.append("== MySQL processlist ==\n");
+            try (var rows = statement.executeQuery("SELECT ID, COMMAND, TIME, STATE, INFO FROM information_schema.PROCESSLIST "
+                    + "WHERE COMMAND <> 'Sleep' ORDER BY TIME DESC")) {
+                while (rows.next()) {
+                    text.append(rows.getLong(1)).append(' ').append(rows.getString(2)).append(' ').append(rows.getLong(3))
+                            .append("s ").append(rows.getString(4)).append(" | ").append(rows.getString(5)).append('\n');
+                }
+            }
+            try (var rows = statement.executeQuery("SHOW ENGINE INNODB STATUS")) {
+                if (rows.next()) text.append("== InnoDB status ==\n").append(rows.getString("Status")).append('\n');
+            }
+        } catch (java.sql.SQLException failure) {
+            text.append("== MySQL の状態は取得できなかった: ").append(failure).append('\n');
+        }
+        return text.toString();
     }
     @Test
     void AC08_規約JVM_JSTで固定Clockのアプリ時刻とDB_UTC時刻が往復する() {
