@@ -163,12 +163,11 @@ public class TimetableService {
      * 時間割を作成する。createは作成先スコープ（path teamId）で checkAdminOrAbove する。
      */
     @Transactional
-    public TimetableEntity create(Long teamId, CreateTimetableData data, Long actorUserId,
-                                  Set<Long> usableOrgIds) {
+    public TimetableEntity create(Long teamId, CreateTimetableData data, Long actorUserId) {
         accessControlService.checkAdminOrAbove(actorUserId, teamId, SCOPE_TEAM);
 
         // 学期範囲チェック（学期はチームが使えるものに限り、行ロックで学期削除と直列化する）
-        TimetableTermEntity term = lockUsableTerm(teamId, data.termId(), usableOrgIds, true);
+        TimetableTermEntity term = lockUsableTerm(teamId, data.termId(), data.usableOrgIds(), true);
         validateEffectiveDateRange(data.effectiveFrom(), data.effectiveUntil(), term);
 
         TimetableEntity entity = TimetableEntity.builder()
@@ -294,15 +293,14 @@ public class TimetableService {
      * 時間割を複製する。時間割本体と全スロットをコピーし、DRAFT状態で作成する。
      */
     @Transactional
-    public TimetableEntity duplicate(Long timetableId, Long teamId, DuplicateTimetableData data, Long actorUserId,
-                                     Set<Long> usableOrgIds) {
+    public TimetableEntity duplicate(Long timetableId, Long teamId, DuplicateTimetableData data, Long actorUserId) {
         TimetableEntity source = getById(timetableId, teamId, actorUserId);
         accessControlService.checkAdminOrAbove(actorUserId, source.getTeamId(), SCOPE_TEAM);
 
         // 学期範囲チェック
         Long newTermId = data.termId() != null ? data.termId() : source.getTermId();
         // 学期を変える複製は作成と同じく、チームが使える学期に限る。同じ学期のままなら所属検証は省き、行ロックだけ取る。
-        TimetableTermEntity term = lockUsableTerm(teamId, newTermId, usableOrgIds, !newTermId.equals(source.getTermId()));
+        TimetableTermEntity term = lockUsableTerm(teamId, newTermId, data.usableOrgIds(), !newTermId.equals(source.getTermId()));
         LocalDate effectiveFrom = data.effectiveFrom() != null ? data.effectiveFrom() : source.getEffectiveFrom();
         LocalDate effectiveUntil = data.effectiveUntil() != null ? data.effectiveUntil() : source.getEffectiveUntil();
         validateEffectiveDateRange(effectiveFrom, effectiveUntil, term);
@@ -375,7 +373,9 @@ public class TimetableService {
             LocalDate weekPatternBaseDate,
             String periodOverride,
             String notes,
-            Long createdBy
+            Long createdBy,
+            /** チームの ACTIVE な所属組織 ID。Controller が tx の外で解決して詰める（D-3T。メソッドのシグネチャを変えない）。 */
+            Set<Long> usableOrgIds
     ) {}
 
     /**
@@ -400,6 +400,8 @@ public class TimetableService {
             String name,
             LocalDate effectiveFrom,
             LocalDate effectiveUntil,
-            Long createdBy
+            Long createdBy,
+            /** チームの ACTIVE な所属組織 ID。Controller が tx の外で解決して詰める（D-3T）。 */
+            Set<Long> usableOrgIds
     ) {}
 }

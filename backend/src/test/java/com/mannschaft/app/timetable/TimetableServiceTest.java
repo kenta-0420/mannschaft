@@ -128,10 +128,10 @@ class TimetableServiceTest {
             CreateTimetableData data = new CreateTimetableData(
                     1L, "テスト時間割", TimetableVisibility.MEMBERS_ONLY,
                     LocalDate.of(2025, 4, 1), LocalDate.of(2025, 7, 31),
-                    false, null, null, null, 100L);
+                    false, null, null, null, 100L, java.util.Set.of());
 
             // When
-            TimetableEntity result = service.create(TEAM_ID, data, ACTOR_USER_ID, java.util.Set.of());
+            TimetableEntity result = service.create(TEAM_ID, data, ACTOR_USER_ID);
 
             // Then
             assertThat(result.getName()).isEqualTo("テスト時間割");
@@ -145,10 +145,10 @@ class TimetableServiceTest {
             given(termRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
 
             CreateTimetableData data = new CreateTimetableData(
-                    1L, "テスト", null, null, null, false, null, null, null, 100L);
+                    1L, "テスト", null, null, null, false, null, null, null, 100L, java.util.Set.of());
 
             // When / Then
-            assertThatThrownBy(() -> service.create(TEAM_ID, data, ACTOR_USER_ID, java.util.Set.of()))
+            assertThatThrownBy(() -> service.create(TEAM_ID, data, ACTOR_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TIMETABLE_002"));
@@ -160,8 +160,12 @@ class TimetableServiceTest {
     class CreateTermScope {
 
         private CreateTimetableData data() {
+            return data(java.util.Set.of());
+        }
+
+        private CreateTimetableData data(java.util.Set<Long> usableOrgIds) {
             return new CreateTimetableData(1L, "テスト", TimetableVisibility.MEMBERS_ONLY,
-                    LocalDate.of(2025, 4, 1), LocalDate.of(2025, 7, 31), false, null, null, null, 100L);
+                    LocalDate.of(2025, 4, 1), LocalDate.of(2025, 7, 31), false, null, null, null, 100L, usableOrgIds);
         }
 
         private TimetableTermEntity term(Long teamId, Long orgId) {
@@ -175,7 +179,7 @@ class TimetableServiceTest {
         void 他チームの学期は拒否() {
             given(termRepository.findByIdForUpdate(1L)).willReturn(Optional.of(term(99L, null)));
 
-            assertThatThrownBy(() -> service.create(TEAM_ID, data(), ACTOR_USER_ID, java.util.Set.of()))
+            assertThatThrownBy(() -> service.create(TEAM_ID, data(), ACTOR_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(TimetableErrorCode.TERM_NOT_FOUND));
@@ -187,7 +191,7 @@ class TimetableServiceTest {
         void 無関係な組織の学期は拒否() {
             given(termRepository.findByIdForUpdate(1L)).willReturn(Optional.of(term(null, 70L)));
 
-            assertThatThrownBy(() -> service.create(TEAM_ID, data(), ACTOR_USER_ID, java.util.Set.of(7L)))
+            assertThatThrownBy(() -> service.create(TEAM_ID, data(java.util.Set.of(7L)), ACTOR_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(TimetableErrorCode.TERM_NOT_FOUND));
@@ -199,7 +203,7 @@ class TimetableServiceTest {
             given(termRepository.findByIdForUpdate(1L)).willReturn(Optional.of(term(null, 7L)));
             given(timetableRepository.save(any(TimetableEntity.class))).willAnswer(inv -> inv.getArgument(0));
 
-            assertThat(service.create(TEAM_ID, data(), ACTOR_USER_ID, java.util.Set.of(7L)).getTermId()).isEqualTo(1L);
+            assertThat(service.create(TEAM_ID, data(java.util.Set.of(7L)), ACTOR_USER_ID).getTermId()).isEqualTo(1L);
         }
 
         @Test
@@ -207,7 +211,7 @@ class TimetableServiceTest {
         void 論理削除済みの学期は拒否_ロック経由() {
             given(termRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.create(TEAM_ID, data(), ACTOR_USER_ID, java.util.Set.of()))
+            assertThatThrownBy(() -> service.create(TEAM_ID, data(), ACTOR_USER_ID))
                     .isInstanceOf(BusinessException.class);
             verify(termRepository).findByIdForUpdate(1L);
             verify(termRepository, org.mockito.Mockito.never()).findById(any());

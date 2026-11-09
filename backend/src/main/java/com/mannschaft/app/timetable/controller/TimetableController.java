@@ -75,9 +75,9 @@ public class TimetableController {
                 request.getEffectiveFrom(), request.getEffectiveUntil(),
                 request.getWeekPatternEnabled() != null ? request.getWeekPatternEnabled() : false,
                 request.getWeekPatternBaseDate(), request.getPeriodOverride(),
-                request.getNotes(), SecurityUtils.getCurrentUserId());
-        TimetableEntity entity = timetableService.create(teamId, data, SecurityUtils.getCurrentUserId(),
+                request.getNotes(), SecurityUtils.getCurrentUserId(),
                 termScopeResolver.usableOrganizationIds(teamId));
+        TimetableEntity entity = timetableService.create(teamId, data, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(toResponse(entity)));
     }
 
@@ -169,9 +169,8 @@ public class TimetableController {
         var data = new TimetableService.DuplicateTimetableData(
                 request.getTargetTermId(), request.getName(),
                 request.getEffectiveFrom(), request.getEffectiveUntil(),
-                SecurityUtils.getCurrentUserId());
-        TimetableEntity entity = timetableService.duplicate(timetableId, teamId, data, SecurityUtils.getCurrentUserId(),
-                termScopeResolver.usableOrganizationIds(teamId));
+                SecurityUtils.getCurrentUserId(), termScopeResolver.usableOrganizationIds(teamId));
+        TimetableEntity entity = timetableService.duplicate(timetableId, teamId, data, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(toResponse(entity)));
     }
 
