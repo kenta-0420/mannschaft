@@ -312,7 +312,7 @@ public class ChatMessageService {
         ChatMessageEntity saved = messageRepository.save(message);
 
         // 編集したのが最新メッセージなら、部屋一覧のプレビューも新しい本文に追従させる。
-        refreshPreviewAfterEdit(message, request.getBody());
+        refreshPreviewAfterEdit(message);
 
         log.info("メッセージ編集完了: messageId={}", messageId);
         MessageResponse response = enrichMessage(saved, userId);
@@ -355,9 +355,6 @@ public class ChatMessageService {
         message.softDelete();
         messageRepository.save(message);
 
-        // 削除済みメッセージが他メンバーの未読数に残らないよう、未読だったメンバーの未読数を減らす。
-        memberRepository.decrementUnreadCountForUnreadersOf(
-                message.getChannelId(), message.getSenderId(), message.getCreatedAt());
         if (wasLatest) {
             revertPreviewAfterDelete(channel);
         }
@@ -574,8 +571,28 @@ public class ChatMessageService {
         return body.length() > PREVIEW_LENGTH ? body.substring(0, PREVIEW_LENGTH) : body;
     }
 
+    /**
+     * 一覧プレビューに載せる表示用の文字列を、メッセージの種別に応じて作る。
+     *
+     * <p>通常のテキスト・転送メッセージは本文の先頭 {@value #PREVIEW_LENGTH} 文字。招待カード
+     * （{@code message_type = 'INVITE_CARD'}）の本文は内部マーカー {@code [招待カード]} なので表示に使わず、
+     * 投稿時（{@code MembershipInviteService}）と同じ「{招待先名} への招待を送りました」を role ドメインの
+     * inviteData から作り直す（F04.12 §D-14 の保存契約）。招待先が解決できない場合は招待先名を省く。</p>
+     */
+    private String previewOf(ChatMessageEntity message) {
+        if ("INVITE_CARD".equals(message.getMessageType()) && message.getInviteTokenId() != null) {
+            InviteCardData data = membershipInviteService.resolveInviteCardData(
+                    message.getInviteTokenId(), message.getSenderId());
+            String text = data != null && data.scopeName() != null
+                    ? data.scopeName() + " への招待を送りました"
+                    : "招待を送りました";
+            return toPreview(text);
+        }
+        return toPreview(message.getBody());
+    }
+
     /** 編集したメッセージがチャンネルの最新なら、プレビュー本文だけを新しい本文に更新する（最終投稿日時は不変）。 */
-    private void refreshPreviewAfterEdit(ChatMessageEntity edited, String newBody) {
+    private void refreshPreviewAfterEdit(ChatMessageEntity edited) {
         boolean isLatest = messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(edited.getChannelId())
                 .map(latest -> latest.getId().equals(edited.getId()))
                 .orElse(false);
@@ -583,14 +600,14 @@ public class ChatMessageService {
             return;
         }
         ChatChannelEntity channel = findChannelOfMessage(edited);
-        channel.updateLastMessage(channel.getLastMessageAt(), toPreview(newBody));
+        channel.updateLastMessage(channel.getLastMessageAt(), previewOf(edited));
     }
 
     /** 最新メッセージの削除後、プレビューを直前の未削除メッセージへ差し戻す。無ければ空にする。 */
     private void revertPreviewAfterDelete(ChatChannelEntity channel) {
         messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(channel.getId())
                 .ifPresentOrElse(
-                        prev -> channel.updateLastMessage(prev.getCreatedAt(), toPreview(prev.getBody())),
+                        prev -> channel.updateLastMessage(prev.getCreatedAt(), previewOf(prev)),
                         () -> channel.updateLastMessage(null, null));
     }
 

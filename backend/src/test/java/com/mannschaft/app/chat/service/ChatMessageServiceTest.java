@@ -106,6 +106,10 @@ class ChatMessageServiceTest {
     @Mock
     private ChatChannelRepository channelRepository;
 
+    /** 招待カードのプレビュー再生成で inviteData（招待先名）を解決する。 */
+    @Mock
+    private com.mannschaft.app.role.service.MembershipInviteService membershipInviteService;
+
     @InjectMocks
     private ChatMessageService chatMessageService;
 
@@ -1032,7 +1036,7 @@ class ChatMessageServiceTest {
     // 部屋一覧プレビュー（last_message_preview）と未読数の整合（CMP-261105-1507 P1）
     // ========================================
     @Nested
-    @DisplayName("部屋一覧プレビューと未読数の整合")
+    @DisplayName("部屋一覧プレビューの整合")
     class LastMessagePreview {
 
         private ChatMessageEntity messageWithId(Long id, String body, LocalDateTime createdAt) {
@@ -1156,21 +1160,68 @@ class ChatMessageServiceTest {
         }
 
         @Test
-        @DisplayName("削除すると、そのメッセージを未読のメンバーの未読数を 1 減らす")
-        void 削除で未読数が減る() {
+        @DisplayName("最新を削除したとき直前が招待カードなら、プレビューは内部マーカーではなく表示用の文言に作り直す")
+        void 直前が招待カードなら表示用プレビューに作り直す() {
+            LocalDateTime at = LocalDateTime.of(2026, 11, 10, 9, 0);
+            ChatMessageEntity card = messageWithId(MESSAGE_ID - 1, "[招待カード]", at.minusMinutes(3));
+            org.springframework.test.util.ReflectionTestUtils.setField(card, "messageType", "INVITE_CARD");
+            org.springframework.test.util.ReflectionTestUtils.setField(card, "inviteTokenId", 77L);
+            ChatMessageEntity latest = messageWithId(MESSAGE_ID, "消す本文", at);
+            ChatChannelEntity ch = channelWithPreview("消す本文", at);
+            given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(latest));
+            given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(latest);
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(ch));
+            given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
+            given(messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(CHANNEL_ID))
+                    .willReturn(Optional.of(latest), Optional.of(card));
+            given(membershipInviteService.resolveInviteCardData(77L, SENDER_ID))
+                    .willReturn(new com.mannschaft.app.role.dto.InviteCardData(
+                            77L, "TEAM", 5L, "北陽SC ジュニア", "PENDING", false, null));
+
+            chatMessageService.deleteMessage(MESSAGE_ID, SENDER_ID);
+
+            assertThat(ch.getLastMessagePreview()).isEqualTo("北陽SC ジュニア への招待を送りました");
+        }
+
+        @Test
+        @DisplayName("最新を削除したとき直前が転送メッセージなら、本文の先頭がプレビューになる")
+        void 直前が転送メッセージなら本文がプレビューになる() {
+            LocalDateTime at = LocalDateTime.of(2026, 11, 10, 9, 0);
+            ChatMessageEntity forwarded = messageWithId(MESSAGE_ID - 1, "ひとこと
+
+元の本文", at.minusMinutes(3));
+            org.springframework.test.util.ReflectionTestUtils.setField(forwarded, "forwardedFromId", 3L);
+            ChatMessageEntity latest = messageWithId(MESSAGE_ID, "消す本文", at);
+            ChatChannelEntity ch = channelWithPreview("消す本文", at);
+            given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(latest));
+            given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(latest);
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(ch));
+            given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
+            given(messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(CHANNEL_ID))
+                    .willReturn(Optional.of(latest), Optional.of(forwarded));
+
+            chatMessageService.deleteMessage(MESSAGE_ID, SENDER_ID);
+
+            assertThat(ch.getLastMessagePreview()).isEqualTo("ひとこと
+
+元の本文");
+        }
+
+        @Test
+        @DisplayName("削除は未読数に触れない（減算は行わない）")
+        void 削除は未読数に触れない() {
             LocalDateTime at = LocalDateTime.of(2026, 11, 10, 9, 0);
             ChatMessageEntity msg = messageWithId(MESSAGE_ID, "消す本文", at);
-            ChatChannelEntity ch = channelWithPreview("消す本文", at);
             given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(msg));
             given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(msg);
-            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(ch));
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(channelWithPreview("消す本文", at)));
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
             given(messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(CHANNEL_ID))
                     .willReturn(Optional.of(msg), Optional.empty());
 
             chatMessageService.deleteMessage(MESSAGE_ID, SENDER_ID);
 
-            verify(memberRepository).decrementUnreadCountForUnreadersOf(CHANNEL_ID, SENDER_ID, at);
+            org.mockito.Mockito.verifyNoInteractions(memberRepository);
         }
     }
 }
