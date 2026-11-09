@@ -1,25 +1,46 @@
 package com.mannschaft.app.billing;
 
+import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.billing.api.BillingCatalogQueryService;
 import com.mannschaft.app.billing.api.dto.PlanItem;
+import com.mannschaft.app.billing.api.dto.PriceBand;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.entity.MembershipEntity;
+import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.organization.entity.OrganizationEntity;
+import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.team.entity.TeamEntity;
+import com.mannschaft.app.team.repository.TeamRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.bean.override.convention.TestBean;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 /**
- * CMP-260930-1931 AC01: 旧価格と異なる新ACTIVE価格をlegacy入口から読む先行試練。
+ * CMP-260930-1931 AC01/03/04/06: 新ACTIVE価格と人数境界をlegacy入口から読む先行試練。
  * 実Beanと実MySQLを使い、fixtureをcommitしてから別の読取トランザクションへ渡す。
  * HTTP認可・契約保存の証拠は別試練が担い、この試験で代用しない。
  */
@@ -30,6 +51,7 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
     private static final int LEGACY_PRICE = 1_100;
     private static final long ACTIVE_PRICE = 3_630L;
     private static final Instant EFFECTIVE_FROM = Instant.parse("2026-01-01T00:00:00Z");
+    private static final Instant NOW = Instant.parse("2026-11-09T00:00:00Z");
 
     @Autowired private PlanRepository planRepository;
     @Autowired private PlanPriceBandRepository legacyBandRepository;
@@ -37,11 +59,28 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
     @Autowired private BillingPriceBandVersionRepository bandRepository;
     @Autowired private BillingCatalogQueryService catalogService;
     @Autowired private BillingPriceResolver priceResolver;
+    @Autowired private BillingPriceSelector priceSelector;
+    @Autowired private ScopeMemberCountService memberCountService;
+    @Autowired private UserRepository userRepository;
+    @Autowired private TeamRepository teamRepository;
+    @Autowired private OrganizationRepository organizationRepository;
+    @Autowired private MembershipRepository membershipRepository;
+    @Autowired private FeatureCatalogRepository featureRepository;
     @Autowired private TransactionTemplate transactions;
+    @TestBean(name = "utcClock", methodName = "priceReadClock") private Clock clock;
 
     private String planKey;
     private final List<UUID> versionIds = new ArrayList<>();
     private final List<UUID> bandIds = new ArrayList<>();
+    private final List<Long> userIds = new ArrayList<>();
+    private final List<Long> membershipIds = new ArrayList<>();
+    private final List<String> featureKeys = new ArrayList<>();
+    private Long teamId;
+    private Long organizationId;
+
+    static Clock priceReadClock() {
+        return Clock.fixed(NOW, ZoneOffset.UTC);
+    }
 
     @BeforeEach
     void 検証専用の旧価格と異なるACTIVE価格を保存する() {
@@ -84,6 +123,16 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
     @AfterEach
     void 所有fixtureだけを削除する() {
         transactions.executeWithoutResult(tx -> {
+            membershipRepository.deleteAllById(membershipIds);
+            membershipRepository.flush();
+            userRepository.deleteAllById(userIds);
+            if (teamId != null) {
+                teamRepository.deleteById(teamId);
+            }
+            if (organizationId != null) {
+                organizationRepository.deleteById(organizationId);
+            }
+            featureRepository.deleteAllById(featureKeys);
             bandRepository.deleteAllById(bandIds);
             bandRepository.flush();
             versionRepository.deleteAllById(versionIds);
@@ -112,8 +161,9 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
         PlanItem result = catalogService.getCatalog().getPlans().stream()
                 .filter(plan -> planKey.equals(plan.getPlanKey())).findFirst().orElseThrow();
 
-        assertThat(result.getPriceBands()).hasSize(2).allSatisfy(band ->
-                assertThat(band.getMonthlyPriceJpy()).isEqualTo((int) ACTIVE_PRICE));
+        assertThat(result.getPriceBands())
+                .extracting(PriceBand::getScopeKind, PriceBand::getBandNo, PriceBand::getMonthlyPriceJpy)
+                .containsExactly(tuple("TEAM", 1, (int) ACTIVE_PRICE), tuple("ORG", 1, (int) ACTIVE_PRICE));
     }
 
     @Test
@@ -122,5 +172,211 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
                 EntitlementScopeKind.USER, 1L, ContractKind.PLAN, planKey, null);
 
         assertThat(result).isEqualTo((int) ACTIVE_PRICE);
+    }
+
+    /** AC01陽性対照。fixture自体が既存modern選択器の適格判定を満たすことを実証する。 */
+    @ParameterizedTest
+    @EnumSource(EntitlementScopeKind.class)
+    void 同じfixtureは既存modern選択器でも新ACTIVE税込3630として適格である(EntitlementScopeKind scope) {
+        BillingPriceSelector.SelectedPrice selected = priceSelector
+                .selectNow(BillingProductKind.PLAN, planKey, scope).orElseThrow();
+
+        assertThat(selected.revision().getScopeKind()).isEqualTo(scope);
+        assertThat(selected.revision().getProductKey()).isEqualTo(planKey);
+        assertThat(selected.bands()).hasSize(1).allSatisfy(band -> {
+            assertThat(band.getScopeKind()).isEqualTo(scope);
+            assertThat(band.getPriceVersionId()).isEqualTo(selected.revision().getId());
+            assertThat(band.getAmountIncludingTax()).isEqualTo(ACTIVE_PRICE);
+        });
+    }
+
+    /** AC01/06。実在team/orgと実membershipのcommit後に人数を数え直す。 */
+    @ParameterizedTest
+    @CsvSource({"TEAM,1,3630", "TEAM,19,3630", "TEAM,20,3630", "TEAM,21,4840",
+            "TEAM,49,4840", "TEAM,50,4840", "TEAM,51,6050",
+            "ORG,1,3630", "ORG,19,3630", "ORG,20,3630", "ORG,21,4840",
+            "ORG,49,4840", "ORG,50,4840", "ORG,51,6050"})
+    void TEAMとORGは実在籍人数の境界に合う新ACTIVE帯の価格を解決する(
+            EntitlementScopeKind scope, int members, int expected) {
+        Long scopeId = prepareMembers(scope, members);
+        splitActiveMemberBands(scope, false);
+        assertThat(memberCountService.countActiveMembers(scope, scopeId)).isEqualTo(members);
+
+        assertThat(priceResolver.resolveMonthlyPriceJpy(scope, scopeId, ContractKind.PLAN, planKey, null))
+                .isEqualTo(expected);
+    }
+
+    /** AC03/06。人数0と保存済帯のgapを旧baseへfallbackさせない。 */
+    @ParameterizedTest
+    @CsvSource({"TEAM,0,false", "ORG,0,false", "TEAM,21,true", "ORG,21,true"})
+    void 対象人数を覆わない場合は旧baseでなく未設定040で拒否する(
+            EntitlementScopeKind scope, int members, boolean gap) {
+        Long scopeId = prepareMembers(scope, members);
+        splitActiveMemberBands(scope, gap);
+
+        assertNotConfigured(scope, scopeId);
+    }
+
+    /** AC06。保存済gapは帯一覧全体を不適格にしない（create APIの連続条件とは別）。 */
+    @ParameterizedTest
+    @EnumSource(value = EntitlementScopeKind.class, names = {"TEAM", "ORG"})
+    void 保存済の人数gapがあってもそのscopeの適格な帯一覧は全て表示する(EntitlementScopeKind scope) {
+        splitActiveMemberBands(scope, true);
+        assertThat(priceSelector.selectNow(BillingProductKind.PLAN, planKey, scope)
+                .orElseThrow().bands()).hasSize(3);
+
+        assertThat(ownedCatalog().getPriceBands()).filteredOn(band -> scope.name().equals(band.getScopeKind()))
+                .extracting(PriceBand::getBandNo, PriceBand::getMinMembers, PriceBand::getMaxMembers,
+                        PriceBand::getMonthlyPriceJpy)
+                .containsExactly(tuple(1, 1, 20, 3630), tuple(2, 22, 50, 4840), tuple(10, 51, null, 6050));
+    }
+
+    /** AC03。旧価格が存在してもACTIVE不在から有償価格を推測しない。 */
+    @Test
+    void ACTIVE不在のcatalogは旧価格でなくUSER未定と空帯を返す() {
+        removeActivePrices();
+
+        assertThat(ownedCatalog().getBaseMonthlyPriceJpy()).isNull();
+        assertThat(ownedCatalog().getPriceBands()).isEmpty();
+    }
+
+    /** AC03。PLAN不在nullとは異なり、存在するPLANの価格欠損は040。 */
+    @ParameterizedTest
+    @EnumSource(EntitlementScopeKind.class)
+    void ACTIVE不在の存在PLANは契約価格未設定040で拒否する(EntitlementScopeKind scope) {
+        removeActivePrices();
+
+        assertNotConfigured(scope, scope == EntitlementScopeKind.USER ? 1L : prepareMembers(scope, 1));
+    }
+
+    /** AC03/05。NOT NULLを破らず保存可能な不適格値を既存scalarと同じく拒否する。 */
+    @ParameterizedTest
+    @ValueSource(strings = {"emptyTaxName", "inconsistentTotal", "retiredBand", "emptyBands"})
+    void 不適格な新価格は旧baseへfallbackせず未設定040で拒否する(String defect) {
+        transactions.executeWithoutResult(tx -> {
+            BillingPriceBandVersionEntity band = bandRepository.findById(bandIds.getFirst()).orElseThrow();
+            switch (defect) {
+                case "emptyTaxName" -> band.setTaxNameSnapshot("");
+                case "inconsistentTotal" -> band.setAmountIncludingTax(ACTIVE_PRICE + 1);
+                case "retiredBand" -> band.setStatus(BillingPriceVersionStatus.RETIRED);
+                case "emptyBands" -> bandRepository.delete(band);
+                default -> throw new IllegalArgumentException(defect);
+            }
+        });
+        assertThat(priceSelector.selectNow(BillingProductKind.PLAN, planKey, EntitlementScopeKind.USER)).isEmpty();
+
+        assertNotConfigured(EntitlementScopeKind.USER, 1L);
+    }
+
+    /** AC04。旧base=0が新ACTIVEの有償価格を上書きしてはならない。 */
+    @Test
+    void 旧baseが明示0でも有償ACTIVEがあればその3630を解決する() {
+        transactions.executeWithoutResult(tx -> planRepository.findById(planKey)
+                .orElseThrow().setBaseMonthlyPriceJpy(0));
+
+        assertThat(priceResolver.resolveMonthlyPriceJpy(
+                EntitlementScopeKind.USER, 1L, ContractKind.PLAN, planKey, null)).isEqualTo((int) ACTIVE_PRICE);
+    }
+
+    /** AC04の既存互換characterization。初回greenが正常。 */
+    @Test
+    void マスタ不在PLANのnullは既存の呼出側NOT_FOUND契約として維持する() {
+        assertThat(priceResolver.resolveMonthlyPriceJpy(
+                EntitlementScopeKind.USER, 1L, ContractKind.PLAN, planKey + "-missing", null)).isNull();
+    }
+
+    /** AC04の既存ADDON互換characterization。価格正本をPLANへ巻き込まない。 */
+    @ParameterizedTest
+    @CsvSource({"NULL,", "ZERO,0", "PAID,300"})
+    void ADDONのnullと0と有料は既存互換を維持する(String suffix, Integer expected) {
+        String featureKey = planKey.toLowerCase(java.util.Locale.ROOT) + "." + suffix.toLowerCase(java.util.Locale.ROOT);
+        transactions.executeWithoutResult(tx -> {
+            featureRepository.saveAndFlush(FeatureCatalogEntity.builder().featureKey(featureKey)
+                    .category(FeatureCategory.INTERNAL).addonAvailable(true).addonPriceJpy(expected)
+                    .freeForNonprofit(false).displayNameKey("it1931").descriptionKey("it1931")
+                    .sortOrder(0).enabled(true).build());
+            featureKeys.add(featureKey);
+        });
+
+        assertThat(priceResolver.resolveMonthlyPriceJpy(
+                EntitlementScopeKind.USER, 1L, ContractKind.ADDON, null, featureKey)).isEqualTo(expected);
+    }
+
+    private PlanItem ownedCatalog() {
+        return catalogService.getCatalog().getPlans().stream()
+                .filter(plan -> planKey.equals(plan.getPlanKey())).findFirst().orElseThrow();
+    }
+
+    private void assertNotConfigured(EntitlementScopeKind scope, Long scopeId) {
+        assertThatThrownBy(() -> priceResolver.resolveMonthlyPriceJpy(scope, scopeId, ContractKind.PLAN, planKey, null))
+                .isInstanceOf(BusinessException.class)
+                .extracting(error -> ((BusinessException) error).getErrorCode())
+                .isEqualTo(EntitlementErrorCode.PLAN_PRICE_NOT_CONFIGURED);
+    }
+
+    private void removeActivePrices() {
+        transactions.executeWithoutResult(tx -> {
+            bandRepository.deleteAllById(bandIds);
+            bandRepository.flush();
+            versionRepository.deleteAllById(versionIds);
+            versionRepository.flush();
+        });
+    }
+
+    private void splitActiveMemberBands(EntitlementScopeKind scope, boolean gap) {
+        transactions.executeWithoutResult(tx -> {
+            BillingPriceBandVersionEntity first = bandRepository.findAllById(bandIds).stream()
+                    .filter(band -> band.getScopeKind() == scope).findFirst().orElseThrow();
+            first.setMaxMembers(20);
+            BillingPriceVersionEntity version = versionRepository.findById(first.getPriceVersionId()).orElseThrow();
+            saveMemberBand(version, 2, gap ? 22 : 21, 50, 4_840L, 4_400L, 440L);
+            saveMemberBand(version, 10, 51, null, 6_050L, 5_500L, 550L);
+        });
+    }
+
+    private void saveMemberBand(BillingPriceVersionEntity version, int no, int min, Integer max,
+                                long total, long excluding, long tax) {
+        BillingPriceBandVersionEntity band = bandRepository.saveAndFlush(BillingPriceBandVersionEntity.builder()
+                .productKind(BillingProductKind.PLAN).productKey(planKey).scopeKind(version.getScopeKind())
+                .priceVersionId(version.getId()).bandNo(no).minMembers(min).maxMembers(max).currency("JPY")
+                .stripePriceRef("price_it1931_" + UUID.randomUUID()).inputAmount(total)
+                .taxBehavior(BillingTaxBehavior.INCLUSIVE).taxCodeSnapshot("txcd_10000000").taxMasterSnapshot("{}")
+                .amountExcludingTax(excluding).taxAmount(tax).amountIncludingTax(total).taxRateBasisPoints(1_000)
+                .taxNameSnapshot("消費税").includedInPrice(true).effectiveFrom(EFFECTIVE_FROM)
+                .status(BillingPriceVersionStatus.ACTIVE)
+                .creationSource(BillingPriceCreationSource.SYSTEM_BACKFILL).build());
+        bandIds.add(band.getId());
+    }
+
+    private Long prepareMembers(EntitlementScopeKind scope, int members) {
+        return transactions.execute(tx -> {
+            String slug = "i1931-" + UUID.randomUUID().toString().substring(0, 16);
+            Long scopeId;
+            if (scope == EntitlementScopeKind.TEAM) {
+                teamId = teamRepository.saveAndFlush(TeamEntity.builder().name("1931人数試練")
+                        .slug(slug).visibility(TeamEntity.Visibility.MEMBERS_AND_ABOVE).supporterEnabled(false).build())
+                        .getId();
+                scopeId = teamId;
+            } else {
+                organizationId = organizationRepository.saveAndFlush(OrganizationEntity.builder().name("1931人数試練")
+                        .slug(slug).orgType(OrganizationEntity.OrgType.OTHER)
+                        .visibility(OrganizationEntity.Visibility.PRIVATE)
+                        .hierarchyVisibility(OrganizationEntity.HierarchyVisibility.NONE).supporterEnabled(false).build())
+                        .getId();
+                scopeId = organizationId;
+            }
+            for (int index = 0; index < members; index++) {
+                Long userId = userRepository.saveAndFlush(UserEntity.builder()
+                        .email(slug + "-" + index + "@example.com").lastName("試練").firstName("1931")
+                        .displayName("1931人数試練").status(UserEntity.UserStatus.ACTIVE)
+                        .locale("ja").timezone("Asia/Tokyo").isSearchable(true).build()).getId();
+                userIds.add(userId);
+                membershipIds.add(membershipRepository.saveAndFlush(MembershipEntity.builder()
+                        .userId(userId).scopeId(scopeId).scopeType(scope == EntitlementScopeKind.TEAM
+                                ? ScopeType.TEAM : ScopeType.ORGANIZATION)
+                        .joinedAt(LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC)).build()).getId());
+            }
+            return scopeId;
+        });
     }
 }
