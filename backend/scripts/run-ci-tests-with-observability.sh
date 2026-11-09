@@ -187,6 +187,34 @@ for _ in range(6000):
 print("[ci-resource-monitor-limit] ticks=6000 fastSamples=%d caseBytes=%d" % (fast_samples, offset), flush=True)
 PYTHON
   MONITOR_PID=$!
+elif [ "${CI_SHARD_INDEX:-}" = '5' ]; then
+  # C5の不足観測だけを追加する。待機/ps timeoutの合計は最大6715秒。
+  python3 -u - > "$CI_DIAGNOSTIC_DIR/worker-resources.log" 2>&1 <<'PYTHON' &
+import datetime, signal, subprocess, time
+
+# runの例外経路で実行中のpsをkill/waitし、親のowned-monitor停止に従う。
+def stop_monitor(signum, frame):
+    raise SystemExit(128 + signum)
+
+signal.signal(signal.SIGTERM, stop_monitor)
+for sample in range(23):
+    print(datetime.datetime.now(datetime.timezone.utc).isoformat(), flush=True)
+    try:
+        result = subprocess.run(['ps', '-C', 'java', '-o', 'pid,ppid,etimes,time,pcpu,rss,comm'],
+                                check=False, timeout=5, stderr=subprocess.DEVNULL)
+        print('[ci-resource-ps] outcome=%s exitCode=%d' % (
+            'success' if result.returncode == 0 else 'nonzero', result.returncode), flush=True)
+    except FileNotFoundError:
+        print('[ci-resource-ps] outcome=missing exitCode=-1', flush=True)
+    except subprocess.TimeoutExpired:
+        print('[ci-resource-ps] outcome=timeout exitCode=-1', flush=True)
+    except OSError:
+        print('[ci-resource-ps] outcome=unavailable exitCode=-1', flush=True)
+    if sample < 22:
+        time.sleep(300)
+print('[ci-resource-monitor-limit] attempts=23', flush=True)
+PYTHON
+  MONITOR_PID=$!
 fi
 set +e
 "$@" --init-script "$INIT_FILE" &
