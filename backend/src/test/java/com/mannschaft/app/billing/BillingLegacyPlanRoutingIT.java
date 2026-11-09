@@ -322,8 +322,12 @@ class BillingLegacyPlanRoutingIT extends AbstractMySqlIntegrationTest {
         }
 
         @Override
-        public PrintWriter getLogWriter() throws SQLException {
-            return delegate.getLogWriter();
+        public PrintWriter getLogWriter() {
+            try {
+                return delegate.getLogWriter();
+            } catch (SQLException exception) {
+                throw new IllegalStateException("実DataSourceのログ出力先を取得できません", exception);
+            }
         }
 
         @Override
