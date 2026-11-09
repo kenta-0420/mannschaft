@@ -1766,6 +1766,134 @@ class FlywayFromScratchMigrationTest {
     //       }
     //   }
 
+    /**
+     * P1（系統1）の移行直前の版。origin/main の最大版（#4371 招待承諾の分離で入った invite_token_claims 作成）で、
+     * invite_tokens.token が平文のまま残っている。P1 の移行 migration（V258）はこれより後の版になる
+     * （採番はマージ時点の最大 major+1）。
+     */
+    private static final String INVITE_TOKENS_PRE_HASH_TARGET = "257.20261107130657";
+
+    @Test
+    @Order(28)
+    @DisplayName("CMP-260826-1457 W1 P1: invite_tokens の token はハッシュ化され、移行前の招待は行を残したまま全失効する（AC-7・AC-8・AC-12e）")
+    void invite_tokensのtokenはハッシュ化され全失効する() throws Exception {
+        // 共有の検査用 DB を汚さないよう、同じコンテナに別 schema を作って「移行直前の版まで適用 → 平文行を置く → 残りを適用」する。
+        String schema = "cmp1457_invite_tokens";
+        String schemaUrl = MYSQL.getJdbcUrl().replaceFirst("/" + MYSQL.getDatabaseName() + "(?=$|\\?)", "/" + schema);
+        try (Connection root = DriverManager.getConnection(MYSQL.getJdbcUrl(), "root", MYSQL.getPassword());
+             Statement statement = root.createStatement()) {
+            statement.execute("DROP DATABASE IF EXISTS " + schema);
+            statement.execute("CREATE DATABASE " + schema + " CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci");
+        }
+        try {
+            Flyway.configure().dataSource(schemaUrl, "root", MYSQL.getPassword()).locations("classpath:db/migration")
+                    .outOfOrder(false).target(INVITE_TOKENS_PRE_HASH_TARGET).load().migrate();
+
+            String sharedPlaintext = java.util.UUID.randomUUID().toString();
+            String targetedPlaintext = java.util.UUID.randomUUID().toString();
+            String revokedPlaintext = java.util.UUID.randomUUID().toString();
+            LocalDateTime future = LocalDateTime.of(2099, 1, 2, 3, 4, 5);
+            LocalDateTime alreadyRevoked = LocalDateTime.of(2026, 1, 2, 3, 4, 5);
+            long sharedId;
+            long targetedId;
+            long revokedId;
+            try (Connection conn = DriverManager.getConnection(schemaUrl, "root", MYSQL.getPassword())) {
+                // 共有リンク型（有効）・宛先指定型の未解決（PENDING）・既に失効済み の 3 行
+                sharedId = insertPlaintextInvite(conn, sharedPlaintext, "team_id", 900001L, future, 10, 3, null, null);
+                targetedId = insertPlaintextInvite(conn, targetedPlaintext, "team_id", 900001L, future, 1, 0, null, 900777L);
+                revokedId = insertPlaintextInvite(conn, revokedPlaintext, "organization_id", 900002L, future, null, 0,
+                        alreadyRevoked, null);
+            }
+
+            Flyway.configure().dataSource(schemaUrl, "root", MYSQL.getPassword()).locations("classpath:db/migration")
+                    .outOfOrder(false).load().migrate();
+
+            try (Connection conn = DriverManager.getConnection(schemaUrl, "root", MYSQL.getPassword())) {
+                assertTokenHashMigrated(conn, new TokenHashMigrationExpectation("invite_tokens", "token", "token_hash", false));
+
+                // AC-8: 行を削除しない（ID・スコープ・宛先・利用回数・上限・発行者が残る）
+                try (var select = conn.prepareStatement("SELECT id, team_id, organization_id, target_user_id, used_count, "
+                        + "max_uses, created_by, token_hash, revoked_at FROM invite_tokens WHERE id IN (?, ?, ?) ORDER BY id")) {
+                    select.setLong(1, sharedId);
+                    select.setLong(2, targetedId);
+                    select.setLong(3, revokedId);
+                    Map<Long, Map<String, Object>> rows = new HashMap<>();
+                    try (ResultSet rs = select.executeQuery()) {
+                        while (rs.next()) {
+                            Map<String, Object> row = new HashMap<>();
+                            row.put("team_id", rs.getObject("team_id"));
+                            row.put("organization_id", rs.getObject("organization_id"));
+                            row.put("target_user_id", rs.getObject("target_user_id"));
+                            row.put("used_count", rs.getInt("used_count"));
+                            row.put("max_uses", rs.getObject("max_uses"));
+                            row.put("created_by", rs.getObject("created_by"));
+                            row.put("token_hash", rs.getString("token_hash"));
+                            row.put("revoked_at", rs.getObject("revoked_at", LocalDateTime.class));
+                            rows.put(rs.getLong("id"), row);
+                        }
+                    }
+                    assertThat(rows).as("移行で招待の行が消えていない").containsOnlyKeys(sharedId, targetedId, revokedId);
+                    assertThat(((Number) rows.get(sharedId).get("team_id")).longValue()).isEqualTo(900001L);
+                    assertThat(rows.get(sharedId).get("used_count")).isEqualTo(3);
+                    assertThat(((Number) rows.get(sharedId).get("max_uses")).intValue()).isEqualTo(10);
+                    assertThat(((Number) rows.get(targetedId).get("target_user_id")).longValue()).isEqualTo(900777L);
+                    assertThat(((Number) rows.get(revokedId).get("organization_id")).longValue()).isEqualTo(900002L);
+                    for (Map<String, Object> row : rows.values()) {
+                        assertThat(((Number) row.get("created_by")).longValue()).isEqualTo(77L);
+                        assertThat((String) row.get("token_hash")).matches("^[0-9a-f]{64}$");
+                    }
+                    assertThat(rows.values().stream().map(row -> row.get("token_hash")).distinct().count())
+                            .as("乱数で埋めたハッシュは行ごとに異なる").isEqualTo(3L);
+
+                    // AC-8・AC-12e: 失効列のある表は失効状態になる（宛先指定型の未解決招待も業務状態のうえで終わる）。既失効の日時は保つ
+                    assertThat(rows.get(sharedId).get("revoked_at")).as("共有リンク型が失効していない").isNotNull();
+                    assertThat(rows.get(targetedId).get("revoked_at")).as("宛先指定型の未解決招待が失効していない").isNotNull();
+                    assertThat(rows.get(revokedId).get("revoked_at")).isEqualTo(alreadyRevoked);
+                }
+
+                // AC-7: 移行前の平文はどれも照合（hash(平文) の等値検索）に当たらない
+                try (var lookup = conn.prepareStatement("SELECT COUNT(*) FROM invite_tokens "
+                        + "WHERE token_hash IN (SHA2(?, 256), SHA2(?, 256), SHA2(?, 256))")) {
+                    lookup.setString(1, sharedPlaintext);
+                    lookup.setString(2, targetedPlaintext);
+                    lookup.setString(3, revokedPlaintext);
+                    try (ResultSet rs = lookup.executeQuery()) {
+                        assertThat(rs.next()).isTrue();
+                        assertThat(rs.getLong(1)).as("移行前の平文で照合に当たる行がある").isZero();
+                    }
+                }
+            }
+        } finally {
+            try (Connection root = DriverManager.getConnection(MYSQL.getJdbcUrl(), "root", MYSQL.getPassword());
+                 Statement statement = root.createStatement()) {
+                statement.execute("DROP DATABASE IF EXISTS " + schema);
+            }
+        }
+    }
+
+    /** 移行直前の版の invite_tokens へ平文行を JDBC で置く（旧 schema には新 Entity を永続化できないため）。 */
+    private static long insertPlaintextInvite(Connection conn, String plaintext, String scopeColumn, Long scopeId,
+                                              LocalDateTime expiresAt, Integer maxUses, int usedCount,
+                                              LocalDateTime revokedAt, Long targetUserId) throws SQLException {
+        try (var insert = conn.prepareStatement("INSERT INTO invite_tokens (token, " + scopeColumn + ", role_id, "
+                + "expires_at, max_uses, used_count, revoked_at, target_user_id, created_by, created_at) "
+                + "SELECT ?, ?, id, ?, ?, ?, ?, ?, 77, UTC_TIMESTAMP() FROM roles WHERE name = 'MEMBER'",
+                Statement.RETURN_GENERATED_KEYS)) {
+            insert.setString(1, plaintext);
+            insert.setLong(2, scopeId);
+            insert.setObject(3, expiresAt);
+            insert.setObject(4, maxUses);
+            insert.setInt(5, usedCount);
+            insert.setObject(6, revokedAt);
+            insert.setObject(7, targetUserId);
+            assertThat(insert.executeUpdate()).isEqualTo(1);
+            try (ResultSet keys = insert.getGeneratedKeys()) {
+                assertThat(keys.next()).isTrue();
+                return keys.getLong(1);
+            }
+        }
+    }
+
     @Test
     @Order(26)
     @DisplayName("CMP-260826-1457 W0: 全失効の検査ヘルパが、既にハッシュ保存の村招待表で成立する（枠の健全性）")
@@ -1783,11 +1911,12 @@ class FlywayFromScratchMigrationTest {
     void 全失効の検査ヘルパは平文列が残る表を不合格にする() throws Exception {
         migrateFromScratch();
         try (Connection conn = connect()) {
-            // 移行前の形（invite_tokens.token が平文のまま）は、各波が移行するまで不合格になるはず。
-            // いずれかの波で invite_tokens の移行が入ったら、この陰性対照は別の未移行表へ付け替える。
-            if (columnExists(conn, "invite_tokens", "token")) {
+            // 移行前の形（平文列 token が残る表）は、各波が移行するまで不合格になるはず。
+            // P1 で invite_tokens を移行したため、まだ平文のままの contact_invite_tokens（系統2）を使う。
+            // その表の移行が入ったら、この陰性対照は別の未移行表（event_guest_invite_tokens など）へ付け替える。
+            if (columnExists(conn, "contact_invite_tokens", "token")) {
                 assertThatThrownBy(() -> assertTokenHashMigrated(conn,
-                        new TokenHashMigrationExpectation("invite_tokens", "token", "token_hash", false)))
+                        new TokenHashMigrationExpectation("contact_invite_tokens", "token", "token_hash", false)))
                         .isInstanceOf(AssertionError.class);
             }
         }

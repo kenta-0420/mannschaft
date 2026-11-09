@@ -127,7 +127,7 @@ class InviteAcceptanceFailureIT extends InviteAcceptanceItSupport {
             inv.callRealMethod();
             throw original;
         });
-        Throwable thrown = catching(() -> accept(token.getToken(), userId));
+        Throwable thrown = catching(() -> accept(plaintext(token), userId));
         assertThat(thrown).isSameAs(original);
         assertThat(usedCount(token.getId())).isZero();
         assertThat(claimStatuses(token.getId())).containsExactly("RELEASED");
@@ -159,7 +159,7 @@ class InviteAcceptanceFailureIT extends InviteAcceptanceItSupport {
                 default -> throw new UnexpectedRollbackException("試練: 予期しない rollback");
             }
         });
-        Throwable thrown = catching(() -> accept(token.getToken(), userId));
+        Throwable thrown = catching(() -> accept(plaintext(token), userId));
         assertThat(thrown).isNotNull().isNotInstanceOf(BusinessException.class);
         assertThat(claimStatuses(token.getId())).containsExactly("CLAIMED");
         assertThat(usedCount(token.getId())).isEqualTo(1);
@@ -179,7 +179,7 @@ class InviteAcceptanceFailureIT extends InviteAcceptanceItSupport {
         onGrantRole(inv -> {
             throw technical;
         });
-        Throwable thrown = catching(() -> accept(token.getToken(), userId));
+        Throwable thrown = catching(() -> accept(plaintext(token), userId));
         assertThat(thrown).isSameAs(technical);
         assertThat(claimStatuses(token.getId())).containsExactly("CLAIMED");
         assertThat(usedCount(token.getId())).isEqualTo(1);
@@ -194,7 +194,7 @@ class InviteAcceptanceFailureIT extends InviteAcceptanceItSupport {
         onGrantRole(inv -> {
             throw new CannotAcquireLockException("試練: Lock wait timeout exceeded");
         });
-        catching(() -> accept(token.getToken(), userId));
+        catching(() -> accept(plaintext(token), userId));
         UUID claim = claims(token.getId()).get(0).id();
         assertThat(output.getAll()).contains("ERROR").contains(claim.toString());
     }
@@ -228,7 +228,7 @@ class InviteAcceptanceFailureIT extends InviteAcceptanceItSupport {
         }
         List<String> events;
         try (AuditCapture capture = capture(userId)) {
-            assertThat(catching(() -> accept(token.getToken(), userId))).isInstanceOf(SimulatedCrash.class);
+            assertThat(catching(() -> accept(plaintext(token), userId))).isInstanceOf(SimulatedCrash.class);
             events = capture.events();
         }
         assertThat(usedCount(token.getId())).isEqualTo(1);
@@ -252,7 +252,7 @@ class InviteAcceptanceFailureIT extends InviteAcceptanceItSupport {
             }
         }
         Long newcomer = user();
-        assertError(business(() -> accept(token.getToken(), newcomer)), RoleErrorCode.ROLE_003, null);
+        assertError(business(() -> accept(plaintext(token), newcomer)), RoleErrorCode.ROLE_003, null);
         assertThat(usedCount(token.getId())).as("上限非超過").isEqualTo(1);
     }
 
@@ -291,7 +291,7 @@ class InviteAcceptanceFailureIT extends InviteAcceptanceItSupport {
             Long newcomer = user();
             try (var executor = Executors.newFixedThreadPool(2)) {
                 var releasing = executor.submit(() -> releaseClaim(stuck));
-                var claiming = executor.submit(() -> accept(token.getToken(), newcomer));
+                var claiming = executor.submit(() -> accept(plaintext(token), newcomer));
                 assertThat(outcome(releasing)).isNull();
                 assertThat(outcome(claiming)).isNull();
             }
@@ -419,7 +419,7 @@ class InviteAcceptanceFailureIT extends InviteAcceptanceItSupport {
         List<String> events;
         Throwable thrown;
         try (AuditCapture capture = capture(userId)) {
-            thrown = catching(() -> accept(token.getToken(), userId, chosenFolder));
+            thrown = catching(() -> accept(plaintext(token), userId, chosenFolder));
             events = capture.events();
         }
         if (injected != null) {
@@ -430,7 +430,7 @@ class InviteAcceptanceFailureIT extends InviteAcceptanceItSupport {
         }
         assertPartialSuccess(scope, token, userId, events);
         assertThat(folderPlacements(userId, scope)).as("配置なし").isEmpty();
-        assertError(business(() -> accept(token.getToken(), userId, null)), TeamErrorCode.TEAM_003, HttpStatus.CONFLICT);
+        assertError(business(() -> accept(plaintext(token), userId, null)), TeamErrorCode.TEAM_003, HttpStatus.CONFLICT);
     }
 
     @ParameterizedTest
@@ -454,7 +454,7 @@ class InviteAcceptanceFailureIT extends InviteAcceptanceItSupport {
         List<String> events;
         Throwable thrown;
         try (AuditCapture capture = capture(userId)) {
-            thrown = catching(() -> accept(token.getToken(), userId, null));
+            thrown = catching(() -> accept(plaintext(token), userId, null));
             events = capture.events();
         }
         assertThat(thrown).isNotNull();
@@ -482,7 +482,7 @@ class InviteAcceptanceFailureIT extends InviteAcceptanceItSupport {
         }).when(folders()).addItemWithAssignedVia(anyLong(), anyLong(), anyLong(), any());
         AtomicReference<Throwable> inner = new AtomicReference<>();
         catching(() -> new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-            inner.set(catching(() -> accept(token.getToken(), userId)));
+            inner.set(catching(() -> accept(plaintext(token), userId)));
             status.setRollbackOnly();
         }));
         assertThat(inner.get()).isSameAs(injected);
@@ -511,8 +511,8 @@ class InviteAcceptanceFailureIT extends InviteAcceptanceItSupport {
         onGrantRole(inv -> {
             if (intercepted.compareAndSet(false, true)) {
                 Runnable rival = switch (competitor) {
-                    case "SAME_TOKEN" -> () -> accept(token.getToken(), userId);
-                    case "OTHER_TOKEN" -> () -> accept(otherToken.getToken(), userId);
+                    case "SAME_TOKEN" -> () -> accept(plaintext(token), userId);
+                    case "OTHER_TOKEN" -> () -> accept(plaintext(otherToken), userId);
                     default -> () -> grantSpy.grantMemberRole(type, scope.id(), userId, admin, "JOIN_REQUEST");
                 };
                 try (var executor = Executors.newSingleThreadExecutor()) {
@@ -527,7 +527,7 @@ class InviteAcceptanceFailureIT extends InviteAcceptanceItSupport {
         List<String> events;
         Throwable thrown;
         try (AuditCapture capture = capture(userId)) {
-            thrown = catching(() -> accept(token.getToken(), userId));
+            thrown = catching(() -> accept(plaintext(token), userId));
             events = capture.events();
         }
         assertThat(thrown).isInstanceOfSatisfying(BusinessException.class, e -> {
@@ -600,7 +600,7 @@ class InviteAcceptanceFailureIT extends InviteAcceptanceItSupport {
     private void revokeVia(String site, InviteTokenEntity token, Long admin, Long target) {
         switch (site) {
             case "REVOKE" -> inviteService.revokeInviteToken(token.getId(), admin);
-            case "DECLINE" -> declineCompat(token.getToken(), target);
+            case "DECLINE" -> declineCompat(plaintext(token), target);
             case "MEMBERSHIP_REVOKE" -> membershipInvites.revokeMembershipInvite(1L, token.getId(), admin);
             case "MEMBERSHIP_COMPENSATION" -> membershipIssuer.revokeForCompensation(token.getId());
             default -> sharedIssuer.revokeForCompensation(token.getId());

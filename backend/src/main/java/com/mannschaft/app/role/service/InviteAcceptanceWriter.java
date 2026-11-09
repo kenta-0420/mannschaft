@@ -64,7 +64,8 @@ public class InviteAcceptanceWriter {
     @Transactional(readOnly = true)
     public Optional<InviteScopeRef> inspectScope(InviteLocator locator) {
         return switch (locator) {
-            case InviteLocator.ByToken byToken -> inviteTokenRepository.findScopeByToken(byToken.token());
+            case InviteLocator.ByTokenHash byHash -> inviteTokenRepository.findScopeByTokenHash(byHash.tokenHash());
+            case InviteLocator.ById byId -> inviteTokenRepository.findScopeById(byId.id());
         };
     }
 
@@ -72,7 +73,7 @@ public class InviteAcceptanceWriter {
      * 承諾の確保（T6）。招待行を最新値でロックしたまま、現行どおりの優先順位で判定する。
      *
      * <ol>
-     *   <li>招待が無い → ROLE_002</li>
+     *   <li>招待が無い → ROLE_002（ID 入口では、宛先本人でない・共有リンク型もここで同じ ROLE_002）</li>
      *   <li>無効（上限到達 → ROLE_003、期限切れ・失効 → ROLE_002）</li>
      *   <li>宛先違い → 403 ROLE_009</li>
      *   <li>特権ロール → 422 ROLE_009</li>
@@ -93,6 +94,11 @@ public class InviteAcceptanceWriter {
     public InviteClaimTicket claim(InviteLocator locator, Long userId, boolean blocked, ErrorCode folderError) {
         InviteTokenSnapshot token = lockSnapshot(locator)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
+
+        // ID 入口: 宛先本人でない・共有リンク型は、招待の状態（上限・期限）を明かす前に不在と同じ応答にする。
+        if (locator.concealsNonTarget() && !userId.equals(token.targetUserId())) {
+            throw locator.targetMismatch();
+        }
 
         if (!InviteTokenEntity.isValidState(token.revokedAt(), token.expiresAt(), token.maxUses(),
                 token.usedCount(), token.dbNow())) {
@@ -201,7 +207,8 @@ public class InviteAcceptanceWriter {
     @Transactional
     public InviteDeclineResult decline(InviteLocator locator, Long userId) {
         InviteTokenEntity token = (switch (locator) {
-            case InviteLocator.ByToken byToken -> inviteTokenRepository.lockFreshByToken(byToken.token());
+            case InviteLocator.ByTokenHash byHash -> inviteTokenRepository.lockFreshByTokenHash(byHash.tokenHash());
+            case InviteLocator.ById byId -> inviteTokenRepository.lockFreshById(byId.id());
         }).orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
 
         Long targetUserId = token.getTargetUserId();
@@ -224,7 +231,8 @@ public class InviteAcceptanceWriter {
 
     private Optional<InviteTokenSnapshot> lockSnapshot(InviteLocator locator) {
         return switch (locator) {
-            case InviteLocator.ByToken byToken -> inviteTokenRepository.lockSnapshotByToken(byToken.token());
+            case InviteLocator.ByTokenHash byHash -> inviteTokenRepository.lockSnapshotByTokenHash(byHash.tokenHash());
+            case InviteLocator.ById byId -> inviteTokenRepository.lockSnapshotById(byId.id());
         };
     }
 
