@@ -41,10 +41,10 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
@@ -79,9 +79,12 @@ import static org.awaitility.Awaitility.await;
  *
  * <p>クラスに {@code @Transactional} を付けない。消化の記録・取消は AFTER_COMMIT + 非同期で走り、
  * 並行テストは別スレッド・別トランザクションを要するため。</p>
+ *
+ * <p>CMP-260910-1811: 個別のフラグ上書きを使わず、共通テストプロファイル由来の
+ * 実 {@link ShiftBudgetProperties} が有効であることを fixture 作成前に確認する。
+ * 割当・消化・認可・競合の試験は、その同じ実 Bean 設定で走る。</p>
  */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
-@TestPropertySource(properties = "feature.shift-budget.enabled=true")
 @DisplayName("F01.2.1 3-C シフト予算の複数親対応（実DB）")
 class ShiftBudgetMultiParentIT extends AbstractMySqlIntegrationTest {
 
@@ -89,6 +92,10 @@ class ShiftBudgetMultiParentIT extends AbstractMySqlIntegrationTest {
     private static final LocalDate JUL_31 = LocalDate.of(2026, 7, 31);
     private static final BigDecimal AMOUNT = new BigDecimal("8000.00");
 
+    @Autowired
+    private ShiftBudgetProperties shiftBudgetProperties;
+    @Autowired
+    private Environment environment;
     @Autowired
     private TransactionTemplate transactionTemplate;
     @Autowired
@@ -131,6 +138,15 @@ class ShiftBudgetMultiParentIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        assertThat(shiftBudgetProperties.isEnabled())
+                .as("個別上書きなしで共通 test YAML の予算機能フラグが実 Bean に届く")
+                .isTrue();
+        assertThat(shiftBudgetProperties.isMonthlyCloseCronEnabled())
+                .as("月次締めの定期起動は無効のまま検査する").isFalse();
+        assertThat(environment.getProperty("feature.shift-budget.retry-batch-enabled", Boolean.class))
+                .as("失敗イベント再試行の定期起動は無効のまま検査する").isFalse();
+        assertThat(environment.getProperty("mannschaft.line.signature-verify.mode"))
+                .as("LINE の test 用モードは文字列 off として解決される").isEqualTo("off");
         FeatureFlagTestSupport.enable(featureFlagRepository, cacheManager, "FEATURE_SHIFT_ENABLED");
         String nonce = nonce();
         transactionTemplate.executeWithoutResult(tx -> {
