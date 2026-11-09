@@ -8,7 +8,8 @@ import com.mannschaft.app.auth.repository.RefreshTokenRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.zaxxer.hikari.HikariDataSource;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -108,8 +109,9 @@ import static org.mockito.Mockito.mock;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @Execution(ExecutionMode.SAME_THREAD)
 @DisplayName("CMP0514 同一ユーザー近接ログイン（実Flyway・実commit）")
-@Slf4j
 class AuthConcurrentLoginFlywayIT {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthConcurrentLoginFlywayIT.class);
 
     private static final int SESSION_LIMIT = 10;
     private static final Duration OBSERVATION_TIMEOUT = Duration.ofSeconds(20);
