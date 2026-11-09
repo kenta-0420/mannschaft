@@ -46,8 +46,13 @@ main の leaf キーが test から欠落すると失敗する。値差と test 
 予算割当・消化・複数組織・認可・競合経路を検査する。残る個別 true の3 IT は、
 業務契約の証拠として扱い、共通 YAML 到達の証拠へ転用しない。
 
+`SelfInvocationRequiresNewTransactionIT` は再マッチバッチの実トランザクション境界を検査するため、
+当該 IT だけ `pointcard.rematch-batch.enabled=true` を明示する。共通設定は `false` を維持し、
+test プロファイルの scheduler も無効のまま、実 Bean の直接呼出しで既存6ケースを検査する。
+
 検証は、設定同期前の番人 RED（欠落8件、自己検体は PASS）、同期後の番人 GREEN、
 上書き無しの実 Spring/実 MySQL の GREEN、正式 Backend CI 全6 shard の波及確認を区別する。
+上記トランザクション IT の6ケースも非 skip の成功を確認する。
 実行結果が未取得・skip の場合は該当段階の合格としない。
 
 ### 設定同期前の実行結果
@@ -61,6 +66,10 @@ main の leaf キーが test から欠落すると失敗する。値差と test 
 この RED は test タスクの結果である。後処理 JaCoCo の完了後、Gradle 全体も
 `:test` の意図した失敗を理由に exit 1（`BUILD FAILED in 3h 47m 4s`）で自然終了した。
 設定同期後の番人、実 Spring/実 MySQL、全6 shard の GREEN は、正式 CI 結果の取得後に記録する。
+
+初回同期後の [Backend CI 42557651582](https://github.com/kenta-0420/mannschaft/actions/runs/42557651582) は未合格。
+shard 5 の上記トランザクション IT が再マッチ Bean 不在による context 起動失敗で6件失敗し、
+業務アサーションへ到達しなかった。個別 Bean 有効化後の GREEN は次回の正式 CI で確認する。
 
 製品の API・UI・導線を変更しない純 test＋docs のため、実機 E2E と住民探索は対象外。
 ここで担う到達性はブラウザー導線ではなく、実際の Spring テストクラスパスで検証する。
