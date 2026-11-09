@@ -699,6 +699,132 @@ class FlywayFromScratchMigrationTest {
                 .isEqualTo("fixture_table.fixture_column … DB COLUMN_TYPE が未取得");
     }
 
+    @Test
+    @DisplayName("CMP-260930-2313: 実bootの暗黙String長はMySQL実効255で比較する")
+    void varcharLengthGuardは実bootの暗黙Stringを実効長で比較する() {
+        StandardServiceRegistry registry = varcharLengthFixtureRegistry();
+        try {
+            Metadata metadata = varcharLengthFixtureMetadata(registry);
+            Column column = varcharLengthFixtureColumn(metadata, "implicit_value");
+            assertThat(column.getLength()).as("暗黙Stringのraw lengthは未設定").isNull();
+            assertThat(column.getColumnSize(new MySQLDialect(), metadata).getLength())
+                    .as("Hibernateの型とMySQL方言が解決する暗黙長").isEqualTo(255L);
+            org.assertj.core.api.SoftAssertions.assertSoftly(softly -> {
+                softly.assertThat(varcharLengthViolation("varchar_length_fixture.implicit_value", column, "varchar(255)"))
+                        .as("実効長と同じDB255は正常").isNull();
+                softly.assertThat(varcharLengthViolation("varchar_length_fixture.implicit_value", column, "varchar(254)"))
+                        .as("実効長より1短いDB254はkey付き違反")
+                        .isEqualTo("varchar_length_fixture.implicit_value … Entity length 255 / DB VARCHAR length 254");
+            });
+        } finally {
+            StandardServiceRegistryBuilder.destroy(registry);
+        }
+    }
+
+    @Test
+    @DisplayName("CMP-260930-2313: 実bootの明示VARCHAR宣言幅をraw既定長より優先する")
+    void varcharLengthGuardは実bootの明示VARCHAR宣言幅を比較する() {
+        StandardServiceRegistry registry = varcharLengthFixtureRegistry();
+        try {
+            Metadata metadata = varcharLengthFixtureMetadata(registry);
+            Column column = varcharLengthFixtureColumn(metadata, "explicit_value");
+            assertThat(column.getLength()).as("明示DDLでもraw lengthはJPA既定値").isEqualTo(255L);
+            assertThat(column.getSqlType()).as("実bootが保持した明示DDL").isEqualTo("VARCHAR(10)");
+            org.assertj.core.api.SoftAssertions.assertSoftly(softly -> {
+                softly.assertThat(varcharLengthViolation("varchar_length_fixture.explicit_value", column, "varchar(10)"))
+                        .as("宣言したDB10は正常").isNull();
+                softly.assertThat(varcharLengthViolation("varchar_length_fixture.explicit_value", column, "varchar(9)"))
+                        .as("宣言幅より1短いDB9はkey付き違反")
+                        .isEqualTo("varchar_length_fixture.explicit_value … Entity length 10 / DB VARCHAR length 9");
+            });
+        } finally {
+            StandardServiceRegistryBuilder.destroy(registry);
+        }
+    }
+
+    @Test
+    @DisplayName("CMP-260930-2313: 実bootのreadonly生成列も明示VARCHAR幅で比較する")
+    void varcharLengthGuardは実bootのreadonly生成列を明示幅で比較する() {
+        StandardServiceRegistry registry = varcharLengthFixtureRegistry();
+        try {
+            Metadata metadata = varcharLengthFixtureMetadata(registry);
+            Column column = varcharLengthFixtureColumn(metadata, "generated_value");
+            Property property = metadata.getEntityBinding(VarcharLengthFixture.class.getName())
+                    .getProperty("generatedValue");
+            assertThat(property.isInsertable()).isFalse();
+            assertThat(property.isUpdateable()).isFalse();
+            assertThat(column.getLength()).as("readonly生成列もraw lengthはJPA既定値").isEqualTo(255L);
+            assertThat(column.getSqlType()).as("生成式を含む実bootの明示DDL")
+                    .isEqualTo("VARCHAR(100) GENERATED ALWAYS AS (trim(explicit_value)) STORED");
+            org.assertj.core.api.SoftAssertions.assertSoftly(softly -> {
+                softly.assertThat(varcharLengthViolation("varchar_length_fixture.generated_value", column, "varchar(100)"))
+                        .as("readonlyでも宣言したDB100は正常").isNull();
+                softly.assertThat(varcharLengthViolation("varchar_length_fixture.generated_value", column, "varchar(99)"))
+                        .as("readonlyを一律skipせずDB99の不足を検出する")
+                        .isEqualTo("varchar_length_fixture.generated_value … Entity length 100 / DB VARCHAR length 99");
+            });
+        } finally {
+            StandardServiceRegistryBuilder.destroy(registry);
+        }
+    }
+
+    /** 接続先を設定せず、JDBC metadata取得も無効にしてMySQL方言だけを明示する。 */
+    private static StandardServiceRegistry varcharLengthFixtureRegistry() {
+        return new StandardServiceRegistryBuilder()
+                .applySetting(AvailableSettings.DIALECT, MySQLDialect.class.getName())
+                .applySetting(AvailableSettings.ALLOW_METADATA_ON_BOOT, false)
+                .build();
+    }
+
+    /** 手製Columnではなく、検体だけを明示登録した実Hibernate bootのmetadataを用いる。 */
+    private static Metadata varcharLengthFixtureMetadata(StandardServiceRegistry registry) {
+        assertThat(isFromTestSourceSet(VarcharLengthFixture.class))
+                .as("検体は本番全Entity走査から除外されるテストソースセットに置く").isTrue();
+        return new MetadataSources(registry)
+                .addAnnotatedClass(VarcharLengthFixture.class)
+                .getMetadataBuilder()
+                .applyPhysicalNamingStrategy(new CamelCaseToUnderscoresNamingStrategy())
+                .applyImplicitNamingStrategy(new SpringImplicitNamingStrategy())
+                .build();
+    }
+
+    /** 本番番人と同じNamespace→Table→Columnから検体列を取得する（別Value walkerは作らない）。 */
+    private static Column varcharLengthFixtureColumn(Metadata metadata, String columnName) {
+        List<Column> matches = new ArrayList<>();
+        for (Namespace namespace : metadata.getDatabase().getNamespaces()) {
+            for (org.hibernate.mapping.Table table : namespace.getTables()) {
+                if (!table.isPhysicalTable() || !"varchar_length_fixture".equals(table.getName())) {
+                    continue;
+                }
+                for (Column column : table.getColumns()) {
+                    if (columnName.equals(column.getName())) {
+                        matches.add(column);
+                    }
+                }
+            }
+        }
+        assertThat(matches).as("実bootの検体列 %s が一意に存在する", columnName).hasSize(1);
+        return matches.getFirst();
+    }
+
+    /** 本番scanには登録せず、上のmetadata構築だけに明示登録する検体。DDL実行や永続化はしない。 */
+    @Entity
+    @jakarta.persistence.Table(name = "varchar_length_fixture")
+    private static class VarcharLengthFixture {
+        @jakarta.persistence.Id
+        Long id;
+
+        String implicitValue;
+
+        @jakarta.persistence.Column(columnDefinition = "VARCHAR(10)")
+        String explicitValue;
+
+        @jakarta.persistence.Column(
+                columnDefinition = "VARCHAR(100) GENERATED ALWAYS AS (trim(explicit_value)) STORED",
+                insertable = false, updatable = false)
+        String generatedValue;
+    }
+
     // ==================================================================
     // AC-7（CMP-260929-0654）: Entity の UUID 列の型と Flyway 実スキーマの列型の一致
     // ==================================================================
