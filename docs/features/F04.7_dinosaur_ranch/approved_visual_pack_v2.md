@@ -28,6 +28,8 @@ idleのpath/hash/geometryはentryの従来anchorと一致し、master.assetsのs
 
 `verify-ranch-production-artifact.mjs`は登録metadataとmaster/manifestの実hashを再検証する。元DEVと同じPNGbytesでも、検証済み正式namespaceの厳密path+hashでのみ配布を許可する。未登録・改竄・不足正式fileとDEV namespace/import/pathの混入を拒否する。
 
+正式画像`/ranch/approved/**`はPWAのprecacheから除外し、必要になった画像だけを既存の`image-cache`（CacheFirst、最大300件・7日）へ取得する。Workbox既定のnode_modules除外と認証APIの先勝ちNetworkOnly境界は維持する。配布scannerは生成`public/sw.js`のprecache配列を読み、正式namespaceのURLが入っていたら拒否する。runtimeCachingの文字列や説明文だけでは拒否しない。画像bytes・公開path・登録SHAは変更しない。
+
 別名リンクはrealpathによる重複排除より前に論理pathを検査する。正式file/正式directory/その祖先への未登録aliasへ正式namespaceの例外を引き継がせず、走査順による拒否漏れを防ぐ。内部の通常node_modulesリンクは従来どおり許容し、外部リンクと循環は拒否する。
 
 1922PNGの実測合計は280355204bytes、manifest込み282754797bytesで、v1の256MiB上限を超える。原本bytesを再圧縮せず保持するため、v1の256MiBは維持し、512tuple/4clip契約のv2だけ累積PNG320MiBを上限とする。同pathはhash一致を検査して一度だけ計上する。perfile20MiB・PNG展開128MiB・次元/件数/path検査は維持し、境界直前/ちょうど/超過は巨大ファイルを生成しないbytecounter試験で確認する。

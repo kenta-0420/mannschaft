@@ -25,6 +25,48 @@ const forbidden = [
   'outputs/dinosaur-care-complete16-20261106',
   ...(frontend === '/app' ? [] : [frontend, frontend.replaceAll('\\', '/')]),
 ]
+export function verifyNoApprovedPackPrecache(source) {
+  // 文字列・コメントをmaskし、runtimeCachingや説明文中のURLは検査対象にしない。
+  const masked = source.replace(
+    /"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|\/\*[\s\S]*?\*\/|\/\/[^\r\n]*/g,
+    (value) => ' '.repeat(value.length),
+  )
+  const calls = [...masked.matchAll(/\bprecacheAndRoute\s*\(/g)]
+  assert.ok(calls.length > 0, '生成SWのprecache manifestが見つからない')
+  let checked = 0
+  for (const call of calls) {
+    let start = call.index + call[0].length
+    while (/\s/.test(masked[start] ?? '') && start < masked.length) start++
+    assert.equal(masked[start], '[', '生成SWのprecache配列を検査できない')
+    let depth = 0
+    let end = start
+    for (; end < masked.length; end++) {
+      if (masked[end] === '[') depth++
+      if (masked[end] === ']' && --depth === 0) break
+    }
+    assert.ok(end < masked.length, '生成SWのprecache配列が閉じていない')
+    const literal = source.slice(start, end + 1)
+    // Workbox生成物のbare propertyだけをJSON化。文字列内部の語は書き換えない。
+    const keys = [...masked.slice(start, end + 1).matchAll(/\b(url|revision|integrity)(?=\s*:)/g)]
+    const pieces = []
+    let cursor = 0
+    for (const key of keys) {
+      pieces.push(literal.slice(cursor, key.index), JSON.stringify(key[0]))
+      cursor = key.index + key[0].length
+    }
+    pieces.push(literal.slice(cursor))
+    const entries = JSON.parse(pieces.join(''))
+    for (const entry of entries) {
+      const url = typeof entry === 'string' ? entry : entry.url
+      assert.equal(typeof url, 'string', '生成SWのprecache URLが不正')
+      const pathname = decodeURIComponent(new URL(url, 'https://artifact.invalid/').pathname)
+      assert.ok(pathname !== '/ranch/approved' && !pathname.startsWith('/ranch/approved/'),
+        `正式packの一括precacheは禁止: ${url}`)
+      checked++
+    }
+  }
+  return checked
+}
 export function inspectArtifact(directory, blockedHashes, markers, verifiedPack = null) {
   assert.ok(fs.existsSync(directory), 'production buildが必要')
   let files = 0
@@ -55,9 +97,12 @@ export function inspectArtifact(directory, blockedHashes, markers, verifiedPack 
       `正式素材への未登録alias: ${target}`,
     )
     assert.ok(!active.has(resolved), `成果物内の循環リンク: ${target}`)
+    const stat = fs.statSync(resolved)
+    if (stat.isFile() && (relativeFile === 'public/sw.js' || resolvedFile === 'public/sw.js')) {
+      verifyNoApprovedPackPrecache(fs.readFileSync(resolved, 'utf8'))
+    }
     if (visited.has(resolved)) return
     visited.add(resolved)
-    const stat = fs.statSync(resolved)
     if (stat.isDirectory()) {
       active.add(resolved)
       for (const name of fs.readdirSync(target)) check(path.join(target, name))
