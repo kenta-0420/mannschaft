@@ -199,6 +199,7 @@ test('#4355 マイルストーン de: プロジェクト一覧・詳細・各ダ
     await expect(page.getByText(v.project.title)).toBeVisible({ timeout: 90_000 })
     expect(await page.locator('html').getAttribute('lang')).toBe('de')
     const list = await japaneseLines(page)
+    // 日本語行の判定は、すべての画面を集めた最後の expect（toEqual([])）で行う。ここは原因調査用のログ
     console.log(`[cmp1507] #4355 de 一覧の日本語行: ${JSON.stringify(list)}`)
     await shot(page, 'v1-de-list')
     await page.getByText(v.project.title).click()
@@ -257,7 +258,7 @@ test('#4358 チームの時間割（ADMIN）: サイドバーから辿れ、年�
     // 年度 27 は 2000 に丸めず、欄のエラー（送信もしない）
     await dialog.getByTestId('term-year-input').fill('27')
     await dialog.getByTestId('term-dialog-submit').click()
-    await expect(dialog.getByTestId('term-academic-year-error')).toBeVisible()
+    await expect(dialog.getByTestId('term-academic-year-error')).toHaveText('年度は2000〜2100の範囲で入力してください')
     console.log(`[cmp1507] #4358 年度27の欄エラー: ${await dialog.getByTestId('term-academic-year-error').innerText()}／入力欄の値=${await dialog.getByTestId('term-year-input').inputValue()}／送信=${posted.length}件`)
     expect(await dialog.getByTestId('term-year-input').inputValue()).toBe('27')
     expect(posted).toHaveLength(0)
@@ -267,7 +268,7 @@ test('#4358 チームの時間割（ADMIN）: サイドバーから辿れ、年�
     await dialog.getByTestId('term-start-input').fill('2036-10-01')
     await dialog.getByTestId('term-end-input').fill('2036-04-01')
     await dialog.getByTestId('term-dialog-submit').click()
-    await expect(dialog.getByTestId('term-end-date-error')).toBeVisible()
+    await expect(dialog.getByTestId('term-end-date-error')).toHaveText('終了日は開始日より後の日付にしてください')
     console.log(`[cmp1507] #4358 開始日>終了日の欄エラー: ${await dialog.getByTestId('term-end-date-error').innerText()}／送信=${posted.length}件`)
     expect(posted).toHaveLength(0)
     await shot(page, 'v2-term-start-after-end')
@@ -321,10 +322,15 @@ test('#4358 チームの時間割（ADMIN）: サイドバーから辿れ、年�
     const tdel = page.waitForResponse((r) => r.request().method() === 'DELETE' && /\/timetable-terms\/\d+$/.test(new URL(r.url()).pathname))
     await confirmAccept(page)
     const tdelRes = await tdel
-    console.log(`[cmp1507] #4358 時間割を削除した学期の削除 -> ${tdelRes.status()} ${(await tdelRes.text()).slice(0, 200)}`)
+    const tdelBody = await tdelRes.text()
+    console.log(`[cmp1507] #4358 時間割を削除した学期の削除 -> ${tdelRes.status()} ${tdelBody.slice(0, 200)}`)
+    // 500 へ退行して汎用のエラートーストが出ても合格しないよう、409・コード・専用文言・学期が残ることを固定する
+    expect(tdelRes.status()).toBe(409)
+    expect(tdelBody).toContain('TIMETABLE_022')
     const toast = page.locator('.p-toast-message').last()
-    await expect(toast).toBeVisible({ timeout: 15_000 })
+    await expect(toast).toContainText('時間割が残っているため、この学期は削除できません', { timeout: 15_000 })
     console.log(`[cmp1507] #4358 学期削除トースト: ${(await toast.innerText()).replace(/\s+/g, ' ')}`)
+    await expect(page.getByRole('cell', { name: termName, exact: true })).toHaveCount(1)
     await shot(page, 'v2-term-delete-after-timetable')
     // 時間割のない学期を作って、確認つきで削除できること（年度は全角で入力→半角に正規化）
     const freeName = `Free ${v.tag}`
@@ -451,6 +457,7 @@ test('#4375 チャット: チャンネルを開くと一覧の未読バッジが
     const badge = item.getByTestId('chat-channel-unread')
     await expect(badge).toBeVisible({ timeout: 30_000 })
     console.log(`[cmp1507] #4375 開く前の未読バッジ: ${(await badge.innerText()).trim()}`)
+    await expect(badge).toHaveText('3')
     await shot(page, 'v3-unread-before')
     const read = page.waitForResponse((r) => r.request().method() === 'POST' && new RegExp(`/chat/channels/${v.channel.id}/read$`).test(new URL(r.url()).pathname))
     await item.click()
@@ -505,6 +512,7 @@ test('#4375 チャット 他テナント: 実在チャンネルと不在 ID の 
     })
   const real = await observe(v.channel.id)
   const absent = await observe(987654321)
+  // 比較の判定は、すぐ下の expect（status・code・本文・画面・API 一覧の一致）で行う。ここは原因調査用のログ
   console.log(`[cmp1507] #4375 実在: ${JSON.stringify({ s: real.status, c: real.code, seen: real.seen })}`)
   console.log(`[cmp1507] #4375 不在: ${JSON.stringify({ s: absent.status, c: absent.code, seen: absent.seen })}`)
   console.log(`[cmp1507] #4375 実在 画面: ${real.text.slice(0, 300)}`)
@@ -527,6 +535,7 @@ test('#4375 チャット de: 一覧・チャンネル画面に日本語が出な
     await expect(page.getByTestId(`chat-channel-${v.channel.id}`)).toBeVisible({ timeout: 30_000 })
     expect(await page.locator('html').getAttribute('lang')).toBe('de')
     const lines = await japaneseLines(page)
+    // 判定は、作成ダイアログ分を足した最後の expect（toEqual([])）で行う。ここは原因調査用のログ
     console.log(`[cmp1507] #4375 de チャット画面の日本語行: ${JSON.stringify(lines)}`)
     await shot(page, 'v3-de-chat')
     const plus = page.locator('button:has(.pi-plus)').first()
@@ -571,6 +580,7 @@ test('#4375 チャット: DM から Zimmer を作った直後に、作成者（O
     recordAsset(`zimmer ${zimmerId}`, `/api/v1/chat/channels/${zimmerId}`, w.admin)
     const refetchRes = await refetch
     console.log(`[cmp1507] #4375 Zimmer ${zimmerId} 作成直後の詳細取り直し -> ${refetchRes.status()}`)
+    expect(refetchRes.status()).toBe(200)
     // 作成直後の画面で、他人（MEMBER）の投稿が見え、OWNER に削除が出る
     const theirs = page.getByTestId('chat-message').filter({ hasText: memberLine })
     await expect(theirs).toHaveCount(1, { timeout: 30_000 })
