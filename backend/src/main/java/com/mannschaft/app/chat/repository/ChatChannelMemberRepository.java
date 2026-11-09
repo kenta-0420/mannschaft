@@ -156,9 +156,10 @@ public interface ChatChannelMemberRepository extends JpaRepository<ChatChannelMe
     int incrementUnreadCountForOthers(@Param("channelId") Long channelId, @Param("senderId") Long senderId);
 
     /**
-     * メッセージ削除時に、そのメッセージを未読のメンバー（送信者以外・最終既読がメッセージ作成より前、
-     * または未読込）の {@code unread_count} を 1 減らす。削除済みメッセージが未読数に残り続けて、
+     * メッセージ削除時に、そのメッセージを未読のメンバー（送信者以外・参加がメッセージ作成より前で、
+     * 最終既読がメッセージ作成より前または未設定）の {@code unread_count} を 1 減らす。削除済みメッセージが未読数に残り続けて、
      * 見える投稿数より未読が多くなるのを防ぐ。未読数は 0 未満にならない。
+     * 途中参加のメンバーが参加前の投稿の削除で、新着の未読数を誤って減らされることはない。
      *
      * @param channelId        チャンネルID
      * @param senderId         送信者ユーザーID（送信者の未読数は増えていないので対象外）
@@ -168,6 +169,7 @@ public interface ChatChannelMemberRepository extends JpaRepository<ChatChannelMe
     @Modifying
     @Query("UPDATE ChatChannelMemberEntity m SET m.unreadCount = m.unreadCount - 1 " +
            "WHERE m.channelId = :channelId AND m.userId <> :senderId AND m.unreadCount > 0 " +
+           "AND m.joinedAt < :messageCreatedAt " +
            "AND (m.lastReadAt IS NULL OR m.lastReadAt < :messageCreatedAt)")
     int decrementUnreadCountForUnreadersOf(@Param("channelId") Long channelId,
                                            @Param("senderId") Long senderId,

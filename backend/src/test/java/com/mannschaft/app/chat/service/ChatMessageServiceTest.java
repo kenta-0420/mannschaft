@@ -1086,7 +1086,6 @@ class ChatMessageServiceTest {
             ChatChannelEntity ch = channelWithPreview("最新本文", at);
             given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(old));
             given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(old);
-            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(ch));
             given(messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(CHANNEL_ID))
                     .willReturn(Optional.of(latest));
             stubEnrich();
@@ -1094,6 +1093,8 @@ class ChatMessageServiceTest {
             chatMessageService.editMessage(MESSAGE_ID, new EditMessageRequest("書き換え"), SENDER_ID);
 
             assertThat(ch.getLastMessagePreview()).isEqualTo("最新本文");
+            // 最新でないと判断した時点で打ち切るため、チャンネルは取得しない
+            verify(channelRepository, never()).findById(any());
         }
 
         @Test
