@@ -1,5 +1,5 @@
 import type { ChatThreadResponse, ChatActiveThreadItem } from '~/types/chat'
-import { buildQuery } from './chatQuery'
+import { buildQuery, mapCursorMeta } from './chatQuery'
 import { mapBeThread, type BeThreadResponse } from './chatMessageMapper'
 
 /**
@@ -32,10 +32,11 @@ export function useChatThreads() {
 
   async function getActiveThreads(channelId: number, cursor?: string, limit?: number) {
     const qs = buildQuery({ cursor, limit })
-    return api<{
+    const raw = await api<{
       data: ChatActiveThreadItem[]
-      meta: { nextCursor: string | null; hasMore: boolean }
-    }>(`/api/v1/chat/channels/${channelId}/active-threads?${qs}`)
+      meta?: { nextCursor: string | null; hasNext: boolean }
+    }>(`/api/v1/chat/channels/${channelId}/threads?${qs}`)
+    return { data: raw.data, meta: mapCursorMeta(raw.meta) }
   }
 
   return {

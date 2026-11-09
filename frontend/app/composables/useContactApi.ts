@@ -31,7 +31,8 @@ export function useContactApi() {
     if (params?.limit) query.set('limit', String(params.limit))
     return api<{
       data: ContactResponse[]
-      meta: { nextCursor: string | null; total: number }
+      // BE（ContactController#listContacts）はページングなしで meta を返さない
+      meta?: { nextCursor: string | null; total: number }
     }>(`/api/v1/contacts?${query}`)
   }
 
