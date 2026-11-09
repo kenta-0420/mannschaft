@@ -346,9 +346,11 @@ class BillingLegacyPlanPromotionIT extends AbstractMySqlIntegrationTest {
                     && statuses.contains(BillingPriceVersionStatus.SCHEDULED) && result instanceof List<?> rows) {
                 for (Object row : rows) {
                     if (row instanceof BillingPriceVersionEntity revision && state.nextId.equals(revision.getId())) {
+                        boolean managed = entityManager.contains(revision);
+                        String lockMode = managed ? entityManager.unwrap(org.hibernate.Session.class)
+                                .getCurrentLockMode(revision).name() : "DETACHED";
                         state.entityProbes.put(state.lane.get(), new ProbeObservation(revision.getId(), revision.getLockVersion(),
-                                entityManager.contains(revision), entityManager.unwrap(org.hibernate.Session.class)
-                                .getCurrentLockMode(revision).name(), TransactionSynchronizationManager.isActualTransactionActive(),
+                                managed, lockMode, TransactionSynchronizationManager.isActualTransactionActive(),
                                 TransactionSynchronizationManager.isCurrentTransactionReadOnly()));
                     }
                 }
