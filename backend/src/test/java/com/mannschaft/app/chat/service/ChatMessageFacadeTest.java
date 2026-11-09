@@ -242,6 +242,7 @@ class ChatMessageFacadeTest {
 
             assertDenied(() -> facade.deleteMessage(MESSAGE_ID, OTHER_USER_ID), ChatErrorCode.MESSAGE_DELETE_DENIED);
             verify(messageService, never()).deleteMessage(any(), any());
+        verify(inviteCardPreviewRefresher, never()).refresh(any());
         }
 
         @Test
@@ -256,6 +257,8 @@ class ChatMessageFacadeTest {
             facade.deleteMessage(MESSAGE_ID, OTHER_USER_ID);
 
             verify(messageService).deleteMessage(MESSAGE_ID, OTHER_USER_ID);
+        // 削除後に、招待カードの一覧プレビュー文言をトランザクションの外で確定する
+        verify(inviteCardPreviewRefresher).refresh(CHANNEL_ID);
         }
 
         @Test
