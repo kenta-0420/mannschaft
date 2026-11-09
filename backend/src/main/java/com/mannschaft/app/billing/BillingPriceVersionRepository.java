@@ -35,6 +35,19 @@ public interface BillingPriceVersionRepository
             @Param("statuses") Collection<BillingPriceVersionStatus> statuses,
             @Param("at") Instant at);
 
+    /** 同一述語の存在確認。lock前に価格Entityをmanaged状態で先読みしない。 */
+    @Query("SELECT COUNT(p) FROM BillingPriceVersionEntity p "
+            + "WHERE p.productKind = :productKind AND p.productKey = :productKey "
+            + "AND p.scopeKind = :scopeKind AND p.status IN :statuses AND p.deletedAt IS NULL "
+            + "AND p.effectiveFrom <= :at "
+            + "AND (p.effectiveUntil IS NULL OR :at < p.effectiveUntil)")
+    long countEffectiveCandidates(
+            @Param("productKind") BillingProductKind productKind,
+            @Param("productKey") String productKey,
+            @Param("scopeKind") EntitlementScopeKind scopeKind,
+            @Param("statuses") Collection<BillingPriceVersionStatus> statuses,
+            @Param("at") Instant at);
+
     /** 同じ商品・スコープの revision を直列化するために悲観ロックして取得する。 */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM BillingPriceVersionEntity p "

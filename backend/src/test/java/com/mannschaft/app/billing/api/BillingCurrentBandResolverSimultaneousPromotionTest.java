@@ -66,6 +66,14 @@ class BillingCurrentBandResolverSimultaneousPromotionTest {
                     .filter(v -> isEffectiveAt(v.getEffectiveFrom(), v.getEffectiveUntil(), at))
                     .toList();
         });
+        lenient().when(priceVersionRepository.countEffectiveCandidates(
+                any(), any(), any(), any(), any())).thenAnswer(invocation -> {
+            List<BillingPriceVersionStatus> statuses = invocation.getArgument(3);
+            Instant at = invocation.getArgument(4);
+            return List.of(revisionA, revisionB).stream()
+                    .filter(v -> statuses.contains(v.getStatus()))
+                    .filter(v -> isEffectiveAt(v.getEffectiveFrom(), v.getEffectiveUntil(), at)).count();
+        });
         lenient().when(priceVersionRepository.findAllForUpdate(any(), any(), any()))
                 .thenReturn(List.of(revisionA, revisionB));
         lenient().when(bandRepository.findAllByPriceVersionIdForUpdate(revisionA.getId()))

@@ -89,6 +89,8 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
     @Autowired private OrganizationRepository organizationRepository;
     @Autowired private MembershipRepository membershipRepository;
     @Autowired private FeatureCatalogRepository featureRepository;
+    @Autowired private PlanFeatureRepository planFeatureRepository;
+    @Autowired private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     @Autowired private TransactionTemplate transactions;
     @Autowired private BillingContractService contractService;
     @Autowired private BillingContractRepository contractRepository;
@@ -173,6 +175,8 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
             if (organizationId != null) {
                 organizationRepository.deleteById(organizationId);
             }
+            planFeatureRepository.deleteAll(planFeatureRepository.findByPlanKey(planKey));
+            planFeatureRepository.flush();
             featureRepository.deleteAllById(featureKeys);
             bandRepository.deleteAllById(bandIds);
             bandRepository.flush();
@@ -192,10 +196,35 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
 
     @Test
     void 会員カタログ_USER月額は旧baseでなく新ACTIVE税込額である() {
+        String suffix = UUID.randomUUID().toString().replace("-", "");
+        String first = "i1931.x" + suffix + ".first";
+        String last = "i1931.x" + suffix + ".last";
+        String disabled = "i1931.x" + suffix + ".disabled";
+        String hidden = "legacy.i1931.x" + suffix;
+        featureKeys.addAll(List.of(first, last, disabled, hidden));
+        transactions.executeWithoutResult(tx -> {
+            for (String key : List.of(last, disabled, hidden, first)) {
+                featureRepository.saveAndFlush(FeatureCatalogEntity.builder().featureKey(key)
+                        .category(FeatureCategory.INTERNAL).addonAvailable(false).freeForNonprofit(false)
+                        .displayNameKey("it1931.feature.name").descriptionKey("it1931.feature.description")
+                        .sortOrder(key.equals(first) ? 1 : 9).enabled(!key.equals(disabled)).build());
+                planFeatureRepository.saveAndFlush(PlanFeatureEntity.builder().planKey(planKey).featureKey(key).build());
+            }
+        });
         PlanItem result = catalogService.getCatalog().getPlans().stream()
                 .filter(plan -> planKey.equals(plan.getPlanKey())).findFirst().orElseThrow();
 
         assertThat(result.getBaseMonthlyPriceJpy()).isEqualTo((int) ACTIVE_PRICE);
+        assertThat(result.getPlanKey()).isEqualTo(planKey);
+        assertThat(result.getDisplayNameKey()).isEqualTo("billing.it1931.name");
+        assertThat(result.getDescriptionKey()).isEqualTo("billing.it1931.description");
+        assertThat(result.getFeatures()).extracting(com.mannschaft.app.billing.api.dto.FeatureItem::getFeatureKey)
+                .containsExactly(first, last);
+        com.fasterxml.jackson.databind.JsonNode json = objectMapper.valueToTree(result);
+        Set<String> fields = new java.util.HashSet<>();
+        json.fieldNames().forEachRemaining(fields::add);
+        assertThat(fields).containsExactlyInAnyOrder("planKey", "displayNameKey", "descriptionKey",
+                "baseMonthlyPriceJpy", "features", "priceBands");
     }
 
     @Test

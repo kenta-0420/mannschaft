@@ -71,6 +71,7 @@ class BillingLegacyPlanPromotionIT extends AbstractMySqlIntegrationTest {
     @Autowired private BillingPriceResolver resolver;
     @Autowired private TransactionTemplate transactions;
     @Autowired private RaceObservationHook raceHook;
+    @Autowired private BillingPriceSelector priceSelector;
     @TestBean(name = "utcClock", methodName = "promotionClock") private Clock clock;
 
     private String planKey;
@@ -211,8 +212,9 @@ class BillingLegacyPlanPromotionIT extends AbstractMySqlIntegrationTest {
     }
 
     /** 実probe完了後のlock境界を固定し、終了時中断を競合の失敗へ混ぜない。 */
-    @Test
-    void 両実probe後に先行commitを挟んでも後行の価格読取はBを返す() throws Exception {
+    @ParameterizedTest(name = "{displayName} [{index}] modern={arguments}")
+    @ValueSource(booleans = {false, true})
+    void 両実probe後に先行commitを挟んでも後行の価格読取はBを返す(boolean modern) throws Exception {
         createPrices(DEFAULT_BOUNDARY);
         time(DEFAULT_BOUNDARY);
         RaceObservation state = new RaceObservation(planKey, nextId);
@@ -225,7 +227,7 @@ class BillingLegacyPlanPromotionIT extends AbstractMySqlIntegrationTest {
             Future<Integer> first = executor.submit(() -> {
                 state.lane.set("catalog");
                 try {
-                    Integer price = readPrice("catalog"); // Spring proxy外のreturn後なのでcommit済み。
+                    Integer price = readConcurrentPrice(modern, "catalog"); // Spring proxy外のreturn後なのでcommit済み。
                     state.afterFirstCommit = freshVersions();
                     return price;
                 } finally {
@@ -236,7 +238,7 @@ class BillingLegacyPlanPromotionIT extends AbstractMySqlIntegrationTest {
             Future<Integer> second = executor.submit(() -> {
                 state.lane.set("resolver");
                 try {
-                    return readPrice("resolver");
+                    return readConcurrentPrice(modern, "resolver");
                 } finally {
                     state.lane.remove();
                 }
@@ -254,7 +256,12 @@ class BillingLegacyPlanPromotionIT extends AbstractMySqlIntegrationTest {
         evidence.put("hibernateVersion", org.hibernate.Version.getVersionString());
         evidence.put("hibernateJar", java.nio.file.Path.of(org.hibernate.Version.class.getProtectionDomain()
                 .getCodeSource().getLocation().toURI()).getFileName().toString());
+        evidence.put("modern", modern);
+        evidence.put("callerMethods", modern ? Map.of("catalog", "BillingPriceSelector.selectNow",
+                "resolver", "BillingPriceSelector.selectNow") : Map.of("catalog", "BillingCatalogQueryService.getCatalog",
+                "resolver", "BillingPriceResolver.resolveMonthlyPriceJpy"));
         evidence.put("entityProbes", state.entityProbes);
+        evidence.put("scalarProbes", state.scalarProbes);
         evidence.put("beforeLocks", state.beforeLocks);
         evidence.put("afterFirstCommit", state.afterFirstCommit);
         evidence.put("firstOutcome", firstOutcome);
@@ -271,11 +278,28 @@ class BillingLegacyPlanPromotionIT extends AbstractMySqlIntegrationTest {
         assertThat(state.afterFirstCommit.currentStatus()).isEqualTo(BillingPriceVersionStatus.RETIRED);
         assertThat(state.afterFirstCommit.nextStatus()).isEqualTo(BillingPriceVersionStatus.ACTIVE);
         assertThat(state.afterFirstCommit.nextVersion()).isEqualTo(1L);
+        assertThat(state.entityProbes).isEmpty();
+        assertThat(state.scalarProbes.keySet()).containsExactlyInAnyOrder("catalog", "resolver");
+        assertThat(state.scalarProbes.values()).allSatisfy(probe -> {
+            assertThat(probe.count()).isEqualTo(1L);
+            assertThat(probe.managedEntityCount()).isZero();
+            assertThat(probe.transactionActive()).isTrue();
+            assertThat(probe.readOnly()).isFalse();
+        });
         assertThat(firstOutcome.failureType()).as("先行callerの実結果").isNull();
         assertThat(firstOutcome.value()).isEqualTo(NEXT_PRICE);
         assertThat(secondOutcome.failureType()).as("先行commit後の後行caller実結果").isNull();
         assertThat(secondOutcome.value()).isEqualTo(NEXT_PRICE);
         assertThat(finalVersions).isEqualTo(state.afterFirstCommit);
+        assertThat(readConcurrentPrice(modern, "catalog")).isEqualTo(NEXT_PRICE);
+        assertThat(readConcurrentPrice(modern, "resolver")).isEqualTo(NEXT_PRICE);
+        assertThat(freshVersions()).isEqualTo(finalVersions);
+    }
+
+    private Integer readConcurrentPrice(boolean modern, String entry) {
+        if (!modern) return readPrice(entry);
+        return Math.toIntExact(priceSelector.selectNow(BillingProductKind.PLAN, planKey, EntitlementScopeKind.USER)
+                .orElseThrow().bands().getFirst().getAmountIncludingTax());
     }
 
     private VersionObservation freshVersions() {
@@ -307,6 +331,7 @@ class BillingLegacyPlanPromotionIT extends AbstractMySqlIntegrationTest {
     private record ProbeObservation(UUID id, Long version, boolean managed, String lockMode,
                                     boolean transactionActive, boolean readOnly) { }
     private record LockObservation(boolean transactionActive, boolean readOnly) { }
+    private record ScalarProbeObservation(long count, int managedEntityCount, boolean transactionActive, boolean readOnly) { }
 
     private static class RaceObservation {
         private final String key;
@@ -316,6 +341,7 @@ class BillingLegacyPlanPromotionIT extends AbstractMySqlIntegrationTest {
         private final CountDownLatch firstCompleted = new CountDownLatch(1);
         private final Map<String, ProbeObservation> entityProbes = new ConcurrentHashMap<>();
         private final Map<String, LockObservation> beforeLocks = new ConcurrentHashMap<>();
+        private final Map<String, ScalarProbeObservation> scalarProbes = new ConcurrentHashMap<>();
         private volatile VersionObservation afterFirstCommit;
         private RaceObservation(String key, UUID nextId) { this.key = key; this.nextId = nextId; }
         private boolean matches(Object[] args) {
@@ -354,6 +380,22 @@ class BillingLegacyPlanPromotionIT extends AbstractMySqlIntegrationTest {
                                 TransactionSynchronizationManager.isCurrentTransactionReadOnly()));
                     }
                 }
+            }
+            return result;
+        }
+
+        @Around("execution(* com.mannschaft.app.billing.BillingPriceVersionRepository.countEffectiveCandidates(..))")
+        Object observeScalarProbe(ProceedingJoinPoint invocation) throws Throwable {
+            Object result = invocation.proceed();
+            RaceObservation state = current;
+            Object[] args = invocation.getArgs();
+            if (state != null && state.matches(args) && args.length >= 4
+                    && args[3] instanceof java.util.Collection<?> statuses
+                    && statuses.contains(BillingPriceVersionStatus.SCHEDULED) && result instanceof Number count) {
+                state.scalarProbes.put(state.lane.get(), new ScalarProbeObservation(count.longValue(),
+                        entityManager.unwrap(org.hibernate.Session.class).getStatistics().getEntityCount(),
+                        TransactionSynchronizationManager.isActualTransactionActive(),
+                        TransactionSynchronizationManager.isCurrentTransactionReadOnly()));
             }
             return result;
         }
