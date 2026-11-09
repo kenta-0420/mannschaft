@@ -65,7 +65,7 @@ async function openScopeSidebar(page: Page) {
   await toggle.click()
   // 時間割は「スケジュール」カテゴリの中（既定は折りたたみ）。開く
   const link = page.locator(`a[href="/teams/${v.t2.slug}/timetable"]`).first()
-  if (!(await link.isVisible().catch(() => false))) {
+  if (!(await link.isVisible())) {
     await page.locator('.p-drawer').getByText('スケジュール', { exact: true }).first().click()
   }
 }
@@ -111,9 +111,11 @@ test('#4355 マイルストーン: 追加・更新が入力したタイトルで
   const ms1 = `MS first ${v.tag}`
   const ms2 = `MS renamed ${v.tag}`
   const projNew = `Plan edited ${v.tag}`
+  // このテスト専用のプロジェクト（他のテストの前提を書き換えない。チームの後始末で消える）
+  const own = (await must(w.admin, 'POST', `/api/v1/teams/${v.t2.slug}/projects`, { title: `Plan own ${v.tag}` })).data
   await withPage(browser, w.admin, async (page) => {
-    await gotoAndHydrate(page, `/teams/${v.t2.slug}/projects/${v.project.id}`)
-    await expect(page.getByRole('heading', { name: v.project.title }).first()).toBeVisible({ timeout: 90_000 })
+    await gotoAndHydrate(page, `/teams/${v.t2.slug}/projects/${own.id}`)
+    await expect(page.getByRole('heading', { name: `Plan own ${v.tag}` }).first()).toBeVisible({ timeout: 90_000 })
     // 追加
     await page.locator('h2:text-is("マイルストーン")').locator('xpath=..').getByRole('button', { name: '作成' }).click()
     const dialog = page.getByRole('dialog')
@@ -149,22 +151,25 @@ test('#4355 マイルストーン: 追加・更新が入力したタイトルで
     const pd = page.getByRole('dialog')
     await expect(pd.getByText('プロジェクト編集')).toBeVisible()
     await pd.locator('input[type=text]').first().fill(projNew)
-    const upd = page.waitForResponse((r) => ['PUT', 'PATCH'].includes(r.request().method()) && new RegExp(`/projects/${v.project.id}$`).test(new URL(r.url()).pathname))
+    const upd = page.waitForResponse((r) => ['PUT', 'PATCH'].includes(r.request().method()) && new RegExp(`/projects/${own.id}$`).test(new URL(r.url()).pathname))
     await pd.getByRole('button', { name: '更新' }).click()
     expect((await upd).status()).toBe(200)
     await expect(page.getByRole('heading', { name: projNew }).first()).toBeVisible({ timeout: 30_000 })
     await page.reload()
     await expect(page.getByRole('heading', { name: projNew }).first()).toBeVisible({ timeout: 90_000 })
     await shot(page, 'v1-project-edited')
-    v.project.title = projNew
   })
 })
 
 test('#4355 マイルストーン 権限なし／他テナント: MEMBER に作成・編集の導線なし、他組織は URL 直打ちでも中身が出ない', async ({ browser }) => {
+  // このテスト自身が必要なマイルストーンを作り、終わりに消す（前のテストに頼らない）
+  const msTitle = `MS perm ${v.tag}`
+  const ms = (await must(w.admin, 'POST', `/api/v1/teams/${v.t2.slug}/projects/${v.project.id}/milestones`, { title: msTitle })).data
+  try {
   await withPage(browser, w.member, async (page) => {
     await gotoAndHydrate(page, `/teams/${v.t2.slug}/projects/${v.project.id}`)
     await expect(page.getByRole('heading', { name: v.project.title }).first()).toBeVisible({ timeout: 90_000 })
-    await expect(page.getByText(`MS renamed ${v.tag}`, { exact: true })).toBeVisible()
+    await expect(page.getByText(msTitle, { exact: true })).toBeVisible()
     await expect(page.locator('h2:text-is("マイルストーン")').locator('xpath=..').getByRole('button', { name: '作成' })).toHaveCount(0)
     await expect(page.getByRole('button', { name: '編集' })).toHaveCount(0)
     await expect(page.locator('button:has(.pi-pencil)')).toHaveCount(0)
@@ -176,10 +181,13 @@ test('#4355 マイルストーン 権限なし／他テナント: MEMBER に作�
     const status = (await detail).status()
     console.log(`[cmp1507] #4355 他組織 GET project -> ${status}`)
     expect([403, 404]).toContain(status)
-    await expect(page.getByText(`MS renamed ${v.tag}`)).toHaveCount(0)
+    await expect(page.getByText(msTitle)).toHaveCount(0)
     await expect(page.getByText(v.project.title)).toHaveCount(0)
     await shot(page, 'v1-milestone-outsider')
   })
+  } finally {
+    await must(w.admin, 'DELETE', `/api/v1/teams/${v.t2.slug}/projects/${v.project.id}/milestones/${ms.id}`)
+  }
 })
 
 test('#4355 マイルストーン de: プロジェクト一覧・詳細・各ダイアログに日本語が出ない（ADMIN）', async ({ browser }) => {
@@ -474,7 +482,14 @@ test('#4375 チャット 他テナント: 実在チャンネルと不在 ID の 
       await page.waitForTimeout(2_000)
       const text = (await page.locator('body').innerText()).replace(String(channelId), '{id}').replace(/\s+/g, ' ').trim()
       await shot(page, `v3-conceal-${channelId === v.channel.id ? 'real' : 'absent'}`)
-      const body = await res.json().catch(() => null)
+      const raw = await res.text()
+      let body: { error?: { code?: string }; code?: string } | null = null
+      try {
+        body = JSON.parse(raw)
+      } catch (error) {
+        // 本文が JSON でない場合は、握りつぶさず内容をログに残し、code なしとして比較する（実在と不在で同じになることを確かめる）
+        console.log(`[cmp1507] #4375 JSON でない応答本文: ${raw.slice(0, 200)} (${String(error)})`)
+      }
       return {
         status: res.status(),
         code: (body?.error?.code ?? body?.code ?? null) as string | null,
@@ -510,7 +525,7 @@ test('#4375 チャット de: 一覧・チャンネル画面に日本語が出な
     console.log(`[cmp1507] #4375 de チャット画面の日本語行: ${JSON.stringify(lines)}`)
     await shot(page, 'v3-de-chat')
     const plus = page.locator('button:has(.pi-plus)').first()
-    if (await plus.isVisible().catch(() => false)) {
+    if (await plus.isVisible()) {
       await plus.click()
       await page.waitForTimeout(1_500)
       const dlg = await japaneseLines(page)
