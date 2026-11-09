@@ -701,6 +701,27 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
         });
     }
 
+    /** AC13: 通常API上限input9,999,999×税率100%でも正常税込額はIntegerへ収まる。 */
+    @Test
+    void 正常API範囲の最大税込19999998を実DBから桁落ちなく読む() {
+        transactions.executeWithoutResult(tx -> {
+            BillingPriceBandVersionEntity band = bandRepository.findById(bandIds.getFirst()).orElseThrow();
+            band.setInputAmount(9_999_999L);
+            band.setTaxBehavior(BillingTaxBehavior.EXCLUSIVE);
+            band.setAmountExcludingTax(9_999_999L);
+            band.setTaxAmount(9_999_999L);
+            band.setAmountIncludingTax(19_999_998L);
+            band.setTaxRateBasisPoints(10_000);
+            band.setIncludedInPrice(false);
+        });
+        assertThat(priceSelector.selectNow(BillingProductKind.PLAN, planKey, EntitlementScopeKind.USER)
+                .orElseThrow().bands().getFirst().getAmountIncludingTax()).isEqualTo(19_999_998L);
+
+        assertThat(priceResolver.resolveMonthlyPriceJpy(
+                EntitlementScopeKind.USER, 1L, ContractKind.PLAN, planKey, null)).isEqualTo(19_999_998);
+        assertThat(ownedCatalog().getBaseMonthlyPriceJpy()).isEqualTo(19_999_998);
+    }
+
     private PlanItem ownedCatalog() {
         return catalogService.getCatalog().getPlans().stream()
                 .filter(plan -> planKey.equals(plan.getPlanKey())).findFirst().orElseThrow();

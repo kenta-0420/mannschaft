@@ -149,30 +149,17 @@ class BillingLegacyPlanPromotionIT extends AbstractMySqlIntegrationTest {
         }
     }
 
-    /** AC11。曖昧な複数dueを勝手に一つ選ばず、既存promoterの単一条件を維持する。 */
-    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
-    @ValueSource(strings = {"catalog", "resolver"})
-    void dueが複数なら販売せず親子のどの版も勝手に昇格しない(String entry) {
+    /** AC11の既存DB制約characterization。複数dueは現schemaでは保存不能。 */
+    @Test
+    void 二つ目のSCHEDULEDは一意制約で拒否され元の親子を変更しない() {
         createPrices(DEFAULT_BOUNDARY);
-        transactions.executeWithoutResult(tx -> anotherDueId = savePrice(
-                3L, BillingPriceVersionStatus.SCHEDULED, DEFAULT_BOUNDARY, null, 4_400L, 4_000L, 400L));
-        time(DEFAULT_BOUNDARY);
 
-        if ("catalog".equals(entry)) {
-            assertThat(readPrice(entry)).isNull();
-        } else {
-            assertThatThrownBy(() -> readPrice(entry)).isInstanceOf(BusinessException.class)
-                    .extracting(error -> ((BusinessException) error).getErrorCode())
-                    .isEqualTo(EntitlementErrorCode.PLAN_PRICE_NOT_CONFIGURED);
-        }
+        assertThatThrownBy(() -> transactions.executeWithoutResult(tx -> anotherDueId = savePrice(
+                3L, BillingPriceVersionStatus.SCHEDULED, DEFAULT_BOUNDARY, null, 4_400L, 4_000L, 400L)))
+                .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+
         assertStates(BillingPriceVersionStatus.ACTIVE, BillingPriceVersionStatus.SCHEDULED);
-        transactions.executeWithoutResult(tx -> {
-            assertThat(versions.findById(anotherDueId).orElseThrow().getStatus())
-                    .isEqualTo(BillingPriceVersionStatus.SCHEDULED);
-            assertThat(bands.findByPriceVersionIdAndDeletedAtIsNullOrderByBandNoAsc(anotherDueId))
-                    .hasSize(1).allSatisfy(band ->
-                            assertThat(band.getStatus()).isEqualTo(BillingPriceVersionStatus.SCHEDULED));
-        });
+        transactions.executeWithoutResult(tx -> assertThat(versions.findAllById(versionIds)).hasSize(2));
     }
 
     /** AC11。内部Beanの差替えを行わず、legacy入口の同時/反復読取で状態を再読込する。 */
