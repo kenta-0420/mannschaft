@@ -23,7 +23,7 @@ erDiagram
     }
     invite_tokens {
         bigint id PK
-        char token UK
+        varchar token_hash UK
         bigint team_id "ID参照"
         bigint organization_id "ID参照"
         bigint role_id FK
@@ -174,7 +174,7 @@ erDiagram
 | 列名 | 型 | NULL | 既定値 | コメント |
 | --- | --- | --- | --- | --- |
 | `id` | `bigint unsigned` | NO | （なし） auto_increment |  |
-| `token` | `char(36)` | NO | （なし） |  |
+| `token_hash` | `varchar(64)` | NO | （なし） | 招待トークンのSHA-256ハッシュ(hex)。平文は保存しない |
 | `team_id` | `bigint unsigned` | YES | NULL |  |
 | `organization_id` | `bigint unsigned` | YES | NULL |  |
 | `role_id` | `bigint unsigned` | NO | （なし） |  |

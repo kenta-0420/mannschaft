@@ -1,23 +1,24 @@
 package com.mannschaft.app.role.dto;
 
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-
 import java.time.LocalDateTime;
 
 /**
- * 招待トークンレスポンス。
+ * 招待トークン一覧の 1 行。平文トークンは持たない（DB にはハッシュしか無く、再表示できない）。
+ *
+ * @param id        招待トークン ID
+ * @param roleName  付与ロール名
+ * @param expiresAt 有効期限
+ * @param maxUses   使用回数上限
+ * @param usedCount 使用回数
+ * @param revokedAt 失効日時
+ * @param createdAt 発行日時
  */
-@Getter
-@RequiredArgsConstructor
-public class InviteTokenResponse {
-
-    private final Long id;
-    private final String token;
-    private final String roleName;
-    private final LocalDateTime expiresAt;
-    private final Integer maxUses;
-    private final Integer usedCount;
-    private final LocalDateTime revokedAt;
-    private final LocalDateTime createdAt;
+public record InviteTokenResponse(
+        Long id,
+        String roleName,
+        LocalDateTime expiresAt,
+        Integer maxUses,
+        Integer usedCount,
+        LocalDateTime revokedAt,
+        LocalDateTime createdAt) {
 }

@@ -420,7 +420,7 @@ INDEX idx_upg_group_id (group_id)
 | カラム名 | 型 | NULL | デフォルト | 説明 |
 |---------|---|------|-----------|------|
 | `id` | BIGINT UNSIGNED | NO | AUTO_INCREMENT | PK |
-| `token` | CHAR(36) | NO | — | UUID v4 トークン（公開URL/QRコードに埋め込む）|
+| `token_hash` | VARCHAR(64) | NO | — | 招待トークンの SHA-256 ハッシュ（hex64・一意）。平文（Base64URL 43字）は DB に保存せず、発行応答で一度だけ返す（CMP-260826-1457）。移行時点の既存招待は全失効 |
 | `team_id` | BIGINT UNSIGNED | YES | NULL | FK → teams（チーム招待; NULL = 組織招待）|
 | `organization_id` | BIGINT UNSIGNED | YES | NULL | FK → organizations（組織招待; NULL = チーム招待）|
 | `role_id` | BIGINT UNSIGNED | NO | — | FK → roles（参加時に付与するロール）|
