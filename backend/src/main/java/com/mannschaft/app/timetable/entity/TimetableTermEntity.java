@@ -10,8 +10,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 /**
  * 学期エンティティ。時間割の適用期間（学期・タームなど）を管理する。
@@ -47,13 +48,20 @@ public class TimetableTermEntity extends BaseEntity {
     @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     private Integer sortOrder;
 
-    private LocalDateTime deletedAt;
+    /** 論理削除日時（UTC の瞬間）。NULL の場合は有効な学期。DB 列は DATETIME（UTC 壁時計）。 */
+    private Instant deletedAt;
 
     /**
      * 論理削除を行う。
+     *
+     * <p>引数なしの {@code now()} は時刻の番人（{@code DateTimeAndZoneGuardTest}）の違反になるため、
+     * 呼び出し側が注入した {@link Clock}（{@code @Qualifier("wallClock")}）を渡す。
+     * 本列は {@link Instant} のため {@code Clock.instant()} を使う。</p>
+     *
+     * @param clock 壁時計クロック
      */
-    public void softDelete() {
-        this.deletedAt = LocalDateTime.now();
+    public void softDelete(Clock clock) {
+        this.deletedAt = clock.instant();
     }
 
     /**

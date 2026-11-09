@@ -37,6 +37,7 @@ class TimetableTermServiceTest {
     @Mock private TimetableRepository timetableRepository;
     @Mock private AccessControlService accessControlService;
     @Mock private TeamOrgMembershipQueryService teamOrgMembershipQueryService;
+    @Mock private java.time.Clock clock;
     @InjectMocks private TimetableTermService service;
 
     private static final Long ACTOR_USER_ID = 100L;
@@ -289,6 +290,7 @@ class TimetableTermServiceTest {
             TimetableTermEntity term = teamTerm();
             given(termRepository.findByIdForUpdate(10L)).willReturn(Optional.of(term));
             given(timetableRepository.countLiveByTermIdLocked(10L)).willReturn(0L);
+            given(clock.instant()).willReturn(java.time.Instant.parse("2026-11-09T00:00:00Z"));
 
             service.deleteTerm(10L, ACTOR_USER_ID);
 
@@ -322,6 +324,7 @@ class TimetableTermServiceTest {
                     .endDate(LocalDate.of(2025, 9, 30)).sortOrder(1).build();
             given(termRepository.findByIdForUpdate(11L)).willReturn(Optional.of(term));
             given(timetableRepository.countLiveByTermIdLocked(11L)).willReturn(0L);
+            given(clock.instant()).willReturn(java.time.Instant.parse("2026-11-09T00:00:00Z"));
 
             service.deleteTerm(11L, ACTOR_USER_ID);
 

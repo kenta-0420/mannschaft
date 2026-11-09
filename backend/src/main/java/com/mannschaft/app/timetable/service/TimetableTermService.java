@@ -11,9 +11,11 @@ import com.mannschaft.app.timetable.repository.TimetableRepository;
 import com.mannschaft.app.timetable.repository.TimetableTermRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -32,6 +34,9 @@ public class TimetableTermService {
     private final TimetableRepository timetableRepository;
     private final AccessControlService accessControlService;
     private final TeamOrgMembershipQueryService teamOrgMembershipQueryService;
+    /** 論理削除日時を取る壁時計クロック（引数なし now() は時刻の番人違反のため注入する）。 */
+    @Qualifier("wallClock")
+    private final Clock clock;
 
     /** 認可根治Wave2: F00.5 メンバーシップ・ロール判定のスコープ種別。 */
     private static final String SCOPE_TEAM = "TEAM";
@@ -188,7 +193,7 @@ public class TimetableTermService {
             throw new BusinessException(TimetableErrorCode.TERM_HAS_TIMETABLES);
         }
 
-        locked.softDelete();
+        locked.softDelete(clock);
         termRepository.save(locked);
     }
 
