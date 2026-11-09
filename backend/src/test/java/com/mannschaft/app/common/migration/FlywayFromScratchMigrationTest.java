@@ -610,6 +610,30 @@ class FlywayFromScratchMigrationTest {
     }
 
     // ==================================================================
+    // CMP-260930-2313: VARCHAR 長 guard の比較単位テスト（RED scaffold）
+    // ==================================================================
+    @Test
+    @Order(19)
+    @DisplayName("CMP-260930-2313: 宣言長より短い実VARCHARを検出する")
+    void varcharLengthGuardは宣言長を超える実DB長を違反にする() {
+        Column column = new Column("fixture_column");
+        column.setLength(10L);
+
+        assertThat(varcharLengthViolation("fixture_table.fixture_column", column, "varchar(9)"))
+                .as("Entity宣言長10より短い実VARCHAR長9は違反")
+                .isEqualTo("fixture_table.fixture_column … Entity length 10 / DB VARCHAR length 9");
+        assertThat(varcharLengthViolation("fixture_table.fixture_column", column, "varchar(10)"))
+                .as("同じ長さは違反でない")
+                .isNull();
+        assertThat(varcharLengthViolation("fixture_table.fixture_column", column, "varchar(11)"))
+                .as("DB側が長い場合は違反でない")
+                .isNull();
+        assertThat(varcharLengthViolation("fixture_table.fixture_column", column, "char(10)"))
+                .as("実DBがVARCHARでない列は対象外")
+                .isNull();
+    }
+
+    // ==================================================================
     // AC-7（CMP-260929-0654）: Entity の UUID 列の型と Flyway 実スキーマの列型の一致
     // ==================================================================
 
@@ -880,6 +904,14 @@ class FlywayFromScratchMigrationTest {
         Map<String, Map<String, String>> copy = new HashMap<>();
         source.forEach((table, columns) -> copy.put(table, new HashMap<>(columns)));
         return copy;
+    }
+
+    /**
+     * CMP-260930-2313 RED scaffold。上の短縮fixtureがcompileではなく
+     * 実assertionで失敗することを先に固定するため、現段階は意図的なno-op。
+     */
+    private static String varcharLengthViolation(String key, Column column, String actualColumnType) {
+        return null;
     }
 
     /** テーブル名（小文字）→ 列名（小文字）→ COLUMN_TYPE（小文字。例: binary(16) / char(36)）。 */
