@@ -955,7 +955,8 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
             Object result = invocation.proceed();
             SnapshotObservation observation = CURRENT.get();
             if (observation != null && observation.activeWindow && result instanceof List<?> rows
-                    && !rows.isEmpty() && rows.stream().allMatch(BillingPriceVersionEntity.class::isInstance)) {
+                    && !rows.isEmpty()) {
+                // r2のcanonical projectionも同じ親query。返値型をEntityへ限定しない。
                 observation.parentsReturned = true;
                 observation.parentRowCounts.add(rows.size());
                 Runnable action = observation.afterParents;
