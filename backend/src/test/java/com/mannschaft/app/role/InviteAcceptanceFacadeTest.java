@@ -8,6 +8,7 @@ import com.mannschaft.app.role.dto.InviteClaimTicket;
 import com.mannschaft.app.role.dto.InviteDeclineResult;
 import com.mannschaft.app.role.dto.InviteLocator;
 import com.mannschaft.app.role.dto.InviteScopeRef;
+import com.mannschaft.app.common.token.SecretTokenVault;
 import com.mannschaft.app.role.service.InviteAcceptanceFacade;
 import com.mannschaft.app.role.service.InviteAcceptanceWriter;
 import com.mannschaft.app.role.service.MembershipGrantService;
@@ -24,6 +25,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.http.HttpStatus;
@@ -61,11 +63,13 @@ class InviteAcceptanceFacadeTest {
     @Mock private InviteFolderPlacementService placementService;
     @Mock private MembershipGrantService membershipGrantService;
     @Mock private AuditLogService auditLogService;
+    @Spy private SecretTokenVault vault = new SecretTokenVault();
 
     @InjectMocks
     private InviteAcceptanceFacade facade;
 
     private static final String TOKEN = "token-1";
+    private static final String HASH = new SecretTokenVault().hash(TOKEN);
     private static final Long USER_ID = 1L;
     private static final Long TEAM_ID = 10L;
     private static final Long FOLDER_ID = 77L;
@@ -78,7 +82,7 @@ class InviteAcceptanceFacadeTest {
 
     private void claimable() {
         active();
-        given(writer.inspectScope(new InviteLocator.ByToken(TOKEN)))
+        given(writer.inspectScope(new InviteLocator.ByTokenHash(HASH)))
                 .willReturn(Optional.of(new InviteScopeRef("TEAM", TEAM_ID)));
         given(writer.claim(any(), eq(USER_ID), anyBoolean(), any())).willReturn(TICKET);
     }
@@ -110,13 +114,35 @@ class InviteAcceptanceFacadeTest {
             InOrder order = inOrder(userRowLockService, writer, teamInviteQueryService, membershipGrantService,
                     placementService);
             order.verify(userRowLockService).lock(USER_ID);
-            order.verify(writer).inspectScope(new InviteLocator.ByToken(TOKEN));
+            order.verify(writer).inspectScope(new InviteLocator.ByTokenHash(HASH));
             order.verify(teamInviteQueryService).isBlocked(TEAM_ID, USER_ID);
-            order.verify(writer).claim(new InviteLocator.ByToken(TOKEN), USER_ID, false, null);
+            order.verify(writer).claim(new InviteLocator.ByTokenHash(HASH), USER_ID, false, null);
             order.verify(membershipGrantService).grantRole("TEAM", TEAM_ID, USER_ID, 3L, 2L, "INVITE_TOKEN");
             order.verify(writer).recordJoined(CLAIM_ID);
             order.verify(placementService).place(USER_ID, null, "TEAM", TEAM_ID);
             verify(writer, never()).releaseClaim(any());
+        }
+
+        @Test
+        @DisplayName("ID 入口もトークン入口と同じ手順で、ById の locator を使う")
+        void ID入口は同じ手順() {
+            active();
+            given(writer.inspectScope(new InviteLocator.ById(100L)))
+                    .willReturn(Optional.of(new InviteScopeRef("TEAM", TEAM_ID)));
+            given(writer.claim(any(), eq(USER_ID), anyBoolean(), any())).willReturn(TICKET);
+            given(placementService.checkInviteFolder(USER_ID, FOLDER_ID, "TEAM")).willReturn(InviteFolderCheck.OK);
+            given(membershipGrantService.grantRole("TEAM", TEAM_ID, USER_ID, 3L, 2L, "INVITE_TOKEN"))
+                    .willReturn(GrantOutcome.GRANTED);
+
+            facade.acceptInvitationById(100L, USER_ID, FOLDER_ID);
+
+            InOrder order = inOrder(userRowLockService, writer, membershipGrantService, placementService);
+            order.verify(userRowLockService).lock(USER_ID);
+            order.verify(writer).inspectScope(new InviteLocator.ById(100L));
+            order.verify(writer).claim(eq(new InviteLocator.ById(100L)), eq(USER_ID), anyBoolean(), any());
+            order.verify(membershipGrantService).grantRole("TEAM", TEAM_ID, USER_ID, 3L, 2L, "INVITE_TOKEN");
+            order.verify(writer).recordJoined(CLAIM_ID);
+            order.verify(placementService).place(USER_ID, FOLDER_ID, "TEAM", TEAM_ID);
         }
 
         @Test
@@ -258,7 +284,7 @@ class InviteAcceptanceFacadeTest {
         @Test
         @DisplayName("新規に辞退したときだけ audit_logs に DECLINED を記録する")
         void 新規辞退は監査を記録() {
-            given(writer.decline(new InviteLocator.ByToken(TOKEN), USER_ID))
+            given(writer.decline(new InviteLocator.ByTokenHash(HASH), USER_ID))
                     .willReturn(new InviteDeclineResult(true, 100L, USER_ID, TEAM_ID, null));
 
             facade.declineInvite(TOKEN, USER_ID);
@@ -279,6 +305,20 @@ class InviteAcceptanceFacadeTest {
             verify(auditLogService).record(eq("ORGANIZATION_MEMBERSHIP_INVITE_DECLINED"), eq(USER_ID), eq(USER_ID),
                     isNull(), eq(20L), isNull(), isNull(), isNull(),
                     eq("{\"token_id\":101,\"reason\":\"DECLINED\"}"));
+        }
+
+        @Test
+        @DisplayName("ID 入口は ById の locator で辞退する（ハッシュ化しない）")
+        void ID入口の辞退() {
+            given(writer.decline(new InviteLocator.ById(100L), USER_ID))
+                    .willReturn(new InviteDeclineResult(true, 100L, USER_ID, TEAM_ID, null));
+
+            facade.declineInvitationById(100L, USER_ID);
+
+            verify(writer).decline(new InviteLocator.ById(100L), USER_ID);
+            verify(auditLogService).record(eq("TEAM_MEMBERSHIP_INVITE_DECLINED"), eq(USER_ID), eq(USER_ID),
+                    eq(TEAM_ID), isNull(), isNull(), isNull(), isNull(),
+                    eq("{\"token_id\":100,\"reason\":\"DECLINED\"}"));
         }
 
         @Test
