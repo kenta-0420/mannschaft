@@ -9,6 +9,7 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
+import java.lang.management.ManagementFactory;
 import java.time.Duration;
 import java.util.function.Function;
 
@@ -84,6 +85,7 @@ class MfaBackupCodeLatencyIT extends MfaItSupport {
         String wrong = wrongBackupCode(u);
 
         // wall記録と出力は既存nanoTime計測区間の外に置く。
+        ResourceSnapshot resourcesBefore = ResourceSnapshot.capture();
         long startEpochMillis = System.currentTimeMillis();
         long start = System.nanoTime();
         assertThatThrownBy(() -> auth2faService.validateMfaLogin(
@@ -93,8 +95,10 @@ class MfaBackupCodeLatencyIT extends MfaItSupport {
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode()).isEqualTo("AUTH_074"));
         long elapsed = Duration.ofNanos(System.nanoTime() - start).toMillis();
         long endEpochMillis = System.currentTimeMillis();
+        ResourceSnapshot resourcesAfter = ResourceSnapshot.capture();
         System.out.println("[mfa-latency] pathKind=all-mismatch startEpochMillis=%d endEpochMillis=%d elapsedMillis=%d limitMillis=%d pid=%d".formatted(
                 startEpochMillis, endEpochMillis, elapsed, limitMillis, ProcessHandle.current().pid()));
+        logResources("all-mismatch", startEpochMillis, endEpochMillis, resourcesBefore, resourcesAfter);
 
         assertThat(elapsed).as("AC-54 全不一致の単発所要時間（ms）").isLessThanOrEqualTo(limitMillis);
     }
@@ -105,17 +109,54 @@ class MfaBackupCodeLatencyIT extends MfaItSupport {
         String last = u.backupCodes().get(u.backupCodes().size() - 1);
 
         // wall記録と出力は既存nanoTime計測区間の外に置く。
+        ResourceSnapshot resourcesBefore = ResourceSnapshot.capture();
         long startEpochMillis = System.currentTimeMillis();
         long start = System.nanoTime();
         var response = auth2faService.validateMfaLogin(
                 session, MfaVerificationMethod.BACKUP_CODE, last, IP, USER_AGENT);
         long elapsed = Duration.ofNanos(System.nanoTime() - start).toMillis();
         long endEpochMillis = System.currentTimeMillis();
+        ResourceSnapshot resourcesAfter = ResourceSnapshot.capture();
         System.out.println("[mfa-latency] pathKind=last-match startEpochMillis=%d endEpochMillis=%d elapsedMillis=%d limitMillis=%d pid=%d".formatted(
                 startEpochMillis, endEpochMillis, elapsed, limitMillis, ProcessHandle.current().pid()));
+        logResources("last-match", startEpochMillis, endEpochMillis, resourcesBefore, resourcesAfter);
 
         assertThat(response.getData().getAccessToken()).as("AC-54 前提: 最後の 1 件で一致して成功").isNotBlank();
         assertThat(elapsed).as("AC-54 最後一致の単発所要時間（ms）").isLessThanOrEqualTo(limitMillis);
+    }
+
+    /** 計測区間外の補助観測。未対応・無効・未取得は -1 とし、有効化設定は変更しない。 */
+    private record ResourceSnapshot(long threadCpuNanos, long gcCount, long gcTimeMillis) {
+        static ResourceSnapshot capture() {
+            long gcCount = 0;
+            long gcTimeMillis = 0;
+            var collectors = ManagementFactory.getGarbageCollectorMXBeans();
+            for (var collector : collectors) {
+                long count = collector.getCollectionCount();
+                long time = collector.getCollectionTime();
+                gcCount = gcCount < 0 || count < 0 ? -1 : gcCount + count;
+                gcTimeMillis = gcTimeMillis < 0 || time < 0 ? -1 : gcTimeMillis + time;
+            }
+            var thread = ManagementFactory.getThreadMXBean();
+            long cpu = thread.isCurrentThreadCpuTimeSupported() && thread.isThreadCpuTimeEnabled()
+                    ? thread.getCurrentThreadCpuTime() : -1;
+            return new ResourceSnapshot(cpu, collectors.isEmpty() ? -1 : gcCount,
+                    collectors.isEmpty() ? -1 : gcTimeMillis);
+        }
+    }
+
+    private static long resourceDelta(long before, long after) {
+        return before < 0 || after < before ? -1 : after - before;
+    }
+
+    /** wall窓・PIDで既存latency行と対応付ける。CPU/GCの採取窓はwall窓を外側から含む。 */
+    private static void logResources(String pathKind, long startEpochMillis, long endEpochMillis,
+                                     ResourceSnapshot before, ResourceSnapshot after) {
+        System.out.println("[mfa-resources] pathKind=%s startEpochMillis=%d endEpochMillis=%d pid=%d threadCpuNanos=%d gcCount=%d gcTimeMillis=%d".formatted(
+                pathKind, startEpochMillis, endEpochMillis, ProcessHandle.current().pid(),
+                resourceDelta(before.threadCpuNanos(), after.threadCpuNanos()),
+                resourceDelta(before.gcCount(), after.gcCount()),
+                resourceDelta(before.gcTimeMillis(), after.gcTimeMillis())));
     }
 
     /** JIT・コネクション確立の影響を除くための空打ち（別セッションで 1 回失敗させる）。 */
