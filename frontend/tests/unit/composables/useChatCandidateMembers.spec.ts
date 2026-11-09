@@ -44,34 +44,27 @@ describe('useChatCandidateMembers.loadCandidates', () => {
     expect(r).toEqual([{ userId: 2 }])
   })
 
-  it('汎用画面（teamId/organizationId なし）では連絡先を全ページ辿って候補にする', async () => {
-    listContacts
-      .mockResolvedValueOnce({
-        data: [
-          {
-            user: { id: 7, fullName: '山田太郎', contactHandle: null, avatarUrl: null },
-            customName: null,
-            addedAt: '2026-01-01T00:00:00',
-          },
-        ],
-        meta: { nextCursor: 'c2', total: 2 },
-      })
-      .mockResolvedValueOnce({
-        data: [
-          {
-            user: { id: 8, fullName: '佐藤花子', contactHandle: null, avatarUrl: null },
-            customName: '花ちゃん',
-            addedAt: '2026-01-02T00:00:00',
-          },
-        ],
-        meta: { nextCursor: null, total: 2 },
-      })
+  it('汎用画面（teamId/organizationId なし）では連絡先を1回で取得して候補にする（BE は meta を返さない）', async () => {
+    // 実際の応答形: ContactController#listContacts は ApiResponse<List<ContactResponse>>（meta 無し）
+    listContacts.mockResolvedValueOnce({
+      data: [
+        {
+          user: { id: 7, fullName: '山田太郎', contactHandle: null, avatarUrl: null },
+          customName: null,
+          addedAt: '2026-01-01T00:00:00',
+        },
+        {
+          user: { id: 8, fullName: '佐藤花子', contactHandle: null, avatarUrl: null },
+          customName: '花ちゃん',
+          addedAt: '2026-01-02T00:00:00',
+        },
+      ],
+    })
     const r = await useChatCandidateMembers().loadCandidates({})
     expect(r.map((m) => [m.userId, m.displayName])).toEqual([
       [7, '山田太郎'],
       [8, '花ちゃん'],
     ])
-    expect(listContacts).toHaveBeenCalledTimes(2)
-    expect(listContacts.mock.calls[1]?.[0]).toMatchObject({ cursor: 'c2' })
+    expect(listContacts).toHaveBeenCalledTimes(1)
   })
 })

@@ -1,9 +1,6 @@
 import type { ContactResponse } from '~/types/contact'
 import type { MemberResponse } from '~/types/member'
 
-/** 連絡先の最大取得ページ数（無限ループ防止の上限） */
-const MAX_CONTACT_PAGES = 10
-
 /**
  * 連絡先を、チャットの候補選択が使う MemberResponse 形へ写す。
  * 連絡先に所属ロールは無いので roleName は MEMBER 固定（候補一覧では表示しない）。
@@ -42,15 +39,9 @@ export function useChatCandidateMembers() {
     if (scope.organizationId) {
       return (await orgApi.getMembers(scope.organizationId, { size: 200 })).data
     }
-    const result: MemberResponse[] = []
-    let cursor: string | undefined
-    for (let page = 0; page < MAX_CONTACT_PAGES; page++) {
-      const res = await contactApi.listContacts({ cursor, limit: 100 })
-      result.push(...res.data.map(contactToCandidate))
-      if (!res.meta.nextCursor) break
-      cursor = res.meta.nextCursor
-    }
-    return result
+    // BE の GET /api/v1/contacts はページングなしの ApiResponse<List<ContactResponse>>（meta 無し）。
+    const res = await contactApi.listContacts()
+    return (res.data ?? []).map(contactToCandidate)
   }
 
   return { loadCandidates }

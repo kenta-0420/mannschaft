@@ -45,6 +45,7 @@ async function loadMembers() {
     })
   } catch {
     members.value = []
+    notification.error(t('chat.inviteZimmer.candidatesLoadFailed'))
   } finally {
     membersLoading.value = false
   }
