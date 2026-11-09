@@ -185,6 +185,7 @@
       "tooltip": "In ein Zimmer einladen",
       "failed": "Einladung fehlgeschlagen",
       "noMembers": "Keine Mitglieder zum Einladen",
+      "candidatesLoadFailed": "Die Liste der einladbaren Mitglieder konnte nicht geladen werden. Bitte versuche es später erneut.",
       "shareQuestion": "Bisherigen Chatverlauf teilen?",
       "share": "Teilen",
       "shareHint": "Bisherige Nachrichten werden in das neue Zimmer übernommen",

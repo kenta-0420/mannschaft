@@ -130,7 +130,7 @@ class InviteGenerationConsistencyIT extends InviteGenerationItSupport {
         ApplicationEventMulticaster multicaster = context.getBean("applicationEventMulticaster", ApplicationEventMulticaster.class);
         multicaster.addApplicationListener(listener);
         try {
-            acceptance.joinByInvite(token.getToken(), target);
+            acceptance.joinByInvite(plaintext(token), target);
         } finally {
             multicaster.removeApplicationListener(listener);
         }
@@ -205,7 +205,7 @@ class InviteGenerationConsistencyIT extends InviteGenerationItSupport {
                         Long.class, scope.id())).isZero();
                 snapshotEstablished.countDown();
                 await(closureCommitted);
-                acceptance.joinByInvite(token.getToken(), userId);
+                acceptance.joinByInvite(plaintext(token), userId);
             }));
             assertThat(snapshotEstablished.await(15, TimeUnit.SECONDS)).isTrue();
             jdbc.update("UPDATE " + scope.table()

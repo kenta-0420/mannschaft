@@ -215,7 +215,7 @@
       → ADMIN（priority=2）/ SYSTEM_ADMIN（priority=1）のトークン作成は 403
    c. 操作者が SYSTEM_ADMIN の場合: role_id の priority >= 2（ADMIN 以下）まで許可
 5. expires_in のバリデーション（1d / 7d / 30d / 90d / unlimited のいずれか）→ 不正値は 400
-6. invite_tokens に INSERT（token = UUID v4、expires_at を計算、scope_closure_generation = 親から取得した発行時世代）
+6. invite_tokens に INSERT（token_hash = SHA-256(発行時に生成した Base64URL 43字の平文)・平文は発行応答でだけ返す、expires_at を計算、scope_closure_generation = 親から取得した発行時世代）
 7. audit_logs に TEAM_INVITE_TOKEN_CREATED または ORGANIZATION_INVITE_TOKEN_CREATED を記録
 8. 201 Created を返す
 ```

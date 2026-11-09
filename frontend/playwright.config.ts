@@ -96,7 +96,7 @@ export default defineConfig({
         '**/real/password-generator.real.spec.ts',
         '**/real/f0121-*.real.spec.ts',
         '**/real/n1p1-regression.real.spec.ts',
-        '**/real/cmp1507-regression.real.spec.ts',
+        '**/real/cmp1507-*.real.spec.ts',
       ],
       dependencies: ['setup-real-user'],
     },
