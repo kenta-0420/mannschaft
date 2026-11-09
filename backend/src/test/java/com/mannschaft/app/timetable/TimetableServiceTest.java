@@ -2,7 +2,6 @@ package com.mannschaft.app.timetable;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.team.service.TeamOrgMembershipQueryService;
 import com.mannschaft.app.timetable.entity.TimetableEntity;
 import com.mannschaft.app.timetable.entity.TimetableTermEntity;
 import com.mannschaft.app.timetable.repository.TimetableRepository;
@@ -39,7 +38,6 @@ class TimetableServiceTest {
     @Mock private TimetableTermRepository termRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private AccessControlService accessControlService;
-    @Mock private TeamOrgMembershipQueryService teamOrgMembershipQueryService;
     @InjectMocks private TimetableService service;
 
     private static final Long TEAM_ID = 1L;
@@ -67,7 +65,7 @@ class TimetableServiceTest {
                             view(4L, "削除済みの学期", TEAM_ID, null),
                             view(5L, "他チームの学期", 99L, null)));
 
-            java.util.Map<Long, String> names = service.getTermNames(TEAM_ID, java.util.List.of(3L, 4L, 5L, 3L));
+            java.util.Map<Long, String> names = service.getTermNames(TEAM_ID, java.util.Set.of(), java.util.List.of(3L, 4L, 5L, 3L));
 
             assertThat(names).containsOnlyKeys(3L, 4L);
             assertThat(names).containsEntry(3L, "1学期").containsEntry(4L, "削除済みの学期");
@@ -76,13 +74,12 @@ class TimetableServiceTest {
         @Test
         @DisplayName("所属組織の学期名は返し、無関係な組織の学期名は返さない")
         void 学期名_所属組織のみ() {
-            given(teamOrgMembershipQueryService.findActiveOrganizationIds(TEAM_ID)).willReturn(java.util.List.of(7L));
             given(termRepository.findNamesByIdsIncludingDeleted(java.util.Set.of(6L, 8L)))
                     .willReturn(java.util.List.of(
                             view(6L, "所属組織の学期", null, 7L),
                             view(8L, "無関係な組織の学期", null, 70L)));
 
-            java.util.Map<Long, String> names = service.getTermNames(TEAM_ID, java.util.List.of(6L, 8L));
+            java.util.Map<Long, String> names = service.getTermNames(TEAM_ID, java.util.Set.of(7L), java.util.List.of(6L, 8L));
 
             assertThat(names).containsOnlyKeys(6L);
         }
@@ -90,7 +87,7 @@ class TimetableServiceTest {
         @Test
         @DisplayName("ID が空ならクエリを発行しない")
         void 空ならクエリなし() {
-            assertThat(service.getTermNames(TEAM_ID, java.util.List.of())).isEmpty();
+            assertThat(service.getTermNames(TEAM_ID, java.util.Set.of(), java.util.List.of())).isEmpty();
             org.mockito.Mockito.verifyNoInteractions(termRepository);
         }
     }
@@ -134,7 +131,7 @@ class TimetableServiceTest {
                     false, null, null, null, 100L);
 
             // When
-            TimetableEntity result = service.create(TEAM_ID, data, ACTOR_USER_ID);
+            TimetableEntity result = service.create(TEAM_ID, data, ACTOR_USER_ID, java.util.Set.of());
 
             // Then
             assertThat(result.getName()).isEqualTo("テスト時間割");
@@ -151,7 +148,7 @@ class TimetableServiceTest {
                     1L, "テスト", null, null, null, false, null, null, null, 100L);
 
             // When / Then
-            assertThatThrownBy(() -> service.create(TEAM_ID, data, ACTOR_USER_ID))
+            assertThatThrownBy(() -> service.create(TEAM_ID, data, ACTOR_USER_ID, java.util.Set.of()))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TIMETABLE_002"));
@@ -178,7 +175,7 @@ class TimetableServiceTest {
         void 他チームの学期は拒否() {
             given(termRepository.findByIdForUpdate(1L)).willReturn(Optional.of(term(99L, null)));
 
-            assertThatThrownBy(() -> service.create(TEAM_ID, data(), ACTOR_USER_ID))
+            assertThatThrownBy(() -> service.create(TEAM_ID, data(), ACTOR_USER_ID, java.util.Set.of()))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(TimetableErrorCode.TERM_NOT_FOUND));
@@ -189,9 +186,8 @@ class TimetableServiceTest {
         @DisplayName("所属していない組織の学期 ID は拒否される")
         void 無関係な組織の学期は拒否() {
             given(termRepository.findByIdForUpdate(1L)).willReturn(Optional.of(term(null, 70L)));
-            given(teamOrgMembershipQueryService.findActiveOrganizationIds(TEAM_ID)).willReturn(java.util.List.of(7L));
 
-            assertThatThrownBy(() -> service.create(TEAM_ID, data(), ACTOR_USER_ID))
+            assertThatThrownBy(() -> service.create(TEAM_ID, data(), ACTOR_USER_ID, java.util.Set.of(7L)))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(TimetableErrorCode.TERM_NOT_FOUND));
@@ -201,10 +197,9 @@ class TimetableServiceTest {
         @DisplayName("所属組織の学期は使える")
         void 所属組織の学期は許可() {
             given(termRepository.findByIdForUpdate(1L)).willReturn(Optional.of(term(null, 7L)));
-            given(teamOrgMembershipQueryService.findActiveOrganizationIds(TEAM_ID)).willReturn(java.util.List.of(7L));
             given(timetableRepository.save(any(TimetableEntity.class))).willAnswer(inv -> inv.getArgument(0));
 
-            assertThat(service.create(TEAM_ID, data(), ACTOR_USER_ID).getTermId()).isEqualTo(1L);
+            assertThat(service.create(TEAM_ID, data(), ACTOR_USER_ID, java.util.Set.of(7L)).getTermId()).isEqualTo(1L);
         }
 
         @Test
@@ -212,7 +207,7 @@ class TimetableServiceTest {
         void 論理削除済みの学期は拒否_ロック経由() {
             given(termRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.create(TEAM_ID, data(), ACTOR_USER_ID))
+            assertThatThrownBy(() -> service.create(TEAM_ID, data(), ACTOR_USER_ID, java.util.Set.of()))
                     .isInstanceOf(BusinessException.class);
             verify(termRepository).findByIdForUpdate(1L);
             verify(termRepository, org.mockito.Mockito.never()).findById(any());

@@ -2,7 +2,6 @@ package com.mannschaft.app.timetable.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.team.service.TeamOrgMembershipQueryService;
 import com.mannschaft.app.timetable.TimetableErrorCode;
 import com.mannschaft.app.timetable.TimetableStatus;
 import com.mannschaft.app.timetable.TimetableVisibility;
@@ -49,7 +48,6 @@ public class TimetableService {
     private final TimetableTermRepository termRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final AccessControlService accessControlService;
-    private final TeamOrgMembershipQueryService teamOrgMembershipQueryService;
 
     /** 認可根治Wave2: F00.5 メンバーシップ・ロール判定のスコープ種別（チーム）。 */
     private static final String SCOPE_TEAM = "TEAM";
@@ -68,24 +66,23 @@ public class TimetableService {
      *
      * <p>★越境厳禁★: 指定チームが使える学期（チーム固有、またはそのチームの ACTIVE な所属組織の学期）だけを返す。
      * 他チーム・無関係な組織の学期名は、ID が混ざっていても返さない。</p>
+     *
+     * @param usableOrgIds チームの ACTIVE な所属組織 ID。トランザクションの外で解決して渡す
+     *                     （{@link TimetableTermScopeResolver}。tx 内で team ドメインのリポジトリへ届かせない。D-3T）
      */
-    public Map<Long, String> getTermNames(Long teamId, Collection<Long> termIds) {
+    public Map<Long, String> getTermNames(Long teamId, Set<Long> usableOrgIds, Collection<Long> termIds) {
         Set<Long> ids = new LinkedHashSet<>(termIds);
         if (ids.isEmpty()) {
             return Map.of();
         }
         List<TimetableTermRepository.TermNameView> rows = termRepository.findNamesByIdsIncludingDeleted(ids);
-        List<Long> activeOrgIds = null;
         Map<Long, String> names = new HashMap<>();
         for (TimetableTermRepository.TermNameView v : rows) {
             boolean usable;
             if (v.getTeamId() != null) {
                 usable = v.getTeamId().equals(teamId);
             } else if (v.getOrganizationId() != null) {
-                if (activeOrgIds == null) {
-                    activeOrgIds = teamOrgMembershipQueryService.findActiveOrganizationIds(teamId);
-                }
-                usable = activeOrgIds.contains(v.getOrganizationId());
+                usable = usableOrgIds.contains(v.getOrganizationId());
             } else {
                 usable = false;
             }
@@ -106,9 +103,11 @@ public class TimetableService {
      * <p>行ロックは学期の削除（{@code TimetableTermService.deleteTerm}）と直列化するため。削除が参照 0 件を確認した直後に
      * 並行した作成が保存される競合を防ぐ。</p>
      *
-     * @param checkScope false のときは所属スコープ検証を省く（複製で元の時間割と同じ学期を引き続き使う場合）
+     * @param usableOrgIds チームの ACTIVE な所属組織 ID（tx の外で解決して渡す。D-3T）
+     * @param checkScope   false のときは所属スコープ検証を省く（複製で元の時間割と同じ学期を引き続き使う場合）
      */
-    private TimetableTermEntity lockUsableTerm(Long teamId, Long termId, boolean checkScope) {
+    private TimetableTermEntity lockUsableTerm(Long teamId, Long termId, Set<Long> usableOrgIds,
+                                               boolean checkScope) {
         TimetableTermEntity term = termRepository.findByIdForUpdate(termId)
                 .orElseThrow(() -> new BusinessException(TimetableErrorCode.TERM_NOT_FOUND));
         if (checkScope) {
@@ -116,9 +115,7 @@ public class TimetableService {
             if (term.getTeamId() != null) {
                 usable = term.getTeamId().equals(teamId);
             } else {
-                usable = term.getOrganizationId() != null
-                        && teamOrgMembershipQueryService.findActiveOrganizationIds(teamId)
-                                .contains(term.getOrganizationId());
+                usable = term.getOrganizationId() != null && usableOrgIds.contains(term.getOrganizationId());
             }
             if (!usable) {
                 throw new BusinessException(TimetableErrorCode.TERM_NOT_FOUND);
@@ -166,11 +163,12 @@ public class TimetableService {
      * 時間割を作成する。createは作成先スコープ（path teamId）で checkAdminOrAbove する。
      */
     @Transactional
-    public TimetableEntity create(Long teamId, CreateTimetableData data, Long actorUserId) {
+    public TimetableEntity create(Long teamId, CreateTimetableData data, Long actorUserId,
+                                  Set<Long> usableOrgIds) {
         accessControlService.checkAdminOrAbove(actorUserId, teamId, SCOPE_TEAM);
 
         // 学期範囲チェック（学期はチームが使えるものに限り、行ロックで学期削除と直列化する）
-        TimetableTermEntity term = lockUsableTerm(teamId, data.termId(), true);
+        TimetableTermEntity term = lockUsableTerm(teamId, data.termId(), usableOrgIds, true);
         validateEffectiveDateRange(data.effectiveFrom(), data.effectiveUntil(), term);
 
         TimetableEntity entity = TimetableEntity.builder()
@@ -296,14 +294,15 @@ public class TimetableService {
      * 時間割を複製する。時間割本体と全スロットをコピーし、DRAFT状態で作成する。
      */
     @Transactional
-    public TimetableEntity duplicate(Long timetableId, Long teamId, DuplicateTimetableData data, Long actorUserId) {
+    public TimetableEntity duplicate(Long timetableId, Long teamId, DuplicateTimetableData data, Long actorUserId,
+                                     Set<Long> usableOrgIds) {
         TimetableEntity source = getById(timetableId, teamId, actorUserId);
         accessControlService.checkAdminOrAbove(actorUserId, source.getTeamId(), SCOPE_TEAM);
 
         // 学期範囲チェック
         Long newTermId = data.termId() != null ? data.termId() : source.getTermId();
         // 学期を変える複製は作成と同じく、チームが使える学期に限る。同じ学期のままなら所属検証は省き、行ロックだけ取る。
-        TimetableTermEntity term = lockUsableTerm(teamId, newTermId, !newTermId.equals(source.getTermId()));
+        TimetableTermEntity term = lockUsableTerm(teamId, newTermId, usableOrgIds, !newTermId.equals(source.getTermId()));
         LocalDate effectiveFrom = data.effectiveFrom() != null ? data.effectiveFrom() : source.getEffectiveFrom();
         LocalDate effectiveUntil = data.effectiveUntil() != null ? data.effectiveUntil() : source.getEffectiveUntil();
         validateEffectiveDateRange(effectiveFrom, effectiveUntil, term);
