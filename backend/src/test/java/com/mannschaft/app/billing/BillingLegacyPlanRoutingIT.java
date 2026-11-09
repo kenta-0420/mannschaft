@@ -63,6 +63,7 @@ class BillingLegacyPlanRoutingIT extends AbstractMySqlIntegrationTest {
     @Autowired private ReadOnlyCatalogCaller caller;
     @Autowired private BillingPricePromotionService promoter;
     @Autowired private PlanRepository plans;
+    @Autowired private PlanPriceBandRepository oldBands;
     @Autowired private BillingPriceVersionRepository versions;
     @Autowired private BillingPriceBandVersionRepository bands;
     @Autowired private TransactionTemplate transactions;
@@ -139,8 +140,11 @@ class BillingLegacyPlanRoutingIT extends AbstractMySqlIntegrationTest {
             nextId = null;
             bandIds.clear();
         });
-        jdbc.update("INSERT INTO plan_price_bands(plan_key,scope_kind,band_no,min_members,max_members,monthly_price_jpy,created_at,updated_at) VALUES(?, 'TEAM',1,1,20,0,CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6))", planKey);
-        jdbc.update("INSERT INTO plan_price_bands(plan_key,scope_kind,band_no,min_members,max_members,monthly_price_jpy,created_at,updated_at) VALUES(?, 'ORG',1,1,NULL,1100,CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6))", planKey);
+        transactions.executeWithoutResult(tx -> oldBands.saveAllAndFlush(List.of(
+                PlanPriceBandEntity.builder().planKey(planKey).scopeKind(PlanPriceBandScopeKind.TEAM)
+                        .bandNo((short) 1).minMembers(1).maxMembers(20).monthlyPriceJpy(0).build(),
+                PlanPriceBandEntity.builder().planKey(planKey).scopeKind(PlanPriceBandScopeKind.ORG)
+                        .bandNo((short) 1).minMembers(1).monthlyPriceJpy(1100).build())));
         Trace trace = ConnectionObservations.start();
         try {
             var result = caller.readHelper(planKey);
