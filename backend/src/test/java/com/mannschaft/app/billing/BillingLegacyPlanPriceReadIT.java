@@ -1062,14 +1062,17 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
     }
 
     /** getterのfindById(alias)は観測のみ。今後使うquery lookupの保存keyを規範として確認する。 */
-    @Test
-    void raw別綴りの単一findAllByIdは保存canonicalkeyをhydrateする() {
-        String alias = planKey.toLowerCase(java.util.Locale.ROOT);
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
+    @ValueSource(strings = {"lowercase", "accent"})
+    void raw別綴りの単一findAllByIdは保存canonicalkeyをhydrateする(String variant) {
+        String alias = "accent".equals(variant) ? "Í" + planKey.substring(1)
+                : planKey.toLowerCase(java.util.Locale.ROOT);
         String findByIdKey = transactions.execute(tx -> planRepository.findById(alias)
                 .map(PlanEntity::getPlanKey).orElseThrow());
         List<String> queriedKeys = transactions.execute(tx -> planRepository.findAllById(List.of(alias)).stream()
                 .map(PlanEntity::getPlanKey).toList());
-        System.out.println("IT1931_KEY_LOOKUP_OBSERVATION findByIdMatchesStored=" + planKey.equals(findByIdKey)
+        System.out.println("IT1931_KEY_LOOKUP_OBSERVATION variant=" + variant
+                + " findByIdMatchesStored=" + planKey.equals(findByIdKey)
                 + " findAllByIdMatchesStored=" + List.of(planKey).equals(queriedKeys));
 
         assertThat(queriedKeys).containsExactly(planKey);
