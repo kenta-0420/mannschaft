@@ -64340,6 +64340,21 @@ export interface components {
             /** Format: int32 */
             usedCount?: number;
         };
+        InviteTokenResponse: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            expiresAt?: string;
+            /** Format: int64 */
+            id?: number;
+            /** Format: int32 */
+            maxUses?: number;
+            /** Format: date-time */
+            revokedAt?: string;
+            roleName?: string;
+            /** Format: int32 */
+            usedCount?: number;
+        };
         ApiResponseFollowStatusResponse: {
             data?: components["schemas"]["FollowStatusResponse"];
         };
@@ -70072,27 +70087,6 @@ export interface components {
         };
         ApiResponseInviteTokenResponse: {
             data?: components["schemas"]["InviteTokenResponse"];
-        };
-        InviteTokenResponse: {
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: int64 */
-            createdBy?: number;
-            /** Format: int64 */
-            eventId?: number;
-            /** Format: date-time */
-            expiresAt?: string;
-            /** Format: int64 */
-            id?: number;
-            isActive?: boolean;
-            label?: string;
-            /** Format: int32 */
-            maxUses?: number;
-            token?: string;
-            /** Format: date-time */
-            updatedAt?: string;
-            /** Format: int32 */
-            usedCount?: number;
         };
         CreateEventDelegationRequest: {
             /** Format: int64 */
@@ -78575,23 +78569,8 @@ export interface components {
             roleName?: string;
             scopeAdmin?: boolean;
         };
-        ApiResponseListInviteTokenSummary: {
-            data?: components["schemas"]["InviteTokenSummary"][];
-        };
-        InviteTokenSummary: {
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            expiresAt?: string;
-            /** Format: int64 */
-            id?: number;
-            /** Format: int32 */
-            maxUses?: number;
-            /** Format: date-time */
-            revokedAt?: string;
-            roleName?: string;
-            /** Format: int32 */
-            usedCount?: number;
+        ApiResponseListInviteTokenResponse: {
+            data?: components["schemas"]["InviteTokenResponse"][];
         };
         ApiResponseListTeamCustomFieldResponse: {
             data?: components["schemas"]["TeamCustomFieldResponse"][];
@@ -84633,9 +84612,6 @@ export interface components {
         PagedResponseRegistrationResponse: {
             data?: components["schemas"]["RegistrationResponse"][];
             meta?: components["schemas"]["PageMeta"];
-        };
-        ApiResponseListInviteTokenResponse: {
-            data?: components["schemas"]["InviteTokenResponse"][];
         };
         ApiResponseEventDelegationListResponse: {
             data?: components["schemas"]["EventDelegationListResponse"];
@@ -117923,7 +117899,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListInviteTokenSummary"];
+                    "*/*": components["schemas"]["ApiResponseListInviteTokenResponse"];
                 };
             };
         };
@@ -124693,7 +124669,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListInviteTokenSummary"];
+                    "*/*": components["schemas"]["ApiResponseListInviteTokenResponse"];
                 };
             };
         };

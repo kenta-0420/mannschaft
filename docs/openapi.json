@@ -55091,7 +55091,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListInviteTokenSummary"
+                  "$ref": "#/components/schemas/ApiResponseListInviteTokenResponse"
                 }
               }
             }
@@ -65406,7 +65406,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListInviteTokenSummary"
+                  "$ref": "#/components/schemas/ApiResponseListInviteTokenResponse"
                 }
               }
             }
@@ -195959,6 +195959,38 @@
           }
         }
       },
+      "InviteTokenResponse": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "maxUses": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "revokedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "roleName": {
+            "type": "string"
+          },
+          "usedCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "ApiResponseFollowStatusResponse": {
         "type": "object",
         "properties": {
@@ -211791,52 +211823,6 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/InviteTokenResponse"
-          }
-        }
-      },
-      "InviteTokenResponse": {
-        "type": "object",
-        "properties": {
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "createdBy": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "eventId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "expiresAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "isActive": {
-            "type": "boolean"
-          },
-          "label": {
-            "type": "string"
-          },
-          "maxUses": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "token": {
-            "type": "string"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "usedCount": {
-            "type": "integer",
-            "format": "int32"
           }
         }
       },
@@ -234976,46 +234962,14 @@
           }
         }
       },
-      "ApiResponseListInviteTokenSummary": {
+      "ApiResponseListInviteTokenResponse": {
         "type": "object",
         "properties": {
           "data": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/InviteTokenSummary"
+              "$ref": "#/components/schemas/InviteTokenResponse"
             }
-          }
-        }
-      },
-      "InviteTokenSummary": {
-        "type": "object",
-        "properties": {
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "expiresAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "maxUses": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "revokedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "roleName": {
-            "type": "string"
-          },
-          "usedCount": {
-            "type": "integer",
-            "format": "int32"
           }
         }
       },
@@ -250679,17 +250633,6 @@
           },
           "meta": {
             "$ref": "#/components/schemas/PageMeta"
-          }
-        }
-      },
-      "ApiResponseListInviteTokenResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/InviteTokenResponse"
-            }
           }
         }
       },

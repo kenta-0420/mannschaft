@@ -217,7 +217,8 @@ for (const width of [360, 390, 1024, 1280]) {
       expect.soft(box!.height).toBeGreaterThanOrEqual(44)
     }
     await dialog.locator('button:has(.pi-check)').click()
-    await expect(dialog).not.toBeVisible()
+    // 作成後は発行済みダイアログが同じ role=dialog で開くため、作成ダイアログだけを名前で特定して閉じを確認する
+    await expect(page.getByRole('dialog', { name: 'Create invite link' })).not.toBeVisible()
     expect(payload).toEqual({ roleId: 4, expiresIn: '7d', maxUses: null })
     // 作成後は発行済みダイアログに、保存用の PDF ボタンとコピーが出る。一覧にはコピー・PDF を出さない。
     const issued = page.getByTestId('secret-issued-dialog')

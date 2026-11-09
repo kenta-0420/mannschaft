@@ -130,10 +130,11 @@ class InviteAcceptanceFacadeTest {
             given(writer.inspectScope(new InviteLocator.ById(100L)))
                     .willReturn(Optional.of(new InviteScopeRef("TEAM", TEAM_ID)));
             given(writer.claim(any(), eq(USER_ID), anyBoolean(), any())).willReturn(TICKET);
+            given(placementService.checkInviteFolder(USER_ID, FOLDER_ID, "TEAM")).willReturn(InviteFolderCheck.OK);
             given(membershipGrantService.grantRole("TEAM", TEAM_ID, USER_ID, 3L, 2L, "INVITE_TOKEN"))
                     .willReturn(GrantOutcome.GRANTED);
 
-            facade.acceptInvitationById(100L, USER_ID, null);
+            facade.acceptInvitationById(100L, USER_ID, FOLDER_ID);
 
             InOrder order = inOrder(userRowLockService, writer, membershipGrantService, placementService);
             order.verify(userRowLockService).lock(USER_ID);
