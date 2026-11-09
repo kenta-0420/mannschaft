@@ -7,6 +7,20 @@ import com.mannschaft.app.billing.api.dto.CreateContractRequest;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.entity.MembershipEntity;
+import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.team.entity.TeamEntity;
+import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.organization.entity.OrganizationEntity;
+import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.role.entity.RoleEntity;
+import com.mannschaft.app.role.entity.UserRoleEntity;
+import com.mannschaft.app.role.repository.RoleRepository;
+import com.mannschaft.app.role.repository.UserRoleRepository;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -61,6 +75,7 @@ class BillingLegacyContractHandoffIT extends AbstractMySqlIntegrationTest {
     private static final int B_PRICE = 3_630;
 
     @Autowired private PlanRepository plans;
+    @Autowired private PlanPriceBandRepository legacyBands;
     @Autowired private PlanFeatureRepository planFeatures;
     @Autowired private FeatureCatalogRepository features;
     @Autowired private BillingPriceVersionRepository versions;
@@ -77,12 +92,26 @@ class BillingLegacyContractHandoffIT extends AbstractMySqlIntegrationTest {
     @Autowired private TransactionTemplate transactions;
     @Autowired private EntityManager entityManager;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private MembershipRepository memberships;
+    @Autowired private TeamRepository teams;
+    @Autowired private OrganizationRepository organizations;
+    @Autowired private RoleRepository roles;
+    @Autowired private UserRoleRepository userRoles;
+    @Autowired private ScopeMemberCountService memberCounts;
     @MockitoBean private BillingPaymentGateway gateway;
     @TestBean(name = "utcClock", methodName = "handoffClock") private Clock clock;
 
     private String planKey;
     private String featureKey;
     private Long actor;
+    private EntitlementScopeKind ownedScope = EntitlementScopeKind.USER;
+    private Long ownedScopeId;
+    private Long teamId;
+    private Long organizationId;
+    private Long createdAdminRole;
+    private final List<Long> memberIds = new ArrayList<>();
+    private final List<Long> extraUsers = new ArrayList<>();
+    private final List<Long> userRoleIds = new ArrayList<>();
     private final List<UUID> versionIds = new ArrayList<>();
     private final List<UUID> bandIds = new ArrayList<>();
 
@@ -111,6 +140,7 @@ class BillingLegacyContractHandoffIT extends AbstractMySqlIntegrationTest {
                     A_PRICE, 1_000L, 100L);
             savePrice(2L, BillingPriceVersionStatus.SCHEDULED, BOUNDARY, null, B_PRICE, 3_300L, 330L);
         });
+        ownedScopeId = actor;
         when(gateway.createSubscriptionCheckout(anyLong(), anyInt(), anyString(), any(UUID.class),
                 anyString(), anyString())).thenReturn(new BillingPaymentGateway.CheckoutSessionInfo(
                         "cs_it1931_handoff", "https://example.invalid/1931-checkout"));
@@ -126,7 +156,7 @@ class BillingLegacyContractHandoffIT extends AbstractMySqlIntegrationTest {
                 for (BillingContractEntity contract : owned) {
                     entityManager.createQuery("delete from EntitlementEntity e where e.sourceRefId = :id")
                             .setParameter("id", contract.getId()).executeUpdate();
-                    pointers.hardDeleteBySlotAndContractId(EntitlementScopeKind.USER, actor,
+                    pointers.hardDeleteBySlotAndContractId(contract.getScopeKind(), contract.getScopeId(),
                             ContractKind.PLAN, "", contract.getId());
                 }
                 contractRepository.deleteAll(owned);
@@ -139,9 +169,21 @@ class BillingLegacyContractHandoffIT extends AbstractMySqlIntegrationTest {
             if (planKey != null) {
                 planFeatures.deleteAll(planFeatures.findByPlanKey(planKey));
                 planFeatures.flush();
+                for (PlanPriceBandScopeKind kind : PlanPriceBandScopeKind.values()) {
+                    legacyBands.deleteAll(legacyBands.findByPlanKeyAndScopeKindOrderByBandNoAsc(planKey, kind));
+                }
+                legacyBands.flush();
                 plans.deleteById(planKey);
             }
             if (featureKey != null) features.deleteById(featureKey);
+            userRoles.deleteAllById(userRoleIds);
+            userRoles.flush();
+            memberships.deleteAllById(memberIds);
+            memberships.flush();
+            users.deleteAllById(extraUsers);
+            if (teamId != null) teams.deleteById(teamId);
+            if (organizationId != null) organizations.deleteById(organizationId);
+            if (createdAdminRole != null) roles.deleteById(createdAdminRole);
             if (actor != null) users.deleteById(actor);
         });
     }
@@ -283,6 +325,119 @@ class BillingLegacyContractHandoffIT extends AbstractMySqlIntegrationTest {
         }
     }
 
+    /** AC27: 実人数20で得たAを、別commitの21人目の後へ持ち越さない。 */
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
+    @EnumSource(value = EntitlementScopeKind.class, names = {"TEAM", "ORG"})
+    void 実membership追加で帯が変わったら019で契約とPSPを増やさない(EntitlementScopeKind scope) {
+        prepareMemberScope(scope, 20);
+        assertThat(memberCounts.countActiveMembers(scope, ownedScopeId)).isEqualTo(20);
+        Integer quoted = resolver.resolveMonthlyPriceJpy(scope, ownedScopeId, ContractKind.PLAN, planKey, null);
+        assertThat(quoted).isEqualTo(A_PRICE);
+        addMember();
+        assertThat(memberCounts.countActiveMembers(scope, ownedScopeId)).isEqualTo(21);
+
+        assertError(() -> checkout.startPaidContract(scope, ownedScopeId, organizationId,
+                ContractKind.PLAN, planKey, null, quoted, actor), EntitlementErrorCode.PRICE_NOT_SELLABLE);
+
+        assertNoContractSideEffects();
+    }
+
+    /** AC12: 額と人数と新帯Short1/10を同じ実選択から保存する。 */
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
+    @CsvSource({"TEAM,1,1,1100", "TEAM,21,10,2200", "ORG,1,1,1100", "ORG,21,10,2200"})
+    void TEAMとORGのpaid契約は現在人数に合う新Short帯を保存する(
+            EntitlementScopeKind scope, int memberCount, short expectedBand, int price) {
+        prepareMemberScope(scope, memberCount);
+        BillingContractService.ContractResult result = contracts.createPendingPaidContract(scope, ownedScopeId,
+                organizationId, ContractKind.PLAN, planKey, null, price, actor);
+
+        transactions.executeWithoutResult(tx -> {
+            BillingContractEntity saved = contractRepository.findById(result.contractId()).orElseThrow();
+            assertThat(saved.getStatus()).isEqualTo(ContractStatus.PENDING);
+            assertThat(saved.getMemberCountSnapshot()).isEqualTo(memberCount);
+            assertThat(saved.getBandNoSnapshot()).isEqualTo(expectedBand);
+            assertThat(saved.getPriceJpySnapshot()).isEqualTo(price);
+            assertThat(pointers.findByScopeKindAndScopeIdAndContractKindAndAddonFeatureKey(
+                    scope, ownedScopeId, ContractKind.PLAN, "").orElseThrow().getContractId()).isEqualTo(saved.getId());
+            assertThat(entitlements.findBySourceKindAndSourceRefIdAndRevokedAtIsNull(
+                    EntitlementSourceKind.PLAN, saved.getId())).isEmpty();
+        });
+        assertThat(pspCreates()).isZero();
+    }
+
+    private void prepareMemberScope(EntitlementScopeKind scope, int count) {
+        ownedScope = scope;
+        transactions.executeWithoutResult(tx -> {
+            String slug = "i1931h-" + UUID.randomUUID().toString().substring(0, 16);
+            if (scope == EntitlementScopeKind.TEAM) {
+                teamId = teams.saveAndFlush(TeamEntity.builder().name("1931handoff人数")
+                        .slug(slug).visibility(TeamEntity.Visibility.MEMBERS_AND_ABOVE).supporterEnabled(false).build())
+                        .getId();
+                ownedScopeId = teamId;
+            } else {
+                organizationId = organizations.saveAndFlush(OrganizationEntity.builder().name("1931handoff人数")
+                        .slug(slug).orgType(OrganizationEntity.OrgType.OTHER)
+                        .visibility(OrganizationEntity.Visibility.PRIVATE)
+                        .hierarchyVisibility(OrganizationEntity.HierarchyVisibility.NONE).supporterEnabled(false).build())
+                        .getId();
+                ownedScopeId = organizationId;
+            }
+            RoleEntity admin = roles.findByName("ADMIN").orElseGet(() -> {
+                RoleEntity created = roles.saveAndFlush(RoleEntity.builder().name("ADMIN").displayName("管理者")
+                        .priority(com.mannschaft.app.common.visibility.RolePriority.priority("ADMIN"))
+                        .isSystem(false).build());
+                createdAdminRole = created.getId();
+                return created;
+            });
+            userRoleIds.add(userRoles.saveAndFlush(UserRoleEntity.builder().userId(actor).roleId(admin.getId())
+                    .teamId(teamId).organizationId(organizationId).grantedBy(actor).build()).getId());
+            memberIds.add(memberships.saveAndFlush(MembershipEntity.builder().userId(actor)
+                    .scopeType(scope == EntitlementScopeKind.TEAM ? ScopeType.TEAM : ScopeType.ORGANIZATION)
+                    .scopeId(ownedScopeId).joinedAt(java.time.LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC))
+                    .build()).getId());
+            legacyBands.saveAndFlush(PlanPriceBandEntity.builder().planKey(planKey)
+                    .scopeKind(scope == EntitlementScopeKind.TEAM ? PlanPriceBandScopeKind.TEAM : PlanPriceBandScopeKind.ORG)
+                    .bandNo((short) 1).minMembers(1).monthlyPriceJpy(A_PRICE).build());
+            BillingPriceVersionEntity version = versions.saveAndFlush(BillingPriceVersionEntity.builder()
+                    .productKind(BillingProductKind.PLAN).productKey(planKey).scopeKind(scope)
+                    .catalogRevision("1931-member-handoff").revisionNo(1L).status(BillingPriceVersionStatus.ACTIVE)
+                    .effectiveFrom(BOUNDARY.minusSeconds(86_400)).provisionAttempts(0)
+                    .creationSource(BillingPriceCreationSource.SYSTEM_BACKFILL).build());
+            versionIds.add(version.getId());
+            saveMemberBand(version, 1, 1, 20, A_PRICE, 1_000L, 100L);
+            saveMemberBand(version, 10, 21, null, 2_200, 2_000L, 200L);
+        });
+        for (int index = 1; index < count; index++) addMember();
+    }
+
+    private void addMember() {
+        transactions.executeWithoutResult(tx -> {
+            Long user = users.saveAndFlush(UserEntity.builder()
+                    .email("i1931-member-" + UUID.randomUUID() + "@example.com")
+                    .lastName("試練").firstName("1931").displayName("1931実member")
+                    .status(UserEntity.UserStatus.ACTIVE).locale("ja").timezone("Asia/Tokyo")
+                    .isSearchable(true).build()).getId();
+            extraUsers.add(user);
+            memberIds.add(memberships.saveAndFlush(MembershipEntity.builder().userId(user)
+                    .scopeType(ownedScope == EntitlementScopeKind.TEAM ? ScopeType.TEAM : ScopeType.ORGANIZATION)
+                    .scopeId(ownedScopeId).joinedAt(java.time.LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC))
+                    .build()).getId());
+        });
+    }
+
+    private void saveMemberBand(BillingPriceVersionEntity parent, int number, int min, Integer max,
+                                long total, long excluding, long tax) {
+        bandIds.add(bands.saveAndFlush(BillingPriceBandVersionEntity.builder()
+                .productKind(BillingProductKind.PLAN).productKey(planKey).scopeKind(parent.getScopeKind())
+                .priceVersionId(parent.getId()).bandNo(number).minMembers(min).maxMembers(max).currency("JPY")
+                .stripePriceRef("price_it1931_member_" + UUID.randomUUID()).inputAmount(total)
+                .taxBehavior(BillingTaxBehavior.INCLUSIVE).taxCodeSnapshot("txcd_10000000").taxMasterSnapshot("{}")
+                .amountExcludingTax(excluding).taxAmount(tax).amountIncludingTax(total).taxRateBasisPoints(1_000)
+                .taxNameSnapshot("消費税").includedInPrice(true).effectiveFrom(parent.getEffectiveFrom())
+                .status(BillingPriceVersionStatus.ACTIVE)
+                .creationSource(BillingPriceCreationSource.SYSTEM_BACKFILL).build()).getId());
+    }
+
     private Integer resolve() {
         return resolver.resolveMonthlyPriceJpy(EntitlementScopeKind.USER, actor, ContractKind.PLAN, planKey, null);
     }
@@ -296,8 +451,8 @@ class BillingLegacyContractHandoffIT extends AbstractMySqlIntegrationTest {
         transactions.executeWithoutResult(tx -> {
             assertThat(ownedContracts()).isEmpty();
             assertThat(pointers.findByScopeKindAndScopeIdAndContractKindAndAddonFeatureKey(
-                    EntitlementScopeKind.USER, actor, ContractKind.PLAN, "")).isEmpty();
-            assertThat(entitlements.findActiveByScope(EntitlementScopeKind.USER, actor,
+                    ownedScope, ownedScopeId, ContractKind.PLAN, "")).isEmpty();
+            assertThat(entitlements.findActiveByScope(ownedScope, ownedScopeId,
                     java.time.LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC))).isEmpty();
         });
         assertThat(pspCreates()).isZero();
@@ -305,7 +460,7 @@ class BillingLegacyContractHandoffIT extends AbstractMySqlIntegrationTest {
 
     private List<BillingContractEntity> ownedContracts() {
         return contractRepository.findByScopeKindAndScopeIdAndDeletedAtIsNullOrderByContractedAtDesc(
-                EntitlementScopeKind.USER, actor);
+                ownedScope, ownedScopeId);
     }
 
     private long pspCreates() {
