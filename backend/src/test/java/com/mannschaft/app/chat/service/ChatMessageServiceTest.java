@@ -1187,9 +1187,7 @@ class ChatMessageServiceTest {
         @DisplayName("最新を削除したとき直前が転送メッセージなら、本文の先頭がプレビューになる")
         void 直前が転送メッセージなら本文がプレビューになる() {
             LocalDateTime at = LocalDateTime.of(2026, 11, 10, 9, 0);
-            ChatMessageEntity forwarded = messageWithId(MESSAGE_ID - 1, "ひとこと
-
-元の本文", at.minusMinutes(3));
+            ChatMessageEntity forwarded = messageWithId(MESSAGE_ID - 1, "ひとこと\n\n元の本文", at.minusMinutes(3));
             org.springframework.test.util.ReflectionTestUtils.setField(forwarded, "forwardedFromId", 3L);
             ChatMessageEntity latest = messageWithId(MESSAGE_ID, "消す本文", at);
             ChatChannelEntity ch = channelWithPreview("消す本文", at);
@@ -1202,9 +1200,7 @@ class ChatMessageServiceTest {
 
             chatMessageService.deleteMessage(MESSAGE_ID, SENDER_ID);
 
-            assertThat(ch.getLastMessagePreview()).isEqualTo("ひとこと
-
-元の本文");
+            assertThat(ch.getLastMessagePreview()).isEqualTo("ひとこと\n\n元の本文");
         }
 
         @Test
