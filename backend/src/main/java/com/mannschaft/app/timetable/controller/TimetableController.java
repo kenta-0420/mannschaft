@@ -48,9 +48,12 @@ public class TimetableController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<TimetableResponse>>> listTimetables(
             @PathVariable Long teamId) {
-        List<TimetableResponse> timetables = timetableService.getByTeamId(teamId, SecurityUtils.getCurrentUserId())
-                .stream()
-                .map(this::toResponse)
+        List<TimetableEntity> entities = timetableService.getByTeamId(teamId, SecurityUtils.getCurrentUserId());
+        // 学期名は 1 クエリでまとめて引く（N+1 回避）
+        Map<Long, String> termNames = timetableService.getTermNames(
+                entities.stream().map(TimetableEntity::getTermId).toList());
+        List<TimetableResponse> timetables = entities.stream()
+                .map(e -> toResponse(e, termNames))
                 .toList();
         return ResponseEntity.ok(ApiResponse.of(timetables));
     }
@@ -228,10 +231,15 @@ public class TimetableController {
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
+    /** 単一の時間割を応答へ変換する（学期名を 1 件引く）。 */
     private TimetableResponse toResponse(TimetableEntity entity) {
+        return toResponse(entity, timetableService.getTermNames(List.of(entity.getTermId())));
+    }
+
+    private TimetableResponse toResponse(TimetableEntity entity, Map<Long, String> termNames) {
         return new TimetableResponse(
                 entity.getId(), entity.getName(), entity.getTermId(),
-                null, // termName - resolved at service layer if needed
+                termNames.get(entity.getTermId()),
                 entity.getStatus().name(), entity.getVisibility().name(),
                 entity.getEffectiveFrom(), entity.getEffectiveUntil(),
                 entity.getWeekPatternEnabled(), entity.getWeekPatternBaseDate(),

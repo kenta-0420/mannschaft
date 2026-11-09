@@ -44,6 +44,38 @@ class TimetableServiceTest {
     private static final Long ACTOR_USER_ID = 100L;
 
     @Nested
+    @DisplayName("getTermNames（B2）")
+    class GetTermNames {
+
+        @Test
+        @DisplayName("学期名を論理削除済みの学期も含めて一括で引く（N+1にしない）")
+        void 学期名_一括取得() {
+            given(termRepository.findNamesByIdsIncludingDeleted(java.util.Set.of(3L, 4L)))
+                    .willReturn(java.util.List.of(
+                            new TimetableTermRepository.TermNameView() {
+                                public Long getId() { return 3L; }
+                                public String getName() { return "1学期"; }
+                            },
+                            new TimetableTermRepository.TermNameView() {
+                                public Long getId() { return 4L; }
+                                public String getName() { return "削除済みの学期"; }
+                            }));
+
+            java.util.Map<Long, String> names = service.getTermNames(java.util.List.of(3L, 4L, 3L));
+
+            assertThat(names).containsEntry(3L, "1学期").containsEntry(4L, "削除済みの学期");
+            verify(termRepository).findNamesByIdsIncludingDeleted(java.util.Set.of(3L, 4L));
+        }
+
+        @Test
+        @DisplayName("ID が空ならクエリを発行しない")
+        void 空ならクエリなし() {
+            assertThat(service.getTermNames(java.util.List.of())).isEmpty();
+            org.mockito.Mockito.verifyNoInteractions(termRepository);
+        }
+    }
+
+    @Nested
     @DisplayName("getById")
     class GetById {
 

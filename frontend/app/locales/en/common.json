@@ -416,7 +416,10 @@
     "delete_timetable": "Delete",
     "delete_timetable_confirm": "Delete the timetable \"{name}\"? This cannot be undone.",
     "delete_timetable_success": "Timetable deleted",
-    "delete_timetable_error": "Failed to delete the timetable"
+    "delete_timetable_error": "Failed to delete the timetable",
+    "create_error_out_of_term": "The timetable's effective period is outside the term. Choose dates between the term's start and end.",
+    "create_error_term_not_found": "The selected term was not found. Reopen the term list and try again.",
+    "effective_until_before_from": "The end date must be on or after the start date."
   },
   "error": {
     "server": "A server error occurred",
@@ -1202,6 +1205,7 @@
       "edit_title": "Edit milestone",
       "title_label": "Title",
       "title_placeholder": "Milestone name",
+      "title_required": "Please enter a title.",
       "due_date_label": "Due date",
       "add": "Add"
     },

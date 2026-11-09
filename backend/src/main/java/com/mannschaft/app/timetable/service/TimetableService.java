@@ -19,8 +19,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * 時間割サービス。時間割のCRUD・ステータス遷移・複製を担当する。
@@ -53,6 +58,22 @@ public class TimetableService {
     public List<TimetableEntity> getByTeamId(Long teamId, Long actorUserId) {
         accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
         return timetableRepository.findByTeamIdOrderByEffectiveFromDesc(teamId);
+    }
+
+    /**
+     * 学期 ID から学期名をまとめて引く（一覧・詳細の {@code termName} 用。1 クエリで N+1 を避ける）。
+     * 論理削除済みの学期も含めて引く（履歴の時間割でも学期名を出すため）。
+     */
+    public Map<Long, String> getTermNames(Collection<Long> termIds) {
+        Set<Long> ids = new LinkedHashSet<>(termIds);
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, String> names = new HashMap<>();
+        for (TimetableTermRepository.TermNameView v : termRepository.findNamesByIdsIncludingDeleted(ids)) {
+            names.put(v.getId(), v.getName());
+        }
+        return names;
     }
 
     /**

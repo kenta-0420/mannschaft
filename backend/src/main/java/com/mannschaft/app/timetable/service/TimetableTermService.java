@@ -153,7 +153,7 @@ public class TimetableTermService {
     }
 
     /**
-     * 学期を削除する。紐づく時間割がある場合は削除不可。
+     * 学期を論理削除する。未削除の時間割が紐づく場合は削除不可（409 TIMETABLE_022）。
      */
     @Transactional
     public void deleteTerm(Long termId, Long actorUserId) {
@@ -164,13 +164,15 @@ public class TimetableTermService {
         // 変更系は entity 由来 scope で checkAdminOrAbove。
         accessControlService.checkAdminOrAbove(actorUserId, scopeId, isTeam ? SCOPE_TEAM : SCOPE_ORGANIZATION);
 
-        // 紐づく時間割の存在チェック。論理削除済みの時間割も fk_tm_term(RESTRICT) の参照元として残るため
-        // @SQLRestriction を迂回して数える。チーム・組織どちらの学期でも termId で判定する。
-        if (timetableRepository.countByTermIdIncludingDeleted(termId) > 0) {
+        // 未削除の時間割が残るときだけ拒否する。論理削除済みの時間割は fk_tm_term(RESTRICT) の参照元として残るが、
+        // 学期自体も論理削除（行は残す）なので FK 違反にならず、削除を妨げない（CMP-261105-1507 B1）。
+        // チーム・組織どちらの学期でも termId で判定する。
+        if (timetableRepository.countByTermId(termId) > 0) {
             throw new BusinessException(TimetableErrorCode.TERM_HAS_TIMETABLES);
         }
 
-        termRepository.delete(entity);
+        entity.softDelete();
+        termRepository.save(entity);
     }
 
     // ---- Validation Helpers ----

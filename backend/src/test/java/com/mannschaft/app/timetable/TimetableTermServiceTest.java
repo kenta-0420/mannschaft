@@ -224,6 +224,64 @@ class TimetableTermServiceTest {
     }
 
     @Nested
+    @DisplayName("deleteTerm（B1: 論理削除）")
+    class DeleteTerm {
+
+        private TimetableTermEntity teamTerm() {
+            return TimetableTermEntity.builder()
+                    .teamId(1L).academicYear(2025).name("1学期")
+                    .startDate(LocalDate.of(2025, 4, 1))
+                    .endDate(LocalDate.of(2025, 7, 31)).sortOrder(1).build();
+        }
+
+        @Test
+        @DisplayName("未削除の時間割が残る学期は削除できず TIMETABLE_022")
+        void 未削除の時間割あり_409() {
+            TimetableTermEntity term = teamTerm();
+            given(termRepository.findById(10L)).willReturn(Optional.of(term));
+            given(timetableRepository.countByTermId(10L)).willReturn(1L);
+
+            assertThatThrownBy(() -> service.deleteTerm(10L, ACTOR_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TIMETABLE_022"));
+            assertThat(term.getDeletedAt()).isNull();
+            verify(termRepository, never()).delete(any(TimetableTermEntity.class));
+        }
+
+        @Test
+        @DisplayName("論理削除済みの時間割しか無い学期は論理削除される（物理削除しない）")
+        void 論理削除済み時間割のみ_学期を論理削除() {
+            TimetableTermEntity term = teamTerm();
+            given(termRepository.findById(10L)).willReturn(Optional.of(term));
+            given(timetableRepository.countByTermId(10L)).willReturn(0L);
+
+            service.deleteTerm(10L, ACTOR_USER_ID);
+
+            assertThat(term.getDeletedAt()).isNotNull();
+            verify(termRepository).save(term);
+            verify(termRepository, never()).delete(any(TimetableTermEntity.class));
+            verify(accessControlService).checkAdminOrAbove(ACTOR_USER_ID, 1L, "TEAM");
+        }
+
+        @Test
+        @DisplayName("組織学期も同じ規則で論理削除される")
+        void 組織学期_論理削除() {
+            TimetableTermEntity term = TimetableTermEntity.builder()
+                    .organizationId(7L).academicYear(2025).name("前期")
+                    .startDate(LocalDate.of(2025, 4, 1))
+                    .endDate(LocalDate.of(2025, 9, 30)).sortOrder(1).build();
+            given(termRepository.findById(11L)).willReturn(Optional.of(term));
+            given(timetableRepository.countByTermId(11L)).willReturn(0L);
+
+            service.deleteTerm(11L, ACTOR_USER_ID);
+
+            assertThat(term.getDeletedAt()).isNotNull();
+            verify(accessControlService).checkAdminOrAbove(ACTOR_USER_ID, 7L, "ORGANIZATION");
+        }
+    }
+
+    @Nested
     @DisplayName("getByTermId")
     class GetByTermId {
 

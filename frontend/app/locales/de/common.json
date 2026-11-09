@@ -416,7 +416,10 @@
     "delete_timetable": "Löschen",
     "delete_timetable_confirm": "Stundenplan „{name}“ löschen? Dies kann nicht rückgängig gemacht werden.",
     "delete_timetable_success": "Stundenplan gelöscht",
-    "delete_timetable_error": "Stundenplan konnte nicht gelöscht werden"
+    "delete_timetable_error": "Stundenplan konnte nicht gelöscht werden",
+    "create_error_out_of_term": "Der Gültigkeitszeitraum des Stundenplans liegt außerhalb des Semesters. Wählen Sie Daten zwischen Beginn und Ende des Semesters.",
+    "create_error_term_not_found": "Das ausgewählte Semester wurde nicht gefunden. Öffnen Sie die Semesterliste erneut.",
+    "effective_until_before_from": "Das Enddatum darf nicht vor dem Startdatum liegen."
   },
   "error": {
     "server": "Ein Serverfehler ist aufgetreten",
@@ -1202,6 +1205,7 @@
       "edit_title": "Meilenstein bearbeiten",
       "title_label": "Titel",
       "title_placeholder": "Name des Meilensteins",
+      "title_required": "Bitte geben Sie einen Titel ein.",
       "due_date_label": "Fällig am",
       "add": "Hinzufügen"
     },

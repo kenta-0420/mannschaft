@@ -158,8 +158,8 @@ class TimetableTermContractIT extends AbstractMySqlIntegrationTest {
     // ---- ④ 削除 ----
 
     @Test
-    @DisplayName("論理削除済みの時間割だけが残るチーム学期の削除は409 TIMETABLE_022")
-    void 論理削除済み時間割が残るチーム学期の削除は409() throws Exception {
+    @DisplayName("B1: 論理削除済みの時間割だけが残るチーム学期は削除できる（204）。学期は論理削除され一覧から消える")
+    void 論理削除済み時間割だけが残るチーム学期は削除204() throws Exception {
         Long termId = saveTeamTerm();
         Long timetableId = saveTimetable(termId);
         em.flush();
@@ -171,9 +171,85 @@ class TimetableTermContractIT extends AbstractMySqlIntegrationTest {
         em.clear();
 
         mockMvc.perform(delete("/api/v1/timetable-terms/{id}", termId))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("TIMETABLE_022"));
+                .andExpect(status().isNoContent());
         em.flush();
+        em.clear();
+
+        // 学期一覧からは消える
+        mockMvc.perform(get("/api/v1/teams/{id}/timetable-terms", teamId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(0));
+        // 行は残り（FK 参照元を保つ）、deleted_at が入っている
+        Object deletedAt = em.createNativeQuery("SELECT deleted_at FROM timetable_terms WHERE id = :id")
+                .setParameter("id", termId).getSingleResult();
+        assertThat(deletedAt).isNotNull();
+        // 同じ学期を再度削除しても 404（存在しない扱い）
+        mockMvc.perform(delete("/api/v1/timetable-terms/{id}", termId))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("B1: 論理削除した学期と同じ名前・期間で学期を作り直せる（同名検証・日付重複検証から除かれる）")
+    void 論理削除した学期と同名同期間で作り直せる() throws Exception {
+        Long termId = saveTeamTerm();
+        em.flush();
+        em.clear();
+        setAuth(adminTeamId);
+        mockMvc.perform(delete("/api/v1/timetable-terms/{id}", termId))
+                .andExpect(status().isNoContent());
+        em.flush();
+        em.clear();
+
+        Map<String, Object> body = termBody();
+        body.put("name", "TTTERM 1学期");
+        body.put("startDate", LocalDate.of(2025, 4, 1).toString());
+        body.put("endDate", LocalDate.of(2025, 9, 30).toString());
+        mockMvc.perform(post("/api/v1/teams/{id}/timetable-terms", teamId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    @DisplayName("B1: 論理削除した組織学期は組織の学期一覧から消え、組織学期も同じ規則で削除できる")
+    void 論理削除した組織学期は一覧から消える() throws Exception {
+        TimetableTermEntity orgTerm = termRepository.save(TimetableTermEntity.builder()
+                .organizationId(orgId).academicYear(2025).name("TTTERM 組織学期")
+                .startDate(LocalDate.of(2025, 4, 1)).endDate(LocalDate.of(2025, 9, 30))
+                .sortOrder(1).build());
+        em.flush();
+        em.clear();
+        setAuth(adminOrgId);
+        mockMvc.perform(delete("/api/v1/timetable-terms/{id}", orgTerm.getId()))
+                .andExpect(status().isNoContent());
+        em.flush();
+        em.clear();
+        mockMvc.perform(get("/api/v1/organizations/{id}/timetable-terms", orgId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(0));
+    }
+
+    @Test
+    @DisplayName("B2: 時間割一覧・詳細の termName に学期名が入る。学期が論理削除された履歴の時間割でも学期名を返す")
+    void 時間割応答のtermNameは学期名を返す() throws Exception {
+        Long termId = saveTeamTerm();
+        Long timetableId = saveTimetable(termId);
+        em.flush();
+        em.clear();
+        setAuth(adminTeamId);
+        mockMvc.perform(get("/api/v1/teams/{id}/timetables", teamId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].termName").value("TTTERM 1学期"));
+        mockMvc.perform(get("/api/v1/teams/{id}/timetables/{tid}", teamId, timetableId))
+                .andExpect(jsonPath("$.data.termName").value("TTTERM 1学期"));
+
+        // 学期を直接論理削除しても（履歴の時間割は残る前提）学期名は引ける
+        em.createNativeQuery("UPDATE timetable_terms SET deleted_at = NOW() WHERE id = :id")
+                .setParameter("id", termId).executeUpdate();
+        em.flush();
+        em.clear();
+        mockMvc.perform(get("/api/v1/teams/{id}/timetables/{tid}", teamId, timetableId))
+                .andExpect(jsonPath("$.data.termName").value("TTTERM 1学期"));
     }
 
     @Test
@@ -202,7 +278,7 @@ class TimetableTermContractIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    @DisplayName("組織学期を参照するチームの時間割（論理削除済み）が残る場合も409")
+    @DisplayName("組織学期を参照するチームの時間割（未削除）が残る場合は409、論理削除済みだけなら204")
     void 組織学期を参照する時間割が残れば409() throws Exception {
         TimetableTermEntity orgTerm = termRepository.save(TimetableTermEntity.builder()
                 .organizationId(orgId).academicYear(2025).name("TTTERM 組織学期")
@@ -211,16 +287,19 @@ class TimetableTermContractIT extends AbstractMySqlIntegrationTest {
         Long timetableId = saveTimetable(orgTerm.getId());
         em.flush();
         em.clear();
-        TimetableEntity t = timetableRepository.findById(timetableId).orElseThrow();
-        t.softDelete();
-        timetableRepository.save(t);
-        em.flush();
-        em.clear();
 
         setAuth(adminOrgId);
         mockMvc.perform(delete("/api/v1/timetable-terms/{id}", orgTerm.getId()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("TIMETABLE_022"));
+
+        TimetableEntity t = timetableRepository.findById(timetableId).orElseThrow();
+        t.softDelete();
+        timetableRepository.save(t);
+        em.flush();
+        em.clear();
+        mockMvc.perform(delete("/api/v1/timetable-terms/{id}", orgTerm.getId()))
+                .andExpect(status().isNoContent());
     }
 
     // ---- D4: チーム単独の学期一覧（organizationId 任意） ----

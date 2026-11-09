@@ -49,10 +49,8 @@ public interface TimetableRepository extends JpaRepository<TimetableEntity, Long
                                                  @Param("date") LocalDate date);
 
     /**
-     * 学期を参照する時間割の件数（論理削除済みを含む）。
-     * 論理削除行も fk_tm_term(ON DELETE RESTRICT) の参照元になるため、ネイティブクエリで
-     * {@code @SQLRestriction("deleted_at IS NULL")} を迂回して数える。
+     * 学期を参照する未削除の時間割の件数（{@code @SQLRestriction} により論理削除済みは数えない）。
+     * 学期は論理削除なので、論理削除済みの時間割は学期削除を妨げない（CMP-261105-1507 B1）。
      */
-    @Query(value = "SELECT COUNT(*) FROM timetables WHERE term_id = :termId", nativeQuery = true)
-    long countByTermIdIncludingDeleted(@Param("termId") Long termId);
+    long countByTermId(Long termId);
 }
