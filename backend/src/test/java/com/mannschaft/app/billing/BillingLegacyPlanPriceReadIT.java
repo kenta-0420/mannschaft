@@ -485,6 +485,32 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
         }
     }
 
+    /** r3型契約RED。旧価格を別Repoへ戻らず同じ不変snapshotで受け取る。 */
+    @Test
+    void 未公開の旧baseと全scope帯はnullable額も含めて不変scalarで返す() {
+        removeActivePrices();
+        transactions.executeWithoutResult(tx -> {
+            planRepository.findById(planKey).orElseThrow().setBaseMonthlyPriceJpy(0);
+            legacyBandRepository.findByPlanKeyAndScopeKindOrderByBandNoAsc(planKey, PlanPriceBandScopeKind.ORG)
+                    .forEach(band -> band.setMonthlyPriceJpy(null));
+        });
+        var key = new BillingPriceSelector.PlanScopeKey(planKey, EntitlementScopeKind.USER);
+        BillingPriceSelector.LegacyPlanSelection result;
+        try (var capture = com.mannschaft.app.common.visibility.perf.SqlIntentCounter.captureCurrentThread()) {
+            result = priceSelector.selectLegacyPlans(Set.of(key)).get(key);
+            assertThat(allSelectCount(capture.capturedSqls())).isBetween(1L, 3L);
+        }
+        assertThat(result.state()).isEqualTo(BillingPriceSelector.LegacyPlanSelectionState.NO_PUBLISHED_PRICE);
+        assertThat(result.oldPrice()).as("PRIMARYでcopyした旧価格snapshot").isNotNull();
+        assertThat(result.oldPrice().baseMonthlyPriceJpy()).isZero();
+        assertThat(result.oldPrice().bands()).extracting(BillingPriceSelector.LegacyPlanOldBandSnapshot::scopeKind,
+                BillingPriceSelector.LegacyPlanOldBandSnapshot::bandNo,
+                BillingPriceSelector.LegacyPlanOldBandSnapshot::monthlyPriceJpy)
+                .containsExactlyInAnyOrder(tuple(PlanPriceBandScopeKind.TEAM, (short) 1, 1100),
+                        tuple(PlanPriceBandScopeKind.ORG, (short) 1, null));
+        assertThatThrownBy(() -> result.oldPrice().bands().clear()).isInstanceOf(UnsupportedOperationException.class);
+    }
+
     private void setLegacyFree() {
         transactions.executeWithoutResult(tx -> {
             planRepository.findById(planKey).orElseThrow().setBaseMonthlyPriceJpy(0);

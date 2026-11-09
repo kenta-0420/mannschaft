@@ -139,13 +139,28 @@ public class BillingPriceSelector {
      * SELECTEDのsnapshotは必須、それ以外はnullという返却不変条件。
      * NO_PUBLISHED_PRICEでも既存の明示0以外を無料化しない。
      */
-    public record LegacyPlanSelection(LegacyPlanSelectionState state, LegacyPlanSnapshot snapshot) {
+    public record LegacyPlanSelection(
+            LegacyPlanSelectionState state, LegacyPlanSnapshot snapshot, LegacyPlanOldPriceSnapshot oldPrice) {
+        public LegacyPlanSelection(LegacyPlanSelectionState state, LegacyPlanSnapshot snapshot) {
+            this(state, snapshot, null);
+        }
         public LegacyPlanSelection {
             if (state == null || (state == LegacyPlanSelectionState.SELECTED) != (snapshot != null)) {
                 throw new IllegalArgumentException("適格な選択だけがsnapshotを持ちます");
             }
         }
     }
+
+    /** 旧価格の分類材料もPRIMARY TX内でcopyする。未観測Planには添付しない。 */
+    public record LegacyPlanOldPriceSnapshot(Integer baseMonthlyPriceJpy, List<LegacyPlanOldBandSnapshot> bands) {
+        public LegacyPlanOldPriceSnapshot {
+            bands = List.copyOf(bands);
+        }
+    }
+
+    public record LegacyPlanOldBandSnapshot(
+            PlanPriceBandScopeKind scopeKind, Short bandNo, Integer minMembers, Integer maxMembers,
+            Integer monthlyPriceJpy) { }
 
     /** 検証を終えたPRIMARY TX内でcopyする不変出力。Entityやlazy参照を含めない。 */
     public record LegacyPlanSnapshot(UUID priceVersionId, List<LegacyPlanBandSnapshot> bands) {
