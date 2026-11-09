@@ -40,6 +40,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestReporter;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -67,6 +68,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -129,6 +132,8 @@ class FlywayFromScratchMigrationTest {
 
     /** Entity 走査の起点パッケージ。 */
     private static final String ENTITY_BASE_PACKAGE = "com.mannschaft.app";
+    private static final Pattern MYSQL_VARCHAR_COLUMN_TYPE =
+            Pattern.compile("^varchar\\s*\\(\\s*(\\d+)\\s*\\)$");
 
     /**
      * <b>既知の未返済ドリフト台帳 — 空であること（2026-09-29 全額返済・CMP-260924-0010）</b>
@@ -270,9 +275,13 @@ class FlywayFromScratchMigrationTest {
      * <p>本テストはそこで、Hibernate 自身が構築した {@link Metadata}
      * （＝ Spring Boot と同じ {@link CamelCaseToUnderscoresNamingStrategy} /
      * {@link SpringImplicitNamingStrategy} を適用した、権威ある物理名）を使い、
-     * <b>テーブル・列の「存在」だけ</b>を全件突き合わせる。
-     * これは本番を壊す事故（{@code Unknown column}）を過不足なく捕らえつつ、
-     * 型ノイズを持ち込まず、違反を一度に全件列挙できる。</p>
+     * <b>テーブル・列の存在と、実スキーマで VARCHAR と判明した列の長さ</b>を全件突き合わせる。
+     * VARCHAR 長は Entity の {@link Column#getLength()} が実 VARCHAR 長を超える場合だけ違反とする。
+     * CHAR / TEXT / ENUM 等は長さ比較の対象外だが、型が未取得・解釈不能な場合は診断する。</p>
+     *
+     * <p>CMP-260930-2313 の長さ照合は、既存の {@code Namespace → Table → Column} 物理表巡回が持つ
+     * effective metadata の範囲に限る。将来の複数宣言の最大長保証や別の Value walker は行わない。
+     * 同一物理列の宣言集約等、現在の巡回で表現できない範囲はこの番人の保証外である。</p>
      *
      * <h2>Spring コンテキストは起動しない</h2>
      * <p>{@code MetadataSources} を直接組み立てるため {@code @SpringBootTest} は不要。
@@ -282,11 +291,12 @@ class FlywayFromScratchMigrationTest {
      */
     @Test
     @Order(2)
-    @DisplayName("全Entityのマッピング列がFlyway実スキーマに存在する（Unknown column 事故の番人）")
-    void 全Entityのマッピング列がFlywayスキーマに存在する() throws Exception {
+    @DisplayName("全Entityのマッピング列の存在とVARCHAR長がFlyway実スキーマと一致する")
+    void 全Entityのマッピング列がFlywayスキーマに存在する(TestReporter testReporter) throws Exception {
         // given: Flyway 実スキーマ（単独実行にも耐えるよう冪等に再適用。適用済みなら no-op）
         migrateFromScratch();
         Map<String, Set<String>> actualSchema = readActualSchema();
+        Map<String, Map<String, String>> actualTypes = readActualColumnTypes();
 
         StandardServiceRegistry registry = buildServiceRegistry();
         try {
@@ -294,35 +304,62 @@ class FlywayFromScratchMigrationTest {
 
             // when: Entity 由来の物理テーブル / 列を実スキーマと突き合わせる
             List<String> violations = new ArrayList<>();
+            int entityCount = metadata.getEntityBindings().size();
+            int physicalTableCount = 0;
+            int mappedColumnCount = 0;
+            int actualVarcharColumnCount = 0;
             for (Namespace namespace : metadata.getDatabase().getNamespaces()) {
                 for (org.hibernate.mapping.Table table : namespace.getTables()) {
                     // @Subselect / ビューマッピング（例: RepairFundBalanceView）は実テーブルではない
                     if (!table.isPhysicalTable()) {
                         continue;
                     }
+                    physicalTableCount++;
                     String tableName = table.getName().toLowerCase(Locale.ROOT);
                     Set<String> actualColumns = actualSchema.get(tableName);
                     if (actualColumns == null) {
                         violations.add(tableName + " … テーブルが Flyway スキーマに存在しない");
-                        continue;
                     }
                     for (Column column : table.getColumns()) {
+                        mappedColumnCount++;
                         String key = tableName + "." + column.getName().toLowerCase(Locale.ROOT);
-                        if (!actualColumns.contains(column.getName().toLowerCase(Locale.ROOT))
+                        if (actualColumns != null
+                                && !actualColumns.contains(column.getName().toLowerCase(Locale.ROOT))
                                 && !KNOWN_UNPAID_DRIFT.contains(key)) {
                             violations.add(key);
+                        }
+                        String actualType = actualTypes.getOrDefault(tableName, Map.of()).get(
+                                column.getName().toLowerCase(Locale.ROOT));
+                        if (actualType != null && actualType.trim().toLowerCase(Locale.ROOT).startsWith("varchar")) {
+                            actualVarcharColumnCount++;
+                        }
+                        String varcharViolation = varcharLengthViolation(key, column, actualType);
+                        if (varcharViolation != null) {
+                            violations.add(varcharViolation);
                         }
                     }
                 }
             }
 
+            testReporter.publishEntry("cmp2313-metadata-inventory",
+                    "entities=" + entityCount
+                            + ", physicalTables=" + physicalTableCount
+                            + ", mappedColumns=" + mappedColumnCount
+                            + ", actualVarcharColumns=" + actualVarcharColumnCount);
+
             // then: 凍結済みの既知ドリフト以外は 1 件も存在しない
             if (!violations.isEmpty()) {
                 violations.sort(String::compareTo);
                 StringBuilder sb = new StringBuilder();
-                sb.append("Entity がマップしている列 / テーブルが Flyway スキーマに存在しません。\n")
+                sb.append("Entity metadata と Flyway 実スキーマの存在 / VARCHAR 長が一致しません。\n")
                   .append("Flyway で構築した環境（本番・staging・新規開発環境）では Hibernate が\n")
-                  .append("存在しない列を含む SQL を発行し、Unknown column で当該ドメインの API が全滅します。\n")
+                  .append("存在しない列による Unknown column や VARCHAR 長不足による Data too long で\n")
+                  .append("当該ドメインの API が失敗します。\n")
+                  .append("VARCHAR 長違反は Entity 宣言長が実 DB 長を超えた列、または長さを解釈できない列です。\n")
+                  .append("CMP-260930-2313 effective metadata 棚卸し: entities=").append(entityCount)
+                  .append(", physicalTables=").append(physicalTableCount)
+                  .append(", mappedColumns=").append(mappedColumnCount)
+                  .append(", actualVarcharColumns=").append(actualVarcharColumnCount).append("\n")
                   .append("対処は次のいずれか（ドメインの設計判断）:\n")
                   .append("  (a) Flyway に ALTER TABLE ... ADD COLUMN の migration を追加する\n")
                   .append("      （採番規約は CLAUDE.md / backend/.claudecode.md §18）\n")
@@ -334,6 +371,10 @@ class FlywayFromScratchMigrationTest {
                 }
                 fail(sb.toString());
             }
+            assertThat(entityCount).as("CMP-260930-2313: Entity metadata を走査している").isPositive();
+            assertThat(physicalTableCount).as("CMP-260930-2313: 物理 Table metadata を走査している").isPositive();
+            assertThat(mappedColumnCount).as("CMP-260930-2313: Column metadata を走査している").isPositive();
+            assertThat(actualVarcharColumnCount).as("CMP-260930-2313: 実VARCHAR列を比較している").isPositive();
         } finally {
             StandardServiceRegistryBuilder.destroy(registry);
         }
@@ -610,7 +651,7 @@ class FlywayFromScratchMigrationTest {
     }
 
     // ==================================================================
-    // CMP-260930-2313: VARCHAR 長 guard の比較単位テスト（RED scaffold）
+    // CMP-260930-2313: VARCHAR 長 guard の比較単位テスト
     // ==================================================================
     @Test
     @Order(19)
@@ -631,6 +672,32 @@ class FlywayFromScratchMigrationTest {
         assertThat(varcharLengthViolation("fixture_table.fixture_column", column, "char(10)"))
                 .as("実DBがVARCHARでない列は対象外")
                 .isNull();
+        assertThat(varcharLengthViolation("fixture_table.fixture_column", column, "text"))
+                .as("TEXT列は対象外")
+                .isNull();
+        assertThat(varcharLengthViolation("fixture_table.fixture_column", column, "enum('a','b')"))
+                .as("ENUM列は対象外")
+                .isNull();
+        assertThat(varcharLengthViolation("fixture_table.fixture_column", null, "varchar(10)"))
+                .as("VARCHAR列のEntity長不明はkey付き診断")
+                .isEqualTo("fixture_table.fixture_column … Entity length が未設定または不正 (null)");
+        Column nonPositiveLength = new Column("fixture_column");
+        nonPositiveLength.setLength(0L);
+        assertThat(varcharLengthViolation("fixture_table.fixture_column", nonPositiveLength, "varchar(10)"))
+                .as("VARCHAR列のEntity長0はkey付き診断")
+                .isEqualTo("fixture_table.fixture_column … Entity length が未設定または不正 (0)");
+        assertThat(varcharLengthViolation("fixture_table.fixture_column", column, "varchar(?)"))
+                .as("不正なVARCHAR表記はkey付き診断")
+                .isEqualTo("fixture_table.fixture_column … DB COLUMN_TYPE を解釈できない (varchar(?))");
+        assertThat(varcharLengthViolation("fixture_table.fixture_column", column, "varchar(0)"))
+                .as("0長のVARCHARはkey付き診断")
+                .isEqualTo("fixture_table.fixture_column … DB VARCHAR 長が不正 (0)");
+        assertThat(varcharLengthViolation("fixture_table.fixture_column", column, null))
+                .as("型未取得はkey付き診断")
+                .isEqualTo("fixture_table.fixture_column … DB COLUMN_TYPE が未取得");
+        assertThat(varcharLengthViolation("fixture_table.fixture_column", column, "  "))
+                .as("空の型はkey付き診断")
+                .isEqualTo("fixture_table.fixture_column … DB COLUMN_TYPE が未取得");
     }
 
     // ==================================================================
@@ -906,11 +973,38 @@ class FlywayFromScratchMigrationTest {
         return copy;
     }
 
-    /**
-     * CMP-260930-2313 RED scaffold。上の短縮fixtureがcompileではなく
-     * 実assertionで失敗することを先に固定するため、現段階は意図的なno-op。
-     */
     private static String varcharLengthViolation(String key, Column column, String actualColumnType) {
+        if (actualColumnType == null || actualColumnType.isBlank()) {
+            return key + " … DB COLUMN_TYPE が未取得";
+        }
+        String normalizedType = actualColumnType.trim().toLowerCase(Locale.ROOT);
+        if (!normalizedType.startsWith("varchar")) {
+            return null;
+        }
+
+        Matcher matcher = MYSQL_VARCHAR_COLUMN_TYPE.matcher(normalizedType);
+        if (!matcher.matches()) {
+            return key + " … DB COLUMN_TYPE を解釈できない (" + normalizedType + ")";
+        }
+        long actualLength;
+        try {
+            actualLength = Long.parseLong(matcher.group(1));
+        } catch (NumberFormatException e) {
+            return key + " … DB COLUMN_TYPE を解釈できない (" + normalizedType + ")";
+        }
+        if (actualLength <= 0) {
+            return key + " … DB VARCHAR 長が不正 (" + actualLength + ")";
+        }
+        if (column == null) {
+            return key + " … Entity length が未設定または不正 (null)";
+        }
+        long entityLength = column.getLength();
+        if (entityLength <= 0) {
+            return key + " … Entity length が未設定または不正 (" + entityLength + ")";
+        }
+        if (entityLength > actualLength) {
+            return key + " … Entity length " + entityLength + " / DB VARCHAR length " + actualLength;
+        }
         return null;
     }
 
