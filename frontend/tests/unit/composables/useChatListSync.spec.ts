@@ -7,7 +7,8 @@ describe('useChatListSync', () => {
     const { onChannelContentChanged, notifyChannelContentChanged } = useChatListSync()
     const off = onChannelContentChanged(handler)
     notifyChannelContentChanged(7)
-    expect(handler).toHaveBeenCalledWith(7)
+    // vueuse のバスはハンドラへ (event, payload) を渡すため、第1引数だけを見る
+    expect(handler.mock.calls[0]?.[0]).toBe(7)
     off()
     notifyChannelContentChanged(8)
     expect(handler).toHaveBeenCalledTimes(1)
