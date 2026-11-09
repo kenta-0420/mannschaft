@@ -58,7 +58,8 @@ main の leaf キーが test から欠落すると失敗する。値差と test 
 `:test FAILED` と原 JUnit XML で6件中、自己検体5件成功・実差分1件失敗・error/skip 0件を確認した。
 意図した失敗の欠落キーは上表の DataSource 2件を除く8件と完全一致した。
 原 XML の SHA-256 は `05036981aa5f94af57c8025684679c84b3d2a1ca827f7bf6e3b9714abd2caaa9`。
-この RED は test タスクの結果であり、Gradle 全体の終了と後処理 JaCoCo の完了は未確認である。
+この RED は test タスクの結果である。後処理 JaCoCo の完了後、Gradle 全体も
+`:test` の意図した失敗を理由に exit 1（`BUILD FAILED in 3h 47m 4s`）で自然終了した。
 設定同期後の番人、実 Spring/実 MySQL、全6 shard の GREEN は、正式 CI 結果の取得後に記録する。
 
 製品の API・UI・導線を変更しない純 test＋docs のため、実機 E2E と住民探索は対象外。
