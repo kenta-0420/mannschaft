@@ -178,7 +178,7 @@ class BillingLegacyContractAuthorizationIT extends AbstractMySqlIntegrationTest 
         assertPricesUnchanged();
     }
 
-    @ParameterizedTest
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
     @CsvSource({"MEMBER", "ADMIN"})
     void AC17_認証会員は所属org無しでもglobalCatalogを閲覧できる(String roleName) throws Exception {
         Long team = transactions.execute(tx -> createScope(EntitlementScopeKind.TEAM));
@@ -211,7 +211,7 @@ class BillingLegacyContractAuthorizationIT extends AbstractMySqlIntegrationTest 
         assertChanged(id, EntitlementScopeKind.USER, owner);
     }
 
-    @ParameterizedTest
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
     @CsvSource({"TEAM,ADMIN", "TEAM,DEPUTY_ADMIN", "ORG,ADMIN", "ORG,DEPUTY_ADMIN"})
     void AC18_ADMINと課金委任DEPUTYは実DB権限で作成変更できる(
             EntitlementScopeKind scope, String roleName) throws Exception {
@@ -230,7 +230,7 @@ class BillingLegacyContractAuthorizationIT extends AbstractMySqlIntegrationTest 
         assertChanged(id, scope, scopeId);
     }
 
-    @ParameterizedTest
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
     @CsvSource({"TEAM,MEMBER", "TEAM,DEPUTY_ADMIN", "ORG,MEMBER", "ORG,DEPUTY_ADMIN"})
     void AC18_MEMBERと未委任DEPUTYは403で価格契約権利の副作用0(
             EntitlementScopeKind scope, String roleName) throws Exception {
@@ -247,7 +247,7 @@ class BillingLegacyContractAuthorizationIT extends AbstractMySqlIntegrationTest 
                 .content(changeBody(paidPlan)), 403, null);
     }
 
-    @ParameterizedTest
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
     @CsvSource({"TEAM", "ORG"})
     void AC18_他tenantADMINは403で許可scopeへの他契約ID差込は404(EntitlementScopeKind scope) throws Exception {
         Long ownScope = transactions.execute(tx -> createScope(scope));

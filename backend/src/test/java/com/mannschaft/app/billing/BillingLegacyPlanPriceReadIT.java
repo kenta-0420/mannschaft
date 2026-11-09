@@ -383,13 +383,23 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
         assertNotConfigured(EntitlementScopeKind.USER, 1L);
     }
 
-    /** 初回greenが正常の既存互換。seed FREEと所有明示0を実契約保存まで通す。 */
+    /** 初回greenが正常の既存互換。FREEが不在なら所有fixtureを作り、既存行は再利用する。 */
     @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
     @ValueSource(booleans = {false, true})
     void FREEと新公開価格なしの明示0は実無料契約を作成できる(boolean existingFree) {
         removeActivePrices();
         setLegacyFree();
         String targetPlan = existingFree ? "FREE" : planKey;
+        if (existingFree) {
+            transactions.executeWithoutResult(tx -> {
+                if (planRepository.findById("FREE").isEmpty()) {
+                    planRepository.saveAndFlush(PlanEntity.builder().planKey("FREE").baseMonthlyPriceJpy(0)
+                            .displayNameKey("billing.plans.free.name").descriptionKey("billing.plans.free.description")
+                            .sortOrder(0).enabled(true).build());
+                    additionalPlans.add("FREE");
+                }
+            });
+        }
         Long actor = transactions.execute(tx -> {
             Long id = userRepository.saveAndFlush(UserEntity.builder()
                     .email("i1931-free-" + UUID.randomUUID() + "@example.com")
@@ -992,6 +1002,109 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
                 default -> throw new IllegalArgumentException(defect);
             }
         });
+    }
+
+    /** V196 CI collation: canonical Planとraw lower価格の比較をJava equalsで失わない。 */
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
+    @ValueSource(strings = {"catalog", "resolverCanonical", "resolverRaw", "batch"})
+    void 大文字Planと小文字の適格価格は既存scalarと同じBを返す(String entry) {
+        removeActivePrices();
+        setLegacyFree();
+        String rawKey = planKey.toLowerCase(java.util.Locale.ROOT);
+        transactions.executeWithoutResult(tx -> saveObservedVersion(rawKey, EntitlementScopeKind.USER, 1L,
+                BillingPriceVersionStatus.ACTIVE, EFFECTIVE_FROM, null, ACTIVE_PRICE));
+        BillingPriceSelector.SelectedPrice scalar = priceSelector
+                .selectNow(BillingProductKind.PLAN, planKey, EntitlementScopeKind.USER).orElseThrow();
+        assertThat(scalar.revision().getProductKey()).isEqualTo(rawKey);
+        assertThat(scalar.bands().getFirst().getAmountIncludingTax()).isEqualTo(ACTIVE_PRICE);
+
+        switch (entry) {
+            case "catalog" -> assertThat(ownedCatalog().getBaseMonthlyPriceJpy()).isEqualTo((int) ACTIVE_PRICE);
+            case "resolverCanonical", "resolverRaw" -> assertThat(priceResolver.resolveMonthlyPriceJpy(
+                    EntitlementScopeKind.USER, 1L, ContractKind.PLAN,
+                    "resolverRaw".equals(entry) ? rawKey : planKey, null)).isEqualTo((int) ACTIVE_PRICE);
+            case "batch" -> {
+                BillingPriceSelector.PlanScopeKey key = new BillingPriceSelector.PlanScopeKey(planKey, EntitlementScopeKind.USER);
+                Map<BillingPriceSelector.PlanScopeKey, BillingPriceSelector.LegacyPlanSelection> selected =
+                        priceSelector.selectLegacyPlans(Set.of(key));
+                assertThat(selected).containsOnlyKeys(key);
+                assertThat(selected.get(key).state()).isEqualTo(BillingPriceSelector.LegacyPlanSelectionState.SELECTED);
+                assertThat(selected.get(key).snapshot().bands().getFirst().amountIncludingTax()).isEqualTo(ACTIVE_PRICE);
+            }
+            default -> throw new IllegalArgumentException(entry);
+        }
+    }
+
+    /** modern陽性対照は別fixtureで実行し、legacy対象のdueを事前昇格して隠さない。 */
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
+    @ValueSource(strings = {"modernScalar", "legacyResolver"})
+    void 小文字のdue価格はcanonical要求から昇格され旧0へ戻らない(String entry) {
+        removeActivePrices();
+        setLegacyFree();
+        String rawKey = planKey.toLowerCase(java.util.Locale.ROOT);
+        UUID id = transactions.execute(tx -> saveObservedVersion(rawKey, EntitlementScopeKind.USER, 1L,
+                BillingPriceVersionStatus.SCHEDULED, NOW, null, ACTIVE_PRICE));
+
+        if ("modernScalar".equals(entry)) {
+            assertThat(priceSelector.selectNow(BillingProductKind.PLAN, planKey, EntitlementScopeKind.USER)
+                    .orElseThrow().bands().getFirst().getAmountIncludingTax()).isEqualTo(ACTIVE_PRICE);
+        } else {
+            assertThat(priceResolver.resolveMonthlyPriceJpy(
+                    EntitlementScopeKind.USER, 1L, ContractKind.PLAN, planKey, null)).isEqualTo((int) ACTIVE_PRICE);
+        }
+
+        transactions.executeWithoutResult(tx -> {
+            assertThat(versionRepository.findById(id).orElseThrow().getStatus()).isEqualTo(BillingPriceVersionStatus.ACTIVE);
+            assertThat(bandRepository.findByPriceVersionIdAndDeletedAtIsNullOrderByBandNoAsc(id))
+                    .hasSize(1).allSatisfy(band -> assertThat(band.getStatus()).isEqualTo(BillingPriceVersionStatus.ACTIVE));
+        });
+    }
+
+    /** getterのfindById(alias)は観測のみ。今後使うquery lookupの保存keyを規範として確認する。 */
+    @Test
+    void raw別綴りの単一findAllByIdは保存canonicalkeyをhydrateする() {
+        String alias = planKey.toLowerCase(java.util.Locale.ROOT);
+        String findByIdKey = transactions.execute(tx -> planRepository.findById(alias)
+                .map(PlanEntity::getPlanKey).orElseThrow());
+        List<String> queriedKeys = transactions.execute(tx -> planRepository.findAllById(List.of(alias)).stream()
+                .map(PlanEntity::getPlanKey).toList());
+        System.out.println("IT1931_KEY_LOOKUP_OBSERVATION findByIdMatchesStored=" + planKey.equals(findByIdKey)
+                + " findAllByIdMatchesStored=" + List.of(planKey).equals(queriedKeys));
+
+        assertThat(queriedKeys).containsExactly(planKey);
+    }
+
+    /** 直接内部batchのraw aliasと不存在keyは、未公開無料ではなく販売不能へ閉じる。 */
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
+    @ValueSource(strings = {"rawAlias", "missing"})
+    void 内部batchの非canonical又は不存在keyを無料扱いしない(String input) {
+        removeActivePrices();
+        setLegacyFree();
+        String keyValue = "rawAlias".equals(input) ? planKey.toLowerCase(java.util.Locale.ROOT) : planKey + "-missing";
+        BillingPriceSelector.PlanScopeKey key = new BillingPriceSelector.PlanScopeKey(keyValue, EntitlementScopeKind.USER);
+
+        Map<BillingPriceSelector.PlanScopeKey, BillingPriceSelector.LegacyPlanSelection> result =
+                priceSelector.selectLegacyPlans(Set.of(key));
+
+        assertThat(result).containsOnlyKeys(key);
+        assertThat(result.get(key).state()).isEqualTo(BillingPriceSelector.LegacyPlanSelectionState.NOT_SELLABLE);
+        assertThat(result.get(key).snapshot()).isNull();
+    }
+
+    @Test
+    void 大文字と小文字の有効ACTIVEは同canonicalへまとめて複数候補を拒否する() {
+        setLegacyFree();
+        transactions.executeWithoutResult(tx -> saveObservedVersion(planKey.toLowerCase(java.util.Locale.ROOT),
+                EntitlementScopeKind.USER, 2L, BillingPriceVersionStatus.ACTIVE, EFFECTIVE_FROM, null, ACTIVE_PRICE));
+        assertThat(priceSelector.selectNow(BillingProductKind.PLAN, planKey, EntitlementScopeKind.USER)).isEmpty();
+        BillingPriceSelector.PlanScopeKey key = new BillingPriceSelector.PlanScopeKey(planKey, EntitlementScopeKind.USER);
+
+        Map<BillingPriceSelector.PlanScopeKey, BillingPriceSelector.LegacyPlanSelection> result =
+                priceSelector.selectLegacyPlans(Set.of(key));
+
+        assertThat(result).containsOnlyKeys(key);
+        assertThat(result.get(key).state()).isEqualTo(BillingPriceSelector.LegacyPlanSelectionState.NOT_SELLABLE);
+        assertThat(result.get(key).snapshot()).isNull();
     }
 
     private PlanItem ownedCatalog() {
