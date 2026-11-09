@@ -558,8 +558,9 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
             priceSelector.selectLegacyPlans(Set.of(
                     new BillingPriceSelector.PlanScopeKey("FREE", EntitlementScopeKind.USER)));
         }
-        assertThat(transactions.execute(tx -> versionRepository.findById(ownedDue).orElseThrow().getStatus()))
-                .isEqualTo(BillingPriceVersionStatus.SCHEDULED);
+        BillingPriceVersionStatus afterStatus = transactions.execute(
+                tx -> versionRepository.findById(ownedDue).orElseThrow().getStatus());
+        assertThat(afterStatus).isEqualTo(BillingPriceVersionStatus.SCHEDULED);
         assertThat(allFreePriceRows()).isEqualTo(before);
         assertThat(freeOldBandRows()).isEqualTo(oldBands);
 
