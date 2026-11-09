@@ -67,6 +67,10 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
     @Autowired private MembershipRepository membershipRepository;
     @Autowired private FeatureCatalogRepository featureRepository;
     @Autowired private TransactionTemplate transactions;
+    @Autowired private BillingContractService contractService;
+    @Autowired private BillingContractRepository contractRepository;
+    @Autowired private ActiveContractPointerRepository pointerRepository;
+    @Autowired private EntitlementRepository entitlementRepository;
     @TestBean(name = "utcClock", methodName = "priceReadClock") private Clock clock;
 
     private String planKey;
@@ -75,6 +79,7 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
     private final List<Long> userIds = new ArrayList<>();
     private final List<Long> membershipIds = new ArrayList<>();
     private final List<String> featureKeys = new ArrayList<>();
+    private final List<UUID> contractIds = new ArrayList<>();
     private Long teamId;
     private Long organizationId;
 
@@ -123,6 +128,16 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
     @AfterEach
     void 所有fixtureだけを削除する() {
         transactions.executeWithoutResult(tx -> {
+            for (UUID contractId : contractIds) {
+                BillingContractEntity contract = contractRepository.findById(contractId).orElseThrow();
+                entitlementRepository.deleteAll(entitlementRepository
+                        .findBySourceKindAndSourceRefIdAndRevokedAtIsNull(EntitlementSourceKind.PLAN, contractId));
+                entitlementRepository.flush();
+                pointerRepository.hardDeleteBySlotAndContractId(contract.getScopeKind(), contract.getScopeId(),
+                        ContractKind.PLAN, "", contractId);
+                contractRepository.delete(contract);
+                contractRepository.flush();
+            }
             membershipRepository.deleteAllById(membershipIds);
             membershipRepository.flush();
             userRepository.deleteAllById(userIds);
@@ -300,6 +315,143 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
 
         assertThat(priceResolver.resolveMonthlyPriceJpy(
                 EntitlementScopeKind.USER, 1L, ContractKind.ADDON, null, featureKey)).isEqualTo(expected);
+    }
+
+    /** AC04既存互換。新公開設定が一度もない明示0だけは無料を維持する。 */
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
+    @EnumSource(EntitlementScopeKind.class)
+    void 新価格モデルなしの明示0は実人数の各scopeで無料を維持する(EntitlementScopeKind scope) {
+        removeActivePrices();
+        setLegacyFree();
+        Long scopeId = scope == EntitlementScopeKind.USER ? 1L : prepareMembers(scope, 1);
+
+        assertThat(priceResolver.resolveMonthlyPriceJpy(scope, scopeId, ContractKind.PLAN, planKey, null)).isZero();
+    }
+
+    /** READY以前・取消済み・未来予約だけから公開履歴を推定しない。 */
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
+    @EnumSource(value = BillingPriceVersionStatus.class,
+            names = {"DRAFT", "PROVISIONING", "PROVISION_FAILED", "READY", "SCHEDULED", "CANCELLED"})
+    void 未公開状態と未来予約だけなら旧明示0を無料として扱う(BillingPriceVersionStatus status) {
+        setLegacyFree();
+        replacePriceLifecycle(status, NOW.plusSeconds(60), null);
+
+        assertThat(priceSelector.selectNow(BillingProductKind.PLAN, planKey, EntitlementScopeKind.USER)).isEmpty();
+        assertThat(priceResolver.resolveMonthlyPriceJpy(
+                EntitlementScopeKind.USER, 1L, ContractKind.PLAN, planKey, null)).isZero();
+    }
+
+    /** AC03/04: 公開済みだが販売不能なモデルを旧0円へ戻すと無料権利を誤発行する。 */
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
+    @ValueSource(strings = {"emptyTaxName", "inconsistentTotal", "retiredBand", "emptyBands"})
+    void 旧明示0でも新ACTIVEの不適格を無料へfallbackしない(String defect) {
+        setLegacyFree();
+        transactions.executeWithoutResult(tx -> {
+            BillingPriceBandVersionEntity band = bandRepository.findById(bandIds.getFirst()).orElseThrow();
+            switch (defect) {
+                case "emptyTaxName" -> band.setTaxNameSnapshot("");
+                case "inconsistentTotal" -> band.setAmountIncludingTax(ACTIVE_PRICE + 1);
+                case "retiredBand" -> band.setStatus(BillingPriceVersionStatus.RETIRED);
+                case "emptyBands" -> bandRepository.delete(band);
+                default -> throw new IllegalArgumentException(defect);
+            }
+        });
+        assertThat(priceSelector.selectNow(BillingProductKind.PLAN, planKey, EntitlementScopeKind.USER)).isEmpty();
+
+        assertNotConfigured(EntitlementScopeKind.USER, 1L);
+    }
+
+    /** 期限切れACTIVE・RETIRED履歴・開始済み予約は無料への巻き戻しを禁止する。 */
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
+    @EnumSource(value = BillingPriceVersionStatus.class, names = {"ACTIVE", "RETIRED", "SCHEDULED"})
+    void 公開履歴又は開始済み予約が期限切れなら旧明示0でも040にする(BillingPriceVersionStatus status) {
+        setLegacyFree();
+        replacePriceLifecycle(status, NOW.minusSeconds(60), NOW.minusSeconds(1));
+        assertThat(priceSelector.selectNow(BillingProductKind.PLAN, planKey, EntitlementScopeKind.USER)).isEmpty();
+
+        assertNotConfigured(EntitlementScopeKind.USER, 1L);
+    }
+
+    @Test
+    void 開始済み予約の販売不適格でも旧明示0へ戻さない() {
+        setLegacyFree();
+        replacePriceLifecycle(BillingPriceVersionStatus.SCHEDULED, NOW.minusSeconds(1), null);
+        transactions.executeWithoutResult(tx -> bandRepository.findById(bandIds.getFirst()).orElseThrow()
+                .setTaxNameSnapshot(""));
+        assertThat(priceSelector.selectNow(BillingProductKind.PLAN, planKey, EntitlementScopeKind.USER)).isEmpty();
+
+        assertNotConfigured(EntitlementScopeKind.USER, 1L);
+    }
+
+    /** 初回greenが正常の既存互換。seed FREEと所有明示0を実契約保存まで通す。 */
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
+    @ValueSource(booleans = {false, true})
+    void FREEと新公開価格なしの明示0は実無料契約を作成できる(boolean existingFree) {
+        removeActivePrices();
+        setLegacyFree();
+        String targetPlan = existingFree ? "FREE" : planKey;
+        Long actor = transactions.execute(tx -> {
+            Long id = userRepository.saveAndFlush(UserEntity.builder()
+                    .email("i1931-free-" + UUID.randomUUID() + "@example.com")
+                    .lastName("試練").firstName("1931").displayName("1931無料契約")
+                    .status(UserEntity.UserStatus.ACTIVE).locale("ja").timezone("Asia/Tokyo")
+                    .isSearchable(true).build()).getId();
+            userIds.add(id);
+            return id;
+        });
+        assertThat(planRepository.findById(targetPlan).orElseThrow().getBaseMonthlyPriceJpy()).isZero();
+        assertThat(priceResolver.resolveMonthlyPriceJpy(
+                EntitlementScopeKind.USER, actor, ContractKind.PLAN, targetPlan, null)).isZero();
+
+        BillingContractService.ContractResult result = contractService.createContract(
+                EntitlementScopeKind.USER, actor, null, ContractKind.PLAN, targetPlan, null, actor);
+        contractIds.add(result.contractId());
+
+        transactions.executeWithoutResult(tx -> {
+            BillingContractEntity saved = contractRepository.findById(result.contractId()).orElseThrow();
+            assertThat(saved.getStatus()).isEqualTo(ContractStatus.ACTIVE);
+            assertThat(saved.getPlanKey()).isEqualTo(targetPlan);
+            assertThat(saved.getPriceJpySnapshot()).isNull();
+            assertThat(saved.getMemberCountSnapshot()).isNull();
+            assertThat(saved.getBandNoSnapshot()).isNull();
+            assertThat(pointerRepository.findByScopeKindAndScopeIdAndContractKindAndAddonFeatureKey(
+                    EntitlementScopeKind.USER, actor, ContractKind.PLAN, "").orElseThrow().getContractId())
+                    .isEqualTo(saved.getId());
+            assertThat(entitlementRepository.findBySourceKindAndSourceRefIdAndRevokedAtIsNull(
+                    EntitlementSourceKind.PLAN, saved.getId()))
+                    .extracting(EntitlementEntity::getFeatureKey).containsExactlyInAnyOrderElementsOf(result.grantedFeatureKeys());
+        });
+    }
+
+    private void setLegacyFree() {
+        transactions.executeWithoutResult(tx -> {
+            planRepository.findById(planKey).orElseThrow().setBaseMonthlyPriceJpy(0);
+            for (PlanPriceBandScopeKind scope : PlanPriceBandScopeKind.values()) {
+                legacyBandRepository.findByPlanKeyAndScopeKindOrderByBandNoAsc(planKey, scope)
+                        .forEach(band -> band.setMonthlyPriceJpy(0));
+            }
+        });
+    }
+
+    private void replacePriceLifecycle(BillingPriceVersionStatus status, Instant from, Instant until) {
+        transactions.executeWithoutResult(tx -> {
+            for (UUID id : versionIds) {
+                BillingPriceVersionEntity version = versionRepository.findById(id).orElseThrow();
+                version.setStatus(status);
+                version.setEffectiveFrom(from);
+                version.setEffectiveUntil(until);
+            }
+            for (UUID id : bandIds) {
+                BillingPriceBandVersionEntity band = bandRepository.findById(id).orElseThrow();
+                band.setStatus(status);
+                band.setEffectiveFrom(from);
+                band.setEffectiveUntil(until);
+                if (status == BillingPriceVersionStatus.DRAFT || status == BillingPriceVersionStatus.PROVISIONING
+                        || status == BillingPriceVersionStatus.PROVISION_FAILED || status == BillingPriceVersionStatus.CANCELLED) {
+                    band.setStripePriceRef(null);
+                }
+            }
+        });
     }
 
     private PlanItem ownedCatalog() {
