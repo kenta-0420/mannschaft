@@ -65,6 +65,7 @@ async function openScopeSidebar(page: Page) {
   await toggle.click()
   // 時間割は「スケジュール」カテゴリの中（既定は折りたたみ）。開く
   const link = page.locator(`a[href="/teams/${v.t2.slug}/timetable"]`).first()
+  // 開く前に見えていなければ展開する。見えることは、呼び出し側の expect で必ず確かめる
   if (!(await link.isVisible())) {
     await page.locator('.p-drawer').getByText('スケジュール', { exact: true }).first().click()
   }
@@ -357,6 +358,16 @@ test('#4358 チームの時間割（ADMIN）: サイドバーから辿れ、年�
 })
 
 test('#4358 チームの時間割 権限なし（MEMBER）: 学期は読めるが追加・削除・時間割作成の導線なし／サイドバーには出る', async ({ browser }) => {
+  // 削除ボタンが「無い」ことを意味のある形で確かめるため、このテスト専用の DRAFT の時間割を用意し、MEMBER の画面に行が出ることを先に確かめる。
+  // 時間割（論理削除後も）が付いた学期は仕様（TIMETABLE_022）上あとから消せないため、専用の学期を作り、後始末の対象にしない（残骸として証拠に書く）
+  const ownTerm = (
+    await must(w.admin, 'POST', `/api/v1/teams/${v.t2.slug}/timetable-terms`, { name: `Own term ${v.tag}`, startDate: '2038-04-01', endDate: '2038-09-30', academicYear: 2038, sortOrder: 0 })
+  ).data
+  const ttName = `Own timetable ${v.tag}`
+  const tt = (
+    await must(w.admin, 'POST', `/api/v1/teams/${v.t2.slug}/timetables`, { name: ttName, termId: ownTerm.id, effectiveFrom: '2038-04-01', visibility: 'MEMBERS_ONLY' })
+  ).data
+  try {
   await withPage(browser, w.member, async (page) => {
     await gotoAndHydrate(page, `/teams/${v.t2.slug}/projects`)
     await openScopeSidebar(page)
@@ -370,9 +381,14 @@ test('#4358 チームの時間割 権限なし（MEMBER）: 学期は読める�
     await expect(page.locator('[data-testid^="term-delete-"]')).toHaveCount(0)
     await expect(page.getByTestId('timetable-create-button')).toHaveCount(0)
     await page.getByTestId('timetable-tab-list').click()
+    // 比べる相手（あるべき行）を先に確かめる: DRAFT の時間割の行が MEMBER にも見えている
+    await expect(page.getByRole('row').filter({ hasText: ttName })).toContainText('下書き', { timeout: 30_000 })
     await expect(page.locator('[data-testid^="timetable-delete-"]')).toHaveCount(0)
     await shot(page, 'v2-member')
   })
+  } finally {
+    await must(w.admin, 'DELETE', `/api/v1/teams/${v.t2.slug}/timetables/${tt.id}`)
+  }
 })
 
 test('#4358 チームの時間割 他テナント: 学期・時間割が見えない（URL 直打ち）', async ({ browser }) => {
@@ -395,6 +411,8 @@ test('#4358 チームの時間割 他テナント: 学期・時間割が見え�
     await expect(page.getByText(v.prepTerm.name)).toHaveCount(0)
     await expect(page.getByTestId('term-add-button')).toHaveCount(0)
     await expect(page.getByTestId('timetable-create-button')).toHaveCount(0)
+    // サイドバーは所属のある利用者にだけ出る。開くための切替ボタン自体が無いことを確かめる（閉じたドロワー内のリンクが 0 件なのは当たり前なので）
+    await expect(page.getByTestId('scope-sidebar-toggle')).toHaveCount(0)
     await expect(page.locator(`a[href="/teams/${v.t2.slug}/timetable"]`)).toHaveCount(0)
     await shot(page, 'v2-outsider')
   })
@@ -417,6 +435,7 @@ test('#4375 チャット: 本人の投稿を画面から編集・削除でき、
     await expect(msg).toHaveCount(1, { timeout: 30_000 })
     // 他人（ADMIN）の投稿に削除は出ない
     const other = page.getByTestId('chat-message').filter({ hasText: others })
+    await expect(other).toBeVisible({ timeout: 30_000 })
     await other.hover()
     await expect(other.getByTestId('chat-message-delete')).toHaveCount(0)
     // 編集（⋯ メニュー）
@@ -482,7 +501,9 @@ test('#4375 チャット 他テナント: 実在チャンネルと不在 ID の 
         try {
           const j = await r.json()
           code = j?.error?.code ?? j?.code ?? null
-        } catch {
+        } catch (error) {
+          // 本文が JSON でない応答は code なしとして記録する（握りつぶさず内容をログに残す）。比較は後段の expect
+          console.log(`[cmp1507] #4375 JSON でない応答: ${p} ${r.status()} (${String(error)})`)
           code = null
         }
         seen.push({ url: p.replace(String(channelId), '{id}'), status: r.status(), code })
@@ -538,15 +559,19 @@ test('#4375 チャット de: 一覧・チャンネル画面に日本語が出な
     // 判定は、作成ダイアログ分を足した最後の expect（toEqual([])）で行う。ここは原因調査用のログ
     console.log(`[cmp1507] #4375 de チャット画面の日本語行: ${JSON.stringify(lines)}`)
     await shot(page, 'v3-de-chat')
+    // 作成ダイアログ。導線（ボタン）が消えたり、ダイアログが開かなかったりしたら失敗させる
     const plus = page.locator('button:has(.pi-plus)').first()
-    if (await plus.isVisible()) {
-      await plus.click()
-      await page.waitForTimeout(1_500)
-      const dlg = await japaneseLines(page)
-      console.log(`[cmp1507] #4375 de 作成ダイアログの日本語行: ${JSON.stringify(dlg)}`)
-      await shot(page, 'v3-de-chat-create')
-      lines.push(...dlg)
-    }
+    await expect(plus, 'チャットの作成ボタンが出ない').toBeVisible({ timeout: 30_000 })
+    await plus.click()
+    const createDialog = page.locator('[role=dialog], .p-dialog').first()
+    await expect(createDialog, '作成ダイアログが開かない').toBeVisible({ timeout: 30_000 })
+    const dlg = (await createDialog.innerText())
+      .split(String.fromCharCode(10))
+      .map((l) => l.trim())
+      .filter((l) => l && KANA_KANJI.test(l) && !l.includes('検証') && !l.includes('C1507'))
+    console.log(`[cmp1507] #4375 de 作成ダイアログの日本語行: ${JSON.stringify(dlg)}`)
+    await shot(page, 'v3-de-chat-create')
+    lines.push(...dlg)
     expect(lines, '日本語が残っている').toEqual([])
   } finally {
     await context.close()

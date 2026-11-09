@@ -113,7 +113,14 @@ test('② チャット: 続けて投稿したメッセージが画面で投稿�
     const created: string[] = []
     page.on('response', async (response) => {
       if (response.request().method() === 'POST' && new RegExp(`/api/v1/chat/channels/${w.channel.id}/messages$`).test(new URL(response.url()).pathname)) {
-        const body = await response.text().catch(() => '')
+        let body: string
+        try {
+          body = await response.text()
+        } catch (error) {
+          // 本文が読めなかった投稿は ? 印で記録し、後段の件数・同秒の検査で失敗させる（握りつぶして合格にしない）
+          console.log(`[cmp1507] ② 投稿応答の本文を読めない: ${String(error)}`)
+          body = ''
+        }
         created.push(body.match(/"(?:createdAt|created_at)":"([^"]+)"/)?.[1] ?? `?${body.slice(0, 80)}`)
       }
     })
