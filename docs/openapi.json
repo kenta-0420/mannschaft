@@ -50425,6 +50425,15 @@
               "type": "integer",
               "format": "int64"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "送信の冪等キー（UUID）。同じ送信者・同じチームで同じキーの再送は先の結果を返す。形式不正は 400（RESERVATION_056）",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -50444,6 +50453,36 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseEmergencyClosureResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "同じ Idempotency-Key・同じ内容の再送。新規作成せず先の送信結果を返す",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseEmergencyClosureResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "同じ Idempotency-Key で内容が異なる（RESERVATION_055）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Idempotency-Key の形式が不正（RESERVATION_056）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -192860,6 +192899,31 @@
           "startDate"
         ]
       },
+      "CommonErrorDetail": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "fieldErrors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldError"
+            }
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/CommonErrorDetail"
+          }
+        }
+      },
       "ApiResponseEmergencyClosureResponse": {
         "type": "object",
         "properties": {
@@ -231465,31 +231529,6 @@
           "sourceTeamName",
           "sourceTeamSlug"
         ]
-      },
-      "CommonErrorDetail": {
-        "type": "object",
-        "properties": {
-          "code": {
-            "type": "string"
-          },
-          "fieldErrors": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/FieldError"
-            }
-          },
-          "message": {
-            "type": "string"
-          }
-        }
-      },
-      "ErrorResponse": {
-        "type": "object",
-        "properties": {
-          "error": {
-            "$ref": "#/components/schemas/CommonErrorDetail"
-          }
-        }
       },
       "FriendFeedForwardStatus": {
         "type": "object",

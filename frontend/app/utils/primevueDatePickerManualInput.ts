@@ -102,6 +102,7 @@ interface DatePickerInternals {
   input?: HTMLInputElement | null
   typeUpdate: boolean
   datePattern: string
+  hourFormat: string
   selectionMode: string
   updateModelType: string
   $refs: Record<string, { $el?: { style?: CSSStyleDeclaration } } | undefined>
@@ -132,6 +133,26 @@ export function applyDatePickerManualInputFix(component: unknown): void {
   const target = component as PatchableComponent
   if (!target.methods || target.__mannschaftManualInputFixApplied) return
   target.__mannschaftManualInputFixApplied = true
+
+  const populateTime = target.methods.populateTime
+  if (typeof populateTime === 'function') {
+    const originalPopulateTime = populateTime as (
+      this: DatePickerInternals,
+      value: Date,
+      timeString: string,
+      ampm?: string,
+    ) => void
+    target.methods.populateTime = function (
+      this: DatePickerInternals,
+      value: Date,
+      timeString: string,
+      ampm?: string,
+    ): void {
+      // PrimeVue 4.5.5 は24時間形式でも省略されたAM/PMを小文字化する。
+      const meridiem = this.hourFormat === '24' && ampm === undefined ? '' : ampm
+      originalPopulateTime.call(this, value, timeString, meridiem)
+    }
+  }
 
   target.methods.onInput = function (this: DatePickerInternals, event: Event): void {
     const target = event.target as HTMLInputElement

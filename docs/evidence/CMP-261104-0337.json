@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261104-0337",
+  "scope": "app",
+  "implementation": {
+    "pr": 4309,
+    "sha": "2ad1fc07c9c73ef07c782c8e7b4934432579d21d"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "CONNECT が空の Bearer を送らない（FE）",
+      "tests": [
+        {
+          "name": "stompAuth.spec",
+          "evidence": "frontend/tests/unit/composables/stomp/stompAuth.spec.ts"
+        },
+        {
+          "name": "sharedStompAuth.spec",
+          "evidence": "frontend/tests/unit/composables/stomp/sharedStompAuth.spec.ts"
+        },
+        {
+          "name": "dedicatedStompAuth.spec",
+          "evidence": "frontend/tests/unit/composables/stomp/dedicatedStompAuth.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "認証の失敗と認可の拒否を x-error-code で区別する（BE）",
+      "tests": [
+        {
+          "name": "WebSocketStompRejectionIntegrationTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/websocket/WebSocketStompRejectionIntegrationTest.java"
+        },
+        {
+          "name": "StompErrorCodeErrorHandlerTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/websocket/StompErrorCodeErrorHandlerTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "実機でリロード後・URL 直打ち後も確認状況の購読が成立し、確認が再読込なしで反映される",
+      "tests": [
+        {
+          "name": "0337 ADMIN 1440 と 390",
+          "evidence": "frontend/tests/e2e/real/emergency-closure-cmp261104.real.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 42108714648
+    },
+    {
+      "runId": 42108714708
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4309"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4404"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261104-0337-exploratory.md"
+    }
+  },
+  "regressions": []
+}
