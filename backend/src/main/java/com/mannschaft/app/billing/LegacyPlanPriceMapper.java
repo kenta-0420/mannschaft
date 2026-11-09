@@ -9,7 +9,6 @@ import org.mapstruct.Named;
 
 /**
  * CMP-260930-1931: 新価格からlegacy保存型へ範囲検査して変換する。
- * Rootが許可した3signatureのみを固定し、既存の読取・契約入口にはまだ接続しない。
  * MapStructの暗黙縮小変換に任せず、範囲外を既存の販売不能契約へ写す。
  */
 @Mapper(componentModel = "spring")
@@ -22,6 +21,11 @@ public interface LegacyPlanPriceMapper {
     @Mapping(target = "bands", source = "bands")
     BillingPriceSelector.LegacyPlanSnapshot toLegacySnapshot(
             BillingPriceVersionEntity revision, List<BillingPriceSelector.LegacyPlanBandSnapshot> bands);
+
+    @Mapping(target = "scopeKind", source = "scopeKind")
+    @Mapping(target = "monthlyPriceJpy", source = "band.amountIncludingTax", qualifiedByName = "toCatalogPriceJpy")
+    com.mannschaft.app.billing.api.dto.PriceBand toCatalogBand(
+            BillingPriceSelector.LegacyPlanBandSnapshot band, String scopeKind);
 
     /** catalogでは表現不能な価格を販売不能nullへ写す契約。 */
     @Named("toCatalogPriceJpy")

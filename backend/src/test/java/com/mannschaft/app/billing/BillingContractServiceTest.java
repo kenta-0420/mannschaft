@@ -116,12 +116,11 @@ class BillingContractServiceTest {
     @DisplayName("PLAN 契約作成: entitlements 発行＋pointer 確保＋evict（AC-01/16 系）")
     void createPlanContract_success() {
         stubSaveAssignsId();
-        given(planRepository.findById("FULL")).willReturn(Optional.of(plan("FULL", true)));
+        given(planRepository.findAllById(List.of("FULL"))).willReturn(List.of(plan("FULL", true)));
         given(planFeatureRepository.findByPlanKey("FULL"))
                 .willReturn(List.of(pf("FULL", FeatureKeys.ADS_HIDE), pf("FULL", FeatureKeys.TEMPLATE_PREMIUM_MODULES)));
-        given(scopeMemberCountService.countActiveMembers(EntitlementScopeKind.TEAM, 10L)).willReturn(34);
-        given(planPriceBandRepository.findByPlanKeyAndScopeKindOrderByBandNoAsc("FULL", PlanPriceBandScopeKind.TEAM))
-                .willReturn(List.of());
+        given(billingPriceResolver.resolvePlanPrice(any(PlanEntity.class), eq(EntitlementScopeKind.TEAM), eq(10L)))
+                .willReturn(new BillingPriceResolver.ResolvedPlanPrice(0, 34, null));
 
         BillingContractService.ContractResult result = service.createContract(
                 EntitlementScopeKind.TEAM, 10L, 99L, ContractKind.PLAN, "FULL", null, 7L);
@@ -154,11 +153,10 @@ class BillingContractServiceTest {
     @DisplayName("AC-2: 新規 TEAM/ORG 契約作成時、payer_user_id は created_by（operatorUserId）と同値で初期化される")
     void createContract_initializesPayerUserIdFromCreatedBy() {
         stubSaveAssignsId();
-        given(planRepository.findById("FULL")).willReturn(Optional.of(plan("FULL", true)));
+        given(planRepository.findAllById(List.of("FULL"))).willReturn(List.of(plan("FULL", true)));
         given(planFeatureRepository.findByPlanKey("FULL")).willReturn(List.of(pf("FULL", FeatureKeys.ADS_HIDE)));
-        given(scopeMemberCountService.countActiveMembers(EntitlementScopeKind.TEAM, 10L)).willReturn(34);
-        given(planPriceBandRepository.findByPlanKeyAndScopeKindOrderByBandNoAsc("FULL", PlanPriceBandScopeKind.TEAM))
-                .willReturn(List.of());
+        given(billingPriceResolver.resolvePlanPrice(any(PlanEntity.class), eq(EntitlementScopeKind.TEAM), eq(10L)))
+                .willReturn(new BillingPriceResolver.ResolvedPlanPrice(0, 34, null));
 
         service.createContract(EntitlementScopeKind.TEAM, 10L, 99L, ContractKind.PLAN, "FULL", null, 7L);
 
@@ -176,11 +174,10 @@ class BillingContractServiceTest {
             e.setId(UUID.randomUUID());
             return e;
         });
-        given(planRepository.findById("FULL")).willReturn(Optional.of(plan("FULL", true)));
+        given(planRepository.findAllById(List.of("FULL"))).willReturn(List.of(plan("FULL", true)));
         given(planFeatureRepository.findByPlanKey("FULL")).willReturn(List.of(pf("FULL", FeatureKeys.ADS_HIDE)));
-        given(scopeMemberCountService.countActiveMembers(EntitlementScopeKind.TEAM, 10L)).willReturn(5);
-        given(planPriceBandRepository.findByPlanKeyAndScopeKindOrderByBandNoAsc("FULL", PlanPriceBandScopeKind.TEAM))
-                .willReturn(List.of());
+        given(billingPriceResolver.resolvePlanPrice(any(PlanEntity.class), eq(EntitlementScopeKind.TEAM), eq(10L)))
+                .willReturn(new BillingPriceResolver.ResolvedPlanPrice(0, 5, null));
         given(activeContractPointerRepository.saveAndFlush(any()))
                 .willThrow(new DataIntegrityViolationException("uk_acp_slot"));
 
@@ -202,11 +199,10 @@ class BillingContractServiceTest {
             e.setId(UUID.randomUUID());
             return e;
         });
-        given(planRepository.findById("FULL")).willReturn(Optional.of(plan("FULL", true)));
+        given(planRepository.findAllById(List.of("FULL"))).willReturn(List.of(plan("FULL", true)));
         given(planFeatureRepository.findByPlanKey("FULL")).willReturn(List.of(pf("FULL", FeatureKeys.ADS_HIDE)));
-        given(scopeMemberCountService.countActiveMembers(EntitlementScopeKind.TEAM, 10L)).willReturn(5);
-        given(planPriceBandRepository.findByPlanKeyAndScopeKindOrderByBandNoAsc("FULL", PlanPriceBandScopeKind.TEAM))
-                .willReturn(List.of());
+        given(billingPriceResolver.resolvePlanPrice(any(PlanEntity.class), eq(EntitlementScopeKind.TEAM), eq(10L)))
+                .willReturn(new BillingPriceResolver.ResolvedPlanPrice(0, 5, null));
         given(entitlementRepository.saveAll(anyList())).willAnswer(inv -> inv.getArgument(0));
         org.mockito.BDDMockito.willThrow(new DataIntegrityViolationException("uk_ent_grant"))
                 .given(entitlementRepository).flush();
@@ -361,12 +357,11 @@ class BillingContractServiceTest {
         BillingContractEntity oldContract =
                 activeContract(oldId, EntitlementScopeKind.TEAM, 10L, ContractKind.PLAN, "BASIC");
         given(billingContractRepository.findByIdAndDeletedAtIsNull(oldId)).willReturn(Optional.of(oldContract));
-        given(planRepository.findById("FULL")).willReturn(Optional.of(plan("FULL", true)));
+        given(planRepository.findAllById(List.of("FULL"))).willReturn(List.of(plan("FULL", true)));
         given(planFeatureRepository.findByPlanKey("FULL"))
                 .willReturn(List.of(pf("FULL", FeatureKeys.ADS_HIDE), pf("FULL", FeatureKeys.TEMPLATE_PREMIUM_MODULES)));
-        given(scopeMemberCountService.countActiveMembers(EntitlementScopeKind.TEAM, 10L)).willReturn(20);
-        given(planPriceBandRepository.findByPlanKeyAndScopeKindOrderByBandNoAsc("FULL", PlanPriceBandScopeKind.TEAM))
-                .willReturn(List.of());
+        given(billingPriceResolver.resolvePlanPrice(any(PlanEntity.class), eq(EntitlementScopeKind.TEAM), eq(10L)))
+                .willReturn(new BillingPriceResolver.ResolvedPlanPrice(0, 20, null));
         // 旧契約由来（BASIC の 1 機能）を revoke 対象に。
         EntitlementEntity old1 = EntitlementEntity.builder().scopeKind(EntitlementScopeKind.TEAM).scopeId(10L)
                 .featureKey(FeatureKeys.LEGACY_PAID_PLAN_BUNDLE).sourceKind(EntitlementSourceKind.PLAN)
