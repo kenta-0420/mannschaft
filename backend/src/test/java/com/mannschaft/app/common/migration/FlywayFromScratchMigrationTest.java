@@ -678,8 +678,10 @@ class FlywayFromScratchMigrationTest {
         assertThat(varcharLengthViolation("fixture_table.fixture_column", column, "enum('a','b')"))
                 .as("ENUM列は対象外")
                 .isNull();
-        assertThat(varcharLengthViolation("fixture_table.fixture_column", null, "varchar(10)"))
-                .as("VARCHAR列のEntity長不明はkey付き診断")
+        Column unknownLength = new Column("fixture_column");
+        unknownLength.setLength((Long) null);
+        assertThat(varcharLengthViolation("fixture_table.fixture_column", unknownLength, "varchar(10)"))
+                .as("VARCHAR列のEntity length nullはkey付き診断")
                 .isEqualTo("fixture_table.fixture_column … Entity length が未設定または不正 (null)");
         Column nonPositiveLength = new Column("fixture_column");
         nonPositiveLength.setLength(0L);
@@ -998,8 +1000,8 @@ class FlywayFromScratchMigrationTest {
         if (column == null) {
             return key + " … Entity length が未設定または不正 (null)";
         }
-        long entityLength = column.getLength();
-        if (entityLength <= 0) {
+        Long entityLength = column.getLength();
+        if (entityLength == null || entityLength <= 0) {
             return key + " … Entity length が未設定または不正 (" + entityLength + ")";
         }
         if (entityLength > actualLength) {
