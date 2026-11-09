@@ -15,7 +15,6 @@ import java.time.OffsetDateTime;
  * 本 record は Entity を漏らさない DTO として role → chat のドメイン間受け渡しに用いる。</p>
  *
  * @param tokenId   招待トークン ID
- * @param token     承諾/辞退 API に渡す UUID 文字列
  * @param scopeType 招待先種別（{@code TEAM} / {@code ORGANIZATION}）
  * @param scopeId   招待先 ID
  * @param scopeName 招待先の表示名
@@ -25,7 +24,6 @@ import java.time.OffsetDateTime;
  */
 public record InviteCardData(
         Long tokenId,
-        String token,
         String scopeType,
         Long scopeId,
         String scopeName,

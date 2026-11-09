@@ -15,7 +15,6 @@ import lombok.experimental.SuperBuilder;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * 招待トークンエンティティ。チーム・組織への招待リンクを管理する。
@@ -31,9 +30,9 @@ public class InviteTokenEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
-    @Column(nullable = false, unique = true, length = 36)
-    private String token;
+    /** 招待トークンの SHA-256 ハッシュ(hex64)。平文は保存しない（発行応答でだけ一度返す）。 */
+    @Column(name = "token_hash", nullable = false, unique = true, length = 64)
+    private String tokenHash;
 
     private Long teamId;
 
