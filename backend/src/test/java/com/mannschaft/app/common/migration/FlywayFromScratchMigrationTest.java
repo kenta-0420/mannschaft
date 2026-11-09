@@ -1,10 +1,14 @@
 package com.mannschaft.app.common.migration;
 
+import com.mannschaft.app.common.EncryptionService;
+import com.mannschaft.app.common.EncryptionServiceHolder;
 import com.mannschaft.app.common.UuidV7;
 import com.mannschaft.app.common.entity.UuidV7Entity;
 import com.mannschaft.app.gdpr.entity.AccountPurgeCompletionStatusEntity;
 import com.mannschaft.app.circulation.RecipientStatus;
 import com.mannschaft.app.circulation.entity.CirculationRecipientEntity;
+import com.mannschaft.app.school.entity.FamilyAttendanceNoticeEntity;
+import com.mannschaft.app.school.entity.FamilyNoticeType;
 import com.mannschaft.app.committee.entity.CommitteeDistributionLogEntity;
 import com.mannschaft.app.committee.entity.ConfirmationMode;
 import com.mannschaft.app.committee.entity.DistributionScope;
@@ -18,6 +22,7 @@ import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.output.MigrateResult;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
 import org.hibernate.boot.Metadata;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy;
@@ -52,9 +57,11 @@ import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.MySQLContainer;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -766,6 +773,106 @@ class FlywayFromScratchMigrationTest {
         } finally {
             StandardServiceRegistryBuilder.destroy(registry);
         }
+    }
+
+    @Test
+    @DisplayName("CMP-260930-2313: family attendanceのreason_detailは最大1000文字を暗号化保存して復号できる")
+    void familyAttendanceReasonDetailは最大1000文字を暗号化保存して復号できる() throws Exception {
+        migrateFromScratch();
+
+        EncryptionService previousHolderValue = EncryptionServiceHolder.peek();
+        EncryptionServiceHolder.set(new EncryptionService(
+                "0123456789abcdef0123456789abcdef".getBytes(StandardCharsets.UTF_8),
+                "fedcba9876543210fedcba9876543210".getBytes(StandardCharsets.UTF_8)));
+        try {
+            try (SessionFactory sf = sessionFactory(FamilyAttendanceNoticeEntity.class)) {
+                String shortValue = "欠席連絡";
+                Long shortId = persistFamilyAttendanceNotice(sf, shortValue);
+                String shortCiphertext = readFamilyAttendanceReasonCiphertext(shortId);
+                assertThat(shortCiphertext)
+                        .as("短いreason_detailも暗号文で保存される")
+                        .isNotNull()
+                        .isNotEqualTo(shortValue);
+                assertThat(shortCiphertext.length())
+                        .as("短い値は暗号形式の長さで保存される")
+                        .isEqualTo(encryptedBase64Length(shortValue));
+                assertThat(loadFamilyAttendanceReasonDetail(sf, shortId)).isEqualTo(shortValue);
+
+                String maximumValue = "あ".repeat(1000);
+                assertThat(maximumValue.length()).as("BMP文字数は1000").isEqualTo(1000);
+                int maximumUtf8Bytes = maximumValue.getBytes(StandardCharsets.UTF_8).length;
+                assertThat(maximumUtf8Bytes).as("UTF-8では3000 bytes").isEqualTo(3000);
+
+                Long maximumId = persistFamilyAttendanceNotice(sf, maximumValue);
+                String maximumCiphertext = readFamilyAttendanceReasonCiphertext(maximumId);
+                assertThat(maximumCiphertext)
+                        .as("保存値は暗号文であり平文ではない")
+                        .isNotNull()
+                        .isNotEqualTo(maximumValue);
+                assertThat(maximumCiphertext.length())
+                        .as("IV 12 bytes + GCM tag 16 bytes + UTF-8 3000 bytesをBase64化した4040文字")
+                        .isEqualTo(4040);
+                assertThat(maximumCiphertext.length()).isEqualTo(encryptedBase64Length(maximumValue));
+                assertThat(loadFamilyAttendanceReasonDetail(sf, maximumId)).isEqualTo(maximumValue);
+            }
+        } finally {
+            EncryptionServiceHolder.set(previousHolderValue);
+        }
+    }
+
+    private static Long persistFamilyAttendanceNotice(SessionFactory sf, String reasonDetail) {
+        try (Session session = sf.openSession()) {
+            Transaction transaction = session.beginTransaction();
+            FamilyAttendanceNoticeEntity notice = FamilyAttendanceNoticeEntity.builder()
+                    .teamId(1L)
+                    .studentUserId(1L)
+                    .submitterUserId(1L)
+                    .attendanceDate(java.time.LocalDate.of(2026, 11, 10))
+                    .noticeType(FamilyNoticeType.ABSENCE)
+                    .reasonDetail(reasonDetail)
+                    .build();
+            try {
+                session.persist(notice);
+                transaction.commit();
+                return notice.getId();
+            } catch (RuntimeException failure) {
+                if (transaction.isActive()) {
+                    try {
+                        transaction.rollback();
+                    } catch (RuntimeException rollbackFailure) {
+                        failure.addSuppressed(rollbackFailure);
+                    }
+                }
+                throw failure;
+            }
+        }
+    }
+
+    private static String readFamilyAttendanceReasonCiphertext(Long id) throws SQLException {
+        try (Connection connection = connect();
+             PreparedStatement statement = connection.prepareStatement(
+                     "SELECT reason_detail FROM family_attendance_notices WHERE id = ?")) {
+            statement.setLong(1, id);
+            try (ResultSet result = statement.executeQuery()) {
+                assertThat(result.next()).as("保存済みfamily noticeが1件").isTrue();
+                String ciphertext = result.getString(1);
+                assertThat(result.next()).as("同じIDの行は1件").isFalse();
+                return ciphertext;
+            }
+        }
+    }
+
+    private static String loadFamilyAttendanceReasonDetail(SessionFactory sf, Long id) {
+        try (Session session = sf.openSession()) {
+            FamilyAttendanceNoticeEntity notice = session.find(FamilyAttendanceNoticeEntity.class, id);
+            assertThat(notice).as("別Sessionからfamily noticeを読み出せる").isNotNull();
+            return notice.getReasonDetail();
+        }
+    }
+
+    private static int encryptedBase64Length(String plainText) {
+        int plainTextBytes = plainText.getBytes(StandardCharsets.UTF_8).length;
+        return 4 * ((plainTextBytes + 12 + 16 + 2) / 3);
     }
 
     /** 接続先を設定せず、JDBC metadata取得も無効にしてMySQL方言だけを明示する。 */
