@@ -538,6 +538,18 @@ test('#4375 チャット 他テナント: 実在チャンネルと不在 ID の 
   console.log(`[cmp1507] #4375 不在: ${JSON.stringify({ s: absent.status, c: absent.code, seen: absent.seen })}`)
   console.log(`[cmp1507] #4375 実在 画面: ${real.text.slice(0, 300)}`)
   console.log(`[cmp1507] #4375 不在 画面: ${absent.text.slice(0, 300)}`)
+  // 「一致する」だけでは、両方が 500 や 401 に退行しても通る。あるべき値（404 CHAT_001）に固定する
+  for (const [label, r] of [['実在', real], ['不在', absent]] as const) {
+    expect(r.status, `${label} ID の詳細 API の status`).toBe(404)
+    expect(r.code, `${label} ID の詳細 API の error.code`).toBe('CHAT_001')
+    expect(r.text, `${label} ID の画面`).toContain('指定されたチャンネルにアクセスできません')
+    expect(
+      r.seen.find((e) => e.url === '/api/v1/chat/channels/{id}'),
+      `${label} ID: 詳細 API が 404 CHAT_001 で記録されている`,
+    ).toEqual({ url: '/api/v1/chat/channels/{id}', status: 404, code: 'CHAT_001' })
+    // 画面が叩いた他のチャット API に、5xx や 401 が無い（例外で同じ表示になっているだけ、を除く）
+    expect(r.seen.filter((e) => e.status >= 500 || e.status === 401), `${label} ID: 異常な応答`).toEqual([])
+  }
   expect(real.status).toBe(absent.status)
   expect(real.code).toBe(absent.code)
   expect(real.body).toBe(absent.body)
