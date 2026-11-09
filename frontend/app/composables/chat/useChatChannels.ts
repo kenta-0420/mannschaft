@@ -102,10 +102,11 @@ export function useChatChannels() {
   }
 
   // === DM ===
+  // BE の正規窓口は POST /conversations（StartConversationRequest.userIds。1名=Kabine 取得/作成）
   async function getOrCreateDm(userId: number) {
-    return api<{ data: ChatChannelResponse }>('/api/v1/chat/channels/dm', {
+    return api<{ data: ChatChannelResponse }>('/api/v1/chat/channels/conversations', {
       method: 'POST',
-      body: { userId },
+      body: { userIds: [userId] },
     })
   }
 

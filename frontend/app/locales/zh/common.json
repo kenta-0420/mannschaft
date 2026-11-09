@@ -185,6 +185,7 @@
       "tooltip": "邀请加入 Zimmer",
       "failed": "邀请失败",
       "noMembers": "没有可邀请的成员",
+      "candidatesLoadFailed": "无法获取可邀请的成员列表，请稍后再试。",
       "shareQuestion": "是否共享现有聊天内容？",
       "share": "共享",
       "shareHint": "之前的消息将转入新的 Zimmer",
