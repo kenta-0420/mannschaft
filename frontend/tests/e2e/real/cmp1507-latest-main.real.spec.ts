@@ -371,20 +371,25 @@ test('#4358 チームの時間割 権限なし（MEMBER）: 学期は読める�
 
 test('#4358 チームの時間割 他テナント: 学期・時間割が見えない（URL 直打ち）', async ({ browser }) => {
   await withPage(browser, w.outsider, async (page) => {
-    const apis: string[] = []
-    page.on('response', (r) => {
-      const p = new URL(r.url()).pathname
-      if (p.startsWith(`/api/v1/teams/${v.t2.slug}/`)) apis.push(`${r.request().method()} ${p.replace(v.t2.slug, '{t2}')} -> ${r.status()}`)
-    })
+    const denied = (status: number) => status === 403 || status === 404
+    // 遷移の前に応答待ちを登録する。応答が来なければここで失敗する（待たずに合格しない）
+    const timetablesRes = responseOf(page, new RegExp(`/api/v1/teams/${v.t2.slug}/timetables$`))
     await gotoAndHydrate(page, `/teams/${v.t2.slug}/timetable`)
-    await page.waitForTimeout(8_000)
-    console.log(`[cmp1507] #4358 他組織が叩いた API: ${JSON.stringify(apis)}`)
+    const timetablesStatus = (await timetablesRes).status()
+    console.log(`[cmp1507] #4358 他組織 GET /teams/{t2}/timetables -> ${timetablesStatus}`)
+    expect(denied(timetablesStatus), `時間割 API が拒否されていない: ${timetablesStatus}`).toBe(true)
+    // 学期の取得は学期タブを開いたときに走る。経路を実際に通して、その拒否を確かめる
+    const termTab = page.getByTestId('timetable-tab-term')
+    await expect(termTab, '学期タブが出ない（学期の取得経路を通せない）').toBeVisible({ timeout: 60_000 })
+    const termsRes = responseOf(page, new RegExp(`/api/v1/teams/${v.t2.slug}/timetable-terms$`))
+    await termTab.click()
+    const termsStatus = (await termsRes).status()
+    console.log(`[cmp1507] #4358 他組織 GET /teams/{t2}/timetable-terms -> ${termsStatus}`)
+    expect(denied(termsStatus), `学期 API が拒否されていない: ${termsStatus}`).toBe(true)
     await expect(page.getByText(v.prepTerm.name)).toHaveCount(0)
     await expect(page.getByTestId('term-add-button')).toHaveCount(0)
     await expect(page.getByTestId('timetable-create-button')).toHaveCount(0)
     await expect(page.locator(`a[href="/teams/${v.t2.slug}/timetable"]`)).toHaveCount(0)
-    // 時間割・学期の API は 200 で中身を返さない（me/permissions は自分の権限の問い合わせで、他組織には空の応答）
-    for (const line of apis.filter((l) => /timetable/.test(l))) expect(line, '他組織に時間割・学期が 200 で返っている').not.toMatch(/-> 200$/)
     await shot(page, 'v2-outsider')
   })
 })
