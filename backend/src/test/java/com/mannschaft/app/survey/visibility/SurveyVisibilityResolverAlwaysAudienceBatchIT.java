@@ -399,16 +399,17 @@ class SurveyVisibilityResolverAlwaysAudienceBatchIT extends AbstractMySqlIntegra
         em.flush();
         em.clear();
 
-        SqlIntentCounter.reset();
-        checker.filterAccessible(ReferenceType.SURVEY, surveyIds, memberUserId);
+        try (var capture = SqlIntentCounter.captureCurrentThread()) {
+            checker.filterAccessible(ReferenceType.SURVEY, surveyIds, memberUserId);
 
-        assertThat(SqlIntentCounter.totalCount())
-                .as("計器の生存証明: 非空バッチで 0 本なら上限アサーションは無意味である")
-                .isGreaterThan(0);
-        assertThat(SqlIntentCounter.totalCount())
-                .as("AC-9: 上限 8 本（CMP-041 で権限先読み 1 本を追加）。発行 SQL=%s",
-                        SqlIntentCounter.capturedSqls())
-                .isLessThanOrEqualTo(8);
+            assertThat(capture.totalCount())
+                    .as("計器の生存証明: 非空バッチで 0 本なら上限アサーションは無意味である")
+                    .isGreaterThan(0);
+            assertThat(capture.totalCount())
+                    .as("AC-9: 上限 8 本（CMP-041 で権限先読み 1 本を追加）。発行 SQL=%s",
+                            capture.capturedSqls())
+                    .isLessThanOrEqualTo(8);
+        }
     }
 
     // =========================================================================
