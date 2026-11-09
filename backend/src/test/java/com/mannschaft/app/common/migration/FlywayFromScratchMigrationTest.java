@@ -615,7 +615,7 @@ class FlywayFromScratchMigrationTest {
     @Test
     @Order(19)
     @DisplayName("CMP-260930-2313: 宣言長より短い実VARCHARを検出する")
-    void varcharLengthGuardは宣言長を超える実DB長を違反にする() {
+    void varcharLengthGuardは宣言長より短い実DB長を違反にする() {
         Column column = new Column("fixture_column");
         column.setLength(10L);
 
