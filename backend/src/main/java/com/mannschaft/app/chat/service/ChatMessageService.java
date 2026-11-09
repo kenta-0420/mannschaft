@@ -260,9 +260,7 @@ public class ChatMessageService {
                 saved.getId(), request.getAttachments(), channel, senderId);
 
         // チャンネルの最終メッセージ情報を更新
-        String preview = request.getBody().length() > PREVIEW_LENGTH
-                ? request.getBody().substring(0, PREVIEW_LENGTH)
-                : request.getBody();
+        String preview = toPreview(request.getBody());
         channel.updateLastMessage(LocalDateTime.now(), preview);
 
         // 未読カウント根治: 送信者以外の全チャンネルメンバーの unread_count を一括インクリメントする。
@@ -313,6 +311,9 @@ public class ChatMessageService {
         message.editBody(request.getBody());
         ChatMessageEntity saved = messageRepository.save(message);
 
+        // 編集したのが最新メッセージなら、部屋一覧のプレビューも新しい本文に追従させる。
+        refreshPreviewAfterEdit(message, request.getBody());
+
         log.info("メッセージ編集完了: messageId={}", messageId);
         MessageResponse response = enrichMessage(saved, userId);
         // F04.2: WebSocket でチャンネル参加者全員に配信
@@ -346,8 +347,20 @@ public class ChatMessageService {
             }
         }
 
+        // 最新メッセージを削除する場合は、削除後に部屋一覧のプレビューを直前の未削除メッセージへ差し戻す。
+        boolean wasLatest = messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(message.getChannelId())
+                .map(latest -> latest.getId().equals(message.getId()))
+                .orElse(false);
+
         message.softDelete();
         messageRepository.save(message);
+
+        // 削除済みメッセージが他メンバーの未読数に残らないよう、未読だったメンバーの未読数を減らす。
+        memberRepository.decrementUnreadCountForUnreadersOf(
+                message.getChannelId(), message.getSenderId(), message.getCreatedAt());
+        if (wasLatest) {
+            revertPreviewAfterDelete(channel);
+        }
 
         // 返信削除後: 親の replyCount を減らし、0 になった場合は active_thread_count をデクリメント
         if (message.getParentId() != null) {
@@ -556,6 +569,31 @@ public class ChatMessageService {
     /**
      * メッセージが属するチャンネルを取得する。チャンネルが不在（論理削除済み）なら、メッセージも不在として扱う。
      */
+    /** 部屋一覧プレビュー用に本文を先頭 {@value #PREVIEW_LENGTH} 文字へ切り詰める。 */
+    private static String toPreview(String body) {
+        return body.length() > PREVIEW_LENGTH ? body.substring(0, PREVIEW_LENGTH) : body;
+    }
+
+    /** 編集したメッセージがチャンネルの最新なら、プレビュー本文だけを新しい本文に更新する（最終投稿日時は不変）。 */
+    private void refreshPreviewAfterEdit(ChatMessageEntity edited, String newBody) {
+        boolean isLatest = messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(edited.getChannelId())
+                .map(latest -> latest.getId().equals(edited.getId()))
+                .orElse(false);
+        if (!isLatest) {
+            return;
+        }
+        ChatChannelEntity channel = findChannelOfMessage(edited);
+        channel.updateLastMessage(channel.getLastMessageAt(), toPreview(newBody));
+    }
+
+    /** 最新メッセージの削除後、プレビューを直前の未削除メッセージへ差し戻す。無ければ空にする。 */
+    private void revertPreviewAfterDelete(ChatChannelEntity channel) {
+        messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(channel.getId())
+                .ifPresentOrElse(
+                        prev -> channel.updateLastMessage(prev.getCreatedAt(), toPreview(prev.getBody())),
+                        () -> channel.updateLastMessage(null, null));
+    }
+
     private ChatChannelEntity findChannelOfMessage(ChatMessageEntity message) {
         return channelRepository.findById(message.getChannelId())
                 .orElseThrow(() -> new BusinessException(ChatErrorCode.MESSAGE_NOT_FOUND));

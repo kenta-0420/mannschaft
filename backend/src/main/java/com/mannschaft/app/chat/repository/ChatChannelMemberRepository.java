@@ -154,4 +154,22 @@ public interface ChatChannelMemberRepository extends JpaRepository<ChatChannelMe
     @Query("UPDATE ChatChannelMemberEntity m SET m.unreadCount = m.unreadCount + 1 " +
            "WHERE m.channelId = :channelId AND m.userId <> :senderId")
     int incrementUnreadCountForOthers(@Param("channelId") Long channelId, @Param("senderId") Long senderId);
+
+    /**
+     * メッセージ削除時に、そのメッセージを未読のメンバー（送信者以外・最終既読がメッセージ作成より前、
+     * または未読込）の {@code unread_count} を 1 減らす。削除済みメッセージが未読数に残り続けて、
+     * 見える投稿数より未読が多くなるのを防ぐ。未読数は 0 未満にならない。
+     *
+     * @param channelId        チャンネルID
+     * @param senderId         送信者ユーザーID（送信者の未読数は増えていないので対象外）
+     * @param messageCreatedAt 削除するメッセージの作成日時
+     * @return 更新された行数
+     */
+    @Modifying
+    @Query("UPDATE ChatChannelMemberEntity m SET m.unreadCount = m.unreadCount - 1 " +
+           "WHERE m.channelId = :channelId AND m.userId <> :senderId AND m.unreadCount > 0 " +
+           "AND (m.lastReadAt IS NULL OR m.lastReadAt < :messageCreatedAt)")
+    int decrementUnreadCountForUnreadersOf(@Param("channelId") Long channelId,
+                                           @Param("senderId") Long senderId,
+                                           @Param("messageCreatedAt") java.time.LocalDateTime messageCreatedAt);
 }
