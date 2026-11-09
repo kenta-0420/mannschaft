@@ -45,4 +45,66 @@ public interface BillingPriceVersionRepository
             @Param("productKind") BillingProductKind productKind,
             @Param("productKey") String productKey,
             @Param("scopeKind") EntitlementScopeKind scopeKind);
+
+    /** DB照合規則でPlanへ結び、保存canonical keyだけをdue候補として投影する。 */
+    @Query("""
+            SELECT DISTINCT plan.planKey AS planKey, price.scopeKind AS scopeKind
+            FROM PlanEntity plan
+            JOIN BillingPriceVersionEntity price ON price.productKey = plan.planKey
+            WHERE plan.planKey IN :planKeys AND price.scopeKind IN :scopeKinds
+              AND price.productKind = :productKind AND price.status = :scheduledStatus
+              AND price.deletedAt IS NULL AND price.effectiveFrom <= :at
+              AND (price.effectiveUntil IS NULL OR :at < price.effectiveUntil)
+            """)
+    List<LegacyPlanDueKey> findLegacyPlanDueKeys(
+            @Param("planKeys") Collection<String> planKeys,
+            @Param("scopeKinds") Collection<EntitlementScopeKind> scopeKinds,
+            @Param("productKind") BillingProductKind productKind,
+            @Param("scheduledStatus") BillingPriceVersionStatus scheduledStatus,
+            @Param("at") Instant at);
+
+    /**
+     * Plan anchorを保ち、全ACTIVEと非ACTIVE公開履歴marker最大1件/keyを同SQLで読む。
+     * 親が無いPlanも返すため、価格条件はWHEREではなくLEFT JOINのONへ置く。
+     */
+    @Query("""
+            SELECT plan.planKey AS planKey, price AS revision
+            FROM PlanEntity plan
+            LEFT JOIN BillingPriceVersionEntity price ON price.productKey = plan.planKey
+              AND price.productKind = :productKind AND price.scopeKind IN :scopeKinds
+              AND price.deletedAt IS NULL
+              AND (price.status = :activeStatus OR (
+                (price.status = :retiredStatus OR
+                  (price.status = :scheduledStatus AND price.effectiveFrom <= :at))
+                AND price.revisionNo = (
+                  SELECT MAX(marker.revisionNo) FROM BillingPriceVersionEntity marker
+                  WHERE marker.productKind = price.productKind AND marker.productKey = price.productKey
+                    AND marker.scopeKind = price.scopeKind AND marker.deletedAt IS NULL
+                    AND (marker.status = :retiredStatus OR
+                      (marker.status = :scheduledStatus AND marker.effectiveFrom <= :at))
+                )
+              ))
+            WHERE plan.planKey IN :planKeys
+            """)
+    List<LegacyPlanParentRow> findLegacyPlanParents(
+            @Param("planKeys") Collection<String> planKeys,
+            @Param("scopeKinds") Collection<EntitlementScopeKind> scopeKinds,
+            @Param("productKind") BillingProductKind productKind,
+            @Param("activeStatus") BillingPriceVersionStatus activeStatus,
+            @Param("retiredStatus") BillingPriceVersionStatus retiredStatus,
+            @Param("scheduledStatus") BillingPriceVersionStatus scheduledStatus,
+            @Param("at") Instant at);
+
+    /** planKeyはpriceのraw値ではなく、DB JOINから得たPlan保存値。 */
+    interface LegacyPlanDueKey {
+        String getPlanKey();
+        EntitlementScopeKind getScopeKind();
+    }
+
+    /** revisionはLEFT JOINで価格が無い時だけnull。価格Entityのraw keyは変更しない。 */
+    interface LegacyPlanParentRow {
+        String getPlanKey();
+        BillingPriceVersionEntity getRevision();
+    }
+
 }

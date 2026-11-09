@@ -22,6 +22,7 @@ public class BillingPriceSelector {
     private final BillingPricePromotionService promotionService;
     private final BillingPriceSnapshotReader snapshotReader;
     private final Clock clock;
+    private final LegacyPlanPriceSnapshotReader legacySnapshotReader;
 
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public Optional<SelectedPrice> selectNow(
@@ -43,7 +44,7 @@ public class BillingPriceSelector {
         return Optional.of(new SelectedPrice(revision, bands));
     }
 
-    private static boolean isSellable(
+    static boolean isSellable(
             BillingPriceVersionEntity revision, BillingPriceBandVersionEntity band) {
         return revision.getId().equals(band.getPriceVersionId())
                 && revision.getProductKind() == band.getProductKind()
@@ -83,7 +84,7 @@ public class BillingPriceSelector {
         return value != null && !value.isBlank();
     }
 
-    private static boolean hasNonOverlappingRanges(List<BillingPriceBandVersionEntity> bands) {
+    static boolean hasNonOverlappingRanges(List<BillingPriceBandVersionEntity> bands) {
         if (bands.stream().anyMatch(band -> band.getMinMembers() == null)) {
             return false;
         }
@@ -106,12 +107,22 @@ public class BillingPriceSelector {
     }
 
     /**
-     * legacy PLAN専用の先行試練骨格。全requested keyへSelectionを返す契約を持つ。
-     * 空Mapやkey不在を無料と同一視しない。既存selectNowには接続しない。
+     * legacy PLAN専用。1回の時点でdueを昇格し、全requested keyへSelectionを返す。
+     * 空Mapやkey不在を無料と同一視しない。既存selectNowの選択契約は独立して維持する。
      */
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public Map<PlanScopeKey, LegacyPlanSelection> selectLegacyPlans(Set<PlanScopeKey> keys) {
-        throw new UnsupportedOperationException("CMP-260930-1931 試練骨格: 未実装");
+        if (keys.isEmpty()) {
+            return Map.of();
+        }
+        Instant at = clock.instant();
+        legacySnapshotReader.readDueKeys(keys, at).stream()
+                .filter(keys::contains)
+                .sorted(java.util.Comparator.comparing(PlanScopeKey::planKey)
+                        .thenComparing(key -> key.scopeKind().name()))
+                .forEach(key -> promotionService.promoteDue(
+                        BillingProductKind.PLAN, key.planKey(), key.scopeKind(), at));
+        return legacySnapshotReader.readActive(keys, at);
     }
 
     /** PLANだけを対象とする要求identity。ADDONをこの入口へ含めない。 */
@@ -128,10 +139,20 @@ public class BillingPriceSelector {
      * SELECTEDのsnapshotは必須、それ以外はnullという返却不変条件。
      * NO_PUBLISHED_PRICEでも既存の明示0以外を無料化しない。
      */
-    public record LegacyPlanSelection(LegacyPlanSelectionState state, LegacyPlanSnapshot snapshot) { }
+    public record LegacyPlanSelection(LegacyPlanSelectionState state, LegacyPlanSnapshot snapshot) {
+        public LegacyPlanSelection {
+            if (state == null || (state == LegacyPlanSelectionState.SELECTED) != (snapshot != null)) {
+                throw new IllegalArgumentException("適格な選択だけがsnapshotを持ちます");
+            }
+        }
+    }
 
     /** 検証を終えたPRIMARY TX内でcopyする不変出力。Entityやlazy参照を含めない。 */
-    public record LegacyPlanSnapshot(UUID priceVersionId, List<LegacyPlanBandSnapshot> bands) { }
+    public record LegacyPlanSnapshot(UUID priceVersionId, List<LegacyPlanBandSnapshot> bands) {
+        public LegacyPlanSnapshot {
+            bands = List.copyOf(bands);
+        }
+    }
 
     /** catalog/人数帯選択/legacy保存に必要な検証済scalarだけを持つ。 */
     public record LegacyPlanBandSnapshot(

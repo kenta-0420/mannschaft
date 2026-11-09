@@ -38,6 +38,8 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -188,6 +190,47 @@ class BillingLegacyPlanRoutingIT extends AbstractMySqlIntegrationTest {
         assertThat(DataSourceContextHolder.getDataSourceType()).isNull();
     }
 
+    /** legacy未接続段階でも、実readonly外側からhelperの物理pool/TX/昇格commitを証明する。 */
+    @Test
+    void 直接helperは実readOnly外側を中断しPRIMARYのBを返して復元する() {
+        Trace trace = ConnectionObservations.start();
+        Map<BillingPriceSelector.PlanScopeKey, BillingPriceSelector.LegacyPlanSelection> result;
+        try { result = caller.readHelper(planKey); }
+        finally { ConnectionObservations.stop(); }
+        BillingPriceSelector.PlanScopeKey key = new BillingPriceSelector.PlanScopeKey(planKey, EntitlementScopeKind.USER);
+        assertThat(result).containsOnlyKeys(key);
+        assertThat(result.get(key).state()).isEqualTo(BillingPriceSelector.LegacyPlanSelectionState.SELECTED);
+        assertThat(result.get(key).snapshot().bands().getFirst().amountIncludingTax()).isEqualTo((long) NEXT_PRICE);
+        assertRestored(trace);
+        assertThat(trace.statements).anySatisfy(event -> {
+            assertThat(event.target()).isEqualTo("replicaDataSource");
+            assertThat(event.sql()).contains("from plans");
+            assertThat(event.readOnly()).isTrue();
+        });
+        assertThat(priceStatements(trace)).isNotEmpty().allSatisfy(event -> {
+            assertThat(event.target()).isEqualTo("primaryDataSource");
+            assertThat(event.active()).isTrue();
+            assertThat(event.readOnly()).isFalse();
+        });
+        assertStates(BillingPriceVersionStatus.RETIRED, BillingPriceVersionStatus.ACTIVE);
+    }
+
+    @Test
+    void 直接helperの昇格中途SQL失敗は全親子rollbackと実外側復元を保つ() {
+        installOwnedPartialFailure();
+        Trace trace = ConnectionObservations.start();
+        try { assertThatThrownBy(() -> caller.readHelper(planKey)).isInstanceOf(DataAccessException.class); }
+        finally { ConnectionObservations.stop(); }
+        assertRestored(trace);
+        assertThat(priceStatements(trace)).anySatisfy(event -> {
+            assertThat(event.sql()).startsWith("update billing_price_band_versions");
+            assertThat(event.target()).isEqualTo("primaryDataSource");
+            assertThat(event.active()).isTrue();
+            assertThat(event.readOnly()).isFalse();
+        });
+        assertStates(BillingPriceVersionStatus.ACTIVE, BillingPriceVersionStatus.SCHEDULED);
+    }
+
     private void installOwnedPartialFailure() {
         // application.ymlのorder_updates=trueによりbandのbatchがparentより先にflushされる。
         // 所有keyのA/B両子が既に更新済みの時だけ親Bを拒否し、実書込後の失敗に限定する。
@@ -249,8 +292,9 @@ class BillingLegacyPlanRoutingIT extends AbstractMySqlIntegrationTest {
     @TestConfiguration(proxyBeanMethods = false)
     static class RoutingObservationConfiguration {
         @Bean
-        ReadOnlyCatalogCaller readOnlyCatalogCaller(BillingCatalogQueryService service) {
-            return new ReadOnlyCatalogCaller(service);
+        ReadOnlyCatalogCaller readOnlyCatalogCaller(BillingCatalogQueryService service, BillingPriceSelector selector,
+                                                  PlanRepository plans) {
+            return new ReadOnlyCatalogCaller(service, selector, plans);
         }
 
         @Bean
@@ -271,9 +315,28 @@ class BillingLegacyPlanRoutingIT extends AbstractMySqlIntegrationTest {
     /** Spring proxy経由の実readOnly外側。価格・認可・Repositoryを差し替えない。 */
     static class ReadOnlyCatalogCaller {
         private final BillingCatalogQueryService service;
+        private final BillingPriceSelector selector;
+        private final PlanRepository plans;
 
-        ReadOnlyCatalogCaller(BillingCatalogQueryService service) {
+        ReadOnlyCatalogCaller(BillingCatalogQueryService service, BillingPriceSelector selector, PlanRepository plans) {
             this.service = service;
+            this.selector = selector;
+            this.plans = plans;
+        }
+
+        @Transactional(readOnly = true)
+        public Map<BillingPriceSelector.PlanScopeKey, BillingPriceSelector.LegacyPlanSelection> readHelper(String planKey) {
+            try {
+                plans.findById(planKey).orElseThrow(); // このfixtureの入力は保存keyと同じ。aliasの実証はReadITで行う。
+                return selector.selectLegacyPlans(Set.of(new BillingPriceSelector.PlanScopeKey(planKey, EntitlementScopeKind.USER)));
+            } finally {
+                Trace trace = ConnectionObservations.CURRENT.get();
+                if (trace != null) {
+                    trace.returnBoundary = new ReturnBoundary(TransactionSynchronizationManager.isActualTransactionActive(),
+                            TransactionSynchronizationManager.isCurrentTransactionReadOnly(),
+                            DataSourceContextHolder.getDataSourceType());
+                }
+            }
         }
 
         @Transactional(readOnly = true)

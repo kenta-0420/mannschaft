@@ -2,6 +2,9 @@ package com.mannschaft.app.billing;
 
 import com.mannschaft.app.common.BusinessException;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+
+import java.util.List;
 import org.mapstruct.Named;
 
 /**
@@ -11,6 +14,14 @@ import org.mapstruct.Named;
  */
 @Mapper(componentModel = "spring")
 public interface LegacyPlanPriceMapper {
+
+    /** 価格Entityの検証後、必要なscalarだけをcopyする。 */
+    BillingPriceSelector.LegacyPlanBandSnapshot toLegacyBandSnapshot(BillingPriceBandVersionEntity band);
+
+    @Mapping(target = "priceVersionId", source = "revision.id")
+    @Mapping(target = "bands", source = "bands")
+    BillingPriceSelector.LegacyPlanSnapshot toLegacySnapshot(
+            BillingPriceVersionEntity revision, List<BillingPriceSelector.LegacyPlanBandSnapshot> bands);
 
     /** catalogでは表現不能な価格を販売不能nullへ写す契約。 */
     @Named("toCatalogPriceJpy")

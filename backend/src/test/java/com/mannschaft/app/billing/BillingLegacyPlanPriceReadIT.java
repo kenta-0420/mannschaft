@@ -32,6 +32,15 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.config.BeanPostProcessor;
+import javax.sql.DataSource;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.nio.charset.StandardCharsets;
 import org.springframework.test.context.bean.override.convention.TestBean;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -73,6 +82,7 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
     @Autowired private BillingPriceResolver priceResolver;
     @Autowired private BillingPriceSelector priceSelector;
     @Autowired private LegacyPlanPriceSnapshotReader snapshotReader;
+    @Autowired private DataSource dataSource;
     @Autowired private ScopeMemberCountService memberCountService;
     @Autowired private UserRepository userRepository;
     @Autowired private TeamRepository teamRepository;
@@ -142,6 +152,7 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
     @AfterEach
     void 所有fixtureだけを削除する() {
         SnapshotInterleaveHook.CURRENT.remove();
+        JdbcReadCapture.CURRENT.remove();
         transactions.executeWithoutResult(tx -> {
             for (UUID contractId : contractIds) {
                 BillingContractEntity contract = contractRepository.findById(contractId).orElseThrow();
@@ -920,6 +931,24 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
     @TestConfiguration(proxyBeanMethods = false)
     static class SnapshotObservationConfiguration {
         @Bean SnapshotInterleaveHook snapshotInterleaveHook() { return new SnapshotInterleaveHook(); }
+
+        @Bean
+        static BeanPostProcessor explainBindingObserver() {
+            return new BeanPostProcessor() {
+                @Override
+                public Object postProcessAfterInitialization(Object bean, String name) {
+                    if (!"dataSource".equals(name) || !(bean instanceof DataSource)) return bean;
+                    return Proxy.newProxyInstance(DataSource.class.getClassLoader(),
+                            new Class<?>[]{DataSource.class, AutoCloseable.class}, (proxy, method, args) -> {
+                                if ("equals".equals(method.getName())) return proxy == args[0];
+                                if ("hashCode".equals(method.getName())) return System.identityHashCode(proxy);
+                                Object value = JdbcReadCapture.invoke(bean, method, args);
+                                return value instanceof Connection connection && JdbcReadCapture.CURRENT.get() != null
+                                        ? JdbcReadCapture.connection(connection) : value;
+                            });
+                }
+            };
+        }
     }
 
     /** 実処理復帰後だけの同期hook。内部返値を差し替えず、DB改定は別threadの別commit。 */
@@ -1038,7 +1067,7 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
 
     /** modern陽性対照は別fixtureで実行し、legacy対象のdueを事前昇格して隠さない。 */
     @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
-    @ValueSource(strings = {"modernScalar", "legacyResolver"})
+    @ValueSource(strings = {"modernScalar", "legacyResolver", "batch"})
     void 小文字のdue価格はcanonical要求から昇格され旧0へ戻らない(String entry) {
         removeActivePrices();
         setLegacyFree();
@@ -1049,6 +1078,13 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
         if ("modernScalar".equals(entry)) {
             assertThat(priceSelector.selectNow(BillingProductKind.PLAN, planKey, EntitlementScopeKind.USER)
                     .orElseThrow().bands().getFirst().getAmountIncludingTax()).isEqualTo(ACTIVE_PRICE);
+        } else if ("batch".equals(entry)) {
+            BillingPriceSelector.PlanScopeKey key = new BillingPriceSelector.PlanScopeKey(planKey, EntitlementScopeKind.USER);
+            Map<BillingPriceSelector.PlanScopeKey, BillingPriceSelector.LegacyPlanSelection> result =
+                    priceSelector.selectLegacyPlans(Set.of(key));
+            assertThat(result).containsOnlyKeys(key);
+            assertThat(result.get(key).state()).isEqualTo(BillingPriceSelector.LegacyPlanSelectionState.SELECTED);
+            assertThat(result.get(key).snapshot().bands().getFirst().amountIncludingTax()).isEqualTo(ACTIVE_PRICE);
         } else {
             assertThat(priceResolver.resolveMonthlyPriceJpy(
                     EntitlementScopeKind.USER, 1L, ContractKind.PLAN, planKey, null)).isEqualTo((int) ACTIVE_PRICE);
@@ -1110,6 +1146,98 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
         assertThat(result.get(key).state()).isEqualTo(BillingPriceSelector.LegacyPlanSelectionState.NOT_SELLABLE);
         assertThat(result.get(key).snapshot()).isNull();
     }
+
+    /** 実batch SQLと同じbind呼出しをEXPLAINへ再生する。競合fixture/通常budgetとは別窓。 */
+    @Test
+    void helperの実HQL_SQLとEXPLAINを所有MySQLで確認する() throws Exception {
+        Set<BillingPriceSelector.PlanScopeKey> requested = allScopeKeys(prepareCatalogScale(10, 10));
+        List<PreparedRead> reads = new ArrayList<>();
+        JdbcReadCapture.CURRENT.set(reads);
+        try {
+            Map<BillingPriceSelector.PlanScopeKey, BillingPriceSelector.LegacyPlanSelection> result =
+                    priceSelector.selectLegacyPlans(requested);
+            assertThat(result.keySet()).containsExactlyInAnyOrderElementsOf(requested);
+            assertThat(result.values()).allSatisfy(selection ->
+                    assertThat(selection.state()).isEqualTo(BillingPriceSelector.LegacyPlanSelectionState.SELECTED));
+        } finally {
+            JdbcReadCapture.CURRENT.remove();
+        }
+        assertThat(reads).hasSize(3);
+        List<Map<String, Object>> plans = new ArrayList<>();
+        for (PreparedRead read : reads) {
+            List<Map<String, String>> explained = new ArrayList<>();
+            try (Connection connection = dataSource.getConnection();
+                 PreparedStatement statement = connection.prepareStatement("EXPLAIN " + read.sql())) {
+                statement.setQueryTimeout(15);
+                for (BindingCall binding : read.bindings()) binding.method().invoke(statement, binding.arguments());
+                try (ResultSet rows = statement.executeQuery()) {
+                    while (rows.next()) {
+                        Map<String, String> row = new java.util.LinkedHashMap<>();
+                        for (int column = 1; column <= rows.getMetaData().getColumnCount(); column++) {
+                            row.put(rows.getMetaData().getColumnLabel(column), rows.getString(column));
+                        }
+                        explained.add(row);
+                    }
+                }
+            }
+            assertThat(explained).isNotEmpty();
+            plans.add(Map.of("sql", read.sql(), "bindingCount", read.bindings().size(), "explain", explained));
+        }
+        String payload = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(plans);
+        System.out.println("IT1931_HELPER_EXPLAIN " + java.util.Base64.getEncoder()
+                .encodeToString(payload.getBytes(StandardCharsets.UTF_8)));
+    }
+
+    /** 既存routing試練と同様に実Connectionへ委譲し、指定した試験窓だけbind値を保持する。 */
+    static class JdbcReadCapture {
+        private static final ThreadLocal<List<PreparedRead>> CURRENT = new ThreadLocal<>();
+
+        static Object invoke(Object target, Method method, Object[] args) throws Throwable {
+            try { return method.invoke(target, args); }
+            catch (InvocationTargetException exception) { throw exception.getCause(); }
+        }
+
+        static Connection connection(Connection target) {
+            return (Connection) Proxy.newProxyInstance(Connection.class.getClassLoader(), new Class<?>[]{Connection.class},
+                    (proxy, method, args) -> {
+                        if ("equals".equals(method.getName())) return proxy == args[0];
+                        if ("hashCode".equals(method.getName())) return System.identityHashCode(proxy);
+                        Object value = invoke(target, method, args);
+                        if ("prepareStatement".equals(method.getName()) && value instanceof PreparedStatement statement
+                                && args[0] instanceof String sql && sql.stripLeading().toLowerCase(java.util.Locale.ROOT)
+                                .startsWith("select")) return statement(statement, sql);
+                        return value;
+                    });
+        }
+
+        static PreparedStatement statement(PreparedStatement target, String sql) {
+            List<BindingCall> bindings = new ArrayList<>();
+            return (PreparedStatement) Proxy.newProxyInstance(PreparedStatement.class.getClassLoader(),
+                    new Class<?>[]{PreparedStatement.class}, (proxy, method, args) -> {
+                        if ("equals".equals(method.getName())) return proxy == args[0];
+                        if ("hashCode".equals(method.getName())) return System.identityHashCode(proxy);
+                        Object value = invoke(target, method, args);
+                        if (method.getName().startsWith("set") && args != null && args.length >= 2
+                                && args[0] instanceof Integer) {
+                            Object[] copy = args.clone();
+                            for (int index = 0; index < copy.length; index++) {
+                                if (copy[index] instanceof byte[] bytes) copy[index] = bytes.clone();
+                                if (copy[index] instanceof java.util.Calendar calendar) copy[index] = calendar.clone();
+                                if (copy[index] instanceof java.sql.Timestamp timestamp) copy[index] = timestamp.clone();
+                            }
+                            bindings.add(new BindingCall(method, copy));
+                        }
+                        if ("clearParameters".equals(method.getName())) bindings.clear();
+                        if ("executeQuery".equals(method.getName()) && CURRENT.get() != null) {
+                            CURRENT.get().add(new PreparedRead(sql, List.copyOf(bindings)));
+                        }
+                        return value;
+                    });
+        }
+    }
+
+    record PreparedRead(String sql, List<BindingCall> bindings) { }
+    record BindingCall(Method method, Object[] arguments) { }
 
     private PlanItem ownedCatalog() {
         return catalogService.getCatalog().getPlans().stream()

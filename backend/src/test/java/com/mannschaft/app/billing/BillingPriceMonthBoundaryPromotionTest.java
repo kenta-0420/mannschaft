@@ -40,6 +40,7 @@ class BillingPriceMonthBoundaryPromotionTest {
 
     @Mock private BillingPriceVersionRepository priceVersionRepository;
     @Mock private BillingPriceBandVersionRepository bandRepository;
+    @Mock private LegacyPlanPriceSnapshotReader legacySnapshotReader;
 
     private BillingPriceVersionEntity revisionA;
     private BillingPriceVersionEntity revisionB;
@@ -119,7 +120,7 @@ class BillingPriceMonthBoundaryPromotionTest {
                 new BillingPricePromotionService(priceVersionRepository, bandRepository);
         BillingPriceSnapshotReader snapshotReader =
                 new BillingPriceSnapshotReader(priceVersionRepository, bandRepository);
-        return new BillingPriceSelector(promotionService, snapshotReader, clock);
+        return new BillingPriceSelector(promotionService, snapshotReader, clock, legacySnapshotReader);
     }
 
     private static boolean isEffectiveAt(Instant from, Instant until, Instant at) {

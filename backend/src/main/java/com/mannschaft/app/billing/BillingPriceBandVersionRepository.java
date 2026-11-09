@@ -40,4 +40,12 @@ public interface BillingPriceBandVersionRepository extends JpaRepository<Billing
             + "WHERE b.priceVersionId = :priceVersionId AND b.deletedAt IS NULL ORDER BY b.bandNo ASC")
     List<BillingPriceBandVersionEntity> findAllByPriceVersionIdForUpdate(
             @Param("priceVersionId") UUID priceVersionId);
+
+    /** status/期間で不正な子を落とさず、候補親の非削除bandを一括取得する。 */
+    @Query("SELECT band FROM BillingPriceBandVersionEntity band "
+            + "WHERE band.priceVersionId IN :versionIds AND band.deletedAt IS NULL "
+            + "ORDER BY band.priceVersionId ASC, band.bandNo ASC")
+    List<BillingPriceBandVersionEntity> findLegacyPlanBands(
+            @Param("versionIds") Collection<UUID> versionIds);
+
 }
