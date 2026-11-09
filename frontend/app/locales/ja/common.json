@@ -417,7 +417,10 @@
     "delete_timetable": "削除",
     "delete_timetable_confirm": "時間割「{name}」を削除しますか？この操作は取り消せません。",
     "delete_timetable_success": "時間割を削除しました",
-    "delete_timetable_error": "時間割の削除に失敗しました"
+    "delete_timetable_error": "時間割の削除に失敗しました",
+    "create_error_out_of_term": "時間割の有効期間が学期の範囲外です。学期の開始日から終了日の間で指定してください",
+    "create_error_term_not_found": "選んだ学期が見つかりません。学期の一覧を開き直してください",
+    "effective_until_before_from": "適用終了日は適用開始日以降の日付にしてください"
   },
   "error": {
     "server": "サーバーエラーが発生しました",
@@ -1203,6 +1206,7 @@
       "edit_title": "マイルストーン編集",
       "title_label": "タイトル",
       "title_placeholder": "マイルストーン名",
+      "title_required": "タイトルを入力してください",
       "due_date_label": "期限",
       "add": "追加"
     },

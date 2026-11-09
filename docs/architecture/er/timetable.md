@@ -301,6 +301,7 @@ erDiagram
 | `sort_order` | `tinyint unsigned` | NO | `0` | 年度内の表示順 |
 | `created_at` | `datetime` | NO | `CURRENT_TIMESTAMP` （式） |  |
 | `updated_at` | `datetime` | NO | `CURRENT_TIMESTAMP` （式） |  |
+| `deleted_at` | `datetime` | YES | NULL | 論理削除 |
 
 ### `timetables`
 
