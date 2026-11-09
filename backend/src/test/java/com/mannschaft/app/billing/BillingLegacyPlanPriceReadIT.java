@@ -33,6 +33,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -451,6 +454,105 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
                     band.setStripePriceRef(null);
                 }
             }
+        });
+    }
+
+    /** batch骨格の未実装UOEは既存public入口の業務redから別分類する。 */
+    @Test
+    void batchは要求全scopeの検証済scalarを返しTX外読取でSQLを増やさない() {
+        Set<BillingPriceSelector.PlanScopeKey> keys = ownedPriceKeys();
+        Map<BillingPriceSelector.PlanScopeKey, BillingPriceSelector.LegacyPlanSelection> selected =
+                priceSelector.selectLegacyPlans(keys);
+        assertThat(selected.keySet()).containsExactlyInAnyOrderElementsOf(keys);
+        for (BillingPriceSelector.PlanScopeKey key : keys) {
+            BillingPriceSelector.LegacyPlanSelection selection = selected.get(key);
+            assertThat(selection.state()).isEqualTo(BillingPriceSelector.LegacyPlanSelectionState.SELECTED);
+            assertThat(selection.snapshot()).isNotNull();
+            BillingPriceVersionEntity parent = versionRepository.findAllById(versionIds).stream()
+                    .filter(version -> version.getScopeKind() == key.scopeKind()).findFirst().orElseThrow();
+            BillingPriceBandVersionEntity band = bandRepository.findAllById(bandIds).stream()
+                    .filter(item -> item.getScopeKind() == key.scopeKind()).findFirst().orElseThrow();
+            assertThat(selection.snapshot().priceVersionId()).isEqualTo(parent.getId());
+            assertThat(selection.snapshot().bands()).containsExactly(new BillingPriceSelector.LegacyPlanBandSnapshot(
+                    band.getId(), 1, 1, null, ACTIVE_PRICE));
+        }
+        try (var capture = com.mannschaft.app.common.visibility.perf.SqlIntentCounter.captureCurrentThread()) {
+            selected.values().forEach(selection -> {
+                assertThat(selection.snapshot().priceVersionId()).isNotNull();
+                assertThat(selection.snapshot().bands()).allSatisfy(band -> {
+                    assertThat(band.id()).isNotNull();
+                    assertThat(band.amountIncludingTax()).isEqualTo(ACTIVE_PRICE);
+                });
+            });
+            assertThat(capture.capturedSqls()).isEmpty();
+        }
+    }
+
+    @Test
+    void batchは新公開設定なしをkey不在でなく明示状態で返す() {
+        removeActivePrices();
+
+        assertBatchState(BillingPriceSelector.LegacyPlanSelectionState.NO_PUBLISHED_PRICE);
+    }
+
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
+    @EnumSource(value = BillingPriceVersionStatus.class,
+            names = {"DRAFT", "PROVISIONING", "PROVISION_FAILED", "READY", "SCHEDULED", "CANCELLED"})
+    void batchは未公開と未来予約だけなら新公開設定なしを返す(BillingPriceVersionStatus status) {
+        replacePriceLifecycle(status, NOW.plusSeconds(60), null);
+
+        assertBatchState(BillingPriceSelector.LegacyPlanSelectionState.NO_PUBLISHED_PRICE);
+    }
+
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
+    @EnumSource(value = BillingPriceVersionStatus.class, names = {"ACTIVE", "RETIRED", "SCHEDULED"})
+    void batchは期限切れの公開又は開始済予約を新公開設定なしと混同しない(BillingPriceVersionStatus status) {
+        replacePriceLifecycle(status, NOW.minusSeconds(60), NOW.minusSeconds(1));
+
+        assertBatchState(BillingPriceSelector.LegacyPlanSelectionState.NOT_SELLABLE);
+    }
+
+    @Test
+    void batchの不適格ACTIVEは新公開設定なしではなく販売不能を返す() {
+        transactions.executeWithoutResult(tx -> bandRepository.findAllById(bandIds)
+                .forEach(band -> band.setTaxNameSnapshot("")));
+        for (EntitlementScopeKind scope : EntitlementScopeKind.values()) {
+            assertThat(priceSelector.selectNow(BillingProductKind.PLAN, planKey, scope)).isEmpty();
+        }
+
+        assertBatchState(BillingPriceSelector.LegacyPlanSelectionState.NOT_SELLABLE);
+    }
+
+    @Test
+    void batchのdue昇格不能は新公開設定なしではなく販売不能を返す() {
+        replacePriceLifecycle(BillingPriceVersionStatus.SCHEDULED, NOW.minusSeconds(1), null);
+        transactions.executeWithoutResult(tx -> bandRepository.findAllById(bandIds)
+                .forEach(band -> band.setStatus(BillingPriceVersionStatus.RETIRED)));
+        for (EntitlementScopeKind scope : EntitlementScopeKind.values()) {
+            assertThat(priceSelector.selectNow(BillingProductKind.PLAN, planKey, scope)).isEmpty();
+        }
+
+        assertBatchState(BillingPriceSelector.LegacyPlanSelectionState.NOT_SELLABLE);
+    }
+
+    @Test
+    void batchの空要求だけは空Mapを返す() {
+        assertThat(priceSelector.selectLegacyPlans(Set.of())).isEmpty();
+    }
+
+    private Set<BillingPriceSelector.PlanScopeKey> ownedPriceKeys() {
+        return java.util.Arrays.stream(EntitlementScopeKind.values())
+                .map(scope -> new BillingPriceSelector.PlanScopeKey(planKey, scope)).collect(Collectors.toSet());
+    }
+
+    private void assertBatchState(BillingPriceSelector.LegacyPlanSelectionState state) {
+        Set<BillingPriceSelector.PlanScopeKey> keys = ownedPriceKeys();
+        Map<BillingPriceSelector.PlanScopeKey, BillingPriceSelector.LegacyPlanSelection> result =
+                priceSelector.selectLegacyPlans(keys);
+        assertThat(result.keySet()).containsExactlyInAnyOrderElementsOf(keys);
+        assertThat(result.values()).allSatisfy(selection -> {
+            assertThat(selection.state()).isEqualTo(state);
+            assertThat(selection.snapshot()).isNull();
         });
     }
 
