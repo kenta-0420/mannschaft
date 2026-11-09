@@ -3,6 +3,17 @@ package com.mannschaft.app.billing;
 import com.mannschaft.app.billing.api.BillingCatalogQueryService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.Around;
+import org.aspectj.lang.annotation.Aspect;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -21,6 +32,10 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -40,6 +55,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("1931 legacy PLAN価格の時点・遅延昇格")
+@Import(BillingLegacyPlanPromotionIT.RaceObservationConfiguration.class)
 class BillingLegacyPlanPromotionIT extends AbstractMySqlIntegrationTest {
 
     private static final Instant DEFAULT_BOUNDARY = Instant.parse("2026-11-30T15:00:00Z");
@@ -54,6 +70,7 @@ class BillingLegacyPlanPromotionIT extends AbstractMySqlIntegrationTest {
     @Autowired private BillingCatalogQueryService catalog;
     @Autowired private BillingPriceResolver resolver;
     @Autowired private TransactionTemplate transactions;
+    @Autowired private RaceObservationHook raceHook;
     @TestBean(name = "utcClock", methodName = "promotionClock") private Clock clock;
 
     private String planKey;
@@ -190,6 +207,167 @@ class BillingLegacyPlanPromotionIT extends AbstractMySqlIntegrationTest {
             start.countDown();
             executor.shutdownNow();
             assertThat(executor.awaitTermination(TIMEOUT_SECONDS, TimeUnit.SECONDS)).isTrue();
+        }
+    }
+
+    /** 実probe完了後のlock境界を固定し、終了時中断を競合の失敗へ混ぜない。 */
+    @Test
+    void 両実probe後に先行commitを挟んでも後行の価格読取はBを返す() throws Exception {
+        createPrices(DEFAULT_BOUNDARY);
+        time(DEFAULT_BOUNDARY);
+        RaceObservation state = new RaceObservation(planKey, nextId);
+        raceHook.current = state;
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        ReadOutcome firstOutcome;
+        ReadOutcome secondOutcome;
+        boolean settled;
+        try {
+            Future<Integer> first = executor.submit(() -> {
+                state.lane.set("catalog");
+                try {
+                    Integer price = readPrice("catalog"); // Spring proxy外のreturn後なのでcommit済み。
+                    state.afterFirstCommit = freshVersions();
+                    return price;
+                } finally {
+                    state.firstCompleted.countDown();
+                    state.lane.remove();
+                }
+            });
+            Future<Integer> second = executor.submit(() -> {
+                state.lane.set("resolver");
+                try {
+                    return readPrice("resolver");
+                } finally {
+                    state.lane.remove();
+                }
+            });
+            firstOutcome = outcome(first);
+            secondOutcome = outcome(second);
+        } finally {
+            state.firstCompleted.countDown();
+            executor.shutdownNow();
+            settled = executor.awaitTermination(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            raceHook.current = null;
+        }
+        VersionObservation finalVersions = freshVersions();
+        Map<String, Object> evidence = new java.util.LinkedHashMap<>();
+        evidence.put("hibernateVersion", org.hibernate.Version.getVersionString());
+        evidence.put("hibernateJar", java.nio.file.Path.of(org.hibernate.Version.class.getProtectionDomain()
+                .getCodeSource().getLocation().toURI()).getFileName().toString());
+        evidence.put("entityProbes", state.entityProbes);
+        evidence.put("beforeLocks", state.beforeLocks);
+        evidence.put("afterFirstCommit", state.afterFirstCommit);
+        evidence.put("firstOutcome", firstOutcome);
+        evidence.put("secondOutcome", secondOutcome);
+        evidence.put("finalVersions", finalVersions);
+        evidence.put("executorSettled", settled);
+        String payload = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(evidence);
+        System.out.println("IT1931_DUE_RACE " + java.util.Base64.getEncoder()
+                .encodeToString(payload.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+
+        assertThat(settled).isTrue();
+        assertThat(state.beforeLocks.keySet()).containsExactlyInAnyOrder("catalog", "resolver");
+        assertThat(state.afterFirstCommit).isNotNull();
+        assertThat(state.afterFirstCommit.currentStatus()).isEqualTo(BillingPriceVersionStatus.RETIRED);
+        assertThat(state.afterFirstCommit.nextStatus()).isEqualTo(BillingPriceVersionStatus.ACTIVE);
+        assertThat(state.afterFirstCommit.nextVersion()).isEqualTo(1L);
+        assertThat(firstOutcome.failureType()).as("先行callerの実結果").isNull();
+        assertThat(firstOutcome.value()).isEqualTo(NEXT_PRICE);
+        assertThat(secondOutcome.failureType()).as("先行commit後の後行caller実結果").isNull();
+        assertThat(secondOutcome.value()).isEqualTo(NEXT_PRICE);
+        assertThat(finalVersions).isEqualTo(state.afterFirstCommit);
+    }
+
+    private VersionObservation freshVersions() {
+        return transactions.execute(tx -> {
+            BillingPriceVersionEntity first = versions.findById(currentId).orElseThrow();
+            BillingPriceVersionEntity next = versions.findById(nextId).orElseThrow();
+            return new VersionObservation(first.getStatus(), first.getLockVersion(), next.getStatus(), next.getLockVersion());
+        });
+    }
+
+    private static ReadOutcome outcome(Future<Integer> future) throws InterruptedException {
+        try {
+            return new ReadOutcome(future.get(TIMEOUT_SECONDS, TimeUnit.SECONDS), null, null);
+        } catch (ExecutionException failure) {
+            Throwable cause = failure.getCause();
+            Throwable deepest = cause;
+            for (int depth = 0; deepest.getCause() != null && depth < 20; depth++) deepest = deepest.getCause();
+            return new ReadOutcome(null, cause.getClass().getName(), deepest.getClass().getName());
+        } catch (TimeoutException timeout) {
+            return new ReadOutcome(null, "harness-timeout", timeout.getClass().getName());
+        } catch (java.util.concurrent.CancellationException cancelled) {
+            return new ReadOutcome(null, "harness-cancelled", cancelled.getClass().getName());
+        }
+    }
+
+    private record ReadOutcome(Integer value, String failureType, String deepestCause) { }
+    private record VersionObservation(BillingPriceVersionStatus currentStatus, Long currentVersion,
+                                      BillingPriceVersionStatus nextStatus, Long nextVersion) { }
+    private record ProbeObservation(UUID id, Long version, boolean managed, String lockMode,
+                                    boolean transactionActive, boolean readOnly) { }
+    private record LockObservation(boolean transactionActive, boolean readOnly) { }
+
+    private static class RaceObservation {
+        private final String key;
+        private final UUID nextId;
+        private final ThreadLocal<String> lane = new ThreadLocal<>();
+        private final CountDownLatch bothBeforeLock = new CountDownLatch(2);
+        private final CountDownLatch firstCompleted = new CountDownLatch(1);
+        private final Map<String, ProbeObservation> entityProbes = new ConcurrentHashMap<>();
+        private final Map<String, LockObservation> beforeLocks = new ConcurrentHashMap<>();
+        private volatile VersionObservation afterFirstCommit;
+        private RaceObservation(String key, UUID nextId) { this.key = key; this.nextId = nextId; }
+        private boolean matches(Object[] args) {
+            return lane.get() != null && args.length >= 3 && args[0] == BillingProductKind.PLAN
+                    && key.equals(args[1]) && args[2] == EntitlementScopeKind.USER;
+        }
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class RaceObservationConfiguration {
+        @Bean RaceObservationHook raceObservationHook() { return new RaceObservationHook(); }
+    }
+
+    /** 実Repo/実EntityManager/既存REQUIRED TXをcall-throughし、返値/Entityを変更しない。 */
+    @Aspect
+    @Order(Ordered.HIGHEST_PRECEDENCE + 100)
+    static class RaceObservationHook {
+        @PersistenceContext private EntityManager entityManager;
+        private volatile RaceObservation current;
+
+        @Around("execution(* com.mannschaft.app.billing.BillingPriceVersionRepository.findEffectiveCandidates(..))")
+        Object observeProbe(ProceedingJoinPoint invocation) throws Throwable {
+            Object result = invocation.proceed();
+            RaceObservation state = current;
+            Object[] args = invocation.getArgs();
+            if (state != null && state.matches(args) && args.length >= 4
+                    && args[3] instanceof java.util.Collection<?> statuses
+                    && statuses.contains(BillingPriceVersionStatus.SCHEDULED) && result instanceof List<?> rows) {
+                for (Object row : rows) {
+                    if (row instanceof BillingPriceVersionEntity revision && state.nextId.equals(revision.getId())) {
+                        state.entityProbes.put(state.lane.get(), new ProbeObservation(revision.getId(), revision.getLockVersion(),
+                                entityManager.contains(revision), entityManager.unwrap(org.hibernate.Session.class)
+                                .getCurrentLockMode(revision).name(), TransactionSynchronizationManager.isActualTransactionActive(),
+                                TransactionSynchronizationManager.isCurrentTransactionReadOnly()));
+                    }
+                }
+            }
+            return result;
+        }
+
+        @Around("execution(* com.mannschaft.app.billing.BillingPriceVersionRepository.findAllForUpdate(..))")
+        Object beforeLock(ProceedingJoinPoint invocation) throws Throwable {
+            RaceObservation state = current;
+            if (state != null && state.matches(invocation.getArgs())) {
+                String lane = state.lane.get();
+                state.beforeLocks.put(lane, new LockObservation(TransactionSynchronizationManager.isActualTransactionActive(),
+                        TransactionSynchronizationManager.isCurrentTransactionReadOnly()));
+                state.bothBeforeLock.countDown();
+                await(state.bothBeforeLock);
+                if ("resolver".equals(lane)) await(state.firstCompleted);
+            }
+            return invocation.proceed();
         }
     }
 
