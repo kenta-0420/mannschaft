@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260910-1811",
+  "scope": "test-only",
+  "implementation": {
+    "pr": 4431,
+    "sha": "24a93902ea8c9a3c0063e3eab1bbb8e8d2bffde9"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "main 側だけにあった設定キーを棚卸し、同期8キーと完全パスで意図的に省略するDataSource2キーを明示し、既存35試験ファイルが実際に検査する範囲を区別する",
+      "tests": [
+        {
+          "name": "main/test設定差分・35試験ファイルの棚卸とMockito/slice/実MySQL/個別フラグ指定の区別",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/24a93902ea8c9a3c0063e3eab1bbb8e8d2bffde9/docs/development/test_profile_key_coverage.md"
+        },
+        {
+          "name": "同期8キーのtest宣言（予算true、月次締め/retry/外部監視/定期再マッチfalse、LINE文字列off、試験専用ダミー鍵）",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/24a93902ea8c9a3c0063e3eab1bbb8e8d2bffde9/backend/src/test/resources/application-test.yml"
+        },
+        {
+          "name": "source16-digests/implementation-source-bridge節:固定入力と棚卸の源泉",
+          "evidence": "docs/evidence/CMP-260910-1811/runtime-evidence.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "個別フラグ上書き無しの共通test YAMLから予算機能trueが実Spring Beanへ届き、実MySQLを使う既存業務経路がgreenとなることを確認する",
+      "tests": [
+        {
+          "name": "ShiftBudgetMultiParentIT既存12ケース（fixture前の実Properties bindingと割当・消化・複数組織・認可・競合）",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/24a93902ea8c9a3c0063e3eab1bbb8e8d2bffde9/backend/src/test/java/com/mannschaft/app/shiftbudget/ShiftBudgetMultiParentIT.java"
+        },
+        {
+          "name": "実装head24aの正式Backend CI全6shardとaggregate成功（独立metadata）。原XMLは別のLOCAL_CANONICAL_LINUX実走証拠。",
+          "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/42630842297"
+        },
+        {
+          "name": "actual-ca87/actual-cases節:19leaf/74case exact照合：72必須非skip成功＋source-bound既存Disabled2未実施。2件を除外せず、全74成功とは呼ばない。",
+          "evidence": "docs/evidence/CMP-260910-1811/runtime-evidence.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "main/test同名YAMLのleafキー集合差を機械的に検出し、意図的省略を完全パスと理由に限定する番人を用意する",
+      "tests": [
+        {
+          "name": "mainのテストプロファイルのキーはtest側にも存在する()",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/24a93902ea8c9a3c0063e3eab1bbb8e8d2bffde9/backend/src/test/java/com/mannschaft/app/config/TestProfileKeyCoverageGuardTest.java"
+        },
+        {
+          "name": "入れ子の機能フラグ欠落を検出する()／同じ親の別キーを省略免除しない()／値の相違とtest専用キーは欠落とみなさない()／配列要素のleafキー欠落も検出する()／booleanと数値とnullのleafキーも落とさない()",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/24a93902ea8c9a3c0063e3eab1bbb8e8d2bffde9/backend/src/test/java/com/mannschaft/app/config/TestProfileKeyCoverageGuardTest.java"
+        },
+        {
+          "name": "設定同期前の番人RED（c3d4232a、自己検体5成功＋実差分1意図失敗）と自然exit1の記録",
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/24a93902ea8c9a3c0063e3eab1bbb8e8d2bffde9/docs/development/test_profile_key_coverage.md"
+        },
+        {
+          "name": "番人6ケースの必須非skip成功（設定同期前RED歴は保持）",
+          "evidence": "docs/evidence/CMP-260910-1811/runtime-evidence.md"
+        },
+        {
+          "name": "formal-red節:同期前の5controls PASS＋missing8意図failure1と自然Gradle exit1",
+          "evidence": "docs/evidence/CMP-260910-1811/runtime-evidence.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 42630842297
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260910-1811/runtime-evidence.md"
+    },
+    "real": {
+      "status": "not-applicable",
+      "scope": "test-only",
+      "reason": "変更はbackend/src/test配下4ファイルと棚卸docs1ファイルのみで、製品のAPI・UI・認可・導線を変更しない。到達性と業務経路は実Spring・実MySQLの既存ITで検査し、ブラウザー実機操作を受入条件に含めない。"
+    },
+    "exploratory": {
+      "status": "not-applicable",
+      "scope": "test-only",
+      "reason": "製品コード・本番設定・画面・利用者導線に変更がなく、追加の住民探索対象となる製品差分がない。全shard CIと実Beanの非skip検証を探索済みと読み替えない。"
+    }
+  },
+  "regressions": [
+    {
+      "description": "共通test設定へpointcard.rematch-batch.enabled=falseを同期すると、実Tx境界を検査する既存SelfInvocationRequiresNewTransactionITが必要とする条件付きBeanを登録できず、6ケースがcontext起動で失敗した。対象ITだけ明示trueとし、共通false・scheduler無効・実Bean/commit/rollbackの検査を維持した。修正後は同ca87のLOCAL_CANONICAL_LINUXで当該6ケースの必須非skip成功を確認。全体は72必須成功＋既存Disabled2未実施として区別し、source同一bridge、root採用、最終reviewと実装mergeまで確認済み。",
+      "test": "SelfInvocationRequiresNewTransactionIT既存6ケース（課金・再マッチchunk・ストレージfileのcommit/rollback各2件）",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/42557651582/job/128966985065",
+      "greenEvidence": "docs/evidence/CMP-260910-1811/runtime-evidence.md"
+    }
+  ]
+}
