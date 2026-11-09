@@ -3,6 +3,12 @@ package com.mannschaft.app.billing;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.billing.api.BillingContractApplicationService;
+import com.mannschaft.app.billing.api.BillingCatalogQueryService;
+import com.mannschaft.app.billing.api.BillingCurrentBandResolver;
+import com.mannschaft.app.billing.api.BillingCustomerEntity;
+import com.mannschaft.app.billing.api.BillingCustomerJpaRepository;
+import com.mannschaft.app.billing.api.BillingInvoiceEntity;
+import com.mannschaft.app.billing.api.BillingInvoiceJpaRepository;
 import com.mannschaft.app.billing.api.dto.CreateContractRequest;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -98,6 +104,10 @@ class BillingLegacyContractHandoffIT extends AbstractMySqlIntegrationTest {
     @Autowired private RoleRepository roles;
     @Autowired private UserRoleRepository userRoles;
     @Autowired private ScopeMemberCountService memberCounts;
+    @Autowired private BillingCatalogQueryService catalog;
+    @Autowired private BillingCurrentBandResolver currentBands;
+    @Autowired private BillingCustomerJpaRepository customers;
+    @Autowired private BillingInvoiceJpaRepository invoices;
     @MockitoBean private BillingPaymentGateway gateway;
     @TestBean(name = "utcClock", methodName = "handoffClock") private Clock clock;
 
@@ -109,6 +119,9 @@ class BillingLegacyContractHandoffIT extends AbstractMySqlIntegrationTest {
     private Long teamId;
     private Long organizationId;
     private Long createdAdminRole;
+    private UUID invoiceId;
+    private UUID customerId;
+    private final List<String> otherPlans = new ArrayList<>();
     private final List<Long> memberIds = new ArrayList<>();
     private final List<Long> extraUsers = new ArrayList<>();
     private final List<Long> userRoleIds = new ArrayList<>();
@@ -151,6 +164,8 @@ class BillingLegacyContractHandoffIT extends AbstractMySqlIntegrationTest {
     void 所有契約とfixtureだけを撤去する() {
         ResolverReturnHook.CURRENT.remove();
         transactions.executeWithoutResult(tx -> {
+            if (invoiceId != null) { invoices.deleteById(invoiceId); invoices.flush(); }
+            if (customerId != null) { customers.deleteById(customerId); customers.flush(); }
             if (actor != null) {
                 List<BillingContractEntity> owned = ownedContracts();
                 for (BillingContractEntity contract : owned) {
@@ -174,6 +189,11 @@ class BillingLegacyContractHandoffIT extends AbstractMySqlIntegrationTest {
                 }
                 legacyBands.flush();
                 plans.deleteById(planKey);
+                for (String other : otherPlans) {
+                    planFeatures.deleteAll(planFeatures.findByPlanKey(other));
+                    planFeatures.flush();
+                    plans.deleteById(other);
+                }
             }
             if (featureKey != null) features.deleteById(featureKey);
             userRoles.deleteAllById(userRoleIds);
@@ -436,6 +456,113 @@ class BillingLegacyContractHandoffIT extends AbstractMySqlIntegrationTest {
                 .taxNameSnapshot("消費税").includedInPrice(true).effectiveFrom(parent.getEffectiveFrom())
                 .status(BillingPriceVersionStatus.ACTIVE)
                 .creationSource(BillingPriceCreationSource.SYSTEM_BACKFILL).build()).getId());
+    }
+
+    @Test
+    void 無料changePlanの前に有料化したら017で旧契約pointer権利を変更しない() {
+        String oldPlan = "I1931O-" + UUID.randomUUID().toString().substring(0, 16);
+        transactions.executeWithoutResult(tx -> {
+            otherPlans.add(oldPlan);
+            plans.saveAndFlush(PlanEntity.builder().planKey(oldPlan).baseMonthlyPriceJpy(0)
+                    .displayNameKey("it1931").descriptionKey("it1931").sortOrder(0).enabled(true).build());
+            planFeatures.saveAndFlush(PlanFeatureEntity.builder().planKey(oldPlan).featureKey(featureKey).build());
+        });
+        UUID oldId = contracts.createContract(EntitlementScopeKind.USER, actor, null,
+                ContractKind.PLAN, oldPlan, null, actor).contractId();
+        removeCurrentPrice();
+        transactions.executeWithoutResult(tx -> plans.findById(planKey).orElseThrow().setBaseMonthlyPriceJpy(0));
+        assertThat(resolve()).isZero();
+        List<Object> before = savedContractState(oldId);
+        List<UUID> rightsBefore = entitlementIds(oldId);
+        UUID pointerBefore = pointers.findByScopeKindAndScopeIdAndContractKindAndAddonFeatureKey(
+                EntitlementScopeKind.USER, actor, ContractKind.PLAN, "").orElseThrow().getId();
+        time(BOUNDARY);
+
+        assertError(() -> contracts.changePlan(EntitlementScopeKind.USER, actor, oldId, planKey, actor),
+                EntitlementErrorCode.CONTRACT_CHANGE_REQUIRES_PAYMENT);
+
+        assertThat(savedContractState(oldId)).isEqualTo(before);
+        assertThat(entitlementIds(oldId)).isEqualTo(rightsBefore).hasSize(1);
+        assertThat(ownedContracts()).hasSize(1);
+        ActiveContractPointerEntity pointer = pointers.findByScopeKindAndScopeIdAndContractKindAndAddonFeatureKey(
+                EntitlementScopeKind.USER, actor, ContractKind.PLAN, "").orElseThrow();
+        assertThat(pointer.getId()).isEqualTo(pointerBefore);
+        assertThat(pointer.getContractId()).isEqualTo(oldId);
+        assertThat(pspCreates()).isZero();
+    }
+
+    /** AC15の既存履歴characterization。新販売Bとは独立に保存A/FK/invoiceを保つ。 */
+    @Test
+    void 販売B読取後も保存AのFK額と退役band参照と過去invoiceを変更しない() {
+        UUID savedBand = bandIds.getFirst();
+        UUID contractId = contracts.createPendingPaidContract(EntitlementScopeKind.USER, actor, null,
+                ContractKind.PLAN, planKey, null, A_PRICE, actor).contractId();
+        transactions.executeWithoutResult(tx -> {
+            BillingContractEntity contract = contractRepository.findById(contractId).orElseThrow();
+            contract.setStatus(ContractStatus.ACTIVE);
+            contract.setPriceBandVersionId(savedBand);
+            customerId = customers.saveAndFlush(BillingCustomerEntity.builder()
+                    .scopeKind(EntitlementScopeKind.USER).scopeId(actor).pspCustomerRef("cus_it1931_" + actor)
+                    .status("ACTIVE").provisionAttempts(0).version(0L)
+                    .createdAt(BOUNDARY.minusSeconds(100)).updatedAt(BOUNDARY.minusSeconds(100)).build()).getId();
+            invoiceId = invoices.saveAndFlush(BillingInvoiceEntity.builder().billingCustomerId(customerId)
+                    .contractId(contractId).scopeKind(EntitlementScopeKind.USER).scopeId(actor)
+                    .pspInvoiceRef("in_it1931_" + UUID.randomUUID()).billingReason("subscription_cycle")
+                    .status("PAID").periodStart(BOUNDARY.minusSeconds(86_400)).periodEnd(BOUNDARY)
+                    .currency("JPY").subtotalAmount(1_000L).discountAmount(0L).taxAmount(100L)
+                    .totalAmount((long) A_PRICE).issuerNameSnapshot("1931試練")
+                    .paidAt(BOUNDARY.minusSeconds(1)).version(0L)
+                    .createdAt(BOUNDARY.minusSeconds(100)).updatedAt(BOUNDARY.minusSeconds(1)).build()).getId();
+        });
+        List<Object> contractBefore = savedContractState(contractId);
+        List<Object> invoiceBefore = savedInvoiceState();
+        time(BOUNDARY);
+        assertThat(selector.selectNow(BillingProductKind.PLAN, planKey, EntitlementScopeKind.USER)
+                .orElseThrow().bands().getFirst().getAmountIncludingTax()).isEqualTo((long) B_PRICE);
+
+        catalog.getCatalog();
+        resolve();
+        transactions.executeWithoutResult(tx -> {
+            BillingContractEntity saved = contractRepository.findById(contractId).orElseThrow();
+            BillingPriceBandVersionEntity historical = currentBands.resolveContractBand(saved, 1, clock.instant())
+                    .orElseThrow();
+            assertThat(historical.getId()).isEqualTo(savedBand);
+            assertThat(historical.getStatus()).isEqualTo(BillingPriceVersionStatus.RETIRED);
+            assertThat(historical.getAmountIncludingTax()).isEqualTo((long) A_PRICE);
+        });
+
+        assertThat(savedContractState(contractId)).isEqualTo(contractBefore);
+        assertThat(savedInvoiceState()).isEqualTo(invoiceBefore);
+        assertThat(pspCreates()).isZero();
+    }
+
+    private List<Object> savedContractState(UUID id) {
+        return transactions.execute(tx -> {
+            BillingContractEntity saved = contractRepository.findById(id).orElseThrow();
+            return new ArrayList<>(java.util.Arrays.asList(saved.getId(), saved.getScopeKind(), saved.getScopeId(),
+                    saved.getPlanKey(), saved.getStatus(), saved.getPriceBandVersionId(), saved.getPriceJpySnapshot(),
+                    saved.getBandNoSnapshot(), saved.getMemberCountSnapshot(), saved.getContractedAt(),
+                    saved.getCancelledAt(), saved.getVersion(), saved.getCreatedAt(), saved.getUpdatedAt()));
+        });
+    }
+
+    private List<UUID> entitlementIds(UUID contractId) {
+        return transactions.execute(tx -> entitlements.findBySourceKindAndSourceRefIdAndRevokedAtIsNull(
+                EntitlementSourceKind.PLAN, contractId).stream().map(EntitlementEntity::getId).sorted().toList());
+    }
+
+    private List<Object> savedInvoiceState() {
+        return transactions.execute(tx -> {
+            BillingInvoiceEntity saved = invoices.findById(invoiceId).orElseThrow();
+            return new ArrayList<>(java.util.Arrays.asList(saved.getId(), saved.getBillingCustomerId(),
+                    saved.getContractId(), saved.getOrganizationId(), saved.getScopeKind(), saved.getScopeId(),
+                    saved.getPspInvoiceRef(), saved.getPspSubscriptionRef(), saved.getBillingReason(), saved.getStatus(),
+                    saved.getPeriodStart(), saved.getPeriodEnd(), saved.getCurrency(), saved.getSubtotalAmount(),
+                    saved.getDiscountAmount(), saved.getTaxAmount(), saved.getTotalAmount(), saved.getIssuerNameSnapshot(),
+                    saved.getBillingNameSnapshot(), saved.getBillingEmailSnapshot(), saved.getBillingAddressSnapshot(),
+                    saved.getFinalizedAt(), saved.getPaidAt(), saved.getVoidedAt(), saved.getVersion(),
+                    saved.getCreatedAt(), saved.getUpdatedAt(), saved.getDeletedAt()));
+        });
     }
 
     private Integer resolve() {

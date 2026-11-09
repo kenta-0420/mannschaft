@@ -15,6 +15,14 @@ import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
 import org.junit.jupiter.api.AfterEach;
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.Around;
+import org.aspectj.lang.annotation.Aspect;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -48,6 +56,7 @@ import static org.assertj.core.api.Assertions.tuple;
  * HTTP認可・契約保存の証拠は別試練が担い、この試験で代用しない。
  */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
+@Import(BillingLegacyPlanPriceReadIT.SnapshotObservationConfiguration.class)
 @DisplayName("1931 legacy PLAN価格の正本読取")
 class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
 
@@ -63,6 +72,7 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
     @Autowired private BillingCatalogQueryService catalogService;
     @Autowired private BillingPriceResolver priceResolver;
     @Autowired private BillingPriceSelector priceSelector;
+    @Autowired private LegacyPlanPriceSnapshotReader snapshotReader;
     @Autowired private ScopeMemberCountService memberCountService;
     @Autowired private UserRepository userRepository;
     @Autowired private TeamRepository teamRepository;
@@ -131,6 +141,7 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
 
     @AfterEach
     void 所有fixtureだけを削除する() {
+        SnapshotInterleaveHook.CURRENT.remove();
         transactions.executeWithoutResult(tx -> {
             for (UUID contractId : contractIds) {
                 BillingContractEntity contract = contractRepository.findById(contractId).orElseThrow();
@@ -271,18 +282,10 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
 
     /** AC03/05。NOT NULLを破らず保存可能な不適格値を既存scalarと同じく拒否する。 */
     @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
-    @ValueSource(strings = {"emptyTaxName", "inconsistentTotal", "retiredBand", "emptyBands"})
+    @ValueSource(strings = {"emptyTaxName", "inconsistentTotal", "retiredBand", "emptyBands",
+            "emptyTaxCode", "blankStripe", "overlappingBands"})
     void 不適格な新価格は旧baseへfallbackせず未設定040で拒否する(String defect) {
-        transactions.executeWithoutResult(tx -> {
-            BillingPriceBandVersionEntity band = bandRepository.findById(bandIds.getFirst()).orElseThrow();
-            switch (defect) {
-                case "emptyTaxName" -> band.setTaxNameSnapshot("");
-                case "inconsistentTotal" -> band.setAmountIncludingTax(ACTIVE_PRICE + 1);
-                case "retiredBand" -> band.setStatus(BillingPriceVersionStatus.RETIRED);
-                case "emptyBands" -> bandRepository.delete(band);
-                default -> throw new IllegalArgumentException(defect);
-            }
-        });
+        makeActiveInvalid(defect);
         assertThat(priceSelector.selectNow(BillingProductKind.PLAN, planKey, EntitlementScopeKind.USER)).isEmpty();
 
         assertNotConfigured(EntitlementScopeKind.USER, 1L);
@@ -348,19 +351,11 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
 
     /** AC03/04: 公開済みだが販売不能なモデルを旧0円へ戻すと無料権利を誤発行する。 */
     @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
-    @ValueSource(strings = {"emptyTaxName", "inconsistentTotal", "retiredBand", "emptyBands"})
+    @ValueSource(strings = {"emptyTaxName", "inconsistentTotal", "retiredBand", "emptyBands",
+            "emptyTaxCode", "blankStripe", "overlappingBands"})
     void 旧明示0でも新ACTIVEの不適格を無料へfallbackしない(String defect) {
         setLegacyFree();
-        transactions.executeWithoutResult(tx -> {
-            BillingPriceBandVersionEntity band = bandRepository.findById(bandIds.getFirst()).orElseThrow();
-            switch (defect) {
-                case "emptyTaxName" -> band.setTaxNameSnapshot("");
-                case "inconsistentTotal" -> band.setAmountIncludingTax(ACTIVE_PRICE + 1);
-                case "retiredBand" -> band.setStatus(BillingPriceVersionStatus.RETIRED);
-                case "emptyBands" -> bandRepository.delete(band);
-                default -> throw new IllegalArgumentException(defect);
-            }
-        });
+        makeActiveInvalid(defect);
         assertThat(priceSelector.selectNow(BillingProductKind.PLAN, planKey, EntitlementScopeKind.USER)).isEmpty();
 
         assertNotConfigured(EntitlementScopeKind.USER, 1L);
@@ -558,28 +553,38 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
         });
     }
 
-    /** AC19: 新価格だけの全SELECTを観測し、plan数/帯数を増やしても予算を固定する。 */
+    /** AC19正本: 直接batch区間の全SELECTをtable名で除外せず計数する。 */
     @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
     @CsvSource({"1,1", "1,10", "10,1", "10,10"})
-    void dueなしcatalogの価格SELECTはplanと帯を増やしても3本以内(int planCount, int bandsPerScope) {
-        Set<String> requested = prepareCatalogScale(planCount, bandsPerScope);
+    void dueなしbatchの全SELECTはplanと帯を増やしても3本以内(int planCount, int bandsPerScope) {
+        Set<String> plans = prepareCatalogScale(planCount, bandsPerScope);
+        Set<BillingPriceSelector.PlanScopeKey> requested = allScopeKeys(plans);
         try (var capture = com.mannschaft.app.common.visibility.perf.SqlIntentCounter.captureCurrentThread()) {
-            List<PlanItem> result = catalogService.getCatalog().getPlans().stream()
-                    .filter(plan -> requested.contains(plan.getPlanKey())).toList();
-            assertThat(result).hasSize(planCount).allSatisfy(plan -> {
-                assertThat(plan.getBaseMonthlyPriceJpy()).isEqualTo((int) ACTIVE_PRICE);
-                assertThat(plan.getPriceBands()).hasSize(2 * bandsPerScope)
-                        .allSatisfy(band -> assertThat(band.getMonthlyPriceJpy()).isEqualTo((int) ACTIVE_PRICE));
+            Map<BillingPriceSelector.PlanScopeKey, BillingPriceSelector.LegacyPlanSelection> result =
+                    priceSelector.selectLegacyPlans(requested);
+            assertThat(result.keySet()).containsExactlyInAnyOrderElementsOf(requested);
+            result.forEach((key, selection) -> {
+                assertThat(selection.state()).isEqualTo(BillingPriceSelector.LegacyPlanSelectionState.SELECTED);
+                assertThat(selection.snapshot().bands()).hasSize(
+                        key.scopeKind() == EntitlementScopeKind.USER ? 1 : bandsPerScope)
+                        .allSatisfy(band -> assertThat(band.amountIncludingTax()).isEqualTo(ACTIVE_PRICE));
             });
-            List<String> priceSql = capture.capturedSqls().stream()
-                    .map(sql -> sql.toLowerCase(java.util.Locale.ROOT))
-                    .filter(sql -> sql.contains("billing_price_versions") || sql.contains("billing_price_band_versions")
-                            || sql.contains("plan_price_bands")).toList();
-            assertThat(priceSql).allSatisfy(sql -> assertThat(sql.stripLeading()).startsWith("select"));
-            assertThat(priceSql).hasSizeLessThanOrEqualTo(3);
-            assertThat(priceSql).anySatisfy(sql -> assertThat(sql).contains("billing_price_versions"));
-            assertThat(priceSql).anySatisfy(sql -> assertThat(sql).contains("billing_price_band_versions"));
+            assertThat(capture.capturedSqls()).allSatisfy(sql ->
+                    assertThat(sql.toLowerCase(java.util.Locale.ROOT).stripLeading()).startsWith("select"));
+            assertThat(allSelectCount(capture.capturedSqls())).isBetween(1L, 3L);
+            assertThat(capture.capturedSqls()).anySatisfy(sql -> assertThat(sql).contains("billing_price_versions"));
+            assertThat(capture.capturedSqls()).anySatisfy(sql -> assertThat(sql).contains("billing_price_band_versions"));
         }
+    }
+
+    private Set<BillingPriceSelector.PlanScopeKey> allScopeKeys(Set<String> planKeys) {
+        return planKeys.stream().flatMap(key -> java.util.Arrays.stream(EntitlementScopeKind.values())
+                .map(scope -> new BillingPriceSelector.PlanScopeKey(key, scope))).collect(Collectors.toSet());
+    }
+
+    private long allSelectCount(List<String> sqls) {
+        return sqls.stream().map(sql -> sql.toLowerCase(java.util.Locale.ROOT).stripLeading())
+                .filter(sql -> sql.startsWith("select")).count();
     }
 
     private Set<String> prepareCatalogScale(int count, int size) {
@@ -632,8 +637,8 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
 
     /** AC20: 全SQL窓を維持し、due2keyの既存writer読取4Dだけを加算する。 */
     @Test
-    void due2keyのcatalog価格SELECTは3加算4D以内で非due親子を更新しない() {
-        prepareCatalogScale(10, 10);
+    void due2keyのbatch全SELECTは3加算4D以内で非due親子を更新しない() {
+        Set<BillingPriceSelector.PlanScopeKey> requested = allScopeKeys(prepareCatalogScale(10, 10));
         List<UUID> dueCurrent = List.copyOf(versionIds.subList(0, 2));
         List<UUID> next = new ArrayList<>();
         Set<UUID> dueBands = new java.util.HashSet<>();
@@ -668,15 +673,17 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
         });
         Map<UUID, List<Object>> untouchedBefore = unchangedPriceRows(dueCurrent, next, dueBands);
         try (var capture = com.mannschaft.app.common.visibility.perf.SqlIntentCounter.captureCurrentThread()) {
-            PlanItem result = ownedCatalog();
-            assertThat(result.getBaseMonthlyPriceJpy()).isEqualTo(4_840);
-            assertThat(result.getPriceBands()).filteredOn(band -> "TEAM".equals(band.getScopeKind()))
-                    .extracting(PriceBand::getMonthlyPriceJpy).containsExactly(4_840);
-            long selects = capture.capturedSqls().stream().map(sql -> sql.toLowerCase(java.util.Locale.ROOT))
-                    .filter(sql -> sql.stripLeading().startsWith("select"))
-                    .filter(sql -> sql.contains("billing_price_versions") || sql.contains("billing_price_band_versions")
-                            || sql.contains("plan_price_bands")).count();
-            assertThat(selects).isLessThanOrEqualTo(3 + 4 * next.size());
+            Map<BillingPriceSelector.PlanScopeKey, BillingPriceSelector.LegacyPlanSelection> result =
+                    priceSelector.selectLegacyPlans(requested);
+            assertThat(result.keySet()).containsExactlyInAnyOrderElementsOf(requested);
+            for (EntitlementScopeKind scope : List.of(EntitlementScopeKind.USER, EntitlementScopeKind.TEAM)) {
+                BillingPriceSelector.LegacyPlanSelection selection = result.get(
+                        new BillingPriceSelector.PlanScopeKey(planKey, scope));
+                assertThat(selection.state()).isEqualTo(BillingPriceSelector.LegacyPlanSelectionState.SELECTED);
+                assertThat(selection.snapshot().bands()).extracting(BillingPriceSelector.LegacyPlanBandSnapshot::amountIncludingTax)
+                        .containsExactly(4_840L);
+            }
+            assertThat(allSelectCount(capture.capturedSqls())).isLessThanOrEqualTo(3 + 4 * next.size());
         }
         transactions.executeWithoutResult(tx -> {
             assertThat(versionRepository.findAllById(dueCurrent)).hasSize(2)
@@ -720,6 +727,271 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
         assertThat(priceResolver.resolveMonthlyPriceJpy(
                 EntitlementScopeKind.USER, 1L, ContractKind.PLAN, planKey, null)).isEqualTo(19_999_998);
         assertThat(ownedCatalog().getBaseMonthlyPriceJpy()).isEqualTo(19_999_998);
+    }
+
+    /** 前段due空から公開履歴なしを推定してはならない。固定now後の他TX公開も観測する。 */
+    @Test
+    void due空の後に別commitで初公開と改定が起きても旧0へ戻さない() {
+        removeActivePrices();
+        setLegacyFree();
+        SnapshotObservation observation = new SnapshotObservation();
+        observation.afterDue = () -> commitElsewhere(() -> {
+            saveObservedVersion(planKey, EntitlementScopeKind.USER, 1L, BillingPriceVersionStatus.RETIRED,
+                    NOW.minusSeconds(60), NOW.plusSeconds(1), null);
+            saveObservedVersion(planKey, EntitlementScopeKind.USER, 2L, BillingPriceVersionStatus.ACTIVE,
+                    NOW.plusSeconds(1), null, ACTIVE_PRICE);
+        });
+        SnapshotInterleaveHook.CURRENT.set(observation);
+
+        assertNotConfigured(EntitlementScopeKind.USER, 1L);
+
+        assertThat(observation.dueReturned).isTrue();
+        assertThat(observation.dueResult).isEmpty();
+    }
+
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
+    @ValueSource(strings = {"retiredMarker", "expiredActive"})
+    void 適格ACTIVEは履歴marker又は期限外ACTIVEがあっても既存scalarと一致する(String extra) {
+        transactions.executeWithoutResult(tx -> saveObservedVersion(planKey, EntitlementScopeKind.USER, 2L,
+                "retiredMarker".equals(extra) ? BillingPriceVersionStatus.RETIRED : BillingPriceVersionStatus.ACTIVE,
+                NOW.minusSeconds(60), NOW.minusSeconds(1), null));
+        BillingPriceSelector.SelectedPrice scalar = priceSelector
+                .selectNow(BillingProductKind.PLAN, planKey, EntitlementScopeKind.USER).orElseThrow();
+
+        BillingPriceSelector.LegacyPlanSelection result = priceSelector.selectLegacyPlans(
+                Set.of(new BillingPriceSelector.PlanScopeKey(planKey, EntitlementScopeKind.USER)))
+                .get(new BillingPriceSelector.PlanScopeKey(planKey, EntitlementScopeKind.USER));
+
+        assertThat(result.state()).isEqualTo(BillingPriceSelector.LegacyPlanSelectionState.SELECTED);
+        assertThat(result.snapshot()).isNotNull();
+        assertThat(result.snapshot().priceVersionId()).isEqualTo(scalar.revision().getId());
+        assertThat(result.snapshot().bands().getFirst().amountIncludingTax()).isEqualTo(ACTIVE_PRICE);
+    }
+
+    @Test
+    void 有効ACTIVEが複数なら既存scalarと同じく販売不能にする() {
+        transactions.executeWithoutResult(tx -> saveObservedVersion(planKey, EntitlementScopeKind.USER, 2L,
+                BillingPriceVersionStatus.ACTIVE, EFFECTIVE_FROM, null, ACTIVE_PRICE));
+        assertThat(priceSelector.selectNow(BillingProductKind.PLAN, planKey, EntitlementScopeKind.USER)).isEmpty();
+        BillingPriceSelector.PlanScopeKey key = new BillingPriceSelector.PlanScopeKey(planKey, EntitlementScopeKind.USER);
+
+        BillingPriceSelector.LegacyPlanSelection result = priceSelector.selectLegacyPlans(Set.of(key)).get(key);
+
+        assertThat(result.state()).isEqualTo(BillingPriceSelector.LegacyPlanSelectionState.NOT_SELLABLE);
+        assertThat(result.snapshot()).isNull();
+    }
+
+    @Test
+    void RETIRED履歴が多数でも非ACTIVEの親markerは要求key当たり最大1行である() {
+        transactions.executeWithoutResult(tx -> {
+            versionRepository.findById(versionIds.getFirst()).orElseThrow().setStatus(BillingPriceVersionStatus.RETIRED);
+            bandRepository.findById(bandIds.getFirst()).orElseThrow().setStatus(BillingPriceVersionStatus.RETIRED);
+            for (long revision = 2; revision <= 20; revision++) {
+                saveObservedVersion(planKey, EntitlementScopeKind.USER, revision, BillingPriceVersionStatus.RETIRED,
+                        EFFECTIVE_FROM, NOW.minusSeconds(1), null);
+            }
+        });
+        SnapshotObservation observation = new SnapshotObservation();
+        SnapshotInterleaveHook.CURRENT.set(observation);
+        BillingPriceSelector.PlanScopeKey key = new BillingPriceSelector.PlanScopeKey(planKey, EntitlementScopeKind.USER);
+
+        BillingPriceSelector.LegacyPlanSelection result = snapshotReader.readActive(Set.of(key), NOW).get(key);
+
+        assertThat(result.state()).isEqualTo(BillingPriceSelector.LegacyPlanSelectionState.NOT_SELLABLE);
+        assertThat(result.snapshot()).isNull();
+        assertThat(observation.parentRowCounts).containsExactly(1);
+    }
+
+    @Test
+    void PRIMARYの親子読取の間で別commitが改定してもsnapshotを混在させない() {
+        UUID originalParent = versionIds.getFirst();
+        UUID originalBand = bandIds.getFirst();
+        SnapshotObservation observation = new SnapshotObservation();
+        observation.afterParents = () -> commitElsewhere(() -> {
+            versionRepository.findById(originalParent).orElseThrow().setStatus(BillingPriceVersionStatus.RETIRED);
+            bandRepository.findById(originalBand).orElseThrow().setStatus(BillingPriceVersionStatus.RETIRED);
+            saveObservedVersion(planKey, EntitlementScopeKind.USER, 2L, BillingPriceVersionStatus.ACTIVE,
+                    NOW, null, 4_840L);
+        });
+        SnapshotInterleaveHook.CURRENT.set(observation);
+        BillingPriceSelector.PlanScopeKey key = new BillingPriceSelector.PlanScopeKey(planKey, EntitlementScopeKind.USER);
+        {
+            BillingPriceSelector.LegacyPlanSelection result = priceSelector.selectLegacyPlans(Set.of(key)).get(key);
+
+            assertThat(observation.parentsReturned).isTrue();
+            assertThat(result.state()).isEqualTo(BillingPriceSelector.LegacyPlanSelectionState.SELECTED);
+            assertThat(result.snapshot().priceVersionId()).isEqualTo(originalParent);
+            assertThat(result.snapshot().bands()).containsExactly(new BillingPriceSelector.LegacyPlanBandSnapshot(
+                    originalBand, 1, 1, null, ACTIVE_PRICE));
+        }
+        transactions.executeWithoutResult(tx -> {
+            assertThat(versionRepository.findById(originalParent).orElseThrow().getStatus())
+                    .isEqualTo(BillingPriceVersionStatus.RETIRED);
+            assertThat(bandRepository.findById(originalBand).orElseThrow().getStatus())
+                    .isEqualTo(BillingPriceVersionStatus.RETIRED);
+        });
+    }
+
+    @Test
+    void 要求keyとscopeのIN直積に含まれる非要求pairは昇格しない() {
+        String otherPlan = "I1931X-" + UUID.randomUUID().toString().substring(0, 16);
+        UUID[] excluded = new UUID[2];
+        transactions.executeWithoutResult(tx -> {
+            additionalPlans.add(otherPlan);
+            planRepository.saveAndFlush(PlanEntity.builder().planKey(otherPlan).baseMonthlyPriceJpy(0)
+                    .displayNameKey("it1931").descriptionKey("it1931").sortOrder(0).enabled(true).build());
+            saveObservedVersion(otherPlan, EntitlementScopeKind.TEAM, 1L, BillingPriceVersionStatus.ACTIVE,
+                    EFFECTIVE_FROM, null, ACTIVE_PRICE);
+            excluded[0] = saveObservedVersion(otherPlan, EntitlementScopeKind.USER, 1L,
+                    BillingPriceVersionStatus.SCHEDULED, NOW, null, ACTIVE_PRICE);
+            excluded[1] = saveObservedVersion(planKey, EntitlementScopeKind.TEAM, 2L,
+                    BillingPriceVersionStatus.SCHEDULED, NOW, null, ACTIVE_PRICE);
+        });
+        Set<BillingPriceSelector.PlanScopeKey> requested = Set.of(
+                new BillingPriceSelector.PlanScopeKey(planKey, EntitlementScopeKind.USER),
+                new BillingPriceSelector.PlanScopeKey(otherPlan, EntitlementScopeKind.TEAM));
+
+        Map<BillingPriceSelector.PlanScopeKey, BillingPriceSelector.LegacyPlanSelection> result =
+                priceSelector.selectLegacyPlans(requested);
+
+        assertThat(result.keySet()).containsExactlyInAnyOrderElementsOf(requested);
+        assertThat(result.values()).allSatisfy(selection ->
+                assertThat(selection.state()).isEqualTo(BillingPriceSelector.LegacyPlanSelectionState.SELECTED));
+        transactions.executeWithoutResult(tx -> assertThat(versionRepository.findAllById(List.of(excluded)))
+                .hasSize(2).allSatisfy(version -> {
+                    assertThat(version.getStatus()).isEqualTo(BillingPriceVersionStatus.SCHEDULED);
+                    assertThat(bandRepository.findByPriceVersionIdAndDeletedAtIsNullOrderByBandNoAsc(version.getId()))
+                            .hasSize(1).allSatisfy(band ->
+                                    assertThat(band.getStatus()).isEqualTo(BillingPriceVersionStatus.SCHEDULED));
+                }));
+    }
+
+    private UUID saveObservedVersion(String key, EntitlementScopeKind scope, long revision,
+                                     BillingPriceVersionStatus status, Instant from, Instant until, Long amount) {
+        BillingPriceVersionEntity parent = versionRepository.saveAndFlush(BillingPriceVersionEntity.builder()
+                .productKind(BillingProductKind.PLAN).productKey(key).scopeKind(scope)
+                .catalogRevision("1931-observe-" + revision).revisionNo(revision).status(status)
+                .effectiveFrom(from).effectiveUntil(until).provisionAttempts(0)
+                .creationSource(BillingPriceCreationSource.SYSTEM_BACKFILL).build());
+        versionIds.add(parent.getId());
+        if (amount != null) {
+            long excluding = amount == 4_840L ? 4_400L : 3_300L;
+            long tax = amount - excluding;
+            bandIds.add(bandRepository.saveAndFlush(BillingPriceBandVersionEntity.builder()
+                    .productKind(BillingProductKind.PLAN).productKey(key).scopeKind(scope)
+                    .priceVersionId(parent.getId()).bandNo(1).minMembers(1).currency("JPY")
+                    .stripePriceRef("price_it1931_observe_" + UUID.randomUUID()).inputAmount(amount)
+                    .taxBehavior(BillingTaxBehavior.INCLUSIVE).taxCodeSnapshot("txcd_10000000").taxMasterSnapshot("{}")
+                    .amountExcludingTax(excluding).taxAmount(tax).amountIncludingTax(amount).taxRateBasisPoints(1_000)
+                    .taxNameSnapshot("消費税").includedInPrice(true).effectiveFrom(from).effectiveUntil(until)
+                    .status(status).creationSource(BillingPriceCreationSource.SYSTEM_BACKFILL).build()).getId());
+        }
+        return parent.getId();
+    }
+
+    private void commitElsewhere(Runnable fixtureMutation) {
+        java.util.concurrent.ExecutorService writer = java.util.concurrent.Executors.newSingleThreadExecutor();
+        try {
+            writer.submit(() -> transactions.executeWithoutResult(tx -> fixtureMutation.run()))
+                    .get(15, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (Exception exception) {
+            throw new AssertionError("所有fixtureの別TX commitに失敗しました", exception);
+        } finally {
+            writer.shutdownNow();
+            try {
+                assertThat(writer.awaitTermination(15, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError("所有fixture writerの終了待ちが中断されました", exception);
+            }
+        }
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class SnapshotObservationConfiguration {
+        @Bean SnapshotInterleaveHook snapshotInterleaveHook() { return new SnapshotInterleaveHook(); }
+    }
+
+    /** 実処理復帰後だけの同期hook。内部返値を差し替えず、DB改定は別threadの別commit。 */
+    @Aspect
+    @Order(Ordered.HIGHEST_PRECEDENCE + 100)
+    static class SnapshotInterleaveHook {
+        private static final ThreadLocal<SnapshotObservation> CURRENT = new ThreadLocal<>();
+
+        @Around("execution(* com.mannschaft.app.billing.LegacyPlanPriceSnapshotReader.readDueKeys(..))")
+        Object afterDue(ProceedingJoinPoint invocation) throws Throwable {
+            Object result = invocation.proceed();
+            SnapshotObservation observation = CURRENT.get();
+            if (observation != null) {
+                observation.dueReturned = true;
+                observation.dueResult = (Set<?>) result;
+                Runnable action = observation.afterDue;
+                observation.afterDue = null;
+                if (action != null) action.run();
+            }
+            return result;
+        }
+
+        @Around("execution(* com.mannschaft.app.billing.LegacyPlanPriceSnapshotReader.readActive(..))")
+        Object duringActive(ProceedingJoinPoint invocation) throws Throwable {
+            SnapshotObservation observation = CURRENT.get();
+            if (observation != null) observation.activeWindow = true;
+            try { return invocation.proceed(); }
+            finally { if (observation != null) observation.activeWindow = false; }
+        }
+
+        @Around("execution(* com.mannschaft.app.billing.BillingPriceVersionRepository.*(..))")
+        Object afterParents(ProceedingJoinPoint invocation) throws Throwable {
+            Object result = invocation.proceed();
+            SnapshotObservation observation = CURRENT.get();
+            if (observation != null && observation.activeWindow && result instanceof List<?> rows
+                    && !rows.isEmpty() && rows.stream().allMatch(BillingPriceVersionEntity.class::isInstance)) {
+                observation.parentsReturned = true;
+                observation.parentRowCounts.add(rows.size());
+                Runnable action = observation.afterParents;
+                observation.afterParents = null;
+                if (action != null) action.run();
+            }
+            return result;
+        }
+    }
+
+    static class SnapshotObservation {
+        private Runnable afterDue;
+        private Runnable afterParents;
+        private boolean dueReturned;
+        private boolean parentsReturned;
+        private boolean activeWindow;
+        private Set<?> dueResult;
+        private final List<Integer> parentRowCounts = new ArrayList<>();
+    }
+
+    /** AC02/03の既存互換。enabled=falseを新価格の存在でcatalogへ復活させない。 */
+    @Test
+    void 無効planは新ACTIVEがあっても会員catalogに表示しない() {
+        transactions.executeWithoutResult(tx -> planRepository.findById(planKey).orElseThrow().setEnabled(false));
+
+        assertThat(catalogService.getCatalog().getPlans()).noneMatch(plan -> planKey.equals(plan.getPlanKey()));
+    }
+
+    private void makeActiveInvalid(String defect) {
+        transactions.executeWithoutResult(tx -> {
+            BillingPriceBandVersionEntity band = bandRepository.findById(bandIds.getFirst()).orElseThrow();
+            switch (defect) {
+                case "emptyTaxName" -> band.setTaxNameSnapshot("");
+                case "inconsistentTotal" -> band.setAmountIncludingTax(ACTIVE_PRICE + 1);
+                case "retiredBand" -> band.setStatus(BillingPriceVersionStatus.RETIRED);
+                case "emptyBands" -> bandRepository.delete(band);
+                case "emptyTaxCode" -> band.setTaxCodeSnapshot("");
+                case "blankStripe" -> band.setStripePriceRef(" ");
+                case "overlappingBands" -> {
+                    band.setMaxMembers(20);
+                    saveMemberBand(versionRepository.findById(band.getPriceVersionId()).orElseThrow(),
+                            2, 20, null, 4_840L, 4_400L, 440L);
+                }
+                default -> throw new IllegalArgumentException(defect);
+            }
+        });
     }
 
     private PlanItem ownedCatalog() {
