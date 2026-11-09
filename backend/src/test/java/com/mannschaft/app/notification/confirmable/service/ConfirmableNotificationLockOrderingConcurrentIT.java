@@ -105,6 +105,7 @@ class ConfirmableNotificationLockOrderingConcurrentIT extends AbstractMySqlInteg
     @AfterEach
     void cleanUp() {
         if (notificationId != null) {
+            ConfirmableFanoutFixture.deleteFanoutJobsForNotification(jdbc, notificationId);
             recipientRepository.deleteAll(recipientRepository.findByConfirmableNotificationId(notificationId));
             notificationRepository.deleteById(notificationId);
         }
