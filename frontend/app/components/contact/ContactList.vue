@@ -15,7 +15,8 @@ async function fetchContacts() {
   try {
     const result = await contactApi.listContacts({ q: searchQuery.value || undefined, limit: 50 })
     contacts.value = result.data
-    total.value = result.meta.total
+    // BE は meta を返さない（ページングなし）ので、無ければ件数を総数とする
+    total.value = result.meta?.total ?? result.data.length
   } catch (e) {
     captureQuiet(e, { context: 'ContactList: 連絡先一覧取得' })
   } finally {
