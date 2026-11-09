@@ -396,8 +396,8 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
 
     /** 初回greenが正常の既存互換。FREEが不在なら所有fixtureを作り、既存行は再利用する。 */
     @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
-    @ValueSource(booleans = {false, true})
-    void FREEと新公開価格なしの明示0は実無料契約を作成できる(boolean existingFree) {
+    @CsvSource({"false,false", "true,false", "true,true"})
+    void FREEと新公開価格なしの明示0は実無料契約を作成できる(boolean existingFree, boolean paidModel) {
         removeActivePrices();
         setLegacyFree();
         String targetPlan = existingFree ? "FREE" : planKey;
@@ -410,6 +410,15 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
                     additionalPlans.add("FREE");
                 }
             });
+        }
+        if (paidModel) {
+            transactions.executeWithoutResult(tx -> saveObservedVersion("FREE", EntitlementScopeKind.USER, 1L,
+                    BillingPriceVersionStatus.ACTIVE, NOW.minusSeconds(60), null, 3_630L));
+            assertThat(priceSelector.selectNow(BillingProductKind.PLAN, "FREE", EntitlementScopeKind.USER))
+                    .isPresent();
+            assertThat(catalogService.getCatalog().getPlans().stream()
+                    .filter(item -> "FREE".equals(item.getPlanKey())).findFirst().orElseThrow()
+                    .getBaseMonthlyPriceJpy()).isZero();
         }
         Long actor = transactions.execute(tx -> {
             Long id = userRepository.saveAndFlush(UserEntity.builder()
