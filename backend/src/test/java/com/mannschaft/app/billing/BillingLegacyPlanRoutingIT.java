@@ -127,6 +127,41 @@ class BillingLegacyPlanRoutingIT extends AbstractMySqlIntegrationTest {
         });
     }
 
+    /** 旧価格も外側replicaへ戻って再照会せず、parent SQLのPRIMARY snapshotに含める。 */
+    @Test
+    void 未公開時の旧baseと全旧帯もPRIMARY同snapshotの3SELECT以内で読む() {
+        transactions.executeWithoutResult(tx -> {
+            bands.deleteAllById(bandIds);
+            bands.flush();
+            versions.deleteAllById(List.of(currentId, nextId));
+            versions.flush();
+            currentId = null;
+            nextId = null;
+            bandIds.clear();
+        });
+        jdbc.update("INSERT INTO plan_price_bands(plan_key,scope_kind,band_no,min_members,max_members,monthly_price_jpy) VALUES(?, 'TEAM',1,1,20,0)", planKey);
+        jdbc.update("INSERT INTO plan_price_bands(plan_key,scope_kind,band_no,min_members,max_members,monthly_price_jpy) VALUES(?, 'ORG',1,1,NULL,1100)", planKey);
+        Trace trace = ConnectionObservations.start();
+        try {
+            var result = caller.readHelper(planKey);
+            assertThat(result.get(new BillingPriceSelector.PlanScopeKey(planKey, EntitlementScopeKind.USER)).state())
+                    .isEqualTo(BillingPriceSelector.LegacyPlanSelectionState.NO_PUBLISHED_PRICE);
+        } finally {
+            ConnectionObservations.stop();
+        }
+        assertRestored(trace);
+        List<StatementObservation> selects = trace.helperStatements.stream()
+                .filter(event -> event.sql().stripLeading().startsWith("select")).toList();
+        assertThat(selects).hasSizeBetween(1, 3).allSatisfy(event -> {
+            assertThat(event.target()).isEqualTo("primaryDataSource");
+            assertThat(event.active()).isTrue();
+            assertThat(event.readOnly()).isFalse();
+        });
+        assertThat(selects).anySatisfy(event -> {
+            assertThat(event.sql()).contains("billing_price_versions", "plan_price_bands", "base_monthly_price_jpy");
+        });
+    }
+
     @Test
     void 実readOnly外側から昇格をPRIMARYでcommitしPRIMARYのBを返して外側を復元する() {
         Trace trace = ConnectionObservations.start();
@@ -328,7 +363,13 @@ class BillingLegacyPlanRoutingIT extends AbstractMySqlIntegrationTest {
         public Map<BillingPriceSelector.PlanScopeKey, BillingPriceSelector.LegacyPlanSelection> readHelper(String planKey) {
             try {
                 plans.findById(planKey).orElseThrow(); // このfixtureの入力は保存keyと同じ。aliasの実証はReadITで行う。
-                return selector.selectLegacyPlans(Set.of(new BillingPriceSelector.PlanScopeKey(planKey, EntitlementScopeKind.USER)));
+                Trace trace = ConnectionObservations.CURRENT.get();
+                int start = trace == null ? 0 : trace.statements.size();
+                var result = selector.selectLegacyPlans(Set.of(new BillingPriceSelector.PlanScopeKey(planKey, EntitlementScopeKind.USER)));
+                if (trace != null) {
+                    trace.helperStatements = List.copyOf(trace.statements.subList(start, trace.statements.size()));
+                }
+                return result;
             } finally {
                 Trace trace = ConnectionObservations.CURRENT.get();
                 if (trace != null) {
@@ -458,6 +499,7 @@ class BillingLegacyPlanRoutingIT extends AbstractMySqlIntegrationTest {
     /** 観測中のSQLと呼出し復帰境界。 */
     static class Trace {
         private final List<StatementObservation> statements = new ArrayList<>();
+        private List<StatementObservation> helperStatements = List.of();
         private ReturnBoundary returnBoundary;
     }
 
