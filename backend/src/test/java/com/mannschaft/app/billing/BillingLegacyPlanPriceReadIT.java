@@ -458,9 +458,10 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
     @CsvSource({"TEAM,1100,0,1,true", "ORG,1100,0,1,true",
             "TEAM,1100,0,0,false", "ORG,1100,0,0,false",
             "TEAM,0,1100,1,false", "ORG,0,1100,1,false",
-            "TEAM,0,1100,0,true", "ORG,0,1100,0,true"})
+            "TEAM,0,1100,0,true", "ORG,0,1100,0,true",
+            "TEAM,0,,1,true", "ORG,0,,1,true", "TEAM,1100,,1,false", "ORG,1100,,1,false"})
     void 未公開時の旧最終額は適合帯優先で明示0だけ無料を維持する(
-            EntitlementScopeKind scope, int base, int bandPrice, int members, boolean free) {
+            EntitlementScopeKind scope, int base, Integer bandPrice, int members, boolean free) {
         removeActivePrices();
         transactions.executeWithoutResult(tx -> {
             planRepository.findById(planKey).orElseThrow().setBaseMonthlyPriceJpy(base);
@@ -475,11 +476,15 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
         } else {
             assertNotConfigured(scope, scopeId);
         }
-        if (base > 0 && bandPrice == 0) {
+        if (base == 0 && bandPrice == null) {
+            assertThat(ownedCatalog().getPriceBands()).filteredOn(band -> scope.name().equals(band.getScopeKind()))
+                    .isNotEmpty().allSatisfy(band -> assertThat(band.getMonthlyPriceJpy()).isNull());
+        }
+        if (base > 0 && Integer.valueOf(0).equals(bandPrice)) {
             assertThat(ownedCatalog().getPriceBands()).filteredOn(band -> scope.name().equals(band.getScopeKind()))
                     .isNotEmpty().allSatisfy(band -> assertThat(band.getMonthlyPriceJpy()).isZero());
         }
-        if (base == 0 && bandPrice > 0) {
+        if (base == 0 && bandPrice != null && bandPrice > 0) {
             assertThat(ownedCatalog().getPriceBands()).filteredOn(band -> scope.name().equals(band.getScopeKind()))
                     .noneSatisfy(band -> assertThat(band.getMonthlyPriceJpy()).isEqualTo(0));
         }
