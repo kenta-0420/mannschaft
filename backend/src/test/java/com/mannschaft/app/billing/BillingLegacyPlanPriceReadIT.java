@@ -516,6 +516,83 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
         assertThatThrownBy(() -> result.oldPrice().bands().clear()).isInstanceOf(UnsupportedOperationException.class);
     }
 
+    /** FREEのmetadata要求は新dueを昇格しない。型契約より先に実状態を比較する。 */
+    @Test
+    void FREEのmetadata用helperは所有dueを昇格せず元価格を保持する() {
+        assertFreeDueUnchanged(false);
+    }
+
+    /** legacy入口のFREE分類とpromotion対象除外を独立に検証する。 */
+    @Test
+    void FREEのlegacy入口は所有dueを昇格せず無料を保持する() {
+        assertFreeDueUnchanged(true);
+    }
+
+    private void assertFreeDueUnchanged(boolean legacy) {
+        transactions.executeWithoutResult(tx -> {
+            if (planRepository.findById("FREE").isEmpty()) {
+                planRepository.saveAndFlush(PlanEntity.builder().planKey("FREE").baseMonthlyPriceJpy(0)
+                        .displayNameKey("billing.plans.free.name").descriptionKey("billing.plans.free.description")
+                        .sortOrder(0).enabled(true).build());
+                additionalPlans.add("FREE");
+            }
+        });
+        assertThat(allFreePriceRows()).as("所有外のFREE価格を変更しないfixture前提").isEmpty();
+        UUID ownedDue = transactions.execute(tx -> {
+            long revision = versionRepository
+                    .findByProductKindAndProductKeyAndScopeKindAndDeletedAtIsNullOrderByRevisionNoDesc(
+                            BillingProductKind.PLAN, "FREE", EntitlementScopeKind.USER).stream()
+                    .mapToLong(BillingPriceVersionEntity::getRevisionNo).max().orElse(0L) + 1;
+            return saveObservedVersion("FREE", EntitlementScopeKind.USER, revision,
+                    BillingPriceVersionStatus.SCHEDULED, NOW.minusSeconds(1), null, ACTIVE_PRICE);
+        });
+        Map<UUID, List<Object>> before = allFreePriceRows();
+        List<List<Object>> oldBands = freeOldBandRows();
+        if (legacy) {
+            assertThat(catalogService.getCatalog().getPlans().stream()
+                    .filter(item -> "FREE".equals(item.getPlanKey())).findFirst().orElseThrow()
+                    .getBaseMonthlyPriceJpy()).isZero();
+            assertThat(priceResolver.resolveMonthlyPriceJpy(
+                    EntitlementScopeKind.USER, 1L, ContractKind.PLAN, "FREE", null)).isZero();
+        } else {
+            priceSelector.selectLegacyPlans(Set.of(
+                    new BillingPriceSelector.PlanScopeKey("FREE", EntitlementScopeKind.USER)));
+        }
+        assertThat(transactions.execute(tx -> versionRepository.findById(ownedDue).orElseThrow().getStatus()))
+                .isEqualTo(BillingPriceVersionStatus.SCHEDULED);
+        assertThat(allFreePriceRows()).isEqualTo(before);
+        assertThat(freeOldBandRows()).isEqualTo(oldBands);
+
+    }
+
+    private Map<UUID, List<Object>> allFreePriceRows() {
+        return transactions.execute(tx -> {
+            Map<UUID, List<Object>> state = new java.util.HashMap<>();
+            for (EntitlementScopeKind scope : EntitlementScopeKind.values()) {
+                for (BillingPriceVersionEntity version : versionRepository
+                        .findByProductKindAndProductKeyAndScopeKindAndDeletedAtIsNullOrderByRevisionNoDesc(
+                                BillingProductKind.PLAN, "FREE", scope)) {
+                    state.put(version.getId(), java.util.Arrays.asList(version.getStatus(), version.getLockVersion(),
+                            version.getUpdatedAt(), version.getEffectiveFrom(), version.getEffectiveUntil()));
+                    for (BillingPriceBandVersionEntity band : bandRepository
+                            .findByPriceVersionIdAndDeletedAtIsNullOrderByBandNoAsc(version.getId())) {
+                        state.put(band.getId(), java.util.Arrays.asList(band.getStatus(), band.getLockVersion(),
+                                band.getUpdatedAt(), band.getEffectiveFrom(), band.getEffectiveUntil()));
+                    }
+                }
+            }
+            return state;
+        });
+    }
+
+    private List<List<Object>> freeOldBandRows() {
+        return transactions.execute(tx -> legacyBandRepository.findByPlanKey("FREE").stream()
+                .sorted(java.util.Comparator.comparing((PlanPriceBandEntity band) -> band.getScopeKind().name())
+                        .thenComparing(PlanPriceBandEntity::getBandNo))
+                .map(band -> java.util.Arrays.<Object>asList(band.getScopeKind(), band.getBandNo(),
+                        band.getMinMembers(), band.getMaxMembers(), band.getMonthlyPriceJpy())).toList());
+    }
+
     private void setLegacyFree() {
         transactions.executeWithoutResult(tx -> {
             planRepository.findById(planKey).orElseThrow().setBaseMonthlyPriceJpy(0);

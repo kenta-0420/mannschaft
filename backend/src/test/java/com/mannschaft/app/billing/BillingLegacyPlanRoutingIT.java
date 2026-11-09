@@ -139,8 +139,8 @@ class BillingLegacyPlanRoutingIT extends AbstractMySqlIntegrationTest {
             nextId = null;
             bandIds.clear();
         });
-        jdbc.update("INSERT INTO plan_price_bands(plan_key,scope_kind,band_no,min_members,max_members,monthly_price_jpy) VALUES(?, 'TEAM',1,1,20,0)", planKey);
-        jdbc.update("INSERT INTO plan_price_bands(plan_key,scope_kind,band_no,min_members,max_members,monthly_price_jpy) VALUES(?, 'ORG',1,1,NULL,1100)", planKey);
+        jdbc.update("INSERT INTO plan_price_bands(plan_key,scope_kind,band_no,min_members,max_members,monthly_price_jpy,created_at,updated_at) VALUES(?, 'TEAM',1,1,20,0,CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6))", planKey);
+        jdbc.update("INSERT INTO plan_price_bands(plan_key,scope_kind,band_no,min_members,max_members,monthly_price_jpy,created_at,updated_at) VALUES(?, 'ORG',1,1,NULL,1100,CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6))", planKey);
         Trace trace = ConnectionObservations.start();
         try {
             var result = caller.readHelper(planKey);
