@@ -140,6 +140,8 @@ class FlywayFromScratchMigrationTest {
     private static final String ENTITY_BASE_PACKAGE = "com.mannschaft.app";
     private static final Pattern MYSQL_VARCHAR_COLUMN_TYPE =
             Pattern.compile("^varchar\\s*\\(\\s*(\\d+)\\s*\\)$");
+    private static final Pattern MAPPED_VARCHAR_SQL_TYPE =
+            Pattern.compile("^varchar\\s*\\(\\s*(\\d+)\\s*\\)", Pattern.CASE_INSENSITIVE);
 
     /**
      * <b>既知の未返済ドリフト台帳 — 空であること（2026-09-29 全額返済・CMP-260924-0010）</b>
@@ -339,7 +341,7 @@ class FlywayFromScratchMigrationTest {
                         if (actualType != null && actualType.trim().toLowerCase(Locale.ROOT).startsWith("varchar")) {
                             actualVarcharColumnCount++;
                         }
-                        String varcharViolation = varcharLengthViolation(key, column, actualType);
+                        String varcharViolation = varcharLengthViolation(key, column, actualType, metadata);
                         if (varcharViolation != null) {
                             violations.add(varcharViolation);
                         }
@@ -666,7 +668,7 @@ class FlywayFromScratchMigrationTest {
 
         assertThat(varcharLengthViolation("fixture_table.fixture_column", column, "varchar(9)"))
                 .as("Entity宣言長10より短い実VARCHAR長9は違反")
-                .isEqualTo("fixture_table.fixture_column … Entity length 10 / DB VARCHAR length 9");
+                .isEqualTo("fixture_table.fixture_column … Entity effective VARCHAR length 10 / DB VARCHAR length 9");
         assertThat(varcharLengthViolation("fixture_table.fixture_column", column, "varchar(10)"))
                 .as("同じ長さは違反でない")
                 .isNull();
@@ -686,12 +688,12 @@ class FlywayFromScratchMigrationTest {
         unknownLength.setLength((Long) null);
         assertThat(varcharLengthViolation("fixture_table.fixture_column", unknownLength, "varchar(10)"))
                 .as("VARCHAR列のEntity length nullはkey付き診断")
-                .isEqualTo("fixture_table.fixture_column … Entity length が未設定または不正 (null)");
+                .isEqualTo("fixture_table.fixture_column … Entity effective VARCHAR length が未解決 (null)");
         Column nonPositiveLength = new Column("fixture_column");
         nonPositiveLength.setLength(0L);
         assertThat(varcharLengthViolation("fixture_table.fixture_column", nonPositiveLength, "varchar(10)"))
                 .as("VARCHAR列のEntity長0はkey付き診断")
-                .isEqualTo("fixture_table.fixture_column … Entity length が未設定または不正 (0)");
+                .isEqualTo("fixture_table.fixture_column … Entity effective VARCHAR length が未解決 (0)");
         assertThat(varcharLengthViolation("fixture_table.fixture_column", column, "varchar(?)"))
                 .as("不正なVARCHAR表記はkey付き診断")
                 .isEqualTo("fixture_table.fixture_column … DB COLUMN_TYPE を解釈できない (varchar(?))");
@@ -717,11 +719,11 @@ class FlywayFromScratchMigrationTest {
             assertThat(column.getColumnSize(new MySQLDialect(), metadata).getLength())
                     .as("Hibernateの型とMySQL方言が解決する暗黙長").isEqualTo(255L);
             org.assertj.core.api.SoftAssertions.assertSoftly(softly -> {
-                softly.assertThat(varcharLengthViolation("varchar_length_fixture.implicit_value", column, "varchar(255)"))
+                softly.assertThat(varcharLengthViolation("varchar_length_fixture.implicit_value", column, "varchar(255)", metadata))
                         .as("実効長と同じDB255は正常").isNull();
-                softly.assertThat(varcharLengthViolation("varchar_length_fixture.implicit_value", column, "varchar(254)"))
+                softly.assertThat(varcharLengthViolation("varchar_length_fixture.implicit_value", column, "varchar(254)", metadata))
                         .as("実効長より1短いDB254はkey付き違反")
-                        .isEqualTo("varchar_length_fixture.implicit_value … Entity length 255 / DB VARCHAR length 254");
+                        .isEqualTo("varchar_length_fixture.implicit_value … Entity effective VARCHAR length 255 / DB VARCHAR length 254");
             });
         } finally {
             StandardServiceRegistryBuilder.destroy(registry);
@@ -738,11 +740,11 @@ class FlywayFromScratchMigrationTest {
             assertThat(column.getLength()).as("明示DDLでもraw lengthはJPA既定値").isEqualTo(255L);
             assertThat(column.getSqlType()).as("実bootが保持した明示DDL").isEqualTo("VARCHAR(10)");
             org.assertj.core.api.SoftAssertions.assertSoftly(softly -> {
-                softly.assertThat(varcharLengthViolation("varchar_length_fixture.explicit_value", column, "varchar(10)"))
+                softly.assertThat(varcharLengthViolation("varchar_length_fixture.explicit_value", column, "varchar(10)", metadata))
                         .as("宣言したDB10は正常").isNull();
-                softly.assertThat(varcharLengthViolation("varchar_length_fixture.explicit_value", column, "varchar(9)"))
+                softly.assertThat(varcharLengthViolation("varchar_length_fixture.explicit_value", column, "varchar(9)", metadata))
                         .as("宣言幅より1短いDB9はkey付き違反")
-                        .isEqualTo("varchar_length_fixture.explicit_value … Entity length 10 / DB VARCHAR length 9");
+                        .isEqualTo("varchar_length_fixture.explicit_value … Entity effective VARCHAR length 10 / DB VARCHAR length 9");
             });
         } finally {
             StandardServiceRegistryBuilder.destroy(registry);
@@ -764,11 +766,11 @@ class FlywayFromScratchMigrationTest {
             assertThat(column.getSqlType()).as("生成式を含む実bootの明示DDL")
                     .isEqualTo("VARCHAR(100) GENERATED ALWAYS AS (trim(explicit_value)) STORED");
             org.assertj.core.api.SoftAssertions.assertSoftly(softly -> {
-                softly.assertThat(varcharLengthViolation("varchar_length_fixture.generated_value", column, "varchar(100)"))
+                softly.assertThat(varcharLengthViolation("varchar_length_fixture.generated_value", column, "varchar(100)", metadata))
                         .as("readonlyでも宣言したDB100は正常").isNull();
-                softly.assertThat(varcharLengthViolation("varchar_length_fixture.generated_value", column, "varchar(99)"))
+                softly.assertThat(varcharLengthViolation("varchar_length_fixture.generated_value", column, "varchar(99)", metadata))
                         .as("readonlyを一律skipせずDB99の不足を検出する")
-                        .isEqualTo("varchar_length_fixture.generated_value … Entity length 100 / DB VARCHAR length 99");
+                        .isEqualTo("varchar_length_fixture.generated_value … Entity effective VARCHAR length 100 / DB VARCHAR length 99");
             });
         } finally {
             StandardServiceRegistryBuilder.destroy(registry);
@@ -1206,6 +1208,11 @@ class FlywayFromScratchMigrationTest {
     }
 
     private static String varcharLengthViolation(String key, Column column, String actualColumnType) {
+        return varcharLengthViolation(key, column, actualColumnType, null);
+    }
+
+    private static String varcharLengthViolation(String key, Column column, String actualColumnType,
+                                                 Metadata metadata) {
         if (actualColumnType == null || actualColumnType.isBlank()) {
             return key + " … DB COLUMN_TYPE が未取得";
         }
@@ -1228,18 +1235,43 @@ class FlywayFromScratchMigrationTest {
             return key + " … DB VARCHAR 長が不正 (" + actualLength + ")";
         }
         if (column == null) {
-            return key + " … Entity length が未設定または不正 (null)";
+            return key + " … Entity column が未取得";
         }
-        Long entityLength = column.getLength();
+        Long entityLength = effectiveVarcharLength(column, metadata);
         if (entityLength == null || entityLength <= 0) {
-            return key + " … Entity length が未設定または不正 (" + entityLength + ")";
+            return key + " … Entity effective VARCHAR length が未解決 (" + entityLength + ")";
         }
         if (entityLength > actualLength) {
-            return key + " … Entity length " + entityLength + " / DB VARCHAR length " + actualLength;
+            return key + " … Entity effective VARCHAR length " + entityLength
+                    + " / DB VARCHAR length " + actualLength;
         }
         return null;
     }
 
+    /** 明示SQL型を優先し、その他はHibernate 6.6のDialect-aware Size解決値を使う。 */
+    private static Long effectiveVarcharLength(Column column, Metadata metadata) {
+        String sqlType = column.getSqlType();
+        if (sqlType != null && !sqlType.isBlank()
+                && sqlType.trim().toLowerCase(Locale.ROOT).startsWith("varchar")) {
+            Matcher matcher = MAPPED_VARCHAR_SQL_TYPE.matcher(sqlType.trim());
+            if (!matcher.find()) {
+                return null;
+            }
+            try {
+                return Long.parseLong(matcher.group(1));
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        if (metadata != null) {
+            try {
+                return column.getColumnSize(metadata.getDatabase().getDialect(), metadata).getLength();
+            } catch (RuntimeException e) {
+                return null;
+            }
+        }
+        return column.getLength();
+    }
     /** テーブル名（小文字）→ 列名（小文字）→ COLUMN_TYPE（小文字。例: binary(16) / char(36)）。 */
     private static Map<String, Map<String, String>> readActualColumnTypes() throws SQLException {
         Map<String, Map<String, String>> types = new HashMap<>();

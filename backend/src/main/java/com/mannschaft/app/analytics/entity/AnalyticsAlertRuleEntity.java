@@ -28,7 +28,7 @@ import java.time.LocalDateTime;
 @SuperBuilder(toBuilder = true)
 public class AnalyticsAlertRuleEntity extends BaseEntity {
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String name;
 
     @Column(nullable = false)

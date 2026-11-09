@@ -33,7 +33,7 @@ public class TimetableSlotEntity extends BaseEntity {
     private Integer periodNumber;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 5)
     @Builder.Default
     private WeekPattern weekPattern = WeekPattern.EVERY;
 
