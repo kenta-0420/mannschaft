@@ -1308,17 +1308,38 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
     /** 実batch SQLと同じbind呼出しをEXPLAINへ再生する。競合fixture/通常budgetとは別窓。 */
     @Test
     void helperの実HQL_SQLとEXPLAINを所有MySQLで確認する() throws Exception {
-        Set<BillingPriceSelector.PlanScopeKey> requested = allScopeKeys(prepareCatalogScale(10, 10));
+        Set<String> pricePlans = prepareCatalogScale(10, 10);
+        transactions.executeWithoutResult(tx -> {
+            List<PlanPriceBandEntity> legacyFixture = new ArrayList<>();
+            for (String key : pricePlans) {
+                for (PlanPriceBandScopeKind scope : PlanPriceBandScopeKind.values()) {
+                    for (short no = 1; no <= 10; no++) {
+                        legacyFixture.add(PlanPriceBandEntity.builder().planKey(key).scopeKind(scope).bandNo(no)
+                                .minMembers((no - 1) * 10 + 1).maxMembers(no == 10 ? null : no * 10)
+                                .monthlyPriceJpy(LEGACY_PRICE).build());
+                    }
+                }
+            }
+            legacyBandRepository.saveAllAndFlush(legacyFixture);
+        });
+        Set<BillingPriceSelector.PlanScopeKey> requested = allScopeKeys(pricePlans);
+        SnapshotObservation observation = new SnapshotObservation();
+        SnapshotInterleaveHook.CURRENT.set(observation);
         List<PreparedRead> reads = new ArrayList<>();
         JdbcReadCapture.CURRENT.set(reads);
         try {
             Map<BillingPriceSelector.PlanScopeKey, BillingPriceSelector.LegacyPlanSelection> result =
                     priceSelector.selectLegacyPlans(requested);
             assertThat(result.keySet()).containsExactlyInAnyOrderElementsOf(requested);
-            assertThat(result.values()).allSatisfy(selection ->
-                    assertThat(selection.state()).isEqualTo(BillingPriceSelector.LegacyPlanSelectionState.SELECTED));
+            assertThat(result.values()).allSatisfy(selection -> {
+                assertThat(selection.state()).isEqualTo(BillingPriceSelector.LegacyPlanSelectionState.SELECTED);
+                assertThat(selection.oldPrice()).isNotNull();
+                assertThat(selection.oldPrice().bands()).hasSize(20);
+            });
+            assertThat(observation.parentRowCounts).containsExactly(600);
         } finally {
             JdbcReadCapture.CURRENT.remove();
+            SnapshotInterleaveHook.CURRENT.remove();
         }
         assertThat(reads).hasSize(3);
         List<Map<String, Object>> plans = new ArrayList<>();
@@ -1339,7 +1360,9 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
                 }
             }
             assertThat(explained).isNotEmpty();
-            plans.add(Map.of("sql", read.sql(), "bindingCount", read.bindings().size(), "explain", explained));
+            plans.add(Map.of("sql", read.sql(), "bindingCount", read.bindings().size(), "explain", explained,
+                    "requestedPlans", 10, "newBandsPerTeamOrg", 10, "oldBandsPerPlan", 20,
+                    "actualParentRows", observation.parentRowCounts));
         }
         String payload = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(plans);
         System.out.println("IT1931_HELPER_EXPLAIN " + java.util.Base64.getEncoder()

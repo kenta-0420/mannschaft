@@ -32,18 +32,19 @@ class BillingPriceResolverTest {
 
     @Mock private PlanRepository planRepository;
     @Mock private FeatureCatalogRepository featureCatalogRepository;
-    @Mock private PlanPriceBandRepository planPriceBandRepository;
     @Mock private ScopeMemberCountService scopeMemberCountService;
 
     @Mock private BillingPriceSelector billingPriceSelector;
     @Spy private LegacyPlanPriceMapper legacyPlanPriceMapper = Mappers.getMapper(LegacyPlanPriceMapper.class);
     @InjectMocks private BillingPriceResolver resolver;
 
-    private void noPublished(String key, EntitlementScopeKind scope) {
+    private void noPublished(String key, EntitlementScopeKind scope, Integer base,
+            List<BillingPriceSelector.LegacyPlanOldBandSnapshot> bands) {
         var pair = new BillingPriceSelector.PlanScopeKey(key, scope);
         given(billingPriceSelector.selectLegacyPlans(Set.of(pair))).willReturn(Map.of(pair,
                 new BillingPriceSelector.LegacyPlanSelection(
-                        BillingPriceSelector.LegacyPlanSelectionState.NO_PUBLISHED_PRICE, null)));
+                        BillingPriceSelector.LegacyPlanSelectionState.NO_PUBLISHED_PRICE, null,
+                        new BillingPriceSelector.LegacyPlanOldPriceSnapshot(base, bands))));
     }
 
     private void selected(String key, EntitlementScopeKind scope, List<BillingPriceSelector.LegacyPlanBandSnapshot> bands) {
@@ -65,16 +66,10 @@ class BillingPriceResolverTest {
                 .addonPriceJpy(addonPrice).build();
     }
 
-    private PlanPriceBandEntity band(String plan, PlanPriceBandScopeKind scope, short no,
-                                     int min, Integer max, Integer price) {
-        return PlanPriceBandEntity.builder().planKey(plan).scopeKind(scope).bandNo(no)
-                .minMembers(min).maxMembers(max).monthlyPriceJpy(price).build();
-    }
-
     @Test
     @DisplayName("早馬（課金事故対応）: base_monthly_price_jpy が NULL（未設定）は無償扱いにせず PLAN_PRICE_NOT_CONFIGURED を投げる")
     void plan_user_basePriceUnconfigured_throws() {
-        noPublished("BASIC", EntitlementScopeKind.USER);
+        noPublished("BASIC", EntitlementScopeKind.USER, null, List.of());
         // 実測: BASIC プランは base_monthly_price_jpy が NULL（マスタ未整備）。
         // 従来はこれを「無償フロー」に畳み、Checkout を経ずに即 ACTIVE 契約を発行していた（課金事故）。
         given(planRepository.findAllById(List.of("BASIC"))).willReturn(List.of(plan("BASIC", null)));
@@ -88,6 +83,7 @@ class BillingPriceResolverTest {
     @Test
     @DisplayName("AC-40 PLAN・USER: base=0 と明示された無償プランは従来どおり 0 を返す（回帰）")
     void plan_user_baseZero_isFreeAndAllowed() {
+        noPublished("FREE", EntitlementScopeKind.USER, 0, List.of());
         given(planRepository.findAllById(List.of("FREE"))).willReturn(List.of(plan("FREE", 0)));
         assertThat(resolver.resolveMonthlyPriceJpy(
                 EntitlementScopeKind.USER, 9L, ContractKind.PLAN, "FREE", null)).isEqualTo(0);
@@ -104,11 +100,10 @@ class BillingPriceResolverTest {
     @Test
     @DisplayName("早馬（課金事故対応）: PLAN・ORG バンド価格・base とも NULL は PLAN_PRICE_NOT_CONFIGURED を投げる")
     void plan_org_bandAndBaseBothNull_throws() {
-        noPublished("BASIC", EntitlementScopeKind.ORG);
+        noPublished("BASIC", EntitlementScopeKind.ORG, null, List.of(
+                new BillingPriceSelector.LegacyPlanOldBandSnapshot(PlanPriceBandScopeKind.ORG, (short) 1, 1, null, null)));
         given(planRepository.findAllById(List.of("BASIC"))).willReturn(List.of(plan("BASIC", null)));
         given(scopeMemberCountService.countActiveMembers(EntitlementScopeKind.ORG, 7L)).willReturn(10);
-        given(planPriceBandRepository.findByPlanKeyAndScopeKindOrderByBandNoAsc("BASIC", PlanPriceBandScopeKind.ORG))
-                .willReturn(List.of(band("BASIC", PlanPriceBandScopeKind.ORG, (short) 1, 1, null, null)));
         assertThatThrownBy(() -> resolver.resolveMonthlyPriceJpy(
                 EntitlementScopeKind.ORG, 7L, ContractKind.PLAN, "BASIC", null))
                 .isInstanceOf(BusinessException.class)
@@ -141,11 +136,10 @@ class BillingPriceResolverTest {
     @Test
     @DisplayName("PLAN・ORG: 公開新価格がなく旧最終額が有料なら040")
     void plan_org_bandNullFallsBackToBase() {
-        noPublished("FULL", EntitlementScopeKind.ORG);
+        noPublished("FULL", EntitlementScopeKind.ORG, 2000, List.of(
+                new BillingPriceSelector.LegacyPlanOldBandSnapshot(PlanPriceBandScopeKind.ORG, (short) 1, 1, null, null)));
         given(planRepository.findAllById(List.of("FULL"))).willReturn(List.of(plan("FULL", 2000)));
         given(scopeMemberCountService.countActiveMembers(EntitlementScopeKind.ORG, 7L)).willReturn(10);
-        given(planPriceBandRepository.findByPlanKeyAndScopeKindOrderByBandNoAsc("FULL", PlanPriceBandScopeKind.ORG))
-                .willReturn(List.of(band("FULL", PlanPriceBandScopeKind.ORG, (short) 1, 1, null, null)));
         assertThatThrownBy(() -> resolver.resolveMonthlyPriceJpy(
                 EntitlementScopeKind.ORG, 7L, ContractKind.PLAN, "FULL", null))
                 .isInstanceOf(BusinessException.class)

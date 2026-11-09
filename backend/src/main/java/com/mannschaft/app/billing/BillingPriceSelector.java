@@ -118,6 +118,7 @@ public class BillingPriceSelector {
         Instant at = clock.instant();
         legacySnapshotReader.readDueKeys(keys, at).stream()
                 .filter(keys::contains)
+                .filter(key -> !"FREE".equals(key.planKey()))
                 .sorted(java.util.Comparator.comparing(PlanScopeKey::planKey)
                         .thenComparing(key -> key.scopeKind().name()))
                 .forEach(key -> promotionService.promoteDue(

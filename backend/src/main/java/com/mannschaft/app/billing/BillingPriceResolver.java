@@ -18,7 +18,6 @@ public class BillingPriceResolver {
 
     private final PlanRepository planRepository;
     private final FeatureCatalogRepository featureCatalogRepository;
-    private final PlanPriceBandRepository planPriceBandRepository;
     private final ScopeMemberCountService scopeMemberCountService;
     private final BillingPriceSelector billingPriceSelector;
     private final LegacyPlanPriceMapper legacyPlanPriceMapper;
@@ -52,16 +51,16 @@ public class BillingPriceResolver {
     ResolvedPlanPrice resolvePlanPrice(PlanEntity plan, EntitlementScopeKind scopeKind, Long scopeId) {
         Integer members = scopeKind == EntitlementScopeKind.USER ? null
                 : scopeMemberCountService.countActiveMembers(scopeKind, scopeId);
-        if ("FREE".equals(plan.getPlanKey())) {
-            return legacyFreePrice(plan, scopeKind, members, false);
-        }
         BillingPriceSelector.PlanScopeKey key = new BillingPriceSelector.PlanScopeKey(plan.getPlanKey(), scopeKind);
         BillingPriceSelector.LegacyPlanSelection selection = billingPriceSelector.selectLegacyPlans(Set.of(key)).get(key);
+        if ("FREE".equals(plan.getPlanKey())) {
+            return legacyFreePrice(selection == null ? null : selection.oldPrice(), scopeKind, members, false);
+        }
         if (selection == null || selection.state() == BillingPriceSelector.LegacyPlanSelectionState.NOT_SELLABLE) {
             throw notConfigured();
         }
         if (selection.state() == BillingPriceSelector.LegacyPlanSelectionState.NO_PUBLISHED_PRICE) {
-            return legacyFreePrice(plan, scopeKind, members, true);
+            return legacyFreePrice(selection.oldPrice(), scopeKind, members, true);
         }
         int target = members == null ? 1 : members;
         List<BillingPriceSelector.LegacyPlanBandSnapshot> bands = selection.snapshot().bands().stream()
@@ -77,18 +76,23 @@ public class BillingPriceResolver {
     }
 
     private ResolvedPlanPrice legacyFreePrice(
-            PlanEntity plan, EntitlementScopeKind scopeKind, Integer members, boolean explicitFreeOnly) {
-        Integer price = plan.getBaseMonthlyPriceJpy();
+            BillingPriceSelector.LegacyPlanOldPriceSnapshot oldPrice,
+            EntitlementScopeKind scopeKind, Integer members, boolean explicitFreeOnly) {
+        if (oldPrice == null) {
+            throw notConfigured();
+        }
+        Integer price = oldPrice.baseMonthlyPriceJpy();
         Short bandNo = null;
         if (members != null) {
             PlanPriceBandScopeKind bandScope = scopeKind == EntitlementScopeKind.TEAM
                     ? PlanPriceBandScopeKind.TEAM : PlanPriceBandScopeKind.ORG;
-            for (PlanPriceBandEntity band : planPriceBandRepository
-                    .findByPlanKeyAndScopeKindOrderByBandNoAsc(plan.getPlanKey(), bandScope)) {
-                if (band.getMinMembers() != null && members >= band.getMinMembers()
-                        && (band.getMaxMembers() == null || members <= band.getMaxMembers())) {
-                    price = band.getMonthlyPriceJpy() == null ? price : band.getMonthlyPriceJpy();
-                    bandNo = band.getBandNo();
+            for (BillingPriceSelector.LegacyPlanOldBandSnapshot band : oldPrice.bands().stream()
+                    .filter(candidate -> candidate.scopeKind() == bandScope)
+                    .sorted(java.util.Comparator.comparing(BillingPriceSelector.LegacyPlanOldBandSnapshot::bandNo)).toList()) {
+                if (band.minMembers() != null && members >= band.minMembers()
+                        && (band.maxMembers() == null || members <= band.maxMembers())) {
+                    price = band.monthlyPriceJpy() == null ? price : band.monthlyPriceJpy();
+                    bandNo = band.bandNo();
                     break;
                 }
             }

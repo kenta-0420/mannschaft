@@ -68,7 +68,11 @@ public interface BillingPriceVersionRepository
      * 親が無いPlanも返すため、価格条件はWHEREではなくLEFT JOINのONへ置く。
      */
     @Query("""
-            SELECT plan.planKey AS planKey, price AS revision
+            SELECT plan.planKey AS planKey, price AS revision,
+                   plan.baseMonthlyPriceJpy AS legacyBaseMonthlyPriceJpy,
+                   legacyBand.scopeKind AS legacyScopeKind, legacyBand.bandNo AS legacyBandNo,
+                   legacyBand.minMembers AS legacyMinMembers, legacyBand.maxMembers AS legacyMaxMembers,
+                   legacyBand.monthlyPriceJpy AS legacyMonthlyPriceJpy
             FROM PlanEntity plan
             LEFT JOIN BillingPriceVersionEntity price ON price.productKey = plan.planKey
               AND price.productKind = :productKind AND price.scopeKind IN :scopeKinds
@@ -84,6 +88,7 @@ public interface BillingPriceVersionRepository
                       (marker.status = :scheduledStatus AND marker.effectiveFrom <= :at))
                 )
               ))
+            LEFT JOIN PlanPriceBandEntity legacyBand ON legacyBand.planKey = plan.planKey
             WHERE plan.planKey IN :planKeys
             """)
     List<LegacyPlanParentRow> findLegacyPlanParents(
@@ -105,6 +110,12 @@ public interface BillingPriceVersionRepository
     interface LegacyPlanParentRow {
         String getPlanKey();
         BillingPriceVersionEntity getRevision();
+        Integer getLegacyBaseMonthlyPriceJpy();
+        PlanPriceBandScopeKind getLegacyScopeKind();
+        Short getLegacyBandNo();
+        Integer getLegacyMinMembers();
+        Integer getLegacyMaxMembers();
+        Integer getLegacyMonthlyPriceJpy();
     }
 
 }

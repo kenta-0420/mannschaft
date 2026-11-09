@@ -22,6 +22,23 @@ public interface LegacyPlanPriceMapper {
     BillingPriceSelector.LegacyPlanSnapshot toLegacySnapshot(
             BillingPriceVersionEntity revision, List<BillingPriceSelector.LegacyPlanBandSnapshot> bands);
 
+    @Mapping(target = "scopeKind", source = "legacyScopeKind")
+    @Mapping(target = "bandNo", source = "legacyBandNo")
+    @Mapping(target = "minMembers", source = "legacyMinMembers")
+    @Mapping(target = "maxMembers", source = "legacyMaxMembers")
+    @Mapping(target = "monthlyPriceJpy", source = "legacyMonthlyPriceJpy")
+    BillingPriceSelector.LegacyPlanOldBandSnapshot toOldBandSnapshot(
+            BillingPriceVersionRepository.LegacyPlanParentRow row);
+
+    @Mapping(target = "baseMonthlyPriceJpy", source = "baseMonthlyPriceJpy")
+    @Mapping(target = "bands", source = "bands")
+    BillingPriceSelector.LegacyPlanOldPriceSnapshot toOldPriceSnapshot(
+            Integer baseMonthlyPriceJpy, List<BillingPriceSelector.LegacyPlanOldBandSnapshot> bands);
+
+    @Mapping(target = "scopeKind", source = "band.scopeKind")
+    com.mannschaft.app.billing.api.dto.PriceBand toOldCatalogBand(
+            BillingPriceSelector.LegacyPlanOldBandSnapshot band);
+
     @Mapping(target = "scopeKind", source = "scopeKind")
     @Mapping(target = "monthlyPriceJpy", source = "band.amountIncludingTax", qualifiedByName = "toCatalogPriceJpy")
     com.mannschaft.app.billing.api.dto.PriceBand toCatalogBand(

@@ -6,7 +6,6 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,18 +48,19 @@ public class LegacyPlanPriceSnapshotReader {
         List<BillingPriceVersionRepository.LegacyPlanParentRow> rows = versions.findLegacyPlanParents(
                 planKeys(keys), scopeKinds(keys), BillingProductKind.PLAN, BillingPriceVersionStatus.ACTIVE,
                 BillingPriceVersionStatus.RETIRED, BillingPriceVersionStatus.SCHEDULED, at);
-        Set<String> observedPlans = rows.stream().map(BillingPriceVersionRepository.LegacyPlanParentRow::getPlanKey)
-                .collect(Collectors.toSet());
+        Map<String, BillingPriceSelector.LegacyPlanOldPriceSnapshot> oldPrices = oldPriceSnapshots(rows);
+        Set<String> observedPlans = oldPrices.keySet();
         Map<BillingPriceSelector.PlanScopeKey, BillingPriceSelector.LegacyPlanSelection> result = new HashMap<>();
         for (BillingPriceSelector.PlanScopeKey key : keys) {
             result.put(key, selection(observedPlans.contains(key.planKey())
                     ? BillingPriceSelector.LegacyPlanSelectionState.NO_PUBLISHED_PRICE
-                    : BillingPriceSelector.LegacyPlanSelectionState.NOT_SELLABLE));
+                    : BillingPriceSelector.LegacyPlanSelectionState.NOT_SELLABLE, oldPrices.get(key.planKey())));
         }
         Map<BillingPriceSelector.PlanScopeKey, List<BillingPriceVersionEntity>> parents = groupParents(keys, rows);
         Map<BillingPriceSelector.PlanScopeKey, BillingPriceVersionEntity> candidates = new HashMap<>();
         for (var entry : parents.entrySet()) {
-            result.put(entry.getKey(), selection(BillingPriceSelector.LegacyPlanSelectionState.NOT_SELLABLE));
+            result.put(entry.getKey(), selection(BillingPriceSelector.LegacyPlanSelectionState.NOT_SELLABLE,
+                    oldPrices.get(entry.getKey().planKey())));
             List<BillingPriceVersionEntity> active = entry.getValue().stream()
                     .filter(parent -> parent.getStatus() == BillingPriceVersionStatus.ACTIVE)
                     .filter(parent -> isEffectiveAt(parent.getEffectiveFrom(), parent.getEffectiveUntil(), at)).toList();
@@ -75,15 +75,17 @@ public class LegacyPlanPriceSnapshotReader {
             if (hasSellableBands(parent, priceBands, at)) {
                 result.put(entry.getKey(), new BillingPriceSelector.LegacyPlanSelection(
                         BillingPriceSelector.LegacyPlanSelectionState.SELECTED,
-                        mapper.toLegacySnapshot(parent, priceBands.stream().map(mapper::toLegacyBandSnapshot).toList())));
+                        mapper.toLegacySnapshot(parent, priceBands.stream().map(mapper::toLegacyBandSnapshot).toList()),
+                        oldPrices.get(entry.getKey().planKey())));
             }
         }
         return Map.copyOf(result);
     }
 
+    /** 旧帯JOINのfanoutを、新親UUIDと旧帯の複合PKで独立に除く。 */
     private Map<BillingPriceSelector.PlanScopeKey, List<BillingPriceVersionEntity>> groupParents(
             Set<BillingPriceSelector.PlanScopeKey> keys, List<BillingPriceVersionRepository.LegacyPlanParentRow> rows) {
-        Map<BillingPriceSelector.PlanScopeKey, List<BillingPriceVersionEntity>> result = new HashMap<>();
+        Map<BillingPriceSelector.PlanScopeKey, Map<UUID, BillingPriceVersionEntity>> unique = new HashMap<>();
         for (var row : rows) {
             BillingPriceVersionEntity parent = row.getRevision();
             if (parent == null) {
@@ -91,11 +93,35 @@ public class LegacyPlanPriceSnapshotReader {
             }
             BillingPriceSelector.PlanScopeKey key = new BillingPriceSelector.PlanScopeKey(row.getPlanKey(), parent.getScopeKind());
             if (keys.contains(key)) {
-                result.computeIfAbsent(key, ignored -> new ArrayList<>()).add(parent);
+                unique.computeIfAbsent(key, ignored -> new HashMap<>()).putIfAbsent(parent.getId(), parent);
             }
         }
-        return result;
+        return unique.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
+                entry -> List.copyOf(entry.getValue().values())));
     }
+
+    private Map<String, BillingPriceSelector.LegacyPlanOldPriceSnapshot> oldPriceSnapshots(
+            List<BillingPriceVersionRepository.LegacyPlanParentRow> rows) {
+        Map<String, Integer> bases = new HashMap<>();
+        Map<String, Map<OldBandKey, BillingPriceSelector.LegacyPlanOldBandSnapshot>> oldBands = new HashMap<>();
+        for (var row : rows) {
+            bases.putIfAbsent(row.getPlanKey(), row.getLegacyBaseMonthlyPriceJpy());
+            if (row.getLegacyBandNo() != null) {
+                OldBandKey key = new OldBandKey(row.getPlanKey(), row.getLegacyScopeKind(), row.getLegacyBandNo());
+                oldBands.computeIfAbsent(row.getPlanKey(), ignored -> new HashMap<>())
+                        .computeIfAbsent(key, ignored -> mapper.toOldBandSnapshot(row));
+            }
+        }
+        Map<String, BillingPriceSelector.LegacyPlanOldPriceSnapshot> result = new HashMap<>();
+        bases.forEach((key, base) -> result.put(key, mapper.toOldPriceSnapshot(base,
+                oldBands.getOrDefault(key, Map.of()).values().stream()
+                        .sorted(java.util.Comparator
+                                .comparingInt((BillingPriceSelector.LegacyPlanOldBandSnapshot band) -> band.scopeKind().ordinal())
+                                .thenComparing(BillingPriceSelector.LegacyPlanOldBandSnapshot::bandNo)).toList())));
+        return Map.copyOf(result);
+    }
+
+    private record OldBandKey(String planKey, PlanPriceBandScopeKind scopeKind, Short bandNo) { }
 
     private Map<UUID, List<BillingPriceBandVersionEntity>> readBands(
             Map<BillingPriceSelector.PlanScopeKey, BillingPriceVersionEntity> candidates) {
@@ -120,8 +146,10 @@ public class LegacyPlanPriceSnapshotReader {
         return !from.isAfter(at) && (until == null || at.isBefore(until));
     }
 
-    private BillingPriceSelector.LegacyPlanSelection selection(BillingPriceSelector.LegacyPlanSelectionState state) {
-        return new BillingPriceSelector.LegacyPlanSelection(state, null);
+    private BillingPriceSelector.LegacyPlanSelection selection(
+            BillingPriceSelector.LegacyPlanSelectionState state,
+            BillingPriceSelector.LegacyPlanOldPriceSnapshot oldPrice) {
+        return new BillingPriceSelector.LegacyPlanSelection(state, null, oldPrice);
     }
 
     private Set<String> planKeys(Set<BillingPriceSelector.PlanScopeKey> keys) {
