@@ -83,13 +83,16 @@ class ChatMessageFacadeTest {
     @Mock
     private PostingIdentityService postingIdentityService;
 
+    @Mock
+    private ChatInviteCardPreviewRefresher inviteCardPreviewRefresher;
+
     private ChatMessageFacade facade;
 
     @BeforeEach
     void setUp() {
         ChatChannelAccessGuard guard = new ChatChannelAccessGuard(channelRepository, memberRepository,
                 accessControlService, tournamentContactAccessService, eventScopeAccessGuard, postingIdentityService);
-        facade = new ChatMessageFacade(messageService, channelService, guard);
+        facade = new ChatMessageFacade(messageService, channelService, guard, inviteCardPreviewRefresher);
     }
 
     private ChatChannelEntity dm(Long id) {

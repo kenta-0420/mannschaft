@@ -106,10 +106,6 @@ class ChatMessageServiceTest {
     @Mock
     private ChatChannelRepository channelRepository;
 
-    /** 招待カードのプレビュー再生成で inviteData（招待先名）を解決する。 */
-    @Mock
-    private com.mannschaft.app.role.service.MembershipInviteService membershipInviteService;
-
     @InjectMocks
     private ChatMessageService chatMessageService;
 
@@ -1160,7 +1156,7 @@ class ChatMessageServiceTest {
         }
 
         @Test
-        @DisplayName("最新を削除したとき直前が招待カードなら、プレビューは内部マーカーではなく表示用の文言に作り直す")
+        @DisplayName("最新を削除したとき直前が招待カードなら、プレビューは内部マーカーではなく暫定の表示用文言になる")
         void 直前が招待カードなら表示用プレビューに作り直す() {
             LocalDateTime at = LocalDateTime.of(2026, 11, 10, 9, 0);
             ChatMessageEntity card = messageWithId(MESSAGE_ID - 1, "[招待カード]", at.minusMinutes(3));
@@ -1174,13 +1170,65 @@ class ChatMessageServiceTest {
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
             given(messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(CHANNEL_ID))
                     .willReturn(Optional.of(latest), Optional.of(card));
-            given(membershipInviteService.resolveInviteCardData(77L, SENDER_ID))
-                    .willReturn(new com.mannschaft.app.role.dto.InviteCardData(
-                            77L, "TEAM", 5L, "北陽SC ジュニア", "PENDING", false, null));
 
             chatMessageService.deleteMessage(MESSAGE_ID, SENDER_ID);
 
+            // 招待先名入りの文言は role の参照を要するため tx の外（Refresher）で確定する。tx 内では暫定文言。
+            assertThat(ch.getLastMessagePreview()).isEqualTo(ChatMessageService.INVITE_CARD_FALLBACK_PREVIEW);
+            assertThat(ch.getLastMessagePreview()).isNotEqualTo("[招待カード]");
+        }
+
+        @Test
+        @DisplayName("最新が招待カードなら、確定に必要な参照（カードID・トークンID・送信者）を返す")
+        void 最新が招待カードなら参照を返す() {
+            ChatMessageEntity card = messageWithId(MESSAGE_ID, "[招待カード]", LocalDateTime.of(2026, 11, 10, 9, 0));
+            org.springframework.test.util.ReflectionTestUtils.setField(card, "messageType", "INVITE_CARD");
+            org.springframework.test.util.ReflectionTestUtils.setField(card, "inviteTokenId", 77L);
+            given(messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(CHANNEL_ID))
+                    .willReturn(Optional.of(card));
+
+            assertThat(chatMessageService.findLatestInviteCardPreviewTarget(CHANNEL_ID))
+                    .contains(new ChatMessageService.InviteCardPreviewTarget(MESSAGE_ID, 77L, SENDER_ID));
+        }
+
+        @Test
+        @DisplayName("最新が通常メッセージなら、確定対象は無い")
+        void 最新が通常メッセージなら対象なし() {
+            ChatMessageEntity text = messageWithId(MESSAGE_ID, "本文", LocalDateTime.of(2026, 11, 10, 9, 0));
+            given(messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(CHANNEL_ID))
+                    .willReturn(Optional.of(text));
+
+            assertThat(chatMessageService.findLatestInviteCardPreviewTarget(CHANNEL_ID)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("対象の招待カードがまだ最新なら、プレビュー本文だけを上書きする（日時は不変）")
+        void 確定は最新のときだけ上書きする() {
+            LocalDateTime at = LocalDateTime.of(2026, 11, 10, 9, 0);
+            ChatMessageEntity card = messageWithId(MESSAGE_ID, "[招待カード]", at);
+            ChatChannelEntity ch = channelWithPreview(ChatMessageService.INVITE_CARD_FALLBACK_PREVIEW, at);
+            given(messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(CHANNEL_ID))
+                    .willReturn(Optional.of(card));
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(ch);
+
+            chatMessageService.applyInviteCardPreview(CHANNEL_ID, MESSAGE_ID, "北陽SC ジュニア への招待を送りました");
+
             assertThat(ch.getLastMessagePreview()).isEqualTo("北陽SC ジュニア への招待を送りました");
+            assertThat(ch.getLastMessageAt()).isEqualTo(at);
+        }
+
+        @Test
+        @DisplayName("確定の前に新しい投稿があれば、その投稿のプレビューを壊さない")
+        void 確定は新しい投稿のプレビューを壊さない() {
+            LocalDateTime at = LocalDateTime.of(2026, 11, 10, 9, 0);
+            ChatMessageEntity newer = messageWithId(MESSAGE_ID + 1, "新着", at.plusMinutes(1));
+            ChatChannelEntity ch = channelWithPreview("新着", at.plusMinutes(1));
+            given(messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(CHANNEL_ID))
+                    .willReturn(Optional.of(newer));
+
+            chatMessageService.applyInviteCardPreview(CHANNEL_ID, MESSAGE_ID, "北陽SC ジュニア への招待を送りました");
+
+            assertThat(ch.getLastMessagePreview()).isEqualTo("新着");
         }
 
         @Test

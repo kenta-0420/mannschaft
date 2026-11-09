@@ -54,6 +54,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -576,19 +577,54 @@ public class ChatMessageService {
      *
      * <p>通常のテキスト・転送メッセージは本文の先頭 {@value #PREVIEW_LENGTH} 文字。招待カード
      * （{@code message_type = 'INVITE_CARD'}）の本文は内部マーカー {@code [招待カード]} なので表示に使わず、
-     * 投稿時（{@code MembershipInviteService}）と同じ「{招待先名} への招待を送りました」を role ドメインの
-     * inviteData から作り直す（F04.12 §D-14 の保存契約）。招待先が解決できない場合は招待先名を省く。</p>
+     * 招待先名を省いた {@value #INVITE_CARD_FALLBACK_PREVIEW} を暫定で載せる。招待先名を含む本来の文言
+     * （投稿時の「{招待先名} への招待を送りました」・F04.12 §D-14 の保存契約）は、role ドメインの参照を要するため
+     * トランザクションの外で {@link ChatInviteCardPreviewRefresher} が {@link #applyInviteCardPreview} で上書きする
+     * （D-3T: このトランザクションから role ドメインへ越境しない）。</p>
      */
     private String previewOf(ChatMessageEntity message) {
-        if ("INVITE_CARD".equals(message.getMessageType()) && message.getInviteTokenId() != null) {
-            InviteCardData data = membershipInviteService.resolveInviteCardData(
-                    message.getInviteTokenId(), message.getSenderId());
-            String text = data != null && data.scopeName() != null
-                    ? data.scopeName() + " への招待を送りました"
-                    : "招待を送りました";
-            return toPreview(text);
+        if ("INVITE_CARD".equals(message.getMessageType())) {
+            return INVITE_CARD_FALLBACK_PREVIEW;
         }
         return toPreview(message.getBody());
+    }
+
+    /** 招待カードの暫定プレビュー。招待先名を解決できない場合もこのまま残る。 */
+    static final String INVITE_CARD_FALLBACK_PREVIEW = "招待を送りました";
+
+    /**
+     * 招待カードのプレビュー更新に必要な参照。
+     *
+     * @param messageId 招待カードのメッセージID
+     * @param tokenId   招待トークンID（role ドメインの参照キー）
+     * @param senderId  招待カードの送信者（inviteData の閲覧者として渡す）
+     */
+    public record InviteCardPreviewTarget(Long messageId, Long tokenId, Long senderId) {
+    }
+
+    /**
+     * チャンネルの最新の未削除メッセージが招待カードなら、その参照を返す（トランザクションの外で呼ぶ）。
+     */
+    public Optional<InviteCardPreviewTarget> findLatestInviteCardPreviewTarget(Long channelId) {
+        return messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(channelId)
+                .filter(m -> "INVITE_CARD".equals(m.getMessageType()) && m.getInviteTokenId() != null)
+                .map(m -> new InviteCardPreviewTarget(m.getId(), m.getInviteTokenId(), m.getSenderId()));
+    }
+
+    /**
+     * 招待カードのプレビュー文言を確定する。更新対象のカードがまだ最新のときだけ、プレビュー本文を上書きする
+     * （確定までの間に新しい投稿があれば、その投稿のプレビューを壊さない）。chat ドメイン内で完結する。
+     */
+    @Transactional
+    public void applyInviteCardPreview(Long channelId, Long cardMessageId, String preview) {
+        boolean stillLatest = messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(channelId)
+                .map(latest -> latest.getId().equals(cardMessageId))
+                .orElse(false);
+        if (!stillLatest) {
+            return;
+        }
+        ChatChannelEntity channel = channelService.findChannelOrThrow(channelId);
+        channel.updateLastMessage(channel.getLastMessageAt(), toPreview(preview));
     }
 
     /** 編集したメッセージがチャンネルの最新なら、プレビュー本文だけを新しい本文に更新する（最終投稿日時は不変）。 */
