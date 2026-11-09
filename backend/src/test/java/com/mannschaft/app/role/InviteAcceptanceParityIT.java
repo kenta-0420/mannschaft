@@ -62,7 +62,7 @@ class InviteAcceptanceParityIT extends InviteAcceptanceItSupport {
 
     private void expect(Scope scope, Case c, ErrorCode code, HttpStatus override) {
         int before = usedCount(c.token().getId());
-        BusinessException e = business(() -> acceptCompat(c.token().getToken(), c.userId(), c.folderId()));
+        BusinessException e = business(() -> acceptCompat(plaintext(c.token()), c.userId(), c.folderId()));
         assertError(e, code, override);
         assertNoSideEffect(scope, c, before);
     }
@@ -108,8 +108,8 @@ class InviteAcceptanceParityIT extends InviteAcceptanceItSupport {
                 RoleErrorCode.ROLE_009, HttpStatus.FORBIDDEN);
 
         Long adminRoleId = roleId(scope, "ADMIN", 2);
-        InviteTokenEntity privileged = inTx(() -> tokens.saveAndFlush(token(scope, 0).toBuilder().id(null)
-                .token(UUID.randomUUID().toString()).roleId(adminRoleId).build()));
+        InviteTokenEntity privileged = token(scope, 0);
+        jdbc.update("UPDATE invite_tokens SET role_id = ? WHERE id = ?", adminRoleId, privileged.getId());
         expect(scope, new Case(privileged, user(), null), RoleErrorCode.ROLE_009, HttpStatus.UNPROCESSABLE_ENTITY);
     }
 
@@ -140,9 +140,9 @@ class InviteAcceptanceParityIT extends InviteAcceptanceItSupport {
         Scope scope = scope(type);
         Long userId = user();
         InviteTokenEntity first = token(scope, 0);
-        acceptCompat(first.getToken(), userId, null);
+        acceptCompat(plaintext(first), userId, null);
         InviteTokenEntity second = token(scope, 0);
-        BusinessException e = business(() -> acceptCompat(second.getToken(), userId, null));
+        BusinessException e = business(() -> acceptCompat(plaintext(second), userId, null));
         assertError(e, TeamErrorCode.TEAM_003, HttpStatus.CONFLICT);
         assertThat(usedCount(second.getId())).isZero();
         assertThat(claimCountOrZero(second.getId())).isZero();
@@ -208,9 +208,9 @@ class InviteAcceptanceParityIT extends InviteAcceptanceItSupport {
     void alreadyJoinedWinsOverBadFolder(String type) {
         Scope scope = scope(type);
         Long userId = user();
-        acceptCompat(token(scope, 0).getToken(), userId, null);
+        acceptCompat(plaintext(token(scope, 0)), userId, null);
         InviteTokenEntity second = token(scope, 0);
-        BusinessException e = business(() -> acceptCompat(second.getToken(), userId, Long.MAX_VALUE - 7));
+        BusinessException e = business(() -> acceptCompat(plaintext(second), userId, Long.MAX_VALUE - 7));
         assertError(e, TeamErrorCode.TEAM_003, HttpStatus.CONFLICT);
         assertThat(usedCount(second.getId())).isZero();
     }
@@ -221,12 +221,12 @@ class InviteAcceptanceParityIT extends InviteAcceptanceItSupport {
     void boundarySuccesses(String type) {
         Scope scope = scope(type);
         InviteTokenEntity nearExpiry = token(scope, 0, LocalDateTime.now().plusSeconds(30), 1, 0, null, null);
-        acceptCompat(nearExpiry.getToken(), user(), null);
+        acceptCompat(plaintext(nearExpiry), user(), null);
         assertThat(usedCount(nearExpiry.getId())).isEqualTo(1);
 
         InviteTokenEntity unlimited = token(scope, 0, null, null, 5, null, null);
-        acceptCompat(unlimited.getToken(), user(), null);
-        acceptCompat(unlimited.getToken(), user(), null);
+        acceptCompat(plaintext(unlimited), user(), null);
+        acceptCompat(plaintext(unlimited), user(), null);
         assertThat(usedCount(unlimited.getId())).isEqualTo(7);
     }
 
@@ -244,7 +244,7 @@ class InviteAcceptanceParityIT extends InviteAcceptanceItSupport {
         Long folderId = "INVITE".equals(via) ? folder(userId, type) : null;
         List<String> events;
         try (AuditCapture capture = capture(userId)) {
-            acceptCompat(token.getToken(), userId, folderId);
+            acceptCompat(plaintext(token), userId, folderId);
             events = capture.events();
         }
         assertThat(usedCount(token.getId())).isEqualTo(1);
@@ -261,7 +261,7 @@ class InviteAcceptanceParityIT extends InviteAcceptanceItSupport {
         Scope scope = scope(type);
         Long userId = user();
         InviteTokenEntity token = token(scope, 0, null, 3, 0, null, null);
-        accept(token.getToken(), userId);
+        accept(plaintext(token), userId);
         List<Claim> claims = claims(token.getId());
         assertThat(claims).singleElement().satisfies(c -> {
             assertThat(c.status()).isEqualTo("GRANTED");
@@ -285,7 +285,7 @@ class InviteAcceptanceParityIT extends InviteAcceptanceItSupport {
         InviteTokenEntity token = token(scope, 0, null, 3, 0, null, null);
         List<String> events;
         try (AuditCapture capture = capture(userId)) {
-            BusinessException e = business(() -> acceptCompat(token.getToken(), userId, null));
+            BusinessException e = business(() -> acceptCompat(plaintext(token), userId, null));
             assertError(e, TeamErrorCode.TEAM_003, HttpStatus.CONFLICT);
             events = capture.events();
         }
@@ -305,20 +305,20 @@ class InviteAcceptanceParityIT extends InviteAcceptanceItSupport {
     void baselineUsedCount(String type) {
         Scope scope = scope(type);
         InviteTokenEntity belowMax = token(scope, 0, null, 3, 2, null, null);
-        acceptCompat(belowMax.getToken(), user(), null);
+        acceptCompat(plaintext(belowMax), user(), null);
         assertThat(usedCount(belowMax.getId())).isEqualTo(3);
         Long late = user();
-        assertError(business(() -> acceptCompat(belowMax.getToken(), late, null)), RoleErrorCode.ROLE_003, null);
+        assertError(business(() -> acceptCompat(plaintext(belowMax), late, null)), RoleErrorCode.ROLE_003, null);
         assertThat(usedCount(belowMax.getId())).isEqualTo(3);
 
         InviteTokenEntity atMax = token(scope, 0, null, 3, 3, null, null);
         Long atMaxUser = user();
-        assertError(business(() -> acceptCompat(atMax.getToken(), atMaxUser, null)), RoleErrorCode.ROLE_003, null);
+        assertError(business(() -> acceptCompat(plaintext(atMax), atMaxUser, null)), RoleErrorCode.ROLE_003, null);
         assertThat(usedCount(atMax.getId())).isEqualTo(3);
 
         InviteTokenEntity overMax = token(scope, 0, null, 3, 5, null, null);
         Long overMaxUser = user();
-        assertError(business(() -> acceptCompat(overMax.getToken(), overMaxUser, null)), RoleErrorCode.ROLE_003, null);
+        assertError(business(() -> acceptCompat(plaintext(overMax), overMaxUser, null)), RoleErrorCode.ROLE_003, null);
         assertThat(usedCount(overMax.getId())).as("既存超過は減らさないが増やさない").isEqualTo(5);
     }
 
@@ -328,7 +328,7 @@ class InviteAcceptanceParityIT extends InviteAcceptanceItSupport {
     void baselineInvariantHoldsWithClaims(String type) {
         Scope scope = scope(type);
         InviteTokenEntity token = token(scope, 0, null, 3, 2, null, null);
-        accept(token.getToken(), user());
+        accept(plaintext(token), user());
         long nonReleased = claims(token.getId()).stream().filter(c -> !"RELEASED".equals(c.status())).count();
         assertThat(usedCount(token.getId())).isEqualTo(2 + (int) nonReleased);
         assertThat(nonReleased).isEqualTo(1);
@@ -349,11 +349,11 @@ class InviteAcceptanceParityIT extends InviteAcceptanceItSupport {
                 .createdBy(issuer).build()));
 
         Long stranger = user();
-        BusinessException forbidden = business(() -> declineCompat(token.getToken(), stranger));
+        BusinessException forbidden = business(() -> declineCompat(plaintext(token), stranger));
         assertError(forbidden, RoleErrorCode.ROLE_009, HttpStatus.FORBIDDEN);
         assertThat(revokedAt(token.getId())).isNull();
 
-        declineCompat(token.getToken(), target);
+        declineCompat(plaintext(token), target);
         assertThat(revokedAt(token.getId())).isNotNull();
         String event = "TEAM".equals(type) ? "TEAM_MEMBERSHIP_INVITE_DECLINED" : "ORGANIZATION_MEMBERSHIP_INVITE_DECLINED";
         Map<String, Object> audit = awaitAudit(event, target, 1);
@@ -364,7 +364,7 @@ class InviteAcceptanceParityIT extends InviteAcceptanceItSupport {
                 .isEqualTo("{\"reason\":\"DECLINED\",\"token_id\":" + token.getId() + "}");
 
         LocalDateTime firstRevocation = revokedAt(token.getId());
-        declineCompat(token.getToken(), target);
+        declineCompat(plaintext(token), target);
         TimeUnit.MILLISECONDS.sleep(1500);
         assertThat(auditCount(event, target)).as("2回目は監査なし").isEqualTo(1);
         assertThat(revokedAt(token.getId())).as("冪等: 失効日時を上書きしない").isEqualTo(firstRevocation);
@@ -410,7 +410,7 @@ class InviteAcceptanceParityIT extends InviteAcceptanceItSupport {
         when(ops.increment(anyString())).thenReturn(1L);
         String email = "f2-" + UUID.randomUUID() + "@example.com";
         RegisterRequest req = new RegisterRequest(email, "Passw0rd!Passw0rd", "招待", "登録", "招待登録", "100-0001",
-                "ja", "Asia/Tokyo", token.getToken(), "1990-01-01", true, "2026-01-01");
+                "ja", "Asia/Tokyo", plaintext(token), "1990-01-01", true, "2026-01-01");
 
         AtomicBoolean registeredEvent = new AtomicBoolean();
         ApplicationListener<PayloadApplicationEvent<?>> listener = event -> {

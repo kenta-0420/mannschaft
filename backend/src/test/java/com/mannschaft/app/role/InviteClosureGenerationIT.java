@@ -60,7 +60,7 @@ class InviteClosureGenerationIT extends AbstractMySqlIntegrationTest {
     @AfterEach
     void cleanUp() {
         for (Fixture fixture : fixtures) {
-            jdbc.update("DELETE FROM invite_tokens WHERE token = ?", fixture.token());
+            jdbc.update("DELETE FROM invite_tokens WHERE token_hash = ?", HASHER.hash(fixture.token()));
         }
         for (Long userId : createdUserIds) {
             jdbc.update("DELETE FROM user_permission_groups WHERE user_id = ?", userId);
@@ -89,7 +89,7 @@ class InviteClosureGenerationIT extends AbstractMySqlIntegrationTest {
                 + " SET archived_at = UTC_TIMESTAMP(), closure_generation = closure_generation + 1 WHERE id = ?",
                 fixture.scopeId());
 
-        assertThat(tokenRepository.findByToken(fixture.token()).orElseThrow().getRevokedAt()).isNull();
+        assertThat(tokenRepository.findByTokenHash(HASHER.hash(fixture.token())).orElseThrow().getRevokedAt()).isNull();
         assertThat(inviteService.previewInvite(fixture.token()).getData().isValid())
                 .as("親の休止は物理失効の配送前から招待を無効にする").isFalse();
     }
@@ -104,7 +104,7 @@ class InviteClosureGenerationIT extends AbstractMySqlIntegrationTest {
                 fixture.scopeId());
         jdbc.update("UPDATE " + fixture.table() + " SET archived_at = NULL WHERE id = ?", fixture.scopeId());
 
-        assertThat(tokenRepository.findByToken(fixture.token()).orElseThrow().getRevokedAt()).isNull();
+        assertThat(tokenRepository.findByTokenHash(HASHER.hash(fixture.token())).orElseThrow().getRevokedAt()).isNull();
         assertThat(inviteService.previewInvite(fixture.token()).getData().isValid())
                 .as("解除は閉鎖世代を巻き戻さず旧リンクを復元しない").isFalse();
     }
@@ -143,7 +143,7 @@ class InviteClosureGenerationIT extends AbstractMySqlIntegrationTest {
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM " + table + " WHERE user_id = ?", Long.class, userId))
                     .as("旧招待の拒否時は%sを増やさない", table).isZero();
         }
-        assertThat(tokenRepository.findByToken(fixture.token()).orElseThrow().getUsedCount()).isZero();
+        assertThat(tokenRepository.findByTokenHash(HASHER.hash(fixture.token())).orElseThrow().getUsedCount()).isZero();
     }
 
     private Fixture fixture(String scopeType) {
@@ -165,7 +165,7 @@ class InviteClosureGenerationIT extends AbstractMySqlIntegrationTest {
             });
             String token = UUID.randomUUID().toString();
             InviteTokenEntity.InviteTokenEntityBuilder<?, ?> builder = InviteTokenEntity.builder()
-                    .token(token).roleId(role.getId()).usedCount(0);
+                    .tokenHash(HASHER.hash(token)).roleId(role.getId()).usedCount(0);
             if ("TEAM".equals(scopeType)) {
                 builder.teamId(scopeId);
             } else {
@@ -177,6 +177,9 @@ class InviteClosureGenerationIT extends AbstractMySqlIntegrationTest {
             return fixture;
         });
     }
+
+    private static final com.mannschaft.app.common.token.SecretTokenVault HASHER =
+            new com.mannschaft.app.common.token.SecretTokenVault();
 
     private record Fixture(String table, Long scopeId, String token) { }
 }

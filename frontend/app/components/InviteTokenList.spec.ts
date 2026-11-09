@@ -34,9 +34,9 @@ vi.stubGlobal('useI18n', useI18n)
 vi.stubGlobal('ref', ref)
 vi.stubGlobal('computed', computed)
 vi.stubGlobal('onMounted', onMounted)
+// 一覧 API の行は平文 token を持たない（サーバーにはハッシュしか残らない）
 const token = {
   id: 99,
-  token: 'invite-fixture',
   roleName: 'MEMBER',
   expiresAt: null,
   maxUses: null,
@@ -114,6 +114,10 @@ async function openForm(wrapper: Awaited<ReturnType<typeof mountList>>) {
     )!
     .trigger('click')
 }
+const expectedHint = createI18n({ legacy: false, locale: 'en', messages }).global.t(
+  'secret_token.list.not_shown_hint',
+)
+
 describe('スコープ招待の英語表示', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -193,19 +197,17 @@ describe('スコープ招待の英語表示', () => {
     expect(mocks.error).toHaveBeenCalledWith('Failed to create invite link')
     expect(wrapper.find('section').exists()).toBe(true)
   })
-  it('期限なし・操作名・コピー通知・失効確認と成功通知を英語で表示する', async () => {
+  it('期限なし・操作名・再表示しない旨の案内・失効確認と成功通知を英語で表示する', async () => {
     mocks.api.mockResolvedValue({ data: [token] })
-    const writeText = vi.fn().mockResolvedValue(undefined)
-    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
     const confirm = vi.fn().mockReturnValue(true)
     vi.stubGlobal('confirm', confirm)
     const wrapper = await mountList()
     expect(wrapper.text()).toContain('Never')
     for (const text of ['Role', 'Expires after', 'Uses', 'Actions'])
       expect(wrapper.text()).toContain(text)
-    await wrapper.get('button[aria-label="Copy invite URL"]').trigger('click')
-    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/invite/invite-fixture`)
-    expect(mocks.success).toHaveBeenCalledWith('Invite URL copied')
+    // 一覧からは URL のコピーも QR-PDF もできない（発行直後のダイアログでだけ見せる）
+    expect(wrapper.find('button[aria-label="Copy invite URL"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain(expectedHint)
     await wrapper.get('button[aria-label="Revoke invite link"]').trigger('click')
     await flushPromises()
     expect(confirm).toHaveBeenCalledWith('Revoke this invite link?')

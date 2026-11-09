@@ -14,6 +14,9 @@ import com.mannschaft.app.common.qr.BrandedQrImageWriter;
 import org.springframework.beans.factory.annotation.Value;
 import com.mannschaft.app.role.dto.CreateInviteTokenRequest;
 import com.mannschaft.app.role.dto.InvitePreviewResponse;
+import com.mannschaft.app.common.token.SecretTokenVault;
+import com.mannschaft.app.role.dto.BetaInviteScope;
+import com.mannschaft.app.role.dto.InviteTokenIssuedResponse;
 import com.mannschaft.app.role.dto.InviteTokenResponse;
 import com.mannschaft.app.role.dto.SharedInviteTokenCommand;
 import com.mannschaft.app.organization.service.OrganizationInviteQueryService;
@@ -57,12 +60,13 @@ public class InviteService {
     private final SharedInviteTokenIssuer sharedTokenIssuer;
     private final TeamInviteQueryService teamInviteQueryService;
     private final OrganizationInviteQueryService organizationInviteQueryService;
+    private final SecretTokenVault vault;
 
     /**
      * 招待トークンを作成する。
      */
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    public ApiResponse<InviteTokenResponse> createInviteToken(Long scopeId, String scopeType,
+    public ApiResponse<InviteTokenIssuedResponse> createInviteToken(Long scopeId, String scopeType,
                                                                CreateInviteTokenRequest req, Long createdBy) {
         // 束1 権限昇格根治: 当該スコープの ADMIN/DEPUTY_ADMIN のみ招待トークンを発行できる。
         accessControlService.checkAdminOrAbove(createdBy, scopeId, scopeType);
@@ -79,7 +83,7 @@ public class InviteService {
         LocalDateTime expiresAt = resolveExpiresAt(req.getExpiresIn());
 
         // role専属writerから戻る時点でcommit済み。親共有lockはuser/token lock解放後だけ取得する。
-        InviteTokenResponse token = sharedTokenIssuer.issue(new SharedInviteTokenCommand(scopeType, scopeId,
+        InviteTokenIssuedResponse token = sharedTokenIssuer.issue(new SharedInviteTokenCommand(scopeType, scopeId,
                 role.getId(), role.getName(), createdBy,
                 expiresAt == null ? null : expiresAt.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant(),
                 req.getMaxUses(), scope.closureGeneration()));
@@ -88,14 +92,14 @@ public class InviteService {
             stillCurrent = scopeStates.recheckIssued(scopeType, scopeId, scope.closureGeneration());
         } catch (RuntimeException failure) {
             try {
-                sharedTokenIssuer.revokeForCompensation(token.getId());
+                sharedTokenIssuer.revokeForCompensation(token.invite().id());
             } catch (RuntimeException compensationFailure) {
                 failure.addSuppressed(compensationFailure);
             }
             throw failure;
         }
         if (!stillCurrent) {
-            sharedTokenIssuer.revokeForCompensation(token.getId());
+            sharedTokenIssuer.revokeForCompensation(token.invite().id());
             throw new BusinessException(RoleErrorCode.ROLE_002);
         }
 
@@ -149,10 +153,20 @@ public class InviteService {
     }
 
     /**
+     * ベータ招待として使える（存在し有効な）トークンの招待先を返す。平文で受け取り、ハッシュで照合する。
+     * admin ドメインが role の Repository を直接参照しないための入口。
+     */
+    public java.util.Optional<BetaInviteScope> findValidInviteScope(String tokenStr) {
+        return inviteTokenRepository.findByTokenHash(vault.hash(tokenStr))
+                .filter(InviteTokenEntity::isValid)
+                .map(token -> new BetaInviteScope(token.getTeamId(), token.getOrganizationId()));
+    }
+
+    /**
      * 招待トークンをプレビューする。未認証ユーザーにも表示可能。
      */
     public ApiResponse<InvitePreviewResponse> previewInvite(String tokenStr) {
-        InviteTokenEntity token = inviteTokenRepository.findByToken(tokenStr)
+        InviteTokenEntity token = inviteTokenRepository.findByTokenHash(vault.hash(tokenStr))
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
 
         String scopeType = resolveScopeType(token);
@@ -220,7 +234,7 @@ public class InviteService {
      * @return PNG バイト配列
      */
     public byte[] generateInviteQrCode(String tokenStr, Integer size) {
-        inviteTokenRepository.findByToken(tokenStr)
+        inviteTokenRepository.findByTokenHash(vault.hash(tokenStr))
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
 
         int qrSize = (size != null) ? size : QR_DEFAULT_SIZE;
@@ -247,21 +261,24 @@ public class InviteService {
     }
 
     /**
-     * 招待トークンをIDとチームIDで取得する（IDORチェック用）。
+     * 平文の招待トークンから、指定チームに属する招待を取得する（IDORチェック用）。
      *
-     * @param tokenId 招待トークンID
-     * @param teamId  チームID
-     * @return 招待トークンEntity
-     * @throws BusinessException ROLE_002（存在しないまたはチームに属さない）
+     * @param plaintextToken 平文の招待トークン
+     * @param teamId         チームID
+     * @return 招待の概要（Entity は返さない）
+     * @throws BusinessException ROLE_002（存在しない、またはチームに属さない。両者は区別しない）
      */
-    public InviteTokenEntity findByIdAndTeamId(Long tokenId, Long teamId) {
-        return inviteTokenRepository.findByIdAndTeamId(tokenId, teamId)
+    public InviteTokenResponse findByPlaintextAndTeamId(String plaintextToken, Long teamId) {
+        InviteTokenEntity token = inviteTokenRepository.findByTokenHash(vault.hash(plaintextToken))
+            .filter(found -> teamId.equals(found.getTeamId()))
             .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
+        String roleName = roleRepository.findById(token.getRoleId()).map(RoleEntity::getName).orElse(null);
+        return toResponse(token, roleName);
     }
 
     private InviteTokenResponse toResponse(InviteTokenEntity token, String roleName) {
         return new InviteTokenResponse(
-                token.getId(), token.getToken(), roleName,
+                token.getId(), roleName,
                 token.getExpiresAt(), token.getMaxUses(), token.getUsedCount(),
                 token.getRevokedAt(), token.getCreatedAt());
     }

@@ -88,7 +88,6 @@ public class MessageResponse {
      * FE {@code BeInviteData} が読むフィールド名に一致させる（camelCase・D-12）。
      *
      * @param tokenId   招待トークン ID
-     * @param token     承諾/辞退 API に渡す UUID
      * @param scopeType 招待先種別（{@code TEAM} / {@code ORGANIZATION}）
      * @param scopeId   招待先 ID
      * @param scopeName 招待先の表示名
@@ -99,7 +98,6 @@ public class MessageResponse {
     @Schema(name = "ChatInviteCardData")
     public record InviteCardDto(
             Long tokenId,
-            String token,
             String scopeType,
             Long scopeId,
             String scopeName,
