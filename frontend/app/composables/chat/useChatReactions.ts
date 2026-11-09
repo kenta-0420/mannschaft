@@ -16,7 +16,7 @@ export function useChatReactions() {
   }
 
   async function removeReaction(messageId: number, emoji: string) {
-    return api(`/api/v1/chat/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`, {
+    return api(`/api/v1/chat/messages/${messageId}/reactions?emoji=${encodeURIComponent(emoji)}`, {
       method: 'DELETE',
     })
   }

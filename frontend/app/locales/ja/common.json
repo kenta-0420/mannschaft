@@ -185,6 +185,7 @@
       "tooltip": "Zimmerに招待",
       "failed": "招待に失敗しました",
       "noMembers": "招待できるメンバーがいません",
+      "candidatesLoadFailed": "招待できるメンバーの一覧を取得できませんでした。時間をおいて再度お試しください。",
       "shareQuestion": "既存のチャット内容を共有しますか？",
       "share": "共有する",
       "shareHint": "これまでのメッセージが新しいZimmerに引き継がれます",

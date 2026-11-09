@@ -185,6 +185,7 @@
       "tooltip": "Invite to a Zimmer",
       "failed": "Failed to send the invitation",
       "noMembers": "No members can be invited",
+      "candidatesLoadFailed": "Could not load the list of members you can invite. Please try again later.",
       "shareQuestion": "Share the existing chat history?",
       "share": "Share",
       "shareHint": "Previous messages are carried over to the new Zimmer",

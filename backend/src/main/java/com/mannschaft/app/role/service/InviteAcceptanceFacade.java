@@ -5,6 +5,7 @@ import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.ErrorCode;
+import com.mannschaft.app.common.token.SecretTokenVault;
 import com.mannschaft.app.organization.service.OrganizationInviteQueryService;
 import com.mannschaft.app.role.RoleErrorCode;
 import com.mannschaft.app.role.dto.InviteClaimTicket;
@@ -76,6 +77,7 @@ public class InviteAcceptanceFacade {
     private final InviteFolderPlacementService placementService;
     private final MembershipGrantService membershipGrantService;
     private final AuditLogService auditLogService;
+    private final SecretTokenVault vault;
 
     /** 招待トークンで参加する（後方互換版。folderId=null と等価）。 */
     public void joinByInvite(String token, Long userId) {
@@ -90,7 +92,20 @@ public class InviteAcceptanceFacade {
      * 検出して現行どおり参加せずエラーを返す。事前確認の後に起きた配置の失敗は部分成功（クラス javadoc 参照）。</p>
      */
     public void joinByInvite(String token, Long userId, Long folderId) {
-        InviteLocator locator = new InviteLocator.ByToken(token);
+        accept(new InviteLocator.ByTokenHash(vault.hash(token)), userId, folderId);
+    }
+
+    /**
+     * 承諾型招待を招待 ID で承諾して参加する（平文トークンを持ち回らないための入口）。
+     *
+     * <p>宛先本人でない・共有リンク型・存在しない ID は、区別せずいずれも 404 ROLE_002（ID は推測できるため
+     * 存在オラクルを作らない）。以降の判定と手順はトークン入口と同じ {@link #accept} である。</p>
+     */
+    public void acceptInvitationById(Long tokenId, Long userId, Long folderId) {
+        accept(new InviteLocator.ById(tokenId), userId, folderId);
+    }
+
+    private void accept(InviteLocator locator, Long userId, Long folderId) {
 
         // T1: user 行を先にロックする（inactive/absent user の存在を token 検証前に oracle 化させない）。
         if (userRowLockService.lock(userId) != UserRowLockService.UserState.ACTIVE) {
@@ -135,7 +150,18 @@ public class InviteAcceptanceFacade {
      * 新規に辞退したときだけ、コミット後に audit_logs へ理由 {@code DECLINED} を記録する。
      */
     public void declineInvite(String token, Long userId) {
-        InviteDeclineResult result = writer.decline(new InviteLocator.ByToken(token), userId);
+        decline(new InviteLocator.ByTokenHash(vault.hash(token)), userId);
+    }
+
+    /**
+     * 承諾型招待を招待 ID で辞退する。宛先本人でない・共有リンク型・存在しない ID は、区別せず 404 ROLE_002。
+     */
+    public void declineInvitationById(Long tokenId, Long userId) {
+        decline(new InviteLocator.ById(tokenId), userId);
+    }
+
+    private void decline(InviteLocator locator, Long userId) {
+        InviteDeclineResult result = writer.decline(locator, userId);
         if (!result.newlyDeclined()) {
             return;
         }

@@ -29,6 +29,14 @@ spring:
   cache:
     type: none
 
+# CMP-260910-1811: Gradle test は本ファイルを優先し、main 側の同名ファイルを隠蔽する。
+# 予算機能は有効化する。月次締め・再試行は各試験から手動実行し、自動起動しない。
+feature:
+  shift-budget:
+    enabled: true
+    monthly-close-cron-enabled: false
+    retry-batch-enabled: false
+
 # F10.5 Phase 10-α: テスト環境での Actuator 設定。
 # - `/actuator/health` は DB component を含めると Testcontainer 起動タイミング次第で
 #   503 を返してしまうため、テスト環境では DB indicator を無効化してアプリ自身の死活のみ評価する。
@@ -63,6 +71,19 @@ mannschaft:
   auth:
     mfa:
       email-method-enabled: true
+  # F09.4 §6: test / openapi-gen は off。署名検証の単体試験は各モードを明示して検査する。
+  line:
+    signature-verify:
+      mode: "off"
+  # main の test プロファイルと同じ試験専用ダミー鍵。本物の秘密鍵は使用しない。
+  security:
+    internal-signing-key: test-internal-pdf-signing-key-fixed-32bytes-xxxxx
+  # 試験中の集約・ヘルスポーリングを自動起動しない。対象の単体試験は処理を直接検査する。
+  error-monitoring:
+    aggregation:
+      enabled: false
+    health-polling:
+      enabled: false
   # 通知 outbox の起こし（AFTER_COMMIT・@Async の即時 drain）を試験では止める（docs/architecture/notification_outbox.md §7）。
   # IT は NotificationOutboxRelay#drainAll() を同期で呼んで取り込む（起こしと IT の drain が競合して結果が揺れないように）。
   # 起こし自体を検証する IT（NotificationOutboxNudgeIT）だけ @TestPropertySource で true にする。
@@ -104,3 +125,8 @@ mannschaft:
         - kid: v1
           secret: test-qr-signing-key-fixed-32bytes-testingxxxx
           active: true
+
+# 定期再マッチは試験中に自動登録しない。バッチ本体は Mockito の単体試験で検査する。
+pointcard:
+  rematch-batch:
+    enabled: false

@@ -185,6 +185,7 @@
       "tooltip": "Zimmer에 초대",
       "failed": "초대하지 못했습니다",
       "noMembers": "초대할 수 있는 멤버가 없습니다",
+      "candidatesLoadFailed": "초대할 수 있는 멤버 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "shareQuestion": "기존 채팅 내용을 공유할까요?",
       "share": "공유하기",
       "shareHint": "지금까지의 메시지가 새 Zimmer로 이어집니다",
