@@ -40,7 +40,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestReporter;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -292,7 +291,7 @@ class FlywayFromScratchMigrationTest {
     @Test
     @Order(2)
     @DisplayName("全Entityのマッピング列の存在とVARCHAR長がFlyway実スキーマと一致する")
-    void 全Entityのマッピング列がFlywayスキーマに存在する(TestReporter testReporter) throws Exception {
+    void 全Entityのマッピング列がFlywayスキーマに存在する() throws Exception {
         // given: Flyway 実スキーマ（単独実行にも耐えるよう冪等に再適用。適用済みなら no-op）
         migrateFromScratch();
         Map<String, Set<String>> actualSchema = readActualSchema();
@@ -341,11 +340,10 @@ class FlywayFromScratchMigrationTest {
                 }
             }
 
-            testReporter.publishEntry("cmp2313-metadata-inventory",
-                    "entities=" + entityCount
-                            + ", physicalTables=" + physicalTableCount
-                            + ", mappedColumns=" + mappedColumnCount
-                            + ", actualVarcharColumns=" + actualVarcharColumnCount);
+            System.out.println("[CMP2313] effective metadata inventory: entities=" + entityCount
+                    + ", physicalTables=" + physicalTableCount
+                    + ", mappedColumns=" + mappedColumnCount
+                    + ", actualVarcharColumns=" + actualVarcharColumnCount);
 
             // then: 凍結済みの既知ドリフト以外は 1 件も存在しない
             if (!violations.isEmpty()) {
