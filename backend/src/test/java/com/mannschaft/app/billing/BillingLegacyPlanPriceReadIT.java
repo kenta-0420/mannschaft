@@ -453,6 +453,38 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
         });
     }
 
+    /** 旧band優先を維持し、baseだけ又は0bandだけから無料を推測しない。 */
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
+    @CsvSource({"TEAM,1100,0,1,true", "ORG,1100,0,1,true",
+            "TEAM,1100,0,0,false", "ORG,1100,0,0,false",
+            "TEAM,0,1100,1,false", "ORG,0,1100,1,false",
+            "TEAM,0,1100,0,true", "ORG,0,1100,0,true"})
+    void 未公開時の旧最終額は適合帯優先で明示0だけ無料を維持する(
+            EntitlementScopeKind scope, int base, int bandPrice, int members, boolean free) {
+        removeActivePrices();
+        transactions.executeWithoutResult(tx -> {
+            planRepository.findById(planKey).orElseThrow().setBaseMonthlyPriceJpy(base);
+            for (PlanPriceBandScopeKind oldScope : PlanPriceBandScopeKind.values()) {
+                legacyBandRepository.findByPlanKeyAndScopeKindOrderByBandNoAsc(planKey, oldScope)
+                        .forEach(band -> band.setMonthlyPriceJpy(bandPrice));
+            }
+        });
+        Long scopeId = prepareMembers(scope, members);
+        if (free) {
+            assertThat(priceResolver.resolveMonthlyPriceJpy(scope, scopeId, ContractKind.PLAN, planKey, null)).isZero();
+        } else {
+            assertNotConfigured(scope, scopeId);
+        }
+        if (base > 0 && bandPrice == 0) {
+            assertThat(ownedCatalog().getPriceBands()).filteredOn(band -> scope.name().equals(band.getScopeKind()))
+                    .isNotEmpty().allSatisfy(band -> assertThat(band.getMonthlyPriceJpy()).isZero());
+        }
+        if (base == 0 && bandPrice > 0) {
+            assertThat(ownedCatalog().getPriceBands()).filteredOn(band -> scope.name().equals(band.getScopeKind()))
+                    .noneSatisfy(band -> assertThat(band.getMonthlyPriceJpy()).isEqualTo(0));
+        }
+    }
+
     private void setLegacyFree() {
         transactions.executeWithoutResult(tx -> {
             planRepository.findById(planKey).orElseThrow().setBaseMonthlyPriceJpy(0);
@@ -829,7 +861,7 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
 
         assertThat(result.state()).isEqualTo(BillingPriceSelector.LegacyPlanSelectionState.NOT_SELLABLE);
         assertThat(result.snapshot()).isNull();
-        assertThat(observation.parentRowCounts).containsExactly(1);
+        assertThat(observation.distinctNonActiveParentCounts).containsExactly(1);
     }
 
     @Test
@@ -997,6 +1029,13 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
                 // r2のcanonical projectionも同じ親query。返値型をEntityへ限定しない。
                 observation.parentsReturned = true;
                 observation.parentRowCounts.add(rows.size());
+                observation.distinctNonActiveParentCounts.add((int) rows.stream()
+                        .filter(BillingPriceVersionRepository.LegacyPlanParentRow.class::isInstance)
+                        .map(BillingPriceVersionRepository.LegacyPlanParentRow.class::cast)
+                        .map(BillingPriceVersionRepository.LegacyPlanParentRow::getRevision)
+                        .filter(java.util.Objects::nonNull)
+                        .filter(parent -> parent.getStatus() != BillingPriceVersionStatus.ACTIVE)
+                        .map(BillingPriceVersionEntity::getId).distinct().count());
                 Runnable action = observation.afterParents;
                 observation.afterParents = null;
                 if (action != null) action.run();
@@ -1006,6 +1045,7 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
     }
 
     static class SnapshotObservation {
+        private final List<Integer> distinctNonActiveParentCounts = new ArrayList<>();
         private Runnable afterDue;
         private Runnable afterParents;
         private boolean dueReturned;
