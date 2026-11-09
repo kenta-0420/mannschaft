@@ -82,6 +82,7 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
     private final List<Long> userIds = new ArrayList<>();
     private final List<Long> membershipIds = new ArrayList<>();
     private final List<String> featureKeys = new ArrayList<>();
+    private final List<String> additionalPlans = new ArrayList<>();
     private final List<UUID> contractIds = new ArrayList<>();
     private Long teamId;
     private Long organizationId;
@@ -162,6 +163,7 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
                         .findByPlanKeyAndScopeKindOrderByBandNoAsc(planKey, PlanPriceBandScopeKind.ORG));
                 legacyBandRepository.flush();
                 planRepository.deleteById(planKey);
+                planRepository.deleteAllById(additionalPlans);
             }
         });
     }
@@ -553,6 +555,149 @@ class BillingLegacyPlanPriceReadIT extends AbstractMySqlIntegrationTest {
         assertThat(result.values()).allSatisfy(selection -> {
             assertThat(selection.state()).isEqualTo(state);
             assertThat(selection.snapshot()).isNull();
+        });
+    }
+
+    /** AC19: 新価格だけの全SELECTを観測し、plan数/帯数を増やしても予算を固定する。 */
+    @ParameterizedTest(name = "{displayName} [{index}] {arguments}")
+    @CsvSource({"1,1", "1,10", "10,1", "10,10"})
+    void dueなしcatalogの価格SELECTはplanと帯を増やしても3本以内(int planCount, int bandsPerScope) {
+        Set<String> requested = prepareCatalogScale(planCount, bandsPerScope);
+        try (var capture = com.mannschaft.app.common.visibility.perf.SqlIntentCounter.captureCurrentThread()) {
+            List<PlanItem> result = catalogService.getCatalog().getPlans().stream()
+                    .filter(plan -> requested.contains(plan.getPlanKey())).toList();
+            assertThat(result).hasSize(planCount).allSatisfy(plan -> {
+                assertThat(plan.getBaseMonthlyPriceJpy()).isEqualTo((int) ACTIVE_PRICE);
+                assertThat(plan.getPriceBands()).hasSize(2 * bandsPerScope)
+                        .allSatisfy(band -> assertThat(band.getMonthlyPriceJpy()).isEqualTo((int) ACTIVE_PRICE));
+            });
+            List<String> priceSql = capture.capturedSqls().stream()
+                    .map(sql -> sql.toLowerCase(java.util.Locale.ROOT))
+                    .filter(sql -> sql.contains("billing_price_versions") || sql.contains("billing_price_band_versions")
+                            || sql.contains("plan_price_bands")).toList();
+            assertThat(priceSql).allSatisfy(sql -> assertThat(sql.stripLeading()).startsWith("select"));
+            assertThat(priceSql).hasSizeLessThanOrEqualTo(3);
+            assertThat(priceSql).anySatisfy(sql -> assertThat(sql).contains("billing_price_versions"));
+            assertThat(priceSql).anySatisfy(sql -> assertThat(sql).contains("billing_price_band_versions"));
+        }
+    }
+
+    private Set<String> prepareCatalogScale(int count, int size) {
+        Set<String> requested = new java.util.HashSet<>();
+        requested.add(planKey);
+        transactions.executeWithoutResult(tx -> {
+            for (int index = 1; index < count; index++) {
+                String key = "I1931S-" + UUID.randomUUID().toString().substring(0, 16);
+                additionalPlans.add(key);
+                requested.add(key);
+                planRepository.saveAndFlush(PlanEntity.builder().planKey(key).baseMonthlyPriceJpy(LEGACY_PRICE)
+                        .displayNameKey("it1931").descriptionKey("it1931").sortOrder(index).enabled(true).build());
+                for (EntitlementScopeKind scope : EntitlementScopeKind.values()) {
+                    BillingPriceVersionEntity version = versionRepository.saveAndFlush(BillingPriceVersionEntity.builder()
+                            .productKind(BillingProductKind.PLAN).productKey(key).scopeKind(scope)
+                            .catalogRevision("1931-scale").revisionNo(1L).status(BillingPriceVersionStatus.ACTIVE)
+                            .effectiveFrom(EFFECTIVE_FROM).provisionAttempts(0)
+                            .creationSource(BillingPriceCreationSource.SYSTEM_BACKFILL).build());
+                    versionIds.add(version.getId());
+                    saveScaleBand(version, 1, 1, null);
+                }
+            }
+            if (size > 1) {
+                for (UUID id : new ArrayList<>(versionIds)) {
+                    BillingPriceVersionEntity version = versionRepository.findById(id).orElseThrow();
+                    if (version.getScopeKind() == EntitlementScopeKind.USER) continue;
+                    List<BillingPriceBandVersionEntity> existing = bandRepository
+                            .findByPriceVersionIdAndDeletedAtIsNullOrderByBandNoAsc(id);
+                    existing.getFirst().setMaxMembers(1);
+                    for (int no = 2; no <= size; no++) {
+                        saveScaleBand(version, no, no, no == size ? null : no);
+                    }
+                }
+            }
+        });
+        return requested;
+    }
+
+    private void saveScaleBand(BillingPriceVersionEntity version, int number, int min, Integer max) {
+        bandIds.add(bandRepository.saveAndFlush(BillingPriceBandVersionEntity.builder()
+                .productKind(BillingProductKind.PLAN).productKey(version.getProductKey()).scopeKind(version.getScopeKind())
+                .priceVersionId(version.getId()).bandNo(number).minMembers(min).maxMembers(max).currency("JPY")
+                .stripePriceRef("price_it1931_scale_" + UUID.randomUUID()).inputAmount(ACTIVE_PRICE)
+                .taxBehavior(BillingTaxBehavior.INCLUSIVE).taxCodeSnapshot("txcd_10000000").taxMasterSnapshot("{}")
+                .amountExcludingTax(3_300L).taxAmount(330L).amountIncludingTax(ACTIVE_PRICE).taxRateBasisPoints(1_000)
+                .taxNameSnapshot("消費税").includedInPrice(true).effectiveFrom(EFFECTIVE_FROM)
+                .status(BillingPriceVersionStatus.ACTIVE)
+                .creationSource(BillingPriceCreationSource.SYSTEM_BACKFILL).build()).getId());
+    }
+
+    /** AC20: 全SQL窓を維持し、due2keyの既存writer読取4Dだけを加算する。 */
+    @Test
+    void due2keyのcatalog価格SELECTは3加算4D以内で非due親子を更新しない() {
+        prepareCatalogScale(10, 10);
+        List<UUID> dueCurrent = List.copyOf(versionIds.subList(0, 2));
+        List<UUID> next = new ArrayList<>();
+        Set<UUID> dueBands = new java.util.HashSet<>();
+        transactions.executeWithoutResult(tx -> {
+            for (UUID id : dueCurrent) {
+                BillingPriceVersionEntity current = versionRepository.findById(id).orElseThrow();
+                current.setEffectiveUntil(NOW);
+                bandRepository.findByPriceVersionIdAndDeletedAtIsNullOrderByBandNoAsc(id).forEach(band -> {
+                    band.setEffectiveUntil(NOW);
+                    dueBands.add(band.getId());
+                });
+                BillingPriceVersionEntity scheduled = versionRepository.saveAndFlush(BillingPriceVersionEntity.builder()
+                        .productKind(BillingProductKind.PLAN).productKey(current.getProductKey())
+                        .scopeKind(current.getScopeKind()).catalogRevision("1931-scale-due").revisionNo(2L)
+                        .status(BillingPriceVersionStatus.SCHEDULED).effectiveFrom(NOW).provisionAttempts(0)
+                        .creationSource(BillingPriceCreationSource.SYSTEM_BACKFILL).build());
+                versionIds.add(scheduled.getId());
+                next.add(scheduled.getId());
+                BillingPriceBandVersionEntity scheduledBand = bandRepository.saveAndFlush(
+                        BillingPriceBandVersionEntity.builder().productKind(BillingProductKind.PLAN)
+                                .productKey(current.getProductKey()).scopeKind(current.getScopeKind())
+                                .priceVersionId(scheduled.getId()).bandNo(1).minMembers(1).currency("JPY")
+                                .stripePriceRef("price_it1931_due_" + UUID.randomUUID()).inputAmount(4_840L)
+                                .taxBehavior(BillingTaxBehavior.INCLUSIVE).taxCodeSnapshot("txcd_10000000")
+                                .taxMasterSnapshot("{}").amountExcludingTax(4_400L).taxAmount(440L)
+                                .amountIncludingTax(4_840L).taxRateBasisPoints(1_000).taxNameSnapshot("消費税")
+                                .includedInPrice(true).effectiveFrom(NOW).status(BillingPriceVersionStatus.SCHEDULED)
+                                .creationSource(BillingPriceCreationSource.SYSTEM_BACKFILL).build());
+                bandIds.add(scheduledBand.getId());
+                dueBands.add(scheduledBand.getId());
+            }
+        });
+        Map<UUID, List<Object>> untouchedBefore = unchangedPriceRows(dueCurrent, next, dueBands);
+        try (var capture = com.mannschaft.app.common.visibility.perf.SqlIntentCounter.captureCurrentThread()) {
+            PlanItem result = ownedCatalog();
+            assertThat(result.getBaseMonthlyPriceJpy()).isEqualTo(4_840);
+            assertThat(result.getPriceBands()).filteredOn(band -> "TEAM".equals(band.getScopeKind()))
+                    .extracting(PriceBand::getMonthlyPriceJpy).containsExactly(4_840);
+            long selects = capture.capturedSqls().stream().map(sql -> sql.toLowerCase(java.util.Locale.ROOT))
+                    .filter(sql -> sql.stripLeading().startsWith("select"))
+                    .filter(sql -> sql.contains("billing_price_versions") || sql.contains("billing_price_band_versions")
+                            || sql.contains("plan_price_bands")).count();
+            assertThat(selects).isLessThanOrEqualTo(3 + 4 * next.size());
+        }
+        transactions.executeWithoutResult(tx -> {
+            assertThat(versionRepository.findAllById(dueCurrent)).hasSize(2)
+                    .allSatisfy(version -> assertThat(version.getStatus()).isEqualTo(BillingPriceVersionStatus.RETIRED));
+            assertThat(versionRepository.findAllById(next)).hasSize(2)
+                    .allSatisfy(version -> assertThat(version.getStatus()).isEqualTo(BillingPriceVersionStatus.ACTIVE));
+        });
+        assertThat(unchangedPriceRows(dueCurrent, next, dueBands)).isEqualTo(untouchedBefore);
+    }
+
+    private Map<UUID, List<Object>> unchangedPriceRows(List<UUID> current, List<UUID> next, Set<UUID> dueBands) {
+        return transactions.execute(tx -> {
+            Map<UUID, List<Object>> values = new java.util.HashMap<>();
+            versionRepository.findAllById(versionIds).stream()
+                    .filter(version -> !current.contains(version.getId()) && !next.contains(version.getId()))
+                    .forEach(version -> values.put(version.getId(), List.of(version.getStatus(),
+                            version.getLockVersion(), version.getUpdatedAt())));
+            bandRepository.findAllById(bandIds).stream().filter(band -> !dueBands.contains(band.getId()))
+                    .forEach(band -> values.put(band.getId(), List.of(band.getStatus(),
+                            band.getLockVersion(), band.getUpdatedAt())));
+            return values;
         });
     }
 
