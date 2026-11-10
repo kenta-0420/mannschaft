@@ -81,6 +81,8 @@ class ReservationAdminNotificationEventListenerTest {
     private ReservationAdminNotificationEventListener listener;
     private ListAppender<ILoggingEvent> logs;
     private Logger listenerLogger;
+    /** 対象ロガーの元のレベル（null なら継承。TEST_CONVENTION §2.5）。 */
+    private Level originalLevel;
 
     @BeforeEach
     void setUp() {
@@ -92,6 +94,9 @@ class ReservationAdminNotificationEventListenerTest {
         lenient().when(messageSource.getMessage(anyString(), any(), anyString(), any(Locale.class)))
                 .thenReturn("stub-message");
         listenerLogger = (Logger) LoggerFactory.getLogger(ReservationAdminNotificationEventListener.class);
+        // TEST_CONVENTION §2.5: 同じフォークの先行テストが残したレベルに左右されないよう、実効レベルを自ら設定する
+        originalLevel = listenerLogger.getLevel();
+        listenerLogger.setLevel(Level.DEBUG);
         logs = new ListAppender<>();
         logs.start();
         listenerLogger.addAppender(logs);
@@ -100,6 +105,7 @@ class ReservationAdminNotificationEventListenerTest {
     @AfterEach
     void tearDown() {
         listenerLogger.detachAppender(logs);
+        listenerLogger.setLevel(originalLevel);
     }
 
     private void stubRecipients(Long teamId, List<Long> admins, List<Long> deputies) {

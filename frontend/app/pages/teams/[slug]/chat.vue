@@ -14,7 +14,7 @@ const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', team
 const { isDesktop } = useIsDesktop()
 
 const selectedChannel = ref<ChatChannelResponse | null>(null)
-const chatListRef = ref<{ refresh: () => void } | null>(null)
+const chatListRef = ref<{ refresh: () => void, refreshAndSelect: (channelId: number) => Promise<void> } | null>(null)
 const showCreateDialog = ref(false)
 
 // モバイル単一ペインで「一覧を出すか空状態を出すか」を決めるための件数。
@@ -24,6 +24,7 @@ const mobileChannelCount = ref(0)
 /**
  * ?channel={id} で開いたときに選ぶチャンネル（問い合わせ通知の遷移先。CMP-261030-0648）。
  * 一覧の読み込みが済んだら渡すのをやめる（モバイルで一覧へ戻ったとき同じチャンネルを選び直さないため）。
+ * 開いた後に query だけが変わる SPA 遷移（同じ slug ではページが作り直されない）は下の watch で追従する。
  */
 function parseChannelQuery(value: unknown): number | undefined {
   const raw = Array.isArray(value) ? value[0] : value
@@ -37,6 +38,28 @@ function onChannelListLoaded(count: number) {
   mobileChannelCount.value = count
   pendingChannelId.value = undefined
 }
+
+/**
+ * query の ?channel= が変わったら選択を追従させる。いったん未選択にしてから、
+ * 一覧にある（見られる）チャンネルなら選び直す。正の整数でない・一覧に無いなら未選択のまま。
+ * 一覧が描画されていない（モバイルで会話を表示中）ときは、一覧の再表示時に initialChannelId で選ぶ。
+ */
+watch(
+  () => parseChannelQuery(route.query.channel),
+  (channelId) => {
+    selectedChannel.value = null
+    if (channelId === undefined) {
+      pendingChannelId.value = undefined
+      return
+    }
+    if (chatListRef.value) {
+      void chatListRef.value.refreshAndSelect(channelId)
+    }
+    else {
+      pendingChannelId.value = channelId
+    }
+  },
+)
 
 // 会話ビューのヘッダーに出す選択中チャンネル名
 const selectedChannelName = computed(() => {
