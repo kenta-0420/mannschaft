@@ -443,19 +443,60 @@ class NotificationServiceTest {
             assertThat(result.getIsConfirmed()).isTrue();
         }
 
+        /** Mapper が古い値 true を返しても、補完の結果（行なし＝null）で上書きされることを確かめる。 */
+        private NotificationResponse staleConfirmedResponse(Long sourceId) {
+            return createConfirmableResponse(901L).toBuilder().sourceId(sourceId).isConfirmed(true).build();
+        }
+
         @Test
-        @DisplayName("AC-6c 既読の確認通知で本人が受信者でない(状態行なし)なら isConfirmed=null")
+        @DisplayName("AC-6c 既読の確認通知で本人が受信者でない／除外済み（状態行なし）なら補完で isConfirmed=null になる")
         void 既読の確認通知_受信者でなければnull() {
             NotificationEntity entity = createConfirmableNotification(901L);
             entity.markAsRead();
             given(notificationRepository.findByIdAndUserId(NOTIFICATION_ID, USER_ID)).willReturn(Optional.of(entity));
-            given(notificationMapper.toNotificationResponse(entity)).willReturn(createConfirmableResponse(901L));
+            given(notificationMapper.toNotificationResponse(entity)).willReturn(staleConfirmedResponse(901L));
             given(confirmableNotificationRecipientRepository.findConfirmationStatesByUserIdAndNotificationIdIn(
                     USER_ID, List.of(901L))).willReturn(List.<Object[]>of());
 
             NotificationResponse result = notificationService.markAsRead(USER_ID, NOTIFICATION_ID);
 
             assertThat(result.getIsConfirmed()).isNull();
+            verify(confirmableNotificationRecipientRepository).findConfirmationStatesByUserIdAndNotificationIdIn(
+                    USER_ID, List.of(901L));
+        }
+
+        @Test
+        @DisplayName("AC-6c 既読の確認通知で他人の状態行しか無いなら補完で isConfirmed=null になる")
+        void 既読の確認通知_他人の行のみはnull() {
+            NotificationEntity entity = createConfirmableNotification(901L);
+            entity.markAsRead();
+            given(notificationRepository.findByIdAndUserId(NOTIFICATION_ID, USER_ID)).willReturn(Optional.of(entity));
+            given(notificationMapper.toNotificationResponse(entity)).willReturn(staleConfirmedResponse(901L));
+            // 本人の行は無く、別の確認通知(902)の行だけが返る。
+            given(confirmableNotificationRecipientRepository.findConfirmationStatesByUserIdAndNotificationIdIn(
+                    USER_ID, List.of(901L))).willReturn(List.<Object[]>of(new Object[] {902L, true}));
+
+            NotificationResponse result = notificationService.markAsRead(USER_ID, NOTIFICATION_ID);
+
+            assertThat(result.getIsConfirmed()).isNull();
+            verify(confirmableNotificationRecipientRepository).findConfirmationStatesByUserIdAndNotificationIdIn(
+                    USER_ID, List.of(901L));
+        }
+
+        @Test
+        @DisplayName("AC-6c 既読の確認通知で sourceId が無ければ補完は問い合わせず isConfirmed=null のまま")
+        void 既読の確認通知_sourceIdなしはnull() {
+            NotificationEntity entity = createConfirmableNotification(901L);
+            entity.markAsRead();
+            given(notificationRepository.findByIdAndUserId(NOTIFICATION_ID, USER_ID)).willReturn(Optional.of(entity));
+            given(notificationMapper.toNotificationResponse(entity))
+                    .willReturn(createConfirmableResponse(901L).toBuilder().sourceId(null).isConfirmed(null).build());
+
+            NotificationResponse result = notificationService.markAsRead(USER_ID, NOTIFICATION_ID);
+
+            assertThat(result.getIsConfirmed()).isNull();
+            verify(confirmableNotificationRecipientRepository, never())
+                    .findConfirmationStatesByUserIdAndNotificationIdIn(any(), any());
         }
 
         @Test

@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { computed, onMounted, ref, watch } from 'vue'
 import { createI18n } from 'vue-i18n'
+import { createMemoryHistory, createRouter, RouterLink } from 'vue-router'
 import WidgetNotices from '~/components/widgets/WidgetNotices.vue'
 
 const mocks = vi.hoisted(() => {
@@ -63,7 +64,7 @@ vi.mock('#imports', () => ({
   useI18n: () => ({ t: (key: string) => key }),
 }))
 
-const i18n = createI18n({ legacy: false, locale: 'ja', missingWarn: false, fallbackWarn: false, messages: { ja: {} } })
+const i18n = createI18n({ legacy: false, locale: 'ja', missingWarn: false, fallbackWarn: false, messages: { ja: {}, en: {}, zh: {}, ko: {}, es: {}, de: {} } })
 
 const stubs = {
   DashboardWidgetCard: { template: '<div><slot /></div>' },
@@ -73,7 +74,7 @@ const stubs = {
   AttendanceQuickModal: { template: '<div />' },
   Badge: { template: '<span />' },
   Button: { template: '<button type="button" />' },
-  NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' },
+  NuxtLink: RouterLink,
 }
 
 const apiNotice = (id: number, isRead: boolean, actionUrl: string | null) => ({
@@ -86,11 +87,24 @@ const apiNotice = (id: number, isRead: boolean, actionUrl: string | null) => ({
   action_url: actionUrl,
 })
 
+const page = { template: '<div />' }
+const makeRouter = () => createRouter({
+  history: createMemoryHistory(),
+  routes: [
+    { path: '/', component: page },
+    { path: '/schedules/1', component: page },
+    { path: '/notifications', component: page },
+  ],
+})
+
 async function mountWidget(items: ReturnType<typeof apiNotice>[]) {
   mocks.getNotices.mockResolvedValue({ data: { items } })
-  const wrapper = mount(WidgetNotices, { global: { stubs, plugins: [i18n], mocks: { $t: (k: string) => k } } })
+  const router = makeRouter()
+  await router.push('/')
+  await router.isReady()
+  const wrapper = mount(WidgetNotices, { global: { stubs, plugins: [i18n, router], mocks: { $t: (k: string) => k } } })
   await flushPromises()
-  return wrapper
+  return Object.assign(wrapper, { router })
 }
 
 const dotOf = (wrapper: ReturnType<typeof mount>, id: number) => {
@@ -136,6 +150,8 @@ describe('WidgetNotices 既読化（CMP-261030-0652）', () => {
     await flushPromises()
 
     expect(mocks.markNoticeRead).not.toHaveBeenCalled()
+    // NuxtLink の既読通知は POST せずに遷移先へ移る
+    expect(wrapper.router.currentRoute.value.fullPath).toBe('/schedules/1')
     wrapper.unmount()
   })
 
