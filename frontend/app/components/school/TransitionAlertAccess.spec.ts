@@ -4,15 +4,21 @@ import TransitionAlertBanner from './TransitionAlertBanner.vue'
 import TransitionAlertResolveModal from './TransitionAlertResolveModal.vue'
 import type { TransitionAlertResponse } from '~/types/school'
 
-const { resolveAlert } = vi.hoisted(() => ({ resolveAlert: vi.fn() }))
+const { resolveAlert, notifyError, notifySuccess } = vi.hoisted(() => ({
+  resolveAlert: vi.fn(), notifyError: vi.fn(), notifySuccess: vi.fn(),
+}))
 mockNuxtImport('useTransitionAlertApi', () => () => ({ resolveAlert }))
-mockNuxtImport('useNotification', () => () => ({ error: vi.fn(), success: vi.fn() }))
+mockNuxtImport('useNotification', () => () => ({ error: notifyError, success: notifySuccess }))
 const alert: TransitionAlertResponse = { id: 7, teamId: 42, studentUserId: 8,
   attendanceDate: '2026-11-10', previousPeriodNumber: 1, currentPeriodNumber: 2,
   previousPeriodStatus: 'ATTENDING', currentPeriodStatus: 'ABSENT', alertLevel: 'NORMAL',
   resolved: false, createdAt: '2026-11-10T09:00:00' }
 const modalStub = { name: 'TransitionAlertResolveModal', props: ['canResolve'], template: '<div />' }
-beforeEach(() => resolveAlert.mockReset())
+beforeEach(() => {
+  resolveAlert.mockReset()
+  notifyError.mockReset()
+  notifySuccess.mockReset()
+})
 
 describe('移動検知アラートの解決資格', () => {
   it.each([undefined, false])('資格%sではアラートを読めても解決ボタン・モーダルを出さない', async canResolve => {
@@ -69,6 +75,8 @@ describe('移動検知アラートの解決資格', () => {
     await pending
     expect(vm.submitting).toBe(false)
     expect(wrapper.emitted('resolved')).toEqual([[7]])
+    expect(notifySuccess).toHaveBeenCalledTimes(1)
+    expect(notifyError).not.toHaveBeenCalled()
     await wrapper.setProps({ canResolve: false })
     vm.note = 'not permitted'
     await vm.onConfirm()
@@ -89,6 +97,8 @@ describe('移動検知アラートの解決資格', () => {
     await pending
     expect(wrapper.emitted('resolved')).toBeUndefined()
     expect(wrapper.emitted('update:visible')).toContainEqual([false])
+    expect(notifySuccess).not.toHaveBeenCalled()
+    expect(notifyError).not.toHaveBeenCalled()
   })
 
 
@@ -105,6 +115,43 @@ describe('移動検知アラートの解決資格', () => {
     finish()
     await pending
     expect(wrapper.emitted('resolved')).toBeUndefined()
+  })
+
+
+  it('現役の失敗はerror通知を維持しsuccessと解決emitを出さない', async () => {
+    resolveAlert.mockRejectedValueOnce(new Error('current failure'))
+    const wrapper = await mountSuspended(TransitionAlertResolveModal, {
+      props: { alert, teamId: '42', visible: true, canResolve: true }, global: { stubs: { Dialog: true } },
+    })
+    const vm = wrapper.vm as unknown as { note: string; onConfirm: () => Promise<void> }
+    vm.note = 'confirmed'
+    await vm.onConfirm()
+    expect(notifyError).toHaveBeenCalledTimes(1)
+    expect(notifySuccess).not.toHaveBeenCalled()
+    expect(wrapper.emitted('resolved')).toBeUndefined()
+    wrapper.unmount()
+  })
+
+  it.each(['取消', 'team変更', '破棄'] as const)('%s後に届く旧失敗はsuccess/error通知もemitも追加しない', async invalidation => {
+    let fail!: (reason: unknown) => void
+    resolveAlert.mockReturnValueOnce(new Promise<void>((_resolve, reject) => { fail = reject }))
+    const wrapper = await mountSuspended(TransitionAlertResolveModal, {
+      props: { alert, teamId: '42', visible: true, canResolve: true }, global: { stubs: { Dialog: true } },
+    })
+    const vm = wrapper.vm as unknown as { note: string; onConfirm: () => Promise<void> }
+    vm.note = 'confirmed'
+    const pending = vm.onConfirm()
+    if (invalidation === '取消') await wrapper.setProps({ canResolve: false })
+    else if (invalidation === 'team変更') await wrapper.setProps({ teamId: '99' })
+    else wrapper.unmount()
+    const emittedBeforeFailure = JSON.stringify(wrapper.emitted())
+    fail(new Error('obsolete failure'))
+    await pending
+    expect(notifySuccess).not.toHaveBeenCalled()
+    expect(notifyError).not.toHaveBeenCalled()
+    expect(JSON.stringify(wrapper.emitted())).toBe(emittedBeforeFailure)
+    expect(wrapper.emitted('resolved')).toBeUndefined()
+    if (invalidation !== '破棄') wrapper.unmount()
   })
 
 })

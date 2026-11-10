@@ -38,16 +38,18 @@ async function onConfirm(): Promise<void> {
   const teamId = props.teamId
   const alertId = props.alert.id
   const requestedGeneration = generation
+  const current = () => generation === requestedGeneration && props.canResolve === true
+    && props.teamId === teamId && props.alert.id === alertId
 
   submitting.value = true
   try {
     await api.resolveAlert(teamId, alertId, note.value.trim())
-    if (generation !== requestedGeneration || !props.canResolve || props.teamId !== teamId || props.alert.id !== alertId) return
+    if (!current()) return
     notifySuccess(t('school.transitionAlert.resolveSuccess'))
     emit('resolved', alertId)
     note.value = ''
   } catch {
-    notifyError(t('school.transitionAlert.title'))
+    if (current()) notifyError(t('school.transitionAlert.title'))
   } finally {
     submitting.value = false
   }
