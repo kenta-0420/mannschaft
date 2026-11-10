@@ -184,6 +184,109 @@ class NotificationSelfScopeContractIT extends AbstractMySqlIntegrationTest {
         }
     }
 
+    @Nested
+    @DisplayName("POST /notifications/{id}/read の冪等性（CMP-261030-0652）")
+    class MarkReadIdempotent {
+
+        private NotificationEntity saveReadNotification(Long userId) {
+            NotificationEntity e = saveNotification(userId, "既読済み");
+            e.markAsRead();
+            return notificationRepository.saveAndFlush(e);
+        }
+
+        /** DB に永続化された read_at を（丸め込み後の値で）引き直す。 */
+        private LocalDateTime persistedReadAt(Long id) {
+            em.flush();
+            em.clear();
+            return notificationRepository.findById(id).orElseThrow().getReadAt();
+        }
+
+        @Test
+        @WithMockUser(username = "916401")
+        @DisplayName("AC-1 既読の自分宛通知は 200・isRead=true で read_at は不変")
+        void AC1_既読は200でreadAt不変() throws Exception {
+            NotificationEntity mine = saveReadNotification(ME);
+            LocalDateTime first = persistedReadAt(mine.getId());
+
+            mockMvc.perform(post("/api/v1/notifications/" + mine.getId() + "/read"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.isRead").value(true));
+
+            em.flush();
+            em.clear();
+            assertThat(notificationRepository.findById(mine.getId()).orElseThrow().getReadAt()).isEqualTo(first);
+        }
+
+        @Test
+        @WithMockUser(username = "916401")
+        @DisplayName("AC-2 未読は 200・既読化され read_at が入り unread-count が 1 減る")
+        void AC2_未読は既読化される() throws Exception {
+            NotificationEntity mine = saveNotification(ME, "未読");
+            saveNotification(ME, "もう1件");
+
+            mockMvc.perform(post("/api/v1/notifications/" + mine.getId() + "/read"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.isRead").value(true));
+
+            em.flush();
+            em.clear();
+            NotificationEntity after = notificationRepository.findById(mine.getId()).orElseThrow();
+            assertThat(after.getIsRead()).isTrue();
+            assertThat(after.getReadAt()).isNotNull();
+            mockMvc.perform(get("/api/v1/notifications/unread-count"))
+                    .andExpect(jsonPath("$.data.unreadCount").value(1));
+        }
+
+        @Test
+        @WithMockUser(username = "916401")
+        @DisplayName("AC-3 続けて2回 POST しても2回とも 200 で unread-count は変わらない")
+        void AC3_2回続けて200() throws Exception {
+            NotificationEntity mine = saveNotification(ME, "未読");
+            saveNotification(ME, "もう1件");
+            String url = "/api/v1/notifications/" + mine.getId() + "/read";
+
+            mockMvc.perform(post(url)).andExpect(status().isOk());
+            mockMvc.perform(get("/api/v1/notifications/unread-count"))
+                    .andExpect(jsonPath("$.data.unreadCount").value(1));
+            mockMvc.perform(post(url)).andExpect(status().isOk());
+            mockMvc.perform(get("/api/v1/notifications/unread-count"))
+                    .andExpect(jsonPath("$.data.unreadCount").value(1));
+        }
+
+        @Test
+        @WithMockUser(username = "916401")
+        @DisplayName("AC-5 他人宛は未読でも既読でも 404 NOTIFICATION_001 で本文同一、存在しない/0/負のIDも同じ。他人の行は不変")
+        void AC5_他人宛は404で存在オラクルなし() throws Exception {
+            NotificationEntity othersUnread = saveNotification(OTHER, "他人の未読");
+            NotificationEntity othersRead = saveReadNotification(OTHER);
+            LocalDateTime first = persistedReadAt(othersRead.getId());
+
+            String[] urls = {
+                    "/api/v1/notifications/" + othersUnread.getId() + "/read",
+                    "/api/v1/notifications/" + othersRead.getId() + "/read",
+                    "/api/v1/notifications/999999999/read",
+                    "/api/v1/notifications/0/read",
+                    "/api/v1/notifications/-1/read"};
+            String baseline = null;
+            for (String url : urls) {
+                MvcResult r = mockMvc.perform(post(url))
+                        .andExpect(status().isNotFound())
+                        .andExpect(jsonPath("$.error.code").value("NOTIFICATION_001"))
+                        .andReturn();
+                String body = r.getResponse().getContentAsString();
+                if (baseline == null) {
+                    baseline = body;
+                }
+                assertThat(objectMapper.readTree(body).path("error")).isEqualTo(objectMapper.readTree(baseline).path("error"));
+            }
+
+            em.flush();
+            em.clear();
+            assertThat(notificationRepository.findById(othersUnread.getId()).orElseThrow().getIsRead()).isFalse();
+            assertThat(notificationRepository.findById(othersRead.getId()).orElseThrow().getReadAt()).isEqualTo(first);
+        }
+    }
+
     // ═════════════════════════════════════════════════════════════════════
     // NotificationPreferenceController
     // ═════════════════════════════════════════════════════════════════════

@@ -114,4 +114,44 @@ public class InviteController {
         inviteAcceptanceFacade.declineInvite(token, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok().build();
     }
+
+    /**
+     * 承諾型招待を招待 ID で承諾して参加する（CMP-260826-1457）。
+     *
+     * <p>宛先指定型の招待は平文トークンを持ち回らない。宛先本人でない・共有リンク型・存在しない ID は
+     * 区別せずいずれも 404 ROLE_002（ID は推測できるため存在オラクルを作らない）。</p>
+     */
+    @SelfScopedEndpoint("InviteAcceptanceFacade#acceptInvitationById が参加者として SecurityUtils.getCurrentUserId() のみを使用し、"
+            + "招待の宛先本人（target_user_id）と一致しなければ不在と同じ 404 で拒否するため他人の識別子を指定する余地が無い")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "指名型メンバー招待の承諾は中核の所属管理機能として常時提供する")
+    @PostMapping("/invitations/{tokenId}/accept")
+    @Operation(summary = "承諾型招待の承諾（招待ID指定）",
+            description = "宛先本人が招待IDで承諾して参加する。ボディの folderId 指定時はそのフォルダへ、未指定時は未分類フォルダへ配置")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "参加成功")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Void> acceptInvitation(
+            @PathVariable Long tokenId,
+            @RequestBody(required = false) InviteJoinRequest req) {
+        Long folderId = req != null ? req.folderId() : null;
+        inviteAcceptanceFacade.acceptInvitationById(tokenId, SecurityUtils.getCurrentUserId(), folderId);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * 承諾型招待を招待 ID で辞退する（CMP-260826-1457）。宛先本人のみ。
+     */
+    @SelfScopedEndpoint("InviteAcceptanceFacade#declineInvitationById が SecurityUtils.getCurrentUserId() のみを使用し、"
+            + "招待の宛先本人（target_user_id）と一致しなければ不在と同じ 404 で拒否するため他人の識別子を指定する余地が無い")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "指名型メンバー招待の辞退は中核の所属管理機能として常時提供する")
+    @PostMapping("/invitations/{tokenId}/decline")
+    @Operation(summary = "承諾型招待の辞退（招待ID指定）",
+            description = "宛先本人が招待IDで辞退する。revoked_at を立てカードを辞退済み表示にする")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "辞退成功")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Void> declineInvitation(@PathVariable Long tokenId) {
+        inviteAcceptanceFacade.declineInvitationById(tokenId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok().build();
+    }
 }

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { parseApiError } from '~/utils/apiError'
 import { normalizeProjectDetail, toProgressPercent } from '~/utils/projectDetail'
 import type {
   ProjectResponse,
@@ -26,6 +27,7 @@ const todos = ref<TodoResponse[]>([])
 const loading = ref(true)
 const showEditDialog = ref(false)
 const showMilestoneDialog = ref(false)
+const milestoneFieldErrors = ref<Record<string, string>>({})
 const editingMilestone = ref<MilestoneResponse | null>(null)
 
 const editForm = reactive<UpdateProjectRequest>({
@@ -97,12 +99,14 @@ async function toggleComplete() {
 
 function openCreateMilestone() {
   editingMilestone.value = null
+  milestoneFieldErrors.value = {}
   Object.assign(milestoneForm, { title: '', dueDate: '', sortOrder: milestones.value.length })
   showMilestoneDialog.value = true
 }
 
 function openEditMilestone(ms: MilestoneResponse) {
   editingMilestone.value = ms
+  milestoneFieldErrors.value = {}
   Object.assign(milestoneForm, {
     title: ms.title,
     dueDate: ms.dueDate ?? '',
@@ -120,8 +124,12 @@ async function saveMilestone(form: CreateMilestoneRequest) {
     }
     showMilestoneDialog.value = false
     await load()
-  } catch {
-    showError(t('project.error.milestone_save_failed'))
+  } catch (error) {
+    // 400 の fieldErrors は該当欄に出す。理由が分からないときだけ汎用のトーストを出す。
+    milestoneFieldErrors.value = parseApiError(error).fieldErrors
+    if (Object.keys(milestoneFieldErrors.value).length === 0) {
+      showError(t('project.error.milestone_save_failed'))
+    }
   }
 }
 
@@ -264,6 +272,7 @@ onMounted(async () => {
     <ProjectMilestoneDialog
       v-model:visible="showMilestoneDialog"
       :form="milestoneForm"
+      :field-errors="milestoneFieldErrors"
       :editing="editingMilestone"
       @save="saveMilestone"
     />

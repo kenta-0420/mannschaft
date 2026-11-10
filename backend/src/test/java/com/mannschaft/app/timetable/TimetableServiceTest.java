@@ -43,6 +43,55 @@ class TimetableServiceTest {
     private static final Long TEAM_ID = 1L;
     private static final Long ACTOR_USER_ID = 100L;
 
+    private static TimetableTermRepository.TermNameView view(Long id, String name, Long teamId, Long orgId) {
+        return new TimetableTermRepository.TermNameView() {
+            public Long getId() { return id; }
+            public String getName() { return name; }
+            public Long getTeamId() { return teamId; }
+            public Long getOrganizationId() { return orgId; }
+        };
+    }
+
+    @Nested
+    @DisplayName("getTermNames（B2・越境しない）")
+    class GetTermNames {
+
+        @Test
+        @DisplayName("自チームの学期名だけを返す。他チームの学期名は返さない。論理削除済みも引く")
+        void 学期名_自チームのみ() {
+            given(termRepository.findNamesByIdsIncludingDeleted(java.util.Set.of(3L, 4L, 5L)))
+                    .willReturn(java.util.List.of(
+                            view(3L, "1学期", TEAM_ID, null),
+                            view(4L, "削除済みの学期", TEAM_ID, null),
+                            view(5L, "他チームの学期", 99L, null)));
+
+            java.util.Map<Long, String> names = service.getTermNames(TEAM_ID, java.util.Set.of(), java.util.List.of(3L, 4L, 5L, 3L));
+
+            assertThat(names).containsOnlyKeys(3L, 4L);
+            assertThat(names).containsEntry(3L, "1学期").containsEntry(4L, "削除済みの学期");
+        }
+
+        @Test
+        @DisplayName("所属組織の学期名は返し、無関係な組織の学期名は返さない")
+        void 学期名_所属組織のみ() {
+            given(termRepository.findNamesByIdsIncludingDeleted(java.util.Set.of(6L, 8L)))
+                    .willReturn(java.util.List.of(
+                            view(6L, "所属組織の学期", null, 7L),
+                            view(8L, "無関係な組織の学期", null, 70L)));
+
+            java.util.Map<Long, String> names = service.getTermNames(TEAM_ID, java.util.Set.of(7L), java.util.List.of(6L, 8L));
+
+            assertThat(names).containsOnlyKeys(6L);
+        }
+
+        @Test
+        @DisplayName("ID が空ならクエリを発行しない")
+        void 空ならクエリなし() {
+            assertThat(service.getTermNames(TEAM_ID, java.util.Set.of(), java.util.List.of())).isEmpty();
+            org.mockito.Mockito.verifyNoInteractions(termRepository);
+        }
+    }
+
     @Nested
     @DisplayName("getById")
     class GetById {
@@ -70,16 +119,16 @@ class TimetableServiceTest {
         void 作成_正常_保存() {
             // Given
             TimetableTermEntity term = TimetableTermEntity.builder()
-                    .academicYear(2025).name("1学期")
+                    .teamId(TEAM_ID).academicYear(2025).name("1学期")
                     .startDate(LocalDate.of(2025, 4, 1))
                     .endDate(LocalDate.of(2025, 7, 31)).build();
-            given(termRepository.findById(1L)).willReturn(Optional.of(term));
+            given(termRepository.findByIdForUpdate(1L)).willReturn(Optional.of(term));
             given(timetableRepository.save(any(TimetableEntity.class))).willAnswer(inv -> inv.getArgument(0));
 
             CreateTimetableData data = new CreateTimetableData(
                     1L, "テスト時間割", TimetableVisibility.MEMBERS_ONLY,
                     LocalDate.of(2025, 4, 1), LocalDate.of(2025, 7, 31),
-                    false, null, null, null, 100L);
+                    false, null, null, null, 100L, java.util.Set.of());
 
             // When
             TimetableEntity result = service.create(TEAM_ID, data, ACTOR_USER_ID);
@@ -93,16 +142,79 @@ class TimetableServiceTest {
         @DisplayName("異常系: 学期不在でTIMETABLE_002例外")
         void 作成_学期不在_例外() {
             // Given
-            given(termRepository.findById(1L)).willReturn(Optional.empty());
+            given(termRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
 
             CreateTimetableData data = new CreateTimetableData(
-                    1L, "テスト", null, null, null, false, null, null, null, 100L);
+                    1L, "テスト", null, null, null, false, null, null, null, 100L, java.util.Set.of());
 
             // When / Then
             assertThatThrownBy(() -> service.create(TEAM_ID, data, ACTOR_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TIMETABLE_002"));
+        }
+    }
+
+    @Nested
+    @DisplayName("create の学期スコープ検証（P1）と行ロック（P2）")
+    class CreateTermScope {
+
+        private CreateTimetableData data() {
+            return data(java.util.Set.of());
+        }
+
+        private CreateTimetableData data(java.util.Set<Long> usableOrgIds) {
+            return new CreateTimetableData(1L, "テスト", TimetableVisibility.MEMBERS_ONLY,
+                    LocalDate.of(2025, 4, 1), LocalDate.of(2025, 7, 31), false, null, null, null, 100L, usableOrgIds);
+        }
+
+        private TimetableTermEntity term(Long teamId, Long orgId) {
+            return TimetableTermEntity.builder().teamId(teamId).organizationId(orgId)
+                    .academicYear(2025).name("他所の学期")
+                    .startDate(LocalDate.of(2025, 4, 1)).endDate(LocalDate.of(2025, 7, 31)).sortOrder(1).build();
+        }
+
+        @Test
+        @DisplayName("他チームの学期 ID は、存在しない学期と同じ TIMETABLE_002 で拒否される")
+        void 他チームの学期は拒否() {
+            given(termRepository.findByIdForUpdate(1L)).willReturn(Optional.of(term(99L, null)));
+
+            assertThatThrownBy(() -> service.create(TEAM_ID, data(), ACTOR_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(TimetableErrorCode.TERM_NOT_FOUND));
+            verify(timetableRepository, org.mockito.Mockito.never()).save(any(TimetableEntity.class));
+        }
+
+        @Test
+        @DisplayName("所属していない組織の学期 ID は拒否される")
+        void 無関係な組織の学期は拒否() {
+            given(termRepository.findByIdForUpdate(1L)).willReturn(Optional.of(term(null, 70L)));
+
+            assertThatThrownBy(() -> service.create(TEAM_ID, data(java.util.Set.of(7L)), ACTOR_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(TimetableErrorCode.TERM_NOT_FOUND));
+        }
+
+        @Test
+        @DisplayName("所属組織の学期は使える")
+        void 所属組織の学期は許可() {
+            given(termRepository.findByIdForUpdate(1L)).willReturn(Optional.of(term(null, 7L)));
+            given(timetableRepository.save(any(TimetableEntity.class))).willAnswer(inv -> inv.getArgument(0));
+
+            assertThat(service.create(TEAM_ID, data(java.util.Set.of(7L)), ACTOR_USER_ID).getTermId()).isEqualTo(1L);
+        }
+
+        @Test
+        @DisplayName("学期の行を悲観ロックで取り、論理削除済み（取得できない）なら拒否する")
+        void 論理削除済みの学期は拒否_ロック経由() {
+            given(termRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.create(TEAM_ID, data(), ACTOR_USER_ID))
+                    .isInstanceOf(BusinessException.class);
+            verify(termRepository).findByIdForUpdate(1L);
+            verify(termRepository, org.mockito.Mockito.never()).findById(any());
         }
     }
 

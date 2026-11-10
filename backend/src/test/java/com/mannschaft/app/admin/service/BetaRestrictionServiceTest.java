@@ -4,7 +4,6 @@ import com.mannschaft.app.admin.dto.BetaRestrictionConfigResponse;
 import com.mannschaft.app.admin.entity.BetaRestrictionConfigEntity;
 import com.mannschaft.app.admin.repository.BetaRestrictionConfigRepository;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
-import com.mannschaft.app.role.repository.InviteTokenRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -31,7 +30,13 @@ class BetaRestrictionServiceTest {
     private BetaRestrictionConfigRepository repo;
 
     @Mock
-    private InviteTokenRepository inviteTokenRepository;
+    private com.mannschaft.app.role.service.InviteService inviteService;
+
+    private static Optional<com.mannschaft.app.role.dto.BetaInviteScope> scopeOf(InviteTokenEntity token) {
+        return token.isValid()
+                ? Optional.of(new com.mannschaft.app.role.dto.BetaInviteScope(token.getTeamId(), token.getOrganizationId()))
+                : Optional.empty();
+    }
 
     @InjectMocks
     private BetaRestrictionService betaRestrictionService;
@@ -48,7 +53,7 @@ class BetaRestrictionServiceTest {
         @DisplayName("トークンが存在しない場合 false を返す")
         void isBetaTokenValid_トークン不存在_false() {
             // Given
-            given(inviteTokenRepository.findByToken("nonexistent")).willReturn(Optional.empty());
+            given(inviteService.findValidInviteScope("nonexistent")).willReturn(Optional.empty());
 
             // When
             boolean result = betaRestrictionService.isBetaTokenValid("nonexistent");
@@ -62,14 +67,13 @@ class BetaRestrictionServiceTest {
         void isBetaTokenValid_トークン無効_false() {
             // Given: 期限切れトークン（revokedAtあり）
             InviteTokenEntity revokedToken = InviteTokenEntity.builder()
-                    .token("revoked-token")
                     .teamId(1L)
                     .organizationId(null)
                     .roleId(1L)
                     .usedCount(0)
                     .revokedAt(LocalDateTime.now().minusDays(1))
                     .build();
-            given(inviteTokenRepository.findByToken("revoked-token")).willReturn(Optional.of(revokedToken));
+            given(inviteService.findValidInviteScope("revoked-token")).willReturn(scopeOf(revokedToken));
 
             // When
             boolean result = betaRestrictionService.isBetaTokenValid("revoked-token");
@@ -83,13 +87,12 @@ class BetaRestrictionServiceTest {
         void isBetaTokenValid_teamIdOrgIdともnull_false() {
             // Given: teamId/orgId 両方 null の有効トークン
             InviteTokenEntity token = InviteTokenEntity.builder()
-                    .token("no-target-token")
                     .teamId(null)
                     .organizationId(null)
                     .roleId(1L)
                     .usedCount(0)
                     .build();
-            given(inviteTokenRepository.findByToken("no-target-token")).willReturn(Optional.of(token));
+            given(inviteService.findValidInviteScope("no-target-token")).willReturn(scopeOf(token));
 
             // When
             boolean result = betaRestrictionService.isBetaTokenValid("no-target-token");
@@ -103,13 +106,12 @@ class BetaRestrictionServiceTest {
         void isBetaTokenValid_teamId5_maxTeamId10_true() {
             // Given
             InviteTokenEntity token = InviteTokenEntity.builder()
-                    .token("team-token")
                     .teamId(5L)
                     .organizationId(null)
                     .roleId(1L)
                     .usedCount(0)
                     .build();
-            given(inviteTokenRepository.findByToken("team-token")).willReturn(Optional.of(token));
+            given(inviteService.findValidInviteScope("team-token")).willReturn(scopeOf(token));
             BetaRestrictionConfigEntity config = BetaRestrictionConfigEntity.builder()
                     .isEnabled(true)
                     .maxTeamId(10L)
@@ -130,13 +132,12 @@ class BetaRestrictionServiceTest {
         void isBetaTokenValid_teamId15_maxTeamId10_false() {
             // Given
             InviteTokenEntity token = InviteTokenEntity.builder()
-                    .token("team-over-token")
                     .teamId(15L)
                     .organizationId(null)
                     .roleId(1L)
                     .usedCount(0)
                     .build();
-            given(inviteTokenRepository.findByToken("team-over-token")).willReturn(Optional.of(token));
+            given(inviteService.findValidInviteScope("team-over-token")).willReturn(scopeOf(token));
             BetaRestrictionConfigEntity config = BetaRestrictionConfigEntity.builder()
                     .isEnabled(true)
                     .maxTeamId(10L)
@@ -157,13 +158,12 @@ class BetaRestrictionServiceTest {
         void isBetaTokenValid_orgId3_maxOrgId10_true() {
             // Given
             InviteTokenEntity token = InviteTokenEntity.builder()
-                    .token("org-token")
                     .teamId(null)
                     .organizationId(3L)
                     .roleId(1L)
                     .usedCount(0)
                     .build();
-            given(inviteTokenRepository.findByToken("org-token")).willReturn(Optional.of(token));
+            given(inviteService.findValidInviteScope("org-token")).willReturn(scopeOf(token));
             BetaRestrictionConfigEntity config = BetaRestrictionConfigEntity.builder()
                     .isEnabled(true)
                     .maxTeamId(null)
@@ -184,13 +184,12 @@ class BetaRestrictionServiceTest {
         void isBetaTokenValid_orgId15_maxOrgId10_false() {
             // Given
             InviteTokenEntity token = InviteTokenEntity.builder()
-                    .token("org-over-token")
                     .teamId(null)
                     .organizationId(15L)
                     .roleId(1L)
                     .usedCount(0)
                     .build();
-            given(inviteTokenRepository.findByToken("org-over-token")).willReturn(Optional.of(token));
+            given(inviteService.findValidInviteScope("org-over-token")).willReturn(scopeOf(token));
             BetaRestrictionConfigEntity config = BetaRestrictionConfigEntity.builder()
                     .isEnabled(true)
                     .maxTeamId(null)

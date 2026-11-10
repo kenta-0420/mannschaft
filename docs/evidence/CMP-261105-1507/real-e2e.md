@@ -104,3 +104,103 @@
 - `scripts/verification-run.mjs` の中の `./gradlew` は実行権限が無いため `bash ./gradlew` で呼んだ。systemd ユニットの環境には `node` が無く、nvm のパスを足した。
 - WSL の npm（nvm 配下の 2 つ）は `graceful-fs` が欠けて壊れていた。FE は WSL でなく Windows の worktree で立てた。
 - worktree の `node_modules` が無かったため `npm ci`（約 37 分）で作った（検証用 FE のためで、コミットには入れない）。
+
+---
+
+# 追記: 最新 main での再確認（2026-11-09）
+
+- 対象 main: `dced3a9312e12ff1a7ac8c3d8005c542cdd312df`（#4355・#4358・#4375 を含む。前回の `412aad1613` から更新）
+- spec: `frontend/tests/e2e/real/cmp1507-latest-main.real.spec.ts`（新規 11 件）と、`cmp1507-regression.real.spec.ts` の ③④ を修正後の画面に合わせて更新（設定 `playwright-cmp1507.config.ts` が両方を流す）。
+- 最終実行: **cmp1507 設定 18 件すべて PASS（17.5 分）**。後始末は 204（時間割が付いて消せない学期を除く。下記）。
+
+## 実行環境
+
+| 項目 | 値 |
+|---|---|
+| BE | 検証用 :8081。`dced3a9312` を WSL ネイティブへ `git fetch --depth 1` し、`scripts/verification-run.mjs` 経由で `bootJar`（`-Pmax.parallel.forks=1`）→ systemd ユーザーユニット `n1p1-be-8081`。鍵は本陣と同じ設定、CORS は `http://localhost:3017` を OPTIONS で実測（`Access-Control-Allow-Origin: http://localhost:3017`） |
+| FE | 検証用 :3017。この worktree（ブランチは `origin/main` から切り直し）の Nuxt dev（Windows、Node 22.23.2）。止めて起動し直し、主要 14 ページへ `curl` して温めた（初回の Nitro 構築のあいだ `/` が 503 を返し、全体で約 25 分） |
+| ブラウザ | Playwright Chromium、`--host-resolver-rules=MAP localhost 127.0.0.1` |
+| モック | なし。API はログイン・前提データ作成・後始末と、他人の発言・DM・使い捨てチームのモジュール ON・アカウント言語（de）の設定にだけ使用。確かめる操作はすべて画面 |
+
+前提は、使い捨てチーム（ASCII 名、時間割モジュール ON）に、ADMIN（作成者）・MEMBER・第三の MEMBER を入れ、別組織の利用者（OUTSIDER）はどこにも入れない構成。
+
+## 結果（既存 spec）
+
+| 対象 | 結果 | 根拠 |
+|---|---|---|
+| cmp1507 ①⑤⑥（プロジェクト進捗・関連タスク・件数。MEMBER／他テナント） | PASS | 前回と同じ。他組織は詳細 URL 直打ちで 403 |
+| cmp1507 ②（チャットの並び） | PASS | 8 件中 4 件が同じ秒。投稿直後・再読込後とも投稿順 |
+| cmp1507 ③④（学期の作成・削除） | PASS（spec を更新） | 前回の欠陥 1・2・3 が直ったため、期待値を修正後の画面に更新した（下記。失敗を隠したのではなく、直った挙動に合わせた） |
+| n1p1 24 件 | 21 件 PASS・3 件失敗 → 再実行で 3 件 PASS（計 24 件 PASS） | 初回の失敗は、#4288 チームのスコープウィジェット（`swipe-widget-grid-TEAM` が 60 秒以内に出ない）、#4294 組織メンバー一覧 ADMIN（`waitForResponse` 90 秒切れ）、#4288 業務アラート負の視点（管理コンソール URL が組織トップへ戻る前の 60 秒切れ）。いずれも初回コンパイル直後の時間切れの疑いで、温まったあとに 3 件だけ再実行して PASS（9.8 分）。時間切れの原因（初回コンパイルか否か）までは追っていない。T12（①進捗 50%）は `test.fail` なしで PASS。T01 は初回から PASS |
+
+③④ の更新内容:
+- ③: 年度を空にすると、送信前に欄のエラー「年度を入力してください」が出て、POST は飛ばない。年度を入れれば 201。
+- ④: 時間割が残る学期の削除は、確認ダイアログのあとで 409（`TIMETABLE_022`）になり、専用の文言「時間割が残っているため、この学期は削除できません。先に時間割を整理してください」のトーストが出る（以前は翻訳キー `common.dialog.error` が出ていた）。時間割を論理削除したあとも 409。確認でキャンセルすると消えない。時間割の無い学期は 204 で消える。
+
+## 結果（新規 spec。ID は `cmp1507-latest-main.real.spec.ts`）
+
+| 修正 | 内容 | 視点 | 結果 |
+|---|---|---|---|
+| #4355 | マイルストーンを追加すると、入力したタイトルで保存される（リクエスト本文の `title` と一覧の表示が一致）。更新も入力したタイトルで保存され、再読込しても残る | ADMIN | PASS |
+| #4355 | プロジェクトの編集（タイトル変更）が保存され、再読込しても残る | ADMIN | PASS |
+| #4355 | de で、一覧・詳細・マイルストーン追加ダイアログ・プロジェクト編集ダイアログに日本語の行が 0 件 | ADMIN | PASS |
+| #4355 | MEMBER には「作成」「編集」「鉛筆」が出ない。他組織は URL 直打ちで 403、タイトルもマイルストーンも出ない | MEMBER／他組織 | PASS |
+| #4358 | サイドバー（ハンバーガー → スケジュール）に「時間割」が出て、クリックで `/teams/{slug}/timetable` へ辿れる（モジュール ON） | ADMIN／MEMBER | PASS |
+| #4358 | 年度に「27」を入れて送ると、2000 に丸められず欄のエラー「年度は2000〜2100の範囲で入力してください」。入力欄の値は 27 のまま、POST は 0 件 | ADMIN | PASS |
+| #4358 | 開始日を終了日より後にすると、500 でなく欄のエラー「終了日は開始日より後の日付にしてください」。POST は 0 件 | ADMIN | PASS |
+| #4358 | 正しい日付で学期を追加（201、年度は 2036 で送られる）→ その学期で時間割を作成（201）→ 一覧タブで DRAFT（下書き）を削除（確認でキャンセルすると残り、承認で 204） | ADMIN | PASS |
+| #4358 | 学期の削除は確認つき（キャンセルで残る）。時間割（論理削除済み）が付いた学期は 409 と専用文言。時間割の無い学期（年度は全角「２０３７」で入力→半角に正規化）は 204 で消える | ADMIN | PASS |
+| #4358 | MEMBER: 学期は読める（200）が、「学期追加」・削除ボタン・「時間割作成」・時間割の削除ボタンが出ない。サイドバーには時間割が出る | MEMBER | PASS |
+| #4358 | 他組織: URL 直打ちで `GET /teams/{t2}/timetables` が 403。学期名・追加ボタン・時間割作成・サイドバーの時間割リンクが出ない | 他組織 | PASS |
+| #4375 | 自分の投稿を、⋯メニューの「編集」→ ダイアログで保存（PATCH 200、「(編集済み)」が付く、再読込後も編集後の本文）。ホバーのごみ箱で削除（削除済み表示）。他人（ADMIN）の投稿には削除が出ない | MEMBER | PASS |
+| #4375 | 未読 3 件のチャンネルを開くと（`POST /read` 成功）、一覧の未読バッジが消える。再読込しても 0 | MEMBER | PASS |
+| #4375 | 他組織の利用者が、実在チャンネルと不在 ID を `?channel=` で直打ち: どちらも `GET /chat/channels/{id}` は **404 `CHAT_001`**。応答本文・画面の全文（「指定されたチャンネルにアクセスできません」）・その間に叩いた API の一覧がすべて一致。チャンネル名は出ない | 他組織 | PASS |
+| #4375 | de で、チャット一覧・チャンネル画面・作成ダイアログに日本語の行が 0 件（利用者が付けたチャンネル名を除く） | MEMBER | PASS |
+| #4375 | チームのチャット画面で DM を開き、Zimmer に招待（履歴を共有）→ 作成直後に `GET /chat/channels/{id}` で取り直し（200）、他人（MEMBER）の投稿にごみ箱が出て、削除できる | ADMIN（作成者） | PASS |
+
+## 操作した要素・開始 URL・最終画面
+
+| テスト | 開始 URL | 操作要素 | 最終画面 |
+|---|---|---|---|
+| マイルストーン | `/teams/{t2}/projects/{id}` | 「マイルストーン」見出しの「作成」→ タイトル欄（プレースホルダ「マイルストーン名」）・期限 →「追加」。カードの鉛筆 → タイトル → 「更新」。「編集」→ タイトル →「更新」 | タイトルが `MS renamed …`、見出しが `Plan edited …`（再読込後も） |
+| マイルストーン de | `/teams/{t2}/projects` → 詳細 | 「Erstellen」「Abbrechen」「Bearbeiten」 | 日本語行 0 |
+| 時間割（ADMIN） | `/teams/{t2}/projects` → ハンバーガー `scope-sidebar-toggle` →「スケジュール」→「時間割」 | タブ `timetable-tab-term`、`term-add-button`、`term-name-input`／`term-start-input`／`term-end-input`／`term-year-input`、`term-dialog-submit`、`timetable-create-button`、学期の選択、`timetable-tab-list`、`timetable-delete-{id}`、`term-delete-{id}`、確認ダイアログの承認・キャンセル | 時間割の無い学期が一覧から消え、「学期を削除しました」 |
+| 時間割（MEMBER／他組織） | `/teams/{t2}/timetable` 直打ち | なし（見えない・出ないことの確認） | MEMBER は読み取りのみ。他組織は中身なし |
+| チャット編集・削除 | `/chat?channel={id}` | 入力欄 `team-chat-input`、⋯メニュー →「編集」、`chat-message-edit-body`／`chat-message-edit-save`、`chat-message-delete` | 削除済み表示（`chat-message-deleted`） |
+| 未読 | `/chat` | `chat-channel-{id}`（バッジ `chat-channel-unread`） | バッジなし |
+| 存在隠蔽 | `/chat?channel={実在}` と `/chat?channel=987654321` | なし | 同一の画面・応答（404 `CHAT_001`） |
+| Zimmer | `/teams/{t2}/chat` | `chat-channel-{dm}`、ヘッダーの招待ボタン（ユーザー追加アイコン）、候補の選択、「共有する」、「Zimmerを作成」、`chat-message-delete` | 他人の投稿が削除済み表示 |
+
+### ロール3視点（まとめ）
+
+- **権限あり（ADMIN／作成者）**: 学期の追加・削除、時間割の作成・DRAFT 削除、マイルストーン・プロジェクトの編集、チャンネル OWNER としての他人の投稿の削除ができる。
+- **権限なし（MEMBER）**: 時間割・学期・プロジェクトは読める。追加・削除・編集の導線は出ない。チャットでは自分の投稿だけ編集・削除でき、他人の投稿には削除が出ない。
+- **他テナント**: プロジェクト詳細・時間割・チャンネルのどれも URL 直打ちで中身が出ない。チャンネルは実在と不在で同じ 404 `CHAT_001`、同じ画面。
+
+## 新しく見つかった欠陥（観測事実）
+
+1. **DM の開始が API の宛先違いで 405**
+   - 観測: `POST /api/v1/chat/channels/dm`（body `{userId}`）は 405（`COMMON_004` このエンドポイントでは指定されたHTTPメソッドは使用できません）。BE の会話開始は `POST /api/v1/chat/channels/conversations`（`{userIds}`）で、こちらは 200/201。
+   - FE: `frontend/app/composables/chat/useChatChannels.ts:106`（`getOrCreateDm`）が `/channels/dm` を呼び、`frontend/app/components/chat/ChatCreateDialog.vue:110` が 1 人を選んだときにこれを使う。BE は `backend/src/main/java/com/mannschaft/app/chat/controller/ChatChannelController.java:204` の `/conversations`。
+   - 画面からは、確かめていない（API で 405 を観測。前提の DM は `/conversations` で作った）。
+2. **汎用の `/chat` 画面では、DM から Zimmer に招待するときのメンバー候補が空**
+   - 観測: ADMIN が `/chat?channel={dm}` で招待ボタンを押すと、候補欄が「招待できるメンバーがいません」（第三の MEMBER を検索しても出ない）。チームのチャット画面（`/teams/{slug}/chat`）では候補が出て、招待できた。
+   - 手がかり: `frontend/app/components/chat/ChatInviteToZimmerDialog.vue` の `loadMembers` は `teamId` か `organizationId` が渡されたときだけ候補を取る。`frontend/app/pages/chat/index.vue:322` の `<ChatMessagePanel :channel="tab.channel" />` は両方とも渡さない。
+3. **他組織の利用者に `GET /teams/{t2}/me/permissions` が 200 で返る**（軽微・観測のみ）: 他組織の利用者がチームの時間割ページを直打ちすると、この API は 200 を返した。時間割と学期の API（`/timetables` は 403）は閉じており、画面に中身は出なかった。応答の中身（権限が空か）は確かめていない。
+4. **（前回の欠陥の再確認）直ったもの**: 前回の欠陥 1（学期追加の欄エラー）、2（409 のとき翻訳キー丸出し）、3（表見出しの翻訳キー）、4（チームの時間割で学期を選べない）は、いずれも再現しなくなった。前回の欠陥 5（送信中の Enter）は今回は確かめていない。
+
+## 後始末と残骸
+
+- spec が作った組織・チーム・チャンネル・DM・Zimmer・時間割の無い学期は、globalTeardown で 204（または既に無い 404）まで削除した。DB は直接触っていない（使い捨て利用者の有効化 `users.status` の更新は、既存の実機 spec と同じ前提作成）。
+- **時間割が付いた学期は、仕様（`TIMETABLE_022`）上、あとから削除できず残る**。今回は、①チーム画面の「時間割を作る→DRAFT 削除」の確認（実行ごとに 1 件）と、②既存の ④（実行ごとに 1 件）で生じる。親チームは削除済み。ID を確認できたもの: 36・46・52。spec の途中失敗で記録前に終わった実行の分を含め、合計は約 4〜6 件。
+- 登録した使い捨て利用者（`e2e-n1p1-*@test.mannschaft.local`）は、前回と同じく残る。アカウント言語を de にした 2 名は、テストの最後に ja へ戻した。
+- 検証用に作ったもの: WSL の clone と成果物（`~/vf-src`、`/var/tmp/vf-app.jar`、`verification-run` の証跡ディレクトリ）は撤去した。`~/verify-1507/app.jar` は稼働中の BE の実体として残している。
+
+## 未実施と理由
+
+| 対象 | 理由 |
+|---|---|
+| 汎用 `/chat` 画面から DM を開始する操作そのもの | 欠陥 1 のとおり API が 405 のため、前提の DM は API（`/conversations`）で作った |
+| ④ の「同組織 MEMBER が学期を API 直叩きで削除した場合」 | API は前提・後始末にだけ使う方針（前回と同じ） |
+| #4358 の組織側画面での年度 27・日付逆転 | 同じ共通部品 `TimetableTermManager` を使う。今回はチームで確かめ、組織は ③ の年度空のみ |
+| 他の言語（en/zh/ko/es）の日本語残存 | 今回は de のみ（依頼範囲） |
