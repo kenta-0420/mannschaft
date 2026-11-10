@@ -54,6 +54,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -260,9 +261,7 @@ public class ChatMessageService {
                 saved.getId(), request.getAttachments(), channel, senderId);
 
         // チャンネルの最終メッセージ情報を更新
-        String preview = request.getBody().length() > PREVIEW_LENGTH
-                ? request.getBody().substring(0, PREVIEW_LENGTH)
-                : request.getBody();
+        String preview = toPreview(request.getBody());
         channel.updateLastMessage(LocalDateTime.now(), preview);
 
         // 未読カウント根治: 送信者以外の全チャンネルメンバーの unread_count を一括インクリメントする。
@@ -313,6 +312,9 @@ public class ChatMessageService {
         message.editBody(request.getBody());
         ChatMessageEntity saved = messageRepository.save(message);
 
+        // 編集したのが最新メッセージなら、部屋一覧のプレビューも新しい本文に追従させる。
+        refreshPreviewAfterEdit(message);
+
         log.info("メッセージ編集完了: messageId={}", messageId);
         MessageResponse response = enrichMessage(saved, userId);
         // F04.2: WebSocket でチャンネル参加者全員に配信
@@ -346,8 +348,17 @@ public class ChatMessageService {
             }
         }
 
+        // 最新メッセージを削除する場合は、削除後に部屋一覧のプレビューを直前の未削除メッセージへ差し戻す。
+        boolean wasLatest = messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(message.getChannelId())
+                .map(latest -> latest.getId().equals(message.getId()))
+                .orElse(false);
+
         message.softDelete();
         messageRepository.save(message);
+
+        if (wasLatest) {
+            revertPreviewAfterDelete(channel);
+        }
 
         // 返信削除後: 親の replyCount を減らし、0 になった場合は active_thread_count をデクリメント
         if (message.getParentId() != null) {
@@ -556,6 +567,86 @@ public class ChatMessageService {
     /**
      * メッセージが属するチャンネルを取得する。チャンネルが不在（論理削除済み）なら、メッセージも不在として扱う。
      */
+    /** 部屋一覧プレビュー用に本文を先頭 {@value #PREVIEW_LENGTH} 文字へ切り詰める。 */
+    private static String toPreview(String body) {
+        return body.length() > PREVIEW_LENGTH ? body.substring(0, PREVIEW_LENGTH) : body;
+    }
+
+    /**
+     * 一覧プレビューに載せる表示用の文字列を、メッセージの種別に応じて作る。
+     *
+     * <p>通常のテキスト・転送メッセージは本文の先頭 {@value #PREVIEW_LENGTH} 文字。招待カード
+     * （{@code message_type = 'INVITE_CARD'}）の本文は内部マーカー {@code [招待カード]} なので表示に使わず、
+     * 招待先名を省いた {@value #INVITE_CARD_FALLBACK_PREVIEW} を暫定で載せる。招待先名を含む本来の文言
+     * （投稿時の「{招待先名} への招待を送りました」・F04.12 §D-14 の保存契約）は、role ドメインの参照を要するため
+     * トランザクションの外で {@link ChatInviteCardPreviewRefresher} が {@link #applyInviteCardPreview} で上書きする
+     * （D-3T: このトランザクションから role ドメインへ越境しない）。</p>
+     */
+    private String previewOf(ChatMessageEntity message) {
+        if ("INVITE_CARD".equals(message.getMessageType())) {
+            return INVITE_CARD_FALLBACK_PREVIEW;
+        }
+        return toPreview(message.getBody());
+    }
+
+    /** 招待カードの暫定プレビュー。招待先名を解決できない場合もこのまま残る。 */
+    static final String INVITE_CARD_FALLBACK_PREVIEW = "招待を送りました";
+
+    /**
+     * 招待カードのプレビュー更新に必要な参照。
+     *
+     * @param messageId 招待カードのメッセージID
+     * @param tokenId   招待トークンID（role ドメインの参照キー）
+     * @param senderId  招待カードの送信者（inviteData の閲覧者として渡す）
+     */
+    public record InviteCardPreviewTarget(Long messageId, Long tokenId, Long senderId) {
+    }
+
+    /**
+     * チャンネルの最新の未削除メッセージが招待カードなら、その参照を返す（トランザクションの外で呼ぶ）。
+     */
+    public Optional<InviteCardPreviewTarget> findLatestInviteCardPreviewTarget(Long channelId) {
+        return messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(channelId)
+                .filter(m -> "INVITE_CARD".equals(m.getMessageType()) && m.getInviteTokenId() != null)
+                .map(m -> new InviteCardPreviewTarget(m.getId(), m.getInviteTokenId(), m.getSenderId()));
+    }
+
+    /**
+     * 招待カードのプレビュー文言を確定する。更新対象のカードがまだ最新のときだけ、プレビュー本文を上書きする
+     * （確定までの間に新しい投稿があれば、その投稿のプレビューを壊さない）。chat ドメイン内で完結する。
+     */
+    @Transactional
+    public void applyInviteCardPreview(Long channelId, Long cardMessageId, String preview) {
+        boolean stillLatest = messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(channelId)
+                .map(latest -> latest.getId().equals(cardMessageId))
+                .orElse(false);
+        if (!stillLatest) {
+            return;
+        }
+        ChatChannelEntity channel = channelService.findChannelOrThrow(channelId);
+        channel.updateLastMessage(channel.getLastMessageAt(), toPreview(preview));
+    }
+
+    /** 編集したメッセージがチャンネルの最新なら、プレビュー本文だけを新しい本文に更新する（最終投稿日時は不変）。 */
+    private void refreshPreviewAfterEdit(ChatMessageEntity edited) {
+        boolean isLatest = messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(edited.getChannelId())
+                .map(latest -> latest.getId().equals(edited.getId()))
+                .orElse(false);
+        if (!isLatest) {
+            return;
+        }
+        ChatChannelEntity channel = findChannelOfMessage(edited);
+        channel.updateLastMessage(channel.getLastMessageAt(), previewOf(edited));
+    }
+
+    /** 最新メッセージの削除後、プレビューを直前の未削除メッセージへ差し戻す。無ければ空にする。 */
+    private void revertPreviewAfterDelete(ChatChannelEntity channel) {
+        messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(channel.getId())
+                .ifPresentOrElse(
+                        prev -> channel.updateLastMessage(prev.getCreatedAt(), previewOf(prev)),
+                        () -> channel.updateLastMessage(null, null));
+    }
+
     private ChatChannelEntity findChannelOfMessage(ChatMessageEntity message) {
         return channelRepository.findById(message.getChannelId())
                 .orElseThrow(() -> new BusinessException(ChatErrorCode.MESSAGE_NOT_FOUND));

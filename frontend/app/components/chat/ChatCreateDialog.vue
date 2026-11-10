@@ -16,6 +16,7 @@ const emit = defineEmits<{
 
 const { createChannel, getOrCreateDm } = useChatApi()
 const { loadCandidates } = useChatCandidateMembers()
+const { resolveScopeIds } = useChatScopeIds()
 const authStore = useAuthStore()
 const notification = useNotification()
 const { t } = useI18n()
@@ -114,10 +115,9 @@ async function startChat() {
       const memberNames = contact.selected.value.map((m) => m.displayName).join(', ')
       await createChannel({
         channelType: channelType.value,
-        teamId: props.teamId,
-        organizationId: props.organizationId,
+        ...(await resolveScopeIds({ teamId: props.teamId, organizationId: props.organizationId })),
         name: memberNames,
-        memberIds: contact.selected.value.map((m) => m.userId),
+        memberUserIds: contact.selected.value.map((m) => m.userId),
       })
       notification.success(t('chat.create.roomCreated'))
       visible.value = false
@@ -137,12 +137,11 @@ async function onSubmitZimmer() {
   try {
     await createChannel({
       channelType: channelType.value,
-      teamId: props.teamId,
-      organizationId: props.organizationId,
+      ...(await resolveScopeIds({ teamId: props.teamId, organizationId: props.organizationId })),
       name: name.value.trim(),
       description: description.value.trim() || undefined,
       isPrivate: isPrivate.value,
-      memberIds: zimmer.selected.value.map((m) => m.userId),
+      memberUserIds: zimmer.selected.value.map((m) => m.userId),
     })
     clearZimmerDraft()
     notification.success(t('chat.create.roomCreated'))

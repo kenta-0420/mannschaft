@@ -35,6 +35,8 @@ public class ChatMessageFacade {
     private final ChatMessageService messageService;
     private final ChatChannelService channelService;
     private final ChatChannelAccessGuard channelAccessGuard;
+    /** 編集・削除後に、一覧プレビューの招待カード文言を（トランザクションの外で）確定する。 */
+    private final ChatInviteCardPreviewRefresher inviteCardPreviewRefresher;
 
     /** チャンネルのメッセージ一覧を取得する（閲覧認可）。 */
     public CursorPagedResponse<MessageResponse> listMessages(
@@ -69,8 +71,11 @@ public class ChatMessageFacade {
     /** メッセージを編集する（送信者本人のみ）。 */
     public MessageResponse editMessage(Long messageId, EditMessageRequest request, Long userId) {
         ChatMessageEntity message = messageService.findMessageOrThrow(messageId);
-        channelAccessGuard.requireMessageOwner(channelAccessGuard.channelOfMessage(message), message, userId);
-        return messageService.editMessage(messageId, request, userId);
+        ChatChannelEntity channel = channelAccessGuard.channelOfMessage(message);
+        channelAccessGuard.requireMessageOwner(channel, message, userId);
+        MessageResponse response = messageService.editMessage(messageId, request, userId);
+        inviteCardPreviewRefresher.refresh(channel.getId());
+        return response;
     }
 
     /**
@@ -82,6 +87,7 @@ public class ChatMessageFacade {
         ChatChannelEntity channel = channelAccessGuard.channelOfMessage(message);
         boolean moderation = channelAccessGuard.requireMessageDeletable(channel, message, userId);
         messageService.deleteMessage(messageId, userId);
+        inviteCardPreviewRefresher.refresh(channel.getId());
         if (moderation) {
             // F04.2 §6 監査: CHAT_MESSAGE_DELETED_BY_ADMIN（投稿者本人以外による削除）
             log.info("CHAT_MESSAGE_DELETED_BY_ADMIN: messageId={}, channelId={}, operatorUserId={}, senderId={}",
