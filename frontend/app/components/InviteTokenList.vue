@@ -19,7 +19,7 @@ const { t } = useI18n()
 const api = useApi()
 const { downloadInviteTokenPdf } = useInviteTokenApi()
 const notification = useNotification()
-const { formatDate } = useDatetime()
+const { formatDateTime } = useDatetime()
 const tokens = ref<InviteToken[]>([])
 const loading = ref(false)
 const showCreateDialog = ref(false)
@@ -143,7 +143,7 @@ function isExpired(token: InviteToken): boolean {
 
 function formatTokenDate(dateStr: string | null): string {
   if (!dateStr) return t('inviteToken.never')
-  return formatDate(dateStr)
+  return formatDateTime(dateStr)
 }
 
 onMounted(() => loadTokens())

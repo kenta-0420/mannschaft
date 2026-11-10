@@ -23,13 +23,21 @@ const mocks = vi.hoisted(() => ({
 vi.mock('~/composables/useApi', () => ({ useApi: () => mocks.api }))
 vi.mock('~/composables/useNotification', () => ({ useNotification: () => mocks }))
 vi.mock('~/composables/useInviteTokenApi', () => ({ useInviteTokenApi: () => mocks }))
+// 実際の整形関数と同じ粒度（formatDate=日付のみ / formatDateTime=時刻まで）を再現する。
+const datetimeFormatters = {
+  formatDate: (value: string) => value.slice(0, 10),
+  formatDateTime: (value: string) => value.slice(0, 16),
+}
 vi.mock('~/composables/useDatetime', () => ({
-  useDatetime: () => ({ formatDate: (value: string) => value }),
+  useDatetime: () => ({
+    formatDate: (value: string) => value.slice(0, 10),
+    formatDateTime: (value: string) => value.slice(0, 16),
+  }),
 }))
 vi.stubGlobal('useApi', () => mocks.api)
 vi.stubGlobal('useNotification', () => mocks)
 vi.stubGlobal('useInviteTokenApi', () => mocks)
-vi.stubGlobal('useDatetime', () => ({ formatDate: (value: string) => value }))
+vi.stubGlobal('useDatetime', () => datetimeFormatters)
 vi.stubGlobal('useI18n', useI18n)
 vi.stubGlobal('ref', ref)
 vi.stubGlobal('computed', computed)
@@ -269,7 +277,22 @@ describe('招待リンク一覧の識別性とモバイル表示', () => {
   it('各行に作成日時を表示する', async () => {
     const wrapper = await mountList('team', 'ja', RecordingTable as never)
     expect(wrapper.text()).toContain(t('secret_token.list.created_at'))
-    expect(wrapper.text()).toContain(token.createdAt)
+    expect(wrapper.text()).toContain('2026-10-16T00:00')
+  })
+
+  it('同日・異時刻に作った2行は作成日時が異なる表示になる（古いリンクの識別）', async () => {
+    mocks.api.mockReset().mockResolvedValue({
+      data: [
+        { ...token, id: 1, createdAt: '2026-10-16T09:15:00' },
+        { ...token, id: 2, createdAt: '2026-10-16T18:40:00' },
+      ],
+    })
+    const wrapper = await mountList('team', 'ja', RecordingTable as never)
+    const cells = wrapper.findAll('span.whitespace-nowrap').map((el) => el.text())
+    expect(cells).toHaveLength(2)
+    expect(new Set(cells).size).toBe(2)
+    expect(cells[0]).toContain('09:15')
+    expect(cells[1]).toContain('18:40')
   })
 
   it('再発行の案内（links_hint）を一覧付近に出し、誤った旧キーは使わない', async () => {
