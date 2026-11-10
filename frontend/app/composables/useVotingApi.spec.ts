@@ -10,6 +10,7 @@ describe('投票APIのwire契約', () => {
   it.each([
     [{ scope_type: 'TEAM' as const, team_id: 42 }, '/api/v1/proxy-votes?scope_type=TEAM&team_id=42'],
     [{ scope_type: 'ORGANIZATION' as const, organization_id: 71 }, '/api/v1/proxy-votes?scope_type=ORGANIZATION&organization_id=71'],
+    [{ scope_type: 'TEAM' as const, team_id: 42, status: 'OPEN' as const }, '/api/v1/proxy-votes?scope_type=TEAM&team_id=42&status=OPEN'],
   ])('正しいスコープ別queryを送る', async (query, url) => {
     const response = { data: [{ id: 1, resolutionMode: 'WRITTEN', motionCount: 0, eligibleCount: 0 }], meta: { total: 1, page: 0, size: 20, totalPages: 1 } }
     mocks.api.mockResolvedValueOnce(response)

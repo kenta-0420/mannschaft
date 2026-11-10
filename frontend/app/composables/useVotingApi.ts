@@ -1,7 +1,7 @@
-import type { VoteSessionResponse } from '~/types/voting'
+import type { VoteSessionResponse, VoteSessionStatus } from '~/types/voting'
 import type { components } from '~/types/generated'
 
-type SessionListQuery = { scope_type: 'TEAM'; team_id: number } | { scope_type: 'ORGANIZATION'; organization_id: number }
+type SessionListQuery = ({ scope_type: 'TEAM'; team_id: number } | { scope_type: 'ORGANIZATION'; organization_id: number }) & { status?: VoteSessionStatus }
 
 export function useVotingApi() {
   const api = useApi()
