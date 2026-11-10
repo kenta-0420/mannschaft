@@ -11,6 +11,10 @@ import TeamChatPage from '~/pages/teams/[slug]/chat.vue'
  * （モバイルで一覧へ戻ったときに同じチャンネルを選び直さないため）。
  */
 
+const mocks = vi.hoisted(() => ({
+  route: { params: { slug: 'lions-fc' }, query: {} as Record<string, unknown> },
+}))
+mockNuxtImport('useRoute', () => () => mocks.route)
 mockNuxtImport('useRoleAccess', () => () => ({
   isAdmin: ref(false),
   isAdminOrDeputy: ref(false),
@@ -34,9 +38,9 @@ const ChatChannelListStub = defineComponent({
   },
 })
 
-async function mountAt(route: string) {
+async function mountWithQuery(query: Record<string, unknown>) {
+  mocks.route = { params: { slug: 'lions-fc' }, query }
   const wrapper = await mountSuspended(TeamChatPage, {
-    route,
     shallow: true,
     global: { stubs: { ChatChannelList: ChatChannelListStub } },
   })
@@ -46,17 +50,23 @@ async function mountAt(route: string) {
 
 describe('/teams/[slug]/chat.vue の ?channel=（AC-24）', () => {
   it('AC-24: ?channel={id} を一覧へ initialChannelId として渡す', async () => {
-    const wrapper = await mountAt('/teams/lions-fc/chat?channel=7')
+    const wrapper = await mountWithQuery({ channel: '7' })
     expect(wrapper.findComponent({ name: 'ChatChannelList' }).props('initialChannelId')).toBe(7)
   })
 
   it.each(['abc', '0', '-3', '1.5'])('AC-24: ?channel=%s（正の整数でない）は渡さない', async (q) => {
-    const wrapper = await mountAt(`/teams/lions-fc/chat?channel=${q}`)
+    const wrapper = await mountWithQuery({ channel: q })
+    expect(wrapper.findComponent({ name: 'ChatChannelList' }).props('initialChannelId')).toBeUndefined()
+  })
+
+  it('AC-24: ?channel= が無ければ渡さない', async () => {
+    const wrapper = await mountWithQuery({})
     expect(wrapper.findComponent({ name: 'ChatChannelList' }).props('initialChannelId')).toBeUndefined()
   })
 
   it('AC-24: 一覧の読み込みが済んだら initialChannelId を渡すのをやめる', async () => {
-    const wrapper = await mountAt('/teams/lions-fc/chat?channel=7')
+    const wrapper = await mountWithQuery({ channel: '7' })
+    expect(wrapper.findComponent({ name: 'ChatChannelList' }).props('initialChannelId')).toBe(7)
     wrapper.findComponent({ name: 'ChatChannelList' }).vm.$emit('loaded', 3)
     await flushPromises()
     expect(wrapper.findComponent({ name: 'ChatChannelList' }).props('initialChannelId')).toBeUndefined()

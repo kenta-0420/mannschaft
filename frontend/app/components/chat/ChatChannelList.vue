@@ -7,6 +7,11 @@ import { useChatListSync } from '~/composables/chat/useChatListSync'
 const props = defineProps<{
   teamId?: string
   organizationId?: string
+  /**
+   * 読み込み後に選択するチャンネル ID（?channel= で開いたとき。CMP-261030-0648）。
+   * 一覧に無い（存在しない・見られない）なら何もしない。
+   */
+  initialChannelId?: number
 }>()
 
 const emit = defineEmits<{
@@ -42,6 +47,7 @@ async function loadChannels(options: { silent?: boolean } = {}) {
       organizationId: props.organizationId !== undefined ? Number(props.organizationId) : undefined,
     })
     channels.value = res.data
+    selectInitialChannel()
     emit('loaded', channels.value.length)
   } catch {
     showError(t('chat.channelList.loadFailed'))
@@ -54,6 +60,13 @@ async function loadChannels(options: { silent?: boolean } = {}) {
 function selectChannel(ch: ChatChannelResponse) {
   selectedId.value = ch.id
   emit('select', ch)
+}
+
+/** まだ何も選んでいなければ、initialChannelId のチャンネルを一覧から選ぶ */
+function selectInitialChannel() {
+  if (props.initialChannelId === undefined || selectedId.value !== null) return
+  const initial = channels.value.find((c) => c.id === props.initialChannelId)
+  if (initial) selectChannel(initial)
 }
 
 function getDisplayName(ch: ChatChannelResponse): string {

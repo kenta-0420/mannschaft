@@ -21,6 +21,23 @@ const showCreateDialog = ref(false)
 // ChatChannelList の @loaded で更新する（一覧が0件なら aside を出さず空状態にする）。
 const mobileChannelCount = ref(0)
 
+/**
+ * ?channel={id} で開いたときに選ぶチャンネル（問い合わせ通知の遷移先。CMP-261030-0648）。
+ * 一覧の読み込みが済んだら渡すのをやめる（モバイルで一覧へ戻ったとき同じチャンネルを選び直さないため）。
+ */
+function parseChannelQuery(value: unknown): number | undefined {
+  const raw = Array.isArray(value) ? value[0] : value
+  if (typeof raw !== 'string' || !/^\d+$/.test(raw)) return undefined
+  const id = Number(raw)
+  return id > 0 ? id : undefined
+}
+const pendingChannelId = ref<number | undefined>(parseChannelQuery(route.query.channel))
+
+function onChannelListLoaded(count: number) {
+  mobileChannelCount.value = count
+  pendingChannelId.value = undefined
+}
+
 // 会話ビューのヘッダーに出す選択中チャンネル名
 const selectedChannelName = computed(() => {
   const ch = selectedChannel.value
@@ -83,8 +100,10 @@ onMounted(() => loadPermissions())
           <ChatChannelList
             ref="chatListRef"
             :team-id="teamSlug"
+            :initial-channel-id="pendingChannelId"
             @select="onChannelSelect"
             @create="showCreateDialog = true"
+            @loaded="onChannelListLoaded"
           />
         </aside>
 
@@ -144,9 +163,10 @@ onMounted(() => loadPermissions())
             <ChatChannelList
               ref="chatListRef"
               :team-id="teamSlug"
+              :initial-channel-id="pendingChannelId"
               @select="onChannelSelect"
               @create="showCreateDialog = true"
-              @loaded="mobileChannelCount = $event"
+              @loaded="onChannelListLoaded"
             />
           </aside>
 
