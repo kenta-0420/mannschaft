@@ -9,6 +9,7 @@ import {
 } from '~/composables/chat/chatMessageMapper'
 import { useChatMembershipInvite } from '~/composables/chat/useChatMembershipInvite'
 import { useChatReadSync } from '~/composables/chat/useChatReadSync'
+import { useChatListSync } from '~/composables/chat/useChatListSync'
 import { isMembershipGatedChannelType } from '~/utils/chatChannelType'
 import type { ActiveThreadItem } from './message-panel/ChatActiveThreadsDrawer.vue'
 
@@ -52,6 +53,8 @@ const channelDenied = computed(() => isChannelDenied(props.channel.id))
 const { showSuccess, showError } = useNotification()
 const authStore = useAuthStore()
 const { markChannelRead } = useChatReadSync()
+// 編集・削除は BE が部屋のプレビュー・未読数を更新する。一覧へ伝えて取り直させる（CMP-261105-1507）
+const { notifyChannelContentChanged } = useChatListSync()
 
 /**
  * 他人の投稿も削除できるか（F04.2 §5）。ページが渡す管理者フラグ（スコープ ADMIN）に加え、
@@ -222,6 +225,7 @@ async function onDelete(messageId: number) {
       msg.body = null
       msg.sender = null
     }
+    notifyChannelContentChanged(props.channel.id)
     showSuccess(t('chat.message.deleteSuccess'))
   } catch {
     showError(t('chat.message.deleteFailed'))
@@ -255,6 +259,7 @@ async function onEditSave(body: string) {
     const idx = messages.value.findIndex((m) => m.id === messageId)
     if (idx !== -1) messages.value[idx] = res.data
     editingMessageId.value = null
+    notifyChannelContentChanged(props.channel.id)
     showSuccess(t('chat.message.editSuccess'))
   } catch {
     showError(t('chat.message.editFailed'))
@@ -370,12 +375,14 @@ const offWsEvent = wsEventBus.on((event) => {
     if (idx !== -1) {
       messages.value[idx] = updated
     }
+    notifyChannelContentChanged(props.channel.id)
   } else if (event.type === 'MESSAGE_DELETED') {
     const deleted = event.data as { id: number }
     const idx = messages.value.findIndex((m) => m.id === deleted.id)
     if (idx !== -1) {
       messages.value[idx] = { ...messages.value[idx]!, isDeleted: true, body: null, sender: null }
     }
+    notifyChannelContentChanged(props.channel.id)
   } else if (event.type === 'REACTION_UPDATED') {
     // BE は { messageId, reactions[] }（生）を送るため、ここで集計形へ変換する
     const reaction = event.data as { messageId: number; reactions: BeReaction[] }
