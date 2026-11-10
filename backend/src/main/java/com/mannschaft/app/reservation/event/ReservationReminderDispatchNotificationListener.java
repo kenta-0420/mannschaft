@@ -131,7 +131,7 @@ public class ReservationReminderDispatchNotificationListener {
     private NotificationDeliveryRequest buildRequest(ReservationReminderDispatchEvent event) {
         Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(event.userId()));
         String slotAtStr = event.slotDate().atTime(event.slotStartTime()).format(SLOT_AT_FORMAT);
-        String slotTitle = event.slotTitle() != null ? event.slotTitle()
+        String slotTitle = event.slotTitle() != null && !event.slotTitle().isBlank() ? event.slotTitle().trim()
                 : messageSource.getMessage("notification.reservation.common.defaultSlotTitle", null, "ご予約", locale);
 
         String title = messageSource.getMessage(

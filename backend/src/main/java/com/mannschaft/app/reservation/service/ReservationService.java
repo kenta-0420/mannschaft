@@ -482,7 +482,7 @@ public class ReservationService {
     private void publishMemberCancelledEvent(
             ReservationEntity saved, ReservationSlotEntity slot, Long actorUserId) {
         eventPublisher.publishEvent(new ReservationCancelledByMemberEvent(
-                saved.getTeamId(), saved.getId(), actorUserId, slot.getTitle()));
+                saved.getTeamId(), saved.getId(), actorUserId, slot.resolveDisplayTitle()));
     }
 
     /**

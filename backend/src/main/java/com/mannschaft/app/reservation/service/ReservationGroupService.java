@@ -315,7 +315,7 @@ public class ReservationGroupService {
         }
 
         ReservationEntity primary = saved.get(0);
-        String displayTitle = menu != null ? menu.getName() : firstSlot.getTitle();
+        String displayTitle = menu != null ? menu.getName() : firstSlot.resolveDisplayTitle();
 
         if (mode == ApprovalMode.AUTO) {
             // 確定イベントは代表行についてのみ 1 回（リマインドは来店の 24h/1h 前 1 セットだけ・§5.5）
@@ -554,9 +554,9 @@ public class ReservationGroupService {
         if (primary.getMenuId() != null) {
             return menuRepository.findByIdIncludingDeleted(primary.getMenuId())
                     .map(ReservationMenuEntity::getName)
-                    .orElse(firstSlot.getTitle());
+                    .orElse(firstSlot.resolveDisplayTitle());
         }
-        return firstSlot.getTitle();
+        return firstSlot.resolveDisplayTitle();
     }
 
     /**

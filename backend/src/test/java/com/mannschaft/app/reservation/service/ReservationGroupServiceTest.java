@@ -387,6 +387,38 @@ class ReservationGroupServiceTest {
     }
 
     @Nested
+    @DisplayName("createGroup: 枠タイトル未設定の表示名")
+    class CreateGroupUntitledSlot {
+
+        @Test
+        @DisplayName("メニューなし・枠 title が null/空/空白でも、作成・確定イベントの枠名は先頭枠の日時になり null/空を含まない")
+        void 枠タイトル未設定は先頭枠の日時() {
+            for (String blank : new String[]{null, "", "   "}) {
+                org.mockito.Mockito.clearInvocations(eventPublisher);
+                ReservationSlotEntity s1 = slot(101L, 10, 0);
+                ReservationSlotEntity s2 = slot(102L, 10, 30);
+                s1.changeTitle(blank);
+                s2.changeTitle(blank);
+                given(slotRepository.findAllById(anyIterable())).willReturn(List.of(s1, s2));
+
+                service.createGroup(TEAM_ID, USER_ID, request(null, List.of(101L, 102L)));
+
+                ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+                verify(eventPublisher, org.mockito.Mockito.atLeast(2)).publishEvent(captor.capture());
+                ReservationCreatedEvent created = captor.getAllValues().stream()
+                        .filter(ReservationCreatedEvent.class::isInstance)
+                        .map(ReservationCreatedEvent.class::cast).findFirst().orElseThrow();
+                ReservationConfirmedEvent confirmed = captor.getAllValues().stream()
+                        .filter(ReservationConfirmedEvent.class::isInstance)
+                        .map(ReservationConfirmedEvent.class::cast).findFirst().orElseThrow();
+                String expected = SLOT_DATE.format(java.time.format.DateTimeFormatter.ofPattern("yyyy/MM/dd")) + " 10:00";
+                assertThat(created.getSlotTitle()).as("created title=[%s]", blank).isEqualTo(expected);
+                assertThat(confirmed.getSlotTitle()).as("confirmed title=[%s]", blank).isEqualTo(expected);
+            }
+        }
+    }
+
+    @Nested
     @DisplayName("createGroup: 確保失敗・全ロールバック契約（G-2）")
     class CreateGroupAcquisitionFailure {
 

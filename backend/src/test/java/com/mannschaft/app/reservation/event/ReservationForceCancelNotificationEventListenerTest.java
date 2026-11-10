@@ -153,6 +153,25 @@ class ReservationForceCancelNotificationEventListenerTest {
     }
 
     @Test
+    @DisplayName("slotTitle が空文字・空白のみでも、デフォルト文言が使われ空の「」にならない")
+    void slotTitleが空白の場合デフォルト文言() {
+        given(userLocaleCache.getLocale(1L)).willReturn("ja");
+        for (String blank : new String[]{"", "   "}) {
+            org.mockito.Mockito.clearInvocations(notificationHelper);
+
+            listener.onForceCancelled(buildEvent(blank, null));
+
+            verify(notificationHelper).notify(
+                    eq(1L), eq("RESERVATION_CANCELLED"),
+                    titleCaptor.capture(), bodyCaptor.capture(),
+                    eq("RESERVATION"), eq(100L),
+                    eq(NotificationScopeType.TEAM), eq(10L),
+                    eq("/teams/my-team/reservations"), eq((Long) null));
+            assertThat(bodyCaptor.getValue()).as("title=[%s]", blank).contains("ご予約").doesNotContain("「」");
+        }
+    }
+
+    @Test
     @DisplayName("locale 解決は1件のみ（単一受信者経路のため getLocale を1回だけ呼ぶ）")
     void locale解決は単一() {
         given(userLocaleCache.getLocale(1L)).willReturn("ja");

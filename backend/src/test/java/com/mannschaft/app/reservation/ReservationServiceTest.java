@@ -1011,6 +1011,35 @@ class ReservationServiceTest {
     class CancelByUser {
 
         @Test
+        @DisplayName("タイトル未設定の枠: メンバーキャンセルイベントの枠名に null を含まず枠の日時になる")
+        void ユーザーキャンセル_タイトル未設定は枠日時() {
+            for (String blank : new String[]{null, "", "   "}) {
+                org.mockito.Mockito.clearInvocations(eventPublisher);
+                CancelReservationRequest request = new CancelReservationRequest("ユーザー都合", null);
+                ReservationEntity entity = createReservationEntity();
+                ReservationSlotEntity slot = createAvailableSlotEntity();
+                slot.changeTitle(blank);
+
+                given(reservationRepository.findByIdAndUserIdForUpdate(RESERVATION_ID, USER_ID))
+                        .willReturn(Optional.of(entity));
+                given(reservationRepository.save(entity)).willReturn(entity);
+                given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
+                given(reservationMapper.toReservationResponse(entity)).willReturn(createReservationResponse());
+
+                service.cancelByUser(USER_ID, RESERVATION_ID, request);
+
+                org.mockito.ArgumentCaptor<Object> captor = org.mockito.ArgumentCaptor.forClass(Object.class);
+                verify(eventPublisher, org.mockito.Mockito.atLeastOnce()).publishEvent(captor.capture());
+                com.mannschaft.app.reservation.event.ReservationCancelledByMemberEvent cancelled =
+                        captor.getAllValues().stream()
+                                .filter(com.mannschaft.app.reservation.event.ReservationCancelledByMemberEvent.class::isInstance)
+                                .map(com.mannschaft.app.reservation.event.ReservationCancelledByMemberEvent.class::cast)
+                                .findFirst().orElseThrow();
+                assertThat(cancelled.getSlotTitle()).as("title=[%s]", blank).isEqualTo("2026/04/01 10:00");
+            }
+        }
+
+        @Test
         @DisplayName("正常系: ユーザーが予約をキャンセルする")
         void ユーザーキャンセル_正常() {
             // Given

@@ -99,6 +99,24 @@ class ReservationReminderDispatchNotificationListenerTest {
     }
 
     @Test
+    @DisplayName("枠タイトルが null/空/空白のとき、本文は既定名「ご予約」になり null や空の「」を含まない")
+    void タイトル未設定は既定名() {
+        given(reminderRunner.claim(eq(1L), any())).willReturn(true);
+        given(deliveryRunner.sendOne(any())).willReturn(NotificationDeliveryResult.DELIVERED);
+        for (String blank : new String[]{null, "", "   "}) {
+            org.mockito.Mockito.clearInvocations(deliveryRunner);
+            listener.onReservationReminderDispatch(new ReservationReminderDispatchEvent(
+                    1L, 100L, 300L, 400L, java.time.LocalDate.of(2026, 4, 2), java.time.LocalTime.of(10, 0), blank));
+
+            ArgumentCaptor<NotificationDeliveryRequest> captor =
+                    ArgumentCaptor.forClass(NotificationDeliveryRequest.class);
+            verify(deliveryRunner).sendOne(captor.capture());
+            assertThat(captor.getValue().body()).as("title=[%s]", blank)
+                    .contains("ご予約").doesNotContain("null").doesNotContain("「」");
+        }
+    }
+
+    @Test
     @DisplayName("claim が取れない（他の配送が担当済み）なら配送しない")
     void claimが取れなければ何もしない() {
         given(reminderRunner.claim(eq(1L), any())).willReturn(false);
