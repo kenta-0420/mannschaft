@@ -12,6 +12,7 @@ import com.mannschaft.app.auth.repository.RefreshTokenRepository;
 import com.mannschaft.app.auth.util.UserAgentParser;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.util.SessionHashUtil;
@@ -47,6 +48,7 @@ public class AuthSessionService {
 
     // セッション上限
     private static final int MAX_ACTIVE_SESSIONS = 10;
+    private static final int SESSION_LIMIT_PASSES = 3;
 
     // ========================================
     // ログアウト
@@ -312,26 +314,42 @@ public class AuthSessionService {
      * アクティブセッション数が上限を超過している場合、古いセッションから順に無効化する。
      *
      * @param userId ユーザーID
+     * @param issuedTokenId 今回発行した、失効させないtokenのID
      */
-    public void enforceMaxActiveSessions(Long userId) {
-        LocalDateTime now = LocalDateTime.now();
-        long activeCount = refreshTokenRepository
-                .countByUserIdAndRevokedAtIsNullAndExpiresAtAfter(userId, now);
-
-        if (activeCount <= MAX_ACTIVE_SESSIONS) {
-            return;
+    public void enforceMaxActiveSessions(Long userId, Long issuedTokenId) {
+        for (int pass = 0; pass < SESSION_LIMIT_PASSES; pass++) {
+            List<RefreshTokenRepository.ActiveSessionCandidate> active = refreshTokenRepository
+                    .findActiveSessionCandidates(userId, LocalDateTime.now());
+            int excess = Math.max(0, active.size() - MAX_ACTIVE_SESSIONS);
+            if (excess == 0) {
+                return;
+            }
+            List<RefreshTokenRepository.ActiveSessionCandidate> candidates = active.stream()
+                    .filter(t -> issuedTokenId == null || !issuedTokenId.equals(t.getId()))
+                    .sorted(Comparator.comparing(RefreshTokenRepository.ActiveSessionCandidate::getLastUsedAt,
+                            Comparator.nullsLast(Comparator.naturalOrder()))
+                            .thenComparing(RefreshTokenRepository.ActiveSessionCandidate::getCreatedAt,
+                                    Comparator.nullsFirst(Comparator.naturalOrder()))
+                            .thenComparing(RefreshTokenRepository.ActiveSessionCandidate::getId))
+                    .toList();
+            int revoked = 0;
+            for (RefreshTokenRepository.ActiveSessionCandidate candidate : candidates) {
+                if (revoked >= excess) {
+                    break;
+                }
+                if (refreshTokenRepository.revokeActiveSessionCandidate(candidate.getId(), userId, LocalDateTime.now()) == 0) {
+                    // 選定後にrefresh/logout/expiryが変化した。古い集合で次の行を余計に失効させない。
+                    break;
+                }
+                revoked++;
+            }
+            if (refreshTokenRepository.countByUserIdAndRevokedAtIsNullAndExpiresAtAfter(userId, LocalDateTime.now())
+                    <= MAX_ACTIVE_SESSIONS) {
+                return;
+            }
         }
-
-        List<RefreshTokenEntity> activeTokens = refreshTokenRepository
-                .findByUserIdAndRevokedAtIsNull(userId);
-
-        // lastUsedAt ASC（null は最後尾）でソートし、上限 - 1 以下になるまで古い順に revoke
-        activeTokens.stream()
-                .filter(t -> t.getExpiresAt().isAfter(now))
-                .sorted(Comparator.comparing(RefreshTokenEntity::getLastUsedAt,
-                        Comparator.nullsLast(Comparator.naturalOrder())))
-                .limit(activeCount - MAX_ACTIVE_SESSIONS + 1)
-                .forEach(RefreshTokenEntity::revoke);
+        // RCで収束しない競合や既存RRの古いread-viewを、部分成功でcommitしない。
+        throw new BusinessException(CommonErrorCode.COMMON_003);
     }
 
     // ========================================
