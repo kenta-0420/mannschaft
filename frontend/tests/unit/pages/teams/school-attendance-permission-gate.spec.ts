@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { ref } from 'vue'
 import dayjs from 'dayjs'
+import type { DailyAttendanceResponse } from '~/types/school'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
@@ -18,6 +19,12 @@ const mockGetPermissions = vi.fn()
 const handleApiError = vi.fn()
 
 const loadRecords = vi.fn()
+const submitRollCall = vi.fn()
+const dailyRecords = ref<DailyAttendanceResponse[]>([])
+const dailyFailed = ref(false)
+const dailyLoaded = ref(false)
+const dailyKey = ref('')
+const loadTeamNotices = vi.fn()
 const loadCandidates = vi.fn()
 const loadMonthlyStatistics = vi.fn()
 const loadTermStatistics = vi.fn()
@@ -28,16 +35,26 @@ vi.mock('~/composables/useAttendancePermissionsApi', () => ({
   useAttendancePermissionsApi: () => ({ getPermissions: mockGetPermissions }),
 }))
 mockNuxtImport('useErrorHandler', () => () => ({ handleApiError, handleError: handleApiError }))
-mockNuxtImport('useRoute', () => () => ({ params: { slug: 't1' } }))
+mockNuxtImport('useRoute', () => () => ({ params: { slug: 'class-blue' } }))
+mockNuxtImport('useSchoolTeamContext', () => () => ({
+  teamId: ref('42'), loading: ref(false), error: ref(undefined), load: async () => true,
+}))
 mockNuxtImport('useDatetime', () => () => ({ userTimezone: ref('Asia/Tokyo') }))
 mockNuxtImport('useDailyRollCall', () => () => ({
-  records: ref([]),
+  records: dailyRecords,
+  loadFailed: dailyFailed,
+  loaded: dailyLoaded,
+  recordKey: dailyKey,
   loading: ref(false),
   submitting: ref(false),
   lastSummary: ref(null),
   forbidden: ref(false),
   loadRecords,
-  submitRollCall: vi.fn(),
+  submitRollCall,
+}))
+mockNuxtImport('useFamilyAttendanceNotice', () => () => ({
+  noticeList: ref(null), loading: ref(false), processing: ref(false),
+  loadTeamNotices, acknowledge: vi.fn(), apply: vi.fn(),
 }))
 mockNuxtImport('usePeriodAttendance', () => () => ({
   candidates: ref([]),
@@ -95,6 +112,12 @@ type PageCase = {
 
 const pages: PageCase[] = [
   {
+    name: '保護者連絡',
+    load: () => import('~/pages/teams/[slug]/school-attendance/notices.vue'),
+    listMock: loadTeamNotices,
+    act: async (w) => { await (w.vm as unknown as { onDateChange: () => Promise<void> }).onDateChange() },
+  },
+  {
     name: '日次出欠',
     load: () => import('~/pages/teams/[slug]/school-attendance/daily-roll-call.vue'),
     listMock: loadRecords,
@@ -137,6 +160,12 @@ const pages: PageCase[] = [
 ]
 
 beforeEach(() => {
+  dailyRecords.value = []
+  dailyFailed.value = false
+  dailyLoaded.value = false
+  dailyKey.value = ''
+  submitRollCall.mockReset()
+  loadTeamNotices.mockReset()
   mockGetPermissions.mockReset()
   handleApiError.mockReset()
   for (const m of [loadRecords, loadCandidates, loadMonthlyStatistics, loadTermStatistics, downloadCsv, loadAlerts]) {
@@ -199,5 +228,65 @@ describe.each(pages)('学校出欠 $name 画面の権限ゲート', (p) => {
     await mountSuspended(page, { global: { stubs } })
     await flush()
     expect(p.listMock).toHaveBeenCalled()
+    expect(mockGetPermissions).toHaveBeenCalledWith('42')
+  })
+})
+
+
+describe('点呼の提出表示', () => {
+  it('閲覧Vのみでは提出ボタンを表示せず、handlerからも提出しない', async () => {
+    mockGetPermissions.mockResolvedValue({ ...ALL_TRUE, canRecordDaily: false })
+    const page = (await import('~/pages/teams/[slug]/school-attendance/daily-roll-call.vue')).default
+    const wrapper = await mountSuspended(page, { global: { stubs } })
+    await flush()
+    expect(wrapper.find('[data-testid="daily-roll-call-submit"]').exists()).toBe(false)
+    const vm = wrapper.vm as unknown as { onSubmit: () => Promise<void>; canSubmit: boolean }
+    expect(vm.canSubmit).toBe(false)
+    await vm.onSubmit()
+    expect(submitRollCall).not.toHaveBeenCalled()
+  })
+})
+
+
+describe('点呼一覧の失敗と空の成功', () => {
+  it('500はシートと提出を隠し、同じ取得の再試行で回復する', async () => {
+    mockGetPermissions.mockResolvedValue(ALL_TRUE)
+    loadRecords.mockImplementationOnce(async () => { dailyFailed.value = true })
+      .mockImplementationOnce(async (date: string) => {
+        dailyFailed.value = false
+        dailyLoaded.value = true
+        dailyKey.value = `42:${date}`
+      })
+    const page = (await import('~/pages/teams/[slug]/school-attendance/daily-roll-call.vue')).default
+    const wrapper = await mountSuspended(page, { global: { stubs } })
+    await flush()
+    expect(wrapper.find('[data-testid="daily-roll-call-load-error"]').exists()).toBe(true)
+    expect(wrapper.find('daily-roll-call-sheet-stub').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="daily-roll-call-submit"]').exists()).toBe(false)
+    await wrapper.get('[data-testid="daily-roll-call-load-error-retry"]').trigger('click')
+    await flush()
+    expect(wrapper.find('[data-testid="daily-roll-call-load-error"]').exists()).toBe(false)
+    expect(wrapper.find('daily-roll-call-sheet-stub').exists()).toBe(true)
+  })
+
+  it('有件の翌日が成功0件なら古い行を残さない', async () => {
+    mockGetPermissions.mockResolvedValue(ALL_TRUE)
+    loadRecords.mockImplementationOnce(async (date: string) => {
+      dailyRecords.value = [{ studentUserId: 1, status: 'ABSENT' } as DailyAttendanceResponse]
+      dailyLoaded.value = true
+      dailyKey.value = `42:${date}`
+    }).mockImplementationOnce(async (date: string) => {
+      dailyRecords.value = []
+      dailyKey.value = `42:${date}`
+    })
+    const page = (await import('~/pages/teams/[slug]/school-attendance/daily-roll-call.vue')).default
+    const wrapper = await mountSuspended(page, { global: { stubs } })
+    await flush()
+    const vm = wrapper.vm as unknown as { entries: unknown[]; selectedDate: string; onDateChange: () => Promise<void> }
+    expect(vm.entries).toHaveLength(1)
+    vm.selectedDate = '2026-01-02'
+    await vm.onDateChange()
+    await flush()
+    expect(vm.entries).toEqual([])
   })
 })

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
 import { markRaw } from 'vue'
+import { useFeatureFlagStore } from '~/stores/featureFlags'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 
 const { apiMock, policyMock } = vi.hoisted(() => ({ apiMock: vi.fn(), policyMock: vi.fn() }))
@@ -27,6 +28,7 @@ async function mountSidebar() {
 describe('BaseSidebar の取得状態', () => {
   beforeEach(() => {
     localStorage.clear()
+    useFeatureFlagStore().flags = {}
     clearNuxtState('scope-feature-display-policies')
     policyMock.mockReset().mockResolvedValue({ data: { features: [] } })
     apiMock.mockReset()
@@ -41,6 +43,57 @@ describe('BaseSidebar の取得状態', () => {
     const wrapper = await mountSuspended(BaseSidebar, { props: { scopeType: 'team', scopeId: 'team-policy', categories: [{ key: 'home', labelKey: 'common.menu', icon: '', items: [{ labelKey: 'common.menu', icon: '', path: 'duties', moduleSlug: null, requiredRole: 'MEMBER' }] }] } })
     await flushPromises()
     expect(wrapper.find('a[href="/teams/team-policy/duties"]').exists()).toBe(role === 'ADMIN')
+  })
+
+  it.each([
+    ['MEMBER担任', true, true, false],
+    ['MEMBERへのVIEW_ATTENDANCEのみ委任', true, false, false],
+    ['MEMBER委任のメンバーレンズ', true, false, true],
+    ['MEMBER未委任', false, false, false],
+  ] as const)('%sを実BaseSidebarの表示条件まで通す', async (_name, canView, canRecordDaily, memberLensActive) => {
+    useFeatureFlagStore().flags = { FEATURE_FAMILY_CARE_ENABLED: true }
+    apiMock.mockImplementation((url: string) => Promise.resolve(
+      url.endsWith('/attendance/permissions')
+        ? { data: { canView, canRecordDaily, canRecordPeriod: canRecordDaily } }
+        : url.endsWith('/me/permissions')
+          ? { data: { roleName: 'MEMBER', permissions: canView && !canRecordDaily ? ['VIEW_ATTENDANCE'] : [] } }
+          : { data: [] },
+    ))
+    const wrapper = await mountSuspended(TeamSidebar, {
+      props: { teamId: 'class-blue', teamNumericId: 42, teamTemplate: 'CLASS', memberLensActive },
+    })
+    await flushPromises()
+    const link = wrapper.find('a[href="/teams/class-blue/school-attendance/daily-roll-call"]')
+    expect(link.exists()).toBe(canView)
+    if (canView) {
+      await wrapper.get('button:has(i.pi-building)').trigger('click')
+      expect(link.isVisible()).toBe(true)
+      for (const path of ['period-attendance', 'transition-alerts', 'statistics', 'notices']) {
+        expect(wrapper.get(`a[href="/teams/class-blue/school-attendance/${path}"]`).isVisible()).toBe(true)
+      }
+    }
+    expect(apiMock).toHaveBeenCalledWith('/api/v1/teams/42/attendance/permissions')
+  })
+
+  it('SYSTEM_ADMIN単独は既存ロールバイパスがあっても学校リンクを表示しない', async () => {
+    useFeatureFlagStore().flags = { FEATURE_FAMILY_CARE_ENABLED: true }
+    apiMock.mockImplementation((url: string) => Promise.resolve(url.endsWith('/attendance/permissions')
+      ? { data: { canView: false, canRecordDaily: false, canRecordPeriod: false } }
+      : url.endsWith('/me/permissions') ? permissions('SYSTEM_ADMIN') : { data: [] }))
+    const wrapper = await mountSuspended(TeamSidebar, {
+      props: { teamId: 'class-blue', teamNumericId: 42, teamTemplate: 'CLASS' },
+    })
+    await flushPromises()
+    expect(wrapper.find('a[href="/teams/class-blue/school-attendance/daily-roll-call"]').exists()).toBe(false)
+  })
+
+  it('チーム投票は有効モジュールに加えてチームの可視性設定を尊重する', async () => {
+    apiMock.mockImplementation((url: string) => Promise.resolve(url.endsWith('/me/permissions')
+      ? permissions('MEMBER') : { data: [{ moduleSlug: 'voting', isEnabled: true }] }))
+    policyMock.mockResolvedValue({ data: { features: [{ featureKey: 'voting', memberVisible: false, supporterVisible: false }] } })
+    const wrapper = await mountSuspended(TeamSidebar, { props: { teamId: 'vote-team' } })
+    await flushPromises()
+    expect(wrapper.find('a[href="/teams/vote-team/voting"]').exists()).toBe(false)
   })
 
   it('実際の権限composableでADMIN応答を受けるとメニューリンクを描画する', async () => {

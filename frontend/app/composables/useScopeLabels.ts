@@ -11,6 +11,9 @@ export function useScopeLabels() {
     get CLASS() {
       return t('scopeLabels.template.CLASS')
     },
+    get SCHOOL() {
+      return t('scopeLabels.template.SCHOOL')
+    },
     get COMMUNITY() {
       return t('scopeLabels.template.COMMUNITY')
     },

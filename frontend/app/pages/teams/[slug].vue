@@ -654,7 +654,7 @@ provideTeamShellContext({
         :tabs="tabs"
         :active-tab="activeTab"
         :sidebar="TeamSidebar"
-        :sidebar-props="{ teamId: teamSlug, memberLensActive: !adminLens }"
+        :sidebar-props="{ teamId: teamSlug, teamTemplate: team?.location?.template, teamNumericId: team?.numericId, memberLensActive: !adminLens }"
         :show-sidebar="showSidebar"
         :show-lens="isAdminOrDeputy"
         :lens="adminLens"

@@ -26,6 +26,7 @@
         "OTHER": "Otro"
       },
       "dailyRollCall": {
+        "loadError": "No se pudieron cargar los registros de asistencia",
         "title": "Pase de lista matutino",
         "date": "Fecha",
         "submit": "Enviar lista",

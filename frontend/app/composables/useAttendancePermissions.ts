@@ -1,4 +1,4 @@
-import { computed, ref, type Ref } from 'vue'
+import { computed, ref, watch, type Ref } from 'vue'
 import type { AttendancePermissions } from '~/composables/useAttendancePermissionsApi'
 
 /** API エラーが HTTP 403 かを判定する（ofetch の statusCode / status の両方を見る）。 */
@@ -32,13 +32,31 @@ export function useAttendancePermissions(teamId: Ref<string>) {
   const canRecordDaily = computed(() => permissions.value?.canRecordDaily === true)
   const canRecordPeriod = computed(() => permissions.value?.canRecordPeriod === true)
 
+  let sequence = 0
+  function clear(): void {
+    ++sequence
+    permissions.value = null
+    loaded.value = false
+    forbidden.value = false
+    loadFailed.value = false
+  }
+  watch(teamId, clear, { flush: 'sync' })
+
   async function loadPermissions(): Promise<void> {
+    clear()
+    const seq = sequence
+    const requestedTeam = teamId.value
+    const current = () => seq === sequence && requestedTeam === teamId.value
+    if (!requestedTeam) return
     loaded.value = false
     loadFailed.value = false
     try {
-      permissions.value = await api.getPermissions(teamId.value)
+      const result = await api.getPermissions(requestedTeam)
+      if (!current()) return
+      permissions.value = result
       forbidden.value = false
     } catch (e) {
+      if (!current()) return
       permissions.value = null
       if (isForbiddenError(e)) {
         forbidden.value = true
@@ -47,7 +65,7 @@ export function useAttendancePermissions(teamId: Ref<string>) {
         handleApiError(e, 'school.attendance.permissions.load')
       }
     } finally {
-      loaded.value = true
+      if (current()) loaded.value = true
     }
   }
 

@@ -26,6 +26,7 @@
         "OTHER": "其他"
       },
       "dailyRollCall": {
+        "loadError": "无法加载出勤记录",
         "title": "早点名",
         "date": "日期",
         "submit": "提交点名",

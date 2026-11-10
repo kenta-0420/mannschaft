@@ -26,6 +26,7 @@
         "OTHER": "Sonstiges"
       },
       "dailyRollCall": {
+        "loadError": "Anwesenheitsdaten konnten nicht geladen werden",
         "title": "Morgenappell",
         "date": "Datum",
         "submit": "Appell einreichen",

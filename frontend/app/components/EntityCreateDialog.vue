@@ -266,10 +266,12 @@ const otherFieldErrors = computed(() =>
   Object.entries(fieldErrors.value).filter(([field]) => !INLINE_ERROR_FIELDS.includes(field)),
 )
 
-const templateOptions = [
+const { templateLabel } = useScopeLabels()
+const templateOptions = computed(() => [
   { label: 'クラブ・サークル', value: 'CLUB' },
   { label: 'クリニック', value: 'CLINIC' },
-  { label: 'クラス', value: 'CLASS' },
+  { label: templateLabel.SCHOOL, value: 'SCHOOL' },
+  { label: templateLabel.CLASS, value: 'CLASS' },
   { label: 'コミュニティ', value: 'COMMUNITY' },
   { label: '企業', value: 'COMPANY' },
   { label: '家族', value: 'FAMILY' },
@@ -280,7 +282,7 @@ const templateOptions = [
   { label: '自治会', value: 'NEIGHBORHOOD' },
   { label: 'マンション管理組合', value: 'CONDO' },
   { label: 'その他', value: 'OTHER' },
-]
+])
 
 const orgTypeOptions = [
   { label: '行政・官公庁', value: 'GOVERNMENT' },

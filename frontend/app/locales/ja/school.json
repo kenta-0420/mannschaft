@@ -26,6 +26,7 @@
         "OTHER": "その他"
       },
       "dailyRollCall": {
+        "loadError": "出欠一覧を取得できませんでした",
         "title": "朝の点呼",
         "date": "日付",
         "submit": "点呼を提出",
