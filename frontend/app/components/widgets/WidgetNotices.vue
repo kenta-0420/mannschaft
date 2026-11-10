@@ -240,9 +240,25 @@ async function load() {
 }
 
 async function onMarkRead(id: number) {
-  await markNoticeRead(id)
-  const item = notices.value.find(n => n.id === id)
-  if (item) item.isRead = true
+  const target = notices.value.find(n => n.id === id)
+  // 既読の通知には POST しない（不要な往復を省く）。
+  if (!target || target.isRead) return
+  try {
+    await markNoticeRead(id)
+  }
+  catch (error) {
+    captureQuiet(error, { context: 'WidgetNotices: 既読化' })
+    return
+  }
+  // 表示中のタブはリアクティブ経由で更新し（再描画のため先に行う）、
+  // 応答待ちの間にタブが切り替わっても、押した通知を ID で全タブのキャッシュから既読にする。
+  const current = notices.value.find(n => n.id === id)
+  if (current) current.isRead = true
+  for (const list of noticeCache.values()) {
+    for (const n of list) {
+      if (n.id === id) n.isRead = true
+    }
+  }
 }
 
 async function onMarkAllRead() {
