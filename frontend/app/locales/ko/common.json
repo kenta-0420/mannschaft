@@ -185,6 +185,7 @@
       "tooltip": "Zimmer에 초대",
       "failed": "초대하지 못했습니다",
       "noMembers": "초대할 수 있는 멤버가 없습니다",
+      "candidatesLoadFailed": "초대할 수 있는 멤버 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "shareQuestion": "기존 채팅 내용을 공유할까요?",
       "share": "공유하기",
       "shareHint": "지금까지의 메시지가 새 Zimmer로 이어집니다",
@@ -416,7 +417,10 @@
     "delete_timetable": "삭제",
     "delete_timetable_confirm": "시간표 \"{name}\"을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
     "delete_timetable_success": "시간표를 삭제했습니다",
-    "delete_timetable_error": "시간표를 삭제하지 못했습니다"
+    "delete_timetable_error": "시간표를 삭제하지 못했습니다",
+    "create_error_out_of_term": "시간표의 적용 기간이 학기 범위를 벗어났습니다. 학기의 시작일과 종료일 사이로 지정해 주세요.",
+    "create_error_term_not_found": "선택한 학기를 찾을 수 없습니다. 학기 목록을 다시 열어 주세요.",
+    "effective_until_before_from": "적용 종료일은 적용 시작일과 같거나 이후여야 합니다."
   },
   "error": {
     "server": "서버 오류가 발생했습니다",
@@ -1202,6 +1206,7 @@
       "edit_title": "마일스톤 편집",
       "title_label": "제목",
       "title_placeholder": "마일스톤 이름",
+      "title_required": "제목을 입력해 주세요.",
       "due_date_label": "마감일",
       "add": "추가"
     },

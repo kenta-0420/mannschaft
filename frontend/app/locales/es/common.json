@@ -185,6 +185,7 @@
       "tooltip": "Invitar a un Zimmer",
       "failed": "No se pudo enviar la invitación",
       "noMembers": "No hay miembros que se puedan invitar",
+      "candidatesLoadFailed": "No se pudo cargar la lista de miembros que puedes invitar. Inténtalo de nuevo más tarde.",
       "shareQuestion": "¿Compartir el historial del chat?",
       "share": "Compartir",
       "shareHint": "Los mensajes anteriores pasan al nuevo Zimmer",
@@ -416,7 +417,10 @@
     "delete_timetable": "Eliminar",
     "delete_timetable_confirm": "¿Eliminar el horario \"{name}\"? Esta acción no se puede deshacer.",
     "delete_timetable_success": "Horario eliminado",
-    "delete_timetable_error": "No se pudo eliminar el horario"
+    "delete_timetable_error": "No se pudo eliminar el horario",
+    "create_error_out_of_term": "El período de vigencia del horario queda fuera del trimestre. Elija fechas entre el inicio y el fin del trimestre.",
+    "create_error_term_not_found": "No se encontró el trimestre seleccionado. Vuelva a abrir la lista de trimestres.",
+    "effective_until_before_from": "La fecha de fin debe ser igual o posterior a la fecha de inicio."
   },
   "error": {
     "server": "Se produjo un error del servidor",
@@ -1202,6 +1206,7 @@
       "edit_title": "Editar hito",
       "title_label": "Título",
       "title_placeholder": "Nombre del hito",
+      "title_required": "Introduzca un título.",
       "due_date_label": "Fecha límite",
       "add": "Añadir"
     },

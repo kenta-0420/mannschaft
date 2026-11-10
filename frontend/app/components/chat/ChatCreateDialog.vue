@@ -15,8 +15,8 @@ const emit = defineEmits<{
 }>()
 
 const { createChannel, getOrCreateDm } = useChatApi()
-const teamApi = useTeamApi()
-const orgApi = useOrganizationApi()
+const { loadCandidates } = useChatCandidateMembers()
+const { resolveScopeIds } = useChatScopeIds()
 const authStore = useAuthStore()
 const notification = useNotification()
 const { t } = useI18n()
@@ -87,15 +87,13 @@ const channelType = computed<ChatChannelType>(() => {
 async function loadMembers() {
   membersLoading.value = true
   try {
-    if (props.teamId) {
-      const res = await teamApi.getMembers(props.teamId, { size: 200 })
-      members.value = res.data
-    } else if (props.organizationId) {
-      const res = await orgApi.getMembers(props.organizationId, { size: 200 })
-      members.value = res.data
-    }
+    members.value = await loadCandidates({
+      teamId: props.teamId,
+      organizationId: props.organizationId,
+    })
   } catch {
     members.value = []
+    notification.error(t('chat.inviteZimmer.candidatesLoadFailed'))
   } finally {
     membersLoading.value = false
   }
@@ -117,10 +115,9 @@ async function startChat() {
       const memberNames = contact.selected.value.map((m) => m.displayName).join(', ')
       await createChannel({
         channelType: channelType.value,
-        teamId: props.teamId,
-        organizationId: props.organizationId,
+        ...(await resolveScopeIds({ teamId: props.teamId, organizationId: props.organizationId })),
         name: memberNames,
-        memberIds: contact.selected.value.map((m) => m.userId),
+        memberUserIds: contact.selected.value.map((m) => m.userId),
       })
       notification.success(t('chat.create.roomCreated'))
       visible.value = false
@@ -140,12 +137,11 @@ async function onSubmitZimmer() {
   try {
     await createChannel({
       channelType: channelType.value,
-      teamId: props.teamId,
-      organizationId: props.organizationId,
+      ...(await resolveScopeIds({ teamId: props.teamId, organizationId: props.organizationId })),
       name: name.value.trim(),
       description: description.value.trim() || undefined,
       isPrivate: isPrivate.value,
-      memberIds: zimmer.selected.value.map((m) => m.userId),
+      memberUserIds: zimmer.selected.value.map((m) => m.userId),
     })
     clearZimmerDraft()
     notification.success(t('chat.create.roomCreated'))

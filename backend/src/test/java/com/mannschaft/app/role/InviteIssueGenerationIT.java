@@ -48,8 +48,8 @@ class InviteIssueGenerationIT extends InviteGenerationItSupport {
         var response = invites.createInviteToken(scope.id(), type,
                 new CreateInviteTokenRequest(scope.memberRoleId(), null, null), actor).getData();
 
-        assertThat(tokens.findById(response.getId()).orElseThrow().getScopeClosureGeneration()).isEqualTo(3);
-        assertThat(response.getRevokedAt()).isNull();
+        assertThat(tokens.findById(response.invite().id()).orElseThrow().getScopeClosureGeneration()).isEqualTo(3);
+        assertThat(response.invite().revokedAt()).isNull();
     }
 
     @ParameterizedTest
