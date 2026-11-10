@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.core.Ordered;
 import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.messaging.Message;
@@ -35,6 +36,9 @@ import org.springframework.messaging.simp.user.SimpUserRegistry;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.TestContext;
+import org.springframework.test.context.TestExecutionListeners;
+import org.springframework.test.context.support.AbstractTestExecutionListener;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
@@ -58,6 +62,8 @@ import static org.mockito.Mockito.when;
  */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
+@TestExecutionListeners(listeners = WebSocketTerminalContextShutdownIT.ClosedContextEvictionListener.class,
+        mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)
 class WebSocketTerminalContextShutdownIT extends AbstractMySqlIntegrationTest {
     private static final long BOUND_SECONDS = 5;
     private static final AtomicLong USER_IDS = new AtomicLong(992_600L);
@@ -67,6 +73,7 @@ class WebSocketTerminalContextShutdownIT extends AbstractMySqlIntegrationTest {
     void 実AppContextStopはGOINGAWAYを優先し予約とsessionを片付ける(
             @Autowired ConfigurableApplicationContext context) throws Exception {
         verifyShutdown(context, false);
+        System.out.println("CMP-261110-2011 assertions-complete action=stop");
     }
 
     @Test
@@ -74,6 +81,7 @@ class WebSocketTerminalContextShutdownIT extends AbstractMySqlIntegrationTest {
     void 実AppContextCloseはGOINGAWAYを優先し予約とsessionを片付ける(
             @Autowired ConfigurableApplicationContext context) throws Exception {
         verifyShutdown(context, true);
+        System.out.println("CMP-261110-2011 assertions-complete action=close");
     }
 
     private void verifyShutdown(ConfigurableApplicationContext context, boolean close) throws Exception {
@@ -154,12 +162,14 @@ class WebSocketTerminalContextShutdownIT extends AbstractMySqlIntegrationTest {
             assertThat(handler.isRunning()).isFalse();
             assertThat(scheduler.getScheduledThreadPoolExecutor().getQueue()).doesNotContain((Runnable) deadline);
             assertThat(users.getUser(String.valueOf(userId))).isNull();
-            assertThat(broker.getSubscriptionRegistry().findSubscriptions(publication(topic)))
-                    .doesNotContainKey(transport.id);
             if (close) {
+                assertThat(broker.getSubscriptionRegistry().findSubscriptions(publication(topic)))
+                        .doesNotContainKey(transport.id);
                 assertThat(context.isActive()).isFalse();
                 assertThat(scheduler.getScheduledExecutor().isShutdown()).isTrue();
             } else {
+                // 停止済みbrokerの内部購読簿と、稼働中DISCONNECTのcleanup契約を分ける。
+                assertThat(broker.isRunning()).isFalse();
                 assertThat(context.isActive()).as("stopはcontext破棄ではない").isTrue();
                 assertThat(context.isRunning()).isFalse();
             }
@@ -188,6 +198,30 @@ class WebSocketTerminalContextShutdownIT extends AbstractMySqlIntegrationTest {
         SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.create(SimpMessageType.MESSAGE);
         accessor.setDestination(topic);
         return MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+    }
+
+    /** 手動close後はafterTestExecutionのイベント通知前に、既存cacheから破棄済みcontextを除く。 */
+    public static final class ClosedContextEvictionListener extends AbstractTestExecutionListener {
+        private static final String CONTEXT_ATTRIBUTE =
+                ClosedContextEvictionListener.class.getName() + ".context";
+
+        @Override
+        public int getOrder() {
+            return Ordered.LOWEST_PRECEDENCE;
+        }
+
+        @Override
+        public void beforeTestMethod(TestContext testContext) {
+            testContext.setAttribute(CONTEXT_ATTRIBUTE, testContext.getApplicationContext());
+        }
+
+        @Override
+        public void afterTestExecution(TestContext testContext) {
+            Object recorded = testContext.removeAttribute(CONTEXT_ATTRIBUTE);
+            if (recorded instanceof ConfigurableApplicationContext context && !context.isActive()) {
+                testContext.markApplicationContextDirty(DirtiesContext.HierarchyMode.EXHAUSTIVE);
+            }
+        }
     }
 
     /** 実App Beanを置換せず、物理送信とtransport close callbackだけを制御する。 */

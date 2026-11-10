@@ -159,7 +159,7 @@ CONNECT／SUBSCRIBE をインターセプタで拒否するときは `StompRejec
 - 同じ接続で送信が進行中の場合、`PROTOCOL_ERROR` のcloseはERRORのbuffer追加だけで送信完了とせず、進行中sendがbufferをdrainしてから試みる。実delegate・既存buffer/time limit・message callbackを維持する。
 - close入口でserver-owned session属性をfatalに確定する。以後は`preSend`とworkerの`beforeHandle`でDISCONNECT以外を抑止し、同一payloadやqueue待ちの後続処理へ拒否後の業務dispatchを進めない。既に`beforeHandle`を通過した処理は巻き戻さない。native headerからfatalを読まず、syntheticを含むDISCONNECTはbroker・user/session cleanupのため通す。
 - 正の`sendTimeLimit`では既存`messageBrokerTaskScheduler`に同limitの期限を最大1件予約し、期限でもcloseを試みる。0/負値は従来どおり即時とする。予約時刻は無条件の壁時計発火・物理close完了上限ではない。schedulerの単独`stop()`はpauseであり、shutdown/破棄後の予約拒否とは異なる。
-- `NORMAL`・`GOING_AWAY`等の他statusは即時優先し、保留期限を取消す。送信が復帰しない場合の期限closeや、アプリ停止・破棄による`GOING_AWAY`は通常のERROR送信完了経路と分けて扱い、ERROR実受信を保証する終了経路とはしない。追加poolや共有の静的session mapは作らない。
+- `NORMAL`・`GOING_AWAY`等の他statusは即時優先し、保留期限を取消す。送信が復帰しない場合の期限closeや、アプリ停止・破棄による`GOING_AWAY`は通常のERROR送信完了経路と分けて扱い、ERROR実受信を保証する終了経路とはしない。追加poolや共有の静的session mapは作らない。アプリ全体のstopでは、停止済みbrokerの内部購読簿が直ちに空になることを保証せず、稼働中のDISCONNECT cleanupと区別する。
 
 
 | `x-error-code` | 意味 | 再接続で解消するか |
