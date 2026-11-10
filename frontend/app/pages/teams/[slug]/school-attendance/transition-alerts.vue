@@ -21,6 +21,7 @@ const {
   ready: permissionsReady,
   forbidden: permissionsForbidden,
   canView,
+  canRecordDaily,
   loadPermissions,
 } = useAttendancePermissions(schoolTeamId)
 
@@ -151,6 +152,7 @@ watch(teamSlug, loadPage)
           <TransitionAlertBanner
             :alerts="alerts"
             :team-id="schoolTeamId"
+            :can-resolve="permissionsReady && canRecordDaily"
             @resolved="onResolved"
           />
         </div>

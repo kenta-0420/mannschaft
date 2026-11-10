@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import type { TransitionAlertResponse } from '~/types/school'
 
 const props = defineProps<{
   alerts: TransitionAlertResponse[]
   teamId: string
+  canResolve?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -14,12 +15,19 @@ const emit = defineEmits<{
 const selectedAlert = ref<TransitionAlertResponse | null>(null)
 const showModal = ref(false)
 
+watch([() => props.canResolve, () => props.teamId], () => {
+  selectedAlert.value = null
+  showModal.value = false
+}, { flush: 'sync' })
+
 function openResolveModal(alert: TransitionAlertResponse): void {
+  if (!props.canResolve || alert.resolved) return
   selectedAlert.value = alert
   showModal.value = true
 }
 
 function onResolved(alertId: number): void {
+  if (!props.canResolve || selectedAlert.value?.id !== alertId) return
   showModal.value = false
   selectedAlert.value = null
   emit('resolved', alertId)
@@ -74,7 +82,7 @@ function onResolved(alertId: number): void {
           {{ $t('school.transitionAlert.resolved') }}
         </span>
         <Button
-          v-else
+          v-else-if="props.canResolve"
           size="small"
           severity="danger"
           :data-testid="'transition-alert-resolve-' + alert.id"
@@ -86,10 +94,11 @@ function onResolved(alertId: number): void {
 
     <!-- 解決モーダル -->
     <TransitionAlertResolveModal
-      v-if="selectedAlert"
+      v-if="selectedAlert && props.canResolve"
       v-model:visible="showModal"
       :alert="selectedAlert"
       :team-id="props.teamId"
+      :can-resolve="props.canResolve"
       @resolved="onResolved"
     />
   </div>

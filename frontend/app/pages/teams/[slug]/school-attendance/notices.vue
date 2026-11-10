@@ -86,6 +86,7 @@ watch(teamSlug, loadPage)
         <TeacherInboxNoticeList
           :records="noticeList?.records ?? []"
           :processing="processing"
+          :can-record="canQuery && canRecordDaily"
           @acknowledge="onAcknowledge"
           @apply="onApply"
         />

@@ -46,17 +46,18 @@ describe('BaseSidebar の取得状態', () => {
   })
 
   it.each([
-    ['MEMBER担任', true, true, false],
-    ['MEMBERへのVIEW_ATTENDANCEのみ委任', true, false, false],
-    ['MEMBER委任のメンバーレンズ', true, false, true],
-    ['MEMBER未委任', false, false, false],
-  ] as const)('%sを実BaseSidebarの表示条件まで通す', async (_name, canView, canRecordDaily, memberLensActive) => {
+    ['MEMBER担任', 'MEMBER', true, true, false],
+    ['MEMBERへのVIEW_ATTENDANCEのみ委任', 'MEMBER', true, false, false],
+    ['MEMBER未委任', 'MEMBER', false, false, false],
+    ['ADMIN通常', 'ADMIN', true, true, false],
+    ['ADMINの一般MEMBERプレビュー', 'ADMIN', true, true, true],
+  ] as const)('%sを実BaseSidebarの表示条件まで通す', async (_name, roleName, canView, canRecordDaily, memberLensActive) => {
     useFeatureFlagStore().flags = { FEATURE_FAMILY_CARE_ENABLED: true }
     apiMock.mockImplementation((url: string) => Promise.resolve(
       url.endsWith('/attendance/permissions')
         ? { data: { canView, canRecordDaily, canRecordPeriod: canRecordDaily } }
         : url.endsWith('/me/permissions')
-          ? { data: { roleName: 'MEMBER', permissions: canView && !canRecordDaily ? ['VIEW_ATTENDANCE'] : [] } }
+          ? { data: { roleName, permissions: canView && !canRecordDaily ? ['VIEW_ATTENDANCE'] : [] } }
           : { data: [] },
     ))
     const wrapper = await mountSuspended(TeamSidebar, {
@@ -64,15 +65,15 @@ describe('BaseSidebar の取得状態', () => {
     })
     await flushPromises()
     const link = wrapper.find('a[href="/teams/class-blue/school-attendance/daily-roll-call"]')
-    expect(link.exists()).toBe(canView)
-    if (canView) {
+    expect(link.exists()).toBe(canView && !memberLensActive)
+    if (canView && !memberLensActive) {
       await wrapper.get('button:has(i.pi-building)').trigger('click')
       expect(link.isVisible()).toBe(true)
       for (const path of ['period-attendance', 'transition-alerts', 'statistics', 'notices']) {
         expect(wrapper.get(`a[href="/teams/class-blue/school-attendance/${path}"]`).isVisible()).toBe(true)
       }
     }
-    expect(apiMock).toHaveBeenCalledWith('/api/v1/teams/42/attendance/permissions')
+    if (!memberLensActive) expect(apiMock).toHaveBeenCalledWith('/api/v1/teams/42/attendance/permissions')
   })
 
   it('SYSTEM_ADMIN単独は既存ロールバイパスがあっても学校リンクを表示しない', async () => {

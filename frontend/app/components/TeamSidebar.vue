@@ -13,7 +13,7 @@ const featureFlags = useFeatureFlagStore()
 const schoolId = computed(() => props.teamNumericId ? String(props.teamNumericId) : '')
 const schoolAccess = useAttendancePermissions(schoolId)
 const isSchool = computed(() => props.teamTemplate === 'SCHOOL' || props.teamTemplate === 'CLASS')
-const schoolEnabled = computed(() => isSchool.value && !!schoolId.value && featureFlags.isEnabled('FEATURE_FAMILY_CARE_ENABLED'))
+const schoolEnabled = computed(() => !props.memberLensActive && isSchool.value && !!schoolId.value && featureFlags.isEnabled('FEATURE_FAMILY_CARE_ENABLED'))
 watch([schoolId, schoolEnabled], () => {
   if (schoolEnabled.value) void schoolAccess.loadPermissions()
 }, { immediate: true })

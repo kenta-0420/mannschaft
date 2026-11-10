@@ -4,6 +4,7 @@ import type { FamilyAttendanceNoticeResponse, FamilyNoticeStatus } from '~/types
 defineProps<{
   records: FamilyAttendanceNoticeResponse[]
   processing?: boolean
+  canRecord?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -98,7 +99,7 @@ function statusClass(status: FamilyNoticeStatus): string {
         </div>
 
         <!-- アクションボタン -->
-        <div class="flex gap-2">
+        <div v-if="canRecord === true" class="flex gap-2">
           <Button
             v-if="record.status === 'PENDING'"
             :label="$t('school.familyNotice.acknowledge')"

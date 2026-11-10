@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { ref } from 'vue'
 import dayjs from 'dayjs'
-import type { DailyAttendanceResponse } from '~/types/school'
+import type { DailyAttendanceResponse, TransitionAlertResponse } from '~/types/school'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
@@ -25,11 +25,14 @@ const dailyFailed = ref(false)
 const dailyLoaded = ref(false)
 const dailyKey = ref('')
 const loadTeamNotices = vi.fn()
+const acknowledgeNotice = vi.fn()
+const applyNotice = vi.fn()
 const loadCandidates = vi.fn()
 const loadMonthlyStatistics = vi.fn()
 const loadTermStatistics = vi.fn()
 const downloadCsv = vi.fn()
 const loadAlerts = vi.fn()
+const transitionAlerts = ref<TransitionAlertResponse[]>([])
 
 vi.mock('~/composables/useAttendancePermissionsApi', () => ({
   useAttendancePermissionsApi: () => ({ getPermissions: mockGetPermissions }),
@@ -54,7 +57,7 @@ mockNuxtImport('useDailyRollCall', () => () => ({
 }))
 mockNuxtImport('useFamilyAttendanceNotice', () => () => ({
   noticeList: ref(null), loading: ref(false), processing: ref(false),
-  loadTeamNotices, acknowledge: vi.fn(), apply: vi.fn(),
+  loadTeamNotices, acknowledge: acknowledgeNotice, apply: applyNotice,
 }))
 mockNuxtImport('usePeriodAttendance', () => () => ({
   candidates: ref([]),
@@ -76,7 +79,7 @@ mockNuxtImport('useAttendanceStatistics', () => () => ({
   downloadCsv,
 }))
 mockNuxtImport('useTransitionAlert', () => () => ({
-  alerts: ref([]),
+  alerts: transitionAlerts,
   loading: ref(false),
   unresolvedCount: ref(0),
   totalCount: ref(0),
@@ -161,11 +164,14 @@ const pages: PageCase[] = [
 
 beforeEach(() => {
   dailyRecords.value = []
+  transitionAlerts.value = []
   dailyFailed.value = false
   dailyLoaded.value = false
   dailyKey.value = ''
   submitRollCall.mockReset()
   loadTeamNotices.mockReset()
+  acknowledgeNotice.mockReset()
+  applyNotice.mockReset()
   mockGetPermissions.mockReset()
   handleApiError.mockReset()
   for (const m of [loadRecords, loadCandidates, loadMonthlyStatistics, loadTermStatistics, downloadCsv, loadAlerts]) {
@@ -289,4 +295,35 @@ describe('点呼一覧の失敗と空の成功', () => {
     await flush()
     expect(vm.entries).toEqual([])
   })
+})
+
+
+describe('保護者連絡ページの操作資格伝達と二重ガード', () => {
+  it.each([false, true])('閲覧Vあり・日次R=%sをleafへ渡しemit経由の操作も同じ条件で抑止する', async canRecordDaily => {
+    mockGetPermissions.mockResolvedValue({ ...ALL_TRUE, canRecordDaily })
+    const page = (await import('~/pages/teams/[slug]/school-attendance/notices.vue')).default
+    const wrapper = await mountSuspended(page, {
+      global: { stubs: { ...stubs, TeacherInboxNoticeList: { name: 'TeacherInboxNoticeList', props: ['canRecord'], template: '<div />' } } },
+    })
+    await flush()
+    const child = wrapper.findComponent({ name: 'TeacherInboxNoticeList' })
+    expect(child.props('canRecord')).toBe(canRecordDaily)
+    child.vm.$emit('acknowledge', 7)
+    child.vm.$emit('apply', 7)
+    await flush()
+    expect(acknowledgeNotice).toHaveBeenCalledTimes(canRecordDaily ? 1 : 0)
+    expect(applyNotice).toHaveBeenCalledTimes(canRecordDaily ? 1 : 0)
+  })
+})
+
+
+it.each([false, true])('アラートページは日次R=%sを解決操作へ渡す', async canRecordDaily => {
+  transitionAlerts.value = [{ id: 7, teamId: 42, resolved: false } as TransitionAlertResponse]
+  mockGetPermissions.mockResolvedValue({ ...ALL_TRUE, canRecordDaily })
+  const page = (await import('~/pages/teams/[slug]/school-attendance/transition-alerts.vue')).default
+  const wrapper = await mountSuspended(page, {
+    global: { stubs: { ...stubs, TransitionAlertBanner: { name: 'TransitionAlertBanner', props: ['canResolve'], template: '<div />' } } },
+  })
+  await flush()
+  expect(wrapper.findComponent({ name: 'TransitionAlertBanner' }).props('canResolve')).toBe(canRecordDaily)
 })
