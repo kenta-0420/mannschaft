@@ -1,0 +1,29 @@
+{
+    "voting":  {
+                   "title":  "議決権行使",
+                   "create":  "投票セッションを作成",
+                   "empty":  "投票セッションがありません",
+                   "created":  "投票セッションを作成しました",
+                   "sessionTitle":  "タイトル",
+                   "titlePlaceholder":  "例: 年度総会",
+                   "description":  "説明",
+                   "mode":  "決議方式",
+                   "meetingDate":  "総会開催日",
+                   "anonymous":  "無記名投票",
+                   "motions":  "{count}議案",
+                   "eligible":  "議決権者 {count}人",
+                   "cancel":  "キャンセル",
+                   "submit":  "作成",
+                   "requirements":  "タイトルは1〜200文字で入力してください。総会決議では開催日が必須です。",
+                   "modes":  {
+                                 "MEETING":  "総会決議",
+                                 "WRITTEN":  "書面決議"
+                             },
+                   "status":  {
+                                  "DRAFT":  "下書き",
+                                  "OPEN":  "受付中",
+                                  "CLOSED":  "締切済み",
+                                  "FINALIZED":  "確定済み"
+                              }
+               }
+}
