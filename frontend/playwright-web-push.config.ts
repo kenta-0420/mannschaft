@@ -19,6 +19,9 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'off',
     serviceWorkers: 'allow',
+    // 既定の chromium-headless-shell は通知の許可を常に denied にし showNotification が失敗する。
+    // 新しい headless（channel: 'chromium'）なら grantPermissions が効き getNotifications で確かめられる。
+    channel: 'chromium',
     launchOptions: { args: ['--host-resolver-rules=MAP localhost 127.0.0.1'] },
   },
 })

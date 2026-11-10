@@ -6,10 +6,15 @@
  *   CDP `ServiceWorker.deliverPushMessage` で SW の push イベントを直接起こす。
  * - BE は不要（SW の push / notificationclick は BE を呼ばない）。
  *
+ * - 既定の chromium-headless-shell では通知の許可が常に denied になるため、設定で channel: 'chromium'（新しい headless）を使う。
+ *
  * 実行例: `BASE_URL=http://localhost:3007 npx playwright test -c playwright-web-push.config.ts`
+ * （2026-11-11 の実行では nitro のビルドが EMFILE で落ちたため、`nuxi build` のクライアント成果物
+ *   `.output/public` を静的配信し、`/` で生成 `sw.js` を登録するだけの HTML を返して 3件 green を確認した）
  */
 import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 
 interface WebPushContract {
@@ -19,7 +24,7 @@ interface WebPushContract {
 }
 const CONTRACT = JSON.parse(
   readFileSync(
-    resolve(__dirname, '../../../../backend/src/test/resources/contracts/web-push-payload.json'),
+    resolve(dirname(fileURLToPath(import.meta.url)), '../../../../backend/src/test/resources/contracts/web-push-payload.json'),
     'utf8',
   ),
 ) as WebPushContract
