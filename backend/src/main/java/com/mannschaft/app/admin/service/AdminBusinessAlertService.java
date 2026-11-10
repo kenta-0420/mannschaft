@@ -13,6 +13,7 @@ import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.service.PermissionScopeQueryService;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.template.service.ModuleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -68,6 +69,8 @@ public class AdminBusinessAlertService {
     private final ObjectMapper objectMapper;
     @Qualifier("wallClock")
     private final Clock wallClock;
+    /** リンクの slug 解決用（CMP-261030-0648。チームごとに呼ばず一括取得する）。 */
+    private final TeamService teamService;
 
     /**
      * 業務アラートサマリーを返す。Valkey に 60 秒間キャッシュする。
@@ -221,7 +224,12 @@ public class AdminBusinessAlertService {
             }
         }
 
-        // 7. レスポンスを組み立て
+        // 7. リンク用の slug をチーム群まとめて 1 回で引く（CMP-261030-0648。FE のルートは slug しか受けない）。
+        //    D-3T: 本メソッドから直接呼ぶ（private ヘルパやラムダを挟むと新しい入口として数えられる）。
+        //    例外はここで握らず要約ごと失敗させる。getSummary は例外の結果をキャッシュしない。
+        Map<Long, String> slugByTeamId = teamService.getSlugsByIds(allAdminTeamIds);
+
+        // 8. レスポンスを組み立て
         List<AdminBusinessAlertSummaryResponse.TeamAlert> teamAlerts = new ArrayList<>();
         int totalPending = 0;
 
@@ -240,10 +248,18 @@ public class AdminBusinessAlertService {
 
             totalPending += newReservations + pendingApproval + unreadInquiries;
 
+            // slug を引けないチームは数値 URL を作らず通知一覧へ逃がす（ほかのチームは slug のまま）
+            String slug = slugByTeamId.get(teamId);
+            String reservationsUrl = slug != null ? "/teams/" + slug + "/reservations" : "/notifications";
             ChatChannelEntity inquiryChannel = inquiryChannelByTeamId.get(teamId);
-            String inquiryChannelUrl = inquiryChannel != null
-                    ? "/teams/" + teamId + "/chat?channel=" + inquiryChannel.getId()
-                    : null;
+            String inquiryChannelUrl;
+            if (inquiryChannel == null) {
+                inquiryChannelUrl = null;
+            } else if (slug != null) {
+                inquiryChannelUrl = "/teams/" + slug + "/chat?channel=" + inquiryChannel.getId();
+            } else {
+                inquiryChannelUrl = "/notifications";
+            }
 
             teamAlerts.add(AdminBusinessAlertSummaryResponse.TeamAlert.builder()
                     .teamId(teamId)
@@ -255,7 +271,7 @@ public class AdminBusinessAlertService {
                             .unreadInquiries(unreadInquiries)
                             .build())
                     .links(AdminBusinessAlertSummaryResponse.Links.builder()
-                            .reservationsUrl("/teams/" + teamId + "/reservations")
+                            .reservationsUrl(reservationsUrl)
                             .inquiryChannelUrl(inquiryChannelUrl)
                             .build())
                     .build());
