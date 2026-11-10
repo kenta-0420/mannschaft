@@ -149,7 +149,7 @@ class AuthSessionServiceTest {
         }
 
         @Test
-        void 0件更新後に既に上限内なら次の古いtokenまで失効しない() {
+        void 更新0件後に既に上限内なら次の古いtokenまで失効しない() {
             given(refreshTokenRepository.findActiveSessionCandidates(eq(1L), any())).willReturn(activeCandidates(11));
             given(refreshTokenRepository.revokeActiveSessionCandidate(eq(1L), eq(1L), any())).willReturn(0);
             given(refreshTokenRepository.countByUserIdAndRevokedAtIsNullAndExpiresAtAfter(eq(1L), any())).willReturn(10L);
