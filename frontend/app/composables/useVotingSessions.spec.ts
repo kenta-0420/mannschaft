@@ -153,6 +153,22 @@ describe('投票一覧のスコープ契約', () => {
     expect(mocks.list).toHaveBeenCalledTimes(2)
     wrapper.unmount()
   })
+  it('書面決議でも空白のみのタイトルは送信しない', async () => {
+    const wrapper = host(); await flushPromises(); state.openCreateDialog()
+    state.form.resolutionMode = 'WRITTEN'; state.form.title = ' \t\n '
+    await state.handleCreate()
+    expect(mocks.create).not.toHaveBeenCalled()
+    expect(state.showCreateDialog.value).toBe(true)
+    wrapper.unmount()
+  })
+  it('書面決議の有効なタイトルは前後の空白を除いて送信する', async () => {
+    const wrapper = host(); await flushPromises(); state.openCreateDialog()
+    state.form.resolutionMode = 'WRITTEN'; state.form.title = ' \t書面決議\n '
+    await state.handleCreate()
+    expect(mocks.create).toHaveBeenCalledOnce()
+    expect(mocks.create.mock.calls[0]![0]).toMatchObject({ title: '書面決議', resolutionMode: 'WRITTEN' })
+    wrapper.unmount()
+  })
   it('書面決議は日付なし・失敗時は入力保持・saving中の二重送信なし', async () => {
     const wrapper = host(); await flushPromises(); state.openCreateDialog()
     state.form.title = '書面'; state.form.resolutionMode = 'WRITTEN'
