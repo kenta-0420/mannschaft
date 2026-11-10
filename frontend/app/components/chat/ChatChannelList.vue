@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { useDebounceFn } from '@vueuse/core'
 import type { ChatChannelResponse } from '~/types/chat'
 import { useChatReadSync } from '~/composables/chat/useChatReadSync'
+import { useChatListSync } from '~/composables/chat/useChatListSync'
 
 const props = defineProps<{
   teamId?: string
@@ -18,6 +20,7 @@ const { getChannels } = useChatApi()
 const { showError } = useNotification()
 const { t } = useI18n()
 const { onChannelRead } = useChatReadSync()
+const { onChannelContentChanged } = useChatListSync()
 
 const channels = ref<ChatChannelResponse[]>([])
 const loading = ref(false)
@@ -31,8 +34,8 @@ function isDmChannel(ch: ChatChannelResponse): boolean {
 const dmChannels = computed(() => channels.value.filter((ch) => isDmChannel(ch)))
 const roomChannels = computed(() => channels.value.filter((ch) => !isDmChannel(ch)))
 
-async function loadChannels() {
-  loading.value = true
+async function loadChannels(options: { silent?: boolean } = {}) {
+  if (!options.silent) loading.value = true
   try {
     const res = await getChannels({
       teamId: props.teamId !== undefined ? Number(props.teamId) : undefined,
@@ -87,7 +90,19 @@ const offChannelRead = onChannelRead((channelId) => {
   const ch = channels.value.find((c) => c.id === channelId)
   if (ch?.viewer) ch.viewer.unreadCount = 0
 })
-onUnmounted(() => offChannelRead())
+
+/**
+ * 開いている会話で投稿・編集・削除があったら一覧を取り直す（CMP-261105-1507）。
+ * BE は編集・削除に追従して部屋のプレビューと未読数を更新するため、取り直せば消した本文が残らない。
+ * スピナーは出さず、読み込み失敗は通常どおり通知する。
+ */
+// REST 応答と WS の同じ通知が続けて来るため、まとめて 1 回だけ取り直す
+const reloadSilently = useDebounceFn(() => loadChannels({ silent: true }), 300)
+const offContentChanged = onChannelContentChanged(() => reloadSilently())
+onUnmounted(() => {
+  offChannelRead()
+  offContentChanged()
+})
 
 async function refreshAndSelect(channelId: number) {
   await loadChannels()
