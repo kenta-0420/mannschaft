@@ -292,7 +292,7 @@ public class ReservationService {
                 saved.getId(),
                 userId,
                 mode,
-                slot.getTitle(),
+                slot.resolveDisplayTitle(),
                 bookedAtFormatted
         ));
 
@@ -923,7 +923,7 @@ public class ReservationService {
                 reservation.getId(),
                 actorUserId,
                 slotStartAt,
-                slot.getTitle()
+                slot.resolveDisplayTitle()
         ));
     }
 

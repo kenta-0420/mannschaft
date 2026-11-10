@@ -67,10 +67,11 @@ public class ReservationAdminNotificationEventListener {
             try {
                 Locale locale = resolveLocale(recipientId);
                 String title = messageSource.getMessage(titleKey, null, defaultTitle, locale);
+                String slotLabel = resolveSlotLabel(event.getSlotTitle(), locale);
                 String body = messageSource.getMessage(
                         bodyKey,
-                        new Object[]{event.getSlotTitle(), event.getBookedAtFormatted()},
-                        event.getSlotTitle() + (pendingApproval ? "への予約申込があります（" : "が予約されました（")
+                        new Object[]{slotLabel, event.getBookedAtFormatted()},
+                        slotLabel + (pendingApproval ? "への予約申込があります（" : "が予約されました（")
                                 + event.getBookedAtFormatted() + "）",
                         locale);
                 notificationService.createNotification(
@@ -117,8 +118,8 @@ public class ReservationAdminNotificationEventListener {
                         "予約がキャンセルされました", locale);
                 String body = messageSource.getMessage(
                         "notification.reservation.admin.cancelledByMember.body",
-                        new Object[]{event.getSlotTitle()},
-                        event.getSlotTitle() + "の予約がキャンセルされました",
+                        new Object[]{resolveSlotLabel(event.getSlotTitle(), locale)},
+                        resolveSlotLabel(event.getSlotTitle(), locale) + "の予約がキャンセルされました",
                         locale);
                 notificationService.createNotification(
                         recipientId,
@@ -160,6 +161,17 @@ public class ReservationAdminNotificationEventListener {
      * 受信者ユーザーの locale を解決する（{@link UserLocaleCache} 経由。D-5: 予約ドメインから
      * auth ドメインのリポジトリへ直接依存しない・{@code common.i18n} 配下の共有サービス経由に限定する）。
      */
+    /**
+     * 通知文に埋め込む枠名を返す。title が null・空・空白のみのときは共通の既定名へフォールバックする
+     * （「nullが予約されました」の防止。通常は発行側で枠の日時に解決済み）。
+     */
+    private String resolveSlotLabel(String slotTitle, Locale locale) {
+        if (slotTitle != null && !slotTitle.isBlank()) {
+            return slotTitle.trim();
+        }
+        return messageSource.getMessage("notification.reservation.common.defaultSlotTitle", null, "ご予約", locale);
+    }
+
     private Locale resolveLocale(Long userId) {
         return Locale.forLanguageTag(userLocaleCache.getLocale(userId));
     }
