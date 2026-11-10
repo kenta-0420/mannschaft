@@ -13,6 +13,7 @@ import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.service.PermissionScopeQueryService;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.template.service.ModuleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -68,6 +69,8 @@ public class AdminBusinessAlertService {
     private final ObjectMapper objectMapper;
     @Qualifier("wallClock")
     private final Clock wallClock;
+    /** リンクの slug 解決用（CMP-261030-0648。チームごとに呼ばず一括取得する）。 */
+    private final TeamService teamService;
 
     /**
      * 業務アラートサマリーを返す。Valkey に 60 秒間キャッシュする。

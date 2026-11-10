@@ -9,6 +9,7 @@ import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationService;
 import com.mannschaft.app.reservation.ApprovalMode;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
@@ -37,6 +38,8 @@ public class ReservationAdminNotificationEventListener {
     private final NotificationService notificationService;
     private final AdminBusinessAlertService adminBusinessAlertService;
     private final MessageSource messageSource;
+    /** 遷移先 URL の slug 解決用（Repository は直接使わず Service 経由）。 */
+    private final TeamService teamService;
 
     /**
      * 予約作成イベントを受信し、管理者へ通知する。

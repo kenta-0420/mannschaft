@@ -10,6 +10,7 @@ import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDispatchService;
 import com.mannschaft.app.notification.service.NotificationService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
@@ -50,6 +51,8 @@ public class InquiryChatEventListener {
     private final NotificationDispatchService notificationDispatchService;
     private final MessageSource messageSource;
     private final UserLocaleCache userLocaleCache;
+    /** 遷移先 URL の slug 解決用（Repository は直接使わず Service 経由）。 */
+    private final TeamService teamService;
 
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
             reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。問い合わせ受信時のチャット連携。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")

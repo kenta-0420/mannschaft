@@ -711,6 +711,23 @@ class NotificationServiceTest {
             assertThat(result.getScopeId()).isEqualTo(20L);
             assertThat(result.getActionUrl()).isEqualTo("/orgs/20");
         }
+
+        @Test
+        @DisplayName("AC-23（CMP-261030-0648）: 遷移先が /notifications に落ちても、閲覧できない受信者には保存しない")
+        void ac23_fallback_action_url_still_passes_visibility_gate() {
+            // Given: 問い合わせメッセージを閲覧できない受信者
+            given(visibilityChecker.canView(ReferenceType.CHAT_MESSAGE, 5001L, USER_ID)).willReturn(false);
+
+            // When: slug 解決に失敗したリスナーが /notifications で作成を要求する
+            NotificationEntity inquiry = notificationService.createNotification(
+                    USER_ID, "INQUIRY_RECEIVED", NotificationPriority.HIGH,
+                    "問い合わせが届きました", "本文", "CHAT_MESSAGE", 5001L,
+                    NotificationScopeType.TEAM, 5L, "/notifications", 2L);
+
+            // Then: 作られず（null）、保存もされない（遷移先の値は可視性判定を緩めない）
+            assertThat(inquiry).isNull();
+            verify(notificationRepository, never()).save(any(NotificationEntity.class));
+        }
     }
 
     // ========================================
