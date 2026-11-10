@@ -46,6 +46,17 @@ function channel(id: number): ChatChannelResponse {
 
 /** 一覧のスタブ。一覧に載る（＝見られる）のは 7 と 8 だけ。 */
 const VISIBLE = new Map([[7, channel(7)], [8, channel(8)]])
+
+/**
+ * 一覧の取り直し（refresh / refreshAndSelect）の完了を手で操作できるようにする。
+ * holdLoads=false なら即座に完了する。true なら完了待ちの resolve を pendingLoads に積む。
+ */
+const loads = { holdLoads: false, pendingLoads: [] as Array<() => void> }
+function nextLoad(): Promise<void> {
+  if (!loads.holdLoads) return Promise.resolve()
+  return new Promise<void>((resolve) => loads.pendingLoads.push(resolve))
+}
+
 const ChatChannelListStub = defineComponent({
   name: 'ChatChannelList',
   props: {
@@ -59,8 +70,15 @@ const ChatChannelListStub = defineComponent({
       if (ch) emit('select', ch)
     }
     expose({
-      refresh: vi.fn(),
-      refreshAndSelect: vi.fn(async (id: number) => pick(id)),
+      refresh: vi.fn(() => nextLoad()),
+      refreshAndSelect: vi.fn(async (id: number) => {
+        await nextLoad()
+        pick(id)
+      }),
+      selectIfPresent: vi.fn((id: number) => {
+        pick(id)
+        return VISIBLE.has(id)
+      }),
     })
     onMounted(() => {
       pick(props.initialChannelId)
@@ -72,6 +90,8 @@ const ChatChannelListStub = defineComponent({
 
 beforeEach(() => {
   mocks.route = reactive({ params: { slug: 'lions-fc' }, query: {} as Record<string, unknown> })
+  loads.holdLoads = false
+  loads.pendingLoads = []
 })
 
 async function mountWithQuery(query: Record<string, unknown>) {
@@ -124,6 +144,29 @@ describe('/teams/[slug]/chat.vue の ?channel=（AC-24）', () => {
     await changeQuery({ channel: '7' })
     await changeQuery({})
     expect(shownChannelId(wrapper)).toBeNull()
+  })
+
+  it('AC-24: 8 の一覧取得中に 999 へ変わったら、遅れて届いた 8 の結果では選ばず未選択のまま', async () => {
+    const wrapper = await mountWithQuery({ channel: '7' })
+    expect(shownChannelId(wrapper)).toBe(7)
+
+    loads.holdLoads = true
+    await changeQuery({ channel: '8' })
+    await changeQuery({ channel: '999' })
+    expect(shownChannelId(wrapper)).toBeNull()
+    expect(loads.pendingLoads.length).toBeGreaterThan(0)
+
+    // 古い（8 の）取得から順に完了させる
+    while (loads.pendingLoads.length > 0) {
+      loads.pendingLoads.shift()!()
+      await flushPromises()
+    }
+    expect(shownChannelId(wrapper)).toBeNull()
+
+    // その後の正しい遷移は従来どおり追従する
+    loads.holdLoads = false
+    await changeQuery({ channel: '8' })
+    expect(shownChannelId(wrapper)).toBe(8)
   })
 
   it('AC-24: 開いたときの ?channel= が不正値なら未選択（エラーにしない）', async () => {

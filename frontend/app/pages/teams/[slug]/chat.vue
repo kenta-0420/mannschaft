@@ -14,7 +14,7 @@ const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', team
 const { isDesktop } = useIsDesktop()
 
 const selectedChannel = ref<ChatChannelResponse | null>(null)
-const chatListRef = ref<{ refresh: () => void, refreshAndSelect: (channelId: number) => Promise<void> } | null>(null)
+const chatListRef = ref<{ refresh: () => Promise<void>, selectIfPresent: (channelId: number) => boolean } | null>(null)
 const showCreateDialog = ref(false)
 
 // モバイル単一ペインで「一覧を出すか空状態を出すか」を決めるための件数。
@@ -43,21 +43,26 @@ function onChannelListLoaded(count: number) {
  * query の ?channel= が変わったら選択を追従させる。いったん未選択にしてから、
  * 一覧にある（見られる）チャンネルなら選び直す。正の整数でない・一覧に無いなら未選択のまま。
  * 一覧が描画されていない（モバイルで会話を表示中）ときは、一覧の再表示時に initialChannelId で選ぶ。
+ *
+ * 一覧の取り直しを待つ間に query がさらに変わることがある。要求ごとに番号を振り、
+ * 取り直しが済んだ時点で最新の要求でなければ結果を捨てる（古い要求で URL と違う会話を開かない）。
  */
+let channelQuerySeq = 0
 watch(
   () => parseChannelQuery(route.query.channel),
-  (channelId) => {
+  async (channelId) => {
+    const seq = ++channelQuerySeq
     selectedChannel.value = null
-    if (channelId === undefined) {
-      pendingChannelId.value = undefined
+    const list = chatListRef.value
+    if (channelId === undefined || !list) {
+      pendingChannelId.value = channelId
       return
     }
-    if (chatListRef.value) {
-      void chatListRef.value.refreshAndSelect(channelId)
-    }
-    else {
-      pendingChannelId.value = channelId
-    }
+    // 読み込み中の一覧が古い initialChannelId で選ばないよう、渡す値を消してから取り直す
+    pendingChannelId.value = undefined
+    await list.refresh()
+    if (seq !== channelQuerySeq) return
+    list.selectIfPresent(channelId)
   },
 )
 

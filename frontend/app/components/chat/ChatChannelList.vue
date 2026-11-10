@@ -123,7 +123,18 @@ async function refreshAndSelect(channelId: number) {
   if (ch) selectChannel(ch)
 }
 
-defineExpose({ refresh: loadChannels, refreshAndSelect })
+/**
+ * 読み込み済みの一覧から channelId のチャンネルを選ぶ（取り直さない）。
+ * 一覧に無ければ何もせず false を返す。呼び出し側が取り直しと選択の間で要求の新旧を確かめるために使う。
+ */
+function selectIfPresent(channelId: number): boolean {
+  const ch = channels.value.find((c) => c.id === channelId)
+  if (!ch) return false
+  selectChannel(ch)
+  return true
+}
+
+defineExpose({ refresh: loadChannels, refreshAndSelect, selectIfPresent })
 </script>
 
 <template>
