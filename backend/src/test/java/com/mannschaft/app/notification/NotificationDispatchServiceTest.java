@@ -1,6 +1,5 @@
 package com.mannschaft.app.notification;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.notification.dto.NotificationResponse;
@@ -9,6 +8,7 @@ import com.mannschaft.app.notification.entity.PushSubscriptionEntity;
 import com.mannschaft.app.notification.service.NotificationDispatchService;
 import com.mannschaft.app.notification.service.NotificationPreferenceService;
 import com.mannschaft.app.notification.service.PushSubscriptionService;
+import com.mannschaft.app.notification.service.WebPushPayloadFactory;
 import com.mannschaft.app.notification.service.WebPushService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -63,8 +63,9 @@ class NotificationDispatchServiceTest {
     @Mock
     private WebPushService webPushService;
 
+    /** Web Push ペイロードの組み立て（CMP-261029-0620 で ObjectMapper 直書きから置き換え）。 */
     @Mock
-    private ObjectMapper objectMapper;
+    private WebPushPayloadFactory webPushPayloadFactory;
 
     @InjectMocks
     private NotificationDispatchService dispatchService;
