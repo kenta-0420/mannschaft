@@ -3,6 +3,7 @@ package com.mannschaft.app.config.websocket;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -16,6 +17,9 @@ import com.mannschaft.app.match.live.MatchLiveSubscriptionInterceptor;
 import com.mannschaft.app.reservation.ws.EmergencyClosureSubscriptionInterceptor;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.data.redis.core.SetOperations;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -45,12 +49,15 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * CMP-261110-2011 AC-26/28/29の正式実構成・実TCP試練。
  * 実Security、AuthTokenService、購読認可、実MySQL基底、broker、SimpUserRegistryを使用する。
  * 実TCPが契約対象なのでRANDOM_PORT、専用contextはAFTER_CLASSで閉じる（TEST_CONVENTION §3.1.2）。
- * localは容量条件未成立により未実行。起動/fixture失敗を有効redとして数えない。
+ * 実TCPの配線・cleanupを検査し、起動/fixture失敗を有効redとして数えない。
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
@@ -76,6 +83,15 @@ class WebSocketTerminalLifecycleIT extends AbstractMySqlIntegrationTest {
         this.inbound = inbound;
     }
 
+    /** 村ロビー未参加を外部Redis境界で表し、切断listenerのfixture NPEを避ける。 */
+    @BeforeEach
+    void stubEmptyExternalRedisLobbyMemberships() {
+        @SuppressWarnings("unchecked")
+        SetOperations<String, String> sets = mock(SetOperations.class);
+        when(redisTemplate.opsForSet()).thenReturn(sets);
+        when(sets.members(anyString())).thenReturn(Set.of());
+    }
+
     @Test
     void 実構成はcustomHandlerとgate先行を持ち既存認証認可順序を保つ() {
         assertThat(context.getBeansOfType(TerminalCloseWebSocketBrokerConfig.class)).hasSize(1);
@@ -91,6 +107,14 @@ class WebSocketTerminalLifecycleIT extends AbstractMySqlIntegrationTest {
                 context.getBean(EmergencyClosureSubscriptionInterceptor.class),
                 context.getBean(ChatChannelSubscriptionInterceptor.class));
         assertThat(interceptors.indexOf(gate)).isLessThan(interceptors.indexOf(auth));
+        ThreadPoolTaskScheduler scheduler = context.getBean("messageBrokerTaskScheduler", ThreadPoolTaskScheduler.class);
+        assertThat(context.getBean("messageBrokerSockJsTaskScheduler")).isSameAs(scheduler);
+        assertThat(scheduler.getPhase()).isZero();
+        assertThat(handlers.iterator().next().getPhase()).isEqualTo(scheduler.getPhase());
+        assertThat(scheduler.getThreadNamePrefix()).isEqualTo("MessageBroker-");
+        assertThat(scheduler.getScheduledThreadPoolExecutor().getCorePoolSize())
+                .isEqualTo(Runtime.getRuntime().availableProcessors());
+        assertThat(scheduler.getScheduledThreadPoolExecutor().getRemoveOnCancelPolicy()).isTrue();
     }
 
     @Test

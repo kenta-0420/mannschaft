@@ -36,7 +36,7 @@ import static org.mockito.Mockito.when;
 /**
  * CMP-261110-2011 AC-22〜27の正式試練。実frameworkのdecode/channel/dispatchを使う。
  * 制御する外部境界はWebSocket transportのみ。実認可/業務Beanの代替には使わない。
- * 未実行でありred未認定。DISCONNECTの実broker cleanupは別の実接続ITが担う。
+ * DISCONNECTの実broker cleanupは別の実接続ITが担う。
  */
 class FatalStompSessionGateTest {
     private static final int SEND_LIMIT = 10_000;

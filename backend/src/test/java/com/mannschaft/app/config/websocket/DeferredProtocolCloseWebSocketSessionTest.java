@@ -12,6 +12,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -29,7 +30,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-/** CMP-261110-2011 正式試練。pool/sleepなし、schedulerは手動発火。未実行。 */
+/** CMP-261110-2011 正式試練。pool/sleepなし、schedulerは手動発火。 */
 class DeferredProtocolCloseWebSocketSessionTest {
     private static final long BOUND_SECONDS = 5;
     private static final int SEND_LIMIT = 10_000;
@@ -38,11 +39,16 @@ class DeferredProtocolCloseWebSocketSessionTest {
     @Test void 期限予約は一回でpending後新規送信をdropする() throws Exception {
         Fixture f = new Fixture(SEND_LIMIT, BUFFER_LIMIT, false);
         f.inFlight(() -> {
+            Instant earliestDeadline = Instant.now().plusMillis(SEND_LIMIT);
             f.session.close(CloseStatus.PROTOCOL_ERROR);
+            Instant latestDeadline = Instant.now().plusMillis(SEND_LIMIT);
             f.session.close(CloseStatus.PROTOCOL_ERROR);
             f.session.sendMessage(new TextMessage("LATE"));
             assertThat(f.events).containsExactly("SEND CONNECTED");
-            verify(f.scheduler, times(1)).schedule(any(Runnable.class), any(Instant.class));
+            ArgumentCaptor<Instant> scheduledAt = ArgumentCaptor.forClass(Instant.class);
+            verify(f.scheduler, times(1)).schedule(any(Runnable.class), scheduledAt.capture());
+            assertThat(scheduledAt.getValue()).isAfterOrEqualTo(earliestDeadline)
+                    .isBeforeOrEqualTo(latestDeadline);
         });
         assertThat(f.events).containsExactly("SEND CONNECTED", "CLOSE 1002");
         verify(f.future).cancel(false);
@@ -296,6 +302,17 @@ class DeferredProtocolCloseWebSocketSessionTest {
         assertThat(sendFailure.getSuppressed()).containsExactly(closeFailure);
         f.assertOneClose();
     }
+    @Test void 同一sendCloseIOExceptionでも主原因を保持しselfSuppressionしない() throws Exception {
+        Fixture f = new Fixture(SEND_LIMIT, BUFFER_LIMIT, false);
+        IOException sharedFailure = new IOException("fixture shared send and close failure");
+        doAnswer(i -> { f.session.close(CloseStatus.PROTOCOL_ERROR); throw sharedFailure; })
+                .when(f.delegate).sendMessage(any());
+        doThrow(sharedFailure).when(f.delegate).close(any(CloseStatus.class));
+        assertThatThrownBy(() -> f.session.sendMessage(new TextMessage("CONNECTED"))).isSameAs(sharedFailure);
+        assertThat(sharedFailure.getSuppressed()).isEmpty();
+        f.assertOneClose();
+    }
+
     @FunctionalInterface private interface CheckedAction { void run() throws Exception; }
     private static final class Fixture {
         final WebSocketSession delegate = mock(WebSocketSession.class);

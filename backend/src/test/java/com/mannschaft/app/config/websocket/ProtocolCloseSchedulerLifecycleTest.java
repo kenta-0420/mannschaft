@@ -24,9 +24,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * CMP-261110-2011 正式試練。実Spring Beanのscheduler停止/late予約とdelegate close到達を検査。
+ * CMP-261110-2011 正式試練。実Spring Beanのscheduler破棄後の予約拒否/late予約とdelegate close到達を検査。
  * schedulerはmockしない。transport境界のみ制御し、実TCP停止検証の代替とはしない。
- * sourceのみ作成、未実行。localの実Bean lifecycle実行はrootの容量/実行GOまでHOLD。
+ * 単独scheduler.stopのpauseや、実AppContext.stop/closeの資格とは分ける。
  */
 class ProtocolCloseSchedulerLifecycleTest {
     private static final long BOUND_SECONDS = 5;

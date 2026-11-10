@@ -31,7 +31,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * CMP-261110-2011 正式試練。未実行であり red 認定ではない。
+ * CMP-261110-2011 正式試練。ERRORの実送信とcloseの順序を検査する。
  * Spring Framework 6.2.17 の実 handler と実 decorator の組合せを検査する。
  * delegate に届いたフレームを観測するため、queue への追加だけでは成功にしない。
  * 実 CI がこのスケジュールだったことや、ネットワーク受信を証明する試験ではない。
@@ -80,7 +80,7 @@ class StompTerminalErrorFlushContractTest {
         assertThat(connectedSender.isAlive()).as("背景 sender が残存しない").isFalse();
         assertThat(senderFailure.get()).as("背景 sender の異常を見落とさない").isNull();
         assertThat(fixture.delegateFailure.get()).as("handler が捕捉した delegate 異常も見落とさない").isNull();
-        // 6.2.17 の現実装では SEND ERROR が欠ける想定。未実行につき red 実証ではない。
+        // 標準decoratorへの委譲で再現したSEND ERROR欠落を、実delegateの順序で検出する。
         assertThat(fixture.events).containsExactly("SEND CONNECTED", "SEND ERROR", "CLOSE 1002");
         assertThat(fixture.actualFrames).anySatisfy(frame ->
                 assertThat(frame).startsWith("ERROR\n").contains("x-error-code:INVALID_DESTINATION"));

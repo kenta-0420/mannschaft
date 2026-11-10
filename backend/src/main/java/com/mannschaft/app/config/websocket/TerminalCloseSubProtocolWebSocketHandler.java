@@ -1,14 +1,26 @@
 package com.mannschaft.app.config.websocket;
 
+import java.util.function.Supplier;
+
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.SubscribableChannel;
 import org.springframework.scheduling.TaskScheduler;
+import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.messaging.SubProtocolWebSocketHandler;
 
-/** CMP-261110-2011 配線試練用API骨格。decorateSessionは既存base動作のまま。 */
+/** session生成時に既存schedulerを解決し、終端close制御だけを差し替える。 */
 public class TerminalCloseSubProtocolWebSocketHandler extends SubProtocolWebSocketHandler {
+    private final Supplier<TaskScheduler> scheduler;
+
     public TerminalCloseSubProtocolWebSocketHandler(MessageChannel inbound, SubscribableChannel outbound,
-                                                   TaskScheduler scheduler) {
+                                                   Supplier<TaskScheduler> scheduler) {
         super(inbound, outbound);
+        this.scheduler = scheduler;
+    }
+
+    @Override
+    protected WebSocketSession decorateSession(WebSocketSession session) {
+        return new DeferredProtocolCloseWebSocketSession(
+                session, getSendTimeLimit(), getSendBufferSizeLimit(), scheduler.get());
     }
 }

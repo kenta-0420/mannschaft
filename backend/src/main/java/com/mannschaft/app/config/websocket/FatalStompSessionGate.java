@@ -1,24 +1,36 @@
 package com.mannschaft.app.config.websocket;
 
+import java.util.Map;
+
+import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
+import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.messaging.support.ExecutorChannelInterceptor;
 
-/**
- * CMP-261110-2011 正式試練用API骨格。現在は従来どおり全メッセージを通す。
- * fatal server属性の判定とDISCONNECT以外の抑止は未実装。
- */
+/** 終端拒否後の業務dispatchを入口と実行直前で抑止し、DISCONNECT cleanupは常に通す。 */
 public class FatalStompSessionGate implements ExecutorChannelInterceptor {
     public static final String FATAL_SESSION_ATTRIBUTE = "com.mannschaft.websocket.fatalProtocolClose";
 
     @Override
+    @Nullable
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
-        return message;
+        return isFatalBusinessMessage(message) ? null : message;
     }
 
     @Override
+    @Nullable
     public Message<?> beforeHandle(Message<?> message, MessageChannel channel, MessageHandler handler) {
-        return message;
+        return isFatalBusinessMessage(message) ? null : message;
+    }
+
+    private static boolean isFatalBusinessMessage(Message<?> message) {
+        if (SimpMessageType.DISCONNECT.equals(SimpMessageHeaderAccessor.getMessageType(message.getHeaders()))) {
+            return false;
+        }
+        Map<String, Object> attributes = SimpMessageHeaderAccessor.getSessionAttributes(message.getHeaders());
+        return attributes != null && Boolean.TRUE.equals(attributes.get(FATAL_SESSION_ATTRIBUTE));
     }
 }
