@@ -63,27 +63,22 @@ flag OFF 時は `@ConditionalOnProperty` で relay 部品（`WebSocketRelayPubli
 
 ---
 
-## 2. 現状分析（origin/main 実コードで裏取り済み）
+## 2. 現状分析と構成の更新履歴
 
-### 2.1 WebSocket 設定は「2 つの `@EnableWebSocketMessageBroker`」だが実体は単一ブローカー
+### 2.1 WebSocket 設定は単一ブローカーへ集約済み
 
-同一 Spring コンテキストに `@EnableWebSocketMessageBroker` が **2 箇所**存在する。
+現行構成では、`/ws` と `/ws/signage` の両エンドポイントが単一の brokerChannel・SimpleBroker・clientOutboundChannel を共有する。過去に両設定クラスがブローカー設定を宣言していた状態は解消済みであり、現在は `WebSocketConfig` のみがブローカーと宛先プレフィックスを宣言する。CMP-261110-2011 の変更は両 Configurer の `@EnableWebSocketMessageBroker` 除去と単一 `DelegatingWebSocketMessageBrokerConfiguration` 派生による終端 ERROR・fatal gate の組み込みであり、既存のブローカー宣言と許可オリジン統一は維持している。
 
-| Config クラス | エンドポイント | ブローカー宣言 | インバウンドインターセプタ |
+| Config クラス | エンドポイント | ブローカー宣言 | インバウンド処理 |
 |---|---|---|---|
-| `config/WebSocketConfig` | `/ws`（SockJS）| `enableSimpleBroker("/topic","/queue")`・`setApplicationDestinationPrefixes("/app")`・`setUserDestinationPrefix("/user")` | `WebSocketAuthChannelInterceptor` → `MatchLiveSubscriptionInterceptor` → `EmergencyClosureSubscriptionInterceptor` |
-| `signage/config/SignageWebSocketConfig` | `/ws/signage`（SockJS）| `enableSimpleBroker("/topic")`・`setApplicationDestinationPrefixes("/app")` | なし |
+| `config/WebSocketConfig` | `/ws`（SockJS）| `enableSimpleBroker("/topic", "/queue")`・`/app`・`/user` | 認証 → MatchLive・EmergencyClosure・Chat の購読認可 |
+| `signage/config/SignageWebSocketConfig` | `/ws/signage`（SockJS）| なし | 共通 inbound channel の認証・購読認可を適用 |
 
-**確定した実挙動（Spring 機構）:**
-`@EnableWebSocketMessageBroker` は `DelegatingWebSocketMessageBrokerConfiguration` を `@Import` するメタアノテーションであり、同一構成クラスの多重 import は **1 回に重複排除**される。この `DelegatingWebSocketMessageBrokerConfiguration` は、コンテキスト内の **全ての `WebSocketMessageBrokerConfigurer` 実装 Bean を注入し、各コールバックを全 Configurer に委譲**する。したがって:
+`TerminalCloseWebSocketBrokerConfig` は `DelegatingWebSocketMessageBrokerConfiguration` を継承し、全既存 `WebSocketMessageBrokerConfigurer` の設定を委譲する。fatal session gate を inbound interceptor の先頭に加え、その後 `super.configureClientInboundChannel` で既存の認証・購読認可を登録する。このため両エンドポイントに同じ gate と認証・購読認可順が適用される。
 
-- **ブローカーは 2 系統の独立ブローカーではなく、単一のブローカー（単一 brokerChannel・単一 SimpleBroker・単一 clientOutboundChannel）に両 Configurer がマージ**される。
-- `registerStompEndpoints` は加算的に呼ばれ、`/ws` と `/ws/signage` の両エンドポイントが単一ブローカーに載る。
-- `configureClientInboundChannel` は `WebSocketConfig` のみが実装するため、認証・購読認可インターセプタは単一のインバウンドチャネルに登録され、**サイネージ含む全エンドポイントに適用**される。
+両 endpoint の許可オリジンは `mannschaft.allowed-origins` に統一され、ワイルドカードは使用しない。ブローカー設定も一本化されており、`/topic`・`/queue`・`/app`・`/user` が共通で有効となる。従前の二重宣言による順序依存と `/queue` 脱落の懸念、および Signage 側のワイルドカード許可は、既存の一本化・統一により解消済みである。
 
-**→ 中継（relay）の適用範囲**: relay は「単一の brokerChannel／SimpleBroker」を対象にするため、**サイネージ（`/topic/signage/...`）を含む全配信が自動的に中継対象**になる。サイネージ専用の追加中継実装は不要。
-
-> **潜在的脆弱性（実装スコープで是正）**: `configureMessageBroker` は両 Configurer で呼ばれ、**同一の `MessageBrokerRegistry` を二重に変更**する。`enableSimpleBroker(...)` は registry 内の登録を上書きするため、`WebSocketConfig`（`/topic`+`/queue`）と `SignageWebSocketConfig`（`/topic` のみ）の**呼び出し順序で最終的なブローカー設定が変わる**（順序依存・`@Order` 未指定で非決定的）。仮にサイネージ側が後勝ちすると `/queue` がブローカーに登録されず、`convertAndSendToUser` の `/queue/...` 配信が壊れうる。実装隊は**起動時に実 Configurer 順序を列挙して現挙動を確定**し（家訓「憶測修正禁止」）、以下の**具体形で集約**して順序依存を根絶すること: **`SignageWebSocketConfig` から `configureMessageBroker` を削除**し、ブローカー設定（`enableSimpleBroker("/topic","/queue")`・`/app`・`/user`）は `WebSocketConfig` の**単一 Registry 宣言に一本化**する（Signage 側には `registerStompEndpoints`（`/ws/signage`）のみ残す）。あわせて Signage の `setAllowedOriginPatterns("*")` と `WebSocketConfig` のオリジン制限（`mannschaft.allowed-origins`）の**食い違いも同集約タスクで統一**する（`"*"` は CSRF 対策方針と不整合のため許可オリジン方式へ寄せる）。Javadoc「本番は Valkey 想定」（`WebSocketConfig`）は実態と乖離しているため、実装時に是正する。
+relay は単一の brokerChannel／SimpleBroker を対象とするため、サイネージ（`/topic/signage/...`）を含む全配信が中継対象となる。サイネージ専用の追加中継実装は不要。
 
 ### 2.2 配信箇所の全数（relay の対象）
 
