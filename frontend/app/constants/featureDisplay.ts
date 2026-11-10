@@ -126,7 +126,7 @@ export const FEATURE_DISPLAY_CATALOG = [
   },
   {
     key: 'voting',
-    scopes: ['T', 'O'],
+    scopes: ['O'],
   },
   {
     key: 'committees',

@@ -88,13 +88,16 @@ describe('BaseSidebar の取得状態', () => {
     expect(wrapper.find('a[href="/teams/class-blue/school-attendance/daily-roll-call"]').exists()).toBe(false)
   })
 
-  it('チーム投票は有効モジュールに加えてチームの可視性設定を尊重する', async () => {
+  it.each([
+    ['MEMBER', true, true],
+    ['MEMBER', false, false],
+    ['SUPPORTER', true, false],
+  ] as const)('チーム投票は%s・voting有効%sで既存module/role条件を維持する', async (role, enabled, visible) => {
     apiMock.mockImplementation((url: string) => Promise.resolve(url.endsWith('/me/permissions')
-      ? permissions('MEMBER') : { data: [{ moduleSlug: 'voting', isEnabled: true }] }))
-    policyMock.mockResolvedValue({ data: { features: [{ featureKey: 'voting', memberVisible: false, supporterVisible: false }] } })
+      ? permissions(role) : { data: [{ moduleSlug: 'voting', isEnabled: enabled }] }))
     const wrapper = await mountSuspended(TeamSidebar, { props: { teamId: 'vote-team' } })
     await flushPromises()
-    expect(wrapper.find('a[href="/teams/vote-team/voting"]').exists()).toBe(false)
+    expect(wrapper.find('a[href="/teams/vote-team/voting"]').exists()).toBe(visible)
   })
 
   it('実際の権限composableでADMIN応答を受けるとメニューリンクを描画する', async () => {
