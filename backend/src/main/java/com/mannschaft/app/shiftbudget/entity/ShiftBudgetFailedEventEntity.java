@@ -15,6 +15,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 /**
  * F08.7 Phase 10-β: 通知失敗 / hook 失敗イベントエンティティ。
@@ -89,6 +90,11 @@ public class ShiftBudgetFailedEventEntity extends BaseEntity {
     /** リトライ成功をマーク（SUCCEEDED 終端ステータス）。 */
     public void markSucceeded() {
         this.status = ShiftBudgetFailedEventStatus.SUCCEEDED;
+    }
+
+    /** 再試行可能な通知イベントのpayloadを更新する。 */
+    public void replacePayload(String payload) {
+        this.payload = Objects.requireNonNull(payload, "payload");
     }
 
     /** リトライ失敗をマーク（次回試行可、retry_count が上限なら EXHAUSTED）。 */

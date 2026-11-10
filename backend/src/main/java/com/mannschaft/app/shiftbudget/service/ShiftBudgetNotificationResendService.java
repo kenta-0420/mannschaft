@@ -57,14 +57,32 @@ import java.util.Map;
  * 残りの受信者を巻き添えにしない）、<b>1 名でも失敗したら最後にまとめて例外を投げる</b>。
  * {@code execute} はそれを掴んで失敗イベントを FAILED として記録する。</p>
  *
- * <p>再送が部分的に成功した場合、次回リトライで成功済みの受信者へ重複配信されうる。
- * これは是正前（{@code notifyAll} が受信者単位で握りつぶす形）でも同じであり、
- * 「誰にも届いていないのに成功扱い」より重複のほうが害が小さいため、この割り切りを維持する。</p>
+ * <p>部分失敗時は未成功者IDを型付き例外で返し、呼び出し元が同じ失敗イベントの
+ * {@code user_ids} を未成功者だけに更新する。通知と進捗更新の間でプロセスが停止する場合や、
+ * 手動再送が並行する場合の exactly-once は保証しない。</p>
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class ShiftBudgetNotificationResendService {
+
+    /** 部分再送時に、次回対象とする受信者IDを型付きで返す。 */
+    public static final class FailedRecipientsException extends IllegalStateException {
+        private final List<Long> failedUserIds;
+
+        public FailedRecipientsException(List<Long> failedUserIds, int totalRecipients) {
+            super("Notification resend failed for " + failedUserIds.size() + "/" + totalRecipients
+                    + " recipients: " + failedUserIds);
+            if (failedUserIds.isEmpty()) {
+                throw new IllegalArgumentException("failedUserIds must not be empty");
+            }
+            this.failedUserIds = List.copyOf(failedUserIds);
+        }
+
+        public List<Long> failedUserIds() {
+            return failedUserIds;
+        }
+    }
 
     private final NotificationHelper notificationHelper;
     private final UserLocaleCache userLocaleCache;
@@ -99,7 +117,7 @@ public class ShiftBudgetNotificationResendService {
      * @param sourceId         ソースID
      * @param scopeId          通知スコープID（組織）
      * @param actionUrl        アクションURL
-     * @throws IllegalStateException 1 名でも再送に失敗した場合（呼び出し元がリトライ失敗として記録する）
+     * @throws FailedRecipientsException 1 名でも再送に失敗した場合（未成功者のIDを保持する）
      */
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void resend(List<Long> userIds, String type,
@@ -132,9 +150,7 @@ public class ShiftBudgetNotificationResendService {
             }
         }
         if (!failedUserIds.isEmpty()) {
-            throw new IllegalStateException(
-                    "Notification resend failed for " + failedUserIds.size() + "/" + userIds.size()
-                            + " recipients: " + failedUserIds);
+            throw new FailedRecipientsException(failedUserIds, userIds.size());
         }
         log.info("F08.7 通知再送に成功: type={}, sourceId={}, recipients={}", type, sourceId, userIds.size());
     }

@@ -1,5 +1,6 @@
 package com.mannschaft.app.shiftbudget.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.shiftbudget.ShiftBudgetFailedEventStatus;
 import com.mannschaft.app.shiftbudget.ShiftBudgetFailedEventType;
@@ -109,6 +110,50 @@ class ShiftBudgetRetryExecutorTest {
         // 着手マーク（saveAndFlush）と結果記録（save）の両方が呼ばれていること。
         verify(repository, times(1)).saveAndFlush(e);
         verify(repository, times(1)).save(e);
+    }
+
+    @Test
+    @DisplayName("部分失敗では同じpayloadのuser_idsだけ未成功者へ縮める")
+    void 部分失敗で未成功受信者だけを保持する() throws Exception {
+        ShiftBudgetFailedEventEntity e = entity(
+                ShiftBudgetFailedEventType.NOTIFICATION_SEND, ALLOCATION_ID,
+                "{\"user_ids\":[10,11],\"title\":\"t\",\"unknown_field\":\"preserved\"}");
+        willThrow(new ShiftBudgetNotificationResendService.FailedRecipientsException(List.of(11L), 2))
+                .given(notificationResendService).resend(
+                        any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+
+        boolean result = executor.execute(e);
+
+        assertThat(result).isFalse();
+        assertThat(e.getStatus()).isEqualTo(ShiftBudgetFailedEventStatus.PENDING);
+        assertThat(e.getRetryCount()).isEqualTo(1);
+        ObjectMapper mapper = new ObjectMapper();
+        var payload = mapper.readTree(e.getPayload());
+        assertThat(mapper.convertValue(payload.path("user_ids"), new TypeReference<List<Long>>() { }))
+                .containsExactly(11L);
+        assertThat(payload.path("title").asText()).isEqualTo("t");
+        assertThat(payload.path("unknown_field").asText()).isEqualTo("preserved");
+        verify(repository).save(e);
+    }
+
+    @Test
+    @DisplayName("部分失敗IDが元payloadに無ければpayloadを変えず失敗を記録する")
+    void payloadと一致しない失敗IDでは進捗を更新しない() throws Exception {
+        String originalPayload = "{\"user_ids\":[10,11],\"unknown_field\":\"preserved\"}";
+        ShiftBudgetFailedEventEntity e = entity(
+                ShiftBudgetFailedEventType.NOTIFICATION_SEND, ALLOCATION_ID, originalPayload);
+        willThrow(new ShiftBudgetNotificationResendService.FailedRecipientsException(List.of(12L), 2))
+                .given(notificationResendService).resend(
+                        any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+
+        boolean result = executor.execute(e);
+
+        assertThat(result).isFalse();
+        assertThat(e.getPayload()).isEqualTo(originalPayload);
+        assertThat(e.getStatus()).isEqualTo(ShiftBudgetFailedEventStatus.PENDING);
+        assertThat(e.getRetryCount()).isEqualTo(1);
+        assertThat(e.getErrorMessage()).contains("Failed recipient IDs are not present in payload user_ids");
+        verify(repository).save(e);
     }
 
     @Test
