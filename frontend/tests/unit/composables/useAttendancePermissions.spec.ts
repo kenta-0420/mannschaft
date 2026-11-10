@@ -101,6 +101,35 @@ describe('useAttendancePermissions', () => {
     expect(p.canView.value).toBe(true)
   })
 
+  it('null応答は権限なしにせず取得失敗として再試行する', async () => {
+    mockGetPermissions.mockResolvedValueOnce(null).mockResolvedValueOnce({ canView: true, canRecordDaily: false, canRecordPeriod: false })
+    const p = useAttendancePermissions(ref('42'))
+    await p.loadPermissions()
+    expect(p.loadFailed.value).toBe(true)
+    expect(p.ready.value).toBe(false)
+    expect(p.canView.value).toBe(false)
+    await p.loadPermissions()
+    expect(p.ready.value).toBe(true)
+    expect(p.canView.value).toBe(true)
+  })
+
+  it('team切替で資格を即座に消し、遅い旧応答を採用しない', async () => {
+    let finish!: (value: unknown) => void
+    mockGetPermissions.mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
+      .mockResolvedValueOnce({ canView: false, canRecordDaily: false, canRecordPeriod: false })
+    const team = ref('42')
+    const p = useAttendancePermissions(team)
+    const pending = p.loadPermissions()
+    team.value = '99'
+    expect(p.ready.value).toBe(false)
+    expect(p.canView.value).toBe(false)
+    await p.loadPermissions()
+    finish({ canView: true, canRecordDaily: true, canRecordPeriod: true })
+    await pending
+    expect(p.canView.value).toBe(false)
+    expect(p.ready.value).toBe(true)
+  })
+
   it('isForbiddenError は statusCode / status の 403 のみ true', () => {
     expect(isForbiddenError({ statusCode: 403 })).toBe(true)
     expect(isForbiddenError({ status: 403 })).toBe(true)

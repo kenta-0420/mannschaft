@@ -53,6 +53,7 @@ export function useAttendancePermissions(teamId: Ref<string>) {
     try {
       const result = await api.getPermissions(requestedTeam)
       if (!current()) return
+      if (result == null) throw new Error('Attendance permissions missing')
       permissions.value = result
       forbidden.value = false
     } catch (e) {
