@@ -95,3 +95,30 @@ describe('MemberPermissionSetupDialog', () => {
     expect(isVisible(wrapper)).toBe(false)
   })
 })
+
+// CMP-261111-1429 ALIC-3: de の「Später entscheiden」が単語途中で折れない（フッターは折返し可・ボタンは改行しない）
+describe('MemberPermissionSetupDialog フッターのボタン折返し', () => {
+  it('フッターは flex-wrap、ボタンは shrink-0 whitespace-nowrap を持つ', async () => {
+    apiMock.mockReset().mockResolvedValueOnce(initialResponse)
+    const wrapper = await mountSuspended(MemberPermissionSetupDialog, {
+      props: { scopeType: 'TEAM', scopeId: 12, slug: 'team-12', roleName: 'ADMIN' },
+      global: {
+        stubs: {
+          Dialog: { template: '<div><slot /><slot name="footer" /></div>' },
+          Button: { props: ['label'], template: '<button>{{ label }}</button>' },
+          ToggleSwitch: true,
+          NuxtLink: { template: '<a><slot /></a>' },
+        },
+      },
+    })
+    await flushPromises()
+    const footer = wrapper.get('[data-testid="member-permission-setup-footer"]')
+    expect(footer.classes()).toContain('flex-wrap')
+    const buttons = footer.findAll('button')
+    expect(buttons).toHaveLength(2)
+    for (const button of buttons) {
+      expect(button.classes()).toContain('shrink-0')
+      expect(button.classes()).toContain('whitespace-nowrap')
+    }
+  })
+})
