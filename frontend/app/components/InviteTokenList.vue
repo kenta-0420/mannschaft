@@ -19,7 +19,7 @@ const { t } = useI18n()
 const api = useApi()
 const { downloadInviteTokenPdf } = useInviteTokenApi()
 const notification = useNotification()
-const { formatDate } = useDatetime()
+const { formatDateTime } = useDatetime()
 const tokens = ref<InviteToken[]>([])
 const loading = ref(false)
 const showCreateDialog = ref(false)
@@ -143,7 +143,7 @@ function isExpired(token: InviteToken): boolean {
 
 function formatTokenDate(dateStr: string | null): string {
   if (!dateStr) return t('inviteToken.never')
-  return formatDate(dateStr)
+  return formatDateTime(dateStr)
 }
 
 onMounted(() => loadTokens())
@@ -163,15 +163,19 @@ onMounted(() => loadTokens())
     </div>
 
     <!-- 発行済みリンクはサーバーにハッシュしか残らないため、一覧からコピー・QR-PDF はできない。 -->
-    <p class="mb-2 text-sm text-surface-500">{{ t('secret_token.list.not_shown_hint') }}</p>
+    <p class="mb-1 text-sm text-surface-500">{{ t('secret_token.list.not_shown_hint') }}</p>
+    <!-- 見分けがつかない行は作成日時で区別する。失くしたら再発行、不要な古いリンクは × で無効にする。 -->
+    <p class="mb-2 text-sm text-surface-500" data-testid="invite-token-links-hint">
+      {{ t('secret_token.list.links_hint') }}
+    </p>
 
-    <!-- 操作列を固定し、データ列は表の中で横スクロールして読む。 -->
+    <!-- 操作列は固定しない（390px 幅で sticky 列が他列に重なるため）。データ列も含め表の中で横スクロールして読む。 -->
     <DataTable
       :value="tokens"
       :loading="loading"
       data-key="id"
       class="max-w-full"
-      table-class="min-w-[496px] sm:min-w-[680px]"
+      table-class="min-w-[640px] sm:min-w-[800px]"
       scrollable
     >
       <Column :header="t('inviteToken.role')" style="width: 120px">
@@ -189,12 +193,15 @@ onMounted(() => loadTokens())
       <Column :header="t('inviteToken.uses')" style="width: 120px">
         <template #body="{ data }"> {{ data.usedCount }} / {{ data.maxUses ?? '∞' }} </template>
       </Column>
+      <Column :header="t('secret_token.list.created_at')" style="width: 160px">
+        <template #body="{ data }">
+          <span class="whitespace-nowrap">{{ formatTokenDate(data.createdAt) }}</span>
+        </template>
+      </Column>
       <Column
         :header="t('label.actions')"
-        header-class="w-[136px] whitespace-nowrap sm:w-80"
-        body-class="w-[136px] sm:w-80"
-        align-frozen="right"
-        frozen
+        header-class="w-[96px] whitespace-nowrap"
+        body-class="w-[96px]"
       >
         <template #body="{ data }">
           <div class="flex flex-wrap gap-1">
