@@ -33,6 +33,7 @@ async function assign() {
 }
 const hasMapping = computed(() => resultHasSavedMapping(result.value))
 const mappingDescription = computed(() => savedMappingDescription(result.value, locale.value))
+const selectionConfirmed = computed(() => !ranchLoading.value && !ranchFailed.value && !ranch.failed.value && approvedRanchVisualsEnabled(ranch.state.value?.approvedVisualsAvailable, !ranch.loading.value) && ranch.state.value?.assignment?.selectionConfirmed === true)
 const assignmentAvailable = computed(() => !ranchLoading.value && !ranchFailed.value && !ranch.failed.value && hasMapping.value && approvedRanchVisualsEnabled(ranch.state.value?.approvedVisualsAvailable, !ranch.loading.value) && ranch.state.value?.dinosaur?.stage === 'EGG' && ranch.state.value?.assignment?.selectionConfirmed === false && !!result.value && !!ranch.state.value?.assignment?.availableMethods.includes(result.value.method))
 onMounted(load)
 </script>
@@ -57,7 +58,9 @@ onMounted(load)
    <PageLoading v-if="ranchLoading" /><DashboardErrorState v-else-if="ranchFailed || ranch.failed.value" @retry="loadRanch" />
    <div v-else-if="!hasMapping" class="mt-3 space-y-2" role="status">
     <p>{{ t('ranch.diagnosisResults.legacyMapping') }}</p>
+    <p v-if="selectionConfirmed">{{ t('ranch.assignment.confirmed') }}</p>
    </div>
+   <p v-else-if="selectionConfirmed" class="mt-3" role="status">{{ t('ranch.assignment.confirmed') }}</p>
    <p v-else-if="!assignmentAvailable" class="mt-3" role="status">{{ t('ranch.assignment.mappingPending') }}</p>
    <Button v-if="result.method === 'DIAGNOSIS' && assignmentAvailable && ranch.state.value?.dinosaur?.stage === 'EGG'" class="mt-3 min-h-11" :label="t('ranch.assignment.useResult')" @click="assign" />
    <NuxtLink v-if="result.method === 'BIRTH_STYLE' && assignmentAvailable && ranch.state.value?.dinosaur?.stage === 'EGG'" to="/my/ranch/birth-profile" class="flex min-h-11 items-center text-primary">{{ t('ranch.birth.reconfirm') }}</NuxtLink>
