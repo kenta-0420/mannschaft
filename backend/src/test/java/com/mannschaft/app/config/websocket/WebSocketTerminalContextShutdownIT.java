@@ -162,14 +162,12 @@ class WebSocketTerminalContextShutdownIT extends AbstractMySqlIntegrationTest {
             assertThat(handler.isRunning()).isFalse();
             assertThat(scheduler.getScheduledThreadPoolExecutor().getQueue()).doesNotContain((Runnable) deadline);
             assertThat(users.getUser(String.valueOf(userId))).isNull();
+            // 停止・破棄後のbroker内部簿と、稼働中DISCONNECTの購読解除契約を分ける。
+            assertThat(broker.isRunning()).isFalse();
             if (close) {
-                assertThat(broker.getSubscriptionRegistry().findSubscriptions(publication(topic)))
-                        .doesNotContainKey(transport.id);
                 assertThat(context.isActive()).isFalse();
                 assertThat(scheduler.getScheduledExecutor().isShutdown()).isTrue();
             } else {
-                // 停止済みbrokerの内部購読簿と、稼働中DISCONNECTのcleanup契約を分ける。
-                assertThat(broker.isRunning()).isFalse();
                 assertThat(context.isActive()).as("stopはcontext破棄ではない").isTrue();
                 assertThat(context.isRunning()).isFalse();
             }
