@@ -15,6 +15,7 @@ import com.mannschaft.app.reservation.repository.ReservationRepository.PendingEx
 import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import com.mannschaft.app.reservation.service.ReservationPendingExpireProgressService.RunState;
+import com.mannschaft.app.team.service.TeamService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
@@ -95,6 +96,11 @@ public class ReservationPendingExpireService {
     private final ReservationPendingExpireProgressService progress;
     private final TeamTimezoneResolver timezoneResolver;
     private final EntityManager entityManager;
+    /**
+     * 通知の遷移先 slug 解決用（FE のチームルートは slug のみ受ける）。<b>非TXの {@link #findScanPlan} でだけ呼ぶ</b>。
+     * unit TX（{@link #expireUnit}）の中で他ドメインを呼ばないよう、解決済みの slug を Unit に載せて運ぶ（CMP-261030-0648）。
+     */
+    private final TeamService teamService;
 
     /** 検査順を保つraw行。eligibleでも500枠外ならunitはnullで、cursorを越えさせない。 */
     public record ScanEntry(long primaryId, boolean retry, boolean eligible, PendingExpireUnit unit) { }
@@ -167,10 +173,12 @@ public class ReservationPendingExpireService {
         Map<Long, ReservationSlotEntity> slotById = slotIds.isEmpty() ? Map.of()
                 : slotRepository.findAllById(slotIds).stream()
                         .collect(Collectors.toMap(ReservationSlotEntity::getId, slot -> slot));
+        var slugs = resolveTeamSlugs(selected);
         var units = new HashMap<Long, PendingExpireUnit>();
         for (var candidate : selected) {
             var primary = candidate.getPrimary();
-            units.put(primary.getId(), new PendingExpireUnit(primary, rowsById.get(primary.getId()), slotById));
+            units.put(primary.getId(), new PendingExpireUnit(primary, rowsById.get(primary.getId()), slotById,
+                    slugs.get(primary.getTeamId())));
         }
         var entries = new ArrayList<ScanEntry>();
         for (long id : run.retryPrimaryIds()) {
@@ -182,6 +190,22 @@ public class ReservationPendingExpireService {
                     oldRetry.contains(id) ? null : units.get(id)));
         }
         return new ScanPlan(List.copyOf(entries), pageCursor, exhausted);
+    }
+
+    /**
+     * 失効対象チームの slug を一括で1回だけ引く（対象0件なら引かない）。取得に失敗しても失効は止めず、
+     * 通知の遷移先を {@code /notifications} に落とす（数値 teamId の URL は FE で解決できないため作らない）。
+     */
+    private Map<Long, String> resolveTeamSlugs(List<PendingExpireCandidate> selected) {
+        if (selected.isEmpty()) return Map.of();
+        var teamIds = selected.stream().map(row -> row.getPrimary().getTeamId())
+                .filter(Objects::nonNull).collect(Collectors.toSet());
+        try {
+            return teamService.getSlugsByIds(teamIds);
+        } catch (RuntimeException e) {
+            log.warn("仮押さえ失効通知の遷移先 slug を取得できないため /notifications へ遷移させる: teamIds={}", teamIds, e);
+            return Map.of();
+        }
     }
 
     private boolean isExpired(PendingExpireCandidate candidate, Map<Long, ZoneId> zones) {
@@ -284,7 +308,7 @@ public class ReservationPendingExpireService {
             var rowSlot = slotsById.get(row.getReservationSlotId());
             if (rowSlot != null) slotService.decrementAndReopen(rowSlot);
         }
-        notifyApplicant(primary, primarySlot);
+        notifyApplicant(primary, primarySlot, unit.teamSlug());
         progress.completeUnit(epoch, primary.getId(), completedPrefix);
         log.info("仮押さえ自動失効: teamId={}, reservationId={}, groupId={}, {}行",
                 primary.getTeamId(), primary.getId(), primary.getGroupId(), rows.size());
@@ -296,9 +320,10 @@ public class ReservationPendingExpireService {
      *
      * <p>{@code sourceType/sourceId} は {@code RESERVATION}/予約ID、{@code scopeType/scopeId} は
      * {@code TEAM}/チームID、{@code actorId} はシステム発のため {@code null}
-     * （{@link ReservationReminderDispatchBatchService} と同じ決め方）。</p>
+     * （{@link ReservationReminderDispatchBatchService} と同じ決め方）。
+     * 遷移先は抽出段で解決済みの slug を使い、引けなかったときは {@code /notifications}（CMP-261030-0648）。</p>
      */
-    private void notifyApplicant(ReservationEntity primary, ReservationSlotEntity slot) {
+    private void notifyApplicant(ReservationEntity primary, ReservationSlotEntity slot, String teamSlug) {
         Locale locale = resolveLocale(primary.getUserId());
         String title = messageSource.getMessage(
                 "notification.reservation.pendingExpire.title", null,
@@ -318,7 +343,7 @@ public class ReservationPendingExpireService {
                     "notification.reservation.pendingExpire.body.noSlot", null,
                     "お申し込みの仮予約は承認期限を過ぎたため自動的にキャンセルされました。", locale);
         }
-        String actionUrl = "/teams/" + primary.getTeamId() + "/reservations";
+        String actionUrl = teamSlug != null ? "/teams/" + teamSlug + "/reservations" : "/notifications";
 
         notificationHelper.notifyAfterCommit(
                 primary.getUserId(),
@@ -358,6 +383,7 @@ public class ReservationPendingExpireService {
      * @param epoch 所有runnerの実行世代
      * @param completedPrefix 検査済み連続prefixの終端
      * @param zone 非TXのunit直前に解決したチームTZ
+     * @param teamSlug 非TXの抽出段で解決したチームslug（通知の遷移先用。引けなければnull）
      */
     public record PendingExpireUnit(
             PendingExpirePrimary primary,
@@ -365,17 +391,25 @@ public class ReservationPendingExpireService {
             Map<Long, ReservationSlotEntity> slotsById,
             long epoch,
             long completedPrefix,
-            ZoneId zone) {
+            ZoneId zone,
+            String teamSlug) {
 
-        /** 抽出候補はまだ実行commandではない。Entityから同一性だけを切り離す。 */
+        /** 抽出候補はまだ実行commandではない。Entityから同一性だけを切り離す（slug未解決）。 */
         public PendingExpireUnit(ReservationEntity primary, List<ReservationEntity> rows,
                                  Map<Long, ReservationSlotEntity> slotsById) {
-            this(new PendingExpirePrimary(primary.getId(), primary.getTeamId(), primary.getGroupId()),
-                    List.copyOf(rows), Map.copyOf(slotsById), 0, 0, null);
+            this(primary, rows, slotsById, null);
         }
 
+        /** 抽出候補に、抽出段で解決したチームslugを添える。 */
+        public PendingExpireUnit(ReservationEntity primary, List<ReservationEntity> rows,
+                                 Map<Long, ReservationSlotEntity> slotsById, String teamSlug) {
+            this(new PendingExpirePrimary(primary.getId(), primary.getTeamId(), primary.getGroupId()),
+                    List.copyOf(rows), Map.copyOf(slotsById), 0, 0, null, teamSlug);
+        }
+
+        /** 実行commandへ作り直す。抽出段で解決したslugは引き継ぐ（AC-21e）。 */
         public PendingExpireUnit withProgress(long epoch, long completedPrefix, ZoneId zone) {
-            return new PendingExpireUnit(primary, rows, slotsById, epoch, completedPrefix, zone);
+            return new PendingExpireUnit(primary, rows, slotsById, epoch, completedPrefix, zone, teamSlug);
         }
     }
 }
