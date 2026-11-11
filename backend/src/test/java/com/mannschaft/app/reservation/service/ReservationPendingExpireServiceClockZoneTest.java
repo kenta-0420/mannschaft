@@ -8,6 +8,7 @@ import com.mannschaft.app.reservation.entity.ReservationPolicyEntity;
 import com.mannschaft.app.reservation.repository.ReservationPolicyRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
+import com.mannschaft.app.team.service.TeamService;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -64,11 +65,12 @@ class ReservationPendingExpireServiceClockZoneTest {
     @Mock private ReservationPendingExpireProgressService progress;
     @Mock private TeamTimezoneResolver timezoneResolver;
     @Mock private EntityManager entityManager;
+    @Mock private TeamService teamService;
 
     private ReservationPendingExpireService serviceWith(Clock clock) {
         return new ReservationPendingExpireService(
                 reservationRepository, slotRepository, slotService, notificationHelper,
-                userLocaleCache, messageSource, clock, policyRepository, progress, timezoneResolver, entityManager);
+                userLocaleCache, messageSource, clock, policyRepository, progress, timezoneResolver, entityManager, teamService);
     }
 
     private void stubEmptyResult() {
@@ -111,7 +113,7 @@ class ReservationPendingExpireServiceClockZoneTest {
         ReservationPendingExpireService service = new ReservationPendingExpireService(
                 reservationRepository, slotRepository, slotService, notificationHelper,
                 userLocaleCache, messageSource,
-                Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC), policyRepository, progress, timezoneResolver, entityManager);
+                Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC), policyRepository, progress, timezoneResolver, entityManager, teamService);
         given(reservationRepository.findPendingExpireHighWater()).willReturn(1L);
         given(reservationRepository.findPendingPrimaryCandidates(
                 eq(ReservationStatus.PENDING), anyLong(), anyLong(), any(), anyInt(), any(Pageable.class)))
@@ -134,7 +136,7 @@ class ReservationPendingExpireServiceClockZoneTest {
         ReservationPendingExpireService service = new ReservationPendingExpireService(
                 reservationRepository, slotRepository, slotService, notificationHelper,
                 userLocaleCache, messageSource,
-                Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC), policyRepository, progress, timezoneResolver, entityManager);
+                Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC), policyRepository, progress, timezoneResolver, entityManager, teamService);
         given(reservationRepository.findPendingExpireHighWater()).willReturn(1L);
         given(reservationRepository.findPendingPrimaryCandidates(
                 eq(ReservationStatus.PENDING), anyLong(), anyLong(), any(), anyInt(), any(Pageable.class)))
