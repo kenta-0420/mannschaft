@@ -48,18 +48,28 @@
       ]
     },
     {
-      "id": "AC-21",
-      "description": "仮押さえ失効通知の遷移先が slug（PR #4466）",
+      "id": "AC-21a",
+      "description": "失効通知（ReservationPendingExpireService）の actionUrl が slug（部隊C・PR #4466）",
       "tests": [
         {
-          "name": "ReservationPendingExpireActionUrlSlugTest",
+          "name": "ReservationPendingExpireActionUrlSlugTest 失効通知のactionUrlはslug",
           "evidence": "backend/src/test/java/com/mannschaft/app/reservation/service/ReservationPendingExpireActionUrlSlugTest.java"
         }
       ]
     },
     {
       "id": "AC-22",
-      "description": "FE が ?channel= を読みチャンネルを選択する",
+      "description": "管理者が通知から slug の予約画面とチームチャットに着く。業務アラートのボタンからも着く（実機）",
+      "tests": [
+        {
+          "name": "実機E2E記録",
+          "evidence": "docs/evidence/CMP-261030-0648.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-24",
+      "description": "問い合わせ通知の actionUrl を開くとそのチャンネルが選択状態で開く。見られないチャンネルなら未選択のまま",
       "tests": [
         {
           "name": "teamChatChannelQuery.spec.ts",
