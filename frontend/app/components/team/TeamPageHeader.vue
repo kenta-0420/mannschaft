@@ -153,8 +153,9 @@ const overflowMenuItems = computed(() => {
       <!-- 右: アクションボタン群 -->
       <div class="flex items-center gap-2 flex-wrap min-w-0 md:flex-1">
         <FavoriteToggleButton
+          v-if="team.numericId != null"
           entity-type="TEAM"
-          :entity-id="String(team.id)"
+          :entity-id="String(team.numericId)"
           :entity-name="displayName"
         />
         <Button
