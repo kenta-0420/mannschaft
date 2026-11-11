@@ -107,7 +107,7 @@ watch(
 </script>
 
 <template>
-  <div class="invite-folder-picker flex flex-col gap-1" data-testid="invite-folder-picker">
+  <div class="invite-folder-picker flex min-w-0 max-w-full flex-col gap-1" data-testid="invite-folder-picker">
     <label
       :for="`invite-folder-picker-${scopeType}`"
       class="text-sm font-medium text-left"
@@ -121,7 +121,7 @@ watch(
         v-model="selectedValue"
         :disabled="loading"
         :aria-describedby="`invite-folder-picker-hint-${scopeType}`"
-        class="flex-1 rounded-md border border-surface-300 bg-surface-0 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-60"
+        class="min-w-0 flex-1 rounded-md border border-surface-300 bg-surface-0 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-60"
       >
         <option value="">
           {{ t('scopeFolder.assignOnJoin.unselected') }}

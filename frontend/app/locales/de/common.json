@@ -123,6 +123,7 @@
       },
       "card": {
         "pending": "Du hast eine Einladung zu {scope}",
+        "scopeDeleted": "Gelöschtes Team",
         "waiting": "Warten auf Antwort",
         "statusPending": "Ausstehend",
         "join": "Beitreten",
@@ -3086,7 +3087,11 @@
     "justNow": "Gerade eben",
     "minutesAgo": "vor {count} Minute | vor {count} Minuten",
     "hoursAgo": "vor {count} Stunde | vor {count} Stunden",
-    "daysAgo": "vor {count} Tag | vor {count} Tagen"
+    "daysAgo": "vor {count} Tag | vor {count} Tagen",
+    "soon": "Gleich",
+    "inMinutes": "in {count} Minute | in {count} Minuten",
+    "inHours": "in {count} Stunde | in {count} Stunden",
+    "inDays": "in {count} Tag | in {count} Tagen"
   },
   "error_page": {
     "not_found_title": "Diese Seite wurde nicht gefunden",
@@ -3337,7 +3342,7 @@
       "not_shown_hint": "Aus Sicherheitsgründen werden erstellte Links nicht erneut angezeigt. Erstellen Sie bei Bedarf einen neuen.",
       "revoked_by_migration": "Wegen einer Sicherheitsverbesserung widerrufen",
       "reissue": "Neu erstellen",
-      "reissue_hint": "Beim Neuerstellen entsteht ein neuer Link, und der alte Link funktioniert nicht mehr.",
+      "links_hint": "Wenn Sie einen Link verlieren, erstellen Sie einen neuen. Deaktivieren Sie nicht mehr benötigte alte Links mit ×.",
       "label_with_id": "Link #{id}",
       "created_at": "Erstellt am",
       "expires_at": "Gültig bis",

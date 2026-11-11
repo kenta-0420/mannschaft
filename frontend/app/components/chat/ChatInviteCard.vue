@@ -37,10 +37,19 @@ function onDecline() {
   emit('decline', props.invite.tokenId)
 }
 
+/**
+ * 表示用のスコープ名。削除済みチーム/組織は BE が名前を解決できず null/空で返すため、
+ * その場合はフォールバック文言（削除されたチーム等）を出し、名前欄を空にしない。
+ */
+const scopeLabel = computed(() => {
+  const name = (props.invite.scopeName as string | null | undefined)?.trim()
+  return name ? name : t('chat.invite.card.scopeDeleted')
+})
+
 /** カード見出し（宛先本人は「招待が届いています」、発行者は「承諾待ち」）。 */
 const heading = computed(() =>
   props.invite.isTarget
-    ? t('chat.invite.card.pending', { scope: props.invite.scopeName })
+    ? t('chat.invite.card.pending', { scope: scopeLabel.value })
     : t('chat.invite.card.waiting'),
 )
 
@@ -100,7 +109,7 @@ const statusBadge = computed<{ label: string; classes: string }>(() => {
           </span>
         </div>
         <p class="mt-0.5 truncate text-sm text-surface-600 dark:text-surface-300">
-          {{ invite.scopeName }}
+          {{ scopeLabel }}
         </p>
         <p
           v-if="invite.status === 'PENDING'"
