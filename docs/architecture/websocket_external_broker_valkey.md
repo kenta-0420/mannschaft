@@ -63,27 +63,22 @@ flag OFF 時は `@ConditionalOnProperty` で relay 部品（`WebSocketRelayPubli
 
 ---
 
-## 2. 現状分析（origin/main 実コードで裏取り済み）
+## 2. 現状分析と構成の更新履歴
 
-### 2.1 WebSocket 設定は「2 つの `@EnableWebSocketMessageBroker`」だが実体は単一ブローカー
+### 2.1 WebSocket 設定は単一ブローカーへ集約済み
 
-同一 Spring コンテキストに `@EnableWebSocketMessageBroker` が **2 箇所**存在する。
+現行構成では、`/ws` と `/ws/signage` の両エンドポイントが単一の brokerChannel・SimpleBroker・clientOutboundChannel を共有する。過去に両設定クラスがブローカー設定を宣言していた状態は解消済みであり、現在は `WebSocketConfig` のみがブローカーと宛先プレフィックスを宣言する。CMP-261110-2011 の変更は両 Configurer の `@EnableWebSocketMessageBroker` 除去と単一 `DelegatingWebSocketMessageBrokerConfiguration` 派生による終端 ERROR・fatal gate の組み込みであり、既存のブローカー宣言と許可オリジン統一は維持している。
 
-| Config クラス | エンドポイント | ブローカー宣言 | インバウンドインターセプタ |
+| Config クラス | エンドポイント | ブローカー宣言 | インバウンド処理 |
 |---|---|---|---|
-| `config/WebSocketConfig` | `/ws`（SockJS）| `enableSimpleBroker("/topic","/queue")`・`setApplicationDestinationPrefixes("/app")`・`setUserDestinationPrefix("/user")` | `WebSocketAuthChannelInterceptor` → `MatchLiveSubscriptionInterceptor` → `EmergencyClosureSubscriptionInterceptor` |
-| `signage/config/SignageWebSocketConfig` | `/ws/signage`（SockJS）| `enableSimpleBroker("/topic")`・`setApplicationDestinationPrefixes("/app")` | なし |
+| `config/WebSocketConfig` | `/ws`（SockJS）| `enableSimpleBroker("/topic", "/queue")`・`/app`・`/user` | 認証 → MatchLive・EmergencyClosure・Chat の購読認可 |
+| `signage/config/SignageWebSocketConfig` | `/ws/signage`（SockJS）| なし | 共通 inbound channel の認証・購読認可を適用 |
 
-**確定した実挙動（Spring 機構）:**
-`@EnableWebSocketMessageBroker` は `DelegatingWebSocketMessageBrokerConfiguration` を `@Import` するメタアノテーションであり、同一構成クラスの多重 import は **1 回に重複排除**される。この `DelegatingWebSocketMessageBrokerConfiguration` は、コンテキスト内の **全ての `WebSocketMessageBrokerConfigurer` 実装 Bean を注入し、各コールバックを全 Configurer に委譲**する。したがって:
+`TerminalCloseWebSocketBrokerConfig` は `DelegatingWebSocketMessageBrokerConfiguration` を継承し、全既存 `WebSocketMessageBrokerConfigurer` の設定を委譲する。fatal session gate を inbound interceptor の先頭に加え、その後 `super.configureClientInboundChannel` で既存の認証・購読認可を登録する。このため両エンドポイントに同じ gate と認証・購読認可順が適用される。
 
-- **ブローカーは 2 系統の独立ブローカーではなく、単一のブローカー（単一 brokerChannel・単一 SimpleBroker・単一 clientOutboundChannel）に両 Configurer がマージ**される。
-- `registerStompEndpoints` は加算的に呼ばれ、`/ws` と `/ws/signage` の両エンドポイントが単一ブローカーに載る。
-- `configureClientInboundChannel` は `WebSocketConfig` のみが実装するため、認証・購読認可インターセプタは単一のインバウンドチャネルに登録され、**サイネージ含む全エンドポイントに適用**される。
+両 endpoint の許可オリジンは `mannschaft.allowed-origins` に統一され、ワイルドカードは使用しない。ブローカー設定も一本化されており、`/topic`・`/queue`・`/app`・`/user` が共通で有効となる。従前の二重宣言による順序依存と `/queue` 脱落の懸念、および Signage 側のワイルドカード許可は、既存の一本化・統一により解消済みである。
 
-**→ 中継（relay）の適用範囲**: relay は「単一の brokerChannel／SimpleBroker」を対象にするため、**サイネージ（`/topic/signage/...`）を含む全配信が自動的に中継対象**になる。サイネージ専用の追加中継実装は不要。
-
-> **潜在的脆弱性（実装スコープで是正）**: `configureMessageBroker` は両 Configurer で呼ばれ、**同一の `MessageBrokerRegistry` を二重に変更**する。`enableSimpleBroker(...)` は registry 内の登録を上書きするため、`WebSocketConfig`（`/topic`+`/queue`）と `SignageWebSocketConfig`（`/topic` のみ）の**呼び出し順序で最終的なブローカー設定が変わる**（順序依存・`@Order` 未指定で非決定的）。仮にサイネージ側が後勝ちすると `/queue` がブローカーに登録されず、`convertAndSendToUser` の `/queue/...` 配信が壊れうる。実装隊は**起動時に実 Configurer 順序を列挙して現挙動を確定**し（家訓「憶測修正禁止」）、以下の**具体形で集約**して順序依存を根絶すること: **`SignageWebSocketConfig` から `configureMessageBroker` を削除**し、ブローカー設定（`enableSimpleBroker("/topic","/queue")`・`/app`・`/user`）は `WebSocketConfig` の**単一 Registry 宣言に一本化**する（Signage 側には `registerStompEndpoints`（`/ws/signage`）のみ残す）。あわせて Signage の `setAllowedOriginPatterns("*")` と `WebSocketConfig` のオリジン制限（`mannschaft.allowed-origins`）の**食い違いも同集約タスクで統一**する（`"*"` は CSRF 対策方針と不整合のため許可オリジン方式へ寄せる）。Javadoc「本番は Valkey 想定」（`WebSocketConfig`）は実態と乖離しているため、実装時に是正する。
+relay は単一の brokerChannel／SimpleBroker を対象とするため、サイネージ（`/topic/signage/...`）を含む全配信が中継対象となる。サイネージ専用の追加中継実装は不要。
 
 ### 2.2 配信箇所の全数（relay の対象）
 
@@ -152,7 +147,15 @@ messagingTemplate.convertAndSendToUser(
 
 #### 2.3.2 拒否理由コード `x-error-code`（STOMP ERROR フレームの約束事）
 
-CONNECT／SUBSCRIBE をインターセプタで拒否するときは `StompRejectedException`（`MessagingException` 派生・`common.websocket`）を送出する。共通エラーハンドラ `StompErrorCodeErrorHandler`（`StompSubProtocolErrorHandler` 派生・`WebSocketConfig` で登録。`/ws`・`/ws/signage` 共通）が、ブラウザへ届く ERROR フレームのネイティブヘッダ **`x-error-code`** にコードを載せる。人間向けの `message` ヘッダは従来の文言を維持する。ERROR フレーム送出後はサーバが接続を閉じる（Spring の既定動作）。
+CONNECT／SUBSCRIBE をインターセプタで拒否するときは `StompRejectedException`（`MessagingException` 派生・`common.websocket`）を送出する。共通エラーハンドラ `StompErrorCodeErrorHandler`（`StompSubProtocolErrorHandler` 派生・`WebSocketConfig` で登録。`/ws`・`/ws/signage` 共通）が、ブラウザへ届く ERROR フレームのネイティブヘッダ **`x-error-code`** にコードを載せる。人間向けの `message` ヘッダは従来の文言を維持する。通常の終端拒否では、ERROR フレームを実際に送信してからサーバが接続を閉じる。
+
+**終端拒否時の送信・受信境界（CMP-261110-2011）:**
+
+- 同じ接続で送信が進行中の場合、`PROTOCOL_ERROR` のcloseはERRORのbuffer追加だけで送信完了とせず、進行中sendがbufferをdrainしてから試みる。実delegate・既存buffer/time limit・message callbackを維持する。
+- close入口でserver-owned session属性をfatalに確定する。以後は`preSend`とworkerの`beforeHandle`でDISCONNECT以外を抑止し、同一payloadやqueue待ちの後続処理へ拒否後の業務dispatchを進めない。既に`beforeHandle`を通過した処理は巻き戻さない。native headerからfatalを読まず、syntheticを含むDISCONNECTはbroker・user/session cleanupのため通す。
+- 正の`sendTimeLimit`では既存`messageBrokerTaskScheduler`に同limitの期限を最大1件予約し、期限でもcloseを試みる。0/負値は従来どおり即時とする。予約時刻は無条件の壁時計発火・物理close完了上限ではない。schedulerの単独`stop()`はpauseであり、shutdown/破棄後の予約拒否とは異なる。
+- `NORMAL`・`GOING_AWAY`等の他statusは即時優先し、保留期限を取消す。送信が復帰しない場合の期限closeや、アプリ停止・破棄による`GOING_AWAY`は通常のERROR送信完了経路と分けて扱い、ERROR実受信を保証する終了経路とはしない。追加poolや共有の静的session mapは作らない。アプリ全体のstopでは、停止済みbrokerの内部購読簿が直ちに空になることを保証せず、稼働中のDISCONNECT cleanupと区別する。
+
 
 | `x-error-code` | 意味 | 再接続で解消するか |
 |---|---|---|
