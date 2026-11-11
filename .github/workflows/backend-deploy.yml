@@ -471,7 +471,7 @@ jobs:
       # dev-docker）が使用するため変更しない。
       - name: Set up QEMU (arm64 emulation)
         if: steps.aws-check.outputs.skip != 'true'
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
         with:
           platforms: arm64
 
