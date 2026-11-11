@@ -130,8 +130,23 @@ onMounted(checkInitialSetup)
       </NuxtLink>
     </p>
     <template #footer>
-      <Button :label="t('scopeGuide.setup.later')" text :disabled="saving" @click="dismiss" />
-      <Button :label="t('scopeGuide.setup.save')" icon="pi pi-check" :loading="saving" @click="save" />
+      <!-- de の長い文言が単語途中で折れないよう、フッターは折返し可・ボタンは改行しない -->
+      <div class="flex w-full flex-wrap justify-end gap-2" data-testid="member-permission-setup-footer">
+        <Button
+          :label="t('scopeGuide.setup.later')"
+          class="shrink-0 whitespace-nowrap"
+          text
+          :disabled="saving"
+          @click="dismiss"
+        />
+        <Button
+          :label="t('scopeGuide.setup.save')"
+          class="shrink-0 whitespace-nowrap"
+          icon="pi pi-check"
+          :loading="saving"
+          @click="save"
+        />
+      </div>
     </template>
   </Dialog>
 </template>

@@ -3342,7 +3342,7 @@
       "not_shown_hint": "Por seguridad, los enlaces emitidos no vuelven a mostrarse. Si lo necesita, emita uno nuevo.",
       "revoked_by_migration": "Revocado por una mejora de seguridad",
       "reissue": "Volver a emitir",
-      "links_hint": "Si pierde un enlace, cree uno nuevo para volver a emitirlo. Desactive con × los enlaces antiguos que ya no necesite.",
+      "links_hint": "Si pierde un enlace, cree uno nuevo para volver a emitirlo. Revoque con × los enlaces antiguos que ya no necesite.",
       "label_with_id": "Enlace #{id}",
       "created_at": "Emitido el",
       "expires_at": "Caduca el",
