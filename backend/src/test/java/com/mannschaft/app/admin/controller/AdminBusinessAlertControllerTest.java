@@ -89,7 +89,8 @@ public class AdminBusinessAlertControllerTest {
                                                     .unreadInquiries(unreadInquiries)
                                                     .build())
                                             .links(AdminBusinessAlertSummaryResponse.Links.builder()
-                                                    .reservationsUrl("/teams/10/reservations")
+                                                    // CMP-261030-0648: リンクは slug で組む（数値のチーム ID は使わない）
+                                                    .reservationsUrl("/teams/test-team/reservations")
                                                     .inquiryChannelUrl(null)
                                                     .build())
                                             .build()

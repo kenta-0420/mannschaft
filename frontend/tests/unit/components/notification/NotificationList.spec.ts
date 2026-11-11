@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { onMounted, ref, watch } from 'vue'
 import { createI18n } from 'vue-i18n'
@@ -23,6 +23,8 @@ const mocks = vi.hoisted(() => ({
     getNotificationDetail: vi.fn(),
   },
   showError: vi.fn(),
+  confirmClosure: vi.fn(),
+  captureQuiet: vi.fn(),
   toastAdd: vi.fn(),
   routerPush: vi.fn(),
 }))
@@ -34,7 +36,10 @@ vi.mock('~/composables/useConfirmableNotificationApi', () => ({
   useConfirmableNotificationApi: () => mocks.confirmableApi,
 }))
 vi.mock('~/composables/useEmergencyClosureApi', () => ({
-  useEmergencyClosureApi: () => ({ confirmClosure: vi.fn() }),
+  useEmergencyClosureApi: () => ({ confirmClosure: mocks.confirmClosure }),
+}))
+vi.mock('~/composables/useErrorReport', () => ({
+  useErrorReport: () => ({ captureQuiet: mocks.captureQuiet }),
 }))
 vi.mock('~/composables/useNotification', () => ({
   useNotification: () => ({ showError: mocks.showError }),
@@ -72,7 +77,8 @@ vi.mock('#imports', () => ({
   useState: (_key: string, init: () => unknown) => ref(init()),
   useNotificationApi: () => mocks.notificationApi,
   useConfirmableNotificationApi: () => mocks.confirmableApi,
-  useEmergencyClosureApi: () => ({ confirmClosure: vi.fn() }),
+  useEmergencyClosureApi: () => ({ confirmClosure: mocks.confirmClosure }),
+  useErrorReport: () => ({ captureQuiet: mocks.captureQuiet }),
   useNotification: () => ({ showError: mocks.showError }),
   useI18n: () => ({ t: (key: string) => key }),
   useRouter: () => ({ push: mocks.routerPush }),
@@ -317,6 +323,91 @@ describe('通知の既読と確認状態', () => {
     expect(wrapper.findAll(`button[data-label="${confirmButtonLabel}"]`)).toHaveLength(1)
     expect(wrapper.text()).not.toContain(confirmedLabel)
     expect(mocks.notificationApi.markAsRead).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+})
+
+describe('既読 API の失敗と冪等化（CMP-261030-0652）', () => {
+  const unhandled: unknown[] = []
+  const onUnhandled = (reason: unknown) => {
+    unhandled.push(reason)
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    unhandled.length = 0
+    process.on('unhandledRejection', onUnhandled)
+    mocks.notificationApi.markAsRead.mockResolvedValue(undefined)
+    mocks.confirmClosure.mockResolvedValue(undefined)
+  })
+
+  afterEach(() => {
+    process.off('unhandledRejection', onUnhandled)
+  })
+
+  const closureRow = (): ConfirmableNotificationFixture => ({
+    ...notification(null, false),
+    id: 3255970,
+    sourceType: 'EMERGENCY_CLOSURE',
+    sourceId: 12,
+  })
+  const unreadDot = (wrapper: Awaited<ReturnType<typeof mountList>>) =>
+    wrapper.findAll('div.h-2.w-2.rounded-full.bg-primary')
+
+  it('AC-10 行クリックの既読 API が reject しても未処理の reject を出さず、未読のまま再クリックで再試行できる', async () => {
+    mocks.notificationApi.markAsRead.mockRejectedValue(new Error('read failed'))
+    const wrapper = await mountList(notification(null, false))
+    await flushPromises()
+    const rowElement = wrapper.get('[role="button"]')
+
+    await rowElement.trigger('click')
+    await flushPromises()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(unhandled).toHaveLength(0)
+    expect(unreadDot(wrapper)).toHaveLength(1)
+    expect(mocks.captureQuiet).toHaveBeenCalled()
+
+    await rowElement.trigger('click')
+    await flushPromises()
+    expect(mocks.notificationApi.markAsRead).toHaveBeenCalledTimes(2)
+    wrapper.unmount()
+  })
+
+  it('AC-11 画面は未読・サーバーは既読の緊急休業通知を確認すると、確認失敗にならず成功トーストと再取得が行われる', async () => {
+    const wrapper = await mountList(closureRow())
+    await flushPromises()
+    const callsBefore = mocks.notificationApi.getNotifications.mock.calls.length
+
+    await wrapper.get('button[data-label="emergency_closure.confirm_button"]').trigger('click')
+    await flushPromises()
+
+    expect(mocks.confirmClosure).toHaveBeenCalledTimes(1)
+    expect(mocks.notificationApi.markAsRead).toHaveBeenCalledTimes(1)
+    expect(mocks.showError).not.toHaveBeenCalledWith('emergency_closure.confirm_failed')
+    expect(mocks.toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ summary: 'emergency_closure.confirm_success' }),
+    )
+    expect(mocks.notificationApi.getNotifications.mock.calls.length).toBeGreaterThan(callsBefore)
+    wrapper.unmount()
+  })
+
+  it('AC-11b 確認は成功し既読 API だけ失敗した場合、成功トーストを出し、既読の失敗は captureQuiet に記録して未処理の reject を出さない', async () => {
+    mocks.notificationApi.markAsRead.mockRejectedValue(new Error('read failed'))
+    const wrapper = await mountList(closureRow())
+    await flushPromises()
+
+    await wrapper.get('button[data-label="emergency_closure.confirm_button"]').trigger('click')
+    await flushPromises()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(mocks.confirmClosure).toHaveBeenCalledTimes(1)
+    expect(mocks.toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ summary: 'emergency_closure.confirm_success' }),
+    )
+    expect(mocks.showError).not.toHaveBeenCalledWith('emergency_closure.confirm_failed')
+    expect(mocks.captureQuiet).toHaveBeenCalled()
+    expect(unhandled).toHaveLength(0)
     wrapper.unmount()
   })
 })

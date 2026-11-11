@@ -25,6 +25,10 @@ on:
       - "docs/openapi.json"
       # BE の欠席理由 enum 変更で FE の契約テスト（absenceReason.spec.ts）を起動するため
       - "backend/src/main/java/com/mannschaft/app/school/**/AbsenceReason.java"
+      # Web Push ペイロードの契約（BE の DTO と見本 JSON）変更で FE の SW 試験（tests/unit/sw/swCustom.spec.ts）を起動するため
+      - "backend/src/main/java/com/mannschaft/app/notification/dto/WebPushPayload.java"
+      - "backend/src/main/java/com/mannschaft/app/notification/service/WebPushPayloadFactory.java"
+      - "backend/src/test/resources/contracts/web-push-payload.json"
       - ".github/workflows/frontend-ci.yml"
   push:
     branches:
@@ -36,6 +40,10 @@ on:
       - "docs/openapi.json"
       # BE の欠席理由 enum 変更で FE の契約テスト（absenceReason.spec.ts）を起動するため
       - "backend/src/main/java/com/mannschaft/app/school/**/AbsenceReason.java"
+      # Web Push ペイロードの契約（BE の DTO と見本 JSON）変更で FE の SW 試験（tests/unit/sw/swCustom.spec.ts）を起動するため
+      - "backend/src/main/java/com/mannschaft/app/notification/dto/WebPushPayload.java"
+      - "backend/src/main/java/com/mannschaft/app/notification/service/WebPushPayloadFactory.java"
+      - "backend/src/test/resources/contracts/web-push-payload.json"
       - ".github/workflows/frontend-ci.yml"
 
 concurrency:
