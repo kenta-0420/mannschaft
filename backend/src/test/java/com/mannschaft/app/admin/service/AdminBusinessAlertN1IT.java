@@ -82,7 +82,16 @@ class AdminBusinessAlertN1IT extends AbstractMySqlIntegrationTest {
                 .channelId(ch.getId()).userId(userId).unreadCount(unread).build());
     }
 
-    private long measure(Statistics s, AdminBusinessAlertSummaryResponse[] out, int idx, Long userId) {
+    /** 数値のチーム ID を使った URL（/teams/123/...）。CMP-261030-0648 AC-4 の否定 assert 用。 */
+    private static final String NUMERIC_TEAM_URL = ".*/teams/\\d+(/|\\?|$).*";
+
+    private String slugOf(Long teamId) {
+        return (String) em.createNativeQuery("SELECT slug FROM teams WHERE id = :id")
+                .setParameter("id", teamId)
+                .getSingleResult();
+    }
+
+    private long measure(Statistics s,AdminBusinessAlertSummaryResponse[] out, int idx, Long userId) {
         em.clear();
         s.clear();
         out[idx] = service.getSummary(userId);
@@ -135,7 +144,19 @@ class AdminBusinessAlertN1IT extends AbstractMySqlIntegrationTest {
         assertThat(byTeam.get(t3).getAlerts().getUnreadInquiries()).isEqualTo(5);
         assertThat(byTeam.get(t2).getAlerts().getUnreadInquiries()).isZero();
         assertThat(res[1].getData().getTotalPending()).isEqualTo(8);
-        assertThat(byTeam.get(t3).getLinks().getInquiryChannelUrl()).startsWith("/teams/" + t3 + "/chat?channel=");
+        // CMP-261030-0648: リンクはそのチームの slug で組む（FE のルートは slug しか受けない）。数値 URL は作らない
+        for (Long teamId : List.of(t1, t2, t3, t4)) {
+            String slug = slugOf(teamId);
+            AdminBusinessAlertSummaryResponse.Links links = byTeam.get(teamId).getLinks();
+            assertThat(links.getReservationsUrl()).isEqualTo("/teams/" + slug + "/reservations");
+            assertThat(links.getReservationsUrl()).doesNotMatch(NUMERIC_TEAM_URL);
+            if (links.getInquiryChannelUrl() != null) {
+                assertThat(links.getInquiryChannelUrl()).doesNotMatch(NUMERIC_TEAM_URL);
+            }
+        }
+        assertThat(byTeam.get(t3).getLinks().getInquiryChannelUrl()).startsWith("/teams/" + slugOf(t3) + "/chat?channel=");
+        assertThat(byTeam.get(t1).getLinks().getInquiryChannelUrl()).startsWith("/teams/" + slugOf(t1) + "/chat?channel=");
+        assertThat(byTeam.get(t2).getLinks().getInquiryChannelUrl()).isNull();
 
         assertThat(largeCount).as("管理チーム数に依存しない SQL 数").isEqualTo(smallCount);
     }
