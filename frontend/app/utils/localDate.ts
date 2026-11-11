@@ -130,6 +130,7 @@ export function toIntlLocale(locale: string): string {
 
 const DATE_OPTS: Intl.DateTimeFormatOptions = { year: 'numeric', month: '2-digit', day: '2-digit' }
 const TIME_OPTS: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }
+const TIME_SEC_OPTS: Intl.DateTimeFormatOptions = { ...TIME_OPTS, second: '2-digit' }
 
 function isValidInstant(date: unknown): date is Date {
   return date instanceof Date && !Number.isNaN(date.getTime())
@@ -154,6 +155,16 @@ export function formatInstantTime(date: Date, locale: string, timeZone: string):
 export function formatInstantDateTime(date: Date, locale: string, timeZone: string): string {
   if (!isValidInstant(date)) return ''
   return `${formatInstantDate(date, locale, timeZone)} ${formatInstantTime(date, locale, timeZone)}`
+}
+
+/**
+ * 瞬間を timeZone の日付＋秒付き時刻（`YYYY/MM/DD HH:mm:ss`）へ整形する。
+ * 分単位では区別できない（同じ分に作成された）レコードの識別用。不正な Date は ''。
+ */
+export function formatInstantDateTimeSeconds(date: Date, locale: string, timeZone: string): string {
+  if (!isValidInstant(date)) return ''
+  const time = new Intl.DateTimeFormat(toIntlLocale(locale), { ...TIME_SEC_OPTS, timeZone }).format(date)
+  return `${formatInstantDate(date, locale, timeZone)} ${time}`
 }
 
 /**
