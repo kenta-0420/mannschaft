@@ -19,7 +19,8 @@ const { t } = useI18n()
 const api = useApi()
 const { downloadInviteTokenPdf } = useInviteTokenApi()
 const notification = useNotification()
-const { formatDateTime } = useDatetime()
+const { formatDateTime, formatDateTimeSeconds } = useDatetime()
+const confirm = useConfirm()
 const tokens = ref<InviteToken[]>([])
 const loading = ref(false)
 const showCreateDialog = ref(false)
@@ -100,8 +101,20 @@ async function createToken() {
   }
 }
 
-async function revokeToken(tokenId: number) {
-  if (!confirm(t('inviteToken.revokeConfirm'))) return
+/** 無効化の確認は PrimeVue ConfirmDialog（app.vue 設置）で行い、承諾時のみ DELETE する。 */
+function revokeToken(tokenId: number) {
+  confirm.require({
+    message: t('inviteToken.revokeConfirm'),
+    header: t('inviteToken.revoke'),
+    icon: 'pi pi-exclamation-triangle',
+    acceptClass: 'p-button-danger',
+    acceptLabel: t('inviteToken.revoke'),
+    rejectLabel: t('button.cancel'),
+    accept: () => doRevokeToken(tokenId),
+  })
+}
+
+async function doRevokeToken(tokenId: number) {
   try {
     const base = props.scopeType === 'team' ? 'teams' : 'organizations'
     await api(`/api/v1/${base}/${props.scopeId}/invite-tokens/${tokenId}`, { method: 'DELETE' })
@@ -146,16 +159,21 @@ function formatTokenDate(dateStr: string | null): string {
   return formatDateTime(dateStr)
 }
 
+/** 発行日時は秒まで出す（同じ分に作ったリンクを一覧で見分けるため）。 */
+function formatIssuedAt(dateStr: string): string {
+  return formatDateTimeSeconds(dateStr)
+}
+
 onMounted(() => loadTokens())
 </script>
 
 <template>
   <div class="min-w-0 max-w-full">
-    <div class="mb-4 flex items-center justify-between">
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-2" data-testid="invite-token-header">
       <h3 class="text-lg font-semibold">{{ t('inviteToken.title') }}</h3>
       <Button
         :label="t('inviteToken.createNew')"
-        class="!min-h-11 !min-w-11"
+        class="!min-h-11 !min-w-11 shrink-0 whitespace-nowrap"
         icon="pi pi-plus"
         size="small"
         @click="showCreateDialog = true"
@@ -169,7 +187,7 @@ onMounted(() => loadTokens())
       {{ t('secret_token.list.links_hint') }}
     </p>
 
-    <!-- 操作列は固定しない（390px 幅で sticky 列が他列に重なるため）。データ列も含め表の中で横スクロールして読む。 -->
+    <!-- 操作列（無効化 ×）は先頭に置く。frozen にすると 390px 幅で他列に重なり、末尾だと横スクロールの外に隠れるため。 -->
     <DataTable
       :value="tokens"
       :loading="loading"
@@ -178,26 +196,6 @@ onMounted(() => loadTokens())
       table-class="min-w-[640px] sm:min-w-[800px]"
       scrollable
     >
-      <Column :header="t('inviteToken.role')" style="width: 120px">
-        <template #body="{ data }">
-          <RoleBadge :role="data.roleName" />
-        </template>
-      </Column>
-      <Column :header="t('inviteToken.expiry')" style="width: 120px">
-        <template #body="{ data }">
-          <span :class="{ 'text-red-500 line-through': isExpired(data) }">
-            {{ formatTokenDate(data.expiresAt) }}
-          </span>
-        </template>
-      </Column>
-      <Column :header="t('inviteToken.uses')" style="width: 120px">
-        <template #body="{ data }"> {{ data.usedCount }} / {{ data.maxUses ?? '∞' }} </template>
-      </Column>
-      <Column :header="t('secret_token.list.created_at')" style="width: 160px">
-        <template #body="{ data }">
-          <span class="whitespace-nowrap">{{ formatTokenDate(data.createdAt) }}</span>
-        </template>
-      </Column>
       <Column
         :header="t('label.actions')"
         header-class="w-[96px] whitespace-nowrap"
@@ -220,8 +218,28 @@ onMounted(() => loadTokens())
           </div>
         </template>
       </Column>
+      <Column :header="t('inviteToken.role')" style="width: 120px">
+        <template #body="{ data }">
+          <RoleBadge :role="data.roleName" />
+        </template>
+      </Column>
+      <Column :header="t('inviteToken.expiry')" style="width: 120px">
+        <template #body="{ data }">
+          <span :class="{ 'text-red-500 line-through': isExpired(data) }">
+            {{ formatTokenDate(data.expiresAt) }}
+          </span>
+        </template>
+      </Column>
+      <Column :header="t('inviteToken.uses')" style="width: 120px">
+        <template #body="{ data }"> {{ data.usedCount }} / {{ data.maxUses ?? '∞' }} </template>
+      </Column>
+      <Column :header="t('secret_token.list.created_at')" style="width: 180px">
+        <template #body="{ data }">
+          <span class="whitespace-nowrap">{{ formatIssuedAt(data.createdAt) }}</span>
+        </template>
+      </Column>
       <template #empty>
-        <div class="p-4 text-center text-surface-500">
+        <div v-if="!loading" class="p-4 text-center text-surface-500">
           {{ t('inviteToken.empty') }}
         </div>
       </template>

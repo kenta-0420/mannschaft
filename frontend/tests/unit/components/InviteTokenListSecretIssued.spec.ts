@@ -43,6 +43,7 @@ mockNuxtImport('useInviteTokenApi', () => () => ({ downloadInviteTokenPdf }))
 mockNuxtImport('useDatetime', () => () => ({
   formatDate: (value: string) => value,
   formatDateTime: (value: string) => value,
+  formatDateTimeSeconds: (value: string) => value,
 }))
 
 const PLAINTEXT = 'Zr3x9QpL0a7_bN2-kW5yT8uE1oI4sD6fG0hJ9lK2mNc'
