@@ -1,0 +1,90 @@
+{
+  "passed": false,
+  "acceptedAttempt": null,
+  "attempts": [
+    {
+      "nodePid": 166067,
+      "authenticated": false,
+      "staticFileOnly": true,
+      "serverStarted": false,
+      "contextClosed": true,
+      "browserClosed": true,
+      "adopted": false
+    },
+    {
+      "nodePid": 167548,
+      "authenticated": false,
+      "staticFileOnly": true,
+      "serverStarted": false,
+      "baselineIndexedDBCount": 45,
+      "baselineUIByStage": {
+        "B0": 40,
+        "B1": 16,
+        "B2": 16,
+        "B3": 0,
+        "B4": 23
+      },
+      "baselineUICount": 95,
+      "contextClosed": true,
+      "browserClosed": true,
+      "adopted": false
+    },
+    {
+      "nodePid": 168225,
+      "authenticated": false,
+      "staticFileOnly": true,
+      "serverStarted": false,
+      "baselineIndexedDBCount": 58,
+      "baselineUIByStage": {
+        "B0": 0,
+        "B1": 0,
+        "B2": 16,
+        "B3": 0,
+        "B4": 23
+      },
+      "baselineUICount": 39,
+      "afterImportUIByStage": {
+        "B0": 40,
+        "B1": 16,
+        "B2": 16,
+        "B3": 0,
+        "B4": 29
+      },
+      "afterImportUICount": 101,
+      "contextClosed": true,
+      "browserClosed": true,
+      "adopted": false
+    },
+    {
+      "attempt": 4,
+      "nodePid": 172524,
+      "authenticated": false,
+      "staticFileOnly": true,
+      "serverStarted": false,
+      "failedAttemptsExcluded": 3,
+      "synchronizationCause": {
+        "source": "playwright/lib/coreBundle.js:18362-18422",
+        "condition": "18397 const success=predicate(); Promise is truthy before resolved false",
+        "fix": "synchronous predicate insights.length === expected; then independent readInsights ID set validation",
+        "productOrLibraryChanged": false
+      },
+      "contextClosed": true,
+      "browserClosed": true,
+      "adopted": false,
+      "reason": "VM別realm配列のprototype差でdeepStrictEqualが失敗。JSON往復で現realmへ正規化したharnessへ修正。"
+    }
+  ],
+  "errors": [
+    "1: harness awaited 111 simultaneous UI cards; timeout",
+    "2: baseline stage sum95 did not equal111; assertion",
+    "3: baseline read58/UI39 vs afterUI101, delta62 did not equal6; assertion",
+    "4: vm array cross-realm prototype comparison; assertion"
+  ],
+  "causeStatus": "harness/import completion synchronization requires advisor review; no product defect established",
+  "allContextsAndBrowsersClosed": true,
+  "remainingHarnessNodePids": [],
+  "generatedDataRestoredInFinally": true,
+  "staticFileOnly": true,
+  "userBrowserOrProfileUsed": false,
+  "serverStarted": false
+}

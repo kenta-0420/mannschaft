@@ -17,16 +17,17 @@ import java.util.Optional;
  */
 public interface InviteTokenRepository extends JpaRepository<InviteTokenEntity, Long>, InviteTokenRepositoryCustom {
 
-    Optional<InviteTokenEntity> findByToken(String token);
+    /** 平文ではなく {@code SecretTokenVault#hash} で得たハッシュで引く。 */
+    Optional<InviteTokenEntity> findByTokenHash(String tokenHash);
 
     /**
      * 管理下に古い Entity が残っていると、それをそのまま返す（ロックは取れるが値は古い）。
-     * 承諾・失効の経路では使わず {@link InviteTokenRepositoryCustom#lockFreshByToken(String)} を使うこと
+     * 承諾・失効の経路では使わず {@link InviteTokenRepositoryCustom#lockFreshByTokenHash(String)} を使うこと
      * （CMP-260826-1457 §8.2）。
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT t FROM InviteTokenEntity t WHERE t.token = :token")
-    Optional<InviteTokenEntity> findByTokenForUpdate(@Param("token") String token);
+    @Query("SELECT t FROM InviteTokenEntity t WHERE t.tokenHash = :tokenHash")
+    Optional<InviteTokenEntity> findByTokenHashForUpdate(@Param("tokenHash") String tokenHash);
 
     /**
      * 管理下に古い Entity が残っていると、それをそのまま返す。

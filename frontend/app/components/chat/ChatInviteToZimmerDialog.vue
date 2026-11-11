@@ -16,8 +16,7 @@ const emit = defineEmits<{
 }>()
 
 const { inviteToZimmer } = useChatApi()
-const teamApi = useTeamApi()
-const orgApi = useOrganizationApi()
+const { loadCandidates } = useChatCandidateMembers()
 const authStore = useAuthStore()
 const notification = useNotification()
 const { t } = useI18n()
@@ -40,15 +39,13 @@ const filteredMembers = computed(() => {
 async function loadMembers() {
   membersLoading.value = true
   try {
-    if (props.teamId) {
-      const res = await teamApi.getMembers(props.teamId, { size: 200 })
-      members.value = res.data
-    } else if (props.organizationId) {
-      const res = await orgApi.getMembers(props.organizationId, { size: 200 })
-      members.value = res.data
-    }
+    members.value = await loadCandidates({
+      teamId: props.teamId,
+      organizationId: props.organizationId,
+    })
   } catch {
     members.value = []
+    notification.error(t('chat.inviteZimmer.candidatesLoadFailed'))
   } finally {
     membersLoading.value = false
   }

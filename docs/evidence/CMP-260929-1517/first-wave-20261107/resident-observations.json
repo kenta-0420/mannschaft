@@ -1,0 +1,301 @@
+{
+  "schemaVersion": 1,
+  "parentCampaign": "CMP-260929-1517",
+  "sharedCampaigns": [
+    "CMP-260903-0701",
+    "CMP-260903-0657",
+    "CMP-260929-1517",
+    "CMP-260909-2153"
+  ],
+  "registrationSource": "actual-resident-artifacts",
+  "trusted": false,
+  "status": "observed-unverified",
+  "originalRunId": "september-first-wave-exploratory-1b885b4d-r1",
+  "sourceHead": "1b885b4d287aed0bd1893e15cee8490196591b9b",
+  "sourceManifestPath": "<WSL_EVIDENCE_ROOT>/september-first-wave-exploratory-1b885b4d-r1/manifest.json",
+  "limits": [
+    "coverage不昇格。runner/dynamic runnerの実行・全目的達成・戦役完了を意味しない。",
+    "物理端末・Safari未確認。B console未採取、A consoleはlevelのみ。Cのconsole観測を全住民へ一般化しない。",
+    "B observer-function.jsは保存制限のためNode fsで保存。製品書込ではない。",
+    "C起動1はnon-TTY stdin終了、起動2は重複で不採用。各所有PIDを閉鎖後の最終1contextだけを採用。",
+    "追加controlled UI再現は未実施。source照合と既存課題の対応付けのみ。新規確定finding/製品修正/台帳昇格なし。",
+    "既存importerはstored runIdに累積overlayトップの旧runを保存する。新6件はdetailと選別JSONに元run/sourceを保持するが、stored runId精度は未合格。取込確認範囲はboard-ui-safe.jsonを参照。"
+  ],
+  "environment": {
+    "backend": "<VERIFY_BE>",
+    "frontend": "<VERIFY_FE>",
+    "database": "cmp1630",
+    "runtimeOwnership": "root専用・本担当は起動/停止/変更なし"
+  },
+  "residents": [
+    {
+      "actor": "admin",
+      "personaId": "resident-a-manager",
+      "personaArchetype": "慎重な管理者×素直",
+      "originalRunId": "september-first-wave-exploratory-1b885b4d-r1",
+      "sourceHead": "1b885b4d287aed0bd1893e15cee8490196591b9b",
+      "purpose": "勤務表と交代依頼を把握し、希望への影響と削除確認を理解する",
+      "purposeSource": "adminは原observations.goal、member/outsiderは住民指令の目的を登録用に要約。手順・期待値の追加なし。",
+      "sourceEvidencePath": "<WSL_EVIDENCE_ROOT>/september-first-wave-exploratory-1b885b4d-r1/admin/observations.json",
+      "sourceSha256": "6cec6654459b263b3c0949a813a9ea6212dca8bb21ecdcc2c4e9a451d2774c49",
+      "outcome": {
+        "explorationCompleted": true,
+        "allPurposesAchieved": false,
+        "detail": "観測可能な確認まで。親schedule削除確認を見た。2153の子slot警告を探索したとは扱わず、既存希望保持は変更して検証していない。",
+        "createdScheduleId": 7,
+        "createdName": "resident-A-safety",
+        "cleanup": "UI削除済み・既存fixture無変更"
+      },
+      "closure": {
+        "sourceEvidencePath": "<WSL_EVIDENCE_ROOT>/september-first-wave-exploratory-1b885b4d-r1/admin/closed.json",
+        "sourceSha256": "81b7deafce80660bbc2e94b53c34c8bce72358028fa526f202a7e2417e35e035",
+        "contextClosed": true,
+        "browserClosed": true,
+        "localOwnedProcessCount": 0
+      }
+    },
+    {
+      "actor": "member",
+      "personaId": "resident-b-mobile",
+      "personaArchetype": "スマホ片手操作×表示崩れ・導線探索",
+      "originalRunId": "september-first-wave-exploratory-1b885b4d-r1",
+      "sourceHead": "1b885b4d287aed0bd1893e15cee8490196591b9b",
+      "purpose": "次の勤務と交代状況、保存した投稿の公開範囲を画面から確かめる",
+      "purposeSource": "adminは原observations.goal、member/outsiderは住民指令の目的を登録用に要約。手順・期待値の追加なし。",
+      "sourceEvidencePath": "<WSL_EVIDENCE_ROOT>/september-first-wave-exploratory-1b885b4d-r1/member/observations.json",
+      "sourceSha256": "3eb5415b83546298acc971534b1818de361ccbb8073f2589150209edbef61236",
+      "outcome": {
+        "explorationCompleted": true,
+        "allPurposesAchieved": false,
+        "nextShift": true,
+        "swapStatus": false,
+        "savedPost": false,
+        "visibility": false
+      },
+      "closure": {
+        "sourceEvidencePath": "<WSL_EVIDENCE_ROOT>/september-first-wave-exploratory-1b885b4d-r1/member/closure.json",
+        "sourceSha256": "1b2438ec4f4dce72dbd9f6b69320a1feb73c55e6519d027f0a24e7bbdc14269c",
+        "contextClosed": true,
+        "browserClosed": true,
+        "localOwnedProcessCount": 0
+      }
+    },
+    {
+      "actor": "outsider",
+      "personaId": "resident-c-boundary",
+      "personaArchetype": "部外者×隙間狙い",
+      "originalRunId": "september-first-wave-exploratory-1b885b4d-r1",
+      "sourceHead": "1b885b4d287aed0bd1893e15cee8490196591b9b",
+      "purpose": "受け取った勤務表・投稿リンクの境界を確認して自分の画面へ帰る",
+      "purposeSource": "adminは原observations.goal、member/outsiderは住民指令の目的を登録用に要約。手順・期待値の追加なし。",
+      "sourceEvidencePath": "<WSL_EVIDENCE_ROOT>/september-first-wave-exploratory-1b885b4d-r1/outsider/observations.json",
+      "sourceSha256": "a795d51f4809199a945e2f17ab72fe11d0ed8f16388da7f30028013f4e5b9e37",
+      "outcome": {
+        "explorationCompleted": true,
+        "returnedToOwnScreen": true,
+        "detail": "有効な最終1contextの観測のみ。起動失敗2回は成功証拠から除外。"
+      },
+      "closure": {
+        "sourceEvidencePath": "<WSL_EVIDENCE_ROOT>/september-first-wave-exploratory-1b885b4d-r1/outsider/cleanup.json",
+        "sourceSha256": "432c7cff075afeddffdb054155ad1ddde12999ae3a17afaa6b36e2937e5cec42",
+        "contextClosed": true,
+        "browserClosed": true,
+        "localOwnedProcessCount": 0
+      }
+    }
+  ],
+  "insights": [
+    {
+      "id": "ALIC-SEPTEMBER-FIRST-WAVE-A01",
+      "featureKey": "shift-shift",
+      "featureDetail": "共有第一陣の探索観測（登録parent CMP-260929-1517）",
+      "title": "作成成功後のチーム勤務表一覧が再読込まで更新されなかった",
+      "detail": "POST /api/v1/shifts/schedules 201と成功toastを観測。自作resident-A-safety（scheduleId=7）が直後の一覧DOMに無く、reload後のDOMには現れた。自分の7だけUI削除204、一覧から消失を確認。フィルタ・日付・状態差を排除した独立controlled再現は未実施で、原因確定・新規台帳化はしない。 ?run: september-first-wave-exploratory-1b885b4d-r1 / source: 1b885b4d287aed0bd1893e15cee8490196591b9b?",
+      "page": "/teams/cmp-mw5co5du-admin/shifts?tab=swaps",
+      "personaId": "resident-a-manager",
+      "personaArchetype": "慎重な管理者×素直",
+      "journeyId": "resident-a-manager-first-wave",
+      "originalRunId": "september-first-wave-exploratory-1b885b4d-r1",
+      "runId": "september-first-wave-exploratory-1b885b4d-r1",
+      "sourceHead": "1b885b4d287aed0bd1893e15cee8490196591b9b",
+      "evidencePath": "docs/evidence/CMP-260929-1517/first-wave-20261107/resident-observations.json",
+      "sourceEvidencePath": "<WSL_EVIDENCE_ROOT>/september-first-wave-exploratory-1b885b4d-r1/admin/observations.json",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "urgency": "normal",
+      "triage": "新規候補・未実証。sourceの親createSchedule(:100-121)は成功後に子一覧へ更新通知せず、ShiftScheduleList.vueはonMounted(load)のみ。",
+      "relatedCampaigns": [],
+      "screenshotPath": "docs/evidence/CMP-260929-1517/first-wave-20261107/admin-12-created-list.png"
+    },
+    {
+      "id": "ALIC-SEPTEMBER-FIRST-WAVE-A02",
+      "featureKey": "shift-shift",
+      "featureDetail": "共有第一陣の探索観測（登録parent CMP-260929-1517）",
+      "title": "交代一覧の申請者・勤務枠が内部IDだけだった",
+      "detail": "承認カードから交代一覧へ到達。「申請者 #4 → 交代相手 未定」「スロット #1」を観測し、氏名・日時が不足すると感じた。既存の依頼は承諾・変更していない。 ?run: september-first-wave-exploratory-1b885b4d-r1 / source: 1b885b4d287aed0bd1893e15cee8490196591b9b?",
+      "page": "/teams/cmp-mw5co5du-admin/shifts?tab=swaps",
+      "personaId": "resident-a-manager",
+      "personaArchetype": "慎重な管理者×素直",
+      "journeyId": "resident-a-manager-first-wave",
+      "originalRunId": "september-first-wave-exploratory-1b885b4d-r1",
+      "runId": "september-first-wave-exploratory-1b885b4d-r1",
+      "sourceHead": "1b885b4d287aed0bd1893e15cee8490196591b9b",
+      "evidencePath": "docs/evidence/CMP-260929-1517/first-wave-20261107/resident-observations.json",
+      "sourceEvidencePath": "<WSL_EVIDENCE_ROOT>/september-first-wave-exploratory-1b885b4d-r1/admin/observations.json",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "urgency": "normal",
+      "triage": "既知CMP-261021-0650(1)と対応。ShiftSwapList.vueの内部ID表示と一致。新規不備へ昇格しない。",
+      "relatedCampaigns": [
+        "CMP-261021-0650"
+      ],
+      "screenshotPath": "docs/evidence/CMP-260929-1517/first-wave-20261107/admin-07-swap-entry.png"
+    },
+    {
+      "id": "ALIC-SEPTEMBER-FIRST-WAVE-B01",
+      "featureKey": "shift-shift",
+      "featureDetail": "共有第一陣の探索観測（登録parent CMP-260929-1517）",
+      "title": "勤務は確認できたが交代状況と保存投稿には到達しなかった",
+      "detail": "390x844でマイシフトの11/7 09:00〜12:00を確認。上段勤務をクリックして変化なし。個人/チームのメニューを探索したが交代状況・保存投稿・公開範囲の目的は未達。タイムライン/ブログ0件はその時のfixture観測であり投稿漏えい・消失を意味しない。作成・更新・削除0。 ?run: september-first-wave-exploratory-1b885b4d-r1 / source: 1b885b4d287aed0bd1893e15cee8490196591b9b?",
+      "page": "/my/shift",
+      "personaId": "resident-b-mobile",
+      "personaArchetype": "スマホ片手操作×表示崩れ・導線探索",
+      "journeyId": "resident-b-mobile-first-wave",
+      "originalRunId": "september-first-wave-exploratory-1b885b4d-r1",
+      "runId": "september-first-wave-exploratory-1b885b4d-r1",
+      "sourceHead": "1b885b4d287aed0bd1893e15cee8490196591b9b",
+      "evidencePath": "docs/evidence/CMP-260929-1517/first-wave-20261107/resident-observations.json",
+      "sourceEvidencePath": "<WSL_EVIDENCE_ROOT>/september-first-wave-exploratory-1b885b4d-r1/member/observations.json",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "urgency": "normal",
+      "triage": "目的の部分達成を保持。未実装/導線欠落の原因確定や1517の否定証拠として扱わない。",
+      "relatedCampaigns": []
+    },
+    {
+      "id": "ALIC-SEPTEMBER-FIRST-WAVE-B02",
+      "featureKey": "shift-shift",
+      "featureDetail": "共有第一陣の探索観測（登録parent CMP-260929-1517）",
+      "title": "一般会員のシフト一覧で希望提出サマリー403を2回観測した",
+      "detail": "失敗経路はGET /api/v1/shifts/requests/summary（2回403）。CMP-260905-1630の /shifts/schedules/{id}/summary とは別API。勤務表自体と勤務表示は取得できた。 ?run: september-first-wave-exploratory-1b885b4d-r1 / source: 1b885b4d287aed0bd1893e15cee8490196591b9b?",
+      "page": "/shift",
+      "personaId": "resident-b-mobile",
+      "personaArchetype": "スマホ片手操作×表示崩れ・導線探索",
+      "journeyId": "resident-b-mobile-first-wave",
+      "originalRunId": "september-first-wave-exploratory-1b885b4d-r1",
+      "runId": "september-first-wave-exploratory-1b885b4d-r1",
+      "sourceHead": "1b885b4d287aed0bd1893e15cee8490196591b9b",
+      "evidencePath": "docs/evidence/CMP-260929-1517/first-wave-20261107/resident-observations.json",
+      "sourceEvidencePath": "<WSL_EVIDENCE_ROOT>/september-first-wave-exploratory-1b885b4d-r1/member/observations.json",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "urgency": "normal",
+      "triage": "ShiftRequestFacade#getRequestSummary(:119-124)は管理者限定。pages/shift/index.vue(:101-113)は一覧の全scheduleにロール条件なく呼びPromise.allSettledで失敗を除く。BE拒否自体は認可仕様と一致。不要呼出候補として未実証保持。1630へ対応付けない。",
+      "relatedCampaigns": []
+    },
+    {
+      "id": "ALIC-SEPTEMBER-FIRST-WAVE-B03",
+      "featureKey": "shift-shift",
+      "featureDetail": "共有第一陣の探索観測（登録parent CMP-260929-1517）",
+      "title": "モバイルの概要タブ高38pxと折返しを観測した",
+      "detail": "390x844/jaの10-slot-settledでは「概要」が82x38px。戻る・確定済みの複数行折返しを観測、document scrollWidth=clientWidth=390で横overflowなし。44px未満の観測を保持するが同条件controlled再現とcomputed style原因追跡は未実施。 ?run: september-first-wave-exploratory-1b885b4d-r1 / source: 1b885b4d287aed0bd1893e15cee8490196591b9b?",
+      "page": "/shift/1",
+      "personaId": "resident-b-mobile",
+      "personaArchetype": "スマホ片手操作×表示崩れ・導線探索",
+      "journeyId": "resident-b-mobile-first-wave",
+      "originalRunId": "september-first-wave-exploratory-1b885b4d-r1",
+      "runId": "september-first-wave-exploratory-1b885b4d-r1",
+      "sourceHead": "1b885b4d287aed0bd1893e15cee8490196591b9b",
+      "evidencePath": "docs/evidence/CMP-260929-1517/first-wave-20261107/resident-observations.json",
+      "sourceEvidencePath": "<WSL_EVIDENCE_ROOT>/september-first-wave-exploratory-1b885b4d-r1/member/observations.json",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "urgency": "normal",
+      "triage": "住民による寸法・画像観測のみ。物理端末/Safariの確認や確定UI不備を主張しない。",
+      "relatedCampaigns": [],
+      "screenshotPath": "docs/evidence/CMP-260929-1517/first-wave-20261107/member-10-slot-settled.png"
+    },
+    {
+      "id": "ALIC-SEPTEMBER-FIRST-WAVE-C01",
+      "featureKey": "shift-shift",
+      "featureDetail": "共有第一陣の探索観測（登録parent CMP-260929-1517）",
+      "title": "非所属の勤務表は404だがtoast消失後に本文が空になった",
+      "detail": "/shift/1のscheduleとslotsは404。最初は「シフトスケジュールが見つかりません」のtoast、その消失後はナビだけで専用戻る無し。ナビから自分の画面へ帰還できた。/timeline/1と/4は404後も永続notfoundと戻るを表示し帰還できた。境界拒否と復帰UIを分けて観測する。 ?run: september-first-wave-exploratory-1b885b4d-r1 / source: 1b885b4d287aed0bd1893e15cee8490196591b9b?",
+      "page": "/shift/1",
+      "personaId": "resident-c-boundary",
+      "personaArchetype": "部外者×隙間狙い",
+      "journeyId": "resident-c-boundary-first-wave",
+      "originalRunId": "september-first-wave-exploratory-1b885b4d-r1",
+      "runId": "september-first-wave-exploratory-1b885b4d-r1",
+      "sourceHead": "1b885b4d287aed0bd1893e15cee8490196591b9b",
+      "evidencePath": "docs/evidence/CMP-260929-1517/first-wave-20261107/resident-observations.json",
+      "sourceEvidencePath": "<WSL_EVIDENCE_ROOT>/september-first-wave-exploratory-1b885b4d-r1/outsider/observations.json",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "urgency": "normal",
+      "triage": "CMP-261105-0348 S4と同一FE表示分岐。既知証拠はSUPPORTER403、今回は部外者404である差を保持。shift/[id]/index.vue(:43-54)のcatchはtoastのみ、templateはloading/scheduleのみでnull分岐無し。新規台帳化しない。",
+      "relatedCampaigns": [
+        "CMP-261105-0348"
+      ],
+      "screenshotPath": "docs/evidence/CMP-260929-1517/first-wave-20261107/outsider-10-shift-after-reading-delay.png"
+    }
+  ],
+  "evidenceSelection": {
+    "allowlist": [
+      "persona/run/source/purpose/outcome",
+      "観測事実の要約",
+      "API path/statusのみ",
+      "閉鎖記録のboolean/count",
+      "原本/選別PNGのsha256",
+      "合成テスト住民の選別画面"
+    ],
+    "excluded": [
+      "credentials",
+      "token",
+      "cookie",
+      "headers",
+      "private storage state",
+      "DB raw",
+      "全量archive",
+      "起動失敗の観測"
+    ]
+  },
+  "images": [
+    {
+      "path": "docs/evidence/CMP-260929-1517/first-wave-20261107/admin-07-swap-entry.png",
+      "sha256": "446fd512a73bb1ec72a75307ad2a943e760212a52c02c38c9980cd2d2bad7e7b",
+      "visuallyInspected": true
+    },
+    {
+      "path": "docs/evidence/CMP-260929-1517/first-wave-20261107/admin-12-created-list.png",
+      "sha256": "b241cc6418781ddb6a4c069d16b8b0d3fc4b038a211f11006ecf7ee37d73e76d",
+      "visuallyInspected": true
+    },
+    {
+      "path": "docs/evidence/CMP-260929-1517/first-wave-20261107/admin-14-created-after-refresh.png",
+      "sha256": "e00d87f764b2b26f48d7727b95b1d5ffe0ce8702f21d3db21e5734ead93ae020",
+      "visuallyInspected": true
+    },
+    {
+      "path": "docs/evidence/CMP-260929-1517/first-wave-20261107/member-10-slot-settled.png",
+      "sha256": "2a63d08cdb97441e8fd623156ce3ad3caae963b78f7c2dfcdd6d32a6c9d0d3fd",
+      "visuallyInspected": true
+    },
+    {
+      "path": "docs/evidence/CMP-260929-1517/first-wave-20261107/outsider-10-shift-after-reading-delay.png",
+      "sha256": "6baf0add6acf8311668ff8d42383f6d88b462379c2819e8f0c337632e9a40ff0",
+      "visuallyInspected": true
+    },
+    {
+      "path": "docs/evidence/CMP-260929-1517/first-wave-20261107/board-new-card.png",
+      "sha256": "9b7884bb530e0b88b22da1346a2a01c8fd99c73ec4ee283bfb7de63035a47688",
+      "visuallyInspected": true
+    }
+  ]
+}

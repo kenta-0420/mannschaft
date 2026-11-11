@@ -10,5 +10,6 @@
   "officialCount": 3181,
   "officialRenderSha256": "8707e251c88532e6b7fe436516210cd0a5496a86af59f66b964f15cfc49d5a87",
   "originalArtifactDigestProofSha256": "076619c05bfe33b432fc7408e23de283de9af84f3751de3a395562a7b968331c",
-  "qualification": "Original ZIP digest/safe_zip validation is retained from the original proof; this run rechecks all extracted members and reexecutes unchanged build_weights/render without network or partial PR input."
+  "qualification": "Original ZIP digest/safe_zip validation is retained from the original proof; this run rechecks all extracted members and reexecutes unchanged build_weights/render without network or partial PR input.",
+  "originalArtifactDigestProofHashScope": "Original private authoring proof bytes. Canonical Git copy may have EOL normalization; artifact/member digests inside the JSON are unchanged."
 }

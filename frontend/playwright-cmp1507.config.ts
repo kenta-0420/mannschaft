@@ -10,7 +10,7 @@ process.env.BASE_URL ||= 'http://localhost:3017'
 
 export default defineConfig({
   testDir: './tests/e2e/real',
-  testMatch: 'cmp1507-regression.real.spec.ts',
+  testMatch: ['cmp1507-regression.real.spec.ts', 'cmp1507-latest-main.real.spec.ts'],
   fullyParallel: false,
   retries: 0,
   workers: 1,

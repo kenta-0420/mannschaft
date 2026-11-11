@@ -21,6 +21,7 @@ import com.mannschaft.app.role.dto.BlockRequest;
 import com.mannschaft.app.role.dto.BlockResponse;
 import com.mannschaft.app.role.dto.CreateInviteTokenRequest;
 import com.mannschaft.app.role.dto.EffectivePermissionsResponse;
+import com.mannschaft.app.role.dto.InviteTokenIssuedResponse;
 import com.mannschaft.app.role.dto.InviteTokenResponse;
 import com.mannschaft.app.role.dto.MemberResponse;
 import com.mannschaft.app.role.dto.PermissionGroupRequest;
@@ -455,7 +456,7 @@ public class TeamController {
     @PostMapping("/{slug}/invite-tokens")
     @Operation(summary = "招待トークン作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
-    public ResponseEntity<ApiResponse<InviteTokenResponse>> createInviteToken(
+    public ResponseEntity<ApiResponse<InviteTokenIssuedResponse>> createInviteToken(
             @PathVariable String slug, @Valid @RequestBody CreateInviteTokenRequest req) {
         Long id = teamService.resolveTeamId(slug);
         return ResponseEntity.status(HttpStatus.CREATED)
