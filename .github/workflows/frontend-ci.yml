@@ -83,7 +83,7 @@ jobs:
       # 設計書 docs/security/04_dependency_and_supply_chain.md §4/§6 に基づく。
       # high レベルの脆弱性が 0 件のためブロッキング化（2026-06-02）。
       - name: Audit gate regression tests
-        run: node --test scripts/audit-with-exemption.test.mjs scripts/patch-nuxt-devtools-simple-git.test.mjs
+        run: node --test scripts/audit-with-exemption.test.mjs scripts/patch-nuxt-devtools-simple-git.test.mjs scripts/patch-nitro-module-resolution.test.mjs
 
       - name: npm audit (依存脆弱性スキャン)
       # 個別除外は現在ゼロ（node-forge は 1.4.2 へ更新、braces は勧告が発火せず撤去）。
