@@ -8,6 +8,7 @@ const { confirmNotification, confirmPersonalNotification, getNotificationDetail 
   useConfirmableNotificationApi()
 const { confirmClosure } = useEmergencyClosureApi()
 const { showError } = useNotification()
+const { captureQuiet } = useErrorReport()
 const { t } = useI18n()
 const router = useRouter()
 const { relativeTime } = useRelativeTime()
@@ -133,8 +134,14 @@ async function onMarkAllRead() {
 
 function onClickNotification(notif: NotificationResponse) {
   if (!notif.isRead) {
+    // 遷移は待たない。既読化の失敗は静かに記録し、未読のまま残す（再クリックで再試行できる）。
     markAsRead(notif.id)
-    notif.isRead = true
+      .then(() => {
+        notif.isRead = true
+      })
+      .catch((error: unknown) => {
+        captureQuiet(error, { context: 'NotificationList: 通知クリックの既読化' })
+      })
   }
   if (notif.actionUrl) {
     router.push(notif.actionUrl)
@@ -195,8 +202,13 @@ async function onConfirmEmergencyClosure(notif: NotificationResponse) {
   }
   try {
     await confirmClosure(notif.scopeId, notif.sourceId)
-    await markAsRead(notif.id)
-    notif.isRead = true
+    // 確認は成功済み。既読化の失敗で「確認失敗」と表示しない。
+    try {
+      await markAsRead(notif.id)
+      notif.isRead = true
+    } catch (error) {
+      captureQuiet(error, { context: 'NotificationList: 緊急休業確認後の既読化' })
+    }
     toast.add({
       severity: 'success',
       summary: t('emergency_closure.confirm_success'),

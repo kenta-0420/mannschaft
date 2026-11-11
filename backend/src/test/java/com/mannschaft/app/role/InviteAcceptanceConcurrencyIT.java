@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -351,18 +352,25 @@ class InviteAcceptanceConcurrencyIT extends InviteAcceptanceItSupport {
         CountDownLatch tokenLocked = new CountDownLatch(1);
         CountDownLatch proceed = new CountDownLatch(1);
         AtomicLong blocker = new AtomicLong();
-        try (var executor = Executors.newFixedThreadPool(2)) {
+        AtomicLong blockerLockedAt = new AtomicLong();
+        AtomicReference<Thread> joiningThread = new AtomicReference<>();
+        try (var executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(2)) {
             Future<?> blocking = executor.submit(() -> new TransactionTemplate(transactionManager).executeWithoutResult(s -> {
                 blocker.set(connectionId());
                 jdbc.queryForObject("SELECT id FROM invite_tokens WHERE id = ? FOR UPDATE", Long.class, token.getId());
+                blockerLockedAt.set(System.nanoTime());
                 tokenLocked.countDown();
                 await(proceed);
                 block(scope, userId, admin);
             }));
             await(tokenLocked);
-            Future<?> joining = executor.submit(() -> acceptCompat(plaintext(token), userId, null));
+            Future<?> joining = executor.submit(() -> {
+                joiningThread.set(Thread.currentThread());
+                acceptCompat(plaintext(token), userId, null);
+            });
             try {
-                awaitRowWait("invite_tokens", blocker.get(), token.getId(), joining);
+                awaitRowWait("invite_tokens", blocker.get(), token.getId(), joining, joiningThread, executor,
+                        blockerLockedAt.get());
             } finally {
                 proceed.countDown();
             }
