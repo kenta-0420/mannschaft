@@ -18,6 +18,7 @@ import com.mannschaft.app.reservation.service.ReservationPendingExpireProgressSe
 import com.mannschaft.app.reservation.service.ReservationPendingExpireService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.service.TeamService;
 import jakarta.persistence.EntityManager;
 import org.aopalliance.intercept.MethodInterceptor;
 import org.junit.jupiter.api.AfterEach;
@@ -88,6 +89,7 @@ class ReservationPendingExpireBoundedScanIntegrationTest extends AbstractMySqlIn
     @Autowired private ReservationPolicyRepository policies;
     @Autowired private ReservationPendingExpireScanStateRepository states;
     @Autowired private TeamRepository teams;
+    @Autowired private TeamService teamService;
     @Autowired private MembershipRepository memberships;
     @Autowired private PlatformTransactionManager transactionManager;
     @Autowired private EntityManager em;
@@ -118,6 +120,7 @@ class ReservationPendingExpireBoundedScanIntegrationTest extends AbstractMySqlIn
     private DefaultPointcutAdvisor unitObserver;
     private DefaultPointcutAdvisor scanObserver;
     private DefaultPointcutAdvisor dispatchObserver;
+    private DefaultPointcutAdvisor slugObserver;
     private final AtomicInteger ownedDispatchCalls = new AtomicInteger();
     private final AtomicInteger committedDispatchCalls = new AtomicInteger();
     private final AtomicReference<Throwable> dispatchObservationFailure = new AtomicReference<>();
@@ -130,6 +133,11 @@ class ReservationPendingExpireBoundedScanIntegrationTest extends AbstractMySqlIn
     private final List<Long> attemptedPrimaryIds = new ArrayList<>();
     private final List<int[]> unitSqlRanges = new ArrayList<>();
     private final List<int[]> candidateSqlRanges = new ArrayList<>();
+    /** 通知遷移先の slug 解決（CMP-261030-0648）。抽出ではないので抽出予算から外し、回数は別に固定する。 */
+    private final List<int[]> slugSqlRanges = new ArrayList<>();
+    private int slugCalls;
+    private int scanCalls;
+    private int scansWithUnits;
     private List<String> measuredSql = List.of();
     private boolean insertAboveHighWater;
     private Long insertedHighId;
@@ -210,6 +218,13 @@ class ReservationPendingExpireBoundedScanIntegrationTest extends AbstractMySqlIn
         });
         scanObserver = observer(List.of("findScanPlan"), invocation -> {
             Object result = invocation.proceed();
+            if (Thread.currentThread() == caller) {
+                scanCalls++;
+                if (result instanceof ReservationPendingExpireService.ScanPlan plan
+                        && plan.entries().stream().anyMatch(entry -> entry.unit() != null)) {
+                    scansWithUnits++;
+                }
+            }
             if (Thread.currentThread() == caller && afterScanBeforeZone != null) {
                 assertThat(org.springframework.transaction.support.TransactionSynchronizationManager
                         .isActualTransactionActive()).as("単位直前TZ取得は業務TXの外").isFalse();
@@ -224,6 +239,19 @@ class ReservationPendingExpireBoundedScanIntegrationTest extends AbstractMySqlIn
         ((Advised) reservations).addAdvisor(0, candidateObserver);
         ((Advised) expire).addAdvisor(unitObserver);
         ((Advised) expire).addAdvisor(scanObserver);
+        slugObserver = observer(List.of("getSlugsByIds"), invocation -> {
+            if (Thread.currentThread() != caller) {
+                return invocation.proceed();
+            }
+            slugCalls++;
+            int start = SqlIntentCounter.totalCount();
+            try {
+                return invocation.proceed();
+            } finally {
+                slugSqlRanges.add(new int[]{start, SqlIntentCounter.totalCount()});
+            }
+        });
+        ((Advised) teamService).addAdvisor(0, slugObserver);
         dispatchObserver = observer(List.of("dispatch"), invocation -> {
             if (invocation.getArguments()[0] instanceof NotificationEntity notification
                     && userId.equals(notification.getUserId())
@@ -292,6 +320,7 @@ class ReservationPendingExpireBoundedScanIntegrationTest extends AbstractMySqlIn
             if (unitObserver != null) ((Advised) expire).removeAdvisor(unitObserver);
             if (scanObserver != null) ((Advised) expire).removeAdvisor(scanObserver);
             if (dispatchObserver != null) ((Advised) notificationDispatch).removeAdvisor(dispatchObserver);
+            if (slugObserver != null) ((Advised) teamService).removeAdvisor(slugObserver);
             if (originalExpireClock != null) ReflectionTestUtils.setField(expireTarget, "clock", originalExpireClock);
             if (originalProgressClock != null) ReflectionTestUtils.setField(progressTarget, "clock", originalProgressClock);
         }
@@ -669,6 +698,10 @@ class ReservationPendingExpireBoundedScanIntegrationTest extends AbstractMySqlIn
         attemptedPrimaryIds.clear();
         unitSqlRanges.clear();
         candidateSqlRanges.clear();
+        slugSqlRanges.clear();
+        slugCalls = 0;
+        scanCalls = 0;
+        scansWithUnits = 0;
         SqlIntentCounter.reset();
         Throwable businessFailure = null;
         try {
@@ -712,6 +745,7 @@ class ReservationPendingExpireBoundedScanIntegrationTest extends AbstractMySqlIn
     }
 
     private void assertExtractionBudget(int expected) {
+        assertSlugResolvedOncePerScan();
         assertThat(unknownCandidateReturn).as("raw/COUNT観測欠落を0本合格にしない").isFalse();
         assertThat(unknownUnitArgument).as("本体unit観測欠落を0試行合格にしない").isFalse();
         assertThat(candidateCalls).isBetween(1, 9);
@@ -722,6 +756,9 @@ class ReservationPendingExpireBoundedScanIntegrationTest extends AbstractMySqlIn
             final int index = i;
             if (unitSqlRanges.stream().anyMatch(range -> index >= range[0] && index < range[1])) continue;
             if (candidateSqlRanges.stream().anyMatch(range -> index >= range[0] && index < range[1])) continue;
+            // 通知遷移先の slug 解決は候補抽出ではない。観測した getSlugsByIds 区間の SQL だけを外す
+            // （TZ 一括など区間外の teams 読取は従来どおり抽出予算に数える）。
+            if (slugSqlRanges.stream().anyMatch(range -> index >= range[0] && index < range[1])) continue;
             String sql = measuredSql.get(i).toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
             if (sql.matches("(?s).*\\bgroup_id\\s+in\\s*\\(.*")
                     || (sql.matches("(?s).*\\bid\\s+in\\s*\\(.*")
@@ -737,6 +774,13 @@ class ReservationPendingExpireBoundedScanIntegrationTest extends AbstractMySqlIn
         assertThat(candidateCalls + bulk).isLessThanOrEqualTo(12);
         if (expected >= 0) assertThat(candidateCalls + bulk).isEqualTo(expected);
         // 原文とunit区間を原本化してROOTで分類する。Hibernate以外の全JDBCを見たとは呼ばない。
+    }
+
+    /** slug 解決はスキャン1回につき、失効対象があればちょうど1回・SQL1本、無ければ0回（CMP-261030-0648 AC-21d）。 */
+    private void assertSlugResolvedOncePerScan() {
+        assertThat(scanCalls).as("1回のバッチ実行でスキャンは1回").isEqualTo(1);
+        assertThat(slugCalls).as("slug 解決は対象ありで1回・0件で0回").isEqualTo(scansWithUnits);
+        assertThat(slugSqlRanges).as("slug 解決は一括SQL1本").allMatch(range -> range[1] - range[0] == 1);
     }
 
     private static DefaultPointcutAdvisor observer(List<String> names, MethodInterceptor interceptor) {
