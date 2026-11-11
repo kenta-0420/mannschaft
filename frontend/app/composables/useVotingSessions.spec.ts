@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { defineComponent, ref } from 'vue'
+import { computed, defineComponent, ref } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { useVotingSessions } from './useVotingSessions'
@@ -9,10 +9,18 @@ const mocks = vi.hoisted(() => ({ team: vi.fn(), org: vi.fn(), list: vi.fn(), cr
 const role = ref<string | null>('ADMIN')
 const resolved = ref(true)
 const scopeAdmin = ref(true)
+const voteCapability = ref(true)
 mockNuxtImport('useTeamApi', () => () => ({ getTeam: mocks.team }))
 mockNuxtImport('useOrganizationApi', () => () => ({ getOrganization: mocks.org }))
 mockNuxtImport('useVotingApi', () => () => ({ getSessions: mocks.list, createSession: mocks.create }))
-mockNuxtImport('useRoleAccess', () => () => ({ roleName: role, roleResolved: resolved, roleLoadFailed: ref(false), isScopeAdmin: scopeAdmin, loadPermissions: mocks.permissions }))
+mockNuxtImport('useRoleAccess', () => () => ({
+  roleName: role,
+  roleResolved: resolved,
+  roleLoadFailed: ref(false),
+  isScopeAdmin: scopeAdmin,
+  canCreateVoteSession: computed(() => resolved.value && voteCapability.value),
+  loadPermissions: mocks.permissions,
+}))
 mockNuxtImport('useErrorHandler', () => () => ({ handleApiError: mocks.error }))
 mockNuxtImport('useNotification', () => () => ({ success: mocks.success }))
 mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
@@ -26,6 +34,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   slug.value = 'alpha-slug'
   role.value = 'ADMIN'; resolved.value = true; scopeAdmin.value = true
+  voteCapability.value = true
   mocks.team.mockResolvedValue({ data: { numericId: 42 } })
   mocks.org.mockResolvedValue({ data: { numericId: 71 } })
   mocks.permissions.mockResolvedValue({ ok: true })
@@ -63,8 +72,9 @@ describe('投票一覧のスコープ契約', () => {
     await state.load(); expect(state.error.value).toBeNull()
     wrapper.unmount()
   })
-  it.each(['MEMBER', 'SYSTEM_ADMIN', null])('scope資格%sでは作成を送信しない', async value => {
+  it.each(['MEMBER', 'DEPUTY_ADMIN', 'SYSTEM_ADMIN', null])('作成許可がない%sでは作成を送信しない', async value => {
     role.value = value; scopeAdmin.value = false
+    voteCapability.value = false
     const wrapper = host(); await flushPromises()
     state.openCreateDialog(); await state.handleCreate()
     expect(state.canCreate.value).toBe(false); expect(state.showCreateDialog.value).toBe(false); expect(mocks.create).not.toHaveBeenCalled()
@@ -75,7 +85,7 @@ describe('投票一覧のスコープ契約', () => {
     const wrapper = host(); await flushPromises()
     expect(state.canCreate.value).toBe(false); wrapper.unmount()
   })
-  it.each(['ADMIN', 'DEPUTY_ADMIN'])('対象scopeの%sは作成できる', async value => {
+  it.each(['ADMIN', 'DEPUTY_ADMIN', 'SYSTEM_ADMIN'])('作成許可を持つ%sは作成ダイアログを開ける', async value => {
     role.value = value; scopeAdmin.value = value === 'ADMIN'
     const wrapper = host(); await flushPromises()
     state.openCreateDialog()
@@ -101,6 +111,7 @@ describe('投票一覧のスコープ契約', () => {
     const wrapper = host(); await flushPromises(); state.openCreateDialog()
     state.form.title = '書面'; state.form.resolutionMode = 'WRITTEN'
     role.value = 'MEMBER'; scopeAdmin.value = false
+    voteCapability.value = false
     await state.handleCreate()
     expect(state.showCreateDialog.value).toBe(false); expect(mocks.create).not.toHaveBeenCalled()
     wrapper.unmount()

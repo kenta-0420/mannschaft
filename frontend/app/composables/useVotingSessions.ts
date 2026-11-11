@@ -12,7 +12,7 @@ export function useVotingSessions(scopeType: ScopeType, slug: Ref<string>) {
   const { getSessions, createSession } = useVotingApi()
   const { getTeam } = useTeamApi()
   const { getOrganization } = useOrganizationApi()
-  const { roleName, roleResolved, roleLoadFailed, isScopeAdmin, loadPermissions } = useRoleAccess(
+  const { canCreateVoteSession, loadPermissions } = useRoleAccess(
     scopeType === 'TEAM' ? 'team' : 'organization', slug, { watchScope: false },
   )
   const { handleApiError } = useErrorHandler()
@@ -29,8 +29,7 @@ export function useVotingSessions(scopeType: ScopeType, slug: Ref<string>) {
   let dialogSlug: string | null = null
 
   const canCreate = computed(() => ready.value && !loading.value && !error.value
-    && roleResolved.value && !roleLoadFailed.value
-    && (isScopeAdmin.value || roleName.value === 'DEPUTY_ADMIN'))
+    && canCreateVoteSession.value)
   const schema = z.object({
     title: z.string().trim().min(1).max(200),
     description: z.string(),
