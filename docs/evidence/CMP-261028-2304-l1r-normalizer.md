@@ -43,10 +43,10 @@ DN-1はnull・空・1個/複数のU+0020、DN-2は両端/内部U+0020・大小�
 | DN-7 | 本番3callerと既存DuplicateNameCollationGuardRedITは差分0。head 7a3cの実MySQL既存6ケースは成功、失敗/error/skip 0。実物採取・照合完了 |
 | DN-8 | head 7a3cの全6shard・aggregate成功。archTest 58suite/447件、別engine 18suite/37件、本番Integrity 6runner/12件が失敗/error/skip 0。期待18suiteの欠落・重複0。7store＋stored.rules（計8ファイル）・番人・build/CI・weightsのロット差分0（下記） |
 | DN-9 | Controller/HTTP DTO/認可/DDL変更0。同一経路の変更前後の実生成・Drift成功と生成結果bytes一致を根拠に親が合格判定（下記） |
-| DN-10 | source 7a3cの正式R8は9ケース中6pass/3fail。作成2ケースは同sourceの正式追試でpass、チーム名称更新は未合格。単一run9greenではなく、条件全体は未合格 |
-| DN-11 | 独立探索3/3実施・各正常閉鎖、目的達成2/3。未実証観測登録済み。DN10未充足・管理住民の目的未達を保持し、最終判定保留。coverage合格ではない |
+| DN-10 | 旧R8の失敗履歴は保持。固定実機source 39a3のformal14は13pass/1failで、重複Org updateの誤期待409を契約200へ修正した別実行o1（native exit 0）との13+1分割証拠を親が採用。create409は維持。実preview・保存・逆復元等の局所結果と残務は下記 |
+| DN-11 | 旧3住民の目的達成2/3・未実証観測は履歴として保持。新3住民は別actor・forkなしで並列起動後、全login0・全員の認証後の目的達成未確認で全停止。公開mobileは部分観測として保持し、具体人確認・画像/viewport補完と最終判定は未完 |
 
-単体greenやOpenAPI同一性は出荷判断の代替としない。実DB・全量Archの実物照合は完了し、名称更新の実機と独立探索の最終判定を親担当が継続する。
+単体greenやOpenAPI同一性は出荷判断の代替としない。実DB・全量Archの実物照合と下記の局所実機結果を分離し、独立探索・teardown・最新main追従後の最終CIと出荷判定を親担当が継続する。
 
 ## DN-8の初期部分証拠と最新実物照合
 
@@ -82,6 +82,18 @@ DN-1はnull・空・1個/複数のU+0020、DN-2は両端/内部U+0020・大小�
 - 気づき箱は累積正本 `CMP-261015-1510/resident-overlay.json` の旧55 persona/55 journey/111 insight全フィールドをdeep保持し、3/3/3のみ追加して58/58/114。top environment/runIdと旧run/sourceを保持した。新3runはrunEnvironmentsへ別登録し、全てtrusted=false/observed-unverified、coverage不昇格。原本にないADMIN/OUTSIDERのjourneyIdは登録時付与と明記。画像実体は公開しない。
 - R8 runtimeは正本receiptでcleanup removed/exit0、所有BE/FE 2process・専用2container・knownvolume1と自scratch不存在を親担当が直接照合済み。全体check exit1は他owner entries5に由来し、全体cleanとはしない。他資産操作0。fixtureは履歴のみでDB撤去済み・再利用不可。名称修正の次回実機には新source・新run・新DB/fixtureが必要。
 - 実装PR #4352は記録時点でDraft・未マージ。子CMPと全164型のL1-R・親戦役はP4実装中を維持する。
+
+## 2026-11-12時点の局所結果と残務
+
+旧履歴へ初回1型の採用結果を追記した。実機の固定sourceはローカル統合commit `39a3e96fdc78bd8c2058d3eb9c4b24c4a7a66d98`、Core CIは下記57b7への確認で、source別の局所結果として記録する。最新main追従・最終CIと出荷判定は未完。
+
+- formal14のf2は13pass/1fail。唯一の失敗は重複Org updateを409とした誤期待で、正規契約は200。期待を修正したo1を別実行しnative exit 0を確認した13+1分割証拠を採用する。createの重複409契約は維持する。
+- Cardの1440/768/390px、90文字の長名2種×3幅、normal2の実preview・PATCH204・GET逆復元、same-IDのOrg/Team権限差を採用済み。unavailableはheld-pointerによるclip/autoscroll・実preview・PATCH・GET・UI削除を確認した。復元A→視覚A→empty UIの3件削除→復元B→positive Bの連鎖も採用済みで、名前とPUBLICは復元済み。
+- normal2・unavailable等のPATCH204後の `ERR_ABORTED` は、機能成功とtransport警告を分けて保持する。loopback204対照では再現0、原因未確定。
+- 親担当が追加したseed3再作成条件は撤回し、追加seed3再作成は実施0。復元B3を継続利用し、作成前不存在へ戻す最終owned専用runtime teardownは未完。before5と復元B3は別スナップショットとして記録する。
+- Core Backend CIは6normalとaggregate・Arch・coverage・NonJST・Lintが成功。actual direct checkoutは `57b7e7b354c69b1abd8c7f8fad1e78a1a3304440`、treeは `4a220306b6347fe0c6e174e1661ff35ee59a47b9`。UT40件（19 parameterizedケースを各2入口＋通常2件）・MySQL collation6件は全pass。6normalは実行・cache0、auxは42 FROM-CACHE / 96 UP-TO-DATEの資格で区別する。Frontend・E2Eもgreen。最新main追従後の最終CIと出荷判定は未完。[Backend run 42992882425](https://github.com/kenta-0420/mannschaft/actions/runs/42992882425)、[Frontend run 42992882548](https://github.com/kenta-0420/mannschaft/actions/runs/42992882548)、[E2E run 42992882378](https://github.com/kenta-0420/mannschaft/actions/runs/42992882378)。
+- 新3住民は別actor・forkなしの並列起動後、全login0・全員の認証後の目的達成未確認で全停止した。source生成の自動審査による拒否と技術的な初期起動失敗は履歴として記録する。公開mobileは部分観測として保持し、DN-11の最終判定は未完。現在は通常ログインの具体人確認待ちで、画像・viewport不足の補完も未実施。
+- 支援WS5機能はChat・通知だけ採用済みで、残りは準備中。全AC35・全支援PR・main採用・全残務は未完。L1-R全164型・親戦役はP4実装中を維持する。
 
 ## 今回の登録検証と制約
 
