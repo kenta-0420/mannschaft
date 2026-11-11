@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261107-0740",
+  "scope": "test-only",
+  "implementation": {
+    "pr": 4392,
+    "sha": "40cf1eca78400dd3c7796ca53add7922a590259d"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "200並列が決定的に通る形へ直す（別人200人の初回でも作成は各1回という試験意図は弱めない）",
+      "tests": [
+        {
+          "name": "LoyaltyPointsWriterIT",
+          "evidence": "backend/src/test/java/com/mannschaft/app/loyalty/LoyaltyPointsWriterIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "止まった場合は打ち切りまで待たず、期限で状態つきの失敗になる",
+      "tests": [
+        {
+          "name": "LoyaltyPointsWriterIT 試験基盤テスト",
+          "evidence": "backend/src/test/java/com/mannschaft/app/loyalty/LoyaltyPointsWriterIT.java"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 42439693063
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4392"
+    },
+    "real": {
+      "status": "not-applicable",
+      "scope": "test-only",
+      "reason": "試験コードだけの変更で、画面・APIの挙動を変えない"
+    },
+    "exploratory": {
+      "status": "not-applicable",
+      "scope": "test-only",
+      "reason": "試験コードだけの変更で、導線を変えない"
+    }
+  },
+  "regressions": []
+}

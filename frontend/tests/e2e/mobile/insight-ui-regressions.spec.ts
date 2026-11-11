@@ -13,22 +13,55 @@ async function prepare(page: Page) {
   await page.route('**/api/v1/admin/member-permissions?**', route => route.fulfill({ json: { data: { permissions: [] } } }))
 }
 
+// 招待トークンはサーバーにハッシュしか残らないため、平文は発行応答にだけ載る（CMP-260826-1457）。
+// 一覧に token は無く、PDF は発行直後のダイアログから、保持している平文を POST して取得する。
+const ISSUED_INVITE = { id: 99, token: 'ui-regression', roleName: 'MEMBER', expiresAt: null, maxUses: null, usedCount: 0, revokedAt: null, createdAt: '2026-01-01T00:00:00' }
+const INVITE_LIST_ROW = { id: 99, roleName: 'MEMBER', expiresAt: null, maxUses: null, usedCount: 0, revokedAt: null, createdAt: '2026-01-01T00:00:00' }
+
+async function routeInviteIssue(page: Page) {
+  let created = false
+  await page.route(`**/api/v1/teams/${TEAM_ID}/invite-tokens`, async route => {
+    if (route.request().method() === 'POST') {
+      created = true
+      await route.fulfill({ status: 201, json: { data: ISSUED_INVITE } })
+      return
+    }
+    await route.fulfill({ json: { data: created ? [INVITE_LIST_ROW] : [] } })
+  })
+}
+
+/** 招待を発行し、平文を一度だけ見せる発行済みダイアログを開いた状態にする。 */
+async function issueInviteLink(page: Page) {
+  await page.goto(`/teams/${TEAM_ID}/invites`, { waitUntil: 'domcontentloaded' })
+  await waitForHydratedShell(page)
+  await page.locator('button:has(.pi-plus)').last().click()
+  const createDialog = page.getByRole('dialog')
+  await expect(createDialog).toBeVisible()
+  await expect(createDialog).not.toHaveClass(/p-dialog-enter-active/)
+  await createDialog.locator('button:has(.pi-check)').click()
+  const issued = page.getByTestId('secret-issued-dialog')
+  await expect(issued).toBeVisible()
+  await expect(issued).not.toHaveClass(/p-dialog-enter-active/)
+  return issued
+}
+
 for (const width of [360, 390, 312, 1024, 1280]) {
-  test(`INSIGHT-I1: ${width}pxで招待PDFをホバーせず識別して保存できる`, async ({ page }) => {
+  test(`INSIGHT-I1: ${width}pxで発行直後のPDF保存をホバーせず識別して保存できる`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     await prepare(page)
-    await page.route(`**/api/v1/teams/${TEAM_ID}/invite-tokens`, route => route.fulfill({ json: { data: [{ id: 99, token: 'ui-regression', roleName: 'MEMBER', expiresAt: null, maxUses: null, usedCount: 0, revokedAt: null, createdAt: '2026-01-01T00:00:00' }] } }))
+    await routeInviteIssue(page)
     let releasePdf: (() => void) | undefined
     const pending = new Promise<void>(resolve => { releasePdf = resolve })
-    await page.route(`**/api/v1/teams/${TEAM_ID}/invite-tokens/99/pdf`, async route => {
+    let pdfBody: unknown
+    await page.route(`**/api/v1/teams/${TEAM_ID}/invite-tokens/pdf`, async route => {
+      pdfBody = route.request().postDataJSON()
       await pending
       await route.fulfill({ status: 200, contentType: 'application/pdf', body: '%PDF-1.4\n%%EOF' })
     })
-    await page.goto(`/teams/${TEAM_ID}/invites`, { waitUntil: 'domcontentloaded' })
-    await waitForHydratedShell(page)
-    const pdf = page.getByRole('button', { name: 'QRコードPDF印刷', exact: true })
+    const issued = await issueInviteLink(page)
+    const pdf = issued.getByRole('button', { name: 'QRコードをPDFで保存', exact: true })
     await expect(pdf).toBeVisible()
-    await expect(pdf).toHaveText('QRコードPDF印刷')
+    await expect(pdf).toHaveText('QRコードをPDFで保存')
     const box = (await pdf.boundingBox())!
     expect(box.width).toBeGreaterThanOrEqual(44)
     expect(box.height).toBeGreaterThanOrEqual(44)
@@ -41,6 +74,8 @@ for (const width of [360, 390, 312, 1024, 1280]) {
     releasePdf!()
     await download
     await expect(pdf).toBeEnabled()
+    // 平文は URL ではなく POST 本文で送る（アクセスログに残さない）
+    expect(JSON.stringify(pdfBody)).toContain('ui-regression')
   })
 
   test(`INSIGHT-I6-CHAT: ${width}pxでチャンネル追加が44pxあり作成画面を開ける`, async ({ page }) => {
@@ -62,11 +97,10 @@ for (const width of [360, 390, 312, 1024, 1280]) {
 
 test('INSIGHT-I1-ERROR: PDF取得失敗を通知し再操作できる', async ({ page }) => {
   await prepare(page)
-  await page.route(`**/api/v1/teams/${TEAM_ID}/invite-tokens`, route => route.fulfill({ json: { data: [{ id: 99, token: 'ui-regression', roleName: 'MEMBER', expiresAt: null, maxUses: null, usedCount: 0, revokedAt: null, createdAt: '2026-01-01T00:00:00' }] } }))
-  await page.route(`**/api/v1/teams/${TEAM_ID}/invite-tokens/99/pdf`, route => route.fulfill({ status: 500, json: { message: 'PDF生成失敗' } }))
-  await page.goto(`/teams/${TEAM_ID}/invites`, { waitUntil: 'domcontentloaded' })
-  await waitForHydratedShell(page)
-  const pdf = page.getByRole('button', { name: 'QRコードPDF印刷', exact: true })
+  await routeInviteIssue(page)
+  await page.route(`**/api/v1/teams/${TEAM_ID}/invite-tokens/pdf`, route => route.fulfill({ status: 500, json: { message: 'PDF生成失敗' } }))
+  const issued = await issueInviteLink(page)
+  const pdf = issued.getByRole('button', { name: 'QRコードをPDFで保存', exact: true })
   await pdf.click()
   await expect(page.getByText('PDF印刷に失敗しました')).toBeVisible()
   await expect(pdf).toBeEnabled()
@@ -76,10 +110,9 @@ test('INSIGHT-I1-DE: 360pxの長い翻訳と200%文字でもPDF操作を読め�
   await page.setViewportSize({ width: 360, height: 900 })
   await page.context().addCookies([{ name: 'i18n_locale', value: 'de', url: baseURL! }])
   await prepare(page)
-  await page.route(`**/api/v1/teams/${TEAM_ID}/invite-tokens`, route => route.fulfill({ json: { data: [{ id: 99, token: 'ui-regression', roleName: 'MEMBER', expiresAt: null, maxUses: null, usedCount: 0, revokedAt: null, createdAt: '2026-01-01T00:00:00' }] } }))
-  await page.goto(`/teams/${TEAM_ID}/invites`, { waitUntil: 'domcontentloaded' })
-  await waitForHydratedShell(page)
-  const pdf = page.getByRole('button', { name: 'QR PDF drucken', exact: true })
+  await routeInviteIssue(page)
+  const issued = await issueInviteLink(page)
+  const pdf = issued.getByRole('button', { name: 'QR-Code als PDF speichern', exact: true })
   await expect(pdf).toBeVisible()
   await pdf.evaluate(element => { element.style.setProperty('font-size', `${parseFloat(getComputedStyle(element).fontSize) * 2}px`, 'important') })
   const box = (await pdf.boundingBox())!
@@ -146,16 +179,20 @@ for (const width of [360, 390, 1024, 1280]) {
     await prepare(page)
     let created = false
     let payload: unknown
+    let pdfBody: unknown
     await page.route(`**/api/v1/teams/${TEAM_ID}/invite-tokens`, async route => {
       if (route.request().method() === 'POST') {
         payload = route.request().postDataJSON()
         created = true
-        await route.fulfill({ status: 201, json: { data: {} } })
+        await route.fulfill({ status: 201, json: { data: ISSUED_INVITE } })
         return
       }
-      await route.fulfill({ json: { data: created ? [{ id: 99, token: 'english-invite', roleName: 'MEMBER', expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), maxUses: null, usedCount: 0, revokedAt: null, createdAt: '2026-10-16T00:00:00' }] : [] } })
+      await route.fulfill({ json: { data: created ? [{ ...INVITE_LIST_ROW, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() }] : [] } })
     })
-    await page.route(`**/api/v1/teams/${TEAM_ID}/invite-tokens/99/pdf`, route => route.fulfill({ status: 200, contentType: 'application/pdf', body: '%PDF-1.4\n%%EOF' }))
+    await page.route(`**/api/v1/teams/${TEAM_ID}/invite-tokens/pdf`, route => {
+      pdfBody = route.request().postDataJSON()
+      return route.fulfill({ status: 200, contentType: 'application/pdf', body: '%PDF-1.4\n%%EOF' })
+    })
     await page.goto(`/teams/${TEAM_ID}/invites`, { waitUntil: 'domcontentloaded' })
     await waitForHydratedShell(page)
     await expect.soft(page.getByText('No invite links yet', { exact: true })).toBeVisible({ timeout: 1000 })
@@ -180,15 +217,22 @@ for (const width of [360, 390, 1024, 1280]) {
       expect.soft(box!.height).toBeGreaterThanOrEqual(44)
     }
     await dialog.locator('button:has(.pi-check)').click()
-    await expect(dialog).not.toBeVisible()
+    // 作成後は発行済みダイアログが同じ role=dialog で開くため、作成ダイアログだけを名前で特定して閉じを確認する
+    await expect(page.getByRole('dialog', { name: 'Create invite link' })).not.toBeVisible()
     expect(payload).toEqual({ roleId: 4, expiresIn: '7d', maxUses: null })
-    const pdf = page.getByRole('button', { name: 'Print QR PDF', exact: true })
+    // 作成後は発行済みダイアログに、保存用の PDF ボタンとコピーが出る。一覧にはコピー・PDF を出さない。
+    const issued = page.getByTestId('secret-issued-dialog')
+    await expect(issued).toBeVisible()
+    const pdf = issued.getByRole('button', { name: 'Save QR code as PDF', exact: true })
     await expect(pdf).toBeVisible()
-    await expect.soft(page.getByRole('button', { name: 'Copy invite URL', exact: true })).toBeVisible({ timeout: 1000 })
-    await expect.soft(page.getByRole('button', { name: 'Revoke invite link', exact: true })).toBeVisible({ timeout: 1000 })
+    await expect.soft(issued.getByRole('button', { name: 'Copy', exact: true })).toBeVisible({ timeout: 1000 })
     const download = page.waitForEvent('download')
     await pdf.click()
     await download
+    expect(JSON.stringify(pdfBody)).toContain('ui-regression')
+    await issued.getByTestId('secret-issued-dialog-close').click()
+    await expect(issued).not.toBeVisible()
+    await expect.soft(page.getByRole('button', { name: 'Revoke invite link', exact: true })).toBeVisible({ timeout: 1000 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0)
   })
 }

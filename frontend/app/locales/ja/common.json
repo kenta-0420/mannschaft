@@ -123,6 +123,7 @@
       },
       "card": {
         "pending": "{scope} への招待が届いています",
+        "scopeDeleted": "削除されたチーム",
         "waiting": "相手の承諾待ち",
         "statusPending": "承諾待ち",
         "join": "参加する",
@@ -185,6 +186,7 @@
       "tooltip": "Zimmerに招待",
       "failed": "招待に失敗しました",
       "noMembers": "招待できるメンバーがいません",
+      "candidatesLoadFailed": "招待できるメンバーの一覧を取得できませんでした。時間をおいて再度お試しください。",
       "shareQuestion": "既存のチャット内容を共有しますか？",
       "share": "共有する",
       "shareHint": "これまでのメッセージが新しいZimmerに引き継がれます",
@@ -416,7 +418,10 @@
     "delete_timetable": "削除",
     "delete_timetable_confirm": "時間割「{name}」を削除しますか？この操作は取り消せません。",
     "delete_timetable_success": "時間割を削除しました",
-    "delete_timetable_error": "時間割の削除に失敗しました"
+    "delete_timetable_error": "時間割の削除に失敗しました",
+    "create_error_out_of_term": "時間割の有効期間が学期の範囲外です。学期の開始日から終了日の間で指定してください",
+    "create_error_term_not_found": "選んだ学期が見つかりません。学期の一覧を開き直してください",
+    "effective_until_before_from": "適用終了日は適用開始日以降の日付にしてください"
   },
   "error": {
     "server": "サーバーエラーが発生しました",
@@ -1202,6 +1207,7 @@
       "edit_title": "マイルストーン編集",
       "title_label": "タイトル",
       "title_placeholder": "マイルストーン名",
+      "title_required": "タイトルを入力してください",
       "due_date_label": "期限",
       "add": "追加"
     },
@@ -3081,7 +3087,11 @@
     "justNow": "たった今",
     "minutesAgo": "{count}分前",
     "hoursAgo": "{count}時間前",
-    "daysAgo": "{count}日前"
+    "daysAgo": "{count}日前",
+    "soon": "まもなく",
+    "inMinutes": "あと{count}分",
+    "inHours": "あと{count}時間",
+    "inDays": "あと{count}日"
   },
   "error_page": {
     "not_found_title": "このページは見つかりませんでした",
@@ -3332,7 +3342,7 @@
       "not_shown_hint": "セキュリティのため、発行済みのリンクは再表示されません。必要な場合は再発行してください。",
       "revoked_by_migration": "セキュリティ強化のため失効しました",
       "reissue": "再発行",
-      "reissue_hint": "再発行すると新しいリンクが作られ、古いリンクは使えなくなります。",
+      "links_hint": "リンクを失くした場合は新規作成で再発行してください。不要になった古いリンクは × で無効にしてください。",
       "label_with_id": "リンク #{id}",
       "created_at": "発行日時",
       "expires_at": "有効期限",

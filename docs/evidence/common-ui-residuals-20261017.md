@@ -42,6 +42,16 @@ source `9d5eb15dcaf17acb155809ebb2ff61606e49086e` の正式Smoke（run `39023499
 
 mobileとdesktopの待機2か所を、実boundingBoxから求めたhandle offsetが既存baselineに一致する `expect.poll` へ変更した。取消例外を握りつぶさず、従来のslider内bounds・checked/unchecked offset・四隅hit・Space/focus・desktop寸法のassertionを保持する。製品CSS、共有helper、timeout/retry上限、baselineは変更していない。局所ではAPI境界をstubした所有SSRでSWITCH2件・DESKTOP2件を確認し、正式CIの全23件判定とは区別する。
 
+## カレンダーのモバイル追補
+
+住民探索の実画面で、マイカレンダーの見出しが360pxでは1文字ずつ、390pxでは2文字ずつに折り返され、主要2タブの操作高さが32pxだった。`calendar.vue` の見出し・help・作成先Select・予定追加が横一列へ押し込まれる配置と、plain tab buttonの最小高さ欠落が原因だった。共通PageHeaderは変更せず、このページのタイトル行とactions内側をmobileで折返し可能にし、2タブだけmobile最小44px・md以上は従来値とした。文字サイズ、ラベル、API、認可、機能は変更していない。
+
+基準source `01055e993a6782c8db826fa63993e065e191d406` に対し、実Nuxt/Vue/PrimeVueでAPI境界だけをstubする `COMMON-CALENDAR-{ja,de}-{360,390,1280}` 6件を追加した。確定した先行runはmobile4件が寸法assertionで失敗・desktop2件成功、同一assertionの修正後runは6件成功（両runともskip/flaky 0）。日本語見出しの高さは360pxで252→36px、390pxで144→36px。独語の右端はみ出しも解消し、全controlsの全文ラベル・viewport内配置・非重複・横panなしを確認した。mobileタブは44px、1280pxでは32pxを維持し、日独それぞれ全対象bboxが修正前後で一致した。
+
+先行採取時のselector前提失敗と、見出しの字形overhangを自box内に要求した誤アサーションは別原本に保持し、製品redや合格に数えていない。最終番人では見出し全文のviewport内表示と行数、controlラベルの自身の枠内表示を検査する。対象lint・specのstrict限定型検査は成功。これはviewport寸法のAPIstub試験であり、最終sourceの正式CIおよびモックなし実機確認は後続の判定である。
+
+768pxの境界ではsidebarが常時表示となって本文が狭くなる一方、ページwrapperの `md:flex-nowrap` が折返しを再び禁止していた。source `034be25c0b953f2aead2c631a39c97189699014b` の追加日独2件は実寸red（skip/flaky 0）で、両見出しが72px、作成先ラベルが切れ、独語では追加ボタン右端が822.359pxとなって横panも発生した。rootの同source・実API画面でも日本語の圧縮を再現した。このページの2wrapperから `md:flex-nowrap` だけを撤去し、viewportではなく利用可能幅に応じて折返しを許す。新しいbreakpointや共通部品の変更は加えない。番人は日独×360/390/768/1280の8件へ拡張し、768は1行見出しとtab32px、mobileはtab44px、1280の既存bboxを保持する。修正後source `44eeaa677d3caaf5b63905154536625b5c819719` の原8件runは7成功・日本語360pxの画面遷移前提1件失敗（page.gotoのload待機が180秒上限、見出し・採寸未到達）で、skip/flaky/retryは0だった。この原本は保持し、同一source・config・spec・assertionで日本語360pxだけを1回補足し、1成功（skip/flaky/retry 0）を確認した。8条件の対応は `requirements-covered-with-supplemental-run` であり、単一run全8成功ではない（`singleRunAll8Pass: false`）。成功した各条件で全文ラベル・viewport内配置・非重複・横panなし、未知API 0・非GET 0を確認した。日独768pxの見出しは72→36pxとなり、作成先と追加ボタンも収まった。mobileの2タブは44px、768/1280pxは32pxを維持し、日独1280pxの見出し・全controls・タブのbboxは先行6件greenと全値一致した。これはAPI境界をstubした実Nuxtのviewport/mouse番人である。新headの正式CI8件と、rootが別contextで実施するモックなし実機・touch確認は、それぞれ別の判定として扱う。
+
 ## 出荷判定の残条件
 
 既存Smoke E2Eへcommon-controlsを追加した。標準Chromium設定、既存120秒上限、1workerのLinux正式CIで全23件の合否を判定する。ローカルの未到達分や修正後の未検証を合格扱いにしない。修正後のドイツ語360px画像による目視確認、モックなしの実機・権限横断・自然導線・isMobile/hasTouch確認は別途必要である。

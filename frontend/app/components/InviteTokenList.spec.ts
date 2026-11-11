@@ -23,20 +23,28 @@ const mocks = vi.hoisted(() => ({
 vi.mock('~/composables/useApi', () => ({ useApi: () => mocks.api }))
 vi.mock('~/composables/useNotification', () => ({ useNotification: () => mocks }))
 vi.mock('~/composables/useInviteTokenApi', () => ({ useInviteTokenApi: () => mocks }))
+// 実際の整形関数と同じ粒度（formatDate=日付のみ / formatDateTime=時刻まで）を再現する。
+const datetimeFormatters = {
+  formatDate: (value: string) => value.slice(0, 10),
+  formatDateTime: (value: string) => value.slice(0, 16),
+}
 vi.mock('~/composables/useDatetime', () => ({
-  useDatetime: () => ({ formatDate: (value: string) => value }),
+  useDatetime: () => ({
+    formatDate: (value: string) => value.slice(0, 10),
+    formatDateTime: (value: string) => value.slice(0, 16),
+  }),
 }))
 vi.stubGlobal('useApi', () => mocks.api)
 vi.stubGlobal('useNotification', () => mocks)
 vi.stubGlobal('useInviteTokenApi', () => mocks)
-vi.stubGlobal('useDatetime', () => ({ formatDate: (value: string) => value }))
+vi.stubGlobal('useDatetime', () => datetimeFormatters)
 vi.stubGlobal('useI18n', useI18n)
 vi.stubGlobal('ref', ref)
 vi.stubGlobal('computed', computed)
 vi.stubGlobal('onMounted', onMounted)
+// 一覧 API の行は平文 token を持たない（サーバーにはハッシュしか残らない）
 const token = {
   id: 99,
-  token: 'invite-fixture',
   roleName: 'MEMBER',
   expiresAt: null,
   maxUses: null,
@@ -67,6 +75,7 @@ const Table = defineComponent({
 async function mountList(
   scopeType: 'team' | 'organization' = 'team',
   locale: keyof typeof messages = 'en',
+  table: typeof Table = Table,
 ) {
   const wrapper = mount(InviteTokenList, {
     props: { scopeType, scopeId: 'private-scope' },
@@ -80,7 +89,7 @@ async function mountList(
       ],
       directives: { tooltip: () => {} },
       stubs: {
-        DataTable: Table,
+        DataTable: table,
         Column: true,
         RoleBadge: { props: ['role'], template: '<span>{{ role }}</span>' },
         Dialog: {
@@ -114,6 +123,10 @@ async function openForm(wrapper: Awaited<ReturnType<typeof mountList>>) {
     )!
     .trigger('click')
 }
+const expectedHint = createI18n({ legacy: false, locale: 'en', messages }).global.t(
+  'secret_token.list.not_shown_hint',
+)
+
 describe('スコープ招待の英語表示', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -193,19 +206,17 @@ describe('スコープ招待の英語表示', () => {
     expect(mocks.error).toHaveBeenCalledWith('Failed to create invite link')
     expect(wrapper.find('section').exists()).toBe(true)
   })
-  it('期限なし・操作名・コピー通知・失効確認と成功通知を英語で表示する', async () => {
+  it('期限なし・操作名・再表示しない旨の案内・失効確認と成功通知を英語で表示する', async () => {
     mocks.api.mockResolvedValue({ data: [token] })
-    const writeText = vi.fn().mockResolvedValue(undefined)
-    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
     const confirm = vi.fn().mockReturnValue(true)
     vi.stubGlobal('confirm', confirm)
     const wrapper = await mountList()
     expect(wrapper.text()).toContain('Never')
     for (const text of ['Role', 'Expires after', 'Uses', 'Actions'])
       expect(wrapper.text()).toContain(text)
-    await wrapper.get('button[aria-label="Copy invite URL"]').trigger('click')
-    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/invite/invite-fixture`)
-    expect(mocks.success).toHaveBeenCalledWith('Invite URL copied')
+    // 一覧からは URL のコピーも QR-PDF もできない（発行直後のダイアログでだけ見せる）
+    expect(wrapper.find('button[aria-label="Copy invite URL"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain(expectedHint)
     await wrapper.get('button[aria-label="Revoke invite link"]').trigger('click')
     await flushPromises()
     expect(confirm).toHaveBeenCalledWith('Revoke this invite link?')
@@ -226,6 +237,81 @@ describe('スコープ招待の英語表示', () => {
       .trigger('click')
     await flushPromises()
     expect(mocks.error).toHaveBeenCalledWith('Failed to revoke invite link')
+  })
+})
+
+// CMP-261110-0426 V3/V5: 行の識別（作成日時・案内）とモバイルでの列重なり防止
+describe('招待リンク一覧の識別性とモバイル表示', () => {
+  const columnProps: Array<Record<string, unknown>> = []
+  const RecordingTable = defineComponent({
+    props: { value: { type: Array, default: () => [] } },
+    setup(props, { slots }) {
+      return () => {
+        const columns = slots.default?.() ?? []
+        columnProps.length = 0
+        for (const column of columns) columnProps.push({ ...(column.props ?? {}) })
+        return h(
+          'div',
+          props.value.length
+            ? columns.flatMap((column) => [
+                h('span', String(column.props?.header ?? '')),
+                ...props.value.map((data) => {
+                  const children = column.children as {
+                    body?: (scope: { data: unknown }) => ReturnType<typeof h>[]
+                  }
+                  return children?.body?.({ data })
+                }),
+              ])
+            : slots.empty?.(),
+        )
+      }
+    },
+  })
+  const t = createI18n({ legacy: false, locale: 'ja', messages }).global.t
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.api.mockReset().mockResolvedValue({ data: [token] })
+  })
+
+  it('各行に作成日時を表示する', async () => {
+    const wrapper = await mountList('team', 'ja', RecordingTable as never)
+    expect(wrapper.text()).toContain(t('secret_token.list.created_at'))
+    expect(wrapper.text()).toContain('2026-10-16T00:00')
+  })
+
+  it('同日・異時刻に作った2行は作成日時が異なる表示になる（古いリンクの識別）', async () => {
+    mocks.api.mockReset().mockResolvedValue({
+      data: [
+        { ...token, id: 1, createdAt: '2026-10-16T09:15:00' },
+        { ...token, id: 2, createdAt: '2026-10-16T18:40:00' },
+      ],
+    })
+    const wrapper = await mountList('team', 'ja', RecordingTable as never)
+    const cells = wrapper.findAll('span.whitespace-nowrap').map((el) => el.text())
+    expect(cells).toHaveLength(2)
+    expect(new Set(cells).size).toBe(2)
+    expect(cells[0]).toContain('09:15')
+    expect(cells[1]).toContain('18:40')
+  })
+
+  it('再発行の案内（links_hint）を一覧付近に出し、誤った旧キーは使わない', async () => {
+    const wrapper = await mountList('team', 'ja', RecordingTable as never)
+    expect(wrapper.text()).toContain(t('secret_token.list.links_hint'))
+    for (const locale of Object.keys(messages) as Array<keyof typeof messages>) {
+      const i18n = createI18n({ legacy: false, locale, messages }).global
+      expect(i18n.te('secret_token.list.reissue_hint')).toBe(false)
+      expect(i18n.te('secret_token.list.links_hint')).toBe(true)
+    }
+  })
+
+  it('操作列を sticky（frozen）にしない（390px で他列に重ならない）', async () => {
+    await mountList('team', 'ja', RecordingTable as never)
+    expect(columnProps.length).toBeGreaterThan(0)
+    for (const column of columnProps) {
+      expect(column.frozen === undefined || column.frozen === false).toBe(true)
+      expect(column['align-frozen']).toBeUndefined()
+    }
   })
 })
 

@@ -18,8 +18,8 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  join: [token: string]
-  decline: [token: string]
+  join: [tokenId: number]
+  decline: [tokenId: number]
 }>()
 
 const { t } = useI18n()
@@ -28,19 +28,28 @@ const { relativeTime } = useRelativeTime()
 /** PENDING かつ宛先本人 = 参加/辞退ボタンを活性化できる状態。 */
 const canAct = computed(() => props.invite.status === 'PENDING' && props.invite.isTarget)
 
-// token は宛先本人にのみ返る（非宛先は null・多層防御）。canAct 下でのみボタンが描画されるため
-// 実際は常に非 null だが、型の嘘を避けるため emit 前に null を弾く（string へ絞り込み）。
+// 平文トークンは持ち回らない（サーバーにはハッシュしか無い）。招待 ID を emit し、
+// 宛先本人かどうかはサーバーが認証済みユーザーと照合する。
 function onJoin() {
-  if (props.invite.token) emit('join', props.invite.token)
+  emit('join', props.invite.tokenId)
 }
 function onDecline() {
-  if (props.invite.token) emit('decline', props.invite.token)
+  emit('decline', props.invite.tokenId)
 }
+
+/**
+ * 表示用のスコープ名。削除済みチーム/組織は BE が名前を解決できず null/空で返すため、
+ * その場合はフォールバック文言（削除されたチーム等）を出し、名前欄を空にしない。
+ */
+const scopeLabel = computed(() => {
+  const name = (props.invite.scopeName as string | null | undefined)?.trim()
+  return name ? name : t('chat.invite.card.scopeDeleted')
+})
 
 /** カード見出し（宛先本人は「招待が届いています」、発行者は「承諾待ち」）。 */
 const heading = computed(() =>
   props.invite.isTarget
-    ? t('chat.invite.card.pending', { scope: props.invite.scopeName })
+    ? t('chat.invite.card.pending', { scope: scopeLabel.value })
     : t('chat.invite.card.waiting'),
 )
 
@@ -100,7 +109,7 @@ const statusBadge = computed<{ label: string; classes: string }>(() => {
           </span>
         </div>
         <p class="mt-0.5 truncate text-sm text-surface-600 dark:text-surface-300">
-          {{ invite.scopeName }}
+          {{ scopeLabel }}
         </p>
         <p
           v-if="invite.status === 'PENDING'"

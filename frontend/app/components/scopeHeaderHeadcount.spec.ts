@@ -9,6 +9,7 @@ import type { FollowUiStatus } from '~/composables/useFollowSelfStatus'
 import type { JoinRequestUiStatus } from '~/composables/useJoinRequestApi'
 import TeamPageHeader from '~/components/team/TeamPageHeader.vue'
 import OrgPageHeader from '~/components/organization/OrgPageHeader.vue'
+import FavoriteToggleButton from '~/components/favorites/FavoriteToggleButton.vue'
 
 /**
  * チーム・組織ヘッダの人数表示（メンバー／サポーター）の試練（CMP-261004-1943）。
@@ -91,10 +92,10 @@ const commonProps = {
   joinRequestLoading: false,
 }
 
-async function mountTeam(c: Counts) {
+async function mountTeam(c: Counts, numericId: number | null = 1) {
   const team = {
-    id: 1,
-    numericId: 1,
+    id: 'team-a',
+    ...(numericId !== null ? { numericId } : {}),
     slug: 'team-a',
     visibility: { visibility: 'PUBLIC', supporterEnabled: c.supporterEnabled ?? true },
     metadata: 'memberCount' in c ? { memberCount: c.memberCount } : {},
@@ -115,10 +116,10 @@ async function mountTeam(c: Counts) {
   return wrapper
 }
 
-async function mountOrg(c: Counts) {
+async function mountOrg(c: Counts, numericId: number | null = 1) {
   const org = {
     id: 'org-a',
-    numericId: 1,
+    ...(numericId !== null ? { numericId } : {}),
     basicInfo: { name: '組織A' },
     visibility: { visibility: 'PUBLIC', supporterEnabled: c.supporterEnabled ?? true },
     metadata: 'memberCount' in c ? { memberCount: c.memberCount } : {},
@@ -137,6 +138,20 @@ const HEADERS = [
   ['TeamPageHeader', mountTeam],
   ['OrgPageHeader', mountOrg],
 ] as const
+
+describe.each(HEADERS)('%s のお気に入り識別子', (_name, mount) => {
+  it('公開 slug と異なる数値 ID を文字列で渡す', async () => {
+    const wrapper = await mount({}, 42)
+
+    expect(wrapper.getComponent(FavoriteToggleButton).props('entityId')).toBe('42')
+  })
+
+  it('数値 ID が欠落していればお気に入りボタンを描画しない', async () => {
+    const wrapper = await mount({}, null)
+
+    expect(wrapper.findComponent(FavoriteToggleButton).exists()).toBe(false)
+  })
+})
 
 function memberEl(wrapper: VueWrapper) {
   return wrapper.find('[data-testid="scope-header-member-count"]')

@@ -9,6 +9,8 @@ import type {
   TimetableVisibility,
   ChangeType,
 } from '~/types/timetable'
+import { parseApiError } from '~/utils/apiError'
+import { EFFECTIVE_DATE_OUT_OF_TERM_CODE, TERM_NOT_FOUND_CODE } from '~/utils/timetableTermError'
 
 definePageMeta({ layout: 'team', middleware: 'auth' })
 
@@ -35,6 +37,8 @@ const currentWeekOf = ref<string | undefined>(undefined)
 
 // 時間割作成ダイアログ
 const showCreateDialog = ref(false)
+const createFieldErrors = ref<Record<string, string>>({})
+const createFormError = ref('')
 const createSubmitting = ref(false)
 
 // 臨時変更ダイアログ
@@ -226,6 +230,8 @@ async function handleExportPdf() {
 async function openCreateDialog() {
   // 学期が取れないまま開くと「学期を選べない」理由が利用者に分からないため、失敗時は開かずに通知する。
   if (!(await loadTerms())) return
+  createFieldErrors.value = {}
+  createFormError.value = ''
   showCreateDialog.value = true
 }
 
@@ -252,13 +258,23 @@ function handleDelete(id: number) {
 
 async function submitCreate(payload: CreatePayload) {
   createSubmitting.value = true
+  createFieldErrors.value = {}
+  createFormError.value = ''
   try {
     await timetableApi.create(teamSlug.value, payload)
     notification.success(t('timetable.create_success'))
     showCreateDialog.value = false
     await loadData()
-  } catch {
-    notification.error(t('timetable.create_error'))
+  } catch (error) {
+    // BE が返した理由（fieldErrors / errorCode）を画面に出す。汎用文言は理由が分からないときだけ。
+    const parsed = parseApiError(error)
+    createFieldErrors.value = parsed.fieldErrors
+    if (parsed.code === EFFECTIVE_DATE_OUT_OF_TERM_CODE) {
+      createFormError.value = t('timetable.create_error_out_of_term')
+    } else if (parsed.code === TERM_NOT_FOUND_CODE) {
+      createFormError.value = t('timetable.create_error_term_not_found')
+    }
+    notification.error(createFormError.value || Object.values(parsed.fieldErrors)[0] || t('timetable.create_error'))
   } finally {
     createSubmitting.value = false
   }
@@ -405,6 +421,8 @@ watch(activeTab, (tab) => {
       v-model:visible="showCreateDialog"
       :terms="terms"
       :submitting="createSubmitting"
+      :field-errors="createFieldErrors"
+      :form-error="createFormError"
       @submit="submitCreate"
     />
 

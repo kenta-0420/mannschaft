@@ -123,6 +123,7 @@
       },
       "card": {
         "pending": "Tienes una invitación a {scope}",
+        "scopeDeleted": "Equipo eliminado",
         "waiting": "Esperando su respuesta",
         "statusPending": "Pendiente",
         "join": "Unirse",
@@ -185,6 +186,7 @@
       "tooltip": "Invitar a un Zimmer",
       "failed": "No se pudo enviar la invitación",
       "noMembers": "No hay miembros que se puedan invitar",
+      "candidatesLoadFailed": "No se pudo cargar la lista de miembros que puedes invitar. Inténtalo de nuevo más tarde.",
       "shareQuestion": "¿Compartir el historial del chat?",
       "share": "Compartir",
       "shareHint": "Los mensajes anteriores pasan al nuevo Zimmer",
@@ -416,7 +418,10 @@
     "delete_timetable": "Eliminar",
     "delete_timetable_confirm": "¿Eliminar el horario \"{name}\"? Esta acción no se puede deshacer.",
     "delete_timetable_success": "Horario eliminado",
-    "delete_timetable_error": "No se pudo eliminar el horario"
+    "delete_timetable_error": "No se pudo eliminar el horario",
+    "create_error_out_of_term": "El período de vigencia del horario queda fuera del trimestre. Elija fechas entre el inicio y el fin del trimestre.",
+    "create_error_term_not_found": "No se encontró el trimestre seleccionado. Vuelva a abrir la lista de trimestres.",
+    "effective_until_before_from": "La fecha de fin debe ser igual o posterior a la fecha de inicio."
   },
   "error": {
     "server": "Se produjo un error del servidor",
@@ -1202,6 +1207,7 @@
       "edit_title": "Editar hito",
       "title_label": "Título",
       "title_placeholder": "Nombre del hito",
+      "title_required": "Introduzca un título.",
       "due_date_label": "Fecha límite",
       "add": "Añadir"
     },
@@ -3081,7 +3087,11 @@
     "justNow": "Ahora mismo",
     "minutesAgo": "hace {count} minuto | hace {count} minutos",
     "hoursAgo": "hace {count} hora | hace {count} horas",
-    "daysAgo": "hace {count} día | hace {count} días"
+    "daysAgo": "hace {count} día | hace {count} días",
+    "soon": "En breve",
+    "inMinutes": "dentro de {count} minuto | dentro de {count} minutos",
+    "inHours": "dentro de {count} hora | dentro de {count} horas",
+    "inDays": "dentro de {count} día | dentro de {count} días"
   },
   "error_page": {
     "not_found_title": "No se encontró esta página",
@@ -3332,7 +3342,7 @@
       "not_shown_hint": "Por seguridad, los enlaces emitidos no vuelven a mostrarse. Si lo necesita, emita uno nuevo.",
       "revoked_by_migration": "Revocado por una mejora de seguridad",
       "reissue": "Volver a emitir",
-      "reissue_hint": "Al volver a emitir se crea un enlace nuevo y el anterior deja de funcionar.",
+      "links_hint": "Si pierde un enlace, cree uno nuevo para volver a emitirlo. Desactive con × los enlaces antiguos que ya no necesite.",
       "label_with_id": "Enlace #{id}",
       "created_at": "Emitido el",
       "expires_at": "Caduca el",

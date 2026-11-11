@@ -2,7 +2,6 @@ package com.mannschaft.app.signage.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
@@ -27,7 +26,6 @@ import java.util.Arrays;
  * <p>SimpMessagingTemplate は Spring が自動で Bean 登録するため @Bean 宣言不要。</p>
  */
 @Configuration
-@EnableWebSocketMessageBroker
 public class SignageWebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     /**

@@ -64,7 +64,7 @@ class InviteAcceptanceConcurrencyIT extends InviteAcceptanceItSupport {
         for (int i = 0; i < 6; i++) {
             users.add(user());
         }
-        List<Throwable> results = race(users.stream().<Runnable>map(u -> () -> acceptCompat(token.getToken(), u, null)).toList());
+        List<Throwable> results = race(users.stream().<Runnable>map(u -> () -> acceptCompat(plaintext(token), u, null)).toList());
         assertThat(results.stream().filter(r -> r == null)).hasSize(1);
         assertThat(results.stream().filter(r -> r != null))
                 .allSatisfy(r -> assertThat(((BusinessException) r).getErrorCode()).isEqualTo(RoleErrorCode.ROLE_003));
@@ -79,8 +79,8 @@ class InviteAcceptanceConcurrencyIT extends InviteAcceptanceItSupport {
         Scope scope = scope(type);
         InviteTokenEntity token = token(scope, 0, null, maxUses, 0, null, null);
         Long userId = user();
-        List<Throwable> results = race(List.of(() -> acceptCompat(token.getToken(), userId, null),
-                () -> acceptCompat(token.getToken(), userId, null)));
+        List<Throwable> results = race(List.of(() -> acceptCompat(plaintext(token), userId, null),
+                () -> acceptCompat(plaintext(token), userId, null)));
         assertThat(results.stream().filter(r -> r == null)).hasSize(1);
         BusinessException loser = (BusinessException) results.stream().filter(r -> r != null).findFirst().orElseThrow();
         if (maxUses == 1) {
@@ -103,8 +103,8 @@ class InviteAcceptanceConcurrencyIT extends InviteAcceptanceItSupport {
         InviteTokenEntity first = token(scope, 0, null, 5, 0, null, null);
         InviteTokenEntity second = token(scope, 0, null, 5, 0, null, null);
         Long userId = user();
-        List<Throwable> results = race(List.of(() -> acceptCompat(first.getToken(), userId, null),
-                () -> acceptCompat(second.getToken(), userId, null)));
+        List<Throwable> results = race(List.of(() -> acceptCompat(plaintext(first), userId, null),
+                () -> acceptCompat(plaintext(second), userId, null)));
         assertThat(results.stream().filter(r -> r == null)).hasSize(1);
         assertThat(results.stream().filter(r -> r != null))
                 .singleElement().satisfies(r -> assertThat(((BusinessException) r).getErrorCode()).isEqualTo(TeamErrorCode.TEAM_003));
@@ -140,7 +140,7 @@ class InviteAcceptanceConcurrencyIT extends InviteAcceptanceItSupport {
                 jdbc.update("UPDATE users SET status = 'FROZEN' WHERE id = ?", userId);
             }));
             await(tokenLocked);
-            Future<?> joining = executor.submit(() -> acceptCompat(token.getToken(), userId, null));
+            Future<?> joining = executor.submit(() -> acceptCompat(plaintext(token), userId, null));
             try {
                 awaitRowWait("invite_tokens", blocker.get(), token.getId(), joining);
             } finally {
@@ -180,7 +180,7 @@ class InviteAcceptanceConcurrencyIT extends InviteAcceptanceItSupport {
                     jdbc.update("UPDATE users SET status = 'FROZEN' WHERE id = ?", userId);
                 });
             };
-            List<Throwable> results = race(List.of(() -> acceptCompat(token.getToken(), userId, null), crossing));
+            List<Throwable> results = race(List.of(() -> acceptCompat(plaintext(token), userId, null), crossing));
             for (Throwable r : results) {
                 assertThat(r == null || r instanceof BusinessException)
                         .as("round " + round + " " + operation + ": 業務エラー以外（デッドロック・ロック待ち超過等）が出ない: " + r)
@@ -205,10 +205,10 @@ class InviteAcceptanceConcurrencyIT extends InviteAcceptanceItSupport {
         Long otherUser = user();
         AtomicReference<Throwable> joinError = new AtomicReference<>();
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-            inviteService.previewInvite(token.getToken());
-            runElsewhere(() -> acceptCompat(token.getToken(), otherUser, null));
+            inviteService.previewInvite(plaintext(token));
+            runElsewhere(() -> acceptCompat(plaintext(token), otherUser, null));
             try {
-                acceptCompat(token.getToken(), outerUser, null);
+                acceptCompat(plaintext(token), outerUser, null);
             } catch (RuntimeException e) {
                 joinError.set(e);
             }
@@ -231,15 +231,15 @@ class InviteAcceptanceConcurrencyIT extends InviteAcceptanceItSupport {
         Throwable commit = null;
         try {
             new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-                acceptCompat(token.getToken(), userId, null);
+                acceptCompat(plaintext(token), userId, null);
                 try {
-                    acceptCompat(token.getToken(), userId, null);
+                    acceptCompat(plaintext(token), userId, null);
                 } catch (RuntimeException e) {
                     second.set(e);
                 }
                 assertThat(status.isRollbackOnly()).as("業務エラー後は rollback-only").isTrue();
                 try {
-                    acceptCompat(token.getToken(), userId, null);
+                    acceptCompat(plaintext(token), userId, null);
                 } catch (RuntimeException e) {
                     third.set(e);
                 }
@@ -264,7 +264,7 @@ class InviteAcceptanceConcurrencyIT extends InviteAcceptanceItSupport {
         Throwable commit = null;
         try {
             new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-                acceptCompat(token.getToken(), userId, null);
+                acceptCompat(plaintext(token), userId, null);
                 TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                     @Override
                     public void beforeCommit(boolean readOnly) {
@@ -296,15 +296,15 @@ class InviteAcceptanceConcurrencyIT extends InviteAcceptanceItSupport {
         Long outerUser = user();
         Long otherUser = user();
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-            inviteService.previewInvite(token.getToken());
-            InviteTokenEntity managed = tokens.findByToken(token.getToken()).orElseThrow();
+            inviteService.previewInvite(plaintext(token));
+            InviteTokenEntity managed = tokens.findById(token.getId()).orElseThrow();
             assertThat(managed.getUsedCount()).isZero();
-            runElsewhere(() -> acceptCompat(token.getToken(), otherUser, null));
-            acceptCompat(token.getToken(), outerUser, null);
+            runElsewhere(() -> acceptCompat(plaintext(token), otherUser, null));
+            acceptCompat(plaintext(token), outerUser, null);
             Integer current = jdbc.queryForObject("SELECT used_count FROM invite_tokens WHERE id = ? FOR UPDATE",
                     Integer.class, token.getId());
             assertThat(current).isEqualTo(2);
-            assertThat(tokens.findByToken(token.getToken()).orElseThrow().getUsedCount())
+            assertThat(tokens.findById(token.getId()).orElseThrow().getUsedCount())
                     .as("管理下 Entity は refresh 済み").isEqualTo(current);
         });
         assertThat(usedCount(token.getId())).isEqualTo(2);
@@ -325,7 +325,7 @@ class InviteAcceptanceConcurrencyIT extends InviteAcceptanceItSupport {
         for (int round = 0; round < 5; round++) {
             InviteTokenEntity token = token(scope, 0, null, 3, 0, null, null);
             Long userId = user();
-            List<Throwable> results = race(List.of(() -> acceptCompat(token.getToken(), userId, null),
+            List<Throwable> results = race(List.of(() -> acceptCompat(plaintext(token), userId, null),
                     () -> grants.grantMemberRole(type, scope.id(), userId, admin, "JOIN_REQUEST")));
             assertThat(userRoleCount(userId, scope)).isEqualTo(1);
             assertThat(membershipCount(userId, scope)).isEqualTo(1);
@@ -360,7 +360,7 @@ class InviteAcceptanceConcurrencyIT extends InviteAcceptanceItSupport {
                 block(scope, userId, admin);
             }));
             await(tokenLocked);
-            Future<?> joining = executor.submit(() -> acceptCompat(token.getToken(), userId, null));
+            Future<?> joining = executor.submit(() -> acceptCompat(plaintext(token), userId, null));
             try {
                 awaitRowWait("invite_tokens", blocker.get(), token.getId(), joining);
             } finally {
@@ -429,7 +429,7 @@ class InviteAcceptanceConcurrencyIT extends InviteAcceptanceItSupport {
                 // 承認側の事前確認（スナップショット確立）
                 assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM memberships WHERE user_id = ? AND left_at IS NULL",
                         Long.class, userId)).isZero();
-                runElsewhere(() -> acceptCompat(token.getToken(), userId, null));
+                runElsewhere(() -> acceptCompat(plaintext(token), userId, null));
                 grants.grantMemberRole(type, scope.id(), userId, admin, "JOIN_REQUEST");
             }));
         } finally {
@@ -457,7 +457,7 @@ class InviteAcceptanceConcurrencyIT extends InviteAcceptanceItSupport {
         UUID a = insertClaim(token.getId(), user(), "CLAIMED", utcNow().minusHours(2), true);
         UUID b = insertClaim(token.getId(), user(), "CLAIMED", utcNow().minusHours(2), true);
         Long newcomer = user();
-        assertError(business(() -> accept(token.getToken(), newcomer)), RoleErrorCode.ROLE_003, null);
+        assertError(business(() -> accept(plaintext(token), newcomer)), RoleErrorCode.ROLE_003, null);
         assertThat(usedCount(token.getId())).isEqualTo(2);
         assertThat(claimStatus(a)).isEqualTo("CLAIMED");
         assertThat(claimStatus(b)).isEqualTo("CLAIMED");
@@ -475,7 +475,7 @@ class InviteAcceptanceConcurrencyIT extends InviteAcceptanceItSupport {
         Long admin = admin(scope);
         InviteTokenEntity token = token(scope, 0, null, 3, 0, null, null);
         Long userId = user();
-        accept(token.getToken(), userId);
+        accept(plaintext(token), userId);
         if ("REMOVE".equals(after)) {
             roleService.removeMemberWithoutAdminCheck(scope.id(), type, userId);
         } else {
