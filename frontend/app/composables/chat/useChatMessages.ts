@@ -52,13 +52,12 @@ export function useChatMessages() {
     channelId: number,
     body: string,
     parentId?: number,
-    attachmentKeys?: string[],
   ): Promise<{ data: ChatMessageResponse }> {
     const raw = await api<{ data: BeMessageResponse }>(
       `/api/v1/chat/channels/${channelId}/messages`,
       {
         method: 'POST',
-        body: { body, parentId, attachmentKeys },
+        body: { body, parentId },
       },
     )
     return { data: mapBeMessage(raw.data, currentUserId.value) }
