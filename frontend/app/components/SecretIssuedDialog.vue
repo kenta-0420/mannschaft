@@ -67,6 +67,8 @@ onBeforeUnmount(() => {
   <Dialog
     v-model:visible="visible"
     modal
+    :close-on-escape="false"
+    :dismissable-mask="false"
     :header="heading"
     class="w-full max-w-lg"
     data-testid="secret-issued-dialog"

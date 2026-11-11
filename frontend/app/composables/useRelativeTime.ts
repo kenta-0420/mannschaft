@@ -29,6 +29,20 @@ function computeRelativeTime(dateStr: string, t: Translate, locale: string): str
   const diffHour = Math.floor(diffMin / 60)
   const diffDay = Math.floor(diffHour / 24)
 
+  // 未来時刻（期限・予定など）は「たった今」ではなく「あと n 分/時間/日」で出す。
+  // 切り上げ（ceil）で数える：+5分ちょうどが 4分59秒に見えて「あと4分」にならないようにする。
+  if (diffSec < 0) {
+    const aheadSec = -diffSec
+    const aheadMin = Math.ceil(aheadSec / 60)
+    if (aheadSec < 60) return t('relativeTime.soon')
+    if (aheadMin < 60) return t('relativeTime.inMinutes', { count: aheadMin }, aheadMin)
+    const aheadHour = Math.floor(aheadMin / 60)
+    if (aheadHour < 24) return t('relativeTime.inHours', { count: aheadHour }, aheadHour)
+    const aheadDay = Math.floor(aheadHour / 24)
+    if (aheadDay < 7) return t('relativeTime.inDays', { count: aheadDay }, aheadDay)
+    return d.toDate().toLocaleDateString(locale)
+  }
+
   if (diffSec < 60) return t('relativeTime.justNow')
   if (diffMin < 60) return t('relativeTime.minutesAgo', { count: diffMin }, diffMin)
   if (diffHour < 24) return t('relativeTime.hoursAgo', { count: diffHour }, diffHour)
