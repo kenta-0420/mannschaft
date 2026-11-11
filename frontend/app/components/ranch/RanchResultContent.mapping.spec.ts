@@ -86,6 +86,8 @@ describe('結果に保存した正式対応の閲覧と新割当', () => {
     const wrapper = await mountResult()
     expect(wrapper.text()).toContain('当時のアロサウルス V1 の説明')
     expect(hasUseButton(wrapper)).toBe(false)
+    expect(wrapper.text()).toContain(useNuxtApp().$i18n.t('ranch.assignment.confirmed'))
+    expect(wrapper.text()).not.toContain(useNuxtApp().$i18n.t('ranch.assignment.mappingPending'))
     expect(wrapper.find('a[href="/my/ranch/birth-profile"]').exists()).toBe(false)
   })
   it('state取得失敗でも保存結果は残り新割当を有効にしない', async () => {
