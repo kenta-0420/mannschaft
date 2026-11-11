@@ -1,8 +1,7 @@
 <script setup lang="ts">
 // F02.9 お気に入り クイック編集ダイアログ（設計書 §5.3 B案）
 // entityType に応じてフォームと保存先 API を切り替える。
-// - TEAM:         PATCH /api/v1/teams/{id}（useTeamApi.updateTeam）
-// - ORGANIZATION: PATCH /api/v1/organizations/{id}（useOrganizationApi.updateOrganization）
+// - TEAM / ORGANIZATION: 正準slugで詳細取得し、取得時versionと名称をPATCHする。
 // - BLOG_AUTHOR:  PATCH /api/v1/social/profiles/me（useSocialProfileApi.updateMyProfile）
 //   ※ ブログ著者プロフィールは社会プロファイル(SocialProfile)上で displayName/bio を保持するため
 // - KB_PAGE:      フォーム表示せず即座に編集モード遷移（API 呼び出しなし）
@@ -11,6 +10,7 @@ import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { navigateTo } from '#app'
 import type { UserFavoriteItem } from '~/types/favorite'
+import { useFavoriteNameEdit } from '~/composables/favorites/useFavoriteNameEdit'
 
 interface Props {
   modelValue: UserFavoriteItem | null
@@ -22,8 +22,6 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
-const { updateTeam } = useTeamApi()
-const { updateOrganization } = useOrganizationApi()
 const { updateMyProfile: updateSocialProfile } = useSocialProfileApi()
 const notification = useNotification()
 
@@ -35,13 +33,13 @@ const isOpen = computed({
 })
 
 // === フォーム状態 ===
-// TEAM / ORGANIZATION / VILLAGE 共通
+// TEAM / ORGANIZATION
 const formName = ref('')
-const formDescription = ref('')
-const formIconUrl = ref('')
 // BLOG_AUTHOR
 const formDisplayName = ref('')
 const formBio = ref('')
+const nameEdit = useFavoriteNameEdit(formName)
+const { ready: nameReady, error: nameLoadError } = nameEdit
 
 const isSaving = ref(false)
 const errorMessage = ref<string | null>(null)
@@ -53,7 +51,7 @@ const isValid = computed(() => {
   switch (item.entityType) {
     case 'TEAM':
     case 'ORGANIZATION':
-      return formName.value.trim().length > 0
+      return nameReady.value && formName.value.trim().length > 0
     case 'BLOG_AUTHOR':
       return formDisplayName.value.trim().length > 0
     case 'VILLAGE':
@@ -69,10 +67,9 @@ const isValid = computed(() => {
 watch(
   () => props.modelValue,
   (item) => {
+    void nameEdit.load(item)
     if (!item) return
     formName.value = item.entity.name ?? ''
-    formDescription.value = item.entity.description ?? ''
-    formIconUrl.value = item.entity.iconUrl ?? ''
     formDisplayName.value = item.entity.name ?? ''
     formBio.value = item.entity.description ?? ''
     errorMessage.value = null
@@ -86,16 +83,16 @@ watch(
       emit('update:modelValue', null)
     }
   },
-  { immediate: true },
+  { immediate: true, flush: 'sync' },
 )
 
 async function handleSave() {
   const item = props.modelValue
-  if (!item || !isValid.value) return
+  if (!item || !isValid.value || isSaving.value) return
   isSaving.value = true
   errorMessage.value = null
   try {
-    await saveByType(item)
+    if ((await saveByType(item)) === false || props.modelValue !== item) return
     notification.success(t('favorites.addSuccess'))
     emit('saved')
     emit('update:modelValue', null)
@@ -108,23 +105,9 @@ async function handleSave() {
 
 async function saveByType(item: UserFavoriteItem) {
   switch (item.entityType) {
-    case 'TEAM': {
-      const teamId = String(item.entityId)
-      await updateTeam(teamId, {
-        name: formName.value.trim(),
-        description: formDescription.value || null,
-        iconUrl: formIconUrl.value || null,
-      })
-      return
-    }
-    case 'ORGANIZATION': {
-      const orgId = String(item.entityId)
-      await updateOrganization(orgId, {
-        name: formName.value.trim(),
-        description: formDescription.value || null,
-      })
-      return
-    }
+    case 'TEAM':
+    case 'ORGANIZATION':
+      return nameEdit.save(item)
     case 'BLOG_AUTHOR': {
       // 自分の SocialProfile を更新する。handle は変更しない（既存値の維持はバックエンド側 PATCH 仕様に委ねる）。
       await updateSocialProfile({
@@ -161,28 +144,32 @@ function close() {
       </h2>
 
       <div
-        v-if="errorMessage"
+        v-if="errorMessage || nameLoadError"
         class="mb-4 rounded bg-red-100 p-2 text-sm text-red-700 dark:bg-red-900 dark:text-red-200"
         role="alert"
       >
-        {{ errorMessage }}
+        {{ errorMessage || nameLoadError }}
       </div>
 
       <!-- TEAM -->
       <template v-if="modelValue?.entityType === 'TEAM'">
         <label class="mb-3 block">
-          <span class="mb-1 block text-sm font-medium">名前 <span class="text-red-500">*</span></span>
+          <span class="mb-1 block text-sm font-medium"
+            >名前 <span class="text-red-500">*</span></span
+          >
           <input
             v-model="formName"
+            :disabled="!nameReady"
             type="text"
             class="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700"
             required
-          >
+          />
         </label>
         <label class="mb-3 block">
           <span class="mb-1 block text-sm font-medium">説明</span>
           <textarea
-            v-model="formDescription"
+            :value="modelValue.entity.description ?? ''"
+            readonly
             class="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700"
             rows="3"
           />
@@ -190,28 +177,33 @@ function close() {
         <label class="mb-3 block">
           <span class="mb-1 block text-sm font-medium">アイコンURL</span>
           <input
-            v-model="formIconUrl"
+            :value="modelValue.entity.iconUrl ?? ''"
+            readonly
             type="text"
             class="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700"
-          >
+          />
         </label>
       </template>
 
       <!-- ORGANIZATION -->
       <template v-else-if="modelValue?.entityType === 'ORGANIZATION'">
         <label class="mb-3 block">
-          <span class="mb-1 block text-sm font-medium">名前 <span class="text-red-500">*</span></span>
+          <span class="mb-1 block text-sm font-medium"
+            >名前 <span class="text-red-500">*</span></span
+          >
           <input
             v-model="formName"
+            :disabled="!nameReady"
             type="text"
             class="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700"
             required
-          >
+          />
         </label>
         <label class="mb-3 block">
           <span class="mb-1 block text-sm font-medium">説明</span>
           <textarea
-            v-model="formDescription"
+            :value="modelValue.entity.description ?? ''"
+            readonly
             class="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700"
             rows="3"
           />
@@ -221,13 +213,15 @@ function close() {
       <!-- BLOG_AUTHOR（自分の SocialProfile を編集） -->
       <template v-else-if="modelValue?.entityType === 'BLOG_AUTHOR'">
         <label class="mb-3 block">
-          <span class="mb-1 block text-sm font-medium">表示名 <span class="text-red-500">*</span></span>
+          <span class="mb-1 block text-sm font-medium"
+            >表示名 <span class="text-red-500">*</span></span
+          >
           <input
             v-model="formDisplayName"
             type="text"
             class="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700"
             required
-          >
+          />
         </label>
         <label class="mb-3 block">
           <span class="mb-1 block text-sm font-medium">自己紹介</span>
