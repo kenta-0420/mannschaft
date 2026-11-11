@@ -183,8 +183,10 @@ public class NotificationService {
     public NotificationResponse markAsRead(Long userId, Long notificationId) {
         NotificationEntity entity = findNotificationOrThrow(userId, notificationId);
 
+        // 冪等: 既読なら read_at を更新せず・保存もせず、現在の状態を 200 で返す（CMP-261030-0652）。
+        // 所有者の確認（findNotificationOrThrow）を先に行うため、他人宛は未読・既読とも 404 のまま。
         if (entity.isAlreadyRead()) {
-            throw new BusinessException(NotificationErrorCode.ALREADY_READ);
+            return enrichConfirmationState(userId, notificationMapper.toNotificationResponse(entity));
         }
 
         entity.markAsRead();

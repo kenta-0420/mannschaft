@@ -123,6 +123,7 @@
       },
       "card": {
         "pending": "{scope} 참가 초대가 도착했습니다",
+        "scopeDeleted": "삭제된 팀",
         "waiting": "상대방의 수락 대기 중",
         "statusPending": "수락 대기",
         "join": "참가하기",
@@ -3086,7 +3087,11 @@
     "justNow": "방금",
     "minutesAgo": "{count}분 전",
     "hoursAgo": "{count}시간 전",
-    "daysAgo": "{count}일 전"
+    "daysAgo": "{count}일 전",
+    "soon": "곧",
+    "inMinutes": "{count}분 후",
+    "inHours": "{count}시간 후",
+    "inDays": "{count}일 후"
   },
   "error_page": {
     "not_found_title": "페이지를 찾을 수 없습니다",
@@ -3337,7 +3342,7 @@
       "not_shown_hint": "보안을 위해 발급된 링크는 다시 표시되지 않습니다. 필요하면 다시 발급해 주세요.",
       "revoked_by_migration": "보안 강화로 인해 만료되었습니다",
       "reissue": "재발급",
-      "reissue_hint": "재발급하면 새 링크가 만들어지고 이전 링크는 사용할 수 없게 됩니다.",
+      "links_hint": "링크를 잃어버렸다면 새로 만들어 다시 발급하세요. 더 이상 필요 없는 이전 링크는 ×로 무효화하세요.",
       "label_with_id": "링크 #{id}",
       "created_at": "발급 일시",
       "expires_at": "유효 기간",

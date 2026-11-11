@@ -1007,3 +1007,30 @@ PR #4294 は D-1 の旧7行を新3行へ、D-3/D-5の旧9行を新7行へ置換�
 移設先の `InviteAcceptanceFacade` と `InviteFolderPlacementService` はトランザクションを持たず、`InviteAcceptanceWriter` はrole内Repositoryを扱う。`MembershipGrantService` のrole/membership越境や、別の旧入口由来の残存記録は保持されている。58行の記録減少をrole全域の負債0、class-pair全解消、既知後続課題CMP-261107-1832/1833の解消と扱わない。
 
 weightsは適格成功nightly `42416993329`（`bf427ea138eaa9e2ff31b85d469f19137fbea51a`、attempt1）の実測3181件から削除済み旧FQCN1件を除き、現存未計測2件の歴史値を維持した3182件とする。全keyの由来と現source分類、既存generatorの無改変再検証とcompiled全4profile/Integrity/全CIの検証範囲は[締め証拠](../evidence/CMP-261108-2000/summary.md)に分離する。failed/partial入力は使わず、85分内完走をこの更新だけで保証しない。親CMPとL5-Iの完了ではない。
+
+## 2026-11-10 CMP-261030-0648 slug 解決用 TeamService の注入に伴うコンストラクタ署名の付け替え（マスター限定承認）
+
+CMP-261030-0648。管理者向け予約通知・問い合わせ通知・業務アラートの遷移先を数値のチーム ID から slug にするため、次の 3 クラスのコンストラクタ末尾に `com.mannschaft.app.team.service.TeamService` を加えた: `ReservationAdminNotificationEventListener`・`InquiryChatEventListener`・`AdminBusinessAlertService`。D-5/D-3 の既存行はコンストラクタ署名全体をキーに含むため、依存先 Repository は変わらなくても署名が変わった行は新規違反として扱われる（2026-11-04 節と同じ型）。
+
+マスターの限定承認（2026-11-10）: 範囲は D-5 の 6 行と D-3 の 4 行の署名の付け替えだけ。件数は変えず、新しいクラス対は 0、refreeze はしない。
+
+| ストア | 行（origin/main 時点） | クラス | 依存先 Repository | 変更 |
+|---|---|---|---|---|
+| D-5（427c445d） | 66 | AdminBusinessAlertService | chat.repository.ChatChannelRepository | 署名末尾に TeamService を追加 |
+| D-5（427c445d） | 69 | AdminBusinessAlertService | reservation.repository.ReservationRepository | 同上 |
+| D-5（427c445d） | 73 | AdminBusinessAlertService | role.repository.UserRoleRepository | 同上 |
+| D-5（427c445d） | 79 | AdminBusinessAlertService | team.repository.TeamRepository | 同上 |
+| D-5（427c445d） | 286 | InquiryChatEventListener | role.repository.UserRoleRepository | 同上 |
+| D-5（427c445d） | 1317 | ReservationAdminNotificationEventListener | role.repository.UserRoleRepository | 同上 |
+| D-3（f14374b1） | 47 | AdminBusinessAlertService | chat.repository.ChatChannelRepository | 同上 |
+| D-3（f14374b1） | 50 | AdminBusinessAlertService | reservation.repository.ReservationRepository | 同上 |
+| D-3（f14374b1） | 54 | AdminBusinessAlertService | role.repository.UserRoleRepository | 同上 |
+| D-3（f14374b1） | 60 | AdminBusinessAlertService | team.repository.TeamRepository | 同上 |
+
+旧署名の末尾 `…, java.time.Clock)`・`…, com.mannschaft.app.common.i18n.UserLocaleCache)`・`…, org.springframework.context.MessageSource)` を、それぞれ `…, <同じ型>, com.mannschaft.app.team.service.TeamService)` に置き換えた。行の位置・自然順・occurrence は変わらない。
+
+- 置き換え 10 行（D-5 6・D-3 4）。追加 0・削除 0。D-5 1866 行・D-3 1320 行のまま。
+- D-1・D-2b・D-3T・D-1 API 境界・Wave4・`stored.rules`・UUID・上限定数（`ArchUnitFreezeStoreIntegrityTest`）は変更していない。
+- D-3T: `AdminBusinessAlertService` では `getSlugsByIds` を `buildSummary` の中から直接呼び、新しい private ヘルパやラムダを作らなかった。`buildSummary` → `TeamRepository` の到達は既存行のままで、D-3T の新しい行は 0。
+- ローカルの絞り込み無し `archUnitTest` は、既存の古い行（例: D-5 :63-65・:76-77、D-3 :44-46・:57-58）を自動で消してストアを書き戻す。これらは本変更の範囲外なので元に戻し、diff を上記 10 行の置き換えだけにした。
+- 凍結ストアを触る open PR #3655・#4308 と並行マージしない。

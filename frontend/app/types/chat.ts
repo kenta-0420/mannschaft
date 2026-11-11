@@ -250,18 +250,20 @@ export interface ChatActiveThreadItem {
 
 export interface CreateChannelRequest {
   channelType: ChatChannelType
-  teamId?: string
-  organizationId?: string
+  /** チーム数値 ID（BE は Long）。slug ではなく TeamResponse.numericId を送る */
+  teamId?: number
+  /** 組織数値 ID（BE は Long）。slug ではなく OrganizationResponse.numericId を送る */
+  organizationId?: number
   name?: string
   description?: string
   isPrivate?: boolean
-  memberIds?: number[]
+  /** 招待するユーザー ID（BE の項目名は memberUserIds） */
+  memberUserIds?: number[]
 }
 
 export interface SendMessageRequest {
   body: string
   parentId?: number
-  attachmentKeys?: string[]
 }
 
 /**
