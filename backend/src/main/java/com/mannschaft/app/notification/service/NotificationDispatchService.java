@@ -1,7 +1,5 @@
 package com.mannschaft.app.notification.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.NotificationSourceTypeMapper;
 import com.mannschaft.app.common.visibility.ReferenceType;
@@ -41,7 +39,12 @@ public class NotificationDispatchService {
     private final SimpMessagingTemplate messagingTemplate;
     private final NotificationMapper notificationMapper;
     private final WebPushService webPushService;
-    private final ObjectMapper objectMapper;
+
+    /**
+     * Web Push のペイロード（設計書 F04.3「Push ペイロード」の形）を組み立てる。
+     * WebSocket の {@link NotificationResponse} とは別契約（CMP-261029-0620）。
+     */
+    private final WebPushPayloadFactory webPushPayloadFactory;
 
     /**
      * fan-out 抜本改修 P1: チャンク配信（{@link #dispatchBatch}）の設定/種別/購読を
@@ -319,26 +322,11 @@ public class NotificationDispatchService {
             return;
         }
 
-        String jsonPayload = buildPushPayload(notification);
+        // 配信1件につき1回だけ生成し、全購読へ同じ JSON を送る
+        String jsonPayload = webPushPayloadFactory.build(notification);
 
         for (PushSubscriptionEntity subscription : subscriptions) {
             webPushService.sendPushNotification(subscription, jsonPayload);
-        }
-    }
-
-    /**
-     * 通知エンティティから Web Push ペイロード JSON を生成する。
-     * 生成に失敗した場合はシンプルな代替 JSON を返す。
-     */
-    private String buildPushPayload(NotificationEntity notification) {
-        try {
-            NotificationResponse response = notificationMapper.toNotificationResponse(notification);
-            return objectMapper.writeValueAsString(response);
-        } catch (JsonProcessingException e) {
-            log.warn("WebPushペイロードJSON生成失敗: notificationId={}, error={}",
-                    notification.getId(), e.getMessage());
-            // フォールバック: 最低限の情報を含む JSON
-            return "{\"type\":\"" + notification.getNotificationType() + "\"}";
         }
     }
 }

@@ -14,12 +14,57 @@ const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', team
 const { isDesktop } = useIsDesktop()
 
 const selectedChannel = ref<ChatChannelResponse | null>(null)
-const chatListRef = ref<{ refresh: () => void } | null>(null)
+const chatListRef = ref<{ refresh: () => Promise<void>, selectIfPresent: (channelId: number) => boolean } | null>(null)
 const showCreateDialog = ref(false)
 
 // モバイル単一ペインで「一覧を出すか空状態を出すか」を決めるための件数。
 // ChatChannelList の @loaded で更新する（一覧が0件なら aside を出さず空状態にする）。
 const mobileChannelCount = ref(0)
+
+/**
+ * ?channel={id} で開いたときに選ぶチャンネル（問い合わせ通知の遷移先。CMP-261030-0648）。
+ * 一覧の読み込みが済んだら渡すのをやめる（モバイルで一覧へ戻ったとき同じチャンネルを選び直さないため）。
+ * 開いた後に query だけが変わる SPA 遷移（同じ slug ではページが作り直されない）は下の watch で追従する。
+ */
+function parseChannelQuery(value: unknown): number | undefined {
+  const raw = Array.isArray(value) ? value[0] : value
+  if (typeof raw !== 'string' || !/^\d+$/.test(raw)) return undefined
+  const id = Number(raw)
+  return id > 0 ? id : undefined
+}
+const pendingChannelId = ref<number | undefined>(parseChannelQuery(route.query.channel))
+
+function onChannelListLoaded(count: number) {
+  mobileChannelCount.value = count
+  pendingChannelId.value = undefined
+}
+
+/**
+ * query の ?channel= が変わったら選択を追従させる。いったん未選択にしてから、
+ * 一覧にある（見られる）チャンネルなら選び直す。正の整数でない・一覧に無いなら未選択のまま。
+ * 一覧が描画されていない（モバイルで会話を表示中）ときは、一覧の再表示時に initialChannelId で選ぶ。
+ *
+ * 一覧の取り直しを待つ間に query がさらに変わることがある。要求ごとに番号を振り、
+ * 取り直しが済んだ時点で最新の要求でなければ結果を捨てる（古い要求で URL と違う会話を開かない）。
+ */
+let channelQuerySeq = 0
+watch(
+  () => parseChannelQuery(route.query.channel),
+  async (channelId) => {
+    const seq = ++channelQuerySeq
+    selectedChannel.value = null
+    const list = chatListRef.value
+    if (channelId === undefined || !list) {
+      pendingChannelId.value = channelId
+      return
+    }
+    // 読み込み中の一覧が古い initialChannelId で選ばないよう、渡す値を消してから取り直す
+    pendingChannelId.value = undefined
+    await list.refresh()
+    if (seq !== channelQuerySeq) return
+    list.selectIfPresent(channelId)
+  },
+)
 
 // 会話ビューのヘッダーに出す選択中チャンネル名
 const selectedChannelName = computed(() => {
@@ -83,8 +128,10 @@ onMounted(() => loadPermissions())
           <ChatChannelList
             ref="chatListRef"
             :team-id="teamSlug"
+            :initial-channel-id="pendingChannelId"
             @select="onChannelSelect"
             @create="showCreateDialog = true"
+            @loaded="onChannelListLoaded"
           />
         </aside>
 
@@ -144,9 +191,10 @@ onMounted(() => loadPermissions())
             <ChatChannelList
               ref="chatListRef"
               :team-id="teamSlug"
+              :initial-channel-id="pendingChannelId"
               @select="onChannelSelect"
               @create="showCreateDialog = true"
-              @loaded="mobileChannelCount = $event"
+              @loaded="onChannelListLoaded"
             />
           </aside>
 
