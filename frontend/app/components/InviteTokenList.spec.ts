@@ -419,7 +419,7 @@ describe('招待リンク一覧のアリシゼーション確定不具合', () =
     })
   })
   it('ALIC-6: 無効化まわりの用語が言語ごとに統一されている（ボタン名と links_hint が同じ語幹）', () => {
-    const stems: Record<string, RegExp> = {
+    const stems: Record<keyof typeof messages, RegExp> = {
       ja: /無効/,
       en: /[Rr]evoke/,
       zh: /撤销/,
@@ -427,7 +427,7 @@ describe('招待リンク一覧のアリシゼーション確定不具合', () =
       es: /[Rr]evo[cq]/,
       de: /[Dd]eaktivier/,
     }
-    for (const locale of Object.keys(stems) as Array<keyof typeof stems>) {
+    for (const locale of Object.keys(stems) as Array<keyof typeof messages>) {
       const i18n = createI18n({ legacy: false, locale, messages }).global
       for (const key of [
         'inviteToken.revoke',
