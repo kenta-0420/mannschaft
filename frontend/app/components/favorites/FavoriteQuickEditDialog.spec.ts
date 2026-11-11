@@ -140,6 +140,24 @@ describe.each(['TEAM', 'ORGANIZATION'] as const)('%s の名称更新契約', (ty
     expect(wrapper.find('input').element.value).toBe('利用者が編集した名称')
   })
 
+  it('名称以外の項目を読み取り専用で表示する', async () => {
+    const favorite = item(type)
+    favorite.entity.description = '現在の説明'
+    favorite.entity.iconUrl = 'https://example.test/icon.png'
+    const wrapper = open(favorite)
+    await flushPromises()
+
+    const description = wrapper.get('textarea').element
+    expect(description.value).toBe('現在の説明')
+    expect(description.readOnly).toBe(true)
+    expect(wrapper.get('input').element.readOnly).toBe(false)
+
+    const readOnlyValues = wrapper.findAll('input')
+      .filter(input => input.element.readOnly)
+      .map(input => input.element.value)
+    expect(readOnlyValues).toEqual(type === 'TEAM' ? ['https://example.test/icon.png'] : [])
+  })
+
   it.each([0, 7])('正準slugと取得時version=%sで名称だけ保存する', async (version) => {
     get().mockResolvedValue(detail(version))
     const wrapper = open(item(type))

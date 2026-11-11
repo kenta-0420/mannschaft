@@ -33,10 +33,8 @@ const isOpen = computed({
 })
 
 // === フォーム状態 ===
-// TEAM / ORGANIZATION / VILLAGE 共通
+// TEAM / ORGANIZATION
 const formName = ref('')
-const formDescription = ref('')
-const formIconUrl = ref('')
 // BLOG_AUTHOR
 const formDisplayName = ref('')
 const formBio = ref('')
@@ -72,8 +70,6 @@ watch(
     void nameEdit.load(item)
     if (!item) return
     formName.value = item.entity.name ?? ''
-    formDescription.value = item.entity.description ?? ''
-    formIconUrl.value = item.entity.iconUrl ?? ''
     formDisplayName.value = item.entity.name ?? ''
     formBio.value = item.entity.description ?? ''
     errorMessage.value = null
@@ -172,7 +168,8 @@ function close() {
         <label class="mb-3 block">
           <span class="mb-1 block text-sm font-medium">説明</span>
           <textarea
-            v-model="formDescription"
+            :value="modelValue.entity.description ?? ''"
+            readonly
             class="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700"
             rows="3"
           />
@@ -180,7 +177,8 @@ function close() {
         <label class="mb-3 block">
           <span class="mb-1 block text-sm font-medium">アイコンURL</span>
           <input
-            v-model="formIconUrl"
+            :value="modelValue.entity.iconUrl ?? ''"
+            readonly
             type="text"
             class="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700"
           />
@@ -204,7 +202,8 @@ function close() {
         <label class="mb-3 block">
           <span class="mb-1 block text-sm font-medium">説明</span>
           <textarea
-            v-model="formDescription"
+            :value="modelValue.entity.description ?? ''"
+            readonly
             class="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700"
             rows="3"
           />
