@@ -302,6 +302,10 @@ export default defineNuxtConfig({
       ],
     },
     workbox: {
+      // F04.3 / F11.1: Web Push の push / notificationclick（public/sw-custom.js）を生成 SW に取り込む。
+      // 指定が無いと生成 sw.js にリスナーが無く、通知の表示もタップ遷移も動かない（CMP-261029-0620）。
+      // Background Sync の処理（public/sw-background-sync.js）は未結線のため載せない。
+      importScripts: ['/sw-custom.js'],
       navigateFallback: '/',
       globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2}'],
       // 正式画像は必要時だけ取得し、SW installで全packを先読みしない。
