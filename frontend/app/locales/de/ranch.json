@@ -98,6 +98,7 @@
       "title": "Deine Dinosauriergestalt wählen",
       "description": "Wähle anhand von Geburtsdatum- und Namensnumerologie, einem Quiz mit 64 Typen oder einer zufälligen Land-, Meeres- oder Luftgestalt.",
       "fromResult": "Aus meinen Ergebnissen wählen",
+      "confirmed": "Das Aussehen deines aktuellen Avatars steht fest. Du kannst deine Diagnoseergebnisse später erneut ansehen.",
       "mappingPending": "Dein Ergebnis wurde gespeichert. Die Zuordnung zu einer Dinosauriergestalt wird vorbereitet.",
       "useResult": "Mit diesem Ergebnis die Gestalt wählen"
     },
