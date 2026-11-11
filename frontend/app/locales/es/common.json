@@ -123,6 +123,7 @@
       },
       "card": {
         "pending": "Tienes una invitación a {scope}",
+        "scopeDeleted": "Equipo eliminado",
         "waiting": "Esperando su respuesta",
         "statusPending": "Pendiente",
         "join": "Unirse",
@@ -3086,7 +3087,11 @@
     "justNow": "Ahora mismo",
     "minutesAgo": "hace {count} minuto | hace {count} minutos",
     "hoursAgo": "hace {count} hora | hace {count} horas",
-    "daysAgo": "hace {count} día | hace {count} días"
+    "daysAgo": "hace {count} día | hace {count} días",
+    "soon": "En breve",
+    "inMinutes": "dentro de {count} minuto | dentro de {count} minutos",
+    "inHours": "dentro de {count} hora | dentro de {count} horas",
+    "inDays": "dentro de {count} día | dentro de {count} días"
   },
   "error_page": {
     "not_found_title": "No se encontró esta página",
@@ -3337,7 +3342,7 @@
       "not_shown_hint": "Por seguridad, los enlaces emitidos no vuelven a mostrarse. Si lo necesita, emita uno nuevo.",
       "revoked_by_migration": "Revocado por una mejora de seguridad",
       "reissue": "Volver a emitir",
-      "reissue_hint": "Al volver a emitir se crea un enlace nuevo y el anterior deja de funcionar.",
+      "links_hint": "Si pierde un enlace, cree uno nuevo para volver a emitirlo. Desactive con × los enlaces antiguos que ya no necesite.",
       "label_with_id": "Enlace #{id}",
       "created_at": "Emitido el",
       "expires_at": "Caduca el",
