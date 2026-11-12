@@ -1,0 +1,9 @@
+{
+  "title": "出欠のリマインド",
+  "body": "明日の練習の出欠が未回答です",
+  "data": {
+    "notification_id": 100,
+    "action_url": "/teams/fc-u-18/schedules/10",
+    "priority": "NORMAL"
+  }
+}
