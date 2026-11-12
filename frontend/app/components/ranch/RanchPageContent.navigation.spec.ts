@@ -1,14 +1,8 @@
-// @vitest-environment happy-dom
+// @vitest-environment nuxt
 // 実ページのDOMリンクを検証する。牧場の取得・操作と周辺部品は対象外。
-import { mount } from '@vue/test-utils'
-import { createI18n } from 'vue-i18n'
+import { mountSuspended } from '@nuxt/test-utils/runtime'
+import { useNuxtApp } from '#app'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import jaMessages from '~/locales/ja/ranch.json'
-import enMessages from '~/locales/en/ranch.json'
-import zhMessages from '~/locales/zh/ranch.json'
-import koMessages from '~/locales/ko/ranch.json'
-import esMessages from '~/locales/es/ranch.json'
-import deMessages from '~/locales/de/ranch.json'
 import RanchPageContent from './RanchPageContent.vue'
 
 vi.mock('~/composables/useRanchState', async () => {
@@ -28,10 +22,10 @@ vi.mock('~/composables/useRanchVisibility', () => ({ useRanchVisibility: () => (
 afterEach(() => { vi.restoreAllMocks() })
 
 describe('牧場から振り返りへの入口', () => {
-  it('entry未選択の想起リンクは個別想起画面ではなく振り返り入口へ進む', () => {
-    const i18n = createI18n({ legacy: false, locale: 'ja', messages: { ja: jaMessages, en: enMessages, zh: zhMessages, ko: koMessages, es: esMessages, de: deMessages } })
-    const wrapper = mount(RanchPageContent, { global: {
-      plugins: [i18n],
+  it('entry未選択の想起リンクは個別想起画面ではなく振り返り入口へ進む', async () => {
+    const { $i18n } = useNuxtApp()
+    await $i18n.setLocale('ja')
+    const wrapper = await mountSuspended(RanchPageContent, { global: {
       stubs: {
         NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' },
         PageHeader: true, Button: true, PageLoading: true, DashboardErrorState: true,
@@ -40,7 +34,7 @@ describe('牧場から振り返りへの入口', () => {
       },
     } })
     try {
-      const link = wrapper.findAll('a').find(item => item.text() === i18n.global.t('ranch.recall'))
+      const link = wrapper.findAll('a').find(item => item.text() === $i18n.t('ranch.recall'))
       expect(link, '牧場の実DOMに想起リンクがある').toBeDefined()
       // /reflections は本人の今日/自由テーマを取得する入口。recall個別画面はentryが必須。
       expect(link?.attributes('href')).toBe('/reflections')
