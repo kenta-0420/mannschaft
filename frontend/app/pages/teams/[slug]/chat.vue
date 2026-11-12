@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ChatChannelResponse } from '~/types/chat'
 import { useChatCreatedChannel } from '~/composables/chat/useChatCreatedChannel'
+import { useChatOpenCreatedChannel } from '~/composables/chat/useChatOpenCreatedChannel'
 
 definePageMeta({
   middleware: 'auth',
@@ -97,6 +98,11 @@ async function onChannelCreated(ch: ChatChannelResponse) {
 function onCreated() {
   chatListRef.value?.refresh()
 }
+
+/** 作成ダイアログが開始した DM・作成した Zimmer を右ペインに開く（CMP-261105-1507） */
+const { openCreatedChannel } = useChatOpenCreatedChannel(chatListRef, (ch) => {
+  selectedChannel.value = ch
+})
 
 onMounted(() => loadPermissions())
 </script>
@@ -221,6 +227,8 @@ onMounted(() => loadPermissions())
       v-model:visible="showCreateDialog"
       :team-id="teamSlug"
       @created="onCreated"
+      @open-dm="openCreatedChannel"
+      @open-channel="openCreatedChannel"
     />
   </div>
 </template>
