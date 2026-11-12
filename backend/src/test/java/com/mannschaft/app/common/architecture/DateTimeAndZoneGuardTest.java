@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -17,6 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -218,7 +220,8 @@ class DateTimeAndZoneGuardTest {
      * 「空白を含む文字クラス」を持つ正規表現による指数的バックトラック（31.7 秒 → 3.16 秒に是正した
      * 前例がある）であり、それは<b>パターンの形</b>として決定的に検査できる。</p>
      *
-     * <p>走査そのもの（{@link #collectViolations}）には一切手を入れていないため、検出力は不変である。</p>
+     * <p>この形状検査は時間制限とは独立して維持する。走査はFlyway番人と同じプリエンプティブな
+     * 上限と割込み可能な入力で打ち切るが、検出パターンと凍結件数は変更しない。</p>
      */
     @Test
     @DisplayName("走査正規表現に破滅的バックトラックの形（空白を含む文字クラス）が無い")
@@ -237,7 +240,10 @@ class DateTimeAndZoneGuardTest {
     @DisplayName("引数なしnow()/ZoneId.systemDefault()/ZoneIdリテラル/LocalDateTimeフィールドの新規追加は無い（既存は種別ごとの凍結リストのクラス単位件数のみ許容）")
     void noNewOldStyleDateTimeUsage() throws IOException {
         Path root = sourceRoot();
-        List<Violation> all = collectViolations(root);
+        long startNanos = System.nanoTime();
+        List<Violation> all = scanWithinTimeout(Duration.ofSeconds(30), () -> collectViolations(root));
+        System.out.printf("[日時番人] 検出 %d 件／走査境界 %d ms%n",
+                all.size(), (System.nanoTime() - startNanos) / 1_000_000L);
 
         assertThat(all)
                 .as("production コードから時刻関連の走査対象を1件も検出できなかった"
@@ -386,11 +392,32 @@ class DateTimeAndZoneGuardTest {
     // 検出本体（package-private: スキャンロジックテストから直接呼び出す）
     // ────────────────────────────────────────────────────────────
 
+    /** Flyway番人と同じプリエンプティブな時間制限を使い、閾値は呼出元の値を維持する。 */
+    static <T> T scanWithinTimeout(Duration timeout, Supplier<T> scan) {
+        return FlywayMigrationTimeFunctionGuardTest.scanWithinTimeout(timeout, scan::get);
+    }
+
+    /** 実走査の全matcherが割込み可能な入力を使う。record部分列も同じ入口を通す。 */
+    static Matcher scanMatcher(Pattern pattern, CharSequence text) {
+        checkInterrupted();
+        return pattern.matcher(FlywayMigrationTimeFunctionGuardTest.interruptible(text));
+    }
+
+    /** ファイル境界と結果返却前でも、キャンセルを正常な部分結果へ変えない。 */
+    private static void checkInterrupted() {
+        if (Thread.currentThread().isInterrupted()) {
+            throw new FlywayMigrationTimeFunctionGuardTest.ScanInterruptedException();
+        }
+    }
+
     static List<Violation> collectViolations(Path root) {
+        checkInterrupted();
         List<Violation> violations = new ArrayList<>();
         for (Path file : javaFiles(root)) {
+            checkInterrupted();
             violations.addAll(collectViolationsInFile(read(file), toFqcn(root, file)));
         }
+        checkInterrupted();
         return violations;
     }
 
@@ -408,6 +435,7 @@ class DateTimeAndZoneGuardTest {
 
     /** 1ファイル分の走査。スキャンロジックの回帰テストから合成ソースに対しても直接呼べる。 */
     static List<Violation> collectViolationsInFile(String raw, String fqcn) {
+        checkInterrupted();
         List<Violation> violations = new ArrayList<>();
 
         // コメント・文字列/テキストブロックの中身を消した版（now()/systemDefault()/フィールド宣言用）。
@@ -423,12 +451,13 @@ class DateTimeAndZoneGuardTest {
         addCallViolations(violations, maskedComments, ZONE_LITERAL, Category.ZONE_LITERAL, fqcn, frames, raw);
         addFieldViolations(violations, maskedLiterals, fqcn, frames, parenDepth, raw);
 
+        checkInterrupted();
         return violations;
     }
 
     private static void addCallViolations(List<Violation> violations, String scanText, Pattern pattern,
             Category category, String fqcn, List<BraceFrame> frames, String raw) {
-        Matcher m = pattern.matcher(scanText);
+        Matcher m = scanMatcher(pattern, scanText);
         Map<String, Integer> seqByLocation = new HashMap<>();
         while (m.find()) {
             String location = enclosingLabel(frames, m.start());
@@ -452,7 +481,7 @@ class DateTimeAndZoneGuardTest {
             List<BraceFrame> frames, int[] parenDepth, String raw) {
         List<int[]> fieldSpans = new ArrayList<>(); // {start, end}
 
-        Matcher m = LOCAL_DATE_TIME_DECL.matcher(scanText);
+        Matcher m = scanMatcher(LOCAL_DATE_TIME_DECL, scanText);
         while (m.find()) {
             int offset = m.start();
             if (parenDepth[offset] != 0) {
@@ -465,14 +494,14 @@ class DateTimeAndZoneGuardTest {
             fieldSpans.add(new int[]{offset, m.end()});
         }
 
-        Matcher recordHeader = RECORD_HEADER.matcher(scanText);
+        Matcher recordHeader = scanMatcher(RECORD_HEADER, scanText);
         while (recordHeader.find()) {
             int openParen = recordHeader.end() - 1;
             int closeParen = findMatchingParen(scanText, openParen);
             if (closeParen < 0) {
                 continue;
             }
-            Matcher component = LOCAL_DATE_TIME_DECL.matcher(scanText.substring(openParen, closeParen + 1));
+            Matcher component = scanMatcher(LOCAL_DATE_TIME_DECL, scanText.substring(openParen, closeParen + 1));
             while (component.find()) {
                 fieldSpans.add(new int[]{openParen + component.start(), openParen + component.end()});
             }
@@ -537,14 +566,14 @@ class DateTimeAndZoneGuardTest {
             j--;
         }
         String header = code.substring(j + 1, bracePos);
-        if (TYPE_BODY_HEAD.matcher(header).find()) {
+        if (scanMatcher(TYPE_BODY_HEAD, header).find()) {
             return new BraceFrame(bracePos, endExclusive, FrameKind.TYPE_BODY, "(class-level)");
         }
         return new BraceFrame(bracePos, endExclusive, FrameKind.CODE_BODY, extractLabel(header));
     }
 
     private static String extractLabel(String header) {
-        Matcher m = TRAILING_CALL_NAME.matcher(header);
+        Matcher m = scanMatcher(TRAILING_CALL_NAME, header);
         if (m.find()) {
             String name = m.group(1);
             if (CONTROL_KEYWORDS.contains(name)) {

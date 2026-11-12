@@ -3,6 +3,7 @@ package com.mannschaft.app.role.service;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
+import com.mannschaft.app.common.token.SecretTokenVault;
 import com.mannschaft.app.role.dto.MembershipInviteIssuedToken;
 import com.mannschaft.app.role.dto.MembershipInviteTokenCommand;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
@@ -13,8 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
-import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /**
  * 承諾型招待の宛先付きトークン発行・補償失効を担う role ドメイン専属サービス（F04.12）。
@@ -35,18 +34,18 @@ public class MembershipInviteTokenIssuer {
 
     private final InviteTokenRepository inviteTokenRepository;
     private final AuditLogService auditLogService;
+    private final SecretTokenVault vault;
 
     /**
      * 宛先付き承諾型トークンを発行する（{@code target_user_id} 非 NULL・{@code max_uses = 1}）。
      *
      * @param command 呼出し側の検証済み値と親の発行時世代
-     * @return 発行済みトークン
+     * @return 発行済みトークン（宛先本人は ID で承諾・辞退するため、平文は生成しても誰にも渡さない）
      */
-    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
     @Transactional
     public MembershipInviteIssuedToken issue(MembershipInviteTokenCommand command) {
         var builder = InviteTokenEntity.builder()
-                .token(UUID.randomUUID().toString())
+                .tokenHash(vault.issueBase64Url().hash())
                 .roleId(command.roleId())
                 .createdBy(command.createdBy())
                 .expiresAt(LocalDateTime.ofInstant(command.expiresAt(), UserZoneLocalDateTimeParser.SERVER_ZONE))
@@ -62,7 +61,7 @@ public class MembershipInviteTokenIssuer {
         InviteTokenEntity token = inviteTokenRepository.save(builder.build());
         log.info("承諾型招待トークン発行: tokenId={}, scopeType={}, scopeId={}, targetUserId={}",
                 token.getId(), command.scopeType(), command.scopeId(), command.targetUserId());
-        return new MembershipInviteIssuedToken(token.getId(), token.getToken());
+        return new MembershipInviteIssuedToken(token.getId());
     }
 
     /**

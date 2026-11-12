@@ -162,13 +162,8 @@ export type ChatInviteStatus = 'PENDING' | 'JOINED' | 'EXPIRED' | 'REVOKED'
  * {@code messageType === 'INVITE_CARD'} のメッセージにのみ付与される。
  */
 export interface ChatInviteData {
-  /** 招待トークン ID */
+  /** 招待トークン ID（承諾/辞退はこの ID で呼ぶ。平文トークンは持たない） */
   tokenId: number
-  /**
-   * 承諾/辞退 API に渡す UUID トークン。
-   * 宛先本人（isTarget=true）にのみ返り、発行者側（isTarget=false）は「承諾待ち」表示のみで null（多層防御・BE で非宛先へは露出しない）。
-   */
-  token: string | null
   /** 招待先種別 */
   scopeType: ChatInviteScopeType
   /** 招待先 ID */
@@ -255,18 +250,20 @@ export interface ChatActiveThreadItem {
 
 export interface CreateChannelRequest {
   channelType: ChatChannelType
-  teamId?: string
-  organizationId?: string
+  /** チーム数値 ID（BE は Long）。slug ではなく TeamResponse.numericId を送る */
+  teamId?: number
+  /** 組織数値 ID（BE は Long）。slug ではなく OrganizationResponse.numericId を送る */
+  organizationId?: number
   name?: string
   description?: string
   isPrivate?: boolean
-  memberIds?: number[]
+  /** 招待するユーザー ID（BE の項目名は memberUserIds） */
+  memberUserIds?: number[]
 }
 
 export interface SendMessageRequest {
   body: string
   parentId?: number
-  attachmentKeys?: string[]
 }
 
 /**

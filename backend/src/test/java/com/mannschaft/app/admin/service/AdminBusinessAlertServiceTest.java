@@ -2,6 +2,7 @@ package com.mannschaft.app.admin.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.admin.dto.AdminBusinessAlertSummaryResponse;
+import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
@@ -9,6 +10,7 @@ import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.template.service.ModuleService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -28,13 +30,18 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * {@link AdminBusinessAlertService} の単体テスト。
@@ -79,6 +86,9 @@ class AdminBusinessAlertServiceTest {
 
     @Mock
     private com.mannschaft.app.chat.service.ChatMemberBatchQueryService chatMemberBatchQueryService;
+
+    @Mock
+    private TeamService teamService;
 
     @InjectMocks
     private AdminBusinessAlertService adminBusinessAlertService;
@@ -267,6 +277,160 @@ class AdminBusinessAlertServiceTest {
             assertThat(teamAlert.getAlerts().getNewReservations()).isEqualTo(2);
             assertThat(teamAlert.getAlerts().getPendingApproval()).isEqualTo(1);
             assertThat(result.getData().getTotalPending()).isEqualTo(3);
+        }
+    }
+
+    // ========================================
+    // CMP-261030-0648: links の slug 化
+    // ========================================
+
+    @Nested
+    @DisplayName("getSummary - links の slug 化（CMP-261030-0648）")
+    class GetSummaryLinksSlug {
+
+        private static final Long TEAM_B = 20L;
+        private static final Long CHANNEL_A = 501L;
+        private static final String NUMERIC_TEAM_URL = ".*/teams/\\d+(/|\\?|$).*";
+
+        private TeamEntity team(Long id, String name) {
+            TeamEntity team = TeamEntity.builder().name(name).build();
+            ReflectionTestUtils.setField(team, "id", id);
+            return team;
+        }
+
+        private ChatChannelEntity inquiryChannel(Long id, Long teamId) {
+            ChatChannelEntity channel = ChatChannelEntity.builder().teamId(teamId).build();
+            ReflectionTestUtils.setField(channel, "id", id);
+            return channel;
+        }
+
+        /** チーム A（問い合わせチャンネルあり）とチーム B（チャンネルなし）を管理しているユーザーの集計を用意する。 */
+        private void stubTwoTeams() throws Exception {
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
+            given(valueOperations.get(CACHE_KEY)).willReturn(null);
+            List<Long> teamIds = List.of(TEAM_ID, TEAM_B);
+            given(userRoleRepository.findAdminAndDeputyAdminTeamIds(USER_ID)).willReturn(teamIds);
+            given(teamRepository.findAllById(teamIds)).willReturn(List.of(team(TEAM_ID, "A"), team(TEAM_B, "B")));
+            given(moduleService.isModuleEnabledForTeams("reservation", teamIds))
+                    .willReturn(java.util.Map.of(TEAM_ID, false, TEAM_B, false));
+            given(chatChannelRepository.findByTeamIdInAndIsInquiryChannelTrue(teamIds))
+                    .willReturn(List.of(inquiryChannel(CHANNEL_A, TEAM_ID)));
+            given(chatMemberBatchQueryService.findUnreadCountByChannelForMember(USER_ID, List.of(CHANNEL_A)))
+                    .willReturn(java.util.Map.of(CHANNEL_A, 0));
+            lenient().when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        }
+
+        private AdminBusinessAlertSummaryResponse.Links linksOf(AdminBusinessAlertSummaryResponse r, Long teamId) {
+            return r.getData().getTeams().stream()
+                    .filter(t -> t.getTeamId().equals(teamId))
+                    .findFirst().orElseThrow()
+                    .getLinks();
+        }
+
+        @Test
+        @DisplayName("AC-3/AC-4/AC-17/AC-20a: 各チームのリンクは自分の slug。チャンネルが無いチームの inquiryChannelUrl は null。getSlugsByIds は1回だけ")
+        void ac3_links_use_each_team_slug() throws Exception {
+            stubTwoTeams();
+            given(teamService.getSlugsByIds(List.of(TEAM_ID, TEAM_B)))
+                    .willReturn(java.util.Map.of(TEAM_ID, "lions-fc", TEAM_B, "tigers"));
+
+            AdminBusinessAlertSummaryResponse result = adminBusinessAlertService.getSummary(USER_ID);
+
+            AdminBusinessAlertSummaryResponse.Links a = linksOf(result, TEAM_ID);
+            AdminBusinessAlertSummaryResponse.Links b = linksOf(result, TEAM_B);
+            assertThat(a.getReservationsUrl()).isEqualTo("/teams/lions-fc/reservations");
+            assertThat(a.getInquiryChannelUrl()).isEqualTo("/teams/lions-fc/chat?channel=" + CHANNEL_A);
+            assertThat(b.getReservationsUrl()).isEqualTo("/teams/tigers/reservations");
+            assertThat(b.getInquiryChannelUrl()).isNull();
+            assertThat(List.of(a.getReservationsUrl(), a.getInquiryChannelUrl(), b.getReservationsUrl()))
+                    .allSatisfy(u -> assertThat(u).doesNotMatch(NUMERIC_TEAM_URL));
+            verify(teamService, times(1)).getSlugsByIds(anyCollection());
+        }
+
+        @Test
+        @DisplayName("AC-12: 30文字・ハイフン入りの slug がそのまま URL に入る")
+        void ac12_long_hyphenated_slug_is_used_verbatim() throws Exception {
+            stubTwoTeams();
+            given(teamService.getSlugsByIds(List.of(TEAM_ID, TEAM_B)))
+                    .willReturn(java.util.Map.of(TEAM_ID, "abcdefghij-klmnopqrs-tuvwxyz01", TEAM_B, "tigers"));
+
+            AdminBusinessAlertSummaryResponse result = adminBusinessAlertService.getSummary(USER_ID);
+
+            assertThat(linksOf(result, TEAM_ID).getReservationsUrl())
+                    .isEqualTo("/teams/abcdefghij-klmnopqrs-tuvwxyz01/reservations");
+        }
+
+        @Test
+        @DisplayName("AC-13: getSlugsByIds の結果に欠けたチームだけ /notifications、ほかは slug")
+        void ac13_missing_slug_falls_back_only_for_that_team() throws Exception {
+            stubTwoTeams();
+            given(teamService.getSlugsByIds(List.of(TEAM_ID, TEAM_B)))
+                    .willReturn(java.util.Map.of(TEAM_B, "tigers"));
+
+            AdminBusinessAlertSummaryResponse result = adminBusinessAlertService.getSummary(USER_ID);
+
+            AdminBusinessAlertSummaryResponse.Links a = linksOf(result, TEAM_ID);
+            assertThat(a.getReservationsUrl()).isEqualTo("/notifications");
+            assertThat(a.getInquiryChannelUrl()).isEqualTo("/notifications");
+            assertThat(linksOf(result, TEAM_B).getReservationsUrl()).isEqualTo("/teams/tigers/reservations");
+        }
+
+        @Test
+        @DisplayName("AC-16: getSlugsByIds が例外なら要約は失敗し、その結果は Valkey にキャッシュされない")
+        void ac16_slug_exception_fails_summary_without_caching() throws Exception {
+            stubTwoTeams();
+            given(teamService.getSlugsByIds(anyCollection())).willThrow(new IllegalStateException("db down"));
+
+            assertThatThrownBy(() -> adminBusinessAlertService.getSummary(USER_ID))
+                    .isInstanceOf(IllegalStateException.class);
+
+            verify(valueOperations, never()).set(anyString(), anyString(), anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("AC-11/AC-20c: 管理チームが0件なら getSlugsByIds を呼ばずに空の応答")
+        void ac11_no_admin_teams_skips_slug_resolution() {
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
+            given(valueOperations.get(CACHE_KEY)).willReturn(null);
+            given(userRoleRepository.findAdminAndDeputyAdminTeamIds(USER_ID)).willReturn(List.of());
+
+            AdminBusinessAlertSummaryResponse result = adminBusinessAlertService.getSummary(USER_ID);
+
+            assertThat(result.getData().getTeams()).isEmpty();
+            verifyNoInteractions(teamService);
+        }
+
+        @Test
+        @DisplayName("AC-20b: キャッシュに当たれば getSlugsByIds は0回")
+        void ac20b_cache_hit_skips_slug_resolution() throws Exception {
+            String cachedJson = "{\"data\":{\"teams\":[],\"totalPending\":0}}";
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
+            given(valueOperations.get(CACHE_KEY)).willReturn(cachedJson);
+            given(objectMapper.readValue(cachedJson, AdminBusinessAlertSummaryResponse.class))
+                    .willReturn(AdminBusinessAlertSummaryResponse.builder()
+                            .data(AdminBusinessAlertSummaryResponse.Data.builder()
+                                    .teams(List.of()).totalPending(0).build())
+                            .build());
+
+            adminBusinessAlertService.getSummary(USER_ID);
+
+            verifyNoInteractions(teamService);
+        }
+
+        @Test
+        @DisplayName("AC-18: 応答に載るのは ADMIN/DEPUTY_ADMIN のチームだけで、slug もそのチーム群だけを引く")
+        void ac18_only_admin_or_deputy_teams_are_listed() throws Exception {
+            stubTwoTeams();
+            given(teamService.getSlugsByIds(List.of(TEAM_ID, TEAM_B)))
+                    .willReturn(java.util.Map.of(TEAM_ID, "lions-fc", TEAM_B, "tigers"));
+
+            AdminBusinessAlertSummaryResponse result = adminBusinessAlertService.getSummary(USER_ID);
+
+            assertThat(result.getData().getTeams())
+                    .extracting(AdminBusinessAlertSummaryResponse.TeamAlert::getTeamId)
+                    .containsExactly(TEAM_ID, TEAM_B);
+            verify(userRoleRepository).findAdminAndDeputyAdminTeamIds(USER_ID);
+            verify(teamService).getSlugsByIds(List.of(TEAM_ID, TEAM_B));
         }
     }
 }

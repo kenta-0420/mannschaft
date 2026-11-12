@@ -136,6 +136,8 @@ Scene は登録された同個体・同段階の静止 fallback を動き抑制�
 | SSR対象 | SEOが必要な公開ページ（ブログ、チーム紹介、活動記録等） |
 | SPA対象 | ログイン後のダッシュボード、チャット等のインタラクティブ画面 |
 
+DatePickerの手入力は共通補正で扱う。日付の桁・区切りを保持し、日時欄・時刻のみの欄の24時間表記ではAM/PMを省略して入力できる（[補正と回帰試験](frontend/app/utils/primevueDatePickerManualTime.spec.ts)）。実画面の保存・再取得とロール横断の確認は別工程とし、完了状態は[戦役台帳](docs/task-list.md)を正本とする。
+
 ## アプリケーション形態
 
 - **SSR/SPA ハイブリッド**: Nuxt.js 3 によるサーバーサイドレンダリングとSPAの両立。バックエンドはJSON APIのみ提供
@@ -1215,6 +1217,7 @@ CI では `openapi.json` と生成型の乖離を自動検出します。`docs/o
 | `/撤収` | 開発環境の終了 |
 
 開発ハーネスの診断・検査範囲・再現性計測は [`docs/development/harness-engineering.md`](docs/development/harness-engineering.md) を参照。環境準備は [`docs/development/harness-environment.md`](docs/development/harness-environment.md)。
+生SQL時刻列・日時のソース番人は、走査を30秒のプリエンプティブな上限と割込み可能な正規表現入力で打ち切る。凍結件数・検出パターンは維持し、キャンセルを正常な空結果へ変えない。
 
 ---
 

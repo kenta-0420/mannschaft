@@ -4,9 +4,9 @@ const props = defineProps<{
   scopeId: string
 }>()
 
+/** 一覧の 1 行。平文トークンは持たない（サーバーにはハッシュしか残らず、再表示できない）。 */
 interface InviteToken {
   id: number
-  token: string
   roleName: string
   expiresAt: string | null
   maxUses: number | null
@@ -19,13 +19,26 @@ const { t } = useI18n()
 const api = useApi()
 const { downloadInviteTokenPdf } = useInviteTokenApi()
 const notification = useNotification()
-const { formatDate } = useDatetime()
+const { formatDateTime, formatDateTimeSeconds } = useDatetime()
+const confirm = useConfirm()
 const tokens = ref<InviteToken[]>([])
 const loading = ref(false)
 const showCreateDialog = ref(false)
 
-// ローディング状態（PDF生成中）
-const pdfLoadingId = ref<number | null>(null)
+// 発行直後にだけ保持する平文。画面のメモリ上だけで扱い、ダイアログを閉じたら破棄する（保存領域には書かない）。
+const issuedToken = ref<string | null>(null)
+const showIssuedDialog = ref(false)
+const pdfLoading = ref(false)
+
+const issuedUrl = computed(() =>
+  issuedToken.value ? `${window.location.origin}/invite/${issuedToken.value}` : '',
+)
+
+/** ダイアログを閉じたら平文を破棄する（二度と表示できない）。 */
+function onIssuedVisibleChange(open: boolean) {
+  showIssuedDialog.value = open
+  if (!open) issuedToken.value = null
+}
 
 // 作成フォーム
 const newToken = ref({
@@ -68,13 +81,19 @@ async function loadTokens() {
 async function createToken() {
   try {
     const base = props.scopeType === 'team' ? 'teams' : 'organizations'
-    await api(`/api/v1/${base}/${props.scopeId}/invite-tokens`, {
-      method: 'POST',
-      body: newToken.value,
-    })
+    const response = await api<{ data: { token: string } }>(
+      `/api/v1/${base}/${props.scopeId}/invite-tokens`,
+      {
+        method: 'POST',
+        body: newToken.value,
+      },
+    )
     notification.success(t('inviteToken.createSuccess'))
     showCreateDialog.value = false
     newToken.value = { roleId: 4, expiresIn: '7d', maxUses: null }
+    // 平文は発行応答にしか載らない。ここで一度だけ見せる。
+    issuedToken.value = response.data.token
+    showIssuedDialog.value = true
     await loadTokens()
   }
   catch {
@@ -82,8 +101,20 @@ async function createToken() {
   }
 }
 
-async function revokeToken(tokenId: number) {
-  if (!confirm(t('inviteToken.revokeConfirm'))) return
+/** 無効化の確認は PrimeVue ConfirmDialog（app.vue 設置）で行い、承諾時のみ DELETE する。 */
+function revokeToken(tokenId: number) {
+  confirm.require({
+    message: t('inviteToken.revokeConfirm'),
+    header: t('inviteToken.revoke'),
+    icon: 'pi pi-exclamation-triangle',
+    acceptClass: 'p-button-danger',
+    acceptLabel: t('inviteToken.revoke'),
+    rejectLabel: t('button.cancel'),
+    accept: () => doRevokeToken(tokenId),
+  })
+}
+
+async function doRevokeToken(tokenId: number) {
   try {
     const base = props.scopeType === 'team' ? 'teams' : 'organizations'
     await api(`/api/v1/${base}/${props.scopeId}/invite-tokens/${tokenId}`, { method: 'DELETE' })
@@ -95,16 +126,12 @@ async function revokeToken(tokenId: number) {
   }
 }
 
-function copyInviteUrl(token: string) {
-  const url = `${window.location.origin}/invite/${token}`
-  navigator.clipboard.writeText(url)
-  notification.success(t('inviteToken.copied'))
-}
-
-async function downloadQrPdf(tokenId: number) {
-  pdfLoadingId.value = tokenId
+async function downloadQrPdf() {
+  const plaintext = issuedToken.value
+  if (!plaintext) return
+  pdfLoading.value = true
   try {
-    const response = await downloadInviteTokenPdf(props.scopeType, props.scopeId, tokenId)
+    const response = await downloadInviteTokenPdf(props.scopeType, props.scopeId, plaintext)
     const url = URL.createObjectURL(response)
     const a = document.createElement('a')
     a.href = url
@@ -116,7 +143,7 @@ async function downloadQrPdf(tokenId: number) {
     notification.error(t('inviteToken.printQrPdfError'))
   }
   finally {
-    pdfLoadingId.value = null
+    pdfLoading.value = false
   }
 }
 
@@ -129,7 +156,12 @@ function isExpired(token: InviteToken): boolean {
 
 function formatTokenDate(dateStr: string | null): string {
   if (!dateStr) return t('inviteToken.never')
-  return formatDate(dateStr)
+  return formatDateTime(dateStr)
+}
+
+/** 発行日時は秒まで出す（同じ分に作ったリンクを一覧で見分けるため）。 */
+function formatIssuedAt(dateStr: string): string {
+  return formatDateTimeSeconds(dateStr)
 }
 
 onMounted(() => loadTokens())
@@ -137,73 +169,40 @@ onMounted(() => loadTokens())
 
 <template>
   <div class="min-w-0 max-w-full">
-    <div class="mb-4 flex items-center justify-between">
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-2" data-testid="invite-token-header">
       <h3 class="text-lg font-semibold">{{ t('inviteToken.title') }}</h3>
       <Button
         :label="t('inviteToken.createNew')"
-        class="!min-h-11 !min-w-11"
+        class="!min-h-11 !min-w-11 shrink-0 whitespace-nowrap"
         icon="pi pi-plus"
         size="small"
         @click="showCreateDialog = true"
       />
     </div>
 
-    <!-- 操作列を固定し、データ列は表の中で横スクロールして読む。 -->
+    <!-- 発行済みリンクはサーバーにハッシュしか残らないため、一覧からコピー・QR-PDF はできない。 -->
+    <p class="mb-1 text-sm text-surface-500">{{ t('secret_token.list.not_shown_hint') }}</p>
+    <!-- 見分けがつかない行は作成日時で区別する。失くしたら再発行、不要な古いリンクは × で無効にする。 -->
+    <p class="mb-2 text-sm text-surface-500" data-testid="invite-token-links-hint">
+      {{ t('secret_token.list.links_hint') }}
+    </p>
+
+    <!-- 操作列（無効化 ×）は先頭に置く。frozen にすると 390px 幅で他列に重なり、末尾だと横スクロールの外に隠れるため。 -->
     <DataTable
       :value="tokens"
       :loading="loading"
       data-key="id"
       class="max-w-full"
-      table-class="min-w-[496px] sm:min-w-[680px]"
+      table-class="min-w-[640px] sm:min-w-[800px]"
       scrollable
     >
-      <Column :header="t('inviteToken.role')" style="width: 120px">
-        <template #body="{ data }">
-          <RoleBadge :role="data.roleName" />
-        </template>
-      </Column>
-      <Column :header="t('inviteToken.expiry')" style="width: 120px">
-        <template #body="{ data }">
-          <span :class="{ 'text-red-500 line-through': isExpired(data) }">
-            {{ formatTokenDate(data.expiresAt) }}
-          </span>
-        </template>
-      </Column>
-      <Column :header="t('inviteToken.uses')" style="width: 120px">
-        <template #body="{ data }"> {{ data.usedCount }} / {{ data.maxUses ?? '∞' }} </template>
-      </Column>
       <Column
         :header="t('label.actions')"
-        header-class="w-[136px] whitespace-nowrap sm:w-80"
-        body-class="w-[136px] sm:w-80"
-        align-frozen="right"
-        frozen
+        header-class="w-[96px] whitespace-nowrap"
+        body-class="w-[96px]"
       >
         <template #body="{ data }">
           <div class="flex flex-wrap gap-1">
-            <Button
-              v-if="!isExpired(data)"
-              v-tooltip.top="t('inviteToken.copy')"
-              :aria-label="t('inviteToken.copy')"
-              class="!min-h-11 !min-w-11 shrink-0"
-              icon="pi pi-copy"
-              text
-              rounded
-              size="small"
-              @click="copyInviteUrl(data.token)"
-            />
-            <Button
-              v-if="props.scopeType === 'team'"
-              :label="t('inviteToken.printQrPdf')"
-              :aria-label="t('inviteToken.printQrPdf')"
-              class="!min-h-11 !min-w-11 w-full shrink-0 whitespace-normal sm:w-auto sm:whitespace-nowrap"
-              icon="pi pi-file-pdf"
-              text
-              rounded
-              size="small"
-              :loading="pdfLoadingId === data.id"
-              @click="downloadQrPdf(data.id)"
-            />
             <Button
               v-if="!isExpired(data)"
               v-tooltip.top="t('inviteToken.revoke')"
@@ -219,12 +218,51 @@ onMounted(() => loadTokens())
           </div>
         </template>
       </Column>
+      <Column :header="t('inviteToken.role')" style="width: 120px">
+        <template #body="{ data }">
+          <RoleBadge :role="data.roleName" />
+        </template>
+      </Column>
+      <Column :header="t('inviteToken.expiry')" style="width: 120px">
+        <template #body="{ data }">
+          <span :class="{ 'text-red-500 line-through': isExpired(data) }">
+            {{ formatTokenDate(data.expiresAt) }}
+          </span>
+        </template>
+      </Column>
+      <Column :header="t('inviteToken.uses')" style="width: 120px">
+        <template #body="{ data }"> {{ data.usedCount }} / {{ data.maxUses ?? '∞' }} </template>
+      </Column>
+      <Column :header="t('secret_token.list.created_at')" style="width: 180px">
+        <template #body="{ data }">
+          <span class="whitespace-nowrap">{{ formatIssuedAt(data.createdAt) }}</span>
+        </template>
+      </Column>
       <template #empty>
-        <div class="p-4 text-center text-surface-500">
+        <div v-if="!loading" class="p-4 text-center text-surface-500">
           {{ t('inviteToken.empty') }}
         </div>
       </template>
     </DataTable>
+
+    <!-- 発行直後にだけ平文のリンクを見せる -->
+    <SecretIssuedDialog
+      v-if="issuedToken"
+      :visible="showIssuedDialog"
+      :url="issuedUrl"
+      @update:visible="onIssuedVisibleChange"
+    >
+      <template v-if="props.scopeType === 'team'" #actions>
+        <Button
+          :label="t('secret_token.issued_dialog.pdf_download')"
+          icon="pi pi-file-pdf"
+          class="!min-h-11 w-full whitespace-normal"
+          outlined
+          :loading="pdfLoading"
+          @click="downloadQrPdf"
+        />
+      </template>
+    </SecretIssuedDialog>
 
     <!-- 作成ダイアログ -->
     <Dialog

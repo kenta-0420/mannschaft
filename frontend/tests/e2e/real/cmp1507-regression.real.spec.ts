@@ -1,12 +1,13 @@
 import { test, type Browser, type Page } from '@playwright/test'
 import { readWorld, type World } from './helpers/cmp1507-global-setup'
-import { API, expect, gotoAndHydrate, must, openAs, recordAsset, responseOf, type Actor } from './helpers/n1p1-world'
+import { API, apiAs, expect, gotoAndHydrate, must, openAs, recordAsset, responseOf, type Actor } from './helpers/n1p1-world'
 
 /**
  * 実機E2E: CMP-261105-1507（N+1 戦役で見つかった既存不具合6件の修正）の確認。
  *   #4306 FE プロジェクト画面  ① 進捗率が100倍 / ⑤ 関連タスクが JSON 生表示 / ⑥ マイルストーン「完了数/総数」が「/」だけ
  *   #4311 BE チャット          ② 同じ秒のメッセージの並びを (created_at, id) で確定
  *   #4324 BE 時間割の学期      ③ academicYear 必須・sortOrder 省略可 / ④ 時間割が残る学期の削除は 409（TIMETABLE_022）
+ *   （③④ の画面側は #4358 で修正済みの画面に合わせてある）
  *
  * モックなし（page.route 不使用）。API はログイン・前提データ作成（globalSetup）・後始末（globalTeardown）と、
  * 画面に導線が無い前提操作（時間割の作成・削除）にだけ使う。確かめる表示はすべて画面を開いて確かめる。
@@ -112,7 +113,14 @@ test('② チャット: 続けて投稿したメッセージが画面で投稿�
     const created: string[] = []
     page.on('response', async (response) => {
       if (response.request().method() === 'POST' && new RegExp(`/api/v1/chat/channels/${w.channel.id}/messages$`).test(new URL(response.url()).pathname)) {
-        const body = await response.text().catch(() => '')
+        let body: string
+        try {
+          body = await response.text()
+        } catch (error) {
+          // 本文が読めなかった投稿は ? 印で記録し、後段の件数・同秒の検査で失敗させる（握りつぶして合格にしない）
+          console.log(`[cmp1507] ② 投稿応答の本文を読めない: ${String(error)}`)
+          body = ''
+        }
         created.push(body.match(/"(?:createdAt|created_at)":"([^"]+)"/)?.[1] ?? `?${body.slice(0, 80)}`)
       }
     })
@@ -186,48 +194,39 @@ async function openTermTab(page: Page) {
   await tab.click()
 }
 
-test('③ 学期作成: 年度を空にして送ると 400 で作成されない／年度を入れれば作成できる（並び順の入力欄は画面に無く 0 で作成）（ADMIN）', async ({ browser }) => {
+// #4358 で学期画面を共通部品 TimetableTermManager に切り出した。年度欄は必須（空なら送信前に欄のエラー）、
+// 学期削除は確認つきで、409（TIMETABLE_022）には専用の文言が出る。以下はその修正後の画面での確認。
+async function openTermForm(page: Page, name: string, start: string, end: string) {
+  await page.getByTestId('term-add-button').click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+  await dialog.getByTestId('term-name-input').fill(name)
+  await dialog.getByTestId('term-start-input').fill(start)
+  await dialog.getByTestId('term-end-input').fill(end)
+  return dialog
+}
+
+test('③ 学期作成: 年度を空にすると欄のエラーで送信されず、年度を入れれば 201 で作成できる（ADMIN）', async ({ browser }) => {
   const name = `C1507学期A ${w.tag}`
   await withPage(browser, w.admin, undefined, async (page) => {
     await gotoAndHydrate(page, TERM_PAGE(w.orgA.slug))
     await openTermTab(page)
-    await page.getByRole('button', { name: '学期追加' }).click()
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toBeVisible()
-    await dialog.getByPlaceholder('例: 1学期').fill(name)
-    await dialog.locator('input[type=date]').nth(0).fill('2031-04-01')
-    await dialog.locator('input[type=date]').nth(1).fill('2031-09-30')
-    // 年度を空にする
-    const year = dialog.getByRole('spinbutton')
-    await year.click()
-    await year.press('Control+A')
-    await year.press('Delete')
-    await year.press('Tab')
-    await expect(year).toHaveValue('')
-    await shot(page, 't3-term-form-year-empty')
-
-    // 送信 → BE は 500 でなく 400（検証エラー）を返す
-    const post = page.waitForResponse((r) => r.request().method() === 'POST' && /\/organizations\/[^/]+\/timetable-terms$/.test(new URL(r.url()).pathname))
-    await dialog.getByRole('button', { name: '学期追加' }).click()
-    const response = await post
-    console.log(`[cmp1507] ③ 年度なし POST -> ${response.status()} ${(await response.text()).slice(0, 300)}`)
-    expect(response.status()).toBe(400)
-    // 画面には失敗が出て、ダイアログは開いたまま、一覧に学期は増えない
-    const toast = page.locator('.p-toast-message').last()
-    await expect(toast).toBeVisible({ timeout: 15_000 })
-    // 観測: 欄ごとのバリデーションメッセージではなく、汎用の失敗トースト（BE の fieldErrors は画面に出ない）
-    console.log(`[cmp1507] ③ 年度なし 画面表示（トースト）: ${(await toast.innerText()).replace(/\s+/g, ' ')}`)
-    await expect(toast).toContainText('学期の作成に失敗しました')
-    await expect(dialog.getByText('必須')).toHaveCount(0)
+    const posted: string[] = []
+    page.on('request', (r) => {
+      if (r.method() === 'POST' && /\/organizations\/[^/]+\/timetable-terms$/.test(new URL(r.url()).pathname)) posted.push(r.postData() ?? '')
+    })
+    const dialog = await openTermForm(page, name, '2031-04-01', '2031-09-30')
+    // 年度を空にして送る → 送信前の検証で欄のエラー（BE の 400 に頼らない）
+    await dialog.getByTestId('term-year-input').fill('')
+    await dialog.getByTestId('term-dialog-submit').click()
+    await expect(dialog.getByTestId('term-academic-year-error')).toHaveText('年度を入力してください')
+    expect(posted).toHaveLength(0)
     await expect(dialog).toBeVisible()
     await shot(page, 't3-term-year-empty-error')
-
-    // 年度を入れ直して送れば作成できる（並び順は画面に入力欄が無く、省略扱い＝既定 0）
-    await year.click()
-    await year.pressSequentially('2031')
-    await year.press('Tab')
+    // 年度を入れ直して送れば作成できる（並び順の入力欄は画面に無く 0）
+    await dialog.getByTestId('term-year-input').fill('2031')
     const created = page.waitForResponse((r) => r.request().method() === 'POST' && /\/organizations\/[^/]+\/timetable-terms$/.test(new URL(r.url()).pathname))
-    await dialog.getByRole('button', { name: '学期追加' }).click()
+    await dialog.getByTestId('term-dialog-submit').click()
     const ok = await created
     expect(ok.status()).toBe(201)
     const termId = (await ok.json()).data.id as number
@@ -238,7 +237,7 @@ test('③ 学期作成: 年度を空にして送ると 400 で作成されない
   })
 })
 
-test('④ 学期削除: 時間割が残る学期（論理削除済みを含む）は 409 で消えず、時間割の無い学期は消せる（ADMIN）', async ({ browser }) => {
+test('④ 学期削除: 生きている時間割が残る学期は 409 と専用の文言で消え、削除済みの時間割だけ・時間割なしの学期は確認のうえ消せる。所属外チームは組織の学期を使えない（ADMIN）', async ({ browser }) => {
   const nameKept = `C1507学期B ${w.tag}`
   const nameFree = `C1507学期C ${w.tag}`
   await withPage(browser, w.admin, undefined, async (page) => {
@@ -246,18 +245,10 @@ test('④ 学期削除: 時間割が残る学期（論理削除済みを含む�
     await openTermTab(page)
 
     const addTerm = async (name: string, start: string, end: string) => {
-      await page.getByRole('button', { name: '学期追加' }).click()
-      const dialog = page.getByRole('dialog')
-      await dialog.getByPlaceholder('例: 1学期').fill(name)
-      await dialog.locator('input[type=date]').nth(0).fill(start)
-      await dialog.locator('input[type=date]').nth(1).fill(end)
-      const year = dialog.getByRole('spinbutton')
-      await year.click()
-      await year.press('Control+A')
-      await year.pressSequentially('2032')
-      await year.press('Tab')
+      const dialog = await openTermForm(page, name, start, end)
+      await dialog.getByTestId('term-year-input').fill('2032')
       const created = page.waitForResponse((r) => r.request().method() === 'POST' && /\/organizations\/[^/]+\/timetable-terms$/.test(new URL(r.url()).pathname))
-      await dialog.getByRole('button', { name: '学期追加' }).click()
+      await dialog.getByTestId('term-dialog-submit').click()
       const response = await created
       expect(response.status()).toBe(201)
       await expect(page.getByRole('cell', { name })).toBeVisible({ timeout: 15_000 })
@@ -269,7 +260,24 @@ test('④ 学期削除: 時間割が残る学期（論理削除済みを含む�
     // 時間割の無い学期は後始末で消す（時間割が残る学期は仕様上消せないので記録しない。証拠に残骸として書く）
     recordAsset(`term ${freeId}`, `/api/v1/timetable-terms/${freeId}`, w.admin)
 
-    // 前提: 時間割を作る（画面にチーム側から学期を選べる導線が無いため API で作成）
+    // #4436: 組織の学期を使えるのは、その組織に ACTIVE で所属するチームだけ。所属前の t1 からは 404 TIMETABLE_002
+    const outside = await apiAs(w.admin, 'POST', `/api/v1/teams/${w.t1.slug}/timetables`, {
+      name: `C1507所属外 ${w.tag}`,
+      termId: keptId,
+      effectiveFrom: '2032-04-01',
+      visibility: 'MEMBERS_ONLY',
+    })
+    console.log(`[cmp1507] ④(0) 所属外チームの時間割作成 -> ${outside.status} ${JSON.stringify(outside.body).slice(0, 200)}`)
+    expect(outside.status).toBe(404)
+    expect(JSON.stringify(outside.body)).toContain('TIMETABLE_002')
+    // 前提: t1 を組織A に ACTIVE 所属させる（招待→承諾。画面に導線の無い前提操作なので API）
+    await must(w.admin, 'POST', `/api/v1/organizations/${w.orgA.slug}/team-invites`, { teamSlug: w.t1.slug })
+    const invites = await must(w.admin, 'GET', `/api/v1/teams/${w.t1.slug}/org-invites`)
+    const invite = (invites.data as Array<{ id: string; organization?: { slug: string } }>).find((row) => row.organization?.slug === w.orgA.slug)
+    if (!invite) throw new Error(`招待が見つからない ${w.orgA.slug} -> ${w.t1.slug}`)
+    await must(w.admin, 'POST', `/api/v1/teams/${w.t1.slug}/org-invites/${invite.id}/accept`)
+
+    // 前提: 時間割を作る（API）
     const timetable = await must(w.admin, 'POST', `/api/v1/teams/${w.t1.slug}/timetables`, {
       name: `C1507時間割 ${w.tag}`,
       termId: keptId,
@@ -279,36 +287,40 @@ test('④ 学期削除: 時間割が残る学期（論理削除済みを含む�
     const timetableId = timetable.data.id as number
     console.log(`[cmp1507] ④ 前提: 学期 ${keptId} に時間割 ${timetableId} を作成`)
 
-    const row = (name: string) => page.getByRole('row').filter({ hasText: name })
-    const clickTrash = async (name: string) => {
+    // 削除は確認つき。確認に応じて初めて DELETE が飛ぶ
+    const clickTrash = async (id: number) => {
+      await page.getByTestId(`term-delete-${id}`).click()
+      await expect(page.locator('.p-confirmdialog')).toBeVisible()
       const del = page.waitForResponse((r) => r.request().method() === 'DELETE' && /\/timetable-terms\/\d+$/.test(new URL(r.url()).pathname))
-      await row(name).locator('button:has(.pi-trash)').click()
+      await page.locator('.p-confirmdialog-accept-button').click()
       return del
     }
 
-    // (a) 時間割が生きている学期 → 409
-    const live = await clickTrash(nameKept)
+    // (a) 時間割が生きている学期 → 409 と専用の文言
+    const live = await clickTrash(keptId)
     console.log(`[cmp1507] ④(a) 時間割あり DELETE -> ${live.status()} ${(await live.text()).slice(0, 300)}`)
     expect(live.status()).toBe(409)
     const liveToast = page.locator('.p-toast-message').last()
-    await expect(liveToast).toBeVisible({ timeout: 15_000 })
-    // 観測: 409 専用の文言ではなく汎用のエラートースト
+    await expect(liveToast).toContainText('時間割が残っているため、この学期は削除できません', { timeout: 15_000 })
     console.log(`[cmp1507] ④(a) 画面表示（トースト）: ${(await liveToast.innerText()).replace(/\s+/g, ' ')}`)
-    await expect(row(nameKept)).toHaveCount(1)
+    await expect(page.getByRole('cell', { name: nameKept })).toHaveCount(1)
     await shot(page, 't4-term-delete-409-live')
 
-    // (b) 時間割を削除（論理削除）した後も、その学期は 409（論理削除済みも参照元として残る）
+    // (b) #4436（B1）: 時間割を削除（論理削除）して削除済みだけになった学期は、確認つきで 204 で消せる
     await must(w.admin, 'DELETE', `/api/v1/teams/${w.t1.slug}/timetables/${timetableId}`)
-    const soft = await clickTrash(nameKept)
-    console.log(`[cmp1507] ④(b) 時間割削除後 DELETE -> ${soft.status()} ${(await soft.text()).slice(0, 300)}`)
-    expect(soft.status()).toBe(409)
-    await expect(row(nameKept)).toHaveCount(1)
-    await shot(page, 't4-term-delete-409-soft')
+    const soft = await clickTrash(keptId)
+    console.log(`[cmp1507] ④(b) 時間割削除後 DELETE -> ${soft.status()}`)
+    expect(soft.status()).toBe(204)
+    await expect(page.getByRole('cell', { name: nameKept })).toHaveCount(0, { timeout: 15_000 })
+    await shot(page, 't4-term-delete-soft-only')
 
-    // (c) 時間割の無い学期は削除できる
-    const free = await clickTrash(nameFree)
+    // (c) 時間割の無い学期は削除できる（確認でキャンセルすれば消えない）
+    await page.getByTestId(`term-delete-${freeId}`).click()
+    await page.locator('.p-confirmdialog-reject-button').click()
+    await expect(page.getByRole('cell', { name: nameFree })).toHaveCount(1)
+    const free = await clickTrash(freeId)
     expect(free.status()).toBe(204)
-    await expect(row(nameFree)).toHaveCount(0, { timeout: 15_000 })
+    await expect(page.getByRole('cell', { name: nameFree })).toHaveCount(0, { timeout: 15_000 })
     await shot(page, 't4-term-delete-ok')
   })
 })

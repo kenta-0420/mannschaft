@@ -34,6 +34,12 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessageEntity, 
     List<ChatMessageEntity> findByChannelIdOrderByCreatedAtDescIdDesc(Long channelId, Pageable pageable);
 
     /**
+     * チャンネルの最新の未削除メッセージを返す（部屋一覧プレビューの再計算用）。
+     * {@code @SQLRestriction} により削除済みは含まれない。
+     */
+    Optional<ChatMessageEntity> findFirstByChannelIdOrderByCreatedAtDescIdDesc(Long channelId);
+
+    /**
      * カーソル（メッセージID）の created_at を、論理削除済みの行も含めて取得する。
      * <p>境界の (created_at, id) はカーソル対象が削除されていても解決できる必要がある
      * （{@code @SQLRestriction} が副問い合わせにも効いて境界が NULL になり結果が空になるのを防ぐ）。

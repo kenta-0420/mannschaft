@@ -10,6 +10,7 @@ import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDispatchService;
 import com.mannschaft.app.notification.service.NotificationService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
@@ -35,6 +36,11 @@ import java.util.concurrent.TimeUnit;
  * <ul>
  *   <li>{@code inquiry_notified:{channelId}} — TTL 300秒（5分）</li>
  * </ul>
+ *
+ * <p>遷移先は {@code /teams/{slug}/chat?channel={channelId}}（CMP-261030-0648。FE のルートは slug しか受けない）。
+ * slug は宛先ループの前に1回だけ解決し、宛先が0人なら解決しない。slug が null または取得が例外のときは
+ * {@code /notifications} にして通知そのものは送る。閲覧できない受信者は従来どおり
+ * {@link NotificationService#createNotification} の可視性判定で弾かれ、保存も配信もされない。</p>
  */
 @Slf4j
 @Component
@@ -50,6 +56,8 @@ public class InquiryChatEventListener {
     private final NotificationDispatchService notificationDispatchService;
     private final MessageSource messageSource;
     private final UserLocaleCache userLocaleCache;
+    /** 遷移先 URL の slug 解決用（Repository は直接使わず Service 経由）。 */
+    private final TeamService teamService;
 
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
             reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。問い合わせ受信時のチャット連携。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
@@ -67,7 +75,13 @@ public class InquiryChatEventListener {
         List<Long> recipientIds = new ArrayList<>();
         recipientIds.addAll(userRoleRepository.findAdminUserIdsByTeamId(event.getTeamId()));
         recipientIds.addAll(userRoleRepository.findAllDeputyAdminUserIdsByTeamId(event.getTeamId()));
-        recipientIds = recipientIds.stream().distinct().toList();
+        Long actorUserId = event.getActorUserId();
+        recipientIds = recipientIds.stream().distinct().filter(id -> !id.equals(actorUserId)).toList();
+        if (recipientIds.isEmpty()) {
+            log.debug("問い合わせ通知の宛先なし: channelId={}, teamId={}", event.getChannelId(), event.getTeamId());
+            return;
+        }
+        String actionUrl = buildChatUrl(event);
 
         // Issue #2715 CMP-055 ロットC-6: 受信者ごとに locale が異なるため、ループの外で一括解決する（N+1 防止）。
         // Codex 検分是正（PR #2873）: バルク取得自体を try で隔離し、失敗時は既定 locale ("ja") で継続する。
@@ -80,9 +94,6 @@ public class InquiryChatEventListener {
         }
 
         for (Long recipientId : recipientIds) {
-            if (recipientId.equals(event.getActorUserId())) {
-                continue;
-            }
             try {
                 Locale locale = Locale.forLanguageTag(locales.getOrDefault(recipientId, "ja"));
                 String title = messageSource.getMessage(
@@ -105,7 +116,7 @@ public class InquiryChatEventListener {
                         event.getMessageId(),
                         NotificationScopeType.TEAM,
                         event.getTeamId(),
-                        "/teams/" + event.getTeamId() + "/chat?channel=" + event.getChannelId(),
+                        actionUrl,
                         event.getActorUserId()
                 );
                 adminBusinessAlertService.invalidateCache(recipientId);
@@ -120,5 +131,22 @@ public class InquiryChatEventListener {
         }
 
         log.info("問い合わせ通知送信完了: channelId={}, teamId={}, recipientCount={}", event.getChannelId(), event.getTeamId(), recipientIds.size());
+    }
+
+    /**
+     * チームチャットの該当チャンネルへの遷移先を返す（宛先ループの前に1回だけ呼ぶ）。
+     *
+     * <p>slug が解決できなければ数値 URL は作らず通知一覧へ逃がす。取得の例外も通知を止めない。</p>
+     */
+    private String buildChatUrl(InquiryReceivedEvent event) {
+        String slug;
+        try {
+            slug = teamService.getSlugById(event.getTeamId());
+        } catch (Exception e) {
+            log.warn("問い合わせ通知の遷移先 slug を解決できません（/notifications で送ります）: teamId={}, channelId={}",
+                    event.getTeamId(), event.getChannelId(), e);
+            slug = null;
+        }
+        return slug != null ? "/teams/" + slug + "/chat?channel=" + event.getChannelId() : "/notifications";
     }
 }

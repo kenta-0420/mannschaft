@@ -100,5 +100,35 @@
     "created": "장소를 만들었습니다",
     "updated": "장소를 수정했습니다",
     "deleted": "장소를 삭제했습니다"
+  },
+  "memberCardDisplay": {
+    "status": {
+      "ALL": "전체",
+      "ACTIVE": "유효",
+      "SUSPENDED": "정지됨",
+      "REVOKED": "무효"
+    },
+    "scope": {
+      "PLATFORM": "플랫폼",
+      "TEAM": "팀",
+      "ORGANIZATION": "조직"
+    },
+    "qrAutoRefresh": "5분마다 자동 갱신",
+    "checkinCount": "체크인 {count}회",
+    "regenerate": "QR 재생성",
+    "suspend": "일시 정지",
+    "reactivate": "재개",
+    "pageTitle": "QR 회원증",
+    "tabList": "회원증 목록",
+    "tabHistory": "체크인 기록",
+    "fetchFailed": "회원증을 불러오지 못했습니다",
+    "suspendSuccess": "회원증을 일시 중지했습니다",
+    "suspendFailed": "일시 중지에 실패했습니다",
+    "reactivateSuccess": "회원증을 재개했습니다",
+    "reactivateFailed": "재개에 실패했습니다",
+    "empty": "회원증이 없습니다",
+    "qrFetchFailed": "QR 코드를 불러오지 못했습니다",
+    "qrRegenerated": "QR 코드를 재생성했습니다",
+    "qrRegenerateFailed": "QR 코드 재생성에 실패했습니다"
   }
 }
