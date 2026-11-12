@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-11-11T21:46:14+00:00",
+  "generatedAt": "2026-11-12T14:32:27+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,9 +8,9 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "d61097a49227386d8b4044a2a6ced72fade5b50a",
-    "taskListCommit": "17ec1a45bda27772182d27a2baecabccf383c0ff",
+    "taskListCommit": "499c7126148cda1562a11c3e18be3e080f74a8b0",
     "inventorySha256": "b0a1f97197840c865756a40f12f577cfeb10aa8083dc95f2932f7b3a7f90528a",
-    "taskListSha256": "00af2c7387427e8d218dd726517155393378dc988515da52f64b4166d588b47d",
+    "taskListSha256": "eae0f43fba003f8acfe60ae263bbc39713595ff6c162f22a295fbb315e797bbc",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
@@ -20,7 +20,7 @@ window.BETA_INVENTORY_DATA = {
     "features": 44,
     "capabilities": 95,
     "splitParents": 33,
-    "campaigns": 694,
+    "campaigns": 696,
     "layer": {
       "能力": 26,
       "ドメイン": 18
@@ -37,11 +37,11 @@ window.BETA_INVENTORY_DATA = {
   "verification": {
     "raw": {
       "features": 44,
-      "campaigns": 694
+      "campaigns": 696
     },
     "parsed": {
       "features": 44,
-      "campaigns": 694,
+      "campaigns": 696,
       "core": 25,
       "noncore": 19,
       "blockers": 23,
@@ -9043,6 +9043,45 @@ window.BETA_INVENTORY_DATA = {
         "registrationSource": "actual-resident-artifacts",
         "trusted": false,
         "status": "observed-unverified"
+      },
+      {
+        "id": "ALIC-CMP261108-H10R6-R1",
+        "personaArchetype": "一般×素直",
+        "runId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+        "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+        "originalResidentId": "resident-1",
+        "idAssignment": "原reportに登録用persona IDがないため登録時付与。固定P01-P20へ変換しない。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H10R6-R2",
+        "personaArchetype": "注意中断×復帰",
+        "runId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+        "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+        "originalResidentId": "resident-2",
+        "idAssignment": "原reportに登録用persona IDがないため登録時付与。固定P01-P20へ変換しない。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H10R6-R3",
+        "personaArchetype": "一般×モバイル表示",
+        "runId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+        "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+        "originalResidentId": "resident-3",
+        "idAssignment": "原reportに登録用persona IDがないため登録時付与。固定P01-P20へ変換しない。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
       }
     ],
     "journeys": [
@@ -9908,6 +9947,60 @@ window.BETA_INVENTORY_DATA = {
         "status": "observed-unverified",
         "executionCompleted": false,
         "allGoalsReached": false,
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H10R6-R1-J1",
+        "personaId": "ALIC-CMP261108-H10R6-R1",
+        "purpose": "自分の性格を知り、それがどんな恐竜の分身につながるか確認し、後から結果を見返せるか理解する",
+        "runId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+        "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+        "originalReportPath": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-1/general-exploration-report.md",
+        "idAssignment": "原reportにjourney IDがないため登録時付与。",
+        "executionCompleted": true,
+        "allGoalsReached": true,
+        "achievement": "24問完了、対応理由を理解、姿選択確定を再訪画面で確認、保存結果再表示",
+        "limitations": "desktopのみ。孵化7日待ち未実施、外見プレビュー未確認。汎用computer-use SKILLを1回読取（root採択に記録）、アプリsource/spec/expected-result汚染なしとのroot判定。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H10R6-R2-J1",
+        "personaId": "ALIC-CMP261108-H10R6-R2",
+        "purpose": "自分の診断を試し、途中で別画面へ寄り道して戻り、結果を理解し後から見返す",
+        "runId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+        "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+        "originalReportPath": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-2/interruption-exploration-report.md",
+        "idAssignment": "原reportにjourney IDがないため登録時付与。",
+        "executionCompleted": true,
+        "allGoalsReached": true,
+        "achievement": "4回答を明示保存、離脱後保持と再開、24問完了、同じ保存結果を再表示",
+        "limitations": "別日再訪・ログアウト・ブラウザ再起動・mobile未検証。未保存回答は離脱で消失したが、明示保存後の保持は確認済み。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H10R6-R3-J1",
+        "personaId": "ALIC-CMP261108-H10R6-R3",
+        "purpose": "本人の名前と生年月日から分身の結果を確認し、後から見返し、育て方を理解する",
+        "runId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+        "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+        "originalReportPath": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-3/resident-3-report.md",
+        "idAssignment": "原reportにjourney IDがないため登録時付与。",
+        "executionCompleted": true,
+        "allGoalsReached": true,
+        "achievement": "出生結果作成・再訪、卵開始・姿選択確定、遊び方を閲覧し7日待ちを理解。390×844/360×844で操作",
+        "limitations": "追加の無料ケア実行は未達（EGG）。割当目的に無料ケア実行要求なし。孵化7日待ち未実施。locale実値未確認、UI日本語。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
         "coveragePassed": false
       }
     ],
@@ -12638,6 +12731,138 @@ window.BETA_INVENTORY_DATA = {
         "trusted": false,
         "status": "observed-unverified",
         "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H10R6-R1-I001",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断結果・育て方",
+        "personaId": "ALIC-CMP261108-H10R6-R1",
+        "journeyId": "ALIC-CMP261108-H10R6-R1-J1",
+        "personaArchetype": "一般×素直",
+        "originalRunId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+        "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+        "title": "恐竜・診断の入口を設定で発見",
+        "detail": "ダッシュボードとマイページで入口を見つけず、設定から到達した。目的は達成。入口探索のUX観測であり導線不在の確定不具合ではない。",
+        "page": "/settings",
+        "screenshotPath": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-1/screen-5.png",
+        "urgency": "normal",
+        "priority": "should",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H10R6-R1-I002",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断結果・育て方",
+        "personaId": "ALIC-CMP261108-H10R6-R1",
+        "journeyId": "ALIC-CMP261108-H10R6-R1-J1",
+        "personaArchetype": "一般×素直",
+        "originalRunId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+        "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+        "title": "姿選択後の卵表示から確定を読み取りにくい",
+        "detail": "姿を選ぶと部屋へ戻り卵のままで、成功説明を即座に見つけなかった。選び方再訪で確定文と無効ボタンを確認。種名と理由は読めたが外見プレビュー・孵化後の姿は未確認。7日待ちは実施していない。",
+        "page": "/my/ranch",
+        "screenshotPath": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-1/screen-47.png",
+        "urgency": "normal",
+        "priority": "should",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H10R6-R1-I003",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断結果・育て方",
+        "personaId": "ALIC-CMP261108-H10R6-R1",
+        "journeyId": "ALIC-CMP261108-H10R6-R1-J1",
+        "personaArchetype": "一般×素直",
+        "originalRunId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+        "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+        "title": "タイプ番号と設問列の意味に迷う",
+        "detail": "結果の六軸と対応理由は理解できた。一方でタイプ番号と6つの設問文に選択回答・数値が添えられず、補足の意味が少し分かりにくかった。結果理解不能・表示欠陥とは断定しない。",
+        "page": "/my/ranch/results/[resultId]",
+        "screenshotPath": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-1/screen-45.png",
+        "urgency": "normal",
+        "priority": "should",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H10R6-R2-I004",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断結果・育て方",
+        "personaId": "ALIC-CMP261108-H10R6-R2",
+        "journeyId": "ALIC-CMP261108-H10R6-R2-J1",
+        "personaArchetype": "注意中断×復帰",
+        "originalRunId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+        "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+        "title": "保存を発見する前の離脱で未保存回答をやり直した",
+        "detail": "4回答を保存せずカレンダーへ離れBACKすると未選択に戻った。保存ボタンは24問後、上端時y3796/h44でviewport800外。明示保存後は離脱・再開で4回答保持し診断完了・再訪できた。保存済み回答消失とは扱わない。",
+        "page": "/my/ranch/diagnosis",
+        "screenshotPath": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-2/screen-20.png",
+        "urgency": "normal",
+        "priority": "should",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H10R6-R2-I005",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断結果・育て方",
+        "personaId": "ALIC-CMP261108-H10R6-R2",
+        "journeyId": "ALIC-CMP261108-H10R6-R2-J1",
+        "personaArchetype": "注意中断×復帰",
+        "originalRunId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+        "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+        "title": "保存結果の対応説明と準備中の文で迷った",
+        "detail": "保存時の分身の対応と準備中の文を同じ結果で読み、反映状態に迷った。rootは未開始の卵から始める表示を確認し、通常UIで開始後に同じ結果の選択ボタン有効を確認。正常eligibilityであり文言理解のUX観測として残す。",
+        "page": "/my/ranch/results/[resultId]",
+        "screenshotPath": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-2/screen-61.png",
+        "urgency": "normal",
+        "priority": "should",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H10R6-R3-I006",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断結果・育て方",
+        "personaId": "ALIC-CMP261108-H10R6-R3",
+        "journeyId": "ALIC-CMP261108-H10R6-R3-J1",
+        "personaArchetype": "一般×モバイル表示",
+        "originalRunId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+        "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+        "title": "部屋の想起リンクで読み込み失敗を2回観測",
+        "detail": "360×844で部屋の想起をするから/reflections/recallを開き読み込み失敗を2回観測。rootも360幅で再現しentryなしリンクとentry必須loadの原因を特定（RANCH-RECALL-ENTRY-001/P2）。root確定と住民登録の未実証ラベルを分離。修正・RED/GREEN・merge・DONEはこの提案で主張しない。",
+        "page": "/reflections/recall",
+        "screenshotPath": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-3/screen-55.png",
+        "urgency": "normal",
+        "priority": "should",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
       }
     ],
     "runEnvironments": {
@@ -12918,6 +13143,25 @@ window.BETA_INVENTORY_DATA = {
         "coveragePassed": false,
         "formalParentCompletion": false,
         "limits": "親とUI hostはexit 1。入口に全3住民が迷ったがwidget初期OFFの既存仕様で、導線不在の確定不具合ではない。"
+      },
+      "ranchmapping-2f3a9ef6613fb32cc3576c59": {
+        "runId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+        "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+        "executionCompleted": true,
+        "allGoalsReached": true,
+        "formalParentCompletion": false,
+        "viewport": [
+          "1280x800 (resident-2)",
+          "390x844 (resident-3)",
+          "360x844 (resident-3)"
+        ],
+        "rootAdoptionPath": "outputs/ranch-h10-runtime-prep-20261112/root-r6-actual-runtime-adoption.json",
+        "limitation": "assigned goals達成とB0 coverage/修正完了は別。旧H5観測を書換えない。新画像はprivate-local path/hash参照のみ。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
       }
     }
   },
@@ -63482,8 +63726,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261111-0508",
       "title": "BE CI の Test (shard 0) が 85分の上限すれすれ。PR #4457 の run 42827066800 で 1h22m、run 42855308677 で 85分 timeout（テスト失敗なし）",
-      "status": "not-started",
-      "statusLabel": "P3 未着手",
+      "status": "working",
+      "statusLabel": "P3 実装中",
       "stage": "未設定",
       "priority": "未設定",
       "taskPriority": "P3",
@@ -63525,7 +63769,7 @@ window.BETA_INVENTORY_DATA = {
         "IT"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         4457
@@ -63533,6 +63777,156 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4457,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261111-1429",
+      "title": "招待リンク一覧のアリシゼーション確定不具合の修正（CMP-261110-0426 後続）",
+      "status": "working",
+      "statusLabel": "P3 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "InviteTokenList の ALIC-1〜6（同分発行の識別不能・モバイルで無効化操作が画面外・de ボタンの単語途中折返し・読込中の空文言・ネイティブ confirm・de 用語不一致）を修正し、各項目に落ちるテストを先行作成して green 化する",
+      "acceptance": [
+        "InviteTokenList の ALIC-1〜6（同分発行の識別不能・モバイルで無効化操作が画面外・de ボタンの単語途中折返し・読込中の空文言・ネイティブ confirm・de 用語不一致）を修正し、各項目に落ちるテストを先行作成して green 化する"
+      ],
+      "blocker": "CMP-261110-0426",
+      "issues": [
+        {
+          "label": "PR #4472（InviteTokenList.spec.ts の ALIC-1〜6、MemberPermissionSetupDialog.spec.ts のフッター折返し、tests/unit/utils/localDate.spec.ts）",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #4472（InviteTokenList.spec.ts の ALIC-1〜6、MemberPermissionSetupDialog.spec.ts のフッター折返し、tests/unit/utils/localDate.spec.ts）"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "CMP-261110-0426",
+        "InviteTokenList",
+        "ALIC-1",
+        "de",
+        "confirm",
+        "de",
+        "green"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [
+        4472
+      ],
+      "github": [
+        {
+          "number": 4472,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261112-0158",
+      "title": "Windows 標準 Nuxt/Nitro SSR production build が依存の外部化解決で長時間継続し実機へ進めない問題の根治",
+      "status": "working",
+      "statusLabel": "P2 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "Nitro 2.13.4 の Windows パス正規化と MLLY 1.8.2 の root package exports 逆引きを、版・全bytes SHA・一意一致・冪等・所有pathを限定した postinstall 補正で正式 public import に戻す。CJS/ESM双方を扱い、未知版/hashでは全target無書込、失敗は非0。依存版/lock/SSR/CSP/authを維持し、既存Docker COPYと明示CI試験へ配線。意味あるRED→GREEN、正規SSR build終端、preview実BE/FE/DB、権限横断UI・実機後fresh3、独立検分/CI/所有cleanupまで確認する",
+      "acceptance": [
+        "Nitro 2.13.4 の Windows パス正規化と MLLY 1.8.2 の root package exports 逆引きを、版・全bytes SHA・一意一致・冪等・所有pathを限定した postinstall 補正で正式 public import に戻す。CJS/ESM双方を扱い、未知版/hashでは全target無書込、失敗は非0。依存版/lock/SSR/CSP/authを維持し、既存Docker COPYと明示CI試験へ配線。意味あるRED→GREEN、正規SSR build終端、preview実BE/FE/DB、権限横断UI・実機後fresh3、独立検分/CI/所有cleanupまで確認する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "V PR #4448 の実機準備で発見。API権限fixtureは成立、画面実機未実施。修正前再現2件確認、製品修正未実施",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "V PR #4448 の実機準備で発見。API権限fixtureは成立、画面実機未実施。修正前再現2件確認、製品修正未実施"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "scope app（既存package.json等を扱う）。他CMP完了を進めない"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "Windows",
+        "Nuxt",
+        "Nitro",
+        "SSR",
+        "production",
+        "build",
+        "Nitro",
+        "Windows",
+        "MLLY",
+        "root",
+        "package",
+        "exports",
+        "bytes",
+        "SHA",
+        "path",
+        "postinstall",
+        "public",
+        "import",
+        "CJS",
+        "ESM",
+        "hash",
+        "target",
+        "lock",
+        "SSR",
+        "CSP",
+        "auth",
+        "Docker",
+        "COPY",
+        "CI",
+        "RED",
+        "GREEN",
+        "SSR",
+        "build",
+        "preview",
+        "BE",
+        "FE",
+        "DB",
+        "UI",
+        "fresh3",
+        "CI",
+        "cleanup"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [
+        4448
+      ],
+      "github": [
+        {
+          "number": 4448,
           "kind": "unsynced",
           "state": "unknown",
           "title": "",
