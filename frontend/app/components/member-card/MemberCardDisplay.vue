@@ -10,6 +10,7 @@ const emit = defineEmits<{
   reactivate: [id: number]
 }>()
 
+const { t } = useI18n()
 const memberCardApi = useMemberCardApi()
 const notification = useNotification()
 
@@ -23,13 +24,13 @@ const statusSeverity = computed(() => {
 })
 
 const statusLabel = computed(() => {
-  const map: Record<string, string> = { ACTIVE: '有効', SUSPENDED: '停止中', REVOKED: '無効' }
-  return map[props.card.status] ?? props.card.status
+  const known = ['ACTIVE', 'SUSPENDED', 'REVOKED']
+  return known.includes(props.card.status) ? t(`memberCardDisplay.status.${props.card.status}`) : props.card.status
 })
 
 const scopeLabel = computed(() => {
-  const map: Record<string, string> = { PLATFORM: 'プラットフォーム', TEAM: 'チーム', ORGANIZATION: '組織' }
-  return map[props.card.scopeType] ?? props.card.scopeType
+  const known = ['PLATFORM', 'TEAM', 'ORGANIZATION']
+  return known.includes(props.card.scopeType) ? t(`memberCardDisplay.scope.${props.card.scopeType}`) : props.card.scopeType
 })
 
 async function loadQr() {
@@ -38,7 +39,7 @@ async function loadQr() {
   try {
     qrData.value = await memberCardApi.getQr(props.card.id)
   } catch {
-    notification.error('QRコードの取得に失敗しました')
+    notification.error(t('memberCardDisplay.qrFetchFailed'))
   } finally {
     loadingQr.value = false
   }
@@ -47,9 +48,9 @@ async function loadQr() {
 async function handleRegenerate() {
   try {
     qrData.value = await memberCardApi.regenerate(props.card.id)
-    notification.success('QRコードを再生成しました')
+    notification.success(t('memberCardDisplay.qrRegenerated'))
   } catch {
-    notification.error('QRコードの再生成に失敗しました')
+    notification.error(t('memberCardDisplay.qrRegenerateFailed'))
   }
 }
 
@@ -85,13 +86,13 @@ onUnmounted(() => {
           </div>
           <div v-else-if="qrData" class="inline-block rounded-lg border border-surface-300 bg-white p-4 dark:border-surface-600">
             <QrCodeImage :value="qrData.qrToken" :size="200" />
-            <p class="mt-2 text-xs text-surface-400">5分ごとに自動更新</p>
+            <p class="mt-2 text-xs text-surface-400">{{ $t('memberCardDisplay.qrAutoRefresh') }}</p>
           </div>
         </div>
 
         <div v-if="card.checkinCount > 0" class="mb-4 text-sm text-surface-500">
           <i class="pi pi-check-circle mr-1" />
-          チェックイン {{ card.checkinCount }} 回
+          {{ $t('memberCardDisplay.checkinCount', { count: card.checkinCount }) }}
         </div>
       </div>
     </template>
@@ -99,7 +100,7 @@ onUnmounted(() => {
       <div class="flex justify-center gap-2">
         <Button
           v-if="card.status === 'ACTIVE'"
-          label="QR再生成"
+          :label="$t('memberCardDisplay.regenerate')"
           icon="pi pi-refresh"
           severity="secondary"
           size="small"
@@ -107,7 +108,7 @@ onUnmounted(() => {
         />
         <Button
           v-if="card.status === 'ACTIVE'"
-          label="一時停止"
+          :label="$t('memberCardDisplay.suspend')"
           icon="pi pi-pause"
           severity="warn"
           size="small"
@@ -116,7 +117,7 @@ onUnmounted(() => {
         />
         <Button
           v-if="card.status === 'SUSPENDED'"
-          label="再開"
+          :label="$t('memberCardDisplay.reactivate')"
           icon="pi pi-play"
           severity="success"
           size="small"

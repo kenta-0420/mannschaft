@@ -11,14 +11,15 @@ const emit = defineEmits<{
   reactivate: [id: number]
 }>()
 
+const { t } = useI18n()
 const statusFilter = ref<MemberCardStatus | 'ALL'>('ALL')
 
-const statusOptions = [
-  { label: 'すべて', value: 'ALL' },
-  { label: '有効', value: 'ACTIVE' },
-  { label: '停止中', value: 'SUSPENDED' },
-  { label: '無効', value: 'REVOKED' },
-]
+const statusOptions = computed(() =>
+  (['ALL', 'ACTIVE', 'SUSPENDED', 'REVOKED'] as const).map(value => ({
+    label: t(`memberCardDisplay.status.${value}`),
+    value,
+  })),
+)
 </script>
 
 <template>
@@ -29,7 +30,7 @@ const statusOptions = [
 
     <div v-if="cards.length === 0" class="py-12 text-center text-surface-500">
       <i class="pi pi-id-card mb-2 text-4xl" />
-      <p>会員証がありません</p>
+      <p>{{ $t('memberCardDisplay.empty') }}</p>
     </div>
 
     <div v-else class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

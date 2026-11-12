@@ -100,5 +100,27 @@
     "created": "拠点を作成しました",
     "updated": "拠点を更新しました",
     "deleted": "拠点を削除しました"
+  },
+  "memberCardDisplay": {
+    "status": {
+      "ALL": "すべて",
+      "ACTIVE": "有効",
+      "SUSPENDED": "停止中",
+      "REVOKED": "無効"
+    },
+    "scope": {
+      "PLATFORM": "プラットフォーム",
+      "TEAM": "チーム",
+      "ORGANIZATION": "組織"
+    },
+    "qrAutoRefresh": "5分ごとに自動更新",
+    "checkinCount": "チェックイン {count} 回",
+    "regenerate": "QR再生成",
+    "suspend": "一時停止",
+    "reactivate": "再開",
+    "empty": "会員証がありません",
+    "qrFetchFailed": "QRコードの取得に失敗しました",
+    "qrRegenerated": "QRコードを再生成しました",
+    "qrRegenerateFailed": "QRコードの再生成に失敗しました"
   }
 }
