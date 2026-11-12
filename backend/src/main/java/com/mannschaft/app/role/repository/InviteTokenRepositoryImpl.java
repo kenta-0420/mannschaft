@@ -33,10 +33,19 @@ class InviteTokenRepositoryImpl implements InviteTokenRepositoryCustom {
     private EntityManager em;
 
     @Override
-    public Optional<InviteScopeRef> findScopeByToken(String token) {
+    public Optional<InviteScopeRef> findScopeByTokenHash(String tokenHash) {
+        return findScope("token_hash = :key", tokenHash);
+    }
+
+    @Override
+    public Optional<InviteScopeRef> findScopeById(Long id) {
+        return findScope("id = :key", id);
+    }
+
+    private Optional<InviteScopeRef> findScope(String predicate, Object key) {
         List<?> rows = em.createNativeQuery(
-                        "SELECT team_id, organization_id FROM invite_tokens WHERE token = :token")
-                .setParameter("token", token)
+                        "SELECT team_id, organization_id FROM invite_tokens WHERE " + predicate)
+                .setParameter("key", key)
                 .getResultList();
         if (rows.isEmpty()) {
             return Optional.empty();
@@ -48,12 +57,21 @@ class InviteTokenRepositoryImpl implements InviteTokenRepositoryCustom {
     }
 
     @Override
-    public Optional<InviteTokenSnapshot> lockSnapshotByToken(String token) {
+    public Optional<InviteTokenSnapshot> lockSnapshotByTokenHash(String tokenHash) {
+        return lockSnapshot("token_hash = :key", tokenHash);
+    }
+
+    @Override
+    public Optional<InviteTokenSnapshot> lockSnapshotById(Long id) {
+        return lockSnapshot("id = :key", id);
+    }
+
+    private Optional<InviteTokenSnapshot> lockSnapshot(String predicate, Object key) {
         List<?> rows = em.createNativeQuery(
                         "SELECT id, team_id, organization_id, role_id, expires_at, max_uses, used_count, revoked_at, "
                                 + "scope_closure_generation, created_by, target_user_id, UTC_TIMESTAMP(6) "
-                                + "FROM invite_tokens WHERE token = :token FOR UPDATE")
-                .setParameter("token", token)
+                                + "FROM invite_tokens WHERE " + predicate + " FOR UPDATE")
+                .setParameter("key", key)
                 .getResultList();
         if (rows.isEmpty()) {
             return Optional.empty();
@@ -97,8 +115,8 @@ class InviteTokenRepositoryImpl implements InviteTokenRepositoryCustom {
     }
 
     @Override
-    public Optional<InviteTokenEntity> lockFreshByToken(String token) {
-        return lockFresh("t.token = :key", token);
+    public Optional<InviteTokenEntity> lockFreshByTokenHash(String tokenHash) {
+        return lockFresh("t.tokenHash = :key", tokenHash);
     }
 
     /**

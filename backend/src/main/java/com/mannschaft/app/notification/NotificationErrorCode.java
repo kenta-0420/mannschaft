@@ -26,7 +26,7 @@ public enum NotificationErrorCode implements ErrorCode {
     /** プッシュ購読が重複している（状態競合のため409） */
     SUBSCRIPTION_ALREADY_EXISTS("NOTIFICATION_005", "このエンドポイントは既に登録されています", Severity.WARN),
 
-    /** 通知は既に既読 */
+    /** 通知は既読状態（throw 元なし・未使用。CMP-261030-0652 で POST /read を冪等化したため）。写像と番人テストは残す */
     ALREADY_READ("NOTIFICATION_006", "通知は既に既読です", Severity.INFO),
 
     /** 通知は未読状態 */

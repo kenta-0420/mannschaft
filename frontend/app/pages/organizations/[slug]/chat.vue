@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ChatChannelResponse } from '~/types/chat'
 import { useChatCreatedChannel } from '~/composables/chat/useChatCreatedChannel'
+import { useChatOpenCreatedChannel } from '~/composables/chat/useChatOpenCreatedChannel'
 
 definePageMeta({
   middleware: 'auth',
@@ -12,7 +13,11 @@ const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('organizatio
 
 const selectedChannel = ref<ChatChannelResponse | null>(null)
 const showCreateDialog = ref(false)
-const listRef = ref<{ refresh: () => void; refreshAndSelect: (id: number) => void } | null>(null)
+const listRef = ref<{
+  refresh: () => Promise<void>
+  refreshAndSelect: (id: number) => void
+  selectIfPresent: (channelId: number) => boolean
+} | null>(null)
 
 function onSelectChannel(ch: ChatChannelResponse) {
   selectedChannel.value = ch
@@ -21,6 +26,11 @@ function onSelectChannel(ch: ChatChannelResponse) {
 function onCreated() {
   listRef.value?.refresh()
 }
+
+/** 作成ダイアログが開始した DM・作成した Zimmer を右ペインに開く（CMP-261105-1507） */
+const { openCreatedChannel } = useChatOpenCreatedChannel(listRef, (ch) => {
+  selectedChannel.value = ch
+})
 
 const { resolveCreatedChannel } = useChatCreatedChannel()
 
@@ -70,6 +80,8 @@ onMounted(() => loadPermissions())
       v-model:visible="showCreateDialog"
       :organization-id="orgSlug"
       @created="onCreated"
+      @open-dm="openCreatedChannel"
+      @open-channel="openCreatedChannel"
     />
   </div>
 </template>

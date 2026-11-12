@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261030-0648",
+  "scope": "app",
+  "implementation": {
+    "pr": 4457,
+    "sha": "edf7498752895c570a7b1db635918ff39076260c"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "予約通知の遷移先が /teams/{slug}/reservations",
+      "tests": [
+        {
+          "name": "ReservationAdminNotificationEventListenerTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/reservation/event/ReservationAdminNotificationEventListenerTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "問い合わせ通知の遷移先が /teams/{slug}/chat?channel={id}",
+      "tests": [
+        {
+          "name": "InquiryChatEventListenerTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/chat/event/InquiryChatEventListenerTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "業務アラートのリンクがチームごとの slug",
+      "tests": [
+        {
+          "name": "AdminBusinessAlertServiceTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/admin/service/AdminBusinessAlertServiceTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-8",
+      "description": "slug が解決できないときは /notifications",
+      "tests": [
+        {
+          "name": "各リスナーテスト ac8",
+          "evidence": "backend/src/test/java/com/mannschaft/app/chat/event/InquiryChatEventListenerTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-21a",
+      "description": "失効通知（ReservationPendingExpireService）の actionUrl が slug（部隊C・PR #4466）",
+      "tests": [
+        {
+          "name": "ReservationPendingExpireActionUrlSlugTest 失効通知のactionUrlはslug",
+          "evidence": "backend/src/test/java/com/mannschaft/app/reservation/service/ReservationPendingExpireActionUrlSlugTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-22",
+      "description": "管理者が通知から slug の予約画面とチームチャットに着く。業務アラートのボタンからも着く（実機）",
+      "tests": [
+        {
+          "name": "実機E2E記録",
+          "evidence": "docs/evidence/CMP-261030-0648.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-24",
+      "description": "問い合わせ通知の actionUrl を開くとそのチャンネルが選択状態で開く。見られないチャンネルなら未選択のまま",
+      "tests": [
+        {
+          "name": "teamChatChannelQuery.spec.ts",
+          "evidence": "frontend/tests/unit/pages/chat/teamChatChannelQuery.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 42855308677
+    },
+    {
+      "runId": 42855307537
+    },
+    {
+      "runId": 42855307902
+    },
+    {
+      "runId": 42855307550
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4457"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261030-0648.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261030-0648.md"
+    }
+  },
+  "regressions": []
+}

@@ -100,5 +100,35 @@
     "created": "Ubicación creada",
     "updated": "Ubicación actualizada",
     "deleted": "Ubicación eliminada"
+  },
+  "memberCardDisplay": {
+    "status": {
+      "ALL": "Todas",
+      "ACTIVE": "Activa",
+      "SUSPENDED": "Suspendida",
+      "REVOKED": "Anulada"
+    },
+    "scope": {
+      "PLATFORM": "Plataforma",
+      "TEAM": "Equipo",
+      "ORGANIZATION": "Organización"
+    },
+    "qrAutoRefresh": "Se actualiza cada 5 minutos",
+    "checkinCount": "{count} registros de entrada",
+    "regenerate": "Regenerar QR",
+    "suspend": "Suspender",
+    "reactivate": "Reanudar",
+    "pageTitle": "Tarjeta QR de socio",
+    "tabList": "Lista de tarjetas",
+    "tabHistory": "Historial de registros",
+    "fetchFailed": "No se pudieron cargar las tarjetas",
+    "suspendSuccess": "Tarjeta suspendida",
+    "suspendFailed": "No se pudo suspender",
+    "reactivateSuccess": "Tarjeta reanudada",
+    "reactivateFailed": "No se pudo reanudar",
+    "empty": "No hay tarjetas de miembro",
+    "qrFetchFailed": "No se pudo obtener el código QR",
+    "qrRegenerated": "Código QR regenerado",
+    "qrRegenerateFailed": "No se pudo regenerar el código QR"
   }
 }

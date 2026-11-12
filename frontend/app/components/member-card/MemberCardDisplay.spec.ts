@@ -9,6 +9,7 @@ vi.mock('~/composables/useMemberCardApi', () => ({ useMemberCardApi: () => ({ ge
 vi.stubGlobal('useMemberCardApi', () => ({ getQr }))
 vi.mock('~/composables/useNotification', () => ({ useNotification: () => ({ error: vi.fn() }) }))
 vi.stubGlobal('useNotification', () => ({ error: vi.fn() }))
+vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
 
 describe('会員QRのローカル描画（AC01/10）', () => {
   it('正確DTOのqrTokenをローカルSVGへ変換し、第三者へ秘密を送信しない', async () => {
@@ -16,7 +17,7 @@ describe('会員QRのローカル描画（AC01/10）', () => {
     const fetch = vi.spyOn(globalThis, 'fetch')
     const wrapper = mount(MemberCardDisplay, {
       props: { card: { id: 9, userId: 1, scopeType: 'PLATFORM', scopeId: null, scopeName: null, cardCode: 'code', cardNumber: 'card', status: 'ACTIVE', checkinCount: 0, lastCheckinAt: null, createdAt: '' } },
-      global: { components: { QrCodeImage }, stubs: { Card: { template: '<div><slot name="header" /><slot name="content" /><slot name="footer" /></div>' }, Button: true, Badge: true } },
+      global: { mocks: { $t: (key: string) => key }, components: { QrCodeImage }, stubs: { Card: { template: '<div><slot name="header" /><slot name="content" /><slot name="footer" /></div>' }, Button: true, Badge: true } },
     })
     await flushPromises()
     expect(wrapper.getComponent(QrCodeImage).props('value')).toBe('private-member-qr')

@@ -100,5 +100,35 @@
     "created": "Standort erstellt",
     "updated": "Standort aktualisiert",
     "deleted": "Standort gelöscht"
+  },
+  "memberCardDisplay": {
+    "status": {
+      "ALL": "Alle",
+      "ACTIVE": "Aktiv",
+      "SUSPENDED": "Gesperrt",
+      "REVOKED": "Entzogen"
+    },
+    "scope": {
+      "PLATFORM": "Plattform",
+      "TEAM": "Team",
+      "ORGANIZATION": "Organisation"
+    },
+    "qrAutoRefresh": "Aktualisierung alle 5 Min.",
+    "checkinCount": "{count} Check-ins",
+    "regenerate": "QR erneuern",
+    "suspend": "Sperren",
+    "reactivate": "Fortsetzen",
+    "pageTitle": "QR-Mitgliedsausweis",
+    "tabList": "Ausweisliste",
+    "tabHistory": "Check-in-Verlauf",
+    "fetchFailed": "Ausweise konnten nicht geladen werden",
+    "suspendSuccess": "Ausweis gesperrt",
+    "suspendFailed": "Sperren fehlgeschlagen",
+    "reactivateSuccess": "Ausweis fortgesetzt",
+    "reactivateFailed": "Fortsetzen fehlgeschlagen",
+    "empty": "Keine Ausweise vorhanden",
+    "qrFetchFailed": "QR-Code konnte nicht geladen werden",
+    "qrRegenerated": "QR-Code erneuert",
+    "qrRegenerateFailed": "QR-Code konnte nicht erneuert werden"
   }
 }

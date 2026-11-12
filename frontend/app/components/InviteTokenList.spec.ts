@@ -18,25 +18,39 @@ const mocks = vi.hoisted(() => ({
   success: vi.fn(),
   error: vi.fn(),
   downloadInviteTokenPdf: vi.fn(),
+  confirmRequire: vi.fn(),
 }))
+// ネイティブ confirm() ではなく PrimeVue の useConfirm() を使う（FRONTEND_CODING_CONVENTION）
+vi.mock('primevue/useconfirm', () => ({ useConfirm: () => ({ require: mocks.confirmRequire }) }))
+vi.stubGlobal('useConfirm', () => ({ require: mocks.confirmRequire }))
 // CIのNuxt autoimport先と、局所SFCのglobal参照を同じfixtureへ揃える。
 vi.mock('~/composables/useApi', () => ({ useApi: () => mocks.api }))
 vi.mock('~/composables/useNotification', () => ({ useNotification: () => mocks }))
 vi.mock('~/composables/useInviteTokenApi', () => ({ useInviteTokenApi: () => mocks }))
+// 実際の整形関数と同じ粒度（formatDate=日付のみ / formatDateTime=時刻まで）を再現する。
+const datetimeFormatters = {
+  formatDate: (value: string) => value.slice(0, 10),
+  formatDateTime: (value: string) => value.slice(0, 16),
+  formatDateTimeSeconds: (value: string) => value.slice(0, 19),
+}
 vi.mock('~/composables/useDatetime', () => ({
-  useDatetime: () => ({ formatDate: (value: string) => value }),
+  useDatetime: () => ({
+    formatDate: (value: string) => value.slice(0, 10),
+    formatDateTime: (value: string) => value.slice(0, 16),
+    formatDateTimeSeconds: (value: string) => value.slice(0, 19),
+  }),
 }))
 vi.stubGlobal('useApi', () => mocks.api)
 vi.stubGlobal('useNotification', () => mocks)
 vi.stubGlobal('useInviteTokenApi', () => mocks)
-vi.stubGlobal('useDatetime', () => ({ formatDate: (value: string) => value }))
+vi.stubGlobal('useDatetime', () => datetimeFormatters)
 vi.stubGlobal('useI18n', useI18n)
 vi.stubGlobal('ref', ref)
 vi.stubGlobal('computed', computed)
 vi.stubGlobal('onMounted', onMounted)
+// 一覧 API の行は平文 token を持たない（サーバーにはハッシュしか残らない）
 const token = {
   id: 99,
-  token: 'invite-fixture',
   roleName: 'MEMBER',
   expiresAt: null,
   maxUses: null,
@@ -67,6 +81,7 @@ const Table = defineComponent({
 async function mountList(
   scopeType: 'team' | 'organization' = 'team',
   locale: keyof typeof messages = 'en',
+  table: typeof Table = Table,
 ) {
   const wrapper = mount(InviteTokenList, {
     props: { scopeType, scopeId: 'private-scope' },
@@ -80,7 +95,7 @@ async function mountList(
       ],
       directives: { tooltip: () => {} },
       stubs: {
-        DataTable: Table,
+        DataTable: table,
         Column: true,
         RoleBadge: { props: ['role'], template: '<span>{{ role }}</span>' },
         Dialog: {
@@ -114,6 +129,10 @@ async function openForm(wrapper: Awaited<ReturnType<typeof mountList>>) {
     )!
     .trigger('click')
 }
+const expectedHint = createI18n({ legacy: false, locale: 'en', messages }).global.t(
+  'secret_token.list.not_shown_hint',
+)
+
 describe('スコープ招待の英語表示', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -193,22 +212,21 @@ describe('スコープ招待の英語表示', () => {
     expect(mocks.error).toHaveBeenCalledWith('Failed to create invite link')
     expect(wrapper.find('section').exists()).toBe(true)
   })
-  it('期限なし・操作名・コピー通知・失効確認と成功通知を英語で表示する', async () => {
+  it('期限なし・操作名・再表示しない旨の案内・失効確認と成功通知を英語で表示する', async () => {
     mocks.api.mockResolvedValue({ data: [token] })
-    const writeText = vi.fn().mockResolvedValue(undefined)
-    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
-    const confirm = vi.fn().mockReturnValue(true)
-    vi.stubGlobal('confirm', confirm)
     const wrapper = await mountList()
     expect(wrapper.text()).toContain('Never')
     for (const text of ['Role', 'Expires after', 'Uses', 'Actions'])
       expect(wrapper.text()).toContain(text)
-    await wrapper.get('button[aria-label="Copy invite URL"]').trigger('click')
-    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/invite/invite-fixture`)
-    expect(mocks.success).toHaveBeenCalledWith('Invite URL copied')
+    // 一覧からは URL のコピーも QR-PDF もできない（発行直後のダイアログでだけ見せる）
+    expect(wrapper.find('button[aria-label="Copy invite URL"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain(expectedHint)
     await wrapper.get('button[aria-label="Revoke invite link"]').trigger('click')
     await flushPromises()
-    expect(confirm).toHaveBeenCalledWith('Revoke this invite link?')
+    expect(mocks.confirmRequire).toHaveBeenCalledTimes(1)
+    expect(mocks.confirmRequire.mock.calls[0]![0].message).toBe('Revoke this invite link?')
+    mocks.confirmRequire.mock.calls[0]![0].accept()
+    await flushPromises()
     expect(mocks.api).toHaveBeenCalledWith('/api/v1/teams/private-scope/invite-tokens/99', {
       method: 'DELETE',
     })
@@ -216,8 +234,6 @@ describe('スコープ招待の英語表示', () => {
   })
   it('失効操作の失敗も英語で通知する', async () => {
     mocks.api.mockResolvedValue({ data: [token] })
-    const confirm = vi.fn().mockReturnValue(true)
-    vi.stubGlobal('confirm', confirm)
     const wrapper = await mountList()
     mocks.api.mockRejectedValueOnce(new Error('offline'))
     await wrapper
@@ -225,7 +241,203 @@ describe('スコープ招待の英語表示', () => {
       .find((button) => button.attributes('icon') === 'pi pi-times')!
       .trigger('click')
     await flushPromises()
+    mocks.confirmRequire.mock.calls[0]![0].accept()
+    await flushPromises()
     expect(mocks.error).toHaveBeenCalledWith('Failed to revoke invite link')
+  })
+})
+
+// CMP-261110-0426 V3/V5: 行の識別（作成日時・案内）とモバイルでの列重なり防止
+describe('招待リンク一覧の識別性とモバイル表示', () => {
+  const columnProps: Array<Record<string, unknown>> = []
+  const RecordingTable = defineComponent({
+    props: { value: { type: Array, default: () => [] } },
+    setup(props, { slots }) {
+      return () => {
+        const columns = slots.default?.() ?? []
+        columnProps.length = 0
+        for (const column of columns) columnProps.push({ ...(column.props ?? {}) })
+        return h(
+          'div',
+          props.value.length
+            ? columns.flatMap((column) => [
+                h('span', String(column.props?.header ?? '')),
+                ...props.value.map((data) => {
+                  const children = column.children as {
+                    body?: (scope: { data: unknown }) => ReturnType<typeof h>[]
+                  }
+                  return children?.body?.({ data })
+                }),
+              ])
+            : slots.empty?.(),
+        )
+      }
+    },
+  })
+  const t = createI18n({ legacy: false, locale: 'ja', messages }).global.t
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.api.mockReset().mockResolvedValue({ data: [token] })
+  })
+
+  it('各行に作成日時を表示する', async () => {
+    const wrapper = await mountList('team', 'ja', RecordingTable as never)
+    expect(wrapper.text()).toContain(t('secret_token.list.created_at'))
+    expect(wrapper.text()).toContain('2026-10-16T00:00')
+  })
+
+  it('同日・異時刻に作った2行は作成日時が異なる表示になる（古いリンクの識別）', async () => {
+    mocks.api.mockReset().mockResolvedValue({
+      data: [
+        { ...token, id: 1, createdAt: '2026-10-16T09:15:00' },
+        { ...token, id: 2, createdAt: '2026-10-16T18:40:00' },
+      ],
+    })
+    const wrapper = await mountList('team', 'ja', RecordingTable as never)
+    const cells = wrapper.findAll('span.whitespace-nowrap').map((el) => el.text())
+    expect(cells).toHaveLength(2)
+    expect(new Set(cells).size).toBe(2)
+    expect(cells[0]).toContain('09:15')
+    expect(cells[1]).toContain('18:40')
+  })
+
+  it('再発行の案内（links_hint）を一覧付近に出し、誤った旧キーは使わない', async () => {
+    const wrapper = await mountList('team', 'ja', RecordingTable as never)
+    expect(wrapper.text()).toContain(t('secret_token.list.links_hint'))
+    for (const locale of Object.keys(messages) as Array<keyof typeof messages>) {
+      const i18n = createI18n({ legacy: false, locale, messages }).global
+      expect(i18n.te('secret_token.list.reissue_hint')).toBe(false)
+      expect(i18n.te('secret_token.list.links_hint')).toBe(true)
+    }
+  })
+
+  it('操作列を sticky（frozen）にしない（390px で他列に重ならない）', async () => {
+    await mountList('team', 'ja', RecordingTable as never)
+    expect(columnProps.length).toBeGreaterThan(0)
+    for (const column of columnProps) {
+      expect(column.frozen === undefined || column.frozen === false).toBe(true)
+      expect(column['align-frozen']).toBeUndefined()
+    }
+  })
+})
+
+// CMP-261111-1429 ALIC-1〜5: アリシゼーション確定不具合の再発防止
+describe('招待リンク一覧のアリシゼーション確定不具合', () => {
+  const columnProps: Array<Record<string, unknown>> = []
+  const RecordingTable = defineComponent({
+    props: { value: { type: Array, default: () => [] }, loading: Boolean },
+    setup(props, { slots }) {
+      return () => {
+        const columns = slots.default?.() ?? []
+        columnProps.length = 0
+        for (const column of columns) columnProps.push({ ...(column.props ?? {}) })
+        return h(
+          'div',
+          props.value.length
+            ? columns.flatMap((column) =>
+                props.value.map((data) => {
+                  const children = column.children as {
+                    body?: (scope: { data: unknown }) => ReturnType<typeof h>[]
+                  }
+                  return children?.body?.({ data })
+                }),
+              )
+            : slots.empty?.(),
+        )
+      }
+    },
+  })
+  const t = createI18n({ legacy: false, locale: 'ja', messages }).global.t
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.api.mockReset().mockResolvedValue({ data: [token] })
+  })
+
+  it('ALIC-1: 同じ分に発行した2行も秒まで表示して見分けられる', async () => {
+    mocks.api.mockReset().mockResolvedValue({
+      data: [
+        { ...token, id: 1, createdAt: '2026-10-16T09:15:05' },
+        { ...token, id: 2, createdAt: '2026-10-16T09:15:42' },
+      ],
+    })
+    const wrapper = await mountList('team', 'ja', RecordingTable as never)
+    const cells = wrapper.findAll('span.whitespace-nowrap').map((el) => el.text())
+    expect(cells).toHaveLength(2)
+    expect(new Set(cells).size).toBe(2)
+    expect(cells[0]).toContain('09:15:05')
+    expect(cells[1]).toContain('09:15:42')
+  })
+
+  it('ALIC-2: 無効化の操作列が先頭にあり、初期表示で横スクロールの外側に出ない（frozen にはしない）', async () => {
+    const wrapper = await mountList('team', 'ja', RecordingTable as never)
+    expect(columnProps[0]!.header).toBe(t('label.actions'))
+    for (const column of columnProps) expect(column.frozen === undefined || column.frozen === false).toBe(true)
+    expect(wrapper.find('button[aria-label="' + t('inviteToken.revoke') + '"]').exists()).toBe(true)
+  })
+
+  it('ALIC-3: 見出し行は折り返し可能で、新規作成ボタンは単語途中で折れない', async () => {
+    const wrapper = await mountList('team', 'de', RecordingTable as never)
+    const header = wrapper.get('[data-testid="invite-token-header"]')
+    expect(header.classes()).toContain('flex-wrap')
+    expect(header.classes().some((c) => c.startsWith('gap-'))).toBe(true)
+    const create = header.findAll('button').find((b) => b.text().includes('Neuer Einladungslink'))!
+    expect(create.classes()).toContain('shrink-0')
+    expect(create.classes()).toContain('whitespace-nowrap')
+  })
+
+  it('ALIC-4: 読込中は空文言を出さず、取得後に0件なら出す', async () => {
+    let resolveApi: (v: unknown) => void = () => {}
+    mocks.api.mockReset().mockReturnValue(new Promise((resolve) => (resolveApi = resolve)))
+    const wrapper = await mountList('team', 'ja', RecordingTable as never)
+    expect(wrapper.text()).not.toContain(t('inviteToken.empty'))
+    resolveApi({ data: [] })
+    await flushPromises()
+    expect(wrapper.text()).toContain(t('inviteToken.empty'))
+  })
+
+  it('ALIC-5: 無効化はネイティブ confirm を使わず useConfirm で確認し、accept でのみ DELETE する', async () => {
+    const nativeConfirm = vi.fn().mockReturnValue(true)
+    vi.stubGlobal('confirm', nativeConfirm)
+    const wrapper = await mountList('team', 'ja', RecordingTable as never)
+    mocks.api.mockClear()
+    await wrapper.get('button[aria-label="' + t('inviteToken.revoke') + '"]').trigger('click')
+    await flushPromises()
+    expect(nativeConfirm).not.toHaveBeenCalled()
+    expect(mocks.confirmRequire).toHaveBeenCalledTimes(1)
+    const options = mocks.confirmRequire.mock.calls[0]![0]
+    expect(options.message).toBe(t('inviteToken.revokeConfirm'))
+    expect(mocks.api).not.toHaveBeenCalled() // 確認前は DELETE しない
+    options.reject?.()
+    await flushPromises()
+    expect(mocks.api).not.toHaveBeenCalled()
+    options.accept()
+    await flushPromises()
+    expect(mocks.api).toHaveBeenCalledWith('/api/v1/teams/private-scope/invite-tokens/99', {
+      method: 'DELETE',
+    })
+  })
+  it('ALIC-6: 無効化まわりの用語が言語ごとに統一されている（ボタン名と links_hint が同じ語幹）', () => {
+    const stems: Record<keyof typeof messages, RegExp> = {
+      ja: /無効/,
+      en: /[Rr]evoke/,
+      zh: /撤销/,
+      ko: /비활성화/,
+      es: /[Rr]evo[cq]/,
+      de: /[Dd]eaktivier/,
+    }
+    for (const locale of Object.keys(stems) as Array<keyof typeof messages>) {
+      const i18n = createI18n({ legacy: false, locale, messages }).global
+      for (const key of [
+        'inviteToken.revoke',
+        'inviteToken.revokeConfirm',
+        'inviteToken.revokeSuccess',
+        'inviteToken.revokeError',
+        'secret_token.list.links_hint',
+      ])
+        expect(i18n.t(key), `${locale}:${key}`).toMatch(stems[locale]!)
+    }
   })
 })
 

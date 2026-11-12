@@ -1,5 +1,8 @@
 package com.mannschaft.app.role.service;
 
+import com.mannschaft.app.common.token.IssuedToken;
+import com.mannschaft.app.common.token.SecretTokenVault;
+import com.mannschaft.app.role.dto.InviteTokenIssuedResponse;
 import com.mannschaft.app.role.dto.InviteTokenResponse;
 import com.mannschaft.app.role.dto.SharedInviteTokenCommand;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
@@ -12,9 +15,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
 import java.time.LocalDateTime;
-import com.mannschaft.app.common.token.PlaintextTokenDebt;
 
 /** 共有招待のrole専属writer。親状態は読まず、親TXとtoken更新TXを物理的に分ける。 */
 @Service
@@ -22,11 +23,13 @@ import com.mannschaft.app.common.token.PlaintextTokenDebt;
 public class SharedInviteTokenIssuer {
     private final InviteTokenRepository tokens;
     private final ApplicationEventPublisher events;
+    private final SecretTokenVault vault;
 
-    @PlaintextTokenDebt(cmp = "CMP-260826-1457")
+    /** 平文は応答にだけ載せる。DB にはハッシュだけを保存する。 */
     @Transactional
-    public InviteTokenResponse issue(SharedInviteTokenCommand command) {
-        var builder = InviteTokenEntity.builder().token(UUID.randomUUID().toString())
+    public InviteTokenIssuedResponse issue(SharedInviteTokenCommand command) {
+        IssuedToken issued = vault.issueBase64Url();
+        var builder = InviteTokenEntity.builder().tokenHash(issued.hash())
                 .roleId(command.roleId()).createdBy(command.createdBy())
                 .expiresAt(command.expiresAt() == null ? null
                         : LocalDateTime.ofInstant(command.expiresAt(), UserZoneLocalDateTimeParser.SERVER_ZONE))
@@ -43,8 +46,8 @@ public class SharedInviteTokenIssuer {
         } else {
             events.publishEvent(new OrganizationInviteTokenCreatedEvent(command.createdBy(), command.scopeId(), token.getId()));
         }
-        return new InviteTokenResponse(token.getId(), token.getToken(), command.roleName(), token.getExpiresAt(),
-                token.getMaxUses(), token.getUsedCount(), token.getRevokedAt(), token.getCreatedAt());
+        return new InviteTokenIssuedResponse(issued.plaintext(), new InviteTokenResponse(token.getId(), command.roleName(),
+                token.getExpiresAt(), token.getMaxUses(), token.getUsedCount(), token.getRevokedAt(), token.getCreatedAt()));
     }
 
     /** 発行後の親閉鎖検出時は監査可能なtoken行を残し、既失効日時を上書きしない。 */

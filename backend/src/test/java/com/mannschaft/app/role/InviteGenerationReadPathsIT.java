@@ -72,7 +72,7 @@ class InviteGenerationReadPathsIT extends InviteGenerationItSupport {
         var expired = token(scope, 1, LocalDateTime.of(2020, 1, 1, 0, 0), null, 0, null, null);
         var exhausted = token(scope, 1, null, 1, 1, null, null);
 
-        assertThat(invites.getInviteTokens(scope.id(), type, actor)).extracting(response -> response.getId())
+        assertThat(invites.getInviteTokens(scope.id(), type, actor)).extracting(response -> response.id())
                 .containsExactlyInAnyOrder(current.getId(), expired.getId(), exhausted.getId())
                 .doesNotContain(old.getId());
     }
@@ -92,8 +92,8 @@ class InviteGenerationReadPathsIT extends InviteGenerationItSupport {
             default -> { }
         }
 
-        assertThat(invites.previewInvite(token.getToken()).getData().isValid()).isFalse();
-        assertThatThrownBy(() -> acceptance.joinByInvite(token.getToken(), target)).isInstanceOf(BusinessException.class);
+        assertThat(invites.previewInvite(plaintext(token)).getData().isValid()).isFalse();
+        assertThatThrownBy(() -> acceptance.joinByInvite(plaintext(token), target)).isInstanceOf(BusinessException.class);
         assertThat(tokens.findById(token.getId()).orElseThrow().getUsedCount()).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM memberships WHERE user_id = ?", Long.class, target)).isZero();
     }
@@ -107,8 +107,8 @@ class InviteGenerationReadPathsIT extends InviteGenerationItSupport {
         jdbc.update("UPDATE " + scope.table() + " SET closure_generation = 1 WHERE id = ?", scope.id());
         var current = token(scope, 1);
 
-        assertThat(invites.previewInvite(current.getToken()).getData().isValid()).isTrue();
-        acceptance.joinByInvite(current.getToken(), target);
+        assertThat(invites.previewInvite(plaintext(current)).getData().isValid()).isTrue();
+        acceptance.joinByInvite(plaintext(current), target);
         assertThat(tokens.findById(current.getId()).orElseThrow().getUsedCount()).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM memberships WHERE user_id = ? AND left_at IS NULL", Long.class, target)).isEqualTo(1);
     }

@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261029-0620",
+  "scope": "app",
+  "implementation": {
+    "pr": 4461,
+    "sha": "b8eec8df71d1559b93d845e1325a3d96a671684a"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "Push ペイロードの最上位キーは title, body, data のみ。data は notification_id, action_url, priority のみ",
+      "tests": [{ "name": "WebPushPayloadFactoryTest Shape", "evidence": "backend/src/test/java/com/mannschaft/app/notification/service/WebPushPayloadFactoryTest.java" }]
+    },
+    {
+      "id": "AC-2",
+      "description": "entity の actionUrl が data.action_url に、id が notification_id に入る",
+      "tests": [{ "name": "WebPushPayloadFactoryTest Shape", "evidence": "backend/src/test/java/com/mannschaft/app/notification/service/WebPushPayloadFactoryTest.java" }]
+    },
+    {
+      "id": "AC-3",
+      "description": "actionUrl が null なら action_url は null、body が null なら空文字",
+      "tests": [{ "name": "WebPushPayloadFactoryTest Shape", "evidence": "backend/src/test/java/com/mannschaft/app/notification/service/WebPushPayloadFactoryTest.java" }]
+    },
+    {
+      "id": "AC-4",
+      "description": "title 100字・body 200字で切り詰め、サロゲートペアを途中で切らない",
+      "tests": [{ "name": "WebPushPayloadFactoryTest Truncation", "evidence": "backend/src/test/java/com/mannschaft/app/notification/service/WebPushPayloadFactoryTest.java" }]
+    },
+    {
+      "id": "AC-5a",
+      "description": "最大入力でもペイロードは UTF-8 で 2KB 以下。action_url は 512 バイト超で null",
+      "tests": [{ "name": "WebPushPayloadFactoryTest Truncation", "evidence": "backend/src/test/java/com/mannschaft/app/notification/service/WebPushPayloadFactoryTest.java" }]
+    },
+    {
+      "id": "AC-5b",
+      "description": "購読0件ならペイロードの生成も送信も0回",
+      "tests": [{ "name": "NotificationDispatchWebPushPayloadTest", "evidence": "backend/src/test/java/com/mannschaft/app/notification/NotificationDispatchWebPushPayloadTest.java" }]
+    },
+    {
+      "id": "AC-5c",
+      "description": "購読が複数でもペイロードの生成は1回",
+      "tests": [{ "name": "NotificationDispatchWebPushPayloadTest", "evidence": "backend/src/test/java/com/mannschaft/app/notification/NotificationDispatchWebPushPayloadTest.java" }]
+    },
+    {
+      "id": "AC-5d",
+      "description": "チャンク配信の購読の一括先読みを維持し、DB クエリを増やさない",
+      "tests": [{ "name": "NotificationDispatchWebPushPayloadTest", "evidence": "backend/src/test/java/com/mannschaft/app/notification/NotificationDispatchWebPushPayloadTest.java" }]
+    },
+    {
+      "id": "AC-6",
+      "description": "シリアライズ失敗時も代替 JSON は同じ形で、例外を外へ投げない",
+      "tests": [{ "name": "WebPushPayloadFactoryTest Fallback", "evidence": "backend/src/test/java/com/mannschaft/app/notification/service/WebPushPayloadFactoryTest.java" }]
+    },
+    {
+      "id": "AC-7",
+      "description": "action_url は / 始まりの相対パスか FE の公開オリジンと同じ絶対 URL だけを通す",
+      "tests": [{ "name": "WebPushPayloadFactoryTest UrlPolicy", "evidence": "backend/src/test/java/com/mannschaft/app/notification/service/WebPushPayloadFactoryTest.java" }]
+    },
+    {
+      "id": "AC-8",
+      "description": "push で showNotification が呼ばれる。空・JSON でない・title 欠落は既定の題で表示する",
+      "tests": [{ "name": "swCustom.spec.ts push", "evidence": "frontend/tests/unit/sw/swCustom.spec.ts" }]
+    },
+    {
+      "id": "AC-9",
+      "description": "同一オリジンのタブがあれば focus と navigate、無ければ openWindow",
+      "tests": [{ "name": "swCustom.spec.ts notificationclick", "evidence": "frontend/tests/unit/sw/swCustom.spec.ts" }]
+    },
+    {
+      "id": "AC-10",
+      "description": "action_url が null/空/数値/data 欠落なら origin の / へ遷移する",
+      "tests": [{ "name": "swCustom.spec.ts notificationclick", "evidence": "frontend/tests/unit/sw/swCustom.spec.ts" }]
+    },
+    {
+      "id": "AC-11",
+      "description": "別オリジン・プロトコル相対・javascript: などは origin の / へ遷移し、別オリジンのタブは focus しない",
+      "tests": [{ "name": "swCustom.spec.ts notificationclick", "evidence": "frontend/tests/unit/sw/swCustom.spec.ts" }]
+    },
+    {
+      "id": "AC-12",
+      "description": "navigate/matchAll/focus が reject しても openWindow などへ進み、waitUntil は遷移完了まで解決しない",
+      "tests": [{ "name": "swCustom.spec.ts notificationclick", "evidence": "frontend/tests/unit/sw/swCustom.spec.ts" }]
+    },
+    {
+      "id": "AC-13",
+      "description": "action=dismiss は遷移も openWindow もしない",
+      "tests": [{ "name": "swCustom.spec.ts notificationclick", "evidence": "frontend/tests/unit/sw/swCustom.spec.ts" }]
+    },
+    {
+      "id": "AC-14",
+      "description": "nuxt.config.ts の pwa.workbox.importScripts が /sw-custom.js を含み、ファイルが public に存在する",
+      "tests": [{ "name": "swImportScripts.spec.ts", "evidence": "frontend/tests/unit/sw/swImportScripts.spec.ts" }]
+    },
+    {
+      "id": "AC-14b",
+      "description": "本番ビルドの SW が importScripts を含み、CDP deliverPushMessage で通知が出て data.action_url が一致する",
+      "tests": [{ "name": "cmp-261029-0620-web-push.real.spec.ts", "evidence": "frontend/tests/e2e/real/cmp-261029-0620-web-push.real.spec.ts" }]
+    },
+    {
+      "id": "AC-14c",
+      "description": "既存タブがある状態で本物の OS 通知をクリックすると、そのタブが action_url へ遷移する",
+      "tests": [{ "name": "マスターの実機確認 MC-261112-1443", "evidence": "docs/evidence/CMP-261029-0620.md" }]
+    },
+    {
+      "id": "AC-14d",
+      "description": "既存タブが無い状態で本物の OS 通知をクリックすると、新しいタブで action_url が開く",
+      "tests": [{ "name": "マスターの実機確認 MC-261112-1443", "evidence": "docs/evidence/CMP-261029-0620.md" }]
+    },
+    {
+      "id": "AC-15",
+      "description": "見本 JSON 1本を BE と FE の両方のテストが読む",
+      "tests": [
+        { "name": "WebPushPayloadFactoryTest AC-15", "evidence": "backend/src/test/java/com/mannschaft/app/notification/service/WebPushPayloadFactoryTest.java" },
+        { "name": "swCustom.spec.ts", "evidence": "frontend/tests/unit/sw/swCustom.spec.ts" }
+      ]
+    },
+    {
+      "id": "AC-16",
+      "description": "WebSocket には従来どおり NotificationResponse（camelCase）が送られ、既存の dispatch テストは green",
+      "tests": [{ "name": "NotificationDispatchWebPushPayloadTest / NotificationDispatchServiceTest", "evidence": "backend/src/test/java/com/mannschaft/app/notification/NotificationDispatchServiceTest.java" }]
+    },
+    {
+      "id": "AC-17",
+      "description": "読み込みを結線しても Background Sync の処理は動かない",
+      "tests": [
+        { "name": "swCustom.spec.ts AC-17", "evidence": "frontend/tests/unit/sw/swCustom.spec.ts" },
+        { "name": "swImportScripts.spec.ts AC-17", "evidence": "frontend/tests/unit/sw/swImportScripts.spec.ts" }
+      ]
+    },
+    {
+      "id": "AC-18",
+      "description": "設計書 F04.3 のペイロード節・URL 方針と F11.1 の importScripts 結線が実装と一致している",
+      "tests": [{ "name": "設計書の差分（PR #4461）", "evidence": "docs/features/F04.3_push_notification.md" }]
+    }
+  ],
+  "ci": [
+    { "runId": 42914175386 },
+    { "runId": 42914175216 },
+    { "runId": 42914174917 },
+    { "runId": 42914174954 },
+    { "runId": 42914175111 }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4461"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261029-0620.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261029-0620.md"
+    }
+  },
+  "regressions": []
+}

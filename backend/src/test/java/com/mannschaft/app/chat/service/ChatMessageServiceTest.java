@@ -33,6 +33,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -1024,6 +1025,247 @@ class ChatMessageServiceTest {
             verify(reactionRepository, org.mockito.Mockito.times(1)).findByMessageIdInOrderByIdAsc(any());
             verify(attachmentRepository, never()).findByMessageId(any());
             verify(reactionRepository, never()).findByMessageId(any());
+        }
+    }
+
+    // ========================================
+    // 部屋一覧プレビュー（last_message_preview）と未読数の整合（CMP-261105-1507 P1）
+    // ========================================
+    @Nested
+    @DisplayName("部屋一覧プレビューの整合")
+    class LastMessagePreview {
+
+        private ChatMessageEntity messageWithId(Long id, String body, LocalDateTime createdAt) {
+            ChatMessageEntity m = ChatMessageEntity.builder()
+                    .channelId(CHANNEL_ID).senderId(SENDER_ID).body(body).build();
+            org.springframework.test.util.ReflectionTestUtils.setField(m, "id", id);
+            org.springframework.test.util.ReflectionTestUtils.setField(m, "createdAt", createdAt);
+            return m;
+        }
+
+        private ChatChannelEntity channelWithPreview(String preview, LocalDateTime at) {
+            ChatChannelEntity ch = createChannel();
+            ch.updateLastMessage(at, preview);
+            return ch;
+        }
+
+        private void stubEnrich() {
+            lenient().when(attachmentRepository.findByMessageId(any())).thenReturn(List.of());
+            lenient().when(reactionRepository.findByMessageId(any())).thenReturn(List.of());
+            lenient().when(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any()))
+                    .thenReturn(createMessageResponse());
+            lenient().when(chatMapper.toAttachmentResponseList(any())).thenReturn(List.of());
+            lenient().when(chatMapper.toReactionResponseList(any())).thenReturn(List.of());
+        }
+
+        @Test
+        @DisplayName("最新メッセージを編集すると、プレビューが新しい本文になる")
+        void 最新を編集するとプレビューが更新される() {
+            LocalDateTime at = LocalDateTime.of(2026, 11, 10, 9, 0);
+            ChatMessageEntity msg = messageWithId(MESSAGE_ID, "古い本文", at);
+            ChatChannelEntity ch = channelWithPreview("古い本文", at);
+            given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(msg));
+            given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(msg);
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(ch));
+            given(messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(CHANNEL_ID))
+                    .willReturn(Optional.of(msg));
+            stubEnrich();
+
+            chatMessageService.editMessage(MESSAGE_ID, new EditMessageRequest("新しい本文"), SENDER_ID);
+
+            assertThat(ch.getLastMessagePreview()).isEqualTo("新しい本文");
+            assertThat(ch.getLastMessageAt()).isEqualTo(at);
+        }
+
+        @Test
+        @DisplayName("最新でないメッセージを編集してもプレビューは変わらない")
+        void 最新でない編集はプレビューを変えない() {
+            LocalDateTime at = LocalDateTime.of(2026, 11, 10, 9, 0);
+            ChatMessageEntity old = messageWithId(MESSAGE_ID, "古い本文", at.minusMinutes(5));
+            ChatMessageEntity latest = messageWithId(MESSAGE_ID + 1, "最新本文", at);
+            ChatChannelEntity ch = channelWithPreview("最新本文", at);
+            given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(old));
+            given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(old);
+            given(messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(CHANNEL_ID))
+                    .willReturn(Optional.of(latest));
+            stubEnrich();
+
+            chatMessageService.editMessage(MESSAGE_ID, new EditMessageRequest("書き換え"), SENDER_ID);
+
+            assertThat(ch.getLastMessagePreview()).isEqualTo("最新本文");
+            // 最新でないと判断した時点で打ち切るため、チャンネルは取得しない
+            verify(channelRepository, never()).findById(any());
+        }
+
+        @Test
+        @DisplayName("最新メッセージを削除すると、直前の未削除メッセージの本文に差し戻る")
+        void 最新を削除すると直前の本文へ差し戻る() {
+            LocalDateTime at = LocalDateTime.of(2026, 11, 10, 9, 0);
+            ChatMessageEntity prev = messageWithId(MESSAGE_ID - 1, "直前の本文", at.minusMinutes(3));
+            ChatMessageEntity latest = messageWithId(MESSAGE_ID, "消す本文", at);
+            ChatChannelEntity ch = channelWithPreview("消す本文", at);
+            given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(latest));
+            given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(latest);
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(ch));
+            given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
+            given(messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(CHANNEL_ID))
+                    .willReturn(Optional.of(latest), Optional.of(prev));
+
+            chatMessageService.deleteMessage(MESSAGE_ID, SENDER_ID);
+
+            assertThat(ch.getLastMessagePreview()).isEqualTo("直前の本文");
+            assertThat(ch.getLastMessageAt()).isEqualTo(at.minusMinutes(3));
+        }
+
+        @Test
+        @DisplayName("唯一のメッセージを削除すると、プレビューは空になる")
+        void 唯一を削除するとプレビューが空になる() {
+            LocalDateTime at = LocalDateTime.of(2026, 11, 10, 9, 0);
+            ChatMessageEntity only = messageWithId(MESSAGE_ID, "消す本文", at);
+            ChatChannelEntity ch = channelWithPreview("消す本文", at);
+            given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(only));
+            given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(only);
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(ch));
+            given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
+            given(messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(CHANNEL_ID))
+                    .willReturn(Optional.of(only), Optional.empty());
+
+            chatMessageService.deleteMessage(MESSAGE_ID, SENDER_ID);
+
+            assertThat(ch.getLastMessagePreview()).isNull();
+            assertThat(ch.getLastMessageAt()).isNull();
+        }
+
+        @Test
+        @DisplayName("最新でないメッセージを削除してもプレビューは変わらない")
+        void 最新でない削除はプレビューを変えない() {
+            LocalDateTime at = LocalDateTime.of(2026, 11, 10, 9, 0);
+            ChatMessageEntity old = messageWithId(MESSAGE_ID, "古い本文", at.minusMinutes(5));
+            ChatMessageEntity latest = messageWithId(MESSAGE_ID + 1, "最新本文", at);
+            ChatChannelEntity ch = channelWithPreview("最新本文", at);
+            given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(old));
+            given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(old);
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(ch));
+            given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
+            given(messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(CHANNEL_ID))
+                    .willReturn(Optional.of(latest));
+
+            chatMessageService.deleteMessage(MESSAGE_ID, SENDER_ID);
+
+            assertThat(ch.getLastMessagePreview()).isEqualTo("最新本文");
+        }
+
+        @Test
+        @DisplayName("最新を削除したとき直前が招待カードなら、プレビューは内部マーカーではなく暫定の表示用文言になる")
+        void 直前が招待カードなら表示用プレビューに作り直す() {
+            LocalDateTime at = LocalDateTime.of(2026, 11, 10, 9, 0);
+            ChatMessageEntity card = messageWithId(MESSAGE_ID - 1, "[招待カード]", at.minusMinutes(3));
+            org.springframework.test.util.ReflectionTestUtils.setField(card, "messageType", "INVITE_CARD");
+            org.springframework.test.util.ReflectionTestUtils.setField(card, "inviteTokenId", 77L);
+            ChatMessageEntity latest = messageWithId(MESSAGE_ID, "消す本文", at);
+            ChatChannelEntity ch = channelWithPreview("消す本文", at);
+            given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(latest));
+            given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(latest);
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(ch));
+            given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
+            given(messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(CHANNEL_ID))
+                    .willReturn(Optional.of(latest), Optional.of(card));
+
+            chatMessageService.deleteMessage(MESSAGE_ID, SENDER_ID);
+
+            // 招待先名入りの文言は role の参照を要するため tx の外（Refresher）で確定する。tx 内では暫定文言。
+            assertThat(ch.getLastMessagePreview()).isEqualTo(ChatMessageService.INVITE_CARD_FALLBACK_PREVIEW);
+            assertThat(ch.getLastMessagePreview()).isNotEqualTo("[招待カード]");
+        }
+
+        @Test
+        @DisplayName("最新が招待カードなら、確定に必要な参照（カードID・トークンID・送信者）を返す")
+        void 最新が招待カードなら参照を返す() {
+            ChatMessageEntity card = messageWithId(MESSAGE_ID, "[招待カード]", LocalDateTime.of(2026, 11, 10, 9, 0));
+            org.springframework.test.util.ReflectionTestUtils.setField(card, "messageType", "INVITE_CARD");
+            org.springframework.test.util.ReflectionTestUtils.setField(card, "inviteTokenId", 77L);
+            given(messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(CHANNEL_ID))
+                    .willReturn(Optional.of(card));
+
+            assertThat(chatMessageService.findLatestInviteCardPreviewTarget(CHANNEL_ID))
+                    .contains(new ChatMessageService.InviteCardPreviewTarget(MESSAGE_ID, 77L, SENDER_ID));
+        }
+
+        @Test
+        @DisplayName("最新が通常メッセージなら、確定対象は無い")
+        void 最新が通常メッセージなら対象なし() {
+            ChatMessageEntity text = messageWithId(MESSAGE_ID, "本文", LocalDateTime.of(2026, 11, 10, 9, 0));
+            given(messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(CHANNEL_ID))
+                    .willReturn(Optional.of(text));
+
+            assertThat(chatMessageService.findLatestInviteCardPreviewTarget(CHANNEL_ID)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("対象の招待カードがまだ最新なら、プレビュー本文だけを上書きする（日時は不変）")
+        void 確定は最新のときだけ上書きする() {
+            LocalDateTime at = LocalDateTime.of(2026, 11, 10, 9, 0);
+            ChatMessageEntity card = messageWithId(MESSAGE_ID, "[招待カード]", at);
+            ChatChannelEntity ch = channelWithPreview(ChatMessageService.INVITE_CARD_FALLBACK_PREVIEW, at);
+            given(messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(CHANNEL_ID))
+                    .willReturn(Optional.of(card));
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(ch);
+
+            chatMessageService.applyInviteCardPreview(CHANNEL_ID, MESSAGE_ID, "北陽SC ジュニア への招待を送りました");
+
+            assertThat(ch.getLastMessagePreview()).isEqualTo("北陽SC ジュニア への招待を送りました");
+            assertThat(ch.getLastMessageAt()).isEqualTo(at);
+        }
+
+        @Test
+        @DisplayName("確定の前に新しい投稿があれば、その投稿のプレビューを壊さない")
+        void 確定は新しい投稿のプレビューを壊さない() {
+            LocalDateTime at = LocalDateTime.of(2026, 11, 10, 9, 0);
+            ChatMessageEntity newer = messageWithId(MESSAGE_ID + 1, "新着", at.plusMinutes(1));
+            ChatChannelEntity ch = channelWithPreview("新着", at.plusMinutes(1));
+            given(messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(CHANNEL_ID))
+                    .willReturn(Optional.of(newer));
+
+            chatMessageService.applyInviteCardPreview(CHANNEL_ID, MESSAGE_ID, "北陽SC ジュニア への招待を送りました");
+
+            assertThat(ch.getLastMessagePreview()).isEqualTo("新着");
+        }
+
+        @Test
+        @DisplayName("最新を削除したとき直前が転送メッセージなら、本文の先頭がプレビューになる")
+        void 直前が転送メッセージなら本文がプレビューになる() {
+            LocalDateTime at = LocalDateTime.of(2026, 11, 10, 9, 0);
+            ChatMessageEntity forwarded = messageWithId(MESSAGE_ID - 1, "ひとこと\n\n元の本文", at.minusMinutes(3));
+            org.springframework.test.util.ReflectionTestUtils.setField(forwarded, "forwardedFromId", 3L);
+            ChatMessageEntity latest = messageWithId(MESSAGE_ID, "消す本文", at);
+            ChatChannelEntity ch = channelWithPreview("消す本文", at);
+            given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(latest));
+            given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(latest);
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(ch));
+            given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
+            given(messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(CHANNEL_ID))
+                    .willReturn(Optional.of(latest), Optional.of(forwarded));
+
+            chatMessageService.deleteMessage(MESSAGE_ID, SENDER_ID);
+
+            assertThat(ch.getLastMessagePreview()).isEqualTo("ひとこと\n\n元の本文");
+        }
+
+        @Test
+        @DisplayName("削除は未読数に触れない（減算は行わない）")
+        void 削除は未読数に触れない() {
+            LocalDateTime at = LocalDateTime.of(2026, 11, 10, 9, 0);
+            ChatMessageEntity msg = messageWithId(MESSAGE_ID, "消す本文", at);
+            given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(msg));
+            given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(msg);
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(channelWithPreview("消す本文", at)));
+            given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
+            given(messageRepository.findFirstByChannelIdOrderByCreatedAtDescIdDesc(CHANNEL_ID))
+                    .willReturn(Optional.of(msg), Optional.empty());
+
+            chatMessageService.deleteMessage(MESSAGE_ID, SENDER_ID);
+
+            org.mockito.Mockito.verifyNoInteractions(memberRepository);
         }
     }
 }

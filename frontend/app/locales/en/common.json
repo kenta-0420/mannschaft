@@ -123,6 +123,7 @@
       },
       "card": {
         "pending": "You have an invitation to {scope}",
+        "scopeDeleted": "Deleted team",
         "waiting": "Waiting for their response",
         "statusPending": "Pending",
         "join": "Join",
@@ -185,6 +186,7 @@
       "tooltip": "Invite to a Zimmer",
       "failed": "Failed to send the invitation",
       "noMembers": "No members can be invited",
+      "candidatesLoadFailed": "Could not load the list of members you can invite. Please try again later.",
       "shareQuestion": "Share the existing chat history?",
       "share": "Share",
       "shareHint": "Previous messages are carried over to the new Zimmer",
@@ -416,7 +418,10 @@
     "delete_timetable": "Delete",
     "delete_timetable_confirm": "Delete the timetable \"{name}\"? This cannot be undone.",
     "delete_timetable_success": "Timetable deleted",
-    "delete_timetable_error": "Failed to delete the timetable"
+    "delete_timetable_error": "Failed to delete the timetable",
+    "create_error_out_of_term": "The timetable's effective period is outside the term. Choose dates between the term's start and end.",
+    "create_error_term_not_found": "The selected term was not found. Reopen the term list and try again.",
+    "effective_until_before_from": "The end date must be on or after the start date."
   },
   "error": {
     "server": "A server error occurred",
@@ -1202,6 +1207,7 @@
       "edit_title": "Edit milestone",
       "title_label": "Title",
       "title_placeholder": "Milestone name",
+      "title_required": "Please enter a title.",
       "due_date_label": "Due date",
       "add": "Add"
     },
@@ -3081,7 +3087,11 @@
     "justNow": "Just now",
     "minutesAgo": "{count} minute ago | {count} minutes ago",
     "hoursAgo": "{count} hour ago | {count} hours ago",
-    "daysAgo": "{count} day ago | {count} days ago"
+    "daysAgo": "{count} day ago | {count} days ago",
+    "soon": "Soon",
+    "inMinutes": "in {count} minute | in {count} minutes",
+    "inHours": "in {count} hour | in {count} hours",
+    "inDays": "in {count} day | in {count} days"
   },
   "error_page": {
     "not_found_title": "This page could not be found",
@@ -3332,7 +3342,7 @@
       "not_shown_hint": "For security, issued links are never shown again. Reissue one if you need it.",
       "revoked_by_migration": "Revoked as part of a security upgrade",
       "reissue": "Reissue",
-      "reissue_hint": "Reissuing creates a new link and the old link stops working.",
+      "links_hint": "If you lose a link, create a new one to reissue it. Revoke old links you no longer need with the × button.",
       "label_with_id": "Link #{id}",
       "created_at": "Issued at",
       "expires_at": "Expires at",

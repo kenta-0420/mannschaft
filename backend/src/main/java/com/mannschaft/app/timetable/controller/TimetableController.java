@@ -10,6 +10,7 @@ import com.mannschaft.app.timetable.dto.UpdateTimetableRequest;
 import com.mannschaft.app.timetable.dto.WeeklyViewResponse;
 import com.mannschaft.app.timetable.entity.TimetableEntity;
 import com.mannschaft.app.timetable.service.TimetableService;
+import com.mannschaft.app.timetable.service.TimetableTermScopeResolver;
 import com.mannschaft.app.timetable.service.TimetableSlotService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -42,15 +43,20 @@ public class TimetableController {
 
     private final TimetableService timetableService;
     private final TimetableSlotService slotService;
+    /** 所属組織 ID の解決はトランザクションの外（ここ）で行い、tx 本体へ渡す（D-3T）。 */
+    private final TimetableTermScopeResolver termScopeResolver;
 
     @GetMapping
     @Operation(summary = "時間割一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<TimetableResponse>>> listTimetables(
             @PathVariable Long teamId) {
-        List<TimetableResponse> timetables = timetableService.getByTeamId(teamId, SecurityUtils.getCurrentUserId())
-                .stream()
-                .map(this::toResponse)
+        List<TimetableEntity> entities = timetableService.getByTeamId(teamId, SecurityUtils.getCurrentUserId());
+        // 学期名は 1 クエリでまとめて引く（N+1 回避）
+        Map<Long, String> termNames = timetableService.getTermNames(teamId, termScopeResolver.usableOrganizationIds(teamId),
+                entities.stream().map(TimetableEntity::getTermId).toList());
+        List<TimetableResponse> timetables = entities.stream()
+                .map(e -> toResponse(e, termNames))
                 .toList();
         return ResponseEntity.ok(ApiResponse.of(timetables));
     }
@@ -69,7 +75,8 @@ public class TimetableController {
                 request.getEffectiveFrom(), request.getEffectiveUntil(),
                 request.getWeekPatternEnabled() != null ? request.getWeekPatternEnabled() : false,
                 request.getWeekPatternBaseDate(), request.getPeriodOverride(),
-                request.getNotes(), SecurityUtils.getCurrentUserId());
+                request.getNotes(), SecurityUtils.getCurrentUserId(),
+                termScopeResolver.usableOrganizationIds(teamId));
         TimetableEntity entity = timetableService.create(teamId, data, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(toResponse(entity)));
     }
@@ -162,7 +169,7 @@ public class TimetableController {
         var data = new TimetableService.DuplicateTimetableData(
                 request.getTargetTermId(), request.getName(),
                 request.getEffectiveFrom(), request.getEffectiveUntil(),
-                SecurityUtils.getCurrentUserId());
+                SecurityUtils.getCurrentUserId(), termScopeResolver.usableOrganizationIds(teamId));
         TimetableEntity entity = timetableService.duplicate(timetableId, teamId, data, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(toResponse(entity)));
     }
@@ -228,10 +235,16 @@ public class TimetableController {
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
+    /** 単一の時間割を応答へ変換する（学期名を 1 件引く）。 */
     private TimetableResponse toResponse(TimetableEntity entity) {
+        return toResponse(entity, timetableService.getTermNames(entity.getTeamId(),
+                termScopeResolver.usableOrganizationIds(entity.getTeamId()), List.of(entity.getTermId())));
+    }
+
+    private TimetableResponse toResponse(TimetableEntity entity, Map<Long, String> termNames) {
         return new TimetableResponse(
                 entity.getId(), entity.getName(), entity.getTermId(),
-                null, // termName - resolved at service layer if needed
+                termNames.get(entity.getTermId()),
                 entity.getStatus().name(), entity.getVisibility().name(),
                 entity.getEffectiveFrom(), entity.getEffectiveUntil(),
                 entity.getWeekPatternEnabled(), entity.getWeekPatternBaseDate(),

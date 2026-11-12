@@ -9,7 +9,7 @@ const props = defineProps<{
   canPin?: boolean
   canDelete?: boolean
   /** 承諾/辞退 API 実行中の招待トークン（招待カードのローディング表示用・F04.12） */
-  pendingInviteToken?: string | null
+  pendingInviteToken?: number | null
 }>()
 
 const emit = defineEmits<{
@@ -20,8 +20,8 @@ const emit = defineEmits<{
   edit: [messageId: number]
   bookmark: [messageId: number]
   reply: [messageId: number]
-  inviteJoin: [messageId: number, token: string]
-  inviteDecline: [messageId: number, token: string]
+  inviteJoin: [messageId: number, tokenId: number]
+  inviteDecline: [messageId: number, tokenId: number]
 }>()
 
 const authStore = useAuthStore()
@@ -62,8 +62,8 @@ defineExpose({ scrollContainer })
       @edit="(messageId: number) => emit('edit', messageId)"
       @bookmark="(messageId: number) => emit('bookmark', messageId)"
       @reply="(messageId: number) => emit('reply', messageId)"
-      @invite-join="(messageId: number, token: string) => emit('inviteJoin', messageId, token)"
-      @invite-decline="(messageId: number, token: string) => emit('inviteDecline', messageId, token)"
+      @invite-join="(messageId: number, tokenId: number) => emit('inviteJoin', messageId, tokenId)"
+      @invite-decline="(messageId: number, tokenId: number) => emit('inviteDecline', messageId, tokenId)"
     />
     <DashboardEmptyState
       v-if="messages.length === 0 && !loading"
