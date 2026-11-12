@@ -1,5 +1,7 @@
 package com.mannschaft.app.organization.fanout;
 
+import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.entity.MembershipEntity;
@@ -91,6 +93,8 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     private static final AtomicInteger SLUG_SEQ = new AtomicInteger(0);
 
     @Autowired
+    private UserRepository userRepository;
+    @Autowired
     private UserRoleRepository userRoleRepository;
     @Autowired
     private OrganizationRepository organizationRepository;
@@ -132,18 +136,14 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("AC-2 keyset は直属メンバー∪配下再帰チームメンバーを user_id 昇順で返す（repo 土台）")
     void ac2_recursiveUnionAscending() {
-        long seed = 9_102L;
         long rootOrg = createOrg(null);
         long childOrg = createOrg(rootOrg);
         long team = 77_102L;
         seedTeamOrgMembership(team, rootOrg, TeamOrgMembershipEntity.Status.ACTIVE);
 
-        long uDirect = base(seed) + 1;   // root へ直属（organization_id）
-        long uChild = base(seed) + 2;    // 配下組織 childOrg へ直属
-        long uTeam = base(seed) + 3;     // root 配下の team 経由（team_id）
-        seedOrgMember(rootOrg, uDirect, "ACTIVE", false);
-        seedOrgMember(childOrg, uChild, "ACTIVE", false);
-        seedTeamMember(team, uTeam, "ACTIVE", false);
+        long uDirect = seedOrgMember(rootOrg, "ACTIVE", false);
+        long uChild = seedOrgMember(childOrg, "ACTIVE", false);
+        long uTeam = seedTeamMember(team, "ACTIVE", false);
 
         List<Long> page = com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper.userIdsOf(userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
                 rootOrg, true, MAX_DEPTH, 0L, LARGE_LIMIT, PageRequest.of(0, LARGE_LIMIT)));
@@ -160,14 +160,10 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("AC-3 includeSupporters=false は純SUPPORTERを除外し MEMBER 兼務は残す／true は含める（repo 土台）")
     void ac3_includeSupportersFilter() {
-        long seed = 9_103L;
         long org = createOrg(null);
-        long pureMember = base(seed) + 1;    // MEMBER のみ
-        long pureSupporter = base(seed) + 2; // SUPPORTER のみ（false で除外されるべき）
-        long mixed = base(seed) + 3;         // SUPPORTER かつ MEMBER（MEMBER 優先で残す）
-        for (long u : new long[] {pureMember, pureSupporter, mixed}) {
-            seedOrgMember(org, u, "ACTIVE", false);
-        }
+        long pureMember = seedOrgMember(org, "ACTIVE", false);
+        long pureSupporter = seedOrgMember(org, "ACTIVE", false);
+        long mixed = seedOrgMember(org, "ACTIVE", false);
         seedMembership(pureMember, ScopeType.ORGANIZATION, org, RoleKind.MEMBER);
         seedMembership(pureSupporter, ScopeType.ORGANIZATION, org, RoleKind.SUPPORTER);
         seedMembership(mixed, ScopeType.ORGANIZATION, org, RoleKind.SUPPORTER);
@@ -194,16 +190,11 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("AC-4 停止(FROZEN)・論理削除済ユーザーは user_role 開存でも供給しない（repo 土台）")
     void ac4_populationActiveOnly() {
-        long seed = 9_104L;
         long org = createOrg(null);
-        long active1 = base(seed) + 1;
-        long frozen = base(seed) + 2;   // user_role 開存だが status=FROZEN
-        long deleted = base(seed) + 3;  // user_role 開存だが deleted_at 済
-        long active2 = base(seed) + 4;
-        seedOrgMember(org, active1, "ACTIVE", false);
-        seedOrgMember(org, frozen, "FROZEN", false);
-        seedOrgMember(org, deleted, "ACTIVE", true);
-        seedOrgMember(org, active2, "ACTIVE", false);
+        long active1 = seedOrgMember(org, "ACTIVE", false);
+        long frozen = seedOrgMember(org, "FROZEN", false);
+        long deleted = seedOrgMember(org, "ACTIVE", true);
+        long active2 = seedOrgMember(org, "ACTIVE", false);
 
         List<Long> page = com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper.userIdsOf(userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
                 org, true, MAX_DEPTH, 0L, LARGE_LIMIT, PageRequest.of(0, LARGE_LIMIT)));
@@ -266,10 +257,9 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("AC-7 ORG ジョブを worker 実行すると現役メンバー全員に通知が届く")
     void ac7_workerDeliversToOrgMembers() {
-        long seed = 9_107L;
         long org = createOrg(null);
         String type = "ORG_FANOUT_IT_AC7";
-        List<Long> members = seedOrgMembers(org, seed, 6);
+        List<Long> members = seedOrgMembers(org, 6);
         saveWithMessages(newOrgJob(org, type, 0L, Boolean.TRUE));
 
         // Registry が解決した OrgFanoutRecipientSource が nextPage で供給したメンバーへバルク配信する。
@@ -310,9 +300,8 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("AC-9 keyset は cursor=最終で空・limit 境界でページを跨いで継続する（境界・repo 土台）")
     void ac9_keysetBoundaryPaging() {
-        long seed = 9_109L;
         long org = createOrg(null);
-        List<Long> members = seedOrgMembers(org, seed, 4); // [u1,u2,u3,u4] 昇順
+        List<Long> members = seedOrgMembers(org, 4); // [u1,u2,u3,u4] 昇順
         long u2 = members.get(1);
         long u4 = members.get(3);
 
@@ -335,10 +324,9 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("AC-10 途中 cursor から再走しても欠落なく全員に届く（クラッシュ再開）")
     void ac10_resumeFromMidCursorNoLoss() {
-        long seed = 9_110L;
         long org = createOrg(null);
         String type = "ORG_FANOUT_IT_AC10";
-        List<Long> members = seedOrgMembers(org, seed, 8); // N=8
+        List<Long> members = seedOrgMembers(org, 8); // N=8
         int k = 3;                                          // 先頭 k 件は crash 前に配信済み
         for (int i = 0; i < k; i++) {
             insertNotification(members.get(i), type);
@@ -364,13 +352,11 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("AC-11 worker は scope_ref の org ツリーのメンバーのみ配信する（別 org 混入0）")
     void ac11_orgTreeStrictSeparation() {
-        long seedA = 9_111L;
-        long seedB = 9_112L;
         long orgA = createOrg(null);
         long orgB = createOrg(null);
         String type = "ORG_FANOUT_IT_AC11";
-        List<Long> aMembers = seedOrgMembers(orgA, seedA, 3);
-        List<Long> bMembers = seedOrgMembers(orgB, seedB, 3);
+        List<Long> aMembers = seedOrgMembers(orgA, 3);
+        List<Long> bMembers = seedOrgMembers(orgB, 3);
         saveWithMessages(newOrgJob(orgA, type, 0L, Boolean.TRUE)); // orgA のみ対象
 
         // orgA ツリーの現役メンバーのみに配信し、orgB へは混入しない。
@@ -417,9 +403,8 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("AC-13 keyset は limit で分割供給し、cursor 反復で全件を重複なく列挙する（全件 List 化しない・土台）")
     void ac13_keysetPagingNotFullList() {
-        long seed = 9_113L;
         long org = createOrg(null);
-        List<Long> members = seedOrgMembers(org, seed, 5);
+        List<Long> members = seedOrgMembers(org, 5);
         int chunk = 2;
 
         List<Long> collected = new ArrayList<>();
@@ -453,12 +438,10 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("AC-14 自己参照サイクルでも maxDepth で停止し完了する／深ネストは maxDepth で打ち切る（repo 土台）")
     void ac14_recursionDepthBounded() {
-        long seed = 9_114L;
         // ① 自己参照サイクル（parent = 自分）でも無限ループせず完了する。
         long selfCycleOrg = createOrg(null);
         setParent(selfCycleOrg, selfCycleOrg);
-        long cycleMember = base(seed) + 1;
-        seedOrgMember(selfCycleOrg, cycleMember, "ACTIVE", false);
+        long cycleMember = seedOrgMember(selfCycleOrg, "ACTIVE", false);
 
         List<Long> cyclePage = com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper.userIdsOf(userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
                 selfCycleOrg, true, MAX_DEPTH, 0L, LARGE_LIMIT, PageRequest.of(0, LARGE_LIMIT)));
@@ -471,12 +454,9 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         long root = createOrg(null);
         long c1 = createOrg(root);
         long c2 = createOrg(c1);
-        long uRoot = base(seed) + 11;
-        long uC1 = base(seed) + 12;
-        long uC2 = base(seed) + 13;
-        seedOrgMember(root, uRoot, "ACTIVE", false);
-        seedOrgMember(c1, uC1, "ACTIVE", false);
-        seedOrgMember(c2, uC2, "ACTIVE", false);
+        long uRoot = seedOrgMember(root, "ACTIVE", false);
+        long uC1 = seedOrgMember(c1, "ACTIVE", false);
+        long uC2 = seedOrgMember(c2, "ACTIVE", false);
 
         List<Long> depth1 = com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper.userIdsOf(userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
                 root, true, 1, 0L, LARGE_LIMIT, PageRequest.of(0, LARGE_LIMIT)));
@@ -493,17 +473,14 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("AC-15 配下チーム展開は tom.status=ACTIVE のみ（PENDING/脱退チーム所属者は非受信・repo 土台）")
     void ac15_leftTeamMembersExcluded() {
-        long seed = 9_115L;
         long org = createOrg(null);
         long activeTeam = 77_115L;
         long pendingTeam = 78_115L;
         seedTeamOrgMembership(activeTeam, org, TeamOrgMembershipEntity.Status.ACTIVE);
         seedTeamOrgMembership(pendingTeam, org, TeamOrgMembershipEntity.Status.PENDING); // 未承認＝非展開
 
-        long uActive = base(seed) + 1; // ACTIVE チーム所属（受信）
-        long uPending = base(seed) + 2; // PENDING チーム所属（非受信）
-        seedTeamMember(activeTeam, uActive, "ACTIVE", false);
-        seedTeamMember(pendingTeam, uPending, "ACTIVE", false);
+        long uActive = seedTeamMember(activeTeam, "ACTIVE", false);
+        long uPending = seedTeamMember(pendingTeam, "ACTIVE", false);
 
         List<Long> page = com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper.userIdsOf(userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
                 org, true, MAX_DEPTH, 0L, LARGE_LIMIT, PageRequest.of(0, LARGE_LIMIT)));
@@ -518,11 +495,6 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     // =====================================================================
     // ヘルパ
     // =====================================================================
-
-    /** scope seed に対応する user_id レンジの下端（＝seed*1000）。org id とは独立に一意な user_id 帯を確保する。 */
-    private static long base(long seed) {
-        return seed * 1000L;
-    }
 
     /** 組織を 1 件作成し、生成された org id を返す（slug は連番で一意化）。 */
     private long createOrg(Long parentOrganizationId) {
@@ -543,35 +515,36 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         jdbc.update("UPDATE organizations SET parent_organization_id = ? WHERE id = ?", parentOrgId, orgId);
     }
 
-    /** 指定 org に現役メンバーを count 名 seed し、user_id 昇順のリストを返す（user_id = base+1..base+count）。 */
-    private List<Long> seedOrgMembers(long orgId, long seed, int count) {
+    /** 指定 org に現役メンバーを count 名作成し、DB が採番した user_id の昇順で返す。 */
+    private List<Long> seedOrgMembers(long orgId, int count) {
         List<Long> ids = new ArrayList<>();
         for (int i = 1; i <= count; i++) {
-            long userId = base(seed) + i;
-            seedOrgMember(orgId, userId, "ACTIVE", false);
+            long userId = seedOrgMember(orgId, "ACTIVE", false);
             ids.add(userId);
         }
         return ids;
     }
 
     /** 組織へ直属する user_role を持つメンバーを seed（対応する ACTIVE/削除状態のユーザー本体も作る）。 */
-    private void seedOrgMember(long orgId, long userId, String userStatus, boolean deleted) {
-        insertUser(userId, userStatus, deleted ? LocalDateTime.now().minusHours(1) : null);
+    private long seedOrgMember(long orgId, String userStatus, boolean deleted) {
+        long userId = createUser(userStatus, deleted);
         userRoleRepository.save(UserRoleEntity.builder()
                 .userId(userId)
                 .roleId(3L)
                 .organizationId(orgId)
                 .build());
+        return userId;
     }
 
     /** チームへ所属する user_role（team_id 指定）を持つメンバーを seed。 */
-    private void seedTeamMember(long teamId, long userId, String userStatus, boolean deleted) {
-        insertUser(userId, userStatus, deleted ? LocalDateTime.now().minusHours(1) : null);
+    private long seedTeamMember(long teamId, String userStatus, boolean deleted) {
+        long userId = createUser(userStatus, deleted);
         userRoleRepository.save(UserRoleEntity.builder()
                 .userId(userId)
                 .roleId(3L)
                 .teamId(teamId)
                 .build());
+        return userId;
     }
 
     /** team_org_memberships（チーム→組織の所属）を 1 件 seed する。 */
@@ -596,23 +569,21 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     }
 
     /**
-     * users 行を挿入する。test profile は {@code ddl-auto:create} で {@code users} 表を {@code UserEntity} から
-     * 生成するため、{@code @Column(nullable = false)} かつ DB default を持たない列を<b>すべて</b>埋めないと
-     * error 1364 で INSERT が落ちる（TEAM 版 {@code TeamFanoutRecipientSourceRedIT#insertUser} と同一列集合）。
+     * 同じ MySQL を共有する別クラスの固定 ID 帯を使わず、Repository 経由でユーザーを作る。
+     * 保存順に採番された実 ID を期待値にも使い、キーセットの昇順契約を維持する。
      */
-    private void insertUser(long userId, String status, LocalDateTime deletedAt) {
-        LocalDateTime now = LocalDateTime.now();
-        jdbc.update("INSERT INTO users ("
-                        + "id, email, last_name, first_name, display_name, status, deleted_at, created_at, updated_at, "
-                        + "handle_searchable, contact_approval_required, online_visibility, is_searchable, dm_receive_from, "
-                        + "encryption_key_version, locale, timezone, reporting_restricted, follow_list_visibility, "
-                        + "care_notification_enabled, offline_only"
-                        + ") VALUES ("
-                        + "?, ?, 'L', 'F', ?, ?, ?, ?, ?, "
-                        + "1, 1, 'NOBODY', 1, 'ANYONE', "
-                        + "1, 'ja', 'Asia/Tokyo', 0, 'PUBLIC', "
-                        + "1, 0)",
-                userId, "org-fanout-it-" + userId + "@example.test", "U" + userId, status, deletedAt, now, now);
+    private long createUser(String status, boolean deleted) {
+        return userRepository.saveAndFlush(UserEntity.builder()
+                .email("org-fanout-it-" + UUID.randomUUID() + "@example.test")
+                .lastName("L")
+                .firstName("F")
+                .displayName("ORG fan-out IT")
+                .status(UserEntity.UserStatus.valueOf(status))
+                .deletedAt(deleted ? LocalDateTime.now().minusHours(1) : null)
+                .isSearchable(Boolean.TRUE)
+                .locale("ja")
+                .timezone("Asia/Tokyo")
+                .build()).getId();
     }
 
     private NotificationFanoutJob newOrgJob(long orgId, String type, long cursor, Boolean includeSupporters) {

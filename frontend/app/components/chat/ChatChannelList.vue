@@ -145,6 +145,7 @@ defineExpose({ refresh: loadChannels, refreshAndSelect, selectIfPresent })
         v-tooltip.right="$t('chat.channelList.newConversation')"
         icon="pi pi-plus"
         :aria-label="$t('chat.channelList.addChannel')"
+        data-testid="chat-channel-list-create"
         class="!min-h-11 !min-w-11 shrink-0"
         text
         rounded
