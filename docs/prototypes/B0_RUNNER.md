@@ -1,5 +1,13 @@
 # B0 Phase 3B runner
 
+## CMP-261108-2026 f588 3住民の部分観測候補（2026-11-12）
+
+累積正本 `docs/evidence/CMP-261015-1510/resident-overlay.json` は旧64 persona / 64 journey / 120 insight の全fieldとトップrunId/environmentを保持し、3/3/3を追加して67/67/123とする。元run `ranchmapping-f58861cdcb86324354bcd246` とsource `f0b37dc6f723b33cc4364143d8230f228b3d6792` を個別宣言に保持し、H9へ書き換えない。原journey IDは各 `sourceJourneyId` に保持し、累積一意IDと原reportにないinsight IDは登録時付与。選択証拠は `docs/evidence/CMP-261108-2026/f588-resident-observations.json` とroot確認済み3枚の原bytes画像。観測は `actual-resident-artifacts` / `trusted=false` / `observed-unverified` / `coveragePassed=false` で、探索全体のPASSや戦役完了を示さない。
+
+一般住民の確定後「準備中」はsource修正済みだが新artifactの実機再検証待ち。中断住民は2回答の保存復帰を確認し、環境終了で診断完了未到達。スマホ住民は出生結果を390×844・360×800で、64タイプ診断結果の上部を360×800で確認し、画面外の本文は未確認。3住民とも入口を探したが、widget初期OFFは既存opt-in仕様であり導線不在の確定不具合とはしない。native radio 20pxだけでは不備とせずlabel有効範囲は未測定。親/UI host exit1と未完を維持する。
+
+通常generatorは候補overlayを `.b0-local` から読みexit0、現台帳の694 campaignを含む全量生成版を採択候補とする。累積正本・local copy・生成overlayはdeepEqual、旧64/64/120と旧run環境を全field保持。生成データ全体では `b0RunOverlay`、`campaigns`、`generatedAt`、`sourceCounts`、`sources`、`verification` が更新された。旧680 campaignに固定したoverlay差替え版は現台帳を14件欠落しL37 CMP行数不一致となるため棄却。採択候補の通常validatorと `--self-test-overlay` は各exit1、既存GitHub snapshot参照集合不一致（L46）で停止する。overlay宣言を既存validatorから限定抽出した検査と10不正例拒否は別判定であり、通常validator合格ではない。静的ボードUIはroot実見で受入済み。`docs/evidence/CMP-261108-2026/f588-board-ui-proof.json` に初回/再読込123件・旧120投影保持・新3の出所保存・重複0、3カード/各drawer、撤収stageを記録した。sourceHeadは保存値でexact、専用UI欄はない。先行v1の遷移途中PNGは採用せず外部原本を保持し、製品不具合には数えない。この確認は静的ボードのみであり、新H9実機・独立探索・coverage・正式完了・task-list更新は未実施。
+
 ## CMP-261107-0551 正式3住民の観測追記準備（2026-11-08）
 
 累積正本 `docs/evidence/CMP-261015-1510/resident-overlay.json` の旧58/58/114全fieldとトップrunId/environmentを保持し、実住民3 persona/3 journey/4 insightだけ追記して61/61/118とした。元runは `ranch64-3fe7b1454ec1c5086db2c581`、個別sourceHeadは `4ce3aa26785871ee363c90b0a514f023ca20723a`。persona/journey IDは原reportの一意IDを維持し、固定P01–P20へ変換しない。選択証拠は `docs/evidence/CMP-261107-0551/resident-observations-20261108.json`。3人全目的達成・正式探索実施完了のroot採択と、4観測の `actual-resident-artifacts` / `trusted=false` / `observed-unverified` / coverage=falseを分ける。
