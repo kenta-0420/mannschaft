@@ -4,6 +4,11 @@ import { mount } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import jaMessages from '~/locales/ja/ranch.json'
+import enMessages from '~/locales/en/ranch.json'
+import zhMessages from '~/locales/zh/ranch.json'
+import koMessages from '~/locales/ko/ranch.json'
+import esMessages from '~/locales/es/ranch.json'
+import deMessages from '~/locales/de/ranch.json'
 import RanchPageContent from './RanchPageContent.vue'
 
 vi.mock('~/composables/useRanchState', async () => {
@@ -24,7 +29,7 @@ afterEach(() => { vi.restoreAllMocks() })
 
 describe('牧場から振り返りへの入口', () => {
   it('entry未選択の想起リンクは個別想起画面ではなく振り返り入口へ進む', () => {
-    const i18n = createI18n({ legacy: false, locale: 'ja', messages: { ja: jaMessages } })
+    const i18n = createI18n({ legacy: false, locale: 'ja', messages: { ja: jaMessages, en: enMessages, zh: zhMessages, ko: koMessages, es: esMessages, de: deMessages } })
     const wrapper = mount(RanchPageContent, { global: {
       plugins: [i18n],
       stubs: {
