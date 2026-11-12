@@ -3,6 +3,7 @@ import type { MemberCard, MemberCardStatus } from '~/types/member-card'
 
 defineProps<{
   cards: MemberCard[]
+  selectedId?: number | null
 }>()
 
 const emit = defineEmits<{
@@ -24,7 +25,7 @@ const statusOptions = computed(() =>
 
 <template>
   <div>
-    <div class="mb-4 flex items-center gap-2">
+    <div class="mb-4 flex flex-wrap items-center gap-2">
       <SelectButton v-model="statusFilter" :options="statusOptions" option-label="label" option-value="value" />
     </div>
 
@@ -37,7 +38,9 @@ const statusOptions = computed(() =>
       <div
         v-for="card in cards.filter(c => statusFilter === 'ALL' || c.status === statusFilter)"
         :key="card.id"
-        class="cursor-pointer"
+        class="cursor-pointer rounded-xl"
+        :class="card.id === selectedId ? 'ring-2 ring-primary' : ''"
+        :aria-current="card.id === selectedId ? 'true' : undefined"
         @click="emit('select', card)"
       >
         <MemberCardDisplay

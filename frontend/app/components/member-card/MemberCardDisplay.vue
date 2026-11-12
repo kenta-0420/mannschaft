@@ -16,6 +16,7 @@ const notification = useNotification()
 
 const qrData = ref<MemberCardQr | null>(null)
 const loadingQr = ref(false)
+const regenerating = ref(false)
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 
 const statusSeverity = computed(() => {
@@ -46,11 +47,15 @@ async function loadQr() {
 }
 
 async function handleRegenerate() {
+  if (regenerating.value) return
+  regenerating.value = true
   try {
     qrData.value = await memberCardApi.regenerate(props.card.id)
     notification.success(t('memberCardDisplay.qrRegenerated'))
   } catch {
     notification.error(t('memberCardDisplay.qrRegenerateFailed'))
+  } finally {
+    regenerating.value = false
   }
 }
 
@@ -97,14 +102,16 @@ onUnmounted(() => {
       </div>
     </template>
     <template #footer>
-      <div class="flex justify-center gap-2">
+      <div class="flex flex-wrap justify-center gap-2">
         <Button
           v-if="card.status === 'ACTIVE'"
           :label="$t('memberCardDisplay.regenerate')"
           icon="pi pi-refresh"
           severity="secondary"
           size="small"
-          @click="handleRegenerate"
+          :loading="regenerating"
+          :disabled="regenerating"
+          @click.stop="handleRegenerate"
         />
         <Button
           v-if="card.status === 'ACTIVE'"
@@ -113,7 +120,7 @@ onUnmounted(() => {
           severity="warn"
           size="small"
           outlined
-          @click="emit('suspend', card.id)"
+          @click.stop="emit('suspend', card.id)"
         />
         <Button
           v-if="card.status === 'SUSPENDED'"
@@ -121,7 +128,7 @@ onUnmounted(() => {
           icon="pi pi-play"
           severity="success"
           size="small"
-          @click="emit('reactivate', card.id)"
+          @click.stop="emit('reactivate', card.id)"
         />
       </div>
     </template>
