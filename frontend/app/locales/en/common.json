@@ -3342,7 +3342,7 @@
       "not_shown_hint": "For security, issued links are never shown again. Reissue one if you need it.",
       "revoked_by_migration": "Revoked as part of a security upgrade",
       "reissue": "Reissue",
-      "links_hint": "If you lose a link, create a new one to reissue it. Disable old links you no longer need with the × button.",
+      "links_hint": "If you lose a link, create a new one to reissue it. Revoke old links you no longer need with the × button.",
       "label_with_id": "Link #{id}",
       "created_at": "Issued at",
       "expires_at": "Expires at",

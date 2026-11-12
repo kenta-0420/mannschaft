@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { toLocalDateString, formatLocalDateOnly } from '~/utils/localDate'
+import { toLocalDateString, formatLocalDateOnly, formatInstantDateTimeSeconds } from '~/utils/localDate'
 
 /**
  * localDate ユニットテスト（BE の LocalDate へ送る yyyy-MM-dd の組み立て）
@@ -119,5 +119,26 @@ describe('formatLocalDateOnly', () => {
     withTz('Asia/Tokyo', () => {
       expect(formatLocalDateOnly('2026-08-20', 'ja-JP')).toContain('8/20')
     })
+  })
+})
+
+// CMP-261111-1429 ALIC-1: 同じ分に作成されたレコードを一覧で見分けるため、秒まで整形する
+describe('formatInstantDateTimeSeconds', () => {
+  it('同じ分・異なる秒の2つの瞬間が異なる文字列になる（ja / Asia/Tokyo）', () => {
+    const a = formatInstantDateTimeSeconds(new Date('2026-10-16T09:15:05+09:00'), 'ja', 'Asia/Tokyo')
+    const b = formatInstantDateTimeSeconds(new Date('2026-10-16T09:15:42+09:00'), 'ja', 'Asia/Tokyo')
+    expect(a).toBe('2026/10/16 09:15:05')
+    expect(b).toBe('2026/10/16 09:15:42')
+  })
+
+  it('全ロケールで秒（2桁）まで含む', () => {
+    for (const locale of ['ja', 'en', 'zh', 'ko', 'es', 'de']) {
+      const text = formatInstantDateTimeSeconds(new Date('2026-10-16T09:15:07+09:00'), locale, 'Asia/Tokyo')
+      expect(text).toMatch(/\d{2}:\d{2}:07/)
+    }
+  })
+
+  it('不正な Date は空文字', () => {
+    expect(formatInstantDateTimeSeconds(new Date('x'), 'ja', 'Asia/Tokyo')).toBe('')
   })
 })
