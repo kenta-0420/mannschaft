@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261105-1507",
+  "scope": "app",
+  "implementation": {
+    "pr": 4486,
+    "sha": "46dc24519ee4aca623d18a27db044209a4ae6afb"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "プロジェクトの進捗率・チャットの同秒順序・時間割の学期作成/削除・プロジェクト詳細の表示・マイルストーン保存・チーム単独の学期管理など、N+1 Phase1 の既存不具合を直し、チャットの存在秘匿・本人の編集削除・既読バッジ・多言語化を満たす（#4305 #4306 #4311 #4324 #4343 #4355 #4358 #4375 #4434 #4436 #4438）。",
+      "tests": [
+        {
+          "name": "playwright-cmp1507 実機E2E 18件（権限あり・権限なし・他テナントのロール横断を含む）",
+          "evidence": "docs/evidence/CMP-261105-1507/real-e2e.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "連絡先検索でハンドルが見つからないとき落ちず「見つかりませんでした」と出る。",
+      "tests": [
+        {
+          "name": "ContactSearchDialog",
+          "evidence": "frontend/tests/unit/components/contact/ContactSearchDialog.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "メッセージ送信で一覧のプレビューが更新される。",
+      "tests": [
+        {
+          "name": "ChatMessagePanel.listSync",
+          "evidence": "frontend/tests/unit/components/chat/ChatMessagePanel.listSync.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "DM 開始で作成した DM が開き、送信が DM に届く（直前の部屋へ誤送信しない）。",
+      "tests": [
+        {
+          "name": "ChatCreateDialog.openChannel",
+          "evidence": "frontend/tests/unit/components/chat/ChatCreateDialog.openChannel.spec.ts"
+        },
+        {
+          "name": "chatOpenCreatedChannel",
+          "evidence": "frontend/tests/unit/pages/chat/chatOpenCreatedChannel.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 43260152779
+    },
+    {
+      "runId": 43260152721
+    },
+    {
+      "runId": 43260152769
+    },
+    {
+      "runId": 43260152725
+    },
+    {
+      "runId": 43260152766
+    },
+    {
+      "runId": 43260152719
+    },
+    {
+      "runId": 43260152692
+    },
+    {
+      "runId": 43260152818
+    },
+    {
+      "runId": 43260152787
+    },
+    {
+      "runId": 43260152713
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4486"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261105-1507/real-e2e.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261105-1507/exploratory.md"
+    }
+  },
+  "regressions": [
+    {
+      "description": "ハンドル未発見で連絡先検索が落ちる",
+      "test": "frontend/tests/unit/components/contact/ContactSearchDialog.spec.ts",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/pull/4486",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/pull/4486"
+    },
+    {
+      "description": "送信でチャット一覧のプレビューが更新されない",
+      "test": "frontend/tests/unit/components/chat/ChatMessagePanel.listSync.spec.ts",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/pull/4486",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/pull/4486"
+    },
+    {
+      "description": "DM 開始後に DM が開かず直前の部屋へ誤送信される",
+      "test": "frontend/tests/unit/components/chat/ChatCreateDialog.openChannel.spec.ts",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/pull/4486",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/pull/4486"
+    }
+  ]
+}
