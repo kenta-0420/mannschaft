@@ -106,15 +106,38 @@ describe('pages/register.vue 登録送信', () => {
     wrapper.unmount()
   })
 
-  it('REG-002: timezone はブラウザの IANA 名', async () => {
-    mockApi.mockResolvedValue({})
-    const wrapper = await mountFilled()
-    await wrapper.find('form').trigger('submit')
-    await flushPromises()
+  // ブラウザのタイムゾーンを固定して送信し、body.timezone を返す（実行環境の TZ に依存させない）
+  async function submitWithBrowserTimezone(tz: string | undefined): Promise<string> {
+    const spy = vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockReturnValue(
+      { timeZone: tz } as Intl.ResolvedDateTimeFormatOptions,
+    )
+    try {
+      mockApi.mockResolvedValue({})
+      const wrapper = await mountFilled()
+      await wrapper.find('form').trigger('submit')
+      await vi.waitFor(() => expect(mockApi).toHaveBeenCalledTimes(1))
+      const body = mockApi.mock.calls[0]![1].body
+      wrapper.unmount()
+      return body.timezone
+    } finally {
+      spy.mockRestore()
+    }
+  }
 
-    const expected = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Tokyo'
-    expect(mockApi.mock.calls[0]![1].body.timezone).toBe(expected)
-    wrapper.unmount()
+  it('REG-002: timezone はブラウザの IANA 名をそのまま送る', async () => {
+    expect(await submitWithBrowserTimezone('America/New_York')).toBe('America/New_York')
+  })
+
+  it('REG-002b: UTC は Asia/Tokyo に置き換えず保持する', async () => {
+    expect(await submitWithBrowserTimezone('UTC')).toBe('UTC')
+  })
+
+  it('REG-002c: 無効な値は既定の Asia/Tokyo に落ちる', async () => {
+    expect(await submitWithBrowserTimezone('Not/AZone')).toBe('Asia/Tokyo')
+  })
+
+  it('REG-002d: 取得できない（undefined）ときは既定の Asia/Tokyo', async () => {
+    expect(await submitWithBrowserTimezone(undefined)).toBe('Asia/Tokyo')
   })
 
   it('REG-003: 同一フレームで 3 連打しても POST は 1 回', async () => {
@@ -124,6 +147,7 @@ describe('pages/register.vue 登録送信', () => {
     void form.trigger('submit')
     void form.trigger('submit')
     void form.trigger('submit')
+    await vi.waitFor(() => expect(mockApi).toHaveBeenCalled())
     await flushPromises()
 
     expect(mockApi).toHaveBeenCalledTimes(1)

@@ -171,8 +171,16 @@ const submitted = ref(false)
 
 // ブラウザの IANA タイムゾーン名（例: Asia/Tokyo）。取得できない場合は既定の Asia/Tokyo。
 function browserTimezone(): string {
+  const fallback = 'Asia/Tokyo'
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
-  return tz && tz.includes('/') ? tz : 'Asia/Tokyo'
+  if (!tz) return fallback
+  try {
+    // 無効な IANA 名なら RangeError。UTC など "/" を含まない正当な名前はそのまま通す。
+    new Intl.DateTimeFormat('en-US', { timeZone: tz })
+    return tz
+  } catch {
+    return fallback
+  }
 }
 
 // 送信開始前の再入ガード。handleSubmit は検証が非同期のため、loading だけでは同一フレームの
