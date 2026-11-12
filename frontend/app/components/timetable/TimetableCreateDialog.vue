@@ -23,6 +23,10 @@ const props = defineProps<{
   visible: boolean
   terms: TimetableTerm[]
   submitting: boolean
+  /** 作成 API が返した項目別のエラー（400 の fieldErrors）。項目名 → メッセージ。 */
+  fieldErrors?: Record<string, string>
+  /** 項目に紐づかない作成エラー（TIMETABLE_040 など）。 */
+  formError?: string
 }>()
 
 const emit = defineEmits<{
@@ -43,7 +47,15 @@ const form = ref({
   notes: '',
 })
 
+/** 送信前に検出した項目別のエラー。API が返したものは props.fieldErrors 側。 */
+const clientErrors = ref<Record<string, string>>({})
+
+function errorOf(field: string): string | undefined {
+  return clientErrors.value[field] ?? props.fieldErrors?.[field]
+}
+
 function resetForm() {
+  clientErrors.value = {}
   form.value = {
     name: '',
     termId: null,
@@ -75,6 +87,13 @@ const visibilityOptions = computed(() => [
 
 function submit() {
   if (!form.value.name || !form.value.termId || !form.value.effectiveFrom) return
+  // 適用開始日より前の終了日は API に流す前に弾く（BE は TIMETABLE_040/400 で拒否する）
+  const errors: Record<string, string> = {}
+  if (form.value.effectiveUntil && form.value.effectiveUntil < form.value.effectiveFrom) {
+    errors.effectiveUntil = t('timetable.effective_until_before_from')
+  }
+  clientErrors.value = errors
+  if (Object.keys(errors).length > 0) return
   emit('submit', {
     name: form.value.name,
     termId: form.value.termId,
@@ -102,7 +121,9 @@ function submit() {
           v-model="form.name"
           class="w-full"
           :placeholder="$t('timetable.timetable_name')"
+          :invalid="!!errorOf('name')"
         />
+        <small v-if="errorOf('name')" class="mt-1 block text-red-600" role="alert" data-testid="timetable-create-error-name">{{ errorOf('name') }}</small>
       </div>
       <div>
         <label class="mb-1 block text-sm font-medium">{{ $t('timetable.term') }}</label>
@@ -113,7 +134,9 @@ function submit() {
           option-value="id"
           class="w-full"
           :placeholder="$t('timetable.term')"
+          :invalid="!!errorOf('termId')"
         />
+        <small v-if="errorOf('termId')" class="mt-1 block text-red-600" role="alert" data-testid="timetable-create-error-termId">{{ errorOf('termId') }}</small>
         <small
           v-if="terms.length === 0"
           class="mt-1 block text-surface-500"
@@ -125,15 +148,18 @@ function submit() {
           <label class="mb-1 block text-sm font-medium">{{
             $t('timetable.effective_from')
           }}</label>
-          <InputText v-model="form.effectiveFrom" type="date" class="w-full" />
+          <InputText v-model="form.effectiveFrom" type="date" class="w-full" :invalid="!!errorOf('effectiveFrom')" />
+          <small v-if="errorOf('effectiveFrom')" class="mt-1 block text-red-600" role="alert" data-testid="timetable-create-error-effectiveFrom">{{ errorOf('effectiveFrom') }}</small>
         </div>
         <div>
           <label class="mb-1 block text-sm font-medium">{{
             $t('timetable.effective_until')
           }}</label>
-          <InputText v-model="form.effectiveUntil" type="date" class="w-full" />
+          <InputText v-model="form.effectiveUntil" type="date" class="w-full" :invalid="!!errorOf('effectiveUntil')" />
+          <small v-if="errorOf('effectiveUntil')" class="mt-1 block text-red-600" role="alert" data-testid="timetable-create-error-effectiveUntil">{{ errorOf('effectiveUntil') }}</small>
         </div>
       </div>
+      <small v-if="formError" class="block text-red-600" role="alert" data-testid="timetable-create-form-error">{{ formError }}</small>
       <div>
         <label class="mb-1 block text-sm font-medium">{{ $t('timetable.visibility_label') }}</label>
         <Select

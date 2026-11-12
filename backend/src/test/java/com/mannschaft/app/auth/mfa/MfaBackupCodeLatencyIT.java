@@ -3,14 +3,20 @@ package com.mannschaft.app.auth.mfa;
 import com.mannschaft.app.auth.MfaVerificationMethod;
 import com.mannschaft.app.auth.TwoFactorMethod;
 import com.mannschaft.app.common.BusinessException;
+import com.sun.management.HotSpotDiagnosticMXBean;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
+import java.lang.management.CompilationMXBean;
 import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryPoolMXBean;
+import java.lang.management.MemoryUsage;
 import java.time.Duration;
+import java.util.List;
 import java.util.function.Function;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,6 +50,10 @@ class MfaBackupCodeLatencyIT extends MfaItSupport {
     static final long BCRYPT_LIMIT_MILLIS = 3_000L;
 
     private static final String IP = "203.0.113.54";
+
+    // 新規診断APIはfixture・warmUp・既存計測の前に初期化する。設定変更は行わない。
+    private static final CompilationMXBean COMPILATION = compilationBean();
+    private static final List<MemoryPoolMXBean> MEMORY_POOLS = memoryPools();
 
     private final Function<String, String> argon2 = code ->
             "{argon2}" + Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8().encode(code);
@@ -80,11 +90,16 @@ class MfaBackupCodeLatencyIT extends MfaItSupport {
     // ─────────────────────────────────────────────────────────────
 
     private void assertMismatchWithin(MfaUser u, long limitMillis) throws Exception {
-        warmUp(u);
+        String caseKind = limitMillis == ARGON2_LIMIT_MILLIS ? "argon2id" : "bcrypt12";
+        logJit(caseKind, "all-mismatch", "before-warmup");
+        int warmUpOutcome = warmUp(u);
+        logJit(caseKind, "all-mismatch", "after-warmup");
+        logWarmUp(caseKind, "all-mismatch", warmUpOutcome);
         String session = loginForMfaSession(u);
         String wrong = wrongBackupCode(u);
 
         // wall記録と出力は既存nanoTime計測区間の外に置く。
+        logJit(caseKind, "all-mismatch", "before-timing");
         ResourceSnapshot resourcesBefore = ResourceSnapshot.capture();
         long startEpochMillis = System.currentTimeMillis();
         long start = System.nanoTime();
@@ -96,6 +111,7 @@ class MfaBackupCodeLatencyIT extends MfaItSupport {
         long elapsed = Duration.ofNanos(System.nanoTime() - start).toMillis();
         long endEpochMillis = System.currentTimeMillis();
         ResourceSnapshot resourcesAfter = ResourceSnapshot.capture();
+        logJit(caseKind, "all-mismatch", "after-timing");
         System.out.println("[mfa-latency] pathKind=all-mismatch startEpochMillis=%d endEpochMillis=%d elapsedMillis=%d limitMillis=%d pid=%d".formatted(
                 startEpochMillis, endEpochMillis, elapsed, limitMillis, ProcessHandle.current().pid()));
         logResources("all-mismatch", startEpochMillis, endEpochMillis, resourcesBefore, resourcesAfter);
@@ -104,11 +120,16 @@ class MfaBackupCodeLatencyIT extends MfaItSupport {
     }
 
     private void assertLastMatchWithin(MfaUser u, long limitMillis) throws Exception {
-        warmUp(u);
+        String caseKind = limitMillis == ARGON2_LIMIT_MILLIS ? "argon2id" : "bcrypt12";
+        logJit(caseKind, "last-match", "before-warmup");
+        int warmUpOutcome = warmUp(u);
+        logJit(caseKind, "last-match", "after-warmup");
+        logWarmUp(caseKind, "last-match", warmUpOutcome);
         String session = loginForMfaSession(u);
         String last = u.backupCodes().get(u.backupCodes().size() - 1);
 
         // wall記録と出力は既存nanoTime計測区間の外に置く。
+        logJit(caseKind, "last-match", "before-timing");
         ResourceSnapshot resourcesBefore = ResourceSnapshot.capture();
         long startEpochMillis = System.currentTimeMillis();
         long start = System.nanoTime();
@@ -117,12 +138,126 @@ class MfaBackupCodeLatencyIT extends MfaItSupport {
         long elapsed = Duration.ofNanos(System.nanoTime() - start).toMillis();
         long endEpochMillis = System.currentTimeMillis();
         ResourceSnapshot resourcesAfter = ResourceSnapshot.capture();
+        logJit(caseKind, "last-match", "after-timing");
         System.out.println("[mfa-latency] pathKind=last-match startEpochMillis=%d endEpochMillis=%d elapsedMillis=%d limitMillis=%d pid=%d".formatted(
                 startEpochMillis, endEpochMillis, elapsed, limitMillis, ProcessHandle.current().pid()));
         logResources("last-match", startEpochMillis, endEpochMillis, resourcesBefore, resourcesAfter);
 
         assertThat(response.getData().getAccessToken()).as("AC-54 前提: 最後の 1 件で一致して成功").isNotBlank();
         assertThat(elapsed).as("AC-54 最後一致の単発所要時間（ms）").isLessThanOrEqualTo(limitMillis);
+    }
+
+    /** 固定allowlistのgetterだけを読む。未対応・未取得は-1、booleanは0/1。 */
+    @BeforeAll
+    static void recordJvmProfile() {
+        HotSpotDiagnosticMXBean hotspot;
+        try {
+            hotspot = ManagementFactory.getPlatformMXBean(HotSpotDiagnosticMXBean.class);
+        } catch (RuntimeException | LinkageError ignored) {
+            hotspot = null;
+        }
+        long tiered = vmOption(hotspot, "TieredCompilation");
+        long stopAt = vmOption(hotspot, "TieredStopAtLevel");
+        long compilerCount = vmOption(hotspot, "CICompilerCount");
+        long threshold = vmOption(hotspot, "CompileThreshold");
+        long cacheSize = vmOption(hotspot, "ReservedCodeCacheSize");
+        var version = Runtime.version();
+        System.out.println("[mfa-jit] caseKind=class pathKind=none phase=vm-profile pid=%d epochMillis=%d jdkFeature=%d jdkInterim=%d jdkUpdate=%d jdkPatch=%d jdkBuild=%d vendorKind=%d jvmStartTimeMillis=%d TieredCompilation=%d TieredStopAtLevel=%d CICompilerCount=%d CompileThreshold=%d ReservedCodeCacheSize=%d".formatted(
+                ProcessHandle.current().pid(), System.currentTimeMillis(), version.feature(), version.interim(), version.update(), version.patch(),
+                version.build().orElse(-1), vendorKind(),
+                jvmStartTimeMillis(), tiered, stopAt, compilerCount, threshold, cacheSize));
+    }
+
+    private static long vmOption(HotSpotDiagnosticMXBean hotspot, String name) {
+        if (hotspot == null) {
+            return -1;
+        }
+        try {
+            String value = hotspot.getVMOption(name).getValue();
+            return "true".equals(value) ? 1 : "false".equals(value) ? 0 : Long.parseLong(value);
+        } catch (RuntimeException ignored) {
+            return -1;
+        }
+    }
+
+    /** vendor固定分類: 0=その他、1=Adoptium、2=Oracle、3=Amazon、4=Azul、-1=未取得。 */
+    private static int vendorKind() {
+        try {
+            return switch (System.getProperty("java.vendor", "")) {
+                case "" -> -1;
+                case "Eclipse Adoptium" -> 1;
+                case "Oracle Corporation" -> 2;
+                case "Amazon.com Inc." -> 3;
+                case "Azul Systems, Inc." -> 4;
+                default -> 0;
+            };
+        } catch (SecurityException ignored) {
+            return -1;
+        }
+    }
+
+    private static long jvmStartTimeMillis() {
+        try {
+            return ManagementFactory.getRuntimeMXBean().getStartTime();
+        } catch (RuntimeException ignored) {
+            return -1;
+        }
+    }
+
+    private static CompilationMXBean compilationBean() {
+        try {
+            return ManagementFactory.getCompilationMXBean();
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    private static List<MemoryPoolMXBean> memoryPools() {
+        try {
+            return ManagementFactory.getMemoryPoolMXBeans();
+        } catch (RuntimeException ignored) {
+            return List.of();
+        }
+    }
+
+    private static long compilationMillis() {
+        try {
+            return COMPILATION != null && COMPILATION.isCompilationTimeMonitoringSupported()
+                    ? COMPILATION.getTotalCompilationTime() : -1;
+        } catch (RuntimeException ignored) {
+            return -1;
+        }
+    }
+
+    private static MemoryUsage codeHeap(String name) {
+        try {
+            for (var pool : MEMORY_POOLS) {
+                if (name.equals(pool.getName())) {
+                    return pool.getUsage();
+                }
+            }
+        } catch (RuntimeException ignored) {
+            // 未取得はnullを経由してused/maxとも-1とする。例外本文は出力しない。
+        }
+        return null;
+    }
+
+    /** 累積値を既存計測窓の外で記録する。CodeHeap以外のpool名は出力しない。 */
+    private static void logJit(String caseKind, String pathKind, String phase) {
+        var nonMethods = codeHeap("CodeHeap 'non-nmethods'");
+        var profiled = codeHeap("CodeHeap 'profiled nmethods'");
+        var nonProfiled = codeHeap("CodeHeap 'non-profiled nmethods'");
+        System.out.println("[mfa-jit] caseKind=%s pathKind=%s phase=%s pid=%d epochMillis=%d compilationMillis=%d nonMethodsUsed=%d nonMethodsMax=%d profiledUsed=%d profiledMax=%d nonProfiledUsed=%d nonProfiledMax=%d".formatted(
+                caseKind, pathKind, phase, ProcessHandle.current().pid(), System.currentTimeMillis(), compilationMillis(),
+                nonMethods == null ? -1 : nonMethods.getUsed(), nonMethods == null ? -1 : nonMethods.getMax(),
+                profiled == null ? -1 : profiled.getUsed(), profiled == null ? -1 : profiled.getMax(),
+                nonProfiled == null ? -1 : nonProfiled.getUsed(), nonProfiled == null ? -1 : nonProfiled.getMax()));
+    }
+
+    /** outcome: 正常0/AUTH_074=1/その他Business=2/UnsupportedOperationException=3。 */
+    private static void logWarmUp(String caseKind, String pathKind, int outcome) {
+        System.out.println("[mfa-warmup] caseKind=%s pathKind=%s pid=%d epochMillis=%d outcome=%d".formatted(
+                caseKind, pathKind, ProcessHandle.current().pid(), System.currentTimeMillis(), outcome));
     }
 
     /** 計測区間外の補助観測。未対応・無効・未取得は -1 とし、有効化設定は変更しない。 */
@@ -160,12 +295,19 @@ class MfaBackupCodeLatencyIT extends MfaItSupport {
     }
 
     /** JIT・コネクション確立の影響を除くための空打ち（別セッションで 1 回失敗させる）。 */
-    private void warmUp(MfaUser u) throws Exception {
+    private int warmUp(MfaUser u) throws Exception {
         String session = loginForMfaSession(u);
+        int outcome = 0;
         try {
             auth2faService.validateMfaLogin(session, MfaVerificationMethod.BACKUP_CODE, wrongBackupCode(u), IP, USER_AGENT);
         } catch (BusinessException | UnsupportedOperationException ignored) {
-            // 空打ちの結果は問わない（計測対象ではない）
+            // 空打ちの結果は問わない（計測対象ではない）。診断enumだけを返す。
+            if (ignored instanceof BusinessException business) {
+                outcome = business.getErrorCode() != null && "AUTH_074".equals(business.getErrorCode().getCode()) ? 1 : 2;
+            } else {
+                outcome = 3;
+            }
         }
+        return outcome;
     }
 }

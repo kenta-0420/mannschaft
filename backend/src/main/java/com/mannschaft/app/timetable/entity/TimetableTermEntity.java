@@ -8,14 +8,22 @@ import lombok.AccessLevel;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLRestriction;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 
 /**
  * 学期エンティティ。時間割の適用期間（学期・タームなど）を管理する。
+ *
+ * <p>論理削除（{@code deleted_at}）。{@code timetables.term_id} が {@code fk_tm_term}（ON DELETE RESTRICT）で
+ * 学期を参照するため、論理削除済みの時間割が残る学期は物理削除できない。学期を論理削除にして参照を保つ。
+ * 論理削除済みの学期は {@code @SQLRestriction} により通常クエリ（一覧・重複検証・選択肢）から除かれる。</p>
  */
 @Entity
 @Table(name = "timetable_terms")
+@SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SuperBuilder(toBuilder = true)
@@ -39,6 +47,22 @@ public class TimetableTermEntity extends BaseEntity {
 
     @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     private Integer sortOrder;
+
+    /** 論理削除日時（UTC の瞬間）。NULL の場合は有効な学期。DB 列は DATETIME（UTC 壁時計）。 */
+    private Instant deletedAt;
+
+    /**
+     * 論理削除を行う。
+     *
+     * <p>引数なしの {@code now()} は時刻の番人（{@code DateTimeAndZoneGuardTest}）の違反になるため、
+     * 呼び出し側が注入した {@link Clock}（{@code @Qualifier("wallClock")}）を渡す。
+     * 本列は {@link Instant} のため {@code Clock.instant()} を使う。</p>
+     *
+     * @param clock 壁時計クロック
+     */
+    public void softDelete(Clock clock) {
+        this.deletedAt = clock.instant();
+    }
 
     /**
      * 学期の更新可能フィールドを一括で書き換える（部分更新）。
