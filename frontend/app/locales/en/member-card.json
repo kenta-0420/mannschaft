@@ -100,5 +100,27 @@
     "created": "Location created",
     "updated": "Location updated",
     "deleted": "Location deleted"
+  },
+  "memberCardDisplay": {
+    "status": {
+      "ALL": "All",
+      "ACTIVE": "Active",
+      "SUSPENDED": "Suspended",
+      "REVOKED": "Revoked"
+    },
+    "scope": {
+      "PLATFORM": "Platform",
+      "TEAM": "Team",
+      "ORGANIZATION": "Organization"
+    },
+    "qrAutoRefresh": "Refreshes every 5 minutes",
+    "checkinCount": "{count} check-ins",
+    "regenerate": "Regenerate QR",
+    "suspend": "Suspend",
+    "reactivate": "Resume",
+    "empty": "No membership cards",
+    "qrFetchFailed": "Failed to load the QR code",
+    "qrRegenerated": "QR code regenerated",
+    "qrRegenerateFailed": "Failed to regenerate the QR code"
   }
 }
