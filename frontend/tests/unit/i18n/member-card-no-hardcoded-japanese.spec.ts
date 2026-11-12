@@ -36,6 +36,18 @@ describe('member-card 日本語直書き番人', () => {
   }
 })
 
+describe('settings/member-cards.vue 日本語直書き番人', () => {
+  it('ページに日本語の直書きが無い', () => {
+    const f = resolve(here, '../../../app/pages/settings/member-cards.vue')
+    const hits = readFileSync(f, 'utf-8')
+      .split(/\r?\n/)
+      .map((l, i) => ({ l, n: i + 1 }))
+      .filter(({ l }) => JA.test(l) && !COMMENT.test(l))
+      .map(({ l, n }) => `member-cards.vue:${n}: ${l.trim()}`)
+    expect(hits).toEqual([])
+  })
+})
+
 describe('memberCardDisplay ロケール', () => {
   const LANGS = ['ja', 'en', 'zh', 'ko', 'es', 'de'] as const
   const load = (lang: string) =>
