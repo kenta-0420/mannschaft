@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261104-0335",
+  "scope": "app",
+  "implementation": {
+    "pr": 4292,
+    "sha": "84b752b3fbb6ae07173dd821734b5e5bcf00fe26"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "日時整形の共通関数がロケールに従う",
+      "tests": [
+        {
+          "name": "useDatetime-locale.spec",
+          "evidence": "frontend/tests/unit/composables/useDatetime-locale.spec.ts"
+        },
+        {
+          "name": "localeDateTime.spec",
+          "evidence": "frontend/tests/unit/utils/localeDateTime.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "対象期間・確認ダイアログ・履歴・プレビューの日付と区切りが de でも ja 直書きにならない（実機）",
+      "tests": [
+        {
+          "name": "0335(de)/DEPUTY_ADMIN 1440",
+          "evidence": "frontend/tests/e2e/real/emergency-closure-cmp261104.real.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 42022415250
+    },
+    {
+      "runId": 42022415269
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4292"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4404"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261104-0335-exploratory.md"
+    }
+  },
+  "regressions": []
+}

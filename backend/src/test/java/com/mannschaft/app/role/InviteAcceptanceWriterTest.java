@@ -58,7 +58,7 @@ class InviteAcceptanceWriterTest {
     @InjectMocks
     private InviteAcceptanceWriter writer;
 
-    private static final InviteLocator LOCATOR = new InviteLocator.ByToken("token-1");
+    private static final InviteLocator LOCATOR = new InviteLocator.ByTokenHash("hash-1");
     private static final Long USER_ID = 1L;
     private static final Long TEAM_ID = 10L;
     private static final Long TOKEN_ID = 100L;
@@ -77,7 +77,7 @@ class InviteAcceptanceWriterTest {
     }
 
     private void lock(InviteTokenSnapshot snapshot) {
-        given(inviteTokenRepository.lockSnapshotByToken("token-1")).willReturn(Optional.of(snapshot));
+        given(inviteTokenRepository.lockSnapshotByTokenHash("hash-1")).willReturn(Optional.of(snapshot));
     }
 
     private void memberRole() {
@@ -99,10 +99,28 @@ class InviteAcceptanceWriterTest {
         @Test
         @DisplayName("招待が無い → ROLE_002")
         void 招待が無い() {
-            given(inviteTokenRepository.lockSnapshotByToken("token-1")).willReturn(Optional.empty());
+            given(inviteTokenRepository.lockSnapshotByTokenHash("hash-1")).willReturn(Optional.empty());
 
             assertThatThrownBy(() -> writer.claim(LOCATOR, USER_ID, false, null))
                     .satisfies(t -> assertCode(t, RoleErrorCode.ROLE_002, null));
+        }
+
+        @Test
+        @DisplayName("ID 入口: 宛先本人でない・共有リンク型は、上限到達でも不在と同じ ROLE_002（状態を明かさない）")
+        void ID入口は非宛先を隠す() {
+            InviteLocator byId = new InviteLocator.ById(TOKEN_ID);
+            // 上限到達済みでも、非宛先には ROLE_003 を返さない
+            given(inviteTokenRepository.lockSnapshotById(TOKEN_ID))
+                    .willReturn(Optional.of(token(null, 1, 1, null, 999L)));
+            assertThatThrownBy(() -> writer.claim(byId, USER_ID, false, null))
+                    .satisfies(t -> assertCode(t, RoleErrorCode.ROLE_002, null));
+
+            // 共有リンク型（宛先なし）はトークン入口では参加できるが、ID 入口では不在と同じ
+            given(inviteTokenRepository.lockSnapshotById(TOKEN_ID))
+                    .willReturn(Optional.of(token(null, 3, 0, null, null)));
+            assertThatThrownBy(() -> writer.claim(byId, USER_ID, false, null))
+                    .satisfies(t -> assertCode(t, RoleErrorCode.ROLE_002, null));
+            verify(inviteTokenRepository, never()).incrementUsedCountIfAvailable(any());
         }
 
         @Test
@@ -347,7 +365,7 @@ class InviteAcceptanceWriterTest {
     class Decline {
 
         private InviteTokenEntity entity(Long targetUserId, LocalDateTime revokedAt) {
-            return InviteTokenEntity.builder().id(TOKEN_ID).token("token-1").teamId(TEAM_ID).roleId(ROLE_ID)
+            return InviteTokenEntity.builder().id(TOKEN_ID).tokenHash("hash-1").teamId(TEAM_ID).roleId(ROLE_ID)
                     .usedCount(0).targetUserId(targetUserId).revokedAt(revokedAt).build();
         }
 
@@ -355,7 +373,7 @@ class InviteAcceptanceWriterTest {
         @DisplayName("宛先本人なら失効させ newlyDeclined=true")
         void 辞退する() {
             InviteTokenEntity token = entity(USER_ID, null);
-            given(inviteTokenRepository.lockFreshByToken("token-1")).willReturn(Optional.of(token));
+            given(inviteTokenRepository.lockFreshByTokenHash("hash-1")).willReturn(Optional.of(token));
 
             InviteDeclineResult result = writer.decline(LOCATOR, USER_ID);
 
@@ -368,7 +386,7 @@ class InviteAcceptanceWriterTest {
         void 冪等() {
             LocalDateTime first = LocalDateTime.of(2026, 1, 1, 0, 0);
             InviteTokenEntity token = entity(USER_ID, first);
-            given(inviteTokenRepository.lockFreshByToken("token-1")).willReturn(Optional.of(token));
+            given(inviteTokenRepository.lockFreshByTokenHash("hash-1")).willReturn(Optional.of(token));
 
             InviteDeclineResult result = writer.decline(LOCATOR, USER_ID);
 
@@ -379,11 +397,11 @@ class InviteAcceptanceWriterTest {
         @Test
         @DisplayName("宛先違い・共有リンク型は 403 ROLE_009")
         void 宛先違い() {
-            given(inviteTokenRepository.lockFreshByToken("token-1")).willReturn(Optional.of(entity(999L, null)));
+            given(inviteTokenRepository.lockFreshByTokenHash("hash-1")).willReturn(Optional.of(entity(999L, null)));
             assertThatThrownBy(() -> writer.decline(LOCATOR, USER_ID))
                     .satisfies(t -> assertCode(t, RoleErrorCode.ROLE_009, HttpStatus.FORBIDDEN));
 
-            given(inviteTokenRepository.lockFreshByToken("token-1")).willReturn(Optional.of(entity(null, null)));
+            given(inviteTokenRepository.lockFreshByTokenHash("hash-1")).willReturn(Optional.of(entity(null, null)));
             assertThatThrownBy(() -> writer.decline(LOCATOR, USER_ID))
                     .satisfies(t -> assertCode(t, RoleErrorCode.ROLE_009, HttpStatus.FORBIDDEN));
         }
@@ -391,7 +409,7 @@ class InviteAcceptanceWriterTest {
         @Test
         @DisplayName("招待が無ければ ROLE_002")
         void 招待が無い() {
-            given(inviteTokenRepository.lockFreshByToken(anyString())).willReturn(Optional.empty());
+            given(inviteTokenRepository.lockFreshByTokenHash(anyString())).willReturn(Optional.empty());
             assertThatThrownBy(() -> writer.decline(LOCATOR, USER_ID))
                     .satisfies(t -> assertCode(t, RoleErrorCode.ROLE_002, null));
         }

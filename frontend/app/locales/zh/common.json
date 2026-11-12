@@ -123,6 +123,7 @@
       },
       "card": {
         "pending": "您收到加入 {scope} 的邀请",
+        "scopeDeleted": "已删除的团队",
         "waiting": "等待对方回应",
         "statusPending": "待接受",
         "join": "加入",
@@ -185,6 +186,7 @@
       "tooltip": "邀请加入 Zimmer",
       "failed": "邀请失败",
       "noMembers": "没有可邀请的成员",
+      "candidatesLoadFailed": "无法获取可邀请的成员列表，请稍后再试。",
       "shareQuestion": "是否共享现有聊天内容？",
       "share": "共享",
       "shareHint": "之前的消息将转入新的 Zimmer",
@@ -416,7 +418,10 @@
     "delete_timetable": "删除",
     "delete_timetable_confirm": "要删除课程表“{name}”吗？此操作无法撤销。",
     "delete_timetable_success": "已删除课程表",
-    "delete_timetable_error": "删除课程表失败"
+    "delete_timetable_error": "删除课程表失败",
+    "create_error_out_of_term": "时间表的有效期超出了学期范围。请在学期的开始日和结束日之间选择日期。",
+    "create_error_term_not_found": "找不到所选学期。请重新打开学期列表后再试。",
+    "effective_until_before_from": "适用结束日必须不早于适用开始日。"
   },
   "error": {
     "server": "服务器发生错误",
@@ -1202,6 +1207,7 @@
       "edit_title": "编辑里程碑",
       "title_label": "标题",
       "title_placeholder": "里程碑名称",
+      "title_required": "请输入标题。",
       "due_date_label": "截止日期",
       "add": "添加"
     },
@@ -3081,7 +3087,11 @@
     "justNow": "刚刚",
     "minutesAgo": "{count}分钟前",
     "hoursAgo": "{count}小时前",
-    "daysAgo": "{count}天前"
+    "daysAgo": "{count}天前",
+    "soon": "即将",
+    "inMinutes": "{count}分钟后",
+    "inHours": "{count}小时后",
+    "inDays": "{count}天后"
   },
   "error_page": {
     "not_found_title": "找不到此页面",
@@ -3332,7 +3342,7 @@
       "not_shown_hint": "出于安全考虑，已生成的链接不会再次显示。如有需要，请重新生成。",
       "revoked_by_migration": "因安全升级已失效",
       "reissue": "重新生成",
-      "reissue_hint": "重新生成后会创建新链接，旧链接将无法使用。",
+      "links_hint": "如果弄丢了链接，请新建链接重新生成。不再需要的旧链接请点击 × 撤销。",
       "label_with_id": "链接 #{id}",
       "created_at": "生成时间",
       "expires_at": "有效期限",

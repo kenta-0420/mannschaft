@@ -1,10 +1,17 @@
 <script setup lang="ts">
+import { useDebounceFn } from '@vueuse/core'
 import type { ChatChannelResponse } from '~/types/chat'
 import { useChatReadSync } from '~/composables/chat/useChatReadSync'
+import { useChatListSync } from '~/composables/chat/useChatListSync'
 
 const props = defineProps<{
   teamId?: string
   organizationId?: string
+  /**
+   * 読み込み後に選択するチャンネル ID（?channel= で開いたとき。CMP-261030-0648）。
+   * 一覧に無い（存在しない・見られない）なら何もしない。
+   */
+  initialChannelId?: number
 }>()
 
 const emit = defineEmits<{
@@ -18,6 +25,7 @@ const { getChannels } = useChatApi()
 const { showError } = useNotification()
 const { t } = useI18n()
 const { onChannelRead } = useChatReadSync()
+const { onChannelContentChanged } = useChatListSync()
 
 const channels = ref<ChatChannelResponse[]>([])
 const loading = ref(false)
@@ -31,14 +39,15 @@ function isDmChannel(ch: ChatChannelResponse): boolean {
 const dmChannels = computed(() => channels.value.filter((ch) => isDmChannel(ch)))
 const roomChannels = computed(() => channels.value.filter((ch) => !isDmChannel(ch)))
 
-async function loadChannels() {
-  loading.value = true
+async function loadChannels(options: { silent?: boolean } = {}) {
+  if (!options.silent) loading.value = true
   try {
     const res = await getChannels({
       teamId: props.teamId !== undefined ? Number(props.teamId) : undefined,
       organizationId: props.organizationId !== undefined ? Number(props.organizationId) : undefined,
     })
     channels.value = res.data
+    selectInitialChannel()
     emit('loaded', channels.value.length)
   } catch {
     showError(t('chat.channelList.loadFailed'))
@@ -51,6 +60,13 @@ async function loadChannels() {
 function selectChannel(ch: ChatChannelResponse) {
   selectedId.value = ch.id
   emit('select', ch)
+}
+
+/** まだ何も選んでいなければ、initialChannelId のチャンネルを一覧から選ぶ */
+function selectInitialChannel() {
+  if (props.initialChannelId === undefined || selectedId.value !== null) return
+  const initial = channels.value.find((c) => c.id === props.initialChannelId)
+  if (initial) selectChannel(initial)
 }
 
 function getDisplayName(ch: ChatChannelResponse): string {
@@ -87,7 +103,19 @@ const offChannelRead = onChannelRead((channelId) => {
   const ch = channels.value.find((c) => c.id === channelId)
   if (ch?.viewer) ch.viewer.unreadCount = 0
 })
-onUnmounted(() => offChannelRead())
+
+/**
+ * 開いている会話で投稿・編集・削除があったら一覧を取り直す（CMP-261105-1507）。
+ * BE は編集・削除に追従して部屋のプレビューと未読数を更新するため、取り直せば消した本文が残らない。
+ * スピナーは出さず、読み込み失敗は通常どおり通知する。
+ */
+// REST 応答と WS の同じ通知が続けて来るため、まとめて 1 回だけ取り直す
+const reloadSilently = useDebounceFn(() => loadChannels({ silent: true }), 300)
+const offContentChanged = onChannelContentChanged(() => reloadSilently())
+onUnmounted(() => {
+  offChannelRead()
+  offContentChanged()
+})
 
 async function refreshAndSelect(channelId: number) {
   await loadChannels()
@@ -95,7 +123,18 @@ async function refreshAndSelect(channelId: number) {
   if (ch) selectChannel(ch)
 }
 
-defineExpose({ refresh: loadChannels, refreshAndSelect })
+/**
+ * 読み込み済みの一覧から channelId のチャンネルを選ぶ（取り直さない）。
+ * 一覧に無ければ何もせず false を返す。呼び出し側が取り直しと選択の間で要求の新旧を確かめるために使う。
+ */
+function selectIfPresent(channelId: number): boolean {
+  const ch = channels.value.find((c) => c.id === channelId)
+  if (!ch) return false
+  selectChannel(ch)
+  return true
+}
+
+defineExpose({ refresh: loadChannels, refreshAndSelect, selectIfPresent })
 </script>
 
 <template>
@@ -106,6 +145,7 @@ defineExpose({ refresh: loadChannels, refreshAndSelect })
         v-tooltip.right="$t('chat.channelList.newConversation')"
         icon="pi pi-plus"
         :aria-label="$t('chat.channelList.addChannel')"
+        data-testid="chat-channel-list-create"
         class="!min-h-11 !min-w-11 shrink-0"
         text
         rounded

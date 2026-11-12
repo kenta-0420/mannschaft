@@ -31,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -91,8 +92,11 @@ import static org.mockito.Mockito.when;
  * スタブから {@link TransactionSynchronization#beforeCommit(boolean)} を登録して作る。
  * これは<b>トランザクションが実在しないと登録自体が失敗する</b>ため、
  * 「プロキシを経由してトランザクションが張られていること」の証明も兼ねる。</p>
+ * <p>CMP-260910-1811: 共通 test 設定では再マッチ Bean を無効にするため、本 IT だけ明示登録する。
+ * test プロファイルの scheduler 無効は維持し、{@code execute()} を直接呼んで実 TX 境界を検査する。</p>
  */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
+@TestPropertySource(properties = "pointcard.rematch-batch.enabled=true")
 @DisplayName("CMP-260912-1524 REQUIRES_NEW 自己呼び出しのトランザクション境界（実DB）")
 class SelfInvocationRequiresNewTransactionIT extends AbstractMySqlIntegrationTest {
 

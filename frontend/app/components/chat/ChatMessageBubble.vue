@@ -12,7 +12,7 @@ const props = defineProps<{
   /** 投稿者本人かどうか（コンテキストメニュー出し分け用） */
   isMine?: boolean
   /** 承諾/辞退 API 実行中の招待トークン（招待カードのボタンローディング表示用・F04.12） */
-  pendingInviteToken?: string | null
+  pendingInviteToken?: number | null
 }>()
 
 const emit = defineEmits<{
@@ -24,14 +24,14 @@ const emit = defineEmits<{
   edit: [messageId: number]
   bookmark: [messageId: number]
   /** 招待カードの承諾（F04.12）。messageId でローカル差し替え対象を特定する */
-  inviteJoin: [messageId: number, token: string]
+  inviteJoin: [messageId: number, tokenId: number]
   /** 招待カードの辞退（F04.12） */
-  inviteDecline: [messageId: number, token: string]
+  inviteDecline: [messageId: number, tokenId: number]
 }>()
 
 /** この招待カードが承諾/辞退 API 実行中か（F04.12）。 */
 const isInvitePending = computed(
-  () => props.pendingInviteToken != null && props.pendingInviteToken === props.message.inviteData?.token,
+  () => props.pendingInviteToken != null && props.pendingInviteToken === props.message.inviteData?.tokenId,
 )
 
 const { t } = useI18n()
@@ -212,8 +212,8 @@ const indentStyle = computed(() => {
         <ChatInviteCard
           :invite="message.inviteData"
           :submitting="isInvitePending"
-          @join="(token: string) => emit('inviteJoin', message.id, token)"
-          @decline="(token: string) => emit('inviteDecline', message.id, token)"
+          @join="(tokenId: number) => emit('inviteJoin', message.id, tokenId)"
+          @decline="(tokenId: number) => emit('inviteDecline', message.id, tokenId)"
         />
       </div>
     </div>

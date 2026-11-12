@@ -110,15 +110,19 @@ class InviteAcceptanceBoundaryArchTest {
         }
 
         @Test
-        @DisplayName("S2: InviteLocator は sealed で、main では ByToken(String) のみを許可する")
-        void locatorIsSealedWithByTokenOnly() {
+        @DisplayName("S2: InviteLocator は sealed で、ByTokenHash(String)・ById(Long) のみを許可する（平文トークンを持たない）")
+        void locatorIsSealedWithHashAndIdOnly() {
             Class<?> locator = require(LOCATOR);
             assertThat(locator.isSealed()).as("InviteLocator は sealed").isTrue();
             Class<?>[] permitted = locator.getPermittedSubclasses();
-            assertThat(permitted).extracting(Class::getSimpleName).containsExactly("ByToken");
-            Class<?> byToken = permitted[0];
-            assertThat(byToken.isRecord()).isTrue();
-            assertThat(byToken.getRecordComponents()).extracting(RecordComponent::getType).containsExactly(String.class);
+            assertThat(permitted).extracting(Class::getSimpleName).containsExactlyInAnyOrder("ByTokenHash", "ById");
+            for (Class<?> type : permitted) {
+                assertThat(type.isRecord()).as(type.getSimpleName() + " は record").isTrue();
+            }
+            Class<?> byHash = java.util.Arrays.stream(permitted).filter(c -> c.getSimpleName().equals("ByTokenHash")).findFirst().orElseThrow();
+            Class<?> byId = java.util.Arrays.stream(permitted).filter(c -> c.getSimpleName().equals("ById")).findFirst().orElseThrow();
+            assertThat(byHash.getRecordComponents()).extracting(RecordComponent::getType).containsExactly(String.class);
+            assertThat(byId.getRecordComponents()).extracting(RecordComponent::getType).containsExactly(Long.class);
         }
 
         @Test

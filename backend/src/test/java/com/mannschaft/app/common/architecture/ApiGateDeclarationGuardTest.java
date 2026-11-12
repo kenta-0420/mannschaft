@@ -42,7 +42,9 @@ class ApiGateDeclarationGuardTest {
         assertThat(scan.entries()).isNotEmpty();
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.HTTP).count())
                 .as("HTTP mapped method の走査総数。parser 退行を台帳比較とは独立に検知する")
-                .isEqualTo(3730);   // 3729 + CMP-261011-0035 ALIC-1 組織告知の一括既読 POST read-batch 1本（AnnouncementFeedOrgController・
+                .isEqualTo(3732);   // 3730 + CMP-260826-1457 W1 P1 招待IDでの承諾・辞退2本（InviteController の POST invitations/{tokenId}/accept|decline。
+                                    //   どちらも @AlwaysReachable(CORE) を宣言済みで未宣言増加0。3|4 → 3|6）。QR-PDF は旧 GET を POST へ置換（1|1 のまま・純増0）。
+                                    // 3730 = 3729 + CMP-261011-0035 ALIC-1 組織告知の一括既読 POST read-batch 1本（AnnouncementFeedOrgController・
                                     //   @AuthorizedInService＋@AlwaysReachable(CORE) 宣言済みで未宣言増加0。6|6 → 6|7）。
                                     // 3729 = 3725 + CMP-261025-2202 TEAM/ORG表示設定GET/PUT各2本。未宣言増加0。
                                     // ネストSwagger注釈へのclass mapping誤帰属2件は自己試験で防ぐ。

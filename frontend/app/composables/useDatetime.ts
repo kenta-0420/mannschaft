@@ -14,6 +14,7 @@ import {
   formatClockTime as fmtClockTime,
   formatInstantDate,
   formatInstantDateTime,
+  formatInstantDateTimeSeconds,
   formatInstantTime,
   parseInstantStrict,
   formatTimeRange as fmtTimeRange,
@@ -61,6 +62,16 @@ export function useDatetime() {
     const d = safeParse(iso)
     if (!d) return ''
     return formatInstantDateTime(d.toDate(), currentLocale(), userTimezone.value)
+  }
+
+  /**
+   * 日付と秒付きの時刻を表示する（同じ分に作成されたレコードの識別用）。
+   * @example formatDateTimeSeconds("2026-05-22T09:15:20+09:00") → "2026/05/22 09:15:20"
+   */
+  function formatDateTimeSeconds(iso: string | null | undefined): string {
+    const d = safeParse(iso)
+    if (!d) return ''
+    return formatInstantDateTimeSeconds(d.toDate(), currentLocale(), userTimezone.value)
   }
 
   /**
@@ -287,6 +298,7 @@ export function useDatetime() {
     userTimezone,
     formatDate,
     formatDateTime,
+    formatDateTimeSeconds,
     formatTime,
     formatCalendarDay,
     formatCalendarDayRange,
