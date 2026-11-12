@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261030-0652",
+  "scope": "app",
+  "implementation": {
+    "pr": 4450,
+    "sha": "14dd1a896007afff327f79320069feca4b835cff"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "既読の通知を再度既読化しても例外にならず冪等（200）",
+      "tests": [
+        {
+          "name": "NotificationServiceTest／NotificationSelfScopeContractIT#AC1",
+          "evidence": "backend/src/test/java/com/mannschaft/app/notification/NotificationSelfScopeContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "他人宛・不存在・0・負のIDは従来どおり拒否",
+      "tests": [
+        {
+          "name": "NotificationSelfScopeContractIT#AC5",
+          "evidence": "backend/src/test/java/com/mannschaft/app/notification/NotificationSelfScopeContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-7",
+      "description": "WidgetNotices は既読ならPOSTせず、失敗を静かに記録する",
+      "tests": [
+        {
+          "name": "WidgetNotices.markRead.spec.ts",
+          "evidence": "frontend/tests/unit/components/widgets/WidgetNotices.markRead.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-10",
+      "description": "NotificationList の既読失敗を静かに記録する",
+      "tests": [
+        {
+          "name": "NotificationList.spec.ts",
+          "evidence": "frontend/tests/unit/components/notification/NotificationList.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-13",
+      "description": "F04.3 設計書に /read の冪等性を記載",
+      "tests": [
+        {
+          "name": "文書照合",
+          "evidence": "docs/features/F04.3_push_notification.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 42820552251
+    },
+    {
+      "runId": 42820552156
+    },
+    {
+      "runId": 42820552517
+    },
+    {
+      "runId": 42820552113
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4450"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261030-0652.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261030-0652.md"
+    }
+  },
+  "regressions": []
+}
