@@ -434,16 +434,7 @@ abstract class InviteAcceptanceItSupport extends InviteGenerationItSupport {
                 + "connectTimeout=1000&socketTimeout=1000&useSSL=false&allowPublicKeyRetrieval=true";
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
         try (var observer = DriverManager.getConnection(url, "root", MYSQL.getPassword());
-             var query = observer.prepareStatement("""
-                     SELECT COUNT(*) FROM performance_schema.data_lock_waits waits
-                     JOIN performance_schema.data_locks requested
-                       ON requested.ENGINE = waits.ENGINE
-                      AND requested.ENGINE_LOCK_ID = waits.REQUESTING_ENGINE_LOCK_ID
-                     JOIN performance_schema.threads blocker ON blocker.THREAD_ID = waits.BLOCKING_THREAD_ID
-                     WHERE requested.OBJECT_SCHEMA = ? AND requested.OBJECT_NAME = ?
-                       AND requested.LOCK_TYPE = 'RECORD'
-                       AND requested.LOCK_DATA LIKE ? AND blocker.PROCESSLIST_ID = ?
-                     """)) {
+             var query = observer.prepareStatement(rowWaitSql())) {
             query.setQueryTimeout(1);
             query.setString(1, MYSQL.getDatabaseName());
             query.setString(2, table);
@@ -478,6 +469,20 @@ abstract class InviteAcceptanceItSupport extends InviteGenerationItSupport {
             Thread.currentThread().interrupt();
             throw new AssertionError("ロック観測が中断されました", failure);
         }
+    }
+
+    /** 実待機の観測SQLを契約ITと共有する。 */
+    static String rowWaitSql() {
+        return """
+                     SELECT COUNT(*) FROM performance_schema.data_lock_waits waits
+                     JOIN performance_schema.data_locks requested
+                       ON requested.ENGINE = waits.ENGINE
+                      AND requested.ENGINE_LOCK_ID = waits.REQUESTING_ENGINE_LOCK_ID
+                     JOIN performance_schema.threads blocker ON blocker.THREAD_ID = waits.BLOCKING_THREAD_ID
+                     WHERE requested.OBJECT_SCHEMA = ? AND requested.OBJECT_NAME = ?
+                       AND requested.LOCK_TYPE = 'RECORD'
+                       AND requested.LOCK_DATA LIKE ? AND blocker.PROCESSLIST_ID = ?
+                     """;
     }
 
     /** SQL より先に Java 側を採取し、診断自身が遅れても採取時点を見失わないようにする。 */
