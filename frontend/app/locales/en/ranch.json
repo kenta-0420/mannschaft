@@ -99,7 +99,7 @@
       "description": "Choose using birth-date and name numerology, a 64-type quiz, or a random land, sea or air form.",
       "fromResult": "Choose from my results",
       "confirmed": "Your current avatar's appearance is confirmed. You can review your diagnosis results later.",
-      "mappingPending": "Your result was saved. Its dinosaur form mapping is being prepared.",
+      "mappingPending": "Your result has been saved. You cannot currently use this result to confirm your avatar's appearance.",
       "useResult": "Use this result to choose a form"
     },
     "diagnosisResults": {

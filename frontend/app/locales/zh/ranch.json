@@ -99,7 +99,7 @@
       "description": "可通过生日与姓名占卜、64类型测试，或随机陆地、海洋、天空形象来选择。",
       "fromResult": "从自己的结果选择",
       "confirmed": "当前分身的外观已确定。您可以稍后查看诊断结果。",
-      "mappingPending": "结果已保存。对应恐龙形象的映射正在准备中。",
+      "mappingPending": "结果已保存。目前无法使用此结果确定分身的外观。",
       "useResult": "用此结果选择形象"
     },
     "diagnosisResults": {
