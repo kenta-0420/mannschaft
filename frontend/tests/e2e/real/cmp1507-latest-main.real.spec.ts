@@ -281,7 +281,6 @@ test('#4358 チームの時間割（ADMIN）: サイドバーから辿れ、年�
     const createdRes = await created
     expect(createdRes.status()).toBe(201)
     const termId = (await createdRes.json()).data.id as number
-    // この学期には時間割（のちに論理削除）が付くため、仕様（TIMETABLE_022）上あとから消せない。後始末の対象にせず、残骸として証拠に書く
     expect(JSON.parse(posted[0]!).academicYear).toBe(2036)
     await expect(page.getByRole('cell', { name: termName, exact: true })).toBeVisible({ timeout: 30_000 })
     await shot(page, 'v2-term-created')
@@ -314,7 +313,7 @@ test('#4358 チームの時間割（ADMIN）: サイドバーから辿れ、年�
     await expect(page.getByRole('row').filter({ hasText: ttName })).toHaveCount(0, { timeout: 30_000 })
     await shot(page, 'v2-timetable-deleted')
 
-    // 学期の削除（確認つき）。この学期の時間割は論理削除済み（#4324 の仕様で 409 になる想定）。観測する
+    // 学期の削除（確認つき）。この学期の時間割は論理削除済みのみ。#4436（B1）で、削除済みだけの学期は 204 で消せる
     await page.getByTestId('timetable-tab-term').click()
     await page.getByTestId(`term-delete-${termId}`).click()
     await page.locator('.p-confirmdialog-reject-button').click()
@@ -323,16 +322,42 @@ test('#4358 チームの時間割（ADMIN）: サイドバーから辿れ、年�
     const tdel = page.waitForResponse((r) => r.request().method() === 'DELETE' && /\/timetable-terms\/\d+$/.test(new URL(r.url()).pathname))
     await confirmAccept(page)
     const tdelRes = await tdel
-    const tdelBody = await tdelRes.text()
-    console.log(`[cmp1507] #4358 時間割を削除した学期の削除 -> ${tdelRes.status()} ${tdelBody.slice(0, 200)}`)
+    console.log(`[cmp1507] #4358 削除済みの時間割だけの学期の削除 -> ${tdelRes.status()}`)
+    expect(tdelRes.status()).toBe(204)
+    await expect(page.getByRole('cell', { name: termName, exact: true })).toHaveCount(0, { timeout: 30_000 })
+    await shot(page, 'v2-term-deleted-soft-only')
+    // 回帰防止の主眼: 生きている時間割が残る学期は 409・TIMETABLE_022・専用トーストで消えない
+    const liveTermName = `Live ${v.tag}`
+    await page.getByTestId('term-add-button').click()
+    const dl = page.getByRole('dialog')
+    await dl.getByTestId('term-name-input').fill(liveTermName)
+    await dl.getByTestId('term-start-input').fill('2039-04-01')
+    await dl.getByTestId('term-end-input').fill('2039-09-30')
+    await dl.getByTestId('term-year-input').fill('2039')
+    const cl = page.waitForResponse((r) => r.request().method() === 'POST' && /\/timetable-terms$/.test(new URL(r.url()).pathname))
+    await dl.getByTestId('term-dialog-submit').click()
+    const liveTermId = (await (await cl).json()).data.id as number
+    await expect(page.getByRole('cell', { name: liveTermName, exact: true })).toBeVisible({ timeout: 30_000 })
+    const liveTt = (
+      await must(w.admin, 'POST', `/api/v1/teams/${v.t2.slug}/timetables`, { name: `Live timetable ${v.tag}`, termId: liveTermId, effectiveFrom: '2039-04-01', visibility: 'MEMBERS_ONLY' })
+    ).data
+    await page.getByTestId(`term-delete-${liveTermId}`).click()
+    const ldel = page.waitForResponse((r) => r.request().method() === 'DELETE' && /\/timetable-terms\/\d+$/.test(new URL(r.url()).pathname))
+    await confirmAccept(page)
+    const ldelRes = await ldel
+    const ldelBody = await ldelRes.text()
+    console.log(`[cmp1507] #4358 生きた時間割のある学期の削除 -> ${ldelRes.status()} ${ldelBody.slice(0, 200)}`)
     // 500 へ退行して汎用のエラートーストが出ても合格しないよう、409・コード・専用文言・学期が残ることを固定する
-    expect(tdelRes.status()).toBe(409)
-    expect(tdelBody).toContain('TIMETABLE_022')
+    expect(ldelRes.status()).toBe(409)
+    expect(ldelBody).toContain('TIMETABLE_022')
     const toast = page.locator('.p-toast-message').last()
     await expect(toast).toContainText('時間割が残っているため、この学期は削除できません', { timeout: 15_000 })
     console.log(`[cmp1507] #4358 学期削除トースト: ${(await toast.innerText()).replace(/\s+/g, ' ')}`)
-    await expect(page.getByRole('cell', { name: termName, exact: true })).toHaveCount(1)
-    await shot(page, 'v2-term-delete-after-timetable')
+    await expect(page.getByRole('cell', { name: liveTermName, exact: true })).toHaveCount(1)
+    await shot(page, 'v2-term-delete-live-timetable')
+    // 後始末: 時間割を消してから学期を消す（生きた時間割が残ると teardown の学期削除が 409 になる）
+    await must(w.admin, 'DELETE', `/api/v1/teams/${v.t2.slug}/timetables/${liveTt.id}`)
+    recordAsset(`term ${liveTermId}`, `/api/v1/timetable-terms/${liveTermId}`, w.admin)
     // 時間割のない学期を作って、確認つきで削除できること（年度は全角で入力→半角に正規化）
     const freeName = `Free ${v.tag}`
     await page.getByTestId('term-add-button').click()
@@ -572,7 +597,7 @@ test('#4375 チャット de: 一覧・チャンネル画面に日本語が出な
     console.log(`[cmp1507] #4375 de チャット画面の日本語行: ${JSON.stringify(lines)}`)
     await shot(page, 'v3-de-chat')
     // 作成ダイアログ。導線（ボタン）が消えたり、ダイアログが開かなかったりしたら失敗させる
-    const plus = page.locator('button:has(.pi-plus)').first()
+    const plus = page.getByTestId('chat-channel-list-create')
     await expect(plus, 'チャットの作成ボタンが出ない').toBeVisible({ timeout: 30_000 })
     await plus.click()
     const createDialog = page.locator('[role=dialog], .p-dialog').first()

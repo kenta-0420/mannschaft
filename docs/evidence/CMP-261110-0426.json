@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261110-0426",
+  "scope": "app",
+  "implementation": {
+    "pr": 4462,
+    "sha": "9cb5441451eededf7df87b1bfd905cf397058c49"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "V1 削除済みチームの招待カードにフォールバック名を出さない",
+      "tests": [
+        {
+          "name": "ChatInviteCardScopeDeleted.spec.ts",
+          "evidence": "frontend/tests/unit/components/chat/ChatInviteCardScopeDeleted.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "V2 未来時刻を「あと n 分/時間/日」と表示する",
+      "tests": [
+        {
+          "name": "useRelativeTime.future.spec.ts",
+          "evidence": "frontend/app/composables/useRelativeTime.future.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "V3 招待リンク一覧に作成日時と再発行の案内を出す",
+      "tests": [
+        {
+          "name": "InviteTokenList.spec.ts",
+          "evidence": "frontend/app/components/InviteTokenList.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "V4 秘密ダイアログが Esc・マスククリックで閉じる",
+      "tests": [
+        {
+          "name": "SecretIssuedDialogDismiss.spec.ts",
+          "evidence": "frontend/tests/unit/components/SecretIssuedDialogDismiss.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "V5 390px で操作列が他列に重ならない",
+      "tests": [
+        {
+          "name": "InviteTokenListSecretIssued.spec.ts",
+          "evidence": "frontend/tests/unit/components/InviteTokenListSecretIssued.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-6",
+      "description": "V7 フォルダ選択が親からはみ出さない",
+      "tests": [
+        {
+          "name": "InviteFolderPickerLayout.spec.ts",
+          "evidence": "frontend/tests/unit/components/teamfolder/InviteFolderPickerLayout.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 42926490983
+    },
+    {
+      "runId": 42926491073
+    },
+    {
+      "runId": 42926491059
+    },
+    {
+      "runId": 42926490961
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4462"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261110-0426.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261110-0426.md"
+    }
+  },
+  "regressions": []
+}
