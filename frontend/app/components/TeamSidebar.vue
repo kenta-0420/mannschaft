@@ -1,12 +1,45 @@
 <script setup lang="ts">
-import type { SidebarCategory } from '~/types/sidebar'
+import type { SidebarCategory, SidebarItem } from '~/types/sidebar'
 
 const props = defineProps<{
   teamId: string
+  teamTemplate?: string | null
+  teamNumericId?: string | number | null
   memberLensActive?: boolean
 }>()
 
+const emit = defineEmits<{ tabNavigate: [item: SidebarItem] }>()
+const featureFlags = useFeatureFlagStore()
+const schoolId = computed(() => props.teamNumericId ? String(props.teamNumericId) : '')
+const schoolAccess = useAttendancePermissions(schoolId)
+const isSchool = computed(() => props.teamTemplate === 'SCHOOL' || props.teamTemplate === 'CLASS')
+const schoolEnabled = computed(() => !props.memberLensActive && isSchool.value && !!schoolId.value && featureFlags.isEnabled('FEATURE_FAMILY_CARE_ENABLED'))
+watch([schoolId, schoolEnabled], () => {
+  if (schoolEnabled.value) void schoolAccess.loadPermissions()
+}, { immediate: true })
+const schoolCategory = computed<SidebarCategory[]>(() => {
+  if (!schoolEnabled.value || !schoolAccess.ready.value) return []
+  const items: SidebarCategory['items'] = []
+  const item = (labelKey: string, path: string, icon: string) => ({
+    labelKey, path: `school-attendance/${path}`, icon, moduleSlug: null,
+    requiredRole: 'MEMBER' as const, gateKey: 'FEATURE_FAMILY_CARE_ENABLED',
+  })
+  if (schoolAccess.canView.value) {
+    items.push(item('school.attendance.dailyRollCall.title', 'daily-roll-call', 'pi pi-check-square'))
+  }
+  if (schoolAccess.canView.value || schoolAccess.canRecordPeriod.value) {
+    items.push(item('school.attendance.period.title', 'period-attendance', 'pi pi-clock'))
+  }
+  if (schoolAccess.canView.value) {
+    items.push(item('school.transitionAlert.title', 'transition-alerts', 'pi pi-exclamation-triangle'))
+    items.push(item('school.statistics.title', 'statistics', 'pi pi-chart-bar'))
+    items.push(item('school.familyNotice.title', 'notices', 'pi pi-envelope'))
+  }
+  return items.length ? [{ key: 'school', labelKey: 'scopeLabels.template.SCHOOL', icon: 'pi pi-building', items }] : []
+})
+
 const categories = computed<SidebarCategory[]>(() => [
+  ...schoolCategory.value,
   {
     key: 'home',
     labelKey: 'teamSidebar.category.home',
@@ -74,6 +107,7 @@ const categories = computed<SidebarCategory[]>(() => [
       { labelKey: 'teamSidebar.item.todos', icon: 'pi pi-check-square', path: 'todos', moduleSlug: 'todo', requiredRole: 'MEMBER' },
       { labelKey: 'teamSidebar.item.workflows', icon: 'pi pi-sitemap', path: 'workflows', moduleSlug: 'workflow', requiredRole: 'MEMBER' },
       { labelKey: 'teamSidebar.item.forms', icon: 'pi pi-file-edit', path: 'forms', moduleSlug: 'survey', requiredRole: 'MEMBER' },
+      { labelKey: 'orgSidebar.voting', icon: 'pi pi-check-square', path: 'voting', moduleSlug: 'voting', requiredRole: 'MEMBER' },
       { labelKey: 'teamSidebar.item.projects', icon: 'pi pi-folder', path: 'projects', moduleSlug: null, requiredRole: 'MEMBER' },
     ],
   },
@@ -160,11 +194,22 @@ const categories = computed<SidebarCategory[]>(() => [
 </script>
 
 <template>
-  <BaseSidebar
-    :key="props.teamId"
-    scope-type="team"
-    :scope-id="props.teamId"
-    :categories="categories"
-    :member-lens-active="props.memberLensActive"
-  />
+  <div>
+    <PageLoading v-if="schoolEnabled && !schoolAccess.ready.value && !schoolAccess.loadFailed.value" class="!min-h-0 py-4" />
+    <DashboardErrorState
+      v-if="schoolEnabled && schoolAccess.loadFailed.value"
+      :title="$t('school.attendance.permissionError.title')"
+      :message="$t('school.attendance.permissionError.message')"
+      testid="school-sidebar-permission-error"
+      @retry="schoolAccess.loadPermissions"
+    />
+    <BaseSidebar
+      :key="props.teamId"
+      scope-type="team"
+      :scope-id="props.teamId"
+      :categories="categories"
+      :member-lens-active="props.memberLensActive"
+      @tab-navigate="emit('tabNavigate', $event)"
+    />
+  </div>
 </template>

@@ -37,6 +37,34 @@ beforeEach(() => {
 })
 
 describe('useDailyRollCall', () => {
+  it('一覧成功後の500を永続エラーとして保持し、再試行の成功0件と区別する', async () => {
+    mockGetDailyAttendance.mockResolvedValueOnce({ records: [{ studentUserId: 1 }] })
+      .mockRejectedValueOnce({ statusCode: 500 })
+      .mockResolvedValueOnce({ records: [] })
+    const state = useDailyRollCall(ref('42'))
+    await state.loadRecords('2026-09-30')
+    expect(state.records.value).toHaveLength(1)
+    await state.loadRecords('2026-10-01')
+    expect(state.loadFailed.value).toBe(true)
+    expect(state.records.value).toEqual([])
+    await state.loadRecords('2026-10-01')
+    expect(state.loadFailed.value).toBe(false)
+    expect(state.loaded.value).toBe(true)
+    expect(state.records.value).toEqual([])
+  })
+
+  it('前日への遅い応答は新しい日付の一覧を上書きしない', async () => {
+    let finish!: (value: unknown) => void
+    mockGetDailyAttendance.mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
+      .mockResolvedValueOnce({ records: [] })
+    const state = useDailyRollCall(ref('42'))
+    const first = state.loadRecords('2026-09-30')
+    await state.loadRecords('2026-10-01')
+    finish({ records: [{ studentUserId: 1 }] })
+    await first
+    expect(state.records.value).toEqual([])
+  })
+
   it('提出失敗時に共通エラーハンドラへ例外を渡し、null を返す', async () => {
     const err = { statusCode: 400, data: { error: { code: 'COMMON_001', message: 'bad' } } }
     mockSubmitRollCall.mockRejectedValue(err)

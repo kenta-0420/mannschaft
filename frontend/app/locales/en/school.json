@@ -26,6 +26,7 @@
         "OTHER": "Other"
       },
       "dailyRollCall": {
+        "loadError": "Could not load attendance records",
         "title": "Morning Roll Call",
         "date": "Date",
         "submit": "Submit Roll Call",

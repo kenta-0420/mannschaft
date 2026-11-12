@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch, onBeforeUnmount } from 'vue'
 import type { TransitionAlertResponse } from '~/types/school'
 
 const props = defineProps<{
   visible: boolean
   alert: TransitionAlertResponse
   teamId: string
+  canResolve?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -19,23 +20,36 @@ const { error: notifyError, success: notifySuccess } = useNotification()
 
 const note = ref('')
 const submitting = ref(false)
+let generation = 0
+onBeforeUnmount(() => { ++generation })
 
 function close(): void {
   note.value = ''
   emit('update:visible', false)
 }
 
+watch([() => props.canResolve, () => props.teamId, () => props.alert.id], () => {
+  ++generation
+  close()
+}, { flush: 'sync' })
+
 async function onConfirm(): Promise<void> {
-  if (!note.value.trim()) return
+  if (!props.canResolve || !props.visible || submitting.value || !note.value.trim()) return
+  const teamId = props.teamId
+  const alertId = props.alert.id
+  const requestedGeneration = generation
+  const current = () => generation === requestedGeneration && props.canResolve === true
+    && props.teamId === teamId && props.alert.id === alertId
 
   submitting.value = true
   try {
-    await api.resolveAlert(props.teamId, props.alert.id, note.value.trim())
+    await api.resolveAlert(teamId, alertId, note.value.trim())
+    if (!current()) return
     notifySuccess(t('school.transitionAlert.resolveSuccess'))
-    emit('resolved', props.alert.id)
+    emit('resolved', alertId)
     note.value = ''
   } catch {
-    notifyError(t('school.transitionAlert.title'))
+    if (current()) notifyError(t('school.transitionAlert.title'))
   } finally {
     submitting.value = false
   }
@@ -44,7 +58,7 @@ async function onConfirm(): Promise<void> {
 
 <template>
   <Dialog
-    :visible="props.visible"
+    :visible="props.visible && props.canResolve === true"
     :header="$t('school.transitionAlert.resolve')"
     modal
     :closable="!submitting"
@@ -104,6 +118,7 @@ async function onConfirm(): Promise<void> {
         @click="close"
       />
       <Button
+        v-if="props.canResolve"
         :label="$t('school.transitionAlert.resolve')"
         severity="danger"
         :loading="submitting"

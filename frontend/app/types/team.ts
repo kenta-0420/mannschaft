@@ -5,6 +5,7 @@ export type TeamTemplate =
   | 'CLUB'
   | 'CLINIC'
   | 'CLASS'
+  | 'SCHOOL'
   | 'COMMUNITY'
   | 'COMPANY'
   | 'FAMILY'

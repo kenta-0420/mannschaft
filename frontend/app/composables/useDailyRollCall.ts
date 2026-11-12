@@ -1,4 +1,4 @@
-import { ref, type Ref } from 'vue'
+import { ref, watch, type Ref } from 'vue'
 import { isForbiddenError } from '~/composables/useAttendancePermissions'
 import type {
   DailyAttendanceResponse,
@@ -19,20 +19,48 @@ export function useDailyRollCall(teamId: Ref<string>) {
   // 閲覧が 403 のとき true。握りつぶさず画面で「権限がありません」を明示する（AC-18）
   const forbidden = ref(false)
 
+  const loadFailed = ref(false)
+  const loaded = ref(false)
+  const recordKey = ref('')
+  let sequence = 0
+  function clear(): void {
+    ++sequence
+    records.value = []
+    loaded.value = false
+    recordKey.value = ''
+    forbidden.value = false
+    loadFailed.value = false
+  }
+  watch(teamId, () => {
+    clear()
+    loading.value = false
+    lastSummary.value = null
+  }, { flush: 'sync' })
+
   async function loadRecords(date: string): Promise<void> {
+    clear()
+    const seq = sequence
+    const requestedTeam = teamId.value
+    const current = () => seq === sequence && requestedTeam === teamId.value
+    if (!requestedTeam) return
     loading.value = true
     try {
-      const res = await api.getDailyAttendance(teamId.value, date)
+      const res = await api.getDailyAttendance(requestedTeam, date)
+      if (!current()) return
       records.value = res.records
+      loaded.value = true
+      recordKey.value = `${requestedTeam}:${date}`
       forbidden.value = false
     } catch (e) {
+      if (!current()) return
       if (isForbiddenError(e)) {
         forbidden.value = true
         return
       }
+      loadFailed.value = true
       handleApiError(e, 'school.attendance.dailyRollCall.load')
     } finally {
-      loading.value = false
+      if (current()) loading.value = false
     }
   }
 
@@ -43,11 +71,13 @@ export function useDailyRollCall(teamId: Ref<string>) {
     // 二重送信防止: 提出中の再呼び出しは API を叩かない
     if (submitting.value) return null
     submitting.value = true
+    const requestedTeam = teamId.value
     try {
-      const summary = await api.submitRollCall(teamId.value, {
+      const summary = await api.submitRollCall(requestedTeam, {
         attendanceDate: date,
         entries,
       })
+      if (teamId.value !== requestedTeam) return null
       lastSummary.value = summary
       notifySuccess(t('school.attendance.dailyRollCall.submitSuccess'))
       return summary
@@ -61,6 +91,9 @@ export function useDailyRollCall(teamId: Ref<string>) {
 
   return {
     records,
+    loadFailed,
+    loaded,
+    recordKey,
     loading,
     submitting,
     lastSummary,

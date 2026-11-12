@@ -1,25 +1,29 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 
 definePageMeta({
   layout: 'team',
   middleware: 'auth',
+  key: route => String(route.params.slug),
 })
 
 const route = useRoute()
 const teamSlug = computed(() => String(route.params.slug))
+const schoolTeam = useSchoolTeamContext(teamSlug)
+const schoolTeamId = schoolTeam.teamId
 
 const { alerts, loading, unresolvedCount, totalCount, loadAlerts } =
-  useTransitionAlert(teamSlug)
+  useTransitionAlert(schoolTeamId)
 const { userTimezone } = useDatetime()
 const {
   loadFailed: permissionsFailed,
   ready: permissionsReady,
   forbidden: permissionsForbidden,
   canView,
+  canRecordDaily,
   loadPermissions,
-} = useAttendancePermissions(teamSlug)
+} = useAttendancePermissions(schoolTeamId)
 
 // 判定は BE の権限判定 API のみ。403 は握りつぶさず「権限がありません」を明示する（AC-18）
 const denied = computed(
@@ -27,7 +31,7 @@ const denied = computed(
 )
 
 // 取得・操作は「照会完了かつ閲覧権限 true」のときだけ許可する（fail-closed）
-const canQuery = computed(() => permissionsReady.value && !denied.value && canView.value)
+const canQuery = computed(() => !!schoolTeamId.value && permissionsReady.value && !denied.value && canView.value)
 
 const today = dayjs().tz(userTimezone.value).format('YYYY-MM-DD')
 const selectedDate = ref(today)
@@ -50,12 +54,16 @@ async function onResolved(_alertId: number): Promise<void> {
 }
 
 async function loadPage(): Promise<void> {
+  const requestedSlug = teamSlug.value
+  if (!await schoolTeam.load() || teamSlug.value !== requestedSlug) return
   await loadPermissions()
+  if (teamSlug.value !== requestedSlug) return
   if (!canQuery.value) return
   await loadAlerts(selectedDate.value, unresolvedOnly.value)
 }
 
 onMounted(loadPage)
+watch(teamSlug, loadPage)
 </script>
 
 <template>
@@ -76,7 +84,7 @@ onMounted(loadPage)
     </header>
 
     <DashboardErrorState
-      v-if="permissionsFailed"
+      v-if="schoolTeam.error.value || permissionsFailed"
       :title="$t('school.attendance.permissionError.title')"
       :message="$t('school.attendance.permissionError.message')"
       testid="school-attendance-permission-error"
@@ -84,6 +92,8 @@ onMounted(loadPage)
     />
 
     <SchoolAttendanceForbidden v-else-if="denied" />
+
+    <PageLoading v-else-if="schoolTeam.loading.value || !permissionsReady" />
 
     <main v-else class="flex-1 p-4 max-w-2xl mx-auto w-full">
       <!-- フィルター -->
@@ -141,7 +151,8 @@ onMounted(loadPage)
         <div v-else data-testid="transition-alert-list">
           <TransitionAlertBanner
             :alerts="alerts"
-            :team-id="teamSlug"
+            :team-id="schoolTeamId"
+            :can-resolve="permissionsReady && canRecordDaily"
             @resolved="onResolved"
           />
         </div>

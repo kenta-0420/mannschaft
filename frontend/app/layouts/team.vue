@@ -10,6 +10,9 @@ const teamId = computed(() => {
 })
 
 const scopeId = computed(() => teamId.value ?? '')
+const schoolTeam = provideSchoolTeamContext(scopeId)
+onMounted(schoolTeam.load)
+watch(scopeId, schoolTeam.load)
 const { roleName, loadPermissions } = useRoleAccess('team', scopeId)
 const canShowSidebar = computed(() =>
   roleName.value !== null
@@ -44,7 +47,9 @@ watch(() => route.path, () => {
         <template #header>
           <span class="font-semibold">メニュー</span>
         </template>
-        <TeamSidebar v-if="teamId" :team-id="teamId" />
+        <DashboardErrorState v-if="schoolTeam.error.value" :error="schoolTeam.error.value" @retry="schoolTeam.load" />
+        <PageLoading v-else-if="schoolTeam.loading.value" />
+        <TeamSidebar v-if="teamId" :team-id="teamId" :team-template="schoolTeam.template.value" :team-numeric-id="schoolTeam.teamId.value" />
       </Drawer>
 
       <!-- メインコンテンツ -->

@@ -82,6 +82,7 @@ const Header = defineComponent({
   setup: (props) => () => h('div', props.displayName ?? props.org?.basicInfo?.name),
 })
 const Shell = defineComponent({
+  props: ['sidebarProps'],
   setup:
     (_, { slots }) =>
     () =>
@@ -210,4 +211,26 @@ it('M4: チーム破棄時に15秒watchdogを解除する', async () => {
   arm.mockRestore()
   pending.reject({ response: { status: 403 } })
   await settle()
+})
+
+
+it('学校sidebarの一般メンバープレビューは管理者だけに適用しteam/role切替後の実MEMBERに残さない', async () => {
+  setRoute('teams', 'a')
+  const wrapper = await mountShell('teams')
+  await settle()
+  const vm = wrapper.vm as unknown as { adminLens: boolean; roleName: string; isAdminOrDeputy: boolean }
+  vm.roleName = 'ADMIN'
+  vm.isAdminOrDeputy = true
+  vm.adminLens = true
+  await settle()
+  expect(wrapper.findComponent(Shell).props('sidebarProps').memberLensActive).toBe(false)
+  vm.adminLens = false
+  await settle()
+  expect(wrapper.findComponent(Shell).props('sidebarProps').memberLensActive).toBe(true)
+  vm.roleName = 'MEMBER'
+  vm.isAdminOrDeputy = false
+  setRoute('teams', 'b')
+  await settle()
+  expect(wrapper.findComponent(Shell).props('sidebarProps').memberLensActive).toBe(false)
+  wrapper.unmount()
 })

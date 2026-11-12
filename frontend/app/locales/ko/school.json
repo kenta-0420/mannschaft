@@ -26,6 +26,7 @@
         "OTHER": "기타"
       },
       "dailyRollCall": {
+        "loadError": "출결 기록을 불러오지 못했습니다",
         "title": "아침 점호",
         "date": "날짜",
         "submit": "점호 제출",

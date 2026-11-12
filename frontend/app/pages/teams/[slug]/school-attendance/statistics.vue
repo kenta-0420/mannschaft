@@ -5,12 +5,15 @@ import { computed, ref, onMounted, watch } from 'vue'
 definePageMeta({
   layout: 'team',
   middleware: 'auth',
+  key: route => String(route.params.slug),
 })
 
 const route = useRoute()
 const teamSlug = computed(() => String(route.params.slug))
+const schoolTeam = useSchoolTeamContext(teamSlug)
+const schoolTeamId = schoolTeam.teamId
 const { monthlyStats, termStats, loadingMonthly, loadingTerm, exporting, loadMonthlyStatistics, loadTermStatistics, downloadCsv } =
-  useAttendanceStatistics(teamSlug)
+  useAttendanceStatistics(schoolTeamId)
 const { userTimezone } = useDatetime()
 const {
   loadFailed: permissionsFailed,
@@ -18,7 +21,7 @@ const {
   forbidden: permissionsForbidden,
   canView,
   loadPermissions,
-} = useAttendancePermissions(teamSlug)
+} = useAttendancePermissions(schoolTeamId)
 
 // 判定は BE の権限判定 API のみ。403 は握りつぶさず「権限がありません」を明示する（AC-18）
 const denied = computed(
@@ -26,7 +29,7 @@ const denied = computed(
 )
 
 // 取得・操作は「照会完了かつ閲覧権限 true」のときだけ許可する（fail-closed）
-const canQuery = computed(() => permissionsReady.value && !denied.value && canView.value)
+const canQuery = computed(() => !!schoolTeamId.value && permissionsReady.value && !denied.value && canView.value)
 
 const today = dayjs().tz(userTimezone.value)
 const selectedYear = ref(today.year())
@@ -69,12 +72,16 @@ watch([selectedYear, selectedMonth], () => {
 })
 
 async function loadPage(): Promise<void> {
+  const requestedSlug = teamSlug.value
+  if (!await schoolTeam.load() || teamSlug.value !== requestedSlug) return
   await loadPermissions()
+  if (teamSlug.value !== requestedSlug) return
   if (!canQuery.value) return
   await loadMonthly()
 }
 
 onMounted(loadPage)
+watch(teamSlug, loadPage)
 </script>
 
 <template>
@@ -87,7 +94,7 @@ onMounted(loadPage)
     </header>
 
     <DashboardErrorState
-      v-if="permissionsFailed"
+      v-if="schoolTeam.error.value || permissionsFailed"
       :title="$t('school.attendance.permissionError.title')"
       :message="$t('school.attendance.permissionError.message')"
       testid="school-attendance-permission-error"
@@ -95,6 +102,8 @@ onMounted(loadPage)
     />
 
     <SchoolAttendanceForbidden v-else-if="denied" />
+
+    <PageLoading v-else-if="schoolTeam.loading.value || !permissionsReady" />
 
     <main v-else class="flex-1 p-4 max-w-4xl mx-auto w-full">
       <!-- タブ切り替え -->

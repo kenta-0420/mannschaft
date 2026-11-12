@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import type { DailyRollCallEntry, DailyRollCallSummary } from '~/types/school'
 
 definePageMeta({
   layout: 'team',
   middleware: 'auth',
+  key: route => String(route.params.slug),
 })
 
 interface StudentEntry extends DailyRollCallEntry {
@@ -14,9 +15,11 @@ interface StudentEntry extends DailyRollCallEntry {
 
 const route = useRoute()
 const teamSlug = computed(() => String(route.params.slug))
+const schoolTeam = useSchoolTeamContext(teamSlug)
+const schoolTeamId = schoolTeam.teamId
 
-const { records, loading, submitting, lastSummary, forbidden, loadRecords, submitRollCall } =
-  useDailyRollCall(teamSlug)
+const { records, loading, submitting, lastSummary, forbidden, loadFailed: recordsFailed, loaded: recordsLoaded, recordKey, loadRecords, submitRollCall } =
+  useDailyRollCall(schoolTeamId)
 const { userTimezone } = useDatetime()
 const {
   forbidden: permissionsForbidden,
@@ -25,7 +28,7 @@ const {
   canView,
   canRecordDaily,
   loadPermissions,
-} = useAttendancePermissions(teamSlug)
+} = useAttendancePermissions(schoolTeamId)
 
 // 判定は BE の権限判定 API のみ。403 は握りつぶさず「権限がありません」を明示する（AC-18）
 const denied = computed(
@@ -33,7 +36,7 @@ const denied = computed(
 )
 
 // 一覧取得・操作は「照会完了かつ閲覧権限 true」のときだけ許可する（fail-closed）
-const canQuery = computed(() => permissionsReady.value && !denied.value && canView.value)
+const canQuery = computed(() => !!schoolTeamId.value && permissionsReady.value && !denied.value && canView.value)
 
 const today = dayjs().tz(userTimezone.value).format('YYYY-MM-DD')
 const selectedDate = ref(today)
@@ -41,48 +44,56 @@ const selectedDate = ref(today)
 const entries = ref<StudentEntry[]>([])
 const showSummary = ref(false)
 
-function initEntries(): void {
-  if (records.value.length > 0) {
-    entries.value = records.value.map((r) => ({
-      studentUserId: r.studentUserId,
-      displayName: String(r.studentUserId),
-      status: r.status,
-      absenceReason: r.absenceReason,
-      arrivalTime: r.arrivalTime,
-      leaveTime: r.leaveTime,
-      comment: r.comment,
-      familyNoticeId: r.familyNoticeId,
-    }))
-  }
-}
+// 空の成功・失敗によるリセットも必ず反映する。前日の行を次の日へ持ち越さない。
+watch(records, () => {
+  entries.value = records.value.map((r) => ({
+    studentUserId: r.studentUserId,
+    displayName: String(r.studentUserId),
+    status: r.status,
+    absenceReason: r.absenceReason,
+    arrivalTime: r.arrivalTime,
+    leaveTime: r.leaveTime,
+    comment: r.comment,
+    familyNoticeId: r.familyNoticeId,
+  }))
+}, { flush: 'sync' })
+const canSubmit = computed(() => canQuery.value && canRecordDaily.value && recordsLoaded.value
+  && !recordsFailed.value && !loading.value && recordKey.value === `${schoolTeamId.value}:${selectedDate.value}`)
+watch([selectedDate, schoolTeamId], () => {
+  entries.value = []
+  showSummary.value = false
+}, { flush: 'sync' })
 
 async function onDateChange(): Promise<void> {
   if (!canQuery.value) return
   await loadRecords(selectedDate.value)
-  initEntries()
   showSummary.value = false
 }
 
 async function onSubmit(): Promise<void> {
+  if (!canSubmit.value || entries.value.length === 0 || submitting.value) return
+  const requestedKey = recordKey.value
   const result: DailyRollCallSummary | null = await submitRollCall(
     selectedDate.value,
     entries.value,
   )
-  if (result) {
+  if (result && canSubmit.value && recordKey.value === requestedKey) {
     showSummary.value = true
     await loadRecords(selectedDate.value)
-    initEntries()
   }
 }
 
 async function loadPage(): Promise<void> {
+  const requestedSlug = teamSlug.value
+  if (!await schoolTeam.load() || teamSlug.value !== requestedSlug) return
   await loadPermissions()
+  if (teamSlug.value !== requestedSlug) return
   if (!canQuery.value) return
   await loadRecords(selectedDate.value)
-  initEntries()
 }
 
 onMounted(loadPage)
+watch(teamSlug, loadPage)
 </script>
 
 <template>
@@ -95,7 +106,7 @@ onMounted(loadPage)
     </header>
 
     <DashboardErrorState
-      v-if="permissionsFailed"
+      v-if="schoolTeam.error.value || permissionsFailed"
       :title="$t('school.attendance.permissionError.title')"
       :message="$t('school.attendance.permissionError.message')"
       testid="school-attendance-permission-error"
@@ -103,6 +114,8 @@ onMounted(loadPage)
     />
 
     <SchoolAttendanceForbidden v-else-if="denied" />
+
+    <PageLoading v-else-if="schoolTeam.loading.value || !permissionsReady" />
 
     <main v-else class="flex-1 p-4 max-w-2xl mx-auto w-full">
       <div class="mb-4">
@@ -121,7 +134,14 @@ onMounted(loadPage)
 
       <PageLoading v-if="loading" />
 
-      <template v-else>
+      <DashboardErrorState
+        v-else-if="recordsFailed"
+        :title="$t('school.attendance.dailyRollCall.loadError')"
+        testid="daily-roll-call-load-error"
+        @retry="onDateChange"
+      />
+
+      <template v-else-if="recordsLoaded && recordKey === `${schoolTeamId}:${selectedDate}`">
         <DailyRollCallSheet
           :entries="entries"
           :date="selectedDate"
@@ -156,11 +176,11 @@ onMounted(loadPage)
           </div>
         </div>
 
-        <div class="mt-6">
+        <div v-if="canSubmit" class="mt-6">
           <Button
             :label="$t('school.attendance.dailyRollCall.submit')"
             :loading="submitting"
-            :disabled="!canRecordDaily || entries.length === 0 || submitting"
+            :disabled="entries.length === 0 || submitting"
             class="w-full"
             data-testid="daily-roll-call-submit"
             @click="onSubmit"
