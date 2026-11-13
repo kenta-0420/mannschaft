@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-11-13T22:01:18+00:00",
+  "generatedAt": "2026-11-13T22:22:04+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,9 +8,9 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "d61097a49227386d8b4044a2a6ced72fade5b50a",
-    "taskListCommit": "b040e7e06eca0380e87d2796a0a461294f2122ee",
+    "taskListCommit": "e13c4711b6f5e50effb8bd842b97089ae3e10c29",
     "inventorySha256": "b0a1f97197840c865756a40f12f577cfeb10aa8083dc95f2932f7b3a7f90528a",
-    "taskListSha256": "1e3157b059c5bafe2d072e9c06a709bfe57ca7e15b42a45eb67d0f83ad7bd24e",
+    "taskListSha256": "0e413f9c166e7064917beaac1421e3299be7129a3ed374ab42928165d9800ece",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
@@ -20,7 +20,7 @@ window.BETA_INVENTORY_DATA = {
     "features": 44,
     "capabilities": 95,
     "splitParents": 33,
-    "campaigns": 718,
+    "campaigns": 719,
     "layer": {
       "能力": 26,
       "ドメイン": 18
@@ -37,11 +37,11 @@ window.BETA_INVENTORY_DATA = {
   "verification": {
     "raw": {
       "features": 44,
-      "campaigns": 718
+      "campaigns": 719
     },
     "parsed": {
       "features": 44,
-      "campaigns": 718,
+      "campaigns": 719,
       "core": 25,
       "noncore": 19,
       "blockers": 23,
@@ -58735,12 +58735,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-261021-0017、CMP-261021-2158（L1-K完了）。登録時claim `cc2c5a146211d4b97f29760ffb324e01ae03c23d` は履歴として保持。現common-core引継ぎは[親宣言](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6695483881)。TransitionalBridgeはPR #4214でmain提供済み（L1-M全完了待ちではない）",
       "issues": [
         {
-          "label": "[登録PR #4211](https://github.com/kenta-0420/mannschaft/pull/4211)はmain反映済みの履歴。[実装PR #4352](https://github.com/kenta-0420/mannschaft/pull/4352)は記録時点Draft・未merge。初回1型は旧staticを互換委譲しDN1〜6の旧19green→全40の21 assertion red（compile成功）→40green/skip0。DN9実生成前後bytes一致は親合格。DN7実MySQL6件・DN8別engine/本番Integrity照合済み。固定実機source39a3のformal14は13pass/1fail＋契約誤期待修正o1の13+1分割証拠を採用。Card/権限差/実preview・PATCH・GET逆復元を局所採用。Core57b7のBackend/Frontend/E2Eはgreen、実行・cache等の資格は証拠文書に記載。新3住民は全login0・全員の認証後の目的達成未確認で停止、DN11未完。復元B3継続利用・専用runtime teardown、支援残務、最新main追従後の最終CI/出荷は未完。[進捗・証拠](evidence/CMP-261028-2304-l1r-normalizer.md)",
+          "label": "[登録PR #4211](https://github.com/kenta-0420/mannschaft/pull/4211)はmain反映済みの履歴。[実装PR #4352](https://github.com/kenta-0420/mannschaft/pull/4352)はDraft・未merge。初回1型は旧static互換委譲、旧19green→全40の21 assertion red→40green。Core公開a309のCI v3はMySQL直接XML6件、API40はsource/class成功の推移資格、六shard a1/a2分割採用。DN9は対象blob同等性で継承。R14 source8afdのformalは2+12分割、Card全後段/復元/empty・EC・同既知試合のMatch m2+resumeを採用、SG s4は搬送限定で既存購読認可欠落をCMP-261114-0713へ分離。元失敗/unknown・204後ERR_ABORTED原因不明/clean falseは保持。正式実機後の新独立3住民は通常profile/systemRole null・全員CLOSED/native0、未実証insight2件。専用runtime/DB履歴は撤去済み。B0依存成果の統合・新main32e統合後のCore最終CI・支援PR採用/main反映は未完。[進捗・証拠](evidence/CMP-261028-2304-l1r-normalizer.md)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "[登録PR #4211](https://github.com/kenta-0420/mannschaft/pull/4211)はmain反映済みの履歴。[実装PR #4352](https://github.com/kenta-0420/mannschaft/pull/4352)は記録時点Draft・未merge。初回1型は旧staticを互換委譲しDN1〜6の旧19green→全40の21 assertion red（compile成功）→40green/skip0。DN9実生成前後bytes一致は親合格。DN7実MySQL6件・DN8別engine/本番Integrity照合済み。固定実機source39a3のformal14は13pass/1fail＋契約誤期待修正o1の13+1分割証拠を採用。Card/権限差/実preview・PATCH・GET逆復元を局所採用。Core57b7のBackend/Frontend/E2Eはgreen、実行・cache等の資格は証拠文書に記載。新3住民は全login0・全員の認証後の目的達成未確認で停止、DN11未完。復元B3継続利用・専用runtime teardown、支援残務、最新main追従後の最終CI/出荷は未完。[進捗・証拠](evidence/CMP-261028-2304-l1r-normalizer.md)"
+        "[登録PR #4211](https://github.com/kenta-0420/mannschaft/pull/4211)はmain反映済みの履歴。[実装PR #4352](https://github.com/kenta-0420/mannschaft/pull/4352)はDraft・未merge。初回1型は旧static互換委譲、旧19green→全40の21 assertion red→40green。Core公開a309のCI v3はMySQL直接XML6件、API40はsource/class成功の推移資格、六shard a1/a2分割採用。DN9は対象blob同等性で継承。R14 source8afdのformalは2+12分割、Card全後段/復元/empty・EC・同既知試合のMatch m2+resumeを採用、SG s4は搬送限定で既存購読認可欠落をCMP-261114-0713へ分離。元失敗/unknown・204後ERR_ABORTED原因不明/clean falseは保持。正式実機後の新独立3住民は通常profile/systemRole null・全員CLOSED/native0、未実証insight2件。専用runtime/DB履歴は撤去済み。B0依存成果の統合・新main32e統合後のCore最終CI・支援PR採用/main反映は未完。[進捗・証拠](evidence/CMP-261028-2304-l1r-normalizer.md)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -65901,6 +65901,51 @@ window.BETA_INVENTORY_DATA = {
         "en",
         "de",
         "UI"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261114-0713",
+      "title": "SignageのWS購読許可契約と既存購読認可欠落の修復",
+      "status": "not-started",
+      "statusLabel": "P1 未着手（許可仕様判断待ち）",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P1",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "端末token・所属・管理権限による購読許可契約を別修復で確定し、採択した許可契約に従う配送/拒否（他scope・非所属・匿名を含む）とscope隔離・token失効後の既存接続/再接続の各境界を試験/実機で検証する",
+      "acceptance": [
+        "端末token・所属・管理権限による購読許可契約を別修復で確定し、採択した許可契約に従う配送/拒否（他scope・非所属・匿名を含む）とscope隔離・token失効後の既存接続/再接続の各境界を試験/実機で検証する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "R14で管理操作を拒否された他scopeの認証済み利用者への試験marker配送を実測。今回の認可方針変更0で既存購読guard欠落を確認。匿名受信・実利用データ漏洩・失効後WS停止は未実証。[限定採用と観測根拠](evidence/CMP-261028-2304-l1r-normalizer.md)。詳細は非公開証拠へ保持し公開再現手順は記載しない",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "R14で管理操作を拒否された他scopeの認証済み利用者への試験marker配送を実測。今回の認可方針変更0で既存購読guard欠落を確認。匿名受信・実利用データ漏洩・失効後WS停止は未実証。[限定採用と観測根拠](evidence/CMP-261028-2304-l1r-normalizer.md)。詳細は非公開証拠へ保持し公開再現手順は記載しない"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "CMP-260917-1350の組織管理GET認可とは別のWS購読境界。L1-R初回1型の限定搬送修復・出荷残務と分離し、認可全合格/本番リスク受容とは扱わない。scope app"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "Signage",
+        "WS",
+        "token",
+        "scope",
+        "scope",
+        "token"
       ],
       "tags": [
         "未着手"
