@@ -15,7 +15,7 @@ export function useChatCreatedChannel() {
   const { showError } = useNotification()
   const { t } = useI18n()
 
-  async function resolveCreatedChannel(created: ChatChannelResponse): Promise<ChatChannelResponse | null> {
+  async function resolveCreatedChannel(created: Pick<ChatChannelResponse, 'id'>): Promise<ChatChannelResponse | null> {
     try {
       const res = await getChannel(created.id)
       return res.data

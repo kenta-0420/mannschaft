@@ -149,5 +149,8 @@
         }
       }
     }
+  },
+  "contact_handle_search": {
+    "not_found": "未找到用户"
   }
 }

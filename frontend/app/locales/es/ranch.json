@@ -99,7 +99,7 @@
       "description": "Elige mediante numerología de fecha de nacimiento y nombre, un cuestionario de 64 tipos o una forma aleatoria de tierra, mar o aire.",
       "fromResult": "Elegir desde mis resultados",
       "confirmed": "La apariencia de tu avatar actual está confirmada. Puedes volver a consultar tus resultados de diagnóstico más adelante.",
-      "mappingPending": "Tu resultado se ha guardado. Se está preparando su correspondencia con una forma de dinosaurio.",
+      "mappingPending": "Tu resultado se ha guardado. Actualmente no puedes usarlo para confirmar el aspecto de tu avatar.",
       "useResult": "Usar este resultado para elegir forma"
     },
     "diagnosisResults": {
