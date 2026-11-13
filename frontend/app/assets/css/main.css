@@ -56,7 +56,12 @@ body {
   .p-button .p-button-label {
     min-width: 0;
     white-space: normal;
-    overflow-wrap: anywhere;
+    /* anywhere は min-content 幅にも効き、flex 内で単語途中に折れる。break-word なら単語は割らない（CMP-261112-0518） */
+    overflow-wrap: break-word;
+  }
+
+  .p-dialog-footer {
+    flex-wrap: wrap;
   }
 
   .p-paginator .p-paginator-content,

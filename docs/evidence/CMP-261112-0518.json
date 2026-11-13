@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261112-0518",
+  "scope": "app",
+  "implementation": {
+    "pr": 4476,
+    "sha": "45cb192aad528d20364c706443c2a8f723404326"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "全ボタンで単語途中の折れを解消する",
+      "tests": [
+        {
+          "name": "button-label-word-break.spec.ts",
+          "evidence": "frontend/tests/unit/build/button-label-word-break.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "既存のはみ出し防止を維持する",
+      "tests": [
+        {
+          "name": "button-label-word-break.spec.ts",
+          "evidence": "frontend/tests/unit/build/button-label-word-break.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 43129951076
+    },
+    {
+      "runId": 43129951192
+    },
+    {
+      "runId": 43129951045
+    },
+    {
+      "runId": 43129951006
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4476"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261112-0518.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261112-0518.md"
+    }
+  },
+  "regressions": []
+}

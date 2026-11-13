@@ -35,8 +35,12 @@ async function search() {
   result.value = null
   try {
     const res = await contactApi.searchByHandle(trimmed)
-    result.value = res.data
-    if (!res.data) notFound.value = true
+    // BE は見つからないとき 200 で { found:false, fullName:null, ... } を返す
+    if (res.data?.found) {
+      result.value = res.data
+    } else {
+      notFound.value = true
+    }
   } catch (e) {
     captureQuiet(e, { context: 'ContactSearchDialog: ハンドル検索' })
     notFound.value = true
@@ -101,7 +105,7 @@ function onHide() {
         v-if="notFound"
         class="rounded-lg border border-dashed border-gray-200 p-4 text-center text-sm text-gray-400"
       >
-        見つかりませんでした
+        {{ $t('contact_handle_search.not_found') }}
       </div>
 
       <template v-if="result">
