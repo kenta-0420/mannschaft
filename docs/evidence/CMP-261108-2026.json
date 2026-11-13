@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261108-2026",
+  "scope": "app",
+  "implementation": {
+    "pr": 4418,
+    "sha": "6ffc203e22b1e509be81819241747504ecb3c53b"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "正式24問/同点6軸・診断64/出生81を承認済み対応へ接続し、snapshotの版と理由を保存する",
+      "tests": [
+        {
+          "name": "diagnosis-24-and-six-ties / birth-confirm-result / source formal pins",
+          "evidence": "docs/evidence/CMP-261108-2026/h14-actual-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "既存結果・確定個体のidentityと旧null互換・再適用防止を保持する",
+      "tests": [
+        {
+          "name": "legacy-null-reject / confirmed-egg-no-reassignment / post-hatch-identity-immutable",
+          "evidence": "docs/evidence/CMP-261108-2026/h14-actual-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "本人確認revisionと認可・未認証/別本人参照拒否・結果分離を確認する",
+      "tests": [
+        {
+          "name": "birth-profile-revision-preserves-old-result / foreign confirmation404 / owner list isolation",
+          "evidence": "docs/evidence/CMP-261108-2026/h14-actual-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "途中失敗・遅延・二重操作と孵化応答喪失再試行を実UIで確認する",
+      "tests": [
+        {
+          "name": "fresh-get-delayed-gate / fresh-get-failure-gate / assignment-two-tab-replay / hatch-transport-response-loss-retry",
+          "evidence": "docs/evidence/CMP-261108-2026/h14-actual-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "承認素材不変、両画風の正式4動作・動き配慮・非表示/休止・fallbackを確認する",
+      "tests": [
+        {
+          "name": "formal-four-actions PIXEL/PAINT_2D / reduced motion / hidden-paused-result-view / asset-http-fallback",
+          "evidence": "docs/evidence/CMP-261108-2026/h14-actual-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "AC-6",
+      "description": "同じ専用DBで正式master等の解除後に保存snapshot/卵を保持し、新規割当拒否とcare利用可を確認する",
+      "tests": [
+        {
+          "name": "runtime2 five required cases / full before-after / owned cleanup",
+          "evidence": "docs/evidence/CMP-261108-2026/h14-actual-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "AC-7",
+      "description": "実機後の独立3人が元目的を達成し同じ保存結果へ再訪し、限界と未実証観測を保持する",
+      "tests": [
+        {
+          "name": "fresh three actor reports / result URI identity / saved2 resumed21 / mobile390-360",
+          "evidence": "docs/evidence/CMP-261108-2026/h14-actual-summary.json"
+        }
+      ]
+    },
+    {
+      "id": "AC-8",
+      "description": "想起入口と確定通知を実画面で確認し、実行後のsource/artifact不変と所有撤収を証明する",
+      "tests": [
+        {
+          "name": "ranch-recall-entry-navigation / confirmed feedback / full-after / telemetry2268 / resource absence",
+          "evidence": "docs/evidence/CMP-261108-2026/h14-actual-summary.json"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 43453605641
+    },
+    {
+      "runId": 43453605217
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261108-2026.md"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261108-2026/h14-actual-summary.json"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261108-2026/h14-r4-resident-observations-20261114.json"
+    }
+  },
+  "regressions": [
+    {
+      "description": "牧場のentry未選択想起リンクをentry必須個別画面から振り返りindexへ接続し、実DOM href契約を修正",
+      "test": "牧場から振り返りへの入口 > entry未選択の想起リンクは個別想起画面ではなく振り返り入口へ進む",
+      "redEvidence": "docs/evidence/CMP-261108-2026/navigation-regression-red.json",
+      "greenEvidence": "docs/evidence/CMP-261108-2026/navigation-regression-green.json"
+    }
+  ]
+}
