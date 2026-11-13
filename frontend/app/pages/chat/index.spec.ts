@@ -17,6 +17,10 @@ mockNuxtImport(
       actions: { async restore() {} },
     })(),
 )
+// 作成ダイアログから開く処理は useChatApi（Nuxt インスタンス要）に触れるため、この導線の検証では差し替える
+vi.mock('~/composables/chat/useChatOpenCreatedChannel', () => ({
+  useChatOpenCreatedChannel: () => ({ openCreatedChannel: vi.fn() }),
+}))
 mockNuxtImport('useIsDesktop', () => () => ({ isDesktop: ref(false) }))
 mockNuxtImport('useNotification', () => () => ({ warn: vi.fn() }))
 mockNuxtImport('useRoute', () => () => ({ query: {} }))
