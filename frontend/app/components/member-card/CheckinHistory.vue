@@ -46,6 +46,13 @@ onMounted(loadCheckins)
 <template>
   <div>
     <DashboardErrorState v-if="loadError" :error="loadError" @retry="loadCheckins" />
+    <!-- 0件のときは表を描かない。狭幅で DataTable が横スクロール幅になり、表幅中央の空メッセージが画面外へ切れるため -->
+    <DashboardEmptyState
+      v-else-if="!loading && checkins.length === 0"
+      data-testid="checkin-history-empty"
+      icon="pi pi-history"
+      :message="$t('memberCardAdmin.historyColumns.empty')"
+    />
     <DataTable
       v-else
       :value="checkins"
@@ -55,9 +62,6 @@ onMounted(loadCheckins)
       data-key="id"
       striped-rows
     >
-      <template #empty>
-        <div class="py-8 text-center text-surface-500">{{ $t('memberCardAdmin.historyColumns.empty') }}</div>
-      </template>
       <Column :header="$t('memberCardAdmin.historyColumns.time')">
         <template #body="{ data }">
           {{ formatRelative(data.checkedInAt) }}
