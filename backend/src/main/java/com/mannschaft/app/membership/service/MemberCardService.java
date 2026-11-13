@@ -202,8 +202,10 @@ public class MemberCardService {
             throw new BusinessException(MembershipErrorCode.MEMBERSHIP_002);
         }
 
-        // SUPPORTERロール以上であることを検証（GUEST不可）
-        if (!accessControlService.hasRoleOrAbove(userId, card.getScopeId(), card.getScopeType().name(), "SUPPORTER")) {
+        // SUPPORTERロール以上であることを検証（GUEST不可）。
+        // PLATFORM（運営）会員証には実テナントが無くロール判定の対象外（所有者本人であることは上で確認済み）。
+        if (card.getScopeType() != ScopeType.PLATFORM
+                && !accessControlService.hasRoleOrAbove(userId, card.getScopeId(), card.getScopeType().name(), "SUPPORTER")) {
             throw new BusinessException(MembershipErrorCode.MEMBERSHIP_004);
         }
 
@@ -481,8 +483,7 @@ public class MemberCardService {
     public ApiResponse<CardStatusResponse> suspend(Long cardId) {
         MemberCardEntity card = findCardOrThrow(cardId);
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        requireMemberOrConceal(card, currentUserId);
-        accessControlService.checkAdminOrAbove(currentUserId, card.getScopeId(), card.getScopeType().name());
+        requireScopeAccess(card, currentUserId);
 
         if (card.getStatus() == CardStatus.SUSPENDED) {
             throw new BusinessException(MembershipErrorCode.MEMBERSHIP_016);
@@ -513,8 +514,7 @@ public class MemberCardService {
     public ApiResponse<CardStatusResponse> reactivate(Long cardId) {
         MemberCardEntity card = findCardOrThrow(cardId);
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        requireMemberOrConceal(card, currentUserId);
-        accessControlService.checkAdminOrAbove(currentUserId, card.getScopeId(), card.getScopeType().name());
+        requireScopeAccess(card, currentUserId);
 
         if (card.getStatus() == CardStatus.REVOKED) {
             throw new BusinessException(MembershipErrorCode.MEMBERSHIP_017);
@@ -653,6 +653,23 @@ public class MemberCardService {
      * 存在を秘匿するため、通常の {@code checkAdminOrAbove}（403）ではなく会員証の NOT_FOUND
      * コード（404）を投げる（incident ドメイン {@code requireMemberOrConceal} と同じ設計）。
      */
+    /**
+     * suspend/reactivate の認可。PLATFORM（運営）会員証には実テナント（チーム/組織）が無く、
+     * ScopeType 由来のメンバー・ロール判定を行えない（ScopeType に PLATFORM が無い）ため、
+     * 所有者本人のみ可とし、他人には存在を秘匿して NOT_FOUND を返す。
+     * TEAM / ORGANIZATION は従来どおり（メンバー判定 404 + ADMIN 以上 403）。
+     */
+    private void requireScopeAccess(MemberCardEntity card, Long currentUserId) {
+        if (card.getScopeType() == ScopeType.PLATFORM) {
+            if (!card.getUserId().equals(currentUserId)) {
+                throw new BusinessException(MembershipErrorCode.MEMBERSHIP_001);
+            }
+            return;
+        }
+        requireMemberOrConceal(card, currentUserId);
+        accessControlService.checkAdminOrAbove(currentUserId, card.getScopeId(), card.getScopeType().name());
+    }
+
     private void requireMemberOrConceal(MemberCardEntity card, Long currentUserId) {
         if (!accessControlService.isMember(currentUserId, card.getScopeId(), card.getScopeType().name())) {
             throw new BusinessException(MembershipErrorCode.MEMBERSHIP_001);

@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261111-1429",
+  "scope": "app",
+  "implementation": {
+    "pr": 4472,
+    "sha": "ba06b2b04c0e38934fced65cfeefba28a030273f"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "ALIC-1",
+      "description": "同分発行のリンクを識別できる",
+      "tests": [
+        {
+          "name": "InviteTokenList.spec.ts",
+          "evidence": "frontend/app/components/InviteTokenList.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "ALIC-2",
+      "description": "モバイルで無効化操作が画面外に出ない",
+      "tests": [
+        {
+          "name": "InviteTokenList.spec.ts",
+          "evidence": "frontend/app/components/InviteTokenList.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "ALIC-3",
+      "description": "de のボタンが単語途中で折り返さない",
+      "tests": [
+        {
+          "name": "MemberPermissionSetupDialog.spec.ts",
+          "evidence": "frontend/app/components/MemberPermissionSetupDialog.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "ALIC-4",
+      "description": "読込中に空文言を出さない",
+      "tests": [
+        {
+          "name": "InviteTokenList.spec.ts",
+          "evidence": "frontend/app/components/InviteTokenList.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "ALIC-5",
+      "description": "ネイティブ confirm を使わず確認ダイアログにする",
+      "tests": [
+        {
+          "name": "InviteTokenListSecretIssued.spec.ts",
+          "evidence": "frontend/tests/unit/components/InviteTokenListSecretIssued.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "ALIC-6",
+      "description": "de の用語を統一する",
+      "tests": [
+        {
+          "name": "localDate.spec.ts",
+          "evidence": "frontend/tests/unit/utils/localDate.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 43075426381
+    },
+    {
+      "runId": 43075426582
+    },
+    {
+      "runId": 43075426125
+    },
+    {
+      "runId": 43075426124
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4472"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261111-1429.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261111-1429.md"
+    }
+  },
+  "regressions": []
+}

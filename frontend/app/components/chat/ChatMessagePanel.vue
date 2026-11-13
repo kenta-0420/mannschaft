@@ -286,6 +286,8 @@ async function onBookmark(messageId: number) {
 
 function onSent() {
   loadMessages()
+  // 一覧のプレビュー（最後の発言）・並びを最新にする（重複通知は一覧側の reloadSilently がまとめる）
+  notifyChannelContentChanged(props.channel.id)
 }
 
 // ============================================================
@@ -369,6 +371,8 @@ const offWsEvent = wsEventBus.on((event) => {
       messages.value.push(newMsg)
       nextTick(() => scrollToBottom())
     }
+    // 他者の新着・自分の送信の WS 反射でも、一覧のプレビューを最新にする
+    notifyChannelContentChanged(props.channel.id)
   } else if (event.type === 'MESSAGE_UPDATED') {
     const updated = mapBeMessage(event.data as BeMessageResponse, currentUserId)
     const idx = messages.value.findIndex((m) => m.id === updated.id)

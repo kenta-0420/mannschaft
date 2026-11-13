@@ -2,6 +2,7 @@
 import { ref, reactive, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import type { ChatTab, ChatChannelResponse } from '~/types/chat'
+import { useChatOpenCreatedChannel } from '~/composables/chat/useChatOpenCreatedChannel'
 
 definePageMeta({
   middleware: 'auth',
@@ -35,12 +36,21 @@ const contextMenuChannelId = computed<number>(() => contextMenu.channelId ?? 0)
 // ─── 既存サイドバー用状態（既存機能を全て維持） ─────────────────────
 const showCreateDialog = ref(false)
 const showContactSearch = ref(false)
-const listRef = ref<{ refresh: () => void } | null>(null)
+const listRef = ref<{
+  refresh: () => Promise<void>
+  selectIfPresent: (channelId: number) => boolean
+} | null>(null)
 const leftTab = ref<'chat' | 'contacts' | 'requests'>('chat')
 
 function onCreated() {
   listRef.value?.refresh()
 }
+
+/**
+ * 作成ダイアログが開始した DM・作成した Zimmer をタブで開く（CMP-261105-1507）。
+ * 一覧にあれば一覧の select（onSelectChannel）経由、無ければ詳細 API で取り直してタブに追加する。
+ */
+const { openCreatedChannel } = useChatOpenCreatedChannel(listRef, handleAddTab)
 
 // ─── タブ操作 ───────────────────────────────────────────────────────
 
@@ -368,7 +378,12 @@ onUnmounted(() => {
     />
 
     <!-- チャンネル作成ダイアログ（既存機能維持） -->
-    <ChatCreateDialog v-model:visible="showCreateDialog" @created="onCreated" />
+    <ChatCreateDialog
+      v-model:visible="showCreateDialog"
+      @created="onCreated"
+      @open-dm="openCreatedChannel"
+      @open-channel="openCreatedChannel"
+    />
 
     <!-- 連絡先検索ダイアログ（既存機能維持） -->
     <ContactSearchDialog v-model:visible="showContactSearch" @added="listRef?.refresh()" />
