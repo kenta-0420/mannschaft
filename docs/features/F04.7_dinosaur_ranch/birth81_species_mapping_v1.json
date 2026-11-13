@@ -1,0 +1,758 @@
+{
+  "mappingVersion": "birth81-spec-v1",
+  "status": "ADOPTED",
+  "sourceProposalSha256": "51e6a951d07ccf57a587baaeae0644fbd2cc466466c4f95b83970e607006d7b9",
+  "adoption": "2026-11-08 ユーザーが明示81対応案を採択。伝統数秘の保証ではなく独自ゲーム内の対応。",
+  "normalizationVersion": "nfkc-hepburn-v1",
+  "ruleVersion": "digit-reduce-v1",
+  "rowMotifs": [
+    {
+      "lifePathNumber": 1,
+      "motif": "踏み出す",
+      "editorialReason": "決断して踏み出す／仲間を守って踏み出す"
+    },
+    {
+      "lifePathNumber": 2,
+      "motif": "発見する",
+      "editorialReason": "自分なりに探る／仲間と発見する"
+    },
+    {
+      "lifePathNumber": 3,
+      "motif": "育て続ける",
+      "editorialReason": "粘り強く続ける／大切なものを守り育てる"
+    },
+    {
+      "lifePathNumber": 4,
+      "motif": "挑戦する",
+      "editorialReason": "次々試す／自由に冒険する"
+    },
+    {
+      "lifePathNumber": 5,
+      "motif": "調和する",
+      "editorialReason": "親しみやすい協調／柔軟な交流"
+    },
+    {
+      "lifePathNumber": 6,
+      "motif": "安らぐ",
+      "editorialReason": "自分のペースで安らぐ／周りへ安心を届ける"
+    },
+    {
+      "lifePathNumber": 7,
+      "motif": "深く見つめる",
+      "editorialReason": "思慮深く見つめる／静かに集中して探索する"
+    },
+    {
+      "lifePathNumber": 8,
+      "motif": "分かち合う",
+      "editorialReason": "包み込んで分かち合う／気持ちを伝えて分かち合う"
+    },
+    {
+      "lifePathNumber": 9,
+      "motif": "良さをつなぐ",
+      "editorialReason": "各種の良さを橋渡しする。最後の交点には仲間を守るトリケラトプスを置く"
+    }
+  ],
+  "columnMotifs": [
+    {
+      "nameNumber": 1,
+      "motif": "眺めて育む",
+      "editorialScope": "自分から始める表し方"
+    },
+    {
+      "nameNumber": 2,
+      "motif": "磨いて育む",
+      "editorialScope": "自分から始める表し方"
+    },
+    {
+      "nameNumber": 3,
+      "motif": "広く届ける",
+      "editorialScope": "自分から始める表し方"
+    },
+    {
+      "nameNumber": 4,
+      "motif": "工夫して届ける",
+      "editorialScope": "自分から始める表し方"
+    },
+    {
+      "nameNumber": 5,
+      "motif": "受けとめて結ぶ",
+      "editorialScope": "周りとの関係で育つ表し方"
+    },
+    {
+      "nameNumber": 6,
+      "motif": "気づいて結ぶ",
+      "editorialScope": "周りとの関係で育つ表し方"
+    },
+    {
+      "nameNumber": 7,
+      "motif": "呼びかけて結ぶ",
+      "editorialScope": "周りとの関係で育つ表し方"
+    },
+    {
+      "nameNumber": 8,
+      "motif": "彩って結ぶ",
+      "editorialScope": "周りとの関係で育つ表し方"
+    },
+    {
+      "nameNumber": 9,
+      "motif": "自在に行き来する",
+      "editorialScope": "両方を行き来する表し方"
+    }
+  ],
+  "variantAffinities": {
+    "V1": "表現内×全体",
+    "V2": "表現内×細部",
+    "V3": "表現外×全体",
+    "V4": "表現外×細部"
+  },
+  "mappings": [
+    {
+      "lifePathNumber": 1,
+      "nameNumber": 1,
+      "speciesKey": "tyrannosaurus",
+      "nameJa": "ティラノサウルス",
+      "variantKey": "V1",
+      "editorialReason": "「踏み出す」と「眺めて育む」のゲーム内モチーフに「勇敢・決断力」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 1,
+      "nameNumber": 2,
+      "speciesKey": "tyrannosaurus",
+      "nameJa": "ティラノサウルス",
+      "variantKey": "V2",
+      "editorialReason": "「踏み出す」と「磨いて育む」のゲーム内モチーフに「勇敢・決断力」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 1,
+      "nameNumber": 3,
+      "speciesKey": "tyrannosaurus",
+      "nameJa": "ティラノサウルス",
+      "variantKey": "V3",
+      "editorialReason": "「踏み出す」と「広く届ける」のゲーム内モチーフに「勇敢・決断力」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 1,
+      "nameNumber": 4,
+      "speciesKey": "tyrannosaurus",
+      "nameJa": "ティラノサウルス",
+      "variantKey": "V4",
+      "editorialReason": "「踏み出す」と「工夫して届ける」のゲーム内モチーフに「勇敢・決断力」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 1,
+      "nameNumber": 5,
+      "speciesKey": "triceratops",
+      "nameJa": "トリケラトプス",
+      "variantKey": "V1",
+      "editorialReason": "「踏み出す」と「受けとめて結ぶ」のゲーム内モチーフに「仲間を守る・頼もしい」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 1,
+      "nameNumber": 6,
+      "speciesKey": "triceratops",
+      "nameJa": "トリケラトプス",
+      "variantKey": "V2",
+      "editorialReason": "「踏み出す」と「気づいて結ぶ」のゲーム内モチーフに「仲間を守る・頼もしい」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 1,
+      "nameNumber": 7,
+      "speciesKey": "triceratops",
+      "nameJa": "トリケラトプス",
+      "variantKey": "V3",
+      "editorialReason": "「踏み出す」と「呼びかけて結ぶ」のゲーム内モチーフに「仲間を守る・頼もしい」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 1,
+      "nameNumber": 8,
+      "speciesKey": "triceratops",
+      "nameJa": "トリケラトプス",
+      "variantKey": "V4",
+      "editorialReason": "「踏み出す」と「彩って結ぶ」のゲーム内モチーフに「仲間を守る・頼もしい」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 1,
+      "nameNumber": 9,
+      "speciesKey": "tyrannosaurus",
+      "nameJa": "ティラノサウルス",
+      "variantKey": "V1",
+      "editorialReason": "「踏み出す」と「自在に行き来する」のゲーム内モチーフに「勇敢・決断力」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 2,
+      "nameNumber": 1,
+      "speciesKey": "spinosaurus",
+      "nameJa": "スピノサウルス",
+      "variantKey": "V1",
+      "editorialReason": "「発見する」と「眺めて育む」のゲーム内モチーフに「独自性・探究心」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 2,
+      "nameNumber": 2,
+      "speciesKey": "spinosaurus",
+      "nameJa": "スピノサウルス",
+      "variantKey": "V2",
+      "editorialReason": "「発見する」と「磨いて育む」のゲーム内モチーフに「独自性・探究心」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 2,
+      "nameNumber": 3,
+      "speciesKey": "spinosaurus",
+      "nameJa": "スピノサウルス",
+      "variantKey": "V3",
+      "editorialReason": "「発見する」と「広く届ける」のゲーム内モチーフに「独自性・探究心」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 2,
+      "nameNumber": 4,
+      "speciesKey": "spinosaurus",
+      "nameJa": "スピノサウルス",
+      "variantKey": "V4",
+      "editorialReason": "「発見する」と「工夫して届ける」のゲーム内モチーフに「独自性・探究心」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 2,
+      "nameNumber": 5,
+      "speciesKey": "longneck-spikes",
+      "nameJa": "ニジュールサウルス",
+      "variantKey": "V1",
+      "editorialReason": "「発見する」と「受けとめて結ぶ」のゲーム内モチーフに「好奇心・人なつっこい」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 2,
+      "nameNumber": 6,
+      "speciesKey": "longneck-spikes",
+      "nameJa": "ニジュールサウルス",
+      "variantKey": "V2",
+      "editorialReason": "「発見する」と「気づいて結ぶ」のゲーム内モチーフに「好奇心・人なつっこい」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 2,
+      "nameNumber": 7,
+      "speciesKey": "longneck-spikes",
+      "nameJa": "ニジュールサウルス",
+      "variantKey": "V3",
+      "editorialReason": "「発見する」と「呼びかけて結ぶ」のゲーム内モチーフに「好奇心・人なつっこい」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 2,
+      "nameNumber": 8,
+      "speciesKey": "longneck-spikes",
+      "nameJa": "ニジュールサウルス",
+      "variantKey": "V4",
+      "editorialReason": "「発見する」と「彩って結ぶ」のゲーム内モチーフに「好奇心・人なつっこい」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 2,
+      "nameNumber": 9,
+      "speciesKey": "spinosaurus",
+      "nameJa": "スピノサウルス",
+      "variantKey": "V2",
+      "editorialReason": "「発見する」と「自在に行き来する」のゲーム内モチーフに「独自性・探究心」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 3,
+      "nameNumber": 1,
+      "speciesKey": "giganotosaurus",
+      "nameJa": "ギガノトサウルス",
+      "variantKey": "V1",
+      "editorialReason": "「育て続ける」と「眺めて育む」のゲーム内モチーフに「芯が強い・粘り強い」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 3,
+      "nameNumber": 2,
+      "speciesKey": "giganotosaurus",
+      "nameJa": "ギガノトサウルス",
+      "variantKey": "V2",
+      "editorialReason": "「育て続ける」と「磨いて育む」のゲーム内モチーフに「芯が強い・粘り強い」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 3,
+      "nameNumber": 3,
+      "speciesKey": "giganotosaurus",
+      "nameJa": "ギガノトサウルス",
+      "variantKey": "V3",
+      "editorialReason": "「育て続ける」と「広く届ける」のゲーム内モチーフに「芯が強い・粘り強い」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 3,
+      "nameNumber": 4,
+      "speciesKey": "giganotosaurus",
+      "nameJa": "ギガノトサウルス",
+      "variantKey": "V4",
+      "editorialReason": "「育て続ける」と「工夫して届ける」のゲーム内モチーフに「芯が強い・粘り強い」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 3,
+      "nameNumber": 5,
+      "speciesKey": "ankylosaurus",
+      "nameJa": "アンキロサウルス",
+      "variantKey": "V1",
+      "editorialReason": "「育て続ける」と「受けとめて結ぶ」のゲーム内モチーフに「おっとり・大切なものを守る」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 3,
+      "nameNumber": 6,
+      "speciesKey": "ankylosaurus",
+      "nameJa": "アンキロサウルス",
+      "variantKey": "V2",
+      "editorialReason": "「育て続ける」と「気づいて結ぶ」のゲーム内モチーフに「おっとり・大切なものを守る」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 3,
+      "nameNumber": 7,
+      "speciesKey": "ankylosaurus",
+      "nameJa": "アンキロサウルス",
+      "variantKey": "V3",
+      "editorialReason": "「育て続ける」と「呼びかけて結ぶ」のゲーム内モチーフに「おっとり・大切なものを守る」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 3,
+      "nameNumber": 8,
+      "speciesKey": "ankylosaurus",
+      "nameJa": "アンキロサウルス",
+      "variantKey": "V4",
+      "editorialReason": "「育て続ける」と「彩って結ぶ」のゲーム内モチーフに「おっとり・大切なものを守る」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 3,
+      "nameNumber": 9,
+      "speciesKey": "giganotosaurus",
+      "nameJa": "ギガノトサウルス",
+      "variantKey": "V3",
+      "editorialReason": "「育て続ける」と「自在に行き来する」のゲーム内モチーフに「芯が強い・粘り強い」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 4,
+      "nameNumber": 1,
+      "speciesKey": "allosaurus",
+      "nameJa": "アロサウルス",
+      "variantKey": "V1",
+      "editorialReason": "「挑戦する」と「眺めて育む」のゲーム内モチーフに「行動的・挑戦好き」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 4,
+      "nameNumber": 2,
+      "speciesKey": "allosaurus",
+      "nameJa": "アロサウルス",
+      "variantKey": "V2",
+      "editorialReason": "「挑戦する」と「磨いて育む」のゲーム内モチーフに「行動的・挑戦好き」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 4,
+      "nameNumber": 3,
+      "speciesKey": "allosaurus",
+      "nameJa": "アロサウルス",
+      "variantKey": "V3",
+      "editorialReason": "「挑戦する」と「広く届ける」のゲーム内モチーフに「行動的・挑戦好き」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 4,
+      "nameNumber": 4,
+      "speciesKey": "allosaurus",
+      "nameJa": "アロサウルス",
+      "variantKey": "V4",
+      "editorialReason": "「挑戦する」と「工夫して届ける」のゲーム内モチーフに「行動的・挑戦好き」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 4,
+      "nameNumber": 5,
+      "speciesKey": "pteranodon",
+      "nameJa": "プテラノドン",
+      "variantKey": "V1",
+      "editorialReason": "「挑戦する」と「受けとめて結ぶ」のゲーム内モチーフに「自由・活発・冒険好き」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 4,
+      "nameNumber": 6,
+      "speciesKey": "pteranodon",
+      "nameJa": "プテラノドン",
+      "variantKey": "V2",
+      "editorialReason": "「挑戦する」と「気づいて結ぶ」のゲーム内モチーフに「自由・活発・冒険好き」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 4,
+      "nameNumber": 7,
+      "speciesKey": "pteranodon",
+      "nameJa": "プテラノドン",
+      "variantKey": "V3",
+      "editorialReason": "「挑戦する」と「呼びかけて結ぶ」のゲーム内モチーフに「自由・活発・冒険好き」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 4,
+      "nameNumber": 8,
+      "speciesKey": "pteranodon",
+      "nameJa": "プテラノドン",
+      "variantKey": "V4",
+      "editorialReason": "「挑戦する」と「彩って結ぶ」のゲーム内モチーフに「自由・活発・冒険好き」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 4,
+      "nameNumber": 9,
+      "speciesKey": "allosaurus",
+      "nameJa": "アロサウルス",
+      "variantKey": "V4",
+      "editorialReason": "「挑戦する」と「自在に行き来する」のゲーム内モチーフに「行動的・挑戦好き」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 5,
+      "nameNumber": 1,
+      "speciesKey": "iguanodon",
+      "nameJa": "イグアノドン",
+      "variantKey": "V1",
+      "editorialReason": "「調和する」と「眺めて育む」のゲーム内モチーフに「親しみやすい・協調的」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 5,
+      "nameNumber": 2,
+      "speciesKey": "iguanodon",
+      "nameJa": "イグアノドン",
+      "variantKey": "V2",
+      "editorialReason": "「調和する」と「磨いて育む」のゲーム内モチーフに「親しみやすい・協調的」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 5,
+      "nameNumber": 3,
+      "speciesKey": "iguanodon",
+      "nameJa": "イグアノドン",
+      "variantKey": "V3",
+      "editorialReason": "「調和する」と「広く届ける」のゲーム内モチーフに「親しみやすい・協調的」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 5,
+      "nameNumber": 4,
+      "speciesKey": "iguanodon",
+      "nameJa": "イグアノドン",
+      "variantKey": "V4",
+      "editorialReason": "「調和する」と「工夫して届ける」のゲーム内モチーフに「親しみやすい・協調的」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 5,
+      "nameNumber": 5,
+      "speciesKey": "plesiosaurus",
+      "nameJa": "プレシオサウルス",
+      "variantKey": "V1",
+      "editorialReason": "「調和する」と「受けとめて結ぶ」のゲーム内モチーフに「柔軟・穏やかな交流」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 5,
+      "nameNumber": 6,
+      "speciesKey": "plesiosaurus",
+      "nameJa": "プレシオサウルス",
+      "variantKey": "V2",
+      "editorialReason": "「調和する」と「気づいて結ぶ」のゲーム内モチーフに「柔軟・穏やかな交流」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 5,
+      "nameNumber": 7,
+      "speciesKey": "plesiosaurus",
+      "nameJa": "プレシオサウルス",
+      "variantKey": "V3",
+      "editorialReason": "「調和する」と「呼びかけて結ぶ」のゲーム内モチーフに「柔軟・穏やかな交流」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 5,
+      "nameNumber": 8,
+      "speciesKey": "plesiosaurus",
+      "nameJa": "プレシオサウルス",
+      "variantKey": "V4",
+      "editorialReason": "「調和する」と「彩って結ぶ」のゲーム内モチーフに「柔軟・穏やかな交流」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 5,
+      "nameNumber": 9,
+      "speciesKey": "iguanodon",
+      "nameJa": "イグアノドン",
+      "variantKey": "V1",
+      "editorialReason": "「調和する」と「自在に行き来する」のゲーム内モチーフに「親しみやすい・協調的」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 6,
+      "nameNumber": 1,
+      "speciesKey": "stegosaurus",
+      "nameJa": "ステゴサウルス",
+      "variantKey": "V1",
+      "editorialReason": "「安らぐ」と「眺めて育む」のゲーム内モチーフに「穏やか・マイペース」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 6,
+      "nameNumber": 2,
+      "speciesKey": "stegosaurus",
+      "nameJa": "ステゴサウルス",
+      "variantKey": "V2",
+      "editorialReason": "「安らぐ」と「磨いて育む」のゲーム内モチーフに「穏やか・マイペース」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 6,
+      "nameNumber": 3,
+      "speciesKey": "stegosaurus",
+      "nameJa": "ステゴサウルス",
+      "variantKey": "V3",
+      "editorialReason": "「安らぐ」と「広く届ける」のゲーム内モチーフに「穏やか・マイペース」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 6,
+      "nameNumber": 4,
+      "speciesKey": "stegosaurus",
+      "nameJa": "ステゴサウルス",
+      "variantKey": "V4",
+      "editorialReason": "「安らぐ」と「工夫して届ける」のゲーム内モチーフに「穏やか・マイペース」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 6,
+      "nameNumber": 5,
+      "speciesKey": "archelon",
+      "nameJa": "アーケロン",
+      "variantKey": "V1",
+      "editorialReason": "「安らぐ」と「受けとめて結ぶ」のゲーム内モチーフに「落ち着き・安心感」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 6,
+      "nameNumber": 6,
+      "speciesKey": "archelon",
+      "nameJa": "アーケロン",
+      "variantKey": "V2",
+      "editorialReason": "「安らぐ」と「気づいて結ぶ」のゲーム内モチーフに「落ち着き・安心感」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 6,
+      "nameNumber": 7,
+      "speciesKey": "archelon",
+      "nameJa": "アーケロン",
+      "variantKey": "V3",
+      "editorialReason": "「安らぐ」と「呼びかけて結ぶ」のゲーム内モチーフに「落ち着き・安心感」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 6,
+      "nameNumber": 8,
+      "speciesKey": "archelon",
+      "nameJa": "アーケロン",
+      "variantKey": "V4",
+      "editorialReason": "「安らぐ」と「彩って結ぶ」のゲーム内モチーフに「落ち着き・安心感」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 6,
+      "nameNumber": 9,
+      "speciesKey": "stegosaurus",
+      "nameJa": "ステゴサウルス",
+      "variantKey": "V2",
+      "editorialReason": "「安らぐ」と「自在に行き来する」のゲーム内モチーフに「穏やか・マイペース」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 7,
+      "nameNumber": 1,
+      "speciesKey": "pinacosaurus",
+      "nameJa": "ピナコサウルス",
+      "variantKey": "V1",
+      "editorialReason": "「深く見つめる」と「眺めて育む」のゲーム内モチーフに「控えめ・思慮深い」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 7,
+      "nameNumber": 2,
+      "speciesKey": "pinacosaurus",
+      "nameJa": "ピナコサウルス",
+      "variantKey": "V2",
+      "editorialReason": "「深く見つめる」と「磨いて育む」のゲーム内モチーフに「控えめ・思慮深い」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 7,
+      "nameNumber": 3,
+      "speciesKey": "pinacosaurus",
+      "nameJa": "ピナコサウルス",
+      "variantKey": "V3",
+      "editorialReason": "「深く見つめる」と「広く届ける」のゲーム内モチーフに「控えめ・思慮深い」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 7,
+      "nameNumber": 4,
+      "speciesKey": "pinacosaurus",
+      "nameJa": "ピナコサウルス",
+      "variantKey": "V4",
+      "editorialReason": "「深く見つめる」と「工夫して届ける」のゲーム内モチーフに「控えめ・思慮深い」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 7,
+      "nameNumber": 5,
+      "speciesKey": "marine-longjaw",
+      "nameJa": "リオプレウロドン",
+      "variantKey": "V1",
+      "editorialReason": "「深く見つめる」と「受けとめて結ぶ」のゲーム内モチーフに「冷静・静かな集中力」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 7,
+      "nameNumber": 6,
+      "speciesKey": "marine-longjaw",
+      "nameJa": "リオプレウロドン",
+      "variantKey": "V2",
+      "editorialReason": "「深く見つめる」と「気づいて結ぶ」のゲーム内モチーフに「冷静・静かな集中力」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 7,
+      "nameNumber": 7,
+      "speciesKey": "marine-longjaw",
+      "nameJa": "リオプレウロドン",
+      "variantKey": "V3",
+      "editorialReason": "「深く見つめる」と「呼びかけて結ぶ」のゲーム内モチーフに「冷静・静かな集中力」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 7,
+      "nameNumber": 8,
+      "speciesKey": "marine-longjaw",
+      "nameJa": "リオプレウロドン",
+      "variantKey": "V4",
+      "editorialReason": "「深く見つめる」と「彩って結ぶ」のゲーム内モチーフに「冷静・静かな集中力」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 7,
+      "nameNumber": 9,
+      "speciesKey": "pinacosaurus",
+      "nameJa": "ピナコサウルス",
+      "variantKey": "V3",
+      "editorialReason": "「深く見つめる」と「自在に行き来する」のゲーム内モチーフに「控えめ・思慮深い」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 8,
+      "nameNumber": 1,
+      "speciesKey": "brachiosaurus",
+      "nameJa": "ブラキオサウルス",
+      "variantKey": "V1",
+      "editorialReason": "「分かち合う」と「眺めて育む」のゲーム内モチーフに「包容力・落ち着き」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 8,
+      "nameNumber": 2,
+      "speciesKey": "brachiosaurus",
+      "nameJa": "ブラキオサウルス",
+      "variantKey": "V2",
+      "editorialReason": "「分かち合う」と「磨いて育む」のゲーム内モチーフに「包容力・落ち着き」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 8,
+      "nameNumber": 3,
+      "speciesKey": "brachiosaurus",
+      "nameJa": "ブラキオサウルス",
+      "variantKey": "V3",
+      "editorialReason": "「分かち合う」と「広く届ける」のゲーム内モチーフに「包容力・落ち着き」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 8,
+      "nameNumber": 4,
+      "speciesKey": "brachiosaurus",
+      "nameJa": "ブラキオサウルス",
+      "variantKey": "V4",
+      "editorialReason": "「分かち合う」と「工夫して届ける」のゲーム内モチーフに「包容力・落ち着き」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 8,
+      "nameNumber": 5,
+      "speciesKey": "parasaurolophus",
+      "nameJa": "パラサウロロフス",
+      "variantKey": "V1",
+      "editorialReason": "「分かち合う」と「受けとめて結ぶ」のゲーム内モチーフに「明るい・気持ちを伝える」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 8,
+      "nameNumber": 6,
+      "speciesKey": "parasaurolophus",
+      "nameJa": "パラサウロロフス",
+      "variantKey": "V2",
+      "editorialReason": "「分かち合う」と「気づいて結ぶ」のゲーム内モチーフに「明るい・気持ちを伝える」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 8,
+      "nameNumber": 7,
+      "speciesKey": "parasaurolophus",
+      "nameJa": "パラサウロロフス",
+      "variantKey": "V3",
+      "editorialReason": "「分かち合う」と「呼びかけて結ぶ」のゲーム内モチーフに「明るい・気持ちを伝える」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 8,
+      "nameNumber": 8,
+      "speciesKey": "parasaurolophus",
+      "nameJa": "パラサウロロフス",
+      "variantKey": "V4",
+      "editorialReason": "「分かち合う」と「彩って結ぶ」のゲーム内モチーフに「明るい・気持ちを伝える」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 8,
+      "nameNumber": 9,
+      "speciesKey": "brachiosaurus",
+      "nameJa": "ブラキオサウルス",
+      "variantKey": "V4",
+      "editorialReason": "「分かち合う」と「自在に行き来する」のゲーム内モチーフに「包容力・落ち着き」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 9,
+      "nameNumber": 1,
+      "speciesKey": "triceratops",
+      "nameJa": "トリケラトプス",
+      "variantKey": "V1",
+      "editorialReason": "「良さをつなぐ」と「眺めて育む」のゲーム内モチーフに「仲間を守る・頼もしい」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 9,
+      "nameNumber": 2,
+      "speciesKey": "longneck-spikes",
+      "nameJa": "ニジュールサウルス",
+      "variantKey": "V2",
+      "editorialReason": "「良さをつなぐ」と「磨いて育む」のゲーム内モチーフに「好奇心・人なつっこい」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 9,
+      "nameNumber": 3,
+      "speciesKey": "ankylosaurus",
+      "nameJa": "アンキロサウルス",
+      "variantKey": "V3",
+      "editorialReason": "「良さをつなぐ」と「広く届ける」のゲーム内モチーフに「おっとり・大切なものを守る」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 9,
+      "nameNumber": 4,
+      "speciesKey": "pteranodon",
+      "nameJa": "プテラノドン",
+      "variantKey": "V4",
+      "editorialReason": "「良さをつなぐ」と「工夫して届ける」のゲーム内モチーフに「自由・活発・冒険好き」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 9,
+      "nameNumber": 5,
+      "speciesKey": "plesiosaurus",
+      "nameJa": "プレシオサウルス",
+      "variantKey": "V1",
+      "editorialReason": "「良さをつなぐ」と「受けとめて結ぶ」のゲーム内モチーフに「柔軟・穏やかな交流」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 9,
+      "nameNumber": 6,
+      "speciesKey": "archelon",
+      "nameJa": "アーケロン",
+      "variantKey": "V2",
+      "editorialReason": "「良さをつなぐ」と「気づいて結ぶ」のゲーム内モチーフに「落ち着き・安心感」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 9,
+      "nameNumber": 7,
+      "speciesKey": "marine-longjaw",
+      "nameJa": "リオプレウロドン",
+      "variantKey": "V3",
+      "editorialReason": "「良さをつなぐ」と「呼びかけて結ぶ」のゲーム内モチーフに「冷静・静かな集中力」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 9,
+      "nameNumber": 8,
+      "speciesKey": "parasaurolophus",
+      "nameJa": "パラサウロロフス",
+      "variantKey": "V4",
+      "editorialReason": "「良さをつなぐ」と「彩って結ぶ」のゲーム内モチーフに「明るい・気持ちを伝える」の分身像を重ねる。"
+    },
+    {
+      "lifePathNumber": 9,
+      "nameNumber": 9,
+      "speciesKey": "triceratops",
+      "nameJa": "トリケラトプス",
+      "variantKey": "V2",
+      "editorialReason": "「良さをつなぐ」と「自在に行き来する」のゲーム内モチーフに「仲間を守る・頼もしい」の分身像を重ねる。"
+    }
+  ]
+}
