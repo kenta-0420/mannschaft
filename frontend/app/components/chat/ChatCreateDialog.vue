@@ -12,6 +12,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   created: []
   openDm: [channelId: number]
+  /** 作成した Zimmer（部屋）を開く */
+  openChannel: [channelId: number]
 }>()
 
 const { createChannel, getOrCreateDm } = useChatApi()
@@ -113,7 +115,7 @@ async function startChat() {
       emit('created')
     } else {
       const memberNames = contact.selected.value.map((m) => m.displayName).join(', ')
-      await createChannel({
+      const res = await createChannel({
         channelType: channelType.value,
         ...(await resolveScopeIds({ teamId: props.teamId, organizationId: props.organizationId })),
         name: memberNames,
@@ -122,6 +124,7 @@ async function startChat() {
       notification.success(t('chat.create.roomCreated'))
       visible.value = false
       contact.reset()
+      emit('openChannel', res.data.id)
       emit('created')
     }
   } catch {
@@ -135,7 +138,7 @@ async function onSubmitZimmer() {
   if (!name.value.trim() || submitting.value) return
   submitting.value = true
   try {
-    await createChannel({
+    const res = await createChannel({
       channelType: channelType.value,
       ...(await resolveScopeIds({ teamId: props.teamId, organizationId: props.organizationId })),
       name: name.value.trim(),
@@ -150,6 +153,7 @@ async function onSubmitZimmer() {
     description.value = ''
     isPrivate.value = false
     zimmer.reset()
+    emit('openChannel', res.data.id)
     emit('created')
   } catch {
     notification.error(t('chat.create.roomCreateFailed'))
