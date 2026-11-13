@@ -12,6 +12,8 @@ import type {
 import type { components } from '~/types/generated'
 
 type CheckinLocationResponse = Required<components['schemas']['CheckinLocationResponse']>
+// QR再生成の応答。BE は qrToken を返さない（再取得は getQr で行う）。
+export type MemberCardRegenerateResponse = Required<components['schemas']['RegenerateResponse']>
 
 // 既存APIの応答はactive、画面モデルと更新本文はisActiveを使う。
 function toCheckinLocation({ active, ...location }: CheckinLocationResponse): CheckinLocation {
@@ -65,7 +67,7 @@ export function useMemberCardApi() {
   }
 
   async function regenerate(id: number) {
-    const res = await api<{ data: MemberCardQr }>(`/api/v1/member-cards/${id}/regenerate`, {
+    const res = await api<{ data: MemberCardRegenerateResponse }>(`/api/v1/member-cards/${id}/regenerate`, {
       method: 'POST',
     })
     return res.data
