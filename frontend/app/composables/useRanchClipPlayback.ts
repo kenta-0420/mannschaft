@@ -1,8 +1,8 @@
 import { computed, onScopeDispose, ref, watch } from 'vue'
-import type { RanchClipAction, RanchDevelopmentClipEntry } from '~/utils/ranch-development-clips'
+import type { RanchClipAction, RanchClipEntry } from '~/utils/ranch-development-clips'
 
 export interface RanchClipPlaybackOptions {
-  entry: () => RanchDevelopmentClipEntry | null
+  entry: () => RanchClipEntry | null
   identity: () => string
   enabled: () => boolean
   ambient: () => boolean
