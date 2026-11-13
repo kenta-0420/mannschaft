@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "kind": "AUTOMATED_ACTUAL_VUE_DOM_ASSERTION_RED",
+  "finding": "RANCH-RECALL-ENTRY-001",
+  "test": "牧場から振り返りへの入口 > entry未選択の想起リンクは個別想起画面ではなく振り返り入口へ進む",
+  "testPath": "frontend/app/components/ranch/RanchPageContent.navigation.spec.ts",
+  "repairCommit": "5325a5e3a3fd4de398fdcd90f0a05628328af97c",
+  "repairAncestorOfCurrentSource": true,
+  "reportedOriginalWorkingTestSha256": "4cab74703976c4fc8160d576b0720a2717b5093b3bcdd7e43635646bf4bea400",
+  "initialGitTestBytesSha256": "4cab74703976c4fc8160d576b0720a2717b5093b3bcdd7e43635646bf4bea400",
+  "currentGitTestBytesSha256": "f780780d20f9c246bf30b55acd50dcd165842a1233ecbe467661f392ab6380ee",
+  "lineage": "same href assertion; later F14 locale typing/F15 real Nuxt mount plumbing adopted; current bytes differ from initial isolated runner",
+  "exitCode": 1,
+  "signal": null,
+  "rawStdoutSha256": "86bfe1b47a8d26f4da48b571eb35b156575a7bb01a098b4d1582d6386b7443e6",
+  "rawStderrSha256": "b57b9129506d8802816c7a7fa71982cb1810a5f96aa20041610d649b8904c378",
+  "rawOriginArtifactName": "red-clean.stdout",
+  "assertionExpected": "/reflections",
+  "assertionActualBefore": "/reflections/recall",
+  "newAssertionFailures": 1,
+  "existingPassedOrTotalPassed": 4,
+  "unhandledErrors": 0,
+  "excerpt": [
+    "→ expected '/reflections/recall' to be '/reflections' // Object.is equality",
+    "Test Files  1 failed | 1 passed (2)",
+    "Tests  1 failed | 4 passed (5)"
+  ],
+  "h14ActualRecall": {
+    "runId": "ranchmapping-0d2a31d6460538a875260c6c",
+    "status": "PASS",
+    "navigationPath": "/reflections",
+    "todayHttpStatus": 200,
+    "beforeAfterIndividualUnchanged": true,
+    "beforeAfterResultUnchanged": true
+  },
+  "notCopyRegressionEvidence": true
+}
