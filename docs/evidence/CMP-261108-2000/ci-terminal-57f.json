@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 1,
+  "evidenceScope": "Original implementation commit only; documentation proposal is not a C7 code fix or evidence of a later commit passing CI.",
+  "implementationCommit": "57f72bf0e089c81f453bcaee417f87435571c3cb",
+  "actualCheckout": "7ef41b707df173923eaf2e0b157bd51fdb5196f2",
+  "actualTreeEqualsImplementationTree": true,
+  "runId": 42477757763,
+  "runUrl": "https://github.com/kenta-0420/mannschaft/actions/runs/42477757763",
+  "conclusion": "failure",
+  "xmlHeaderTotalsIncludingRepeatedPerShardIntegrity": {
+    "tests": 33110,
+    "failures": 1,
+    "errors": 0,
+    "skipped": 17
+  },
+  "shards": [
+    {
+      "shard": 0,
+      "artifact": 13618108072,
+      "archiveSha256": "c11af6ac9c204f5f12a75d8ca04b814b75a2e6e646c4d7232f643d927a393df4",
+      "allSuiteTotalsFromXmlHeaders": {
+        "tests": 4965,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 2
+      }
+    },
+    {
+      "shard": 1,
+      "artifact": 13618880204,
+      "archiveSha256": "3c6f03af6ac016969f261dc84ef76e15d53e6a92a62116c5f41cf357f99ce7dd",
+      "allSuiteTotalsFromXmlHeaders": {
+        "tests": 5307,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 3
+      }
+    },
+    {
+      "shard": 2,
+      "artifact": 13617918958,
+      "archiveSha256": "961255c810f6988cc0b7a2010b9da6fa61fc4491bac06e68f58ab9303dba798f",
+      "allSuiteTotalsFromXmlHeaders": {
+        "tests": 5072,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 1
+      }
+    },
+    {
+      "shard": 3,
+      "artifact": 13618661218,
+      "archiveSha256": "28fb96d97a0c78faafdc94ebdd39538fe5e9db784841caffab06729f8c35e3d4",
+      "allSuiteTotalsFromXmlHeaders": {
+        "tests": 6700,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 3
+      }
+    },
+    {
+      "shard": 4,
+      "artifact": 13617987310,
+      "archiveSha256": "6aa5a3524d0859dd27dc93e73be00e2984f5ce3bfd47354454659de5932cb5b4",
+      "allSuiteTotalsFromXmlHeaders": {
+        "tests": 5455,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 8
+      }
+    },
+    {
+      "shard": 5,
+      "artifact": 13619345280,
+      "archiveSha256": "4ffcec05978424fcab5e0d639b7147cd342b1ffc6cdffb72181f1e02180ade82",
+      "allSuiteTotalsFromXmlHeaders": {
+        "tests": 5611,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    }
+  ],
+  "dedicatedJupiterArchTest": {
+    "jobId": 128722885403,
+    "conclusion": "success",
+    "tests": 465,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "artifactId": 13615919335,
+    "sha256": "865e9dcf06ac96f2a68c9045bde6258482fd62c9d60414b46b73e8e7685e1e33"
+  },
+  "compiledFourProfileGuard": {
+    "jobId": 128722885410,
+    "conclusion": "success",
+    "qualification": "Compiled assignment and coverage qualification, not execution evidence for excluded classes."
+  },
+  "c7Failure": {
+    "jobId": 128722885408,
+    "class": "com.mannschaft.app.role.InviteAcceptanceConcurrencyIT",
+    "method": "blockCommittedAfterBlockCheck",
+    "parameter": "ORGANIZATION",
+    "caseSeconds": "10.183",
+    "assertion": "No matching invite_tokens row-lock wait observed within 10 seconds.",
+    "cause": "undetermined",
+    "priorFailurePreserved": true,
+    "documentationCorrectionClaimsCodeFix": false
+  },
+  "unmeasuredClassExecution": {
+    "classesInManifest": 16,
+    "classesWithFullCaseXmlVerified": 14,
+    "unexecuted": [
+      {
+        "class": "com.mannschaft.app.common.erdiagram.ErDiagramFlywayIT",
+        "qualification": "not-executed; @Tag(er-diagram), dedicated generateErDiagrams/checkErDiagrams only; compiled profile guard does not prove execution"
+      },
+      {
+        "class": "com.mannschaft.app.common.migration.FlywayInviteTokenClaimsMigrationTest",
+        "qualification": "not-executed; migration excluded by normal PR profile"
+      }
+    ]
+  },
+  "skippedCases": {
+    "count": 17,
+    "outerClasses": 12,
+    "qualification": "Existing Disabled source annotations verified; XML skipped elements supply no reason text; skipped is not successful execution."
+  },
+  "qualifications": [
+    "All six XML archive digests matched GitHub artifact metadata.",
+    "All selected unmeasured-class XML files were parsed fully, with testcase count and classname checked.",
+    "All-suite totals use XML headers and include repeated per-shard Integrity checks.",
+    "Artifact collection and provenance inspection do not replace required successful CI on the final reviewed commit."
+  ]
+}
