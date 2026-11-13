@@ -34,12 +34,31 @@ export interface MatchLiveSessionContext {
   createTimer?: (options?: UseMatchTimerCoreOptions) => SportTimer
 }
 
-export function useMatchLiveSession(sessionCtx: MatchLiveSessionContext) {
+/** 注入に依存する API・通知・翻訳は、同期 setup 中に一度だけ捕捉する。 */
+function useMatchLiveSessionDependencies() {
   const eventApi = useMatchEventApi()
   const matchApi = useMatchApi()
-  const offlineQueue = useMatchOfflineQueue()
   const notification = useNotification()
   const { t } = useI18n()
+  return { eventApi, matchApi, notification, t }
+}
+
+/** 競技の遅延ロード後も、呼び出し側の effectScope 内でセッションを生成できる。 */
+export function useMatchLiveSessionFactory() {
+  const dependencies = useMatchLiveSessionDependencies()
+  return (sessionCtx: MatchLiveSessionContext) => createMatchLiveSession(sessionCtx, dependencies)
+}
+
+/** 同期 setup 内で直接生成する既存 caller 向けの互換入口。 */
+export function useMatchLiveSession(sessionCtx: MatchLiveSessionContext) {
+  return useMatchLiveSessionFactory()(sessionCtx)
+}
+
+function createMatchLiveSession(
+  sessionCtx: MatchLiveSessionContext,
+  { eventApi, matchApi, notification, t }: ReturnType<typeof useMatchLiveSessionDependencies>,
+) {
+  const offlineQueue = useMatchOfflineQueue()
 
   const { orgId, teamId, matchId, ownTeamSide } = sessionCtx
 

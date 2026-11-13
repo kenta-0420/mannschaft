@@ -233,6 +233,7 @@ ADHD 配慮（入力摩擦ゼロ）として、試合作成の**必須は `kind`
 多競技の進行管理（タイマー/セット/ターン）は状態モデルが根本的に異なるため、**共通シェル（`live.vue`）＋競技別 composable** に分割し、**競技モジュールを動的 import（lazy-load）で遅延読込**してバンドル肥大化を防ぐ。
 
 - **共通シェル**: `live.vue` は薄いオーケストレータ（既存設計踏襲）。イベント記録 API・選手グリッド・undo・オフラインキュー・観戦配信受信（G.17）等の**競技非依存の骨格**を持つ。
+- **非同期初期化の境界**: API・通知・翻訳など注入を要する依存は、同期 setup 中の `useMatchLiveSessionFactory()` で捕捉する。詳細取得・競技モジュールの動的 import 後は、その factory から専用 `effectScope` 内でセッションとタイマーを生成し、unmount 時に scope・online listener・WakeLock を解放する。`effectScope` 自体は component の注入 context を復元しない。記録権限がない場合は、従来どおりセッションを生成せず観戦ビューへ進む。
 - **競技別 composable（状態モデル類型ごと・01 §D.6）**:
 
   | composable | 状態モデル類型 | 対象競技 | 役割 |

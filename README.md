@@ -2,7 +2,7 @@
 
 あらゆる組織・チーム・個人をシームレスに管理するWebアプリケーション。
 
-お気に入りのチーム・組織名称編集は、正準URLの詳細取得時versionを使う修正を準備中です。PR #3644の正準URL提供へ依存し、実機・独立探索は未実施です（[仕様と制約](docs/features/F02.9_favorites_widget.md#53-クイック編集ダイアログfavoritequickeditdialogvue)）。
+お気に入りのチーム・組織名称編集は、正準URLの詳細取得時versionを使用します。固定source8afdでformal作成2件＋残12件の分割実機と、その後の新独立3住民探索を範囲採用済みです。探索は部分達成・未実証の気づき2件を含みます。PR #3644の正準URL提供を含む支援成果を検証用に統合し、最終CI・main採用は待機中です（[検証範囲と残務](docs/evidence/CMP-261028-2304-l1r-normalizer.md)、[仕様と制約](docs/features/F02.9_favorites_widget.md#53-クイック編集ダイアログfavoritequickeditdialogvue)）。
 
 チーム・組織ダッシュボードの出席確認状況は、出席（一部出席を含む）・欠席・未定（未回答を含む）の人数を表示し、予定・人数から理由付き詳細へ遷移する。見出しからは出席確認対象の専用一覧を開く。詳細は [F02.2 ダッシュボード](docs/features/F02.2_dashboard.md) の「出席確認状況」を参照。
 
