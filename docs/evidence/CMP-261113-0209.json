@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261113-0209",
+  "scope": "app",
+  "implementation": {
+    "pr": 4490,
+    "sha": "d3244f461b980f853b7989a5bec6c8392426bcf7"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "PLATFORM 会員証の所有者本人が一時停止・再開・QR再生成できる",
+      "tests": [
+        {
+          "name": "MemberCardServicePlatformSelfOperationTest.java",
+          "evidence": "backend/src/test/java/com/mannschaft/app/membership/MemberCardServicePlatformSelfOperationTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "他人のカードは存在秘匿で拒否され 500 にならない",
+      "tests": [
+        {
+          "name": "MemberCardServicePlatformSelfOperationTest.java",
+          "evidence": "backend/src/test/java/com/mannschaft/app/membership/MemberCardServicePlatformSelfOperationTest.java"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 43282990798
+    },
+    {
+      "runId": 43282990679
+    },
+    {
+      "runId": 43282990855
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4490"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261113-0209.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261113-0209.md"
+    }
+  },
+  "regressions": []
+}
