@@ -15,6 +15,8 @@ import org.springframework.context.event.ApplicationEventMulticaster;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -420,31 +422,112 @@ abstract class InviteAcceptanceItSupport extends InviteGenerationItSupport {
         return jdbc.queryForObject("SELECT CONNECTION_ID()", Long.class);
     }
 
-    /** 既存 InviteGenerationConsistencyIT と同じ performance_schema による実ロック待機観測。 */
-    protected void awaitRowWait(String table, long blockerConnection, Long rowId, Future<?> worker) {
-        awaitRowWait(table, blockerConnection, rowId, worker, null, null, 0);
+    /** 単一PK SELECT直後に、その保持TXが所有する唯一のPRIMARY RECORD lockを固定する。 */
+    protected RowLockProof captureTokenLock(long blockerConnection, Long rowId) {
+        assertThat(TransactionSynchronizationManager.isActualTransactionActive()).as("保持TXが必要").isTrue();
+        assertThat(TransactionSynchronizationManager.isSynchronizationActive()).isTrue();
+        assertThat(connectionId()).as("captureは保持者と同じ接続で行う").isEqualTo(blockerConnection);
+        assertThat(TransactionSynchronizationManager.getSynchronizations())
+                .as("同じTXで別lockを再captureして救済しない").noneMatch(RowLockProof.class::isInstance);
+        try (var observer = rowWaitObserver(); var query = observer.prepareStatement("""
+                SELECT locks.ENGINE, locks.ENGINE_LOCK_ID
+                FROM performance_schema.data_locks locks
+                JOIN performance_schema.threads owner ON owner.THREAD_ID = locks.THREAD_ID
+                WHERE owner.PROCESSLIST_ID = ? AND locks.OBJECT_SCHEMA = ?
+                  AND locks.OBJECT_NAME = 'invite_tokens' AND locks.INDEX_NAME = 'PRIMARY'
+                  AND locks.LOCK_TYPE = 'RECORD' AND locks.LOCK_STATUS = 'GRANTED'
+                LIMIT 2
+                """)) {
+            query.setQueryTimeout(1);
+            query.setLong(1, blockerConnection);
+            query.setString(2, MYSQL.getDatabaseName());
+            try (var rows = query.executeQuery()) {
+                assertThat(rows.next()).as("対象PRIMARYの保持lockは唯一1件必要（0件）").isTrue();
+                RowLockProof proof = new RowLockProof(blockerConnection, rowId, rows.getString(1), rows.getString(2));
+                assertThat(rows.next()).as("対象PRIMARYの保持lockは唯一1件必要（複数件）").isFalse();
+                assertThat(proof.engine).isNotBlank();
+                assertThat(proof.lockId).isNotBlank();
+                TransactionSynchronizationManager.registerSynchronization(proof);
+                return proof;
+            }
+        } catch (SQLException failure) {
+            throw new AssertionError("保持lockのcaptureに失敗しました", failure);
+        }
     }
 
-    /** C7 の失敗時だけ、同期点を解放する前に限定診断を残す。待機の合格条件・期限は変更しない。 */
-    protected void awaitRowWait(String table, long blockerConnection, Long rowId, Future<?> worker,
-                                AtomicReference<Thread> workerThread, ThreadPoolExecutor executor,
-                                long blockerLockedAtNanos) {
+    /** opaque IDは保持TX終了後に使わない。新UUID tokenを当workerだけへ渡す所有前提と併用する。 */
+    protected static final class RowLockProof implements TransactionSynchronization {
+        final long blockerConnection;
+        final Long rowId;
+        final String engine;
+        final String lockId;
+        private volatile boolean active = true;
+
+        private RowLockProof(long blockerConnection, Long rowId, String engine, String lockId) {
+            this.blockerConnection = blockerConnection;
+            this.rowId = rowId;
+            this.engine = engine;
+            this.lockId = lockId;
+        }
+
+        void requireActive() {
+            assertThat(active).as("保持TX終了後のlock証明は再利用しない").isTrue();
+        }
+
+        @Override
+        public void afterCompletion(int status) {
+            active = false;
+        }
+    }
+
+    /** capture失敗でもbarrierを開いた保持者の元失敗を回収する。workerはまだ開始しない。 */
+    protected static RowLockProof capturedProof(AtomicReference<RowLockProof> captured, Future<?> blocker) {
+        RowLockProof proof = captured.get();
+        if (proof != null) {
+            proof.requireActive();
+            return proof;
+        }
+        Throwable failure = outcome(blocker);
+        if (failure instanceof Error error) {
+            throw error;
+        }
+        throw new AssertionError("保持者がlock証明をcaptureできませんでした", failure);
+    }
+
+    static Connection rowWaitObserver() throws SQLException {
         String url = MYSQL.getJdbcUrl();
         url += (url.contains("?") ? "&" : "?")
                 + "connectTimeout=1000&socketTimeout=1000&useSSL=false&allowPublicKeyRetrieval=true";
+        return DriverManager.getConnection(url, "root", MYSQL.getPassword());
+    }
+
+    protected void awaitRowWait(RowLockProof proof, Future<?> worker) {
+        awaitRowWait(proof, worker, null, null, 0);
+    }
+
+    /** C7 の失敗時だけ、同期点を解放する前に限定診断を残す。待機の合格条件・期限は変更しない。 */
+    protected void awaitRowWait(RowLockProof proof, Future<?> worker,
+                                AtomicReference<Thread> workerThread, ThreadPoolExecutor executor,
+                                long blockerLockedAtNanos) {
+        proof.requireActive();
+        long blockerConnection = proof.blockerConnection;
+        Long rowId = proof.rowId;
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
-        try (var observer = DriverManager.getConnection(url, "root", MYSQL.getPassword());
+        try (var observer = rowWaitObserver();
              var query = observer.prepareStatement(rowWaitSql())) {
             query.setQueryTimeout(1);
             query.setString(1, MYSQL.getDatabaseName());
-            query.setString(2, table);
-            query.setString(3, "%" + rowId + "%");
-            query.setLong(4, blockerConnection);
+            query.setString(2, "invite_tokens");
+            query.setLong(3, blockerConnection);
+            query.setString(4, proof.engine);
+            query.setString(5, proof.lockId);
             while (System.nanoTime() < deadline) {
+                proof.requireActive();
+                long count;
                 try (var rows = query.executeQuery()) {
-                    if (rows.next() && rows.getLong(1) > 0) {
-                        return;
-                    }
+                    assertThat(rows.next()).isTrue();
+                    count = rows.getLong(1);
+                    assertThat(count).as("対象lockの待機辺が複数ならworker帰属を推定しない").isLessThanOrEqualTo(1);
                 }
                 if (worker.isDone()) {
                     try {
@@ -454,9 +537,13 @@ abstract class InviteAcceptanceItSupport extends InviteGenerationItSupport {
                     }
                     throw new AssertionError("対象行の実待機前に worker が終了しました");
                 }
+                if (count == 1) {
+                    proof.requireActive();
+                    return;
+                }
                 Thread.sleep(25);
             }
-            AssertionError failure = new AssertionError("10秒以内に " + table + " 行の実ロック待機を観測できませんでした");
+            AssertionError failure = new AssertionError("10秒以内に invite_tokens 行の実ロック待機を観測できませんでした");
             if (workerThread != null) {
                 throw RowWaitDiagnostics.preserveFailure(failure,
                         () -> rowWaitDiagnostics(observer, blockerConnection, rowId, worker, workerThread,
@@ -475,13 +562,21 @@ abstract class InviteAcceptanceItSupport extends InviteGenerationItSupport {
     static String rowWaitSql() {
         return """
                      SELECT COUNT(*) FROM performance_schema.data_lock_waits waits
+                     JOIN performance_schema.data_locks held
+                       ON held.ENGINE = waits.ENGINE
+                      AND held.ENGINE_LOCK_ID = waits.BLOCKING_ENGINE_LOCK_ID
+                      AND held.THREAD_ID = waits.BLOCKING_THREAD_ID
                      JOIN performance_schema.data_locks requested
                        ON requested.ENGINE = waits.ENGINE
                       AND requested.ENGINE_LOCK_ID = waits.REQUESTING_ENGINE_LOCK_ID
+                      AND requested.THREAD_ID = waits.REQUESTING_THREAD_ID
                      JOIN performance_schema.threads blocker ON blocker.THREAD_ID = waits.BLOCKING_THREAD_ID
-                     WHERE requested.OBJECT_SCHEMA = ? AND requested.OBJECT_NAME = ?
-                       AND requested.LOCK_TYPE = 'RECORD'
-                       AND requested.LOCK_DATA LIKE ? AND blocker.PROCESSLIST_ID = ?
+                     WHERE held.OBJECT_SCHEMA = ? AND held.OBJECT_NAME = ?
+                       AND requested.OBJECT_SCHEMA = held.OBJECT_SCHEMA AND requested.OBJECT_NAME = held.OBJECT_NAME
+                       AND held.INDEX_NAME = 'PRIMARY' AND requested.INDEX_NAME = 'PRIMARY'
+                       AND held.LOCK_TYPE = 'RECORD' AND requested.LOCK_TYPE = 'RECORD'
+                       AND held.LOCK_STATUS = 'GRANTED' AND requested.LOCK_STATUS = 'WAITING'
+                       AND blocker.PROCESSLIST_ID = ? AND held.ENGINE = ? AND held.ENGINE_LOCK_ID = ?
                      """;
     }
 
