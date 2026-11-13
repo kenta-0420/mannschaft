@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useProvidedRanchState } from '~/composables/useRanchState'
-import { productionRanchAssetsRegistered } from '~/utils/ranch-assets'
+import { approvedRanchVisualsEnabled } from '~/utils/ranch-assets'
 const props = withDefaults(defineProps<{ active?: boolean; collapsed?: boolean }>(), {
   active: true,
   collapsed: undefined,
@@ -8,11 +8,11 @@ const props = withDefaults(defineProps<{ active?: boolean; collapsed?: boolean }
 const emit = defineEmits<{ 'update:collapsed': [collapsed: boolean] }>()
 const { t } = useI18n()
 const config = useRuntimeConfig()
-const assetContext = {
+const assetContext = computed(() => ({
   production: !import.meta.dev,
   isolatedDevelopment: config.public.ranchDevelopmentVisuals === true,
-  publicationEnabled: productionRanchAssetsRegistered(),
-}
+  publicationEnabled: approvedRanchVisualsEnabled(ranch.state.value?.approvedVisualsAvailable, !ranch.loading.value && !ranch.failed.value),
+}))
 const clipContext = {
   production: !import.meta.dev,
   isolatedDevelopment: import.meta.dev === true,

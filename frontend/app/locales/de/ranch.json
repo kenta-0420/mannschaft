@@ -98,10 +98,14 @@
       "title": "Deine Dinosauriergestalt wählen",
       "description": "Wähle anhand von Geburtsdatum- und Namensnumerologie, einem Quiz mit 64 Typen oder einer zufälligen Land-, Meeres- oder Luftgestalt.",
       "fromResult": "Aus meinen Ergebnissen wählen",
-      "mappingPending": "Dein Ergebnis wurde gespeichert. Die Zuordnung zu einer Dinosauriergestalt wird vorbereitet.",
+      "confirmed": "Das Aussehen deines aktuellen Avatars steht fest. Du kannst deine Diagnoseergebnisse später erneut ansehen.",
+      "mappingPending": "Dein Ergebnis wurde gespeichert. Du kannst dieses Ergebnis derzeit nicht verwenden, um das Aussehen deines Avatars festzulegen.",
       "useResult": "Mit diesem Ergebnis die Gestalt wählen"
     },
     "diagnosisResults": {
+      "savedMapping": "Mit diesem Ergebnis gespeicherte Avatarzuordnung",
+      "legacyMapping": "Dieses ältere Ergebnis enthält keine gespeicherte Avatarzuordnung und kann nicht für eine neue Zuweisung verwendet werden. Du kannst es weiterhin ansehen.",
+      "createMappedResult": "Neues Ergebnis erstellen",
       "title": "Meine Ergebnisse",
       "type64": "Quiz mit 64 Typen",
       "birthStyle": "Geburtsdatum- und Namensnumerologie",
