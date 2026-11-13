@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261112-2225",
+  "scope": "app",
+  "implementation": {
+    "pr": 4499,
+    "sha": "d6b06a4242619b2080485dc8628453ca560ff7f0"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "member-card の日本語直書きを全6言語のロケールへ移す（PR #4484・#4489）",
+      "tests": [
+        {
+          "name": "member-card-no-hardcoded-japanese.spec.ts",
+          "evidence": "frontend/tests/unit/i18n/member-card-no-hardcoded-japanese.spec.ts"
+        },
+        {
+          "name": "MemberCardFollowup.spec.ts",
+          "evidence": "frontend/tests/unit/components/MemberCardFollowup.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "de/en 360px で横はみ出し・単語途中折れが無い（絞り込みの折返し・QR 枠の事前確保・履歴0件の空状態。PR #4489・#4497）",
+      "tests": [
+        {
+          "name": "QrCodeImage.spec.ts",
+          "evidence": "frontend/app/components/qr/QrCodeImage.spec.ts"
+        },
+        {
+          "name": "CheckinHistory.spec.ts",
+          "evidence": "frontend/app/components/member-card/CheckinHistory.spec.ts"
+        },
+        {
+          "name": "MemberCardDisplay.spec.ts",
+          "evidence": "frontend/app/components/member-card/MemberCardDisplay.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "ボタン押下でタブが変わらない・再生成の二重送信ガード・先頭カード自動選択（PR #4489）",
+      "tests": [
+        {
+          "name": "MemberCardFollowup.spec.ts",
+          "evidence": "frontend/tests/unit/components/MemberCardFollowup.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "QR再生成後に GET /qr を再取得しリロード無しで新QRを表示する（PR #4499）",
+      "tests": [
+        {
+          "name": "MemberCardFollowup.spec.ts",
+          "evidence": "frontend/tests/unit/components/MemberCardFollowup.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 43372538128
+    },
+    {
+      "runId": 43372538229
+    },
+    {
+      "runId": 43372538066
+    },
+    {
+      "runId": 43372538096
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4499"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261112-2225.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261112-2225.md"
+    }
+  },
+  "regressions": [
+    {
+      "description": "絞り込み SelectButton が360pxで折り返さず横はみ出す",
+      "test": "MemberCardDisplay.spec.ts",
+      "red": "修正前に失敗することを確認（記録: docs/evidence/CMP-261112-2225.md）",
+      "green": "修正後に成功することを確認（記録: docs/evidence/CMP-261112-2225.md）"
+    },
+    {
+      "description": "QrCodeImage の描画前領域が確保されず重なる",
+      "test": "QrCodeImage.spec.ts",
+      "red": "修正前に失敗することを確認（記録: docs/evidence/CMP-261112-2225.md）",
+      "green": "修正後に成功することを確認（記録: docs/evidence/CMP-261112-2225.md）"
+    },
+    {
+      "description": "チェックイン履歴0件の空文言が表内で切れる",
+      "test": "CheckinHistory.spec.ts",
+      "red": "修正前に失敗することを確認（記録: docs/evidence/CMP-261112-2225.md）",
+      "green": "修正後に成功することを確認（記録: docs/evidence/CMP-261112-2225.md）"
+    },
+    {
+      "description": "QR再生成後に QR が再取得されず消える",
+      "test": "MemberCardFollowup.spec.ts",
+      "red": "修正前に失敗することを確認（記録: docs/evidence/CMP-261112-2225.md）",
+      "green": "修正後に成功することを確認（記録: docs/evidence/CMP-261112-2225.md）"
+    }
+  ]
+}
