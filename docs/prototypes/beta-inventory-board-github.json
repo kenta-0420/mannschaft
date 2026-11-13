@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "repository": "kenta-0420/mannschaft",
-  "synchronizedAt": "2026-11-13T21:28:06+00:00",
+  "synchronizedAt": "2026-11-13T22:42:13+00:00",
   "status": "synced",
   "error": null,
   "references": {
@@ -2246,7 +2246,12 @@
       4022
     ],
     "CMP-261113-1506": [],
-    "CMP-261113-1507": []
+    "CMP-261113-1507": [],
+    "CMP-261114-0618": [
+      2134,
+      4308
+    ],
+    "CMP-261114-0713": []
   },
   "items": {
     "206": {
@@ -2800,6 +2805,20 @@
       "title": "機能追加: 個人ダッシュボード集約タイムライン（所属team/org横断・/api/v1/timeline/my 新設）",
       "url": "https://github.com/kenta-0420/mannschaft/pull/2041",
       "updatedAt": "2026-06-30T23:13:07Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "2134": {
+      "number": 2134,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "修正(マッチング認可): 募集・応募・NGの認可漏れ/IDOR/所有権誤比較を一括根治",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/2134",
+      "updatedAt": "2026-07-05T05:11:09Z",
       "ci": {
         "status": "unavailable",
         "reason": "終了済みPRのCIは同期対象外",
@@ -8860,9 +8879,9 @@
       "state": "open",
       "title": "お気に入りのTEAM・ORGANIZATION同ID混線と詳細URLを修正",
       "url": "https://github.com/kenta-0420/mannschaft/pull/3644",
-      "updatedAt": "2026-11-13T06:44:49Z",
+      "updatedAt": "2026-11-13T22:12:35Z",
       "ci": {
-        "status": "success",
+        "status": "pending",
         "checks": [],
         "source": "GraphQL statusCheckRollup"
       }
@@ -12406,6 +12425,19 @@
       "ci": {
         "status": "unavailable",
         "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "4308": {
+      "number": 4308,
+      "kind": "pull_request",
+      "state": "open",
+      "title": "修正: 公開世代で再公開後のシフト予算消化を保護",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/4308",
+      "updatedAt": "2026-11-13T03:37:38Z",
+      "ci": {
+        "status": "failure",
         "checks": [],
         "source": "GraphQL statusCheckRollup"
       }

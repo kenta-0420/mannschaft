@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-11-13T22:22:04+00:00",
+  "generatedAt": "2026-11-13T22:43:30+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,19 +8,19 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "d61097a49227386d8b4044a2a6ced72fade5b50a",
-    "taskListCommit": "e13c4711b6f5e50effb8bd842b97089ae3e10c29",
+    "taskListCommit": "9bb2703fb7910e435ef5401462a67c789dbea32d",
     "inventorySha256": "b0a1f97197840c865756a40f12f577cfeb10aa8083dc95f2932f7b3a7f90528a",
-    "taskListSha256": "0e413f9c166e7064917beaac1421e3299be7129a3ed374ab42928165d9800ece",
+    "taskListSha256": "cbb128ed88c70757d2193cb361e3ccf0a78d7eb067fdb7a556b3181cbf59a27e",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
-    "githubSnapshotSha256": "8cce146534b95f0c72195e6cb71acc0f4aeae5cbd991bd3c9afcd773ad65d4c4"
+    "githubSnapshotSha256": "bcc6a4f4cedc1d6cdb92ba7726e16d5815dc7e1c501aadb7cc3d6dc75de0733e"
   },
   "sourceCounts": {
     "features": 44,
     "capabilities": 95,
     "splitParents": 33,
-    "campaigns": 719,
+    "campaigns": 720,
     "layer": {
       "能力": 26,
       "ドメイン": 18
@@ -37,11 +37,11 @@ window.BETA_INVENTORY_DATA = {
   "verification": {
     "raw": {
       "features": 44,
-      "campaigns": 719
+      "campaigns": 720
     },
     "parsed": {
       "features": 44,
-      "campaigns": 719,
+      "campaigns": 720,
       "core": 25,
       "noncore": 19,
       "blockers": 23,
@@ -24891,15 +24891,15 @@ window.BETA_INVENTORY_DATA = {
       "acceptance": [
         "同一数値IDのチーム・組織を同時にお気に入り登録しても、それぞれ正しい名前・種別・URLが出ること。チームの「開く」はslug URLに遷移し、実機で詳細が表示されること"
       ],
-      "blocker": "[#3644](https://github.com/kenta-0420/mannschaft/pull/3644)",
+      "blocker": "—",
       "issues": [
         {
-          "label": "2026-09-16 CMP-033 のアリシゼーションで発見し、殿が隔離実機（FE:3001、BE:8082）で再現。FC東京U-15の「開く」で `/teams/2` に遷移し、`GET /api/v1/teams/2` と関連APIが404、画面は「情報を取得できませんでした」。原因1: `TeamFavoriteResolver` が `\"/teams/\" + team.getId()` を返し、現行slug URLと不一致。原因2: `FavoriteResolverService.resolveAll` が種別を含まない `entityId` だけをキーに `putAll` し、`FavoriteService` も同キーで取得するため、TEAM 1 と ORGANIZATION 1 のメタデータが衝突し、チームカードに組織名・組織URLが出る。CMP-033のセッション設計ACとは別戦役として扱う。<br>2026-11-07: Draft #3644を引継ぎ再検証中。D1新違反2件（他domain EntityのgetSlug呼出）で実赤。修正前の実装中先行登録。2026-10-04 着手: `FavoriteServiceTest.MixedEntityTypes`（同IDの名前/URL/編集権限/順序・利用可否分離）、既存TEAM/ORGANIZATION Resolver UT（ID≠slug）、`FavoriteScopeContractIT`（実DB同ID登録・閲覧不可混線）へ試練設置。試練コミット `58b98627c6`。旧製品RED: 選定単体28件中4件が期待assertionで失敗（同ID混線2・数値URL2）、24件成功。実DB20件はDocker条件でskip、未検証。集約キーを種別+IDへ変更し、TEAM/ORGANIZATION URLをslug化。修正コミット `3f87f9dab5`。修正後GREEN: 正規turnstileで単体28件成功・失敗0・skip0、コンパイル/ArchUnit/JaCoCo成功、自然exit0（9分39秒）。原本SHA付き証拠を `.claude/campaigns/september-resume-20261004/1042-proof` に保全。実DB20件は新headCIで実実行・skip0が必要、実機・アリシゼーションは未実施",
+          "label": "2026-09-16 CMP-033 のアリシゼーションで発見し、殿が隔離実機（FE:3001、BE:8082）で再現。FC東京U-15の「開く」で `/teams/2` に遷移し、`GET /api/v1/teams/2` と関連APIが404、画面は「情報を取得できませんでした」。原因1: `TeamFavoriteResolver` が `\"/teams/\" + team.getId()` を返し、現行slug URLと不一致。原因2: `FavoriteResolverService.resolveAll` が種別を含まない `entityId` だけをキーに `putAll` し、`FavoriteService` も同キーで取得するため、TEAM 1 と ORGANIZATION 1 のメタデータが衝突し、チームカードに組織名・組織URLが出る。CMP-033のセッション設計ACとは別戦役として扱う<br>2026-11-07: Draft #3644を引継ぎ再検証中。D1新違反2件（他domain EntityのgetSlug呼出）で実赤。修正前の実装中先行登録。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "2026-09-16 CMP-033 のアリシゼーションで発見し、殿が隔離実機（FE:3001、BE:8082）で再現。FC東京U-15の「開く」で `/teams/2` に遷移し、`GET /api/v1/teams/2` と関連APIが404、画面は「情報を取得できませんでした」。原因1: `TeamFavoriteResolver` が `\"/teams/\" + team.getId()` を返し、現行slug URLと不一致。原因2: `FavoriteResolverService.resolveAll` が種別を含まない `entityId` だけをキーに `putAll` し、`FavoriteService` も同キーで取得するため、TEAM 1 と ORGANIZATION 1 のメタデータが衝突し、チームカードに組織名・組織URLが出る。CMP-033のセッション設計ACとは別戦役として扱う。<br>2026-11-07: Draft #3644を引継ぎ再検証中。D1新違反2件（他domain EntityのgetSlug呼出）で実赤。修正前の実装中先行登録。2026-10-04 着手: `FavoriteServiceTest.MixedEntityTypes`（同IDの名前/URL/編集権限/順序・利用可否分離）、既存TEAM/ORGANIZATION Resolver UT（ID≠slug）、`FavoriteScopeContractIT`（実DB同ID登録・閲覧不可混線）へ試練設置。試練コミット `58b98627c6`。旧製品RED: 選定単体28件中4件が期待assertionで失敗（同ID混線2・数値URL2）、24件成功。実DB20件はDocker条件でskip、未検証。集約キーを種別+IDへ変更し、TEAM/ORGANIZATION URLをslug化。修正コミット `3f87f9dab5`。修正後GREEN: 正規turnstileで単体28件成功・失敗0・skip0、コンパイル/ArchUnit/JaCoCo成功、自然exit0（9分39秒）。原本SHA付き証拠を `.claude/campaigns/september-resume-20261004/1042-proof` に保全。実DB20件は新headCIで実実行・skip0が必要、実機・アリシゼーションは未実施"
+        "2026-09-16 CMP-033 のアリシゼーションで発見し、殿が隔離実機（FE:3001、BE:8082）で再現。FC東京U-15の「開く」で `/teams/2` に遷移し、`GET /api/v1/teams/2` と関連APIが404、画面は「情報を取得できませんでした」。原因1: `TeamFavoriteResolver` が `\"/teams/\" + team.getId()` を返し、現行slug URLと不一致。原因2: `FavoriteResolverService.resolveAll` が種別を含まない `entityId` だけをキーに `putAll` し、`FavoriteService` も同キーで取得するため、TEAM 1 と ORGANIZATION 1 のメタデータが衝突し、チームカードに組織名・組織URLが出る。CMP-033のセッション設計ACとは別戦役として扱う<br>2026-11-07: Draft #3644を引継ぎ再検証中。D1新違反2件（他domain EntityのgetSlug呼出）で実赤。修正前の実装中先行登録。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -24930,9 +24930,9 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "お気に入りのTEAM・ORGANIZATION同ID混線と詳細URLを修正",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3644",
-          "updatedAt": "2026-11-13T06:44:49Z",
+          "updatedAt": "2026-11-13T22:12:35Z",
           "ci": {
-            "status": "success",
+            "status": "pending",
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
@@ -62127,9 +62127,9 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "お気に入りのTEAM・ORGANIZATION同ID混線と詳細URLを修正",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3644",
-          "updatedAt": "2026-11-13T06:44:49Z",
+          "updatedAt": "2026-11-13T22:12:35Z",
           "ci": {
-            "status": "success",
+            "status": "pending",
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
@@ -65909,6 +65909,105 @@ window.BETA_INVENTORY_DATA = {
       "github": []
     },
     {
+      "id": "CMP-261114-0618",
+      "title": "キーワード検索ITのcommit済みfixture残留を根治",
+      "status": "working",
+      "statusLabel": "P2 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "AC1 同一JVM・共有MySQLで検索14件→整合性6件の実順序、所有membershipの残留と未対応0→+1・同じ5失敗を修正前に実証。AC2 元14件と整合性6件のgreen・所有行残留0。AC3 setup・部分保存・本体失敗でも取得済みIDだけ回収し元失敗保持。AC4 他fixture不変・未知子行を削除しない。AC5 TX/commit観測と正常・故障時の従前SecurityContext復元。AC6 製品・共通基底・build/CI・DDL・query・Clock/locks/generation/history/weights/deadlineを変更しない",
+      "acceptance": [
+        "AC1 同一JVM・共有MySQLで検索14件→整合性6件の実順序、所有membershipの残留と未対応0→+1・同じ5失敗を修正前に実証。AC2 元14件と整合性6件のgreen・所有行残留0。AC3 setup・部分保存・本体失敗でも取得済みIDだけ回収し元失敗保持。AC4 他fixture不変・未知子行を削除しない。AC5 TX/commit観測と正常・故障時の従前SecurityContext復元。AC6 製品・共通基底・build/CI・DDL・query・Clock/locks/generation/history/weights/deadlineを変更しない"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "PR #4308 のCI run43352034582 shard2で整合性IT5失敗。検索ITは導入PR #2134のfixture後始末の追補。原因候補はsourceで確認、CI実加算行とローカルred/greenは未実証。実機/探索はtest-onlyで製品導線変更がないため対象外",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #4308 のCI run43352034582 shard2で整合性IT5失敗。検索ITは導入PR #2134のfixture後始末の追補。原因候補はsourceで確認、CI実加算行とローカルred/greenは未実証。実機/探索はtest-onlyで製品導線変更がないため対象外"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "正式親の限定探索で該当行なし。採用済み戦役を再開せず独立追跡。red実証不成立なら修正へ進めない。本番作成・変更・deploy禁止"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "IT",
+        "commit",
+        "fixture",
+        "AC1",
+        "JVM",
+        "MySQL",
+        "membership",
+        "AC2",
+        "green",
+        "AC3",
+        "setup",
+        "ID",
+        "AC4",
+        "fixture",
+        "AC5",
+        "TX",
+        "commit",
+        "SecurityContext",
+        "AC6",
+        "build",
+        "CI",
+        "DDL",
+        "query",
+        "Clock",
+        "locks",
+        "generation",
+        "history",
+        "weights",
+        "deadline"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [
+        2134,
+        4308
+      ],
+      "github": [
+        {
+          "number": 2134,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正(マッチング認可): 募集・応募・NGの認可漏れ/IDOR/所有権誤比較を一括根治",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2134",
+          "updatedAt": "2026-07-05T05:11:09Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 4308,
+          "kind": "pull_request",
+          "state": "open",
+          "title": "修正: 公開世代で再公開後のシフト予算消化を保護",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4308",
+          "updatedAt": "2026-11-13T03:37:38Z",
+          "ci": {
+            "status": "failure",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
       "id": "CMP-261114-0713",
       "title": "SignageのWS購読許可契約と既存購読認可欠落の修復",
       "status": "not-started",
@@ -65957,7 +66056,7 @@ window.BETA_INVENTORY_DATA = {
   "githubSync": {
     "schemaVersion": 1,
     "repository": "kenta-0420/mannschaft",
-    "synchronizedAt": "2026-11-13T21:28:06+00:00",
+    "synchronizedAt": "2026-11-13T22:42:13+00:00",
     "status": "synced",
     "error": null,
     "references": {
@@ -68202,7 +68301,12 @@ window.BETA_INVENTORY_DATA = {
         4022
       ],
       "CMP-261113-1506": [],
-      "CMP-261113-1507": []
+      "CMP-261113-1507": [],
+      "CMP-261114-0618": [
+        2134,
+        4308
+      ],
+      "CMP-261114-0713": []
     },
     "items": {
       "206": {
@@ -68756,6 +68860,20 @@ window.BETA_INVENTORY_DATA = {
         "title": "機能追加: 個人ダッシュボード集約タイムライン（所属team/org横断・/api/v1/timeline/my 新設）",
         "url": "https://github.com/kenta-0420/mannschaft/pull/2041",
         "updatedAt": "2026-06-30T23:13:07Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "2134": {
+        "number": 2134,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正(マッチング認可): 募集・応募・NGの認可漏れ/IDOR/所有権誤比較を一括根治",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/2134",
+        "updatedAt": "2026-07-05T05:11:09Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -74816,9 +74934,9 @@ window.BETA_INVENTORY_DATA = {
         "state": "open",
         "title": "お気に入りのTEAM・ORGANIZATION同ID混線と詳細URLを修正",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3644",
-        "updatedAt": "2026-11-13T06:44:49Z",
+        "updatedAt": "2026-11-13T22:12:35Z",
         "ci": {
-          "status": "success",
+          "status": "pending",
           "checks": [],
           "source": "GraphQL statusCheckRollup"
         }
@@ -78366,6 +78484,19 @@ window.BETA_INVENTORY_DATA = {
           "source": "GraphQL statusCheckRollup"
         }
       },
+      "4308": {
+        "number": 4308,
+        "kind": "pull_request",
+        "state": "open",
+        "title": "修正: 公開世代で再公開後のシフト予算消化を保護",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4308",
+        "updatedAt": "2026-11-13T03:37:38Z",
+        "ci": {
+          "status": "failure",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
       "4309": {
         "number": 4309,
         "kind": "pull_request",
@@ -79052,8 +79183,8 @@ window.BETA_INVENTORY_DATA = {
     "lastAttempt": {
       "status": "synced",
       "error": null,
-      "synchronizedAt": "2026-11-13T21:28:06+00:00",
-      "referenceCount": 803
+      "synchronizedAt": "2026-11-13T22:42:13+00:00",
+      "referenceCount": 805
     }
   }
 };
