@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-11-08T19:20:39+00:00",
+  "generatedAt": "2026-11-13T22:01:18+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,19 +8,19 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "d61097a49227386d8b4044a2a6ced72fade5b50a",
-    "taskListCommit": "af13a156be7ba03a2367c3ad92759c7d6ce3fb47",
+    "taskListCommit": "b040e7e06eca0380e87d2796a0a461294f2122ee",
     "inventorySha256": "b0a1f97197840c865756a40f12f577cfeb10aa8083dc95f2932f7b3a7f90528a",
-    "taskListSha256": "155c6011a3ac59bfacd0540f8a87ce1e69254abde7f257540bfec6f2f1700185",
+    "taskListSha256": "1e3157b059c5bafe2d072e9c06a709bfe57ca7e15b42a45eb67d0f83ad7bd24e",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
-    "githubSnapshotSha256": "d1f8c98920a0ffb28039184907dee2dbf3e973ba74fe2ff1dbe76fa6971b710e"
+    "githubSnapshotSha256": "8cce146534b95f0c72195e6cb71acc0f4aeae5cbd991bd3c9afcd773ad65d4c4"
   },
   "sourceCounts": {
     "features": 44,
     "capabilities": 95,
     "splitParents": 33,
-    "campaigns": 680,
+    "campaigns": 718,
     "layer": {
       "能力": 26,
       "ドメイン": 18
@@ -37,11 +37,11 @@ window.BETA_INVENTORY_DATA = {
   "verification": {
     "raw": {
       "features": 44,
-      "campaigns": 680
+      "campaigns": 718
     },
     "parsed": {
       "features": 44,
-      "campaigns": 680,
+      "campaigns": 718,
       "core": 25,
       "noncore": 19,
       "blockers": 23,
@@ -9007,6 +9007,71 @@ window.BETA_INVENTORY_DATA = {
         "idAssignment": "累積一意persona/journey IDは今回の登録時付与。原runIdを保持し、固定P01-P20へ変換しない。",
         "trusted": false,
         "status": "observed-unverified"
+      },
+      {
+        "id": "ALIC-L1R-R14-R1-20261114",
+        "personaArchetype": "一般（慎重な管理者）×素直",
+        "runId": "l1rr14dfb6",
+        "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r14-20261114.json",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false,
+        "originalResidentId": "r1",
+        "sourceEvidencePath": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/l1rr14dfb6-r1/resident-report.json",
+        "sourceEvidenceSha256": "5bbbbcb5cc43f278b4d62633cb0f5b1fe6ad755ef7912a458fd658db70dc44e6",
+        "idAssignment": "persona/journey IDは登録時付与。固定P01-P20へ変換しない。",
+        "registrationAssignedFromRootBinding": {
+          "path": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/resident-binding.private.json",
+          "sha256": "205f586ad2cccae00a98533d44517128859f9bc84beaedd7ce2d1f61b8538938",
+          "fields": [
+            "runId"
+          ],
+          "note": "補足値を原reportの記載とみなさない。"
+        }
+      },
+      {
+        "id": "ALIC-L1R-R14-R2-20261114",
+        "personaArchetype": "スマホ片手操作×素直",
+        "runId": "l1rr14dfb6",
+        "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r14-20261114.json",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false,
+        "originalResidentId": "r2",
+        "sourceEvidencePath": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/l1rr14dfb6-r2/resident-observations.json",
+        "sourceEvidenceSha256": "5aa559431f95b113e0781345ae9813692c3add2d91f96d446cce29a3086dc618",
+        "idAssignment": "persona/journey IDは登録時付与。固定P01-P20へ変換しない。",
+        "registrationAssignedFromRootBinding": {
+          "path": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/resident-binding.private.json",
+          "sha256": "205f586ad2cccae00a98533d44517128859f9bc84beaedd7ce2d1f61b8538938",
+          "fields": [],
+          "note": "補足値を原reportの記載とみなさない。"
+        }
+      },
+      {
+        "id": "ALIC-L1R-R14-R3-20261114",
+        "personaArchetype": "一般×中断・放棄",
+        "runId": "l1rr14dfb6",
+        "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r14-20261114.json",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false,
+        "originalResidentId": "r3",
+        "sourceEvidencePath": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/l1rr14dfb6-r3/resident-observations.json",
+        "sourceEvidenceSha256": "0eb6f8e5d9f1e059d85d71c83775d60007b78185b3497c704603a46cdf79d005",
+        "idAssignment": "persona/journey IDは登録時付与。固定P01-P20へ変換しない。",
+        "registrationAssignedFromRootBinding": {
+          "path": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/resident-binding.private.json",
+          "sha256": "205f586ad2cccae00a98533d44517128859f9bc84beaedd7ce2d1f61b8538938",
+          "fields": [
+            "runId",
+            "sourceHead"
+          ],
+          "note": "補足値を原reportの記載とみなさない。"
+        }
       }
     ],
     "journeys": [
@@ -9825,6 +9890,117 @@ window.BETA_INVENTORY_DATA = {
         "allGoalsReached": true,
         "goalScope": "読み取り確認範囲のみ",
         "coveragePassed": false
+      },
+      {
+        "id": "ALIC-L1R-R14-R1-20261114-J1",
+        "personaId": "ALIC-L1R-R14-R1-20261114",
+        "purpose": "お気に入りからチーム・組織へ戻り、予定・所属管理と記録へ自然に辿る",
+        "runId": "l1rr14dfb6",
+        "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r14-20261114.json",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false,
+        "sourceEvidencePath": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/l1rr14dfb6-r1/resident-report.json",
+        "executionCompleted": true,
+        "allGoalsReached": false,
+        "goalAchievement": {
+          "favoriteTeamReturn": true,
+          "teamScheduleReachable": true,
+          "favoriteOrgReturn": true,
+          "orgMembersManagementReachable": true,
+          "similarNamesDistinguished": "一部。同名2件の直接ジャンプは表示名のみ。一覧では片方に「その他」分類を表示。特定同名対象の業務操作は未実施。",
+          "dailyRecordSaved": false,
+          "explorationPerformed": true
+        },
+        "limitations": [
+          "1440x900のみ。全desktop条件の視覚検査ではない。",
+          "活動記録の保存や業務データ書込の成否は未検証。",
+          "role/name locatorで何度かTimeoutError。DOMで見えたhrefに対する通常clickで到達。これらを製品の操作不能とは認定しない。"
+        ],
+        "goalScope": "各住民に示した自然な導線探索。R3の試合作成は対象外で未実施。"
+      },
+      {
+        "id": "ALIC-L1R-R14-R2-20261114-J1",
+        "personaId": "ALIC-L1R-R14-R2-20261114",
+        "purpose": "短時間の一般メンバーが所属・お気に入り・記録の閲覧先へ自然に辿る",
+        "runId": "l1rr14dfb6",
+        "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r14-20261114.json",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false,
+        "sourceEvidencePath": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/l1rr14dfb6-r2/resident-observations.json",
+        "executionCompleted": true,
+        "allGoalsReached": false,
+        "goalAchievement": {
+          "memberships": {
+            "achieved": true,
+            "evidence": [
+              "06-team",
+              "13-team-list-visible",
+              "15-favorites-visible"
+            ],
+            "detail": "チームメニュー、マイチーム所属チーム、dashboardのLinksで所属を確認"
+          },
+          "favorites": {
+            "achieved": true,
+            "evidence": [
+              "15-favorites-visible",
+              "16-favorite-opened"
+            ],
+            "detail": "個人dashboardでマイコンテンツ・所属を展開、下方にお気に入り。開くからチーム詳細へ遷移"
+          },
+          "records": {
+            "listReached": true,
+            "existingRecordRead": false,
+            "evidence": [
+              "04-records",
+              "07-team-records"
+            ],
+            "detail": "マイカルテと活動記録の空一覧へ到達。実データ詳細は未検証"
+          },
+          "viewEditBoundary": {
+            "partiallyUnderstood": true,
+            "detail": "チーム詳細にメンバー表示、その他操作にはチーム設定編集なし。活動記録の追加からテンプレート作成案内を辿ると作成操作のない空管理一覧へ到達し先へ進めなかった"
+          }
+        },
+        "limitations": [
+          "390x844のみ。タブ列とお気に入り内部スクロールの切れをページ横パンと判定しない。全要素の視覚監査はしていない。",
+          "実記録詳細は未確認。権限仕様・原因は未調査。"
+        ],
+        "goalScope": "各住民に示した自然な導線探索。R3の試合作成は対象外で未実施。"
+      },
+      {
+        "id": "ALIC-L1R-R14-R3-20261114-J1",
+        "personaId": "ALIC-L1R-R14-R3-20261114",
+        "purpose": "再入場・再読込・対象切替で管理対象を識別し、所属・お気に入り・試合へ辿る",
+        "runId": "l1rr14dfb6",
+        "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r14-20261114.json",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false,
+        "sourceEvidencePath": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/l1rr14dfb6-r3/resident-observations.json",
+        "executionCompleted": true,
+        "allGoalsReached": true,
+        "goalAchievement": {
+          "ownManagedTeam": true,
+          "otherTeamDifference": true,
+          "affiliationsReached": true,
+          "favoriteRoundTrip": true,
+          "matchesReached": true,
+          "reload": true,
+          "relogin": true,
+          "targetSwitchBack": true,
+          "matchCreation": "未実施（目的は導線探索）"
+        },
+        "limitations": [
+          "1440x900のみ。全desktop viewport検査ではない",
+          "一部getByRole exactセレクタはTimeoutError。driverは詳細を伏せるためvisible/enabled/stable/intercepted等の分類は不明。通常href/text locatorで到達でき製品不備とは認定しない",
+          "試合を記録するリンクのDOM読取でdisplay flex/visibility visible、矩形x468.046875 y779 width143.21875 height32、中心hit自身、dialog0。主要CTA高さ32pxは客観値として記録するが単独で不具合確定しない"
+        ],
+        "goalScope": "各住民に示した自然な導線探索。R3の試合作成は対象外で未実施。"
       }
     ],
     "insights": [
@@ -12488,6 +12664,52 @@ window.BETA_INVENTORY_DATA = {
         "trusted": false,
         "status": "observed-unverified",
         "coveragePassed": false
+      },
+      {
+        "id": "ALIC-L1R-R14-R1-20261114-I001",
+        "featureKey": "team-admin",
+        "featureDetail": "チームの直接ジャンプ・同名対象の識別",
+        "personaId": "ALIC-L1R-R14-R1-20261114",
+        "journeyId": "ALIC-L1R-R14-R1-20261114-J1",
+        "personaArchetype": "一般（慎重な管理者）×素直",
+        "originalRunId": "l1rr14dfb6",
+        "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r14-20261114.json",
+        "sourceEvidencePath": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/l1rr14dfb6-r1/resident-report.json",
+        "originalObservationId": "R1-OBS-1",
+        "title": "直接ジャンプで同名チーム2件を見分けにくい",
+        "detail": "直接ジャンプにl1rr14dfb6 Duplicate Team 1が2件同じ表示で並ぶ。一覧では片方にその他分類があり完全同一表示ではない。誤操作や誤遷移は確認していない。",
+        "page": "",
+        "screenshotPath": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/l1rr14dfb6-r1/02-team-list.png",
+        "urgency": "normal",
+        "priority": "should",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-L1R-R14-R2-20261114-I001",
+        "featureKey": "team-admin",
+        "featureDetail": "一般メンバーの活動記録追加・テンプレート案内",
+        "personaId": "ALIC-L1R-R14-R2-20261114",
+        "journeyId": "ALIC-L1R-R14-R2-20261114-J1",
+        "personaArchetype": "スマホ片手操作×素直",
+        "originalRunId": "l1rr14dfb6",
+        "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r14-20261114.json",
+        "sourceEvidencePath": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/l1rr14dfb6-r2/resident-observations.json",
+        "originalObservationId": "r2-o1",
+        "title": "テンプレート作成案内の遷移先で作成操作が見つからない",
+        "detail": "テンプレート未作成の一般メンバーに、活動記録追加モーダルがテンプレートを作成するよう案内するが、遷移先に作成操作が見つからない。権限仕様や原因は調査していない。管理者への依頼案内は表示されなかった。裏取りが必要",
+        "page": "/teams/l1rr14dfb6-team/activity-templates",
+        "screenshotPath": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/l1rr14dfb6-r2/09-template-destination.png",
+        "urgency": "normal",
+        "priority": "should",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
       }
     ],
     "runEnvironments": {
@@ -12755,6 +12977,37 @@ window.BETA_INVENTORY_DATA = {
           "limits": "小領域は実寸有効・今回未変更。MOB07非再現・元直接原因UNKNOWN。100ms未満変化の不在は主張しない。"
         },
         "formalParentCompletion": false
+      },
+      "l1rr14dfb6": {
+        "runId": "l1rr14dfb6",
+        "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r14-20261114.json",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false,
+        "registrationSource": "actual-resident-artifacts",
+        "executionCompleted": true,
+        "allGoalsReached": false,
+        "goalOutcomeByResident": {
+          "r1": "partial",
+          "r2": "partial",
+          "r3": "achieved-within-navigation-scope"
+        },
+        "registrationAssignedFromRootBinding": {
+          "path": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/resident-binding.private.json",
+          "sha256": "205f586ad2cccae00a98533d44517128859f9bc84beaedd7ce2d1f61b8538938",
+          "note": "r1 runId、r3 runId/sourceHeadをroot固定bindingから補足。"
+        },
+        "sourceEvidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r14-20261114.json",
+        "rootTriage": {
+          "disposition": "未実証の気づきとして2件登録。原原因・権限仕様の確認前に不具合確定しない。",
+          "confirmedBugs": 0,
+          "blockerPromotion": 0,
+          "taskListPromotion": 0,
+          "r3Http403": "他公開チームmodules403×2。正常権限か原因未確定。bug認定なし。",
+          "r3Favorite": "TEAM14 POST201→DELETE204、残ID0。業務データcreate/update/deleteは0。",
+          "limitations": "R1記録保存未検証、R2実記録詳細未確認。exact locator timeoutは通常href操作で到達し製品不備としない。探索実施と全目的達成・B0 coverage合格を分離する。"
+        }
       }
     }
   },
@@ -21685,12 +21938,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4246,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: コルクボードの存在オラクルを一掃（CMP-260820-1422 残件）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4246",
+          "updatedAt": "2026-11-01T05:09:18Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -22544,12 +22802,17 @@ window.BETA_INVENTORY_DATA = {
         },
         {
           "number": 4252,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 存在オラクルの本文正規化（越境応答を不在と完全一致）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4252",
+          "updatedAt": "2026-11-02T06:09:22Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -23044,30 +23307,45 @@ window.BETA_INVENTORY_DATA = {
         },
         {
           "number": 4248,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-260822-1730 仮予約失効バッチのチームTZ誤抽出を根治（#3721・#3614 統合）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4248",
+          "updatedAt": "2026-11-01T12:35:03Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4275,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 論理削除済み枠のPENDINGを失効バッチが永続retryしないよう終状態へ遷移させる (CMP-260822-1730)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4275",
+          "updatedAt": "2026-11-06T21:16:35Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4296,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 自分の予約一覧で日跨ぎ枠の終了日を翌日表記で示す (CMP-260822-1730 R3)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4296",
+          "updatedAt": "2026-11-06T21:13:08Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -23136,12 +23414,17 @@ window.BETA_INVENTORY_DATA = {
         },
         {
           "number": 4293,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 本人予約済みセルの aria-label がキャンセル待ちを誤案内する（R1 / CMP-260824-2217）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4293",
+          "updatedAt": "2026-11-04T19:41:57Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -24608,15 +24891,15 @@ window.BETA_INVENTORY_DATA = {
       "acceptance": [
         "同一数値IDのチーム・組織を同時にお気に入り登録しても、それぞれ正しい名前・種別・URLが出ること。チームの「開く」はslug URLに遷移し、実機で詳細が表示されること"
       ],
-      "blocker": "—",
+      "blocker": "[#3644](https://github.com/kenta-0420/mannschaft/pull/3644)",
       "issues": [
         {
-          "label": "2026-09-16 CMP-033 のアリシゼーションで発見し、殿が隔離実機（FE:3001、BE:8082）で再現。FC東京U-15の「開く」で `/teams/2` に遷移し、`GET /api/v1/teams/2` と関連APIが404、画面は「情報を取得できませんでした」。原因1: `TeamFavoriteResolver` が `\"/teams/\" + team.getId()` を返し、現行slug URLと不一致。原因2: `FavoriteResolverService.resolveAll` が種別を含まない `entityId` だけをキーに `putAll` し、`FavoriteService` も同キーで取得するため、TEAM 1 と ORGANIZATION 1 のメタデータが衝突し、チームカードに組織名・組織URLが出る。CMP-033のセッション設計ACとは別戦役として扱う<br>2026-11-07: Draft #3644を引継ぎ再検証中。D1新違反2件（他domain EntityのgetSlug呼出）で実赤。修正前の実装中先行登録。",
+          "label": "2026-09-16 CMP-033 のアリシゼーションで発見し、殿が隔離実機（FE:3001、BE:8082）で再現。FC東京U-15の「開く」で `/teams/2` に遷移し、`GET /api/v1/teams/2` と関連APIが404、画面は「情報を取得できませんでした」。原因1: `TeamFavoriteResolver` が `\"/teams/\" + team.getId()` を返し、現行slug URLと不一致。原因2: `FavoriteResolverService.resolveAll` が種別を含まない `entityId` だけをキーに `putAll` し、`FavoriteService` も同キーで取得するため、TEAM 1 と ORGANIZATION 1 のメタデータが衝突し、チームカードに組織名・組織URLが出る。CMP-033のセッション設計ACとは別戦役として扱う。<br>2026-11-07: Draft #3644を引継ぎ再検証中。D1新違反2件（他domain EntityのgetSlug呼出）で実赤。修正前の実装中先行登録。2026-10-04 着手: `FavoriteServiceTest.MixedEntityTypes`（同IDの名前/URL/編集権限/順序・利用可否分離）、既存TEAM/ORGANIZATION Resolver UT（ID≠slug）、`FavoriteScopeContractIT`（実DB同ID登録・閲覧不可混線）へ試練設置。試練コミット `58b98627c6`。旧製品RED: 選定単体28件中4件が期待assertionで失敗（同ID混線2・数値URL2）、24件成功。実DB20件はDocker条件でskip、未検証。集約キーを種別+IDへ変更し、TEAM/ORGANIZATION URLをslug化。修正コミット `3f87f9dab5`。修正後GREEN: 正規turnstileで単体28件成功・失敗0・skip0、コンパイル/ArchUnit/JaCoCo成功、自然exit0（9分39秒）。原本SHA付き証拠を `.claude/campaigns/september-resume-20261004/1042-proof` に保全。実DB20件は新headCIで実実行・skip0が必要、実機・アリシゼーションは未実施",
           "state": "unknown"
         }
       ],
       "prs": [
-        "2026-09-16 CMP-033 のアリシゼーションで発見し、殿が隔離実機（FE:3001、BE:8082）で再現。FC東京U-15の「開く」で `/teams/2` に遷移し、`GET /api/v1/teams/2` と関連APIが404、画面は「情報を取得できませんでした」。原因1: `TeamFavoriteResolver` が `\"/teams/\" + team.getId()` を返し、現行slug URLと不一致。原因2: `FavoriteResolverService.resolveAll` が種別を含まない `entityId` だけをキーに `putAll` し、`FavoriteService` も同キーで取得するため、TEAM 1 と ORGANIZATION 1 のメタデータが衝突し、チームカードに組織名・組織URLが出る。CMP-033のセッション設計ACとは別戦役として扱う<br>2026-11-07: Draft #3644を引継ぎ再検証中。D1新違反2件（他domain EntityのgetSlug呼出）で実赤。修正前の実装中先行登録。"
+        "2026-09-16 CMP-033 のアリシゼーションで発見し、殿が隔離実機（FE:3001、BE:8082）で再現。FC東京U-15の「開く」で `/teams/2` に遷移し、`GET /api/v1/teams/2` と関連APIが404、画面は「情報を取得できませんでした」。原因1: `TeamFavoriteResolver` が `\"/teams/\" + team.getId()` を返し、現行slug URLと不一致。原因2: `FavoriteResolverService.resolveAll` が種別を含まない `entityId` だけをキーに `putAll` し、`FavoriteService` も同キーで取得するため、TEAM 1 と ORGANIZATION 1 のメタデータが衝突し、チームカードに組織名・組織URLが出る。CMP-033のセッション設計ACとは別戦役として扱う。<br>2026-11-07: Draft #3644を引継ぎ再検証中。D1新違反2件（他domain EntityのgetSlug呼出）で実赤。修正前の実装中先行登録。2026-10-04 着手: `FavoriteServiceTest.MixedEntityTypes`（同IDの名前/URL/編集権限/順序・利用可否分離）、既存TEAM/ORGANIZATION Resolver UT（ID≠slug）、`FavoriteScopeContractIT`（実DB同ID登録・閲覧不可混線）へ試練設置。試練コミット `58b98627c6`。旧製品RED: 選定単体28件中4件が期待assertionで失敗（同ID混線2・数値URL2）、24件成功。実DB20件はDocker条件でskip、未検証。集約キーを種別+IDへ変更し、TEAM/ORGANIZATION URLをslug化。修正コミット `3f87f9dab5`。修正後GREEN: 正規turnstileで単体28件成功・失敗0・skip0、コンパイル/ArchUnit/JaCoCo成功、自然exit0（9分39秒）。原本SHA付き証拠を `.claude/campaigns/september-resume-20261004/1042-proof` に保全。実DB20件は新headCIで実実行・skip0が必要、実機・アリシゼーションは未実施"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -24643,12 +24926,16 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3644,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "open",
+          "title": "お気に入りのTEAM・ORGANIZATION同ID混線と詳細URLを修正",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3644",
+          "updatedAt": "2026-11-13T06:44:49Z",
+          "ci": {
+            "status": "success",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -25050,12 +25337,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4368,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 組織管理タブで未所属ユーザーを描画前に退避",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4368",
+          "updatedAt": "2026-11-07T15:13:26Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -26660,21 +26952,31 @@ window.BETA_INVENTORY_DATA = {
         },
         {
           "number": 4251,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-260822-1243 退会強匿名化に個人所有の残7表を追加し所有列の網羅番人を拡張",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4251",
+          "updatedAt": "2026-11-01T05:32:52Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4272,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 退会の強匿名化が失効済みrefresh_tokensのFK違反で完走しない欠陥を根治 (CMP-260822-1243)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4272",
+          "updatedAt": "2026-11-06T21:15:45Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -27096,12 +27398,13 @@ window.BETA_INVENTORY_DATA = {
         {
           "number": 1316,
           "kind": "pull_request",
-          "state": "open",
+          "state": "closed",
           "title": "chore(deps-dev): bump nuxt-security from 1.4.3 to 2.6.0 in /frontend",
           "url": "https://github.com/kenta-0420/mannschaft/pull/1316",
-          "updatedAt": "2026-07-08T23:38:29Z",
+          "updatedAt": "2026-10-27T10:56:12Z",
           "ci": {
-            "status": "success",
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
@@ -27112,7 +27415,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "chore(deps-dev): bump cheerio from 1.0.0-rc.12 to 1.2.0 in /frontend",
           "url": "https://github.com/kenta-0420/mannschaft/pull/1317",
-          "updatedAt": "2026-10-10T13:16:09Z",
+          "updatedAt": "2026-11-03T08:20:58Z",
           "ci": {
             "status": "failure",
             "checks": [],
@@ -27177,12 +27480,13 @@ window.BETA_INVENTORY_DATA = {
         {
           "number": 3683,
           "kind": "pull_request",
-          "state": "open",
+          "state": "merged",
           "title": "Bump actions/upload-artifact from 4 to 7",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3683",
-          "updatedAt": "2026-10-27T02:08:13Z",
+          "updatedAt": "2026-11-03T18:32:07Z",
           "ci": {
-            "status": "failure",
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
@@ -27207,7 +27511,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "Bump hashicorp/setup-terraform from 3 to 4",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3685",
-          "updatedAt": "2026-10-27T02:08:14Z",
+          "updatedAt": "2026-11-06T02:01:59Z",
           "ci": {
             "status": "success",
             "checks": [],
@@ -27231,12 +27535,13 @@ window.BETA_INVENTORY_DATA = {
         {
           "number": 3687,
           "kind": "pull_request",
-          "state": "open",
+          "state": "merged",
           "title": "Bump actions/setup-java from 4 to 6",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3687",
-          "updatedAt": "2026-10-27T02:08:24Z",
+          "updatedAt": "2026-11-03T20:49:04Z",
           "ci": {
-            "status": "success",
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
@@ -27258,12 +27563,13 @@ window.BETA_INVENTORY_DATA = {
         {
           "number": 3689,
           "kind": "pull_request",
-          "state": "open",
+          "state": "closed",
           "title": "Bump com.tngtech.archunit:archunit-junit5 from 1.3.0 to 1.5.1 in /backend",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3689",
-          "updatedAt": "2026-10-19T07:15:08Z",
+          "updatedAt": "2026-10-28T09:34:13Z",
           "ci": {
-            "status": "success",
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
@@ -27285,12 +27591,13 @@ window.BETA_INVENTORY_DATA = {
         {
           "number": 3692,
           "kind": "pull_request",
-          "state": "open",
+          "state": "closed",
           "title": "Bump org.apache.pdfbox:pdfbox from 3.0.3 to 3.0.8 in /backend",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3692",
-          "updatedAt": "2026-10-19T07:15:10Z",
+          "updatedAt": "2026-10-28T09:56:18Z",
           "ci": {
-            "status": "success",
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
@@ -27312,12 +27619,13 @@ window.BETA_INVENTORY_DATA = {
         {
           "number": 3694,
           "kind": "pull_request",
-          "state": "open",
+          "state": "closed",
           "title": "Bump com.stripe:stripe-java from 28.2.0 to 34.0.0 in /backend",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3694",
-          "updatedAt": "2026-10-19T07:15:15Z",
+          "updatedAt": "2026-10-28T10:05:19Z",
           "ci": {
-            "status": "failure",
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
@@ -27325,12 +27633,13 @@ window.BETA_INVENTORY_DATA = {
         {
           "number": 3695,
           "kind": "pull_request",
-          "state": "open",
-          "title": "Bump org.springframework.boot from 3.5.13 to 4.1.1 in /backend",
+          "state": "closed",
+          "title": "Bump org.springframework.boot from 3.5.13 to 4.1.2 in /backend",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3695",
-          "updatedAt": "2026-10-19T07:15:24Z",
+          "updatedAt": "2026-11-03T10:59:30Z",
           "ci": {
-            "status": "failure",
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
@@ -27458,12 +27767,17 @@ window.BETA_INVENTORY_DATA = {
         },
         {
           "number": 4244,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "テスト: CMP-260826-1455 村ドメイン全域のモデレーター判定述語番人",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4244",
+          "updatedAt": "2026-11-01T06:50:02Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -27869,21 +28183,31 @@ window.BETA_INVENTORY_DATA = {
         },
         {
           "number": 4250,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 村の入村の並行実行で現役所属一意と100村上限を守る（CMP-260827-1808）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4250",
+          "updatedAt": "2026-11-03T08:43:25Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4330,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 業務コード付き429で共通トーストを重ねない (CMP-260827-1808)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4330",
+          "updatedAt": "2026-11-06T21:13:39Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -27967,7 +28291,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "修正(通知): 通知が業務トランザクションに参加する同型箇所が18件の外に約18箇所残存（CMP-056 の続戦）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/2990",
-          "updatedAt": "2026-10-03T21:20:25Z",
+          "updatedAt": "2026-11-09T05:32:44Z",
           "ci": null
         },
         {
@@ -27981,39 +28305,59 @@ window.BETA_INVENTORY_DATA = {
         },
         {
           "number": 3721,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "closed",
+          "title": "fix(CMP-260822-1730): 仮予約失効を永続cursor・retry・UUIDv7で根治する",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3721",
+          "updatedAt": "2026-11-02T06:10:09Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 3779,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "付随通知のTX分離: jobmatching 4メソッドをAFTER_COMMITリスナーへ（CMP-260827-1152 / Issue #2997 第1陣）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3779",
+          "updatedAt": "2026-10-10T20:35:01Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 3783,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "付随通知の業務TX巻き込み是正: 軽量バッチ群 G8（#2997）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3783",
+          "updatedAt": "2026-10-11T22:57:37Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 3792,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "付随通知のTX分離: recruitment 4メソッドをAFTER_COMMITリスナーへ（Issue #2997 第1陣 G2）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3792",
+          "updatedAt": "2026-10-12T13:31:06Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 3817,
@@ -28031,75 +28375,115 @@ window.BETA_INVENTORY_DATA = {
         },
         {
           "number": 3837,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "CMP-260827-1152 Issue #2997 G6: シフトリマインド・チケット期限切れの付随通知をAFTER_COMMITへ",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3837",
+          "updatedAt": "2026-10-13T07:04:30Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 3843,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "テスト修正: レートリミット結線ITの窓境界またぎフレークを根治",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3843",
+          "updatedAt": "2026-10-13T11:44:33Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 3854,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "付随通知を業務TXから切り離す: digest と timetable（CMP-260827-1152 G7-a）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3854",
+          "updatedAt": "2026-10-14T05:27:05Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 3864,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "付随通知を業務TXから切り離す: survey 督促・締切延長と role 打診・辞退（CMP-260827-1152 G5）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3864",
+          "updatedAt": "2026-10-21T06:32:58Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4001,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "付随通知を業務TXから切り離す: 予約ドメイン（CMP-260827-1152 G3）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4001",
+          "updatedAt": "2026-10-21T00:21:17Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4177,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 管理バッチ完了・失敗通知を業務TXから切り離す（CMP-260827-1152 G7-b）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4177",
+          "updatedAt": "2026-10-28T02:44:10Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4181,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 確認通知の手動リマインド再送を業務TXから分離し、番人のNEVER起点誤検知を是正（#2997 G4-b）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4181",
+          "updatedAt": "2026-10-28T06:06:11Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4208,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "検証: #2997 付随通知TX是正（G3・G4-b・G5・G7）の実機E2E spec追加と欠陥報告",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4208",
+          "updatedAt": "2026-10-30T08:09:46Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -28906,8 +29290,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260905-0514",
       "title": "同一ユーザーの近接ログインで `refresh_tokens` がデッドロックし 500 を返す（リトライ無し）",
-      "status": "not-started",
-      "statusLabel": "P2 未着手",
+      "status": "working",
+      "statusLabel": "P2 実装中",
       "stage": "未設定",
       "priority": "未設定",
       "taskPriority": "P2",
@@ -28922,12 +29306,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "実機E2E（CMP-260826-2127）実行中に発見。BE ログ実体: `CannotAcquireLockException: could not execute batch [Deadlock found when trying to get lock; try restarting transaction] [update refresh_tokens set device_fingerprint ...]` が `JpaTransactionManager.doCommit` で発生し、`GlobalExceptionHandler - Unexpected error occurred` を経て `COMMON_999`(500) としてクライアントへ返る。**握られず・再試行もされない**。実運用でも「スマホと PC で同時にログイン」で起こりうる経路。E2E 側は同一ユーザーのログイン直列化で回避したが、製品側は未修正",
+          "label": "実機E2E（CMP-260826-2127）実行中に発見。BE ログ実体: `CannotAcquireLockException: could not execute batch [Deadlock found when trying to get lock; try restarting transaction] [update refresh_tokens set device_fingerprint ...]` が `JpaTransactionManager.doCommit` で発生し、`GlobalExceptionHandler - Unexpected error occurred` を経て `COMMON_999`(500) としてクライアントへ返る。**握られず・再試行もされない**。実運用でも「スマホと PC で同時にログイン」で起こりうる経路。E2E 側は同一ユーザーのログイン直列化で回避したが、製品側は未修正。2026-11-10: 実FK・実Auth proxyによる並行loginの試練を準備中。実走・製品修正は未実施",
           "state": "unknown"
         }
       ],
       "prs": [
-        "実機E2E（CMP-260826-2127）実行中に発見。BE ログ実体: `CannotAcquireLockException: could not execute batch [Deadlock found when trying to get lock; try restarting transaction] [update refresh_tokens set device_fingerprint ...]` が `JpaTransactionManager.doCommit` で発生し、`GlobalExceptionHandler - Unexpected error occurred` を経て `COMMON_999`(500) としてクライアントへ返る。**握られず・再試行もされない**。実運用でも「スマホと PC で同時にログイン」で起こりうる経路。E2E 側は同一ユーザーのログイン直列化で回避したが、製品側は未修正"
+        "実機E2E（CMP-260826-2127）実行中に発見。BE ログ実体: `CannotAcquireLockException: could not execute batch [Deadlock found when trying to get lock; try restarting transaction] [update refresh_tokens set device_fingerprint ...]` が `JpaTransactionManager.doCommit` で発生し、`GlobalExceptionHandler - Unexpected error occurred` を経て `COMMON_999`(500) としてクライアントへ返る。**握られず・再試行もされない**。実運用でも「スマホと PC で同時にログイン」で起こりうる経路。E2E 側は同一ユーザーのログイン直列化で回避したが、製品側は未修正。2026-11-10: 実FK・実Auth proxyによる並行loginの試練を準備中。実走・製品修正は未実施"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -28939,7 +29323,7 @@ window.BETA_INVENTORY_DATA = {
         "refresh_tokens"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -29235,12 +29619,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4332,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "文書: CMP-260905-1415 ローカル検証環境の起動手順",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4332",
+          "updatedAt": "2026-11-06T15:35:56Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -30462,8 +30851,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-0302",
       "title": "通知本文の zh/ko/es/de が未翻訳のまま日本語で配信される",
-      "status": "not-started",
-      "statusLabel": "P3 未着手",
+      "status": "working",
+      "statusLabel": "P3 実装中",
       "stage": "未設定",
       "priority": "未設定",
       "taskPriority": "P3",
@@ -30510,7 +30899,7 @@ window.BETA_INVENTORY_DATA = {
         "zh"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         2715,
@@ -30553,7 +30942,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "修正(通知): 通知が業務トランザクションに参加する同型箇所が18件の外に約18箇所残存（CMP-056 の続戦）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/2990",
-          "updatedAt": "2026-10-03T21:20:25Z",
+          "updatedAt": "2026-11-09T05:32:44Z",
           "ci": null
         },
         {
@@ -30575,8 +30964,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-0303",
       "title": "シフト予算アラート再送の部分成功で、成功済み受信者へ重複配信される",
-      "status": "not-started",
-      "statusLabel": "P3 未着手",
+      "status": "working",
+      "statusLabel": "P3 実装中",
       "stage": "未設定",
       "priority": "未設定",
       "taskPriority": "P3",
@@ -30600,7 +30989,7 @@ window.BETA_INVENTORY_DATA = {
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "背景: Issue #2990 L13 の凱旋で申し送られた既知の割り切り（L13 が作った欠陥ではなく是正前からのもの）。`ShiftBudgetNotificationResendService#resend` は受信者ごとに `notificationHelper.notify` を呼び、1名の失敗で残りを諦めないよう例外を握って `failedUserIds` に積み、ループ後に失敗者一覧を持つ `IllegalStateException` を投げる。これを受ける `ShiftBudgetRetryExecutor#execute` の catch は、**失敗した受信者だけを持つ新しい失敗イベントを作らず**、元の `ShiftBudgetFailedEventEntity` を `markFailed` するだけである。その行の payload には最初の `user_ids` が丸ごと残っているため、次回リトライは元の受信者集合全員に対して再実行され、前回成功していた受信者へ重複配信されうる（最大 `MAX_RETRY`=3 回）。注: 申し送り原文は「`NotificationDeliveryRunner#sendOne` で配送し、落ちた受信者だけを failed event に記録する」と記していたが、実コードは上記のとおり `notificationHelper.notify` 直呼びで、失敗者の絞り込み記録も行っていない。結論（部分成功で重複配信されうる）は変わらないが、機構の記述は本行のものが実態である"
+        "背景: Issue #2990 L13 の凱旋で申し送られた既知の割り切り（L13 が作った欠陥ではなく是正前からのもの）。`ShiftBudgetNotificationResendService#resend` は受信者ごとに `notificationHelper.notify` を呼び、1名の失敗で残りを諦めないよう例外を握って `failedUserIds` に積み、ループ後に失敗者一覧を持つ `IllegalStateException` を投げる。これを受ける `ShiftBudgetRetryExecutor#execute` の catch は、**失敗した受信者だけを持つ新しい失敗イベントを作らず**、元の `ShiftBudgetFailedEventEntity` を `markFailed` するだけである。その行の payload には最初の `user_ids` が丸ごと残っているため、次回リトライは元の受信者集合全員に対して再実行され、前回成功していた受信者へ重複配信されうる（最大 `MAX_RETRY`=3 回）。注: 申し送り原文は「`NotificationDeliveryRunner#sendOne` で配送し、落ちた受信者だけを failed event に記録する」と記していたが、実コードは上記のとおり `notificationHelper.notify` 直呼びで、失敗者の絞り込み記録も行っていない。結論（部分成功で重複配信されうる）は変わらないが、機構の記述は本行のものが実態である。2026-11-10: 優先度P3。PR #4443の製品変更時点be2a73aで計69件PASS。main追従後c5dcf1dは対象44入力不変・CI進行中、実機E2E・新規探索・正式検分は未実施。"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -30608,11 +30997,12 @@ window.BETA_INVENTORY_DATA = {
         "DB"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         2990,
-        3162
+        3162,
+        4443
       ],
       "github": [
         {
@@ -30621,7 +31011,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "修正(通知): 通知が業務トランザクションに参加する同型箇所が18件の外に約18箇所残存（CMP-056 の続戦）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/2990",
-          "updatedAt": "2026-10-03T21:20:25Z",
+          "updatedAt": "2026-11-09T05:32:44Z",
           "ci": null
         },
         {
@@ -30634,6 +31024,19 @@ window.BETA_INVENTORY_DATA = {
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 4443,
+          "kind": "pull_request",
+          "state": "open",
+          "title": "修正: CMP0303 通知再送の部分成功を同じ失敗行へ保持",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4443",
+          "updatedAt": "2026-11-11T23:28:47Z",
+          "ci": {
+            "status": "failure",
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
@@ -30698,7 +31101,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "修正(通知): 通知が業務トランザクションに参加する同型箇所が18件の外に約18箇所残存（CMP-056 の続戦）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/2990",
-          "updatedAt": "2026-10-03T21:20:25Z",
+          "updatedAt": "2026-11-09T05:32:44Z",
           "ci": null
         },
         {
@@ -30805,7 +31208,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "修正(通知): 通知が業務トランザクションに参加する同型箇所が18件の外に約18箇所残存（CMP-056 の続戦）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/2990",
-          "updatedAt": "2026-10-03T21:20:25Z",
+          "updatedAt": "2026-11-09T05:32:44Z",
           "ci": null
         }
       ]
@@ -30863,7 +31266,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "修正(通知): 通知が業務トランザクションに参加する同型箇所が18件の外に約18箇所残存（CMP-056 の続戦）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/2990",
-          "updatedAt": "2026-10-03T21:20:25Z",
+          "updatedAt": "2026-11-09T05:32:44Z",
           "ci": null
         }
       ]
@@ -30918,7 +31321,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "修正(通知): 通知が業務トランザクションに参加する同型箇所が18件の外に約18箇所残存（CMP-056 の続戦）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/2990",
-          "updatedAt": "2026-10-03T21:20:25Z",
+          "updatedAt": "2026-11-09T05:32:44Z",
           "ci": null
         }
       ]
@@ -30981,7 +31384,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "修正(通知): 通知が業務トランザクションに参加する同型箇所が18件の外に約18箇所残存（CMP-056 の続戦）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/2990",
-          "updatedAt": "2026-10-03T21:20:25Z",
+          "updatedAt": "2026-11-09T05:32:44Z",
           "ci": null
         }
       ]
@@ -31042,7 +31445,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "修正(通知): 通知が業務トランザクションに参加する同型箇所が18件の外に約18箇所残存（CMP-056 の続戦）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/2990",
-          "updatedAt": "2026-10-03T21:20:25Z",
+          "updatedAt": "2026-11-09T05:32:44Z",
           "ci": null
         }
       ]
@@ -31205,12 +31608,17 @@ window.BETA_INVENTORY_DATA = {
         },
         {
           "number": 3247,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: PR #3230 で main を赤くした番人4件を根治（CMP-260910-1555 追随）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3247",
+          "updatedAt": "2026-09-12T15:11:51Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -31648,7 +32056,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "修正(通知): 通知が業務トランザクションに参加する同型箇所が18件の外に約18箇所残存（CMP-056 の続戦）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/2990",
-          "updatedAt": "2026-10-03T21:20:25Z",
+          "updatedAt": "2026-11-09T05:32:44Z",
           "ci": null
         },
         {
@@ -31724,7 +32132,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "修正(通知): 通知が業務トランザクションに参加する同型箇所が18件の外に約18箇所残存（CMP-056 の続戦）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/2990",
-          "updatedAt": "2026-10-03T21:20:25Z",
+          "updatedAt": "2026-11-09T05:32:44Z",
           "ci": null
         },
         {
@@ -32496,21 +32904,31 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3247,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: PR #3230 で main を赤くした番人4件を根治（CMP-260910-1555 追随）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3247",
+          "updatedAt": "2026-09-12T15:11:51Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4234,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "文書更新: 時給設定の独立3住民観測を気づき箱へ追加",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4234",
+          "updatedAt": "2026-10-30T01:25:11Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -32736,12 +33154,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4382,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: シフト表作成後にチームの一覧を更新（CMP-260910-1600）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4382",
+          "updatedAt": "2026-11-07T22:47:20Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -33110,32 +33533,40 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3738,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "open",
+          "title": "シフト割当済みchipの移動と審査権限を修正（CMP-261008-1253）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3738",
+          "updatedAt": "2026-10-13T06:03:26Z",
+          "ci": {
+            "status": "success",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 3832,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "open",
+          "title": "修正: CMP-261010-1432 シフト画面の欠陥修繕 FE-a（変更依頼・詳細タブ・勤務制約）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3832",
+          "updatedAt": "2026-10-14T05:22:07Z",
+          "ci": {
+            "status": "success",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260910-1811",
       "title": "テスト用プロファイルで `application-test.yml` の機能フラグがテストに届かず、shift-budget の統合テスト29ファイルが機能無効のまま緑になっている（F08.7）",
-      "status": "not-started",
-      "statusLabel": "P4 未着手",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
-      "taskPriority": "P4",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -33144,15 +33575,15 @@ window.BETA_INVENTORY_DATA = {
       "acceptance": [
         "`backend/src/main/resources/application-test.yml` にしか存在しないキー（`feature.shift-budget.enabled` を含む）が棚卸しされ、どのテストが機能無効のまま何を検証していたかが判明していること。フラグを実際に立てた状態でも green であることが確認されていること。同種の盲点を機械的に検出する番人（`src/main/resources/application-test.yml` と `src/test/resources/application-test.yml` のキー集合差分を検出）が用意されていること"
       ],
-      "blocker": "—",
+      "blocker": "[#4431](https://github.com/kenta-0420/mannschaft/pull/4431)",
       "issues": [
         {
-          "label": "—",
+          "label": "[完了証拠](evidence/CMP-260910-1811.json)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "[完了証拠](evidence/CMP-260910-1811.json)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -33186,11 +33617,12 @@ window.BETA_INVENTORY_DATA = {
         "yml"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
       "githubRefs": [
         3188,
-        3219
+        3219,
+        4431
       ],
       "github": [
         {
@@ -33214,6 +33646,20 @@ window.BETA_INVENTORY_DATA = {
           "title": "修正: 手動アーカイブ・削除でシフト予算の消化が取り消されない欠陥を根治（CMP-260909-1445）",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3219",
           "updatedAt": "2026-09-11T00:26:12Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 4431,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: テストプロファイルの設定欠落を同期（CMP-260910-1811）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4431",
+          "updatedAt": "2026-11-09T14:28:05Z",
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
@@ -34205,12 +34651,17 @@ window.BETA_INVENTORY_DATA = {
         },
         {
           "number": 4403,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-260916-0056 ソース番人の時間制限と割込み応答を実効化",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4403",
+          "updatedAt": "2026-11-08T17:36:07Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -34544,12 +34995,17 @@ window.BETA_INVENTORY_DATA = {
         },
         {
           "number": 4396,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-260916-2328 OpenAPI事前確認でdry-runを区別する",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4396",
+          "updatedAt": "2026-11-08T07:34:48Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -35793,8 +36249,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260919-1139",
       "title": "i18n の `common.` 接頭辞の誤用が40種、FE 全体に残っている",
-      "status": "not-started",
-      "statusLabel": "P3 未着手",
+      "status": "working",
+      "statusLabel": "P3 実装中",
       "stage": "未設定",
       "priority": "未設定",
       "taskPriority": "P3",
@@ -35831,7 +36287,7 @@ window.BETA_INVENTORY_DATA = {
         "JSON"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         3374
@@ -39279,8 +39735,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260930-0232",
       "title": "代理投票一覧が常に空になり、作成ボタンが MEMBER にも表示される",
-      "status": "not-started",
-      "statusLabel": "P2 未着手",
+      "status": "working",
+      "statusLabel": "P2 実装中",
       "stage": "未設定",
       "priority": "未設定",
       "taskPriority": "P2",
@@ -39311,7 +39767,7 @@ window.BETA_INVENTORY_DATA = {
         "MEMBER"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         3518
@@ -39772,8 +40228,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260930-1533",
       "title": "投票・朝の点呼が一覧取得の 403 を握りつぶして「0件」表示にし、作成・提出ボタンを出す",
-      "status": "not-started",
-      "statusLabel": "P3 未着手",
+      "status": "working",
+      "statusLabel": "P3 実装中",
       "stage": "未設定",
       "priority": "未設定",
       "taskPriority": "P3",
@@ -39802,7 +40258,7 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         2460,
@@ -40096,8 +40552,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260930-1538",
       "title": "チームの画面から投票（議決権行使）・学校出欠への導線が無い",
-      "status": "not-started",
-      "statusLabel": "P2 未着手",
+      "status": "working",
+      "statusLabel": "P2 実装中",
       "stage": "未設定",
       "priority": "未設定",
       "taskPriority": "P2",
@@ -40126,7 +40582,7 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         3518
@@ -40258,8 +40714,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260930-1931",
       "title": "料金表（`GET /api/v1/billing/plans`・Billing Center のプラン一覧/変更プレビュー）が価格改定の新価格を読まない",
-      "status": "not-started",
-      "statusLabel": "P1 未着手",
+      "status": "working",
+      "statusLabel": "P1 実装中",
       "stage": "未設定",
       "priority": "未設定",
       "taskPriority": "P1",
@@ -40312,7 +40768,7 @@ window.BETA_INVENTORY_DATA = {
         "ACTIVE"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -41038,12 +41494,16 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4204,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "open",
+          "title": "修正: CMP-261001-0838 紹介ページのURLスラッグ必須案内",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4204",
+          "updatedAt": "2026-11-06T19:12:26Z",
+          "ci": {
+            "status": "success",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -41507,8 +41967,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260930-2313",
       "title": "`FlywayFromScratchMigrationTest` の型照合を VARCHAR 長（Entity の length が DB の長さを超える列）まで広げる",
-      "status": "not-started",
-      "statusLabel": "P4 未着手",
+      "status": "working",
+      "statusLabel": "P4 実装中",
       "stage": "未設定",
       "priority": "未設定",
       "taskPriority": "P4",
@@ -41544,7 +42004,7 @@ window.BETA_INVENTORY_DATA = {
         "Entity"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -41815,12 +42275,17 @@ window.BETA_INVENTORY_DATA = {
         },
         {
           "number": 4178,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "CMP-261002-1343: メンバー紹介実機specの初期設定を通常操作で閉じる",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4178",
+          "updatedAt": "2026-10-27T22:35:23Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -42217,8 +42682,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261002-0805",
       "title": "学校出欠への画面導線・未使用 composable",
-      "status": "not-started",
-      "statusLabel": "P2 未着手",
+      "status": "working",
+      "statusLabel": "P2 実装中",
       "stage": "未設定",
       "priority": "未設定",
       "taskPriority": "P2",
@@ -42252,7 +42717,7 @@ window.BETA_INVENTORY_DATA = {
         "composable"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -42315,21 +42780,31 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4253,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: node-forge を 1.4.2 へ更新し audit の期限切れ例外を撤去（CMP-261002-1135）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4253",
+          "updatedAt": "2026-11-01T22:47:52Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4259,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "保守: 期限切れの braces 監査例外を撤去",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4259",
+          "updatedAt": "2026-11-06T21:23:07Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -43040,12 +43515,17 @@ window.BETA_INVENTORY_DATA = {
         },
         {
           "number": 4259,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "保守: 期限切れの braces 監査例外を撤去",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4259",
+          "updatedAt": "2026-11-06T21:23:07Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -43103,12 +43583,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3635,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "test: 凍結ストア番人の検出漏れをRED試練で固定する",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3635",
+          "updatedAt": "2026-10-04T18:07:33Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4045,
@@ -43214,12 +43699,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4182,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261004-1818 総称bridgeによる親宣言の遮蔽を保持",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4182",
+          "updatedAt": "2026-10-27T20:18:46Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -43269,12 +43759,16 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4193,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "open",
+          "title": "修正: シフト作成時の親チーム存在確認（CMP-261004-1819）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4193",
+          "updatedAt": "2026-11-06T19:29:06Z",
+          "ci": {
+            "status": "success",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -43432,12 +43926,16 @@ window.BETA_INVENTORY_DATA = {
         },
         {
           "number": 4198,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "open",
+          "title": "試練: CMP-261004-1822 招待承諾・取消の実ロック競合を観測",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4198",
+          "updatedAt": "2026-11-07T14:12:35Z",
+          "ci": {
+            "status": "success",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -44680,7 +45178,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "merged",
           "title": "修正: CMP-261006-0632 旧slugの破棄後応答ガードを再採用",
           "url": "https://github.com/kenta-0420/mannschaft/pull/4160",
-          "updatedAt": "2026-10-27T05:00:56Z",
+          "updatedAt": "2026-10-27T06:57:28Z",
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
@@ -45636,9 +46134,9 @@ window.BETA_INVENTORY_DATA = {
           "number": 3724,
           "kind": "pull_request",
           "state": "open",
-          "title": "fix(CMP-261008-1253): シフト枠の版番号契約を根治（red先行）",
+          "title": "修正: シフト枠のLong版番号とボード状態の同期（CMP-261008-1253）",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3724",
-          "updatedAt": "2026-10-08T07:34:45Z",
+          "updatedAt": "2026-11-07T04:39:34Z",
           "ci": {
             "status": "success",
             "checks": [],
@@ -46266,12 +46764,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3741,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "シフト依頼のダッシュボードリンクを既存画面へ接続する",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3741",
+          "updatedAt": "2026-10-27T12:00:45Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -47444,12 +47947,17 @@ window.BETA_INVENTORY_DATA = {
         },
         {
           "number": 4164,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: チーム管理者のシフト変更依頼審査を表示する（1432-A）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4164",
+          "updatedAt": "2026-10-27T10:08:20Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -48179,69 +48687,100 @@ window.BETA_INVENTORY_DATA = {
         {
           "number": 4009,
           "kind": "pull_request",
-          "state": "open",
+          "state": "merged",
           "title": "テスト: F01.2.1 チームグループ化の実機E2E と結果報告",
           "url": "https://github.com/kenta-0420/mannschaft/pull/4009",
-          "updatedAt": "2026-10-20T23:46:10Z",
+          "updatedAt": "2026-10-28T23:47:02Z",
           "ci": {
-            "status": "failure",
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
         },
         {
           "number": 4206,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "試練: 組織告知の宛先チーム委任閲覧と権限名の国際化（ALIC-1/ALIC-2）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4206",
+          "updatedAt": "2026-10-29T15:18:35Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4229,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: ダッシュボードの告知カード見出しが描画されない不具合と f0121 実機 spec の列数判定（CMP-261011-0035）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4229",
+          "updatedAt": "2026-10-30T01:32:46Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4236,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: ダッシュボードの告知カード見出し行がスマホ幅で潰れる（CMP-261011-0035）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4236",
+          "updatedAt": "2026-10-30T03:38:37Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4239,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: スマホ幅で告知カードの一覧が1件しか見えない（CMP-261011-0035）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4239",
+          "updatedAt": "2026-10-30T08:57:32Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4240,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 組織告知一覧が宛先外の人に宛先指定の告知を出す（CMP-261011-0035）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4240",
+          "updatedAt": "2026-11-01T00:03:28Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4254,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "文書更新: CMP-261011-0035 組織チームグループ戦役のアリシゼーション観測を気づき箱へ登録",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4254",
+          "updatedAt": "2026-11-01T10:33:41Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -49237,7 +49776,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "merged",
           "title": "整理: CMP-261012-2338 未使用の機能切替APIを削除",
           "url": "https://github.com/kenta-0420/mannschaft/pull/4156",
-          "updatedAt": "2026-10-27T05:52:53Z",
+          "updatedAt": "2026-10-27T06:57:58Z",
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
@@ -53798,12 +54337,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4137,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 交代依頼の二重送信と担当者ごとの重複作成を防止",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4137",
+          "updatedAt": "2026-10-27T20:03:54Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -54291,21 +54835,31 @@ window.BETA_INVENTORY_DATA = {
         },
         {
           "number": 4167,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "[CMP-261021-0660] Spring Page受信契約と一覧ページングを修正",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4167",
+          "updatedAt": "2026-10-27T21:05:18Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4188,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "文書: 委員会一覧修復の独立探索をB0登録（CMP-261027-1311）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4188",
+          "updatedAt": "2026-10-27T21:58:41Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -54601,12 +55155,13 @@ window.BETA_INVENTORY_DATA = {
         {
           "number": 4009,
           "kind": "pull_request",
-          "state": "open",
+          "state": "merged",
           "title": "テスト: F01.2.1 チームグループ化の実機E2E と結果報告",
           "url": "https://github.com/kenta-0420/mannschaft/pull/4009",
-          "updatedAt": "2026-10-20T23:46:10Z",
+          "updatedAt": "2026-10-28T23:47:02Z",
           "ci": {
-            "status": "failure",
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
@@ -54937,12 +55492,16 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4194,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "open",
+          "title": "修正: CMP-261021-1330 LINE/SNS設定ヘッダーの6言語対応",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4194",
+          "updatedAt": "2026-11-06T19:08:50Z",
+          "ci": {
+            "status": "success",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -55493,12 +56052,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4231,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "試験修正: 2FAリカバリーの期待を厳密化（CMP-261021-1342）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4231",
+          "updatedAt": "2026-11-04T13:24:23Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -55720,7 +56284,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-27T05:08:11Z",
+          "updatedAt": "2026-11-12T23:49:00Z",
           "ci": null
         },
         {
@@ -55853,7 +56417,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-27T05:08:11Z",
+          "updatedAt": "2026-11-12T23:49:00Z",
           "ci": null
         },
         {
@@ -56333,7 +56897,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-27T05:08:11Z",
+          "updatedAt": "2026-11-12T23:49:00Z",
           "ci": null
         }
       ]
@@ -56646,7 +57210,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-27T05:08:11Z",
+          "updatedAt": "2026-11-12T23:49:00Z",
           "ci": null
         }
       ]
@@ -57360,7 +57924,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-27T05:08:11Z",
+          "updatedAt": "2026-11-12T23:49:00Z",
           "ci": null
         },
         {
@@ -57593,12 +58157,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4163,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261027-1311 委員会一覧の可視性とページ件数を一致させる",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4163",
+          "updatedAt": "2026-10-27T21:11:41Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -57718,20 +58287,25 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4169,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "構成整理: L1-Bの共通Gradle設定をbuild-logicへ移設",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4169",
+          "updatedAt": "2026-10-28T11:41:27Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4200,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
+          "kind": "issue",
+          "state": "open",
+          "title": "CMP-261028-1554: Backend CIの公開診断artifact不足を集約gateで拒否する",
+          "url": "https://github.com/kenta-0420/mannschaft/issues/4200",
+          "updatedAt": "2026-10-28T06:56:51Z",
           "ci": null
         }
       ]
@@ -57793,12 +58367,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4166,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "CMP-261027-1353 ログイン後の描画待ち・カレンダー・feed認可表示を改善",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4166",
+          "updatedAt": "2026-10-27T18:51:59Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -57919,20 +58498,25 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4169,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "構成整理: L1-Bの共通Gradle設定をbuild-logicへ移設",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4169",
+          "updatedAt": "2026-10-28T11:41:27Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4200,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
+          "kind": "issue",
+          "state": "open",
+          "title": "CMP-261028-1554: Backend CIの公開診断artifact不足を集約gateで拒否する",
+          "url": "https://github.com/kenta-0420/mannschaft/issues/4200",
+          "updatedAt": "2026-10-28T06:56:51Z",
           "ci": null
         }
       ]
@@ -57994,12 +58578,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4205,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "改善: カレンダー初期表示の独立取得と部品読込を重ねる",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4205",
+          "updatedAt": "2026-10-29T00:18:33Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -58113,12 +58702,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4210,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "記録追加: L1-M Modulith基盤の登録",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4210",
+          "updatedAt": "2026-10-28T14:22:45Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -58141,12 +58735,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-261021-0017、CMP-261021-2158（L1-K完了）。登録時claim `cc2c5a146211d4b97f29760ffb324e01ae03c23d` は履歴として保持。現common-core引継ぎは[親宣言](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6695483881)。TransitionalBridgeはPR #4214でmain提供済み（L1-M全完了待ちではない）",
       "issues": [
         {
-          "label": "[登録PR #4211](https://github.com/kenta-0420/mannschaft/pull/4211)はmain反映済みの履歴。[実装PR #4352](https://github.com/kenta-0420/mannschaft/pull/4352)は記録時点Draft・未merge。初回1型は旧staticを互換委譲しDN1〜6の旧19green→全40の21 assertion red（compile成功）→40green/skip0。DN9実生成前後bytes一致は親合格。DN7実MySQL6件、DN8別engine/本番Integrity、DN10実機・DN11探索と最終CIは未完。[進捗・証拠](evidence/CMP-261028-2304-l1r-normalizer.md)",
+          "label": "[登録PR #4211](https://github.com/kenta-0420/mannschaft/pull/4211)はmain反映済みの履歴。[実装PR #4352](https://github.com/kenta-0420/mannschaft/pull/4352)は記録時点Draft・未merge。初回1型は旧staticを互換委譲しDN1〜6の旧19green→全40の21 assertion red（compile成功）→40green/skip0。DN9実生成前後bytes一致は親合格。DN7実MySQL6件・DN8別engine/本番Integrity照合済み。固定実機source39a3のformal14は13pass/1fail＋契約誤期待修正o1の13+1分割証拠を採用。Card/権限差/実preview・PATCH・GET逆復元を局所採用。Core57b7のBackend/Frontend/E2Eはgreen、実行・cache等の資格は証拠文書に記載。新3住民は全login0・全員の認証後の目的達成未確認で停止、DN11未完。復元B3継続利用・専用runtime teardown、支援残務、最新main追従後の最終CI/出荷は未完。[進捗・証拠](evidence/CMP-261028-2304-l1r-normalizer.md)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "[登録PR #4211](https://github.com/kenta-0420/mannschaft/pull/4211)はmain反映済みの履歴。[実装PR #4352](https://github.com/kenta-0420/mannschaft/pull/4352)は記録時点Draft・未merge。初回1型は旧staticを互換委譲しDN1〜6の旧19green→全40の21 assertion red（compile成功）→40green/skip0。DN9実生成前後bytes一致は親合格。DN7実MySQL6件、DN8別engine/本番Integrity、DN10実機・DN11探索と最終CIは未完。[進捗・証拠](evidence/CMP-261028-2304-l1r-normalizer.md)"
+        "[登録PR #4211](https://github.com/kenta-0420/mannschaft/pull/4211)はmain反映済みの履歴。[実装PR #4352](https://github.com/kenta-0420/mannschaft/pull/4352)は記録時点Draft・未merge。初回1型は旧staticを互換委譲しDN1〜6の旧19green→全40の21 assertion red（compile成功）→40green/skip0。DN9実生成前後bytes一致は親合格。DN7実MySQL6件・DN8別engine/本番Integrity照合済み。固定実機source39a3のformal14は13pass/1fail＋契約誤期待修正o1の13+1分割証拠を採用。Card/権限差/実preview・PATCH・GET逆復元を局所採用。Core57b7のBackend/Frontend/E2Eはgreen、実行・cache等の資格は証拠文書に記載。新3住民は全login0・全員の認証後の目的達成未確認で停止、DN11未完。復元B3継続利用・専用runtime teardown、支援残務、最新main追従後の最終CI/出荷は未完。[進捗・証拠](evidence/CMP-261028-2304-l1r-normalizer.md)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -58176,30 +58770,44 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4211,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "台帳登録: CMP-261028-2304 L1-R返済レーン",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4211",
+          "updatedAt": "2026-10-28T14:37:55Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4214,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "feat: L1-R向けTransitionalBridge注釈を先行提供する",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4214",
+          "updatedAt": "2026-10-29T01:49:36Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4352,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "open",
+          "title": "リファクタ: L1-R 初回の名称正規化を組織ドメインへ返却",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4352",
+          "updatedAt": "2026-11-13T02:21:38Z",
+          "ci": {
+            "status": "success",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -58266,48 +58874,73 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 1036,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "feat(F10.7): 予約通知イベント — UserRoleRepository拡張/ReservationAdminNotificationEventListener",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/1036",
+          "updatedAt": "2026-05-25T14:23:24Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 1681,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: 予約リマインド実送信バッチを配線（F03.4 段階拡張 ⑥）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/1681",
+          "updatedAt": "2026-06-19T13:52:52Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 3721,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "closed",
+          "title": "fix(CMP-260822-1730): 仮予約失効を永続cursor・retry・UUIDv7で根治する",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3721",
+          "updatedAt": "2026-11-02T06:10:09Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4226,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 予約者向け通知の遷移先を slug 化 (CMP-261028-2328)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4226",
+          "updatedAt": "2026-10-30T07:01:47Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4237,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "試験追加: 予約者向け通知の遷移先 slug 化と緊急休業の件数表示の実機E2E (CMP-261028-2328)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4237",
+          "updatedAt": "2026-10-30T08:10:02Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -58359,12 +58992,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4221,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 緊急休業の一括送信で件数が表示されない不具合 (CMP-261028-2329)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4221",
+          "updatedAt": "2026-10-30T06:59:09Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -58496,40 +59134,45 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4218,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: FE の vue-i18n 系を更新し npm audit の high（@intlify/core）を根治する",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4218",
+          "updatedAt": "2026-10-29T05:41:51Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-261029-0620",
       "title": "プッシュ通知タップで遷移先 URL を読めない（Service Worker が action_url を読むが BE は actionUrl を送る）",
-      "status": "not-started",
-      "statusLabel": "P3 未着手",
+      "status": "done",
+      "statusLabel": "完了（2026-11-12）",
       "stage": "未設定",
       "priority": "未設定",
-      "taskPriority": "P3",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
       "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "プッシュ通知をタップすると通知の actionUrl へ遷移する。BE の送信ペイロード（NotificationDispatchService.java:333 付近、NotificationResponse.actionUrl）と frontend/public/sw-custom.js:33 の data.action_url のキー名を一致させ、SW の読み込み経路を含む回帰テストを先行させる",
+      "nextAction": "プッシュ通知をタップすると通知の actionUrl へ遷移する。BE の送信ペイロード（NotificationDispatchService.java:333 付近、NotificationResponse.actionUrl）と frontend/public/sw-custom.js:33 の data.action_url のキー名を一致させ、SW の読み込み経路を含む回帰テストを先行させる。範囲は BE の Push ペイロードを設計書の形に揃えることと、SW の結線（importScripts）と遷移先の安全な判定まで。購読導線は別行",
       "acceptance": [
-        "プッシュ通知をタップすると通知の actionUrl へ遷移する。BE の送信ペイロード（NotificationDispatchService.java:333 付近、NotificationResponse.actionUrl）と frontend/public/sw-custom.js:33 の data.action_url のキー名を一致させ、SW の読み込み経路を含む回帰テストを先行させる"
+        "プッシュ通知をタップすると通知の actionUrl へ遷移する。BE の送信ペイロード（NotificationDispatchService.java:333 付近、NotificationResponse.actionUrl）と frontend/public/sw-custom.js:33 の data.action_url のキー名を一致させ、SW の読み込み経路を含む回帰テストを先行させる。範囲は BE の Push ペイロードを設計書の形に揃えることと、SW の結線（importScripts）と遷移先の安全な判定まで。購読導線は別行"
       ],
       "blocker": "—",
       "issues": [
         {
-          "label": "CMP-261028-2328 の軍議検分（Codex、2026-10-29）で発見。未着手",
+          "label": "CMP-261028-2328 の軍議検分（Codex、2026-10-29）で発見。未着手 PR [#4461](https://github.com/kenta-0420/mannschaft/pull/4461) マージ済み。実機: 本番ビルドの SW に importScripts('/sw-custom.js')、CDP push で通知表示・data.action_url 一致（AC-14/14b）。AC-14c は合成イベントでのみ確認。AC-14d（タブ無しでの通知クリック）は自動化できなかったため、2026-11-12 にマスターが手で確認した（下記）。SSR アプリ画面からの SW 登録は nuxi build のサーバー段が停止して未実施（静的配信で代替）。派生起票: CMP-261111-2337、CMP-261112-1647、CMP-261112-1648、CMP-261112-1649（アリシゼーションで発見） 2026-11-12 マスター確認（MC-261112-1443）: 普段の Chrome（実機・本物の OS 通知クリック）で、本番ビルド（`.output/public`、sw.js に importScripts(\"/sw-custom.js\")）を localhost:3005 で静的配信して確認した。DevTools の Push ボタンが表示されなかったため、ページの Console から `registration.showNotification` で通知を出した（オプションは sw-custom.js の push ハンドラと同形: data.action_url='/teams/fc-u-18/schedules/10'、actions open/dismiss）。AC-14c（同一オリジンのタブを開いたまま通知を押す）は同じタブが /teams/fc-u-18/schedules/10 へ遷移し合格。AC-14d（タブを閉じて通知センターから押す）は新しいタブで同 URL が開き合格。push 受信から表示まで（AC-14b）は 2026-11-11 の実機E2E で確認済み。未実施として残る: SSR のアプリ画面からの SW 登録（nuxi build のサーバー段が停止したため静的配信で代替）。[完了証拠](evidence/CMP-261029-0620.json)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "CMP-261028-2328 の軍議検分（Codex、2026-10-29）で発見。未着手"
+        "CMP-261028-2328 の軍議検分（Codex、2026-10-29）で発見。未着手 PR [#4461](https://github.com/kenta-0420/mannschaft/pull/4461) マージ済み。実機: 本番ビルドの SW に importScripts('/sw-custom.js')、CDP push で通知表示・data.action_url 一致（AC-14/14b）。AC-14c は合成イベントでのみ確認。AC-14d（タブ無しでの通知クリック）は自動化できなかったため、2026-11-12 にマスターが手で確認した（下記）。SSR アプリ画面からの SW 登録は nuxi build のサーバー段が停止して未実施（静的配信で代替）。派生起票: CMP-261111-2337、CMP-261112-1647、CMP-261112-1648、CMP-261112-1649（アリシゼーションで発見） 2026-11-12 マスター確認（MC-261112-1443）: 普段の Chrome（実機・本物の OS 通知クリック）で、本番ビルド（`.output/public`、sw.js に importScripts(\"/sw-custom.js\")）を localhost:3005 で静的配信して確認した。DevTools の Push ボタンが表示されなかったため、ページの Console から `registration.showNotification` で通知を出した（オプションは sw-custom.js の push ハンドラと同形: data.action_url='/teams/fc-u-18/schedules/10'、actions open/dismiss）。AC-14c（同一オリジンのタブを開いたまま通知を押す）は同じタブが /teams/fc-u-18/schedules/10 へ遷移し合格。AC-14d（タブを閉じて通知センターから押す）は新しいタブで同 URL が開き合格。push 受信から表示まで（AC-14b）は 2026-11-11 の実機E2E で確認済み。未実施として残る: SSR のアプリ画面からの SW 登録（nuxi build のサーバー段が停止したため静的配信で代替）。[完了証拠](evidence/CMP-261029-0620.json)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -58555,22 +59198,43 @@ window.BETA_INVENTORY_DATA = {
         "js",
         "data",
         "action_url",
-        "SW"
+        "SW",
+        "BE",
+        "Push",
+        "SW",
+        "importScripts"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        4461
+      ],
+      "github": [
+        {
+          "number": 4461,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261029-0620 プッシュ通知をタップしても遷移しない不具合を根治",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4461",
+          "updatedAt": "2026-11-10T23:59:07Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
     },
     {
       "id": "CMP-261030-0648",
       "title": "管理者向け予約通知・問い合わせ通知・業務アラートの actionUrl が数値 teamId になっている（CMP-261028-2328 からの切り出し）",
-      "status": "not-started",
-      "statusLabel": "P3 未着手",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
-      "taskPriority": "P3",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -58579,15 +59243,15 @@ window.BETA_INVENTORY_DATA = {
       "acceptance": [
         "ReservationAdminNotificationEventListener・InquiryChatEventListener・AdminBusinessAlertService（reservationsUrl と inquiryChannelUrl）の actionUrl を slug にする。TeamService はコンストラクタ注入とし、凍結ストアの既存違反の署名移行（件数は不変、新しいクラス対は 0、新旧の対応表を添える）を限定承認のうえで行う。全体の refreeze はしない。slug が解決できないときは `/notifications` にする。取得で例外が出ても通知を失わない。ReservationPendingExpireService:263 は #3721 の着地後に同じ型でそろえる。回帰テストを先に置く"
       ],
-      "blocker": "凍結ストア記録移行の限定承認",
+      "blocker": "凍結ストア記録移行の限定承認（2026-11-10 マスター承認（D-5 6行・D-3 4行の署名付け替えに限る。件数不変・新クラス対0・refreeze なし））",
       "issues": [
         {
-          "label": "PR #4226 の Codex 検分で、フィールド注入による回避は規約違反と指摘された。マスターの裁定で切り出した。",
+          "label": "PR #4226 の Codex 検分で、フィールド注入による回避は規約違反と指摘された。マスターの裁定で切り出した。 本体 [#4457](https://github.com/kenta-0420/mannschaft/pull/4457)、PendingExpire [#4466](https://github.com/kenta-0420/mannschaft/pull/4466)、[完了証拠](evidence/CMP-261030-0648.json)、[実機・探索記録](evidence/CMP-261030-0648.md)。実機E2E: ADMIN が予約通知から /teams/{slug}/reservations、問い合わせ通知から /teams/{slug}/chat?channel={id}（チャンネル選択状態）に着き、業務アラートのボタンも同じ。PendingExpire は失効バッチ実行で slug URL。MEMBER・部外者の URL 直打ちで漏れなし。未実施: 承認待ち予約（MANUAL）の通知（承認制の枠を用意できなかった）。アリシゼーション実施。派生起票: CMP-261111-2336・CMP-261111-2339",
           "state": "unknown"
         }
       ],
       "prs": [
-        "PR #4226 の Codex 検分で、フィールド注入による回避は規約違反と指摘された。マスターの裁定で切り出した。"
+        "PR #4226 の Codex 検分で、フィールド注入による回避は規約違反と指摘された。マスターの裁定で切り出した。 本体 [#4457](https://github.com/kenta-0420/mannschaft/pull/4457)、PendingExpire [#4466](https://github.com/kenta-0420/mannschaft/pull/4466)、[完了証拠](evidence/CMP-261030-0648.json)、[実機・探索記録](evidence/CMP-261030-0648.md)。実機E2E: ADMIN が予約通知から /teams/{slug}/reservations、問い合わせ通知から /teams/{slug}/chat?channel={id}（チャンネル選択状態）に着き、業務アラートのボタンも同じ。PendingExpire は失効バッチ実行で slug URL。MEMBER・部外者の URL 直打ちで漏れなし。未実施: 承認待ち予約（MANUAL）の通知（承認制の枠を用意できなかった）。アリシゼーション実施。派生起票: CMP-261111-2336・CMP-261111-2339"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -58612,30 +59276,70 @@ window.BETA_INVENTORY_DATA = {
         "ReservationPendingExpireService"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
       "githubRefs": [
         3721,
-        4226
+        4226,
+        4457,
+        4466
       ],
       "github": [
         {
           "number": 3721,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "closed",
+          "title": "fix(CMP-260822-1730): 仮予約失効を永続cursor・retry・UUIDv7で根治する",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3721",
+          "updatedAt": "2026-11-02T06:10:09Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4226,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 予約者向け通知の遷移先を slug 化 (CMP-261028-2328)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4226",
+          "updatedAt": "2026-10-30T07:01:47Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 4457,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261030-0648 管理者向け予約通知・問い合わせ通知・業務アラートの遷移先を slug にする",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4457",
+          "updatedAt": "2026-11-10T19:52:02Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 4466,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261030-0648 仮押さえ失効通知の遷移先を slug にする",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4466",
+          "updatedAt": "2026-11-11T06:27:32Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -58684,12 +59388,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4243,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 緊急休業の一括送信に休業理由の入力欄を追加し、手入力・カスタムの400を解消（CMP-261030-0649）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4243",
+          "updatedAt": "2026-10-30T21:59:35Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -58747,12 +59456,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4247,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 緊急休業の患者名が空欄になる不具合を解消 (CMP-261030-0650)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4247",
+          "updatedAt": "2026-11-03T09:55:02Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -58805,32 +59519,42 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4261,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 緊急休業の送信履歴・プレビュー表を390pxで崩さず、件数タグをi18n化 (CMP-261030-0651)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4261",
+          "updatedAt": "2026-11-03T10:31:07Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4273,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "テスト: 緊急休業画面の不具合3件の実機E2E と結果報告 (CMP-261030-0651)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4273",
+          "updatedAt": "2026-11-03T21:28:24Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-261030-0652",
       "title": "既読の通知をもう一度クリックすると `POST /notifications/{id}/read` が 409 になり、コンソールにエラーが出る（ALIC-D）",
-      "status": "not-started",
-      "statusLabel": "P5 未着手",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
-      "taskPriority": "P5",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -58842,12 +59566,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "WidgetNotices.vue の onMarkRead が、既読でも POST している。BE の NotificationService:187 は ALREADY_READ（INFO）を投げる。殿が実機で 409 を再現した。",
+          "label": "WidgetNotices.vue の onMarkRead が、既読でも POST している。BE の NotificationService:187 は ALREADY_READ（INFO）を投げる。殿が実機で 409 を再現した。 実装PR [#4450](https://github.com/kenta-0420/mannschaft/pull/4450)、[完了証拠](evidence/CMP-261030-0652.json)、[実機・探索記録](evidence/CMP-261030-0652.md)。実機E2E: 既読通知の2回目クリックで POST が出ず 409 にならず Console error 0（通知一覧・WidgetNotices）。未実施: 「すべて」で既読にしてからフォルダタブへ移る確認（テストチームが既定フォルダに未収容で条件を作れなかった）。アリシゼーション（WSL BE・住民3体）で新規欠陥なし",
           "state": "unknown"
         }
       ],
       "prs": [
-        "WidgetNotices.vue の onMarkRead が、既読でも POST している。BE の NotificationService:187 は ALREADY_READ（INFO）を投げる。殿が実機で 409 を再現した。"
+        "WidgetNotices.vue の onMarkRead が、既読でも POST している。BE の NotificationService:187 は ALREADY_READ（INFO）を投げる。殿が実機で 409 を再現した。 実装PR [#4450](https://github.com/kenta-0420/mannschaft/pull/4450)、[完了証拠](evidence/CMP-261030-0652.json)、[実機・探索記録](evidence/CMP-261030-0652.md)。実機E2E: 既読通知の2回目クリックで POST が出ず 409 にならず Console error 0（通知一覧・WidgetNotices）。未実施: 「すべて」で既読にしてからフォルダタブへ移る確認（テストチームが既定フォルダに未収容で条件を作れなかった）。アリシゼーション（WSL BE・住民3体）で新規欠陥なし"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -58865,10 +59589,27 @@ window.BETA_INVENTORY_DATA = {
         "BE"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        4450
+      ],
+      "github": [
+        {
+          "number": 4450,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261030-0652 既読通知の再クリックで 409 にならないよう冪等化",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4450",
+          "updatedAt": "2026-11-10T14:43:37Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
     },
     {
       "id": "CMP-261101-2005",
@@ -58965,12 +59706,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4240,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 組織告知一覧が宛先外の人に宛先指定の告知を出す（CMP-261011-0035）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4240",
+          "updatedAt": "2026-11-01T00:03:28Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -59208,12 +59954,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4257,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: カレンダー週グリッドの秋の重複時刻を実行日に依存せず固定（CMP-261101-1404）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4257",
+          "updatedAt": "2026-11-02T01:08:34Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -59269,12 +60020,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4250,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 村の入村の並行実行で現役所属一意と100村上限を守る（CMP-260827-1808）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4250",
+          "updatedAt": "2026-11-03T08:43:25Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -59339,12 +60095,13 @@ window.BETA_INVENTORY_DATA = {
         {
           "number": 3689,
           "kind": "pull_request",
-          "state": "open",
+          "state": "closed",
           "title": "Bump com.tngtech.archunit:archunit-junit5 from 1.3.0 to 1.5.1 in /backend",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3689",
-          "updatedAt": "2026-10-19T07:15:08Z",
+          "updatedAt": "2026-10-28T09:34:13Z",
           "ci": {
-            "status": "success",
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
@@ -59352,24 +60109,30 @@ window.BETA_INVENTORY_DATA = {
         {
           "number": 3692,
           "kind": "pull_request",
-          "state": "open",
+          "state": "closed",
           "title": "Bump org.apache.pdfbox:pdfbox from 3.0.3 to 3.0.8 in /backend",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3692",
-          "updatedAt": "2026-10-19T07:15:10Z",
+          "updatedAt": "2026-10-28T09:56:18Z",
           "ci": {
-            "status": "success",
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
         },
         {
           "number": 3696,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "closed",
+          "title": "Bump software.amazon.awssdk:bom from 2.29.45 to 2.56.0 in /backend",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3696",
+          "updatedAt": "2026-10-28T10:05:55Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -59471,12 +60234,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4257,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: カレンダー週グリッドの秋の重複時刻を実行日に依存せず固定（CMP-261101-1404）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4257",
+          "updatedAt": "2026-11-02T01:08:34Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -59580,21 +60348,31 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4246,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: コルクボードの存在オラクルを一掃（CMP-260820-1422 残件）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4246",
+          "updatedAt": "2026-11-01T05:09:18Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4252,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 存在オラクルの本文正規化（越境応答を不在と完全一致）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4252",
+          "updatedAt": "2026-11-02T06:09:22Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -59649,21 +60427,31 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4246,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: コルクボードの存在オラクルを一掃（CMP-260820-1422 残件）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4246",
+          "updatedAt": "2026-11-01T05:09:18Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4252,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 存在オラクルの本文正規化（越境応答を不在と完全一致）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4252",
+          "updatedAt": "2026-11-02T06:09:22Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -59733,12 +60521,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4268,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: Flyway実スキーマからER図を自動生成しCIで再生成漏れを検出 (CMP-261103-1940)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4268",
+          "updatedAt": "2026-11-04T06:12:01Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -59790,39 +60583,59 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4281,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 緊急休業の一括送信で連打による多重送信を防ぐ FE (CMP-261104-0334)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4281",
+          "updatedAt": "2026-11-04T16:12:51Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4290,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: 臨時休業通知送信の冪等性（Idempotency-Key）BE (CMP-261104-0334)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4290",
+          "updatedAt": "2026-11-08T07:26:56Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4404,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "テスト: 緊急休業画面の確定不備4件の実機E2E (CMP-261104-0334)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4404",
+          "updatedAt": "2026-11-08T11:47:03Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4406,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "文書: アリシゼーション run-20261108 の確定不備と判断保留16行を台帳に起票",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4406",
+          "updatedAt": "2026-11-08T11:03:48Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -59872,21 +60685,31 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4292,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 日時整形の共通関数をロケール対応にし緊急休業の日付直書きを廃止 (CMP-261104-0335)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4292",
+          "updatedAt": "2026-11-05T13:12:51Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4404,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "テスト: 緊急休業画面の確定不備4件の実機E2E (CMP-261104-0334)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4404",
+          "updatedAt": "2026-11-08T11:47:03Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -59935,21 +60758,31 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4313,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 緊急休業の履歴・プレビューを md 未満でカード表示 (CMP-261104-0336)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4313",
+          "updatedAt": "2026-11-06T18:26:05Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4404,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "テスト: 緊急休業画面の確定不備4件の実機E2E (CMP-261104-0334)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4404",
+          "updatedAt": "2026-11-08T11:47:03Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -60005,39 +60838,59 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4286,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: STOMP の Cookie 認証ハンドシェイク採用と拒否理由 x-error-code（BE）(CMP-261104-0337)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4286",
+          "updatedAt": "2026-11-05T07:36:55Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4309,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: STOMP の空 Bearer 廃止と x-error-code による拒否・未認証の扱い（FE）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4309",
+          "updatedAt": "2026-11-05T23:47:09Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4327,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "試験修正: STOMP 拒否試験の後片付けで閉じたセッションへの DISCONNECT 競合を解消 (CMP-261104-0337)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4327",
+          "updatedAt": "2026-11-06T21:21:15Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4404,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "テスト: 緊急休業画面の確定不備4件の実機E2E (CMP-261104-0334)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4404",
+          "updatedAt": "2026-11-08T11:47:03Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -60098,11 +60951,11 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4270,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
+          "kind": "issue",
+          "state": "open",
+          "title": "N+1 解消戦役（CMP-261103-1225）正本",
+          "url": "https://github.com/kenta-0420/mannschaft/issues/4270",
+          "updatedAt": "2026-11-03T12:26:58Z",
           "ci": null
         }
       ]
@@ -60219,12 +61072,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 662,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "F17 Phase1-FE 第三陣: 村詳細+メンバー+井戸端+ピン (FE4/FE5/FE6/FE8)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/662",
+          "updatedAt": "2026-05-15T08:31:30Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 3590,
@@ -60297,12 +61155,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 628,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "F17 Phase1 第二陣: 村CRUD + メンバーシップ + ニックネーム + 作成申請 (B2-B5 統合)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/628",
+          "updatedAt": "2026-05-14T13:14:53Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -60511,12 +61374,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3835,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: シフト勤務希望の並行保存・自己審査禁止・変更依頼受付期間・依頼者名・枠移動API (CMP-261010-1432 BE)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3835",
+          "updatedAt": "2026-10-13T15:22:25Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -60580,12 +61448,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 2268,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "セキュリティ(認可根治 Wave2B): equipmentドメイン全体にscope認可",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2268",
+          "updatedAt": "2026-07-15T13:26:22Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -60684,12 +61557,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4298,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: E-R図の同一テーブル自己参照を表で全件示す (CMP-261104-2256)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4298",
+          "updatedAt": "2026-11-05T02:09:47Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -60753,28 +61631,33 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-27T05:08:11Z",
+          "updatedAt": "2026-11-12T23:49:00Z",
           "ci": null
         },
         {
           "number": 4300,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "整備: ArchUnit上限とshard重みを週次締めで更新",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4300",
+          "updatedAt": "2026-11-05T04:35:56Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-261105-1507",
       "title": "N+1 戦役（CMP-261103-1225）Phase1 の実機E2E・アリシゼーションで見つかった既存不具合6件の修正",
-      "status": "working",
-      "statusLabel": "P2 実装中",
+      "status": "done",
+      "statusLabel": "完了（2026-11-13）",
       "stage": "未設定",
       "priority": "未設定",
-      "taskPriority": "P2",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -60786,12 +61669,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "発見元は PR #4302（docs/evidence/CMP-261103-1225/phase1-real-e2e.md）。マージ済み（すべて MERGED）: #4306（①⑤⑥ プロジェクト画面）、#4311（② チャットの同秒の順序）、#4324（③④ 時間割の学期）、#4343（学期画面のエラー表示）、#4355（マイルストーンの保存・プロジェクト画面の多言語化）、#4358（チームの学期・時間割をチーム単独で管理）。実機E2E の証拠 PR #4341 は未マージ。残件: チャットの存在秘匿・本人の編集削除・既読バッジ・多言語化（ブランチ fix/cmp-261105-1507-chat-alic、PR 未作成、D-3T 対応のため Facade 化中）。チャットの PR が着地するまで進行中",
+          "label": "修正 PR（すべて MERGED）: #4305 #4306 #4311 #4324 #4343 #4355 #4358 #4375 #4434 #4436 #4438 #4486。実機・証跡: #4341 #4429 #4485。台帳更新: #4372。最終実機（2026-11-13、BE は main 1e17bf78、検証 BE :8081 / FE :3017）: playwright-cmp1507 18件すべて緑、playwright-n1p1 緑。アリシゼーション（2026-11-13、住民3体: 管理者・メンバー・他組織）で確定した欠陥3件（ハンドル未発見で落ちる・送信でプレビューが更新されない・DM 開始後に DM が開かず直前の部屋へ誤送信）を #4486 で修正。他組織からの覗き見は 403/404 で存在も漏れないことを確認。別件起票: CMP-261113-0110 CMP-261113-0111 CMP-261113-0112 CMP-261113-0113 CMP-261113-0114 CMP-261113-0115。[完了証拠](evidence/CMP-261105-1507.json)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "発見元は PR #4302（docs/evidence/CMP-261103-1225/phase1-real-e2e.md）。マージ済み（すべて MERGED）: #4306（①⑤⑥ プロジェクト画面）、#4311（② チャットの同秒の順序）、#4324（③④ 時間割の学期）、#4343（学期画面のエラー表示）、#4355（マイルストーンの保存・プロジェクト画面の多言語化）、#4358（チームの学期・時間割をチーム単独で管理）。実機E2E の証拠 PR #4341 は未マージ。残件: チャットの存在秘匿・本人の編集削除・既読バッジ・多言語化（ブランチ fix/cmp-261105-1507-chat-alic、PR 未作成、D-3T 対応のため Facade 化中）。チャットの PR が着地するまで進行中"
+        "修正 PR（すべて MERGED）: #4305 #4306 #4311 #4324 #4343 #4355 #4358 #4375 #4434 #4436 #4438 #4486。実機・証跡: #4341 #4429 #4485。台帳更新: #4372。最終実機（2026-11-13、BE は main 1e17bf78、検証 BE :8081 / FE :3017）: playwright-cmp1507 18件すべて緑、playwright-n1p1 緑。アリシゼーション（2026-11-13、住民3体: 管理者・メンバー・他組織）で確定した欠陥3件（ハンドル未発見で落ちる・送信でプレビューが更新されない・DM 開始後に DM が開かず直前の部屋へ誤送信）を #4486 で修正。他組織からの覗き見は 403/404 で存在も漏れないことを確認。別件起票: CMP-261113-0110 CMP-261113-0111 CMP-261113-0112 CMP-261113-0113 CMP-261113-0114 CMP-261113-0115。[完了証拠](evidence/CMP-261105-1507.json)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -60813,90 +61696,250 @@ window.BETA_INVENTORY_DATA = {
         "JSON"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
       "githubRefs": [
-        4302,
+        4305,
         4306,
         4311,
         4324,
         4341,
         4343,
         4355,
-        4358
+        4358,
+        4372,
+        4375,
+        4429,
+        4434,
+        4436,
+        4438,
+        4485,
+        4486
       ],
       "github": [
         {
-          "number": 4302,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "number": 4305,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "台帳: CMP-261105-1507 N+1戦役Phase1発見の既存不具合6件を追加",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4305",
+          "updatedAt": "2026-11-05T07:08:42Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4306,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: プロジェクト画面の進捗率100倍・関連タスクJSON表示・マイルストーン件数 (CMP-261105-1507)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4306",
+          "updatedAt": "2026-11-05T16:51:23Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4311,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 同秒のチャットメッセージの並びを id で確定 (CMP-261105-1507)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4311",
+          "updatedAt": "2026-11-06T10:12:44Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4324,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 時間割の学期APIの500を解消 (CMP-261105-1507)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4324",
+          "updatedAt": "2026-11-06T00:16:35Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4341,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "試験: 既存不具合6件の修正を実機E2Eで確認する (CMP-261105-1507)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4341",
+          "updatedAt": "2026-11-07T14:30:55Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4343,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261105-1507 学期画面のエラー表示（必須検証・409文言・翻訳キー）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4343",
+          "updatedAt": "2026-11-06T23:33:12Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4355,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261105-1507 マイルストーンの保存とプロジェクト画面の多言語化",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4355",
+          "updatedAt": "2026-11-07T03:39:24Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4358,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261105-1507 チームの学期・時間割をチーム単独で管理できるようにする",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4358",
+          "updatedAt": "2026-11-07T06:59:49Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 4372,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "文書: CMP-261105-1507 task-list の進捗更新と派生残件の起票",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4372",
+          "updatedAt": "2026-11-07T12:51:30Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 4375,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261105-1507 チャットの存在隠蔽・本人の編集削除・既読バッジ・多言語化",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4375",
+          "updatedAt": "2026-11-07T22:50:18Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 4429,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "試験: CMP-261105-1507 最新 main での実機E2E 再確認",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4429",
+          "updatedAt": "2026-11-09T13:35:26Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 4434,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261105-1507 DM の開始窓口の不一致と Zimmer 招待の候補",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4434",
+          "updatedAt": "2026-11-09T15:28:21Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 4436,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261105-1507 学期の削除の行き止まり・学期名の欠落・時間割とマイルストーンのエラー表示",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4436",
+          "updatedAt": "2026-11-09T22:45:25Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 4438,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261105-1507 チームの Zimmer 作成の項目不一致と部屋一覧プレビューの更新漏れ",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4438",
+          "updatedAt": "2026-11-10T02:57:24Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 4485,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "試験: CMP-261105-1507 実機 spec を #4436 の学期仕様とチャット画面に追従させる",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4485",
+          "updatedAt": "2026-11-12T17:07:31Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 4486,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261105-1507 DM 開始後に DM が開かない・送信でプレビューが更新されない・ハンドル未発見で落ちる",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4486",
+          "updatedAt": "2026-11-12T17:07:30Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -60953,12 +61996,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4310,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "台帳: 優先度 P1〜P5 を導入し状態列の先頭に必須化 (CMP-261106-0049)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4310",
+          "updatedAt": "2026-11-06T02:00:53Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -61013,12 +62061,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4353,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "牧場の承認済み16種・3段階・4外見を開発カタログへ組み込む",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4353",
+          "updatedAt": "2026-11-07T21:01:52Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -61070,12 +62123,16 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3644,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "open",
+          "title": "お気に入りのTEAM・ORGANIZATION同ID混線と詳細URLを修正",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3644",
+          "updatedAt": "2026-11-13T06:44:49Z",
+          "ci": {
+            "status": "success",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -61127,39 +62184,59 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4290,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: 臨時休業通知送信の冪等性（Idempotency-Key）BE (CMP-261104-0334)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4290",
+          "updatedAt": "2026-11-08T07:26:56Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4363,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "台帳: CMP-261107-0740 LoyaltyPointsWriterIT 不安定さの根治を登録",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4363",
+          "updatedAt": "2026-11-07T08:00:35Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4364,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261107-0740 LoyaltyPointsWriterIT 200並列試験の接続枯渇を根治",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4364",
+          "updatedAt": "2026-11-07T12:22:55Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4392,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: LoyaltyPointsWriterIT の並列試験が止まるとCI打ち切りまで待つ欠陥を根治（CMP-261107-0740）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4392",
+          "updatedAt": "2026-11-08T04:25:25Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -61272,21 +62349,31 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4355,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261105-1507 マイルストーンの保存とプロジェクト画面の多言語化",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4355",
+          "updatedAt": "2026-11-07T03:39:24Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4358,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261105-1507 チームの学期・時間割をチーム単独で管理できるようにする",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4358",
+          "updatedAt": "2026-11-07T06:59:49Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -61548,21 +62635,31 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 206,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "タイムラインダイジェスト・翻訳管理ページ追加（G3）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/206",
+          "updatedAt": "2026-05-08T12:32:36Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 2634,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "テスト追加(日時): ピッカーTZずれと契約不整合の実機E2E — 非JSTプロフィールでの1日ずれ解消を実証（Issue #2508 Phase 2）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2634",
+          "updatedAt": "2026-08-05T19:37:24Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -61657,12 +62754,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4400,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "文書更新: 診断64コードと恐竜16種4外見の対応を確定",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4400",
+          "updatedAt": "2026-11-08T07:47:34Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -62215,12 +63317,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4392,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: LoyaltyPointsWriterIT の並列試験が止まるとCI打ち切りまで待つ欠陥を根治（CMP-261107-0740）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4392",
+          "updatedAt": "2026-11-08T04:25:25Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -62274,21 +63381,31 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4290,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: 臨時休業通知送信の冪等性（Idempotency-Key）BE (CMP-261104-0334)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4290",
+          "updatedAt": "2026-11-08T07:26:56Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 4313,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 緊急休業の履歴・プレビューを md 未満でカード表示 (CMP-261104-0336)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4313",
+          "updatedAt": "2026-11-06T18:26:05Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -62340,12 +63457,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4290,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: 臨時休業通知送信の冪等性（Idempotency-Key）BE (CMP-261104-0334)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4290",
+          "updatedAt": "2026-11-08T07:26:56Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -62446,12 +63568,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4392,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: LoyaltyPointsWriterIT の並列試験が止まるとCI打ち切りまで待つ欠陥を根治（CMP-261107-0740）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4392",
+          "updatedAt": "2026-11-08T04:25:25Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -62520,7 +63647,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-          "updatedAt": "2026-10-27T05:08:11Z",
+          "updatedAt": "2026-11-12T23:49:00Z",
           "ci": null
         }
       ]
@@ -62572,12 +63699,2220 @@ window.BETA_INVENTORY_DATA = {
       ],
       "githubRefs": [],
       "github": []
+    },
+    {
+      "id": "CMP-261110-0931",
+      "title": "Web Push の購読導線が FE に無い。`PushManager.subscribe` も `Notification.requestPermission` も呼ばれておらず、`useNotificationApi.ts` の `registerPushSubscription` の呼び出しはゼロで、VAPID 公開鍵を FE に渡す API も無い。あわせて `unregisterPushSubscription`（`useNotificationApi.ts:166`）は endpoint を付けずに DELETE し、`PushSubscriptionController.java:62` は endpoint 必須なので 400 になる",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "利用者が設定画面などから購読・解除でき、解除が 2xx になる。VAPID 公開鍵を FE へ渡す手段を用意する",
+      "acceptance": [
+        "利用者が設定画面などから購読・解除でき、解除が 2xx になる。VAPID 公開鍵を FE へ渡す手段を用意する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261029-0620 の軍議（2026-11-10）で切り出し。CMP-261029-0620 の範囲は BE ペイロードと SW 結線までで、購読導線は別行とした",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261029-0620 の軍議（2026-11-10）で切り出し。CMP-261029-0620 の範囲は BE ペイロードと SW 結線までで、購読導線は別行とした"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "Web",
+        "Push",
+        "FE",
+        "PushManager",
+        "subscribe",
+        "Notification",
+        "requestPermission",
+        "useNotificationApi",
+        "ts",
+        "registerPushSubscription",
+        "VAPID",
+        "FE",
+        "API",
+        "unregisterPushSubscription",
+        "useNotificationApi",
+        "ts",
+        "endpoint",
+        "DELETE",
+        "PushSubscriptionController",
+        "java",
+        "endpoint",
+        "xx",
+        "VAPID",
+        "FE"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261110-0932",
+      "title": "Web Push の表示が未実装: tag（F04.3 は `TYPE:SOURCE:id`。同じ tag は上書き表示）と URGENT の vibrate（F04.3:1368）",
+      "status": "not-started",
+      "statusLabel": "P5 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P5",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "通知の tag を `TYPE:SOURCE:id` で付け、同じ tag は上書き表示になる。URGENT では vibrate する",
+      "acceptance": [
+        "通知の tag を `TYPE:SOURCE:id` で付け、同じ tag は上書き表示になる。URGENT では vibrate する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261029-0620 の軍議（2026-11-10）で切り出し",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261029-0620 の軍議（2026-11-10）で切り出し"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "Web",
+        "Push",
+        "tag",
+        "F04",
+        "TYPE",
+        "SOURCE",
+        "id",
+        "tag",
+        "URGENT",
+        "vibrate",
+        "F04",
+        "tag",
+        "TYPE",
+        "SOURCE",
+        "id",
+        "tag",
+        "URGENT",
+        "vibrate"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261110-0933",
+      "title": "SW の Background Sync 処理（`sw-custom.js:50-151`）が未結線のまま残っており、トークンの取得が廃止済みの localStorage 前提（`useAuthStore.ts:31`）になっている。ページ側の `useOfflineSync` と役割が重なる",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "使うなら作り直して結線し、使わないなら削除する",
+      "acceptance": [
+        "使うなら作り直して結線し、使わないなら削除する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261029-0620 の軍議（2026-11-10）で切り出し",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261029-0620 の軍議（2026-11-10）で切り出し"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "SW",
+        "Background",
+        "Sync",
+        "sw-custom",
+        "js",
+        "localStorage",
+        "useAuthStore",
+        "ts",
+        "useOfflineSync"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261110-0934",
+      "title": "通知の作成（`NotificationService.createNotification`）で、外部 URL の actionUrl を拒否していない（F04.3:1536 は BE で拒否と定める）",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "外部 URL の actionUrl を BE で拒否し、回帰テストを置く",
+      "acceptance": [
+        "外部 URL の actionUrl を BE で拒否し、回帰テストを置く"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261029-0620 の軍議（2026-11-10）で切り出し",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261029-0620 の軍議（2026-11-10）で切り出し"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "NotificationService",
+        "createNotification",
+        "URL",
+        "actionUrl",
+        "F04",
+        "BE",
+        "URL",
+        "actionUrl",
+        "BE"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261110-0935",
+      "title": "数値 teamId の URL が、CMP-261030-0648 の範囲外に約15箇所残っている: `EventAdvanceNoticeNotificationListener.java:136,161`、`EventDismissalNotificationListener.java:186`、`CareEventNotificationService.java:286`、`EventEndReminderBatchService.java:389`、`MemberInfoUpdateReminderNotificationListener.java:124`、`TeamMemberTermReminderBatch.java:120`、`TeamFriendNotificationListener.java:207`、`TeamSlotNoteNotifyListener.java:187`、`PaymentRequestService.java:57`、`TicketBookService.java:130-131`、`KbPageFavoriteResolver.java:68`、`TeamFavoriteResolver.java:81`（CMP-260916-1042 と関係）、`BlogFeedService.java:115,128`",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "slug にする（CMP-261030-0648 と同じ型）",
+      "acceptance": [
+        "slug にする（CMP-261030-0648 と同じ型）"
+      ],
+      "blocker": "CMP-261030-0648",
+      "issues": [
+        {
+          "label": "CMP-261030-0648 の軍議（2026-11-10）で切り出し",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261030-0648 の軍議（2026-11-10）で切り出し"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "teamId",
+        "URL",
+        "CMP-261030-0648",
+        "EventAdvanceNoticeNotificationListener",
+        "java",
+        "EventDismissalNotificationListener",
+        "java",
+        "CareEventNotificationService",
+        "java",
+        "EventEndReminderBatchService",
+        "java",
+        "MemberInfoUpdateReminderNotificationListener",
+        "java",
+        "TeamMemberTermReminderBatch",
+        "java",
+        "TeamFriendNotificationListener",
+        "java",
+        "TeamSlotNoteNotifyListener",
+        "java",
+        "PaymentRequestService",
+        "java",
+        "TicketBookService",
+        "java",
+        "KbPageFavoriteResolver",
+        "java",
+        "TeamFavoriteResolver",
+        "java",
+        "CMP-260916-1042",
+        "BlogFeedService",
+        "java",
+        "slug",
+        "CMP-261030-0648"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261110-0936",
+      "title": "予約通知の手本 `ReservationForceCancelNotificationEventListener` と `ReservationWaitlistNotificationEventListener` は、slug の取得が例外のとき通知そのものを送らない（ForceCancel のテスト :209-212 がそれを固定している）。CMP-261030-0648 は「例外でも `/notifications` で送る」にしたので、揃え直す",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "例外でも `/notifications` で通知を送る形にそろえ、テストの固定も改める",
+      "acceptance": [
+        "例外でも `/notifications` で通知を送る形にそろえ、テストの固定も改める"
+      ],
+      "blocker": "CMP-261030-0648",
+      "issues": [
+        {
+          "label": "CMP-261030-0648 の軍議（2026-11-10）で切り出し",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261030-0648 の軍議（2026-11-10）で切り出し"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "ReservationForceCancelNotificationEventListener",
+        "ReservationWaitlistNotificationEventListener",
+        "slug",
+        "ForceCancel",
+        "CMP-261030-0648",
+        "notifications",
+        "notifications"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261110-0937",
+      "title": "`POST /notifications/{id}/unread` が、既に未読のとき ALREADY_UNREAD（409）を返す（F04.3:409 は 409 と明記）。状態が古いと NotificationList の onToggleRead で 409 とエラートーストが出る",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "冪等にするかを決め、設計書と揃える",
+      "acceptance": [
+        "冪等にするかを決め、設計書と揃える"
+      ],
+      "blocker": "CMP-261030-0652",
+      "issues": [
+        {
+          "label": "CMP-261030-0652 の軍議（2026-11-10）で切り出し",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261030-0652 の軍議（2026-11-10）で切り出し"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "POST",
+        "notifications",
+        "id",
+        "unread",
+        "ALREADY_UNREAD",
+        "F04",
+        "NotificationList",
+        "onToggleRead"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261110-0938",
+      "title": "WidgetNotices で既読にしても、ベルの未読バッジ（`useState('badge:notifCount')`）が減らない。onMarkAllRead は今のタブのキャッシュしか書き換えない",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "WidgetNotices で既読にするとベルの未読バッジも減る",
+      "acceptance": [
+        "WidgetNotices で既読にするとベルの未読バッジも減る"
+      ],
+      "blocker": "CMP-261030-0652",
+      "issues": [
+        {
+          "label": "CMP-261030-0652 の軍議（2026-11-10）で切り出し",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261030-0652 の軍議（2026-11-10）で切り出し"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "WidgetNotices",
+        "useState",
+        "badge",
+        "notifCount",
+        "onMarkAllRead",
+        "WidgetNotices"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261110-2011",
+      "title": "WebSocket/STOMP拒否時のERROR送信と切断の競合を修正",
+      "status": "working",
+      "statusLabel": "P2 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "正常送信経路ではERROR実送信後に切断し、送信停滞時は既存sendTimeLimitに基づく期限でcloseを試行する。fatal後の後続・待機フレームを業務へ通さずDISCONNECT清掃を維持する。既存認証・認可・両SockJS構成・制限を保ち、正式回帰・全CI・実機・独立3住民で確認する",
+      "acceptance": [
+        "正常送信経路ではERROR実送信後に切断し、送信停滞時は既存sendTimeLimitに基づく期限でcloseを試行する。fatal後の後続・待機フレームを業務へ通さずDISCONNECT清掃を維持する。既存認証・認可・両SockJS構成・制限を保ち、正式回帰・全CI・実機・独立3住民で確認する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "発見元CMP-261021-0017/L-SHIMEのCI run42722993345/a1。実Spring6.2.17で競合red、private試作21件greenは診断根拠。元CIの同並行順は未立証。製品実装・正式検証未実施、TaskList-onlyをmainへ先行登録する",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "発見元CMP-261021-0017/L-SHIMEのCI run42722993345/a1。実Spring6.2.17で競合red、private試作21件greenは診断根拠。元CIの同並行順は未立証。製品実装・正式検証未実施、TaskList-onlyをmainへ先行登録する"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "scope app。firstDuplicateNameNormalizer本体・既存6PRの差分、workflow・timeout・weights・freezeは変更しない"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "WebSocket",
+        "STOMP",
+        "ERROR",
+        "ERROR",
+        "sendTimeLimit",
+        "close",
+        "fatal",
+        "DISCONNECT",
+        "SockJS",
+        "CI"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261110-0427",
+      "title": "予約通知で枠タイトル未設定時に「nullが予約されました」と出る不具合の根治",
+      "status": "working",
+      "statusLabel": "P2 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "予約作成（AUTO/MANUAL）・確定・メンバーキャンセルの各通知経路で、枠 title が null/空/空白のときもフォールバック表示になり「null」が混ざらない。回帰テストで担保する",
+      "acceptance": [
+        "予約作成（AUTO/MANUAL）・確定・メンバーキャンセルの各通知経路で、枠 title が null/空/空白のときもフォールバック表示になり「null」が混ざらない。回帰テストで担保する"
+      ],
+      "blocker": "招待戦役のアリシゼーション（CMP-260826-1457 V9）",
+      "issues": [
+        {
+          "label": "PR #4460。ReservationAdminNotificationEventListenerTest, ReservationServiceTest, ReservationGroupServiceTest, ReservationReminderDispatchNotificationListenerTest, ReservationWaitlistNotificationEventListenerTest, ReservationForceCancelNotificationEventListenerTest",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #4460。ReservationAdminNotificationEventListenerTest, ReservationServiceTest, ReservationGroupServiceTest, ReservationReminderDispatchNotificationListenerTest, ReservationWaitlistNotificationEventListenerTest, ReservationForceCancelNotificationEventListenerTest"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "-"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "null",
+        "AUTO",
+        "MANUAL",
+        "title",
+        "null",
+        "null"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [
+        4460
+      ],
+      "github": [
+        {
+          "number": 4460,
+          "kind": "pull_request",
+          "state": "open",
+          "title": "修正: CMP-261110-0427 予約通知で枠タイトル未設定時に「nullが予約されました」と出る不具合の根治",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4460",
+          "updatedAt": "2026-11-10T21:38:38Z",
+          "ci": {
+            "status": "failure",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261110-0426",
+      "title": "招待画面の表示不備6件の根治（削除済みチーム名・未来の相対時刻・リンク行の識別・秘密ダイアログのEsc・モバイルの列重なり・フォルダ選択のはみ出し）",
+      "status": "done",
+      "statusLabel": "完了",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "削除済みチームの招待カードにフォールバック名が出る／未来時刻が「あと n 分/時間/日」と出る／招待リンク一覧に作成日時と再発行の案内が出る／秘密ダイアログが Esc・マスククリックで閉じない／390px で操作列が他列に重ならない／フォルダ選択が親からはみ出さない",
+      "acceptance": [
+        "削除済みチームの招待カードにフォールバック名が出る／未来時刻が「あと n 分/時間/日」と出る／招待リンク一覧に作成日時と再発行の案内が出る／秘密ダイアログが Esc・マスククリックで閉じない／390px で操作列が他列に重ならない／フォルダ選択が親からはみ出さない"
+      ],
+      "blocker": "CMP-260826-1457 のアリシゼーション（V1〜V5・V7）",
+      "issues": [
+        {
+          "label": "PR #4462（b02f82ceb8、2026-11-11 マージ）。単体テスト先行（red→green）。実機E2E 全 PASS・ロール横断 PASS・アリシゼーション実施済み（確定欠陥は CMP-261111-1429 へ起票）。[完了証拠](evidence/CMP-261110-0426.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #4462（b02f82ceb8、2026-11-11 マージ）。単体テスト先行（red→green）。実機E2E 全 PASS・ロール横断 PASS・アリシゼーション実施済み（確定欠陥は CMP-261111-1429 へ起票）。[完了証拠](evidence/CMP-261110-0426.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "Esc",
+        "Esc",
+        "px"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4462
+      ],
+      "github": [
+        {
+          "number": 4462,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261110-0426 招待画面の表示不備6件の根治",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4462",
+          "updatedAt": "2026-11-11T01:10:22Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261111-0506",
+      "title": "チームチャットのチャンネル一覧がチームで絞られていない。`frontend/app/components/chat/ChatChannelList.vue:46` が team_id に `Number(slug)` を渡して NaN になり、BE の `ChatChannelController.listChannels` は team_id を無視して利用者の全チャンネルを返す",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "`/teams/{slug}/chat` の一覧がそのチームのチャンネルだけになる（BE が team スコープで絞り、FE は slug→id 解決または slug 受け取り）。他チームのチャンネルが出ないことを実機で確認する",
+      "acceptance": [
+        "`/teams/{slug}/chat` の一覧がそのチームのチャンネルだけになる（BE が team スコープで絞り、FE は slug→id 解決または slug 受け取り）。他チームのチャンネルが出ないことを実機で確認する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "発見元 CMP-261030-0648（PR #4457）の検分",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "発見元 CMP-261030-0648（PR #4457）の検分"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "frontend",
+        "app",
+        "components",
+        "chat",
+        "ChatChannelList",
+        "vue",
+        "team_id",
+        "Number",
+        "slug",
+        "NaN",
+        "BE",
+        "ChatChannelController",
+        "listChannels",
+        "team_id",
+        "teams",
+        "slug",
+        "chat",
+        "BE",
+        "team",
+        "FE",
+        "slug",
+        "id",
+        "slug"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        4457
+      ],
+      "github": [
+        {
+          "number": 4457,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261030-0648 管理者向け予約通知・問い合わせ通知・業務アラートの遷移先を slug にする",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4457",
+          "updatedAt": "2026-11-10T19:52:02Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261111-0507",
+      "title": "Service Worker の通知操作ボタンの文言「開く」「閉じる」が日本語直書きで i18n されていない（`frontend/public/sw-custom.js:22-23`）",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "利用者ロケールに応じた文言になる（SW はロケールファイルを直接読めないため、BE のペイロードで渡す・登録時に渡す等の方式を決める）",
+      "acceptance": [
+        "利用者ロケールに応じた文言になる（SW はロケールファイルを直接読めないため、BE のペイロードで渡す・登録時に渡す等の方式を決める）"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "発見元 CMP-261029-0620（PR #4461）",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "発見元 CMP-261029-0620（PR #4461）"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "Service",
+        "Worker",
+        "i18n",
+        "frontend",
+        "public",
+        "sw-custom",
+        "js",
+        "SW",
+        "BE"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        4461
+      ],
+      "github": [
+        {
+          "number": 4461,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261029-0620 プッシュ通知をタップしても遷移しない不具合を根治",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4461",
+          "updatedAt": "2026-11-10T23:59:07Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261111-0508",
+      "title": "BE CI の Test (shard 0) が 85分の上限すれすれ。PR #4457 の run 42827066800 で 1h22m、run 42855308677 で 85分 timeout（テスト失敗なし）",
+      "status": "working",
+      "statusLabel": "P3 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "shard の割り振りの偏りを解消し、shard 0 が上限に十分な余裕を持つ（重い IT の配分見直し等）。上限を延ばすだけの対処は不可",
+      "acceptance": [
+        "shard の割り振りの偏りを解消し、shard 0 が上限に十分な余裕を持つ（重い IT の配分見直し等）。上限を延ばすだけの対処は不可"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "発見元 PR #4457 の CI",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "発見元 PR #4457 の CI"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "BE",
+        "CI",
+        "Test",
+        "shard",
+        "PR",
+        "run",
+        "h22m",
+        "run",
+        "timeout",
+        "shard",
+        "shard",
+        "IT"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [
+        4457
+      ],
+      "github": [
+        {
+          "number": 4457,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261030-0648 管理者向け予約通知・問い合わせ通知・業務アラートの遷移先を slug にする",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4457",
+          "updatedAt": "2026-11-10T19:52:02Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261111-1429",
+      "title": "招待リンク一覧のアリシゼーション確定不具合の修正（CMP-261110-0426 後続）",
+      "status": "done",
+      "statusLabel": "完了",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "InviteTokenList の ALIC-1〜6（同分発行の識別不能・モバイルで無効化操作が画面外・de ボタンの単語途中折返し・読込中の空文言・ネイティブ confirm・de 用語不一致）を修正し、各項目に落ちるテストを先行作成して green 化する",
+      "acceptance": [
+        "InviteTokenList の ALIC-1〜6（同分発行の識別不能・モバイルで無効化操作が画面外・de ボタンの単語途中折返し・読込中の空文言・ネイティブ confirm・de 用語不一致）を修正し、各項目に落ちるテストを先行作成して green 化する"
+      ],
+      "blocker": "CMP-261110-0426",
+      "issues": [
+        {
+          "label": "PR #4472（499c712614、2026-11-11 マージ）。InviteTokenList.spec.ts の ALIC-1〜6、MemberPermissionSetupDialog.spec.ts のフッター折返し、tests/unit/utils/localDate.spec.ts（修正前 red→修正後 green）。実機E2E・ロール横断 PASS。[完了証拠](evidence/CMP-261111-1429.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #4472（499c712614、2026-11-11 マージ）。InviteTokenList.spec.ts の ALIC-1〜6、MemberPermissionSetupDialog.spec.ts のフッター折返し、tests/unit/utils/localDate.spec.ts（修正前 red→修正後 green）。実機E2E・ロール横断 PASS。[完了証拠](evidence/CMP-261111-1429.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "CMP-261110-0426",
+        "InviteTokenList",
+        "ALIC-1",
+        "de",
+        "confirm",
+        "de",
+        "green"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4472
+      ],
+      "github": [
+        {
+          "number": 4472,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261111-1429 招待リンク一覧のアリシゼーション確定不具合（ALIC-1〜6）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4472",
+          "updatedAt": "2026-11-11T19:30:49Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261112-0158",
+      "title": "Windows 標準 Nuxt/Nitro SSR production build が依存の外部化解決で長時間継続し実機へ進めない問題の根治",
+      "status": "working",
+      "statusLabel": "P2 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "Nitro 2.13.4 の Windows パス正規化と MLLY 1.8.2 の root package exports 逆引きを、版・全bytes SHA・一意一致・冪等・所有pathを限定した postinstall 補正で正式 public import に戻す。CJS/ESM双方を扱い、未知版/hashでは全target無書込、失敗は非0。依存版/lock/SSR/CSP/authを維持し、既存Docker COPYと明示CI試験へ配線。意味あるRED→GREEN、正規SSR build終端、preview実BE/FE/DB、権限横断UI・実機後fresh3、独立検分/CI/所有cleanupまで確認する",
+      "acceptance": [
+        "Nitro 2.13.4 の Windows パス正規化と MLLY 1.8.2 の root package exports 逆引きを、版・全bytes SHA・一意一致・冪等・所有pathを限定した postinstall 補正で正式 public import に戻す。CJS/ESM双方を扱い、未知版/hashでは全target無書込、失敗は非0。依存版/lock/SSR/CSP/authを維持し、既存Docker COPYと明示CI試験へ配線。意味あるRED→GREEN、正規SSR build終端、preview実BE/FE/DB、権限横断UI・実機後fresh3、独立検分/CI/所有cleanupまで確認する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "V PR #4448 の実機準備で発見。API権限fixtureは成立、画面実機未実施。修正前再現2件確認、製品修正未実施",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "V PR #4448 の実機準備で発見。API権限fixtureは成立、画面実機未実施。修正前再現2件確認、製品修正未実施"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "scope app（既存package.json等を扱う）。他CMP完了を進めない"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "Windows",
+        "Nuxt",
+        "Nitro",
+        "SSR",
+        "production",
+        "build",
+        "Nitro",
+        "Windows",
+        "MLLY",
+        "root",
+        "package",
+        "exports",
+        "bytes",
+        "SHA",
+        "path",
+        "postinstall",
+        "public",
+        "import",
+        "CJS",
+        "ESM",
+        "hash",
+        "target",
+        "lock",
+        "SSR",
+        "CSP",
+        "auth",
+        "Docker",
+        "COPY",
+        "CI",
+        "RED",
+        "GREEN",
+        "SSR",
+        "build",
+        "preview",
+        "BE",
+        "FE",
+        "DB",
+        "UI",
+        "fresh3",
+        "CI",
+        "cleanup"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [
+        4448
+      ],
+      "github": [
+        {
+          "number": 4448,
+          "kind": "pull_request",
+          "state": "open",
+          "title": "修正: チーム・組織の投票一覧と作成を既存API契約へ整合",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4448",
+          "updatedAt": "2026-11-11T23:42:43Z",
+          "ci": {
+            "status": "success",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261111-2336",
+      "title": "管理者がメンバーでない問い合わせチャンネルの INQUIRY_RECEIVED 通知が管理者に届くが、押しても `/teams/{slug}/chat?channel={id}` で一覧に無く未選択のまま到達できない。問い合わせチャンネルに管理者が非メンバーのチャンネルを PATCH で設定でき（200）てしまう",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "管理者非メンバーのチャンネルを問い合わせチャンネルに設定できない、または通知から該当チャンネルへ到達できる。回帰テストを先に置く",
+      "acceptance": [
+        "管理者非メンバーのチャンネルを問い合わせチャンネルに設定できない、または通知から該当チャンネルへ到達できる。回帰テストを先に置く"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261030-0648 の実機E2E で発見・実機で再現。原因は推測（チャンネル一覧が所属チャンネルだけを返すため）で未確認",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261030-0648 の実機E2E で発見・実機で再現。原因は推測（チャンネル一覧が所属チャンネルだけを返すため）で未確認"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "INQUIRY_RECEIVED",
+        "teams",
+        "slug",
+        "chat",
+        "channel",
+        "id",
+        "PATCH"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261111-2337",
+      "title": "PWA の `navigateFallback: '/'`（`frontend/nuxt.config.ts:309`）だが `/` が precache に無く、Service Worker の起動のたびに「non-precached-url: /」の Uncaught が出る。オフライン時のフォールバックが効かない。未結線の `sw-background-sync.js` も precache 対象になっている",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "SW 起動で Uncaught が出ない。SSR 構成なので `navigateFallback: null` にするか `/` を precache に入れるかを軍議で決める。回帰テストを先に置く",
+      "acceptance": [
+        "SW 起動で Uncaught が出ない。SSR 構成なので `navigateFallback: null` にするか `/` を precache に入れるかを軍議で決める。回帰テストを先に置く"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261029-0620 の実機で発見。設定は変更以前からのもの",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261029-0620 の実機で発見。設定は変更以前からのもの"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "PWA",
+        "navigateFallback",
+        "frontend",
+        "nuxt",
+        "config",
+        "ts",
+        "precache",
+        "Service",
+        "Worker",
+        "non-precached-url",
+        "Uncaught",
+        "sw-background-sync",
+        "js",
+        "precache",
+        "SW",
+        "Uncaught",
+        "SSR",
+        "navigateFallback",
+        "null",
+        "precache"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261111-2338",
+      "title": "`frontend/app/pages/teams/[slug]/chat.vue:107` の `PageHeader title=\"チャット\"` が直書きで i18n ルール違反。英語ロケールでも日本語で表示される。同:149 の `message=\"チャンネルを選択してください\"` も直書き",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "両文言を `$t()` 経由にし、6言語のロケールに訳を入れる。英語ロケールで英語表示になる",
+      "acceptance": [
+        "両文言を `$t()` 経由にし、6言語のロケールに訳を入れる。英語ロケールで英語表示になる"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261030-0648 の実機E2E で発見",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261030-0648 の実機E2E で発見"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "frontend",
+        "app",
+        "pages",
+        "teams",
+        "slug",
+        "chat",
+        "vue",
+        "PageHeader",
+        "title",
+        "i18n",
+        "message"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261111-2339",
+      "title": "問い合わせチャンネルを設定する画面が FE に無く、API の PATCH でしか設定できない（導線欠落）",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "ADMIN がチームの設定画面から問い合わせチャンネルを選べ、画面から到達できる。新規画面は PageHeader と使い方モーダルを備え、6言語対応",
+      "acceptance": [
+        "ADMIN がチームの設定画面から問い合わせチャンネルを選べ、画面から到達できる。新規画面は PageHeader と使い方モーダルを備え、6言語対応"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261030-0648 のアリシゼーションで発見。CMP-261111-2336 と同じ設定を扱う",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261030-0648 のアリシゼーションで発見。CMP-261111-2336 と同じ設定を扱う"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "FE",
+        "API",
+        "PATCH",
+        "ADMIN",
+        "PageHeader"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261111-2340",
+      "title": "モバイル（390x844 / 360x800）のダッシュボードで 44px 未満のタップ領域が多数ある（タブ「All」34x28、「View all」39x17、完了チェック 20x20 など。1画面で最大25件）",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "ダッシュボードの主要な操作要素が 44x44px 以上になる、または仕様上の例外を明記する。回帰番人を置く",
+      "acceptance": [
+        "ダッシュボードの主要な操作要素が 44x44px 以上になる、または仕様上の例外を明記する。回帰番人を置く"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "アリシゼーションの DOM 実測。仕様上の根拠は未確認。関連: CMP-260907-1038（全画面共通のタップ領域）",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "アリシゼーションの DOM 実測。仕様上の根拠は未確認。関連: CMP-260907-1038（全画面共通のタップ領域）"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "x844",
+        "x800",
+        "px",
+        "All",
+        "x28",
+        "View",
+        "all",
+        "x17",
+        "x20",
+        "x44px"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261112-0518",
+      "title": "共通ボタンラベルの単語途中折れ根治（全体規則 `overflow-wrap: anywhere` の見直し）",
+      "status": "done",
+      "statusLabel": "完了",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "全ボタンで単語途中の折れ解消・既存のはみ出し防止を維持・実機E2E/アリシゼーション",
+      "acceptance": [
+        "全ボタンで単語途中の折れ解消・既存のはみ出し防止を維持・実機E2E/アリシゼーション"
+      ],
+      "blocker": "CMP-261111-1429",
+      "issues": [
+        {
+          "label": "PR #4476・frontend/tests/unit/build/button-label-word-break.spec.ts（red 3失敗→green 4成功）。PR #4476（3a3ede2e02、2026-11-12 マージ）。実機E2E・簡易アリシゼーション（表示崩れ×多言語）実施済み。[完了証拠](evidence/CMP-261112-0518.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #4476・frontend/tests/unit/build/button-label-word-break.spec.ts（red 3失敗→green 4成功）。PR #4476（3a3ede2e02、2026-11-12 マージ）。実機E2E・簡易アリシゼーション（表示崩れ×多言語）実施済み。[完了証拠](evidence/CMP-261112-0518.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "overflow-wrap",
+        "anywhere",
+        "E2E"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4476
+      ],
+      "github": [
+        {
+          "number": 4476,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261112-0518 共通ボタンラベルの単語途中折れを根治",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4476",
+          "updatedAt": "2026-11-12T01:22:24Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261112-1647",
+      "title": "通知の action_url が FE に存在しないルートを指し、通知のタップ・プッシュ通知のタップで 404 になる",
+      "status": "not-started",
+      "statusLabel": "P2 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "全通知種別の action_url を FE の実在ルートと照合する番人テスト（BE が出す URL のパターンと FE の pages 一覧）を作り、ずれを直す。対象: ScheduleAttendanceSolicitationNotificationListener.java:123 の `/schedules/{id}`（FE に pages/schedules は無く、出欠画面は pages/teams/[slug]/schedule-attendance/[scheduleId].vue）、ScheduleKeepNotificationService.java:182,184 の `/teams/{slug}/schedules/{id}` と `/schedules/{id}`（FE に teams/[slug]/schedules/ は無い）、SHIFT_PUBLISHED の `/shifts/schedules/{id}`（FE は pages/shift の単数形）、SURVEY_CREATED の `/surveys/{id}`（スコープ情報不足で /dashboard へ飛ばされる。原因は未確認）。番人の設計時に、CMP-261029-0620 の軍議正本にある範囲外の数値 URL の別台帳（CMP-261030-0648 の派生）との関係を調べて書く",
+      "acceptance": [
+        "全通知種別の action_url を FE の実在ルートと照合する番人テスト（BE が出す URL のパターンと FE の pages 一覧）を作り、ずれを直す。対象: ScheduleAttendanceSolicitationNotificationListener.java:123 の `/schedules/{id}`（FE に pages/schedules は無く、出欠画面は pages/teams/[slug]/schedule-attendance/[scheduleId].vue）、ScheduleKeepNotificationService.java:182,184 の `/teams/{slug}/schedules/{id}` と `/schedules/{id}`（FE に teams/[slug]/schedules/ は無い）、SHIFT_PUBLISHED の `/shifts/schedules/{id}`（FE は pages/shift の単数形）、SURVEY_CREATED の `/surveys/{id}`（スコープ情報不足で /dashboard へ飛ばされる。原因は未確認）。番人の設計時に、CMP-261029-0620 の軍議正本にある範囲外の数値 URL の別台帳（CMP-261030-0648 の派生）との関係を調べて書く"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261029-0620 のアリシゼーションで発見（2026-11-12）",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261029-0620 のアリシゼーションで発見（2026-11-12）"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "action_url",
+        "FE",
+        "action_url",
+        "FE",
+        "BE",
+        "URL",
+        "FE",
+        "pages",
+        "ScheduleAttendanceSolicitationNotificationListener",
+        "java",
+        "schedules",
+        "id",
+        "FE",
+        "pages",
+        "schedules",
+        "pages",
+        "teams",
+        "slug",
+        "schedule-attendance",
+        "scheduleId",
+        "vue",
+        "ScheduleKeepNotificationService",
+        "java",
+        "teams",
+        "slug",
+        "schedules",
+        "id",
+        "schedules",
+        "id",
+        "FE",
+        "teams",
+        "slug",
+        "schedules",
+        "SHIFT_PUBLISHED",
+        "shifts",
+        "schedules",
+        "id",
+        "FE",
+        "pages",
+        "shift",
+        "SURVEY_CREATED",
+        "surveys",
+        "id",
+        "dashboard",
+        "CMP-261029-0620",
+        "URL",
+        "CMP-261030-0648"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261112-1648",
+      "title": "frontend/app/pages/settings/notifications.vue:10 の `<PageHeader title=\"通知設定\" />` が日本語直書き（i18n ルール違反）",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "ロケールファイルへ移し $t で参照する。6言語に訳を入れる",
+      "acceptance": [
+        "ロケールファイルへ移し $t で参照する。6言語に訳を入れる"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261029-0620 のアリシゼーションで発見（2026-11-12）",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261029-0620 のアリシゼーションで発見（2026-11-12）"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "frontend",
+        "app",
+        "pages",
+        "settings",
+        "notifications",
+        "vue",
+        "PageHeader",
+        "title",
+        "i18n"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261112-1649",
+      "title": "frontend/app/components/notification/NotificationPreferences.vue:164-166 で scopeType が TEAM 以外のとき常に「Organization」と表示される。個人スコープも「Organization」になり、解決できないスコープの名前「不明なスコープ」（BE の NameResolverService.java:306,316 のフォールバック）もそのまま出る",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "スコープ種別ごとの正しいラベルが出る。解決できないスコープは利用者に意味のある表示にする",
+      "acceptance": [
+        "スコープ種別ごとの正しいラベルが出る。解決できないスコープは利用者に意味のある表示にする"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261029-0620 のアリシゼーションで発見（2026-11-12）",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261029-0620 のアリシゼーションで発見（2026-11-12）"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "frontend",
+        "app",
+        "components",
+        "notification",
+        "NotificationPreferences",
+        "vue",
+        "scopeType",
+        "TEAM",
+        "Organization",
+        "Organization",
+        "BE",
+        "NameResolverService",
+        "java"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261112-2225",
+      "title": "frontend/app/components/member-card/ の UI 文字列日本語直書きを i18n 化（全言語で日本語が出る・de 360px で単語途中折れ/横はみ出しの観測）",
+      "status": "done",
+      "statusLabel": "完了（2026-11-13）",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "member-card の直書き日本語を全6言語のロケールへ移す・de 360px で単語途中折れ/横はみ出しが無い・実機E2E/アリシゼーション",
+      "acceptance": [
+        "member-card の直書き日本語を全6言語のロケールへ移す・de 360px で単語途中折れ/横はみ出しが無い・実機E2E/アリシゼーション"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "修正 PR #4484・#4489・#4497・#4499（マージ済）。回帰テスト MemberCardFollowup.spec.ts・QrCodeImage.spec.ts・CheckinHistory.spec.ts・MemberCardDisplay.spec.ts（各 red→green）。実機E2E・アリシゼーション実施済み（en/de 360px で横はみ出し無し・QR再生成後に新QR表示）。[完了証拠](evidence/CMP-261112-2225.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "修正 PR #4484・#4489・#4497・#4499（マージ済）。回帰テスト MemberCardFollowup.spec.ts・QrCodeImage.spec.ts・CheckinHistory.spec.ts・MemberCardDisplay.spec.ts（各 red→green）。実機E2E・アリシゼーション実施済み（en/de 360px で横はみ出し無し・QR再生成後に新QR表示）。[完了証拠](evidence/CMP-261112-2225.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "frontend",
+        "app",
+        "components",
+        "member-card",
+        "UI",
+        "i18n",
+        "de",
+        "px",
+        "member-card",
+        "de",
+        "px",
+        "E2E"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4484,
+        4489,
+        4497,
+        4499
+      ],
+      "github": [
+        {
+          "number": 4484,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261112-2225 member-card の日本語直書きを i18n 化",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4484",
+          "updatedAt": "2026-11-12T16:28:43Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 4489,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261112-2225 会員証画面の追加修正（i18n・伝播・二重送信・折り返し・初期選択）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4489",
+          "updatedAt": "2026-11-12T18:04:23Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 4497,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 会員証一覧の絞り込みが360px幅で折り返さず横はみ出しする（CMP-261112-2225）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4497",
+          "updatedAt": "2026-11-13T04:49:44Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 4499,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 会員証のQR再生成後にQRが消えたままになる（CMP-261112-2225）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4499",
+          "updatedAt": "2026-11-13T05:59:48Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261113-0110",
+      "title": "DM から作った Zimmer（GROUP_DM）が名前なしで Kabine(DM) 欄に並び、ヘッダー名も空になる",
+      "status": "working",
+      "statusLabel": "P2 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "名前の組み立て（参加者名連結）を BE と FE のどちらで持つかを決めて仕様に明記し、表示欄（DM 欄か Zimmer 欄か）も仕様で確定させ、回帰テストで固定する",
+      "acceptance": [
+        "名前の組み立て（参加者名連結）を BE と FE のどちらで持つかを決めて仕様に明記し、表示欄（DM 欄か Zimmer 欄か）も仕様で確定させ、回帰テストで固定する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261105-1507 の実機／アリシゼーション（2026-11-13）で発見。invite-to-zimmer の応答・一覧・詳細で meta.name・dmPartner がともに null。frontend/app/components/chat/ChatChannelList.vue:36 の isDmChannel が GROUP_DM を DM 欄へ振り分け、:74-79 の getDisplayName と frontend/app/components/chat/message-panel/ChatChannelHeader.vue:29-31 が `dmPartner.displayName ?? meta.name ?? ''` で空になる。仕様 docs/features/F04.2.1_chat_multi_tab_ui.md:353 は「チャンネル名 or 参加者名連結」。docs/features/F04.2_chat.md:1352-1380（invite-to-zimmer）には名前の付与規定が無い。2026-11-13 軍議御裁可（表示名は BE で応答ごとに導出し、新フィールド derivedName で返す。GROUP_DM は DM 欄に置く）",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261105-1507 の実機／アリシゼーション（2026-11-13）で発見。invite-to-zimmer の応答・一覧・詳細で meta.name・dmPartner がともに null。frontend/app/components/chat/ChatChannelList.vue:36 の isDmChannel が GROUP_DM を DM 欄へ振り分け、:74-79 の getDisplayName と frontend/app/components/chat/message-panel/ChatChannelHeader.vue:29-31 が `dmPartner.displayName ?? meta.name ?? ''` で空になる。仕様 docs/features/F04.2.1_chat_multi_tab_ui.md:353 は「チャンネル名 or 参加者名連結」。docs/features/F04.2_chat.md:1352-1380（invite-to-zimmer）には名前の付与規定が無い。2026-11-13 軍議御裁可（表示名は BE で応答ごとに導出し、新フィールド derivedName で返す。GROUP_DM は DM 欄に置く）"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "DM",
+        "Zimmer",
+        "GROUP_DM",
+        "Kabine",
+        "DM",
+        "BE",
+        "FE",
+        "DM",
+        "Zimmer"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261113-0111",
+      "title": "削除済みのメッセージが未読数に残る（F04.2 は「削除時は未読を減算しない」）",
+      "status": "not-started",
+      "statusLabel": "P2 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "未読数の算出から削除済みを除く方式を設計し（減算ではなく算出時の除外など）、仕様を改めて回帰テストで固定する",
+      "acceptance": [
+        "未読数の算出から削除済みを除く方式を設計し（減算ではなく算出時の除外など）、仕様を改めて回帰テストで固定する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261105-1507 の実機／アリシゼーション（2026-11-13）で発見。#4438 で減算を試みたが、Codex P2（招待カード・転送も減算する、秒精度の境界、並行削除で二重減算）で外した",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261105-1507 の実機／アリシゼーション（2026-11-13）で発見。#4438 で減算を試みたが、Codex P2（招待カード・転送も減算する、秒精度の境界、並行削除で二重減算）で外した"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "F04"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        4438
+      ],
+      "github": [
+        {
+          "number": 4438,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261105-1507 チームの Zimmer 作成の項目不一致と部屋一覧プレビューの更新漏れ",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4438",
+          "updatedAt": "2026-11-10T02:57:24Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261113-0112",
+      "title": "GlobalExceptionHandler の HttpMessageNotReadableException が、型変換の失敗（例: Long の欄に文字列）を fieldErrors の空な汎用 400 にしている",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "型変換の失敗は、どの欄かを fieldErrors に入れて返し、契約テストで固定する",
+      "acceptance": [
+        "型変換の失敗は、どの欄かを fieldErrors に入れて返し、契約テストで固定する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261105-1507 の実機／アリシゼーション（2026-11-13）で発見。対象: GlobalExceptionHandler の HttpMessageNotReadableException ハンドラ",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261105-1507 の実機／アリシゼーション（2026-11-13）で発見。対象: GlobalExceptionHandler の HttpMessageNotReadableException ハンドラ"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "GlobalExceptionHandler",
+        "HttpMessageNotReadableException",
+        "Long",
+        "fieldErrors",
+        "fieldErrors"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261113-0113",
+      "title": "TimetableChangeService が発行する TimetableChangeCreatedEvent の teamId が null に固定されている",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "正しい teamId（チームの時間割なら当該チーム）を載せ、購読側の挙動をテストで固定する",
+      "acceptance": [
+        "正しい teamId（チームの時間割なら当該チーム）を載せ、購読側の挙動をテストで固定する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261105-1507 の実機／アリシゼーション（2026-11-13）で発見。対象: TimetableChangeService（TimetableChangeCreatedEvent の発行箇所）",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261105-1507 の実機／アリシゼーション（2026-11-13）で発見。対象: TimetableChangeService（TimetableChangeCreatedEvent の発行箇所）"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "TimetableChangeService",
+        "TimetableChangeCreatedEvent",
+        "teamId",
+        "null",
+        "teamId"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261113-0114",
+      "title": "実機 E2E の後始末の記録ファイル frontend/tests/e2e/.auth/n1p1-assets.json を playwright-cmp1507 と playwright-n1p1 の両設定が共有しており、N1P1_KEEP_WORLD=1 で残した世界が別の実行の globalTeardown に消される",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "設定ごとに記録ファイルを分けるか、実行 ID で所有を分け、他の実行の資産を消さないようにする",
+      "acceptance": [
+        "設定ごとに記録ファイルを分けるか、実行 ID で所有を分け、他の実行の資産を消さないようにする"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261105-1507 の実機／アリシゼーション（2026-11-13）で発見。対象: frontend/tests/e2e/.auth/n1p1-assets.json と両 Playwright 設定の globalTeardown",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261105-1507 の実機／アリシゼーション（2026-11-13）で発見。対象: frontend/tests/e2e/.auth/n1p1-assets.json と両 Playwright 設定の globalTeardown"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "E2E",
+        "frontend",
+        "tests",
+        "e2e",
+        "auth",
+        "n1p1-assets",
+        "json",
+        "playwright-cmp1507",
+        "playwright-n1p1",
+        "N1P1_KEEP_WORLD",
+        "globalTeardown",
+        "ID"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261113-0115",
+      "title": "チャット・時間割の UX 小件13項目（GROUP_DM を単独で作る導線・招待の導線が無い／自分の投稿の削除に確認が無い／Zimmer・DM の削除・退出の導線が画面に無い／ブラウザの戻るで入力中の下書きが消え右ペインが空になる／汎用 /chat の上部タブバーの「＋」がチャンネル一覧と同じ一覧を浮きパネルで重ねて出す／チーム画面のタブの強調がダッシュボードのまま残る／名前（aria-label）の無いアイコンボタンがある／/modules の「有効な機能 0 / 10」が実際の表示と合わない／用語（関所・ゲート初期化）が利用者に分かりにくい／ダッシュボードに時間割の入口が無い／作成直後の DRAFT の時間割が週間ビューに出ず戸惑う／メンバーに「学期」タブの作る側向け文言が出る／新しいブラウザ文脈の初回表示で 401 が出る（feature-flags・settings/nav・scope-tabs・me/teams））",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "各項目を仕様に照らして要否を判断し、直すものは直して回帰テストで固定する。不要と判断したものは理由を記録する",
+      "acceptance": [
+        "各項目を仕様に照らして要否を判断し、直すものは直して回帰テストで固定する。不要と判断したものは理由を記録する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261105-1507 の実機／アリシゼーション（2026-11-13）で観測",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261105-1507 の実機／アリシゼーション（2026-11-13）で観測"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "UX",
+        "GROUP_DM",
+        "Zimmer",
+        "DM",
+        "chat",
+        "aria-label",
+        "modules",
+        "DRAFT",
+        "feature-flags",
+        "settings",
+        "nav",
+        "scope-tabs",
+        "me",
+        "teams"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261113-0209",
+      "title": "運営（PLATFORM）会員証の本人操作が失敗する（一時停止・再開が500 COMMON_999、QR再生成が403 MEMBERSHIP_004）",
+      "status": "done",
+      "statusLabel": "完了（2026-11-13）",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "PLATFORM 会員証の本人が一時停止・再開・QR再生成を行え、他人は存在秘匿で拒否される・認可判定で ScopeType.valueOf(\"PLATFORM\") による例外が起きない・回帰テスト red→green・実機E2E/アリシゼーション",
+      "acceptance": [
+        "PLATFORM 会員証の本人が一時停止・再開・QR再生成を行え、他人は存在秘匿で拒否される・認可判定で ScopeType.valueOf(\"PLATFORM\") による例外が起きない・回帰テスト red→green・実機E2E/アリシゼーション"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261112-2225 の実機E2Eで発見。MemberCardService#requireMemberOrConceal と regenerateQr が DefaultAccessControlService の isMember/hasRoleOrAbove に PLATFORM を渡し、isMember:142 で IllegalArgumentException→500、hasRoleOrAbove は無権限→403。修正 PR #4490（マージ済）・MemberCardServicePlatformSelfOperationTest。実機E2E・アリシゼーション実施済み。[完了証拠](evidence/CMP-261113-0209.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261112-2225 の実機E2Eで発見。MemberCardService#requireMemberOrConceal と regenerateQr が DefaultAccessControlService の isMember/hasRoleOrAbove に PLATFORM を渡し、isMember:142 で IllegalArgumentException→500、hasRoleOrAbove は無権限→403。修正 PR #4490（マージ済）・MemberCardServicePlatformSelfOperationTest。実機E2E・アリシゼーション実施済み。[完了証拠](evidence/CMP-261113-0209.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "PLATFORM",
+        "COMMON_999",
+        "QR",
+        "MEMBERSHIP_004",
+        "PLATFORM",
+        "QR",
+        "ScopeType",
+        "valueOf",
+        "PLATFORM",
+        "red",
+        "green",
+        "E2E"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4490
+      ],
+      "github": [
+        {
+          "number": 4490,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261113-0209 PLATFORM 会員証の本人操作が失敗する不具合",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4490",
+          "updatedAt": "2026-11-12T20:12:53Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261113-0210",
+      "title": "新規登録の同時送信で500・登録画面の言語固定",
+      "status": "done",
+      "statusLabel": "完了（2026-11-13）",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "同一メールの同時登録で一意制約違反が500にならず AUTH_004 を返す・登録ボタン連打で重複送信しない・登録時の locale が画面の表示言語になる・登録画面の直書き日本語（成功トースト等）を i18n 化・回帰テスト red→green・実機E2E/アリシゼーション",
+      "acceptance": [
+        "同一メールの同時登録で一意制約違反が500にならず AUTH_004 を返す・登録ボタン連打で重複送信しない・登録時の locale が画面の表示言語になる・登録画面の直書き日本語（成功トースト等）を i18n 化・回帰テスト red→green・実機E2E/アリシゼーション"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261112-2225 のアリシゼーションで発見。BE ログで users.uq_users_email の DataIntegrityViolationException→COMMON_999 を確認。frontend/app/pages/register.vue が locale: 'ja' 固定。修正 PR #4491（マージ済）・AuthRegistrationServiceDuplicateEmailRaceTest・register.spec.ts。実機E2E・アリシゼーション実施済み。[完了証拠](evidence/CMP-261113-0210.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261112-2225 のアリシゼーションで発見。BE ログで users.uq_users_email の DataIntegrityViolationException→COMMON_999 を確認。frontend/app/pages/register.vue が locale: 'ja' 固定。修正 PR #4491（マージ済）・AuthRegistrationServiceDuplicateEmailRaceTest・register.spec.ts。実機E2E・アリシゼーション実施済み。[完了証拠](evidence/CMP-261113-0210.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "AUTH_004",
+        "locale",
+        "i18n",
+        "red",
+        "green",
+        "E2E"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4491
+      ],
+      "github": [
+        {
+          "number": 4491,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: CMP-261113-0210 新規登録の同時登録競合・locale固定・日本語直書き・連打",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4491",
+          "updatedAt": "2026-11-13T00:44:43Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261113-0211",
+      "title": "設定画面群・ダッシュボードの i18n 残存と 360px 横はみ出し（調査と分割）",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "de/en で日本語が残る画面（settings の profile・security・email・login-history・appearance・social-profiles・seals・contact-request-blocks、account の通知種別名、ダッシュボード通知カード）と 360px 横はみ出し（トップのペルソナ切替行 380、settings/account 426、notifications 370、seals の押印履歴ボタン画面外）を棚卸しし、修正単位の CMP に分割する",
+      "acceptance": [
+        "de/en で日本語が残る画面（settings の profile・security・email・login-history・appearance・social-profiles・seals・contact-request-blocks、account の通知種別名、ダッシュボード通知カード）と 360px 横はみ出し（トップのペルソナ切替行 380、settings/account 426、notifications 370、seals の押印履歴ボタン画面外）を棚卸しし、修正単位の CMP に分割する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261112-2225 のアリシゼーション（住民1 de 360x800）で観測。殿の裏取りは未実施。2026-11-13 アリシゼーション（de 390px）の追加観測: 日本語残存ページ（profile・security・email・login-history・social-profiles・seals・notifications 種別名・appearance・contact-request-blocks）、/settings/account の 3px はみ出し、44px 未満のタップ領域（notifications の展開ボタン・appearance の色ボタン・billing のリンク等）、ad-preferences とパスワード入力ラベルの文字クリップ疑い、会員証の停止・QR再生成に確認ダイアログが無い点（仕様確認要）",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261112-2225 のアリシゼーション（住民1 de 360x800）で観測。殿の裏取りは未実施。2026-11-13 アリシゼーション（de 390px）の追加観測: 日本語残存ページ（profile・security・email・login-history・social-profiles・seals・notifications 種別名・appearance・contact-request-blocks）、/settings/account の 3px はみ出し、44px 未満のタップ領域（notifications の展開ボタン・appearance の色ボタン・billing のリンク等）、ad-preferences とパスワード入力ラベルの文字クリップ疑い、会員証の停止・QR再生成に確認ダイアログが無い点（仕様確認要）"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "i18n",
+        "px",
+        "de",
+        "en",
+        "settings",
+        "profile",
+        "security",
+        "email",
+        "login-history",
+        "appearance",
+        "social-profiles",
+        "seals",
+        "contact-request-blocks",
+        "account",
+        "px",
+        "settings",
+        "account",
+        "notifications",
+        "seals",
+        "CMP"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261112-0124",
+      "title": "Matchライブ記録のNuxt初期化・終了処理を整合",
+      "status": "working",
+      "statusLabel": "P2 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "正規Nuxt entrypointで既存の初期化・記録操作・閲覧と終了時の資源解放を検証する",
+      "acceptance": [
+        "正規Nuxt entrypointで既存の初期化・記録操作・閲覧と終了時の資源解放を検証する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "[親Issue #4022](https://github.com/kenta-0420/mannschaft/issues/4022)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "[親Issue #4022](https://github.com/kenta-0420/mannschaft/issues/4022)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "Match",
+        "Nuxt",
+        "Nuxt",
+        "entrypoint"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [
+        4022
+      ],
+      "github": [
+        {
+          "number": 4022,
+          "kind": "issue",
+          "state": "open",
+          "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
+          "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
+          "updatedAt": "2026-11-12T23:49:00Z",
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261113-1506",
+      "title": "会員証 API の存在秘匿の不整合（詳細取得・チェックイン履歴・QR表示・QR再生成で、他人のカードと存在しないカードの応答が一致していない）",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "詳細取得・チェックイン履歴・QR表示・QR再生成の4経路とも、他人のカードと存在しないカードで同一ステータス・同一エラーコードで応答し、番人テストで固定する",
+      "acceptance": [
+        "詳細取得・チェックイン履歴・QR表示・QR再生成の4経路とも、他人のカードと存在しないカードで同一ステータス・同一エラーコードで応答し、番人テストで固定する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261113-0209 のアリシゼーションで観測。再現の詳細は公開リポのため記載しない",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261113-0209 のアリシゼーションで観測。再現の詳細は公開リポのため記載しない"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "API",
+        "QR",
+        "QR",
+        "QR",
+        "QR"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261113-1507",
+      "title": "BE のエラーメッセージが UI 言語に関係なく日本語で表示される（en/de UI でエラートーストの本文に日本語。登録の AUTH_004・AUTH_044、GDPR_003 等で観測）",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "API のエラー本文が利用者の言語（Accept-Language またはプロフィール言語）で返り、en/de の UI で日本語のエラートーストが出ない・エラーコード体系の多言語化方針を決めて横断的に適用する",
+      "acceptance": [
+        "API のエラー本文が利用者の言語（Accept-Language またはプロフィール言語）で返り、en/de の UI で日本語のエラートーストが出ない・エラーコード体系の多言語化方針を決めて横断的に適用する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261112-2225・CMP-261113-0210 のアリシゼーションで観測。同趣旨の既存行は無し（通知本文の CMP-055 とは別）",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261112-2225・CMP-261113-0210 のアリシゼーションで観測。同趣旨の既存行は無し（通知本文の CMP-055 とは別）"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "BE",
+        "UI",
+        "en",
+        "de",
+        "UI",
+        "AUTH_004",
+        "AUTH_044",
+        "GDPR_003",
+        "API",
+        "Accept-Language",
+        "en",
+        "de",
+        "UI"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
     }
   ],
   "githubSync": {
     "schemaVersion": 1,
     "repository": "kenta-0420/mannschaft",
-    "synchronizedAt": "2026-10-27T06:07:09+00:00",
+    "synchronizedAt": "2026-11-13T21:28:06+00:00",
     "status": "synced",
     "error": null,
     "references": {
@@ -62936,7 +66271,9 @@ window.BETA_INVENTORY_DATA = {
       "CMP-114": [
         3345
       ],
-      "CMP-260820-1422": [],
+      "CMP-260820-1422": [
+        4246
+      ],
       "CMP-260820-1423": [
         2887,
         2920
@@ -62974,7 +66311,8 @@ window.BETA_INVENTORY_DATA = {
         2887,
         3624,
         3661,
-        3681
+        3681,
+        4252
       ],
       "CMP-260821-1235": [
         2895,
@@ -62997,11 +66335,15 @@ window.BETA_INVENTORY_DATA = {
       "CMP-260822-1006": [
         2970
       ],
-      "CMP-260824-2217": [
-        2934
-      ],
       "CMP-260822-1730": [
-        2922
+        2922,
+        4248,
+        4275,
+        4296
+      ],
+      "CMP-260824-2217": [
+        2934,
+        4293
       ],
       "CMP-260822-1026": [
         2909,
@@ -63078,7 +66420,9 @@ window.BETA_INVENTORY_DATA = {
       "CMP-260903-0701": [
         3086
       ],
-      "CMP-260916-1042": [],
+      "CMP-260916-1042": [
+        3644
+      ],
       "CMP-260917-1206": [
         2880,
         3310,
@@ -63097,7 +66441,9 @@ window.BETA_INVENTORY_DATA = {
         3339
       ],
       "CMP-260917-1350": [],
-      "CMP-260917-1351": [],
+      "CMP-260917-1351": [
+        4368
+      ],
       "CMP-260917-1352": [],
       "CMP-260918-0841": [
         3357,
@@ -63180,13 +66526,23 @@ window.BETA_INVENTORY_DATA = {
       "CMP-260822-1243": [
         2919,
         3583,
-        3780
+        3780,
+        4251,
+        4272
       ],
       "CMP-260825-0639": [
         2909
       ],
       "CMP-260826-1100": [
         2976
+      ],
+      "CMP-260826-2127": [
+        1170,
+        3099,
+        3123,
+        3129,
+        3132,
+        3603
       ],
       "CMP-260826-1041": [
         1073,
@@ -63213,22 +66569,15 @@ window.BETA_INVENTORY_DATA = {
         3694,
         3695
       ],
-      "CMP-260826-1455": [
-        3572
-      ],
       "CMP-260826-1456": [
         3590
       ],
+      "CMP-260826-1455": [
+        3572,
+        4244
+      ],
       "CMP-260826-1457": [
         2353
-      ],
-      "CMP-260826-2127": [
-        1170,
-        3099,
-        3123,
-        3129,
-        3132,
-        3603
       ],
       "CMP-260826-2128": [
         1209,
@@ -63246,12 +66595,27 @@ window.BETA_INVENTORY_DATA = {
         3011
       ],
       "CMP-260827-1808": [
-        2979
+        2979,
+        4250,
+        4330
       ],
       "CMP-260827-1152": [
         2834,
         2990,
-        2997
+        2997,
+        3721,
+        3779,
+        3783,
+        3792,
+        3817,
+        3837,
+        3843,
+        3854,
+        3864,
+        4001,
+        4177,
+        4181,
+        4208
       ],
       "CMP-260827-0914": [
         2955,
@@ -63298,7 +66662,9 @@ window.BETA_INVENTORY_DATA = {
       "CMP-260905-1630": [],
       "CMP-260905-1631": [],
       "CMP-260905-1414": [],
-      "CMP-260905-1415": [],
+      "CMP-260905-1415": [
+        4332
+      ],
       "CMP-260905-2214": [],
       "CMP-260907-0001": [
         3150
@@ -63329,7 +66695,8 @@ window.BETA_INVENTORY_DATA = {
       ],
       "CMP-260907-1038": [],
       "CMP-260908-2116": [
-        3148
+        3148,
+        3176
       ],
       "CMP-260908-2117": [],
       "CMP-260908-2118": [],
@@ -63362,7 +66729,8 @@ window.BETA_INVENTORY_DATA = {
       ],
       "CMP-260909-0303": [
         2990,
-        3162
+        3162,
+        4443
       ],
       "CMP-260909-0304": [
         2990,
@@ -63388,7 +66756,10 @@ window.BETA_INVENTORY_DATA = {
       "CMP-260909-2149": [
         3802
       ],
-      "CMP-260909-2150": [],
+      "CMP-260909-2150": [
+        3230,
+        3247
+      ],
       "CMP-260909-2151": [
         3810
       ],
@@ -63437,14 +66808,19 @@ window.BETA_INVENTORY_DATA = {
       "CMP-260910-1056": [],
       "CMP-260910-1118": [],
       "CMP-260910-0127": [],
-      "CMP-260910-1555": [],
+      "CMP-260910-1555": [
+        3247,
+        4234
+      ],
       "CMP-260910-1556": [
         3234
       ],
       "CMP-260910-1557": [],
       "CMP-260910-1558": [],
       "CMP-260910-1559": [],
-      "CMP-260910-1600": [],
+      "CMP-260910-1600": [
+        4382
+      ],
       "CMP-260910-1601": [],
       "CMP-260910-1602": [],
       "CMP-260910-1603": [],
@@ -63453,10 +66829,14 @@ window.BETA_INVENTORY_DATA = {
       "CMP-260910-1606": [],
       "CMP-260910-1607": [],
       "CMP-260910-1608": [],
-      "CMP-260910-1609": [],
+      "CMP-260910-1609": [
+        3738,
+        3832
+      ],
       "CMP-260910-1811": [
         3188,
-        3219
+        3219,
+        4431
       ],
       "CMP-260910-1812": [
         3219
@@ -63502,7 +66882,8 @@ window.BETA_INVENTORY_DATA = {
         3286
       ],
       "CMP-260916-0056": [
-        3283
+        3283,
+        4403
       ],
       "CMP-260916-0336": [],
       "CMP-260916-1348": [],
@@ -63514,7 +66895,8 @@ window.BETA_INVENTORY_DATA = {
         3336
       ],
       "CMP-260916-2328": [
-        3291
+        3291,
+        4396
       ],
       "CMP-260917-0041": [
         3350,
@@ -63793,7 +67175,9 @@ window.BETA_INVENTORY_DATA = {
       ],
       "CMP-261001-0836": [],
       "CMP-261001-0837": [],
-      "CMP-261001-0838": [],
+      "CMP-261001-0838": [
+        4204
+      ],
       "CMP-261001-0839": [
         4127
       ],
@@ -63828,7 +67212,8 @@ window.BETA_INVENTORY_DATA = {
       ],
       "CMP-261002-1343": [
         3387,
-        3454
+        3454,
+        4178
       ],
       "CMP-261002-1344": [
         3387
@@ -63845,7 +67230,10 @@ window.BETA_INVENTORY_DATA = {
       "CMP-261002-0803": [],
       "CMP-261002-0804": [],
       "CMP-261002-0805": [],
-      "CMP-261002-1135": [],
+      "CMP-261002-1135": [
+        4253,
+        4259
+      ],
       "CMP-261002-1559": [
         3556
       ],
@@ -63873,21 +67261,26 @@ window.BETA_INVENTORY_DATA = {
       "CMP-261003-0119": [],
       "CMP-261003-0121": [],
       "CMP-261003-1229": [
-        3609
+        3609,
+        4259
       ],
       "CMP-261004-1816": [
-        3607
+        3635,
+        4045
       ],
       "CMP-261004-1817": [],
       "CMP-261004-1818": [
-        3623
+        4182
       ],
-      "CMP-261004-1819": [],
+      "CMP-261004-1819": [
+        4193
+      ],
       "CMP-261004-1820": [],
       "CMP-261004-1821": [],
       "CMP-261004-1822": [
         3569,
-        3623
+        3623,
+        4198
       ],
       "CMP-261004-1823": [],
       "CMP-261004-1824": [],
@@ -63997,7 +67390,9 @@ window.BETA_INVENTORY_DATA = {
       ],
       "CMP-261008-1817": [],
       "CMP-261009-0010": [],
-      "CMP-261009-0616": [],
+      "CMP-261009-0616": [
+        3741
+      ],
       "CMP-261010-0006": [
         3746
       ],
@@ -64035,7 +67430,8 @@ window.BETA_INVENTORY_DATA = {
       "CMP-261010-1814": [],
       "CMP-261010-1815": [],
       "CMP-261010-1432": [
-        3663
+        3663,
+        4164
       ],
       "CMP-261010-2226": [
         3790,
@@ -64080,7 +67476,13 @@ window.BETA_INVENTORY_DATA = {
         3870,
         3871,
         3886,
-        4009
+        4009,
+        4206,
+        4229,
+        4236,
+        4239,
+        4240,
+        4254
       ],
       "CMP-261011-0124": [
         3780
@@ -64315,7 +67717,9 @@ window.BETA_INVENTORY_DATA = {
       "CMP-261021-0648": [
         4122
       ],
-      "CMP-261021-0649": [],
+      "CMP-261021-0649": [
+        4137
+      ],
       "CMP-261021-0650": [],
       "CMP-261021-0651": [],
       "CMP-261021-0652": [],
@@ -64329,7 +67733,9 @@ window.BETA_INVENTORY_DATA = {
         4018
       ],
       "CMP-261021-0660": [
-        3285
+        3285,
+        4167,
+        4188
       ],
       "CMP-261021-0661": [],
       "CMP-261021-0662": [],
@@ -64350,7 +67756,9 @@ window.BETA_INVENTORY_DATA = {
       "CMP-261021-1327": [],
       "CMP-261021-1328": [],
       "CMP-261021-1329": [],
-      "CMP-261021-1330": [],
+      "CMP-261021-1330": [
+        4194
+      ],
       "CMP-261021-1331": [],
       "CMP-261021-1332": [],
       "CMP-261021-1347": [
@@ -64366,7 +67774,9 @@ window.BETA_INVENTORY_DATA = {
       "CMP-261021-1339": [],
       "CMP-261021-1340": [],
       "CMP-261021-1341": [],
-      "CMP-261021-1342": [],
+      "CMP-261021-1342": [
+        4231
+      ],
       "CMP-261021-1343": [],
       "CMP-261021-1344": [],
       "CMP-261021-1345": [],
@@ -64456,9 +67866,314 @@ window.BETA_INVENTORY_DATA = {
         4143,
         4147
       ],
-      "CMP-261027-1311": []
+      "CMP-261027-1311": [
+        4163
+      ],
+      "CMP-261027-1646": [
+        4169,
+        4200
+      ],
+      "CMP-261027-1353": [
+        4166
+      ],
+      "CMP-261028-0513": [],
+      "CMP-261028-1554": [
+        4169,
+        4200
+      ],
+      "CMP-261028-1715": [
+        4205
+      ],
+      "CMP-261028-2251": [
+        4210
+      ],
+      "CMP-261028-2304": [
+        4211,
+        4214,
+        4352
+      ],
+      "CMP-261028-2328": [
+        1036,
+        1681,
+        3721,
+        4226,
+        4237
+      ],
+      "CMP-261028-2329": [
+        4221
+      ],
+      "CMP-261029-1254": [],
+      "CMP-261029-1315": [
+        4218
+      ],
+      "CMP-261029-0620": [
+        4461
+      ],
+      "CMP-261030-0648": [
+        3721,
+        4226,
+        4457,
+        4466
+      ],
+      "CMP-261030-0649": [
+        4243
+      ],
+      "CMP-261030-0650": [
+        4247
+      ],
+      "CMP-261030-0651": [
+        4261,
+        4273
+      ],
+      "CMP-261030-0652": [
+        4450
+      ],
+      "CMP-261101-2005": [],
+      "CMP-261101-2006": [
+        4240
+      ],
+      "CMP-261101-2007": [],
+      "CMP-261101-2008": [],
+      "CMP-261101-2009": [],
+      "CMP-261101-2010": [],
+      "CMP-261101-1404": [
+        4257
+      ],
+      "CMP-261103-0817": [
+        4250
+      ],
+      "CMP-261103-0818": [
+        3689,
+        3692,
+        3696
+      ],
+      "CMP-261103-0819": [],
+      "CMP-261103-0820": [
+        4257
+      ],
+      "CMP-261103-0821": [],
+      "CMP-261103-0822": [
+        4246,
+        4252
+      ],
+      "CMP-261103-0823": [
+        4246,
+        4252
+      ],
+      "CMP-261103-1940": [
+        4268
+      ],
+      "CMP-261104-0334": [
+        4281,
+        4290,
+        4404,
+        4406
+      ],
+      "CMP-261104-0335": [
+        4292,
+        4404
+      ],
+      "CMP-261104-0336": [
+        4313,
+        4404
+      ],
+      "CMP-261104-0337": [
+        4286,
+        4309,
+        4327,
+        4404
+      ],
+      "CMP-261103-1225": [
+        4270
+      ],
+      "CMP-261103-2059": [],
+      "CMP-261105-0343": [
+        662,
+        3590
+      ],
+      "CMP-261105-0344": [
+        628
+      ],
+      "CMP-261105-0345": [],
+      "CMP-261105-0346": [],
+      "CMP-261105-0347": [],
+      "CMP-261105-0348": [
+        3835
+      ],
+      "CMP-261105-0349": [
+        2268
+      ],
+      "CMP-261105-0350": [],
+      "CMP-261104-2256": [
+        4298
+      ],
+      "CMP-261105-0755": [
+        4022,
+        4300
+      ],
+      "CMP-261105-1507": [
+        4305,
+        4306,
+        4311,
+        4324,
+        4341,
+        4343,
+        4355,
+        4358,
+        4372,
+        4375,
+        4429,
+        4434,
+        4436,
+        4438,
+        4485,
+        4486
+      ],
+      "CMP-261106-0049": [
+        4310
+      ],
+      "CMP-261107-0551": [
+        4353
+      ],
+      "CMP-261107-1243": [
+        3644
+      ],
+      "CMP-261107-0740": [
+        4290,
+        4363,
+        4364,
+        4392
+      ],
+      "CMP-261107-2134": [],
+      "CMP-261107-2135": [
+        4355,
+        4358
+      ],
+      "CMP-261107-2136": [],
+      "CMP-261107-1832": [],
+      "CMP-261107-1833": [],
+      "CMP-261107-2216": [],
+      "CMP-261108-0254": [
+        206,
+        2634
+      ],
+      "CMP-261108-0922": [],
+      "CMP-261108-1635": [
+        4400
+      ],
+      "CMP-261108-1829": [],
+      "CMP-261108-1050": [],
+      "CMP-261108-1051": [],
+      "CMP-261108-1052": [],
+      "CMP-261108-1053": [],
+      "CMP-261108-1054": [],
+      "CMP-261108-1055": [],
+      "CMP-261108-1056": [],
+      "CMP-261108-1057": [],
+      "CMP-261108-1058": [],
+      "CMP-261108-1059": [],
+      "CMP-261108-1100": [],
+      "CMP-261108-1101": [
+        4392
+      ],
+      "CMP-261108-1102": [
+        4290,
+        4313
+      ],
+      "CMP-261108-1103": [
+        4290
+      ],
+      "CMP-261108-1104": [],
+      "CMP-261108-1105": [
+        4392
+      ],
+      "CMP-261108-2000": [
+        4022
+      ],
+      "CMP-261108-2026": [],
+      "CMP-261110-0931": [],
+      "CMP-261110-0932": [],
+      "CMP-261110-0933": [],
+      "CMP-261110-0934": [],
+      "CMP-261110-0935": [],
+      "CMP-261110-0936": [],
+      "CMP-261110-0937": [],
+      "CMP-261110-0938": [],
+      "CMP-261110-2011": [],
+      "CMP-261110-0427": [
+        4460
+      ],
+      "CMP-261110-0426": [
+        4462
+      ],
+      "CMP-261111-0506": [
+        4457
+      ],
+      "CMP-261111-0507": [
+        4461
+      ],
+      "CMP-261111-0508": [
+        4457
+      ],
+      "CMP-261111-1429": [
+        4472
+      ],
+      "CMP-261112-0158": [
+        4448
+      ],
+      "CMP-261111-2336": [],
+      "CMP-261111-2337": [],
+      "CMP-261111-2338": [],
+      "CMP-261111-2339": [],
+      "CMP-261111-2340": [],
+      "CMP-261112-0518": [
+        4476
+      ],
+      "CMP-261112-1647": [],
+      "CMP-261112-1648": [],
+      "CMP-261112-1649": [],
+      "CMP-261112-2225": [
+        4484,
+        4489,
+        4497,
+        4499
+      ],
+      "CMP-261113-0110": [],
+      "CMP-261113-0111": [
+        4438
+      ],
+      "CMP-261113-0112": [],
+      "CMP-261113-0113": [],
+      "CMP-261113-0114": [],
+      "CMP-261113-0115": [],
+      "CMP-261113-0209": [
+        4490
+      ],
+      "CMP-261113-0210": [
+        4491
+      ],
+      "CMP-261113-0211": [],
+      "CMP-261112-0124": [
+        4022
+      ],
+      "CMP-261113-1506": [],
+      "CMP-261113-1507": []
     },
     "items": {
+      "206": {
+        "number": 206,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "タイムラインダイジェスト・翻訳管理ページ追加（G3）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/206",
+        "updatedAt": "2026-05-08T12:32:36Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
       "261": {
         "number": 261,
         "kind": "pull_request",
@@ -64557,6 +68272,48 @@ window.BETA_INVENTORY_DATA = {
           "source": "GraphQL statusCheckRollup"
         }
       },
+      "628": {
+        "number": 628,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "F17 Phase1 第二陣: 村CRUD + メンバーシップ + ニックネーム + 作成申請 (B2-B5 統合)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/628",
+        "updatedAt": "2026-05-14T13:14:53Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "662": {
+        "number": 662,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "F17 Phase1-FE 第三陣: 村詳細+メンバー+井戸端+ピン (FE4/FE5/FE6/FE8)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/662",
+        "updatedAt": "2026-05-15T08:31:30Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "1036": {
+        "number": 1036,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "feat(F10.7): 予約通知イベント — UserRoleRepository拡張/ReservationAdminNotificationEventListener",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/1036",
+        "updatedAt": "2026-05-25T14:23:24Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
       "1073": {
         "number": 1073,
         "kind": "pull_request",
@@ -64644,12 +68401,13 @@ window.BETA_INVENTORY_DATA = {
       "1316": {
         "number": 1316,
         "kind": "pull_request",
-        "state": "open",
+        "state": "closed",
         "title": "chore(deps-dev): bump nuxt-security from 1.4.3 to 2.6.0 in /frontend",
         "url": "https://github.com/kenta-0420/mannschaft/pull/1316",
-        "updatedAt": "2026-07-08T23:38:29Z",
+        "updatedAt": "2026-10-27T10:56:12Z",
         "ci": {
-          "status": "success",
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
           "checks": [],
           "source": "GraphQL statusCheckRollup"
         }
@@ -64660,7 +68418,7 @@ window.BETA_INVENTORY_DATA = {
         "state": "open",
         "title": "chore(deps-dev): bump cheerio from 1.0.0-rc.12 to 1.2.0 in /frontend",
         "url": "https://github.com/kenta-0420/mannschaft/pull/1317",
-        "updatedAt": "2026-10-10T13:16:09Z",
+        "updatedAt": "2026-11-03T08:20:58Z",
         "ci": {
           "status": "failure",
           "checks": [],
@@ -64904,6 +68662,20 @@ window.BETA_INVENTORY_DATA = {
           "source": "GraphQL statusCheckRollup"
         }
       },
+      "1681": {
+        "number": 1681,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "機能追加: 予約リマインド実送信バッチを配線（F03.4 段階拡張 ⑥）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/1681",
+        "updatedAt": "2026-06-19T13:52:52Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
       "1726": {
         "number": 1726,
         "kind": "pull_request",
@@ -65093,6 +68865,20 @@ window.BETA_INVENTORY_DATA = {
         "title": "セキュリティ(認可根治 Wave2): proxyvote(議決権)ドメインにscope認可（票水増し防止）",
         "url": "https://github.com/kenta-0420/mannschaft/pull/2261",
         "updatedAt": "2026-07-11T19:06:28Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "2268": {
+        "number": 2268,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "セキュリティ(認可根治 Wave2B): equipmentドメイン全体にscope認可",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/2268",
+        "updatedAt": "2026-07-15T13:26:22Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -65703,6 +69489,20 @@ window.BETA_INVENTORY_DATA = {
         "url": "https://github.com/kenta-0420/mannschaft/issues/2617",
         "updatedAt": "2026-08-13T20:39:44Z",
         "ci": null
+      },
+      "2634": {
+        "number": 2634,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "テスト追加(日時): ピッカーTZずれと契約不整合の実機E2E — 非JSTプロフィールでの1日ずれ解消を実証（Issue #2508 Phase 2）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/2634",
+        "updatedAt": "2026-08-05T19:37:24Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
       },
       "2635": {
         "number": 2635,
@@ -67427,7 +71227,7 @@ window.BETA_INVENTORY_DATA = {
         "state": "open",
         "title": "修正(通知): 通知が業務トランザクションに参加する同型箇所が18件の外に約18箇所残存（CMP-056 の続戦）",
         "url": "https://github.com/kenta-0420/mannschaft/issues/2990",
-        "updatedAt": "2026-10-03T21:20:25Z",
+        "updatedAt": "2026-11-09T05:32:44Z",
         "ci": null
       },
       "2997": {
@@ -68346,6 +72146,20 @@ window.BETA_INVENTORY_DATA = {
         "title": "修正(CMP-013): 組織出欠内訳の境界を防御",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3245",
         "updatedAt": "2026-09-12T20:47:27Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3247": {
+        "number": 3247,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: PR #3230 で main を赤くした番人4件を根治（CMP-260910-1555 追随）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3247",
+        "updatedAt": "2026-09-12T15:11:51Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -70881,6 +74695,20 @@ window.BETA_INVENTORY_DATA = {
           "source": "GraphQL statusCheckRollup"
         }
       },
+      "3635": {
+        "number": 3635,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "test: 凍結ストア番人の検出漏れをRED試練で固定する",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3635",
+        "updatedAt": "2026-10-04T18:07:33Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
       "3638": {
         "number": 3638,
         "kind": "pull_request",
@@ -70933,6 +74761,19 @@ window.BETA_INVENTORY_DATA = {
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3644": {
+        "number": 3644,
+        "kind": "pull_request",
+        "state": "open",
+        "title": "お気に入りのTEAM・ORGANIZATION同ID混線と詳細URLを修正",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3644",
+        "updatedAt": "2026-11-13T06:44:49Z",
+        "ci": {
+          "status": "success",
           "checks": [],
           "source": "GraphQL statusCheckRollup"
         }
@@ -71178,12 +75019,13 @@ window.BETA_INVENTORY_DATA = {
       "3683": {
         "number": 3683,
         "kind": "pull_request",
-        "state": "open",
+        "state": "merged",
         "title": "Bump actions/upload-artifact from 4 to 7",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3683",
-        "updatedAt": "2026-10-27T02:08:13Z",
+        "updatedAt": "2026-11-03T18:32:07Z",
         "ci": {
-          "status": "failure",
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
           "checks": [],
           "source": "GraphQL statusCheckRollup"
         }
@@ -71208,7 +75050,7 @@ window.BETA_INVENTORY_DATA = {
         "state": "open",
         "title": "Bump hashicorp/setup-terraform from 3 to 4",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3685",
-        "updatedAt": "2026-10-27T02:08:14Z",
+        "updatedAt": "2026-11-06T02:01:59Z",
         "ci": {
           "status": "success",
           "checks": [],
@@ -71232,12 +75074,13 @@ window.BETA_INVENTORY_DATA = {
       "3687": {
         "number": 3687,
         "kind": "pull_request",
-        "state": "open",
+        "state": "merged",
         "title": "Bump actions/setup-java from 4 to 6",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3687",
-        "updatedAt": "2026-10-27T02:08:24Z",
+        "updatedAt": "2026-11-03T20:49:04Z",
         "ci": {
-          "status": "success",
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
           "checks": [],
           "source": "GraphQL statusCheckRollup"
         }
@@ -71259,12 +75102,13 @@ window.BETA_INVENTORY_DATA = {
       "3689": {
         "number": 3689,
         "kind": "pull_request",
-        "state": "open",
+        "state": "closed",
         "title": "Bump com.tngtech.archunit:archunit-junit5 from 1.3.0 to 1.5.1 in /backend",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3689",
-        "updatedAt": "2026-10-19T07:15:08Z",
+        "updatedAt": "2026-10-28T09:34:13Z",
         "ci": {
-          "status": "success",
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
           "checks": [],
           "source": "GraphQL statusCheckRollup"
         }
@@ -71286,12 +75130,13 @@ window.BETA_INVENTORY_DATA = {
       "3692": {
         "number": 3692,
         "kind": "pull_request",
-        "state": "open",
+        "state": "closed",
         "title": "Bump org.apache.pdfbox:pdfbox from 3.0.3 to 3.0.8 in /backend",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3692",
-        "updatedAt": "2026-10-19T07:15:10Z",
+        "updatedAt": "2026-10-28T09:56:18Z",
         "ci": {
-          "status": "success",
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
           "checks": [],
           "source": "GraphQL statusCheckRollup"
         }
@@ -71313,12 +75158,13 @@ window.BETA_INVENTORY_DATA = {
       "3694": {
         "number": 3694,
         "kind": "pull_request",
-        "state": "open",
+        "state": "closed",
         "title": "Bump com.stripe:stripe-java from 28.2.0 to 34.0.0 in /backend",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3694",
-        "updatedAt": "2026-10-19T07:15:15Z",
+        "updatedAt": "2026-10-28T10:05:19Z",
         "ci": {
-          "status": "failure",
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
           "checks": [],
           "source": "GraphQL statusCheckRollup"
         }
@@ -71326,12 +75172,27 @@ window.BETA_INVENTORY_DATA = {
       "3695": {
         "number": 3695,
         "kind": "pull_request",
-        "state": "open",
-        "title": "Bump org.springframework.boot from 3.5.13 to 4.1.1 in /backend",
+        "state": "closed",
+        "title": "Bump org.springframework.boot from 3.5.13 to 4.1.2 in /backend",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3695",
-        "updatedAt": "2026-10-19T07:15:24Z",
+        "updatedAt": "2026-11-03T10:59:30Z",
         "ci": {
-          "status": "failure",
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3696": {
+        "number": 3696,
+        "kind": "pull_request",
+        "state": "closed",
+        "title": "Bump software.amazon.awssdk:bom from 2.29.45 to 2.56.0 in /backend",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3696",
+        "updatedAt": "2026-10-28T10:05:55Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
           "checks": [],
           "source": "GraphQL statusCheckRollup"
         }
@@ -71448,13 +75309,27 @@ window.BETA_INVENTORY_DATA = {
           "source": "GraphQL statusCheckRollup"
         }
       },
+      "3721": {
+        "number": 3721,
+        "kind": "pull_request",
+        "state": "closed",
+        "title": "fix(CMP-260822-1730): 仮予約失効を永続cursor・retry・UUIDv7で根治する",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3721",
+        "updatedAt": "2026-11-02T06:10:09Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
       "3724": {
         "number": 3724,
         "kind": "pull_request",
         "state": "open",
-        "title": "fix(CMP-261008-1253): シフト枠の版番号契約を根治（red先行）",
+        "title": "修正: シフト枠のLong版番号とボード状態の同期（CMP-261008-1253）",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3724",
-        "updatedAt": "2026-10-08T07:34:45Z",
+        "updatedAt": "2026-11-07T04:39:34Z",
         "ci": {
           "status": "success",
           "checks": [],
@@ -71523,6 +75398,33 @@ window.BETA_INVENTORY_DATA = {
         "title": "CMP-261008-2305 棚卸更新・空insights自己検証修正の登録",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3734",
         "updatedAt": "2026-10-09T02:51:24Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3738": {
+        "number": 3738,
+        "kind": "pull_request",
+        "state": "open",
+        "title": "シフト割当済みchipの移動と審査権限を修正（CMP-261008-1253）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3738",
+        "updatedAt": "2026-10-13T06:03:26Z",
+        "ci": {
+          "status": "success",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3741": {
+        "number": 3741,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "シフト依頼のダッシュボードリンクを既存画面へ接続する",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3741",
+        "updatedAt": "2026-10-27T12:00:45Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -71698,6 +75600,20 @@ window.BETA_INVENTORY_DATA = {
           "source": "GraphQL statusCheckRollup"
         }
       },
+      "3779": {
+        "number": 3779,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "付随通知のTX分離: jobmatching 4メソッドをAFTER_COMMITリスナーへ（CMP-260827-1152 / Issue #2997 第1陣）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3779",
+        "updatedAt": "2026-10-10T20:35:01Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
       "3780": {
         "number": 3780,
         "kind": "pull_request",
@@ -71719,6 +75635,20 @@ window.BETA_INVENTORY_DATA = {
         "title": "CMP-261010-1129 組織作成の公開範囲と入力エラー表示を修正",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3782",
         "updatedAt": "2026-10-15T11:58:17Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3783": {
+        "number": 3783,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "付随通知の業務TX巻き込み是正: 軽量バッチ群 G8（#2997）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3783",
+        "updatedAt": "2026-10-11T22:57:37Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -71775,6 +75705,20 @@ window.BETA_INVENTORY_DATA = {
         "title": "資格APIの越境応答を不在と完全一致させる（CMP-261010-2226）",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3790",
         "updatedAt": "2026-10-11T16:12:30Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3792": {
+        "number": 3792,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "付随通知のTX分離: recruitment 4メソッドをAFTER_COMMITリスナーへ（Issue #2997 第1陣 G2）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3792",
+        "updatedAt": "2026-10-12T13:31:06Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -72034,6 +75978,47 @@ window.BETA_INVENTORY_DATA = {
           "source": "GraphQL statusCheckRollup"
         }
       },
+      "3832": {
+        "number": 3832,
+        "kind": "pull_request",
+        "state": "open",
+        "title": "修正: CMP-261010-1432 シフト画面の欠陥修繕 FE-a（変更依頼・詳細タブ・勤務制約）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3832",
+        "updatedAt": "2026-10-14T05:22:07Z",
+        "ci": {
+          "status": "success",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3835": {
+        "number": 3835,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: シフト勤務希望の並行保存・自己審査禁止・変更依頼受付期間・依頼者名・枠移動API (CMP-261010-1432 BE)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3835",
+        "updatedAt": "2026-10-13T15:22:25Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3837": {
+        "number": 3837,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "CMP-260827-1152 Issue #2997 G6: シフトリマインド・チケット期限切れの付随通知をAFTER_COMMITへ",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3837",
+        "updatedAt": "2026-10-13T07:04:30Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
       "3838": {
         "number": 3838,
         "kind": "pull_request",
@@ -72069,6 +76054,20 @@ window.BETA_INVENTORY_DATA = {
         "title": "CMP-261013-1033 MeController 所属一覧 IT の roles 重複を根治",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3841",
         "updatedAt": "2026-10-13T04:12:10Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3843": {
+        "number": 3843,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "テスト修正: レートリミット結線ITの窓境界またぎフレークを根治",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3843",
+        "updatedAt": "2026-10-13T11:44:33Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -72202,6 +76201,20 @@ window.BETA_INVENTORY_DATA = {
           "source": "GraphQL statusCheckRollup"
         }
       },
+      "3854": {
+        "number": 3854,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "付随通知を業務TXから切り離す: digest と timetable（CMP-260827-1152 G7-a）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3854",
+        "updatedAt": "2026-10-14T05:27:05Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
       "3855": {
         "number": 3855,
         "kind": "pull_request",
@@ -72265,6 +76278,20 @@ window.BETA_INVENTORY_DATA = {
         "title": "機能追加: チームのアーカイブと解除導線を補完（CMP-261011-0035）",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3863",
         "updatedAt": "2026-10-14T09:21:36Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3864": {
+        "number": 3864,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "付随通知を業務TXから切り離す: survey 督促・締切延長と role 打診・辞退（CMP-260827-1152 G5）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3864",
+        "updatedAt": "2026-10-21T06:32:58Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -72811,6 +76838,20 @@ window.BETA_INVENTORY_DATA = {
           "source": "GraphQL statusCheckRollup"
         }
       },
+      "4001": {
+        "number": 4001,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "付随通知を業務TXから切り離す: 予約ドメイン（CMP-260827-1152 G3）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4001",
+        "updatedAt": "2026-10-21T00:21:17Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
       "4006": {
         "number": 4006,
         "kind": "pull_request",
@@ -72842,12 +76883,13 @@ window.BETA_INVENTORY_DATA = {
       "4009": {
         "number": 4009,
         "kind": "pull_request",
-        "state": "open",
+        "state": "merged",
         "title": "テスト: F01.2.1 チームグループ化の実機E2E と結果報告",
         "url": "https://github.com/kenta-0420/mannschaft/pull/4009",
-        "updatedAt": "2026-10-20T23:46:10Z",
+        "updatedAt": "2026-10-28T23:47:02Z",
         "ci": {
-          "status": "failure",
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
           "checks": [],
           "source": "GraphQL statusCheckRollup"
         }
@@ -72900,7 +76942,7 @@ window.BETA_INVENTORY_DATA = {
         "state": "open",
         "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
         "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
-        "updatedAt": "2026-10-27T05:08:11Z",
+        "updatedAt": "2026-11-12T23:49:00Z",
         "ci": null
       },
       "4023": {
@@ -73397,6 +77439,20 @@ window.BETA_INVENTORY_DATA = {
           "source": "GraphQL statusCheckRollup"
         }
       },
+      "4137": {
+        "number": 4137,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 交代依頼の二重送信と担当者ごとの重複作成を防止",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4137",
+        "updatedAt": "2026-10-27T20:03:54Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
       "4143": {
         "number": 4143,
         "kind": "pull_request",
@@ -73431,7 +77487,7 @@ window.BETA_INVENTORY_DATA = {
         "state": "merged",
         "title": "整理: CMP-261012-2338 未使用の機能切替APIを削除",
         "url": "https://github.com/kenta-0420/mannschaft/pull/4156",
-        "updatedAt": "2026-10-27T05:52:53Z",
+        "updatedAt": "2026-10-27T06:57:58Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -73445,7 +77501,1501 @@ window.BETA_INVENTORY_DATA = {
         "state": "merged",
         "title": "修正: CMP-261006-0632 旧slugの破棄後応答ガードを再採用",
         "url": "https://github.com/kenta-0420/mannschaft/pull/4160",
-        "updatedAt": "2026-10-27T05:00:56Z",
+        "updatedAt": "2026-10-27T06:57:28Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4163": {
+        "number": 4163,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: CMP-261027-1311 委員会一覧の可視性とページ件数を一致させる",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4163",
+        "updatedAt": "2026-10-27T21:11:41Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4164": {
+        "number": 4164,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: チーム管理者のシフト変更依頼審査を表示する（1432-A）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4164",
+        "updatedAt": "2026-10-27T10:08:20Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4166": {
+        "number": 4166,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "CMP-261027-1353 ログイン後の描画待ち・カレンダー・feed認可表示を改善",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4166",
+        "updatedAt": "2026-10-27T18:51:59Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4167": {
+        "number": 4167,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "[CMP-261021-0660] Spring Page受信契約と一覧ページングを修正",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4167",
+        "updatedAt": "2026-10-27T21:05:18Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4169": {
+        "number": 4169,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "構成整理: L1-Bの共通Gradle設定をbuild-logicへ移設",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4169",
+        "updatedAt": "2026-10-28T11:41:27Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4177": {
+        "number": 4177,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 管理バッチ完了・失敗通知を業務TXから切り離す（CMP-260827-1152 G7-b）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4177",
+        "updatedAt": "2026-10-28T02:44:10Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4178": {
+        "number": 4178,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "CMP-261002-1343: メンバー紹介実機specの初期設定を通常操作で閉じる",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4178",
+        "updatedAt": "2026-10-27T22:35:23Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4181": {
+        "number": 4181,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 確認通知の手動リマインド再送を業務TXから分離し、番人のNEVER起点誤検知を是正（#2997 G4-b）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4181",
+        "updatedAt": "2026-10-28T06:06:11Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4182": {
+        "number": 4182,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: CMP-261004-1818 総称bridgeによる親宣言の遮蔽を保持",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4182",
+        "updatedAt": "2026-10-27T20:18:46Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4188": {
+        "number": 4188,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "文書: 委員会一覧修復の独立探索をB0登録（CMP-261027-1311）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4188",
+        "updatedAt": "2026-10-27T21:58:41Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4193": {
+        "number": 4193,
+        "kind": "pull_request",
+        "state": "open",
+        "title": "修正: シフト作成時の親チーム存在確認（CMP-261004-1819）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4193",
+        "updatedAt": "2026-11-06T19:29:06Z",
+        "ci": {
+          "status": "success",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4194": {
+        "number": 4194,
+        "kind": "pull_request",
+        "state": "open",
+        "title": "修正: CMP-261021-1330 LINE/SNS設定ヘッダーの6言語対応",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4194",
+        "updatedAt": "2026-11-06T19:08:50Z",
+        "ci": {
+          "status": "success",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4198": {
+        "number": 4198,
+        "kind": "pull_request",
+        "state": "open",
+        "title": "試練: CMP-261004-1822 招待承諾・取消の実ロック競合を観測",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4198",
+        "updatedAt": "2026-11-07T14:12:35Z",
+        "ci": {
+          "status": "success",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4200": {
+        "number": 4200,
+        "kind": "issue",
+        "state": "open",
+        "title": "CMP-261028-1554: Backend CIの公開診断artifact不足を集約gateで拒否する",
+        "url": "https://github.com/kenta-0420/mannschaft/issues/4200",
+        "updatedAt": "2026-10-28T06:56:51Z",
+        "ci": null
+      },
+      "4204": {
+        "number": 4204,
+        "kind": "pull_request",
+        "state": "open",
+        "title": "修正: CMP-261001-0838 紹介ページのURLスラッグ必須案内",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4204",
+        "updatedAt": "2026-11-06T19:12:26Z",
+        "ci": {
+          "status": "success",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4205": {
+        "number": 4205,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "改善: カレンダー初期表示の独立取得と部品読込を重ねる",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4205",
+        "updatedAt": "2026-10-29T00:18:33Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4206": {
+        "number": 4206,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "試練: 組織告知の宛先チーム委任閲覧と権限名の国際化（ALIC-1/ALIC-2）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4206",
+        "updatedAt": "2026-10-29T15:18:35Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4208": {
+        "number": 4208,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "検証: #2997 付随通知TX是正（G3・G4-b・G5・G7）の実機E2E spec追加と欠陥報告",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4208",
+        "updatedAt": "2026-10-30T08:09:46Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4210": {
+        "number": 4210,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "記録追加: L1-M Modulith基盤の登録",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4210",
+        "updatedAt": "2026-10-28T14:22:45Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4211": {
+        "number": 4211,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "台帳登録: CMP-261028-2304 L1-R返済レーン",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4211",
+        "updatedAt": "2026-10-28T14:37:55Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4214": {
+        "number": 4214,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "feat: L1-R向けTransitionalBridge注釈を先行提供する",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4214",
+        "updatedAt": "2026-10-29T01:49:36Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4218": {
+        "number": 4218,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: FE の vue-i18n 系を更新し npm audit の high（@intlify/core）を根治する",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4218",
+        "updatedAt": "2026-10-29T05:41:51Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4221": {
+        "number": 4221,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 緊急休業の一括送信で件数が表示されない不具合 (CMP-261028-2329)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4221",
+        "updatedAt": "2026-10-30T06:59:09Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4226": {
+        "number": 4226,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 予約者向け通知の遷移先を slug 化 (CMP-261028-2328)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4226",
+        "updatedAt": "2026-10-30T07:01:47Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4229": {
+        "number": 4229,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: ダッシュボードの告知カード見出しが描画されない不具合と f0121 実機 spec の列数判定（CMP-261011-0035）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4229",
+        "updatedAt": "2026-10-30T01:32:46Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4231": {
+        "number": 4231,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "試験修正: 2FAリカバリーの期待を厳密化（CMP-261021-1342）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4231",
+        "updatedAt": "2026-11-04T13:24:23Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4234": {
+        "number": 4234,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "文書更新: 時給設定の独立3住民観測を気づき箱へ追加",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4234",
+        "updatedAt": "2026-10-30T01:25:11Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4236": {
+        "number": 4236,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: ダッシュボードの告知カード見出し行がスマホ幅で潰れる（CMP-261011-0035）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4236",
+        "updatedAt": "2026-10-30T03:38:37Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4237": {
+        "number": 4237,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "試験追加: 予約者向け通知の遷移先 slug 化と緊急休業の件数表示の実機E2E (CMP-261028-2328)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4237",
+        "updatedAt": "2026-10-30T08:10:02Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4239": {
+        "number": 4239,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: スマホ幅で告知カードの一覧が1件しか見えない（CMP-261011-0035）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4239",
+        "updatedAt": "2026-10-30T08:57:32Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4240": {
+        "number": 4240,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 組織告知一覧が宛先外の人に宛先指定の告知を出す（CMP-261011-0035）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4240",
+        "updatedAt": "2026-11-01T00:03:28Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4243": {
+        "number": 4243,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 緊急休業の一括送信に休業理由の入力欄を追加し、手入力・カスタムの400を解消（CMP-261030-0649）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4243",
+        "updatedAt": "2026-10-30T21:59:35Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4244": {
+        "number": 4244,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "テスト: CMP-260826-1455 村ドメイン全域のモデレーター判定述語番人",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4244",
+        "updatedAt": "2026-11-01T06:50:02Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4246": {
+        "number": 4246,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: コルクボードの存在オラクルを一掃（CMP-260820-1422 残件）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4246",
+        "updatedAt": "2026-11-01T05:09:18Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4247": {
+        "number": 4247,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 緊急休業の患者名が空欄になる不具合を解消 (CMP-261030-0650)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4247",
+        "updatedAt": "2026-11-03T09:55:02Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4248": {
+        "number": 4248,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: CMP-260822-1730 仮予約失効バッチのチームTZ誤抽出を根治（#3721・#3614 統合）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4248",
+        "updatedAt": "2026-11-01T12:35:03Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4250": {
+        "number": 4250,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 村の入村の並行実行で現役所属一意と100村上限を守る（CMP-260827-1808）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4250",
+        "updatedAt": "2026-11-03T08:43:25Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4251": {
+        "number": 4251,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: CMP-260822-1243 退会強匿名化に個人所有の残7表を追加し所有列の網羅番人を拡張",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4251",
+        "updatedAt": "2026-11-01T05:32:52Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4252": {
+        "number": 4252,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 存在オラクルの本文正規化（越境応答を不在と完全一致）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4252",
+        "updatedAt": "2026-11-02T06:09:22Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4253": {
+        "number": 4253,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: node-forge を 1.4.2 へ更新し audit の期限切れ例外を撤去（CMP-261002-1135）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4253",
+        "updatedAt": "2026-11-01T22:47:52Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4254": {
+        "number": 4254,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "文書更新: CMP-261011-0035 組織チームグループ戦役のアリシゼーション観測を気づき箱へ登録",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4254",
+        "updatedAt": "2026-11-01T10:33:41Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4257": {
+        "number": 4257,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: カレンダー週グリッドの秋の重複時刻を実行日に依存せず固定（CMP-261101-1404）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4257",
+        "updatedAt": "2026-11-02T01:08:34Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4259": {
+        "number": 4259,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "保守: 期限切れの braces 監査例外を撤去",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4259",
+        "updatedAt": "2026-11-06T21:23:07Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4261": {
+        "number": 4261,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 緊急休業の送信履歴・プレビュー表を390pxで崩さず、件数タグをi18n化 (CMP-261030-0651)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4261",
+        "updatedAt": "2026-11-03T10:31:07Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4268": {
+        "number": 4268,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "機能追加: Flyway実スキーマからER図を自動生成しCIで再生成漏れを検出 (CMP-261103-1940)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4268",
+        "updatedAt": "2026-11-04T06:12:01Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4270": {
+        "number": 4270,
+        "kind": "issue",
+        "state": "open",
+        "title": "N+1 解消戦役（CMP-261103-1225）正本",
+        "url": "https://github.com/kenta-0420/mannschaft/issues/4270",
+        "updatedAt": "2026-11-03T12:26:58Z",
+        "ci": null
+      },
+      "4272": {
+        "number": 4272,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 退会の強匿名化が失効済みrefresh_tokensのFK違反で完走しない欠陥を根治 (CMP-260822-1243)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4272",
+        "updatedAt": "2026-11-06T21:15:45Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4273": {
+        "number": 4273,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "テスト: 緊急休業画面の不具合3件の実機E2E と結果報告 (CMP-261030-0651)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4273",
+        "updatedAt": "2026-11-03T21:28:24Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4275": {
+        "number": 4275,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 論理削除済み枠のPENDINGを失効バッチが永続retryしないよう終状態へ遷移させる (CMP-260822-1730)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4275",
+        "updatedAt": "2026-11-06T21:16:35Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4281": {
+        "number": 4281,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 緊急休業の一括送信で連打による多重送信を防ぐ FE (CMP-261104-0334)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4281",
+        "updatedAt": "2026-11-04T16:12:51Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4286": {
+        "number": 4286,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: STOMP の Cookie 認証ハンドシェイク採用と拒否理由 x-error-code（BE）(CMP-261104-0337)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4286",
+        "updatedAt": "2026-11-05T07:36:55Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4290": {
+        "number": 4290,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "機能追加: 臨時休業通知送信の冪等性（Idempotency-Key）BE (CMP-261104-0334)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4290",
+        "updatedAt": "2026-11-08T07:26:56Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4292": {
+        "number": 4292,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 日時整形の共通関数をロケール対応にし緊急休業の日付直書きを廃止 (CMP-261104-0335)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4292",
+        "updatedAt": "2026-11-05T13:12:51Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4293": {
+        "number": 4293,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 本人予約済みセルの aria-label がキャンセル待ちを誤案内する（R1 / CMP-260824-2217）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4293",
+        "updatedAt": "2026-11-04T19:41:57Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4296": {
+        "number": 4296,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 自分の予約一覧で日跨ぎ枠の終了日を翌日表記で示す (CMP-260822-1730 R3)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4296",
+        "updatedAt": "2026-11-06T21:13:08Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4298": {
+        "number": 4298,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: E-R図の同一テーブル自己参照を表で全件示す (CMP-261104-2256)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4298",
+        "updatedAt": "2026-11-05T02:09:47Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4300": {
+        "number": 4300,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "整備: ArchUnit上限とshard重みを週次締めで更新",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4300",
+        "updatedAt": "2026-11-05T04:35:56Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4305": {
+        "number": 4305,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "台帳: CMP-261105-1507 N+1戦役Phase1発見の既存不具合6件を追加",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4305",
+        "updatedAt": "2026-11-05T07:08:42Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4306": {
+        "number": 4306,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: プロジェクト画面の進捗率100倍・関連タスクJSON表示・マイルストーン件数 (CMP-261105-1507)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4306",
+        "updatedAt": "2026-11-05T16:51:23Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4309": {
+        "number": 4309,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: STOMP の空 Bearer 廃止と x-error-code による拒否・未認証の扱い（FE）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4309",
+        "updatedAt": "2026-11-05T23:47:09Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4310": {
+        "number": 4310,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "台帳: 優先度 P1〜P5 を導入し状態列の先頭に必須化 (CMP-261106-0049)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4310",
+        "updatedAt": "2026-11-06T02:00:53Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4311": {
+        "number": 4311,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 同秒のチャットメッセージの並びを id で確定 (CMP-261105-1507)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4311",
+        "updatedAt": "2026-11-06T10:12:44Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4313": {
+        "number": 4313,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 緊急休業の履歴・プレビューを md 未満でカード表示 (CMP-261104-0336)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4313",
+        "updatedAt": "2026-11-06T18:26:05Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4324": {
+        "number": 4324,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 時間割の学期APIの500を解消 (CMP-261105-1507)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4324",
+        "updatedAt": "2026-11-06T00:16:35Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4327": {
+        "number": 4327,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "試験修正: STOMP 拒否試験の後片付けで閉じたセッションへの DISCONNECT 競合を解消 (CMP-261104-0337)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4327",
+        "updatedAt": "2026-11-06T21:21:15Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4330": {
+        "number": 4330,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 業務コード付き429で共通トーストを重ねない (CMP-260827-1808)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4330",
+        "updatedAt": "2026-11-06T21:13:39Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4332": {
+        "number": 4332,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "文書: CMP-260905-1415 ローカル検証環境の起動手順",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4332",
+        "updatedAt": "2026-11-06T15:35:56Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4341": {
+        "number": 4341,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "試験: 既存不具合6件の修正を実機E2Eで確認する (CMP-261105-1507)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4341",
+        "updatedAt": "2026-11-07T14:30:55Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4343": {
+        "number": 4343,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: CMP-261105-1507 学期画面のエラー表示（必須検証・409文言・翻訳キー）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4343",
+        "updatedAt": "2026-11-06T23:33:12Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4352": {
+        "number": 4352,
+        "kind": "pull_request",
+        "state": "open",
+        "title": "リファクタ: L1-R 初回の名称正規化を組織ドメインへ返却",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4352",
+        "updatedAt": "2026-11-13T02:21:38Z",
+        "ci": {
+          "status": "success",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4353": {
+        "number": 4353,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "牧場の承認済み16種・3段階・4外見を開発カタログへ組み込む",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4353",
+        "updatedAt": "2026-11-07T21:01:52Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4355": {
+        "number": 4355,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: CMP-261105-1507 マイルストーンの保存とプロジェクト画面の多言語化",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4355",
+        "updatedAt": "2026-11-07T03:39:24Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4358": {
+        "number": 4358,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: CMP-261105-1507 チームの学期・時間割をチーム単独で管理できるようにする",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4358",
+        "updatedAt": "2026-11-07T06:59:49Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4363": {
+        "number": 4363,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "台帳: CMP-261107-0740 LoyaltyPointsWriterIT 不安定さの根治を登録",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4363",
+        "updatedAt": "2026-11-07T08:00:35Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4364": {
+        "number": 4364,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: CMP-261107-0740 LoyaltyPointsWriterIT 200並列試験の接続枯渇を根治",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4364",
+        "updatedAt": "2026-11-07T12:22:55Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4368": {
+        "number": 4368,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 組織管理タブで未所属ユーザーを描画前に退避",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4368",
+        "updatedAt": "2026-11-07T15:13:26Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4372": {
+        "number": 4372,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "文書: CMP-261105-1507 task-list の進捗更新と派生残件の起票",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4372",
+        "updatedAt": "2026-11-07T12:51:30Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4375": {
+        "number": 4375,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: CMP-261105-1507 チャットの存在隠蔽・本人の編集削除・既読バッジ・多言語化",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4375",
+        "updatedAt": "2026-11-07T22:50:18Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4382": {
+        "number": 4382,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: シフト表作成後にチームの一覧を更新（CMP-260910-1600）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4382",
+        "updatedAt": "2026-11-07T22:47:20Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4392": {
+        "number": 4392,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: LoyaltyPointsWriterIT の並列試験が止まるとCI打ち切りまで待つ欠陥を根治（CMP-261107-0740）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4392",
+        "updatedAt": "2026-11-08T04:25:25Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4396": {
+        "number": 4396,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: CMP-260916-2328 OpenAPI事前確認でdry-runを区別する",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4396",
+        "updatedAt": "2026-11-08T07:34:48Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4400": {
+        "number": 4400,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "文書更新: 診断64コードと恐竜16種4外見の対応を確定",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4400",
+        "updatedAt": "2026-11-08T07:47:34Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4403": {
+        "number": 4403,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: CMP-260916-0056 ソース番人の時間制限と割込み応答を実効化",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4403",
+        "updatedAt": "2026-11-08T17:36:07Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4404": {
+        "number": 4404,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "テスト: 緊急休業画面の確定不備4件の実機E2E (CMP-261104-0334)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4404",
+        "updatedAt": "2026-11-08T11:47:03Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4406": {
+        "number": 4406,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "文書: アリシゼーション run-20261108 の確定不備と判断保留16行を台帳に起票",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4406",
+        "updatedAt": "2026-11-08T11:03:48Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4429": {
+        "number": 4429,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "試験: CMP-261105-1507 最新 main での実機E2E 再確認",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4429",
+        "updatedAt": "2026-11-09T13:35:26Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4431": {
+        "number": 4431,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: テストプロファイルの設定欠落を同期（CMP-260910-1811）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4431",
+        "updatedAt": "2026-11-09T14:28:05Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4434": {
+        "number": 4434,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: CMP-261105-1507 DM の開始窓口の不一致と Zimmer 招待の候補",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4434",
+        "updatedAt": "2026-11-09T15:28:21Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4436": {
+        "number": 4436,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: CMP-261105-1507 学期の削除の行き止まり・学期名の欠落・時間割とマイルストーンのエラー表示",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4436",
+        "updatedAt": "2026-11-09T22:45:25Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4438": {
+        "number": 4438,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: CMP-261105-1507 チームの Zimmer 作成の項目不一致と部屋一覧プレビューの更新漏れ",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4438",
+        "updatedAt": "2026-11-10T02:57:24Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4443": {
+        "number": 4443,
+        "kind": "pull_request",
+        "state": "open",
+        "title": "修正: CMP0303 通知再送の部分成功を同じ失敗行へ保持",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4443",
+        "updatedAt": "2026-11-11T23:28:47Z",
+        "ci": {
+          "status": "failure",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4448": {
+        "number": 4448,
+        "kind": "pull_request",
+        "state": "open",
+        "title": "修正: チーム・組織の投票一覧と作成を既存API契約へ整合",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4448",
+        "updatedAt": "2026-11-11T23:42:43Z",
+        "ci": {
+          "status": "success",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4450": {
+        "number": 4450,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: CMP-261030-0652 既読通知の再クリックで 409 にならないよう冪等化",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4450",
+        "updatedAt": "2026-11-10T14:43:37Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4457": {
+        "number": 4457,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: CMP-261030-0648 管理者向け予約通知・問い合わせ通知・業務アラートの遷移先を slug にする",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4457",
+        "updatedAt": "2026-11-10T19:52:02Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4460": {
+        "number": 4460,
+        "kind": "pull_request",
+        "state": "open",
+        "title": "修正: CMP-261110-0427 予約通知で枠タイトル未設定時に「nullが予約されました」と出る不具合の根治",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4460",
+        "updatedAt": "2026-11-10T21:38:38Z",
+        "ci": {
+          "status": "failure",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4461": {
+        "number": 4461,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: CMP-261029-0620 プッシュ通知をタップしても遷移しない不具合を根治",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4461",
+        "updatedAt": "2026-11-10T23:59:07Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4462": {
+        "number": 4462,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: CMP-261110-0426 招待画面の表示不備6件の根治",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4462",
+        "updatedAt": "2026-11-11T01:10:22Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4466": {
+        "number": 4466,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: CMP-261030-0648 仮押さえ失効通知の遷移先を slug にする",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4466",
+        "updatedAt": "2026-11-11T06:27:32Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4472": {
+        "number": 4472,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: CMP-261111-1429 招待リンク一覧のアリシゼーション確定不具合（ALIC-1〜6）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4472",
+        "updatedAt": "2026-11-11T19:30:49Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4476": {
+        "number": 4476,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: CMP-261112-0518 共通ボタンラベルの単語途中折れを根治",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4476",
+        "updatedAt": "2026-11-12T01:22:24Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4484": {
+        "number": 4484,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: CMP-261112-2225 member-card の日本語直書きを i18n 化",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4484",
+        "updatedAt": "2026-11-12T16:28:43Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4485": {
+        "number": 4485,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "試験: CMP-261105-1507 実機 spec を #4436 の学期仕様とチャット画面に追従させる",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4485",
+        "updatedAt": "2026-11-12T17:07:31Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4486": {
+        "number": 4486,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: CMP-261105-1507 DM 開始後に DM が開かない・送信でプレビューが更新されない・ハンドル未発見で落ちる",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4486",
+        "updatedAt": "2026-11-12T17:07:30Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4489": {
+        "number": 4489,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: CMP-261112-2225 会員証画面の追加修正（i18n・伝播・二重送信・折り返し・初期選択）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4489",
+        "updatedAt": "2026-11-12T18:04:23Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4490": {
+        "number": 4490,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: CMP-261113-0209 PLATFORM 会員証の本人操作が失敗する不具合",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4490",
+        "updatedAt": "2026-11-12T20:12:53Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4491": {
+        "number": 4491,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: CMP-261113-0210 新規登録の同時登録競合・locale固定・日本語直書き・連打",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4491",
+        "updatedAt": "2026-11-13T00:44:43Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4497": {
+        "number": 4497,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 会員証一覧の絞り込みが360px幅で折り返さず横はみ出しする（CMP-261112-2225）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4497",
+        "updatedAt": "2026-11-13T04:49:44Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4499": {
+        "number": 4499,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 会員証のQR再生成後にQRが消えたままになる（CMP-261112-2225）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4499",
+        "updatedAt": "2026-11-13T05:59:48Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -73457,8 +79007,8 @@ window.BETA_INVENTORY_DATA = {
     "lastAttempt": {
       "status": "synced",
       "error": null,
-      "synchronizedAt": "2026-10-27T06:07:09+00:00",
-      "referenceCount": 670
+      "synchronizedAt": "2026-11-13T21:28:06+00:00",
+      "referenceCount": 803
     }
   }
 };
