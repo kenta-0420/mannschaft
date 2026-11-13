@@ -62,6 +62,12 @@ describe('折り返し・初期選択の構造番人', () => {
     expect(read('components/member-card/MemberCardList.vue')).toMatch(/mb-4 flex flex-wrap items-center/)
     expect(read('components/member-card/MemberCardDisplay.vue')).toMatch(/flex flex-wrap justify-center gap-2/)
   })
+  it('絞り込み SelectButton 自体が折り返し可能で 44px のタップ領域を持つ（360px 横はみ出し防止）', () => {
+    const src = read('components/member-card/MemberCardList.vue')
+    const tag = src.match(/<SelectButton[\s\S]*?\/>/)?.[0] ?? ''
+    expect(tag).toMatch(/class="[^"]*flex flex-wrap/)
+    expect(tag).toMatch(/min-h-11 min-w-11/)
+  })
   it('一覧は選択中カードを示し、ページは先頭カードを初期選択する', () => {
     expect(read('components/member-card/MemberCardList.vue')).toMatch(/selectedId/)
     expect(read('pages/settings/member-cards.vue')).toMatch(/cards\.value\[0\]/)
