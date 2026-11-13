@@ -48,4 +48,13 @@ describe('QrCodeImage', () => {
     expect(svg).not.toContain('<text')
     wrapper.unmount()
   })
+
+  it('描画前（SVG未生成）でも size の正方形領域を確保しバッジが周囲に重ならない', () => {
+    const wrapper = mount(QrCodeImage, { props: { value: '', size: 240 } })
+    const box = wrapper.get('.qr-code-image__svg').element as HTMLElement
+    expect(box.style.width).toBe('240px')
+    expect(box.style.maxWidth).toBe('100%')
+    expect(box.style.aspectRatio).toBe('1 / 1')
+    wrapper.unmount()
+  })
 })

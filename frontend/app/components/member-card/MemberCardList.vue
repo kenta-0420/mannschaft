@@ -3,6 +3,7 @@ import type { MemberCard, MemberCardStatus } from '~/types/member-card'
 
 defineProps<{
   cards: MemberCard[]
+  selectedId?: number | null
 }>()
 
 const emit = defineEmits<{
@@ -11,32 +12,35 @@ const emit = defineEmits<{
   reactivate: [id: number]
 }>()
 
+const { t } = useI18n()
 const statusFilter = ref<MemberCardStatus | 'ALL'>('ALL')
 
-const statusOptions = [
-  { label: 'すべて', value: 'ALL' },
-  { label: '有効', value: 'ACTIVE' },
-  { label: '停止中', value: 'SUSPENDED' },
-  { label: '無効', value: 'REVOKED' },
-]
+const statusOptions = computed(() =>
+  (['ALL', 'ACTIVE', 'SUSPENDED', 'REVOKED'] as const).map(value => ({
+    label: t(`memberCardDisplay.status.${value}`),
+    value,
+  })),
+)
 </script>
 
 <template>
   <div>
-    <div class="mb-4 flex items-center gap-2">
-      <SelectButton v-model="statusFilter" :options="statusOptions" option-label="label" option-value="value" />
+    <div class="mb-4 flex flex-wrap items-center gap-2">
+      <SelectButton v-model="statusFilter" :options="statusOptions" option-label="label" option-value="value" class="flex flex-wrap" :pt="{ pcToggleButton: { root: { class: 'min-h-11 min-w-11' } } }" />
     </div>
 
     <div v-if="cards.length === 0" class="py-12 text-center text-surface-500">
       <i class="pi pi-id-card mb-2 text-4xl" />
-      <p>会員証がありません</p>
+      <p>{{ $t('memberCardDisplay.empty') }}</p>
     </div>
 
     <div v-else class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       <div
         v-for="card in cards.filter(c => statusFilter === 'ALL' || c.status === statusFilter)"
         :key="card.id"
-        class="cursor-pointer"
+        class="cursor-pointer rounded-xl"
+        :class="card.id === selectedId ? 'ring-2 ring-primary' : ''"
+        :aria-current="card.id === selectedId ? 'true' : undefined"
         @click="emit('select', card)"
       >
         <MemberCardDisplay

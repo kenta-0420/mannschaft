@@ -5,6 +5,7 @@ definePageMeta({
   middleware: 'auth',
 })
 
+const { t } = useI18n()
 const memberCardApi = useMemberCardApi()
 const notification = useNotification()
 
@@ -17,8 +18,10 @@ async function loadCards() {
   loading.value = true
   try {
     cards.value = await memberCardApi.listMy()
+    const current = cards.value.find(c => c.id === selectedCard.value?.id)
+    selectedCard.value = current ?? cards.value[0] ?? null
   } catch {
-    notification.error('会員証の取得に失敗しました')
+    notification.error(t('memberCardDisplay.fetchFailed'))
   } finally {
     loading.value = false
   }
@@ -27,20 +30,20 @@ async function loadCards() {
 async function handleSuspend(id: number) {
   try {
     await memberCardApi.suspend(id)
-    notification.success('会員証を一時停止しました')
+    notification.success(t('memberCardDisplay.suspendSuccess'))
     await loadCards()
   } catch {
-    notification.error('一時停止に失敗しました')
+    notification.error(t('memberCardDisplay.suspendFailed'))
   }
 }
 
 async function handleReactivate(id: number) {
   try {
     await memberCardApi.reactivate(id)
-    notification.success('会員証を再開しました')
+    notification.success(t('memberCardDisplay.reactivateSuccess'))
     await loadCards()
   } catch {
-    notification.error('再開に失敗しました')
+    notification.error(t('memberCardDisplay.reactivateFailed'))
   }
 }
 
@@ -54,20 +57,21 @@ onMounted(loadCards)
 
 <template>
   <div class="mx-auto max-w-4xl">
-    <PageHeader title="QR会員証" />
+    <PageHeader :title="t('memberCardDisplay.pageTitle')" />
 
     <PageLoading v-if="loading" />
 
     <template v-else>
       <Tabs v-model:value="activeTab" class="fade-in">
         <TabList>
-          <Tab value="0">会員証一覧</Tab>
-          <Tab value="1" :disabled="!selectedCard">チェックイン履歴</Tab>
+          <Tab value="0">{{ t('memberCardDisplay.tabList') }}</Tab>
+          <Tab value="1" :disabled="!selectedCard">{{ t('memberCardDisplay.tabHistory') }}</Tab>
         </TabList>
         <TabPanels>
           <TabPanel value="0">
             <MemberCardList
               :cards="cards"
+              :selected-id="selectedCard?.id ?? null"
               @select="handleSelect"
               @suspend="handleSuspend"
               @reactivate="handleReactivate"
