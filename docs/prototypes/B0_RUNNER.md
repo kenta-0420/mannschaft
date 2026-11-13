@@ -128,3 +128,12 @@ rootは3住民の原session正常終了、cleanup=removed、専用scratchと内�
 
 
 最新main追従の採用は `docs/evidence/CMP-261008-1253/board-ui-main-bridge-r25-20261109.json`。現在統合 `af13a156be7ba03a2367c3ad92759c7d6ce3fb47`／main `038079b8c401645622024a5e6a6250be6c60b1a7`、通常generator1回exit0、台帳680行・一意680、生成680 campaign、生成JS SHA256 `07591fb6498abc4a8a05ff4d6c9dd2892c56463c06936c66441585e5cb67d7a7`。HTML raw同一、overlay/全B0 plan/120件25field純粋投影/新B・Cのfinding・feature/capability/decision/stage（B4）が旧受入入力と厳密同値のため、fa5/data06cの既存静的UI証拠を来歴不変で採用し、新ブラウザを実行していない。新bytesの通常validator/自己検証全体は各exit1/1で既存L46 FAILを保持する。実機は旧f938と差分影響評価を用い、fresh FE/通常CIは後続ゲート。
+
+
+2026-11-14のR14 fresh3登録は `docs/evidence/CMP-261028-2304/resident-observations-r14-20261114.json` を選別証拠として、累積正本へ3 persona / 3 journey / 2 insightだけ追加し67/67/122とした。旧64/64/120の全field、トップrunId/environmentと旧runEnvironmentsはdeep保持。原reportにないr1 runIdとr3 runId/sourceHeadはprivate root bindingのSHAで来歴を補足し、その旨を明記した。sourceは8afd06e6e06dddcd65f769be5e796baf0e83e28f、runはl1rr14dfb6。r1同名対象識別とr2テンプレート作成案内の2件だけ未実証の気づきとし、r3気づき0件・成功導線・未検証事項をjourneyへ保持する。trusted=false/observed-unverified/coverage不昇格、task-list/blocker変更0、private住民画像実体の公開0。
+
+再生成用copyは `.b0-local/run-l1rr14dfb6-fresh3-20261114.json`。GitHub同期803参照成功後の通常生成は718 campaign。validatorは生成器と同じ優先度P1〜P5分離文法へ1行修正し、P3保留の誤拒否を解消した。通常generator・通常validator・overlay自己検証は各exit0、不正overlay10件拒否、優先度状態24件受理・誤分類16件拒否。静的boardはbase b040e7e06eca0380e87d2796a0a461294f2122eeの所有WT working filesであり、住民の製品source 8afdとは区別する。実配信HTML/dataは `docs/evidence/CMP-261028-2304/board-ui-r14-20261114.json` のhashで識別する。
+
+最終の実保持境界はclockを固定せず、HEADの旧dataと同bytes HTMLで実IndexedDBへ120件を先にimportしraw snapshotを保存、自然時刻12.072秒経過後に新dataへ更新して122件をimportした。旧120の全field厳密deepEqual・新2のみ追加・重複0・reload全122不変を確認した。さらに隔離IDB内の新R1だけ人間用statusをinbox→plannedへGUI変更し、reload後も保存・sourceStatus=observed-unverified/trusted=false/出典不変・他121全field不変を確認した。これは人間用status保存の契約試験であり、正本overlayや実観測を確認済みへ昇格しない。カードと詳細を実閲覧済み、pageErrors/remote requests 0、context/browser正常閉鎖・native exit0。製品app/API/DB操作0であり、最新mainの製品実機・全coverage合格とは区別する。
+
+予備検証の初回122→reload122・clock固定による期待投影一致・未整理のままの閲覧は、centralに原履歴を保持する。旧実IDB保持と人間用status保存の最終根拠は、上記の120→122自然clock試験（UI証拠staticBrowserBoundary）とする。

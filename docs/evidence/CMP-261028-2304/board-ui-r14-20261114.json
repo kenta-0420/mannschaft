@@ -1,0 +1,218 @@
+{
+  "status": "LOCAL_STATIC_BOARD_VERIFIED_OBSERVATIONS_UNVERIFIED",
+  "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+  "runId": "l1rr14dfb6",
+  "counts": {
+    "personas": 67,
+    "journeys": 67,
+    "insights": 122,
+    "addedPersonas": 3,
+    "addedJourneys": 3,
+    "addedInsights": 2
+  },
+  "oldCounts": {
+    "personas": 64,
+    "journeys": 64,
+    "insights": 120
+  },
+  "preservation": {
+    "oldRecordAllFields": true,
+    "topRunEnvironment": true,
+    "oldRunEnvironments": true,
+    "canonicalCopyGeneratedDeepEqual": true
+  },
+  "hashes": {
+    "overlay": "69ec8d09be1d17322f73bb83019b673afd138a291dc7cd7f20075f219571e3ec",
+    "selected": "8e377e96839813b74cd78974b045d799a2363de141927e3d2d135b8ade562307",
+    "generated": "3dcdb94ae1b9236a625b78de3a6f7611d0c2dde863b3ce6e337aa66da0c80be5",
+    "html": "8c4dff12b553433a6d37660ecfad1dd421af161794dcf41db8881285f911ec5a",
+    "validator": "2fc0ab2c50c1e3fef276a8c57f7f4446ceed365bdcb8c3a72be92caa3df7c495"
+  },
+  "verification": {
+    "generatorExit": 0,
+    "normalValidatorExit": 0,
+    "selfTestOverlayExit": 0,
+    "overlayInvalidCasesRejected": 10,
+    "campaignPriorityAccepted": 24,
+    "campaignMisclassificationsRejected": 16
+  },
+  "staticBrowser": {
+    "browserVersion": "148.0.7778.96",
+    "freshContext": true,
+    "imported": 122,
+    "oldProjectionAllFieldsEqual": true,
+    "oldProjectionUnchanged": 120,
+    "newRows": [
+      {
+        "id": "ALI-october-wave2-login-resident-overlay-20261026-ALIC-L1R-R14-R1-20261114-I001",
+        "personaId": "ALIC-L1R-R14-R1-20261114",
+        "journeyId": "ALIC-L1R-R14-R1-20261114-J1",
+        "runId": "l1rr14dfb6",
+        "originalRunId": "l1rr14dfb6",
+        "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+        "trusted": false,
+        "sourceStatus": "observed-unverified",
+        "sourceEvidencePath": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/l1rr14dfb6-r1/resident-report.json",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r14-20261114.json",
+        "status": "inbox"
+      },
+      {
+        "id": "ALI-october-wave2-login-resident-overlay-20261026-ALIC-L1R-R14-R2-20261114-I001",
+        "personaId": "ALIC-L1R-R14-R2-20261114",
+        "journeyId": "ALIC-L1R-R14-R2-20261114-J1",
+        "runId": "l1rr14dfb6",
+        "originalRunId": "l1rr14dfb6",
+        "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+        "trusted": false,
+        "sourceStatus": "observed-unverified",
+        "sourceEvidencePath": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/l1rr14dfb6-r2/resident-observations.json",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r14-20261114.json",
+        "status": "inbox"
+      }
+    ],
+    "duplicates": 0,
+    "reloadDeepEqual": true,
+    "pageErrors": [],
+    "remoteRequests": [],
+    "closed": true,
+    "clockNote": "元日時のない歴史レコードがDate.nowへfallbackするため、隔離検証context内のDate.nowだけ固定。原データやHTMLは変更しない。 期待投影確認に限る。旧実IDB保持と人間用status保存の最終根拠はstaticBrowserBoundary。",
+    "preliminaryOnly": true
+  },
+  "visualInspection": {
+    "cardsViewed": true,
+    "detailViewed": true,
+    "privateResidentImagesPublished": 0,
+    "boardCardsSha256": "bb6de8b317bb5562914e1124c8df7982eba18e3944fb85a929a13e0adc1eec33",
+    "boardDetailSha256": "96361dfe679aba5d4e712037abb1ec5fa3cb6f75bfb6765e69e8bf13f27377bc",
+    "boundaryCardsViewed": true,
+    "boundaryDetailViewed": true,
+    "boundaryCardsSha256": "8ccd4d20ac0f467ece5f4071cd66c98166447d357cd990bbf976f3c29ecafc30",
+    "boundaryDetailSha256": "a3e6fe76ef83b958ecda6f0a3887c5792a7e3977feab2b00b9f63b83cece807a"
+  },
+  "triage": {
+    "result": "未実証の2件を未整理として保存。成功観測と気づき0件はjourneyに保持。",
+    "confirmedBugs": 0,
+    "taskListPromotion": 0,
+    "blockerPromotion": 0,
+    "coveragePassed": false,
+    "trusted": false,
+    "sourceStatus": "observed-unverified",
+    "isolatedStatusSave": "新R1の人間用statusをinbox→plannedへ変更しreload保持、sourceStatus=observed-unverified/trusted=false/全来歴不変・他121全field不変。正本overlay/実観測の確認済み昇格0。"
+  },
+  "limitations": [
+    "静的prototypeの取り込み検証であり、最新mainの製品実機合格ではない。",
+    "source/run欠落はroot binding補足と明記。原report記載済みとみなさない。",
+    "原原因・権限仕様は未調査。R1保存未検証、R2実記録詳細未確認、R3は導線探索範囲。"
+  ],
+  "priorAttempts": [
+    "default sandbox Chromium既定pathなし。既存binding browserを指定。",
+    "通常sandbox既存browser起動はWindows権限で終了。所有file HTMLだけsandbox外で検証。",
+    "旧日時未設定レコードのDate.now差で比較失敗。検証clock固定後、全投影field一致。",
+    "実境界helper初回はgit showの既定maxBuffer不足でbrowser起動前ENOBUFS。取得buffer上限のみ修正し実境界exit0。"
+  ],
+  "appApiDbOperations": 0,
+  "staticBrowserBoundary": {
+    "status": "PASS",
+    "clock": "natural Date.now; no clock override",
+    "browserVersion": "148.0.7778.96",
+    "oldDataSource": "HEAD:docs/prototypes/beta-inventory-board-data.js",
+    "oldDataSha256": "b846eb8263413484368483762dfb5d7b61bb337f23ae3c0d2698ca5724eb5b68",
+    "newDataSha256": "3dcdb94ae1b9236a625b78de3a6f7611d0c2dde863b3ce6e337aa66da0c80be5",
+    "htmlSha256": "8c4dff12b553433a6d37660ecfad1dd421af161794dcf41db8881285f911ec5a",
+    "freshContext": true,
+    "initialImport": 120,
+    "afterImport": 122,
+    "old120EveryFieldDeepEqual": true,
+    "snapshots": {
+      "old120": "7c45cb272e944029e4c36801b273ac5bfc4c3fdae42d0b31d7ecf8186c615e1c",
+      "after122": "8e9ce1dc6453e9a00847745a0cf2585d296e24496621f566f32c0474cf892e54",
+      "afterTriage122": "c0469d37c8f62e67e190c56f083cce82cda618fbf0aae411794f88a56a16a0ed"
+    },
+    "naturalElapsedMs": 12072,
+    "newRows": [
+      {
+        "id": "ALI-october-wave2-login-resident-overlay-20261026-ALIC-L1R-R14-R1-20261114-I001",
+        "featureKey": "team-admin",
+        "featureDetail": "チームの直接ジャンプ・同名対象の識別",
+        "priority": "should",
+        "urgency": "normal",
+        "title": "直接ジャンプで同名チーム2件を見分けにくい",
+        "page": "",
+        "detail": "直接ジャンプにl1rr14dfb6 Duplicate Team 1が2件同じ表示で並ぶ。一覧では片方にその他分類があり完全同一表示ではない。誤操作や誤遷移は確認していない。",
+        "status": "inbox",
+        "registrationSource": "alicization",
+        "personaId": "ALIC-L1R-R14-R1-20261114",
+        "personaArchetype": "一般（慎重な管理者）×素直",
+        "journeyId": "ALIC-L1R-R14-R1-20261114-J1",
+        "runId": "l1rr14dfb6",
+        "originalRunId": "l1rr14dfb6",
+        "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+        "trusted": false,
+        "sourceStatus": "observed-unverified",
+        "sourceEvidencePath": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/l1rr14dfb6-r1/resident-report.json",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r14-20261114.json",
+        "screenshotPath": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/l1rr14dfb6-r1/02-team-list.png",
+        "createdAt": 1794607514746,
+        "updatedAt": 1794607514746,
+        "screenshot": null,
+        "screenshotName": ""
+      },
+      {
+        "id": "ALI-october-wave2-login-resident-overlay-20261026-ALIC-L1R-R14-R2-20261114-I001",
+        "featureKey": "team-admin",
+        "featureDetail": "一般メンバーの活動記録追加・テンプレート案内",
+        "priority": "should",
+        "urgency": "normal",
+        "title": "テンプレート作成案内の遷移先で作成操作が見つからない",
+        "page": "/teams/l1rr14dfb6-team/activity-templates",
+        "detail": "テンプレート未作成の一般メンバーに、活動記録追加モーダルがテンプレートを作成するよう案内するが、遷移先に作成操作が見つからない。権限仕様や原因は調査していない。管理者への依頼案内は表示されなかった。裏取りが必要",
+        "status": "inbox",
+        "registrationSource": "alicization",
+        "personaId": "ALIC-L1R-R14-R2-20261114",
+        "personaArchetype": "スマホ片手操作×素直",
+        "journeyId": "ALIC-L1R-R14-R2-20261114-J1",
+        "runId": "l1rr14dfb6",
+        "originalRunId": "l1rr14dfb6",
+        "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+        "trusted": false,
+        "sourceStatus": "observed-unverified",
+        "sourceEvidencePath": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/l1rr14dfb6-r2/resident-observations.json",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r14-20261114.json",
+        "screenshotPath": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/l1rr14dfb6-r2/09-template-destination.png",
+        "createdAt": 1794607514746,
+        "updatedAt": 1794607514746,
+        "screenshot": null,
+        "screenshotName": ""
+      }
+    ],
+    "duplicateCount": 0,
+    "reloadAll122DeepEqual": true,
+    "triage": {
+      "scope": "隔離IDBの人間用status保存契約試験のみ。正本overlay/実観測の確認済み昇格0。",
+      "id": "ALI-october-wave2-login-resident-overlay-20261026-ALIC-L1R-R14-R1-20261114-I001",
+      "status": "planned",
+      "reloadPersisted": true,
+      "sourceMetadataUnchanged": true,
+      "other121EveryFieldUnchanged": true,
+      "detailReadAll122Unchanged": true
+    },
+    "cardTexts": [
+      "\n                        自動テストのスクショ証拠あり\n                        \n                          \n                            課題化済\n                            摩擦が大きい\n                            通常\n                            登録：アリシゼーションテスト\n                            発見：ALIC-L1R-R14-R1-20261114 一般（慎重な管理者）×素直\n                            ALIC-L1R-R14-R1-20261114-J1\n                          \n                          直接ジャンプで同名チーム2件を見分けにくい\n                          機能詳細：チームの直接ジャンプ・同名対象の識別\n                          直接ジャンプにl1rr14dfb6 Duplicate Team 1が2件同じ表示で並ぶ。一覧では片方にその他分類があり完全同一表示ではない。誤操作や誤遷移は確認していない。\n                          \n                          実行証拠：docs/evidence/CMP-261028-2304/resident-observations-r14-20261114.json\n                          スクショ証拠：.claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/l1rr14dfb6-r1/02-team-list.png\n                          \n                            AI指示文\n                            一式保存\n                            対応済にする\n                          \n                        \n                      ",
+      "\n                        自動テストのスクショ証拠あり\n                        \n                          \n                            未整理\n                            摩擦が大きい\n                            通常\n                            登録：アリシゼーションテスト\n                            発見：ALIC-L1R-R14-R2-20261114 スマホ片手操作×素直\n                            ALIC-L1R-R14-R2-20261114-J1\n                          \n                          テンプレート作成案内の遷移先で作成操作が見つからない\n                          機能詳細：一般メンバーの活動記録追加・テンプレート案内\n                          テンプレート未作成の一般メンバーに、活動記録追加モーダルがテンプレートを作成するよう案内するが、遷移先に作成操作が見つからない。権限仕様や原因は調査していない。管理者への依頼案内は表示されなかった。裏取りが必要\n                          画面：/teams/l1rr14dfb6-team/activity-templates\n                          実行証拠：docs/evidence/CMP-261028-2304/resident-observations-r14-20261114.json\n                          スクショ証拠：.claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/l1rr14dfb6-r2/09-template-destination.png\n                          \n                            AI指示文\n                            一式保存\n                            課題化済にする\n                          \n                        \n                      "
+    ],
+    "pageErrors": [],
+    "remoteRequests": [],
+    "privateResidentImagesPublished": 0,
+    "productAppApiDbOperations": 0,
+    "closed": true,
+    "exitCode": 0,
+    "localSnapshots": "private central evidence; hashのみ公開しraw/ブラウザ資産は公開しない。"
+  },
+  "sourceHeadScope": "トップsourceHead 8afdは住民が探索した製品source。静的board配信WTのheadではない。",
+  "boardSourceBaseHead": "b040e7e06eca0380e87d2796a0a461294f2122ee",
+  "boardWorkingFiles": "上記baseの所有B0 WT working files。実HTML/dataのbytesはhashes.html/hashes.generated（generated）およびstaticBrowserBoundary.htmlSha256/newDataSha256で識別する。",
+  "actualBoardBytes": {
+    "htmlSha256": "8c4dff12b553433a6d37660ecfad1dd421af161794dcf41db8881285f911ec5a",
+    "dataSha256": "3dcdb94ae1b9236a625b78de3a6f7611d0c2dde863b3ce6e337aa66da0c80be5"
+  }
+}

@@ -279,3 +279,7 @@ TL source linkも非TX providerからnative ID metadata PRIMARY読取終了後�
 ### 隔離開発の報酬検証候補
 
 既公開 API と SYSTEM_ADMIN/ACTIVE admission を維持する。DEV 新規公開は explicit fixture gate、既成功 replay は先行。OFF mode は保存 DEV/frozen policy の新規 credit・配送設定を拒否し、本人履歴は残す。新 endpoint や承認回避用公開 flag は追加しない。 実測 bounds と実 UI/worker の検証は未実行。
+
+## 正式mapping結果と素材可用性（CMP-261108-2026）
+
+結果DTOの追加identity/六言語対応説明、旧JSON/null結果の非移行、独立したapprovedVisualsAvailableとfreshGET境界は [正式対応・結果保存契約](mapping_runtime_20261108.md) を参照する。既存の本人認可・確認revision・冪等性・個体不変契約は維持する。

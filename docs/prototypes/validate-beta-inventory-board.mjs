@@ -254,7 +254,7 @@ if (data.campaigns.some((campaign) => campaign.tags?.length !== 1 || campaign.ta
   throw new Error('CMPの進捗タグと正規化状態が一致しません。');
 }
 for (const campaign of data.campaigns) {
-  const sourceStatus = campaign.statusLabel.replaceAll('**', '').trim();
+  const sourceStatus = campaign.statusLabel.replaceAll('**', '').trim().replace(/^P[1-5]\s+/, '');
   const expectedStatus = sourceStatus.startsWith('未着手') ? 'not-started'
     : sourceStatus.startsWith('保留') ? 'on-hold' : null;
   if (expectedStatus && campaign.status !== expectedStatus) {
