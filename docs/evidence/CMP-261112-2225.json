@@ -26,6 +26,10 @@
       "description": "de/en 360px で横はみ出し・単語途中折れが無い（絞り込みの折返し・QR 枠の事前確保・履歴0件の空状態。PR #4489・#4497）",
       "tests": [
         {
+          "name": "MemberCardFollowup.spec.ts",
+          "evidence": "frontend/tests/unit/components/MemberCardFollowup.spec.ts"
+        },
+        {
           "name": "QrCodeImage.spec.ts",
           "evidence": "frontend/app/components/qr/QrCodeImage.spec.ts"
         },
@@ -54,8 +58,8 @@
       "description": "QR再生成後に GET /qr を再取得しリロード無しで新QRを表示する（PR #4499）",
       "tests": [
         {
-          "name": "MemberCardFollowup.spec.ts",
-          "evidence": "frontend/tests/unit/components/MemberCardFollowup.spec.ts"
+          "name": "MemberCardDisplay.spec.ts",
+          "evidence": "frontend/app/components/member-card/MemberCardDisplay.spec.ts"
         }
       ]
     }
@@ -91,27 +95,27 @@
   "regressions": [
     {
       "description": "絞り込み SelectButton が360pxで折り返さず横はみ出す",
-      "test": "MemberCardDisplay.spec.ts",
-      "red": "修正前に失敗することを確認（記録: docs/evidence/CMP-261112-2225.md）",
-      "green": "修正後に成功することを確認（記録: docs/evidence/CMP-261112-2225.md）"
+      "test": "frontend/tests/unit/components/MemberCardFollowup.spec.ts",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/pull/4497",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/43351958797"
     },
     {
       "description": "QrCodeImage の描画前領域が確保されず重なる",
-      "test": "QrCodeImage.spec.ts",
-      "red": "修正前に失敗することを確認（記録: docs/evidence/CMP-261112-2225.md）",
-      "green": "修正後に成功することを確認（記録: docs/evidence/CMP-261112-2225.md）"
+      "test": "frontend/app/components/qr/QrCodeImage.spec.ts",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/pull/4497",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/43351958797"
     },
     {
       "description": "チェックイン履歴0件の空文言が表内で切れる",
-      "test": "CheckinHistory.spec.ts",
-      "red": "修正前に失敗することを確認（記録: docs/evidence/CMP-261112-2225.md）",
-      "green": "修正後に成功することを確認（記録: docs/evidence/CMP-261112-2225.md）"
+      "test": "frontend/app/components/member-card/CheckinHistory.spec.ts",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/pull/4497",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/43351958797"
     },
     {
       "description": "QR再生成後に QR が再取得されず消える",
-      "test": "MemberCardFollowup.spec.ts",
-      "red": "修正前に失敗することを確認（記録: docs/evidence/CMP-261112-2225.md）",
-      "green": "修正後に成功することを確認（記録: docs/evidence/CMP-261112-2225.md）"
+      "test": "frontend/app/components/member-card/MemberCardDisplay.spec.ts",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/pull/4499",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/43372538229"
     }
   ]
 }
