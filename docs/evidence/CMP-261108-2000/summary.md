@@ -2,6 +2,12 @@
 
 前回締め以後の全7storeを照合し、main実測へ4上限を下げ、最新適格成功nightlyの重み表を更新する。親CMP-261021-0017とL5-Iの完了ではない。
 
+## 現在の採用内容
+
+`e2be47c9bfb0229a8f7582e6a8894c432054d844` の重み表は、正規Nightly `43093835182` attempt2由来の全3218行で、canonical LFのSHA-256は `6d5bea1188f56bbe293628278923c4172785a6adb1d2d96ead178a5c14d5acf0`。入力資格と適用範囲は[重み更新の根拠](../CMP-261111-0508-shard-weights-20261112.md)に記録した。以下の3182行・`74be`・旧CI失敗は原実装時点の履歴として保持する。
+
+同headの通常Backend run `43133320581` は全12ジョブ成功。今回のmain `7e56702dca917b20f3a3e2099cbef7d128e01022` 追従後のheadについては、CIと最終検分が未完了であり、PR4410はDraftで保留する。[既存headの通常CI](https://github.com/kenta-0420/mannschaft/actions/runs/43133320581)
+
 ## 所有と先行登録
 
 ownerは `e8ded143-7eea-4189-a530-7708882e1200`。正規closure claim `027449f2f8260338bf7054a54df38d410f8089a0`、planning `8df21e657e65af07080c935ddbdfddd36ea29b1a`、working `e36378244b8b7c76581c74f9866d9d33adfbf6fc` の順に再開した。workingの固定manifestが `freeze-constants` と `weights` を予約する。他領地のbuild/measurementを取得・解放しない。
