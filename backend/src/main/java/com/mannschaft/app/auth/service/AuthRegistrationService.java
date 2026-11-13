@@ -24,6 +24,7 @@ import com.mannschaft.app.role.service.InviteAcceptanceFacade;
 import com.mannschaft.app.weather.event.UserPostalCodeUpdatedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -178,7 +179,16 @@ public class AuthRegistrationService {
         // 4.1. プライバシーポリシー同意を記録する（F_privacy_policy。GDPR Art.7 準拠）
         // privacyPolicyAccepted=false は @Valid で弾かれているため、ここに到達した場合は必ず true。
         user.recordPrivacyPolicyConsent(LocalDateTime.now(), req.getPrivacyPolicyVersion());
-        userRepository.save(user);
+        try {
+            userRepository.save(user);
+        } catch (DataIntegrityViolationException e) {
+            // 存在チェック(2.)と INSERT の間に同一メールの登録が割り込んだ場合の競合。
+            // users.uq_users_email に限って AUTH_004 へ写像し、他の制約違反は握りつぶさず再送出する。
+            if (isEmailUniqueViolation(e)) {
+                throw new BusinessException(AuthErrorCode.AUTH_004);
+            }
+            throw e;
+        }
 
         // 4.5. ベータ招待トークンがあれば自動参加
         if (req.getInviteToken() != null && !req.getInviteToken().isBlank()) {
@@ -205,6 +215,17 @@ public class AuthRegistrationService {
 
         // 7. レスポンス
         return ApiResponse.of(new MessageResponse("確認メールを送信しました"));
+    }
+
+    /** 例外の原因連鎖に users.uq_users_email（メール一意制約）が含まれるか。 */
+    private static boolean isEmailUniqueViolation(Throwable e) {
+        for (Throwable t = e; t != null; t = t.getCause() == t ? null : t.getCause()) {
+            String msg = t.getMessage();
+            if (msg != null && msg.contains("uq_users_email")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // ========================================
