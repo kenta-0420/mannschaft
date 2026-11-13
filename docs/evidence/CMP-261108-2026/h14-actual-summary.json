@@ -862,7 +862,30 @@
       "docs/evidence/CMP-261108-2026/h14-r4-resident-observations-20261114.json"
     ],
     "globalValidatorKnownFailure": "L46 GitHub snapshot reference-set mismatch, distinct from limited checks",
-    "staticBoard": "root final-bytes verification pending"
+    "staticBoard": {
+      "scope": "STATIC_BOARD_UI_ASSERTIONS_AND_SEPARATE_POST_EXIT_ABSENCE_OBSERVATIONS",
+      "decision": "ACCEPTED_WITH_ORIGINAL_SCRIPT_FAILURE_PRESERVED",
+      "uiAssertionsPassed": true,
+      "counts": {
+        "personas": 79,
+        "journeys": 79,
+        "insights": 150
+      },
+      "freshIndexedDbCount": 150,
+      "reloadCount": 150,
+      "duplicateCount": 0,
+      "representativeCardsAndDrawers": 3,
+      "privateScreenshotsRootViewed": 6,
+      "sourceBytesUnchanged": true,
+      "originalOverallStatus": "FAIL",
+      "originalExitCode": 1,
+      "originalFailure": "whole-system CIM cleanup ownership snapshot ETIMEDOUT",
+      "independentCleanupAbsent": true,
+      "cleanupScope": "separate bounded name/PID/child/profile observations and root loopback ECONNREFUSED",
+      "newPublicPngCount": 0,
+      "rootAdoptionSha256": "a3ac108ea85672a0f615104b6f83a01831b55315a0525c358d49f4c77d809cf9",
+      "evidence": "docs/evidence/CMP-261108-2026/h14-root-final-validation.json"
+    }
   },
   "review": {
     "reviewer": "Root Codex independent code/evidence reviews and final source adoption",
