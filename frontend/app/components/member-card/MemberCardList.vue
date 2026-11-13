@@ -26,7 +26,7 @@ const statusOptions = computed(() =>
 <template>
   <div>
     <div class="mb-4 flex flex-wrap items-center gap-2">
-      <SelectButton v-model="statusFilter" :options="statusOptions" option-label="label" option-value="value" />
+      <SelectButton v-model="statusFilter" :options="statusOptions" option-label="label" option-value="value" class="flex flex-wrap" :pt="{ pcToggleButton: { root: { class: 'min-h-11 min-w-11' } } }" />
     </div>
 
     <div v-if="cards.length === 0" class="py-12 text-center text-surface-500">

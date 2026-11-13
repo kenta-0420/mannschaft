@@ -187,6 +187,17 @@ const badgeStyle = computed(() => {
 })
 
 /**
+ * SVG は非同期生成のため、描画前（qrSvg が空）は中身が無く寸法 0 になり、
+ * 絶対配置の中央バッジが周囲の文言に重なる。描画前から size の正方形領域を確保する。
+ * 親が狭いときは max-width で縮み、aspect-ratio で正方形を保つ。
+ */
+const svgBoxStyle = computed(() => ({
+  width: `${props.size}px`,
+  maxWidth: '100%',
+  aspectRatio: '1 / 1',
+}))
+
+/**
  * 親コンポーネントが現在描画中の QR SVG マークアップを取得できるよう公開する。
  * 用途: SVG ダウンロード等。画面表示の中央バッジは HTML オーバーレイのため生の
  * qrSvg には含まれないが、ここでは {@link buildBadgedSvg} により
@@ -203,7 +214,7 @@ defineExpose({
     <!-- qrcode ライブラリが返す自前生成の SVG マークアップを描画。
          ユーザー入力ではなく信頼できるソースのため XSS リスクは無し。 -->
     <!-- eslint-disable vue/no-v-html -->
-    <div class="qr-code-image__svg" v-html="qrSvg" />
+    <div class="qr-code-image__svg" :style="svgBoxStyle" v-html="qrSvg" />
     <!-- eslint-enable vue/no-v-html -->
 
     <span
