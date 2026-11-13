@@ -38,6 +38,13 @@ public class ChannelResponse {
     /** 呼出ユーザー自身のメンバー状態（非メンバー/未認証時は null）。 */
     private ViewerStateDto viewer;
 
+    /**
+     * 名前なし GROUP_DM（Zimmer）の表示名を参加者名から導出したもの（per-user 拡張・CMP-261113-0110）。
+     * GROUP_DM かつ明示名が null/空白のときだけ値を持ち、それ以外は null。DB の name 列には書かない。
+     * （試練段階ではフィールドのみ定義。導出ロジックは出陣で実装する）
+     */
+    private String derivedName;
+
     public record ChannelIdentityDto(
             String channelType,
             Long teamId,
