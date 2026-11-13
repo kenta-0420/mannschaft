@@ -1,6 +1,6 @@
 import { test, type Browser, type Page } from '@playwright/test'
 import { readWorld, type World } from './helpers/cmp1507-global-setup'
-import { API, expect, gotoAndHydrate, must, openAs, recordAsset, responseOf, type Actor } from './helpers/n1p1-world'
+import { API, apiAs, expect, gotoAndHydrate, must, openAs, recordAsset, responseOf, type Actor } from './helpers/n1p1-world'
 
 /**
  * 実機E2E: CMP-261105-1507（N+1 戦役で見つかった既存不具合6件の修正）の確認。
@@ -237,7 +237,7 @@ test('③ 学期作成: 年度を空にすると欄のエラーで送信され�
   })
 })
 
-test('④ 学期削除: 時間割が残る学期（論理削除済みを含む）は 409 と専用の文言で消えず、時間割の無い学期は確認のうえ消せる（ADMIN）', async ({ browser }) => {
+test('④ 学期削除: 生きている時間割が残る学期は 409 と専用の文言で消え、削除済みの時間割だけ・時間割なしの学期は確認のうえ消せる。所属外チームは組織の学期を使えない（ADMIN）', async ({ browser }) => {
   const nameKept = `C1507学期B ${w.tag}`
   const nameFree = `C1507学期C ${w.tag}`
   await withPage(browser, w.admin, undefined, async (page) => {
@@ -259,6 +259,23 @@ test('④ 学期削除: 時間割が残る学期（論理削除済みを含む�
     const freeId = await addTerm(nameFree, '2032-10-01', '2033-03-31')
     // 時間割の無い学期は後始末で消す（時間割が残る学期は仕様上消せないので記録しない。証拠に残骸として書く）
     recordAsset(`term ${freeId}`, `/api/v1/timetable-terms/${freeId}`, w.admin)
+
+    // #4436: 組織の学期を使えるのは、その組織に ACTIVE で所属するチームだけ。所属前の t1 からは 404 TIMETABLE_002
+    const outside = await apiAs(w.admin, 'POST', `/api/v1/teams/${w.t1.slug}/timetables`, {
+      name: `C1507所属外 ${w.tag}`,
+      termId: keptId,
+      effectiveFrom: '2032-04-01',
+      visibility: 'MEMBERS_ONLY',
+    })
+    console.log(`[cmp1507] ④(0) 所属外チームの時間割作成 -> ${outside.status} ${JSON.stringify(outside.body).slice(0, 200)}`)
+    expect(outside.status).toBe(404)
+    expect(JSON.stringify(outside.body)).toContain('TIMETABLE_002')
+    // 前提: t1 を組織A に ACTIVE 所属させる（招待→承諾。画面に導線の無い前提操作なので API）
+    await must(w.admin, 'POST', `/api/v1/organizations/${w.orgA.slug}/team-invites`, { teamSlug: w.t1.slug })
+    const invites = await must(w.admin, 'GET', `/api/v1/teams/${w.t1.slug}/org-invites`)
+    const invite = (invites.data as Array<{ id: string; organization?: { slug: string } }>).find((row) => row.organization?.slug === w.orgA.slug)
+    if (!invite) throw new Error(`招待が見つからない ${w.orgA.slug} -> ${w.t1.slug}`)
+    await must(w.admin, 'POST', `/api/v1/teams/${w.t1.slug}/org-invites/${invite.id}/accept`)
 
     // 前提: 時間割を作る（API）
     const timetable = await must(w.admin, 'POST', `/api/v1/teams/${w.t1.slug}/timetables`, {
@@ -289,13 +306,13 @@ test('④ 学期削除: 時間割が残る学期（論理削除済みを含む�
     await expect(page.getByRole('cell', { name: nameKept })).toHaveCount(1)
     await shot(page, 't4-term-delete-409-live')
 
-    // (b) 時間割を削除（論理削除）した後も、その学期は 409（論理削除済みも参照元として残る）
+    // (b) #4436（B1）: 時間割を削除（論理削除）して削除済みだけになった学期は、確認つきで 204 で消せる
     await must(w.admin, 'DELETE', `/api/v1/teams/${w.t1.slug}/timetables/${timetableId}`)
     const soft = await clickTrash(keptId)
-    console.log(`[cmp1507] ④(b) 時間割削除後 DELETE -> ${soft.status()} ${(await soft.text()).slice(0, 300)}`)
-    expect(soft.status()).toBe(409)
-    await expect(page.getByRole('cell', { name: nameKept })).toHaveCount(1)
-    await shot(page, 't4-term-delete-409-soft')
+    console.log(`[cmp1507] ④(b) 時間割削除後 DELETE -> ${soft.status()}`)
+    expect(soft.status()).toBe(204)
+    await expect(page.getByRole('cell', { name: nameKept })).toHaveCount(0, { timeout: 15_000 })
+    await shot(page, 't4-term-delete-soft-only')
 
     // (c) 時間割の無い学期は削除できる（確認でキャンセルすれば消えない）
     await page.getByTestId(`term-delete-${freeId}`).click()
