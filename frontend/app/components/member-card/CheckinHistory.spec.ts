@@ -33,4 +33,11 @@ describe('CheckinHistory', () => {
     expect(getCheckins).toHaveBeenCalledTimes(2)
     expect(wrapper.find('[data-testid="load-error-state"]').exists()).toBe(false)
   })
+  it('0件のときは表の外に空状態を出す（狭幅で空メッセージが切れない）', async () => {
+    getCheckins.mockResolvedValue({ data: [] })
+    const wrapper = await mountSuspended(CheckinHistory, { props: { cardId: 1 } })
+    await flushPromises()
+    expect(wrapper.find('[data-testid="checkin-history-empty"]').exists()).toBe(true)
+    expect(wrapper.find('table').exists()).toBe(false)
+  })
 })
