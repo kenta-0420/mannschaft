@@ -2,3 +2,11 @@
 
 # ER 図の自動生成物は LF 固定（バイト照合のため autocrlf で CRLF 化させない）
 docs/architecture/er/** text eol=lf
+
+# 正式pack/masterはraw SHA256契約。Windows checkoutでもJSON/PNGのbytesを変えない。
+frontend/public/ranch/approved/** -text
+frontend/scripts/fixtures/ranch-production-master.json -text
+frontend/app/utils/ranch-production-assets.ts text eol=lf
+frontend/app/utils/ranch-production-pack-registration.json text eol=lf
+backend/src/main/resources/ranch/approved/** -text
+backend/src/main/resources/diagnosis/approved/** -text

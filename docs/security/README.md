@@ -168,6 +168,10 @@ ArchUnit 認可番人（`AuthzControllerGuardArchTest`）は、公開エンド�
 
 全ての機密情報は **環境変数経由で注入** し、コード・リポジトリにハードコードしない。`application.yml` のデフォルト値は開発用ダミーのみ、`application-prod.yml` はデフォルト値を持たず未設定なら起動失敗（fail-fast）。
 
+gitleaksは標準ルールを継承し、既知の非秘密値だけを限定除外する。正式恐竜素材の公開`assetKey`は承認原本16種・外見・段階・画風から生成したIDであり、実測448値を`generic-api-key`ルールの5つの完全一致生成物pathとANDで限定する。値の前後は`^...$`で固定し、他path・未列挙値・他rule・entropy閾値を変更しない。
+
+この境界は`frontend/scripts/verify-ranch-public-identity-gitleaks.mjs`に実gitleaks8.28.0・比較元commit・全履歴範囲・証拠pathを明示して再検査できる。専用TMPで新commit/別lineの高entropy疑似key・未列挙pathの同公開ID・別ruleの検知を確認し、値をredactしたmetadataのみ保存する。全体180秒上限で失敗を合格扱いせず、専用fixtureと生reportを所有確認して撤去する。
+
 ### `.gitignore` 除外（確認済み）
 `.env` / `secrets.yml` / `credentials.yml` / `*.key` / `*.pem`
 
