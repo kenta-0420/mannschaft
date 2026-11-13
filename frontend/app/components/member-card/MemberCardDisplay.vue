@@ -50,15 +50,22 @@ async function handleRegenerate() {
   if (regenerating.value) return
   regenerating.value = true
   try {
-    qrData.value = await memberCardApi.regenerate(props.card.id)
-    notification.success(t('memberCardDisplay.qrRegenerated'))
+    await memberCardApi.regenerate(props.card.id)
   } catch {
     notification.error(t('memberCardDisplay.qrRegenerateFailed'))
+    regenerating.value = false
+    return
+  }
+  try {
+    // 再生成の応答には qrToken が無いため、新しい QR は GET /qr で取り直す。
+    qrData.value = await memberCardApi.getQr(props.card.id)
+    notification.success(t('memberCardDisplay.qrRegenerated'))
+  } catch {
+    notification.error(t('memberCardDisplay.qrFetchFailed'))
   } finally {
     regenerating.value = false
   }
 }
-
 onMounted(() => {
   loadQr()
   refreshTimer = setInterval(loadQr, 4 * 60 * 1000)
