@@ -71,7 +71,7 @@ class RanchProductionMasterRegistryTest {
         var diagnosis = mock(DiagnosisPublicationReadiness.class);
         when(diagnosis.approvedVersionAvailable(master.questionnaireVersion(), master.scoringVersion())).thenReturn(true);
         var resolver = new RanchVerifiedAssignmentResolver(null, null, null, diagnosis, rules,
-                Clock.systemUTC());
+                Clock.systemUTC(), availableVisuals());
         UUID diagnosisId = UUID.randomUUID();
         var diagnosisSummary = new DiagnosisResultSummary(diagnosisId, DiagnosisMethod.DIAGNOSIS,
                 Instant.parse("2026-10-05T00:00:00Z"), "diagnosis-result-v1",
@@ -79,6 +79,7 @@ class RanchProductionMasterRegistryTest {
                 "000001", Map.of(), null, Map.of(), Map.of());
         var diagnosisRequest = new RanchAssignmentRequest(AssignmentMethod.DIAGNOSIS,
                 null, diagnosisId, null, "1");
+        diagnosisSummary = diagnosisSummary.withMapping(master.version(), "SPECIES_0", "VARIANT_1", "7", master.diagnosisDescriptions().get("000001"));
         var selected = resolver.resolveApproved(diagnosisRequest, diagnosisSummary, null, master);
         assertThat(selected.speciesKey()).isEqualTo("SPECIES_0");
         assertThat(selected.variantKey()).isEqualTo("VARIANT_1");
@@ -94,6 +95,7 @@ class RanchProductionMasterRegistryTest {
                 null, Map.of(), new DiagnosisNumberSummary(2, 3, 11, 12), Map.of(), Map.of());
         var birthRequest = new RanchAssignmentRequest(AssignmentMethod.BIRTH_STYLE,
                 null, birthId, UUID.randomUUID().toString(), "1");
+        birthSummary = birthSummary.withMapping(master.version(), "SPECIES_2", "VARIANT_3", "7", master.birthDescriptions().get(new RanchProductionMasterRegistry.BirthPair(2, 3)));
         var birth = resolver.resolveApproved(birthRequest, birthSummary, numbers, master);
         assertThat(birth.speciesKey()).isEqualTo("SPECIES_2");
         assertThat(birth.variantKey()).isEqualTo("VARIANT_3");
@@ -134,6 +136,10 @@ class RanchProductionMasterRegistryTest {
         ((ObjectNode) birthText.path("birthMappings").get(0)).put("lifePathNumber", "1");
         assertThatThrownBy(() -> RanchProductionMasterRegistry.validateStructure(
                 birthText, VERSION, "a".repeat(64))).isInstanceOf(IllegalArgumentException.class);
+        ObjectNode assetNumber = complete();
+        ((ObjectNode) assetNumber.path("assets").get(0)).put("assetKey", 17);
+        assertThatThrownBy(() -> RanchProductionMasterRegistry.validateStructure(
+                assetNumber, VERSION, "a".repeat(64))).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -153,6 +159,76 @@ class RanchProductionMasterRegistryTest {
             assertThatThrownBy(() -> new RanchProductionMasterRegistry(registered(broken, null), json))
                     .isInstanceOf(RuntimeException.class);
         }
+    }
+
+    @Test
+    void 出生81入力が揃っても全64外見を覆わなければ登録を拒否する() {
+        var source = complete();
+        source.path("birthMappings").forEach(row -> {
+            ((ObjectNode) row).put("speciesKey", "SPECIES_0").put("variantKey", "VARIANT_0");
+        });
+
+        assertThatThrownBy(() -> RanchProductionMasterRegistry.validateStructure(source, VERSION,
+                "a".repeat(64))).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void 対応版nullの旧診断結果は新規割当へ読み替えない() {
+        var master = RanchProductionMasterRegistry.validateStructure(complete(), VERSION, "a".repeat(64));
+        var rules = mock(RanchRuleProvider.class);
+        when(rules.currentCareRule(any())).thenReturn(java.util.Optional.of(
+                new RanchRuleProvider.CareRuleSnapshot(UUID.randomUUID(), "care-synthetic-v1",
+                        20, 100, 60, 100, 1, 3, 6)));
+        var diagnosis = mock(DiagnosisPublicationReadiness.class);
+        when(diagnosis.approvedVersionAvailable(master.questionnaireVersion(), master.scoringVersion())).thenReturn(true);
+        var resolver = new RanchVerifiedAssignmentResolver(null, null, null, diagnosis, rules, Clock.systemUTC(), availableVisuals());
+        UUID id = UUID.randomUUID();
+        var legacy = new DiagnosisResultSummary(id, DiagnosisMethod.DIAGNOSIS, Instant.EPOCH,
+                "diagnosis-result-v1", master.questionnaireVersion(), master.scoringVersion(),
+                null, null, null, "000001", Map.of(), null, Map.of(), Map.of());
+        var request = new RanchAssignmentRequest(AssignmentMethod.DIAGNOSIS, null, id, null, "1");
+
+        assertThatThrownBy(() -> resolver.resolveApproved(request, legacy, null, master))
+                .isInstanceOf(com.mannschaft.app.common.BusinessException.class);
+    }
+    private RanchApprovedVisualsAvailability availableVisuals() {
+        var availability = mock(RanchApprovedVisualsAvailability.class);
+        when(availability.isAvailable()).thenReturn(true);
+        return availability;
+    }
+
+    @Test
+    void 保存identityの改変と明示公開なしの正式割当を拒否する() {
+        var master = RanchProductionMasterRegistry.validateStructure(complete(), VERSION, "a".repeat(64));
+        var rules = mock(RanchRuleProvider.class);
+        when(rules.currentCareRule(any())).thenReturn(java.util.Optional.of(
+                new RanchRuleProvider.CareRuleSnapshot(UUID.randomUUID(), "care-synthetic-v1", 20, 100, 60, 100, 1, 3, 6)));
+        var diagnosis = mock(DiagnosisPublicationReadiness.class);
+        when(diagnosis.approvedVersionAvailable(master.questionnaireVersion(), master.scoringVersion())).thenReturn(true);
+        var resolver = new RanchVerifiedAssignmentResolver(null, null, null, diagnosis, rules,
+                Clock.systemUTC(), availableVisuals());
+        UUID id = UUID.randomUUID();
+        var valid = new DiagnosisResultSummary(id, DiagnosisMethod.DIAGNOSIS, Instant.EPOCH,
+                "diagnosis-result-v1", master.questionnaireVersion(), master.scoringVersion(), null, null,
+                null, "000001", Map.of(), null, Map.of(), Map.of()).withMapping(VERSION,
+                        "SPECIES_0", "VARIANT_1", "7", master.diagnosisDescriptions().get("000001"));
+        var request = new RanchAssignmentRequest(AssignmentMethod.DIAGNOSIS, null, id, null, "1");
+        assertThat(resolver.resolveApproved(request, valid, null, master).variantKey()).isEqualTo("VARIANT_1");
+        var changed = valid.withMapping(VERSION, "SPECIES_0", "VARIANT_2", "7", valid.mappingDescriptionSnapshot());
+        assertThatThrownBy(() -> resolver.resolveApproved(request, changed, null, master))
+                .isInstanceOf(com.mannschaft.app.common.BusinessException.class);
+        var closed = new RanchVerifiedAssignmentResolver(null, null, null, diagnosis, rules,
+                Clock.systemUTC(), new RanchApprovedVisualsAvailability(false, null));
+        assertThatThrownBy(() -> closed.resolveApproved(request, valid, null, master))
+                .isInstanceOf(com.mannschaft.app.common.BusinessException.class);
+    }
+
+    @Test
+    void 対応説明の一翻訳でも欠落したmasterを拒否する() {
+        var source = complete();
+        ((ObjectNode) source.path("mappings").get(0).path("mappingDescriptionSnapshot")).remove("en");
+        assertThatThrownBy(() -> RanchProductionMasterRegistry.validateStructure(source, VERSION, "a".repeat(64)))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     private MockEnvironment registered(String packVersion, String overridePackHash)
@@ -237,6 +313,10 @@ class RanchProductionMasterRegistryTest {
                 }
             }
         }
+        var text = json.createObjectNode();
+        for (String locale : List.of("ja", "en", "zh", "ko", "es", "de")) text.put(locale, "synthetic mapping");
+        root.path("mappings").forEach(row -> ((ObjectNode) row).set("mappingDescriptionSnapshot", text.deepCopy()));
+        root.path("birthMappings").forEach(row -> ((ObjectNode) row).set("mappingDescriptionSnapshot", text.deepCopy()));
         return root;
     }
 }

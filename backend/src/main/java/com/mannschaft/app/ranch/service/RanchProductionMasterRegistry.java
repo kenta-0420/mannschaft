@@ -27,6 +27,7 @@ public final class RanchProductionMasterRegistry {
     private static final Set<String> HABITATS = Set.of("LAND", "SEA", "AIR");
     private static final Set<String> STAGES = Set.of("EGG", "BABY", "JUVENILE", "ADULT");
     private static final Set<String> STYLES = Set.of("PIXEL", "PAINT_2D");
+    private static final Set<String> LOCALES = Set.of("ja", "en", "zh", "ko", "es", "de");
     private final Optional<RegisteredMaster> current;
 
     public RanchProductionMasterRegistry(Environment environment, ObjectMapper json) {
@@ -80,6 +81,7 @@ public final class RanchProductionMasterRegistry {
                                              String hash, VerifiedAssetPack verifiedPack) {
         if (root == null || !root.isObject() || !root.path("approved").isBoolean()
                 || !root.path("approved").booleanValue()
+                || !root.path("version").isTextual()
                 || !registeredVersion.equals(root.path("version").asText(null))) {
             throw new IllegalArgumentException("本番恐竜masterの承認版が不正です");
         }
@@ -122,15 +124,18 @@ public final class RanchProductionMasterRegistry {
         Set<String> typeCodes = new HashSet<>();
         Set<Pair> mapped = new HashSet<>();
         Map<String, Pair> byTypeCode = new HashMap<>();
+        Map<String, Map<String,String>> diagnosisDescriptions = new HashMap<>();
         for (JsonNode item : mappings) {
             String type = item.path("typeCode").asText(null);
             Pair pair = pair(item);
             if (type == null || !type.matches("[01]{6}") || !typeCodes.add(type)
                     || !pairs.contains(pair) || !mapped.add(pair)) throw incomplete();
             byTypeCode.put(type, pair);
+            diagnosisDescriptions.put(type, description(item));
         }
         if (!mapped.equals(pairs)) throw incomplete();
         Map<BirthPair, Pair> byBirthNumbers = new HashMap<>();
+        Map<BirthPair, Map<String,String>> birthDescriptions = new HashMap<>();
         for (JsonNode item : birthMappings) {
             JsonNode lifeNode = item.path("lifePathNumber");
             JsonNode nameNode = item.path("nameNumber");
@@ -143,8 +148,9 @@ public final class RanchProductionMasterRegistry {
                     || byBirthNumbers.putIfAbsent(new BirthPair(life, name), target) != null) {
                 throw incomplete();
             }
+            birthDescriptions.put(new BirthPair(life, name), description(item));
         }
-        if (byBirthNumbers.size() != 81) throw incomplete();
+        if (byBirthNumbers.size() != 81 || !new HashSet<>(byBirthNumbers.values()).equals(pairs)) throw incomplete();
         String resultSchemaVersion = key(compatibility.path("resultSchemaVersion"));
         String questionnaireVersion = key(compatibility.path("questionnaireVersion"));
         String scoringVersion = key(compatibility.path("scoringVersion"));
@@ -161,6 +167,7 @@ public final class RanchProductionMasterRegistry {
         }
 
         Set<Visual> seen = new HashSet<>();
+        Set<String> assetKeys = new HashSet<>();
         for (JsonNode item : assets) {
             Pair pair = pair(item);
             String stage = item.path("stage").asText(null);
@@ -168,7 +175,9 @@ public final class RanchProductionMasterRegistry {
             if (!pairs.contains(pair) || stage == null || style == null
                     || !STAGES.contains(stage) || !STYLES.contains(style)
                     || !requiredReaction(stage).equals(item.path("reactionKey").asText(null))
+                    || !item.path("assetKey").isTextual()
                     || !token(item.path("assetKey").asText(null))
+                    || !assetKeys.add(item.path("assetKey").asText())
                     || !digest(item.path("sha256").asText(null))
                     || !digest(item.path("staticFallbackSha256").asText(null))
                     || !seen.add(new Visual(pair, stage, style))) throw incomplete();
@@ -185,13 +194,29 @@ public final class RanchProductionMasterRegistry {
                         || !verified.assetKey().equals(item.path("assetKey").asText())
                         || !verified.sha256().equalsIgnoreCase(item.path("sha256").asText())
                         || !verified.fallbackSha256().equalsIgnoreCase(
-                                item.path("staticFallbackSha256").asText())) throw incomplete();
+                                item.path("staticFallbackSha256").asText())
+                        || (verified.habitat() != null
+                            && !verified.habitat().equals(habitatByPair.get(visual.pair())))) throw incomplete();
             }
         }
         return new RegisteredMaster(registeredVersion, hash, catalogVersion,
                 Map.copyOf(byTypeCode), Map.copyOf(byBirthNumbers), Map.copyOf(habitatByPair),
                 resultSchemaVersion, questionnaireVersion, scoringVersion,
-                birthNormalizationVersion, birthRuleVersion);
+                birthNormalizationVersion, birthRuleVersion,
+                Map.copyOf(diagnosisDescriptions), Map.copyOf(birthDescriptions),
+                verifiedPack == null ? null : verifiedPack.version());
+    }
+
+    private static Map<String,String> description(JsonNode item) {
+        JsonNode source = item.path("mappingDescriptionSnapshot");
+        if (!source.isObject() || source.size() != LOCALES.size()) throw incomplete();
+        Map<String,String> translated = new HashMap<>();
+        for (String locale : LOCALES) {
+            JsonNode value = source.path(locale);
+            if (!value.isTextual() || value.textValue().isBlank()) throw incomplete();
+            translated.put(locale, value.textValue());
+        }
+        return Map.copyOf(translated);
     }
 
     private static Pair pair(JsonNode item) {
@@ -199,6 +224,7 @@ public final class RanchProductionMasterRegistry {
     }
 
     private static String key(JsonNode value) {
+        if (!value.isTextual()) throw incomplete();
         String key = value.asText(null);
         if (!token(key) || key.startsWith("DEV_")) throw incomplete();
         return key;
@@ -225,14 +251,19 @@ public final class RanchProductionMasterRegistry {
         JsonNode catalogVersion = manifest.path("catalogVersion");
         if (!manifest.path("schemaVersion").isIntegralNumber()
                 || !manifest.path("schemaVersion").canConvertToInt()
-                || manifest.path("schemaVersion").intValue() != 1
+                || (manifest.path("schemaVersion").intValue() != 1
+                    && manifest.path("schemaVersion").intValue() != 2)
                 || !version.equals(manifest.path("packVersion").asText(null))
                 || !"APPROVED".equals(manifest.path("approvalStatus").asText(null))
                 || !"PRODUCTION".equals(manifest.path("environment").asText(null))
                 || !catalogVersion.isIntegralNumber() || !catalogVersion.canConvertToLong()
                 || catalogVersion.longValue() <= 0
                 || !assets.isArray() || assets.size() != 512) throw incomplete();
+        if (manifest.path("schemaVersion").intValue() == 2) {
+            RanchApprovedAssetPackValidator.validate(manifest, root);
+        }
         Map<Visual, AssetRow> verified = new HashMap<>();
+        Set<String> assetKeys = new HashSet<>();
         for (JsonNode item : assets) {
             Visual visual = new Visual(pair(item), item.path("stage").asText(null),
                     item.path("renderStyle").asText(null));
@@ -243,7 +274,7 @@ public final class RanchProductionMasterRegistry {
             JsonNode frameHeight = item.path("frameHeight");
             JsonNode frameCount = item.path("frameCount");
             if (!STAGES.contains(visual.stage()) || !STYLES.contains(visual.style())
-                    || !token(assetKey) || !positiveFrame(frameWidth)
+                    || !token(assetKey) || !assetKeys.add(assetKey) || !positiveFrame(frameWidth)
                     || !positiveFrame(frameHeight) || !positiveFrame(frameCount)
                     || !digest(assetHash) || !digest(fallbackHash)
                     || !assetHash.equalsIgnoreCase(sha256Resource(root,
@@ -251,7 +282,7 @@ public final class RanchProductionMasterRegistry {
                     || !fallbackHash.equalsIgnoreCase(sha256Resource(
                             root, item.path("fallbackPath").asText(null)))
                     || verified.putIfAbsent(visual, new AssetRow(assetKey, assetHash,
-                            fallbackHash)) != null) throw incomplete();
+                            fallbackHash, item.path("habitat").asText(null))) != null) throw incomplete();
         }
         return new VerifiedAssetPack(version, expectedHash, catalogVersion.longValue(),
                 Map.copyOf(verified));
@@ -289,7 +320,10 @@ public final class RanchProductionMasterRegistry {
                                    Map<Pair, String> habitatByPair,
                                    String resultSchemaVersion, String questionnaireVersion,
                                    String scoringVersion, String birthNormalizationVersion,
-                                   String birthRuleVersion) {
+                                   String birthRuleVersion,
+                                   Map<String, Map<String,String>> diagnosisDescriptions,
+                                   Map<BirthPair, Map<String,String>> birthDescriptions,
+                                   String assetPackVersion) {
         public RegisteredMaster {
             Objects.requireNonNull(version);
             Objects.requireNonNull(sha256);
@@ -321,7 +355,7 @@ public final class RanchProductionMasterRegistry {
     public record Pair(String speciesKey, String variantKey) { }
     public record BirthPair(int lifePathNumber, int nameNumber) { }
     private record Visual(Pair pair, String stage, String style) { }
-    private record AssetRow(String assetKey, String sha256, String fallbackSha256) { }
+    private record AssetRow(String assetKey, String sha256, String fallbackSha256, String habitat) { }
     private record VerifiedAssetPack(String version, String sha256, long catalogVersion,
                                      Map<Visual, AssetRow> assets) { }
 }

@@ -308,6 +308,8 @@ export default defineNuxtConfig({
       importScripts: ['/sw-custom.js'],
       navigateFallback: '/',
       globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2}'],
+      // 正式画像は必要時だけ取得し、SW installで全packを先読みしない。
+      globIgnores: ['**/node_modules/**/*', 'ranch/approved/**'],
       runtimeCaching: [
         // ─────────────────────────────────────────────────────────────────
         // API キャッシュポリシー（セキュリティ上重要）

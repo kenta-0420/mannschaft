@@ -98,10 +98,14 @@
       "title": "Choose your dinosaur form",
       "description": "Choose using birth-date and name numerology, a 64-type quiz, or a random land, sea or air form.",
       "fromResult": "Choose from my results",
-      "mappingPending": "Your result was saved. Its dinosaur form mapping is being prepared.",
+      "confirmed": "Your current avatar's appearance is confirmed. You can review your diagnosis results later.",
+      "mappingPending": "Your result has been saved. You cannot currently use this result to confirm your avatar's appearance.",
       "useResult": "Use this result to choose a form"
     },
     "diagnosisResults": {
+      "savedMapping": "Avatar mapping saved with this result",
+      "legacyMapping": "This older result has no saved avatar mapping, so it cannot be used for a new assignment. You can still view the result.",
+      "createMappedResult": "Create a new result",
       "title": "My quiz results",
       "type64": "64-type quiz",
       "birthStyle": "Birth-date and name numerology",

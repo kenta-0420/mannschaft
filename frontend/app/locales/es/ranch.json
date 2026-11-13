@@ -98,10 +98,14 @@
       "title": "Elige tu forma de dinosaurio",
       "description": "Elige mediante numerología de fecha de nacimiento y nombre, un cuestionario de 64 tipos o una forma aleatoria de tierra, mar o aire.",
       "fromResult": "Elegir desde mis resultados",
-      "mappingPending": "Tu resultado se ha guardado. Se está preparando su correspondencia con una forma de dinosaurio.",
+      "confirmed": "La apariencia de tu avatar actual está confirmada. Puedes volver a consultar tus resultados de diagnóstico más adelante.",
+      "mappingPending": "Tu resultado se ha guardado. Actualmente no puedes usarlo para confirmar el aspecto de tu avatar.",
       "useResult": "Usar este resultado para elegir forma"
     },
     "diagnosisResults": {
+      "savedMapping": "Correspondencia del avatar guardada con este resultado",
+      "legacyMapping": "Este resultado anterior no tiene una correspondencia de avatar guardada y no puede usarse para una nueva asignación. Puedes seguir consultándolo.",
+      "createMappedResult": "Crear un nuevo resultado",
       "title": "Mis resultados",
       "type64": "Cuestionario de 64 tipos",
       "birthStyle": "Numerología de nacimiento y nombre",
