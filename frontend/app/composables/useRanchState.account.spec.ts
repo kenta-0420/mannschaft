@@ -4,6 +4,7 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { useAuthStore } from '~/stores/useAuthStore'
 import { useRanchState } from '~/composables/useRanchState'
 import type { RanchState } from '~/types/ranch'
+import { approvedRanchVisualsEnabled } from '~/utils/ranch-assets'
 const external = vi.hoisted(() => ({ state: vi.fn(), report: vi.fn() }))
 mockNuxtImport('useRanchApi', () => () => ({ state: external.state }))
 mockNuxtImport('useErrorHandler', () => () => ({ handleApiError: external.report }))
@@ -19,6 +20,42 @@ beforeEach(() => {
  external.state.mockReset(); external.report.mockReset()
 })
 describe('維持された牧場画面のprivate GET本人境界', () => {
+ it('再送ACKのtrueを公開許可へ使わずfreshGET待ちとfalseで無効にする', async () => {
+  const auth = useAuthStore()
+  vi.spyOn(auth, 'clearUserCaches').mockResolvedValue()
+  await auth.setUser(user(1))
+  const staleAck: RanchState = { ...oldState, approvedVisualsAvailable: true }
+  external.state.mockResolvedValueOnce(staleAck)
+  const ranch = useRanchState()
+  await ranch.load()
+  const enabled = () => approvedRanchVisualsEnabled(ranch.state.value?.approvedVisualsAvailable, !ranch.loading.value && !ranch.failed.value)
+  expect(enabled()).toBe(true)
+  let release: ((state: RanchState) => void) | undefined
+  external.state.mockReturnValueOnce(new Promise<RanchState>(done => { release = done }))
+  const replay = ranch.act(async () => staleAck)
+  await Promise.resolve()
+  expect(ranch.loading.value).toBe(true)
+  expect(enabled()).toBe(false)
+  release?.({ ...oldState, approvedVisualsAvailable: false })
+  await replay
+  expect(enabled()).toBe(false)
+  expect(ranch.state.value?.approvedVisualsAvailable).toBe(false)
+ })
+
+ it('再送ACKがtrueでもfreshGET失敗時は公開素材を無効のままにする', async () => {
+  const auth = useAuthStore()
+  vi.spyOn(auth, 'clearUserCaches').mockResolvedValue()
+  await auth.setUser(user(1))
+  const staleAck: RanchState = { ...oldState, approvedVisualsAvailable: true }
+  external.state.mockResolvedValueOnce(staleAck)
+  const ranch = useRanchState()
+  await ranch.load()
+  external.state.mockRejectedValueOnce(new Error('FRESH_STATE_FAILED'))
+  expect(await ranch.act(async () => staleAck)).toBe(staleAck)
+  expect(ranch.state.value).toBeNull()
+  expect(ranch.failed.value).toBe(true)
+  expect(approvedRanchVisualsEnabled(ranch.state.value?.approvedVisualsAvailable, !ranch.loading.value && !ranch.failed.value)).toBe(false)
+ })
  it('Aの遅延GET成功をB画面のstateへ適用しない', async () => {
   const auth = useAuthStore()
   vi.spyOn(auth, 'clearUserCaches').mockResolvedValue()
