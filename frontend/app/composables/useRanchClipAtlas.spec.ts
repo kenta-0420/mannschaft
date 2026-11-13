@@ -3,7 +3,7 @@ import { effectScope, ref } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
 import { paintRanchClip, useRanchClipAtlas } from './useRanchClipAtlas'
-import type { RanchDevelopmentClipEntry } from '~/utils/ranch-development-clips'
+import type { RanchClipEntry, RanchDevelopmentClipEntry } from '~/utils/ranch-development-clips'
 
 const clip = (action: string) => ({
   action,
@@ -103,6 +103,20 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 describe('CLIP10/12/14 clip image transport', () => {
+  it('正式catalogへ接続してもv4の海happy描画式を変えない', () => {
+    const node = document.createElement('canvas')
+    const image = new Image() as unknown as HTMLImageElement
+    const v4 = { ...entry, habitat: 'SEA', sourceSpecies: 'archelon', catalogVersion: '4' } as RanchClipEntry
+    const formal = { ...v4, catalogVersion: '20261108', rendererProfile: 'APPROVED_APPEARANCE_V4' } as const
+    const ctx = context()
+    vi.spyOn(node, 'getContext').mockReturnValue(ctx as unknown as CanvasRenderingContext2D)
+    paintRanchClip(node, image, v4, 'happy', 1, 0.2, false)
+    const rotations = ctx.rotate.mock.calls.slice(), translations = ctx.translate.mock.calls.slice()
+    ctx.rotate.mockClear(); ctx.translate.mockClear()
+    paintRanchClip(node, image, formal, 'happy', 1, 0.2, false)
+    expect(ctx.rotate.mock.calls).toEqual(rotations)
+    expect(ctx.translate.mock.calls).toEqual(translations)
+  })
   it('failed actionはstatic fallbackで止まり次の明示同actionだけでprimaryを再試行する', () => {
     const { enabled, action, request, atlas, ctx } = setup()
     action.value = 'walk'

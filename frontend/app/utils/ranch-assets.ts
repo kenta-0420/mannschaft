@@ -1,5 +1,6 @@
 import type { DinosaurSummary, RenderStyle } from '~/types/ranch'
 import { productionRanchAssets } from './ranch-production-assets'
+import type { RanchClipEntry } from './ranch-development-clips'
 export interface RanchAssetEntry {
  readonly assetKey: string
  readonly speciesKey: string
@@ -17,9 +18,32 @@ export interface RanchAssetEntry {
  readonly rowBoundaries: readonly number[]
  readonly frames: number
  readonly sourceSha256: string
+ readonly clipEntry?: RanchClipEntry
 }
 const productionManifest = productionRanchAssets
-export function productionRanchAssetsRegistered() { return productionManifest.length === 512 }
+export function isCompleteProductionRanchManifest(entries: readonly RanchAssetEntry[]) {
+ if (entries.length !== 512) return false
+ const tuples = new Set<string>(), keys = new Set<string>(), species = new Map<string, Set<string>>()
+ const version = entries[0]?.catalogVersion
+ for (const entry of entries) {
+  if (entry.approval !== 'APPROVED' || entry.origin !== 'PRODUCTION' || !version || entry.catalogVersion !== version || entry.speciesKey.startsWith('DEV_') || entry.variantKey.startsWith('DEV_')) return false
+  const tuple = [entry.speciesKey, entry.variantKey, entry.stage, entry.renderStyle].join('/')
+  if (tuples.has(tuple) || keys.has(entry.assetKey)) return false
+  tuples.add(tuple); keys.add(entry.assetKey)
+  if (!species.has(entry.speciesKey)) species.set(entry.speciesKey, new Set())
+  species.get(entry.speciesKey)!.add(entry.variantKey)
+ }
+ if (species.size !== 16 || [...species.values()].some(variants => variants.size !== 4)) return false
+ for (const [name, variants] of species) for (const variant of variants) for (const stage of ['EGG', 'BABY', 'JUVENILE', 'ADULT']) for (const style of ['PIXEL', 'PAINT_2D']) {
+  if (!tuples.has([name, variant, stage, style].join('/'))) return false
+ }
+ return true
+}
+const productionManifestReady = isCompleteProductionRanchManifest(productionManifest)
+export function productionRanchAssetsRegistered() { return productionManifestReady }
+export function approvedRanchVisualsEnabled(available: boolean | undefined, loaded: boolean) {
+ return loaded && available === true && productionRanchAssetsRegistered()
+}
 // COREで静的採択した専用開発catalog。本番64種の承認とは別に扱う。
 const developmentCatalogVersion = '2'
 export const developmentRanchAssets: readonly RanchAssetEntry[] = Object.freeze([
@@ -28,6 +52,7 @@ export const developmentRanchAssets: readonly RanchAssetEntry[] = Object.freeze(
 ])
 export interface RanchAssetContext { readonly production: boolean; readonly isolatedDevelopment: boolean; readonly publicationEnabled: boolean }
 export interface BoundRanchAsset { readonly dinosaurId: string; readonly entry: RanchAssetEntry }
+export interface BoundRanchClip { readonly dinosaurId: string; readonly entry: RanchClipEntry }
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 export function resolveRanchAsset(dinosaur: DinosaurSummary, style: RenderStyle, context: RanchAssetContext): BoundRanchAsset | null {
  if (!UUID.test(dinosaur.id) || !dinosaur.speciesKey || !dinosaur.variantKey || dinosaur.stage === 'EGG') return null
@@ -37,6 +62,12 @@ export function resolveRanchAsset(dinosaur: DinosaurSummary, style: RenderStyle,
  if (entry.origin === 'PRODUCTION' && (entry.approval !== 'APPROVED' || !context.publicationEnabled)) return null
  if (entry.origin === 'ISOLATED_DEVELOPMENT' && (context.production || !context.isolatedDevelopment)) return null
  return { dinosaurId: dinosaur.id, entry }
+}
+export function resolveRanchProductionClip(dinosaur: DinosaurSummary, style: RenderStyle, context: RanchAssetContext): BoundRanchClip | null {
+ if (!context.publicationEnabled || !productionManifestReady) return null
+ const asset = resolveRanchAsset(dinosaur, style, { ...context, isolatedDevelopment: false })
+ const entry = asset?.entry.clipEntry
+ return entry?.origin === 'PRODUCTION' && entry.approval === 'APPROVED' ? { dinosaurId: dinosaur.id, entry } : null
 }
 export function ranchAtlasFrameRect(entry: RanchAssetEntry, frame: number) {
  if (!Number.isInteger(frame) || frame < 0 || frame >= entry.frames) return null

@@ -3,6 +3,8 @@ import type { BirthConfirmation, BirthProfile, DiagnosisResult } from '~/types/r
 import { toTypedSchema } from '~/utils/toTypedSchema'
 import { useForm } from 'vee-validate'
 import { z } from 'zod'
+import { approvedRanchVisualsEnabled } from '~/utils/ranch-assets'
+import { resultHasSavedMapping } from '~/utils/ranch-result-mapping'
 const { t } = useI18n(); useHead({ title: t('ranch.diagnosisResults.birthStyle') })
 const profileApi = useBirthProfile(); const diagnosis = useDiagnosisApi(); const ranch = useRanchState(); const result = ref<DiagnosisResult | null>(null); const { handleApiError } = useErrorHandler()
 const profile = ref<BirthProfile | null>(null); const confirmation = ref<BirthConfirmation | null>(null)
@@ -20,7 +22,7 @@ async function reloadProfile() {
  profile.value = null; confirmation.value = null; result.value = null; confirmed.value = false; resetForm()
  await load()
 }
-const assignmentAvailable = computed(() => ranch.state.value?.assignment?.availableMethods.includes('BIRTH_STYLE') ?? false)
+const assignmentAvailable = computed(() => resultHasSavedMapping(result.value) && approvedRanchVisualsEnabled(ranch.state.value?.approvedVisualsAvailable, !ranch.loading.value && !ranch.failed.value) && ranch.state.value?.assignment?.selectionConfirmed === false && ranch.state.value?.dinosaur?.stage === 'EGG' && (ranch.state.value?.assignment?.availableMethods.includes('BIRTH_STYLE') ?? false))
 const { defineField, handleSubmit, resetForm, errors } = useForm({ validationSchema: toTypedSchema(z.object({ lastName: z.string().trim().min(1, t('ranch.birth.required')), firstName: z.string().trim().min(1, t('ranch.birth.required')), lastNameKana: z.string().trim().min(1, t('ranch.birth.required')), firstNameKana: z.string().trim().min(1, t('ranch.birth.required')), birthDate: z.date({ error: t('ranch.birth.required') }) })) })
 const [lastName] = defineField('lastName'); const [firstName] = defineField('firstName'); const [lastNameKana] = defineField('lastNameKana'); const [firstNameKana] = defineField('firstNameKana'); const [birthDate] = defineField('birthDate')
 function apply(value: BirthProfile) { profile.value = value; result.value = null; resetForm({ values: { lastName: value.lastName ?? '', firstName: value.firstName ?? '', lastNameKana: value.lastNameKana ?? '', firstNameKana: value.firstNameKana ?? '', birthDate: value.birthDate ? new Date(`${value.birthDate}T12:00:00`) : undefined } }); confirmation.value = null; confirmed.value = false }
@@ -53,7 +55,7 @@ async function create() {
 }
 async function assign() {
  const version = ranch.state.value?.owner?.version
- if (!version || !result.value || !confirmation.value) return
+ if (!version || !result.value || !confirmation.value || !assignmentAvailable.value) return
  try { await ranch.act(() => ranch.api.assignment({ method: 'BIRTH_STYLE', resultId: result.value!.id, confirmationRef: confirmation.value!.confirmationRef, version })); if (profileApi.isCurrent()) await navigateTo('/my/ranch') } catch { if (profileApi.isCurrent()) failed.value = true }
 }
 async function retryPending() {

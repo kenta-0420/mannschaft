@@ -19,6 +19,7 @@ export interface RanchSettings {
 export interface RanchSlot { slotKey: 'SHELF_1' | 'SHELF_2' | 'SHELF_3'; inventoryId: string | null; version: Decimal; decoration?: { collectibleKey: string; labelKey: string; assetKey: string } | null }
 export interface OwnerSummary { id: string; status: 'ACTIVE' | 'PAUSED'; balance: Decimal; version: Decimal }
 export interface RanchState {
+ approvedVisualsAvailable?: boolean;
  featureStatus: 'AVAILABLE' | 'UNAVAILABLE'; deliveryPaused: boolean;
  rewardsStatus: 'ENABLED' | 'DISABLED' | 'PAUSED'; shopAvailable: boolean;
  owner: OwnerSummary | null;
@@ -55,6 +56,10 @@ export interface DiagnosisResult {
  normalizationVersion?: string | null
  ruleVersion?: string | null
  mappingVersion?: string | null
+ speciesKey?: string | null
+ variantKey?: string | null
+ catalogVersion?: Decimal | null
+ mappingDescriptionSnapshot?: Record<string, string> | null
  typeCode?: string | null
  axes?: Record<string, number> | null
  numberSummary?: { lifePathNumber: number; nameNumber: number; dateSum: number; nameSum: number } | null
