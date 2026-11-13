@@ -1,0 +1,84 @@
+{
+  "scope": "Final implementation/verification documentation working tree; docs PR merge is separate; root final source/board and committed-HEAD check pending",
+  "baselineDocsHead": "45057bd3651cf70d6b3b750eb49579b2fbbf84f1",
+  "implementationHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+  "mergedMain": "32e4777aec54d5de324f22948099e8a4789fc1a4",
+  "files": [
+    {
+      "path": "docs/evidence/CMP-261015-1510/resident-overlay.json",
+      "sha256": "8b63bfc35c2341daae9d5069d109e607b8a7178aa84dc9018cc8fc82a128df58",
+      "bytes": 337595
+    },
+    {
+      "path": "docs/evidence/CMP-261108-2026.json",
+      "sha256": "37aed3a518cf6c71aff5ab81385db8b0432c32eaeda824f3f032499405fa49c4",
+      "bytes": 4494
+    },
+    {
+      "path": "docs/evidence/CMP-261108-2026.md",
+      "sha256": "a033237157bfede3d1eb8e23f79be6218ce5e91bdc48dea96921bf6907c01926",
+      "bytes": 8685
+    },
+    {
+      "path": "docs/evidence/CMP-261108-2026/h14-actual-summary.json",
+      "sha256": "909170e7436e638a8d30555c887ae26a829f426c7ec88f834985536448a74781",
+      "bytes": 32294
+    },
+    {
+      "path": "docs/evidence/CMP-261108-2026/h14-docs-validation.json",
+      "sha256": "127bbe4fa6c7362df1c7f246246d8ed855196da4567edccfed334d8a600525a3",
+      "bytes": 5344
+    },
+    {
+      "path": "docs/evidence/CMP-261108-2026/h14-r2-partial-resident-observations-20261114.json",
+      "sha256": "a8eab3d3e8fd48e87fa491d1315c258fcd874e6da47f75f44cc774cf2ce420c6",
+      "bytes": 79049
+    },
+    {
+      "path": "docs/evidence/CMP-261108-2026/h14-r4-resident-observations-20261114.json",
+      "sha256": "4962b26ee53788722ab10f01daf6e9df6f526fbd26f89d76461e7d44db0926cb",
+      "bytes": 137408
+    },
+    {
+      "path": "docs/evidence/CMP-261108-2026/navigation-regression-green.json",
+      "sha256": "e524a70b84bdeeb2020926a5586f8c95cb99fb5b32d4b8bd0ea27b69aa7c02df",
+      "bytes": 1741
+    },
+    {
+      "path": "docs/evidence/CMP-261108-2026/navigation-regression-red.json",
+      "sha256": "068e8ad5b3d9332cb5d51d7efe072b819a097088b733c92e4b8baacd3d5a16e4",
+      "bytes": 1851
+    },
+    {
+      "path": "docs/prototypes/B0_RUNNER.md",
+      "sha256": "0d048acc2d1259d87aa2907a56c3f8b9e8fa02b59b99177ac6e6d447b1f827ef",
+      "bytes": 32849
+    },
+    {
+      "path": "docs/prototypes/beta-inventory-board-data.js",
+      "sha256": "cb4c0db7045c23bc95ae695be3e14cc01c27a1b66e973117f562a8d12470cb45",
+      "bytes": 3945267
+    },
+    {
+      "path": "docs/task-list.md",
+      "sha256": "efa6310a73be5c7d5c93a6c0d0dea4926e4774334b606e1fe9290eacd428edd7",
+      "bytes": 958105
+    }
+  ],
+  "newPngFiles": 0,
+  "onlyDocsWorkingChanges": true,
+  "existingEvidenceOverwritten": "only cumulative resident-overlay and current generated board; historical evidence files unchanged",
+  "completionUnit": "21/22 pass; one uncommitted-new-refs-vs-HEAD failure preserved; root rerun after commit required",
+  "generatorExit": 0,
+  "globalL46FailPreserved": true,
+  "limitedOverlayAndWorkingCompletionChecks": "PASS",
+  "staticBoard": "ROOT_PENDING",
+  "githubApiValidation": {
+    "rootAdoptionSha256": "4120ccc05d4fd5651cd3d0380420f13335b3ee2fe3214ce4565578b0a0d6b173",
+    "FE": "17success/7skip",
+    "BE": "27success/2skip",
+    "scope": "actual merged_at generations and all file snapshots accepted by root"
+  },
+  "commitPushPrMergeExecuted": false,
+  "previousManifestSha256": "2eab9a28ca7dbd2a144c4e8e27d3b8ce872ab240379c6e413c2b000306e019e4"
+}

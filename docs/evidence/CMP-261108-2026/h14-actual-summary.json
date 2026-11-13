@@ -1,0 +1,983 @@
+{
+  "schemaVersion": 1,
+  "scope": "H14 final implementation and verification record; docs PR merge is a separate event",
+  "source": {
+    "head": "6ffc203e22b1e509be81819241747504ecb3c53b",
+    "rootTree": "256c6f3ccb895b35c02129dc07a870df2d0c7844",
+    "frontendTree": "f291819d5b7a888710184b6c581eb37fe60b631a",
+    "backendTree": "d796983d08fc747d6a8a7767c4187c9d8f9d0663",
+    "frontendHead": "0c9d1ce4aad2737b9a91d9818aed477957484cb8",
+    "fixedMain": "8aa2a5c633d63dcbb8fefe0d6fa25a7f838efae0"
+  },
+  "merged": {
+    "frontend": {
+      "baseRefOid": "8aa2a5c633d63dcbb8fefe0d6fa25a7f838efae0",
+      "headRefOid": "0c9d1ce4aad2737b9a91d9818aed477957484cb8",
+      "mergeCommit": {
+        "oid": "9155314cf3a1d90a28e56d00f2174f6ec4f565c8"
+      },
+      "mergedAt": "2026-11-13T21:28:08Z",
+      "number": 4412,
+      "state": "MERGED",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/4412"
+    },
+    "backend": {
+      "baseRefOid": "9155314cf3a1d90a28e56d00f2174f6ec4f565c8",
+      "headRefOid": "6ffc203e22b1e509be81819241747504ecb3c53b",
+      "mergeCommit": {
+        "oid": "32e4777aec54d5de324f22948099e8a4789fc1a4"
+      },
+      "mergedAt": "2026-11-13T21:39:12Z",
+      "number": 4418,
+      "state": "MERGED",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/4418"
+    },
+    "main": "32e4777aec54d5de324f22948099e8a4789fc1a4",
+    "mainTree": "256c6f3ccb895b35c02129dc07a870df2d0c7844",
+    "mainTreeEqualsTestedH14": true,
+    "backendGitApiFileCount": 1952,
+    "backendGitApiMismatches": 0,
+    "actualMergedAtGenerationApiRootAdoption": {
+      "artifactName": "root-adoption.json",
+      "sha256": "4120ccc05d4fd5651cd3d0380420f13335b3ee2fe3214ce4565578b0a0d6b173",
+      "decision": "ACTUAL_MERGED_AT_CHECK_GENERATIONS_AND_COMPLETE_FILE_SNAPSHOTS_ACCEPTED",
+      "at": "2026-11-13T22:01:02.114Z",
+      "manifestSha256": "3cef0ad5f19322b7c711f5a7e86ded1db7facd5180c73958402295bbec6b3ffd",
+      "implementations": [
+        {
+          "base_sha": "8aa2a5c633d63dcbb8fefe0d6fa25a7f838efae0",
+          "changed_files": 1969,
+          "head_sha": "0c9d1ce4aad2737b9a91d9818aed477957484cb8",
+          "merge_commit_sha": "9155314cf3a1d90a28e56d00f2174f6ec4f565c8",
+          "merged_at": "2026-11-13T21:28:08Z",
+          "number": 4412,
+          "summary": [
+            "success",
+            "skipped",
+            "success",
+            "success",
+            "success",
+            "skipped",
+            "skipped",
+            "skipped",
+            "skipped",
+            "success",
+            "skipped",
+            "skipped",
+            "success",
+            "success",
+            "success",
+            "success",
+            "success",
+            "success",
+            "success",
+            "success",
+            "success",
+            "success",
+            "success",
+            "success"
+          ],
+          "summaryCounts": {
+            "success": 17,
+            "skipped": 7
+          }
+        },
+        {
+          "base_sha": "9155314cf3a1d90a28e56d00f2174f6ec4f565c8",
+          "changed_files": 1952,
+          "head_sha": "6ffc203e22b1e509be81819241747504ecb3c53b",
+          "merge_commit_sha": "32e4777aec54d5de324f22948099e8a4789fc1a4",
+          "merged_at": "2026-11-13T21:39:12Z",
+          "number": 4418,
+          "summary": [
+            "success",
+            "success",
+            "success",
+            "success",
+            "success",
+            "success",
+            "success",
+            "success",
+            "success",
+            "success",
+            "success",
+            "success",
+            "success",
+            "success",
+            "success",
+            "success",
+            "skipped",
+            "skipped",
+            "success",
+            "success",
+            "success",
+            "success",
+            "success",
+            "success",
+            "success",
+            "success",
+            "success",
+            "success",
+            "success"
+          ],
+          "summaryCounts": {
+            "success": 27,
+            "skipped": 2
+          }
+        }
+      ],
+      "ciRuns": [
+        {
+          "label": "FE F17",
+          "id": 43453247447,
+          "head_sha": "0c9d1ce4aad2737b9a91d9818aed477957484cb8",
+          "conclusion": "success",
+          "run_attempt": 1,
+          "status": "completed",
+          "html_url": "https://github.com/kenta-0420/mannschaft/actions/runs/43453247447"
+        },
+        {
+          "label": "H14 FE",
+          "id": 43453605641,
+          "head_sha": "6ffc203e22b1e509be81819241747504ecb3c53b",
+          "conclusion": "success",
+          "run_attempt": 1,
+          "status": "completed",
+          "html_url": "https://github.com/kenta-0420/mannschaft/actions/runs/43453605641"
+        },
+        {
+          "label": "H14 BE",
+          "id": 43453605217,
+          "head_sha": "6ffc203e22b1e509be81819241747504ecb3c53b",
+          "conclusion": "success",
+          "run_attempt": 2,
+          "status": "completed",
+          "html_url": "https://github.com/kenta-0420/mannschaft/actions/runs/43453605217"
+        }
+      ],
+      "allChecksAtMergeCompletedAndLatestSuccessful": true,
+      "historicalFailureAndCancellationKept": true
+    }
+  },
+  "artifact": {
+    "manifestSha256": "bf5f2e24d8f9a088c34341f400d213fd4b5408e02232744c23b049262606facc",
+    "jar": {
+      "bytes": 501551854,
+      "sha256": "fb316a4c48b06009b594b3fe89c045abbe78cc5b30e68c7dfa8592103206973e"
+    },
+    "frontendArchive": {
+      "bytes": 319730974,
+      "sha256": "b04199f84abd81e74642897608c7f0024c9fe399744e7926b8ebe4060123ac98"
+    },
+    "frontendFiles": 6500,
+    "frontendBytes": 412379958,
+    "frontendProofSha256": "da408034db8d09c28b70213d63592e48e40d6ba63f379943e5f516f052fefe8d",
+    "backendProofSha256": "bb82107d9df01fe81a465417834eae9e9e2aaceaca298038173c6ad1685777f6",
+    "nativeFrontendInventorySha256": "cce81a0920163b91c00114453516d2d597c426c18331fe0984e26687fc1fec27",
+    "formalResourceSha256": {
+      "packManifest": "62d2d045e480bab986619410168bfef145989937a2b994c8cc4e3eec9346d26b",
+      "mappingMaster": "3037f7585d5bdb395bae86ac26276ac70e61b5c680629bacf02a2978f50eab1a",
+      "questionnaire": "10e2d71bfd2d84791c3fdb3b82c42cce9dc55ed98feb55a095e6016a5198f9d0"
+    },
+    "producerExitCode": 0,
+    "producerReaped": true,
+    "canonicalBuildReceipts": {
+      "frontend": {
+        "exitCode": 0,
+        "signal": null,
+        "error": null,
+        "cleanup": "removed",
+        "sha256": "c50b1ea59186d7585f9cd2d5a6f47e1ef1bff47815fcd6a638b91a8d74d73424"
+      },
+      "backend": {
+        "exitCode": 0,
+        "signal": null,
+        "error": null,
+        "cleanup": "removed",
+        "sha256": "ce84df3a997ae1cbaab2f85840a744419fa744c6b52363b06fe0cd8f4d22dc3d"
+      }
+    },
+    "independentCheckerExitCode": 0,
+    "globalAllGreen": false,
+    "globalScopeLimit": "Unrelated owner attention/running resources were preserved; own scratch absence and owned cleanup only."
+  },
+  "ci": {
+    "backendRun": 43453605217,
+    "attempt1": {
+      "status": "FAIL",
+      "classification": "85-minute shard0 action/wrapper timeout; no assertion failure observed before termination; Gradle BUILD SUCCESSFUL does not override CI failure",
+      "testTimeoutMinutes": 85
+    },
+    "retryCount": 1,
+    "attempt2": {
+      "status": "SUCCESS",
+      "retryScope": "failed jobs only",
+      "shard0MainTest": "FROM-CACHE_NOT_FRESH_EXECUTION",
+      "unchangedTestTimeoutMinutes": 85,
+      "xmlFiles": 1297,
+      "testsRecorded": 5479,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xmlZipSha256": "ec99c6c5f5173e17046bbef2f5003d914f8eedc55abab74d56dba604178fd569",
+      "runtimeDiagnostic": {
+        "commandExitCode": 0,
+        "shellExitCode": 0,
+        "testStepExitCode": null,
+        "completed": false,
+        "cacheHit": true,
+        "testStepOutcome": "success"
+      },
+      "plannedSuiteCompleteness": "NOT_PROVEN_FROM_COUNTS_ALONE",
+      "successfulAttempt1JobsNotRerun": true
+    },
+    "frontend": {
+      "F17Run": 43453247447,
+      "H14Run": 43453605641,
+      "status": "SUCCESS",
+      "reportedUnitPasses": 7957,
+      "baselineSkipped": 5,
+      "newHeadFailuresNotHidden": true
+    }
+  },
+  "runtime2": {
+    "R1": {
+      "runId": "ranchmapping-99caa99de0f7ecf02bb9c895",
+      "exitCode": 1,
+      "reaped": true,
+      "status": "FAIL_PRESERVED_STALE_QA_EXPECTATION",
+      "failure": {
+        "name": "TimeoutError",
+        "deadlineMs": 120000,
+        "location": "runtime2-ui.mjs:34:72"
+      },
+      "completedCaseCount": 4,
+      "requiredFinalCase": "NOT_COMPLETED",
+      "fullBefore": "PASS",
+      "fullAfter": "NOT_EXECUTED",
+      "canonicalReceipt": {
+        "exitCode": 0,
+        "signal": null,
+        "error": null,
+        "cleanup": "removed"
+      },
+      "nativeCleanup": {
+        "stages": 8,
+        "status": "PASS"
+      },
+      "outerCleanup": {
+        "stages": 7,
+        "all": "PASS"
+      },
+      "privatePngSha256Only": "bc49c0b823b93829452c9cdfee60b402fa4e7e9476b15f44f73f9f6925a7d6ba",
+      "approvedTextVisuallyConfirmed": true
+    },
+    "R2": {
+      "runId": "ranchmapping-fc8c2ee9eea22c1be3012a03",
+      "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+      "cases": [
+        {
+          "name": "private-file-denied",
+          "status": "PASS"
+        },
+        {
+          "name": "runtime2-care-available",
+          "status": "PASS"
+        },
+        {
+          "name": "runtime2-real-ui-seed",
+          "status": "PASS"
+        },
+        {
+          "name": "runtime2-owned-java-transition",
+          "status": "PASS"
+        },
+        {
+          "name": "master-question-pack-unregistered-saved-results",
+          "status": "PASS"
+        }
+      ],
+      "fullBefore": "PASS",
+      "fullAfter": "PASS",
+      "nativeCleanup": [
+        {
+          "stage": "gate-workers",
+          "status": "PASS"
+        },
+        {
+          "stage": "control-clis",
+          "status": "PASS"
+        },
+        {
+          "stage": "frontend",
+          "status": "PASS"
+        },
+        {
+          "stage": "java",
+          "status": "PASS"
+        },
+        {
+          "stage": "compose",
+          "status": "PASS"
+        },
+        {
+          "stage": "ports",
+          "status": "PASS"
+        },
+        {
+          "stage": "private-evidence",
+          "status": "PASS"
+        },
+        {
+          "stage": "private-directory",
+          "status": "PASS"
+        }
+      ],
+      "outerCleanup": [
+        {
+          "stage": "scripted-browser",
+          "status": "PASS"
+        },
+        {
+          "stage": "validation-workers",
+          "status": "PASS"
+        },
+        {
+          "stage": "control-clis",
+          "status": "PASS"
+        },
+        {
+          "stage": "canonical",
+          "status": "PASS"
+        },
+        {
+          "stage": "accounts",
+          "status": "PASS"
+        },
+        {
+          "stage": "frozen-bindings",
+          "status": "PASS"
+        },
+        {
+          "stage": "stop-forward-audit",
+          "status": "PASS"
+        }
+      ],
+      "actualExitCode": 0,
+      "reaped": true,
+      "canonicalReceipt": {
+        "exitCode": 0,
+        "signal": null,
+        "error": null,
+        "cleanup": "removed"
+      },
+      "canonicalReceiptSha256": "ad29abcb92300e7bc197c33fa99d53619007fbee8ba711157b9069ad97905011"
+    }
+  },
+  "combinedR2": {
+    "runId": "ranchmapping-61a30580b29530464365c237",
+    "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+    "actualExitCode": 1,
+    "originalFailure": {
+      "code": "OPERATION_DEADLINE"
+    },
+    "fullBefore": "PASS",
+    "fullAfter": "NOT_EXECUTED",
+    "originalNativeCleanup": [
+      {
+        "stage": "gate-workers",
+        "status": "PASS"
+      },
+      {
+        "stage": "control-clis",
+        "status": "PASS"
+      },
+      {
+        "stage": "frontend",
+        "status": "PASS"
+      },
+      {
+        "stage": "java",
+        "status": "PASS"
+      },
+      {
+        "stage": "compose",
+        "status": "FAIL",
+        "code": "SUBPROCESS_DEADLINE"
+      },
+      {
+        "stage": "ports",
+        "status": "FAIL",
+        "code": "ERR_ASSERTION"
+      },
+      {
+        "stage": "private-evidence",
+        "status": "PASS"
+      },
+      {
+        "stage": "private-directory",
+        "status": "FAIL",
+        "code": "ERR_ASSERTION"
+      }
+    ],
+    "originalOuterCleanup": [
+      {
+        "stage": "browser",
+        "status": "PASS"
+      },
+      {
+        "stage": "scripted-browser",
+        "status": "PASS"
+      },
+      {
+        "stage": "validation-workers",
+        "status": "PASS"
+      },
+      {
+        "stage": "control-clis",
+        "status": "PASS"
+      },
+      {
+        "stage": "canonical",
+        "status": "FAIL",
+        "code": "ERR_ASSERTION"
+      },
+      {
+        "stage": "accounts",
+        "status": "PASS"
+      },
+      {
+        "stage": "frozen-bindings",
+        "status": "PASS"
+      },
+      {
+        "stage": "stop-forward-audit",
+        "status": "PASS"
+      }
+    ],
+    "recoveryAllDedicatedResourcesAbsent": true,
+    "formalExplorationCompleted": false
+  },
+  "combinedR3": {
+    "runId": "ranchmapping-f7862a40175de37ec97bf254",
+    "originalExit": 1,
+    "failure": "startup count SQL operation deadline; no core/new actors",
+    "nativeTelemetryExport": "82/82 PASS, does not erase startup failure",
+    "distinctOwnedRecovery": {
+      "at": "2026-11-13T20:26:57.8044103Z",
+      "runId": "ranchmapping-f7862a40175de37ec97bf254",
+      "session": 57158,
+      "actualExitCode": 0,
+      "reaped": true,
+      "scriptSha256": "ad9c729f8af951fdfb997ecc3850bc03cd20163e26b1cedcc147fe25bf249bc4",
+      "windowsPortsAbsent": true,
+      "ports": [
+        21154,
+        19286,
+        25305,
+        21689
+      ],
+      "originalR3FailurePreserved": true,
+      "priorRecoveryPreflightFailurePreserved": true
+    },
+    "causalAttribution": "ABBA/readonly hook did not prove complete original-run latency cause"
+  },
+  "combinedR4": {
+    "at": "2026-11-13T21:19:46.371Z",
+    "decision": "H14_R4_CORE_FRESH_THREE_EXPLORATION_FULL_AFTER_AND_CLEANUP_ACCEPTED",
+    "runId": "ranchmapping-0d2a31d6460538a875260c6c",
+    "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+    "sourceTree": "256c6f3ccb895b35c02129dc07a870df2d0c7844",
+    "frontendTree": "f291819d5b7a888710184b6c581eb37fe60b631a",
+    "backendTree": "d796983d08fc747d6a8a7767c4187c9d8f9d0663",
+    "coordinatorSession": 40556,
+    "coordinatorExitCode": 0,
+    "reaped": true,
+    "configSha256": "20cfde6aa8ce02a92c4c4a76d4bc2c49ec1e66752c82b629f30e7b98390afc54",
+    "phaseSha256": "dbbccdc3e96341e74281453f770c847958587534d5c9f58ef4106428b8ecf2d8",
+    "actorsAdoptionSha256": "bfb296391c19ad3f8053f1d554b9198a07ab50a59b8570f67d14858c807ba137",
+    "fullBefore": "PASS",
+    "fullAfter": "PASS",
+    "beforeAfterSourceArtifactsAndLinuxIdentical": true,
+    "canonicalExitCode": 0,
+    "canonicalCleanup": "removed",
+    "nativeCleanup": [
+      {
+        "stage": "gate-workers",
+        "status": "PASS"
+      },
+      {
+        "stage": "control-clis",
+        "status": "PASS"
+      },
+      {
+        "stage": "frontend",
+        "status": "PASS"
+      },
+      {
+        "stage": "java",
+        "status": "PASS"
+      },
+      {
+        "stage": "compose",
+        "status": "PASS"
+      },
+      {
+        "stage": "ports",
+        "status": "PASS"
+      },
+      {
+        "stage": "private-evidence",
+        "status": "PASS"
+      },
+      {
+        "stage": "private-directory",
+        "status": "PASS"
+      }
+    ],
+    "outerCleanup": [
+      {
+        "stage": "browser",
+        "status": "PASS"
+      },
+      {
+        "stage": "scripted-browser",
+        "status": "PASS"
+      },
+      {
+        "stage": "validation-workers",
+        "status": "PASS"
+      },
+      {
+        "stage": "control-clis",
+        "status": "PASS"
+      },
+      {
+        "stage": "canonical",
+        "status": "PASS"
+      },
+      {
+        "stage": "accounts",
+        "status": "PASS"
+      },
+      {
+        "stage": "frozen-bindings",
+        "status": "PASS"
+      },
+      {
+        "stage": "stop-forward-audit",
+        "status": "PASS"
+      }
+    ],
+    "privateRetained": false,
+    "windowsPortsAbsent": true,
+    "privateAccountFilesRemoved": true,
+    "telemetry": {
+      "status": "PASS",
+      "journal": "native-telemetry.private.jsonl",
+      "journalMode": "0600",
+      "destination": "budget-telemetry.jsonl",
+      "destinationModeRequested": "0600",
+      "destinationObservedMode": "0777",
+      "destinationModeContract": "canonical ownership and Windows ACL; DrvFS observed bits are not a POSIX security guarantee",
+      "observedEvents": 2268,
+      "writtenEvents": 2268,
+      "completeEvents": true,
+      "bytes": 604251,
+      "sha256": "d24765516a44b6190356f57afc30b6b9221f1a8a47aed03aaacba858c993933c",
+      "destinationSha256": "d24765516a44b6190356f57afc30b6b9221f1a8a47aed03aaacba858c993933c",
+      "destinationFsync": true,
+      "failure": null
+    },
+    "rootJournalParsedEvents": 2268,
+    "hashes": {
+      "result": "65be4110f417db78353b0a918f923b829ad38d5f848b2614be076b793f6f5c5a",
+      "receipt": "245b450ddc6c3c35e014207cb0d5e0a8a14f18e0f7efda9b2c29ddd45fd82a2e",
+      "cleanup": "98072dd6d969876e776b0e0af5900064196cd2fa7f0ebaa91d0a0b9e18fe422a",
+      "frontendRuntime": "f2bab67d7aa68e13bc7ae4d37524560653e1fbef0d8ba9e09ae3257848c7d3db"
+    },
+    "runtime2SeparateAdoptionSha256": "138b4ff9351d089976beef2e78cc306292cd784a144fb09e1323ac8a9d0a4b58",
+    "runtime2NotRepeatedInCombined": true,
+    "originalR2R3FailuresPreserved": true,
+    "formalCompletionPendingAppMergesAndDocs": true,
+    "mergeGo": false,
+    "production": "OFF"
+  },
+  "core": {
+    "runId": "ranchmapping-0d2a31d6460538a875260c6c",
+    "cases": [
+      {
+        "name": "private-file-denied",
+        "status": "PASS"
+      },
+      {
+        "name": "nonparticipant-result-view",
+        "status": "PASS"
+      },
+      {
+        "name": "diagnosis-24-and-six-ties",
+        "status": "PASS"
+      },
+      {
+        "name": "other-owner-direct-result",
+        "status": "PASS"
+      },
+      {
+        "name": "unauth-direct-private-routes",
+        "status": "PASS"
+      },
+      {
+        "name": "fresh-get-delayed-gate",
+        "status": "PASS"
+      },
+      {
+        "name": "fresh-get-failure-gate",
+        "status": "PASS"
+      },
+      {
+        "name": "assignment-two-tab-replay",
+        "status": "PASS"
+      },
+      {
+        "name": "initial-motion",
+        "status": "OBSERVED"
+      },
+      {
+        "name": "confirmed-egg-no-reassignment",
+        "status": "PASS"
+      },
+      {
+        "name": "birth-confirm-result",
+        "status": "PASS"
+      },
+      {
+        "name": "stale-birth-confirmation",
+        "status": 409
+      },
+      {
+        "name": "birth-profile-revision-preserves-old-result",
+        "status": "PASS"
+      },
+      {
+        "name": "birth-result-use",
+        "status": "PASS"
+      },
+      {
+        "name": "scene-visibility-precondition",
+        "status": "PASS"
+      },
+      {
+        "name": "hatch-transport-response-loss-retry",
+        "status": "PASS"
+      },
+      {
+        "name": "hatch-name",
+        "status": "PASS"
+      },
+      {
+        "name": "care-diagnostic-PIXEL-feed",
+        "status": "DIAGNOSTIC_ONLY"
+      },
+      {
+        "name": "care-diagnostic-PIXEL-touch",
+        "status": "DIAGNOSTIC_ONLY"
+      },
+      {
+        "name": "formal-four-actions-PIXEL",
+        "status": "PASS"
+      },
+      {
+        "name": "care-diagnostic-PAINT_2D-feed",
+        "status": "DIAGNOSTIC_ONLY"
+      },
+      {
+        "name": "care-diagnostic-PAINT_2D-touch",
+        "status": "DIAGNOSTIC_ONLY"
+      },
+      {
+        "name": "formal-four-actions-PAINT_2D",
+        "status": "PASS"
+      },
+      {
+        "name": "motion-動きを控える",
+        "status": "PASS"
+      },
+      {
+        "name": "motion-動きを止める",
+        "status": "PASS"
+      },
+      {
+        "name": "os-reduced-motion",
+        "status": "PASS"
+      },
+      {
+        "name": "post-hatch-identity-immutable",
+        "status": "PASS"
+      },
+      {
+        "name": "hidden-result-view",
+        "status": "PASS"
+      },
+      {
+        "name": "paused-result-view",
+        "status": "PASS"
+      },
+      {
+        "name": "hidden-paused-result-view",
+        "status": "PASS"
+      },
+      {
+        "name": "asset-http-fallback",
+        "status": "PASS"
+      },
+      {
+        "name": "legacy-null-prerequisite",
+        "status": "LEGACY_RESULT_SET"
+      },
+      {
+        "name": "legacy-null-reject",
+        "status": "PASS"
+      },
+      {
+        "name": "other-owner-confirmation-id",
+        "status": "NOT_EXECUTED"
+      },
+      {
+        "name": "unregistered-master-old-snapshot-view",
+        "status": "NOT_EXECUTED"
+      },
+      {
+        "name": "cross-tenant-result-boundary",
+        "status": "NOT_EXECUTED"
+      },
+      {
+        "name": "confirmed-birth-selected-egg-feedback",
+        "status": "PASS"
+      },
+      {
+        "name": "confirmed-result-feedback-no-readoption",
+        "status": "PASS"
+      },
+      {
+        "name": "confirmed-feedback-ja-no-unresolved-key",
+        "status": "PASS"
+      },
+      {
+        "name": "ranch-recall-entry-navigation",
+        "status": "PASS"
+      }
+    ],
+    "securityStatus": "PASS",
+    "recallEntry": {
+      "at": "2026-11-13T20:50:19.117Z",
+      "status": "PASS",
+      "navigationPath": "/reflections",
+      "navigationQuery": "",
+      "heading": "今日の振り返り",
+      "todayPath": "/api/v1/me/reflections/today",
+      "todayQuery": "",
+      "todayMethod": "GET",
+      "todayStatus": 200,
+      "todayServer": "ranchmapping-0d2a31d6460538a875260c6c",
+      "indexContent": "EMPTY",
+      "itemCount": 0,
+      "visibleItemControls": 0,
+      "loadFailedVisible": false,
+      "detailHeadingVisible": false,
+      "returnedPath": "/my/ranch",
+      "individualBeforeSha256": "472a148210f7d48b08f0b95f7720d7f26bb4d0551002ffb7659da3bf4b8ade4d",
+      "individualAfterSha256": "472a148210f7d48b08f0b95f7720d7f26bb4d0551002ffb7659da3bf4b8ade4d",
+      "savedResultBeforeSha256": "98ceaad664e7d6ea07aa19542bb633924c93cf91457712367731b842ccefc4fe",
+      "savedResultAfterSha256": "98ceaad664e7d6ea07aa19542bb633924c93cf91457712367731b842ccefc4fe",
+      "screenshot": {
+        "file": "ranch-recall-entry-navigation.private.png",
+        "sha256": "63a6ee07899231a63c8c1ddc50af606c6de1f5228048a6ab4c281a01015be266"
+      },
+      "scope": "normal owner link click and observed getToday response; no reflection entry seed or API bypass; navigation/forms/list-content/account identifiers masked"
+    },
+    "scriptedContextsClosed": true,
+    "stageScope": "core-stage pending flags superseded only by final combinedR4 adoption"
+  },
+  "freshActors": {
+    "rootDecision": "FRESH_THREE_GOAL_ONLY_ACTOR_REPORTS_AND_SELECTED_VISUALS_ACCEPTED_FOR_NORMAL_FULL_AFTER",
+    "runId": "ranchmapping-0d2a31d6460538a875260c6c",
+    "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+    "goalReachedByActor": [
+      {
+        "resident": "resident-1",
+        "goalReached": true,
+        "mdSha256": "2b31ca075f3a90d1bc9e4d613a1b063cc9ae7ff5da49030a995680b9a864c99b",
+        "jsonSha256": "f460b81213f927a9099061966e4261d711946073e62d268abd342925cda83575"
+      },
+      {
+        "resident": "resident-2",
+        "goalReached": true,
+        "mdSha256": "eda350b1847504365703872cd667034dcc121612c456517f336227dd48d54853",
+        "jsonSha256": "f253d66be2a825a45840f46a7d11b0076140dec378e816dc4c7f8a62d76ce83b"
+      },
+      {
+        "resident": "resident-3",
+        "goalReached": true,
+        "mdSha256": "e669a82ea53979fe5b0f7b4649bbde36df51ae6525f717d0b869219e916640f2",
+        "jsonSha256": "52d8a33f25835397df271d6a68baa97ef6a9a24a67bb8df93a34883fdb9352c3"
+      }
+    ],
+    "sameResultRevisitsConfirmed": true,
+    "explicitSaveRecoveryCounts": [
+      2,
+      21
+    ],
+    "selectorTimeoutsPreserved": 3,
+    "selectorTimeoutsConfirmedProductBugs": false,
+    "rootBackClickObservation": {
+      "status": "PASS",
+      "outboxId": "56ceb4e7-9274-46b9-8b9b-2b8cc84120f3",
+      "replySha256": "376fddca23add7da7a31c2c66484ecd29063a77f7cbdb66154da982baa87e9f2",
+      "actorReportedEvidenceNotRewritten": true
+    },
+    "limits": [
+      "Same-session revisits only, not another device/day or fresh login",
+      "Mobile390/360 touch emulation, not physical phone or keyboard",
+      "Residents did not start eggs, hatch, adopt appearances or perform care; scripted core covers separate owned scenarios",
+      "Tool errors preserved, no claim that all IPC requests succeeded",
+      "Subjective friction remains observations, not blockers"
+    ]
+  },
+  "observations": {
+    "counts": [
+      79,
+      79,
+      150
+    ],
+    "old73FieldsPreserved": true,
+    "R2PartialHistoryPreserved": true,
+    "registration": "actual-resident-artifacts",
+    "trusted": false,
+    "status": "observed-unverified",
+    "coveragePassed": false,
+    "parentStage": "B4",
+    "capabilityStage": "未設定",
+    "selectedRefs": [
+      "docs/evidence/CMP-261108-2026/h14-r2-partial-resident-observations-20261114.json",
+      "docs/evidence/CMP-261108-2026/h14-r4-resident-observations-20261114.json"
+    ],
+    "globalValidatorKnownFailure": "L46 GitHub snapshot reference-set mismatch, distinct from limited checks",
+    "staticBoard": "root final-bytes verification pending"
+  },
+  "review": {
+    "reviewer": "Root Codex independent code/evidence reviews and final source adoption",
+    "claude": "external source transfer rejected; Codex fallback",
+    "historicalReviewHeadsRemainHistorical": true,
+    "sourceIntegration": "normal merge only; merged main root tree equals tested H14",
+    "apiMetadataScope": "Root accepted actual merged_at generation and complete files; FE17success7skip/BE27success2skip, not reader oral count"
+  },
+  "copyException": {
+    "finding": "RANCH-RESULT-PRE-EGG-COPY-002",
+    "repairCommit": "588311930ad6e18db824db4a599a95cbd35f150d",
+    "files": 7,
+    "locales": 6,
+    "existingTestsPassed": 54,
+    "newAutomatedRedCreated": false,
+    "method": "低影響文言のみの例外として既存自動検査とH13誤案内→H14R4正案内の手動実機を併用。規約の自動RED手順とは区別するroot判断。",
+    "navigationRedNotReusedForCopy": true
+  },
+  "privacy": {
+    "newPngBytesPublished": 0,
+    "newPngFiles": 0,
+    "privateProfileAuthRawApiSqlIncluded": false,
+    "privateImageReferencesAreProvenanceOnly": true
+  },
+  "originMetadataPins": [
+    {
+      "artifactName": "source-packet.json",
+      "sha256": "e2036f41d7d19bfcdfa40ac8b615acffce6f6c26c5c23f7169738e8e35f75f95",
+      "storage": "root-owned private-local evidence; identifier/hash, not repository reference"
+    },
+    {
+      "artifactName": "root-producer-completion.json",
+      "sha256": "2709e3412c1b57d2585cf70a809c147568479ba645f20b9622c02adf09a8ef75",
+      "storage": "root-owned private-local evidence; identifier/hash, not repository reference"
+    },
+    {
+      "artifactName": "artifact-preparation-summary.json",
+      "sha256": "100d0c82040006ddca1d819de6823fa73f8f21ecadebd24a6442e9df011025a4",
+      "storage": "root-owned private-local evidence; identifier/hash, not repository reference"
+    },
+    {
+      "artifactName": "root-runtime2-r1-negative-adoption.json",
+      "sha256": "4039eec680e8a9f7f09a25fb7ac94d6d0a4c9dec57c9491d41e3c1a4ade8ac2c",
+      "storage": "root-owned private-local evidence; identifier/hash, not repository reference"
+    },
+    {
+      "artifactName": "root-runtime2-r2-actual-adoption.json",
+      "sha256": "138b4ff9351d089976beef2e78cc306292cd784a144fb09e1323ac8a9d0a4b58",
+      "storage": "root-owned private-local evidence; identifier/hash, not repository reference"
+    },
+    {
+      "artifactName": "root-combined-r2-negative-adoption.json",
+      "sha256": "785e39021e117fe5acec921ff5ae3a0b50d877dbfe0fc735447b104a418b8ad0",
+      "storage": "root-owned private-local evidence; identifier/hash, not repository reference"
+    },
+    {
+      "artifactName": "root-r3-recovery-r2-exit.json",
+      "sha256": "aa968829d843083ec949edb72a3f380190797a20cd34b0d53301555d746c7f67",
+      "storage": "root-owned private-local evidence; identifier/hash, not repository reference"
+    },
+    {
+      "artifactName": "root-combined-r4-scripted-adoption.json",
+      "sha256": "442dac109fe021c237944a06fd64c86d2492b3aa6086a09a0ac2872b042910e8",
+      "storage": "root-owned private-local evidence; identifier/hash, not repository reference"
+    },
+    {
+      "artifactName": "root-r4-fresh-actors-adoption.json",
+      "sha256": "bfb296391c19ad3f8053f1d554b9198a07ab50a59b8570f67d14858c807ba137",
+      "storage": "root-owned private-local evidence; identifier/hash, not repository reference"
+    },
+    {
+      "artifactName": "root-combined-r4-actual-adoption.json",
+      "sha256": "a331f892494313577f6c889f62dc1a0d6d0a89fcc5077d19014ec17c786080e9",
+      "storage": "root-owned private-local evidence; identifier/hash, not repository reference"
+    },
+    {
+      "artifactName": "root-r4-postcleanup-resource-check.json",
+      "sha256": "418e5d7901f6d7c11231d3826d1fc49394b7ca379c3b7ea6830bb49943f05191",
+      "storage": "root-owned private-local evidence; identifier/hash, not repository reference"
+    },
+    {
+      "artifactName": "root-r4-actual-exit.json",
+      "sha256": "3ad3f8fb82ee1058bca30e77837b589886d27cb1724d8f63f883c7aeb90afb8d",
+      "storage": "root-owned private-local evidence; identifier/hash, not repository reference"
+    },
+    {
+      "artifactName": "main-after-backend.json",
+      "sha256": "16e1d16921574f80718867347c7b43c47b0e7b27fac2dac92c289f98e0251c53",
+      "storage": "root-owned private-local evidence; identifier/hash, not repository reference"
+    },
+    {
+      "artifactName": "frontend-merged.json",
+      "sha256": "3c2d35b75d6707a7d6fba9ea18d16f9e383e76502abf2dfe7eb26112c0e1ac0c",
+      "storage": "root-owned private-local evidence; identifier/hash, not repository reference"
+    },
+    {
+      "artifactName": "backend-merged.json",
+      "sha256": "d1128b1b8fe7279bb8acc435779f4cef392543a8761a9994c833aeed824b94c0",
+      "storage": "root-owned private-local evidence; identifier/hash, not repository reference"
+    },
+    {
+      "artifactName": "root-adoption.json",
+      "sha256": "228511910416ebe0e192c5fadd744a4073ee14587c749f16c4d1af5fe5d03106",
+      "storage": "root-owned private-local evidence; identifier/hash, not repository reference"
+    },
+    {
+      "artifactName": "root-review.json",
+      "sha256": "6a6bac2896b2d5bb3e18d40b88aa17ab018dfb6a2e24c2c9d96691bfa30bf3c7",
+      "storage": "root-owned private-local evidence; identifier/hash, not repository reference"
+    },
+    {
+      "artifactName": "root-review.json",
+      "sha256": "48931931fb92304559f8c660d29e4694d71c6319694d47942a691ce4c776ea79",
+      "storage": "root-owned private-local evidence; identifier/hash, not repository reference"
+    }
+  ],
+  "publication": "OFF"
+}

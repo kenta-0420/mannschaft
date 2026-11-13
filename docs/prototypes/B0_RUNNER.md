@@ -136,3 +136,8 @@ rootは3住民の原session正常終了、cleanup=removed、専用scratchと内�
 
 
 最新main追従の採用は `docs/evidence/CMP-261008-1253/board-ui-main-bridge-r25-20261109.json`。現在統合 `af13a156be7ba03a2367c3ad92759c7d6ce3fb47`／main `038079b8c401645622024a5e6a6250be6c60b1a7`、通常generator1回exit0、台帳680行・一意680、生成680 campaign、生成JS SHA256 `07591fb6498abc4a8a05ff4d6c9dd2892c56463c06936c66441585e5cb67d7a7`。HTML raw同一、overlay/全B0 plan/120件25field純粋投影/新B・Cのfinding・feature/capability/decision/stage（B4）が旧受入入力と厳密同値のため、fa5/data06cの既存静的UI証拠を来歴不変で採用し、新ブラウザを実行していない。新bytesの通常validator/自己検証全体は各exit1/1で既存L46 FAILを保持する。実機は旧f938と差分影響評価を用い、fresh FE/通常CIは後続ゲート。
+
+
+## CMP-261108-2026 H14 R2中断・R4正式探索の累積記録（2026-11-14）
+
+旧73/73/136の全fieldとトップrun/environmentを保持し、R2中断の3/3/7とR4の3/3/7を追記して79 persona/79 journey/150 insight。R2は全員PARTIAL・OPERATION_DEADLINE・再訪未達、R4はrootが元目的/同session再訪を採択しfull-after/所有cleanup完了。原run/head/限界とtrusted=false/observed-unverified/coverage=falseを保持し、B4親/子stage未設定や新画像非公開を変えない。選別証拠はdocs/evidence/CMP-261108-2026/h14-r2-partial-resident-observations-20261114.jsonとh14-r4-resident-observations-20261114.json。正式summaryと台帳は本体の採択結果を記録し、docs PRのmergeとは別に扱う。通常generator/global既存L46 FAIL、限定overlay検証、最終bytes静的boardは別判定。新静的board検証はroot後段で行う。
