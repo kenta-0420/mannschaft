@@ -39,7 +39,8 @@ mockNuxtImport('usePostalCodeValidation', () => () => ({
   isSupported: () => true,
   validateFormat: () => true,
 }))
-mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
+// register.vue は送信 locale と郵便番号の実効国に表示言語（locale）を使うため、t に加えて locale も要る
+mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key, locale: ref('ja') }))
 const options = {
   global: {
     stubs: {
