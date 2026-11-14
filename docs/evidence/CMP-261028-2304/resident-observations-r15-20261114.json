@@ -45,7 +45,11 @@
         },
         {
           "path": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/prelogin-recovery02/l1rr15655c-r1/mutation-journal.jsonl",
-          "sha256": "2856685e5c48e22488938a395c455509762558eea03adee604e43bd916449003"
+          "sha256": "e0725fd905062e7855cfc437fe2b5466a42a831ec2a80ed42419e584b246659e"
+        },
+        {
+          "path": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/prelogin-recovery02/l1rr15655c-r1/mutation-final.json",
+          "sha256": "0d2aff0fe3042086073d055ad9788acbd50aea67623ef0ea499639f31b437168"
         },
         {
           "path": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/prelogin-recovery02/l1rr15655c-r1/websocket-snapshot.json",
@@ -197,5 +201,18 @@
       "driverAc36Passed": false,
       "driverQualification": "raw mutation-final ac36Passed:falseは既定値として不変。root AC-36資格と分離。"
     }
-  ]
+  ],
+  "rootClosureQualification": {
+    "path": ".claude/l1r-recovery-20261108/r15-recovery-01/root-three-contexts-closed-final-01.md",
+    "sha256": "3efc2bc714d38388773e6551a2dea901584eb216fd2a0912cf9276fb08fd2c80",
+    "actualExplorationContextsClosed": 3,
+    "nativeExitCodes": [
+      0,
+      0,
+      0
+    ],
+    "pending": 0,
+    "unknown": false,
+    "qualification": "後続FINAL/閉鎖資格。各actor-summaryは閉鎖前snapshotの原値を保持。原未認証context閉鎖とidentity前拒否も別歴史として保持。app停止・DB/scratch/Jar撤去・main採用の完了は意味しない。"
+  }
 }
