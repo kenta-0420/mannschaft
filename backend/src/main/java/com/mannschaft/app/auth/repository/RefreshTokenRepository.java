@@ -38,6 +38,26 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshTokenEntity
 
     List<RefreshTokenEntity> findByUserIdAndRevokedAtIsNull(Long userId);
 
+    /** managed Entityを作らず、失効候補の選定に必要な3値だけを読むclosed projection。 */
+    interface ActiveSessionCandidate {
+        Long getId();
+        LocalDateTime getLastUsedAt();
+        LocalDateTime getCreatedAt();
+    }
+
+    /** 発行済み分を含む非locking一覧。古いEntityのdirty flushによる後継pointer上書きを避ける。 */
+    @Query("select r.id as id, r.lastUsedAt as lastUsedAt, r.createdAt as createdAt "
+            + "from RefreshTokenEntity r where r.userId = :userId and r.revokedAt is null and r.expiresAt > :now")
+    List<ActiveSessionCandidate> findActiveSessionCandidates(@Param("userId") Long userId,
+                                                            @Param("now") LocalDateTime now);
+
+    /** current readでまだactiveの同一行だけを失効し、rotationの後継pointer等は更新しない。 */
+    @Modifying(flushAutomatically = true)
+    @Query("update RefreshTokenEntity r set r.revokedAt = :now where r.id = :id and r.userId = :userId "
+            + "and r.revokedAt is null and r.expiresAt > :now")
+    int revokeActiveSessionCandidate(@Param("id") Long id, @Param("userId") Long userId,
+                                     @Param("now") LocalDateTime now);
+
     /**
      * 指定ユーザーの有効な Refresh Token を一括で失効させる（CMP-261012-0910 MFA 回復確認の全セッション失効）。
      *

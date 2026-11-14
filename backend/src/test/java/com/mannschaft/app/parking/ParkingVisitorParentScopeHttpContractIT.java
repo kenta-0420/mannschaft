@@ -29,13 +29,18 @@ import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.transaction.AfterTransaction;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -79,8 +84,19 @@ class ParkingVisitorParentScopeHttpContractIT extends AbstractMySqlIntegrationTe
     @Autowired private ObjectMapper objectMapper;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private JdbcTemplate jdbcTemplate;
+    @Autowired private PlatformTransactionManager transactionManager;
     @Autowired @Qualifier("wallClock") private Clock wallClock;
     @PersistenceContext private EntityManager em;
+    private final List<Long> ownedUserIds = new ArrayList<>();
+
+    @AfterTransaction
+    void 外側試練の巻戻し後に所有ログイントークンを削除する() {
+        for (Long userId : ownedUserIds) {
+            jdbcTemplate.update("DELETE FROM refresh_tokens WHERE user_id = ?", userId);
+        }
+        // usersはUUIDで所有範囲を一意化する。非同期login子行とFKのためMfaItSupportと同様に残す。
+        ownedUserIds.clear();
+    }
 
     @BeforeEach
     @SuppressWarnings("unchecked")
@@ -285,10 +301,17 @@ class ParkingVisitorParentScopeHttpContractIT extends AbstractMySqlIntegrationTe
     }
 
     private UserEntity insertUser(String email) {
-        UserEntity user = UserEntity.builder().email(email).passwordHash(passwordEncoder.encode(PASSWORD))
-                .lastName("親束縛").firstName("試練").displayName("駐車場親束縛試練")
-                .status(UserEntity.UserStatus.ACTIVE).isSearchable(false).locale("ja").timezone("Asia/Tokyo").build();
-        em.persist(user);
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        // 実loginのfresh TXから見えるようusersだけcommitし、親scope・駐車場は外側試練のrollbackに残す。
+        UserEntity user = transaction.execute(status -> {
+            UserEntity created = UserEntity.builder().email(email).passwordHash(passwordEncoder.encode(PASSWORD))
+                    .lastName("親束縛").firstName("試練").displayName("駐車場親束縛試練")
+                    .status(UserEntity.UserStatus.ACTIVE).isSearchable(false).locale("ja").timezone("Asia/Tokyo").build();
+            em.persist(created);
+            return created;
+        });
+        ownedUserIds.add(user.getId());
         return user;
     }
 

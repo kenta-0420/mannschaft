@@ -32,12 +32,21 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
+import java.sql.SQLException;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayDeque;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -76,6 +85,7 @@ public class AuthService {
     private final NewDeviceDetectionService newDeviceDetectionService;
     private final RoleClaimResolver roleClaimResolver;
     private final StatusClaimResolver statusClaimResolver;
+    private final PlatformTransactionManager transactionManager;
 
     // サブサービス（委譲先）
     private final AuthRegistrationService authRegistrationService;
@@ -86,6 +96,7 @@ public class AuthService {
     // ログインに使うレートリミット設定
     private static final int LOGIN_MAX_ATTEMPTS = 10;
     private static final Duration LOGIN_WINDOW = Duration.ofMinutes(1);
+    private static final int LOGIN_TRANSACTION_ATTEMPTS = 3;
 
     // アカウントロック設定
     private static final int ACCOUNT_LOCK_THRESHOLD = 5;
@@ -145,116 +156,192 @@ public class AuthService {
      * @param userAgent User-Agent
      * @return ログイン成功レスポンス（LoginResponse）または 2FA要求レスポンス（MfaRequiredResponse）
      */
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public ApiResponse<?> login(LoginRequest req, String ipAddress, String userAgent) {
         // 1. レートリミットチェック
         String rateLimitKey = "mannschaft:auth:login_attempt:" + req.getEmail() + ":" + ipAddress;
         authTokenService.checkRateLimit(rateLimitKey, LOGIN_MAX_ATTEMPTS, LOGIN_WINDOW);
 
-        // 2. ユーザー検索（不在でもダミーbcrypt検証 → タイミング攻撃対策）
-        Optional<UserEntity> userOpt = userRepository.findByEmail(req.getEmail());
-        boolean reactivated = false;
-        if (userOpt.isEmpty()) {
-            // 退会処理中アカウントの確認（@SQLRestriction バイパス）
-            Optional<UserEntity> pendingDeletionOpt = userRepository.findByEmailIncludingDeleted(req.getEmail());
-            if (pendingDeletionOpt.isPresent() && pendingDeletionOpt.get().getDeletedAt() != null) {
-                UserEntity pendingUser = pendingDeletionOpt.get();
-                if (passwordEncoder.matches(req.getPassword(), pendingUser.getPasswordHash())) {
-                    // 正しいパスワード → 退会取り消しして通常ログインへ
-                    // 旧アルゴリズム（BCrypt）なら Argon2id へ透過的に再ハッシュ（段階移行）
-                    upgradePasswordHashIfNeeded(pendingUser, req.getPassword());
-                    pendingUser.cancelDeletion();
-                    userRepository.save(pendingUser);
-                    authTokenService.clearUserInvalidationTimestamp(pendingUser.getId());
-                    log.info("ユーザー[{}]が退会処理中にログインしたため退会を自動取り消しました", pendingUser.getId());
-                    userOpt = Optional.of(pendingUser);
-                    reactivated = true;
-                } else {
-                    eventPublisher.publish(new LoginFailedEvent(
-                            req.getEmail(), ipAddress, userAgent, "PENDING_DELETION_WRONG_PW"));
-                    throw new BusinessException(AuthErrorCode.AUTH_001);
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        transaction.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
+        transaction.setReadOnly(false);
+        LoginRequestEffects effects = new LoginRequestEffects();
+        for (int attempt = 1; ; attempt++) {
+            try {
+                // executeの戻りまで囲み、flushだけでなくcommit時のdeadlockもfresh TXでやり直す。
+                return transaction.execute(status -> {
+                    // 2. ユーザー検索（不在でもダミーbcrypt検証 → タイミング攻撃対策）
+                    Optional<UserEntity> userOpt = userRepository.findByEmail(req.getEmail());
+                    boolean reactivated = false;
+                    if (userOpt.isEmpty()) {
+                        // 退会処理中アカウントの確認（@SQLRestriction バイパス）
+                        Optional<UserEntity> pendingDeletionOpt = userRepository.findByEmailIncludingDeleted(req.getEmail());
+                        if (pendingDeletionOpt.isPresent() && pendingDeletionOpt.get().getDeletedAt() != null) {
+                            UserEntity pendingUser = pendingDeletionOpt.get();
+                            if (passwordEncoder.matches(req.getPassword(), pendingUser.getPasswordHash())) {
+                                effects.bindUser(pendingUser.getId());
+                                // 正しいパスワード → 退会取り消しして通常ログインへ
+                                // 旧アルゴリズム（BCrypt）なら Argon2id へ透過的に再ハッシュ（段階移行）
+                                upgradePasswordHashIfNeeded(pendingUser, req.getPassword());
+                                pendingUser.cancelDeletion();
+                                userRepository.save(pendingUser);
+                                if (!effects.invalidationCleared) {
+                                    effects.invalidationCleared = true;
+                                    authTokenService.clearUserInvalidationTimestamp(pendingUser.getId());
+                                }
+                                log.info("ユーザー[{}]が退会処理中にログインしたため退会を自動取り消しました", pendingUser.getId());
+                                userOpt = Optional.of(pendingUser);
+                                reactivated = true;
+                            } else {
+                                eventPublisher.publish(new LoginFailedEvent(
+                                        req.getEmail(), ipAddress, userAgent, "PENDING_DELETION_WRONG_PW"));
+                                throw new BusinessException(AuthErrorCode.AUTH_001);
+                            }
+                        } else {
+                            // タイミング攻撃対策: ダミーのbcrypt検証を実行して処理時間を合わせる
+                            passwordEncoder.matches(req.getPassword(), "$2a$12$000000000000000000000uGHJKLMNOPQRSTUVWXYZ012345678901");
+                            eventPublisher.publish(new LoginFailedEvent(
+                                    req.getEmail(), ipAddress, userAgent, "USER_NOT_FOUND"));
+                            throw new BusinessException(AuthErrorCode.AUTH_001);
+                        }
+                    }
+
+                    UserEntity user = userOpt.get();
+                    effects.bindUser(user.getId());
+
+                    // 3. ステータス確認
+                    if (user.getStatus() == UserEntity.UserStatus.PENDING_VERIFICATION) {
+                        eventPublisher.publish(new LoginFailedEvent(
+                                req.getEmail(), ipAddress, userAgent, "PENDING_VERIFICATION"));
+                        throw new BusinessException(AuthErrorCode.AUTH_002);
+                    }
+                    if (user.getStatus() == UserEntity.UserStatus.FROZEN) {
+                        eventPublisher.publish(new LoginFailedEvent(
+                                req.getEmail(), ipAddress, userAgent, "FROZEN"));
+                        throw new BusinessException(AuthErrorCode.AUTH_003);
+                    }
+
+                    // 4. アカウントロックチェック（Valkey障害時はfail-openでスキップ）
+                    String lockKey = ACCOUNT_LOCK_KEY_PREFIX + user.getId();
+                    try {
+                        if (Boolean.TRUE.equals(redisTemplate.hasKey(lockKey))) {
+                            eventPublisher.publish(new LoginFailedEvent(
+                                    req.getEmail(), ipAddress, userAgent, "ACCOUNT_LOCKED"));
+                            throw new BusinessException(AuthErrorCode.AUTH_003);
+                        }
+                    } catch (BusinessException e) {
+                        throw e;
+                    } catch (DataAccessException e) {
+                        log.warn("アカウントロックチェックをスキップ（Valkey接続失敗）: {}", e.getMessage());
+                    }
+
+                    // 5. パスワード検証
+                    if (!passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
+                        // ログイン失敗回数をインクリメント
+                        handleLoginFailure(user.getId(), req.getEmail(), ipAddress, userAgent);
+                        throw new BusinessException(AuthErrorCode.AUTH_001);
+                    }
+
+                    // パスワード検証成功 → 失敗カウンタをリセット（Valkey障害時はサイレント）
+                    if (!effects.failureCounterReset) {
+                        effects.failureCounterReset = true;
+                        String failCountKey = LOGIN_FAIL_COUNT_KEY_PREFIX + user.getId();
+                        try {
+                            redisTemplate.delete(failCountKey);
+                        } catch (DataAccessException e) {
+                            log.warn("ログイン失敗カウンタリセットをスキップ（Valkey接続失敗）: {}", e.getMessage());
+                        }
+                    }
+
+                    // パスワードハッシュの段階移行: 旧アルゴリズム（BCrypt）なら Argon2id へ透過的に再ハッシュ。
+                    // 既存ユーザーはログインのたびに自動で Argon2id へ移行する（強制リセット不要・ユーザー影響なし）。
+                    upgradePasswordHashIfNeeded(user, req.getPassword());
+
+                    // 6. ARCHIVED状態 → 自動復帰
+                    if (user.getStatus() == UserEntity.UserStatus.ARCHIVED) {
+                        user.unarchive();
+                        log.info("ユーザー[{}]をアーカイブ状態から自動復帰しました", user.getId());
+                    }
+
+                    // 7. 二要素認証チェック
+                    Optional<TwoFactorAuthEntity> mfaOpt = twoFactorAuthRepository.findByUserId(user.getId());
+                    if (mfaOpt.isPresent() && Boolean.TRUE.equals(mfaOpt.get().getIsEnabled())) {
+                        // 2FA有効: MFAセッショントークンを生成してValkeyに保存（ハッシュ化して保存）
+                        if (effects.mfaSessionToken == null) {
+                            effects.mfaSessionToken = UUID.randomUUID().toString();
+                        }
+                        String mfaSessionToken = effects.mfaSessionToken;
+                        if (!effects.mfaStored) {
+                            effects.mfaStored = true;
+                            String mfaKey = MFA_SESSION_KEY_PREFIX + authTokenService.hashToken(mfaSessionToken);
+                            redisTemplate.opsForValue().set(mfaKey, String.valueOf(user.getId()),
+                                    MFA_SESSION_EXPIRY.getSeconds(), TimeUnit.SECONDS);
+                        }
+
+                        // CMP-261012-0910 AC-27: 主手段と、このログインで提示できる要素を返す（既存項目は互換維持）
+                        TwoFactorMethod primaryMethod = mfaOpt.get().getMethod() != null
+                                ? mfaOpt.get().getMethod() : TwoFactorMethod.TOTP;
+                        return ApiResponse.of(new MfaRequiredResponse(mfaSessionToken, primaryMethod,
+                                MfaMethodPolicy.availableMethods(primaryMethod,
+                                        MfaMethodPolicy.isEmailDeliverable(user.getEmail()))));
+                    }
+
+                    // 8. トークン発行（2FA無効の場合）
+                    return ApiResponse.of(issueLoginTokens(user, req, ipAddress, userAgent, reactivated));
+                });
+            } catch (RuntimeException error) {
+                if (attempt >= LOGIN_TRANSACTION_ATTEMPTS || !isLoginDeadlock(error)) {
+                    throw error;
                 }
-            } else {
-                // タイミング攻撃対策: ダミーのbcrypt検証を実行して処理時間を合わせる
-                passwordEncoder.matches(req.getPassword(), "$2a$12$000000000000000000000uGHJKLMNOPQRSTUVWXYZ012345678901");
-                eventPublisher.publish(new LoginFailedEvent(
-                        req.getEmail(), ipAddress, userAgent, "USER_NOT_FOUND"));
+            }
+        }
+    }
+
+    /** MySQL deadlockの同一SQL例外に1213と40001が揃う場合だけを対象にする。 */
+    private static boolean isLoginDeadlock(Throwable error) {
+        Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+        ArrayDeque<Throwable> pending = new ArrayDeque<>();
+        pending.add(error);
+        boolean deadlock = false;
+        while (!pending.isEmpty()) {
+            Throwable current = pending.removeFirst();
+            if (!visited.add(current)) {
+                continue;
+            }
+            if (current instanceof BusinessException) {
+                return false;
+            }
+            if (current.getCause() != null) {
+                pending.add(current.getCause());
+            }
+            if (current instanceof SQLException sql) {
+                deadlock |= sql.getErrorCode() == 1213 && "40001".equals(sql.getSQLState());
+                if (sql.getNextException() != null) {
+                    pending.add(sql.getNextException());
+                }
+            }
+        }
+        return deadlock;
+    }
+
+    /** リクエスト中のValkey副作用だけを記録する。EntityやTXを持ち回らない。 */
+    private static final class LoginRequestEffects {
+        private Long userId;
+        private boolean userBound;
+        private boolean failureCounterReset;
+        private boolean invalidationCleared;
+        private String mfaSessionToken;
+        private boolean mfaStored;
+
+        private void bindUser(Long candidateId) {
+            if (userBound && !java.util.Objects.equals(userId, candidateId)) {
+                // 同じメールが別userへ切り替わっても、既存MFA tokenを再束縛しない。
                 throw new BusinessException(AuthErrorCode.AUTH_001);
             }
+            userId = candidateId;
+            userBound = true;
         }
-
-        UserEntity user = userOpt.get();
-
-        // 3. ステータス確認
-        if (user.getStatus() == UserEntity.UserStatus.PENDING_VERIFICATION) {
-            eventPublisher.publish(new LoginFailedEvent(
-                    req.getEmail(), ipAddress, userAgent, "PENDING_VERIFICATION"));
-            throw new BusinessException(AuthErrorCode.AUTH_002);
-        }
-        if (user.getStatus() == UserEntity.UserStatus.FROZEN) {
-            eventPublisher.publish(new LoginFailedEvent(
-                    req.getEmail(), ipAddress, userAgent, "FROZEN"));
-            throw new BusinessException(AuthErrorCode.AUTH_003);
-        }
-
-        // 4. アカウントロックチェック（Valkey障害時はfail-openでスキップ）
-        String lockKey = ACCOUNT_LOCK_KEY_PREFIX + user.getId();
-        try {
-            if (Boolean.TRUE.equals(redisTemplate.hasKey(lockKey))) {
-                eventPublisher.publish(new LoginFailedEvent(
-                        req.getEmail(), ipAddress, userAgent, "ACCOUNT_LOCKED"));
-                throw new BusinessException(AuthErrorCode.AUTH_003);
-            }
-        } catch (BusinessException e) {
-            throw e;
-        } catch (DataAccessException e) {
-            log.warn("アカウントロックチェックをスキップ（Valkey接続失敗）: {}", e.getMessage());
-        }
-
-        // 5. パスワード検証
-        if (!passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
-            // ログイン失敗回数をインクリメント
-            handleLoginFailure(user.getId(), req.getEmail(), ipAddress, userAgent);
-            throw new BusinessException(AuthErrorCode.AUTH_001);
-        }
-
-        // パスワード検証成功 → 失敗カウンタをリセット（Valkey障害時はサイレント）
-        String failCountKey = LOGIN_FAIL_COUNT_KEY_PREFIX + user.getId();
-        try {
-            redisTemplate.delete(failCountKey);
-        } catch (DataAccessException e) {
-            log.warn("ログイン失敗カウンタリセットをスキップ（Valkey接続失敗）: {}", e.getMessage());
-        }
-
-        // パスワードハッシュの段階移行: 旧アルゴリズム（BCrypt）なら Argon2id へ透過的に再ハッシュ。
-        // 既存ユーザーはログインのたびに自動で Argon2id へ移行する（強制リセット不要・ユーザー影響なし）。
-        upgradePasswordHashIfNeeded(user, req.getPassword());
-
-        // 6. ARCHIVED状態 → 自動復帰
-        if (user.getStatus() == UserEntity.UserStatus.ARCHIVED) {
-            user.unarchive();
-            log.info("ユーザー[{}]をアーカイブ状態から自動復帰しました", user.getId());
-        }
-
-        // 7. 二要素認証チェック
-        Optional<TwoFactorAuthEntity> mfaOpt = twoFactorAuthRepository.findByUserId(user.getId());
-        if (mfaOpt.isPresent() && Boolean.TRUE.equals(mfaOpt.get().getIsEnabled())) {
-            // 2FA有効: MFAセッショントークンを生成してValkeyに保存（ハッシュ化して保存）
-            String mfaSessionToken = UUID.randomUUID().toString();
-            String mfaKey = MFA_SESSION_KEY_PREFIX + authTokenService.hashToken(mfaSessionToken);
-            redisTemplate.opsForValue().set(mfaKey, String.valueOf(user.getId()),
-                    MFA_SESSION_EXPIRY.getSeconds(), TimeUnit.SECONDS);
-
-            // CMP-261012-0910 AC-27: 主手段と、このログインで提示できる要素を返す（既存項目は互換維持）
-            TwoFactorMethod primaryMethod = mfaOpt.get().getMethod() != null
-                    ? mfaOpt.get().getMethod() : TwoFactorMethod.TOTP;
-            return ApiResponse.of(new MfaRequiredResponse(mfaSessionToken, primaryMethod,
-                    MfaMethodPolicy.availableMethods(primaryMethod,
-                            MfaMethodPolicy.isEmailDeliverable(user.getEmail()))));
-        }
-
-        // 8. トークン発行（2FA無効の場合）
-        return ApiResponse.of(issueLoginTokens(user, req, ipAddress, userAgent, reactivated));
     }
 
     /**
@@ -409,7 +496,7 @@ public class AuthService {
      * すでに {@code passwordEncoder.matches} で照合済みのものを渡すこと。これにより
      * 既存ユーザーはログインのたびに透過的に Argon2id へ移行し、強制リセットは不要。</p>
      *
-     * <p>{@link #login} は {@code @Transactional} 境界内であり、ここでの save は
+     * <p>{@link #login} の試行ごとのfresh TX境界内であり、ここでの save は
      * 既存のアカウントロック / レートリミット / イベント発行ロジックに影響しない。</p>
      *
      * 設計書: docs/security/02_cookie_and_session.md §5 / docs/features/F01.1_auth.md
@@ -490,7 +577,7 @@ public class AuthService {
         String sessionHash = SessionHashUtil.hash(refreshTokenJti);
 
         // セッション上限チェック（F12.4 §5.7）
-        authSessionService.enforceMaxActiveSessions(user.getId());
+        authSessionService.enforceMaxActiveSessions(user.getId(), savedToken.getId());
 
         // 最終ログイン日時更新
         user.updateLastLoginAt();

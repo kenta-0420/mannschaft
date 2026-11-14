@@ -6,11 +6,13 @@ import com.mannschaft.app.auth.dto.LoginHistoryResponse;
 import com.mannschaft.app.auth.dto.SessionResponse;
 import com.mannschaft.app.auth.entity.RefreshTokenEntity;
 import com.mannschaft.app.auth.repository.RefreshTokenRepository;
+import com.mannschaft.app.auth.repository.RefreshTokenRepository.ActiveSessionCandidate;
 import com.mannschaft.app.auth.service.AuditLogQueryService;
 import com.mannschaft.app.auth.service.AuthSessionService;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.DomainEventPublisher;
 import org.junit.jupiter.api.DisplayName;
@@ -23,7 +25,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Optional;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -34,6 +38,9 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 /**
  * {@link AuthSessionService} の単体テスト。
@@ -63,6 +70,126 @@ class AuthSessionServiceTest {
 
     private static final String TEST_IP = "127.0.0.1";
     private static final String TEST_USER_AGENT = "Mozilla/5.0";
+
+    @Nested
+    @DisplayName("CMP0514 発行後のactive上限")
+    class ActiveSessionLimit {
+        @Test
+        void 発行済みを含む10件は一件も失効しない() {
+            given(refreshTokenRepository.findActiveSessionCandidates(eq(1L), any()))
+                    .willReturn(activeCandidates(10));
+
+            authSessionService.enforceMaxActiveSessions(1L, 10L);
+
+            verify(refreshTokenRepository).findActiveSessionCandidates(eq(1L), any());
+            verifyNoMoreInteractions(refreshTokenRepository);
+        }
+
+        @Test
+        void 発行後11件なら最古1件だけ失効して新tokenを含む10件が残る() {
+            List<ActiveSessionCandidate> candidates = new ArrayList<>(activeCandidates(11));
+            // 並び順にかかわらず今回発行分を保護することを確認する。
+            candidates.set(10, new Candidate(11L, null, LocalDateTime.now().minusDays(100)));
+            given(refreshTokenRepository.findActiveSessionCandidates(eq(1L), any())).willReturn(candidates);
+            given(refreshTokenRepository.revokeActiveSessionCandidate(eq(1L), eq(1L), any())).willReturn(1);
+            given(refreshTokenRepository.countByUserIdAndRevokedAtIsNullAndExpiresAtAfter(eq(1L), any())).willReturn(10L);
+
+            authSessionService.enforceMaxActiveSessions(1L, 11L);
+
+            verify(refreshTokenRepository).findActiveSessionCandidates(eq(1L), any());
+            verify(refreshTokenRepository).revokeActiveSessionCandidate(eq(1L), eq(1L), any());
+            verify(refreshTokenRepository).countByUserIdAndRevokedAtIsNullAndExpiresAtAfter(eq(1L), any());
+            verifyNoMoreInteractions(refreshTokenRepository);
+        }
+
+        @Test
+        void lastUsedAtのnullLastを維持して同値は作成時刻とID順に失効する() {
+            List<ActiveSessionCandidate> candidates = new ArrayList<>(activeCandidates(12));
+            LocalDateTime lastUsed = LocalDateTime.now().minusDays(1);
+            candidates.set(1, new Candidate(3L, lastUsed, lastUsed));
+            candidates.set(2, new Candidate(2L, lastUsed, lastUsed));
+            given(refreshTokenRepository.findActiveSessionCandidates(eq(1L), any())).willReturn(candidates);
+            given(refreshTokenRepository.revokeActiveSessionCandidate(eq(2L), eq(1L), any())).willReturn(1);
+            given(refreshTokenRepository.revokeActiveSessionCandidate(eq(3L), eq(1L), any())).willReturn(1);
+            given(refreshTokenRepository.countByUserIdAndRevokedAtIsNullAndExpiresAtAfter(eq(1L), any())).willReturn(10L);
+
+            authSessionService.enforceMaxActiveSessions(1L, 12L);
+
+            var order = inOrder(refreshTokenRepository);
+            order.verify(refreshTokenRepository).findActiveSessionCandidates(eq(1L), any());
+            order.verify(refreshTokenRepository).revokeActiveSessionCandidate(eq(2L), eq(1L), any());
+            order.verify(refreshTokenRepository).revokeActiveSessionCandidate(eq(3L), eq(1L), any());
+            order.verify(refreshTokenRepository).countByUserIdAndRevokedAtIsNullAndExpiresAtAfter(eq(1L), any());
+            order.verifyNoMoreInteractions();
+            verify(refreshTokenRepository, never()).revokeActiveSessionCandidate(eq(1L), anyLong(), any());
+            verify(refreshTokenRepository, never()).revokeActiveSessionCandidate(eq(12L), anyLong(), any());
+        }
+
+        @Test
+        void 最古Aがrefresh済みなら新集合を読み直し次の最古だけを失効する() {
+            List<ActiveSessionCandidate> before = activeCandidates(11);
+            List<ActiveSessionCandidate> after = new ArrayList<>(before.subList(1, before.size()));
+            after.add(new Candidate(12L, null, LocalDateTime.now()));
+            given(refreshTokenRepository.findActiveSessionCandidates(eq(1L), any())).willReturn(before, after);
+            given(refreshTokenRepository.revokeActiveSessionCandidate(eq(1L), eq(1L), any())).willReturn(0);
+            given(refreshTokenRepository.revokeActiveSessionCandidate(eq(2L), eq(1L), any())).willReturn(1);
+            given(refreshTokenRepository.countByUserIdAndRevokedAtIsNullAndExpiresAtAfter(eq(1L), any()))
+                    .willReturn(11L, 10L);
+
+            authSessionService.enforceMaxActiveSessions(1L, 11L);
+
+            var order = inOrder(refreshTokenRepository);
+            order.verify(refreshTokenRepository).findActiveSessionCandidates(eq(1L), any());
+            order.verify(refreshTokenRepository).revokeActiveSessionCandidate(eq(1L), eq(1L), any());
+            order.verify(refreshTokenRepository).countByUserIdAndRevokedAtIsNullAndExpiresAtAfter(eq(1L), any());
+            order.verify(refreshTokenRepository).findActiveSessionCandidates(eq(1L), any());
+            order.verify(refreshTokenRepository).revokeActiveSessionCandidate(eq(2L), eq(1L), any());
+            order.verify(refreshTokenRepository).countByUserIdAndRevokedAtIsNullAndExpiresAtAfter(eq(1L), any());
+            order.verifyNoMoreInteractions();
+        }
+
+        @Test
+        void 更新0件後に既に上限内なら次の古いtokenまで失効しない() {
+            given(refreshTokenRepository.findActiveSessionCandidates(eq(1L), any())).willReturn(activeCandidates(11));
+            given(refreshTokenRepository.revokeActiveSessionCandidate(eq(1L), eq(1L), any())).willReturn(0);
+            given(refreshTokenRepository.countByUserIdAndRevokedAtIsNullAndExpiresAtAfter(eq(1L), any())).willReturn(10L);
+
+            authSessionService.enforceMaxActiveSessions(1L, 11L);
+
+            verify(refreshTokenRepository).findActiveSessionCandidates(eq(1L), any());
+            verify(refreshTokenRepository).revokeActiveSessionCandidate(eq(1L), eq(1L), any());
+            verify(refreshTokenRepository).countByUserIdAndRevokedAtIsNullAndExpiresAtAfter(eq(1L), any());
+            verifyNoMoreInteractions(refreshTokenRepository);
+        }
+
+        @Test
+        void 古いRR集合等で3pass収束しなければCOMMON003で失敗する() {
+            given(refreshTokenRepository.findActiveSessionCandidates(eq(1L), any())).willReturn(activeCandidates(11));
+            given(refreshTokenRepository.revokeActiveSessionCandidate(eq(1L), eq(1L), any())).willReturn(0);
+            given(refreshTokenRepository.countByUserIdAndRevokedAtIsNullAndExpiresAtAfter(eq(1L), any())).willReturn(11L);
+
+            assertThatThrownBy(() -> authSessionService.enforceMaxActiveSessions(1L, 11L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(error -> assertThat(((BusinessException) error).getErrorCode()).isEqualTo(CommonErrorCode.COMMON_003));
+
+            verify(refreshTokenRepository, times(3)).findActiveSessionCandidates(eq(1L), any());
+            verify(refreshTokenRepository, times(3)).revokeActiveSessionCandidate(eq(1L), eq(1L), any());
+            verify(refreshTokenRepository, times(3)).countByUserIdAndRevokedAtIsNullAndExpiresAtAfter(eq(1L), any());
+            verifyNoMoreInteractions(refreshTokenRepository);
+        }
+
+        private List<ActiveSessionCandidate> activeCandidates(int count) {
+            LocalDateTime now = LocalDateTime.now();
+            return IntStream.rangeClosed(1, count).<ActiveSessionCandidate>mapToObj(index ->
+                    new Candidate((long) index, null, now.minusDays(count - index))).toList();
+        }
+
+        private record Candidate(Long id, LocalDateTime lastUsedAt, LocalDateTime createdAt) implements ActiveSessionCandidate {
+            @Override public Long getId() { return id; }
+            @Override public LocalDateTime getLastUsedAt() { return lastUsedAt; }
+            @Override public LocalDateTime getCreatedAt() { return createdAt; }
+        }
+    }
 
     // ========================================
     // logout
