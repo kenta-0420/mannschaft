@@ -53,10 +53,10 @@ public class PermissionGroupService {
     /**
      * ADMIN のみが権限グループへ含めて操作できる権限。含まれる場合、DEPUTY_ADMIN 以下は
      * 作成・更新・複製・削除・割当のいずれも 403（変更前後の権限の和集合で判定。自己昇格も封じる）。
-     * F09.14 の有料配信権限と、F01.2.1 の加盟操作権限（MANAGE_ORG_AFFILIATION）。
+     * F09.14 の有料配信、F01.2.1 の加盟操作、F08.3 の投票セッション作成の権限。
      */
     public static final List<String> ADMIN_ONLY_GRANTABLE_PERMISSIONS =
-            List.of("SEND_PAID_TIMELINE", "VIEW_TIMELINE_COST", "MANAGE_ORG_AFFILIATION");
+            List.of("SEND_PAID_TIMELINE", "VIEW_TIMELINE_COST", "MANAGE_ORG_AFFILIATION", "MANAGE_VOTES");
 
     /**
      * 権限グループを作成する。

@@ -78574,6 +78574,7 @@ export interface components {
             data?: components["schemas"]["EffectivePermissionsResponse"];
         };
         EffectivePermissionsResponse: {
+            canCreateVoteSession?: boolean;
             canGrantAdminOnlyPermissions?: boolean;
             permissions?: string[];
             roleName?: string;

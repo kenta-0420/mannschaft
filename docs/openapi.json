@@ -234978,6 +234978,9 @@
       "EffectivePermissionsResponse": {
         "type": "object",
         "properties": {
+          "canCreateVoteSession": {
+            "type": "boolean"
+          },
           "canGrantAdminOnlyPermissions": {
             "type": "boolean"
           },

@@ -666,6 +666,22 @@ class PermissionGroupServiceTest {
     }
 
     @Test
+    @DisplayName("MANAGE_VOTESを含むグループの作成は対象スコープADMIN専用")
+    void createManageVotesGroupRejectsDeputyBeforeSaving() {
+        PermissionGroupRequest request = new PermissionGroupRequest("投票担当", "DEPUTY_ADMIN", List.of(PERM_ID_1));
+        given(permissionRepository.findByIdIn(request.getPermissionIds()))
+                .willReturn(List.of(createPermissionEntity(PERM_ID_1, "MANAGE_VOTES")));
+        doThrow(new BusinessException(CommonErrorCode.COMMON_002)).when(accessControlService)
+                .checkScopeAdminOnly(USER_ID, SCOPE_ID, "TEAM");
+
+        assertThatThrownBy(() -> permissionGroupService.createPermissionGroup(SCOPE_ID, "TEAM", request, USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(CommonErrorCode.COMMON_002);
+        verify(permissionGroupRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("F09.14: 既存の敏感権限を外す更新もADMIN専用")
     void updateSensitivePermissionRemovalRequiresScopeAdmin() {
         PermissionGroupEntity group = createGroupEntity(GROUP_ID, "paid");

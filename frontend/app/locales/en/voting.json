@@ -1,0 +1,29 @@
+{
+    "voting":  {
+                   "title":  "Voting rights",
+                   "create":  "Create voting session",
+                   "empty":  "No voting sessions",
+                   "created":  "Voting session created",
+                   "sessionTitle":  "Title",
+                   "titlePlaceholder":  "Example: Annual general meeting",
+                   "description":  "Description",
+                   "mode":  "Resolution mode",
+                   "meetingDate":  "Meeting date",
+                   "anonymous":  "Anonymous voting",
+                   "motions":  "{count} motions",
+                   "eligible":  "{count} eligible voters",
+                   "cancel":  "Cancel",
+                   "submit":  "Create",
+                   "requirements":  "Enter a title of 1–200 characters. A meeting date is required for meeting resolutions.",
+                   "modes":  {
+                                 "MEETING":  "Meeting resolution",
+                                 "WRITTEN":  "Written resolution"
+                             },
+                   "status":  {
+                                  "DRAFT":  "Draft",
+                                  "OPEN":  "Open",
+                                  "CLOSED":  "Closed",
+                                  "FINALIZED":  "Finalized"
+                              }
+               }
+}

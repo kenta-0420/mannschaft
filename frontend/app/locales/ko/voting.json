@@ -1,0 +1,29 @@
+{
+    "voting":  {
+                   "title":  "의결권 행사",
+                   "create":  "투표 세션 만들기",
+                   "empty":  "투표 세션이 없습니다",
+                   "created":  "투표 세션을 만들었습니다",
+                   "sessionTitle":  "제목",
+                   "titlePlaceholder":  "예: 연례 총회",
+                   "description":  "설명",
+                   "mode":  "결의 방식",
+                   "meetingDate":  "총회 개최일",
+                   "anonymous":  "무기명 투표",
+                   "motions":  "의안 {count}개",
+                   "eligible":  "의결권자 {count}명",
+                   "cancel":  "취소",
+                   "submit":  "만들기",
+                   "requirements":  "제목은 1~200자로 입력하세요. 총회 결의에는 개최일이 필요합니다.",
+                   "modes":  {
+                                 "MEETING":  "총회 결의",
+                                 "WRITTEN":  "서면 결의"
+                             },
+                   "status":  {
+                                  "DRAFT":  "초안",
+                                  "OPEN":  "접수 중",
+                                  "CLOSED":  "마감",
+                                  "FINALIZED":  "확정"
+                              }
+               }
+}

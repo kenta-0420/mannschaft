@@ -15,6 +15,8 @@ interface EffectivePermissions {
    * SYSTEM_ADMIN 兼任者は scopeAdmin=true でも false。旧 BE は返さない（undefined）。
    */
   canGrantAdminOnlyPermissions?: boolean
+  /** 作成 API と同じ、対象スコープの投票セッション作成可否。旧 BE では省略される。 */
+  canCreateVoteSession?: boolean
 }
 
 export function useRoleAccess(
@@ -28,6 +30,7 @@ export function useRoleAccess(
   const roleName = ref<RoleName | null>(null)
   const scopeAdminFromApi = ref<boolean | null>(null)
   const canGrantFromApi = ref<boolean | null>(null)
+  const voteCreationAccess = shallowRef<{ scopeId: string; allowed: boolean } | null>(null)
   const loading = ref(false)
   /**
    * ロール解決が完了したか（成功・失敗いずれでも true）。roleName=null は「読込中」「未所属」
@@ -87,6 +90,10 @@ export function useRoleAccess(
         roleResolved.value = true
         roleLoadFailed.value = false
         canGrantFromApi.value = response.data.canGrantAdminOnlyPermissions ?? null
+        voteCreationAccess.value = {
+          scopeId: requestedId,
+          allowed: response.data.canCreateVoteSession ?? isScopeAdmin.value,
+        }
       }
       result = { ok: true }
     }
@@ -99,6 +106,7 @@ export function useRoleAccess(
         roleResolved.value = true
         roleLoadFailed.value = true
         canGrantFromApi.value = null
+        voteCreationAccess.value = null
       }
       result = { ok: false, error }
     }
@@ -136,6 +144,11 @@ export function useRoleAccess(
     canGrantFromApi.value ?? roleName.value === 'ADMIN',
   )
 
+  const canCreateVoteSession = computed(() => {
+    const access = voteCreationAccess.value
+    return !loading.value && access !== null && access.scopeId === resolvedId.value && access.allowed
+  })
+
   const isAdminOrDeputy = computed(() =>
     isAdmin.value || roleName.value === 'DEPUTY_ADMIN',
   )
@@ -153,6 +166,7 @@ export function useRoleAccess(
     permissions.value = []
     scopeAdminFromApi.value = null
     canGrantFromApi.value = null
+    voteCreationAccess.value = null
     roleResolved.value = false
     roleLoadFailed.value = false
     loading.value = false
@@ -179,6 +193,7 @@ export function useRoleAccess(
     isAdmin,
     isScopeAdmin,
     canGrantAdminOnlyPermissions,
+    canCreateVoteSession,
     isAdminOrDeputy,
     isMember,
   }
