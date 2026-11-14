@@ -65,6 +65,7 @@ class ShiftAutoArchiveBatchServiceTest {
 
             assertThat(schedule.getStatus()).isEqualTo(ShiftScheduleStatus.ARCHIVED);
             verify(scheduleRepository).save(schedule);
+            verify(scheduleRepository, never()).findByIdForUpdate(any());
         }
 
         @Test
@@ -84,6 +85,7 @@ class ShiftAutoArchiveBatchServiceTest {
             assertThat(published.getScheduleId()).isEqualTo(SCHEDULE_ID);
             assertThat(published.getTeamId()).isEqualTo(TEAM_ID);
             assertThat(published.getArchivedByUserId()).isNull();
+            assertThat(published.getPublicationGeneration()).isEqualTo(7L);
         }
 
         @Test
@@ -143,6 +145,7 @@ class ShiftAutoArchiveBatchServiceTest {
                 .teamId(teamId)
                 .title("テストシフト")
                 .status(ShiftScheduleStatus.PUBLISHED)
+                .publicationGeneration(7L)
                 .endDate(endDate)
                 .build();
         // publish() を呼んで PUBLISHED ステータスに遷移させるのではなく、

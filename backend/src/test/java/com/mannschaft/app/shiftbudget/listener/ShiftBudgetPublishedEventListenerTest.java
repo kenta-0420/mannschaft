@@ -26,6 +26,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -92,6 +93,13 @@ class ShiftBudgetPublishedEventListenerTest {
                 consumptionService, slotRepository, hourlyRateRepository,
                 auditLogService, objectMapper, thresholdAlertEvaluationService, failedEventService,
                 eventPublisher);
+        // 共通の有効公開前提。フラグOFFでは入口に到達しないため、この2項だけ任意利用とする。
+        org.mockito.Mockito.lenient().when(consumptionService.cancelOldPlannedForPublication(
+                eq(SCHEDULE_ID), eq(0L), org.mockito.ArgumentMatchers.anySet()))
+                .thenReturn(new ShiftBudgetConsumptionService.PublicationCleanup(true,
+                        ShiftBudgetConsumptionService.CancellationResult.empty()));
+        org.mockito.Mockito.lenient().when(consumptionService.recordSingleConsumption(
+                any(), any(), any(), any(), any(), any(), anyLong())).thenReturn(true);
     }
 
     private ShiftSlotEntity sampleSlotWithUser(Long slotId, Long userId) {
@@ -145,7 +153,7 @@ class ShiftBudgetPublishedEventListenerTest {
 
         listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
 
-        verify(consumptionService, never()).recordSingleConsumption(any(), any(), any(), any(), any(), any());
+        verify(consumptionService, never()).recordSingleConsumption(any(), any(), any(), any(), any(), any(), anyLong());
         verify(auditLogService, never()).record(any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
@@ -162,7 +170,7 @@ class ShiftBudgetPublishedEventListenerTest {
         listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
 
         verify(featureService, never()).isEnabled(any());
-        verify(consumptionService, never()).recordSingleConsumption(any(), any(), any(), any(), any(), any());
+        verify(consumptionService, never()).recordSingleConsumption(any(), any(), any(), any(), any(), any(), anyLong());
     }
 
     @Test
@@ -179,7 +187,7 @@ class ShiftBudgetPublishedEventListenerTest {
         listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
 
         // 消化記録は呼ばない（no-op）
-        verify(consumptionService, never()).recordSingleConsumption(any(), any(), any(), any(), any(), any());
+        verify(consumptionService, never()).recordSingleConsumption(any(), any(), any(), any(), any(), any(), anyLong());
         // 監査ログには 0/1 件として記録される（計上先の組織は確定しないので null）
         verify(auditLogService).record(eq("SHIFT_BUDGET_CONSUMPTION_RECORDED"),
                 eq(USER_ID), eq(null), eq(TEAM_ID), eq(null),
@@ -218,7 +226,7 @@ class ShiftBudgetPublishedEventListenerTest {
 
         verify(consumptionService, times(1)).recordSingleConsumption(
                 eq(ALLOCATION_ID), eq(SCHEDULE_ID), eq(7L), eq(USER_ID),
-                eq(new BigDecimal("1200")), any());
+                eq(new BigDecimal("1200")), any(), anyLong());
         verify(auditLogService).record(eq("SHIFT_BUDGET_CONSUMPTION_RECORDED"),
                 eq(USER_ID), eq(null), eq(TEAM_ID), eq(ORG_ID),
                 any(), any(), any(), any());
@@ -255,12 +263,46 @@ class ShiftBudgetPublishedEventListenerTest {
 
         org.mockito.BDDMockito.willThrow(new IllegalStateException("CONFIRMED record exists"))
                 .given(consumptionService).recordSingleConsumption(
-                        any(), any(), any(), any(), any(), any());
+                        any(), any(), any(), any(), any(), any(), anyLong());
 
         // 例外を握って監査ログ完走することを確認
         listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
 
         verify(auditLogService).record(eq("SHIFT_BUDGET_CONSUMPTION_RECORDED"),
+                any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("旧世代取消の監査投入拒否でも新世代の記録を継続する")
+    void 取消監査の投入拒否は新規計上を止めない() {
+        given(slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(SCHEDULE_ID))
+                .willReturn(List.of(sampleSlotWithUser(7L, USER_ID)));
+        given(allocationRepository.findOrganizationIdsWithTeamAllocationContaining(eq(TEAM_ID), any()))
+                .willReturn(List.of(ORG_ID));
+        given(allocationRepository.findContainingPeriod(eq(ORG_ID), eq(TEAM_ID), any()))
+                .willReturn(Optional.of(allocationWithId()));
+        given(featureService.isEnabled(ORG_ID)).willReturn(true);
+        given(hourlyRateRepository.findEffectiveRate(eq(USER_ID), eq(TEAM_ID), any()))
+                .willReturn(Optional.of(ShiftHourlyRateEntity.builder()
+                        .userId(USER_ID).teamId(TEAM_ID).hourlyRate(new BigDecimal("1200"))
+                        .effectiveFrom(LocalDate.of(2026, 1, 1)).build()));
+        given(consumptionService.cancelOldPlannedForPublication(SCHEDULE_ID, 2L, Set.of(ORG_ID)))
+                .willReturn(new ShiftBudgetConsumptionService.PublicationCleanup(true,
+                        new ShiftBudgetConsumptionService.CancellationResult(1,
+                                java.util.Map.of(ORG_ID, 1L), java.util.Map.of(ALLOCATION_ID, ORG_ID))));
+        org.mockito.BDDMockito.willThrow(new org.springframework.core.task.TaskRejectedException("0718 audit rejected"))
+                .given(auditLogService).record(eq("SHIFT_BUDGET_CONSUMPTION_CANCELLED"),
+                        any(), any(), any(), any(), any(), any(), any(), any());
+
+        listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID,
+                java.time.LocalDateTime.now(), 2L));
+
+        verify(consumptionService).recordSingleConsumption(eq(ALLOCATION_ID), eq(SCHEDULE_ID), eq(7L), eq(USER_ID),
+                eq(new BigDecimal("1200")), any(), eq(2L));
+        verify(thresholdAlertEvaluationService, times(2)).evaluateAndTrigger(ALLOCATION_ID);
+        verify(auditLogService).record(eq("SHIFT_BUDGET_CONSUMPTION_RECORDED"),
+                any(), any(), any(), any(), any(), any(), any(), any());
+        verify(auditLogService, never()).record(eq("SHIFT_BUDGET_CONSUMPTION_FAILED"),
                 any(), any(), any(), any(), any(), any(), any(), any());
     }
 
@@ -300,7 +342,7 @@ class ShiftBudgetPublishedEventListenerTest {
 
         // 是正前は hourlyRate=0 で記録が「成功」していた。0 円の消化行を作ってはならない。
         verify(consumptionService, never()).recordSingleConsumption(
-                any(), any(), any(), any(), any(), any());
+                any(), any(), any(), any(), any(), any(), anyLong());
         // 記録していない以上、閾値判定を呼ぶ意味も無い（0% のまま再評価しても何も起きない）
         verify(thresholdAlertEvaluationService, never()).evaluateAndTrigger(any());
     }

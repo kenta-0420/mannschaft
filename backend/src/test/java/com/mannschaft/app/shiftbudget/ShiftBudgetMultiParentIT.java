@@ -16,6 +16,7 @@ import com.mannschaft.app.shift.event.ShiftPublishedEvent;
 import com.mannschaft.app.shift.repository.ShiftHourlyRateRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
+import com.mannschaft.app.shift.service.ShiftScheduleService;
 import com.mannschaft.app.shiftbudget.batch.ShiftBudgetConsumptionReconcileBatchService;
 import com.mannschaft.app.shiftbudget.dto.AllocationCreateRequest;
 import com.mannschaft.app.shiftbudget.dto.RequiredSlotsRequest;
@@ -39,10 +40,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -117,6 +120,11 @@ class ShiftBudgetMultiParentIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private ShiftScheduleRepository scheduleRepository;
     @Autowired
+    private ShiftScheduleService scheduleService;
+    @Autowired
+    @Qualifier("event-pool")
+    private ThreadPoolTaskExecutor eventExecutor;
+    @Autowired
     private ShiftSlotRepository slotRepository;
     @Autowired
     private ShiftHourlyRateRepository hourlyRateRepository;
@@ -126,6 +134,8 @@ class ShiftBudgetMultiParentIT extends AbstractMySqlIntegrationTest {
     private FeatureFlagRepository featureFlagRepository;
     @Autowired
     private CacheManager cacheManager;
+    @Autowired
+    private ShiftBudgetFeatureService featureService;
 
     @PersistenceContext
     private EntityManager em;
@@ -294,6 +304,66 @@ class ShiftBudgetMultiParentIT extends AbstractMySqlIntegrationTest {
                         .as("消化が割当を持つ X に計上されること。任意の親（Y）を引いていれば 0 件のまま")
                         .isEqualTo(1));
         assertThat(consumedAmount(allocX)).isPositive();
+    }
+
+    @Test
+    @DisplayName("AC05/10 X有効/Y無効で再公開しても旧Yの消化・実額・監査を変えない")
+    void 無効な旧計上先は再公開で取り消さない() {
+        Fixture f = seedPublishedShift(false);
+        transactionTemplate.executeWithoutResult(tx -> scheduleRepository.findById(f.scheduleId()).orElseThrow()
+                .startAdjusting());
+        Long allocY = seedAllocation(orgY, teamT);
+        jdbcTemplate.update("UPDATE shift_budget_allocations SET period_end = ? WHERE id = ?", JUL_1, allocY);
+        setAuth(sysAdminId);
+        assertThat(featureService.isEnabled(orgY)).isTrue();
+        scheduleService.transitionStatus(f.scheduleId(), "PUBLISHED", sysAdminId);
+        await().atMost(20, TimeUnit.SECONDS).untilAsserted(() -> assertThat(consumptionCount(allocY)).isEqualTo(1));
+        await().atMost(20, TimeUnit.SECONDS).until(() -> eventExecutor.getActiveCount() == 0
+                && eventExecutor.getThreadPoolExecutor().getQueue().isEmpty());
+        Long oldY = jdbcTemplate.queryForObject("SELECT id FROM shift_budget_consumptions WHERE allocation_id = ?",
+                Long.class, allocY);
+        assertThat(jdbcTemplate.queryForObject("SELECT publication_generation FROM shift_budget_consumptions WHERE id = ?",
+                Long.class, oldY)).isEqualTo(1L);
+        assertThat(consumedAmount(allocY)).isEqualByComparingTo(AMOUNT);
+        Long allocX = seedAllocation(orgX, teamT);
+        jdbcTemplate.update("UPDATE shift_budget_allocations SET period_start = ? WHERE id = ?",
+                JUL_1.plusDays(1), allocX);
+        setShiftBudgetFlag(orgY, false);
+        setShiftBudgetFlag(orgX, true);
+        assertThat(featureService.isEnabled(orgY)).as("実計上後の組織Yは現在OFF").isFalse();
+        assertThat(featureService.isEnabled(orgX)).as("現在の計上先XはON").isTrue();
+        assertThat(allocationRepository.findOrganizationIdsWithTeamAllocationContaining(teamT, JUL_1))
+                .containsExactly(orgY);
+        assertThat(allocationRepository.findOrganizationIdsWithTeamAllocationContaining(teamT, JUL_1.plusDays(1)))
+                .containsExactly(orgX);
+        transactionTemplate.executeWithoutResult(tx -> {
+            slotRepository.findById(f.slotId()).orElseThrow().updateAssignedUserIds("[]");
+            slotRepository.save(ShiftSlotEntity.builder().scheduleId(f.scheduleId())
+                    .slotDate(JUL_1.plusDays(1)).startTime(LocalTime.of(9, 0)).endTime(LocalTime.of(17, 0))
+                    .requiredCount(1).assignedUserIds("[" + sysAdminId + "]").build());
+        });
+        var oldYBefore = jdbcTemplate.queryForMap("SELECT * FROM shift_budget_consumptions WHERE id = ?", oldY);
+        int oldYAudits = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM audit_logs WHERE organization_id = ? "
+                + "AND event_type LIKE 'SHIFT_BUDGET_CONSUMPTION_%'", Integer.class, orgY);
+        assertThat(oldYAudits).as("初回Y計上の実成功監査").isEqualTo(1);
+        scheduleService.transitionStatus(f.scheduleId(), "ADJUSTING", sysAdminId);
+        await().atMost(20, TimeUnit.SECONDS).until(() -> eventExecutor.getActiveCount() == 0
+                && eventExecutor.getThreadPoolExecutor().getQueue().isEmpty());
+        scheduleService.transitionStatus(f.scheduleId(), "PUBLISHED", sysAdminId);
+        await().atMost(20, TimeUnit.SECONDS).untilAsserted(() -> assertThat(consumptionCount(allocX)).isEqualTo(1));
+        await().atMost(20, TimeUnit.SECONDS).until(() -> eventExecutor.getActiveCount() == 0
+                && eventExecutor.getThreadPoolExecutor().getQueue().isEmpty());
+
+        assertThat(jdbcTemplate.queryForMap("SELECT * FROM shift_budget_consumptions WHERE id = ?", oldY))
+                .as("フラグOFFの旧Yは状態・取消日時・理由・額を含む全列不変").isEqualTo(oldYBefore);
+        assertThat(consumedAmount(allocY)).isEqualByComparingTo(AMOUNT);
+        assertThat(consumedAmount(allocX)).isEqualByComparingTo(AMOUNT);
+        assertThat(jdbcTemplate.queryForObject("SELECT publication_generation FROM shift_budget_consumptions "
+                + "WHERE allocation_id = ? AND status = 'PLANNED'", Long.class, allocX)).isEqualTo(2L);
+        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM audit_logs WHERE organization_id = ? "
+                + "AND event_type LIKE 'SHIFT_BUDGET_CONSUMPTION_%'", Integer.class, orgY)).isEqualTo(oldYAudits);
+        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM shift_budget_failed_events WHERE organization_id = ?",
+                Integer.class, orgY)).isZero();
     }
 
     // ═══════════════════════════════════════════════════════════════

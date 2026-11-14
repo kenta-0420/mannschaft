@@ -85,10 +85,18 @@ class CrossDomainMandatoryPropagationArchTest {
      * 直列化する（F01.2.1 §6.1 step 7・§6.9）。組織行のロックは組織ドメインの Repository でしか取れず、team の tx の中で
      * 取る必要がある（ロックを tx の外へ出すと直列化が崩れる）ため、逆向きポートを監査済みとして残す（陣立て書 Q4 の裁可）。
      * 組織の表へは書かない（{@code SELECT ... FOR UPDATE} のみ）。</p>
+     *
+     * <p>{@code lockPublication}: 公開状態・世代の確認から消化記録のcommitまで、shiftbudgetのTX内で
+     * シフト親行のロックを保持する（CMP-261021-0718 AC13、2026-11-06追加裁可）。
+     * {@code SELECT ... FOR UPDATE} と状態DTO返却だけを行い、親表DMLが無いことは
+     * {@code ShiftBudgetPublicationLockOrderIT} の実SQL観測で検査する。</p>
      */
     static final Map<String, String> AUDITED_REVERSE_PORTS = Map.of(
             "com.mannschaft.app.organization.service.OrganizationAffiliationPortAdapter.lockForAffiliation",
-            "加盟申請の直列化に組織行の行ロックが team の tx 内で必要（F01.2.1 §6.1・§6.9、陣立て書 Q4）。書き込みはしない");
+            "加盟申請の直列化に組織行の行ロックが team の tx 内で必要（F01.2.1 §6.1・§6.9、陣立て書 Q4）。書き込みはしない",
+            "com.mannschaft.app.shift.service.ShiftBudgetPublicationPortAdapter.lockPublication",
+            "公開世代の判定と消化記録のcommitを直列化する親行ロックがshiftbudgetのTX内で必要"
+                    + "（CMP-261021-0718 AC13、2026-11-06追加裁可）。SELECT FOR UPDATEのみ、親表へは書き込まない");
 
     // =====================================================================
     // 本番コードへの規則
@@ -123,9 +131,9 @@ class CrossDomainMandatoryPropagationArchTest {
                             + "（docs/architecture/notification_outbox.md）")
                     .as("D-3P-3 notification tx-participating entry dependency");
 
-    /** OG03: P1 時点の実測値（D-3P-1=0、D-3P-2=監査済みの1件だけ、D-3P-3=0）と、旧経路の削除。 */
+    /** OG03: D-3P-1/3は0件、D-3P-2は現在の監査済み集合と完全一致し、旧経路は残さない。 */
     @ArchTest
-    static void og03_P1時点でD3P1とD3P3は0件でD3P2は監査済みの1件だけ(JavaClasses classes) {
+    static void og03_D3P1とD3P3は0件でD3P2は現在の監査済み集合だけ(JavaClasses classes) {
         List<Violation> d3p1 = collect(classes, CrossDomainMandatoryPropagationArchTest::findMandatoryCallViolations);
         List<Violation> d3p2 = collect(classes, CrossDomainMandatoryPropagationArchTest::findReversePortViolations);
         List<Violation> d3p3 = collect(classes, CrossDomainMandatoryPropagationArchTest::findNotificationEntryViolations);
@@ -133,7 +141,7 @@ class CrossDomainMandatoryPropagationArchTest {
         assertThat(d3p1).as("D-3P-1 は0件（FanoutTeamAffiliationNotifier の越境 enqueue は outbox へ移す）").isEmpty();
         assertThat(d3p3).as("D-3P-3 は0件").isEmpty();
         assertThat(d3p2).extracting(Violation::auditKey)
-                .as("D-3P-2 は監査済みの lockForAffiliation の1件だけ（監査済み例外が腐っていないことも兼ねる）")
+                .as("D-3P-2 は現在の監査済み行ロックポートだけ（実在集合との完全一致で例外の腐りも検知する）")
                 .containsExactlyInAnyOrderElementsOf(AUDITED_REVERSE_PORTS.keySet());
     }
 

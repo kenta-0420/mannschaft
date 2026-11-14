@@ -146,12 +146,15 @@ public interface ShiftScheduleRepository extends JpaRepository<ShiftScheduleEnti
 
     /**
      * 自動アーカイブ対象: PUBLISHED かつ endDate が cutoffDate より前。
+     * 候補取得と同時に親を共通ID順でロックし、世代を古いEntityで判定せずN+1も増やさない。
      */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             SELECT s FROM ShiftScheduleEntity s
             WHERE s.status = 'PUBLISHED'
               AND s.endDate < :cutoffDate
               AND s.deletedAt IS NULL
+            ORDER BY s.id
             """)
     List<ShiftScheduleEntity> findPublishedExpiredBefore(
             @Param("cutoffDate") LocalDate cutoffDate,

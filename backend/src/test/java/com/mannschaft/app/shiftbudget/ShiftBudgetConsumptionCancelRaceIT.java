@@ -1,6 +1,7 @@
 package com.mannschaft.app.shiftbudget;
 
 import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.shift.ShiftScheduleStatus;
 import com.mannschaft.app.shift.event.ShiftArchivedEvent;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
@@ -32,6 +33,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.time.ZoneOffset;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
@@ -183,6 +185,8 @@ class ShiftBudgetConsumptionCancelRaceIT extends AbstractMySqlIntegrationTest {
                     ShiftBudgetConsumptionStatus.PLANNED).toBuilder().deletedAt(java.time.LocalDateTime.now()).build()).getId();
         });
 
+        var untouchedBefore = jdbc.queryForList("SELECT * FROM shift_budget_consumptions "
+                        + "WHERE id IN (?, ?, ?) ORDER BY id", unchanged.getFirst(), unchanged.getLast(), deleted);
         assertThat(consumptionService.cancelAllForShift(fixture.shiftId())).isEqualTo(3);
         assertThat(consumptionService.cancelAllForShift(fixture.shiftId())).isZero();
         assertThat(consumptionService.cancelAllForShift(Long.MIN_VALUE)).isZero();
@@ -196,6 +200,10 @@ class ShiftBudgetConsumptionCancelRaceIT extends AbstractMySqlIntegrationTest {
         assertThat(status(unchanged.getFirst())).isEqualTo("CONFIRMED");
         assertThat(status(unchanged.getLast())).isEqualTo("CANCELLED");
         assertThat(status(deleted)).isEqualTo("PLANNED");
+        assertThat(jdbc.queryForList("SELECT * FROM shift_budget_consumptions "
+                        + "WHERE id IN (?, ?, ?) ORDER BY id", unchanged.getFirst(), unchanged.getLast(), deleted))
+                .as("CONFIRMED・CANCELLED・論理削除済み行は取消日時・理由・額を含む全列不変")
+                .isEqualTo(untouchedBefore);
         assertThat(jdbc.queryForList("SELECT cancel_reason FROM shift_budget_consumptions WHERE shift_id = ? "
                 + "AND deleted_at IS NULL AND cancel_reason IS NOT NULL", String.class, fixture.shiftId()))
                 .containsExactly("SHIFT_DELETED", "SHIFT_DELETED", "SHIFT_DELETED");
@@ -223,6 +231,37 @@ class ShiftBudgetConsumptionCancelRaceIT extends AbstractMySqlIntegrationTest {
         }
         assertThat(consumptionService.cancelAllForShift(fixture.shiftId())).isEqualTo(2);
         assertThat(amount()).isEqualByComparingTo(OTHER_SHIFT);
+    }
+
+    @Test
+    @DisplayName("AC09 同じ取消TXのmanaged消化はnativeCAS後のflushで元へ戻らない")
+    void 同じ取消TXのmanaged消化はCAS後のflushで戻らない() {
+        Long id = fixture.targetIds().getFirst();
+        var cancelledAt = java.time.LocalDateTime.of(2026, 11, 6, 9, 0);
+        BigDecimal cancelledAmount = transactionTemplate.execute(tx -> {
+            var stale = consumptions.findById(id).orElseThrow();
+            assertThat(em.contains(stale)).isTrue();
+            BigDecimal value = stale.getAmount();
+            assertThat(consumptions.cancelPlannedById(id, ShiftBudgetCancelReason.RE_PUBLISHED, cancelledAt)).isEqualTo(1);
+            assertThat(em.contains(stale)).as("CASは古いPLANNED実体を同じTXのcontextから除く").isFalse();
+            em.flush();
+            var current = consumptions.findById(id).orElseThrow();
+            assertThat(current).isNotSameAs(stale);
+            assertThat(current.getStatus()).isEqualTo(ShiftBudgetConsumptionStatus.CANCELLED);
+            assertThat(current.getCancelledAt()).isEqualTo(cancelledAt);
+            assertThat(current.getCancelReason()).isEqualTo(ShiftBudgetCancelReason.RE_PUBLISHED);
+            assertThat(allocations.decrementConsumedAmount(fixture.allocationId(), value)).isEqualTo(1);
+            em.flush();
+            return value;
+        });
+        assertThat(status(id)).isEqualTo("CANCELLED");
+        assertThat(jdbc.queryForObject("SELECT cancelled_at FROM shift_budget_consumptions WHERE id = ?",
+                java.time.LocalDateTime.class, id)).as("raw JDBCはUTC壁時計の格納値を返す")
+                .isEqualTo(cancelledAt.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE)
+                        .withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime());
+        assertThat(jdbc.queryForObject("SELECT cancel_reason FROM shift_budget_consumptions WHERE id = ?",
+                String.class, id)).isEqualTo("RE_PUBLISHED");
+        assertThat(amount()).isEqualByComparingTo(TOTAL.subtract(cancelledAmount));
     }
 
     private Long saveConsumption(Long allocationId, Long shiftId, BigDecimal value, ShiftBudgetConsumptionStatus state) {

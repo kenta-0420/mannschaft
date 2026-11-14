@@ -197,6 +197,22 @@ RELAYED は `relayed_at` から7日、DEAD は `dead_at` から30日を過ぎた
 - 検出の陽性・陰性は検体（test ソースの `*.mandatoryport`）で `CrossDomainMandatoryPropagationGuardConditionTest` が固定する（OG01・OG02）。
 - ingest が独立した tx であることは静的には見ず、契約テスト（OB15・OB16）で確かめる。
 
+### 8.1 0718 公開世代の行ロック監査例外（2026-11-06 追加裁可）
+
+P1時点の上表は履歴として保持する。現在の `AUDITED_REVERSE_PORTS` は、既存のQ4裁可
+`OrganizationAffiliationPortAdapter#lockForAffiliation` と、追加裁可した
+`com.mannschaft.app.shift.service.ShiftBudgetPublicationPortAdapter.lockPublication` の正確な2件である。
+
+後者は公開状態と世代の確認から消化記録のcommitまで、shiftbudgetの同一TXで親シフト行のロックを
+保持するために必要となる。Adapterは `SELECT ... FOR UPDATE` と最小の状態DTO返却だけを行い、
+シフト表へ書き込まない。AC13は最初の業務SQL・commitまでのロック保持・親変更先行と記録先行・
+外TXなしのMANDATORY拒否を実DBで確認し、`ShiftBudgetPublicationLockOrderIT` は予算処理中の
+親表DMLが無いことも実SQLから検査する。これらの動的合格は実行結果で別途確認する。
+
+例外は上記完全修飾メソッド1件だけの追加であり、既存Q4キー/理由、未知の逆向きポートの拒否、
+実違反集合との完全一致検査、D-3P-1/3と検出器を維持する。D3Tも記録/旧世代清掃の2入口から
+`ShiftScheduleRepository` への実測2キーだけを追加し、他storeやcreation/refreeze/除外設定は変更しない。
+
 ## 9. 範囲外（今回やらない）
 
 | 項目 | 理由・扱い |

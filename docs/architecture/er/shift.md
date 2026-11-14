@@ -287,6 +287,7 @@ erDiagram
 | `deleted_at` | `datetime` | YES | NULL |  |
 | `is_reminder_sent_48h` | `tinyint(1)` | NO | `0` | 48時間前リマインド送信済みフラグ |
 | `linked_project_id` | `bigint unsigned` | YES | NULL | F08.7 シフト-予算-TODO 連携: 紐付プロジェクトID |
+| `publication_generation` | `bigint` | NO | `0` |  |
 
 ### `shift_slots`
 

@@ -254,7 +254,8 @@ public class ShiftScheduleService {
         // 意味の無いイベントを流さないことを発行側でも担保する）。
         if (wasLive) {
             eventPublisher.publish(new ShiftScheduleClosedEvent(
-                    entity.getId(), entity.getTeamId(), userId, ShiftScheduleCloseReason.DELETED));
+                    entity.getId(), entity.getTeamId(), userId, ShiftScheduleCloseReason.DELETED,
+                    entity.getPublicationGeneration()));
         }
         log.info("シフトスケジュール削除: id={}", id);
     }
@@ -269,7 +270,7 @@ public class ShiftScheduleService {
      */
     @Transactional
     public ShiftScheduleResponse transitionStatus(Long id, String status, Long userId) {
-        ShiftScheduleEntity entity = findScheduleOrThrow(id);
+        ShiftScheduleEntity entity = findScheduleForUpdateOrThrow(id);
         ShiftScheduleStatus targetStatus = ShiftScheduleStatus.valueOf(status);
         ShiftScheduleStatus previousStatus = entity.getStatus();
 
@@ -280,6 +281,7 @@ public class ShiftScheduleService {
                 // 未確認の SUCCEEDED 割当実行ログがある場合は目視確認ゲートをかける
                 autoAssignService.assertNoUnreviewedRuns(id);
                 entity.publish(userId);
+                entity.setPublicationGeneration(Math.incrementExact(entity.getPublicationGeneration()));
             }
             case ARCHIVED -> {
                 entity.archive();
@@ -299,7 +301,8 @@ public class ShiftScheduleService {
         // イベント発行は save() 後（AFTER_COMMIT リスナーがコミット済みデータを参照するため）
         if (targetStatus == ShiftScheduleStatus.PUBLISHED) {
             eventPublisher.publish(new ShiftPublishedEvent(
-                    entity.getId(), entity.getTeamId(), userId, entity.getPublishedAt()));
+                    entity.getId(), entity.getTeamId(), userId, entity.getPublishedAt(),
+                    entity.getPublicationGeneration()));
         }
 
         // CMP-260909-1445: 手動アーカイブでも ShiftArchivedEvent を発行する。
@@ -309,7 +312,7 @@ public class ShiftScheduleService {
         // archivedByUserId は手動経路では操作者を載せる（バッチは null）。
         if (targetStatus == ShiftScheduleStatus.ARCHIVED) {
             eventPublisher.publish(new ShiftArchivedEvent(
-                    entity.getId(), entity.getTeamId(), userId));
+                    entity.getId(), entity.getTeamId(), userId, entity.getPublicationGeneration()));
         }
 
         // CMP-260909-1445: PUBLISHED からの後戻り遷移（公開取消）も同型の穴だった。
@@ -319,7 +322,8 @@ public class ShiftScheduleService {
                 && (targetStatus == ShiftScheduleStatus.COLLECTING
                         || targetStatus == ShiftScheduleStatus.ADJUSTING)) {
             eventPublisher.publish(new ShiftScheduleClosedEvent(
-                    entity.getId(), entity.getTeamId(), userId, ShiftScheduleCloseReason.UNPUBLISHED));
+                    entity.getId(), entity.getTeamId(), userId, ShiftScheduleCloseReason.UNPUBLISHED,
+                    entity.getPublicationGeneration()));
         }
 
         log.info("シフトスケジュールステータス遷移: id={}, status={}", id, targetStatus);
@@ -343,6 +347,7 @@ public class ShiftScheduleService {
                 .createdBy(userId)
                 .publishedAt(null)
                 .publishedBy(null)
+                .publicationGeneration(0L)
                 .isReminderSent(false)
                 .isLowSubmissionAlerted(false)
                 .lastAutoTransitionAt(null)

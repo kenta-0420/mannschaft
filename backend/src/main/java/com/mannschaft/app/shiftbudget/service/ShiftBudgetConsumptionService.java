@@ -2,8 +2,8 @@ package com.mannschaft.app.shiftbudget.service;
 
 import com.mannschaft.app.shiftbudget.ShiftBudgetCancelReason;
 import com.mannschaft.app.shiftbudget.ShiftBudgetConsumptionStatus;
-import com.mannschaft.app.shiftbudget.entity.ShiftBudgetAllocationEntity;
 import com.mannschaft.app.shiftbudget.entity.ShiftBudgetConsumptionEntity;
+import com.mannschaft.app.shiftbudget.port.ShiftBudgetPublicationPort;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetAllocationRepository;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetConsumptionRepository;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +18,10 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.Optional;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * F08.7 シフト予算消化記録サービス（Phase 9-β、F03.5 hook 内ロジック）。
@@ -29,17 +32,16 @@ import java.util.Optional;
  * {@link com.mannschaft.app.shiftbudget.listener.ShiftBudgetConsumptionRecordListener}
  * から呼び出される。</p>
  *
- * <p>処理シリアライズ:</p>
+ * <p>記録の前に旧公開のPLANNEDを別TXで掃除し、単一記録は親を最初にロックする。</p>
+ * <p>単一記録の処理順序:</p>
  * <ol>
- *   <li>同一 (slot_id, user_id, PLANNED) 既存レコード → CANCELLED 遷移
- *       + {@code allocation.consumed_amount} 減算</li>
+ *   <li>現在の公開状態とイベント世代を検証し、同世代の既存PLANNEDはno-op</li>
  *   <li>(slot_id, user_id, CONFIRMED) が既存 → 例外 (CONFIRMED_RECORD_IMMUTABLE)</li>
  *   <li>新規 PLANNED INSERT</li>
  *   <li>{@code allocation.consumed_amount} アトミック加算</li>
  * </ol>
  *
- * <p><strong>重要</strong>: (4) で二重加算を防ぐため、(1) で減算 → (3) で INSERT → (4) で加算
- * の順序を厳守する（設計書 §11.1 設計上のポイント）。</p>
+ * <p>旧消化の取消claimと割当減算は同一TXで行い、片方の失敗は両方を巻き戻す。</p>
  */
 @Slf4j
 @Service
@@ -50,6 +52,7 @@ public class ShiftBudgetConsumptionService {
 
     private final ShiftBudgetConsumptionRepository consumptionRepository;
     private final ShiftBudgetAllocationRepository allocationRepository;
+    private final ShiftBudgetPublicationPort publicationPort;
 
     /** 既存LocalDateTime列と同じ業務壁時計を使う。 */
     @Qualifier("wallClock")
@@ -71,95 +74,130 @@ public class ShiftBudgetConsumptionService {
      * @param userId             ユーザーID
      * @param hourlyRate         適用時給（NULL/0 はそのまま受け入れ。設計書 §11 「時給未設定」参照）
      * @param hours              勤務時間
+     * @param publicationGeneration 記録対象の公開世代
+     * @return 実際に新規記録した場合だけtrue
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void recordSingleConsumption(Long allocationId,
-                                        Long shiftScheduleId,
-                                        Long slotId,
-                                        Long userId,
-                                        BigDecimal hourlyRate,
-                                        BigDecimal hours) {
+    public boolean recordSingleConsumption(Long allocationId,
+                                           Long shiftScheduleId,
+                                           Long slotId,
+                                           Long userId,
+                                           BigDecimal hourlyRate,
+                                           BigDecimal hours,
+                                           long publicationGeneration) {
+        // 必ず最初のSQLで親をロックし、この消化のコミットまで公開変更を待たせる。
+        var publication = publicationPort.lockPublication(shiftScheduleId);
+        if (publication.isEmpty() || !publication.get().accepts(publicationGeneration)) {
+            return false;
+        }
+        var planned = consumptionRepository.findBySlotIdAndUserIdAndStatusAndDeletedAtIsNull(
+                slotId, userId, ShiftBudgetConsumptionStatus.PLANNED);
+        if (planned.isPresent()) {
+            if (planned.get().getPublicationGeneration() == publicationGeneration) {
+                return false;
+            }
+            // 有効組織の旧世代は先に掃除する。OFF組織などの残存行は消さず、このslot/userを個別失敗にする。
+            throw new IllegalStateException("Old planned consumption remains: shift=" + shiftScheduleId);
+        }
+        if (consumptionRepository.findBySlotIdAndUserIdAndStatusAndDeletedAtIsNull(
+                slotId, userId, ShiftBudgetConsumptionStatus.CONFIRMED).isPresent()) {
+            throw new IllegalStateException("CONFIRMED record already exists: slot=" + slotId + ", user=" + userId);
+        }
         BigDecimal safeRate = hourlyRate != null ? hourlyRate : BigDecimal.ZERO;
         BigDecimal amount = safeRate.multiply(hours).setScale(2, java.math.RoundingMode.HALF_UP);
-
-        // (1) 既存 PLANNED → CANCELLED 遷移 + consumed_amount 減算
-        Optional<ShiftBudgetConsumptionEntity> existingPlanned = consumptionRepository
-                .findBySlotIdAndUserIdAndStatusAndDeletedAtIsNull(
-                        slotId, userId, ShiftBudgetConsumptionStatus.PLANNED);
-        existingPlanned.ifPresent(existing -> {
-            existing.cancel(ShiftBudgetCancelReason.RE_PUBLISHED);
-            consumptionRepository.save(existing);
-            // allocation の consumed_amount から差し引き
-            allocationRepository.decrementConsumedAmount(
-                    existing.getAllocationId(), existing.getAmount());
-            log.debug("既存 PLANNED 消化を再公開でキャンセル: slot={}, user={}, amount={}",
-                    slotId, userId, existing.getAmount());
-        });
-
-        // (2) CONFIRMED 既存 → 物理的に再 INSERT 不可（月次締め後の再公開拒否）
-        Optional<ShiftBudgetConsumptionEntity> existingConfirmed = consumptionRepository
-                .findBySlotIdAndUserIdAndStatusAndDeletedAtIsNull(
-                        slotId, userId, ShiftBudgetConsumptionStatus.CONFIRMED);
-        if (existingConfirmed.isPresent()) {
-            throw new IllegalStateException(
-                    "CONFIRMED record already exists. Cannot re-record consumption: slot=" + slotId
-                            + ", user=" + userId);
-        }
-
-        // (3) 新規 PLANNED INSERT
-        ShiftBudgetConsumptionEntity fresh = ShiftBudgetConsumptionEntity.builder()
-                .allocationId(allocationId)
-                .shiftId(shiftScheduleId)
-                .slotId(slotId)
-                .userId(userId)
-                .hourlyRateSnapshot(safeRate)
-                .hours(hours)
-                .amount(amount)
-                .currency(DEFAULT_CURRENCY)
+        consumptionRepository.save(ShiftBudgetConsumptionEntity.builder()
+                .allocationId(allocationId).shiftId(shiftScheduleId).slotId(slotId).userId(userId)
+                .publicationGeneration(publicationGeneration)
+                .hourlyRateSnapshot(safeRate).hours(hours).amount(amount).currency(DEFAULT_CURRENCY)
                 .status(ShiftBudgetConsumptionStatus.PLANNED)
-                .recordedAt(LocalDateTime.now())
-                .build();
-        consumptionRepository.save(fresh);
-
-        // (4) allocation.consumed_amount アトミック加算
-        allocationRepository.incrementConsumedAmount(allocationId, amount);
-
-        log.debug("消化を新規記録: allocation={}, slot={}, user={}, hours={}, amount={}",
-                allocationId, slotId, userId, hours, amount);
+                .recordedAt(LocalDateTime.now(wallClock)).build());
+        requireAllocationUpdate(allocationRepository.incrementConsumedAmount(allocationId, amount), allocationId);
+        return true;
     }
 
-    /**
-     * 指定シフトに紐付く全 PLANNED 消化を CANCELLED 遷移し、{@code consumed_amount} を減算する。
-     *
-     * <p>{@code ShiftArchivedEvent} 受信時の hook で呼び出される。</p>
-     *
-     * @param shiftScheduleId シフトスケジュールID
-     * @return キャンセルした件数
-     */
+    /** 旧消化の計上先IDを一括取得する。フラグ判定用の参照だけで、取消や親ロックは行わない。 */
+    @Transactional(readOnly = true)
+    public List<Long> findOlderPlannedOrganizationIds(Long shiftScheduleId, long publicationGeneration) {
+        if (publicationGeneration == 0) {
+            return List.of();
+        }
+        return consumptionRepository.findPlannedCancellationRows(shiftScheduleId, publicationGeneration - 1).stream()
+                .map(ShiftBudgetConsumptionRepository.PlannedCancellationRow::getOrganizationId).distinct().toList();
+    }
+
+    /** 新しい公開の記録前に、有効な組織の旧世代を取り外された枠・利用者も含めて掃除する。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public PublicationCleanup cancelOldPlannedForPublication(Long shiftScheduleId, long publicationGeneration,
+                                                            Set<Long> enabledOrganizationIds) {
+        var publication = publicationPort.lockPublication(shiftScheduleId);
+        if (publication.isEmpty() || !publication.get().accepts(publicationGeneration)) {
+            return new PublicationCleanup(false, CancellationResult.empty());
+        }
+        CancellationResult cancellation = publicationGeneration == 0
+                ? CancellationResult.empty()
+                : cancelClaimed(consumptionRepository.findPlannedCancellationRows(
+                                shiftScheduleId, publicationGeneration - 1).stream()
+                        .filter(row -> enabledOrganizationIds.contains(row.getOrganizationId())).toList(),
+                        ShiftBudgetCancelReason.RE_PUBLISHED);
+        return new PublicationCleanup(true, cancellation);
+    }
+
+    /** 世代を持たない既存呼出元は、移行前の世代0だけを取り消す。 */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int cancelAllForShift(Long shiftScheduleId) {
-        var consumptions = consumptionRepository.findByShiftIdAndDeletedAtIsNullOrderByIdAsc(shiftScheduleId);
-        int cancelledCount = 0;
-        for (ShiftBudgetConsumptionEntity c : consumptions) {
-            // CONFIRMED は変更不可（取消仕訳パターンが必要だが Phase 9-β スコープ外）
-            if (c.getStatus() != ShiftBudgetConsumptionStatus.PLANNED) {
-                continue;
-            }
-            // 並行するバッチ/リスナーのうち、PLANNEDを実際に取り消したTXだけが減算する。
-            // 取消と減算は同一REQUIRES_NEW内なので、減算失敗時はclaimも巻き戻る。
+        return cancelClaimed(shiftScheduleId, 0, ShiftBudgetCancelReason.SHIFT_DELETED).cancelledCount();
+    }
+
+    /** イベント/候補選択時の世代上限を超える消化には触れない。親の不在でも取消可能。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public CancellationResult cancelAllForShift(Long shiftScheduleId, long generationUpperBound) {
+        return cancelClaimed(shiftScheduleId, generationUpperBound, ShiftBudgetCancelReason.SHIFT_DELETED);
+    }
+
+    private CancellationResult cancelClaimed(Long shiftScheduleId, long generationUpperBound,
+                                             ShiftBudgetCancelReason reason) {
+        return cancelClaimed(consumptionRepository.findPlannedCancellationRows(shiftScheduleId, generationUpperBound), reason);
+    }
+
+    private CancellationResult cancelClaimed(List<ShiftBudgetConsumptionRepository.PlannedCancellationRow> rows,
+                                             ShiftBudgetCancelReason reason) {
+        Map<Long, Long> countsByOrganization = new LinkedHashMap<>();
+        Map<Long, Long> organizationsByAllocation = new LinkedHashMap<>();
+        int count = 0;
+        // 共通の割当ID→消化ID順。割当を先取りせず、claimできた行だけ同じTXで減算する。
+        for (var row : rows) {
             int claimed = consumptionRepository.cancelPlannedById(
-                    c.getId(), ShiftBudgetCancelReason.SHIFT_DELETED, LocalDateTime.now(wallClock));
+                    row.getConsumptionId(), reason, LocalDateTime.now(wallClock));
             if (claimed != 1) {
                 continue;
             }
-            allocationRepository.decrementConsumedAmount(c.getAllocationId(), c.getAmount());
-            cancelledCount++;
+            requireAllocationUpdate(allocationRepository.decrementConsumedAmount(
+                    row.getAllocationId(), row.getAmount()), row.getAllocationId());
+            count++;
+            countsByOrganization.merge(row.getOrganizationId(), 1L, Long::sum);
+            organizationsByAllocation.put(row.getAllocationId(), row.getOrganizationId());
         }
-        if (cancelledCount > 0) {
-            log.info("シフトアーカイブに伴い PLANNED 消化を {} 件キャンセル: shift={}",
-                    cancelledCount, shiftScheduleId);
+        return new CancellationResult(count, Map.copyOf(countsByOrganization),
+                Map.copyOf(organizationsByAllocation));
+    }
+
+    private void requireAllocationUpdate(int updated, Long allocationId) {
+        if (updated != 1) {
+            throw new IllegalStateException("Allocation update failed: allocation=" + allocationId);
         }
-        return cancelledCount;
+    }
+
+    /** 有効な公開の取消0件と、古いイベントによる不受理を区別する。 */
+    public record PublicationCleanup(boolean accepted, CancellationResult cancellation) {
+    }
+
+    /** 監査と閾値再評価には、実際にclaimした行の組織・割当だけを渡す。 */
+    public record CancellationResult(int cancelledCount, Map<Long, Long> countsByOrganization,
+                                     Map<Long, Long> organizationsByAllocation) {
+        /** 変更なしを表す。 */
+        public static CancellationResult empty() {
+            return new CancellationResult(0, Map.of(), Map.of());
+        }
     }
 
     /**
@@ -199,14 +237,17 @@ public class ShiftBudgetConsumptionService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void cancelSingleConsumption(Long slotId, Long userId, ShiftBudgetCancelReason reason) {
-        Optional<ShiftBudgetAllocationEntity> ignored;
         consumptionRepository
                 .findBySlotIdAndUserIdAndStatusAndDeletedAtIsNull(
                         slotId, userId, ShiftBudgetConsumptionStatus.PLANNED)
                 .ifPresent(c -> {
-                    c.cancel(reason);
-                    consumptionRepository.save(c);
-                    allocationRepository.decrementConsumedAmount(c.getAllocationId(), c.getAmount());
+                    Long allocationId = c.getAllocationId();
+                    BigDecimal amount = c.getAmount();
+                    if (consumptionRepository.cancelPlannedById(
+                            c.getId(), reason, LocalDateTime.now(wallClock)) == 1) {
+                        requireAllocationUpdate(allocationRepository.decrementConsumedAmount(allocationId, amount),
+                                allocationId);
+                    }
                 });
     }
 }
