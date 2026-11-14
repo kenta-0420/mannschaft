@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
+import { flushPromises } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import { ref, nextTick, type Ref } from 'vue'
 import type { UserFavoriteItem } from '~/types/favorite'
@@ -99,14 +100,19 @@ vi.mock('~/composables/useUndoToast', () => ({
 
 // teamId は slug（string）。useTeamCrud.updateTeam(teamSlug: string, ...) と一致させる。
 const mockUpdateTeam = vi.fn(async (_id: string, _payload: { name?: string }) => ({ data: {} }))
+const mockGetTeam = vi.fn()
+const mockGetOrganization = vi.fn()
 const mockUpdateOrganization = vi.fn(async () => ({ data: {} }))
 const mockUpdateMyProfile = vi.fn(async () => ({ data: {} }))
 
 vi.mock('~/composables/useTeamApi', () => ({
-  useTeamApi: () => ({ updateTeam: mockUpdateTeam }),
+  useTeamApi: () => ({ getTeam: mockGetTeam, updateTeam: mockUpdateTeam }),
 }))
 vi.mock('~/composables/useOrganizationApi', () => ({
-  useOrganizationApi: () => ({ updateOrganization: mockUpdateOrganization }),
+  useOrganizationApi: () => ({
+    getOrganization: mockGetOrganization,
+    updateOrganization: mockUpdateOrganization,
+  }),
 }))
 vi.mock('~/composables/useSocialProfileApi', () => ({
   useSocialProfileApi: () => ({ updateMyProfile: mockUpdateMyProfile }),
@@ -118,7 +124,10 @@ vi.mock('vuedraggable', () => ({
     name: 'draggable',
     props: ['modelValue', 'itemKey', 'animation', 'ghostClass', 'handle'],
     emits: ['update:modelValue', 'end'],
-    setup(_props: unknown, { slots }: { slots: Record<string, (ctx: { element: UserFavoriteItem }) => unknown> }) {
+    setup(
+      _props: unknown,
+      { slots }: { slots: Record<string, (ctx: { element: UserFavoriteItem }) => unknown> },
+    ) {
       return () => {
         const items = (_props as { modelValue?: UserFavoriteItem[] }).modelValue ?? []
         return items.map((element) => slots.item?.({ element }))
@@ -150,9 +159,7 @@ function makeItem(over: Partial<UserFavoriteItem> = {}): UserFavoriteItem {
   }
 }
 
-const WidgetFavorites = (
-  await import('~/components/widgets/WidgetFavorites.vue')
-).default
+const WidgetFavorites = (await import('~/components/widgets/WidgetFavorites.vue')).default
 
 beforeEach(() => {
   setActivePinia(createPinia())
@@ -160,6 +167,7 @@ beforeEach(() => {
   isLoadingRef.value = false
   errorRef.value = null
   mockFetchFavorites.mockClear()
+  mockFetchFavorites.mockImplementation(async () => itemsRef.value)
   mockAddFavorite.mockReset()
   mockRemoveFavorite.mockClear()
   mockReorderFavorites.mockClear()
@@ -167,6 +175,8 @@ beforeEach(() => {
   mockNotifError.mockReset()
   mockShowUndoToast.mockReset()
   mockUpdateTeam.mockClear()
+  mockGetTeam.mockReset()
+  mockGetOrganization.mockReset()
   mockUpdateOrganization.mockClear()
   mockUpdateMyProfile.mockClear()
 })
@@ -340,23 +350,29 @@ describe('F02.9-4: クイック編集 → カードの表示名が更新され�
           name: '編集前',
           description: null,
           iconUrl: null,
-          pageUrl: '/teams/555',
+          pageUrl: '/teams/favorite-contract-team',
           status: 'AVAILABLE',
           canEdit: true,
           editableFields: [],
         },
       }),
     ]
-    // updateTeam が呼ばれたら items を更新する想定
+    mockGetTeam.mockResolvedValue({
+      data: { numericId: 555, basicInfo: { name: '編集前' }, metadata: { version: 0 } },
+    })
+    let persistedName = '編集前'
+    // PATCH完了だけでは表示を更新せず、saved後の再取得でサーバー名称を反映する。
     mockUpdateTeam.mockImplementation(async (_id: string, payload: { name?: string }) => {
-      if (payload.name) {
-        itemsRef.value = itemsRef.value.map((it) =>
-          it.favoriteId === 'fav-edit-1'
-            ? { ...it, entity: { ...it.entity, name: payload.name as string } }
-            : it,
-        )
-      }
+      if (payload.name) persistedName = payload.name
       return { data: {} }
+    })
+    mockFetchFavorites.mockImplementation(async () => {
+      itemsRef.value = itemsRef.value.map((it) =>
+        it.favoriteId === 'fav-edit-1'
+          ? { ...it, entity: { ...it.entity, name: persistedName } }
+          : it,
+      )
+      return itemsRef.value
     })
 
     const wrapper = await mountSuspended(WidgetFavorites)
@@ -370,7 +386,8 @@ describe('F02.9-4: クイック編集 → カードの表示名が更新され�
     )
     expect(editCard).toBeDefined()
     editCard!.vm.$emit('edit')
-    await nextTick()
+    await flushPromises()
+    expect(mockGetTeam).toHaveBeenCalledExactlyOnceWith('favorite-contract-team')
 
     // ダイアログが開いたことを確認（FavoriteQuickEditDialog の input が出現）
     const dialog = wrapper.findComponent({ name: 'FavoriteQuickEditDialog' })
@@ -382,24 +399,32 @@ describe('F02.9-4: クイック編集 → カードの表示名が更新され�
     // dialog の name input を更新（FavoriteQuickEditDialog 内部の formName）→ TEAM テンプレート
     const inputs = dialog.findAll('input[type="text"]')
     expect(inputs.length).toBeGreaterThan(0)
+    expect(inputs[0]!.attributes('disabled')).toBeUndefined()
     await inputs[0]!.setValue('編集後の名前')
 
     // 保存ボタンを押下（「保存」/ 「Save」のいずれか）
-    const saveButton = dialog
-      .findAll('button')
-      .find((b) => /保存|Save/.test(b.text()))
+    const saveButton = dialog.findAll('button').find((b) => /保存|Save/.test(b.text()))
     expect(saveButton).toBeDefined()
+    const fetchesBeforeSave = mockFetchFavorites.mock.calls.length
     await saveButton!.trigger('click')
-    await nextTick()
-    // 非同期 await を flush
-    await new Promise((r) => setTimeout(r, 0))
-    await nextTick()
+    await flushPromises()
 
-    // チーム識別子は URL 用 slug（string）に一本化されている（#1345）。数値ではなく文字列で渡る。
-    expect(mockUpdateTeam).toHaveBeenCalledWith('555', expect.objectContaining({ name: '編集後の名前' }))
-    expect(mockFetchFavorites).toHaveBeenCalled() // saved → onFavoriteSaved → refresh
+    expect(mockUpdateTeam).toHaveBeenCalledExactlyOnceWith('favorite-contract-team', {
+      name: '編集後の名前',
+      version: 0,
+    })
+    expect(mockGetTeam.mock.invocationCallOrder[0]).toBeLessThan(
+      mockUpdateTeam.mock.invocationCallOrder[0]!,
+    )
+    expect(mockFetchFavorites).toHaveBeenCalledTimes(fetchesBeforeSave + 1)
+    expect(mockFetchFavorites.mock.invocationCallOrder.at(-1)).toBeGreaterThan(
+      mockUpdateTeam.mock.invocationCallOrder[0]!,
+    )
     // items も更新されている
     expect(itemsRef.value[0]!.entity.name).toBe('編集後の名前')
+    expect(wrapper.find('[data-testid="favorite-card-fav-edit-1"]').text()).toContain(
+      '編集後の名前',
+    )
   })
 })
 
@@ -481,7 +506,9 @@ describe('F02.9-6: UNAVAILABLE エンティティ → グレーアウト + 削�
     expect(unavailCard.classes()).toContain('opacity-60')
 
     // 「このアイテムは利用できなくなりました」メッセージ（ロケール非依存）
-    expect(unavailCard.text()).toMatch(/このアイテムは利用できなくなりました|This item is no longer available/)
+    expect(unavailCard.text()).toMatch(
+      /このアイテムは利用できなくなりました|This item is no longer available/,
+    )
 
     // UNAVAILABLE カード内: 「開く/Open」「編集/Edit」aria-label のボタンがない、「削除/Remove」だけ存在
     // PrimeVue Button は aria-label を継承するため findAll('button') で取得できる。

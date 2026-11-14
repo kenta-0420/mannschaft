@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
+import { flushPromises } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import type { UserFavoriteItem, FavoriteEntityType } from '~/types/favorite'
 
@@ -35,13 +36,18 @@ vi.mock('#app', async (importOriginal) => {
 
 const updateTeamMock = vi.fn()
 const updateOrganizationMock = vi.fn()
+const getTeamMock = vi.fn()
+const getOrganizationMock = vi.fn()
 const updateMyProfileMock = vi.fn()
 
 vi.mock('~/composables/useTeamApi', () => ({
-  useTeamApi: () => ({ updateTeam: updateTeamMock }),
+  useTeamApi: () => ({ getTeam: getTeamMock, updateTeam: updateTeamMock }),
 }))
 vi.mock('~/composables/useOrganizationApi', () => ({
-  useOrganizationApi: () => ({ updateOrganization: updateOrganizationMock }),
+  useOrganizationApi: () => ({
+    getOrganization: getOrganizationMock,
+    updateOrganization: updateOrganizationMock,
+  }),
 }))
 vi.mock('~/composables/useSocialProfileApi', () => ({
   useSocialProfileApi: () => ({ updateMyProfile: updateMyProfileMock }),
@@ -57,15 +63,14 @@ vi.mock('~/composables/useNotification', () => ({
   useNotification: () => notificationMock,
 }))
 
-const FavoriteQuickEditDialog = (
-  await import('~/components/favorites/FavoriteQuickEditDialog.vue')
-).default
+const FavoriteQuickEditDialog = (await import('~/components/favorites/FavoriteQuickEditDialog.vue'))
+  .default
 
 function createItem(
   entityType: FavoriteEntityType,
   overrides: Partial<UserFavoriteItem> = {},
 ): UserFavoriteItem {
-  return {
+  const selected: UserFavoriteItem = {
     favoriteId: 'fav-001',
     entityType,
     entityId: '123',
@@ -75,13 +80,28 @@ function createItem(
       name: 'Sample',
       description: null,
       iconUrl: null,
-      pageUrl: '/sample',
+      pageUrl:
+        entityType === 'TEAM'
+          ? '/teams/123'
+          : entityType === 'ORGANIZATION'
+            ? '/organizations/123'
+            : '/sample',
       status: 'AVAILABLE',
       canEdit: true,
       editableFields: [],
     },
     ...overrides,
   }
+  const response = {
+    data: {
+      numericId: Number(selected.entityId),
+      basicInfo: { name: selected.entity.name },
+      metadata: { version: 0 },
+    },
+  }
+  if (entityType === 'TEAM') getTeamMock.mockResolvedValue(response)
+  if (entityType === 'ORGANIZATION') getOrganizationMock.mockResolvedValue(response)
+  return selected
 }
 
 describe('FavoriteQuickEditDialog.vue', () => {
@@ -90,6 +110,8 @@ describe('FavoriteQuickEditDialog.vue', () => {
     navigateToMock.mockReset()
     updateTeamMock.mockReset()
     updateOrganizationMock.mockReset()
+    getTeamMock.mockReset()
+    getOrganizationMock.mockReset()
     updateMyProfileMock.mockReset()
     notificationMock.success.mockReset()
     notificationMock.error.mockReset()
@@ -120,6 +142,9 @@ describe('FavoriteQuickEditDialog.vue', () => {
       props: { modelValue: item },
     })
 
+    await flushPromises()
+    expect(getTeamMock).toHaveBeenCalledExactlyOnceWith('123')
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
     expect(wrapper.find('[role="dialog"]').exists()).toBe(true)
     const inputs = wrapper.findAll('input[type="text"]')
     const textareas = wrapper.findAll('textarea')
@@ -154,6 +179,8 @@ describe('FavoriteQuickEditDialog.vue', () => {
     expect(inputs.length).toBe(1)
     expect(textareas.length).toBe(1)
     expect((inputs[0]!.element as HTMLInputElement).value).toBe('My Org')
+    expect(getOrganizationMock).toHaveBeenCalledExactlyOnceWith('123')
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
     expect((textareas[0]!.element as HTMLTextAreaElement).value).toBe('org desc')
   })
 
