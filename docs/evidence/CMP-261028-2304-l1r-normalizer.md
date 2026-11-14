@@ -1,6 +1,6 @@
 # L1-R 初回ロット: DuplicateNameNormalizer の検証記録
 
-最新資格は末尾の2026-11-14節に集約する。各日付節のhead・「現在」・未完項目は当時の履歴であり、最新状態へ読み替えない。
+最新資格は末尾の「2026-11-14 R15標的探索と最終Core統合準備」に集約する。各日付節のhead・「現在」・未完項目は当時の履歴であり、最新状態へ読み替えない。
 
 - 子CMP: `CMP-261028-2304`。scope: `app`。L1-R全体・親CMPは実装中を維持する。
 - 実装基準: `977c3df5fd2ab5af79fa34db66c4121294634eff`。記録対象は[実装PR #4352](https://github.com/kenta-0420/mannschaft/pull/4352) のhead `7a3c076a69754044209e86747097e622ae9b1ab9`。記録時点でDraft・未マージであり、実装内容がmainへ反映されたことを示さない。
@@ -165,7 +165,7 @@ s4 summary SHA256 `0f02f6ba68d15cd670790f8279b8864f520c64abebaca32e49294452346a2
 
 ### 新独立3住民と気づき箱への引渡し
 
-Name/favoriteの導線を対象にした独立探索は3/3終了し、DN-11の部分的な目的達成を採用する。一方、WS修復計画のAC36（対象機能を標的にした通知・拒否後/再接続の探索）は部分充足であり、標的補完は未完。原3報告にはChat・EC・通知の拒否後を目的にした探索がなく、Match空一覧/reloginも部分証拠に限る。正式実機AC35で代用せず、最終採用・引継ぎ削除はHOLDとする。新しいWS標的補完3役はsource-only案の準備段階で、新DB/seedは未承認・実行0。
+Name/favoriteの導線を対象にした独立探索は3/3終了し、DN-11の部分的な目的達成を採用する。一方、WS修復計画のAC36（対象機能を標的にした通知・拒否後/再接続の探索）は部分充足であり、標的補完は未完。原3報告にはChat・EC・通知の拒否後を目的にした探索がなく、Match空一覧/reloginも部分証拠に限る。正式実機AC35で代用せず、最終採用・引継ぎ削除はHOLDとする。本節記録時点では新しいWS標的補完3役はsource-only案の準備段階だった。その後の承認済み回復・実探索の結果は末尾のR15節を参照する。
 
 管理者desktop・一般memberの390px touch・別所属利用者desktopが、互いに手順/結果を共有しない独立contextで探索した。通常profileとsystemRole nullを確認し、全員native0/CLOSED。管理者はfavoriteからcalendar/組織membersへの到達、memberは所属/favorite/記録空一覧への到達、別所属利用者は自身/他公開teamの差・所属/試合空一覧・reload/relogin/切戻しを確認した。記録保存や実記録詳細は未確認。別所属利用者の自作favoriteは201→204で復元し残存0、他公開teamのmodules403の原因は未断定。初回private ACL停止・空dirによる再起動停止は履歴保持し、domain操作の再送とはしない。
 
@@ -178,3 +178,25 @@ B0担当への引渡しは累積67persona/67journey/122insightと旧64/64/120の
 private正本 `r14-final-cleanup-20261114-01/teardown-final-qualification.json` SHA256 `5be8c43ebdfba5d019073b55fbcde7ae614c10f8ac083e3a2f7b0f29184c7401` を親が採用。runner receiptはexit0/signal null/cleanup removed/error null。所有BE/FE・barrier2・container2・専用volume1の計7対象、scratch/cache、監督/child・writerの閉鎖、Windows/Linuxの要求4port非LISTENを確認した。EC/SG履歴も専用DB破棄で閉鎖。共通 `--check` の全体exit1は他の旧3行によるものでR14行0、全体cleanとはしない。元scenario summaryは保持する。raw lifecycleは必要なstartup/shutdown範囲の原bytes・hash・lineageを選別保全してから全量と外部Jarを撤去する別作業が進行中で、撤去完了を本節では先取りしない。引継ぎは最終残務後に削除予定。
 
 新main `32e4777aec54d5de324f22948099e8a4789fc1a4` はRanchのBE/FE・生成型・Nuxt PWA設定等が進み、whole BE/FE同値ではない。支援6PRの通常main追従では対象source51pathを保持したが、新headのCIと最終採用は進行中で、旧CIを新main統合資格へ読み替えない。CoreはB0成果・支援最新headの統合後に最終CIが必要。初回1型の実機/探索/撤去完了と、初回1型の出荷・親/all164の完了を明確に分け、他支援CMPの完了状態・完了JSONを先取り更新しない。
+
+## 2026-11-14 R15標的探索と最終Core統合準備
+
+R14正式実機後のWS標的補完を、同じ固定実機source `8afd06e6e06dddcd65f769be5e796baf0e83e28f` の承認済み回復環境で実施した。親担当はAC-36、新独立3担当の原報告・mutation journal・受信WS metadata・選別10画像を照合し、独立目的探索と裏取りの実施条件としてAC-36を完了と判定した。各担当は通常GUIで1回ログインし、別profileのsystemRole null、desktop2名・mobile touch1名で探索した。認証前contextの閉鎖とidentity確認前の拒否履歴を保持し、全試行を計3contextとは表記しない。旧login0試行も成功へ変更しない。
+
+- 管理者は緊急休業をGUIから201作成し、memberの確認POST200と管理者confirmation topicのMESSAGEを照合、対象1件・確認済み1/1を確認した。人工offline→online直後はオフライン表示が続いた。通常GETと戻り後に新CONNECTEDとリアルタイム表示を確認したが、自動再接続単独の成功とはしない。
+- memberは本人のChatへ2投稿し、他private channelへの正規query URLでは不可視・未選択、本人Chatへ戻って投稿継続を確認した。このUI結果をSTOMP拒否とは呼ばない。本人向け通知queueで同じ試験markerの緊急休業通知を受信し、GUI確認200→その通知だけのread200を確認した。無関係通知の一括既読は行っていない。
+- 別所属利用者は他scopeの観戦拒否UIとWS ERROR→CLOSEを観測した。ERROR本文・購読相関がないため特定購読のserver receiptとはしない。自身の試合では開始イベントを201作成し、戻り・再読込後もイベント履歴が残る一方、状態表示は開始前00:00へ戻った。比較中に他人向け試験markerの混入は観測しなかったが、無受信を全通知の非漏洩証明とはしない。
+
+探索中の自己操作は計10件（create4/update6/delete0）、全担当pending0・unknown false。新しい気づきは人工offline切替後の確認状況表示継続と、試合再入場後のtimer/period初期化の2候補である。実回線断との同等性・永続要件・既存課題重複は未確定で、確定不備や製品修復へ昇格せずB0の未実証観測として登録する。製品全動作green、5機能×3役の全網羅、認可全合格、自動再接続保証は主張しない。既存Signage購読認可欠落は別P1 `CMP-261114-0713` のままで、今回の修復・本番リスク受容は行っていない。
+
+### 支援CIと最終統合の資格
+
+[WS PR #4459](https://github.com/kenta-0420/mannschaft/pull/4459) head `870bd9829e8fd96e5ea33ad1c2881a9ef0275d65` の[Backend run 43543300356](https://github.com/kenta-0420/mannschaft/actions/runs/43543300356)は全12job成功。6shardのtest taskはskipped/upToDate/noSource/failedが全てfalse、test taskのFROM-CACHE観測0で、通常テスト6本の直接実行成功を採用した。依存・compile cacheの使用はありcold-cacheではない。JUnit artifact全量・case総数は今回未回収。compiled coverageの4profile guard成功も公式ログで確認した。旧85分timeout run 43521977171は失敗履歴を維持し、新weights・新head成功を旧障害原因の証明やflake認定へ拡張しない。
+
+最終Coreは従来の8PR内容を保持し、最新main `1f0ac7b1054651c053cc47a22aa6ba607c4412f7` と[closure PR #4410](https://github.com/kenta-0420/mannschaft/pull/4410)最新head `bcd80bb0f9278f9608084bf2829a423dca5de502` を通常mergeした。main増分は招待受諾の並行性試験3ファイルと証拠文書1ファイルで、文書のみの前進とは扱わない。最終B0成果の通常merge後、最終Coreの実headで全CIとstrict/current-main資格を確認する。旧Core・各支援のCI成功を最終Coreの成功へ読み替えない。force/squash/rebase/admin/bypassは使用しない。
+
+### 現時点の残務
+
+R14のformal f1作成2＋f2残12の分割資格、元f2 false、normal2等のERR_ABORTEDとtransportClean false、Signageの限定採用と認可残課題は上記履歴のまま保持する。R15の全10cleanup ACK（cancel200が1、DELETE204が9）と各原FINALを親担当が直接照合し、実探索3contextのCLOSED/native0を採用した。既ACKの再送は0。閉鎖前summaryのopen記載とdriver既定のac36Passed falseは原値のまま保持し、後続の閉鎖証拠・親担当のAC-36判定と区別する。closure/通知/加入履歴は専用DB最終破棄まで保持する。回復runtime・専用DB・scratch/Jarの撤去は未完で、完了を先取りしない。
+
+最終B0登録・通常同期/generator/全validator/実IDB確認、外closure担当の最終引渡し、最終Core差分の採択・実head CI・ready・main採用は進行中。8PRのmain採用後に支援子CMPの完了証拠と正本状態を通常docs PRで確定する。親戦役・L1-R全164型はP4実装中を維持し、支援CMPの完了・引継ぎ削除・全残務完了を先取りしない。公開文書へprivate操作識別子・資格情報・ローカル能力URL・原画像本体は追加しない。
