@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { DigestConfigResponse, DigestConfigRequest } from '~/types/timeline-digest'
 
-defineProps<{
+const props = defineProps<{
   scopeType: 'ORGANIZATION' | 'TEAM'
-  scopeId: string
+  scopeId: number
 }>()
 
 const { getConfig, updateConfig } = useTimelineDigestApi()
@@ -14,7 +14,8 @@ const loading = ref(false)
 const saving = ref(false)
 
 const config = ref<DigestConfigRequest>({
-  scopeId: '',
+  scopeType: props.scopeType,
+  scopeId: props.scopeId,
   digestStyle: 'SUMMARY',
   autoPublish: false,
   includeReactions: true,
@@ -35,7 +36,8 @@ const styleOptions = computed(() => [
 async function loadConfig() {
   loading.value = true
   try {
-    const res = await getConfig()
+    const res = await getConfig(props.scopeType, props.scopeId)
+    if (!active) return
     const data: DigestConfigResponse = res.data
     config.value.digestStyle = data.digestStyle
     config.value.autoPublish = data.autoPublish
@@ -44,6 +46,7 @@ async function loadConfig() {
     autoGenerateEnabled.value = data.isEnabled
     cronExpression.value = data.scheduleTime ?? ''
   } catch {
+    if (!active) return
     notification.error(t('timeline_digest.error_load_config'))
   } finally {
     loading.value = false
@@ -55,6 +58,8 @@ async function saveConfig() {
   try {
     await updateConfig({
       ...config.value,
+      scopeType: props.scopeType,
+      scopeId: props.scopeId,
       scheduleTime: cronExpression.value || undefined,
     })
     notification.success(t('timeline_digest.success_save_config'))
@@ -65,6 +70,10 @@ async function saveConfig() {
   }
 }
 
+let active = true
+onBeforeUnmount(() => {
+  active = false
+})
 onMounted(loadConfig)
 </script>
 
@@ -91,7 +100,9 @@ onMounted(loadConfig)
 
       <div class="flex items-center gap-3">
         <Checkbox v-model="includeAnonymousMembers" :binary="true" input-id="includeAnon" />
-        <label for="includeAnon" class="text-sm font-medium">{{ $t('timeline_digest.label_include_anonymous') }}</label>
+        <label for="includeAnon" class="text-sm font-medium">{{
+          $t('timeline_digest.label_include_anonymous')
+        }}</label>
       </div>
 
       <div v-if="autoGenerateEnabled" class="flex flex-col gap-1">
