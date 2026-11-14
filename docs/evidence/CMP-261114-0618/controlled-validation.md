@@ -16,7 +16,7 @@ v3 historical sourceと最終headは所有テストblob `46e9ea405e3a6ac9a8fa272
 
 [Backend CI run 43571979399](https://github.com/kenta-0420/mannschaft/actions/runs/43571979399) は実装head `beb62201ba183d64e5ff469ea3d2e18c1ac9ee0c` に対してsuccess。実checkout `dcb92eff14d9cf1c29b2495ba610d7e2bb4982b1` はparentsが固定mainと実装head、treeは実装headと同一であることを公式commit応答でも確認した。
 
-通常6shardと専用Archは全てfresh。通常33,310件（成功33,293・skip17）、検索14件・整合性6件は全成功。Role coreはConcurrency46＋RowWait12＋Diagnostics3＝61件成功で、Native2件成功は別群。archUnitTest37件、freeze integrity12件、専用archTest465件も成功した。Rootが原runtime6件・Arch1件・log1件・通常XML6件を各1GETで取得した原本を独立parserで確認し、XML headerと全case indexの件数、全classのsource mappingが一致した。cached取得0、coverage/full results取得0。旧headのrun 43551890889の件数はこの結果へ移していない。
+通常6shardと専用Archは全てfresh。通常33,310件（成功33,293・skip17）、検索14件・整合性6件は全成功。Role coreはConcurrency46＋RowWait12＋Diagnostics3＝61件成功で、Native2件成功は別群。archUnitTest37件、freeze integrity12件、専用archTest465件も成功した。担当が原runtime6件・Arch1件・log1件・通常XML6件を各1GETで取得し、Rootが独立parserで確認して、XML headerと全case indexの件数、全classのsource mappingが一致した。cached取得0、coverage/full results取得0。旧headのrun 43551890889の件数はこの結果へ移していない。
 
 ## 証拠の識別と適用範囲
 
