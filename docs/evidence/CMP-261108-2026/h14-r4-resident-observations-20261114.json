@@ -1,0 +1,4144 @@
+{
+  "proposalOnly": false,
+  "intendedEvidencePath": "docs/evidence/CMP-261108-2026/h14-r4-resident-observations-20261114.json",
+  "baselineCommit": "3ba61ee72b8c465b48da8872b999cb162bd2a9f4",
+  "baselineCounts": [
+    73,
+    73,
+    136
+  ],
+  "unappliedR2Proposal": {
+    "path": "outputs/ranch-h14-r2-partial-observation-prep-20261114/resident-overlay.proposal.json",
+    "sha256": "896e0dc4813a0dbb3737be41739f2a818f45b07ed6e2dfc4c249b9b0f116240d",
+    "counts": [
+      76,
+      76,
+      143
+    ]
+  },
+  "runId": "ranchmapping-0d2a31d6460538a875260c6c",
+  "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+  "personas": [
+    {
+      "id": "ALIC-CMP261108-H14R4-R1",
+      "personaArchetype": "一般×素直",
+      "runId": "ranchmapping-0d2a31d6460538a875260c6c",
+      "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+      "evidencePath": "docs/evidence/CMP-261108-2026/h14-r4-resident-observations-20261114.json",
+      "originalResidentId": "resident-1",
+      "idAssignment": "原reportに登録用persona IDなし、登録時付与。固定P01-P20変換なし。",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false
+    },
+    {
+      "id": "ALIC-CMP261108-H14R4-R2",
+      "personaArchetype": "注意中断×復帰",
+      "runId": "ranchmapping-0d2a31d6460538a875260c6c",
+      "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+      "evidencePath": "docs/evidence/CMP-261108-2026/h14-r4-resident-observations-20261114.json",
+      "originalResidentId": "resident-2",
+      "idAssignment": "原reportに登録用persona IDなし、登録時付与。固定P01-P20変換なし。",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false
+    },
+    {
+      "id": "ALIC-CMP261108-H14R4-R3",
+      "personaArchetype": "一般×モバイル表示",
+      "runId": "ranchmapping-0d2a31d6460538a875260c6c",
+      "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+      "evidencePath": "docs/evidence/CMP-261108-2026/h14-r4-resident-observations-20261114.json",
+      "originalResidentId": "resident-3",
+      "idAssignment": "原reportに登録用persona IDなし、登録時付与。固定P01-P20変換なし。",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false
+    }
+  ],
+  "journeys": [
+    {
+      "id": "ALIC-CMP261108-H14R4-R1-J1",
+      "personaId": "ALIC-CMP261108-H14R4-R1",
+      "purpose": "自分の性格を知り、それがどんな恐竜の分身につながるか確認し、後から結果を見返せるか理解する",
+      "runId": "ranchmapping-0d2a31d6460538a875260c6c",
+      "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+      "evidencePath": "docs/evidence/CMP-261108-2026/h14-r4-resident-observations-20261114.json",
+      "idAssignment": "原reportにjourney IDなし、登録時付与。",
+      "actorReportAccepted": true,
+      "allGoalsReached": true,
+      "goalOutcomeScope": "元割当目的・同session内の結果再訪と文章理解だけ。全後段の成功を意味しない。",
+      "resultRevisitReached": true,
+      "limitations": [
+        "Same-session revisits only, not another device/day or fresh login",
+        "Mobile390/360 touch emulation, not physical phone or keyboard",
+        "Residents did not start eggs, hatch, adopt appearances or perform care; scripted core covers separate owned scenarios",
+        "Tool errors preserved, no claim that all IPC requests succeeded",
+        "Subjective friction remains observations, not blockers"
+      ],
+      "fullAfter": "PASS",
+      "ownedCleanup": "PASS",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false,
+      "actorRunCompleted": true
+    },
+    {
+      "id": "ALIC-CMP261108-H14R4-R2-J1",
+      "personaId": "ALIC-CMP261108-H14R4-R2",
+      "purpose": "自分の診断を試し、途中で別画面へ寄り道して戻り、結果を理解し後から見返す",
+      "runId": "ranchmapping-0d2a31d6460538a875260c6c",
+      "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+      "evidencePath": "docs/evidence/CMP-261108-2026/h14-r4-resident-observations-20261114.json",
+      "idAssignment": "原reportにjourney IDなし、登録時付与。",
+      "actorReportAccepted": true,
+      "allGoalsReached": true,
+      "goalOutcomeScope": "元割当目的・同session内の結果再訪と文章理解だけ。全後段の成功を意味しない。",
+      "resultRevisitReached": true,
+      "limitations": [
+        "Same-session revisits only, not another device/day or fresh login",
+        "Mobile390/360 touch emulation, not physical phone or keyboard",
+        "Residents did not start eggs, hatch, adopt appearances or perform care; scripted core covers separate owned scenarios",
+        "Tool errors preserved, no claim that all IPC requests succeeded",
+        "Subjective friction remains observations, not blockers"
+      ],
+      "fullAfter": "PASS",
+      "ownedCleanup": "PASS",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false,
+      "actorRunCompleted": true
+    },
+    {
+      "id": "ALIC-CMP261108-H14R4-R3-J1",
+      "personaId": "ALIC-CMP261108-H14R4-R3",
+      "purpose": "本人の名前と生年月日から分身の結果を確認し、後から見返し、育て方を理解する",
+      "runId": "ranchmapping-0d2a31d6460538a875260c6c",
+      "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+      "evidencePath": "docs/evidence/CMP-261108-2026/h14-r4-resident-observations-20261114.json",
+      "idAssignment": "原reportにjourney IDなし、登録時付与。",
+      "actorReportAccepted": true,
+      "allGoalsReached": true,
+      "goalOutcomeScope": "元割当目的・同session内の結果再訪と文章理解だけ。全後段の成功を意味しない。",
+      "resultRevisitReached": true,
+      "limitations": [
+        "Same-session revisits only, not another device/day or fresh login",
+        "Mobile390/360 touch emulation, not physical phone or keyboard",
+        "Residents did not start eggs, hatch, adopt appearances or perform care; scripted core covers separate owned scenarios",
+        "Tool errors preserved, no claim that all IPC requests succeeded",
+        "Subjective friction remains observations, not blockers"
+      ],
+      "fullAfter": "PASS",
+      "ownedCleanup": "PASS",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false,
+      "actorRunCompleted": true
+    }
+  ],
+  "insightIds": [
+    "ALIC-CMP261108-H14R4-R1-I001",
+    "ALIC-CMP261108-H14R4-R1-I002",
+    "ALIC-CMP261108-H14R4-R2-I003",
+    "ALIC-CMP261108-H14R4-R2-I004",
+    "ALIC-CMP261108-H14R4-R2-I005",
+    "ALIC-CMP261108-H14R4-R3-I006",
+    "ALIC-CMP261108-H14R4-R3-I007"
+  ],
+  "selectedEvidence": [
+    {
+      "insightId": "ALIC-CMP261108-H14R4-R1-I001",
+      "privateImageRefs": [
+        {
+          "path": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r4-20261113T201248894Z-faf320b7f2f7/ranchmapping-0d2a31d6460538a875260c6c/ui-mailbox/resident-1/screen-5.png",
+          "sha256": "f598e86206a85ae0a10965050ddb60533e6d2946bf445421aac2a138a8bff22e",
+          "hashProvenance": "root evidence-pins-r2 screens",
+          "workerImageBytesRead": 0
+        }
+      ]
+    },
+    {
+      "insightId": "ALIC-CMP261108-H14R4-R1-I002",
+      "privateImageRefs": [
+        {
+          "path": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r4-20261113T201248894Z-faf320b7f2f7/ranchmapping-0d2a31d6460538a875260c6c/ui-mailbox/resident-1/screen-46.png",
+          "sha256": "0a6ea73755045d0b19e52d7989eef0fda60f3b70a1b7d4ad8c28333502d8d644",
+          "hashProvenance": "root evidence-pins-r2 screens",
+          "workerImageBytesRead": 0
+        },
+        {
+          "path": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r4-20261113T201248894Z-faf320b7f2f7/ranchmapping-0d2a31d6460538a875260c6c/ui-mailbox/resident-1/screen-39.png",
+          "sha256": "31f21ce2d56f1340f5051bcbf00a2d28f53671bb8f6b5d34ea64a18fe2aeac24",
+          "hashProvenance": "root evidence-pins-r2 screens",
+          "workerImageBytesRead": 0
+        }
+      ]
+    },
+    {
+      "insightId": "ALIC-CMP261108-H14R4-R2-I003",
+      "privateImageRefs": [
+        {
+          "path": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r4-20261113T201248894Z-faf320b7f2f7/ranchmapping-0d2a31d6460538a875260c6c/ui-mailbox/resident-2/screen-45.png",
+          "sha256": "a02aa64c2454d68b00bf4404ca26fcd20216211112a7dfe8d559b852eaf56eb5",
+          "hashProvenance": "root evidence-pins-r2 screens",
+          "workerImageBytesRead": 0
+        }
+      ]
+    },
+    {
+      "insightId": "ALIC-CMP261108-H14R4-R2-I004",
+      "privateImageRefs": [
+        {
+          "path": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r4-20261113T201248894Z-faf320b7f2f7/ranchmapping-0d2a31d6460538a875260c6c/ui-mailbox/resident-2/screen-45.png",
+          "sha256": "a02aa64c2454d68b00bf4404ca26fcd20216211112a7dfe8d559b852eaf56eb5",
+          "hashProvenance": "root evidence-pins-r2 screens",
+          "workerImageBytesRead": 0
+        },
+        {
+          "path": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r4-20261113T201248894Z-faf320b7f2f7/ranchmapping-0d2a31d6460538a875260c6c/ui-mailbox/resident-2/screen-58.png",
+          "sha256": "64f79d05b6a371c4d4579dbf22277c3f0ce2a654f22847ca9552163c80182ec6",
+          "hashProvenance": "root evidence-pins-r2 screens",
+          "workerImageBytesRead": 0
+        }
+      ]
+    },
+    {
+      "insightId": "ALIC-CMP261108-H14R4-R2-I005",
+      "privateImageRefs": [
+        {
+          "path": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r4-20261113T201248894Z-faf320b7f2f7/ranchmapping-0d2a31d6460538a875260c6c/ui-mailbox/resident-2/screen-60.png",
+          "sha256": "3506f2946e47c65e3f4c922dcae9dfca149f09ed26ddbdbee71e90328db9bfbf",
+          "hashProvenance": "root meaning adoption rootViewedImages (additional root-verified screenshot)",
+          "workerImageBytesRead": 0
+        }
+      ]
+    },
+    {
+      "insightId": "ALIC-CMP261108-H14R4-R3-I006",
+      "privateImageRefs": [
+        {
+          "path": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r4-20261113T201248894Z-faf320b7f2f7/ranchmapping-0d2a31d6460538a875260c6c/ui-mailbox/resident-3/screen-34.png",
+          "sha256": "48a5d6dee2f5a48e715f81248fde064db899231a95d6532d5bae840a69ae89f8",
+          "hashProvenance": "root evidence-pins-r2 screens",
+          "workerImageBytesRead": 0
+        },
+        {
+          "path": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r4-20261113T201248894Z-faf320b7f2f7/ranchmapping-0d2a31d6460538a875260c6c/ui-mailbox/resident-3/screen-37.png",
+          "sha256": "30853390ca99367e94626b99cb466368f6741ca872dfa9f0d76e82d5e51cc8cc",
+          "hashProvenance": "root evidence-pins-r2 screens",
+          "workerImageBytesRead": 0
+        },
+        {
+          "path": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r4-20261113T201248894Z-faf320b7f2f7/ranchmapping-0d2a31d6460538a875260c6c/ui-mailbox/resident-3/screen-39.png",
+          "sha256": "11c5ec099e2725a461db28476dc7eca4ba98c20e24645a381ad6a51c5bcc2866",
+          "hashProvenance": "root evidence-pins-r2 screens",
+          "workerImageBytesRead": 0
+        }
+      ]
+    },
+    {
+      "insightId": "ALIC-CMP261108-H14R4-R3-I007",
+      "privateImageRefs": [
+        {
+          "path": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r4-20261113T201248894Z-faf320b7f2f7/ranchmapping-0d2a31d6460538a875260c6c/ui-mailbox/resident-3/screen-24.png",
+          "sha256": "9f0e67b23e8ecd374c17e27fda922fffc962f0009d043a92a232e2ddb1d1954a",
+          "hashProvenance": "root evidence-pins-r2 screens",
+          "workerImageBytesRead": 0
+        }
+      ]
+    }
+  ],
+  "sourceArtifacts": [
+    {
+      "residentId": "resident-1",
+      "md": {
+        "path": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r4-20261113T201248894Z-faf320b7f2f7/ranchmapping-0d2a31d6460538a875260c6c/ui-mailbox/resident-1/exploration-report.md",
+        "sha256": "2b31ca075f3a90d1bc9e4d613a1b063cc9ae7ff5da49030a995680b9a864c99b"
+      },
+      "json": {
+        "path": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r4-20261113T201248894Z-faf320b7f2f7/ranchmapping-0d2a31d6460538a875260c6c/ui-mailbox/resident-1/exploration-report.json",
+        "sha256": "f460b81213f927a9099061966e4261d711946073e62d268abd342925cda83575"
+      },
+      "counts": {
+        "evidence": 52,
+        "reportedError": 2,
+        "responseError": 2,
+        "statusNotProvided": 0,
+        "inboxPhysicallyAbsent": 52,
+        "screens": 50,
+        "mechanicalIssues": 0
+      },
+      "rootPinnedEvidence": [
+        {
+          "id": "04be35c3-b5d8-4cf5-b818-eefa43b73dc9",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 459,
+            "sha256": "e660531f8e7b1b461196801ce553add6342cfba0b569b6585449913647e04299"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-47.png"
+          ],
+          "referencedScreens": [
+            "screen-47.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "07184c10-8d67-4dd2-89fe-8854c9c04b05",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39502,
+            "sha256": "7410c81b35bfbc12bed445d32d7081e0c700ed5d7f0d3525bdf502207d4f8f4c"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-35.png"
+          ],
+          "referencedScreens": [
+            "screen-35.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "07c44d4d-2587-4cae-9a07-6068eb1a7f23",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39515,
+            "sha256": "91c7893a14e64e000829e5a4a6daef90f4e9e7446efdc33f24180465f947f1aa"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-21.png"
+          ],
+          "referencedScreens": [
+            "screen-21.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "0ac98fa5-93b7-4ced-830c-0a332db17802",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 5099,
+            "sha256": "0240462af309f32811a2ba434d3c57fbbb794be0701967d2742c14d50e7d78b2"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-8.png"
+          ],
+          "referencedScreens": [
+            "screen-8.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "10c6c980-4440-4032-a26e-d5662ab52510",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 5832,
+            "sha256": "6fcaaab58a360c04ff61fdacbe500b65956eabc4d070d9d24d0672f60e7fe78a"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-42.png"
+          ],
+          "referencedScreens": [
+            "screen-42.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "14f812f2-4961-4ffa-b49e-b6bf8ed2eb40",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 7704,
+            "sha256": "05c5129b1979b88e62d23b1e914fd0691ba369fbc276212d8605d5de5dd6e28c"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-50.png"
+          ],
+          "referencedScreens": [
+            "screen-50.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "28372f17-8f38-492b-9b68-080d814d61b4",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39517,
+            "sha256": "bd2301ef2a6c186486ff9f5dd513f0f5d2aeb31a3c7b7830740f0adb6f633501"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-19.png"
+          ],
+          "referencedScreens": [
+            "screen-19.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "2bccabc0-cf6a-4558-9aee-f0f7fa58e99e",
+          "reportedStatus": "ERROR",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 275,
+            "sha256": "b58c50ccf537ebba63e6a8917c24180d92c61e735c0b436a1faf19c9ff159268"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "ERROR",
+          "idMatches": true,
+          "responseScreens": [],
+          "referencedScreens": [],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "2fd3fd7e-2fc9-49f3-89c7-a7df27b0d40f",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39523,
+            "sha256": "1ad179124e20e012424ed10248476e96263a41539e30d34c792d82c322927071"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-13.png"
+          ],
+          "referencedScreens": [
+            "screen-13.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "3c875438-d030-47bb-8714-2a02c7e67833",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 5290,
+            "sha256": "6e9b9dbee7ff2f12fc6d2259e0199f967994fdf2783b97e2343793cf2b728051"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-44.png"
+          ],
+          "referencedScreens": [
+            "screen-44.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "3ccbf062-7115-43af-b650-9794f84d7ab3",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39520,
+            "sha256": "7e972e6b89aed00578cff1e7bf825863e41e4b93e5316cd7ff309c53f2432c67"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-16.png"
+          ],
+          "referencedScreens": [
+            "screen-16.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "419a9f69-a69b-4b17-b25d-306ef548161b",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 14036,
+            "sha256": "b2d13694d563c1df54ee80b253c6a06a876276ef597106f63dc5b61f58179c92"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-2.png"
+          ],
+          "referencedScreens": [
+            "screen-2.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "4d69b7a3-a176-4dcb-8e4e-fd98098dd1c4",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 5099,
+            "sha256": "6ac34f8e276f745c5b1951c8b4d903a9f3b62b65366668f58f8438d6b07916d2"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-7.png"
+          ],
+          "referencedScreens": [
+            "screen-7.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "539ec504-1398-4b56-a946-38c0f8b8d730",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39513,
+            "sha256": "91925d2a261b1a3590c1de4f449940033f2ece06e8ff98c4298e6acbe5e6d97b"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-23.png"
+          ],
+          "referencedScreens": [
+            "screen-23.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "55d76030-0ccf-4371-b105-7c81ad0f302c",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39511,
+            "sha256": "16ec73f24710c57df9944aaa365fa50ec70aeb2537ecf735136cd0904ff41d7f"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-25.png"
+          ],
+          "referencedScreens": [
+            "screen-25.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "56d5e0f8-6d7d-4c85-bd79-2ea194e8f95b",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 4938,
+            "sha256": "21e12f42cfab191b01c068cdcd9b87f561ea85a734cc448fe0b0be609f927420"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-10.png"
+          ],
+          "referencedScreens": [
+            "screen-10.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "6193b345-7b40-4ec9-b50e-edeb9240f0e3",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39518,
+            "sha256": "de4527923278918adfd1901fad5a1e9bd823d57858491e5ccbd321b9b3e83854"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-18.png"
+          ],
+          "referencedScreens": [
+            "screen-18.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "63bc41e0-6754-4b0c-bd00-aed33b9fd04e",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39504,
+            "sha256": "0e61dc4705b8933f306572b3fd0e71683e31c09422bf6eb123b36ea016fe851a"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-32.png"
+          ],
+          "referencedScreens": [
+            "screen-32.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "68d0495f-0eae-4f09-8a3e-83a15b921d71",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 6881,
+            "sha256": "26f773f631b2c79eea0e2f3ebd9aadc4be625d97c2809a46053056b7a4681e79"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-38.png"
+          ],
+          "referencedScreens": [
+            "screen-38.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "6a13cbc0-29db-47a9-aa56-fcddf7bd4b6a",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39502,
+            "sha256": "13f787cc4e87a2255a2d3ec0577a61bfd6941be474a696f210a6a2fef996a503"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-34.png"
+          ],
+          "referencedScreens": [
+            "screen-34.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "723ceeb4-fdc5-412b-a268-126a4649faab",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 5831,
+            "sha256": "1cee81aa9cabf7f88c65af3e7657cf36e19d8a36efd655351c0af67741e4d5dc"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-6.png"
+          ],
+          "referencedScreens": [
+            "screen-6.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "772fc29c-982b-49af-8b04-0224edb5c113",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39524,
+            "sha256": "9cc466b5eb4d82c817b4d6385518386edae2ef631b5ee29994b4a0fc2fd54619"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-12.png"
+          ],
+          "referencedScreens": [
+            "screen-12.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "783231a6-fcc8-44f2-9955-bdc1148dd7e9",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 5615,
+            "sha256": "f1311fff80d7ab3c266192293890790b36bcba2f932c2d8fd0c5088b025aa231"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-48.png"
+          ],
+          "referencedScreens": [
+            "screen-48.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "82556265-b070-4b9d-af00-d0ea814f59ae",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39519,
+            "sha256": "9fc0414db1af0a095f43ecdf7ee46f6c11b8572a62d0470085977f344c5b6edb"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-17.png"
+          ],
+          "referencedScreens": [
+            "screen-17.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "829c3cd0-8ced-4fa5-b14e-f74d9f808806",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39509,
+            "sha256": "0b064887a951e18d2cc3d4ce753ce9ffb816958ee1606436f948393db41386c6"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-27.png"
+          ],
+          "referencedScreens": [
+            "screen-27.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "8c00cf92-1c0e-400c-924b-53b31d3ec232",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 6700,
+            "sha256": "996592867e0d607abd24f85fc3f6e2e183784535567ad0dbc4f588a21755e01f"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-3.png"
+          ],
+          "referencedScreens": [
+            "screen-3.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "9a4675f0-1022-42f3-b632-186d43e9739f",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39525,
+            "sha256": "dd9db0017df6ab50fe5622c8ae02f78be43a30cb439ba3b93f1879f2d53f0dc4"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-11.png"
+          ],
+          "referencedScreens": [
+            "screen-11.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "9ad3ed60-1247-4d74-a8a0-dd3d981f822a",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39522,
+            "sha256": "1ec3b863aa95ff0189981ea1a5050aeceaf2341d1a35bc97ebb36db997e0556f"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-14.png"
+          ],
+          "referencedScreens": [
+            "screen-14.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "a16ee188-beb6-4698-9b7e-080d187d2df8",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39508,
+            "sha256": "360952955693ca2be89a6f9a146b8fd11e2d73d36bf1c7ba5232f6f3db3857c2"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-28.png"
+          ],
+          "referencedScreens": [
+            "screen-28.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "a4d14ebf-48eb-4fc1-a327-d009f3e42517",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 5290,
+            "sha256": "7649fbc828e9c263cbe9c26c796dab18e678cbdeee508c3ca167dc2dc4b12d08"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-45.png"
+          ],
+          "referencedScreens": [
+            "screen-45.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "b08e5725-2f54-4138-b0a7-1cce3ef9c6e1",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39507,
+            "sha256": "74c044edcadd8676d894cdce80fc1ea8c839f3c103d5f2fb059765bd44424ddb"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-29.png"
+          ],
+          "referencedScreens": [
+            "screen-29.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "b35f142f-f534-4a7c-be79-3685315beb91",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 14036,
+            "sha256": "9a5ef351d521ada09cfe9e05f139568203af019b943feaa1473b2b4f43c565bf"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-1.png"
+          ],
+          "referencedScreens": [
+            "screen-1.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "b5d6a01a-0342-461e-9303-6fff83aba0a2",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 4983,
+            "sha256": "a1858c323064048655218eeaafae52f1fef0169e9030cacb872f1694b80820a9"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-37.png"
+          ],
+          "referencedScreens": [
+            "screen-37.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "b65d2517-95cf-4f98-a613-6e68a4733a31",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 7704,
+            "sha256": "65af8e23e0dfb1e9a0a36ff77bd35a3195a27a4f171788cc6593c622c8daf0b8"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-49.png"
+          ],
+          "referencedScreens": [
+            "screen-49.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "c733cded-c975-4d58-ac76-b3a87f9555f6",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39510,
+            "sha256": "3622399e401179336261b0f4a9c8b240c753f59401a54ab53280f3a833ca2a16"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-26.png"
+          ],
+          "referencedScreens": [
+            "screen-26.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "c80f2c3e-d054-478f-96aa-bbd42cde8cb5",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 6881,
+            "sha256": "05faeecb7bc3b1d2d4b19935750633a1fefd479477fb17a488381e6c69bc996b"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-40.png"
+          ],
+          "referencedScreens": [
+            "screen-40.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "cab8cc13-c7bb-46c6-8c69-2a843af05f21",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 6700,
+            "sha256": "ee1bce77768993bb1792cbde520c9180dc81e56e4532dd73893e8743104bd064"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-4.png"
+          ],
+          "referencedScreens": [
+            "screen-4.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "ce5a6bdf-d94e-4b8e-9892-d01cc74abf36",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 43084,
+            "sha256": "1a762365078c7435bfd7f812bd97d4773d3dd204f5a5ebdb1d850da5d063a6eb"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-36.png"
+          ],
+          "referencedScreens": [
+            "screen-36.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "cf643082-4cdd-48f4-9208-d9b93250660f",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39505,
+            "sha256": "5221afc13e9787a953963101534bacbfef978b748f422471c87574a91917ce1c"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-31.png"
+          ],
+          "referencedScreens": [
+            "screen-31.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "d22323a9-304d-43ea-8364-8c9c4a206122",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39506,
+            "sha256": "9e08e30523ec0f164ef7cdfbf9d40fc60b098567f0fba2f8c50b5d8c1960feb6"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-30.png"
+          ],
+          "referencedScreens": [
+            "screen-30.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "d31556fc-1529-4395-a78c-e763259ece2e",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39516,
+            "sha256": "f1ae948b9ae6a0bdd1e7bca098497eef46e08b64ab7957bded3d23b4861dcbfe"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-20.png"
+          ],
+          "referencedScreens": [
+            "screen-20.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "d9b99074-a575-430a-8d56-bc6eb9a038ed",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 6881,
+            "sha256": "e1ce022eb2f074139dfcd2f46181e579ddd6fea1ebb105130366a1841ca282f0"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-46.png"
+          ],
+          "referencedScreens": [
+            "screen-46.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "dccf9e74-5376-4c26-99d8-ce9a51d560aa",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39512,
+            "sha256": "e5411f1e3ede56fdf0be0b5b90857e5c07d601c360d02624364d10ecb240f0d1"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-24.png"
+          ],
+          "referencedScreens": [
+            "screen-24.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "e211c158-5e14-4f4c-ba7d-1e2c1b3c4c7e",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39514,
+            "sha256": "c3a5a120be1b6b71ff9a6d76a80c7a9ea338f15a1459c63e64d4406a179619b2"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-22.png"
+          ],
+          "referencedScreens": [
+            "screen-22.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "e45014b0-4e30-473f-9b25-d97b4da68d2d",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 5169,
+            "sha256": "7cfff644673ea7729b74d2ede0d09d78f40aa5ada22f9e7f9de010d151952b3f"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-9.png"
+          ],
+          "referencedScreens": [
+            "screen-9.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "e4ba9572-2f00-4d83-91d8-1ada759ec7a9",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39503,
+            "sha256": "49d742cfab843be45f1335e7532814dd21c2da8944c5ebf484187a910ec91b19"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-33.png"
+          ],
+          "referencedScreens": [
+            "screen-33.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "ed5bcb06-d694-4261-8aad-d572fb3ec234",
+          "reportedStatus": "ERROR",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 327,
+            "sha256": "6b90dc5ff94dbaafa56b7c1aeceb7a1a06a19ca1a1e0f4cc859818c6314f2e2a"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "ERROR",
+          "idMatches": true,
+          "responseScreens": [],
+          "referencedScreens": [],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "f17894a6-1879-4459-b35a-bf88604cc9c1",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 5831,
+            "sha256": "1bbd361723222030d7fad1318e89c407ca058edd7115db2c0cbde1949a9d77e7"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-5.png"
+          ],
+          "referencedScreens": [
+            "screen-5.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "f32e25c2-e5c5-4023-956a-f9b497b2b15e",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 5832,
+            "sha256": "0538dff8e505b3fcc79833f3be7a97286b23207b915228a67dfb3f723551703d"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-43.png"
+          ],
+          "referencedScreens": [
+            "screen-43.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "f3f7ce6f-0784-4da4-a8a9-5cc8722c96ef",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 459,
+            "sha256": "edae87f322f97223db7b93fb4bd5526010c0795de20c66a9ebb833a480dd9a77"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-41.png"
+          ],
+          "referencedScreens": [
+            "screen-41.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "f7a44903-a058-4843-b55e-b25d4dfab54f",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 6881,
+            "sha256": "0b12848d7afdddf38a23b49635bd893528eb54d558276ea01a03ffa306e7a9ef"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-39.png"
+          ],
+          "referencedScreens": [
+            "screen-39.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "f8db7d33-e022-4ad4-85fa-88735589acd8",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39521,
+            "sha256": "5912730dfcf93e47bce01c35b7d83f808f13f05886566dbe80b17f74254133ee"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-15.png"
+          ],
+          "referencedScreens": [
+            "screen-15.png"
+          ],
+          "screenReferencesInResponse": true
+        }
+      ],
+      "rootPinnedScreens": [
+        {
+          "name": "screen-1.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 93648,
+          "sha256": "c8c1de9367faa2c1956359f73f96dbf98b8217cfa5cea3524d86e16f008cdc4c"
+        },
+        {
+          "name": "screen-10.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 73042,
+          "sha256": "1a88ae12d4c544bc34aebb5adc30e15c7aeaa27a1043c6e94949912d2367dbe1"
+        },
+        {
+          "name": "screen-11.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 124344,
+          "sha256": "524854d228d9aa4ceed645d8bd35f6fda6d44f4f088a2c9b0a53d88259d39167"
+        },
+        {
+          "name": "screen-12.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 125092,
+          "sha256": "a658c13cfe234bf866192901918f59d676534c0be152c1bbb68b6df500a386fe"
+        },
+        {
+          "name": "screen-13.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 125665,
+          "sha256": "156ba5bebb7881c71a4dc9b08326c8794fe91d430a24f484ec8508f8c0c5c8ea"
+        },
+        {
+          "name": "screen-14.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 126375,
+          "sha256": "6f8f8b73aaf47d953bd73c984daf9f73c584923253c6eeea4a92554be8b9ffd2"
+        },
+        {
+          "name": "screen-15.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 111173,
+          "sha256": "8b1fca53da7b1c1c96118786541eb7533d3742f6415dcaf78ef646dc04e2fc82"
+        },
+        {
+          "name": "screen-16.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 111889,
+          "sha256": "d47f2a4ff7c3f81351b0713c48d25a354380159eb0a8cdec2bff1da6dbc79a6b"
+        },
+        {
+          "name": "screen-17.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 112544,
+          "sha256": "20d0563febb73a804382300cd2fc0a654db21835e483fcf0a0ad956ce868b5f8"
+        },
+        {
+          "name": "screen-18.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 111549,
+          "sha256": "4efcd8b7564b343ef1646ea0806d3ad3d437fd8a8d21b0e7886dc5bc74b182a1"
+        },
+        {
+          "name": "screen-19.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 112180,
+          "sha256": "959e40a3900d3823e507dcccf24db71432c9c56761b93d263cfb48b490eeff55"
+        },
+        {
+          "name": "screen-2.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 95465,
+          "sha256": "9597ff0fbea00b5fb667aa21e3f68f848efdd94b82719ea762aa3e232e629709"
+        },
+        {
+          "name": "screen-20.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 112952,
+          "sha256": "8597b738294b93ad44655d5806026085c6a957373ccadc67f572de0419c58c00"
+        },
+        {
+          "name": "screen-21.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 113402,
+          "sha256": "560acef934c9415ffa21acfd2466c18e8c9a78adeaa19b645d46c6ff49209874"
+        },
+        {
+          "name": "screen-22.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 113961,
+          "sha256": "4082e2510e120a884f37357c4a6ddca3c5aa7e61591de969de533fe70212b118"
+        },
+        {
+          "name": "screen-23.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 114673,
+          "sha256": "6be8fa5353650fda91ac725b7f952d52c64ef935610e4c6126a27dbc70ad5735"
+        },
+        {
+          "name": "screen-24.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 113430,
+          "sha256": "870c3a81a2a3faaf3389c63c6c373f561c98d00f76c6452ff06a5b625c9db94b"
+        },
+        {
+          "name": "screen-25.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 114015,
+          "sha256": "28f0cab87e15f0bb4b6c25cd2fe8236e455e3ca78e4b7b9e99c8bb44e522d6b5"
+        },
+        {
+          "name": "screen-26.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 114681,
+          "sha256": "1b9d7e076559f0c215833ec1ebffa0f7ce9c89536ace006b61f6b57286b9a1ec"
+        },
+        {
+          "name": "screen-27.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 110094,
+          "sha256": "400249544a2e62093de058a056db16ec1dc063498e597c17f0b2a83fda7cab33"
+        },
+        {
+          "name": "screen-28.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 110752,
+          "sha256": "a6685851cf43c7337e310a6b70832c9c84e08ccde51474bdd9bbdfb93d2ea7ad"
+        },
+        {
+          "name": "screen-29.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 111521,
+          "sha256": "06cbcd1a43184146bb0499b6cbb41e1c30bb3e477200fd5454946cb2205318d5"
+        },
+        {
+          "name": "screen-3.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 91389,
+          "sha256": "de74ba1d047ad41ece2192a066965ca7be8b7bfc3c21426bfa8e6c6fcb662d0b"
+        },
+        {
+          "name": "screen-30.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 108455,
+          "sha256": "ff862c776a1a4aec7f011252fdb91dcdf9a6af9ea486a009270fa9c2eb7c79fc"
+        },
+        {
+          "name": "screen-31.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 109158,
+          "sha256": "67a1895cfb6460e3caa6b55d1e8f624ee57225b00cda8d921e871359e3c5385d"
+        },
+        {
+          "name": "screen-32.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 109870,
+          "sha256": "814ed2ea83edddca644d5ad7aa68469f172ba8f3ebf35886d69ec082848453fd"
+        },
+        {
+          "name": "screen-33.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 111084,
+          "sha256": "02c2bc6a7b25ba7f88fa6b7756b458d8340f04c4b76e178ecde351bd7fb89284"
+        },
+        {
+          "name": "screen-34.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 111793,
+          "sha256": "71efebfecfcd74a9e2e2da2d7742c0c0dfbdc647fd4642d700d540313accd220"
+        },
+        {
+          "name": "screen-35.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 112407,
+          "sha256": "e40d038cf681d04e6c265f20a2a5b53148706f5d07423fb5d22cebc2d0d6fd94"
+        },
+        {
+          "name": "screen-36.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 112483,
+          "sha256": "0ec982a6d309d253a87401e42b74d0294a94773e32cb764276b5803bc420b76b"
+        },
+        {
+          "name": "screen-37.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 48577,
+          "sha256": "d2b98480e0ad6c3eeb85274db1c69f270c3d57b0b6c9b27af8a214baba876493"
+        },
+        {
+          "name": "screen-38.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 134992,
+          "sha256": "9b93ba06784ec86da21a70ba618b2b5aabdfcda900249e9f0b8f5335deabd608"
+        },
+        {
+          "name": "screen-39.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 144731,
+          "sha256": "31f21ce2d56f1340f5051bcbf00a2d28f53671bb8f6b5d34ea64a18fe2aeac24"
+        },
+        {
+          "name": "screen-4.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 91389,
+          "sha256": "de74ba1d047ad41ece2192a066965ca7be8b7bfc3c21426bfa8e6c6fcb662d0b"
+        },
+        {
+          "name": "screen-40.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 144731,
+          "sha256": "31f21ce2d56f1340f5051bcbf00a2d28f53671bb8f6b5d34ea64a18fe2aeac24"
+        },
+        {
+          "name": "screen-41.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 69402,
+          "sha256": "9c4362a26f98272c73e1f2658c7e40da356c6067756617a461be1c31511ad3d3"
+        },
+        {
+          "name": "screen-42.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 69402,
+          "sha256": "9c4362a26f98272c73e1f2658c7e40da356c6067756617a461be1c31511ad3d3"
+        },
+        {
+          "name": "screen-43.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 69402,
+          "sha256": "9c4362a26f98272c73e1f2658c7e40da356c6067756617a461be1c31511ad3d3"
+        },
+        {
+          "name": "screen-44.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 67880,
+          "sha256": "cdde2410d5cb71e04a8934dab29ccdde635c406b85ce502ebe420993b0a9082c"
+        },
+        {
+          "name": "screen-45.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 67880,
+          "sha256": "cdde2410d5cb71e04a8934dab29ccdde635c406b85ce502ebe420993b0a9082c"
+        },
+        {
+          "name": "screen-46.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 132688,
+          "sha256": "0a6ea73755045d0b19e52d7989eef0fda60f3b70a1b7d4ad8c28333502d8d644"
+        },
+        {
+          "name": "screen-47.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 44772,
+          "sha256": "b16ac5e1525bab8f1862267ca4931aff5fc910798ba7b0e28a1a4af7ad1ab32d"
+        },
+        {
+          "name": "screen-48.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 73116,
+          "sha256": "615571d00c64f8970a170a9a1cf5a7ac00b9c84598f06924e9c5219dd07ff3ae"
+        },
+        {
+          "name": "screen-49.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 204295,
+          "sha256": "2b8fa9a838271672d3088b298bca1a6a868d16513064ba38954729c1d33bc6a3"
+        },
+        {
+          "name": "screen-5.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 71618,
+          "sha256": "f598e86206a85ae0a10965050ddb60533e6d2946bf445421aac2a138a8bff22e"
+        },
+        {
+          "name": "screen-50.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 151835,
+          "sha256": "045844b58b836009771d9dcbef09e8d4258f875c26f19d446f580dbca10621d8"
+        },
+        {
+          "name": "screen-6.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 71618,
+          "sha256": "f598e86206a85ae0a10965050ddb60533e6d2946bf445421aac2a138a8bff22e"
+        },
+        {
+          "name": "screen-7.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 66178,
+          "sha256": "be72f734be9054b04c467656a87a7ce271384725841b79ca65aeb3fd561d12da"
+        },
+        {
+          "name": "screen-8.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 66178,
+          "sha256": "be72f734be9054b04c467656a87a7ce271384725841b79ca65aeb3fd561d12da"
+        },
+        {
+          "name": "screen-9.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 74365,
+          "sha256": "659fa7e25776e01ea165a135a1d0fb01ffcb6a84e006f510a90479453d2fc1b8"
+        }
+      ],
+      "imageBytesReadByWorker": 0,
+      "imageHashProvenance": "root pins only; image bytes not read"
+    },
+    {
+      "residentId": "resident-2",
+      "md": {
+        "path": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r4-20261113T201248894Z-faf320b7f2f7/ranchmapping-0d2a31d6460538a875260c6c/ui-mailbox/resident-2/exploration-report.md",
+        "sha256": "eda350b1847504365703872cd667034dcc121612c456517f336227dd48d54853"
+      },
+      "json": {
+        "path": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r4-20261113T201248894Z-faf320b7f2f7/ranchmapping-0d2a31d6460538a875260c6c/ui-mailbox/resident-2/exploration-report.json",
+        "sha256": "f253d66be2a825a45840f46a7d11b0076140dec378e816dc4c7f8a62d76ce83b"
+      },
+      "counts": {
+        "evidence": 18,
+        "reportedError": 0,
+        "responseError": 0,
+        "statusNotProvided": 18,
+        "inboxPhysicallyAbsent": 18,
+        "screens": 17,
+        "mechanicalIssues": 0
+      },
+      "rootPinnedEvidence": [
+        {
+          "id": "2172e08f-f2ba-4cc7-94ac-9745a4a286c4",
+          "reportedStatus": null,
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 539,
+            "sha256": "221855ae75e6d78cd82b08fb99e2afc1fc6ac33990413357fe80de2397e31618"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "NOT_PROVIDED_IN_REPORT",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [],
+          "referencedScreens": [],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "25b54895-0d0d-4bb5-b314-da7d5ac61333",
+          "reportedStatus": null,
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39525,
+            "sha256": "e175bbb83bfc40ddce167f97fa5dee5ce4c18da3f80fec8c67b81c8fe26a0bca"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "NOT_PROVIDED_IN_REPORT",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-15.png"
+          ],
+          "referencedScreens": [],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "2905f57d-f587-4028-8dc0-688798468bbc",
+          "reportedStatus": null,
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 6866,
+            "sha256": "da187cdc6868ada323991bebd739f52dbd20c0f49a05ba82c12552d80185247e"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "NOT_PROVIDED_IN_REPORT",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-51.png"
+          ],
+          "referencedScreens": [],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "32549e8d-b541-4e49-b8f6-9bc155f38b0e",
+          "reportedStatus": null,
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 6866,
+            "sha256": "009e842331c54eecf94b3e36b5469b449196107f4889a1a555d0586c7addea44"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "NOT_PROVIDED_IN_REPORT",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-58.png"
+          ],
+          "referencedScreens": [],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "46f4ad4b-c3cc-4426-ac08-632ffae9ee0f",
+          "reportedStatus": null,
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39502,
+            "sha256": "397e189e8bd146d020329877c475650f62980ae6a545eb0639986bee5c27d525"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "NOT_PROVIDED_IN_REPORT",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-48.png"
+          ],
+          "referencedScreens": [],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "5e10252c-ff80-417f-a2bb-60753494f300",
+          "reportedStatus": null,
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 14040,
+            "sha256": "477a6c02f4cbdd6f736b771cf0bc57640c11210127abd0cea083064dbecdab52"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "NOT_PROVIDED_IN_REPORT",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-52.png"
+          ],
+          "referencedScreens": [],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "6b90f194-863f-4f52-acaa-d8e179c017fc",
+          "reportedStatus": null,
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39504,
+            "sha256": "41200965b443782dbd16c9d7edf1339ff2c9e2e81d195d8192c7a27a9cb6afa0"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "NOT_PROVIDED_IN_REPORT",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-45.png"
+          ],
+          "referencedScreens": [],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "83815174-2525-40f5-8a4a-a52375e7c835",
+          "reportedStatus": null,
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39523,
+            "sha256": "09a4b5d4daddbbcac03458ade13deceea56db540dda9383b8bf9f01fb9f6d692"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "NOT_PROVIDED_IN_REPORT",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-17.png"
+          ],
+          "referencedScreens": [],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "838f6197-f765-41f7-85e9-b24b5db704ec",
+          "reportedStatus": null,
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 5100,
+            "sha256": "feddb24a5f1e972fd6ffbb07df06ec5a287857cbc1b619b62e473f232e01510d"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "NOT_PROVIDED_IN_REPORT",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-11.png"
+          ],
+          "referencedScreens": [],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "989b9439-2637-4076-b98c-d754ba7a11f9",
+          "reportedStatus": null,
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 546,
+            "sha256": "8e8bdc0119c470b9ef3276d6d92657bf53de6988d267ff0c72162474140cf9ad"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "NOT_PROVIDED_IN_REPORT",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [],
+          "referencedScreens": [],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "b33c6e64-69a3-4525-9dd0-8fc23a819ccd",
+          "reportedStatus": null,
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 6866,
+            "sha256": "2725d30b8f47c9d014e8ffba39fefbd94f94734b65bf50bfb2c526a471b10e59"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "NOT_PROVIDED_IN_REPORT",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-50.png"
+          ],
+          "referencedScreens": [],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "b8bd6f48-e5b8-4764-97e4-d38953fdd2f5",
+          "reportedStatus": null,
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 5831,
+            "sha256": "b3bd74ce8658661bca1b311a6bd278b2a0629a27acc04a38c80905d597de019f"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "NOT_PROVIDED_IN_REPORT",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-9.png"
+          ],
+          "referencedScreens": [],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "c005d7b9-f08a-47bd-a54e-a79925c4f156",
+          "reportedStatus": null,
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 5290,
+            "sha256": "14318defaf0abf503a0b84632fd17d925ee6e08ae0cdf7bc6bfe258bf748a39f"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "NOT_PROVIDED_IN_REPORT",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-56.png"
+          ],
+          "referencedScreens": [],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "c4e6c12d-7284-4d1b-b7b0-54ea3d42e495",
+          "reportedStatus": null,
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 5343,
+            "sha256": "955593dec22e9161d7ef86285bd67d9de36f703d4d12514c0482e03bb0713e84"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "NOT_PROVIDED_IN_REPORT",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-43.png"
+          ],
+          "referencedScreens": [],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "d03e27b7-2525-4b62-8fc0-e9db5078712c",
+          "reportedStatus": null,
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39523,
+            "sha256": "04b8db8d4a77ee859b6b45fb1f42e68b0952e5356973f349670605569e4c3fc9"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "NOT_PROVIDED_IN_REPORT",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-22.png"
+          ],
+          "referencedScreens": [],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "e64b86d8-4025-4005-be5c-e080a35a9ef2",
+          "reportedStatus": null,
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 7933,
+            "sha256": "34643776bf77ef989e7f25142129251590a5f4e0a45147bfb1d4f53b463d6b29"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "NOT_PROVIDED_IN_REPORT",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-20.png"
+          ],
+          "referencedScreens": [],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "f4b1a93e-43b0-4e21-a2e6-860b76340966",
+          "reportedStatus": null,
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 4983,
+            "sha256": "1f01db5d3c48af699e9c2031d7abdb418c4d485b90781ab06ce9a40fee885e44"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "NOT_PROVIDED_IN_REPORT",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-18.png"
+          ],
+          "referencedScreens": [],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "fe25ba96-9876-4839-9033-d1fef8b6a8b4",
+          "reportedStatus": null,
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 39504,
+            "sha256": "01b1af480a764d26aefd160a61d57440b6212bc2405e644e4f1735ad1c790601"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "NOT_PROVIDED_IN_REPORT",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-41.png"
+          ],
+          "referencedScreens": [],
+          "screenReferencesInResponse": true
+        }
+      ],
+      "rootPinnedScreens": [
+        {
+          "name": "screen-1.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 94063,
+          "sha256": "ea211896b29fa0a19d10fc3467e2e079ac1ee74cf17b6ed688b939aae07136b6"
+        },
+        {
+          "name": "screen-11.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 64076,
+          "sha256": "84221e6c15d53e0db49835299fa140481e9aa46c524dc307ba60519d9dc7a43e"
+        },
+        {
+          "name": "screen-15.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 121665,
+          "sha256": "0b4ee0d0a5d37f8a36fe1ecfa343e097f6409dac94d28864c0a3a0debe6a093b"
+        },
+        {
+          "name": "screen-17.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 122879,
+          "sha256": "a6d700661c7c93b1838b74ba523c090f4d3c7d66c70dfb6a83628602c004b49c"
+        },
+        {
+          "name": "screen-18.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 46181,
+          "sha256": "714f5e2c7460ed4ac897f13d63d37a31895e71950ce74c4c0ef01a1d5fde4192"
+        },
+        {
+          "name": "screen-20.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 74350,
+          "sha256": "343ae55926e43f297126ceb8f9c2759105dc4b240d9bfe7a17e45b74cc7d81bd"
+        },
+        {
+          "name": "screen-22.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 123010,
+          "sha256": "b0a312a805b55083a07fc2a9735099dbfa4050ff7e809bbd221493b6b23b9862"
+        },
+        {
+          "name": "screen-41.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 106551,
+          "sha256": "282b62d37c999039f598437c2859fd9b1e604af5284a636d95ae16225338015e"
+        },
+        {
+          "name": "screen-43.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 67019,
+          "sha256": "3dd019736e63309f2cbe1d53b683abfa5a3b46703166949d492e5fb56d13afab"
+        },
+        {
+          "name": "screen-45.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 123636,
+          "sha256": "a02aa64c2454d68b00bf4404ca26fcd20216211112a7dfe8d559b852eaf56eb5"
+        },
+        {
+          "name": "screen-48.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 109202,
+          "sha256": "5f1b24322ae2d0d7878a9a95783fbd93c34d199d3277fb9e33ca90c0ed617428"
+        },
+        {
+          "name": "screen-50.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 132586,
+          "sha256": "64f79d05b6a371c4d4579dbf22277c3f0ce2a654f22847ca9552163c80182ec6"
+        },
+        {
+          "name": "screen-51.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 141071,
+          "sha256": "8d5f8c0e2ab205632c47f9fc1ac85899af5bb8a3849ba49b36589cdaab692ac2"
+        },
+        {
+          "name": "screen-52.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 94349,
+          "sha256": "afb71e3c683166d68383451643d16e53bf443d5812cd6987753913828008727a"
+        },
+        {
+          "name": "screen-56.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 68104,
+          "sha256": "68929a55567be7a3f269b570d8af481a0c1f78978cf3e1c08e3db104b97f43f5"
+        },
+        {
+          "name": "screen-58.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 132586,
+          "sha256": "64f79d05b6a371c4d4579dbf22277c3f0ce2a654f22847ca9552163c80182ec6"
+        },
+        {
+          "name": "screen-9.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 69745,
+          "sha256": "03193c3403f824ab69c10ef2a86d9de024bfecc09334e3408f07979f19c31010"
+        }
+      ],
+      "imageBytesReadByWorker": 0,
+      "imageHashProvenance": "root pins only; image bytes not read"
+    },
+    {
+      "residentId": "resident-3",
+      "md": {
+        "path": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r4-20261113T201248894Z-faf320b7f2f7/ranchmapping-0d2a31d6460538a875260c6c/ui-mailbox/resident-3/exploration-report.md",
+        "sha256": "e669a82ea53979fe5b0f7b4649bbde36df51ae6525f717d0b869219e916640f2"
+      },
+      "json": {
+        "path": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r4-20261113T201248894Z-faf320b7f2f7/ranchmapping-0d2a31d6460538a875260c6c/ui-mailbox/resident-3/exploration-report.json",
+        "sha256": "52d8a33f25835397df271d6a68baa97ef6a9a24a67bb8df93a34883fdb9352c3"
+      },
+      "counts": {
+        "evidence": 44,
+        "reportedError": 1,
+        "responseError": 1,
+        "statusNotProvided": 0,
+        "inboxPhysicallyAbsent": 44,
+        "screens": 41,
+        "mechanicalIssues": 0
+      },
+      "rootPinnedEvidence": [
+        {
+          "id": "015f5ef2-4db3-4c25-ab14-74c172946cbe",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 1897,
+            "sha256": "78baf3c7022e478dd8a9f6951725a713dd5553c90db05045bdf06490a00ba6f4"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-23.png"
+          ],
+          "referencedScreens": [
+            "screen-23.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "06355d21-2c7e-4b5a-be64-8a4e76f83899",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 2291,
+            "sha256": "dffb14a91155455e5554f6efdaef1878e40ec483e7b0242088ebab66d5f38ea1"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-7.png"
+          ],
+          "referencedScreens": [
+            "screen-7.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "13316c36-5c14-4eb6-84e2-5ac655cee333",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 2116,
+            "sha256": "4fd4d435169972fff69bfedfe1013a43083cfa6de000787c8404d8097839b3cf"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [],
+          "referencedScreens": [],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "1360f5eb-b4df-41a1-803f-a3b881d243a5",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 1119,
+            "sha256": "85da2bf541860bb7f0adaa4489cae5732bcbe19e8e60a595e403e4c22b4aa210"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [],
+          "referencedScreens": [],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "166dc4ca-81be-4835-ab0a-b4e86e753199",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 2075,
+            "sha256": "a1ba9ac9d3aed72813856c01389afb09eb6eb260730462a26be18f5e8f13b361"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-36.png"
+          ],
+          "referencedScreens": [
+            "screen-36.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "16d66226-bf7b-4e9f-b370-884dd39d1d8a",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 1750,
+            "sha256": "3960d1992d07ca75be4e1e01febb8b6dfc1cac4fa4ea07b03c4bafd8513c0eac"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-32.png"
+          ],
+          "referencedScreens": [
+            "screen-32.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "16e3fa0c-6aad-4df0-970b-99f4a7bc5e36",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 454,
+            "sha256": "b05672510961c402b2d200da83d1ecadb1228d663f357465decd9971d84e0ad8"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-5.png"
+          ],
+          "referencedScreens": [
+            "screen-5.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "1e1147ba-6172-43f8-a48f-855253de0d6f",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 4164,
+            "sha256": "68ceb600ffccf60f4f74e388742d07d65a4900779c1a4b0de3a5a3fd14b1ac99"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-38.png"
+          ],
+          "referencedScreens": [
+            "screen-38.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "2f576d07-4dbe-42ee-b513-2fcb8f65e558",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 3940,
+            "sha256": "d78671d54d0d21c22f23daac76655c2f2912954f69d362c9d76969577364a720"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-22.png"
+          ],
+          "referencedScreens": [
+            "screen-22.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "2fc083f3-8db0-4039-b00c-43df72e08460",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 10502,
+            "sha256": "7157455a1e4b4e78a094ffe6181183b395526a431e11785c8fef651f67e07bc0"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-1.png"
+          ],
+          "referencedScreens": [
+            "screen-1.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "3dac57a4-f6dc-4838-a8d2-57ba9f4ef660",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 4164,
+            "sha256": "f1dbf11e725f3b8609f7d94c75720dbed9b0039c09b736f7b4e41638e9624f1d"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-37.png"
+          ],
+          "referencedScreens": [
+            "screen-37.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "4214b7d3-9387-4ba9-a585-2e1602ae1fa7",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 3920,
+            "sha256": "8711bcace7c4225db2048846b8bf823cddfaed7a0ecb628e82a1a0f4268a1ecb"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-15.png"
+          ],
+          "referencedScreens": [
+            "screen-15.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "46592df1-b417-48d1-907c-976204a759d5",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 455,
+            "sha256": "ce6de7c4151d312bb7542eec1d305c909b66a4de99c3c37c0c74464e5db1ab15"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-30.png"
+          ],
+          "referencedScreens": [
+            "screen-30.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "4b22fdf4-35ec-4c5a-97b5-8dd4c9d1fabc",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 4164,
+            "sha256": "a854963713d1c57d65e3e37458a699ffc1697ce7294254e0559f8cfb8f9237e6"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-40.png"
+          ],
+          "referencedScreens": [
+            "screen-40.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "541ff7ec-0eb9-446f-b4e4-05e26292a1f6",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 2291,
+            "sha256": "0d2ad35633d3004772da345832dc4f2e76c609826e2b1fed4f61bcea88acd093"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-6.png"
+          ],
+          "referencedScreens": [
+            "screen-6.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "5fa57f1e-51be-4873-8b9a-463e62311679",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 3920,
+            "sha256": "a9a7539e8964e553394dfae4dc13010f4381a5903f18890acf5ff40d4edcc092"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-16.png"
+          ],
+          "referencedScreens": [
+            "screen-16.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "6645f55e-386b-4680-ba04-c92e102d5eb8",
+          "reportedStatus": "ERROR",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 278,
+            "sha256": "d7dff9b7398a0bd8c5a557ced9bf3d732d8b7eb7b039a568fe6870a269a1caef"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "ERROR",
+          "idMatches": true,
+          "responseScreens": [],
+          "referencedScreens": [],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "68066a88-7837-4d6c-96c5-7429cc423a9a",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 2096,
+            "sha256": "9210f1652f5a0a1a582368348b85a1ed674dcf81824be8bcdf799fad880d70de"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-26.png"
+          ],
+          "referencedScreens": [
+            "screen-26.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "6ce1ccb6-392f-48d0-8d81-0958855d741b",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 3160,
+            "sha256": "d54003f6861934e62bc601617e0ebc1a25e1f7926ce4b37ec836ae17a50c1d71"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-4.png"
+          ],
+          "referencedScreens": [
+            "screen-4.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "6d7bd8f7-1301-477f-9128-36892c79ba5e",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 14286,
+            "sha256": "249f42dd475823a19e8a2226d49d83c36cfb17f782e69994260820bb6a89e2f9"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-2.png"
+          ],
+          "referencedScreens": [
+            "screen-2.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "714606d3-3a89-4a84-93f3-542e535a8e67",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 3920,
+            "sha256": "faba2b3d77cacf925ba5b7676375783eb2db57dedac88dc98157368dbc4565a1"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-12.png"
+          ],
+          "referencedScreens": [
+            "screen-12.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "7633d6e7-f75f-42bb-a355-0968caf37bd2",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 3920,
+            "sha256": "6931d584652d1e9ea884d135843dd7626bebca02a2b8382b0886e8d860a2b97e"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-20.png"
+          ],
+          "referencedScreens": [
+            "screen-20.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "76b60f4e-e6eb-44dd-900b-122429dcfd9d",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 2074,
+            "sha256": "8f55cc27fd0cb0d68d2357920a1682a244db5b43b86ef3a22ca6e6d13590332b"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-8.png"
+          ],
+          "referencedScreens": [
+            "screen-8.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "781444e7-7feb-4660-b976-409494d4728f",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 2096,
+            "sha256": "9f76ad03f7f8f28d925abe8246f760560b5a99b3dc7c90ea80c835790b0cfc9d"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-27.png"
+          ],
+          "referencedScreens": [
+            "screen-27.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "790080a4-f2fd-4fdd-ade3-481f3ee74a03",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 3920,
+            "sha256": "55d55ec2a23b79cd0f6e7b2c4000ca7df1bef66a4acca1dad4fedb4366398362"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-13.png"
+          ],
+          "referencedScreens": [
+            "screen-13.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "86e15983-2ce4-4822-b856-00f03b6b9606",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 5135,
+            "sha256": "2612258d5fcf0ea4ebae2449e52ccb18d5c4942e0c5af45135c056c8bb4d7a70"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-19.png"
+          ],
+          "referencedScreens": [
+            "screen-19.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "88e26700-a7d6-4fd2-82c4-8a333b7d2b97",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 3920,
+            "sha256": "7ea82a737317ec7825bd86931b78c53b12467d11eb654bb42d92e70eee340156"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-14.png"
+          ],
+          "referencedScreens": [
+            "screen-14.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "8a91ad28-681e-4b08-91a2-0d8a04237a10",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 2074,
+            "sha256": "0b63e447dce432be566d4b8ef3a6df94ee3c3deafa1d0a247dac09b02a9710b4"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-9.png"
+          ],
+          "referencedScreens": [
+            "screen-9.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "8f4ef178-7044-4007-b487-c7187731154b",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 2075,
+            "sha256": "49db89bbb0fb62640b2ac04035be491a8cf7f09f9320ef85c85373d1949ad53e"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-41.png"
+          ],
+          "referencedScreens": [
+            "screen-41.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "999cf117-9c39-4d95-8d53-e27721e69763",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 1560,
+            "sha256": "02f6dd33dfc7d5dbe02ed2c746b39134554808cf72fcc3dbc21e42b267f51c58"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-10.png"
+          ],
+          "referencedScreens": [
+            "screen-10.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "9f3ce348-52ba-4b25-8d31-5d9cac690502",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 2096,
+            "sha256": "5f60e7dc5e80a2119de5cbe0c01dd9cf72525a010696ff57fdd54431e0d48585"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-29.png"
+          ],
+          "referencedScreens": [
+            "screen-29.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "a2181a12-deab-4587-86db-e5498162d2ff",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 2292,
+            "sha256": "723018d6af67d1237eeb159836513eaab071e1b27902de6b41397fa714825eef"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-31.png"
+          ],
+          "referencedScreens": [
+            "screen-31.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "a4775408-bd58-4761-9a49-f1939ad73eeb",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 469,
+            "sha256": "1f1f098f885222178a311bfe34ea48aa8c2bf5b5e2a2934240034f596c4f0bb8"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-11.png"
+          ],
+          "referencedScreens": [
+            "screen-11.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "aed126a0-3bdd-4b72-be44-ff620333a7a3",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 4275,
+            "sha256": "dcc3b976927834891cc258acf91f7e8a0b9db0000ff1bd6b6641bc58baf29ebc"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-24.png"
+          ],
+          "referencedScreens": [
+            "screen-24.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "b7b9cd4d-56c6-44c8-b198-0febca2cc56b",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 455,
+            "sha256": "9723c9f10c316aceacd54aad03bf268f77d0fcba10ef1af44b40b1cf73ac0a41"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-35.png"
+          ],
+          "referencedScreens": [
+            "screen-35.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "d0f7364d-eada-4bce-a9aa-01163a2d7b18",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 4275,
+            "sha256": "a94514f48488decf2d2e88f06aa8e4fff9d0d0e520b40c41d19c90c8e7e67c31"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-25.png"
+          ],
+          "referencedScreens": [
+            "screen-25.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "d1b487ed-734d-41af-aeda-189403eb46fc",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 5720,
+            "sha256": "a2da725f5c59a4104a955a225f7287f277cef7f376e50a293fe09f925cd789b1"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-21.png"
+          ],
+          "referencedScreens": [
+            "screen-21.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "d4b4131e-91a9-4375-943c-7413a1d827a6",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 4164,
+            "sha256": "3e24bd154dccbbe1d4d0607b0b1f646416d6ea3636947be2150e2f45a45aff5a"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-39.png"
+          ],
+          "referencedScreens": [
+            "screen-39.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "d5a902e6-f2f7-4a54-a6a8-c51e08f75876",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 5135,
+            "sha256": "48ed0977c0ee61df95a44f1fca8a75d1fe551c0effc5deac1a24aef0863ad440"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-18.png"
+          ],
+          "referencedScreens": [
+            "screen-18.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "e57a3637-79de-44b9-86e8-4dafe21a7602",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 1750,
+            "sha256": "0531a9d2895502f241a6e3b95317a0f8ee9a3f4a5e442fbddc511cde23ce1ef9"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-33.png"
+          ],
+          "referencedScreens": [
+            "screen-33.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "e6a34143-3968-4b9a-90be-390c74cce76a",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 3920,
+            "sha256": "c68d2dc29b23041021ec06a624c5e0d9947722ef9d715e56e9e667fb96b4935c"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-17.png"
+          ],
+          "referencedScreens": [
+            "screen-17.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "ea9b4994-c423-4f8f-96b6-481acd01eecb",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 14286,
+            "sha256": "fa55e31df940f2df9061a2782fe16091bc08e4abb954706df99dd9a0b882643c"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-3.png"
+          ],
+          "referencedScreens": [
+            "screen-3.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "f1afa5bf-c3bb-427e-b098-f678f54a2833",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 2096,
+            "sha256": "83aedb657960964656d8dd67c6b81ba8e761753dae6d44466431c47485e48e88"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-28.png"
+          ],
+          "referencedScreens": [
+            "screen-28.png"
+          ],
+          "screenReferencesInResponse": true
+        },
+        {
+          "id": "f5765963-96c5-453a-bb97-125515167ca1",
+          "reportedStatus": "OK",
+          "outbox": {
+            "exists": true,
+            "noSymlinkContained": true,
+            "bytes": 2096,
+            "sha256": "8dce0ad2ab56f05c66027061e8427893a2a9ae2cbc1a7888991871574328a4ee"
+          },
+          "inbox": {
+            "exists": false,
+            "noSymlinkContained": true,
+            "bytes": null,
+            "sha256": null
+          },
+          "statusComparison": "MATCH",
+          "responseStatus": "OK",
+          "idMatches": true,
+          "responseScreens": [
+            "screen-34.png"
+          ],
+          "referencedScreens": [
+            "screen-34.png"
+          ],
+          "screenReferencesInResponse": true
+        }
+      ],
+      "rootPinnedScreens": [
+        {
+          "name": "screen-1.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 47144,
+          "sha256": "4e427e27ead2ca5e69f6edec39981d69947dfec68ee879a0c861ba150fb28f2f"
+        },
+        {
+          "name": "screen-10.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 36110,
+          "sha256": "c572fbcbd5984419a98916431921635491295bd8a4ac811fa5507da92472ae0e"
+        },
+        {
+          "name": "screen-11.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 61710,
+          "sha256": "7f937efcaded4c77c47b801c8a572b9adec3064a68dcd65b61f89fe580de11d0"
+        },
+        {
+          "name": "screen-12.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 61852,
+          "sha256": "d7aaf8aae516d3a5d4c675dccd41907b03f35793de3583fcc2a86611466c380e"
+        },
+        {
+          "name": "screen-13.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 62161,
+          "sha256": "4f276aee0f299e9b14f01be71378b110f4bed27aa4cd9125e09c31bd365ed31f"
+        },
+        {
+          "name": "screen-14.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 62295,
+          "sha256": "76e1e9b90bdc759f6b7475f92498570593507ba30bab424b439bfb5df018c45d"
+        },
+        {
+          "name": "screen-15.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 63120,
+          "sha256": "8c8fddc8af9f535b85ce68ec31643fdba2b7e6aebfdba49a96195cc5be91a945"
+        },
+        {
+          "name": "screen-16.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 64059,
+          "sha256": "dee5cdbfdcda41dc2a4f763bbf83eb35c40c90fb5cd5a4b337c754904d682fab"
+        },
+        {
+          "name": "screen-17.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 51357,
+          "sha256": "776d89ec7d3fcf941f5aa2fb0b31b151ee690f01690b9c955d116f59299d2ea4"
+        },
+        {
+          "name": "screen-18.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 74321,
+          "sha256": "83c0ab4cecab157da9ce7a62bf2e9934ed53659a9c48f966abc4ecf970e0ca45"
+        },
+        {
+          "name": "screen-19.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 70264,
+          "sha256": "67b5875d40a90c378f3b2a3276a440eb9652aefc4fce320ae5ed8e533cd92e0c"
+        },
+        {
+          "name": "screen-2.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 34201,
+          "sha256": "873c582355ca62c6fa94d9a939912d367ae5dffd3e064ae08412e6bcd0f7fe7e"
+        },
+        {
+          "name": "screen-20.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 16239,
+          "sha256": "cee673af87dd4d0aedfc96415fe07fc98ce634f8085d2f21df235c96b89770c3"
+        },
+        {
+          "name": "screen-21.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 53505,
+          "sha256": "833f7a193c6d0498acd917f9def9da546a4be10601459b72b2d9ac7abd11ad80"
+        },
+        {
+          "name": "screen-22.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 53695,
+          "sha256": "2c545f93cc2dbc852ebf798fa6b1f8e4e31d70295fdb92f09970458f1eae6541"
+        },
+        {
+          "name": "screen-23.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 53672,
+          "sha256": "fb899c5bd1b093b6a4b13ea00285a064b2d1fb708d22ff68c9adfbc034dee475"
+        },
+        {
+          "name": "screen-24.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 53674,
+          "sha256": "9f0e67b23e8ecd374c17e27fda922fffc962f0009d043a92a232e2ddb1d1954a"
+        },
+        {
+          "name": "screen-25.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 57563,
+          "sha256": "bf0da1fda2eeabdb0e4a652a59a643f1f85e47cec5efaf5c16bc3c410eba0fa2"
+        },
+        {
+          "name": "screen-26.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 76986,
+          "sha256": "7058425d88f4ebb0d7a9201312fe5dad764fa9d377d65213a9990842c4160a66"
+        },
+        {
+          "name": "screen-27.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 76136,
+          "sha256": "48a5d6dee2f5a48e715f81248fde064db899231a95d6532d5bae840a69ae89f8"
+        },
+        {
+          "name": "screen-28.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 76136,
+          "sha256": "48a5d6dee2f5a48e715f81248fde064db899231a95d6532d5bae840a69ae89f8"
+        },
+        {
+          "name": "screen-29.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 76322,
+          "sha256": "ea7d154cd5af91c6018254c1feecf3d0e6b4122cdfe53bcbd8915a30c6365f82"
+        },
+        {
+          "name": "screen-3.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 41304,
+          "sha256": "3473d2afa373a6c3fe9e10a7a5fa426663bfa250e7d56384636a3e8459fa4f9b"
+        },
+        {
+          "name": "screen-30.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 41448,
+          "sha256": "e6c19e6debacc5249e1de52a3d6eccf2712a64cd9d42d4aee6c81a37d7f93cbe"
+        },
+        {
+          "name": "screen-31.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 41448,
+          "sha256": "e6c19e6debacc5249e1de52a3d6eccf2712a64cd9d42d4aee6c81a37d7f93cbe"
+        },
+        {
+          "name": "screen-32.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 39893,
+          "sha256": "4c5138d7bb107257e9f15b1e1d9adb65512fe666d26afa93ecb96303e960d6ac"
+        },
+        {
+          "name": "screen-33.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 39893,
+          "sha256": "4c5138d7bb107257e9f15b1e1d9adb65512fe666d26afa93ecb96303e960d6ac"
+        },
+        {
+          "name": "screen-34.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 76136,
+          "sha256": "48a5d6dee2f5a48e715f81248fde064db899231a95d6532d5bae840a69ae89f8"
+        },
+        {
+          "name": "screen-35.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 17577,
+          "sha256": "afe59e24e7df1ff663484ea652af76bda127d2be58c49ce8608edde972ea6476"
+        },
+        {
+          "name": "screen-36.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 45123,
+          "sha256": "de11370c43d3912701781ac1781a033ca8f776ea106568b41346a5a05da5d097"
+        },
+        {
+          "name": "screen-37.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 108795,
+          "sha256": "30853390ca99367e94626b99cb466368f6741ca872dfa9f0d76e82d5e51cc8cc"
+        },
+        {
+          "name": "screen-38.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 80077,
+          "sha256": "bf2fe669243dde45455c0c669c11bc0cc4188bcb14ec108da6b151a33fe548f2"
+        },
+        {
+          "name": "screen-39.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 72689,
+          "sha256": "11c5ec099e2725a461db28476dc7eca4ba98c20e24645a381ad6a51c5bcc2866"
+        },
+        {
+          "name": "screen-4.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 56314,
+          "sha256": "c2c675933e641cb317cca3aef20a378d655555dc3d3c231bcdbb2d41da68fb09"
+        },
+        {
+          "name": "screen-40.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 100279,
+          "sha256": "9fb9164df481023d5c3041c84c59f107fdb6c55d99e4310e6bd895d94164704b"
+        },
+        {
+          "name": "screen-41.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 45123,
+          "sha256": "de11370c43d3912701781ac1781a033ca8f776ea106568b41346a5a05da5d097"
+        },
+        {
+          "name": "screen-5.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 4925,
+          "sha256": "7d50efaea717eeddd56425d54112777fb0af17f0e8bfc064042b924c72dd47dd"
+        },
+        {
+          "name": "screen-6.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 41678,
+          "sha256": "f44823952645910dc12e1f892140115cafe891ef4c53f7d37587d6a26151f8dc"
+        },
+        {
+          "name": "screen-7.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 41678,
+          "sha256": "f44823952645910dc12e1f892140115cafe891ef4c53f7d37587d6a26151f8dc"
+        },
+        {
+          "name": "screen-8.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 45565,
+          "sha256": "10021d49f9eabc8b346a9f5e8025b0fab6410c25cc25e7ea5da2a9e295234d81"
+        },
+        {
+          "name": "screen-9.png",
+          "exists": true,
+          "noSymlinkContained": true,
+          "bytes": 45565,
+          "sha256": "10021d49f9eabc8b346a9f5e8025b0fab6410c25cc25e7ea5da2a9e295234d81"
+        }
+      ],
+      "imageBytesReadByWorker": 0,
+      "imageHashProvenance": "root pins only; image bytes not read"
+    }
+  ],
+  "rootMeaningAdoption": {
+    "path": "outputs/ranch-h14-runtime-prep-20261114/root-r4-fresh-actors-adoption.json",
+    "sha256": "bfb296391c19ad3f8053f1d554b9198a07ab50a59b8570f67d14858c807ba137"
+  },
+  "rootDisposition": {
+    "allThreeGoalsWithinReportedScope": true,
+    "sameResultRevisitsConfirmed": true,
+    "explicitSaveRecoveryCounts": [
+      2,
+      21
+    ],
+    "selectorTimeoutsPreserved": 3,
+    "selectorTimeoutsConfirmedProductBugs": false,
+    "rootNormalBackTextClickAndListReobserve": {
+      "status": "PASS",
+      "outboxId": "56ceb4e7-9274-46b9-8b9b-2b8cc84120f3",
+      "replySha256": "376fddca23add7da7a31c2c66484ecd29063a77f7cbdb66154da982baa87e9f2",
+      "actorReportedEvidenceNotRewritten": true
+    },
+    "confirmedNewProductBugs": [],
+    "fullAfter": "PASS",
+    "cleanup": "PASS",
+    "normalExplorationDoneSentByRoot": true,
+    "coordinatorSession": 40556,
+    "finalAdoptionPending": false,
+    "mergeGo": false,
+    "publication": false,
+    "fullBefore": "PASS",
+    "ownedCleanup": "PASS",
+    "runCompleted": true,
+    "coordinatorExitCode": 0,
+    "reaped": true,
+    "canonicalExitCode": 0,
+    "canonicalCleanup": "removed",
+    "nativeCleanup": [
+      {
+        "stage": "gate-workers",
+        "status": "PASS"
+      },
+      {
+        "stage": "control-clis",
+        "status": "PASS"
+      },
+      {
+        "stage": "frontend",
+        "status": "PASS"
+      },
+      {
+        "stage": "java",
+        "status": "PASS"
+      },
+      {
+        "stage": "compose",
+        "status": "PASS"
+      },
+      {
+        "stage": "ports",
+        "status": "PASS"
+      },
+      {
+        "stage": "private-evidence",
+        "status": "PASS"
+      },
+      {
+        "stage": "private-directory",
+        "status": "PASS"
+      }
+    ],
+    "outerCleanup": [
+      {
+        "stage": "browser",
+        "status": "PASS"
+      },
+      {
+        "stage": "scripted-browser",
+        "status": "PASS"
+      },
+      {
+        "stage": "validation-workers",
+        "status": "PASS"
+      },
+      {
+        "stage": "control-clis",
+        "status": "PASS"
+      },
+      {
+        "stage": "canonical",
+        "status": "PASS"
+      },
+      {
+        "stage": "accounts",
+        "status": "PASS"
+      },
+      {
+        "stage": "frozen-bindings",
+        "status": "PASS"
+      },
+      {
+        "stage": "stop-forward-audit",
+        "status": "PASS"
+      }
+    ],
+    "beforeAfterSourceArtifactsAndLinuxIdentical": true,
+    "telemetry": {
+      "status": "PASS",
+      "journal": "native-telemetry.private.jsonl",
+      "journalMode": "0600",
+      "destination": "budget-telemetry.jsonl",
+      "destinationModeRequested": "0600",
+      "destinationObservedMode": "0777",
+      "destinationModeContract": "canonical ownership and Windows ACL; DrvFS observed bits are not a POSIX security guarantee",
+      "observedEvents": 2268,
+      "writtenEvents": 2268,
+      "completeEvents": true,
+      "bytes": 604251,
+      "sha256": "d24765516a44b6190356f57afc30b6b9221f1a8a47aed03aaacba858c993933c",
+      "destinationSha256": "d24765516a44b6190356f57afc30b6b9221f1a8a47aed03aaacba858c993933c",
+      "destinationFsync": true,
+      "failure": null
+    },
+    "postCleanupResources": {
+      "path": "outputs/ranch-h14-runtime-prep-20261114/root-r4-postcleanup-resource-check.json",
+      "sha256": "418e5d7901f6d7c11231d3826d1fc49394b7ca379c3b7ea6830bb49943f05191"
+    },
+    "actualExitRecord": {
+      "path": "outputs/ranch-h14-runtime-prep-20261114/root-r4-actual-exit.json",
+      "sha256": "3ad3f8fb82ee1058bca30e77837b589886d27cb1724d8f63f883c7aeb90afb8d"
+    },
+    "windowsPortsAbsent": true,
+    "appMergesAndDocsPending": true
+  },
+  "featureClassification": {
+    "featureKey": "gamification-gamification",
+    "capabilityStage": "未設定",
+    "parentFeatureKey": "gamification",
+    "parentStage": "B4"
+  },
+  "globalValidatorKnownFailure": "Existing L46 FAIL, not rerun or relabeled",
+  "privacy": "No profile values/auth/raw API/SQL/image bytes copied; MD/JSON hashes verified, image refs from root pins only.",
+  "registrationSource": "actual-resident-artifacts",
+  "trusted": false,
+  "status": "observed-unverified",
+  "coveragePassed": false,
+  "rootFinalAdoption": {
+    "path": "outputs/ranch-h14-runtime-prep-20261114/root-combined-r4-actual-adoption.json",
+    "sha256": "a331f892494313577f6c889f62dc1a0d6d0a89fcc5077d19014ec17c786080e9"
+  }
+}

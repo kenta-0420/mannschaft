@@ -1,0 +1,291 @@
+{
+  "proposalOnly": false,
+  "intendedEvidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+  "runId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+  "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+  "baselineCommit": "a18c22e60dacc891e82e369f39dab73716f1cefc",
+  "rootAdoption": {
+    "path": "outputs/ranch-h10-runtime-prep-20261112/root-r6-actual-runtime-adoption.json",
+    "sha256": "a1a29f050c1abbc78965830e208d8cdc00b4e751e7955be3f35939807cac5d1f",
+    "bytes": 1508
+  },
+  "originalReports": [
+    {
+      "path": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-1/general-exploration-report.md",
+      "sha256": "38bf19b8a54506f50db1fc9d786a0968a105b08badf08430593585e8511a8a4e",
+      "bytes": 5640
+    },
+    {
+      "path": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-2/interruption-exploration-report.md",
+      "sha256": "ddc2c7949d10ffa564b115bebe78c33389c1ed427c18045df233cd8f6bdc06c4",
+      "bytes": 9319
+    },
+    {
+      "path": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-3/resident-3-report.md",
+      "sha256": "d53772662112a20353098c69d62232817544d368e2a16174663d103a34268a09",
+      "bytes": 7283
+    }
+  ],
+  "personas": [
+    {
+      "id": "ALIC-CMP261108-H10R6-R1",
+      "personaArchetype": "一般×素直",
+      "runId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+      "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+      "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+      "originalResidentId": "resident-1",
+      "idAssignment": "原reportに登録用persona IDがないため登録時付与。固定P01-P20へ変換しない。",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false
+    },
+    {
+      "id": "ALIC-CMP261108-H10R6-R2",
+      "personaArchetype": "注意中断×復帰",
+      "runId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+      "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+      "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+      "originalResidentId": "resident-2",
+      "idAssignment": "原reportに登録用persona IDがないため登録時付与。固定P01-P20へ変換しない。",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false
+    },
+    {
+      "id": "ALIC-CMP261108-H10R6-R3",
+      "personaArchetype": "一般×モバイル表示",
+      "runId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+      "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+      "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+      "originalResidentId": "resident-3",
+      "idAssignment": "原reportに登録用persona IDがないため登録時付与。固定P01-P20へ変換しない。",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false
+    }
+  ],
+  "journeys": [
+    {
+      "id": "ALIC-CMP261108-H10R6-R1-J1",
+      "personaId": "ALIC-CMP261108-H10R6-R1",
+      "purpose": "自分の性格を知り、それがどんな恐竜の分身につながるか確認し、後から結果を見返せるか理解する",
+      "runId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+      "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+      "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+      "originalReportPath": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-1/general-exploration-report.md",
+      "idAssignment": "原reportにjourney IDがないため登録時付与。",
+      "executionCompleted": true,
+      "allGoalsReached": true,
+      "achievement": "24問完了、対応理由を理解、姿選択確定を再訪画面で確認、保存結果再表示",
+      "limitations": "desktopのみ。孵化7日待ち未実施、外見プレビュー未確認。汎用computer-use SKILLを1回読取（root採択に記録）、アプリsource/spec/expected-result汚染なしとのroot判定。",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false
+    },
+    {
+      "id": "ALIC-CMP261108-H10R6-R2-J1",
+      "personaId": "ALIC-CMP261108-H10R6-R2",
+      "purpose": "自分の診断を試し、途中で別画面へ寄り道して戻り、結果を理解し後から見返す",
+      "runId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+      "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+      "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+      "originalReportPath": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-2/interruption-exploration-report.md",
+      "idAssignment": "原reportにjourney IDがないため登録時付与。",
+      "executionCompleted": true,
+      "allGoalsReached": true,
+      "achievement": "4回答を明示保存、離脱後保持と再開、24問完了、同じ保存結果を再表示",
+      "limitations": "別日再訪・ログアウト・ブラウザ再起動・mobile未検証。未保存回答は離脱で消失したが、明示保存後の保持は確認済み。",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false
+    },
+    {
+      "id": "ALIC-CMP261108-H10R6-R3-J1",
+      "personaId": "ALIC-CMP261108-H10R6-R3",
+      "purpose": "本人の名前と生年月日から分身の結果を確認し、後から見返し、育て方を理解する",
+      "runId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+      "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+      "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+      "originalReportPath": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-3/resident-3-report.md",
+      "idAssignment": "原reportにjourney IDがないため登録時付与。",
+      "executionCompleted": true,
+      "allGoalsReached": true,
+      "achievement": "出生結果作成・再訪、卵開始・姿選択確定、遊び方を閲覧し7日待ちを理解。390×844/360×844で操作",
+      "limitations": "追加の無料ケア実行は未達（EGG）。割当目的に無料ケア実行要求なし。孵化7日待ち未実施。locale実値未確認、UI日本語。",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false
+    }
+  ],
+  "insightIds": [
+    "ALIC-CMP261108-H10R6-R1-I001",
+    "ALIC-CMP261108-H10R6-R1-I002",
+    "ALIC-CMP261108-H10R6-R1-I003",
+    "ALIC-CMP261108-H10R6-R2-I004",
+    "ALIC-CMP261108-H10R6-R2-I005",
+    "ALIC-CMP261108-H10R6-R3-I006"
+  ],
+  "selectedEvidence": [
+    {
+      "insightId": "ALIC-CMP261108-H10R6-R1-I001",
+      "originalReport": {
+        "path": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-1/general-exploration-report.md",
+        "sha256": "38bf19b8a54506f50db1fc9d786a0968a105b08badf08430593585e8511a8a4e",
+        "bytes": 5640
+      },
+      "privateLocalScreenshots": [
+        {
+          "path": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-1/screen-5.png",
+          "sha256": "f598e86206a85ae0a10965050ddb60533e6d2946bf445421aac2a138a8bff22e",
+          "bytes": 71618
+        }
+      ],
+      "imageBytesIncluded": false,
+      "imagePublicationAuthorized": false
+    },
+    {
+      "insightId": "ALIC-CMP261108-H10R6-R1-I002",
+      "originalReport": {
+        "path": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-1/general-exploration-report.md",
+        "sha256": "38bf19b8a54506f50db1fc9d786a0968a105b08badf08430593585e8511a8a4e",
+        "bytes": 5640
+      },
+      "privateLocalScreenshots": [
+        {
+          "path": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-1/screen-47.png",
+          "sha256": "f10c3c59b106d330d85f73818044e24d69f7b3d849bc135861179fb366497da9",
+          "bytes": 59094
+        },
+        {
+          "path": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-1/screen-49.png",
+          "sha256": "59da87c1629774056c9f377d9ec50f26ee4130925dd5567368fc6631bf6d8872",
+          "bytes": 70022
+        }
+      ],
+      "imageBytesIncluded": false,
+      "imagePublicationAuthorized": false
+    },
+    {
+      "insightId": "ALIC-CMP261108-H10R6-R1-I003",
+      "originalReport": {
+        "path": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-1/general-exploration-report.md",
+        "sha256": "38bf19b8a54506f50db1fc9d786a0968a105b08badf08430593585e8511a8a4e",
+        "bytes": 5640
+      },
+      "privateLocalScreenshots": [
+        {
+          "path": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-1/screen-45.png",
+          "sha256": "fcb11e0f015ceb1d895585bae6914af3b4c4aa0bc6ed9a0a9959396ee1113a69",
+          "bytes": 135462
+        }
+      ],
+      "imageBytesIncluded": false,
+      "imagePublicationAuthorized": false
+    },
+    {
+      "insightId": "ALIC-CMP261108-H10R6-R2-I004",
+      "originalReport": {
+        "path": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-2/interruption-exploration-report.md",
+        "sha256": "ddc2c7949d10ffa564b115bebe78c33389c1ed427c18045df233cd8f6bdc06c4",
+        "bytes": 9319
+      },
+      "privateLocalScreenshots": [
+        {
+          "path": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-2/screen-20.png",
+          "sha256": "496d1c7826db8af65d2ecb8a4efdce1f8309b4778a64472f12e2ea2ee2ee7cd4",
+          "bytes": 115524
+        },
+        {
+          "path": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-2/screen-35.png",
+          "sha256": "3e0cf987d496c5b748cc1bba255c549778b057590b44649325c51c2bfbfe5636",
+          "bytes": 123776
+        }
+      ],
+      "imageBytesIncluded": false,
+      "imagePublicationAuthorized": false
+    },
+    {
+      "insightId": "ALIC-CMP261108-H10R6-R2-I005",
+      "originalReport": {
+        "path": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-2/interruption-exploration-report.md",
+        "sha256": "ddc2c7949d10ffa564b115bebe78c33389c1ed427c18045df233cd8f6bdc06c4",
+        "bytes": 9319
+      },
+      "privateLocalScreenshots": [
+        {
+          "path": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-2/screen-61.png",
+          "sha256": "d7ad6d79043c2874a5ffc663975d9db6f5f468d5c07fbe5051d783c0375dd74c",
+          "bytes": 134394
+        },
+        {
+          "path": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-2/screen-62.png",
+          "sha256": "8b57772e54b22b604d1c6044a0cefc884f437cbd657ad92dec47300a5ff1dcd2",
+          "bytes": 142765
+        }
+      ],
+      "imageBytesIncluded": false,
+      "imagePublicationAuthorized": false
+    },
+    {
+      "insightId": "ALIC-CMP261108-H10R6-R3-I006",
+      "originalReport": {
+        "path": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-3/resident-3-report.md",
+        "sha256": "d53772662112a20353098c69d62232817544d368e2a16174663d103a34268a09",
+        "bytes": 7283
+      },
+      "privateLocalScreenshots": [
+        {
+          "path": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-3/screen-55.png",
+          "sha256": "ec3ee3360baade151cac8c39d3505288aa9e7ae39a08ee817f35fa47362381d5",
+          "bytes": 15780
+        },
+        {
+          "path": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-3/screen-57.png",
+          "sha256": "ec3ee3360baade151cac8c39d3505288aa9e7ae39a08ee817f35fa47362381d5",
+          "bytes": 15780
+        }
+      ],
+      "imageBytesIncluded": false,
+      "imagePublicationAuthorized": false
+    }
+  ],
+  "featureClassification": {
+    "featureKey": "gamification-gamification",
+    "capabilityStage": "未設定",
+    "parentFeatureKey": "gamification",
+    "parentStage": "B4",
+    "source": "docs/prototypes/beta-inventory-board-data.js / beta-inventory-board-decisions.json",
+    "B0Promotion": false
+  },
+  "privacy": "氏名・DOB・email/password・認証・生API/SQLログ・画像実体を含めない。原reportは非公開参照のみ。",
+  "rootDisposition": {
+    "assignedGoalsReached": true,
+    "optionalMobileFreeCareReached": false,
+    "hatchingSevenDayWaitPerformed": false,
+    "genericSkillReadDeviation": {
+      "resident": 1,
+      "count": 1,
+      "genericSkillSha256": "8211e4b11a19a0dc4f0ace91096c74c5b36037ca4cb2c8988f0f535bb209e951",
+      "rootAssessment": "一般tool案内のみ、app source/spec/expected-result汚染なし"
+    },
+    "confirmedFinding": {
+      "id": "RANCH-RECALL-ENTRY-001",
+      "priority": "P2",
+      "basis": "root再現とsource原因特定（parent提供＋root採択JSON）",
+      "repairStatus": "pending; separate worker",
+      "residentObservationStatusUnchanged": true
+    },
+    "mergeGo": false,
+    "formalCompletion": false
+  },
+  "registrationSource": "actual-resident-artifacts",
+  "trusted": false,
+  "status": "observed-unverified",
+  "coveragePassed": false
+}

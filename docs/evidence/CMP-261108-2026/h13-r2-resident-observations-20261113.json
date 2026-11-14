@@ -1,0 +1,689 @@
+{
+  "proposalOnly": false,
+  "intendedEvidencePath": "docs/evidence/CMP-261108-2026/h13-r2-resident-observations-20261113.json",
+  "baselineCommit": "ff9f7da3b4c7f61df8d6e67d93d08210b94d0215",
+  "runId": "ranchmapping-38f5674acfe432e7ccb52277",
+  "sourceHead": "9fe70bce78a05e11953e043dbb44f150c19ef870",
+  "personas": [
+    {
+      "id": "ALIC-CMP261108-H13R2-R1",
+      "personaArchetype": "一般×素直",
+      "runId": "ranchmapping-38f5674acfe432e7ccb52277",
+      "sourceHead": "9fe70bce78a05e11953e043dbb44f150c19ef870",
+      "evidencePath": "docs/evidence/CMP-261108-2026/h13-r2-resident-observations-20261113.json",
+      "originalResidentId": "resident-1",
+      "idAssignment": "原reportに登録用persona IDがないため登録時付与。固定P01-P20へ変換しない。",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false
+    },
+    {
+      "id": "ALIC-CMP261108-H13R2-R2",
+      "personaArchetype": "注意中断×復帰",
+      "runId": "ranchmapping-38f5674acfe432e7ccb52277",
+      "sourceHead": "9fe70bce78a05e11953e043dbb44f150c19ef870",
+      "evidencePath": "docs/evidence/CMP-261108-2026/h13-r2-resident-observations-20261113.json",
+      "originalResidentId": "resident-2",
+      "idAssignment": "原reportに登録用persona IDがないため登録時付与。固定P01-P20へ変換しない。",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false
+    },
+    {
+      "id": "ALIC-CMP261108-H13R2-R3",
+      "personaArchetype": "一般×モバイル表示",
+      "runId": "ranchmapping-38f5674acfe432e7ccb52277",
+      "sourceHead": "9fe70bce78a05e11953e043dbb44f150c19ef870",
+      "evidencePath": "docs/evidence/CMP-261108-2026/h13-r2-resident-observations-20261113.json",
+      "originalResidentId": "resident-3",
+      "idAssignment": "原reportに登録用persona IDがないため登録時付与。固定P01-P20へ変換しない。",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false
+    }
+  ],
+  "journeys": [
+    {
+      "id": "ALIC-CMP261108-H13R2-R1-J1",
+      "personaId": "ALIC-CMP261108-H13R2-R1",
+      "purpose": "自分の性格を知り、それがどんな恐竜の分身につながるか確認し、後から結果を見返せるか理解する",
+      "runId": "ranchmapping-38f5674acfe432e7ccb52277",
+      "sourceHead": "9fe70bce78a05e11953e043dbb44f150c19ef870",
+      "evidencePath": "docs/evidence/CMP-261108-2026/h13-r2-resident-observations-20261113.json",
+      "originalReportPath": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/exploration-report.md",
+      "idAssignment": "原reportにjourney IDがないため登録時付与。",
+      "executionCompleted": true,
+      "allGoalsReached": true,
+      "achievement": "24問と同点追加選択を完了、六軸と分身の文章対応を理解、一覧の日付リンクから同じ結果を再閲覧。",
+      "limitations": "実際の恐竜外見は結果画面で未確認。1280×800/DPR1、同session内再訪のみ。孵化7日待ち・命名・無料ケア実行・別日/再ログインを達成とはしない。",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false
+    },
+    {
+      "id": "ALIC-CMP261108-H13R2-R2-J1",
+      "personaId": "ALIC-CMP261108-H13R2-R2",
+      "purpose": "自分の診断を試し、途中で別画面へ寄り道して戻り、結果を理解し後から見返す",
+      "runId": "ranchmapping-38f5674acfe432e7ccb52277",
+      "sourceHead": "9fe70bce78a05e11953e043dbb44f150c19ef870",
+      "evidencePath": "docs/evidence/CMP-261108-2026/h13-r2-resident-observations-20261113.json",
+      "originalReportPath": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/exploration-report.md",
+      "idAssignment": "原reportにjourney IDがないため登録時付与。",
+      "executionCompleted": true,
+      "allGoalsReached": true,
+      "achievement": "未保存2回答で寄り道・復帰後0を観測。回答し直して18問を自発的に保留、再開18保持、24問完了、結果理解・再閲覧。",
+      "limitations": "1280×800/DPR1、同session内再訪のみ。保存済み回答消失とはしない。実際の恐竜外見、孵化7日待ち・命名・無料ケア実行・別日/再ログイン未確認。",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false
+    },
+    {
+      "id": "ALIC-CMP261108-H13R2-R3-J1",
+      "personaId": "ALIC-CMP261108-H13R2-R3",
+      "purpose": "本人の名前と生年月日から分身の結果を確認し、後から見返し、育て方を理解する",
+      "runId": "ranchmapping-38f5674acfe432e7ccb52277",
+      "sourceHead": "9fe70bce78a05e11953e043dbb44f150c19ef870",
+      "evidencePath": "docs/evidence/CMP-261108-2026/h13-r2-resident-observations-20261113.json",
+      "originalReportPath": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/exploration-report.md",
+      "idAssignment": "原reportにjourney IDがないため登録時付与。",
+      "executionCompleted": true,
+      "allGoalsReached": true,
+      "achievement": "390×844で出生結果作成・一覧リンク経由で本文確認・再閲覧、卵開始、遊び方を下端まで読み育て方を理解。",
+      "limitations": "390×844/touchPoints1。孵化・命名・姿選択確定・長期育成・無料ケア実行未実施。64タイプ診断は目的外。卵開始の必須性未検証。別日/再ログインなし。touchPointsから片手利用を推定しない。",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false
+    }
+  ],
+  "insightIds": [
+    "ALIC-CMP261108-H13R2-R1-I001",
+    "ALIC-CMP261108-H13R2-R1-I002",
+    "ALIC-CMP261108-H13R2-R1-I003",
+    "ALIC-CMP261108-H13R2-R2-I004",
+    "ALIC-CMP261108-H13R2-R2-I005",
+    "ALIC-CMP261108-H13R2-R3-I006",
+    "ALIC-CMP261108-H13R2-R3-I007"
+  ],
+  "selectedEvidence": [
+    {
+      "insightId": "ALIC-CMP261108-H13R2-R1-I001",
+      "reportPath": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/exploration-report.md",
+      "privateLocalScreenshots": [
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/screen-5.png",
+          "sha256": "9c4362a26f98272c73e1f2658c7e40da356c6067756617a461be1c31511ad3d3",
+          "bytes": 69402
+        }
+      ]
+    },
+    {
+      "insightId": "ALIC-CMP261108-H13R2-R1-I002",
+      "reportPath": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/exploration-report.md",
+      "privateLocalScreenshots": [
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/screen-42.png",
+          "sha256": "2cf54aa32b320bb9e9f401dc11b2429aca5dd523fd50e606593e991bc294180f",
+          "bytes": 134473
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/screen-43.png",
+          "sha256": "3b33936a33294de990cf4e2a0f116da923682bcd77a3794d2c329590306face3",
+          "bytes": 143626
+        }
+      ]
+    },
+    {
+      "insightId": "ALIC-CMP261108-H13R2-R1-I003",
+      "reportPath": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/exploration-report.md",
+      "privateLocalScreenshots": [
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/screen-39.png",
+          "sha256": "93cfc24b7b3a3c667784c2400129fda616dfdfc6a2db5a988f9ba29c4f3b338a",
+          "bytes": 105619
+        }
+      ]
+    },
+    {
+      "insightId": "ALIC-CMP261108-H13R2-R2-I004",
+      "reportPath": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/exploration-report.md",
+      "privateLocalScreenshots": [
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/screen-13.png",
+          "sha256": "02b15fe20f37f97958ba283a765a63db3db2db5a22ce0bd35c8f922d3c602737",
+          "bytes": 122971
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/screen-17.png",
+          "sha256": "bc9a38f577dc7b8d6af2e78be9e83d0aefa16d8c9fac3e70c3145e1e38ac5783",
+          "bytes": 122008
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/screen-35.png",
+          "sha256": "e8af0d82c7f54191ad8d5bc436b5709e07e078279c76899764643a04f6af88c8",
+          "bytes": 108314
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/screen-39.png",
+          "sha256": "8cfe096916d235a65f925a503e335c23eac70952ec27c67115dcf23c61f58597",
+          "bytes": 123689
+        }
+      ]
+    },
+    {
+      "insightId": "ALIC-CMP261108-H13R2-R2-I005",
+      "reportPath": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/exploration-report.md",
+      "privateLocalScreenshots": [
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/screen-47.png",
+          "sha256": "b59f78236f1122de3ef8857877faab47780eda5bf48837ece0c90bb9094e6c83",
+          "bytes": 132427
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/screen-48.png",
+          "sha256": "b3b88065e85a0e98d72a5d447246ca5f8b605416ce1e0c34510f2148faec0200",
+          "bytes": 139784
+        }
+      ]
+    },
+    {
+      "insightId": "ALIC-CMP261108-H13R2-R3-I006",
+      "reportPath": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/exploration-report.md",
+      "privateLocalScreenshots": [
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/screen-7.png",
+          "sha256": "f44823952645910dc12e1f892140115cafe891ef4c53f7d37587d6a26151f8dc",
+          "bytes": 41678
+        }
+      ]
+    },
+    {
+      "insightId": "ALIC-CMP261108-H13R2-R3-I007",
+      "reportPath": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/exploration-report.md",
+      "privateLocalScreenshots": [
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/screen-22.png",
+          "sha256": "0221eb8987d52b758c4199cabe8705db67f25385b58bcb482ca3d6250aa99f44",
+          "bytes": 52927
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/screen-24.png",
+          "sha256": "46b9be4a311aa4a544022246876a68a1c2b8c7c7757a7384d7f410f8a030400a",
+          "bytes": 71417
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/screen-26.png",
+          "sha256": "718e0146e7ccc92732a7ff22906689853c1d584971f7d46e2b75550a404d658b",
+          "bytes": 40084
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/screen-28.png",
+          "sha256": "46b9be4a311aa4a544022246876a68a1c2b8c7c7757a7384d7f410f8a030400a",
+          "bytes": 71417
+        }
+      ]
+    }
+  ],
+  "sourceArtifacts": [
+    {
+      "residentId": "resident-1",
+      "report": {
+        "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/exploration-report.md",
+        "sha256": "27d7d6f2dcb3135875773af7594705553df1a943ffadf7c235753a199910a3ee",
+        "bytes": 4109
+      },
+      "privateLocalResponses": [
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/outbox/29323953-c573-4ddc-be55-cb811f15b75c.json",
+          "sha256": "cfb57770c5458cb75f2537dc35d8117be354acfce3b42d5ff4599872d3bd9e76",
+          "bytes": 14027
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/outbox/437329f7-c64f-4a1b-ae41-7ade55992e0f.json",
+          "sha256": "cd0d63403d6368ec9da07c26fcdb86199da0918688c27071b65678865cd32282",
+          "bytes": 9211
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/outbox/3a12f2af-94f4-4536-a2a1-565a98b572dd.json",
+          "sha256": "2d4e7da89287cf55cf33f88afa147be8b07a5bbb243496890c5b133edffe82c8",
+          "bytes": 5831
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/outbox/0f0e5ed2-640e-4f88-92ad-659a3406ffdd.json",
+          "sha256": "7a467c4ddcf30dbffa864eb34b9c6c21166def90129c09e96eab01733ab1fbd1",
+          "bytes": 5614
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/outbox/d535c83f-4544-459a-9ff3-e544e4dc9496.json",
+          "sha256": "b7e8738f1c2c26c743d06413f6efc665434e283b477c77cc8f8b8408f738eafd",
+          "bytes": 5099
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/outbox/28bbeda7-a135-48ae-8ab0-212f6e6ec0d1.json",
+          "sha256": "c1a29940073703c7cca40533c12872a2eef2bf6abf1ff4d1d8685cb112826370",
+          "bytes": 5170
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/outbox/1eb9d132-e87a-439f-89a9-09c2bef5ba21.json",
+          "sha256": "f0de5904c2d506ed1f7735b54b4c9a1cb954b5f75e9e2dec401309c7216403bc",
+          "bytes": 39525
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/outbox/2374547b-b593-449b-94a4-d5681b9e63a3.json",
+          "sha256": "5f213941f3a1b83d442a21a46f26ed2e69b1a0be2bed02bd45104c75b78265c8",
+          "bytes": 39502
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/outbox/3a45447a-1678-430e-98c2-0fd8818441b5.json",
+          "sha256": "095894a33544758cd087c624021964f296ebd8b86293ef768052be49dd82dc54",
+          "bytes": 40233
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/outbox/08648b67-331c-4e64-b0f0-fd32819310fb.json",
+          "sha256": "2a51d010af0397627b3bfc130e16cd8bff1ae8656b36d5dc033b6d0bfd2c54bc",
+          "bytes": 6921
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/outbox/93305391-a01c-4752-bc91-259aa734272d.json",
+          "sha256": "409bbdb9215132e5d67ec454fb52b8745325b4c7f4525c641679adbc42cb9633",
+          "bytes": 6921
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/outbox/8f0172fc-43bb-49c7-a829-ced300412709.json",
+          "sha256": "04dad70ad9273cc1d7bdc2c03b289188f52d74a1bdd2aa7f6db9ea91a14375cd",
+          "bytes": 5290
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/outbox/8d2c84d8-f0a9-4e05-a7ef-1ed82519d9ab.json",
+          "sha256": "fb3d3c63ad83bcb2f2a1f0779f82a7eebc297c2a5812ac27becca7fe156c1247",
+          "bytes": 6921
+        }
+      ],
+      "privateLocalScreenshots": [
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/screen-1.png",
+          "sha256": "2ee2ef7d1915b5421bada902e57f9713e20212dbd2583db5aa89df3637fa6c67",
+          "bytes": 92542
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/screen-3.png",
+          "sha256": "7bacd45efb222bf3ea2d8af2bfbd45120c2f53d1876d5897a64cbf1574fcedb6",
+          "bytes": 149471
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/screen-5.png",
+          "sha256": "9c4362a26f98272c73e1f2658c7e40da356c6067756617a461be1c31511ad3d3",
+          "bytes": 69402
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/screen-7.png",
+          "sha256": "615571d00c64f8970a170a9a1cf5a7ac00b9c84598f06924e9c5219dd07ff3ae",
+          "bytes": 73116
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/screen-9.png",
+          "sha256": "b7eef10a5783d63837419bbefd089a93d29dd89dd0decf8e0a14e9cdae0f8db0",
+          "bytes": 63687
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/screen-11.png",
+          "sha256": "7a4e8ef98865fcb8ff819302a2ceea542574bf986d899473137e3ef6dfa0fe67",
+          "bytes": 71762
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/screen-13.png",
+          "sha256": "0b4ee0d0a5d37f8a36fe1ecfa343e097f6409dac94d28864c0a3a0debe6a093b",
+          "bytes": 121665
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/screen-37.png",
+          "sha256": "5545b12fcb54fc764453011d4c31bd7f0c419755049e1f5fcef034c1262f313f",
+          "bytes": 108886
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/screen-39.png",
+          "sha256": "93cfc24b7b3a3c667784c2400129fda616dfdfc6a2db5a988f9ba29c4f3b338a",
+          "bytes": 105619
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/screen-42.png",
+          "sha256": "2cf54aa32b320bb9e9f401dc11b2429aca5dd523fd50e606593e991bc294180f",
+          "bytes": 134473
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/screen-43.png",
+          "sha256": "3b33936a33294de990cf4e2a0f116da923682bcd77a3794d2c329590306face3",
+          "bytes": 143626
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/screen-45.png",
+          "sha256": "c03b228ac531a316b6a350eca4a7f1fb9a38895d7194235d365f07a37664b049",
+          "bytes": 67882
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/screen-47.png",
+          "sha256": "955caf9888c59600d426b2b5a423fe77763641b8a32ca046e92a919e273747a8",
+          "bytes": 134473
+        }
+      ],
+      "imageBytesIncluded": false,
+      "imagePublicationAuthorized": false,
+      "rootReadReport": true,
+      "rootAssignedGoalReached": true
+    },
+    {
+      "residentId": "resident-2",
+      "report": {
+        "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/exploration-report.md",
+        "sha256": "c30d305d90f6f72bca6ac78899bc38101af29177fb6fc9407adb2beec825c72b",
+        "bytes": 3965
+      },
+      "privateLocalResponses": [
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/outbox/aad9d65d-0485-4569-aade-84e9c1043bf1.json",
+          "sha256": "a8f37212fb0e76f4ed0d519895374519d44b2633f0d762a316c20e5236063108",
+          "bytes": 6700
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/outbox/7d5ea3ce-9903-4f16-a50d-212fa8e2cdd4.json",
+          "sha256": "4e06e3bf2b798677eb493d96aaa5de69202172534c98b24c6165cbecddc8d174",
+          "bytes": 5831
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/outbox/e8b9d1a4-35d2-4d7b-9e37-7305cb4bd3e4.json",
+          "sha256": "19dd1b94ba3aa605b529d2654850d1327db8acef9c2710642ad38cbefdb6e8e2",
+          "bytes": 39523
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/outbox/a1280b6d-c25c-47da-afe0-4259a370318a.json",
+          "sha256": "95508cda0b22eb5ac105b7a4cbb5ad85635346ded86cbbce803681fce4bf4b83",
+          "bytes": 7933
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/outbox/6d517cfd-e828-4783-b941-a1394e8f584d.json",
+          "sha256": "ebaef02943891b9307f3979b88c636547ce58351e7e51e46dc3069591829ab50",
+          "bytes": 39525
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/outbox/023254cf-6bf7-4d6d-a8a2-832f1722afe3.json",
+          "sha256": "ad1f663e9c6970068db68ada4991dc2fb247f1dc5dd6d993036cab5b58f82455",
+          "bytes": 39507
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/outbox/acb0de25-394a-4245-bdb1-c24d3bad6782.json",
+          "sha256": "1762f246456b26eafd0d2533d48bd956c49fd4f6098029e38ec134479f0634ac",
+          "bytes": 5343
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/outbox/fc1e0705-c912-4e72-8f60-c6fdf52384d5.json",
+          "sha256": "3d211b09d244c9af02cd9eb6c29fcfa704cb30ae189754113e9a2b62ebe4e8a7",
+          "bytes": 39507
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/outbox/bab214f2-9c06-4872-bf97-52b9bf0ddb95.json",
+          "sha256": "dcd54c518003c44973372c53876289085ee6bd7273793b809ba318b13dcafd2e",
+          "bytes": 6833
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/outbox/993789c4-d1ac-40bc-a797-3988ee9794f8.json",
+          "sha256": "6c79c5bd743c6d750178a6408310ad226fad35ae1cb4522b36d1bdea19ae1053",
+          "bytes": 6833
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/outbox/84403106-9c72-4803-be46-0ea627e14239.json",
+          "sha256": "19d98ba11478b6ec4ed4c0dc479b6fef5195a2f4520e829a2d08582895f03a9e",
+          "bytes": 5290
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/outbox/07afe83a-36d7-433e-8a14-846e751ce4e0.json",
+          "sha256": "b47c8742ddf638661ee4003f86efaeb99d640eb580ae8de7b77ddfc92dcb1c1b",
+          "bytes": 6833
+        }
+      ],
+      "privateLocalScreenshots": [
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/screen-3.png",
+          "sha256": "de74ba1d047ad41ece2192a066965ca7be8b7bfc3c21426bfa8e6c6fcb662d0b",
+          "bytes": 91389
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/screen-5.png",
+          "sha256": "f598e86206a85ae0a10965050ddb60533e6d2946bf445421aac2a138a8bff22e",
+          "bytes": 71618
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/screen-13.png",
+          "sha256": "02b15fe20f37f97958ba283a765a63db3db2db5a22ce0bd35c8f922d3c602737",
+          "bytes": 122971
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/screen-15.png",
+          "sha256": "26ca48be4269618fb9264d405376daeaf36fd296759a05a5bee907f8b9a24ed1",
+          "bytes": 74466
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/screen-17.png",
+          "sha256": "bc9a38f577dc7b8d6af2e78be9e83d0aefa16d8c9fac3e70c3145e1e38ac5783",
+          "bytes": 122008
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/screen-35.png",
+          "sha256": "e8af0d82c7f54191ad8d5bc436b5709e07e078279c76899764643a04f6af88c8",
+          "bytes": 108314
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/screen-37.png",
+          "sha256": "3dd019736e63309f2cbe1d53b683abfa5a3b46703166949d492e5fb56d13afab",
+          "bytes": 67019
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/screen-39.png",
+          "sha256": "8cfe096916d235a65f925a503e335c23eac70952ec27c67115dcf23c61f58597",
+          "bytes": 123689
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/screen-47.png",
+          "sha256": "b59f78236f1122de3ef8857877faab47780eda5bf48837ece0c90bb9094e6c83",
+          "bytes": 132427
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/screen-48.png",
+          "sha256": "b3b88065e85a0e98d72a5d447246ca5f8b605416ce1e0c34510f2148faec0200",
+          "bytes": 139784
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/screen-54.png",
+          "sha256": "9371314388749fcf63f95265780c4bbf74f2852be004247ac1f6ebfcfb5f8fbf",
+          "bytes": 67699
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/screen-56.png",
+          "sha256": "b59f78236f1122de3ef8857877faab47780eda5bf48837ece0c90bb9094e6c83",
+          "bytes": 132427
+        }
+      ],
+      "imageBytesIncluded": false,
+      "imagePublicationAuthorized": false,
+      "rootReadReport": true,
+      "rootAssignedGoalReached": true
+    },
+    {
+      "residentId": "resident-3",
+      "report": {
+        "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/exploration-report.md",
+        "sha256": "b40bfbe45bb8989042085ff1b02d2a0cd31a0aa3147e6be9c6a3049a3fda356d",
+        "bytes": 4126
+      },
+      "privateLocalResponses": [
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/outbox/b22833fb-ccb1-4b8a-af3d-8c81b4f48791.json",
+          "sha256": "5081f39de15c312bd18d5f8319838aaf74b97eca3fcf96486b08abfe43ffcbc9",
+          "bytes": 2291
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/outbox/b288cc3e-bbcf-4daf-bfb7-cd6a7a763153.json",
+          "sha256": "49bb2744300c8bf989c585f542ffe6b915dbe38638b294916013e2be8bbd5f11",
+          "bytes": 6139
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/outbox/fefa7b66-fc05-4d35-a3a9-96fbf9dd366e.json",
+          "sha256": "0dea52516419f65a98c74d0bd8cca481aa9443e84c125fc3fb298f6701d52cea",
+          "bytes": 3949
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/outbox/62ad8af8-5194-4c16-8090-5bb0a59521d7.json",
+          "sha256": "7b593c80e1eb82d2500f10ccb166da75ba4c6a864c4536929aa8a7fc4bbd29b4",
+          "bytes": 4419
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/outbox/bb3cfe72-b554-4620-bcb1-3f7bb13d2249.json",
+          "sha256": "96675bd8f3756c14fd56dfc0990201d0d5cbcd0f84e207b730ebbc4ff549bb2b",
+          "bytes": 2117
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/outbox/4eda0028-5dd6-449f-9fa1-d9681a1cebb7.json",
+          "sha256": "99f3369cc8484a032f3fcb9202e840e3f39076676c36f209e01a10448a978489",
+          "bytes": 1750
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/outbox/8a8b1867-efe5-402c-b4b5-e9dc36d50819.json",
+          "sha256": "7bb0193f777f5304c28b62bdaed41b1f6833a7e7af3f9984dff742c2d59d3221",
+          "bytes": 2117
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/outbox/8661f327-df3e-46ca-abeb-54caaa3f2b3c.json",
+          "sha256": "c62cf9f75bd41248e878139f90b0b683ed051328f611da1dca43630d60ae9742",
+          "bytes": 8228
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/outbox/ab363914-1d15-417e-a775-4728710ee17a.json",
+          "sha256": "92efc2ae096c201ede70e59727379c8923768daf9c1bb86c4c8c08663d055c82",
+          "bytes": 8228
+        }
+      ],
+      "privateLocalScreenshots": [
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/screen-7.png",
+          "sha256": "f44823952645910dc12e1f892140115cafe891ef4c53f7d37587d6a26151f8dc",
+          "bytes": 41678
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/screen-11.png",
+          "sha256": "5c1506d3ee5f64dc3706674c5952f56722a6c2fd603551a329a8aae221c79e83",
+          "bytes": 30900
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/screen-19.png",
+          "sha256": "04d117cc1ed84917efbaf2dd6dfc2f5962bc88c9b4f2e1ca34f3656220593379",
+          "bytes": 52761
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/screen-22.png",
+          "sha256": "0221eb8987d52b758c4199cabe8705db67f25385b58bcb482ca3d6250aa99f44",
+          "bytes": 52927
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/screen-24.png",
+          "sha256": "46b9be4a311aa4a544022246876a68a1c2b8c7c7757a7384d7f410f8a030400a",
+          "bytes": 71417
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/screen-26.png",
+          "sha256": "718e0146e7ccc92732a7ff22906689853c1d584971f7d46e2b75550a404d658b",
+          "bytes": 40084
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/screen-28.png",
+          "sha256": "46b9be4a311aa4a544022246876a68a1c2b8c7c7757a7384d7f410f8a030400a",
+          "bytes": 71417
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/screen-31.png",
+          "sha256": "1f23dc71a8010ed1bb6be8a20203ffa08fb8d93a5d0f9ed40882ffb2b76605f6",
+          "bytes": 93224
+        },
+        {
+          "path": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/screen-32.png",
+          "sha256": "859e7b3e29490074b616b68e5c0981c3f9e0ed183918313051b3588f199ac31b",
+          "bytes": 90746
+        }
+      ],
+      "imageBytesIncluded": false,
+      "imagePublicationAuthorized": false,
+      "rootReadReport": true,
+      "rootAssignedGoalReached": true
+    }
+  ],
+  "rootMetadata": [
+    {
+      "path": "outputs/ranch-h13-runtime-prep-20261112/root-combined-h13-r2-actual-adoption.json",
+      "sha256": "ab5493090c9ffa496034e6e1d2248f94b855f34420ea35729caafe143c43d713",
+      "bytes": 4620
+    },
+    {
+      "path": "outputs/ranch-h13-runtime-prep-20261112/root-h13-three-actor-report-pins.json",
+      "sha256": "730cf7bc6ad87c78b30548b4658c95aa5041f8ba994458fd1b3959156d949a1d",
+      "bytes": 7563
+    },
+    {
+      "path": "outputs/ranch-h13-runtime-prep-20261112/root-h13-interruption-observation.json",
+      "sha256": "aef345f97b95573e776cbe89321a7093576e8923d1a7db9b4dec0e4dff45aec0",
+      "bytes": 121
+    }
+  ],
+  "rootDisposition": {
+    "assignedGoalsReached": true,
+    "executionAccepted": true,
+    "fullBefore": "PASS",
+    "fullAfter": "PASS",
+    "nativeCleanupPassed": 8,
+    "outerCleanupPassed": 8,
+    "coordinatorExitCode": 0,
+    "observerExitCode": 0,
+    "canonicalExitCode": 0,
+    "browserContexts": 3,
+    "browserExitCode": 0,
+    "browserProfileAbsent": true,
+    "confirmedFinding": {
+      "id": "RANCH-RESULT-PRE-EGG-COPY-002",
+      "priority": "P3",
+      "basis": "rootconfirmed; generic mappingPending copy labels blocked assignment as unfinished mapping",
+      "actualMappingEligibilityPreviewFailureAsserted": false,
+      "repairCommit": "588311930ad6e18db824db4a599a95cbd35f150d",
+      "repairIncludedInF16": "f94e808636922e510c82f1cb6983a5578fe80ec6",
+      "frontendPr": 4412,
+      "pushed": true,
+      "ci": "PENDING (parent snapshot)",
+      "newHeadRuntimeVerified": false,
+      "backendCi": "FAILURE",
+      "mergeGo": false
+    },
+    "rootReviewedRepresentativeImages": [
+      "resident-1/screen-43.png",
+      "resident-2/screen-39.png",
+      "resident-3/screen-32.png"
+    ],
+    "workerVisuallyReadImages": false,
+    "observationsRemainUnverified": true,
+    "formalCompletion": false,
+    "production": "OFF"
+  },
+  "featureClassification": {
+    "featureKey": "gamification-gamification",
+    "capabilityStage": "未設定",
+    "parentFeatureKey": "gamification",
+    "parentStage": "B4",
+    "B0Promotion": false
+  },
+  "unadoptedCandidateInsights": [],
+  "privacy": "氏名/DOB/email/password/auth/生API/SQL/PNG実体を含めない。原report/response/PNGはprivate-local path/hash参照のみ。",
+  "registrationSource": "actual-resident-artifacts",
+  "trusted": false,
+  "status": "observed-unverified",
+  "coveragePassed": false
+}
