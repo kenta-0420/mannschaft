@@ -152,6 +152,22 @@ Webhook の URL は Zod 4 により前後の空白と ASCII tab/CR/LF を除い�
 
 解除条件は、公式の安定版 adapter が修正済み Zod 4 と互換であり、初期値/default/reset・非同期検証・送信出力・エラーの契約試験と実機確認を通過すること。その時にこの互換層を撤去する。版指定や単体試験だけで出荷済みとは扱わず、正規 `npm ci`、`npm ls`、実監査、lint/typecheck、既存フォームの回帰と実機試験の結果を別途記録する。監査例外の追加や閾値緩和は行わない。
 
+### 4.8. Nitro/MLLY の限定モジュール解決補正（2026-11-12）
+
+Windows の標準 SSR production build で、Nitro 2.13.4 の外部化判定が `fileURLToPath` の native 逆slashと正規化済みidを直接比較し、主entry/公開subpathの一致を見失う。また MLLY 1.8.2 の `lookupNodeModuleSubpath` は対象fileに近い入れ子manifestを読み、Vue の root exports から正式な `./server-renderer` を逆引きできない。この2点だけを `frontend/scripts/patch-nitro-module-resolution.mjs` で補正する。Nitroは返却pathを既存の `normalize` へ通し、MLLYはparse済みのdir/nameでroot package.jsonを読む（CJS/ESM双方）。非公開 `vue/server-renderer/index.mjs` を公開したり、exportsの制限を迂回したりしない。
+
+| 対象（版） | 公式配布物SHA256 | 補正後SHA256 |
+|---|---|---|
+| nitropack 2.13.4 `dist/rollup/index.mjs` | `847ad3149fd532c8241293de7d8d08b1b181fe2ddc4793f1b1add59c4ad5a5ae` | `fad016c0a5be7bbf31874aee444272e02807ceab06107c942cfe7f61aee743aa` |
+| mlly 1.8.2 `dist/index.cjs` | `5eff0719b8c589ec720f013928a4b61063077b6220e5babc6133d81febf8d901` | `280232f73546025e6cb314bd618b0b0798e883fa78a0cffd7d129c62cd4cd0c1` |
+| mlly 1.8.2 `dist/index.mjs` | `170c8b21a62adf2803ad08305b5b7d1c0ad1c45db35136f5ffaa4572bf961656` | `a828dca32ee48caad4a6fe14c4d699ddbb5e305cc99e777d25ceef6030963612` |
+
+正規npm ci（Node 22.23.2/npm 10.9.8）のintegrity検証を通った対象bytesからSHAを採取し、lockは変更しない。3対象を固定版・全byteSHA・唯一一致置換・補正後SHAで限定し、同一適用済みbytesだけ冪等とする。所有frontendの実dirを起点とし、任意path引数・symlinkを拒否する。全対象を事前検証し、未知版/bytesが1つでもあれば全無書込。途中write失敗や書込後SHA不一致は非0となり、postinstallの `&& nuxt prepare` へ進まない。既存DevTools補正の後に実行し、Docker依存stageのCOPYと既存FE CIのNode回帰試験にも接続する。依存版・lock・SSR/CSP/auth・監査閾値/例外は変更しない。
+
+回帰は実MLLYのCJS/ESM公開APIでroot exports逆引き・公開guessの同一実file・主entry・非公開subpath拒否を検査する。Nitroは実配布物のtryResolveを切り出し、Windowsの実native pathと正規化済みidの一致を検査する。Linux上の逆slash合成境界試験は実Windows試験と区別する。固定bytesの唯一置換/冪等と、最終対象の未知bytes・後段版不一致・linkでの先行対象無書込も検査する。代表条件 `node/import/production` の単体回帰は実builderの全条件やbuild完走の証明ではない。標準SSR production build終端、実BE/FE/DBを使う権限横断UI、実機後のfresh3、独立検分とCIは別途必要で、単体GREENだけでは戦役完了としない（CMP-261112-0158）。
+
+解除条件は公式の安定版Nitro/MLLYが両原因を解消し、公開API回帰とWindows標準SSR production build・実機・CIを通ること。その時にhelper/test・postinstall挿入・Docker COPYを除去し、CIの試験列挙を更新する。版やSHAの検査を緩めて更新を通す運用は行わない。
+
 ## 5. 脆弱性対応フロー
 
 1. **検知**: Dependabot / Dependency-Check / npm audit / GitHub Security Advisory
