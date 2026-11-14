@@ -111,9 +111,13 @@ class ShiftBudgetNotificationResendServiceTest {
                 any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
 
         assertThatThrownBy(() -> resend(List.of(10L, 11L, 12L)))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("1/3")
-                .hasMessageContaining("11");
+                .isInstanceOfSatisfying(ShiftBudgetNotificationResendService.FailedRecipientsException.class,
+                        failure -> {
+                            assertThat(failure).hasMessageContaining("1/3").hasMessageContaining("11");
+                            assertThat(failure.failedUserIds()).containsExactly(11L);
+                            assertThatThrownBy(() -> failure.failedUserIds().add(13L))
+                                    .isInstanceOf(UnsupportedOperationException.class);
+                        });
 
         // 失敗した 11L の後ろにいる 12L にも届いていること（被害半径が 1 名に閉じている）。
         verify(notificationHelper).notify(eq(10L), any(), any(), any(), any(), any(),

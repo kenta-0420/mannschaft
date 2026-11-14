@@ -79,9 +79,38 @@ public class ShiftBudgetRetryExecutor {
         } catch (Exception e) {
             log.error("F08.7 リトライ失敗: id={}, eventType={}, retryCount={}",
                     entity.getId(), entity.getEventType(), entity.getRetryCount(), e);
+            if (entity.getEventType() == ShiftBudgetFailedEventType.NOTIFICATION_SEND
+                    && e instanceof ShiftBudgetNotificationResendService.FailedRecipientsException partialFailure) {
+                retainFailedRecipients(entity, partialFailure);
+            }
             entity.markFailed(formatError(e), MAX_RETRY);
             repository.save(entity);
             return false;
+        }
+    }
+
+    private void retainFailedRecipients(ShiftBudgetFailedEventEntity entity,
+                                        ShiftBudgetNotificationResendService.FailedRecipientsException failure) {
+        try {
+            Map<String, Object> payload = parsePayload(entity);
+            Object rawUserIds = payload.get("user_ids");
+            if (!(rawUserIds instanceof List<?> currentUserIds) || currentUserIds.isEmpty()) {
+                throw new IllegalStateException("NOTIFICATION_SEND payload has no valid user_ids list");
+            }
+            List<Long> currentIds = currentUserIds.stream()
+                    .map(this::toLong)
+                    .filter(Objects::nonNull)
+                    .toList();
+            if (currentIds.isEmpty() || currentIds.size() != currentUserIds.size()
+                    || !currentIds.containsAll(failure.failedUserIds())) {
+                throw new IllegalStateException("Failed recipient IDs are not present in payload user_ids");
+            }
+            payload.put("user_ids", failure.failedUserIds());
+            entity.replacePayload(objectMapper.writeValueAsString(payload));
+        } catch (Exception payloadFailure) {
+            // 進捗を書けない場合は元payloadを保ち、次回に未送信者を失わないよう失敗理由へ併記する。
+            failure.addSuppressed(payloadFailure);
+            log.error("F08.7 通知再送の受信者進捗をpayloadへ保存できない: id={}", entity.getId(), payloadFailure);
         }
     }
 
@@ -192,6 +221,12 @@ public class ShiftBudgetRetryExecutor {
 
     private String formatError(Throwable t) {
         String msg = t.getClass().getSimpleName() + ": " + t.getMessage();
+        if (t instanceof ShiftBudgetNotificationResendService.FailedRecipientsException) {
+            for (Throwable suppressed : t.getSuppressed()) {
+                msg += " (payload progress update failed: " + suppressed.getClass().getSimpleName()
+                        + ": " + suppressed.getMessage() + ")";
+            }
+        }
         return msg.length() > 4000 ? msg.substring(0, 4000) : msg;
     }
 
