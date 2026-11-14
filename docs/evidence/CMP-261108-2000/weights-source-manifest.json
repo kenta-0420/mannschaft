@@ -1,0 +1,2587 @@
+{
+  "sourceHead": "83fa27ecd8c81b3103d98d08e235f95302d485c4",
+  "nightly": {
+    "run": 42416993329,
+    "head": "bf427ea138eaa9e2ff31b85d469f19137fbea51a",
+    "attempt": 1,
+    "measuredKeys": 3181,
+    "appliedMeasured": 3180,
+    "historicalRetention": 2,
+    "removedPhantom": "com.mannschaft.app.chat.ChatChannelAccessGuardTest",
+    "failedPartialAsInput": false
+  },
+  "sourceFiles": 3506,
+  "allAppliedKeysHaveCurrentSource": true,
+  "delta": {
+    "before": 3161,
+    "after": 3182,
+    "added": [
+      "com.mannschaft.app.admin.service.AdminBusinessAlertN1IT",
+      "com.mannschaft.app.billing.api.BillingEntitledFeaturesQueryCountTest",
+      "com.mannschaft.app.chat.repository.ChatMessageSameSecondOrderIT",
+      "com.mannschaft.app.common.erdiagram.ErDiagramRendererTest",
+      "com.mannschaft.app.common.token.BearerSecretValkeyKeyTest",
+      "com.mannschaft.app.common.websocket.StompErrorCodeErrorHandlerTest",
+      "com.mannschaft.app.common.websocket.SubscriptionInterceptorErrorCodeTest",
+      "com.mannschaft.app.config.RequestLoggingFilterRouteTemplateTest",
+      "com.mannschaft.app.config.RequestLoggingFilterTokenPathLeakIT",
+      "com.mannschaft.app.config.WebSocketAuthChannelInterceptorTest",
+      "com.mannschaft.app.dashboard.service.ChatHubFolderN1IT",
+      "com.mannschaft.app.dashboard.service.ScopeWidgetSummaryN1IT",
+      "com.mannschaft.app.organization.service.OrganizationMembersN1IT",
+      "com.mannschaft.app.ranch.service.RanchApproved64AcceptanceTest",
+      "com.mannschaft.app.ranch.service.RanchApproved64BoundaryTest",
+      "com.mannschaft.app.ranch.service.RanchApproved64CandidateTest",
+      "com.mannschaft.app.ranch.service.RanchApproved64SelectionAcceptanceTest",
+      "com.mannschaft.app.team.service.TeamSearchN1IT",
+      "com.mannschaft.app.template.FeatureDisplayCatalogTest",
+      "com.mannschaft.app.timetable.personal.service.PersonalTimetableDashboardN1IT",
+      "com.mannschaft.app.timetable.personal.service.PersonalTimetableDashboardUnlinkedSlotTest",
+      "com.mannschaft.app.todo.service.TodoProjectListN1IT"
+    ],
+    "removed": [
+      "com.mannschaft.app.chat.ChatChannelAccessGuardTest"
+    ],
+    "updated": 3128,
+    "unchanged": 32
+  },
+  "unweightedSourceInventory": [
+    {
+      "class": "com.mannschaft.app.admin.batch.BatchNotificationCommitProbeEvent",
+      "path": "backend/src/test/java/com/mannschaft/app/admin/batch/BatchNotificationCommitProbeEvent.java",
+      "sha256": "3fcc7ec1eaca13ed25990fed9601c6cb4b7a7b44bfad0669e07e526ca34a7bd0",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.admin.batch.BatchNotificationProbe",
+      "path": "backend/src/test/java/com/mannschaft/app/admin/batch/BatchNotificationProbe.java",
+      "sha256": "0717d04efbd9031598c6f39218045269571f07df3362e3d36e63d6542c957cc1",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.advertising.campaign.perf.AdAudienceResolverScaledMeasurementIT",
+      "path": "backend/src/test/java/com/mannschaft/app/advertising/campaign/perf/AdAudienceResolverScaledMeasurementIT.java",
+      "sha256": "1076701140b1d6ecd66a6c211823b73c72671fcaed2bd829a6df1fa20de29348",
+      "flags": [
+        "perf",
+        "conditional-or-disabled"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.advertising.operational.MethodSecurityTestConfig",
+      "path": "backend/src/test/java/com/mannschaft/app/advertising/operational/MethodSecurityTestConfig.java",
+      "sha256": "022785d4e13965fadb09b20c59a89a8cf3170294ec6c95ff91f045c5e8df55ec",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.advertising.spotlight.AbstractSpotlightIT",
+      "path": "backend/src/test/java/com/mannschaft/app/advertising/spotlight/AbstractSpotlightIT.java",
+      "sha256": "118c683294c9afb2571627addee5b14f14e253abf3dc9d03d1e9312411bd84c5",
+      "flags": [
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.auth.mfa.ConcurrentOnEvent",
+      "path": "backend/src/test/java/com/mannschaft/app/auth/mfa/ConcurrentOnEvent.java",
+      "sha256": "dd5b17507bb90abb83c4d9037ea5c28c782a7c2dc94cfae7976f6e30a846c11b",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.auth.mfa.MfaDisableRecoveryItSupport",
+      "path": "backend/src/test/java/com/mannschaft/app/auth/mfa/MfaDisableRecoveryItSupport.java",
+      "sha256": "4a2a7266da1c769e73ab484099bf5d6e32bf0b8cbfaa723b517f304f27e947e3",
+      "flags": [
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.auth.mfa.MfaEmailOtpItSupport",
+      "path": "backend/src/test/java/com/mannschaft/app/auth/mfa/MfaEmailOtpItSupport.java",
+      "sha256": "4a9d1781d22310b864bb8e0d0c795cab6482b2ba1592dba1e4346897154d9e86",
+      "flags": [
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.auth.mfa.MfaItSupport",
+      "path": "backend/src/test/java/com/mannschaft/app/auth/mfa/MfaItSupport.java",
+      "sha256": "521633e9f17071707a9c9317a2ffbdec0f3b02a1495f3c2c7f0ed4b370306e6c",
+      "flags": [
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.auth.mfa.MfaValkeyFake",
+      "path": "backend/src/test/java/com/mannschaft/app/auth/mfa/MfaValkeyFake.java",
+      "sha256": "86766d3d788b3c568b9c03cd6ffd3da74edefb80027ae320c57ea759a2dc46c8",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.auth.service.BirthProfileLockWaitObserver",
+      "path": "backend/src/test/java/com/mannschaft/app/auth/service/BirthProfileLockWaitObserver.java",
+      "sha256": "73a3c0db6dbc44f636c4039270b0f2a91c96062082d7fe4e61fbbdec24e631fd",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.auth.service.PasskeyAssertionFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/auth/service/PasskeyAssertionFixture.java",
+      "sha256": "e5017edfda2f4398c7e6f8f0a258d045c4a4b970df82e2761cefa8d5661e1a77",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.billing.DdlUniqueKeyExtractor",
+      "path": "backend/src/test/java/com/mannschaft/app/billing/DdlUniqueKeyExtractor.java",
+      "sha256": "c117828871cd38859281d5896b53ac58cb66f1602d492e445c13840306d4b0b4",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.billing.api.AbstractBillingCancelResumeApiIT",
+      "path": "backend/src/test/java/com/mannschaft/app/billing/api/AbstractBillingCancelResumeApiIT.java",
+      "sha256": "c1f57c557e04253f9981c33f4eb55976899dcc89c25a13a6b3af5c05661bcad6",
+      "flags": [
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.billing.api.AbstractBillingPaymentActionApiIT",
+      "path": "backend/src/test/java/com/mannschaft/app/billing/api/AbstractBillingPaymentActionApiIT.java",
+      "sha256": "7881983c10a8369890979e4778a9a54a4a5274b4de1eb33d9a4193ee896c6184",
+      "flags": [
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.billing.api.AbstractBillingPlanChangeApiIT",
+      "path": "backend/src/test/java/com/mannschaft/app/billing/api/AbstractBillingPlanChangeApiIT.java",
+      "sha256": "5b05a7d572732fdbd64d899770e2b59d91ba8656297c230e977e431ca9efc8d3",
+      "flags": [
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.billing.api.BillingInvoiceApiTestFixtures",
+      "path": "backend/src/test/java/com/mannschaft/app/billing/api/BillingInvoiceApiTestFixtures.java",
+      "sha256": "53e2a5c78ef79ddaff9b15d47daa046a6150da9e0b9cb1bb7c8aabe094e860e2",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.billing.invoice.AbstractBillingInvoiceWebhookIT",
+      "path": "backend/src/test/java/com/mannschaft/app/billing/invoice/AbstractBillingInvoiceWebhookIT.java",
+      "sha256": "e5fa091758fce8384270fbb987f7d14cb5409a377ae2d037231f6ebe12f41f10",
+      "flags": [
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.billing.invoice.StripeWebhookPayloadFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/billing/invoice/StripeWebhookPayloadFixture.java",
+      "sha256": "3cb5dff171b54cb3660322820a9d2162c68ae5e68685d9677aecf195edc8db86",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.chat.ChatExistenceConcealmentContractIT",
+      "path": "backend/src/test/java/com/mannschaft/app/chat/ChatExistenceConcealmentContractIT.java",
+      "sha256": "6a849813a2c8c17a049396ecb84f3cbb025e5ba09169bb368fb2fdae8e50d226",
+      "flags": [
+        "conditional-or-disabled"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.chat.service.ChatChannelAccessGuardTest",
+      "path": "backend/src/test/java/com/mannschaft/app/chat/service/ChatChannelAccessGuardTest.java",
+      "sha256": "1b8eaccacec8c3e85d6991c57b2a7416e51e71c5326adfb6d7ba577c38656288",
+      "flags": [],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.chat.service.ChatChannelFacadeTest",
+      "path": "backend/src/test/java/com/mannschaft/app/chat/service/ChatChannelFacadeTest.java",
+      "sha256": "0cb4bc66697a919c8c446c287a1dac5cebb4cf83fbfec30e1593d2145c3af638",
+      "flags": [],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.chat.service.ChatDmReceiveAccessGuardTest",
+      "path": "backend/src/test/java/com/mannschaft/app/chat/service/ChatDmReceiveAccessGuardTest.java",
+      "sha256": "75ef052b2bec096a1168b8d5c5501961961cf8e10a6494da4473289d8528ee58",
+      "flags": [],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.chat.service.ChatMessageFacadeTest",
+      "path": "backend/src/test/java/com/mannschaft/app/chat/service/ChatMessageFacadeTest.java",
+      "sha256": "ca5322032b480c6fbc039da1c052ff2b404ec3ab9c21812fbefe20777f655d75",
+      "flags": [],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.cms.service.BlogRanchAdminTestFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/cms/service/BlogRanchAdminTestFixture.java",
+      "sha256": "428174a54dca2cc63bcaf4c0832f75714deca06b2d707a423cf502726c56937f",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.AnnouncementDelegatedAccessGuardArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/AnnouncementDelegatedAccessGuardArchTest.java",
+      "sha256": "39b2c8c24a40c84504776eff9647c3ab9a988fde9cd8d048ca5a73a10903eb0b",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.ArchUnitFreezeMechanismSelfTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/ArchUnitFreezeMechanismSelfTest.java",
+      "sha256": "a7caf493b2af962c5b18013fbc25670d62bccda8ed0c3245a0381ea770a054c0",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.ArchUnitFreezeStoreIntegritySelfTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/ArchUnitFreezeStoreIntegritySelfTest.java",
+      "sha256": "b8afb32970fe410abf187d41777b1f83b97745334aa82c4e3cdacc49db22c686",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.ArchUnitFreezeStoreIntegrityTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/ArchUnitFreezeStoreIntegrityTest.java",
+      "sha256": "8d1feab96227a9be32b8caaca64666aa92333d5d726d412ed67a1025684d2bbc",
+      "flags": [
+        "dedicated-integrity"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.ArchUnitTestTag",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/ArchUnitTestTag.java",
+      "sha256": "2e361392df896079d48d794c3730042969316ba039544e8943a7c315d0036665",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.AuthzControllerGuardArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/AuthzControllerGuardArchTest.java",
+      "sha256": "75bd81878d0d1f9df5a54c5fcea33d4bedadd0451b8a1b8bc5017d06df1efc34",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.AuthzControllerGuardConditionTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/AuthzControllerGuardConditionTest.java",
+      "sha256": "cd02b0b6a7ef8a646fde2b92c3eb34addcc9c3036b438ecb318e8bf2b491e1d9",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.AuthzTxFacadeRegistryArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/AuthzTxFacadeRegistryArchTest.java",
+      "sha256": "a682ff04bb589759b3192cc493045331f693b4f628b36af0a825fe6e48d6cc91",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.AuthzTxFacadeRegistryScanningLogicTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/AuthzTxFacadeRegistryScanningLogicTest.java",
+      "sha256": "4ad412fdcd0b6e6ee5a0bc8b09073bd130111f272af58047609d5bafc916eb4b",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.CacheableAuthzEnforcementGuardConditionTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/CacheableAuthzEnforcementGuardConditionTest.java",
+      "sha256": "49559b542812b938b333372f2a5084b038b5c24ce0c2aadf3a4b8956deb035e7",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.CacheableAuthzEnforcementGuardTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/CacheableAuthzEnforcementGuardTest.java",
+      "sha256": "9e32e8c1e5bf5a63deafba17eb98b10cf6ca4ff900be6706438a72d7ccc27764",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.CacheableKeyValueEqualityGuardTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/CacheableKeyValueEqualityGuardTest.java",
+      "sha256": "dc91e100d5547ce84af0f2e73e2b6ec588c07e298acee0b5f33c39e314f7d228",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.CacheableReturnValueShapeGuardTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/CacheableReturnValueShapeGuardTest.java",
+      "sha256": "a88d23b07f56346f084293c3eeb415fe7c39fce2373f67b01bbd40c63aa4c7fd",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.ConfirmableRecipientPageFacadeArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/ConfirmableRecipientPageFacadeArchTest.java",
+      "sha256": "bf793abdf29a6566eb9ed5f0bc206f385fc195fbab847be9be5c68dac1d032df",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.ConstantFlowInterpreter",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/ConstantFlowInterpreter.java",
+      "sha256": "22c883e84d6044da1f099c0936d77f892da678a95cf365b2842834589546c1ed",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.ControllerEndpoints",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/ControllerEndpoints.java",
+      "sha256": "bd20e975fdfabd96a4c8fabcda6d4bec768d8651b885ce0c219e82c6f9dc696b",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.ControllerEntityResponseArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/ControllerEntityResponseArchTest.java",
+      "sha256": "9d3b9666b9be319e06852c9eb0092a49da7f7147eefba25acb03a2aab8de9e7c",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.ControllerEntityResponseConditionTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/ControllerEntityResponseConditionTest.java",
+      "sha256": "d3a23967469d43c694e0f3e90a4cd49f4935c3de5f6a625ff1782ad34a6c7d17",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.CrossDomainEntityImportArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/CrossDomainEntityImportArchTest.java",
+      "sha256": "503efe11c2f4a9f2b9326efd0e251ec3c8517f5f075add8e3b1261789f9483f3",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.CrossDomainEntityImportSyntheticClassExclusionTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/CrossDomainEntityImportSyntheticClassExclusionTest.java",
+      "sha256": "afd3a1b3200570f27c5bd7e7b4fa80d5caf4e38265e299612a98dc729554eb71",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.CrossDomainForeignKeyArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/CrossDomainForeignKeyArchTest.java",
+      "sha256": "2f3c6ea35deb85be4309512175b43c3bd5f36ca84a5054439a64c38220199b65",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.CrossDomainMandatoryPropagationArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/CrossDomainMandatoryPropagationArchTest.java",
+      "sha256": "0203447946ea22e1da0728553284e8a65e4471bd2a7b7370f4c5b742ac08d651",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.CrossDomainMandatoryPropagationGuardConditionTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/CrossDomainMandatoryPropagationGuardConditionTest.java",
+      "sha256": "40fb9b3af95d06c4f3c10f982a4b1c3ed46edd9bd39e44d64651fd084385233c",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.CrossDomainRepositoryDependencyArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/CrossDomainRepositoryDependencyArchTest.java",
+      "sha256": "4efdf8920a68ac6007895af0927a39e2cf79c093cc5ac952563446cb506ec943",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.CrossDomainTransactionalArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/CrossDomainTransactionalArchTest.java",
+      "sha256": "af659bb900691b9f5182bc5811c2f0bf57c33b9b626cdcefe61b67dd647f7e9e",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.CrossDomainTransactionalL1G0ConditionTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/CrossDomainTransactionalL1G0ConditionTest.java",
+      "sha256": "9a6787d6f081743bfa5dafd99c1107053ad16c04257983b21dde81951592341f",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.CrossDomainTransactionalTransitiveArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/CrossDomainTransactionalTransitiveArchTest.java",
+      "sha256": "5424681b762677aba3feead3cc34162bdb1ccb72ec806273cad76a22f3b59113",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.CrossDomainTransactionalTransitiveGuardConditionTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/CrossDomainTransactionalTransitiveGuardConditionTest.java",
+      "sha256": "c27698782c43428c8cd3702d51f8f0eab3f5edd5c54bd785dda013e3ab10de75",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.DependencyFreezeMessages",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/DependencyFreezeMessages.java",
+      "sha256": "a1ecca2e3e739e4018959e93b40b981595b9a41f0fa0ba766a3270dee993119b",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.DependencyFreezeRecordingTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/DependencyFreezeRecordingTest.java",
+      "sha256": "2e2ea9c1ab7885e7be2e81a4f7da7d519a7970cead2364139ec122b32c7bea81",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.DomainPackages",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/DomainPackages.java",
+      "sha256": "219feb51c0af4e307892e97ad6c45cbc2129c1b0c7e54a5b517966c647bdc096",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.EntityUuidV7ConventionArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/EntityUuidV7ConventionArchTest.java",
+      "sha256": "35c0fe8dc46f954a0d95c92f604d9e242878e5396f07967186d0ca162e253d70",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.FlywayLegacyMigrationBaseline",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/FlywayLegacyMigrationBaseline.java",
+      "sha256": "50271c229fb348a84785877a1cf1a135be9207cd746efee6865b5a8773caa53a",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.InviteAcceptanceBoundaryArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/InviteAcceptanceBoundaryArchTest.java",
+      "sha256": "cc96d5eb4d416ba19782e8af7ed00152e463dac0fd65dd547b0b9fadd4d495aa",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.JavaSourceScanningUtils",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/JavaSourceScanningUtils.java",
+      "sha256": "4f921157dca46f1aa022f8ae06ae12f72fd365f638b18ad1b73744c0f8bf81da",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.JsonRequestBodyCreatorArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/JsonRequestBodyCreatorArchTest.java",
+      "sha256": "6e6e0a647b53cafeab6e36502782800905b02d7b7c242fe8be72f69220139690",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.JsonRequestBodyCreatorConditionTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/JsonRequestBodyCreatorConditionTest.java",
+      "sha256": "bb7a1627f1d895f09bd648e2a175af9cd2c6e774035c551750a9dcb4d94d5da7",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.JsonRequestBodyCreatorRuntimeProofTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/JsonRequestBodyCreatorRuntimeProofTest.java",
+      "sha256": "283d5487bd65cd37b0586d06d177ffde1a7b47ddb3fed5c6f3db03e8760c34f7",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.MembershipScopeEnumerationCallerGuardArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/MembershipScopeEnumerationCallerGuardArchTest.java",
+      "sha256": "fdc83c6e801947e232658ea5e236a8b9d099b460549ec0cadc286684a00eae34",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.PersistedEnumCompatibilityArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/PersistedEnumCompatibilityArchTest.java",
+      "sha256": "49381df9fdc0ff1a6657cf63a4223be71a518f1fb1ee403353d4e608516abd23",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.PersistedEnumInventory",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/PersistedEnumInventory.java",
+      "sha256": "0a370307024de1aed183eca6cee35b0067cbda5da97083bd934acb83c90c5227",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.PersistedEnumInventoryTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/PersistedEnumInventoryTest.java",
+      "sha256": "57fbece2b18aaa1fffee805d2fed71b7559ce2a0af70917a5999e9e4d4f7bfb1",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.PlaintextSecretRandomFlowAnalyzer",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/PlaintextSecretRandomFlowAnalyzer.java",
+      "sha256": "f82681160aead6630be76bb979990b944171a56c560c67c8532c8373a9c1c266",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.PlaintextSecretTokenGuardArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/PlaintextSecretTokenGuardArchTest.java",
+      "sha256": "87e49c0f0e610bce0bb04aa3c46162495e9e39ae1188721830923c503d99dcb0",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.PlaintextSecretTokenGuardConditionTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/PlaintextSecretTokenGuardConditionTest.java",
+      "sha256": "857b9a9fa286b76fb8b92d6548d2d915afbd603fc1a7e0d86aade1e5cfb42ccd",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.PlaintextSecretTokenGuardRules",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/PlaintextSecretTokenGuardRules.java",
+      "sha256": "73b7f768b9f5111f48b23ec6d7b9df857fb8271a7daa083e97b9c3350b12b1ff",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.ProductionClassImportGuardTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/ProductionClassImportGuardTest.java",
+      "sha256": "6db241e1bf5ecb4d6cfafccf98fae9a5927b43a39951771531b3a7714b94ea28",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.ProductionClasses",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/ProductionClasses.java",
+      "sha256": "81ab3874add682effce3dd06f59457f09d092702bc5153c9c653c0b4b2a0ba8c",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.ProductionClassesTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/ProductionClassesTest.java",
+      "sha256": "273dc2732fe0d84b5e5712dbce0647b9cadd92d0c740cc573b8121d5febeb38b",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.ReceiptScopeTypeValueOfGuardTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/ReceiptScopeTypeValueOfGuardTest.java",
+      "sha256": "a6ec34db9201574b407491532a65cdac623b183cf325b702e90e6e0d275c42e6",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.RecruitmentListingTxFacadeArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/RecruitmentListingTxFacadeArchTest.java",
+      "sha256": "5c5da9ec32b8dea7cbac341596751f3b5c0e8503c3ca18d8b165ceb157aeee72",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.RecruitmentMoneyTxFacadeArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/RecruitmentMoneyTxFacadeArchTest.java",
+      "sha256": "10849f8a789992c680df88c8fe84402892d7b6eec144d6d28cd65c3f1db34d99",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.RequireFeatureInterfaceGuardTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/RequireFeatureInterfaceGuardTest.java",
+      "sha256": "6724423bdcbf7f6e6acad26e22f4098d481a5ead60128a8b677c9636a4b3b2c3",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.ScheduleCommentAuthzGuardArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/ScheduleCommentAuthzGuardArchTest.java",
+      "sha256": "50e515d4890a8268d9b979712e22777df81f1fb6baf6cb5603037ebd3f812b79",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.ScheduleKeepNoReminderArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/ScheduleKeepNoReminderArchTest.java",
+      "sha256": "f76ba31806be19a361bf475792119f91adbec2f0d2c44c3756dc8b9a3966a8fa",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.ScheduleMinViewRoleGuardArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/ScheduleMinViewRoleGuardArchTest.java",
+      "sha256": "33e612fae06119ba18c61adcb7b92258a47cb02396daa3989fb797dd9ee0ae8b",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.ScheduleMinViewRoleGuardConditionTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/ScheduleMinViewRoleGuardConditionTest.java",
+      "sha256": "837c08e9af2412c78afebb4aeade3161106bd7ede816b7a56e376c5de9df2d3a",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.ScheduledBatchGuardConditionTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/ScheduledBatchGuardConditionTest.java",
+      "sha256": "5881ef3eb494944e836adde314d7ed613a55d6ec3ac4d722b00e5d47150fbcb8",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.ScheduledBatchGuardTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/ScheduledBatchGuardTest.java",
+      "sha256": "d0197ade9f87a30bc85a1f6676c74198b11368ff5b095c85bbc44bd59b08283d",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.SchemaCollationPolicy",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/SchemaCollationPolicy.java",
+      "sha256": "079634e16ce26de836079abbbe2f55c648a99e3c49a7c03fb902a8a8ceadd2ef",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.SecurityConfigRules",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/SecurityConfigRules.java",
+      "sha256": "7fd67cf2a598ad245c73ef36599596b90763ca90c31cc6afb3ac337b151dc13c",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.SelfScopedEndpointScopeInputGuardTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/SelfScopedEndpointScopeInputGuardTest.java",
+      "sha256": "a0aa1cc81620c97b276f1212c2398d0b25b010837cb0547b8703956241bdfa8e",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.SelfScopedGuardRegressionTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/SelfScopedGuardRegressionTest.java",
+      "sha256": "4018d2ef0663100659f4c593360009c773c0833d80af66ef1c6ff201ed70a873",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.ServiceApiEntityBoundaryArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/ServiceApiEntityBoundaryArchTest.java",
+      "sha256": "04fa03a8b938f7aa290bb248d92cfc702e5a5b19555e5f0eb7666cef2837ceac",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.ServiceApiEntityBoundaryArchTestSelfVerificationTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/ServiceApiEntityBoundaryArchTestSelfVerificationTest.java",
+      "sha256": "7075f49d8ce3abcf3b0258cf25f9181e648f0abdd745433ab0d19bb91d7cc242",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.ShiftScheduleSlotTxFacadeArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/ShiftScheduleSlotTxFacadeArchTest.java",
+      "sha256": "c9776c55f88128732ebd69f8f89e72917e11c92470b99f28c7814d85b75ac9ca",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.ShiftTxFacadeArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/ShiftTxFacadeArchTest.java",
+      "sha256": "c69847a73e2246b283a570cc1abd32eda38c6d1236a505d38d84fec3c6cdd191",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.SyntheticClasses",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/SyntheticClasses.java",
+      "sha256": "7ee7fcfbb80807a5b1e88410b4807369aadd9bcb0be4236beef9ce1952d2ed72",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.TableDomainResolver",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/TableDomainResolver.java",
+      "sha256": "70e465888f75cdb459140647bb20a73db112399302f7049b698262f0a6376281",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.TeamOrgSingleParentAssumptionGuardTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/TeamOrgSingleParentAssumptionGuardTest.java",
+      "sha256": "3697cb70aee7c7f7f153c072105e4a370b6ec2ce6127ac891e1e380bb402aaa4",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.UserRoleAnyStatusCallerGuardArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/UserRoleAnyStatusCallerGuardArchTest.java",
+      "sha256": "328dc2e932e132d5e223b22c65655b2f63e9464b1359b35fce194ac435810b98",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.VillageModeratorPredicateWideGuardArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/VillageModeratorPredicateWideGuardArchTest.java",
+      "sha256": "20852a416f4f1067d1efd271ae7b4e68b9b96ad616440043591b7076234efb90",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.WithdrawalPersonalDataListenerCoverageGuardTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/WithdrawalPersonalDataListenerCoverageGuardTest.java",
+      "sha256": "077baf3da28ccc6ca3326a23b78ed03fb6548dc49aaa117e0f456fc1462f0562",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.AuthorizedDirectController",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/AuthorizedDirectController.java",
+      "sha256": "7a1cc07eb4abe6cf6687eba9c42c0b0a64c88181546c2435401fda885098ce4c",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.CacheableAuthzFixtureService",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/CacheableAuthzFixtureService.java",
+      "sha256": "35c6898dc62bc7b2db0fc5e27f8bac8a046d0290feca294c54b3516dc6ab1bb4",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D1ServiceApiChildService",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D1ServiceApiChildService.java",
+      "sha256": "1b579dd8e227f377e896c0deb2e11e312b033591ce4f83a9b5f9625441bd2b7f",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D1ServiceApiInterface",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D1ServiceApiInterface.java",
+      "sha256": "ca6b176ecb1b6b1b8d3baf2b757a2f7b87e0a7365c789228180c802310608dd4",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D1ServiceApiParent",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D1ServiceApiParent.java",
+      "sha256": "1282ef176cad683cfc31fccd8c601a4ece52c3dd4b10fe418348baffd73a9a8c",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D6ApiResponseEntityController",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D6ApiResponseEntityController.java",
+      "sha256": "d1736fd33fd9f5efa897a164eac749bc52d99f8ad7a2cf1f5cb9a1ac37e97cee",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D6DtoController",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D6DtoController.java",
+      "sha256": "96c3515bee9422f9a8dbbd45e0dd559d6d8f54369aab15412e8b9d0619260ca8",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D6NestedEntityController",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D6NestedEntityController.java",
+      "sha256": "ba3d8e50a69b4d38721d59c5b7a92706c1642ef122e6397d37858386479c9618",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D6PageEntityController",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D6PageEntityController.java",
+      "sha256": "58d1cf2faba0ff864d819e1ecc677d4788ae7e3cbb8d177b0fa4326d7de438dc",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D6RawEntityController",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D6RawEntityController.java",
+      "sha256": "07383aaf584e18dad9f403cbc3f218f726141c1ce8485355a4720a2061a15c29",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D7ArrayElementBrokenItem",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D7ArrayElementBrokenItem.java",
+      "sha256": "ba8c09f8bc399a6954749a4899b91a61b8e5167323bfea87f6303abaac3bf82f",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D7ContentDeserializeBrokenRequest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D7ContentDeserializeBrokenRequest.java",
+      "sha256": "981ba941d0d86ab68953df4f5a225e3ad9ac95db9a02c3df64c5d708e1261b28",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D7CustomDeserializer",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D7CustomDeserializer.java",
+      "sha256": "a8e9e21f16340d58fa04cf7f17bcc6650ed75b3d2a3181399a5f207407d19745",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D7CustomDeserializerRequest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D7CustomDeserializerRequest.java",
+      "sha256": "ecedd024f35a571709936d92e832d1defeef30987afac9777ab6968f83faa4fa",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D7DelegatingAndPropertiesCreatorRequest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D7DelegatingAndPropertiesCreatorRequest.java",
+      "sha256": "e09d2ce1e03ea51fc22cd2e665c03c536925ee6693042a55dc19af92ad765f4f",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D7DisabledModeCreatorRequest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D7DisabledModeCreatorRequest.java",
+      "sha256": "bbc7ef5d7b9f72c59fdc49e61cc4d247aa65d54b3701f0dcea94ad99c1dc4954",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D7DisabledPlusFallbackCreatorRequest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D7DisabledPlusFallbackCreatorRequest.java",
+      "sha256": "319fd98a13fc32cf8e5f71af75a0402959de1e2cc2797f9be08852d87b5910c5",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D7DualJsonCreatorRequest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D7DualJsonCreatorRequest.java",
+      "sha256": "0857fa6e208c31cccbf67be9dca46601f0acd2c4044ce5691898927e48a32b1d",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D7FormBrokenSearchRequest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D7FormBrokenSearchRequest.java",
+      "sha256": "466561beac2a98b124c7043f14d5d607776722c521a6528acd87145f67abe40a",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D7FormOkSearchRequest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D7FormOkSearchRequest.java",
+      "sha256": "14f8855fc1aea0ef1f52ca25ac83cad8ca3bbfa33b1640336f0dd7c597efec2a",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D7JsonCreatorRequest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D7JsonCreatorRequest.java",
+      "sha256": "bfae5c87b26f9c0ccfe86de4fdc5a00f343a08aa7d652845eee3098ed122604a",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D7NestedBrokenAttachment",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D7NestedBrokenAttachment.java",
+      "sha256": "4b793c73326e3c448fb0fa524102e42d150ffbb0e9c56cc439ebdb84ba47f782",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D7NoArgsAndSettersRequest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D7NoArgsAndSettersRequest.java",
+      "sha256": "bcf598fd21eed17bf3e0b7b24fc5558a1dd0129f6775ab90ae8952500b4e261f",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D7NoArgsPlusDualCreatorRequest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D7NoArgsPlusDualCreatorRequest.java",
+      "sha256": "48f758f5a4f9945375226c47049a65581016a294ff50f98cc3f040ceda7983dd",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D7PreFixCreateThreadRequestReplica",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D7PreFixCreateThreadRequestReplica.java",
+      "sha256": "971cd98fcde347be9d7fd0463513d3dec86954c892f36088565bafc31caa1b6d",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D7RequestBodyController",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D7RequestBodyController.java",
+      "sha256": "c1d92a12647d7365d6e3a28f39a081146d31e6a2983555a931a1cc53f7c34c24",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D7RootRequest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D7RootRequest.java",
+      "sha256": "e96d4429c5ca7c35480313adfa03e9a23c595fc1924ff88e70a463cd24b85c8e",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D7SingleConstructorRequest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D7SingleConstructorRequest.java",
+      "sha256": "29f87b13888f8aed77fbb9a04734c84856b5b47b679e861c3a9abf35218fae31",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D7StaticFactoryCreatorRequest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D7StaticFactoryCreatorRequest.java",
+      "sha256": "123988cffbdba27d45803e247933a4ca60749bdc380a1041ae5fe45ba755aff6",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D7UnboundBrokenRequest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D7UnboundBrokenRequest.java",
+      "sha256": "ba5fae21dea68961027f5f8641eb6d2b6d1793596254b52fc5c5135b6ce25023",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.D7ValidOnlyBoundRequest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/D7ValidOnlyBoundRequest.java",
+      "sha256": "40e8e8cf1813838a8ecb4f40fb5c819390ea347ed5800b4ce9dd4bc37ba8a193",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.DummyAccessGuard",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/DummyAccessGuard.java",
+      "sha256": "256532762641f5b9b628416da81f2e721efd1b2fd9757c3a6b17e1938533be34",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.DummyCacheableAccessGuard",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/DummyCacheableAccessGuard.java",
+      "sha256": "c0c4c4db0ae6f4b69de88f5039c80afed221cc78b91eaeda5c7072679f6c962e",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.DummyD6ExposedEntity",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/DummyD6ExposedEntity.java",
+      "sha256": "09db133d1ef33e7994f9dc60015d1213e91f0a222d1a7e42b8d177cc48ba5aee",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.DummyD6ResponseDto",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/DummyD6ResponseDto.java",
+      "sha256": "edc261a542fe258fd80d33ae2f581ab3a5f367e020acae8136925c9fa6eba8f7",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.DummyDelegateService",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/DummyDelegateService.java",
+      "sha256": "43cb9c8d8b4d1917f1d5786a483bbea0162bba2127d5e6426babcbc8aa085c2b",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.DummyPlainService",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/DummyPlainService.java",
+      "sha256": "c77678e34ab1852772ca079f79dd5743d155471c1329603d191ee8337b7ad57e",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.HelperDepth2Controller",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/HelperDepth2Controller.java",
+      "sha256": "343b2c82d584292ac770bf9199cd5237a4e108f79b80d24f663156cab962eb4f",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.IntentionallyPublicMarkerAnnotatedController",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/IntentionallyPublicMarkerAnnotatedController.java",
+      "sha256": "f2c12413f3ff6be4e81af748f45d95fe3b7df80f496744bc3231522f43d6516c",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.IntentionallyPublicMarkerClassAnnotatedController",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/IntentionallyPublicMarkerClassAnnotatedController.java",
+      "sha256": "676cb68faacd344882239dca9f85ef951b22782bfc6cd023b492776c8336bcda",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.MarkerAnnotatedController",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/MarkerAnnotatedController.java",
+      "sha256": "442d9c2a989088c43edf501c4ceacc0d700de318774800f2bd6f9228c4b88fdf",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.MarkerClassAnnotatedController",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/MarkerClassAnnotatedController.java",
+      "sha256": "d77f09b757c8cf4740ac0bf08fffc8438b3db7199913c8a9ad373c34e40ef435",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.MinViewRoleAwareScheduleResolver",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/MinViewRoleAwareScheduleResolver.java",
+      "sha256": "9e2a53935cf4011aa719ed17006ef15742a0dc0ed382b2b70bf97add9b53abe9",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.MinViewRoleBlindScheduleResolver",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/MinViewRoleBlindScheduleResolver.java",
+      "sha256": "7d697af02a4d04eb176b8c7609532dc9d771e098820bea1b82fff3940a06e4f3",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.MinViewRoleFixtureProjection",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/MinViewRoleFixtureProjection.java",
+      "sha256": "5de4cff0064ad1b1631dfa66d1d651f0e8ea269a2cd8441e9b51660fd0cfe567",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.PathConfigMarkerAnnotatedController",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/PathConfigMarkerAnnotatedController.java",
+      "sha256": "706324f1b1437f50091fa9a625f4b2c0d7691c4a4d11acdc17d410f511c2f40d",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.PathConfigMarkerClassAnnotatedController",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/PathConfigMarkerClassAnnotatedController.java",
+      "sha256": "9ade068a59f45dbcb0aa8c78ff9f5b87e723084e2f74d7e27915e8a2a7518d20",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.ScheduledBatchFixtureBatch",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/ScheduledBatchFixtureBatch.java",
+      "sha256": "0ccc2d6c9cd0c0ce2afa4973168fca5be878e1a265d20e774abd8d140d8a8078",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.SelfScopedMarkerAnnotatedController",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/SelfScopedMarkerAnnotatedController.java",
+      "sha256": "e22db28e5611a71c9ed601fa3fbcf8ae300a44e1707cf9aaa51a93b7bf5d0393",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.SingleParentReductionFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/SingleParentReductionFixture.java",
+      "sha256": "4df47b1e5ad52de5989ddf602c8f1a427ad73e5ac3c737e7df22087019317031",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.SingleParentViolationFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/SingleParentViolationFixture.java",
+      "sha256": "d53ef5b062ab0cebc759659a527facfd5dc4b95f439e9da41e8e7caea04792b7",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.SyntheticSampleEnum",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/SyntheticSampleEnum.java",
+      "sha256": "9e15bc624c648bd87493897a06176b49d155a014cec72724ecc777ce9eb67828",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.SyntheticSwitchFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/SyntheticSwitchFixture.java",
+      "sha256": "e1807992fcfae45a474ee2fda2ef050d99db374bc9c7782bb7fd40a19a3c4a6c",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.UnauthorizedController",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/UnauthorizedController.java",
+      "sha256": "66af54d9916626ef67693ce86fd576f371059488bb09d36a1b1a1fa8f021d143",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.alic.AlicAllowedDelegatedCaller",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/alic/AlicAllowedDelegatedCaller.java",
+      "sha256": "98048a0780ff0421bfd6b94be0f98ea939fc7c836c617d78e9d1650fc0a56423",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.alic.AlicDelegatedTarget",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/alic/AlicDelegatedTarget.java",
+      "sha256": "76e21b742d79e0e6ed3ffed21d2a5a3e313c9dedbb8a0c46ea92b8925c2ce9aa",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.alic.AlicRogueDelegatedCaller",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/alic/AlicRogueDelegatedCaller.java",
+      "sha256": "b0c1fd9e934bac35c18e59ea31badfae90121ab3516ee51f1c334c397b57a3c4",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.alic.AlicRogueReadWriter",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/alic/AlicRogueReadWriter.java",
+      "sha256": "3b146a27b595cd1fe0d53393e5bbc033138677a2dc420074fc8b1b356d1fb088",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.alic.AlicTransactionalClassFreshRoleCaller",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/alic/AlicTransactionalClassFreshRoleCaller.java",
+      "sha256": "502f7ad69d538e3fa1d5f0c374a52391f110be29f83b94ff15ce4af44d1cc976",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.alic.AlicTransactionalMethodFreshRoleCaller",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/alic/AlicTransactionalMethodFreshRoleCaller.java",
+      "sha256": "fb7cb427f2fa551f8e49e155c5757896257156da7ee72c3d02ee26764595f069",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.importguard.FixtureOnlyInstanceImportSample",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/importguard/FixtureOnlyInstanceImportSample.java",
+      "sha256": "da5ce7baa3a71044c17fdfc8d6cdfdbcc17a514b1b0c46cf8acc5e905bf5554f",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.importguard.StaticJavaClassesFieldSample",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/importguard/StaticJavaClassesFieldSample.java",
+      "sha256": "f44334d6a14dbed6aef0d41af551e9b3aad2a549429f95fbd14e19bcbc97c8c3",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.importguard.UnrelatedEmptyStringThenFixtureImportSample",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/importguard/UnrelatedEmptyStringThenFixtureImportSample.java",
+      "sha256": "c2834dd48ec063699c02d23cebc3a51f732eb777132ea0a86834d360a5c0d18a",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.importguard.UnresolvableImportArgumentSample",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/importguard/UnresolvableImportArgumentSample.java",
+      "sha256": "102920390384ccb646f660e7a7a4700d7f662111201aa9feb38d27f4d58f0964",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.importguard.WholeProductionImportPackagesOfSample",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/importguard/WholeProductionImportPackagesOfSample.java",
+      "sha256": "3dc74913cdee420346d9b5146e4ebf4d31edccd66ae90dff185c6c341136f03b",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.importguard.WholeProductionImportPathSample",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/importguard/WholeProductionImportPathSample.java",
+      "sha256": "fc5df0dae5c4d18da63df0c0a847b8d0ed410a7ce862a2bda0addb8c23bb3c74",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.importguard.WholeProductionImportSample",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/importguard/WholeProductionImportSample.java",
+      "sha256": "9612e08fb735d9cbdb921f84a0baac4cb58df5f3d4cbc1d88de375fa453f9028",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.importguard.WholeProductionImportViaArrayConstantSample",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/importguard/WholeProductionImportViaArrayConstantSample.java",
+      "sha256": "0a7c378a7edffcb78c76c60246d56d8d85d35133e9e3fbbf5a9b55f9c5300f63",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.importguard.WholeProductionImportViaLocalAfterOtherImportSample",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/importguard/WholeProductionImportViaLocalAfterOtherImportSample.java",
+      "sha256": "e35b7ace9102064a2aa155bcc2652555e0a35c9d214a82a91249a722ae8e9e56",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.importguard.WholeProductionImportViaMergedArrayAliasSample",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/importguard/WholeProductionImportViaMergedArrayAliasSample.java",
+      "sha256": "4d583dfc6f7c9eb5a5437653560836bd16e055da60feacebcd1f20c6a0a28383",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.importguard.WholeProductionImportViaRewrittenArrayConstantSample",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/importguard/WholeProductionImportViaRewrittenArrayConstantSample.java",
+      "sha256": "7e34c8aae3862dec2fe071d7d2d88b09dee10b26d8e7f542b14ffe57d3aad890",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.notification.AsyncSelfInvocationBatchFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/notification/AsyncSelfInvocationBatchFixture.java",
+      "sha256": "a60c5bb6d51f7ac71352366e25c18d0dd5e2801ad3fda0a8e92503dabd4c0642",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.notification.AsyncSelfInvocationFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/notification/AsyncSelfInvocationFixture.java",
+      "sha256": "bc29e0c1cf34007eb65d80df05c08bb6cc481d5992712f53f49e055e747f2e80",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.notification.BusinessTransaction",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/notification/BusinessTransaction.java",
+      "sha256": "4c00777c23422dcc1a931c9ac132f18d607745b3fdf0e9ae4296fcfbaff2245e",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.notification.FullyQualifiedWorkerStub",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/notification/FullyQualifiedWorkerStub.java",
+      "sha256": "465f0796225257333b12953e6a435b50cd763d1002d26c9266e1ff78ce2906ef",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.notification.GuardBlindSpotFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/notification/GuardBlindSpotFixture.java",
+      "sha256": "0108d204be5e07c2e0fbab7026d739176d9608e113ae2435db7e22600c04f517",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.notification.ImpactClassificationFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/notification/ImpactClassificationFixture.java",
+      "sha256": "ff7b028ecbf4a10e913eb13ff9c72476c84af572d3524cfcb4caf52338cae9d0",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.notification.NotificationFixtureStubs",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/notification/NotificationFixtureStubs.java",
+      "sha256": "417a08a1bb8f64186698c7ace4d4597074a32e6f2566d5b121af9ebafc3a43d6",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.notification.PlainEventListenerFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/notification/PlainEventListenerFixture.java",
+      "sha256": "d33dbdeff9e1980cbf9027f5749c1f0a2b50360c51a22ec03b7860bc260a1eef",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.notification.SuspendedEntryFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/notification/SuspendedEntryFixture.java",
+      "sha256": "a4c8db41d1055f6409672741befabaaa01fcae1210872a725a02567795c04744",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.notification.TransactionalNotificationObservationFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/notification/TransactionalNotificationObservationFixture.java",
+      "sha256": "7fa6c00ed0b98b8d8a9f9f0204d5672013ee1923c6236a2e01d4c84854c8ede5",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.notification.TxNotificationFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/notification/TxNotificationFixture.java",
+      "sha256": "3584c22860b20bd604ba0545f7e4dc7a511c34c6a10b52facf5ef37ef56c88a1",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.selfscopedinput.FqnAnnotatedSpecimenController",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/selfscopedinput/FqnAnnotatedSpecimenController.java",
+      "sha256": "2e75b35ca53859ff157bcbb34b6cba41e4dd7a828cfb17f2dfabefbcd55e7f62",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.selfscopedinput.ScopeInputSpecimens",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/selfscopedinput/ScopeInputSpecimens.java",
+      "sha256": "541018742374eb66df354b666fd7b59a681c6bc76751be72b751ad00708efdee",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.selfscopedinput.SpecimenSupport",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/selfscopedinput/SpecimenSupport.java",
+      "sha256": "d8923ec207831a4b6cfb53426093ae47dff907869151fe549f6dfd0775af631d",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.village.MembershipFinder",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/village/MembershipFinder.java",
+      "sha256": "d1221c8c821dc426dbdd1a674b5cada774dcebecaf5745c1e3c2d00909537f05",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.village.VillageGuardLegitMembers",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/village/VillageGuardLegitMembers.java",
+      "sha256": "7e9083ef9efd503fe9382898b5e74913b9d1d1805506a47a0ad2d2282cc31081",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.fixtures.village.VillageGuardRogueModerators",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/fixtures/village/VillageGuardRogueModerators.java",
+      "sha256": "8b1a632059f4bd16694b2a27df9c03893e34d62df37ea79497711faf1ce8bc2a",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.plaintexttoken.CsvPreviewLikeFixtureService",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/plaintexttoken/CsvPreviewLikeFixtureService.java",
+      "sha256": "e18f825b8a4371ede2501fb8ae7e3109f6f5f2c228538ff8482baa43afe3e0ac",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.plaintexttoken.ExemptedSecretFixtureEntity",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/plaintexttoken/ExemptedSecretFixtureEntity.java",
+      "sha256": "9ad29dae559f2129c162358947ce37f41c36a55f3fd140e4cc0adc2668b8b6ca",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.plaintexttoken.ExemptedSecretFixtureRepository",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/plaintexttoken/ExemptedSecretFixtureRepository.java",
+      "sha256": "6d245663caa3a947d2b1741401b3b3351c26f37d99947456bae0a85171b7696a",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.plaintexttoken.FlowSelfIssuingFixtureService",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/plaintexttoken/FlowSelfIssuingFixtureService.java",
+      "sha256": "082fd3318744e93358e6efb9e394d752888aed0deb77667f1801e57cfe6e2620",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.plaintexttoken.HashedTokenFixtureEntity",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/plaintexttoken/HashedTokenFixtureEntity.java",
+      "sha256": "3a7cf13392454ab836c71b9792303566c772fbf8909521e018432f2fc7673401",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.plaintexttoken.HashedTokenFixtureRepository",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/plaintexttoken/HashedTokenFixtureRepository.java",
+      "sha256": "985e1f7fb2c64350162db9477820691e766c03402e3133cae926f71c2f268267",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.plaintexttoken.IssuedTokenHoldingFixtureEntity",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/plaintexttoken/IssuedTokenHoldingFixtureEntity.java",
+      "sha256": "38e8a1a9359c14c1de70f1fbfb288f4cd25391ee42edab19f0d9f0570c970f18",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.plaintexttoken.IssuedTokenParamFixtureRepository",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/plaintexttoken/IssuedTokenParamFixtureRepository.java",
+      "sha256": "08007fc56d7c029d48088ff3eb1ca5f8ff9a43dc2fc6cc8bcdbc85effc66cad7",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.plaintexttoken.JdbcSelfRandomFixtureSink",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/plaintexttoken/JdbcSelfRandomFixtureSink.java",
+      "sha256": "b85ca0e00d15ae07b136b1186068d743b2f2be2bfa5f318f4c549a64703120ed",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.plaintexttoken.JtiSessionFixtureEntity",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/plaintexttoken/JtiSessionFixtureEntity.java",
+      "sha256": "5d2e11e1ed42d10914348833d39084e6ed2e9bf73c1025b44fc4be84b66474fb",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.plaintexttoken.JtiSessionFixtureService",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/plaintexttoken/JtiSessionFixtureService.java",
+      "sha256": "c5ef0405e4981b258ce64e3338c85dcb71c13041604e15ecfce71d8d329b693a",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.plaintexttoken.MisdeclaredExemptionFixtureEntity",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/plaintexttoken/MisdeclaredExemptionFixtureEntity.java",
+      "sha256": "a0a13281091ccba7131226ebb3b2e09d29c5c5bd4ec1d299f69e54a5d2eb38fe",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.plaintexttoken.MisdeclaredExemptionFixtureRepository",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/plaintexttoken/MisdeclaredExemptionFixtureRepository.java",
+      "sha256": "63490d6e665f77b77a7106b0b67e3884aea58f293b1417f055b5608f769692d6",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.plaintexttoken.MisdeclaredHashExemptionFixtureEntity",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/plaintexttoken/MisdeclaredHashExemptionFixtureEntity.java",
+      "sha256": "37e2c23446c4174c6ae0c3c5686af11ccb8c6c5fec6690864b5e41c0014c216c",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.plaintexttoken.PlaintextSecretFixtureSuperclass",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/plaintexttoken/PlaintextSecretFixtureSuperclass.java",
+      "sha256": "3e72674c923343b92fb8ff982cae0a3ff63c57fab45f66b196cfcfa17fa3a490",
+      "flags": [
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.plaintexttoken.PlaintextSecretSubFixtureEntity",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/plaintexttoken/PlaintextSecretSubFixtureEntity.java",
+      "sha256": "dabc3ca260f801ae6594973fb8f42b46dd6a806967c1224faa1877f2b57e0a70",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.plaintexttoken.PlaintextSecretSubFixtureRepository",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/plaintexttoken/PlaintextSecretSubFixtureRepository.java",
+      "sha256": "7d24094e5d8d058dc13e47ca578bcacf3af22597eb0576975845866870c4af92",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.plaintexttoken.PlaintextTokenFixtureEntity",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/plaintexttoken/PlaintextTokenFixtureEntity.java",
+      "sha256": "48ae83c8a95d38cd211bef999bce39f0ab3ee047d9945469812882350a3f9322",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.plaintexttoken.PlaintextTokenFixtureRepository",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/plaintexttoken/PlaintextTokenFixtureRepository.java",
+      "sha256": "388fa644dac6c0f2bd2f2d10dc3d51a1743a52f706b691bfdd4e1639871e1873",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.plaintexttoken.RandomTokenFixtureHelper",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/plaintexttoken/RandomTokenFixtureHelper.java",
+      "sha256": "63b7192b4196054e55274f99f24dac079ac1ddaeb5280f06c23fd87374f67c4b",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.plaintexttoken.SelfIssuingFixtureService",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/plaintexttoken/SelfIssuingFixtureService.java",
+      "sha256": "db65982772e7c59346a708385401e4d56592b594e832cb0ff80317d826c6ea45",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.plaintexttoken.ValkeyBearerFixtureService",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/plaintexttoken/ValkeyBearerFixtureService.java",
+      "sha256": "c343f886611f9958b528388f9a9a1a132c8db2bc848e5b251d831e37c3b80ec8",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.architecture.plaintexttoken.package-info",
+      "path": "backend/src/test/java/com/mannschaft/app/common/architecture/plaintexttoken/package-info.java",
+      "sha256": "fb53497bbf43fcc9105d61e584b464941e4aa9c81e67d73581a2ae2a505e7068",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.duplicatename.DuplicateNameGuardTransactionalTestHelper",
+      "path": "backend/src/test/java/com/mannschaft/app/common/duplicatename/DuplicateNameGuardTransactionalTestHelper.java",
+      "sha256": "b79c702f298377b0c017dd9c27b73b3fb41eddeba4ac6047e2c478ca9073512c",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.entity.UuidV7GenerationContractTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/entity/UuidV7GenerationContractTest.java",
+      "sha256": "b328cb03eb1591b885e918fe71e9310bbe5aeba1b7a284510ca44d8701ee5f9e",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.erdiagram.EntityTableDomains",
+      "path": "backend/src/test/java/com/mannschaft/app/common/erdiagram/EntityTableDomains.java",
+      "sha256": "31a8ee2a16f72379c825969679201c6144852c3d617318a382e6f3b2051ac8ec",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.erdiagram.ErDiagramFiles",
+      "path": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramFiles.java",
+      "sha256": "3bbb89c3fa6bc32555c4f6260aaf8bb7f5027772cba7f68ad1b50e3e9523918d",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.erdiagram.ErDiagramFlywayIT",
+      "path": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramFlywayIT.java",
+      "sha256": "4ed40aee37bda98c2ad3eb6e30c65a72d9edc176ddb3b00021635560edae8bd7",
+      "flags": [],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.erdiagram.ErDiagramRenderer",
+      "path": "backend/src/test/java/com/mannschaft/app/common/erdiagram/ErDiagramRenderer.java",
+      "sha256": "e6429d2167e4e06d066dc7a46b883117fc60499492af3c4572b369305c746bee",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.erdiagram.InformationSchemaReader",
+      "path": "backend/src/test/java/com/mannschaft/app/common/erdiagram/InformationSchemaReader.java",
+      "sha256": "3f48b1f7d779ebc9c51f712cc5bd0b7aa68fed7294f4a06fea4c8b180d17f6d0",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.erdiagram.SchemaSnapshot",
+      "path": "backend/src/test/java/com/mannschaft/app/common/erdiagram/SchemaSnapshot.java",
+      "sha256": "3785733469ce29bcbb62b784880b9b567a13592951b5ecfefe8db36187526395",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.mandatoryport.MandatoryPortCommonFixtures",
+      "path": "backend/src/test/java/com/mannschaft/app/common/mandatoryport/MandatoryPortCommonFixtures.java",
+      "sha256": "ec3253080c4edda70048dc9a10ede95b8370dc6208b23ca7af785ca4117290e5",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.migration.FlywayInviteTokenClaimsMigrationTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/migration/FlywayInviteTokenClaimsMigrationTest.java",
+      "sha256": "ecfc34ed33624a766108ac7da285baea3d770c08e81ea4afaa20dc5cc5116b39",
+      "flags": [
+        "conditional-or-disabled"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.common.migration.LoyaltyLegacyMigrationFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/common/migration/LoyaltyLegacyMigrationFixture.java",
+      "sha256": "763e15bab9b43dc6794ffc7f305ef95163c05d87f83d815b9454e5f87a5be873",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.migration.LoyaltyMigrationFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/common/migration/LoyaltyMigrationFixture.java",
+      "sha256": "626d2b4a988773f810777ddb9b4cf49251cd4dc64b65324bdb4c12a1b2c9482e",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.migration.PlatformCardMigrationFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/common/migration/PlatformCardMigrationFixture.java",
+      "sha256": "9a28f90814a6c09f43a886ea9137f44ddfc468058e791925a8462e560318592d",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.migration.SqlTextScanningUtils",
+      "path": "backend/src/test/java/com/mannschaft/app/common/migration/SqlTextScanningUtils.java",
+      "sha256": "24540628b47102067b7aacde2fb0dadecbd97a3a09654bbbc8a8913cae915a53",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.migration.UnpaidDriftRepaymentFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/common/migration/UnpaidDriftRepaymentFixture.java",
+      "sha256": "8ff9b029646a3f46463943eb0f79a40efc3bec7834c78b72db653f34befe4227",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.persistence.probe.UnsignedIdProbeEntity",
+      "path": "backend/src/test/java/com/mannschaft/app/common/persistence/probe/UnsignedIdProbeEntity.java",
+      "sha256": "d3379731a2e8d46ac349ef98839fddacf6dfb57cec9a4907e883ea2134b94be6",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.persistence.probe.UnsignedIdProbeRepository",
+      "path": "backend/src/test/java/com/mannschaft/app/common/persistence/probe/UnsignedIdProbeRepository.java",
+      "sha256": "86f59920b2def084e2f8b1b314b969136684f46d0de696bb9ec298c3fcdcf5d3",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.testing.TestJvmHeapLoggingLauncherSessionListener",
+      "path": "backend/src/test/java/com/mannschaft/app/common/testing/TestJvmHeapLoggingLauncherSessionListener.java",
+      "sha256": "d3a84861cf97e7cb8ea81827e04490627a5df840f20ffefbede4ab25fdf23651",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.transitivetx.CommonConstructorBridge",
+      "path": "backend/src/test/java/com/mannschaft/app/common/transitivetx/CommonConstructorBridge.java",
+      "sha256": "dbc80ef49c90c2976c2b9cce4645f41827f7ddd6c609b4003008ca685150b33c",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.visibility.architecture.NotificationVisibilityArchitectureTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/visibility/architecture/NotificationVisibilityArchitectureTest.java",
+      "sha256": "58c47ae9fd150ea76b691fcc64141a62de97fcff580ef7e6685048c9abc50312",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.visibility.architecture.VisibilityArchitectureTest",
+      "path": "backend/src/test/java/com/mannschaft/app/common/visibility/architecture/VisibilityArchitectureTest.java",
+      "sha256": "86f56e853b76ee8a52cde63ad2f9a7382e8161aa16a47a8882bf7f8840722752",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.visibility.perf.SqlIntentCounter",
+      "path": "backend/src/test/java/com/mannschaft/app/common/visibility/perf/SqlIntentCounter.java",
+      "sha256": "407f1f3bbb160051837c8304882a1b409c5b97c73d81e76951663a184cf097bf",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.visibility.perf.VisibilityCheckerPerformanceTestBase",
+      "path": "backend/src/test/java/com/mannschaft/app/common/visibility/perf/VisibilityCheckerPerformanceTestBase.java",
+      "sha256": "610d1fa3c3e56bc4601fe3803bc41f3b24d862f117017b7ae5f8c791a9e7e5a7",
+      "flags": [
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.common.visibility.testsupport.VisibilityCheckerTestSupport",
+      "path": "backend/src/test/java/com/mannschaft/app/common/visibility/testsupport/VisibilityCheckerTestSupport.java",
+      "sha256": "bba65f87a15f20b6e0bcd63dd658e25a151dd78da94875af5b31dc2e81afeaae",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.config.ShedLockTestConfig",
+      "path": "backend/src/test/java/com/mannschaft/app/config/ShedLockTestConfig.java",
+      "sha256": "2e7f39870ea6c3b61c5774fab02f08b2b6cf4ee9e827b5661c054209b3b42c3d",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.config.webmvc.QueryParamDateTimeProbeController",
+      "path": "backend/src/test/java/com/mannschaft/app/config/webmvc/QueryParamDateTimeProbeController.java",
+      "sha256": "3f95d7530932bcc8e23c1089e124dd1be0c79173838db0ed26ace35c6f1664a6",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.corkboard.CorkboardTestFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/corkboard/CorkboardTestFixture.java",
+      "sha256": "7873c416cbb1e9a21384c245e3747dc82c5d7a4ff1fdda89cf35607c05adbb94",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.diagnosis.DiagnosisQuestionnaireTestFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/diagnosis/DiagnosisQuestionnaireTestFixture.java",
+      "sha256": "79291bf82d4ffb3b16807023b6b52f104c6ad0e3736c14cf09ae23ed1f461fc1",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.disclosure.controller.AbstractDisclosureIntegrationTest",
+      "path": "backend/src/test/java/com/mannschaft/app/disclosure/controller/AbstractDisclosureIntegrationTest.java",
+      "sha256": "3ddee3698b7471bfd07f89afbb9ace807f0f42c3a15ba2ec03c109d2d06b75eb",
+      "flags": [
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.disclosure.support.WordTemplateGenerator",
+      "path": "backend/src/test/java/com/mannschaft/app/disclosure/support/WordTemplateGenerator.java",
+      "sha256": "153d5e0ae73e33434b1c91f25eed51ee459ff059973e4517dd4fec7270bc82ce",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.errorreport.service.ErrorReportAiAnalysisTransactionBoundaryTest",
+      "path": "backend/src/test/java/com/mannschaft/app/errorreport/service/ErrorReportAiAnalysisTransactionBoundaryTest.java",
+      "sha256": "666c461823259e13499e15c52a83ca068eb68bb845f831d0afa7770860aeef13",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.errorreport.service.ErrorReportR1TestSupport",
+      "path": "backend/src/test/java/com/mannschaft/app/errorreport/service/ErrorReportR1TestSupport.java",
+      "sha256": "e07c3e6414de8458031be3f7fa920a5df5746d91fd19255608ea12eaf742f3e7",
+      "flags": [
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.loyalty.LoyaltyQueryReaderFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/loyalty/LoyaltyQueryReaderFixture.java",
+      "sha256": "62124a7b3b5a135d2bef5248b53e4c984aa17d21784aba91493f848a0de23c53",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.loyalty.LoyaltyTestFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/loyalty/LoyaltyTestFixture.java",
+      "sha256": "1e7778cd82cf315b7fcd83f4ffec30f1036a34721b7b86caaccec0a37938820f",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.member.MemberTxBoundaryITSupport",
+      "path": "backend/src/test/java/com/mannschaft/app/member/MemberTxBoundaryITSupport.java",
+      "sha256": "645a276a6d17e510d30955b2e30023fcad882c281f9ca4026b410020bfd40937",
+      "flags": [
+        "conditional-or-disabled",
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.membership.PlatformCardTestFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/membership/PlatformCardTestFixture.java",
+      "sha256": "f9c31ee0f5ec90c27c903eeca7f695dc8fa7c3053fcc26e7619f48cb29400733",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.membership.mandatoryport.MandatoryPortMembershipFixtures",
+      "path": "backend/src/test/java/com/mannschaft/app/membership/mandatoryport/MandatoryPortMembershipFixtures.java",
+      "sha256": "659c25e62e6000a278cb8aa14c767970058e4045043169603678cc61d3f95267",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.membership.transitivetx.MembershipBridge",
+      "path": "backend/src/test/java/com/mannschaft/app/membership/transitivetx/MembershipBridge.java",
+      "sha256": "c18cedfe2feecd78fb632bb9b8b93678c5a870518666cbb5d2c450f156d7fdd8",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.notification.confirmable.support.ConfirmableFanoutFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/notification/confirmable/support/ConfirmableFanoutFixture.java",
+      "sha256": "23740ef8510f04e173a7d11a74b3d5954b6c55e332ae4b9e2d59a269fa9a3cf4",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.notification.fanout.perf.NotificationFanoutOrgAutoShardingIT",
+      "path": "backend/src/test/java/com/mannschaft/app/notification/fanout/perf/NotificationFanoutOrgAutoShardingIT.java",
+      "sha256": "57f28ac8ddd80813188fcc501e440021e3286f892e8d3d85d09588504064c19b",
+      "flags": [
+        "perf",
+        "conditional-or-disabled"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.notification.fanout.perf.NotificationFanoutOrgCrashResumeIT",
+      "path": "backend/src/test/java/com/mannschaft/app/notification/fanout/perf/NotificationFanoutOrgCrashResumeIT.java",
+      "sha256": "afaf4b8fea0d5fabcbba606f06603ce7ecba99a085b92a732b493bd78efbb834",
+      "flags": [
+        "perf",
+        "conditional-or-disabled"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.notification.fanout.perf.NotificationFanoutOrgIdempotencyBoundaryIT",
+      "path": "backend/src/test/java/com/mannschaft/app/notification/fanout/perf/NotificationFanoutOrgIdempotencyBoundaryIT.java",
+      "sha256": "8b0062f5beeeb1e2896068c15d68ab5a08ba15b37613499263b088ab7afcecde",
+      "flags": [
+        "perf",
+        "conditional-or-disabled"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.notification.fanout.perf.NotificationFanoutOrgShardCrashResumeIT",
+      "path": "backend/src/test/java/com/mannschaft/app/notification/fanout/perf/NotificationFanoutOrgShardCrashResumeIT.java",
+      "sha256": "08a6bbd1ae7ca894d9c3f1bf6bbfe97e05265e4e7a4de8c92a045075fae9c2a9",
+      "flags": [
+        "perf",
+        "conditional-or-disabled"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.notification.fanout.perf.NotificationFanoutOrgShardPartitionIT",
+      "path": "backend/src/test/java/com/mannschaft/app/notification/fanout/perf/NotificationFanoutOrgShardPartitionIT.java",
+      "sha256": "2c171df01630a28779fc1b11298a03400e27d9b47766c36ac47fb57c3cabdf30",
+      "flags": [
+        "perf",
+        "conditional-or-disabled"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.notification.fanout.perf.NotificationFanoutOrgShardedMeasurementIT",
+      "path": "backend/src/test/java/com/mannschaft/app/notification/fanout/perf/NotificationFanoutOrgShardedMeasurementIT.java",
+      "sha256": "62d828000a05cb61e0a267bc9c805ee90668f7b97d81e76098564aac6d44ee93",
+      "flags": [
+        "perf",
+        "conditional-or-disabled"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.notification.mandatoryport.MandatoryPortNotificationFixtures",
+      "path": "backend/src/test/java/com/mannschaft/app/notification/mandatoryport/MandatoryPortNotificationFixtures.java",
+      "sha256": "c62f120fcdf3e99ce7fc4c448c844296f4ef21e482f3660fe1e592a63bcc6c68",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.organization.service.OrganizationInviteQueryServiceTest",
+      "path": "backend/src/test/java/com/mannschaft/app/organization/service/OrganizationInviteQueryServiceTest.java",
+      "sha256": "4c8ac8305728ddb0c4b5430a57d2ec4807f16dfdc7e197a0d1845ba9250aabfb",
+      "flags": [],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.organization.teamaffiliation.TeamAffiliationApiFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/organization/teamaffiliation/TeamAffiliationApiFixture.java",
+      "sha256": "68208658935947c0b78954c827321c75f0a091b90225b4c739849905e4dcb798",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.organization.teamgroup.AbstractOrgTeamGroupAssignmentIT",
+      "path": "backend/src/test/java/com/mannschaft/app/organization/teamgroup/AbstractOrgTeamGroupAssignmentIT.java",
+      "sha256": "c5f580dae4300c9c5d824a0f19ba7d727bd29b991b39c7dda20af3ac5a1f8aa4",
+      "flags": [
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.organization.teamgroup.AbstractOrgTeamGroupIT",
+      "path": "backend/src/test/java/com/mannschaft/app/organization/teamgroup/AbstractOrgTeamGroupIT.java",
+      "sha256": "80cc9a0d1c25cae72b8cef5828111ecf50821c0affbe760d8c9c488b98cc6678",
+      "flags": [
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.proxy.ProxyInputArchitectureTest",
+      "path": "backend/src/test/java/com/mannschaft/app/proxy/ProxyInputArchitectureTest.java",
+      "sha256": "80da9f4999f3501d84c715835c11bff54b379cbc507445e70b0f9b7d24a452f0",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.proxy.repository.BaseProxyRepository",
+      "path": "backend/src/test/java/com/mannschaft/app/proxy/repository/BaseProxyRepository.java",
+      "sha256": "8445db7ded52529b91c83db289c7059f0a54e9194851efce8ed6fa71305a3eb1",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.proxy.repository.InheritedProxyRepository",
+      "path": "backend/src/test/java/com/mannschaft/app/proxy/repository/InheritedProxyRepository.java",
+      "sha256": "2a10d7b1015d621505fa15bb29df7c873646ccc77a2abeb41f9cc943766f7194",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.proxy.repository.TransitiveProxyRepository",
+      "path": "backend/src/test/java/com/mannschaft/app/proxy/repository/TransitiveProxyRepository.java",
+      "sha256": "2c399416c66d2ca17faf4908d4bc37c55a82253da0b76d4a2940268f1abf2014",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.ranch.RanchDeliveryMeasurementCollector",
+      "path": "backend/src/test/java/com/mannschaft/app/ranch/RanchDeliveryMeasurementCollector.java",
+      "sha256": "329f5ba75298a195935cef64dccf54b6aa375715bdbf0082da3e6b1dc1238088",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.ranch.RanchGdprFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/ranch/RanchGdprFixture.java",
+      "sha256": "d5973fe1cbceb98b072c461f47feb1982c7577394e5a660185a3dc5a3b02ee59",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.ranch.RanchReadKeysetTestFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/ranch/RanchReadKeysetTestFixture.java",
+      "sha256": "096a8e54e652a60b4cf2dc8bd354c90455f143fe5c1434225dc298b909bb262c",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.ranch.RanchTestFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/ranch/RanchTestFixture.java",
+      "sha256": "8674b7f09854fad2cc76b27fb15ff429ce09a8f243af9defadc347658cad4bce",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.repairplan.controller.AbstractRepairPlanKanbanIntegrationTest",
+      "path": "backend/src/test/java/com/mannschaft/app/repairplan/controller/AbstractRepairPlanKanbanIntegrationTest.java",
+      "sha256": "564b7f0432f3cab059fe657cfdac9939a6e39f6e5bb09131252fbc370d8438c9",
+      "flags": [
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.repairplan.controller.AbstractRepairPlanPhase5IntegrationTest",
+      "path": "backend/src/test/java/com/mannschaft/app/repairplan/controller/AbstractRepairPlanPhase5IntegrationTest.java",
+      "sha256": "b51f1610a8803368f49319461690f85a68095fd953c19b23bde9b0c4b181f257",
+      "flags": [
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.reservation.ReservationPendingExpireTestFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/reservation/ReservationPendingExpireTestFixture.java",
+      "sha256": "9ed3b4af225c81b8809af60daf6c126ee94b31ce5093fbb350a2e39ee71e7b7f",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.reservation.service.EmergencyClosureSendServiceTest",
+      "path": "backend/src/test/java/com/mannschaft/app/reservation/service/EmergencyClosureSendServiceTest.java",
+      "sha256": "e733fe8e64204e3e7f631d47d636ba9852a68e720de297174fb29f1718f91e22",
+      "flags": [],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.reservation.service.ReservationRecurringServiceArchGuardTest",
+      "path": "backend/src/test/java/com/mannschaft/app/reservation/service/ReservationRecurringServiceArchGuardTest.java",
+      "sha256": "416a04d2aade64f66237d2643fe4eb95805eee2019b69ee99eaea26c879c9281",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.resident.mandatoryport.MandatoryPortResidentFixtures",
+      "path": "backend/src/test/java/com/mannschaft/app/resident/mandatoryport/MandatoryPortResidentFixtures.java",
+      "sha256": "185d710aafb393a7383ca1dc3feb7caeb45563d1586aae616da0d2060fd09624",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.resident.repository.TransitiveResidentRepository",
+      "path": "backend/src/test/java/com/mannschaft/app/resident/repository/TransitiveResidentRepository.java",
+      "sha256": "9726360d59d965e2bb715e0d004a9ee232bf6b670adb0470cd90f9ece52ec4db",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.resident.transitivetx.ClassTransactionalFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/resident/transitivetx/ClassTransactionalFixture.java",
+      "sha256": "c83f4eaeb9ebf5a88c42fda2f8fb3b96389ea1c5b2086b5d4bf389f3daa1387e",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.resident.transitivetx.InheritedClassTransactionalFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/resident/transitivetx/InheritedClassTransactionalFixture.java",
+      "sha256": "046137c1cfaa5d542679e1ce7aa5798591af6c14d3c392b8396c688eda0277e6",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.resident.transitivetx.InheritedTransactionalBase",
+      "path": "backend/src/test/java/com/mannschaft/app/resident/transitivetx/InheritedTransactionalBase.java",
+      "sha256": "38bc45e6812c3008bf790e7a9f17f46faa6955ba5ae6119518ac467b044b849c",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.resident.transitivetx.L1G0TransactionalFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/resident/transitivetx/L1G0TransactionalFixture.java",
+      "sha256": "9f0e9f10e277b80a924cc5c2d9807a9d8a4dee4d918de95841478ae3f59891ec",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.resident.transitivetx.TransitiveTransactionalFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/resident/transitivetx/TransitiveTransactionalFixture.java",
+      "sha256": "834a57ce6c43efd41a8ad2fe62a6f81fe0d5107b84ef235ca13c03fa06214581",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.resident.transitivetx.UnresolvedBridge",
+      "path": "backend/src/test/java/com/mannschaft/app/resident/transitivetx/UnresolvedBridge.java",
+      "sha256": "fe2793a105f0317cd01091fec91e981f9b07e3e12d78736c0b6c1bc5f9a03640",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.role.InviteAcceptanceConcurrencyIT",
+      "path": "backend/src/test/java/com/mannschaft/app/role/InviteAcceptanceConcurrencyIT.java",
+      "sha256": "42b89067177a6d1d9ccb8ef55606bfbab66e66d641f5f18b4b395a189bd74d8c",
+      "flags": [
+        "conditional-or-disabled"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.role.InviteAcceptanceFacadeTest",
+      "path": "backend/src/test/java/com/mannschaft/app/role/InviteAcceptanceFacadeTest.java",
+      "sha256": "d9f72148313c15e480d21280bcaf4f61020376f98fd5bfc6d110bd3445a269ed",
+      "flags": [],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.role.InviteAcceptanceFailureIT",
+      "path": "backend/src/test/java/com/mannschaft/app/role/InviteAcceptanceFailureIT.java",
+      "sha256": "7f8ab0048741c1551926b4c904ae4c6107978895426e0e53bd9379876ac19671",
+      "flags": [
+        "conditional-or-disabled"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.role.InviteAcceptanceItSupport",
+      "path": "backend/src/test/java/com/mannschaft/app/role/InviteAcceptanceItSupport.java",
+      "sha256": "b06ca1f66cb8178388102b633a9e87f3607110cde16c7a7b75efa9fb0b1eaf4e",
+      "flags": [
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.role.InviteAcceptanceParityIT",
+      "path": "backend/src/test/java/com/mannschaft/app/role/InviteAcceptanceParityIT.java",
+      "sha256": "3a84807374aeb52cca9a3db10b59b24497174808aee69111b9e9a59973fb7a68",
+      "flags": [
+        "conditional-or-disabled"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.role.InviteAcceptanceWriterTest",
+      "path": "backend/src/test/java/com/mannschaft/app/role/InviteAcceptanceWriterTest.java",
+      "sha256": "a99f7d54340da9ebfb44e5a9b82858d5540514447d9e009a5d9cff1d56f4bd1c",
+      "flags": [],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.role.InviteGenerationItSupport",
+      "path": "backend/src/test/java/com/mannschaft/app/role/InviteGenerationItSupport.java",
+      "sha256": "3e4ef7b41e5a26ca4ed9393ac92ec83ce9145daa61be1f9f81c97a279a1ff763",
+      "flags": [
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.role.transitivetx.RoleBridge",
+      "path": "backend/src/test/java/com/mannschaft/app/role/transitivetx/RoleBridge.java",
+      "sha256": "a39d3e6892093583390e07e254cf5630555a8040da84088a9a600c2187223875",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.schedule.ScheduleCommentTestFixtures",
+      "path": "backend/src/test/java/com/mannschaft/app/schedule/ScheduleCommentTestFixtures.java",
+      "sha256": "c220cbf7d8be51a26dac47f9807744661c36906c46d4ab943a7d7f0b3b155bc2",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.schedule.visibility.ScheduleCommentResolverUniquenessTest",
+      "path": "backend/src/test/java/com/mannschaft/app/schedule/visibility/ScheduleCommentResolverUniquenessTest.java",
+      "sha256": "fae70c567920c23939666c4a357b9d40e103c5ff61eafa37a42167ef7666f13e",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.school.SchoolAttendanceAuthzFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/school/SchoolAttendanceAuthzFixture.java",
+      "sha256": "c46ee90ab97977aa2ca81d6f40c709fc0f97907bea6f78679b96dcc20debdb99",
+      "flags": [
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.school.architecture.SchoolAttendanceAuthzGuardArchTest",
+      "path": "backend/src/test/java/com/mannschaft/app/school/architecture/SchoolAttendanceAuthzGuardArchTest.java",
+      "sha256": "cc0b4134377f3dc3aceaafdbab66b06ee6354c24d84825720c18c1ec1ed7780a",
+      "flags": [
+        "archunit"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.scopefolder.service.InviteFolderPlacementServiceTest",
+      "path": "backend/src/test/java/com/mannschaft/app/scopefolder/service/InviteFolderPlacementServiceTest.java",
+      "sha256": "d83875eb421b8f8cc0ee2eed24d822d0956567a3d8e1262e8ce330db913bf2ce",
+      "flags": [],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.shiftbudget.ShiftBudgetConsumptionCancelRaceTestFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/shiftbudget/ShiftBudgetConsumptionCancelRaceTestFixture.java",
+      "sha256": "dc57daf02c46ac02053f4c0d46e27f8402d372dbc9b95df39cc3b78e5aa47ef7",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.social.FriendRequestContractFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/social/FriendRequestContractFixture.java",
+      "sha256": "504825aed01e1214a1f4f5f749d1d4e15aef689a250455dfd98f383e8402755c",
+      "flags": [
+        "conditional-or-disabled",
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.social.announcement.audience.AbstractAudienceDisplayIT",
+      "path": "backend/src/test/java/com/mannschaft/app/social/announcement/audience/AbstractAudienceDisplayIT.java",
+      "sha256": "2a87b00426fd00a99c0cdd02e043bfbf4b1648439f30f88e0bda160c34e9d124",
+      "flags": [
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.social.announcement.audience.AbstractBroadcastAudienceIT",
+      "path": "backend/src/test/java/com/mannschaft/app/social/announcement/audience/AbstractBroadcastAudienceIT.java",
+      "sha256": "3fee1505ce56518d697d36137431a68229621e90db770bc50b36fce94adfdb85",
+      "flags": [
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.succession.controller.AbstractSuccessionIntegrationTest",
+      "path": "backend/src/test/java/com/mannschaft/app/succession/controller/AbstractSuccessionIntegrationTest.java",
+      "sha256": "9655b6605c43418b1de9e010c954389571ce3f81e77d7ce2960ffd7660d7681f",
+      "flags": [
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.support.perf.AdAudienceSeeder",
+      "path": "backend/src/test/java/com/mannschaft/app/support/perf/AdAudienceSeeder.java",
+      "sha256": "ba215cc2695fc33d685cc04894d7b74e2973f146f4da8ea5ed63a4b9fa0b52ec",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.support.perf.CountingDataSource",
+      "path": "backend/src/test/java/com/mannschaft/app/support/perf/CountingDataSource.java",
+      "sha256": "447371838b2dd561ca0fc93c4f079a7bb034445c623096d52d677fda46c2b7e8",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.support.perf.Fanout10kSeeder",
+      "path": "backend/src/test/java/com/mannschaft/app/support/perf/Fanout10kSeeder.java",
+      "sha256": "307bb164364ebfa68857f93944989ecdd227135f1dd86f75c8c86f19bc149766",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.support.perf.Fanout500kSeeder",
+      "path": "backend/src/test/java/com/mannschaft/app/support/perf/Fanout500kSeeder.java",
+      "sha256": "1967824857408533465a922b4600d918aa4ccdbbce90eb375074cd5de250e65a",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.support.perf.SqlStatementCounter",
+      "path": "backend/src/test/java/com/mannschaft/app/support/perf/SqlStatementCounter.java",
+      "sha256": "ea7a440a1acd04a9df8187ee9c825d8747b3ae6cd01b20ac0055844a75344712",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.support.test.AbstractMySqlIntegrationTest",
+      "path": "backend/src/test/java/com/mannschaft/app/support/test/AbstractMySqlIntegrationTest.java",
+      "sha256": "10355884d2d377a8d436e97133071f4c59d728541a71972336b8cde6be08b134",
+      "flags": [
+        "conditional-or-disabled",
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.support.test.CommitSaboteurConfig",
+      "path": "backend/src/test/java/com/mannschaft/app/support/test/CommitSaboteurConfig.java",
+      "sha256": "757bb9c263f2d387f5438e9663b0db74793acbf322aa611dbebfa304cb17864e",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.support.test.FeatureFlagTestSupport",
+      "path": "backend/src/test/java/com/mannschaft/app/support/test/FeatureFlagTestSupport.java",
+      "sha256": "3e7312cbdc43ae381f6aee9ac7ae31a8e2964f9f118618f872ca9602331560a6",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.support.test.MembershipTestHelper",
+      "path": "backend/src/test/java/com/mannschaft/app/support/test/MembershipTestHelper.java",
+      "sha256": "3501ea2be377756052e9e5e2fbc7fc5cb8c7a4e0fb698bae51c51ac4bea9f0aa",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.support.test.N1SeedSupport",
+      "path": "backend/src/test/java/com/mannschaft/app/support/test/N1SeedSupport.java",
+      "sha256": "4c2240d6680f4817a095cefd9939726272c460f38cb634b4ab12338628b24a4f",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.support.test.TeamOrgFixtureHelper",
+      "path": "backend/src/test/java/com/mannschaft/app/support/test/TeamOrgFixtureHelper.java",
+      "sha256": "50c8f01f182aa368f5e3e5fd28c67368876f8e79c08db985938749cb22537e53",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.team.TeamRestoreSecurityFilterTestFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/team/TeamRestoreSecurityFilterTestFixture.java",
+      "sha256": "050fed35635199ca2e8660b45001579c559818b4b41c25c04b3df032f10bd0b4",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.team.TeamRestoreTestFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/team/TeamRestoreTestFixture.java",
+      "sha256": "fc06acdad641f631541b5a46b00a26498ad581f30fa19236ba7ec8e33604ffb6",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.team.affiliation.TeamAffiliationItSupport",
+      "path": "backend/src/test/java/com/mannschaft/app/team/affiliation/TeamAffiliationItSupport.java",
+      "sha256": "b9e37e84444ccc625ab730f8f374bf00140501b9654e1a00830456b207bdc1c4",
+      "flags": [
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.team.affiliation.TeamNotificationOutboxItSupport",
+      "path": "backend/src/test/java/com/mannschaft/app/team/affiliation/TeamNotificationOutboxItSupport.java",
+      "sha256": "fc2a590a69bcb43f94f2a241e848c13e05b192328cf3bd77f4cffd5a821a6f48",
+      "flags": [
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.team.affiliation.TeamOrgInviteItSupport",
+      "path": "backend/src/test/java/com/mannschaft/app/team/affiliation/TeamOrgInviteItSupport.java",
+      "sha256": "83f4f100fe75ed2178a5f4b448321ed9b8ef716674e653b55ab6aed59a6a3b29",
+      "flags": [
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.team.affiliation.TeamOrgLifecycleCommittedItSupport",
+      "path": "backend/src/test/java/com/mannschaft/app/team/affiliation/TeamOrgLifecycleCommittedItSupport.java",
+      "sha256": "a835c8e2a8e4d4db63757f9ef9794bc96a71f8aa5e3842dfbab8072eaecc2a84",
+      "flags": [
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.team.service.TeamInviteQueryServiceTest",
+      "path": "backend/src/test/java/com/mannschaft/app/team/service/TeamInviteQueryServiceTest.java",
+      "sha256": "c38c63b21e6dea22a57ec32ff0fbb707a1faa21f50972ea6b945349053dea256",
+      "flags": [],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.template.FeatureDisplayPolicyTestFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/template/FeatureDisplayPolicyTestFixture.java",
+      "sha256": "ca73bc8769b52593f1449e0acc684ad5f531d42f983d5e7cbf1acc786a31f41e",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.village.controller.AbstractVillageIntegrationTest",
+      "path": "backend/src/test/java/com/mannschaft/app/village/controller/AbstractVillageIntegrationTest.java",
+      "sha256": "191bb4fb2f85c92277475f7d614cb8dabe4dfaac6f77c40c54d279105527f15d",
+      "flags": [
+        "abstract"
+      ],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.village.perf.VillageFanout10kMeasurementIT",
+      "path": "backend/src/test/java/com/mannschaft/app/village/perf/VillageFanout10kMeasurementIT.java",
+      "sha256": "e503646cc8debd54a892a6b660edb03c29aefc8a3f3439c9bd8ec85c66737a3b",
+      "flags": [
+        "perf",
+        "conditional-or-disabled"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.village.perf.VillageFanoutRedesignP1RedIT",
+      "path": "backend/src/test/java/com/mannschaft/app/village/perf/VillageFanoutRedesignP1RedIT.java",
+      "sha256": "87e5e536861d88bf84bf0458ae3fb024f08549855a69fedb101457bb3a10b945",
+      "flags": [
+        "perf",
+        "conditional-or-disabled"
+      ],
+      "directTestMethods": true
+    },
+    {
+      "class": "com.mannschaft.app.village.service.VillageAccessGateTestSupport",
+      "path": "backend/src/test/java/com/mannschaft/app/village/service/VillageAccessGateTestSupport.java",
+      "sha256": "d9111e0dc5aaceb4cf0c1bf35faedcb5f877a7799c8d97e6a2af298b7584db5b",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.app.village.service.VillageMembershipSlotTestFixture",
+      "path": "backend/src/test/java/com/mannschaft/app/village/service/VillageMembershipSlotTestFixture.java",
+      "sha256": "19b68ba293d4aeea3dbc803f4478b802da5db17524995865e72a86480258e404",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "com.mannschaft.enumguardfixture.PersistedEnumFixtures",
+      "path": "backend/src/test/java/com/mannschaft/enumguardfixture/PersistedEnumFixtures.java",
+      "sha256": "fa85a3cf03c55c6cf47968c70e1bfac7c873a9573516d54f3091e0895a17a525",
+      "flags": [],
+      "directTestMethods": false
+    },
+    {
+      "class": "external.transitivetx.ExternalPortBridge",
+      "path": "backend/src/test/java/external/transitivetx/ExternalPortBridge.java",
+      "sha256": "e6405bd58cea14c90f5f5816bd770de96ccad8b5768829332533664bdd153e65",
+      "flags": [],
+      "directTestMethods": false
+    }
+  ],
+  "normalUnmeasuredWithDirectTestMethods": [
+    "com.mannschaft.app.chat.ChatExistenceConcealmentContractIT",
+    "com.mannschaft.app.chat.service.ChatChannelAccessGuardTest",
+    "com.mannschaft.app.chat.service.ChatChannelFacadeTest",
+    "com.mannschaft.app.chat.service.ChatDmReceiveAccessGuardTest",
+    "com.mannschaft.app.chat.service.ChatMessageFacadeTest",
+    "com.mannschaft.app.common.erdiagram.ErDiagramFlywayIT",
+    "com.mannschaft.app.common.migration.FlywayInviteTokenClaimsMigrationTest",
+    "com.mannschaft.app.organization.service.OrganizationInviteQueryServiceTest",
+    "com.mannschaft.app.reservation.service.EmergencyClosureSendServiceTest",
+    "com.mannschaft.app.role.InviteAcceptanceConcurrencyIT",
+    "com.mannschaft.app.role.InviteAcceptanceFacadeTest",
+    "com.mannschaft.app.role.InviteAcceptanceFailureIT",
+    "com.mannschaft.app.role.InviteAcceptanceParityIT",
+    "com.mannschaft.app.role.InviteAcceptanceWriterTest",
+    "com.mannschaft.app.scopefolder.service.InviteFolderPlacementServiceTest",
+    "com.mannschaft.app.team.service.TeamInviteQueryServiceTest"
+  ],
+  "qualification": "Source inventory and direct annotation classification only. Abstract/helpers/inherited tags and runnable compiled classes must be verified by existing all-four-profile verifyShardCoverage in exact-head CI.",
+  "appliedKeys": {
+    "file": "weights-provenance.tsv",
+    "rows": 3182,
+    "sha256": "133df81bb77f79fa8cf020a12df169b036febce6961ffe401dd200b9690c2a2d"
+  },
+  "candidateAuthoringCopy": {
+    "bytes": 235274,
+    "crlf": 3193,
+    "sha256": "cc907fedc56c93ee133684fb363064f3660c9070c61939866c2c0d9ebe24d462"
+  },
+  "canonicalGitWeights": {
+    "blob": "5966c9195a8c5dff161cb8094317c770bfe76e0e",
+    "bytes": 232081,
+    "crlf": 0,
+    "lf": 3193,
+    "sha256": "74be9c96f7883cec63ab7f6d8a9a0fd293512296802881104a8074590b024676"
+  },
+  "eolNormalizationReceipt": "eol-normalization.json"
+}
