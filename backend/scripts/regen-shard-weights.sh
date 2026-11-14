@@ -25,7 +25,7 @@ import zipfile
 
 WORKFLOWS = {'nightly-full': 'backend-nightly-full.yml', 'backend-ci': 'backend-ci.yml'}
 ALLOWED = {'class-progress.log', 'task-state.log', 'result.json', 'command-exit-code',
-           'started-at-epoch', 'case-intervals.log', 'mfa-intervals.log', 'worker-resources.log'}
+           'started-at-epoch', 'case-intervals.log', 'mfa-intervals.log', 'mfa-resources.log', 'worker-resources.log'}
 REQUIRED = {'class-progress.log', 'task-state.log', 'result.json', 'command-exit-code', 'started-at-epoch'}
 AUXILIARY = {':archTest', ':archUnitTest', ':archUnitFreezeStoreIntegrityTest', ':archSelfTest'}
 

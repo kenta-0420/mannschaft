@@ -154,6 +154,60 @@ class RegenShardWeightsTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.program["safe_zip"](dict(size_in_bytes=len(payload), digest="sha256:bad"), payload)
 
+    def test_optional_mfa_resources_does_not_change_weights(self):
+        for observation in [b"", b"[mfa-resources] threadCpuNanos=999999 gcCount=-1 gcTimeMillis=-1\n"]:
+            with self.subTest(observation=observation), tempfile.TemporaryDirectory() as d:
+                data = fixture()
+                target = Path(d) / "weights"
+                expected = self.generate(data, target)
+                expected_output = target.read_bytes()
+                for _, files in data[2].values():
+                    files["mfa-resources.log"] = observation
+                    stream = io.BytesIO()
+                    with zipfile.ZipFile(stream, "w") as archive:
+                        for name, content in files.items():
+                            archive.writestr("runtime/" + name, content)
+                    payload = stream.getvalue()
+                    meta = dict(size_in_bytes=len(payload), digest="sha256:" + hashlib.sha256(payload).hexdigest())
+                    parsed = self.program["safe_zip"](meta, payload)
+                    self.assertEqual(parsed["mfa-resources.log"], observation)
+                    files.clear()
+                    files.update(parsed)
+                self.assertEqual(self.generate(data, target), expected)
+                self.assertEqual(target.read_bytes(), expected_output)
+
+    def test_mfa_resources_keeps_zip_guards_and_existing_output(self):
+        link = zipfile.ZipInfo("runtime/mfa-resources.log")
+        link.external_attr = (stat.S_IFLNK | 0o777) << 16
+        invalid_members = {
+            "unknown": ([("runtime/mfa-resources.log.txt", b"x")], "unknown/duplicate/oversized"),
+            "traversal": ([("../mfa-resources.log", b"x")], "unsafe zip path/type"),
+            "absolute": ([("/mfa-resources.log", b"x")], "unsafe zip path/type"),
+            "symlink": ([(link, b"target")], "unsafe zip path/type"),
+            "duplicate": ([("runtime/mfa-resources.log", b"x"), ("other/mfa-resources.log", b"x")], "unknown/duplicate/oversized"),
+            "oversized": ([("runtime/mfa-resources.log", b"x" * (2 * 1024 * 1024 + 1))], "unknown/duplicate/oversized"),
+            "digest": ([("runtime/mfa-resources.log", b"x")], "runtime digest mismatch"),
+        }
+        for name, (extra, error) in invalid_members.items():
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as d:
+                data = fixture()
+                target = Path(d) / "weights"
+                target.write_bytes(b"existing-output\n")
+                stream = io.BytesIO()
+                with zipfile.ZipFile(stream, "w") as archive:
+                    for member, content in data[2][0][1].items():
+                        archive.writestr("runtime/" + member, content)
+                    for member, content in extra:
+                        archive.writestr(member, content)
+                payload = stream.getvalue()
+                meta = dict(size_in_bytes=len(payload), digest="sha256:" + hashlib.sha256(payload).hexdigest())
+                if name == "digest":
+                    meta["digest"] = "sha256:bad"
+                with self.assertRaisesRegex(ValueError, error):
+                    data[2][0] = (data[2][0][0], self.program["safe_zip"](meta, payload))
+                    self.generate(data, target)
+                self.assertEqual(target.read_bytes(), b"existing-output\n")
+
     def test_replace_failure_preserves_existing_output_and_cleans_temp(self):
         with tempfile.TemporaryDirectory() as d:
             target = Path(d) / "weights"

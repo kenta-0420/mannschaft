@@ -131,24 +131,35 @@ class InviteAcceptanceConcurrencyIT extends InviteAcceptanceItSupport {
         CountDownLatch tokenLocked = new CountDownLatch(1);
         CountDownLatch proceed = new CountDownLatch(1);
         AtomicLong blocker = new AtomicLong();
+        AtomicReference<RowLockProof> proof = new AtomicReference<>();
         try (var executor = Executors.newFixedThreadPool(2)) {
             // 招待行を握り、承諾を T6（招待行ロック）で待たせる。その間に退会を確定させる。
             Future<?> withdrawal = executor.submit(() -> new TransactionTemplate(transactionManager).executeWithoutResult(s -> {
-                blocker.set(connectionId());
-                jdbc.queryForObject("SELECT id FROM invite_tokens WHERE id = ? FOR UPDATE", Long.class, token.getId());
-                tokenLocked.countDown();
+                try {
+                    blocker.set(connectionId());
+                    jdbc.queryForObject("SELECT id FROM invite_tokens WHERE id = ? FOR UPDATE", Long.class, token.getId());
+                    proof.set(captureTokenLock(blocker.get(), token.getId()));
+                } finally {
+                    tokenLocked.countDown();
+                }
                 await(proceed);
                 jdbc.update("UPDATE users SET status = 'FROZEN' WHERE id = ?", userId);
             }));
-            await(tokenLocked);
-            Future<?> joining = executor.submit(() -> acceptCompat(plaintext(token), userId, null));
+            Future<?> joining = null;
+            Throwable withdrawalError;
+            Throwable joinError;
             try {
-                awaitRowWait("invite_tokens", blocker.get(), token.getId(), joining);
+                await(tokenLocked);
+                RowLockProof captured = capturedProof(proof, withdrawal);
+                // UUID tokenと新scopeはこの試験が所有し、当worker以外のconsumerへ渡さない。
+                joining = executor.submit(() -> acceptCompat(plaintext(token), userId, null));
+                awaitRowWait(captured, joining);
             } finally {
                 proceed.countDown();
+                withdrawalError = outcome(withdrawal);
+                joinError = joining == null ? null : outcome(joining);
             }
-            assertThat(outcome(withdrawal)).as("退会側はデッドロックせず commit する").isNull();
-            Throwable joinError = outcome(joining);
+            assertThat(withdrawalError).as("退会側はデッドロックせず commit する").isNull();
             assertThat(joinError).isInstanceOfSatisfying(BusinessException.class,
                     e -> assertThat(e.getErrorCode()).isEqualTo(RoleErrorCode.ROLE_002));
         }
@@ -353,29 +364,41 @@ class InviteAcceptanceConcurrencyIT extends InviteAcceptanceItSupport {
         CountDownLatch proceed = new CountDownLatch(1);
         AtomicLong blocker = new AtomicLong();
         AtomicLong blockerLockedAt = new AtomicLong();
+        AtomicReference<RowLockProof> proof = new AtomicReference<>();
         AtomicReference<Thread> joiningThread = new AtomicReference<>();
         try (var executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(2)) {
             Future<?> blocking = executor.submit(() -> new TransactionTemplate(transactionManager).executeWithoutResult(s -> {
-                blocker.set(connectionId());
-                jdbc.queryForObject("SELECT id FROM invite_tokens WHERE id = ? FOR UPDATE", Long.class, token.getId());
-                blockerLockedAt.set(System.nanoTime());
-                tokenLocked.countDown();
+                try {
+                    blocker.set(connectionId());
+                    jdbc.queryForObject("SELECT id FROM invite_tokens WHERE id = ? FOR UPDATE", Long.class, token.getId());
+                    blockerLockedAt.set(System.nanoTime());
+                    proof.set(captureTokenLock(blocker.get(), token.getId()));
+                } finally {
+                    tokenLocked.countDown();
+                }
                 await(proceed);
                 block(scope, userId, admin);
             }));
-            await(tokenLocked);
-            Future<?> joining = executor.submit(() -> {
-                joiningThread.set(Thread.currentThread());
-                acceptCompat(plaintext(token), userId, null);
-            });
+            Future<?> joining = null;
+            Throwable blockingError;
+            Throwable joiningError;
             try {
-                awaitRowWait("invite_tokens", blocker.get(), token.getId(), joining, joiningThread, executor,
+                await(tokenLocked);
+                RowLockProof captured = capturedProof(proof, blocking);
+                // requester接続は辺由来の観測値。当workerだけが所有UUID tokenを消費する前提で同期する。
+                joining = executor.submit(() -> {
+                    joiningThread.set(Thread.currentThread());
+                    acceptCompat(plaintext(token), userId, null);
+                });
+                awaitRowWait(captured, joining, joiningThread, executor,
                         blockerLockedAt.get());
             } finally {
                 proceed.countDown();
+                blockingError = outcome(blocking);
+                joiningError = joining == null ? null : outcome(joining);
             }
-            assertThat(outcome(blocking)).isNull();
-            assertThat(outcome(joining)).as("T3 の結果で判定し、参加は成立する").isNull();
+            assertThat(blockingError).isNull();
+            assertThat(joiningError).as("T3 の結果で判定し、参加は成立する").isNull();
         }
         assertThat(userRoleCount(userId, scope)).isEqualTo(1);
         assertThat(membershipCount(userId, scope)).isEqualTo(1);
