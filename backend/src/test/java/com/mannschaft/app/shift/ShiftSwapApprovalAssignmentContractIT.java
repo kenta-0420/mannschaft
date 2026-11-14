@@ -229,7 +229,7 @@ class ShiftSwapApprovalAssignmentContractIT extends ShiftSwapApprovalTestSupport
 
     @ParameterizedTest(name = "AC08_不在と論理削除 [{index}] {arguments}")
     @ValueSource(strings = {"SLOT_SOFT", "SLOT_MISSING", "PARENT_SOFT", "PARENT_MISSING"})
-    void AC08_不在または削除済みの枠と親は既存404で全列不変(String kind) throws Exception {
+    void AC08_不在または削除済みの枠と親はswap不在404で全列不変(String kind) throws Exception {
         Long slot = slot(List.of(a), ShiftScheduleStatus.PUBLISHED);
         Long swap = accepted(slot, a, b);
         inTx(() -> {
@@ -245,7 +245,8 @@ class ShiftSwapApprovalAssignmentContractIT extends ShiftSwapApprovalTestSupport
             }
             return null;
         });
-        denied(admin, swap, "APPROVE", 404, kind.startsWith("SLOT") ? "SHIFT_002" : "SHIFT_001");
+        // 入力swapの実在が親の欠損種別から分からないことを固定する（CMP-260903-0657）。
+        denied(admin, swap, "APPROVE", 404, "SHIFT_005");
     }
 
     @Test
