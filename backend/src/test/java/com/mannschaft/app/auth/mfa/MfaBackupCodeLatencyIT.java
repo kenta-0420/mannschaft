@@ -13,10 +13,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.lang.management.CompilationMXBean;
 import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ThreadMXBean;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryUsage;
-import java.lang.management.ThreadMXBean;
 import java.time.Duration;
 import java.util.List;
 import java.util.function.Function;
@@ -55,6 +55,10 @@ class MfaBackupCodeLatencyIT extends MfaItSupport {
 
     private static final String IP = "203.0.113.54";
 
+    // 新規診断APIはfixture・warmUp・既存計測の前に初期化する。設定変更は行わない。
+    private static final CompilationMXBean COMPILATION = compilationBean();
+    private static final List<MemoryPoolMXBean> MEMORY_POOLS = memoryPools();
+
     private static final long UNKNOWN_COUNTER = -1L;
     private static final ThreadMXBean THREADS = ManagementFactory.getThreadMXBean();
     private static final boolean THREAD_CPU_SUPPORTED = THREADS.isCurrentThreadCpuTimeSupported();
@@ -68,10 +72,6 @@ class MfaBackupCodeLatencyIT extends MfaItSupport {
         // CPU time の有効化など、VM の設定は変更しない。
         snapshotResources();
     }
-
-    // 新規診断APIはfixture・warmUp・既存計測の前に初期化する。設定変更は行わない。
-    private static final CompilationMXBean COMPILATION = compilationBean();
-    private static final List<MemoryPoolMXBean> MEMORY_POOLS = memoryPools();
 
     private final Function<String, String> argon2 = code ->
             "{argon2}" + Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8().encode(code);
@@ -133,7 +133,6 @@ class MfaBackupCodeLatencyIT extends MfaItSupport {
         System.out.println("[mfa-latency] pathKind=all-mismatch startEpochMillis=%d endEpochMillis=%d elapsedMillis=%d limitMillis=%d pid=%d".formatted(
                 startEpochMillis, endEpochMillis, elapsed, limitMillis, ProcessHandle.current().pid()));
         logResources("all-mismatch", startEpochMillis, endEpochMillis, resourcesBefore, resourcesAfter);
-        printResources("all-mismatch", startEpochMillis, resourcesBefore, resourcesAfter);
 
         assertThat(elapsed).as("AC-54 全不一致の単発所要時間（ms）").isLessThanOrEqualTo(limitMillis);
     }
@@ -161,87 +160,9 @@ class MfaBackupCodeLatencyIT extends MfaItSupport {
         System.out.println("[mfa-latency] pathKind=last-match startEpochMillis=%d endEpochMillis=%d elapsedMillis=%d limitMillis=%d pid=%d".formatted(
                 startEpochMillis, endEpochMillis, elapsed, limitMillis, ProcessHandle.current().pid()));
         logResources("last-match", startEpochMillis, endEpochMillis, resourcesBefore, resourcesAfter);
-        printResources("last-match", startEpochMillis, resourcesBefore, resourcesAfter);
 
         assertThat(response.getData().getAccessToken()).as("AC-54 前提: 最後の 1 件で一致して成功").isNotBlank();
         assertThat(elapsed).as("AC-54 最後一致の単発所要時間（ms）").isLessThanOrEqualTo(limitMillis);
-    }
-
-    /**
-     * 既存の nanoTime 計測区間の外側で資源カウンタを採取する。
-     * カウンタは同時採取ではなく、前後の snapshot 全体の窓は既存の wall 計測より広い。
-     * thread CPU は呼出しスレッドのみ、process CPU は当該 fork の全スレッドのみを表す。
-     * GC 時間は各 collector の累積値であり、STW 時間の全量や CPU 時間とは同一視しない。
-     */
-    private static ResourceSnapshot snapshotResources() {
-        long startNanos = System.nanoTime();
-        long startEpochMillis = System.currentTimeMillis();
-        long threadCpuNanos = readCounter(() -> THREAD_CPU_SUPPORTED && THREADS.isThreadCpuTimeEnabled()
-                ? THREADS.getCurrentThreadCpuTime() : UNKNOWN_COUNTER);
-        long processCpuNanos = readCounter(() -> PROCESS == null ? UNKNOWN_COUNTER : PROCESS.getProcessCpuTime());
-        long gcCount = totalGcCounter(GarbageCollectorMXBean::getCollectionCount);
-        long gcMillis = totalGcCounter(GarbageCollectorMXBean::getCollectionTime);
-        long endEpochMillis = System.currentTimeMillis();
-        long endNanos = System.nanoTime();
-        return new ResourceSnapshot(startNanos, endNanos, startEpochMillis, endEpochMillis,
-                threadCpuNanos, processCpuNanos, gcCount, gcMillis);
-    }
-
-    /** 未対応・無効・取得拒否を 0 へ変換せず、unknown として保持する。 */
-    private static long readCounter(LongSupplier counter) {
-        try {
-            long value = counter.getAsLong();
-            return value < 0 ? UNKNOWN_COUNTER : value;
-        } catch (UnsupportedOperationException | SecurityException unavailable) {
-            return UNKNOWN_COUNTER;
-        }
-    }
-
-    /** collector の一部でも未対応なら、合計を既知の 0 として扱わない。 */
-    private static long totalGcCounter(ToLongFunction<GarbageCollectorMXBean> counter) {
-        if (COLLECTORS.isEmpty()) {
-            return UNKNOWN_COUNTER;
-        }
-        long total = 0;
-        for (GarbageCollectorMXBean collector : COLLECTORS) {
-            long value = readCounter(() -> counter.applyAsLong(collector));
-            if (value < 0 || Long.MAX_VALUE - total < value) {
-                return UNKNOWN_COUNTER;
-            }
-            total += value;
-        }
-        return total;
-    }
-
-    /** 負値・カウンタ減少があれば、差分も unknown とする。 */
-    private static long counterDelta(long before, long after) {
-        return before < 0 || after < before ? UNKNOWN_COUNTER : after - before;
-    }
-
-    private static void printResources(String pathKind, long startEpochMillis,
-                                       ResourceSnapshot before, ResourceSnapshot after) {
-        long threadCpuNanos = counterDelta(before.threadCpuNanos(), after.threadCpuNanos());
-        long processCpuNanos = counterDelta(before.processCpuNanos(), after.processCpuNanos());
-        long gcCount = counterDelta(before.gcCount(), after.gcCount());
-        long gcMillis = counterDelta(before.gcMillis(), after.gcMillis());
-        // 旧 [mfa-latency] 行の完全一致抽出を維持するため、診断は別の数値限定行に出す。
-        System.out.println(("[mfa-resource] pathKind=%s startEpochMillis=%d pid=%d"
-                + " preStartNanos=%d preEndNanos=%d preStartEpochMillis=%d preEndEpochMillis=%d preSnapshotNanos=%d"
-                + " postStartNanos=%d postEndNanos=%d postStartEpochMillis=%d postEndEpochMillis=%d postSnapshotNanos=%d"
-                + " snapshotWindowNanos=%d threadCpuNanos=%d threadCpuKnown=%d processCpuNanos=%d processCpuKnown=%d"
-                + " gcCount=%d gcCountKnown=%d gcMillis=%d gcMillisKnown=%d").formatted(
-                pathKind, startEpochMillis, ProcessHandle.current().pid(),
-                before.startNanos(), before.endNanos(), before.startEpochMillis(), before.endEpochMillis(),
-                before.endNanos() - before.startNanos(),
-                after.startNanos(), after.endNanos(), after.startEpochMillis(), after.endEpochMillis(),
-                after.endNanos() - after.startNanos(), after.endNanos() - before.startNanos(),
-                threadCpuNanos, threadCpuNanos >= 0 ? 1 : 0, processCpuNanos, processCpuNanos >= 0 ? 1 : 0,
-                gcCount, gcCount >= 0 ? 1 : 0, gcMillis, gcMillis >= 0 ? 1 : 0));
-    }
-
-    /** 1 回の採取区間の両端時刻と、その区間内で順に読んだ累積カウンタ。 */
-    private record ResourceSnapshot(long startNanos, long endNanos, long startEpochMillis, long endEpochMillis,
-                                    long threadCpuNanos, long processCpuNanos, long gcCount, long gcMillis) {
     }
 
     /** 固定allowlistのgetterだけを読む。未対応・未取得は-1、booleanは0/1。 */
@@ -357,7 +278,84 @@ class MfaBackupCodeLatencyIT extends MfaItSupport {
                 caseKind, pathKind, ProcessHandle.current().pid(), System.currentTimeMillis(), outcome));
     }
 
-    /** wall窓・PIDで既存latency行と対応付ける。CPU/GCの採取窓はwall窓を外側から含む。 */
+    /**
+     * 既存の nanoTime 計測区間の外側で資源カウンタを採取する。
+     * カウンタは同時採取ではなく、前後の snapshot 全体の窓は既存の wall 計測より広い。
+     * thread CPU は呼出しスレッドのみ、process CPU は当該 fork の全スレッドのみを表す。
+     * GC 時間は各 collector の累積値であり、STW 時間の全量や CPU 時間とは同一視しない。
+     */
+    private static ResourceSnapshot snapshotResources() {
+        long startNanos = System.nanoTime();
+        long startEpochMillis = System.currentTimeMillis();
+        long threadCpuNanos = readCounter(() -> THREAD_CPU_SUPPORTED && THREADS.isThreadCpuTimeEnabled()
+                ? THREADS.getCurrentThreadCpuTime() : UNKNOWN_COUNTER);
+        long processCpuNanos = readCounter(() -> PROCESS == null ? UNKNOWN_COUNTER : PROCESS.getProcessCpuTime());
+        long gcCount = totalGcCounter(GarbageCollectorMXBean::getCollectionCount);
+        long gcMillis = totalGcCounter(GarbageCollectorMXBean::getCollectionTime);
+        long endEpochMillis = System.currentTimeMillis();
+        long endNanos = System.nanoTime();
+        return new ResourceSnapshot(startNanos, endNanos, startEpochMillis, endEpochMillis,
+                threadCpuNanos, processCpuNanos, gcCount, gcMillis);
+    }
+
+    /** 未対応・無効・取得拒否を 0 へ変換せず、unknown として保持する。 */
+    private static long readCounter(LongSupplier counter) {
+        try {
+            long value = counter.getAsLong();
+            return value < 0 ? UNKNOWN_COUNTER : value;
+        } catch (UnsupportedOperationException | SecurityException unavailable) {
+            return UNKNOWN_COUNTER;
+        }
+    }
+
+    /** collector の一部でも未対応なら、合計を既知の 0 として扱わない。 */
+    private static long totalGcCounter(ToLongFunction<GarbageCollectorMXBean> counter) {
+        if (COLLECTORS.isEmpty()) {
+            return UNKNOWN_COUNTER;
+        }
+        long total = 0;
+        for (GarbageCollectorMXBean collector : COLLECTORS) {
+            long value = readCounter(() -> counter.applyAsLong(collector));
+            if (value < 0 || Long.MAX_VALUE - total < value) {
+                return UNKNOWN_COUNTER;
+            }
+            total += value;
+        }
+        return total;
+    }
+
+    /** 負値・カウンタ減少があれば、差分も unknown とする。 */
+    private static long counterDelta(long before, long after) {
+        return before < 0 || after < before ? UNKNOWN_COUNTER : after - before;
+    }
+
+    private static void printResources(String pathKind, long startEpochMillis,
+                                       ResourceSnapshot before, ResourceSnapshot after) {
+        long threadCpuNanos = counterDelta(before.threadCpuNanos(), after.threadCpuNanos());
+        long processCpuNanos = counterDelta(before.processCpuNanos(), after.processCpuNanos());
+        long gcCount = counterDelta(before.gcCount(), after.gcCount());
+        long gcMillis = counterDelta(before.gcMillis(), after.gcMillis());
+        // 旧 [mfa-latency] 行の完全一致抽出を維持するため、診断は別の数値限定行に出す。
+        System.out.println(("[mfa-resource] pathKind=%s startEpochMillis=%d pid=%d"
+                + " preStartNanos=%d preEndNanos=%d preStartEpochMillis=%d preEndEpochMillis=%d preSnapshotNanos=%d"
+                + " postStartNanos=%d postEndNanos=%d postStartEpochMillis=%d postEndEpochMillis=%d postSnapshotNanos=%d"
+                + " snapshotWindowNanos=%d threadCpuNanos=%d threadCpuKnown=%d processCpuNanos=%d processCpuKnown=%d"
+                + " gcCount=%d gcCountKnown=%d gcMillis=%d gcMillisKnown=%d").formatted(
+                pathKind, startEpochMillis, ProcessHandle.current().pid(),
+                before.startNanos(), before.endNanos(), before.startEpochMillis(), before.endEpochMillis(),
+                before.endNanos() - before.startNanos(),
+                after.startNanos(), after.endNanos(), after.startEpochMillis(), after.endEpochMillis(),
+                after.endNanos() - after.startNanos(), after.endNanos() - before.startNanos(),
+                threadCpuNanos, threadCpuNanos >= 0 ? 1 : 0, processCpuNanos, processCpuNanos >= 0 ? 1 : 0,
+                gcCount, gcCount >= 0 ? 1 : 0, gcMillis, gcMillis >= 0 ? 1 : 0));
+    }
+
+    /** 1 回の採取区間の両端時刻と、その区間内で順に読んだ累積カウンタ。 */
+    private record ResourceSnapshot(long startNanos, long endNanos, long startEpochMillis, long endEpochMillis,
+                                    long threadCpuNanos, long processCpuNanos, long gcCount, long gcMillis) {
+    }
+
+    /** 同じsnapshotからmain収集用と詳細診断用の両形式を出す。計測区間外だけで呼ぶ。 */
     private static void logResources(String pathKind, long startEpochMillis, long endEpochMillis,
                                      ResourceSnapshot before, ResourceSnapshot after) {
         System.out.println("[mfa-resources] pathKind=%s startEpochMillis=%d endEpochMillis=%d pid=%d threadCpuNanos=%d gcCount=%d gcTimeMillis=%d".formatted(
@@ -365,6 +363,7 @@ class MfaBackupCodeLatencyIT extends MfaItSupport {
                 counterDelta(before.threadCpuNanos(), after.threadCpuNanos()),
                 counterDelta(before.gcCount(), after.gcCount()),
                 counterDelta(before.gcMillis(), after.gcMillis())));
+        printResources(pathKind, startEpochMillis, before, after);
     }
 
     /** JIT・コネクション確立の影響を除くための空打ち（別セッションで 1 回失敗させる）。 */
