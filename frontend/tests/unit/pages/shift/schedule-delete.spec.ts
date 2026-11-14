@@ -18,7 +18,7 @@ const teamStore = {
   get myTeams() {
     return [{ id: 1, role }]
   },
-  fetchMyTeams: vi.fn(async () => {}),
+  fetchMyTeamsWithResult: vi.fn(async () => ({ ok: true as const })),
 }
 
 mockNuxtImport('useRoute', () => () => ({ params: { id: '91' } }))
@@ -68,7 +68,7 @@ beforeEach(() => {
   navigateTo.mockReset()
   notifySuccess.mockReset()
   handleApiError.mockReset()
-  teamStore.fetchMyTeams.mockClear()
+  teamStore.fetchMyTeamsWithResult.mockClear()
 })
 
 describe('シフト表詳細 — 削除導線', () => {
@@ -76,6 +76,8 @@ describe('シフト表詳細 — 削除導線', () => {
     deleteSchedule.mockResolvedValue(undefined)
     const wrapper = await mountPage()
 
+    expect(wrapper.find('[data-testid="load-error-state"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('削除対象シフト')
     const button = wrapper.get('[data-testid="shift-schedule-delete"]')
     await button.trigger('click')
     expect(deleteSchedule).not.toHaveBeenCalled()
@@ -92,6 +94,8 @@ describe('シフト表詳細 — 削除導線', () => {
     role = 'MEMBER'
     const wrapper = await mountPage()
 
+    expect(wrapper.find('[data-testid="load-error-state"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('削除対象シフト')
     expect(wrapper.find('[data-testid="shift-schedule-delete"]').exists()).toBe(false)
   })
 })
