@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "repository": "kenta-0420/mannschaft",
-  "synchronizedAt": "2026-11-14T07:21:17+00:00",
+  "synchronizedAt": "2026-11-14T08:07:54+00:00",
   "status": "synced",
   "error": null,
   "references": {
@@ -12590,7 +12590,7 @@
       "state": "open",
       "title": "L1-R初回名称正規化と支援修復の統合",
       "url": "https://github.com/kenta-0420/mannschaft/pull/4352",
-      "updatedAt": "2026-11-13T23:12:45Z",
+      "updatedAt": "2026-11-14T07:50:58Z",
       "ci": {
         "status": "success",
         "checks": [],

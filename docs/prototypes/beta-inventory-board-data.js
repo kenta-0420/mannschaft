@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-11-14T07:27:42+00:00",
+  "generatedAt": "2026-11-14T08:12:03+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,13 +8,13 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "d61097a49227386d8b4044a2a6ced72fade5b50a",
-    "taskListCommit": "942ecd87428f54dde67b07d270fe62bc17abb63d",
+    "taskListCommit": "81070cd79e636d57b4fe56c1675efd44be725ab9",
     "inventorySha256": "b0a1f97197840c865756a40f12f577cfeb10aa8083dc95f2932f7b3a7f90528a",
-    "taskListSha256": "4bf365cc0102e6f2e8de992adee5b49d387fab42012fb76b7b9f7fe6ad233986",
+    "taskListSha256": "8f67c394b35b6030a0c455e56c6fda26606bea34fa0638957df3f79be653cb5d",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
-    "githubSnapshotSha256": "5604c019010e694a4264a1f8f585720da9eb630197ef5e8a4969b6734ffe906d"
+    "githubSnapshotSha256": "0b2aa7b1116d2ab118b8a3728845e7d256fbb2ea4a7ebb7680c92846ad4ac1a8"
   },
   "sourceCounts": {
     "features": 44,
@@ -52222,8 +52222,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261014-1421",
       "title": "【重大】`GeonamesImportService.parseAndUpsert` の月次取り込みが毎回失敗する",
-      "status": "not-started",
-      "statusLabel": "P2 未着手",
+      "status": "working",
+      "statusLabel": "P2 実装中",
       "stage": "未設定",
       "priority": "未設定",
       "taskPriority": "P2",
@@ -52258,7 +52258,7 @@ window.BETA_INVENTORY_DATA = {
         "zip"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         3807
@@ -60395,7 +60395,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "L1-R初回名称正規化と支援修復の統合",
           "url": "https://github.com/kenta-0420/mannschaft/pull/4352",
-          "updatedAt": "2026-11-13T23:12:45Z",
+          "updatedAt": "2026-11-14T07:50:58Z",
           "ci": {
             "status": "success",
             "checks": [],
@@ -67666,7 +67666,7 @@ window.BETA_INVENTORY_DATA = {
   "githubSync": {
     "schemaVersion": 1,
     "repository": "kenta-0420/mannschaft",
-    "synchronizedAt": "2026-11-14T07:21:17+00:00",
+    "synchronizedAt": "2026-11-14T08:07:54+00:00",
     "status": "synced",
     "error": null,
     "references": {
@@ -80255,7 +80255,7 @@ window.BETA_INVENTORY_DATA = {
         "state": "open",
         "title": "L1-R初回名称正規化と支援修復の統合",
         "url": "https://github.com/kenta-0420/mannschaft/pull/4352",
-        "updatedAt": "2026-11-13T23:12:45Z",
+        "updatedAt": "2026-11-14T07:50:58Z",
         "ci": {
           "status": "success",
           "checks": [],
@@ -80809,7 +80809,7 @@ window.BETA_INVENTORY_DATA = {
     "lastAttempt": {
       "status": "synced",
       "error": null,
-      "synchronizedAt": "2026-11-14T07:21:17+00:00",
+      "synchronizedAt": "2026-11-14T08:07:54+00:00",
       "referenceCount": 806
     }
   }

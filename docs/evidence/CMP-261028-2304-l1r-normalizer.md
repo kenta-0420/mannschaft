@@ -213,3 +213,14 @@ r1 closure201対象1→r2本人userqueue通知2106/source1/scope11→confirm200�
 R15棚卸更新の通常GitHub読み取り同期は2026-11-14T07:21:17Z・806参照で成功し、既存L46の不足#4418を解消した。通常generator/validator/overlay自己検証は最終bytesで各exit0（不正10例拒否）、44feature/95capability・CORE25/非CORE19・blockers23・720campaign。台帳720一意・全7列を保持し、親/all164 P4・支援CMP完了先取り0・Signage別P1未着手を維持する。task-list commit `942ecd87428f54dde67b07d270fe62bc17abb63d` のraw LF bytesと生成pin SHAが一致する。Windows checkout CRLF由来のhash差はWTを同commit raw bytesへ合わせて通常再生成し、generator自体は変更していない。
 
 最終実ボードは `board-ui-r15-20261114.json`、整合proofは `b0-r15-checks-20261114.json`。fresh実IndexedDBへ旧152をimport→自然clock7017ms後に最終新dataへ更新し154、旧152全field厳密deepEqual・新2のみ・重複0・reload154不変を確認した。B1の予約/大会試合カード2件と詳細を実閲覧し、隔離IDB内だけR1の人間用statusをinbox→plannedへGUI変更→reload保存、sourceStatus=observed-unverified/trusted=false/来歴不変・他153全field不変を確認した。正本overlayのstatus変更0。pageErrors/remote requests0、context/browser正常閉鎖・native exit0、製品app/API/DB操作0。HTML/実生成dataのhashをreceiptへ固定し、住民source8afdと混同しない。旧R14 UI証拠や先行helper失敗は履歴として保持し、今回の最終bytesへ読み替えない。
+
+
+### 2026-11-14 最新main再追従の限定資格
+
+最終CI準備の後にmainは `2b40343e8cfb6d452a9f2aaad7238cc3f4356888` へ2commit前進していた。旧PR APIのbase表示だけでcurrent-mainを判定せず、実remote mainを取得し通常mergeした。前進はCI観測・MFA/ログ初期化の試験・shard weightsと、別CMPの台帳状態更新で、製品sourceの変更は0。実機対象58pathとの交差はMFA試験とweightsの2pathであり、旧58blob全一致を新統合へそのまま継承しない。製品機能の実機資格と、変更された試験・CI観測の最終head検証を分離する。
+
+MFA競合は既存の詳細snapshot（採取窓・process CPU・unknown=-1）を保持し、mainのVM/JIT・CodeHeap・warmup結果enumとmfa-resources互換行を同一snapshotへ統合した。診断の採取・出力はnanoTime計測区間の外で、重複snapshotは作らない。4試験・上限1500/3000ms・単発Service呼出し・AUTH_074/token非空のassert・KDF・fixture/reset/timeoutは維持する。計測緩和や旧遅延原因の確定を意味しない。
+
+weightsは、採択済みの成功Nightly run43093835182 attempt2由来・3218キーの正式blob `1e3262d6f7c77fad72288d261d6afd75c8025003` を全体のまま保持した（raw LF SHA256 `6d5bea1188f56bbe293628278923c4172785a6adb1d2d96ead178a5c14d5acf0`）。main側のblob0345796はNightly41934081098 attempt1由来3164値と別main固有5値の混合3169キーで、混合全体を単一run実測・全体greenとは扱わない。mainとの共通3168キーは3143値相違、25値同一、main専有1・正式新表専有50だった。正式表の手編集・1キー補完・新生成は行っておらず、古い混合表の値を新表へ含めたとも記録しない。最終Coreの新CIと4profile guardは未合格である。
+
+台帳入力の変更に合わせ、通常GitHub同期（2026-11-14T08:07:54Z、806参照）・generator・validator・overlay自己検証を正本commit `81070cd79e636d57b4fe56c1675efd44be725ab9` から実施し、全てexit0・不正overlay10例拒否を確認した。台帳720一意・全7列、raw LF SHA256 `8f67c394b35b6030a0c455e56c6fda26606bea34fa0638957df3f79be653cb5d` と生成pinが一致する。再生成data SHA256は `466483906c19bf6a2eaa49174408ebcc6a14acbdf8399d57a1bf8097caab5f1c`、累積overlay85/85/154/21は正本と旧Coreの全fieldに一致する。初回のsparse参照不足とoverlay指定なしの検証失敗は環境・呼出し失敗として保持し、正規入力を揃えた再実行の成功と区別する。R15の累積観測・旧全field保持・実IDB自然clock保存試験は従来資格を維持し、生成bytesの変更を旧実ボード試験の直接実行へ読み替えない。最終head CI・current-main/strict、外closure担当の引渡し、旧scratch/Jar整理、8PR採用後の完了文書は別ゲートとして継続する。
