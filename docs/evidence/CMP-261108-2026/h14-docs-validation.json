@@ -1,0 +1,129 @@
+{
+  "scope": "working candidate structural/refs and overlay checks only; GitHub API and committed-HEAD unit check remain root gates",
+  "passed": true,
+  "completionWorkingTreeStructureAndRefs": true,
+  "completionTransitionWithWorkingRefs": true,
+  "trustedValidatorSourceSha256": "3f37ec4f4e8f0fa26da0cac2c48d30efa869c161ed7fe1e295e6de3f7d8c76ca",
+  "trustedBase": "32e4777aec54d5de324f22948099e8a4789fc1a4",
+  "oldAllOtherTaskRowsPreserved": true,
+  "targetColumns": 7,
+  "uniqueCampaigns": 718,
+  "generatedCampaigns": 718,
+  "counts": [
+    79,
+    79,
+    150
+  ],
+  "old73AllFieldsPreserved": true,
+  "r2PartialAllFieldsPreserved": true,
+  "canonicalCopyGeneratedOverlayDeepEqual": true,
+  "limitedSelfTest": {
+    "residentOverlayAccepted": true,
+    "emptyInsightsAccepted": true,
+    "syntheticBaselineAccepted": true,
+    "multipleSourceHeadsAndRunsAccepted": true,
+    "invalidOverlaysRejected": 10
+  },
+  "newPngFiles": 0,
+  "existingApprovedPngCount": 7,
+  "oldPngNoWorkingChanges": true,
+  "globalValidator": "actual exit1 L46 retained",
+  "globalSelfTest": "actual exit1 L46 retained",
+  "staticBoard": "ROOT_FINAL_BYTES_VERIFICATION_PENDING",
+  "githubApiValidation": "ROOT_PENDING",
+  "committedHeadUnit": "actual21pass/1fail due new uncommitted refs absent from HEAD; rerun after root commit required",
+  "initialAuthoringFailure": "Runtime2 adoption has no flat canonicalExitCode; corrected by reading receipt via pinned SHA. Original authoring KeyError was not a runtime/test result.",
+  "generator": {
+    "exitCode": 0,
+    "stdoutSha256": "b7b2ccd962b8e201ed383b7a293bb06cb7518d8901805071d82b4f011c193cd8",
+    "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "B0_INCLUDE_LOCAL_OVERLAY": "true"
+  },
+  "commandResults": [
+    {
+      "label": "completion-unit",
+      "exitCode": 1,
+      "stdoutSha256": "656d324e63f34dd63f8d9baa7207ee2c34a9c92c937f9ca5bbe3b7ab6239bb3e",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "summary": [
+        "# tests 22",
+        "# pass 21",
+        "# fail 1",
+        "# skipped 0"
+      ],
+      "L46ExistingFailure": false
+    },
+    {
+      "label": "global-validator",
+      "exitCode": 1,
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSha256": "392fde874b0d9abcc2dd79a247f1895392d5e75882cfd707a8c31c211cfdd4e6",
+      "summary": [],
+      "L46ExistingFailure": true
+    },
+    {
+      "label": "global-selftest",
+      "exitCode": 1,
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSha256": "392fde874b0d9abcc2dd79a247f1895392d5e75882cfd707a8c31c211cfdd4e6",
+      "summary": [],
+      "L46ExistingFailure": true
+    }
+  ],
+  "diffCheckExit": 0,
+  "rawEvidenceStorage": "private ignored worktree directory; not a repository proof reference",
+  "commitPushPrMergeExecuted": false,
+  "snapshotScope": "Initial working-candidate validation snapshot before actual API-root adoption; original21/1 and then-pending fields retained, not current global status",
+  "subsequentApiRootAdoption": {
+    "artifactName": "root-adoption.json",
+    "sha256": "4120ccc05d4fd5651cd3d0380420f13335b3ee2fe3214ce4565578b0a0d6b173",
+    "decision": "ACTUAL_MERGED_AT_CHECK_GENERATIONS_AND_COMPLETE_FILE_SNAPSHOTS_ACCEPTED",
+    "scope": "later root adoption, does not rewrite initial command results"
+  },
+  "postWordingUpdate": {
+    "scope": "Later working-tree text/API adoption update; initial unit/command results above are historical and unchanged",
+    "generatorAndGlobal": [
+      {
+        "label": "generator-r2",
+        "exitCode": 0,
+        "stdoutSha256": "d3230cf555f9670de4729bf3be6555150a24321b9458caeeb9bfe501bc271423",
+        "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "L46ExistingFailure": false
+      },
+      {
+        "label": "global-validator-r2",
+        "exitCode": 1,
+        "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderrSha256": "d1149cc761d5687bae0b621ac02915ee9e957b6f5b3679bd89efd4061166ea2a",
+        "L46ExistingFailure": true
+      },
+      {
+        "label": "global-selftest-r2",
+        "exitCode": 1,
+        "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderrSha256": "d1149cc761d5687bae0b621ac02915ee9e957b6f5b3679bd89efd4061166ea2a",
+        "L46ExistingFailure": true
+      }
+    ],
+    "limitedWorkingChecks": {
+      "scope": "post-wording working refs/overlay only; initial unit not rerun",
+      "passed": true,
+      "counts": [
+        79,
+        79,
+        150
+      ],
+      "oldFieldsPreserved": true,
+      "otherRowsUnchanged": true,
+      "targetColumns": 7,
+      "workingCompletionRefs": true,
+      "newPNG": 0,
+      "onlyDocs": true
+    },
+    "diffCheckActualExit": 0,
+    "helperActualExit": 0,
+    "helperInitialFailure": "ENOBUFS in git ls-tree read due Node default maxBuffer; increased helper read buffer only; no product/test change",
+    "completionUnitRerun": false,
+    "rootFinalBoardAndCommittedHeadCheck": "pending root separate record"
+  }
+}

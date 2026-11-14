@@ -2,10 +2,10 @@ import { onScopeDispose, ref, watch, type Ref } from 'vue'
 import type {
   RanchClipAction,
   RanchClipImage,
-  RanchDevelopmentClipEntry,
+  RanchClipEntry,
 } from '~/utils/ranch-development-clips'
 export interface RanchClipAtlasOptions {
-  entry: () => RanchDevelopmentClipEntry | null
+  entry: () => RanchClipEntry | null
   identity: () => string
   enabled: () => boolean
   action: () => RanchClipAction
@@ -18,7 +18,7 @@ export interface RanchClipAtlasOptions {
 export function paintRanchClip(
   node: HTMLCanvasElement,
   image: HTMLImageElement,
-  entry: RanchDevelopmentClipEntry,
+  entry: RanchClipEntry,
   action: RanchClipAction,
   frame: number,
   phase: number,
@@ -51,7 +51,7 @@ export function paintRanchClip(
   context.save()
   if (!fallback && action === 'happy' && entry.habitat === 'SEA') {
     const angles =
-      entry.sourceSpecies === 'plesiosaurus' || entry.catalogVersion !== '4'
+      entry.sourceSpecies === 'plesiosaurus' || (entry.catalogVersion !== '4' && entry.rendererProfile !== 'APPROVED_APPEARANCE_V4')
         ? [0, -4, -7, -4, 0, 4, 7, 4, 0, -3, 0, 0, 0]
         : [0, -3, -5, -3, 0, 3, 5, 3, 0, -2, 0, 0, 0]
     const offsets = [0, -1, -2, -1, 0, 1, 2, 1, 0, -1, 0, 0, 0]

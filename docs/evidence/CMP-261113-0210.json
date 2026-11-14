@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261113-0210",
+  "scope": "app",
+  "implementation": {
+    "pr": 4491,
+    "sha": "801d39a014ea6c25d5612b18eae5f00bc50dc435"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "同一メールの同時登録で一意制約違反が500にならず AUTH_004 を返す",
+      "tests": [
+        {
+          "name": "AuthRegistrationServiceDuplicateEmailRaceTest.java",
+          "evidence": "backend/src/test/java/com/mannschaft/app/auth/service/AuthRegistrationServiceDuplicateEmailRaceTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "登録時の locale が表示言語になり、成功トースト等が i18n 化され、連打で重複送信しない",
+      "tests": [
+        {
+          "name": "register.spec.ts",
+          "evidence": "frontend/tests/unit/pages/register.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 43329064123
+    },
+    {
+      "runId": 43329064266
+    },
+    {
+      "runId": 43329064185
+    },
+    {
+      "runId": 43329064258
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4491"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261113-0210.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261113-0210.md"
+    }
+  },
+  "regressions": []
+}

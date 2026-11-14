@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import type { DinosaurSummary, RenderStyle } from '~/types/ranch'
 import {
+  approvedRanchVisualsEnabled,
   developmentRanchAssets,
   productionRanchAssetsRegistered,
   resolveRanchAsset,
@@ -123,7 +124,7 @@ describe('隔離開発v3クリップの完全一致境界', () => {
     expect(triceratops.clips.walk.sourceFloorByFrame384).toEqual([null, null, 347, null])
   })
 
-  it('既存v2のidentity・bytehash・8frameと本番512gateを維持する', () => {
+  it('既存v2のidentity・bytehash・8frameと正式pack同梱・公開境界を維持する', () => {
     const legacy = {
       ...dinosaur,
       speciesKey: 'DEV_TRICERATOPS',
@@ -137,7 +138,10 @@ describe('隔離開発v3クリップの完全一致境界', () => {
     expect(developmentRanchAssets.map((entry) => entry.frames)).toEqual([8, 8])
     expect(resolveRanchDevelopmentClip(legacy, 'PIXEL', context)).toBeNull()
     expect(resolveRanchAsset(dinosaur, 'PIXEL', oldContext)).toBeNull()
-    expect(productionRanchAssetsRegistered()).toBe(false)
+    expect(productionRanchAssetsRegistered()).toBe(true)
+    expect(approvedRanchVisualsEnabled(false, true)).toBe(false)
+    expect(approvedRanchVisualsEnabled(undefined, true)).toBe(false)
+    expect(approvedRanchVisualsEnabled(true, false)).toBe(false)
   })
 })
 

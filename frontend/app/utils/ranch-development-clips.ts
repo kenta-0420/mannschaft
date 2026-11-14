@@ -28,7 +28,7 @@ export interface RanchDevelopmentClip extends RanchClipImage {
   readonly phaseMs: readonly number[]
   readonly loop: boolean
   readonly returnTo: 'idle' | null
-  readonly floorByFrame: readonly number[] | null
+  readonly floorByFrame: readonly (number | null)[] | null
   readonly sourceFloor384: number | null
   readonly sourceFloorByFrame384: readonly (number | null)[] | null
   readonly tailMarks: readonly RanchClipPoint[] | null
@@ -36,26 +36,33 @@ export interface RanchDevelopmentClip extends RanchClipImage {
     | readonly { readonly x: number; readonly y: number; readonly radius: number }[]
     | null
 }
-export interface RanchDevelopmentClipEntry {
+export interface RanchClipEntry {
   readonly assetKey: string
   readonly speciesKey: string
-  readonly variantKey:
-    | 'DEV_BASE_16_CLIPS_V1'
-    | 'DEV_APPEARANCE_1'
-    | 'DEV_APPEARANCE_2'
-    | 'DEV_APPEARANCE_3'
-    | 'DEV_APPEARANCE_4'
+  readonly variantKey: string
   readonly stage: Exclude<DinosaurSummary['stage'], 'EGG'>
   readonly renderStyle: RenderStyle
-  readonly catalogVersion: '3' | '4'
-  readonly approval: 'DRAFT'
-  readonly origin: 'ISOLATED_DEVELOPMENT'
+  readonly catalogVersion: string
+  readonly approval: 'DRAFT' | 'APPROVED'
+  readonly origin: 'ISOLATED_DEVELOPMENT' | 'PRODUCTION'
   readonly sourceSpecies: string
   readonly habitat: RanchClipHabitat
   readonly logicalCanvas: { readonly width: 112; readonly height: 112 }
   readonly careSpriteRect: RanchClipRect
   readonly fallback: RanchClipImage
   readonly clips: Readonly<Record<RanchClipAction, RanchDevelopmentClip>>
+  readonly rendererProfile?: 'APPROVED_APPEARANCE_V4'
+}
+export interface RanchDevelopmentClipEntry extends RanchClipEntry {
+  readonly variantKey:
+    | 'DEV_BASE_16_CLIPS_V1'
+    | 'DEV_APPEARANCE_1'
+    | 'DEV_APPEARANCE_2'
+    | 'DEV_APPEARANCE_3'
+    | 'DEV_APPEARANCE_4'
+  readonly catalogVersion: '3' | '4'
+  readonly approval: 'DRAFT'
+  readonly origin: 'ISOLATED_DEVELOPMENT'
 }
 export interface RanchDevelopmentClipContext {
   readonly production: boolean

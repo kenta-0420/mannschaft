@@ -53,3 +53,46 @@ test('inventory permits internal links and rejects external links and cycles', (
     fs.rmdirSync(dir)
   }
 })
+
+test('正式画像はSW precacheだけを拒否し、必要時のruntime image cacheは許可する', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ranch-precache-'))
+  const publicDir = path.join(dir, 'public')
+  const sw = path.join(publicDir, 'sw.js')
+  fs.mkdirSync(publicDir)
+  const runtime = 'workbox.registerRoute(({url}) => url.pathname.startsWith("/ranch/approved/"), imageCache)'
+  try {
+    fs.writeFileSync(sw, `workbox.precacheAndRoute(${JSON.stringify([{ url: '_nuxt/app.js' }, { url: 'icons/app.png' }])});${runtime}`)
+    assert.equal(inspectArtifact(dir, new Set(), []), 1)
+    for (const url of [
+      'ranch/approved/pack/species.png',
+      '/ranch/approved/pack/species.png?revision=1',
+      'https://example.test/ranch/approved/pack/species.png',
+      '/%72anch/approved/pack/species.png',
+    ]) {
+      for (const entry of [{ url, revision: 'hash' }, url]) {
+        fs.writeFileSync(sw, `workbox.precacheAndRoute(${JSON.stringify([entry])});${runtime}`)
+        assert.throws(() => inspectArtifact(dir, new Set(), []), /正式pack.*precache/)
+      }
+    }
+  } finally {
+    fs.unlinkSync(sw)
+    fs.rmdirSync(publicDir)
+    fs.rmdirSync(dir)
+  }
+})
+
+test('precacheではないSW文字列やruntimeCachingのnamespaceを誤拒否しない', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ranch-runtime-cache-'))
+  const publicDir = path.join(dir, 'public')
+  fs.mkdirSync(publicDir)
+  const publicSw = path.join(publicDir, 'sw.js')
+  try {
+    const literal = JSON.stringify('workbox.precacheAndRoute([{url:"/ranch/approved/pack/image.png"}])')
+    fs.writeFileSync(publicSw, `const documentation = ${literal}; workbox.precacheAndRoute([{url:"_nuxt/app.js",revision:null}]); const runtimeCaching = {urlPattern:"/ranch/approved/**"}`)
+    assert.equal(inspectArtifact(dir, new Set(), []), 1)
+  } finally {
+    fs.unlinkSync(publicSw)
+    fs.rmdirSync(publicDir)
+    fs.rmdirSync(dir)
+  }
+})

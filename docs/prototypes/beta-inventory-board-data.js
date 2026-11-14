@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-11-08T19:20:39+00:00",
+  "generatedAt": "2026-11-13T22:08:03+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,9 +8,9 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "d61097a49227386d8b4044a2a6ced72fade5b50a",
-    "taskListCommit": "af13a156be7ba03a2367c3ad92759c7d6ce3fb47",
+    "taskListCommit": "8aa2a5c633d63dcbb8fefe0d6fa25a7f838efae0",
     "inventorySha256": "b0a1f97197840c865756a40f12f577cfeb10aa8083dc95f2932f7b3a7f90528a",
-    "taskListSha256": "155c6011a3ac59bfacd0540f8a87ce1e69254abde7f257540bfec6f2f1700185",
+    "taskListSha256": "efa6310a73be5c7d5c93a6c0d0dea4926e4774334b606e1fe9290eacd428edd7",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
@@ -20,7 +20,7 @@ window.BETA_INVENTORY_DATA = {
     "features": 44,
     "capabilities": 95,
     "splitParents": 33,
-    "campaigns": 680,
+    "campaigns": 718,
     "layer": {
       "能力": 26,
       "ドメイン": 18
@@ -37,11 +37,11 @@ window.BETA_INVENTORY_DATA = {
   "verification": {
     "raw": {
       "features": 44,
-      "campaigns": 680
+      "campaigns": 718
     },
     "parsed": {
       "features": 44,
-      "campaigns": 680,
+      "campaigns": 718,
       "core": 25,
       "noncore": 19,
       "blockers": 23,
@@ -9007,6 +9007,198 @@ window.BETA_INVENTORY_DATA = {
         "idAssignment": "累積一意persona/journey IDは今回の登録時付与。原runIdを保持し、固定P01-P20へ変換しない。",
         "trusted": false,
         "status": "observed-unverified"
+      },
+      {
+        "id": "ALIC-CMP261108-F588-R1",
+        "personaArchetype": "一般×素直",
+        "runId": "ranchmapping-f58861cdcb86324354bcd246",
+        "sourceHead": "f0b37dc6f723b33cc4364143d8230f228b3d6792",
+        "evidencePath": "docs/evidence/CMP-261108-2026/f588-resident-observations.json",
+        "originalResidentId": "resident-1",
+        "idAssignment": "累積一意persona IDは登録時付与。原resident IDを保持し固定P01-P20へ変換しない。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified"
+      },
+      {
+        "id": "ALIC-CMP261108-F588-R2",
+        "personaArchetype": "注意中断×復帰",
+        "runId": "ranchmapping-f58861cdcb86324354bcd246",
+        "sourceHead": "f0b37dc6f723b33cc4364143d8230f228b3d6792",
+        "evidencePath": "docs/evidence/CMP-261108-2026/f588-resident-observations.json",
+        "originalResidentId": "resident-2",
+        "idAssignment": "累積一意persona IDは登録時付与。原resident IDを保持し固定P01-P20へ変換しない。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified"
+      },
+      {
+        "id": "ALIC-CMP261108-F588-R3",
+        "personaArchetype": "スマホ×表示",
+        "runId": "ranchmapping-f58861cdcb86324354bcd246",
+        "sourceHead": "f0b37dc6f723b33cc4364143d8230f228b3d6792",
+        "evidencePath": "docs/evidence/CMP-261108-2026/f588-resident-observations.json",
+        "originalResidentId": "resident-3",
+        "idAssignment": "累積一意persona IDは登録時付与。原resident IDを保持し固定P01-P20へ変換しない。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified"
+      },
+      {
+        "id": "ALIC-CMP261108-H10R6-R1",
+        "personaArchetype": "一般×素直",
+        "runId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+        "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+        "originalResidentId": "resident-1",
+        "idAssignment": "原reportに登録用persona IDがないため登録時付与。固定P01-P20へ変換しない。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H10R6-R2",
+        "personaArchetype": "注意中断×復帰",
+        "runId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+        "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+        "originalResidentId": "resident-2",
+        "idAssignment": "原reportに登録用persona IDがないため登録時付与。固定P01-P20へ変換しない。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H10R6-R3",
+        "personaArchetype": "一般×モバイル表示",
+        "runId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+        "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+        "originalResidentId": "resident-3",
+        "idAssignment": "原reportに登録用persona IDがないため登録時付与。固定P01-P20へ変換しない。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H13R2-R1",
+        "personaArchetype": "一般×素直",
+        "runId": "ranchmapping-38f5674acfe432e7ccb52277",
+        "sourceHead": "9fe70bce78a05e11953e043dbb44f150c19ef870",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h13-r2-resident-observations-20261113.json",
+        "originalResidentId": "resident-1",
+        "idAssignment": "原reportに登録用persona IDがないため登録時付与。固定P01-P20へ変換しない。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H13R2-R2",
+        "personaArchetype": "注意中断×復帰",
+        "runId": "ranchmapping-38f5674acfe432e7ccb52277",
+        "sourceHead": "9fe70bce78a05e11953e043dbb44f150c19ef870",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h13-r2-resident-observations-20261113.json",
+        "originalResidentId": "resident-2",
+        "idAssignment": "原reportに登録用persona IDがないため登録時付与。固定P01-P20へ変換しない。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H13R2-R3",
+        "personaArchetype": "一般×モバイル表示",
+        "runId": "ranchmapping-38f5674acfe432e7ccb52277",
+        "sourceHead": "9fe70bce78a05e11953e043dbb44f150c19ef870",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h13-r2-resident-observations-20261113.json",
+        "originalResidentId": "resident-3",
+        "idAssignment": "原reportに登録用persona IDがないため登録時付与。固定P01-P20へ変換しない。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H14R2-PARTIAL-R1",
+        "personaArchetype": "一般×素直",
+        "runId": "ranchmapping-61a30580b29530464365c237",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r2-partial-resident-observations-20261114.json",
+        "originalResidentId": "resident-1",
+        "idAssignment": "原reportに登録用persona IDがないため登録時付与。固定P01-P20へ変換しない。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H14R2-PARTIAL-R2",
+        "personaArchetype": "注意中断×復帰",
+        "runId": "ranchmapping-61a30580b29530464365c237",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r2-partial-resident-observations-20261114.json",
+        "originalResidentId": "resident-2",
+        "idAssignment": "原reportに登録用persona IDがないため登録時付与。固定P01-P20へ変換しない。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H14R2-PARTIAL-R3",
+        "personaArchetype": "一般×モバイル表示",
+        "runId": "ranchmapping-61a30580b29530464365c237",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r2-partial-resident-observations-20261114.json",
+        "originalResidentId": "resident-3",
+        "idAssignment": "原reportに登録用persona IDがないため登録時付与。固定P01-P20へ変換しない。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H14R4-R1",
+        "personaArchetype": "一般×素直",
+        "runId": "ranchmapping-0d2a31d6460538a875260c6c",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r4-resident-observations-20261114.json",
+        "originalResidentId": "resident-1",
+        "idAssignment": "原reportに登録用persona IDなし、登録時付与。固定P01-P20変換なし。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H14R4-R2",
+        "personaArchetype": "注意中断×復帰",
+        "runId": "ranchmapping-0d2a31d6460538a875260c6c",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r4-resident-observations-20261114.json",
+        "originalResidentId": "resident-2",
+        "idAssignment": "原reportに登録用persona IDなし、登録時付与。固定P01-P20変換なし。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H14R4-R3",
+        "personaArchetype": "一般×モバイル表示",
+        "runId": "ranchmapping-0d2a31d6460538a875260c6c",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r4-resident-observations-20261114.json",
+        "originalResidentId": "resident-3",
+        "idAssignment": "原reportに登録用persona IDなし、登録時付与。固定P01-P20変換なし。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
       }
     ],
     "journeys": [
@@ -9825,6 +10017,337 @@ window.BETA_INVENTORY_DATA = {
         "allGoalsReached": true,
         "goalScope": "読み取り確認範囲のみ",
         "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-F588-R1-J1",
+        "personaId": "ALIC-CMP261108-F588-R1",
+        "purpose": "通常画面から恐竜の部屋を見つけ、出生結果を確認して姿を選ぶ",
+        "runId": "ranchmapping-f58861cdcb86324354bcd246",
+        "sourceHead": "f0b37dc6f723b33cc4364143d8230f228b3d6792",
+        "evidencePath": "docs/evidence/CMP-261108-2026/f588-resident-observations.json",
+        "sourceJourneyId": "ranch-new-user-results",
+        "idAssignment": "累積一意journey IDは登録時付与。原journey IDをsourceJourneyIdに保持。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "executionCompleted": false,
+        "allGoalsReached": false,
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-F588-R2-J1",
+        "personaId": "ALIC-CMP261108-F588-R2",
+        "purpose": "回答途中に離れた後、診断を再開して結果を確認する",
+        "runId": "ranchmapping-f58861cdcb86324354bcd246",
+        "sourceHead": "f0b37dc6f723b33cc4364143d8230f228b3d6792",
+        "evidencePath": "docs/evidence/CMP-261108-2026/f588-resident-observations.json",
+        "sourceJourneyId": "diagnosis-resume-results",
+        "idAssignment": "累積一意journey IDは登録時付与。原journey IDをsourceJourneyIdに保持。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "executionCompleted": false,
+        "allGoalsReached": false,
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-F588-R3-J1",
+        "personaId": "ALIC-CMP261108-F588-R3",
+        "purpose": "スマホで出生結果と診断結果の見え方を確認する",
+        "runId": "ranchmapping-f58861cdcb86324354bcd246",
+        "sourceHead": "f0b37dc6f723b33cc4364143d8230f228b3d6792",
+        "evidencePath": "docs/evidence/CMP-261108-2026/f588-resident-observations.json",
+        "sourceJourneyId": "ranch-mobile-onboarding",
+        "idAssignment": "累積一意journey IDは登録時付与。原journey IDをsourceJourneyIdに保持。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "executionCompleted": false,
+        "allGoalsReached": false,
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H10R6-R1-J1",
+        "personaId": "ALIC-CMP261108-H10R6-R1",
+        "purpose": "自分の性格を知り、それがどんな恐竜の分身につながるか確認し、後から結果を見返せるか理解する",
+        "runId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+        "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+        "originalReportPath": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-1/general-exploration-report.md",
+        "idAssignment": "原reportにjourney IDがないため登録時付与。",
+        "executionCompleted": true,
+        "allGoalsReached": true,
+        "achievement": "24問完了、対応理由を理解、姿選択確定を再訪画面で確認、保存結果再表示",
+        "limitations": "desktopのみ。孵化7日待ち未実施、外見プレビュー未確認。汎用computer-use SKILLを1回読取（root採択に記録）、アプリsource/spec/expected-result汚染なしとのroot判定。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H10R6-R2-J1",
+        "personaId": "ALIC-CMP261108-H10R6-R2",
+        "purpose": "自分の診断を試し、途中で別画面へ寄り道して戻り、結果を理解し後から見返す",
+        "runId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+        "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+        "originalReportPath": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-2/interruption-exploration-report.md",
+        "idAssignment": "原reportにjourney IDがないため登録時付与。",
+        "executionCompleted": true,
+        "allGoalsReached": true,
+        "achievement": "4回答を明示保存、離脱後保持と再開、24問完了、同じ保存結果を再表示",
+        "limitations": "別日再訪・ログアウト・ブラウザ再起動・mobile未検証。未保存回答は離脱で消失したが、明示保存後の保持は確認済み。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H10R6-R3-J1",
+        "personaId": "ALIC-CMP261108-H10R6-R3",
+        "purpose": "本人の名前と生年月日から分身の結果を確認し、後から見返し、育て方を理解する",
+        "runId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+        "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+        "originalReportPath": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-3/resident-3-report.md",
+        "idAssignment": "原reportにjourney IDがないため登録時付与。",
+        "executionCompleted": true,
+        "allGoalsReached": true,
+        "achievement": "出生結果作成・再訪、卵開始・姿選択確定、遊び方を閲覧し7日待ちを理解。390×844/360×844で操作",
+        "limitations": "追加の無料ケア実行は未達（EGG）。割当目的に無料ケア実行要求なし。孵化7日待ち未実施。locale実値未確認、UI日本語。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H13R2-R1-J1",
+        "personaId": "ALIC-CMP261108-H13R2-R1",
+        "purpose": "自分の性格を知り、それがどんな恐竜の分身につながるか確認し、後から結果を見返せるか理解する",
+        "runId": "ranchmapping-38f5674acfe432e7ccb52277",
+        "sourceHead": "9fe70bce78a05e11953e043dbb44f150c19ef870",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h13-r2-resident-observations-20261113.json",
+        "originalReportPath": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/exploration-report.md",
+        "idAssignment": "原reportにjourney IDがないため登録時付与。",
+        "executionCompleted": true,
+        "allGoalsReached": true,
+        "achievement": "24問と同点追加選択を完了、六軸と分身の文章対応を理解、一覧の日付リンクから同じ結果を再閲覧。",
+        "limitations": "実際の恐竜外見は結果画面で未確認。1280×800/DPR1、同session内再訪のみ。孵化7日待ち・命名・無料ケア実行・別日/再ログインを達成とはしない。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H13R2-R2-J1",
+        "personaId": "ALIC-CMP261108-H13R2-R2",
+        "purpose": "自分の診断を試し、途中で別画面へ寄り道して戻り、結果を理解し後から見返す",
+        "runId": "ranchmapping-38f5674acfe432e7ccb52277",
+        "sourceHead": "9fe70bce78a05e11953e043dbb44f150c19ef870",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h13-r2-resident-observations-20261113.json",
+        "originalReportPath": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/exploration-report.md",
+        "idAssignment": "原reportにjourney IDがないため登録時付与。",
+        "executionCompleted": true,
+        "allGoalsReached": true,
+        "achievement": "未保存2回答で寄り道・復帰後0を観測。回答し直して18問を自発的に保留、再開18保持、24問完了、結果理解・再閲覧。",
+        "limitations": "1280×800/DPR1、同session内再訪のみ。保存済み回答消失とはしない。実際の恐竜外見、孵化7日待ち・命名・無料ケア実行・別日/再ログイン未確認。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H13R2-R3-J1",
+        "personaId": "ALIC-CMP261108-H13R2-R3",
+        "purpose": "本人の名前と生年月日から分身の結果を確認し、後から見返し、育て方を理解する",
+        "runId": "ranchmapping-38f5674acfe432e7ccb52277",
+        "sourceHead": "9fe70bce78a05e11953e043dbb44f150c19ef870",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h13-r2-resident-observations-20261113.json",
+        "originalReportPath": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/exploration-report.md",
+        "idAssignment": "原reportにjourney IDがないため登録時付与。",
+        "executionCompleted": true,
+        "allGoalsReached": true,
+        "achievement": "390×844で出生結果作成・一覧リンク経由で本文確認・再閲覧、卵開始、遊び方を下端まで読み育て方を理解。",
+        "limitations": "390×844/touchPoints1。孵化・命名・姿選択確定・長期育成・無料ケア実行未実施。64タイプ診断は目的外。卵開始の必須性未検証。別日/再ログインなし。touchPointsから片手利用を推定しない。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H14R2-PARTIAL-R1-J1",
+        "personaId": "ALIC-CMP261108-H14R2-PARTIAL-R1",
+        "purpose": "自分の性格を知り、それがどんな恐竜の分身につながるか確認し、後から結果を見返せるか理解する",
+        "purposeSource": "parent既定の元3目的を維持。報告内の再表現はsource metadataへ別記。",
+        "runId": "ranchmapping-61a30580b29530464365c237",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r2-partial-resident-observations-20261114.json",
+        "originalReportPath": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r2-20261113T170247522608-5e43d354/ranchmapping-61a30580b29530464365c237/ui-mailbox/resident-1/exploration-report.md",
+        "idAssignment": "原reportにjourney IDがないため登録時付与。",
+        "explorationPerformed": true,
+        "executionCompleted": false,
+        "allGoalsReached": false,
+        "goalStatus": "PARTIAL_ENVIRONMENT_INTERRUPTION_NOT_FORMAL_COMPLETE",
+        "resultRevisitReached": false,
+        "achievement": "24問完了、六傾向・文章による分身対応と理由を理解。姿選択CLICK後の適用状態と結果再訪は未確認。",
+        "limitations": [
+          "姿選択の適用完了・確認画面",
+          "恐竜の実際の見た目",
+          "設定や結果一覧からの離脱後の再閲覧",
+          "再ログイン後の保持",
+          "7日後の孵化",
+          "途中保存・保留・診断取消・同点選択",
+          "生年月日・名前占いとランダム経路",
+          "モバイル表示"
+        ],
+        "environmentInterruption": "OPERATION_DEADLINE; product cause not inferred",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H14R2-PARTIAL-R2-J1",
+        "personaId": "ALIC-CMP261108-H14R2-PARTIAL-R2",
+        "purpose": "自分の診断を試し、途中で別画面へ寄り道して戻り、結果を理解し後から見返す",
+        "purposeSource": "parent既定の元3目的を維持。報告内の再表現はsource metadataへ別記。",
+        "runId": "ranchmapping-61a30580b29530464365c237",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r2-partial-resident-observations-20261114.json",
+        "originalReportPath": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r2-20261113T170247522608-5e43d354/ranchmapping-61a30580b29530464365c237/ui-mailbox/resident-2/exploration-report.md",
+        "idAssignment": "原reportにjourney IDがないため登録時付与。",
+        "explorationPerformed": true,
+        "executionCompleted": false,
+        "allGoalsReached": false,
+        "goalStatus": "PARTIAL_ENVIRONMENT_INTERRUPTION_NOT_FORMAL_COMPLETE",
+        "resultRevisitReached": false,
+        "achievement": "3問を自発的に途中保存、カレンダーへ寄り道後BACKで3問保持を確認。最後の確定は17問。診断完了・結果理解・再訪未達。",
+        "limitations": [
+          "残り7問の確定回答と完了",
+          "結果の表示、説明、保存、再閲覧",
+          "生年月日・名前占い",
+          "保留して戻る、取消、未保存状態での離脱",
+          "モバイル、再ログイン、長期間後の再開"
+        ],
+        "environmentInterruption": "OPERATION_DEADLINE; product cause not inferred",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H14R2-PARTIAL-R3-J1",
+        "personaId": "ALIC-CMP261108-H14R2-PARTIAL-R3",
+        "purpose": "本人の名前と生年月日から分身の結果を確認し、後から見返し、育て方を理解する",
+        "purposeSource": "parent既定の元3目的を維持。報告内の再表現はsource metadataへ別記。",
+        "runId": "ranchmapping-61a30580b29530464365c237",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r2-partial-resident-observations-20261114.json",
+        "originalReportPath": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r2-20261113T170247522608-5e43d354/ranchmapping-61a30580b29530464365c237/ui-mailbox/resident-3/exploration-report.md",
+        "idAssignment": "原reportにjourney IDがないため登録時付与。",
+        "explorationPerformed": true,
+        "executionCompleted": false,
+        "allGoalsReached": false,
+        "goalStatus": "PARTIAL_ENVIRONMENT_INTERRUPTION_NOT_FORMAL_COMPLETE",
+        "resultRevisitReached": false,
+        "achievement": "390×844 touchエミュレーションで出生結果作成・本文読了。無料育成等の基本説明を理解。結果再訪と具体的な育て方理解は未達。",
+        "limitations": [
+          "saved result revisit through list",
+          "persistence across login or restart",
+          "64 type diagnosis",
+          "egg start",
+          "detailed help",
+          "care and growth",
+          "other widths",
+          "physical phone",
+          "result after profile changes"
+        ],
+        "environmentInterruption": "OPERATION_DEADLINE; product cause not inferred",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H14R4-R1-J1",
+        "personaId": "ALIC-CMP261108-H14R4-R1",
+        "purpose": "自分の性格を知り、それがどんな恐竜の分身につながるか確認し、後から結果を見返せるか理解する",
+        "runId": "ranchmapping-0d2a31d6460538a875260c6c",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r4-resident-observations-20261114.json",
+        "idAssignment": "原reportにjourney IDなし、登録時付与。",
+        "actorReportAccepted": true,
+        "allGoalsReached": true,
+        "goalOutcomeScope": "元割当目的・同session内の結果再訪と文章理解だけ。全後段の成功を意味しない。",
+        "resultRevisitReached": true,
+        "limitations": [
+          "Same-session revisits only, not another device/day or fresh login",
+          "Mobile390/360 touch emulation, not physical phone or keyboard",
+          "Residents did not start eggs, hatch, adopt appearances or perform care; scripted core covers separate owned scenarios",
+          "Tool errors preserved, no claim that all IPC requests succeeded",
+          "Subjective friction remains observations, not blockers"
+        ],
+        "fullAfter": "PASS",
+        "ownedCleanup": "PASS",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false,
+        "actorRunCompleted": true
+      },
+      {
+        "id": "ALIC-CMP261108-H14R4-R2-J1",
+        "personaId": "ALIC-CMP261108-H14R4-R2",
+        "purpose": "自分の診断を試し、途中で別画面へ寄り道して戻り、結果を理解し後から見返す",
+        "runId": "ranchmapping-0d2a31d6460538a875260c6c",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r4-resident-observations-20261114.json",
+        "idAssignment": "原reportにjourney IDなし、登録時付与。",
+        "actorReportAccepted": true,
+        "allGoalsReached": true,
+        "goalOutcomeScope": "元割当目的・同session内の結果再訪と文章理解だけ。全後段の成功を意味しない。",
+        "resultRevisitReached": true,
+        "limitations": [
+          "Same-session revisits only, not another device/day or fresh login",
+          "Mobile390/360 touch emulation, not physical phone or keyboard",
+          "Residents did not start eggs, hatch, adopt appearances or perform care; scripted core covers separate owned scenarios",
+          "Tool errors preserved, no claim that all IPC requests succeeded",
+          "Subjective friction remains observations, not blockers"
+        ],
+        "fullAfter": "PASS",
+        "ownedCleanup": "PASS",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false,
+        "actorRunCompleted": true
+      },
+      {
+        "id": "ALIC-CMP261108-H14R4-R3-J1",
+        "personaId": "ALIC-CMP261108-H14R4-R3",
+        "purpose": "本人の名前と生年月日から分身の結果を確認し、後から見返し、育て方を理解する",
+        "runId": "ranchmapping-0d2a31d6460538a875260c6c",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r4-resident-observations-20261114.json",
+        "idAssignment": "原reportにjourney IDなし、登録時付与。",
+        "actorReportAccepted": true,
+        "allGoalsReached": true,
+        "goalOutcomeScope": "元割当目的・同session内の結果再訪と文章理解だけ。全後段の成功を意味しない。",
+        "resultRevisitReached": true,
+        "limitations": [
+          "Same-session revisits only, not another device/day or fresh login",
+          "Mobile390/360 touch emulation, not physical phone or keyboard",
+          "Residents did not start eggs, hatch, adopt appearances or perform care; scripted core covers separate owned scenarios",
+          "Tool errors preserved, no claim that all IPC requests succeeded",
+          "Subjective friction remains observations, not blockers"
+        ],
+        "fullAfter": "PASS",
+        "ownedCleanup": "PASS",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false,
+        "actorRunCompleted": true
       }
     ],
     "insights": [
@@ -12488,6 +13011,687 @@ window.BETA_INVENTORY_DATA = {
         "trusted": false,
         "status": "observed-unverified",
         "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-F588-R1-I001",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断結果",
+        "personaId": "ALIC-CMP261108-F588-R1",
+        "journeyId": "ALIC-CMP261108-F588-R1-J1",
+        "personaArchetype": "一般×素直",
+        "originalRunId": "ranchmapping-f58861cdcb86324354bcd246",
+        "sourceHead": "f0b37dc6f723b33cc4364143d8230f228b3d6792",
+        "evidencePath": "docs/evidence/CMP-261108-2026/f588-resident-observations.json",
+        "title": "確定後の選び方に準備中と表示",
+        "detail": "出生結果を作成して再訪時の保存を確認し、結果利用後に選び方で準備中と表示された。H9 sourceには表示修正があるが新artifactの実機再検証は未実施。",
+        "page": "/my/ranch/assignment",
+        "screenshotPath": "docs/evidence/CMP-261108-2026/f588-resident-1-screen-50.png",
+        "urgency": "normal",
+        "priority": "should",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-F588-R2-I001",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断結果",
+        "personaId": "ALIC-CMP261108-F588-R2",
+        "journeyId": "ALIC-CMP261108-F588-R2-J1",
+        "personaArchetype": "注意中断×復帰",
+        "originalRunId": "ranchmapping-f58861cdcb86324354bcd246",
+        "sourceHead": "f0b37dc6f723b33cc4364143d8230f228b3d6792",
+        "evidencePath": "docs/evidence/CMP-261108-2026/f588-resident-observations.json",
+        "title": "保存回答は復帰したが診断は未完了",
+        "detail": "最初の2回答を保存し、別画面から戻って保持を確認。22回答後に環境が終了し、診断完了と結果の理解には未到達。",
+        "page": "/my/ranch/diagnosis",
+        "screenshotPath": "docs/evidence/CMP-261108-2026/f588-resident-2-screen-26.png",
+        "urgency": "normal",
+        "priority": "should",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-F588-R3-I001",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断結果",
+        "personaId": "ALIC-CMP261108-F588-R3",
+        "journeyId": "ALIC-CMP261108-F588-R3-J1",
+        "personaArchetype": "スマホ×表示",
+        "originalRunId": "ranchmapping-f58861cdcb86324354bcd246",
+        "sourceHead": "f0b37dc6f723b33cc4364143d8230f228b3d6792",
+        "evidencePath": "docs/evidence/CMP-261108-2026/f588-resident-observations.json",
+        "title": "スマホ結果上部を確認、本文下方は未確認",
+        "detail": "出生結果は390×844と360×800で確認。64タイプ診断結果は360×800で上部を確認したが画面外の本文は未確認。native radio 20pxの実寸だけで不備と断定せず、labelの有効範囲は未測定。",
+        "page": "/my/ranch/results/[resultId]",
+        "screenshotPath": "docs/evidence/CMP-261108-2026/f588-resident-3-screen-71.png",
+        "urgency": "normal",
+        "priority": "should",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H10R6-R1-I001",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断結果・育て方",
+        "personaId": "ALIC-CMP261108-H10R6-R1",
+        "journeyId": "ALIC-CMP261108-H10R6-R1-J1",
+        "personaArchetype": "一般×素直",
+        "originalRunId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+        "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+        "title": "恐竜・診断の入口を設定で発見",
+        "detail": "ダッシュボードとマイページで入口を見つけず、設定から到達した。目的は達成。入口探索のUX観測であり導線不在の確定不具合ではない。",
+        "page": "/settings",
+        "screenshotPath": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-1/screen-5.png",
+        "urgency": "normal",
+        "priority": "should",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H10R6-R1-I002",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断結果・育て方",
+        "personaId": "ALIC-CMP261108-H10R6-R1",
+        "journeyId": "ALIC-CMP261108-H10R6-R1-J1",
+        "personaArchetype": "一般×素直",
+        "originalRunId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+        "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+        "title": "姿選択後の卵表示から確定を読み取りにくい",
+        "detail": "姿を選ぶと部屋へ戻り卵のままで、成功説明を即座に見つけなかった。選び方再訪で確定文と無効ボタンを確認。種名と理由は読めたが外見プレビュー・孵化後の姿は未確認。7日待ちは実施していない。",
+        "page": "/my/ranch",
+        "screenshotPath": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-1/screen-47.png",
+        "urgency": "normal",
+        "priority": "should",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H10R6-R1-I003",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断結果・育て方",
+        "personaId": "ALIC-CMP261108-H10R6-R1",
+        "journeyId": "ALIC-CMP261108-H10R6-R1-J1",
+        "personaArchetype": "一般×素直",
+        "originalRunId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+        "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+        "title": "タイプ番号と設問列の意味に迷う",
+        "detail": "結果の六軸と対応理由は理解できた。一方でタイプ番号と6つの設問文に選択回答・数値が添えられず、補足の意味が少し分かりにくかった。結果理解不能・表示欠陥とは断定しない。",
+        "page": "/my/ranch/results/[resultId]",
+        "screenshotPath": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-1/screen-45.png",
+        "urgency": "normal",
+        "priority": "should",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H10R6-R2-I004",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断結果・育て方",
+        "personaId": "ALIC-CMP261108-H10R6-R2",
+        "journeyId": "ALIC-CMP261108-H10R6-R2-J1",
+        "personaArchetype": "注意中断×復帰",
+        "originalRunId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+        "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+        "title": "保存を発見する前の離脱で未保存回答をやり直した",
+        "detail": "4回答を保存せずカレンダーへ離れBACKすると未選択に戻った。保存ボタンは24問後、上端時y3796/h44でviewport800外。明示保存後は離脱・再開で4回答保持し診断完了・再訪できた。保存済み回答消失とは扱わない。",
+        "page": "/my/ranch/diagnosis",
+        "screenshotPath": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-2/screen-20.png",
+        "urgency": "normal",
+        "priority": "should",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H10R6-R2-I005",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断結果・育て方",
+        "personaId": "ALIC-CMP261108-H10R6-R2",
+        "journeyId": "ALIC-CMP261108-H10R6-R2-J1",
+        "personaArchetype": "注意中断×復帰",
+        "originalRunId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+        "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+        "title": "保存結果の対応説明と準備中の文で迷った",
+        "detail": "保存時の分身の対応と準備中の文を同じ結果で読み、反映状態に迷った。rootは未開始の卵から始める表示を確認し、通常UIで開始後に同じ結果の選択ボタン有効を確認。正常eligibilityであり文言理解のUX観測として残す。",
+        "page": "/my/ranch/results/[resultId]",
+        "screenshotPath": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-2/screen-61.png",
+        "urgency": "normal",
+        "priority": "should",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H10R6-R3-I006",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断結果・育て方",
+        "personaId": "ALIC-CMP261108-H10R6-R3",
+        "journeyId": "ALIC-CMP261108-H10R6-R3-J1",
+        "personaArchetype": "一般×モバイル表示",
+        "originalRunId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+        "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+        "title": "部屋の想起リンクで読み込み失敗を2回観測",
+        "detail": "360×844で部屋の想起をするから/reflections/recallを開き読み込み失敗を2回観測。rootも360幅で再現しentryなしリンクとentry必須loadの原因を特定（RANCH-RECALL-ENTRY-001/P2）。root確定と住民登録の未実証ラベルを分離。修正・RED/GREEN・merge・DONEはこの提案で主張しない。",
+        "page": "/reflections/recall",
+        "screenshotPath": "outputs/ranch-h10-runtime-prep-20261112/private-combined-h10-r6-20261112T103605529-a8e37b9e/ranchmapping-2f3a9ef6613fb32cc3576c59/ui-mailbox/resident-3/screen-55.png",
+        "urgency": "normal",
+        "priority": "should",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H13R2-R1-I001",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断結果・育て方",
+        "personaId": "ALIC-CMP261108-H13R2-R1",
+        "journeyId": "ALIC-CMP261108-H13R2-R1-J1",
+        "personaArchetype": "一般×素直",
+        "originalRunId": "ranchmapping-38f5674acfe432e7ccb52277",
+        "sourceHead": "9fe70bce78a05e11953e043dbb44f150c19ef870",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h13-r2-resident-observations-20261113.json",
+        "title": "設定に診断入口があると分かるまで寄り道した",
+        "detail": "最初にマイページで自分の機能を探したが診断入口を見つけず、設定から恐竜の部屋・診断結果へ到達した。目的達成済み。入口探索のUX観測で、導線不在の確定不具合ではない。",
+        "page": "/settings",
+        "screenshotPath": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/screen-5.png",
+        "urgency": "normal",
+        "priority": "should",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H13R2-R1-I002",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断結果・育て方",
+        "personaId": "ALIC-CMP261108-H13R2-R1",
+        "journeyId": "ALIC-CMP261108-H13R2-R1-J1",
+        "personaArchetype": "一般×素直",
+        "originalRunId": "ranchmapping-38f5674acfe432e7ccb52277",
+        "sourceHead": "9fe70bce78a05e11953e043dbb44f150c19ef870",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h13-r2-resident-observations-20261113.json",
+        "title": "具体的な分身対応と準備中文言の両立に迷う",
+        "detail": "結果上部で分身の種と理由を読めたが、下部に姿への対応付けは準備中と続き、対応済みか準備中か判断が揺れた。実際の恐竜外見は結果画面で未確認。対応master不在・eligibility異常・preview不具合はこの観測から断定しない。",
+        "page": "/my/ranch/results/[resultId]",
+        "screenshotPath": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/screen-43.png",
+        "urgency": "normal",
+        "priority": "should",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H13R2-R1-I003",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断結果・育て方",
+        "personaId": "ALIC-CMP261108-H13R2-R1",
+        "journeyId": "ALIC-CMP261108-H13R2-R1-J1",
+        "personaArchetype": "一般×素直",
+        "originalRunId": "ranchmapping-38f5674acfe432e7ccb52277",
+        "sourceHead": "9fe70bce78a05e11953e043dbb44f150c19ef870",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h13-r2-resident-observations-20261113.json",
+        "title": "同点軸の選択案内が二度続き戸惑った",
+        "detail": "24問後に同じくらいだった軸を選んでくださいが二度続く文になり、何が足りないか少し戸惑った。表示された二択へ回答し結果まで進めた。現象と感想の記録で、原因・修正要否は未実証。",
+        "page": "/my/ranch/diagnosis",
+        "screenshotPath": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-1/screen-39.png",
+        "urgency": "normal",
+        "priority": "should",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H13R2-R2-I004",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断結果・育て方",
+        "personaId": "ALIC-CMP261108-H13R2-R2",
+        "journeyId": "ALIC-CMP261108-H13R2-R2-J1",
+        "personaArchetype": "注意中断×復帰",
+        "originalRunId": "ranchmapping-38f5674acfe432e7ccb52277",
+        "sourceHead": "9fe70bce78a05e11953e043dbb44f150c19ef870",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h13-r2-resident-observations-20261113.json",
+        "title": "未保存2回答は寄り道で0に戻り、保留18回答は保持",
+        "detail": "途中保存せず2問選択後カレンダーへ寄り道しBACKすると同session URLで0選択へ戻った。回答し直し18問で自発的に保留して戻るを使用すると、再開後18選択を保持し完了・再閲覧できた。root別metadataも2→0/18保持を確認。保存済み回答消失とは扱わない。",
+        "page": "/my/ranch/diagnosis",
+        "screenshotPath": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/screen-13.png",
+        "urgency": "normal",
+        "priority": "should",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H13R2-R2-I005",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断結果・育て方",
+        "personaId": "ALIC-CMP261108-H13R2-R2",
+        "journeyId": "ALIC-CMP261108-H13R2-R2-J1",
+        "personaArchetype": "注意中断×復帰",
+        "originalRunId": "ranchmapping-38f5674acfe432e7ccb52277",
+        "sourceHead": "9fe70bce78a05e11953e043dbb44f150c19ef870",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h13-r2-resident-observations-20261113.json",
+        "title": "結果上部の対応説明と末尾の準備中文言に迷う",
+        "detail": "六傾向と保存時の分身の対応を読み、ゲーム内の分身解釈として理解できた。一方で末尾の姿への対応付けは準備中との文で、対応済みか準備中か少し迷った。結果は同sessionで再閲覧できた。root確定の文言不備は別rootDispositionに保持し、住民記録は未実証のまま。",
+        "page": "/my/ranch/results/[resultId]",
+        "screenshotPath": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-2/screen-48.png",
+        "urgency": "normal",
+        "priority": "should",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H13R2-R3-I006",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断結果・育て方",
+        "personaId": "ALIC-CMP261108-H13R2-R3",
+        "journeyId": "ALIC-CMP261108-H13R2-R3-J1",
+        "personaArchetype": "一般×モバイル表示",
+        "originalRunId": "ranchmapping-38f5674acfe432e7ccb52277",
+        "sourceHead": "9fe70bce78a05e11953e043dbb44f150c19ef870",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h13-r2-resident-observations-20261113.json",
+        "title": "モバイルで結果作成入口を設定から発見",
+        "detail": "マイページで分身入口を探した後、設定の恐竜の部屋の設定から到達した。その入口名は結果作成へ至る主な入口として最初は見えにくかった。390×844で目的達成済み。",
+        "page": "/settings",
+        "screenshotPath": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/screen-7.png",
+        "urgency": "normal",
+        "priority": "should",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H13R2-R3-I007",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断結果・育て方",
+        "personaId": "ALIC-CMP261108-H13R2-R3",
+        "journeyId": "ALIC-CMP261108-H13R2-R3-J1",
+        "personaArchetype": "一般×モバイル表示",
+        "originalRunId": "ranchmapping-38f5674acfe432e7ccb52277",
+        "sourceHead": "9fe70bce78a05e11953e043dbb44f150c19ef870",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h13-r2-resident-observations-20261113.json",
+        "title": "結果作成直後は本文を読めず一覧リンク経由で確認",
+        "detail": "作成直後に結果本文が同画面へ展開されず、自分の診断結果リンクへ進んで読んだ。結果一覧の実施日リンクから同じ詳細を再表示でき、遊び方も読了。生成失敗やデータ消失・恒常的表示不具合を断定しない。",
+        "page": "/my/ranch/birth-profile",
+        "screenshotPath": "outputs/ranch-h13-runtime-prep-20261112/private-combined-h13-r2-20261112T145751809108-f2281830/ranchmapping-38f5674acfe432e7ccb52277/ui-mailbox/resident-3/screen-22.png",
+        "urgency": "normal",
+        "priority": "should",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H14R2-PARTIAL-R1-I001",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断・中断時点の観測",
+        "personaId": "ALIC-CMP261108-H14R2-PARTIAL-R1",
+        "journeyId": "ALIC-CMP261108-H14R2-PARTIAL-R1-J1",
+        "personaArchetype": "一般×素直",
+        "originalRunId": "ranchmapping-61a30580b29530464365c237",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r2-partial-resident-observations-20261114.json",
+        "title": "設定と選び方を経由して診断入口を発見",
+        "detail": "マイページで診断入口を探した後、設定の恐竜の部屋から到達。設定という名称と育成開始の関係に迷い、開始後の選び方で64タイプ診断を見つけた。入口探索のUX観測で導線不在の確定bugではない。結果再訪は環境中断で未達。",
+        "page": "/settings",
+        "screenshotPath": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r2-20261113T170247522608-5e43d354/ranchmapping-61a30580b29530464365c237/ui-mailbox/resident-1/screen-3.png",
+        "urgency": "normal",
+        "priority": "should",
+        "observationKind": "friction",
+        "goalStatus": "PARTIAL_ENVIRONMENT_INTERRUPTION_NOT_FORMAL_COMPLETE",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H14R2-PARTIAL-R1-I002",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断・中断時点の観測",
+        "personaId": "ALIC-CMP261108-H14R2-PARTIAL-R1",
+        "journeyId": "ALIC-CMP261108-H14R2-PARTIAL-R1-J1",
+        "personaArchetype": "一般×素直",
+        "originalRunId": "ranchmapping-61a30580b29530464365c237",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r2-partial-resident-observations-20261114.json",
+        "title": "長い質問画面で進捗を把握しにくく感じた",
+        "detail": "24問が一画面に縦並びで、左右の意味を各設問で読み直した。観測した可視テキストには設問番号・回答済み進捗を見つけなかった。読み取り負荷の感想で操作不能と判定しない。24問後の文章結果は読めたが再訪は未達。",
+        "page": "/my/ranch/diagnosis",
+        "screenshotPath": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r2-20261113T170247522608-5e43d354/ranchmapping-61a30580b29530464365c237/ui-mailbox/resident-1/screen-18.png",
+        "urgency": "normal",
+        "priority": "should",
+        "observationKind": "friction",
+        "goalStatus": "PARTIAL_ENVIRONMENT_INTERRUPTION_NOT_FORMAL_COMPLETE",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H14R2-PARTIAL-R1-I003",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断・中断時点の観測",
+        "personaId": "ALIC-CMP261108-H14R2-PARTIAL-R1",
+        "journeyId": "ALIC-CMP261108-H14R2-PARTIAL-R1-J1",
+        "personaArchetype": "一般×素直",
+        "originalRunId": "ranchmapping-61a30580b29530464365c237",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r2-partial-resident-observations-20261114.json",
+        "title": "ゲーム内解釈と六傾向・分身対応は理解できた",
+        "detail": "科学的な測定ではなく正解や優劣もない説明が明確と感じ、六傾向と分身対応理由を自分の回答へつなげて読めた。実際の外見画像は未確認、姿選択CLICK後の適用状態は未確定。離脱後の再閲覧未達につき全目的達成ではない。",
+        "page": "/my/ranch/results/[resultId]",
+        "screenshotPath": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r2-20261113T170247522608-5e43d354/ranchmapping-61a30580b29530464365c237/ui-mailbox/resident-1/screen-44.png",
+        "urgency": "normal",
+        "priority": "should",
+        "observationKind": "positive",
+        "goalStatus": "PARTIAL_ENVIRONMENT_INTERRUPTION_NOT_FORMAL_COMPLETE",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H14R2-PARTIAL-R2-I004",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断・中断時点の観測",
+        "personaId": "ALIC-CMP261108-H14R2-PARTIAL-R2",
+        "journeyId": "ALIC-CMP261108-H14R2-PARTIAL-R2-J1",
+        "personaArchetype": "注意中断×復帰",
+        "originalRunId": "ranchmapping-61a30580b29530464365c237",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r2-partial-resident-observations-20261114.json",
+        "title": "設問総数や未回答数の表示を見つけられず長く感じた",
+        "detail": "24問の縦並び画面で、開始時の総数・所要時間や回答中の進捗・未回答数表示を観測範囲では見つけられなかった。最後は17問確定、18問目CHECKは返答なしで未確定。環境中断を製品原因にしない。",
+        "page": "/my/ranch/diagnosis",
+        "screenshotPath": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r2-20261113T170247522608-5e43d354/ranchmapping-61a30580b29530464365c237/ui-mailbox/resident-2/screen-13.png",
+        "urgency": "normal",
+        "priority": "should",
+        "observationKind": "friction",
+        "goalStatus": "PARTIAL_ENVIRONMENT_INTERRUPTION_NOT_FORMAL_COMPLETE",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H14R2-PARTIAL-R2-I005",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断・中断時点の観測",
+        "personaId": "ALIC-CMP261108-H14R2-PARTIAL-R2",
+        "journeyId": "ALIC-CMP261108-H14R2-PARTIAL-R2-J1",
+        "personaArchetype": "注意中断×復帰",
+        "originalRunId": "ranchmapping-61a30580b29530464365c237",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r2-partial-resident-observations-20261114.json",
+        "title": "明示保存した3問は寄り道後も保持された",
+        "detail": "3問回答後に途中の回答を保存し、カレンダーからBACKすると同じ3問が保持された。保存直後の可視テキストに完了明示を見つけず、復帰後保持で確認できた。未保存離脱は未検証。診断完了・結果理解・結果再訪は未達。",
+        "page": "/my/ranch/diagnosis",
+        "screenshotPath": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r2-20261113T170247522608-5e43d354/ranchmapping-61a30580b29530464365c237/ui-mailbox/resident-2/screen-18.png",
+        "urgency": "normal",
+        "priority": "should",
+        "observationKind": "positive-and-friction",
+        "goalStatus": "PARTIAL_ENVIRONMENT_INTERRUPTION_NOT_FORMAL_COMPLETE",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H14R2-PARTIAL-R3-I006",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断・中断時点の観測",
+        "personaId": "ALIC-CMP261108-H14R2-PARTIAL-R3",
+        "journeyId": "ALIC-CMP261108-H14R2-PARTIAL-R3-J1",
+        "personaArchetype": "一般×モバイル表示",
+        "originalRunId": "ranchmapping-61a30580b29530464365c237",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r2-partial-resident-observations-20261114.json",
+        "title": "モバイルでも設定に分身入口があると分かるまで探索",
+        "detail": "マイページと村で入口を探した後、設定の恐竜の部屋へ到達した。390×844 touchエミュレーションでの入口探索観測。物理端末や他幅は未検証、入口不在の確定bugではない。",
+        "page": "/settings",
+        "screenshotPath": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r2-20261113T170247522608-5e43d354/ranchmapping-61a30580b29530464365c237/ui-mailbox/resident-3/screen-4.png",
+        "urgency": "normal",
+        "priority": "should",
+        "observationKind": "friction",
+        "goalStatus": "PARTIAL_ENVIRONMENT_INTERRUPTION_NOT_FORMAL_COMPLETE",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H14R2-PARTIAL-R3-I007",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断・中断時点の観測",
+        "personaId": "ALIC-CMP261108-H14R2-PARTIAL-R3",
+        "journeyId": "ALIC-CMP261108-H14R2-PARTIAL-R3-J1",
+        "personaArchetype": "一般×モバイル表示",
+        "originalRunId": "ranchmapping-61a30580b29530464365c237",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r2-partial-resident-observations-20261114.json",
+        "title": "390幅の占い結果本文とリンクは読めた",
+        "detail": "本人の占い結果を作成し、個別結果の本文・戻る/新しい結果リンクが390幅内で読めたと住民が画像視認を報告。姿確定が現在利用不可という説明も読んだ。利用不可理由・実際の姿・再訪・育て方詳細は未確認で不具合断定しない。",
+        "page": "/my/ranch/results/[resultId]",
+        "screenshotPath": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r2-20261113T170247522608-5e43d354/ranchmapping-61a30580b29530464365c237/ui-mailbox/resident-3/screen-28.png",
+        "urgency": "normal",
+        "priority": "should",
+        "observationKind": "positive",
+        "goalStatus": "PARTIAL_ENVIRONMENT_INTERRUPTION_NOT_FORMAL_COMPLETE",
+        "idAssignment": "原reportにinsight IDがないため登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H14R4-R1-I001",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断・保存復帰・表示観測",
+        "personaId": "ALIC-CMP261108-H14R4-R1",
+        "journeyId": "ALIC-CMP261108-H14R4-R1-J1",
+        "personaArchetype": "一般×素直",
+        "originalRunId": "ranchmapping-0d2a31d6460538a875260c6c",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r4-resident-observations-20261114.json",
+        "title": "設定で診断入口を発見するまでマイページを探索",
+        "detail": "マイページで入口を見つけず設定で発見。設定に入ってからは診断へ進めた。入口探索の摩擦で、導線不在の確定bugではない。",
+        "page": "/settings",
+        "screenshotPath": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r4-20261113T201248894Z-faf320b7f2f7/ranchmapping-0d2a31d6460538a875260c6c/ui-mailbox/resident-1/screen-5.png",
+        "urgency": "normal",
+        "priority": "should",
+        "observationKind": "friction",
+        "idAssignment": "原reportにinsight IDなし、登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H14R4-R1-I002",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断・保存復帰・表示観測",
+        "personaId": "ALIC-CMP261108-H14R4-R1",
+        "journeyId": "ALIC-CMP261108-H14R4-R1-J1",
+        "personaArchetype": "一般×素直",
+        "originalRunId": "ranchmapping-0d2a31d6460538a875260c6c",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r4-resident-observations-20261114.json",
+        "title": "六つの傾向と分身対応理由を読み同じ結果へ再訪",
+        "detail": "24問を完了し六傾向・種名/外見名・対応理由を確認。設定へ離れて実施日時リンクから同じ結果を再表示。実際の恐竜画像・姿確定・孵化は未確認、現在確定操作は利用不可との案内があった。",
+        "page": "/my/ranch/results/[resultId]",
+        "screenshotPath": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r4-20261113T201248894Z-faf320b7f2f7/ranchmapping-0d2a31d6460538a875260c6c/ui-mailbox/resident-1/screen-46.png",
+        "urgency": "normal",
+        "priority": "should",
+        "observationKind": "positive",
+        "idAssignment": "原reportにinsight IDなし、登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H14R4-R2-I003",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断・保存復帰・表示観測",
+        "personaId": "ALIC-CMP261108-H14R4-R2",
+        "journeyId": "ALIC-CMP261108-H14R4-R2-J1",
+        "personaArchetype": "注意中断×復帰",
+        "originalRunId": "ranchmapping-0d2a31d6460538a875260c6c",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r4-resident-observations-20261114.json",
+        "title": "再開後に未回答を探す負担を感じた",
+        "detail": "長い24問一覧で問番号・回答済み件数を観測範囲では見つけなかった。21回答から再開すると上部へ戻り、未回答の終盤を探す負担があった。進行不能や保存失敗ではない。",
+        "page": "/my/ranch/diagnosis",
+        "screenshotPath": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r4-20261113T201248894Z-faf320b7f2f7/ranchmapping-0d2a31d6460538a875260c6c/ui-mailbox/resident-2/screen-45.png",
+        "urgency": "normal",
+        "priority": "should",
+        "observationKind": "friction",
+        "idAssignment": "原reportにinsight IDなし、登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H14R4-R2-I004",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断・保存復帰・表示観測",
+        "personaId": "ALIC-CMP261108-H14R4-R2",
+        "journeyId": "ALIC-CMP261108-H14R4-R2-J1",
+        "personaArchetype": "注意中断×復帰",
+        "originalRunId": "ranchmapping-0d2a31d6460538a875260c6c",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r4-resident-observations-20261114.json",
+        "title": "明示保存2問と保留21問は復帰後も保持",
+        "detail": "2問の途中保存後カレンダーからBACKして2回答保持、21問で保留して戻る後も21回答保持を確認。24問完了後に同じ結果を再閲覧し、数字タイプ自体は未理解でも六つの文章説明は理解できた。",
+        "page": "/my/ranch/diagnosis",
+        "screenshotPath": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r4-20261113T201248894Z-faf320b7f2f7/ranchmapping-0d2a31d6460538a875260c6c/ui-mailbox/resident-2/screen-45.png",
+        "urgency": "normal",
+        "priority": "should",
+        "observationKind": "positive",
+        "idAssignment": "原reportにinsight IDなし、登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H14R4-R2-I005",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断・保存復帰・表示観測",
+        "personaId": "ALIC-CMP261108-H14R4-R2",
+        "journeyId": "ALIC-CMP261108-H14R4-R2-J1",
+        "personaArchetype": "注意中断×復帰",
+        "originalRunId": "ranchmapping-0d2a31d6460538a875260c6c",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r4-resident-observations-20261114.json",
+        "title": "radio本体20pxを測定、label込みの範囲は未測定",
+        "detail": "最初のやや右radio本体は20×20px。label全域を含む実効hit targetは未測定であり、この値だけから操作領域違反や製品欠陥とはしない。結果を見るボタンは106×44px、横はみ出しなしの測定がある。",
+        "page": "/my/ranch/diagnosis",
+        "screenshotPath": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r4-20261113T201248894Z-faf320b7f2f7/ranchmapping-0d2a31d6460538a875260c6c/ui-mailbox/resident-2/screen-60.png",
+        "urgency": "normal",
+        "priority": "should",
+        "observationKind": "measurement-unverified",
+        "idAssignment": "原reportにinsight IDなし、登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H14R4-R3-I006",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断・保存復帰・表示観測",
+        "personaId": "ALIC-CMP261108-H14R4-R3",
+        "journeyId": "ALIC-CMP261108-H14R4-R3-J1",
+        "personaArchetype": "一般×モバイル表示",
+        "originalRunId": "ranchmapping-0d2a31d6460538a875260c6c",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r4-resident-observations-20261114.json",
+        "title": "390/360幅で結果と遊び方を読めた",
+        "detail": "390幅と360×800 touchエミュレーションで長文が折返し、確認画面に横はみ出しや文字重なりは見なかった。360幅で末尾までスクロールして読み、同じ結果を再訪、遊び方を理解。物理端末/キーボードは未検証、育成やcare実行は未実施。",
+        "page": "/my/ranch/results/[resultId]",
+        "screenshotPath": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r4-20261113T201248894Z-faf320b7f2f7/ranchmapping-0d2a31d6460538a875260c6c/ui-mailbox/resident-3/screen-34.png",
+        "urgency": "normal",
+        "priority": "should",
+        "observationKind": "positive",
+        "idAssignment": "原reportにinsight IDなし、登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-CMP261108-H14R4-R3-I007",
+        "featureKey": "gamification-gamification",
+        "featureDetail": "恐竜の部屋・診断・保存復帰・表示観測",
+        "personaId": "ALIC-CMP261108-H14R4-R3",
+        "journeyId": "ALIC-CMP261108-H14R4-R3-J1",
+        "personaArchetype": "一般×モバイル表示",
+        "originalRunId": "ranchmapping-0d2a31d6460538a875260c6c",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r4-resident-observations-20261114.json",
+        "title": "作成後の保存案内と結果リンクがフォーム表示位置より下",
+        "detail": "結果作成直後の保存完了案内と結果リンクは現在表示位置より下で、可視テキストでは見つかってもそのscreen位置では目に入らなかった。さらに下を探す可能性というUX観測で、保存・生成失敗とはしない。",
+        "page": "/my/ranch/birth-profile",
+        "screenshotPath": "outputs/ranch-h14-runtime-prep-20261114/private-combined-h14-r4-20261113T201248894Z-faf320b7f2f7/ranchmapping-0d2a31d6460538a875260c6c/ui-mailbox/resident-3/screen-24.png",
+        "urgency": "normal",
+        "priority": "should",
+        "observationKind": "friction",
+        "idAssignment": "原reportにinsight IDなし、登録時付与。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
       }
     ],
     "runEnvironments": {
@@ -12755,6 +13959,184 @@ window.BETA_INVENTORY_DATA = {
           "limits": "小領域は実寸有効・今回未変更。MOB07非再現・元直接原因UNKNOWN。100ms未満変化の不在は主張しない。"
         },
         "formalParentCompletion": false
+      },
+      "ranchmapping-f58861cdcb86324354bcd246": {
+        "runId": "ranchmapping-f58861cdcb86324354bcd246",
+        "sourceHead": "f0b37dc6f723b33cc4364143d8230f228b3d6792",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "evidencePath": "docs/evidence/CMP-261108-2026/f588-resident-observations.json",
+        "executionCompleted": false,
+        "allGoalsReached": false,
+        "coveragePassed": false,
+        "formalParentCompletion": false,
+        "limits": "親とUI hostはexit 1。入口に全3住民が迷ったがwidget初期OFFの既存仕様で、導線不在の確定不具合ではない。"
+      },
+      "ranchmapping-2f3a9ef6613fb32cc3576c59": {
+        "runId": "ranchmapping-2f3a9ef6613fb32cc3576c59",
+        "sourceHead": "7cd7cd637d00deaa2090f3f9c8d6f99c8ad2acb2",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h10-r6-resident-observations-20261112.json",
+        "executionCompleted": true,
+        "allGoalsReached": true,
+        "formalParentCompletion": false,
+        "viewport": [
+          "1280x800 (resident-2)",
+          "390x844 (resident-3)",
+          "360x844 (resident-3)"
+        ],
+        "rootAdoptionPath": "outputs/ranch-h10-runtime-prep-20261112/root-r6-actual-runtime-adoption.json",
+        "limitation": "assigned goals達成とB0 coverage/修正完了は別。旧H5観測を書換えない。新画像はprivate-local path/hash参照のみ。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      "ranchmapping-38f5674acfe432e7ccb52277": {
+        "runId": "ranchmapping-38f5674acfe432e7ccb52277",
+        "sourceHead": "9fe70bce78a05e11953e043dbb44f150c19ef870",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h13-r2-resident-observations-20261113.json",
+        "executionCompleted": true,
+        "allGoalsReached": true,
+        "formalParentCompletion": false,
+        "viewport": [
+          "1280x800/DPR1 (resident-1/2)",
+          "390x844/touchPoints1 (resident-3)"
+        ],
+        "rootAdoptionPath": "outputs/ranch-h13-runtime-prep-20261112/root-combined-h13-r2-actual-adoption.json",
+        "limitations": "同session内再訪・申告viewportのみ。孵化7日/命名/ケア実行/別日・再ログインの達成を主張しない。F16実機成功へ読み替えない。",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      "ranchmapping-61a30580b29530464365c237": {
+        "runId": "ranchmapping-61a30580b29530464365c237",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r2-partial-resident-observations-20261114.json",
+        "explorationPerformed": true,
+        "executionCompleted": false,
+        "allGoalsReached": false,
+        "formalExplorationCompleted": false,
+        "goalStatus": "PARTIAL_ENVIRONMENT_INTERRUPTION_NOT_FORMAL_COMPLETE",
+        "fullBefore": "PASS",
+        "fullAfter": "NOT_EXECUTED",
+        "environmentInterruption": "OPERATION_DEADLINE",
+        "originalExitCode": 1,
+        "recoverySeparateFromOriginalFailure": true,
+        "formalParentCompletion": false,
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      "ranchmapping-0d2a31d6460538a875260c6c": {
+        "runId": "ranchmapping-0d2a31d6460538a875260c6c",
+        "sourceHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+        "evidencePath": "docs/evidence/CMP-261108-2026/h14-r4-resident-observations-20261114.json",
+        "actorReportsAccepted": true,
+        "assignedGoalsReachedWithinReportedScope": true,
+        "fullAfter": "PASS",
+        "ownedCleanup": "PASS",
+        "mergeGo": false,
+        "publication": false,
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false,
+        "fullBefore": "PASS",
+        "runCompleted": true,
+        "coordinatorExitCode": 0,
+        "coordinatorSession": 40556,
+        "reaped": true,
+        "canonicalExitCode": 0,
+        "canonicalCleanup": "removed",
+        "nativeCleanup": [
+          {
+            "stage": "gate-workers",
+            "status": "PASS"
+          },
+          {
+            "stage": "control-clis",
+            "status": "PASS"
+          },
+          {
+            "stage": "frontend",
+            "status": "PASS"
+          },
+          {
+            "stage": "java",
+            "status": "PASS"
+          },
+          {
+            "stage": "compose",
+            "status": "PASS"
+          },
+          {
+            "stage": "ports",
+            "status": "PASS"
+          },
+          {
+            "stage": "private-evidence",
+            "status": "PASS"
+          },
+          {
+            "stage": "private-directory",
+            "status": "PASS"
+          }
+        ],
+        "outerCleanup": [
+          {
+            "stage": "browser",
+            "status": "PASS"
+          },
+          {
+            "stage": "scripted-browser",
+            "status": "PASS"
+          },
+          {
+            "stage": "validation-workers",
+            "status": "PASS"
+          },
+          {
+            "stage": "control-clis",
+            "status": "PASS"
+          },
+          {
+            "stage": "canonical",
+            "status": "PASS"
+          },
+          {
+            "stage": "accounts",
+            "status": "PASS"
+          },
+          {
+            "stage": "frozen-bindings",
+            "status": "PASS"
+          },
+          {
+            "stage": "stop-forward-audit",
+            "status": "PASS"
+          }
+        ],
+        "beforeAfterSourceArtifactsAndLinuxIdentical": true,
+        "telemetry": {
+          "status": "PASS",
+          "journal": "native-telemetry.private.jsonl",
+          "journalMode": "0600",
+          "destination": "budget-telemetry.jsonl",
+          "destinationModeRequested": "0600",
+          "destinationObservedMode": "0777",
+          "destinationModeContract": "canonical ownership and Windows ACL; DrvFS observed bits are not a POSIX security guarantee",
+          "observedEvents": 2268,
+          "writtenEvents": 2268,
+          "completeEvents": true,
+          "bytes": 604251,
+          "sha256": "d24765516a44b6190356f57afc30b6b9221f1a8a47aed03aaacba858c993933c",
+          "destinationSha256": "d24765516a44b6190356f57afc30b6b9221f1a8a47aed03aaacba858c993933c",
+          "destinationFsync": true,
+          "failure": null
+        }
       }
     }
   },
@@ -28906,8 +30288,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260905-0514",
       "title": "同一ユーザーの近接ログインで `refresh_tokens` がデッドロックし 500 を返す（リトライ無し）",
-      "status": "not-started",
-      "statusLabel": "P2 未着手",
+      "status": "working",
+      "statusLabel": "P2 実装中",
       "stage": "未設定",
       "priority": "未設定",
       "taskPriority": "P2",
@@ -28922,12 +30304,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "実機E2E（CMP-260826-2127）実行中に発見。BE ログ実体: `CannotAcquireLockException: could not execute batch [Deadlock found when trying to get lock; try restarting transaction] [update refresh_tokens set device_fingerprint ...]` が `JpaTransactionManager.doCommit` で発生し、`GlobalExceptionHandler - Unexpected error occurred` を経て `COMMON_999`(500) としてクライアントへ返る。**握られず・再試行もされない**。実運用でも「スマホと PC で同時にログイン」で起こりうる経路。E2E 側は同一ユーザーのログイン直列化で回避したが、製品側は未修正",
+          "label": "実機E2E（CMP-260826-2127）実行中に発見。BE ログ実体: `CannotAcquireLockException: could not execute batch [Deadlock found when trying to get lock; try restarting transaction] [update refresh_tokens set device_fingerprint ...]` が `JpaTransactionManager.doCommit` で発生し、`GlobalExceptionHandler - Unexpected error occurred` を経て `COMMON_999`(500) としてクライアントへ返る。**握られず・再試行もされない**。実運用でも「スマホと PC で同時にログイン」で起こりうる経路。E2E 側は同一ユーザーのログイン直列化で回避したが、製品側は未修正。2026-11-10: 実FK・実Auth proxyによる並行loginの試練を準備中。実走・製品修正は未実施",
           "state": "unknown"
         }
       ],
       "prs": [
-        "実機E2E（CMP-260826-2127）実行中に発見。BE ログ実体: `CannotAcquireLockException: could not execute batch [Deadlock found when trying to get lock; try restarting transaction] [update refresh_tokens set device_fingerprint ...]` が `JpaTransactionManager.doCommit` で発生し、`GlobalExceptionHandler - Unexpected error occurred` を経て `COMMON_999`(500) としてクライアントへ返る。**握られず・再試行もされない**。実運用でも「スマホと PC で同時にログイン」で起こりうる経路。E2E 側は同一ユーザーのログイン直列化で回避したが、製品側は未修正"
+        "実機E2E（CMP-260826-2127）実行中に発見。BE ログ実体: `CannotAcquireLockException: could not execute batch [Deadlock found when trying to get lock; try restarting transaction] [update refresh_tokens set device_fingerprint ...]` が `JpaTransactionManager.doCommit` で発生し、`GlobalExceptionHandler - Unexpected error occurred` を経て `COMMON_999`(500) としてクライアントへ返る。**握られず・再試行もされない**。実運用でも「スマホと PC で同時にログイン」で起こりうる経路。E2E 側は同一ユーザーのログイン直列化で回避したが、製品側は未修正。2026-11-10: 実FK・実Auth proxyによる並行loginの試練を準備中。実走・製品修正は未実施"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -28939,7 +30321,7 @@ window.BETA_INVENTORY_DATA = {
         "refresh_tokens"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -30462,8 +31844,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-0302",
       "title": "通知本文の zh/ko/es/de が未翻訳のまま日本語で配信される",
-      "status": "not-started",
-      "statusLabel": "P3 未着手",
+      "status": "working",
+      "statusLabel": "P3 実装中",
       "stage": "未設定",
       "priority": "未設定",
       "taskPriority": "P3",
@@ -30510,7 +31892,7 @@ window.BETA_INVENTORY_DATA = {
         "zh"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         2715,
@@ -30575,8 +31957,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-0303",
       "title": "シフト予算アラート再送の部分成功で、成功済み受信者へ重複配信される",
-      "status": "not-started",
-      "statusLabel": "P3 未着手",
+      "status": "working",
+      "statusLabel": "P3 実装中",
       "stage": "未設定",
       "priority": "未設定",
       "taskPriority": "P3",
@@ -30600,7 +31982,7 @@ window.BETA_INVENTORY_DATA = {
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "背景: Issue #2990 L13 の凱旋で申し送られた既知の割り切り（L13 が作った欠陥ではなく是正前からのもの）。`ShiftBudgetNotificationResendService#resend` は受信者ごとに `notificationHelper.notify` を呼び、1名の失敗で残りを諦めないよう例外を握って `failedUserIds` に積み、ループ後に失敗者一覧を持つ `IllegalStateException` を投げる。これを受ける `ShiftBudgetRetryExecutor#execute` の catch は、**失敗した受信者だけを持つ新しい失敗イベントを作らず**、元の `ShiftBudgetFailedEventEntity` を `markFailed` するだけである。その行の payload には最初の `user_ids` が丸ごと残っているため、次回リトライは元の受信者集合全員に対して再実行され、前回成功していた受信者へ重複配信されうる（最大 `MAX_RETRY`=3 回）。注: 申し送り原文は「`NotificationDeliveryRunner#sendOne` で配送し、落ちた受信者だけを failed event に記録する」と記していたが、実コードは上記のとおり `notificationHelper.notify` 直呼びで、失敗者の絞り込み記録も行っていない。結論（部分成功で重複配信されうる）は変わらないが、機構の記述は本行のものが実態である"
+        "背景: Issue #2990 L13 の凱旋で申し送られた既知の割り切り（L13 が作った欠陥ではなく是正前からのもの）。`ShiftBudgetNotificationResendService#resend` は受信者ごとに `notificationHelper.notify` を呼び、1名の失敗で残りを諦めないよう例外を握って `failedUserIds` に積み、ループ後に失敗者一覧を持つ `IllegalStateException` を投げる。これを受ける `ShiftBudgetRetryExecutor#execute` の catch は、**失敗した受信者だけを持つ新しい失敗イベントを作らず**、元の `ShiftBudgetFailedEventEntity` を `markFailed` するだけである。その行の payload には最初の `user_ids` が丸ごと残っているため、次回リトライは元の受信者集合全員に対して再実行され、前回成功していた受信者へ重複配信されうる（最大 `MAX_RETRY`=3 回）。注: 申し送り原文は「`NotificationDeliveryRunner#sendOne` で配送し、落ちた受信者だけを failed event に記録する」と記していたが、実コードは上記のとおり `notificationHelper.notify` 直呼びで、失敗者の絞り込み記録も行っていない。結論（部分成功で重複配信されうる）は変わらないが、機構の記述は本行のものが実態である。2026-11-10: 優先度P3。PR #4443の製品変更時点be2a73aで計69件PASS。main追従後c5dcf1dは対象44入力不変・CI進行中、実機E2E・新規探索・正式検分は未実施。"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -30608,11 +31990,12 @@ window.BETA_INVENTORY_DATA = {
         "DB"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         2990,
-        3162
+        3162,
+        4443
       ],
       "github": [
         {
@@ -30637,6 +32020,15 @@ window.BETA_INVENTORY_DATA = {
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
+        },
+        {
+          "number": 4443,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
         }
       ]
     },
@@ -33131,11 +34523,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1811",
       "title": "テスト用プロファイルで `application-test.yml` の機能フラグがテストに届かず、shift-budget の統合テスト29ファイルが機能無効のまま緑になっている（F08.7）",
-      "status": "not-started",
-      "statusLabel": "P4 未着手",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
-      "taskPriority": "P4",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -33144,15 +34536,15 @@ window.BETA_INVENTORY_DATA = {
       "acceptance": [
         "`backend/src/main/resources/application-test.yml` にしか存在しないキー（`feature.shift-budget.enabled` を含む）が棚卸しされ、どのテストが機能無効のまま何を検証していたかが判明していること。フラグを実際に立てた状態でも green であることが確認されていること。同種の盲点を機械的に検出する番人（`src/main/resources/application-test.yml` と `src/test/resources/application-test.yml` のキー集合差分を検出）が用意されていること"
       ],
-      "blocker": "—",
+      "blocker": "[#4431](https://github.com/kenta-0420/mannschaft/pull/4431)",
       "issues": [
         {
-          "label": "—",
+          "label": "[完了証拠](evidence/CMP-260910-1811.json)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "[完了証拠](evidence/CMP-260910-1811.json)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -33186,11 +34578,12 @@ window.BETA_INVENTORY_DATA = {
         "yml"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
       "githubRefs": [
         3188,
-        3219
+        3219,
+        4431
       ],
       "github": [
         {
@@ -33220,6 +34613,15 @@ window.BETA_INVENTORY_DATA = {
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
+        },
+        {
+          "number": 4431,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
         }
       ]
     },
@@ -35793,8 +37195,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260919-1139",
       "title": "i18n の `common.` 接頭辞の誤用が40種、FE 全体に残っている",
-      "status": "not-started",
-      "statusLabel": "P3 未着手",
+      "status": "working",
+      "statusLabel": "P3 実装中",
       "stage": "未設定",
       "priority": "未設定",
       "taskPriority": "P3",
@@ -35831,7 +37233,7 @@ window.BETA_INVENTORY_DATA = {
         "JSON"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         3374
@@ -39279,8 +40681,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260930-0232",
       "title": "代理投票一覧が常に空になり、作成ボタンが MEMBER にも表示される",
-      "status": "not-started",
-      "statusLabel": "P2 未着手",
+      "status": "working",
+      "statusLabel": "P2 実装中",
       "stage": "未設定",
       "priority": "未設定",
       "taskPriority": "P2",
@@ -39311,7 +40713,7 @@ window.BETA_INVENTORY_DATA = {
         "MEMBER"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         3518
@@ -39772,8 +41174,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260930-1533",
       "title": "投票・朝の点呼が一覧取得の 403 を握りつぶして「0件」表示にし、作成・提出ボタンを出す",
-      "status": "not-started",
-      "statusLabel": "P3 未着手",
+      "status": "working",
+      "statusLabel": "P3 実装中",
       "stage": "未設定",
       "priority": "未設定",
       "taskPriority": "P3",
@@ -39802,7 +41204,7 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         2460,
@@ -40096,8 +41498,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260930-1538",
       "title": "チームの画面から投票（議決権行使）・学校出欠への導線が無い",
-      "status": "not-started",
-      "statusLabel": "P2 未着手",
+      "status": "working",
+      "statusLabel": "P2 実装中",
       "stage": "未設定",
       "priority": "未設定",
       "taskPriority": "P2",
@@ -40126,7 +41528,7 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         3518
@@ -40258,8 +41660,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260930-1931",
       "title": "料金表（`GET /api/v1/billing/plans`・Billing Center のプラン一覧/変更プレビュー）が価格改定の新価格を読まない",
-      "status": "not-started",
-      "statusLabel": "P1 未着手",
+      "status": "working",
+      "statusLabel": "P1 実装中",
       "stage": "未設定",
       "priority": "未設定",
       "taskPriority": "P1",
@@ -40312,7 +41714,7 @@ window.BETA_INVENTORY_DATA = {
         "ACTIVE"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -41507,8 +42909,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260930-2313",
       "title": "`FlywayFromScratchMigrationTest` の型照合を VARCHAR 長（Entity の length が DB の長さを超える列）まで広げる",
-      "status": "not-started",
-      "statusLabel": "P4 未着手",
+      "status": "working",
+      "statusLabel": "P4 実装中",
       "stage": "未設定",
       "priority": "未設定",
       "taskPriority": "P4",
@@ -41544,7 +42946,7 @@ window.BETA_INVENTORY_DATA = {
         "Entity"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -42217,8 +43619,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261002-0805",
       "title": "学校出欠への画面導線・未使用 composable",
-      "status": "not-started",
-      "statusLabel": "P2 未着手",
+      "status": "working",
+      "statusLabel": "P2 実装中",
       "stage": "未設定",
       "priority": "未設定",
       "taskPriority": "P2",
@@ -42252,7 +43654,7 @@ window.BETA_INVENTORY_DATA = {
         "composable"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -58508,28 +59910,28 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261029-0620",
       "title": "プッシュ通知タップで遷移先 URL を読めない（Service Worker が action_url を読むが BE は actionUrl を送る）",
-      "status": "not-started",
-      "statusLabel": "P3 未着手",
+      "status": "done",
+      "statusLabel": "完了（2026-11-12）",
       "stage": "未設定",
       "priority": "未設定",
-      "taskPriority": "P3",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
       "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "プッシュ通知をタップすると通知の actionUrl へ遷移する。BE の送信ペイロード（NotificationDispatchService.java:333 付近、NotificationResponse.actionUrl）と frontend/public/sw-custom.js:33 の data.action_url のキー名を一致させ、SW の読み込み経路を含む回帰テストを先行させる",
+      "nextAction": "プッシュ通知をタップすると通知の actionUrl へ遷移する。BE の送信ペイロード（NotificationDispatchService.java:333 付近、NotificationResponse.actionUrl）と frontend/public/sw-custom.js:33 の data.action_url のキー名を一致させ、SW の読み込み経路を含む回帰テストを先行させる。範囲は BE の Push ペイロードを設計書の形に揃えることと、SW の結線（importScripts）と遷移先の安全な判定まで。購読導線は別行",
       "acceptance": [
-        "プッシュ通知をタップすると通知の actionUrl へ遷移する。BE の送信ペイロード（NotificationDispatchService.java:333 付近、NotificationResponse.actionUrl）と frontend/public/sw-custom.js:33 の data.action_url のキー名を一致させ、SW の読み込み経路を含む回帰テストを先行させる"
+        "プッシュ通知をタップすると通知の actionUrl へ遷移する。BE の送信ペイロード（NotificationDispatchService.java:333 付近、NotificationResponse.actionUrl）と frontend/public/sw-custom.js:33 の data.action_url のキー名を一致させ、SW の読み込み経路を含む回帰テストを先行させる。範囲は BE の Push ペイロードを設計書の形に揃えることと、SW の結線（importScripts）と遷移先の安全な判定まで。購読導線は別行"
       ],
       "blocker": "—",
       "issues": [
         {
-          "label": "CMP-261028-2328 の軍議検分（Codex、2026-10-29）で発見。未着手",
+          "label": "CMP-261028-2328 の軍議検分（Codex、2026-10-29）で発見。未着手 PR [#4461](https://github.com/kenta-0420/mannschaft/pull/4461) マージ済み。実機: 本番ビルドの SW に importScripts('/sw-custom.js')、CDP push で通知表示・data.action_url 一致（AC-14/14b）。AC-14c は合成イベントでのみ確認。AC-14d（タブ無しでの通知クリック）は自動化できなかったため、2026-11-12 にマスターが手で確認した（下記）。SSR アプリ画面からの SW 登録は nuxi build のサーバー段が停止して未実施（静的配信で代替）。派生起票: CMP-261111-2337、CMP-261112-1647、CMP-261112-1648、CMP-261112-1649（アリシゼーションで発見） 2026-11-12 マスター確認（MC-261112-1443）: 普段の Chrome（実機・本物の OS 通知クリック）で、本番ビルド（`.output/public`、sw.js に importScripts(\"/sw-custom.js\")）を localhost:3005 で静的配信して確認した。DevTools の Push ボタンが表示されなかったため、ページの Console から `registration.showNotification` で通知を出した（オプションは sw-custom.js の push ハンドラと同形: data.action_url='/teams/fc-u-18/schedules/10'、actions open/dismiss）。AC-14c（同一オリジンのタブを開いたまま通知を押す）は同じタブが /teams/fc-u-18/schedules/10 へ遷移し合格。AC-14d（タブを閉じて通知センターから押す）は新しいタブで同 URL が開き合格。push 受信から表示まで（AC-14b）は 2026-11-11 の実機E2E で確認済み。未実施として残る: SSR のアプリ画面からの SW 登録（nuxi build のサーバー段が停止したため静的配信で代替）。[完了証拠](evidence/CMP-261029-0620.json)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "CMP-261028-2328 の軍議検分（Codex、2026-10-29）で発見。未着手"
+        "CMP-261028-2328 の軍議検分（Codex、2026-10-29）で発見。未着手 PR [#4461](https://github.com/kenta-0420/mannschaft/pull/4461) マージ済み。実機: 本番ビルドの SW に importScripts('/sw-custom.js')、CDP push で通知表示・data.action_url 一致（AC-14/14b）。AC-14c は合成イベントでのみ確認。AC-14d（タブ無しでの通知クリック）は自動化できなかったため、2026-11-12 にマスターが手で確認した（下記）。SSR アプリ画面からの SW 登録は nuxi build のサーバー段が停止して未実施（静的配信で代替）。派生起票: CMP-261111-2337、CMP-261112-1647、CMP-261112-1648、CMP-261112-1649（アリシゼーションで発見） 2026-11-12 マスター確認（MC-261112-1443）: 普段の Chrome（実機・本物の OS 通知クリック）で、本番ビルド（`.output/public`、sw.js に importScripts(\"/sw-custom.js\")）を localhost:3005 で静的配信して確認した。DevTools の Push ボタンが表示されなかったため、ページの Console から `registration.showNotification` で通知を出した（オプションは sw-custom.js の push ハンドラと同形: data.action_url='/teams/fc-u-18/schedules/10'、actions open/dismiss）。AC-14c（同一オリジンのタブを開いたまま通知を押す）は同じタブが /teams/fc-u-18/schedules/10 へ遷移し合格。AC-14d（タブを閉じて通知センターから押す）は新しいタブで同 URL が開き合格。push 受信から表示まで（AC-14b）は 2026-11-11 の実機E2E で確認済み。未実施として残る: SSR のアプリ画面からの SW 登録（nuxi build のサーバー段が停止したため静的配信で代替）。[完了証拠](evidence/CMP-261029-0620.json)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -58555,22 +59957,38 @@ window.BETA_INVENTORY_DATA = {
         "js",
         "data",
         "action_url",
-        "SW"
+        "SW",
+        "BE",
+        "Push",
+        "SW",
+        "importScripts"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        4461
+      ],
+      "github": [
+        {
+          "number": 4461,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
     },
     {
       "id": "CMP-261030-0648",
       "title": "管理者向け予約通知・問い合わせ通知・業務アラートの actionUrl が数値 teamId になっている（CMP-261028-2328 からの切り出し）",
-      "status": "not-started",
-      "statusLabel": "P3 未着手",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
-      "taskPriority": "P3",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -58579,15 +59997,15 @@ window.BETA_INVENTORY_DATA = {
       "acceptance": [
         "ReservationAdminNotificationEventListener・InquiryChatEventListener・AdminBusinessAlertService（reservationsUrl と inquiryChannelUrl）の actionUrl を slug にする。TeamService はコンストラクタ注入とし、凍結ストアの既存違反の署名移行（件数は不変、新しいクラス対は 0、新旧の対応表を添える）を限定承認のうえで行う。全体の refreeze はしない。slug が解決できないときは `/notifications` にする。取得で例外が出ても通知を失わない。ReservationPendingExpireService:263 は #3721 の着地後に同じ型でそろえる。回帰テストを先に置く"
       ],
-      "blocker": "凍結ストア記録移行の限定承認",
+      "blocker": "凍結ストア記録移行の限定承認（2026-11-10 マスター承認（D-5 6行・D-3 4行の署名付け替えに限る。件数不変・新クラス対0・refreeze なし））",
       "issues": [
         {
-          "label": "PR #4226 の Codex 検分で、フィールド注入による回避は規約違反と指摘された。マスターの裁定で切り出した。",
+          "label": "PR #4226 の Codex 検分で、フィールド注入による回避は規約違反と指摘された。マスターの裁定で切り出した。 本体 [#4457](https://github.com/kenta-0420/mannschaft/pull/4457)、PendingExpire [#4466](https://github.com/kenta-0420/mannschaft/pull/4466)、[完了証拠](evidence/CMP-261030-0648.json)、[実機・探索記録](evidence/CMP-261030-0648.md)。実機E2E: ADMIN が予約通知から /teams/{slug}/reservations、問い合わせ通知から /teams/{slug}/chat?channel={id}（チャンネル選択状態）に着き、業務アラートのボタンも同じ。PendingExpire は失効バッチ実行で slug URL。MEMBER・部外者の URL 直打ちで漏れなし。未実施: 承認待ち予約（MANUAL）の通知（承認制の枠を用意できなかった）。アリシゼーション実施。派生起票: CMP-261111-2336・CMP-261111-2339",
           "state": "unknown"
         }
       ],
       "prs": [
-        "PR #4226 の Codex 検分で、フィールド注入による回避は規約違反と指摘された。マスターの裁定で切り出した。"
+        "PR #4226 の Codex 検分で、フィールド注入による回避は規約違反と指摘された。マスターの裁定で切り出した。 本体 [#4457](https://github.com/kenta-0420/mannschaft/pull/4457)、PendingExpire [#4466](https://github.com/kenta-0420/mannschaft/pull/4466)、[完了証拠](evidence/CMP-261030-0648.json)、[実機・探索記録](evidence/CMP-261030-0648.md)。実機E2E: ADMIN が予約通知から /teams/{slug}/reservations、問い合わせ通知から /teams/{slug}/chat?channel={id}（チャンネル選択状態）に着き、業務アラートのボタンも同じ。PendingExpire は失効バッチ実行で slug URL。MEMBER・部外者の URL 直打ちで漏れなし。未実施: 承認待ち予約（MANUAL）の通知（承認制の枠を用意できなかった）。アリシゼーション実施。派生起票: CMP-261111-2336・CMP-261111-2339"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -58612,11 +60030,13 @@ window.BETA_INVENTORY_DATA = {
         "ReservationPendingExpireService"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
       "githubRefs": [
         3721,
-        4226
+        4226,
+        4457,
+        4466
       ],
       "github": [
         {
@@ -58630,6 +60050,24 @@ window.BETA_INVENTORY_DATA = {
         },
         {
           "number": 4226,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4457,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4466,
           "kind": "unsynced",
           "state": "unknown",
           "title": "",
@@ -58826,11 +60264,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261030-0652",
       "title": "既読の通知をもう一度クリックすると `POST /notifications/{id}/read` が 409 になり、コンソールにエラーが出る（ALIC-D）",
-      "status": "not-started",
-      "statusLabel": "P5 未着手",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
-      "taskPriority": "P5",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -58842,12 +60280,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "WidgetNotices.vue の onMarkRead が、既読でも POST している。BE の NotificationService:187 は ALREADY_READ（INFO）を投げる。殿が実機で 409 を再現した。",
+          "label": "WidgetNotices.vue の onMarkRead が、既読でも POST している。BE の NotificationService:187 は ALREADY_READ（INFO）を投げる。殿が実機で 409 を再現した。 実装PR [#4450](https://github.com/kenta-0420/mannschaft/pull/4450)、[完了証拠](evidence/CMP-261030-0652.json)、[実機・探索記録](evidence/CMP-261030-0652.md)。実機E2E: 既読通知の2回目クリックで POST が出ず 409 にならず Console error 0（通知一覧・WidgetNotices）。未実施: 「すべて」で既読にしてからフォルダタブへ移る確認（テストチームが既定フォルダに未収容で条件を作れなかった）。アリシゼーション（WSL BE・住民3体）で新規欠陥なし",
           "state": "unknown"
         }
       ],
       "prs": [
-        "WidgetNotices.vue の onMarkRead が、既読でも POST している。BE の NotificationService:187 は ALREADY_READ（INFO）を投げる。殿が実機で 409 を再現した。"
+        "WidgetNotices.vue の onMarkRead が、既読でも POST している。BE の NotificationService:187 は ALREADY_READ（INFO）を投げる。殿が実機で 409 を再現した。 実装PR [#4450](https://github.com/kenta-0420/mannschaft/pull/4450)、[完了証拠](evidence/CMP-261030-0652.json)、[実機・探索記録](evidence/CMP-261030-0652.md)。実機E2E: 既読通知の2回目クリックで POST が出ず 409 にならず Console error 0（通知一覧・WidgetNotices）。未実施: 「すべて」で既読にしてからフォルダタブへ移る確認（テストチームが既定フォルダに未収容で条件を作れなかった）。アリシゼーション（WSL BE・住民3体）で新規欠陥なし"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -58865,10 +60303,22 @@ window.BETA_INVENTORY_DATA = {
         "BE"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        4450
+      ],
+      "github": [
+        {
+          "number": 4450,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
     },
     {
       "id": "CMP-261101-2005",
@@ -60770,11 +62220,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261105-1507",
       "title": "N+1 戦役（CMP-261103-1225）Phase1 の実機E2E・アリシゼーションで見つかった既存不具合6件の修正",
-      "status": "working",
-      "statusLabel": "P2 実装中",
+      "status": "done",
+      "statusLabel": "完了（2026-11-13）",
       "stage": "未設定",
       "priority": "未設定",
-      "taskPriority": "P2",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -60786,12 +62236,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "発見元は PR #4302（docs/evidence/CMP-261103-1225/phase1-real-e2e.md）。マージ済み（すべて MERGED）: #4306（①⑤⑥ プロジェクト画面）、#4311（② チャットの同秒の順序）、#4324（③④ 時間割の学期）、#4343（学期画面のエラー表示）、#4355（マイルストーンの保存・プロジェクト画面の多言語化）、#4358（チームの学期・時間割をチーム単独で管理）。実機E2E の証拠 PR #4341 は未マージ。残件: チャットの存在秘匿・本人の編集削除・既読バッジ・多言語化（ブランチ fix/cmp-261105-1507-chat-alic、PR 未作成、D-3T 対応のため Facade 化中）。チャットの PR が着地するまで進行中",
+          "label": "修正 PR（すべて MERGED）: #4305 #4306 #4311 #4324 #4343 #4355 #4358 #4375 #4434 #4436 #4438 #4486。実機・証跡: #4341 #4429 #4485。台帳更新: #4372。最終実機（2026-11-13、BE は main 1e17bf78、検証 BE :8081 / FE :3017）: playwright-cmp1507 18件すべて緑、playwright-n1p1 緑。アリシゼーション（2026-11-13、住民3体: 管理者・メンバー・他組織）で確定した欠陥3件（ハンドル未発見で落ちる・送信でプレビューが更新されない・DM 開始後に DM が開かず直前の部屋へ誤送信）を #4486 で修正。他組織からの覗き見は 403/404 で存在も漏れないことを確認。別件起票: CMP-261113-0110 CMP-261113-0111 CMP-261113-0112 CMP-261113-0113 CMP-261113-0114 CMP-261113-0115。[完了証拠](evidence/CMP-261105-1507.json)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "発見元は PR #4302（docs/evidence/CMP-261103-1225/phase1-real-e2e.md）。マージ済み（すべて MERGED）: #4306（①⑤⑥ プロジェクト画面）、#4311（② チャットの同秒の順序）、#4324（③④ 時間割の学期）、#4343（学期画面のエラー表示）、#4355（マイルストーンの保存・プロジェクト画面の多言語化）、#4358（チームの学期・時間割をチーム単独で管理）。実機E2E の証拠 PR #4341 は未マージ。残件: チャットの存在秘匿・本人の編集削除・既読バッジ・多言語化（ブランチ fix/cmp-261105-1507-chat-alic、PR 未作成、D-3T 対応のため Facade 化中）。チャットの PR が着地するまで進行中"
+        "修正 PR（すべて MERGED）: #4305 #4306 #4311 #4324 #4343 #4355 #4358 #4375 #4434 #4436 #4438 #4486。実機・証跡: #4341 #4429 #4485。台帳更新: #4372。最終実機（2026-11-13、BE は main 1e17bf78、検証 BE :8081 / FE :3017）: playwright-cmp1507 18件すべて緑、playwright-n1p1 緑。アリシゼーション（2026-11-13、住民3体: 管理者・メンバー・他組織）で確定した欠陥3件（ハンドル未発見で落ちる・送信でプレビューが更新されない・DM 開始後に DM が開かず直前の部屋へ誤送信）を #4486 で修正。他組織からの覗き見は 403/404 で存在も漏れないことを確認。別件起票: CMP-261113-0110 CMP-261113-0111 CMP-261113-0112 CMP-261113-0113 CMP-261113-0114 CMP-261113-0115。[完了証拠](evidence/CMP-261105-1507.json)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -60813,21 +62263,29 @@ window.BETA_INVENTORY_DATA = {
         "JSON"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
       "githubRefs": [
-        4302,
+        4305,
         4306,
         4311,
         4324,
         4341,
         4343,
         4355,
-        4358
+        4358,
+        4372,
+        4375,
+        4429,
+        4434,
+        4436,
+        4438,
+        4485,
+        4486
       ],
       "github": [
         {
-          "number": 4302,
+          "number": 4305,
           "kind": "unsynced",
           "state": "unknown",
           "title": "",
@@ -60891,6 +62349,78 @@ window.BETA_INVENTORY_DATA = {
         },
         {
           "number": 4358,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4372,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4375,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4429,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4434,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4436,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4438,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4485,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4486,
           "kind": "unsynced",
           "state": "unknown",
           "title": "",
@@ -62528,11 +64058,11 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261108-2026",
       "title": "恐竜診断64・出生占い81の対応をアプリ登録し実機・探索で検証",
-      "status": "working",
-      "statusLabel": "P2 実装中",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
-      "taskPriority": "P2",
+      "taskPriority": null,
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
@@ -62544,12 +64074,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-261108-1635",
       "issues": [
         {
-          "label": "登録時点の採択確認中から更新: 出生81対応案・質問24問/tie6問・6言語原稿を正式採択。製品未実装・実機未実施・本番未公開。旧仮ID CMP-261108-2000はmain既存戦役との衝突により改番",
+          "label": "最終採択: [実装PR #4418](https://github.com/kenta-0420/mannschaft/pull/4418) head `6ffc203e22`、通常merge main `32e4777a`とtested tree一致。[完了証拠](evidence/CMP-261108-2026.json)・[実機/探索記録](evidence/CMP-261108-2026.md)。<br>登録時点の履歴（当時）: 登録時点の採択確認中から更新: 出生81対応案・質問24問/tie6問・6言語原稿を正式採択。製品未実装・実機未実施・本番未公開。旧仮ID CMP-261108-2000はmain既存戦役との衝突により改番",
           "state": "unknown"
         }
       ],
       "prs": [
-        "登録時点の採択確認中から更新: 出生81対応案・質問24問/tie6問・6言語原稿を正式採択。製品未実装・実機未実施・本番未公開。旧仮ID CMP-261108-2000はmain既存戦役との衝突により改番"
+        "最終採択: [実装PR #4418](https://github.com/kenta-0420/mannschaft/pull/4418) head `6ffc203e22`、通常merge main `32e4777a`とtested tree一致。[完了証拠](evidence/CMP-261108-2026.json)・[実機/探索記録](evidence/CMP-261108-2026.md)。<br>登録時点の履歴（当時）: 登録時点の採択確認中から更新: 出生81対応案・質問24問/tie6問・6言語原稿を正式採択。製品未実装・実機未実施・本番未公開。旧仮ID CMP-261108-2000はmain既存戦役との衝突により改番"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -62568,7 +64098,2154 @@ window.BETA_INVENTORY_DATA = {
         "E2E"
       ],
       "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4418
+      ],
+      "github": [
+        {
+          "number": 4418,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261110-0931",
+      "title": "Web Push の購読導線が FE に無い。`PushManager.subscribe` も `Notification.requestPermission` も呼ばれておらず、`useNotificationApi.ts` の `registerPushSubscription` の呼び出しはゼロで、VAPID 公開鍵を FE に渡す API も無い。あわせて `unregisterPushSubscription`（`useNotificationApi.ts:166`）は endpoint を付けずに DELETE し、`PushSubscriptionController.java:62` は endpoint 必須なので 400 になる",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "利用者が設定画面などから購読・解除でき、解除が 2xx になる。VAPID 公開鍵を FE へ渡す手段を用意する",
+      "acceptance": [
+        "利用者が設定画面などから購読・解除でき、解除が 2xx になる。VAPID 公開鍵を FE へ渡す手段を用意する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261029-0620 の軍議（2026-11-10）で切り出し。CMP-261029-0620 の範囲は BE ペイロードと SW 結線までで、購読導線は別行とした",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261029-0620 の軍議（2026-11-10）で切り出し。CMP-261029-0620 の範囲は BE ペイロードと SW 結線までで、購読導線は別行とした"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "Web",
+        "Push",
+        "FE",
+        "PushManager",
+        "subscribe",
+        "Notification",
+        "requestPermission",
+        "useNotificationApi",
+        "ts",
+        "registerPushSubscription",
+        "VAPID",
+        "FE",
+        "API",
+        "unregisterPushSubscription",
+        "useNotificationApi",
+        "ts",
+        "endpoint",
+        "DELETE",
+        "PushSubscriptionController",
+        "java",
+        "endpoint",
+        "xx",
+        "VAPID",
+        "FE"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261110-0932",
+      "title": "Web Push の表示が未実装: tag（F04.3 は `TYPE:SOURCE:id`。同じ tag は上書き表示）と URGENT の vibrate（F04.3:1368）",
+      "status": "not-started",
+      "statusLabel": "P5 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P5",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "通知の tag を `TYPE:SOURCE:id` で付け、同じ tag は上書き表示になる。URGENT では vibrate する",
+      "acceptance": [
+        "通知の tag を `TYPE:SOURCE:id` で付け、同じ tag は上書き表示になる。URGENT では vibrate する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261029-0620 の軍議（2026-11-10）で切り出し",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261029-0620 の軍議（2026-11-10）で切り出し"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "Web",
+        "Push",
+        "tag",
+        "F04",
+        "TYPE",
+        "SOURCE",
+        "id",
+        "tag",
+        "URGENT",
+        "vibrate",
+        "F04",
+        "tag",
+        "TYPE",
+        "SOURCE",
+        "id",
+        "tag",
+        "URGENT",
+        "vibrate"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261110-0933",
+      "title": "SW の Background Sync 処理（`sw-custom.js:50-151`）が未結線のまま残っており、トークンの取得が廃止済みの localStorage 前提（`useAuthStore.ts:31`）になっている。ページ側の `useOfflineSync` と役割が重なる",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "使うなら作り直して結線し、使わないなら削除する",
+      "acceptance": [
+        "使うなら作り直して結線し、使わないなら削除する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261029-0620 の軍議（2026-11-10）で切り出し",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261029-0620 の軍議（2026-11-10）で切り出し"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "SW",
+        "Background",
+        "Sync",
+        "sw-custom",
+        "js",
+        "localStorage",
+        "useAuthStore",
+        "ts",
+        "useOfflineSync"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261110-0934",
+      "title": "通知の作成（`NotificationService.createNotification`）で、外部 URL の actionUrl を拒否していない（F04.3:1536 は BE で拒否と定める）",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "外部 URL の actionUrl を BE で拒否し、回帰テストを置く",
+      "acceptance": [
+        "外部 URL の actionUrl を BE で拒否し、回帰テストを置く"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261029-0620 の軍議（2026-11-10）で切り出し",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261029-0620 の軍議（2026-11-10）で切り出し"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "NotificationService",
+        "createNotification",
+        "URL",
+        "actionUrl",
+        "F04",
+        "BE",
+        "URL",
+        "actionUrl",
+        "BE"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261110-0935",
+      "title": "数値 teamId の URL が、CMP-261030-0648 の範囲外に約15箇所残っている: `EventAdvanceNoticeNotificationListener.java:136,161`、`EventDismissalNotificationListener.java:186`、`CareEventNotificationService.java:286`、`EventEndReminderBatchService.java:389`、`MemberInfoUpdateReminderNotificationListener.java:124`、`TeamMemberTermReminderBatch.java:120`、`TeamFriendNotificationListener.java:207`、`TeamSlotNoteNotifyListener.java:187`、`PaymentRequestService.java:57`、`TicketBookService.java:130-131`、`KbPageFavoriteResolver.java:68`、`TeamFavoriteResolver.java:81`（CMP-260916-1042 と関係）、`BlogFeedService.java:115,128`",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "slug にする（CMP-261030-0648 と同じ型）",
+      "acceptance": [
+        "slug にする（CMP-261030-0648 と同じ型）"
+      ],
+      "blocker": "CMP-261030-0648",
+      "issues": [
+        {
+          "label": "CMP-261030-0648 の軍議（2026-11-10）で切り出し",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261030-0648 の軍議（2026-11-10）で切り出し"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "teamId",
+        "URL",
+        "CMP-261030-0648",
+        "EventAdvanceNoticeNotificationListener",
+        "java",
+        "EventDismissalNotificationListener",
+        "java",
+        "CareEventNotificationService",
+        "java",
+        "EventEndReminderBatchService",
+        "java",
+        "MemberInfoUpdateReminderNotificationListener",
+        "java",
+        "TeamMemberTermReminderBatch",
+        "java",
+        "TeamFriendNotificationListener",
+        "java",
+        "TeamSlotNoteNotifyListener",
+        "java",
+        "PaymentRequestService",
+        "java",
+        "TicketBookService",
+        "java",
+        "KbPageFavoriteResolver",
+        "java",
+        "TeamFavoriteResolver",
+        "java",
+        "CMP-260916-1042",
+        "BlogFeedService",
+        "java",
+        "slug",
+        "CMP-261030-0648"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261110-0936",
+      "title": "予約通知の手本 `ReservationForceCancelNotificationEventListener` と `ReservationWaitlistNotificationEventListener` は、slug の取得が例外のとき通知そのものを送らない（ForceCancel のテスト :209-212 がそれを固定している）。CMP-261030-0648 は「例外でも `/notifications` で送る」にしたので、揃え直す",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "例外でも `/notifications` で通知を送る形にそろえ、テストの固定も改める",
+      "acceptance": [
+        "例外でも `/notifications` で通知を送る形にそろえ、テストの固定も改める"
+      ],
+      "blocker": "CMP-261030-0648",
+      "issues": [
+        {
+          "label": "CMP-261030-0648 の軍議（2026-11-10）で切り出し",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261030-0648 の軍議（2026-11-10）で切り出し"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "ReservationForceCancelNotificationEventListener",
+        "ReservationWaitlistNotificationEventListener",
+        "slug",
+        "ForceCancel",
+        "CMP-261030-0648",
+        "notifications",
+        "notifications"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261110-0937",
+      "title": "`POST /notifications/{id}/unread` が、既に未読のとき ALREADY_UNREAD（409）を返す（F04.3:409 は 409 と明記）。状態が古いと NotificationList の onToggleRead で 409 とエラートーストが出る",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "冪等にするかを決め、設計書と揃える",
+      "acceptance": [
+        "冪等にするかを決め、設計書と揃える"
+      ],
+      "blocker": "CMP-261030-0652",
+      "issues": [
+        {
+          "label": "CMP-261030-0652 の軍議（2026-11-10）で切り出し",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261030-0652 の軍議（2026-11-10）で切り出し"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "POST",
+        "notifications",
+        "id",
+        "unread",
+        "ALREADY_UNREAD",
+        "F04",
+        "NotificationList",
+        "onToggleRead"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261110-0938",
+      "title": "WidgetNotices で既読にしても、ベルの未読バッジ（`useState('badge:notifCount')`）が減らない。onMarkAllRead は今のタブのキャッシュしか書き換えない",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "WidgetNotices で既読にするとベルの未読バッジも減る",
+      "acceptance": [
+        "WidgetNotices で既読にするとベルの未読バッジも減る"
+      ],
+      "blocker": "CMP-261030-0652",
+      "issues": [
+        {
+          "label": "CMP-261030-0652 の軍議（2026-11-10）で切り出し",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261030-0652 の軍議（2026-11-10）で切り出し"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "WidgetNotices",
+        "useState",
+        "badge",
+        "notifCount",
+        "onMarkAllRead",
+        "WidgetNotices"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261110-2011",
+      "title": "WebSocket/STOMP拒否時のERROR送信と切断の競合を修正",
+      "status": "working",
+      "statusLabel": "P2 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "正常送信経路ではERROR実送信後に切断し、送信停滞時は既存sendTimeLimitに基づく期限でcloseを試行する。fatal後の後続・待機フレームを業務へ通さずDISCONNECT清掃を維持する。既存認証・認可・両SockJS構成・制限を保ち、正式回帰・全CI・実機・独立3住民で確認する",
+      "acceptance": [
+        "正常送信経路ではERROR実送信後に切断し、送信停滞時は既存sendTimeLimitに基づく期限でcloseを試行する。fatal後の後続・待機フレームを業務へ通さずDISCONNECT清掃を維持する。既存認証・認可・両SockJS構成・制限を保ち、正式回帰・全CI・実機・独立3住民で確認する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "発見元CMP-261021-0017/L-SHIMEのCI run42722993345/a1。実Spring6.2.17で競合red、private試作21件greenは診断根拠。元CIの同並行順は未立証。製品実装・正式検証未実施、TaskList-onlyをmainへ先行登録する",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "発見元CMP-261021-0017/L-SHIMEのCI run42722993345/a1。実Spring6.2.17で競合red、private試作21件greenは診断根拠。元CIの同並行順は未立証。製品実装・正式検証未実施、TaskList-onlyをmainへ先行登録する"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "scope app。firstDuplicateNameNormalizer本体・既存6PRの差分、workflow・timeout・weights・freezeは変更しない"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "WebSocket",
+        "STOMP",
+        "ERROR",
+        "ERROR",
+        "sendTimeLimit",
+        "close",
+        "fatal",
+        "DISCONNECT",
+        "SockJS",
+        "CI"
+      ],
+      "tags": [
         "進行中"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261110-0427",
+      "title": "予約通知で枠タイトル未設定時に「nullが予約されました」と出る不具合の根治",
+      "status": "working",
+      "statusLabel": "P2 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "予約作成（AUTO/MANUAL）・確定・メンバーキャンセルの各通知経路で、枠 title が null/空/空白のときもフォールバック表示になり「null」が混ざらない。回帰テストで担保する",
+      "acceptance": [
+        "予約作成（AUTO/MANUAL）・確定・メンバーキャンセルの各通知経路で、枠 title が null/空/空白のときもフォールバック表示になり「null」が混ざらない。回帰テストで担保する"
+      ],
+      "blocker": "招待戦役のアリシゼーション（CMP-260826-1457 V9）",
+      "issues": [
+        {
+          "label": "PR #4460。ReservationAdminNotificationEventListenerTest, ReservationServiceTest, ReservationGroupServiceTest, ReservationReminderDispatchNotificationListenerTest, ReservationWaitlistNotificationEventListenerTest, ReservationForceCancelNotificationEventListenerTest",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #4460。ReservationAdminNotificationEventListenerTest, ReservationServiceTest, ReservationGroupServiceTest, ReservationReminderDispatchNotificationListenerTest, ReservationWaitlistNotificationEventListenerTest, ReservationForceCancelNotificationEventListenerTest"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "-"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "null",
+        "AUTO",
+        "MANUAL",
+        "title",
+        "null",
+        "null"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [
+        4460
+      ],
+      "github": [
+        {
+          "number": 4460,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261110-0426",
+      "title": "招待画面の表示不備6件の根治（削除済みチーム名・未来の相対時刻・リンク行の識別・秘密ダイアログのEsc・モバイルの列重なり・フォルダ選択のはみ出し）",
+      "status": "done",
+      "statusLabel": "完了",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "削除済みチームの招待カードにフォールバック名が出る／未来時刻が「あと n 分/時間/日」と出る／招待リンク一覧に作成日時と再発行の案内が出る／秘密ダイアログが Esc・マスククリックで閉じない／390px で操作列が他列に重ならない／フォルダ選択が親からはみ出さない",
+      "acceptance": [
+        "削除済みチームの招待カードにフォールバック名が出る／未来時刻が「あと n 分/時間/日」と出る／招待リンク一覧に作成日時と再発行の案内が出る／秘密ダイアログが Esc・マスククリックで閉じない／390px で操作列が他列に重ならない／フォルダ選択が親からはみ出さない"
+      ],
+      "blocker": "CMP-260826-1457 のアリシゼーション（V1〜V5・V7）",
+      "issues": [
+        {
+          "label": "PR #4462（b02f82ceb8、2026-11-11 マージ）。単体テスト先行（red→green）。実機E2E 全 PASS・ロール横断 PASS・アリシゼーション実施済み（確定欠陥は CMP-261111-1429 へ起票）。[完了証拠](evidence/CMP-261110-0426.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #4462（b02f82ceb8、2026-11-11 マージ）。単体テスト先行（red→green）。実機E2E 全 PASS・ロール横断 PASS・アリシゼーション実施済み（確定欠陥は CMP-261111-1429 へ起票）。[完了証拠](evidence/CMP-261110-0426.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "Esc",
+        "Esc",
+        "px"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4462
+      ],
+      "github": [
+        {
+          "number": 4462,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261111-0506",
+      "title": "チームチャットのチャンネル一覧がチームで絞られていない。`frontend/app/components/chat/ChatChannelList.vue:46` が team_id に `Number(slug)` を渡して NaN になり、BE の `ChatChannelController.listChannels` は team_id を無視して利用者の全チャンネルを返す",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "`/teams/{slug}/chat` の一覧がそのチームのチャンネルだけになる（BE が team スコープで絞り、FE は slug→id 解決または slug 受け取り）。他チームのチャンネルが出ないことを実機で確認する",
+      "acceptance": [
+        "`/teams/{slug}/chat` の一覧がそのチームのチャンネルだけになる（BE が team スコープで絞り、FE は slug→id 解決または slug 受け取り）。他チームのチャンネルが出ないことを実機で確認する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "発見元 CMP-261030-0648（PR #4457）の検分",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "発見元 CMP-261030-0648（PR #4457）の検分"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "frontend",
+        "app",
+        "components",
+        "chat",
+        "ChatChannelList",
+        "vue",
+        "team_id",
+        "Number",
+        "slug",
+        "NaN",
+        "BE",
+        "ChatChannelController",
+        "listChannels",
+        "team_id",
+        "teams",
+        "slug",
+        "chat",
+        "BE",
+        "team",
+        "FE",
+        "slug",
+        "id",
+        "slug"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        4457
+      ],
+      "github": [
+        {
+          "number": 4457,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261111-0507",
+      "title": "Service Worker の通知操作ボタンの文言「開く」「閉じる」が日本語直書きで i18n されていない（`frontend/public/sw-custom.js:22-23`）",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "利用者ロケールに応じた文言になる（SW はロケールファイルを直接読めないため、BE のペイロードで渡す・登録時に渡す等の方式を決める）",
+      "acceptance": [
+        "利用者ロケールに応じた文言になる（SW はロケールファイルを直接読めないため、BE のペイロードで渡す・登録時に渡す等の方式を決める）"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "発見元 CMP-261029-0620（PR #4461）",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "発見元 CMP-261029-0620（PR #4461）"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "Service",
+        "Worker",
+        "i18n",
+        "frontend",
+        "public",
+        "sw-custom",
+        "js",
+        "SW",
+        "BE"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        4461
+      ],
+      "github": [
+        {
+          "number": 4461,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261111-0508",
+      "title": "BE CI の Test (shard 0) が 85分の上限すれすれ。PR #4457 の run 42827066800 で 1h22m、run 42855308677 で 85分 timeout（テスト失敗なし）",
+      "status": "working",
+      "statusLabel": "P3 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "shard の割り振りの偏りを解消し、shard 0 が上限に十分な余裕を持つ（重い IT の配分見直し等）。上限を延ばすだけの対処は不可",
+      "acceptance": [
+        "shard の割り振りの偏りを解消し、shard 0 が上限に十分な余裕を持つ（重い IT の配分見直し等）。上限を延ばすだけの対処は不可"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "発見元 PR #4457 の CI",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "発見元 PR #4457 の CI"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "BE",
+        "CI",
+        "Test",
+        "shard",
+        "PR",
+        "run",
+        "h22m",
+        "run",
+        "timeout",
+        "shard",
+        "shard",
+        "IT"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [
+        4457
+      ],
+      "github": [
+        {
+          "number": 4457,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261111-1429",
+      "title": "招待リンク一覧のアリシゼーション確定不具合の修正（CMP-261110-0426 後続）",
+      "status": "done",
+      "statusLabel": "完了",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "InviteTokenList の ALIC-1〜6（同分発行の識別不能・モバイルで無効化操作が画面外・de ボタンの単語途中折返し・読込中の空文言・ネイティブ confirm・de 用語不一致）を修正し、各項目に落ちるテストを先行作成して green 化する",
+      "acceptance": [
+        "InviteTokenList の ALIC-1〜6（同分発行の識別不能・モバイルで無効化操作が画面外・de ボタンの単語途中折返し・読込中の空文言・ネイティブ confirm・de 用語不一致）を修正し、各項目に落ちるテストを先行作成して green 化する"
+      ],
+      "blocker": "CMP-261110-0426",
+      "issues": [
+        {
+          "label": "PR #4472（499c712614、2026-11-11 マージ）。InviteTokenList.spec.ts の ALIC-1〜6、MemberPermissionSetupDialog.spec.ts のフッター折返し、tests/unit/utils/localDate.spec.ts（修正前 red→修正後 green）。実機E2E・ロール横断 PASS。[完了証拠](evidence/CMP-261111-1429.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #4472（499c712614、2026-11-11 マージ）。InviteTokenList.spec.ts の ALIC-1〜6、MemberPermissionSetupDialog.spec.ts のフッター折返し、tests/unit/utils/localDate.spec.ts（修正前 red→修正後 green）。実機E2E・ロール横断 PASS。[完了証拠](evidence/CMP-261111-1429.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "CMP-261110-0426",
+        "InviteTokenList",
+        "ALIC-1",
+        "de",
+        "confirm",
+        "de",
+        "green"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4472
+      ],
+      "github": [
+        {
+          "number": 4472,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261112-0158",
+      "title": "Windows 標準 Nuxt/Nitro SSR production build が依存の外部化解決で長時間継続し実機へ進めない問題の根治",
+      "status": "working",
+      "statusLabel": "P2 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "Nitro 2.13.4 の Windows パス正規化と MLLY 1.8.2 の root package exports 逆引きを、版・全bytes SHA・一意一致・冪等・所有pathを限定した postinstall 補正で正式 public import に戻す。CJS/ESM双方を扱い、未知版/hashでは全target無書込、失敗は非0。依存版/lock/SSR/CSP/authを維持し、既存Docker COPYと明示CI試験へ配線。意味あるRED→GREEN、正規SSR build終端、preview実BE/FE/DB、権限横断UI・実機後fresh3、独立検分/CI/所有cleanupまで確認する",
+      "acceptance": [
+        "Nitro 2.13.4 の Windows パス正規化と MLLY 1.8.2 の root package exports 逆引きを、版・全bytes SHA・一意一致・冪等・所有pathを限定した postinstall 補正で正式 public import に戻す。CJS/ESM双方を扱い、未知版/hashでは全target無書込、失敗は非0。依存版/lock/SSR/CSP/authを維持し、既存Docker COPYと明示CI試験へ配線。意味あるRED→GREEN、正規SSR build終端、preview実BE/FE/DB、権限横断UI・実機後fresh3、独立検分/CI/所有cleanupまで確認する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "V PR #4448 の実機準備で発見。API権限fixtureは成立、画面実機未実施。修正前再現2件確認、製品修正未実施",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "V PR #4448 の実機準備で発見。API権限fixtureは成立、画面実機未実施。修正前再現2件確認、製品修正未実施"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "scope app（既存package.json等を扱う）。他CMP完了を進めない"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "Windows",
+        "Nuxt",
+        "Nitro",
+        "SSR",
+        "production",
+        "build",
+        "Nitro",
+        "Windows",
+        "MLLY",
+        "root",
+        "package",
+        "exports",
+        "bytes",
+        "SHA",
+        "path",
+        "postinstall",
+        "public",
+        "import",
+        "CJS",
+        "ESM",
+        "hash",
+        "target",
+        "lock",
+        "SSR",
+        "CSP",
+        "auth",
+        "Docker",
+        "COPY",
+        "CI",
+        "RED",
+        "GREEN",
+        "SSR",
+        "build",
+        "preview",
+        "BE",
+        "FE",
+        "DB",
+        "UI",
+        "fresh3",
+        "CI",
+        "cleanup"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [
+        4448
+      ],
+      "github": [
+        {
+          "number": 4448,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261111-2336",
+      "title": "管理者がメンバーでない問い合わせチャンネルの INQUIRY_RECEIVED 通知が管理者に届くが、押しても `/teams/{slug}/chat?channel={id}` で一覧に無く未選択のまま到達できない。問い合わせチャンネルに管理者が非メンバーのチャンネルを PATCH で設定でき（200）てしまう",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "管理者非メンバーのチャンネルを問い合わせチャンネルに設定できない、または通知から該当チャンネルへ到達できる。回帰テストを先に置く",
+      "acceptance": [
+        "管理者非メンバーのチャンネルを問い合わせチャンネルに設定できない、または通知から該当チャンネルへ到達できる。回帰テストを先に置く"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261030-0648 の実機E2E で発見・実機で再現。原因は推測（チャンネル一覧が所属チャンネルだけを返すため）で未確認",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261030-0648 の実機E2E で発見・実機で再現。原因は推測（チャンネル一覧が所属チャンネルだけを返すため）で未確認"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "INQUIRY_RECEIVED",
+        "teams",
+        "slug",
+        "chat",
+        "channel",
+        "id",
+        "PATCH"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261111-2337",
+      "title": "PWA の `navigateFallback: '/'`（`frontend/nuxt.config.ts:309`）だが `/` が precache に無く、Service Worker の起動のたびに「non-precached-url: /」の Uncaught が出る。オフライン時のフォールバックが効かない。未結線の `sw-background-sync.js` も precache 対象になっている",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "SW 起動で Uncaught が出ない。SSR 構成なので `navigateFallback: null` にするか `/` を precache に入れるかを軍議で決める。回帰テストを先に置く",
+      "acceptance": [
+        "SW 起動で Uncaught が出ない。SSR 構成なので `navigateFallback: null` にするか `/` を precache に入れるかを軍議で決める。回帰テストを先に置く"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261029-0620 の実機で発見。設定は変更以前からのもの",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261029-0620 の実機で発見。設定は変更以前からのもの"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "PWA",
+        "navigateFallback",
+        "frontend",
+        "nuxt",
+        "config",
+        "ts",
+        "precache",
+        "Service",
+        "Worker",
+        "non-precached-url",
+        "Uncaught",
+        "sw-background-sync",
+        "js",
+        "precache",
+        "SW",
+        "Uncaught",
+        "SSR",
+        "navigateFallback",
+        "null",
+        "precache"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261111-2338",
+      "title": "`frontend/app/pages/teams/[slug]/chat.vue:107` の `PageHeader title=\"チャット\"` が直書きで i18n ルール違反。英語ロケールでも日本語で表示される。同:149 の `message=\"チャンネルを選択してください\"` も直書き",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "両文言を `$t()` 経由にし、6言語のロケールに訳を入れる。英語ロケールで英語表示になる",
+      "acceptance": [
+        "両文言を `$t()` 経由にし、6言語のロケールに訳を入れる。英語ロケールで英語表示になる"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261030-0648 の実機E2E で発見",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261030-0648 の実機E2E で発見"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "frontend",
+        "app",
+        "pages",
+        "teams",
+        "slug",
+        "chat",
+        "vue",
+        "PageHeader",
+        "title",
+        "i18n",
+        "message"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261111-2339",
+      "title": "問い合わせチャンネルを設定する画面が FE に無く、API の PATCH でしか設定できない（導線欠落）",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "ADMIN がチームの設定画面から問い合わせチャンネルを選べ、画面から到達できる。新規画面は PageHeader と使い方モーダルを備え、6言語対応",
+      "acceptance": [
+        "ADMIN がチームの設定画面から問い合わせチャンネルを選べ、画面から到達できる。新規画面は PageHeader と使い方モーダルを備え、6言語対応"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261030-0648 のアリシゼーションで発見。CMP-261111-2336 と同じ設定を扱う",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261030-0648 のアリシゼーションで発見。CMP-261111-2336 と同じ設定を扱う"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "FE",
+        "API",
+        "PATCH",
+        "ADMIN",
+        "PageHeader"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261111-2340",
+      "title": "モバイル（390x844 / 360x800）のダッシュボードで 44px 未満のタップ領域が多数ある（タブ「All」34x28、「View all」39x17、完了チェック 20x20 など。1画面で最大25件）",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "ダッシュボードの主要な操作要素が 44x44px 以上になる、または仕様上の例外を明記する。回帰番人を置く",
+      "acceptance": [
+        "ダッシュボードの主要な操作要素が 44x44px 以上になる、または仕様上の例外を明記する。回帰番人を置く"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "アリシゼーションの DOM 実測。仕様上の根拠は未確認。関連: CMP-260907-1038（全画面共通のタップ領域）",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "アリシゼーションの DOM 実測。仕様上の根拠は未確認。関連: CMP-260907-1038（全画面共通のタップ領域）"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "x844",
+        "x800",
+        "px",
+        "All",
+        "x28",
+        "View",
+        "all",
+        "x17",
+        "x20",
+        "x44px"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261112-0518",
+      "title": "共通ボタンラベルの単語途中折れ根治（全体規則 `overflow-wrap: anywhere` の見直し）",
+      "status": "done",
+      "statusLabel": "完了",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "全ボタンで単語途中の折れ解消・既存のはみ出し防止を維持・実機E2E/アリシゼーション",
+      "acceptance": [
+        "全ボタンで単語途中の折れ解消・既存のはみ出し防止を維持・実機E2E/アリシゼーション"
+      ],
+      "blocker": "CMP-261111-1429",
+      "issues": [
+        {
+          "label": "PR #4476・frontend/tests/unit/build/button-label-word-break.spec.ts（red 3失敗→green 4成功）。PR #4476（3a3ede2e02、2026-11-12 マージ）。実機E2E・簡易アリシゼーション（表示崩れ×多言語）実施済み。[完了証拠](evidence/CMP-261112-0518.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #4476・frontend/tests/unit/build/button-label-word-break.spec.ts（red 3失敗→green 4成功）。PR #4476（3a3ede2e02、2026-11-12 マージ）。実機E2E・簡易アリシゼーション（表示崩れ×多言語）実施済み。[完了証拠](evidence/CMP-261112-0518.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "overflow-wrap",
+        "anywhere",
+        "E2E"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4476
+      ],
+      "github": [
+        {
+          "number": 4476,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261112-1647",
+      "title": "通知の action_url が FE に存在しないルートを指し、通知のタップ・プッシュ通知のタップで 404 になる",
+      "status": "not-started",
+      "statusLabel": "P2 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "全通知種別の action_url を FE の実在ルートと照合する番人テスト（BE が出す URL のパターンと FE の pages 一覧）を作り、ずれを直す。対象: ScheduleAttendanceSolicitationNotificationListener.java:123 の `/schedules/{id}`（FE に pages/schedules は無く、出欠画面は pages/teams/[slug]/schedule-attendance/[scheduleId].vue）、ScheduleKeepNotificationService.java:182,184 の `/teams/{slug}/schedules/{id}` と `/schedules/{id}`（FE に teams/[slug]/schedules/ は無い）、SHIFT_PUBLISHED の `/shifts/schedules/{id}`（FE は pages/shift の単数形）、SURVEY_CREATED の `/surveys/{id}`（スコープ情報不足で /dashboard へ飛ばされる。原因は未確認）。番人の設計時に、CMP-261029-0620 の軍議正本にある範囲外の数値 URL の別台帳（CMP-261030-0648 の派生）との関係を調べて書く",
+      "acceptance": [
+        "全通知種別の action_url を FE の実在ルートと照合する番人テスト（BE が出す URL のパターンと FE の pages 一覧）を作り、ずれを直す。対象: ScheduleAttendanceSolicitationNotificationListener.java:123 の `/schedules/{id}`（FE に pages/schedules は無く、出欠画面は pages/teams/[slug]/schedule-attendance/[scheduleId].vue）、ScheduleKeepNotificationService.java:182,184 の `/teams/{slug}/schedules/{id}` と `/schedules/{id}`（FE に teams/[slug]/schedules/ は無い）、SHIFT_PUBLISHED の `/shifts/schedules/{id}`（FE は pages/shift の単数形）、SURVEY_CREATED の `/surveys/{id}`（スコープ情報不足で /dashboard へ飛ばされる。原因は未確認）。番人の設計時に、CMP-261029-0620 の軍議正本にある範囲外の数値 URL の別台帳（CMP-261030-0648 の派生）との関係を調べて書く"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261029-0620 のアリシゼーションで発見（2026-11-12）",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261029-0620 のアリシゼーションで発見（2026-11-12）"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "action_url",
+        "FE",
+        "action_url",
+        "FE",
+        "BE",
+        "URL",
+        "FE",
+        "pages",
+        "ScheduleAttendanceSolicitationNotificationListener",
+        "java",
+        "schedules",
+        "id",
+        "FE",
+        "pages",
+        "schedules",
+        "pages",
+        "teams",
+        "slug",
+        "schedule-attendance",
+        "scheduleId",
+        "vue",
+        "ScheduleKeepNotificationService",
+        "java",
+        "teams",
+        "slug",
+        "schedules",
+        "id",
+        "schedules",
+        "id",
+        "FE",
+        "teams",
+        "slug",
+        "schedules",
+        "SHIFT_PUBLISHED",
+        "shifts",
+        "schedules",
+        "id",
+        "FE",
+        "pages",
+        "shift",
+        "SURVEY_CREATED",
+        "surveys",
+        "id",
+        "dashboard",
+        "CMP-261029-0620",
+        "URL",
+        "CMP-261030-0648"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261112-1648",
+      "title": "frontend/app/pages/settings/notifications.vue:10 の `<PageHeader title=\"通知設定\" />` が日本語直書き（i18n ルール違反）",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "ロケールファイルへ移し $t で参照する。6言語に訳を入れる",
+      "acceptance": [
+        "ロケールファイルへ移し $t で参照する。6言語に訳を入れる"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261029-0620 のアリシゼーションで発見（2026-11-12）",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261029-0620 のアリシゼーションで発見（2026-11-12）"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "frontend",
+        "app",
+        "pages",
+        "settings",
+        "notifications",
+        "vue",
+        "PageHeader",
+        "title",
+        "i18n"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261112-1649",
+      "title": "frontend/app/components/notification/NotificationPreferences.vue:164-166 で scopeType が TEAM 以外のとき常に「Organization」と表示される。個人スコープも「Organization」になり、解決できないスコープの名前「不明なスコープ」（BE の NameResolverService.java:306,316 のフォールバック）もそのまま出る",
+      "status": "not-started",
+      "statusLabel": "P4 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P4",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "スコープ種別ごとの正しいラベルが出る。解決できないスコープは利用者に意味のある表示にする",
+      "acceptance": [
+        "スコープ種別ごとの正しいラベルが出る。解決できないスコープは利用者に意味のある表示にする"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261029-0620 のアリシゼーションで発見（2026-11-12）",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261029-0620 のアリシゼーションで発見（2026-11-12）"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "frontend",
+        "app",
+        "components",
+        "notification",
+        "NotificationPreferences",
+        "vue",
+        "scopeType",
+        "TEAM",
+        "Organization",
+        "Organization",
+        "BE",
+        "NameResolverService",
+        "java"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261112-2225",
+      "title": "frontend/app/components/member-card/ の UI 文字列日本語直書きを i18n 化（全言語で日本語が出る・de 360px で単語途中折れ/横はみ出しの観測）",
+      "status": "done",
+      "statusLabel": "完了（2026-11-13）",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "member-card の直書き日本語を全6言語のロケールへ移す・de 360px で単語途中折れ/横はみ出しが無い・実機E2E/アリシゼーション",
+      "acceptance": [
+        "member-card の直書き日本語を全6言語のロケールへ移す・de 360px で単語途中折れ/横はみ出しが無い・実機E2E/アリシゼーション"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "修正 PR #4484・#4489・#4497・#4499（マージ済）。回帰テスト MemberCardFollowup.spec.ts・QrCodeImage.spec.ts・CheckinHistory.spec.ts・MemberCardDisplay.spec.ts（各 red→green）。実機E2E・アリシゼーション実施済み（en/de 360px で横はみ出し無し・QR再生成後に新QR表示）。[完了証拠](evidence/CMP-261112-2225.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "修正 PR #4484・#4489・#4497・#4499（マージ済）。回帰テスト MemberCardFollowup.spec.ts・QrCodeImage.spec.ts・CheckinHistory.spec.ts・MemberCardDisplay.spec.ts（各 red→green）。実機E2E・アリシゼーション実施済み（en/de 360px で横はみ出し無し・QR再生成後に新QR表示）。[完了証拠](evidence/CMP-261112-2225.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "frontend",
+        "app",
+        "components",
+        "member-card",
+        "UI",
+        "i18n",
+        "de",
+        "px",
+        "member-card",
+        "de",
+        "px",
+        "E2E"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4484,
+        4489,
+        4497,
+        4499
+      ],
+      "github": [
+        {
+          "number": 4484,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4489,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4497,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        },
+        {
+          "number": 4499,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261113-0110",
+      "title": "DM から作った Zimmer（GROUP_DM）が名前なしで Kabine(DM) 欄に並び、ヘッダー名も空になる",
+      "status": "working",
+      "statusLabel": "P2 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "名前の組み立て（参加者名連結）を BE と FE のどちらで持つかを決めて仕様に明記し、表示欄（DM 欄か Zimmer 欄か）も仕様で確定させ、回帰テストで固定する",
+      "acceptance": [
+        "名前の組み立て（参加者名連結）を BE と FE のどちらで持つかを決めて仕様に明記し、表示欄（DM 欄か Zimmer 欄か）も仕様で確定させ、回帰テストで固定する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261105-1507 の実機／アリシゼーション（2026-11-13）で発見。invite-to-zimmer の応答・一覧・詳細で meta.name・dmPartner がともに null。frontend/app/components/chat/ChatChannelList.vue:36 の isDmChannel が GROUP_DM を DM 欄へ振り分け、:74-79 の getDisplayName と frontend/app/components/chat/message-panel/ChatChannelHeader.vue:29-31 が `dmPartner.displayName ?? meta.name ?? ''` で空になる。仕様 docs/features/F04.2.1_chat_multi_tab_ui.md:353 は「チャンネル名 or 参加者名連結」。docs/features/F04.2_chat.md:1352-1380（invite-to-zimmer）には名前の付与規定が無い。2026-11-13 軍議御裁可（表示名は BE で応答ごとに導出し、新フィールド derivedName で返す。GROUP_DM は DM 欄に置く）",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261105-1507 の実機／アリシゼーション（2026-11-13）で発見。invite-to-zimmer の応答・一覧・詳細で meta.name・dmPartner がともに null。frontend/app/components/chat/ChatChannelList.vue:36 の isDmChannel が GROUP_DM を DM 欄へ振り分け、:74-79 の getDisplayName と frontend/app/components/chat/message-panel/ChatChannelHeader.vue:29-31 が `dmPartner.displayName ?? meta.name ?? ''` で空になる。仕様 docs/features/F04.2.1_chat_multi_tab_ui.md:353 は「チャンネル名 or 参加者名連結」。docs/features/F04.2_chat.md:1352-1380（invite-to-zimmer）には名前の付与規定が無い。2026-11-13 軍議御裁可（表示名は BE で応答ごとに導出し、新フィールド derivedName で返す。GROUP_DM は DM 欄に置く）"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "DM",
+        "Zimmer",
+        "GROUP_DM",
+        "Kabine",
+        "DM",
+        "BE",
+        "FE",
+        "DM",
+        "Zimmer"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261113-0111",
+      "title": "削除済みのメッセージが未読数に残る（F04.2 は「削除時は未読を減算しない」）",
+      "status": "not-started",
+      "statusLabel": "P2 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "未読数の算出から削除済みを除く方式を設計し（減算ではなく算出時の除外など）、仕様を改めて回帰テストで固定する",
+      "acceptance": [
+        "未読数の算出から削除済みを除く方式を設計し（減算ではなく算出時の除外など）、仕様を改めて回帰テストで固定する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261105-1507 の実機／アリシゼーション（2026-11-13）で発見。#4438 で減算を試みたが、Codex P2（招待カード・転送も減算する、秒精度の境界、並行削除で二重減算）で外した",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261105-1507 の実機／アリシゼーション（2026-11-13）で発見。#4438 で減算を試みたが、Codex P2（招待カード・転送も減算する、秒精度の境界、並行削除で二重減算）で外した"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "F04"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        4438
+      ],
+      "github": [
+        {
+          "number": 4438,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261113-0112",
+      "title": "GlobalExceptionHandler の HttpMessageNotReadableException が、型変換の失敗（例: Long の欄に文字列）を fieldErrors の空な汎用 400 にしている",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "型変換の失敗は、どの欄かを fieldErrors に入れて返し、契約テストで固定する",
+      "acceptance": [
+        "型変換の失敗は、どの欄かを fieldErrors に入れて返し、契約テストで固定する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261105-1507 の実機／アリシゼーション（2026-11-13）で発見。対象: GlobalExceptionHandler の HttpMessageNotReadableException ハンドラ",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261105-1507 の実機／アリシゼーション（2026-11-13）で発見。対象: GlobalExceptionHandler の HttpMessageNotReadableException ハンドラ"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "GlobalExceptionHandler",
+        "HttpMessageNotReadableException",
+        "Long",
+        "fieldErrors",
+        "fieldErrors"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261113-0113",
+      "title": "TimetableChangeService が発行する TimetableChangeCreatedEvent の teamId が null に固定されている",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "正しい teamId（チームの時間割なら当該チーム）を載せ、購読側の挙動をテストで固定する",
+      "acceptance": [
+        "正しい teamId（チームの時間割なら当該チーム）を載せ、購読側の挙動をテストで固定する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261105-1507 の実機／アリシゼーション（2026-11-13）で発見。対象: TimetableChangeService（TimetableChangeCreatedEvent の発行箇所）",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261105-1507 の実機／アリシゼーション（2026-11-13）で発見。対象: TimetableChangeService（TimetableChangeCreatedEvent の発行箇所）"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "TimetableChangeService",
+        "TimetableChangeCreatedEvent",
+        "teamId",
+        "null",
+        "teamId"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261113-0114",
+      "title": "実機 E2E の後始末の記録ファイル frontend/tests/e2e/.auth/n1p1-assets.json を playwright-cmp1507 と playwright-n1p1 の両設定が共有しており、N1P1_KEEP_WORLD=1 で残した世界が別の実行の globalTeardown に消される",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "設定ごとに記録ファイルを分けるか、実行 ID で所有を分け、他の実行の資産を消さないようにする",
+      "acceptance": [
+        "設定ごとに記録ファイルを分けるか、実行 ID で所有を分け、他の実行の資産を消さないようにする"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261105-1507 の実機／アリシゼーション（2026-11-13）で発見。対象: frontend/tests/e2e/.auth/n1p1-assets.json と両 Playwright 設定の globalTeardown",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261105-1507 の実機／アリシゼーション（2026-11-13）で発見。対象: frontend/tests/e2e/.auth/n1p1-assets.json と両 Playwright 設定の globalTeardown"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "E2E",
+        "frontend",
+        "tests",
+        "e2e",
+        "auth",
+        "n1p1-assets",
+        "json",
+        "playwright-cmp1507",
+        "playwright-n1p1",
+        "N1P1_KEEP_WORLD",
+        "globalTeardown",
+        "ID"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261113-0115",
+      "title": "チャット・時間割の UX 小件13項目（GROUP_DM を単独で作る導線・招待の導線が無い／自分の投稿の削除に確認が無い／Zimmer・DM の削除・退出の導線が画面に無い／ブラウザの戻るで入力中の下書きが消え右ペインが空になる／汎用 /chat の上部タブバーの「＋」がチャンネル一覧と同じ一覧を浮きパネルで重ねて出す／チーム画面のタブの強調がダッシュボードのまま残る／名前（aria-label）の無いアイコンボタンがある／/modules の「有効な機能 0 / 10」が実際の表示と合わない／用語（関所・ゲート初期化）が利用者に分かりにくい／ダッシュボードに時間割の入口が無い／作成直後の DRAFT の時間割が週間ビューに出ず戸惑う／メンバーに「学期」タブの作る側向け文言が出る／新しいブラウザ文脈の初回表示で 401 が出る（feature-flags・settings/nav・scope-tabs・me/teams））",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "各項目を仕様に照らして要否を判断し、直すものは直して回帰テストで固定する。不要と判断したものは理由を記録する",
+      "acceptance": [
+        "各項目を仕様に照らして要否を判断し、直すものは直して回帰テストで固定する。不要と判断したものは理由を記録する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261105-1507 の実機／アリシゼーション（2026-11-13）で観測",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261105-1507 の実機／アリシゼーション（2026-11-13）で観測"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "UX",
+        "GROUP_DM",
+        "Zimmer",
+        "DM",
+        "chat",
+        "aria-label",
+        "modules",
+        "DRAFT",
+        "feature-flags",
+        "settings",
+        "nav",
+        "scope-tabs",
+        "me",
+        "teams"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261113-0209",
+      "title": "運営（PLATFORM）会員証の本人操作が失敗する（一時停止・再開が500 COMMON_999、QR再生成が403 MEMBERSHIP_004）",
+      "status": "done",
+      "statusLabel": "完了（2026-11-13）",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "PLATFORM 会員証の本人が一時停止・再開・QR再生成を行え、他人は存在秘匿で拒否される・認可判定で ScopeType.valueOf(\"PLATFORM\") による例外が起きない・回帰テスト red→green・実機E2E/アリシゼーション",
+      "acceptance": [
+        "PLATFORM 会員証の本人が一時停止・再開・QR再生成を行え、他人は存在秘匿で拒否される・認可判定で ScopeType.valueOf(\"PLATFORM\") による例外が起きない・回帰テスト red→green・実機E2E/アリシゼーション"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261112-2225 の実機E2Eで発見。MemberCardService#requireMemberOrConceal と regenerateQr が DefaultAccessControlService の isMember/hasRoleOrAbove に PLATFORM を渡し、isMember:142 で IllegalArgumentException→500、hasRoleOrAbove は無権限→403。修正 PR #4490（マージ済）・MemberCardServicePlatformSelfOperationTest。実機E2E・アリシゼーション実施済み。[完了証拠](evidence/CMP-261113-0209.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261112-2225 の実機E2Eで発見。MemberCardService#requireMemberOrConceal と regenerateQr が DefaultAccessControlService の isMember/hasRoleOrAbove に PLATFORM を渡し、isMember:142 で IllegalArgumentException→500、hasRoleOrAbove は無権限→403。修正 PR #4490（マージ済）・MemberCardServicePlatformSelfOperationTest。実機E2E・アリシゼーション実施済み。[完了証拠](evidence/CMP-261113-0209.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "PLATFORM",
+        "COMMON_999",
+        "QR",
+        "MEMBERSHIP_004",
+        "PLATFORM",
+        "QR",
+        "ScopeType",
+        "valueOf",
+        "PLATFORM",
+        "red",
+        "green",
+        "E2E"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4490
+      ],
+      "github": [
+        {
+          "number": 4490,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261113-0210",
+      "title": "新規登録の同時送信で500・登録画面の言語固定",
+      "status": "done",
+      "statusLabel": "完了（2026-11-13）",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": null,
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "同一メールの同時登録で一意制約違反が500にならず AUTH_004 を返す・登録ボタン連打で重複送信しない・登録時の locale が画面の表示言語になる・登録画面の直書き日本語（成功トースト等）を i18n 化・回帰テスト red→green・実機E2E/アリシゼーション",
+      "acceptance": [
+        "同一メールの同時登録で一意制約違反が500にならず AUTH_004 を返す・登録ボタン連打で重複送信しない・登録時の locale が画面の表示言語になる・登録画面の直書き日本語（成功トースト等）を i18n 化・回帰テスト red→green・実機E2E/アリシゼーション"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261112-2225 のアリシゼーションで発見。BE ログで users.uq_users_email の DataIntegrityViolationException→COMMON_999 を確認。frontend/app/pages/register.vue が locale: 'ja' 固定。修正 PR #4491（マージ済）・AuthRegistrationServiceDuplicateEmailRaceTest・register.spec.ts。実機E2E・アリシゼーション実施済み。[完了証拠](evidence/CMP-261113-0210.json)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261112-2225 のアリシゼーションで発見。BE ログで users.uq_users_email の DataIntegrityViolationException→COMMON_999 を確認。frontend/app/pages/register.vue が locale: 'ja' 固定。修正 PR #4491（マージ済）・AuthRegistrationServiceDuplicateEmailRaceTest・register.spec.ts。実機E2E・アリシゼーション実施済み。[完了証拠](evidence/CMP-261113-0210.json)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "AUTH_004",
+        "locale",
+        "i18n",
+        "red",
+        "green",
+        "E2E"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        4491
+      ],
+      "github": [
+        {
+          "number": 4491,
+          "kind": "unsynced",
+          "state": "unknown",
+          "title": "",
+          "url": "",
+          "updatedAt": null,
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261113-0211",
+      "title": "設定画面群・ダッシュボードの i18n 残存と 360px 横はみ出し（調査と分割）",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "de/en で日本語が残る画面（settings の profile・security・email・login-history・appearance・social-profiles・seals・contact-request-blocks、account の通知種別名、ダッシュボード通知カード）と 360px 横はみ出し（トップのペルソナ切替行 380、settings/account 426、notifications 370、seals の押印履歴ボタン画面外）を棚卸しし、修正単位の CMP に分割する",
+      "acceptance": [
+        "de/en で日本語が残る画面（settings の profile・security・email・login-history・appearance・social-profiles・seals・contact-request-blocks、account の通知種別名、ダッシュボード通知カード）と 360px 横はみ出し（トップのペルソナ切替行 380、settings/account 426、notifications 370、seals の押印履歴ボタン画面外）を棚卸しし、修正単位の CMP に分割する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261112-2225 のアリシゼーション（住民1 de 360x800）で観測。殿の裏取りは未実施。2026-11-13 アリシゼーション（de 390px）の追加観測: 日本語残存ページ（profile・security・email・login-history・social-profiles・seals・notifications 種別名・appearance・contact-request-blocks）、/settings/account の 3px はみ出し、44px 未満のタップ領域（notifications の展開ボタン・appearance の色ボタン・billing のリンク等）、ad-preferences とパスワード入力ラベルの文字クリップ疑い、会員証の停止・QR再生成に確認ダイアログが無い点（仕様確認要）",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261112-2225 のアリシゼーション（住民1 de 360x800）で観測。殿の裏取りは未実施。2026-11-13 アリシゼーション（de 390px）の追加観測: 日本語残存ページ（profile・security・email・login-history・social-profiles・seals・notifications 種別名・appearance・contact-request-blocks）、/settings/account の 3px はみ出し、44px 未満のタップ領域（notifications の展開ボタン・appearance の色ボタン・billing のリンク等）、ad-preferences とパスワード入力ラベルの文字クリップ疑い、会員証の停止・QR再生成に確認ダイアログが無い点（仕様確認要）"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "i18n",
+        "px",
+        "de",
+        "en",
+        "settings",
+        "profile",
+        "security",
+        "email",
+        "login-history",
+        "appearance",
+        "social-profiles",
+        "seals",
+        "contact-request-blocks",
+        "account",
+        "px",
+        "settings",
+        "account",
+        "notifications",
+        "seals",
+        "CMP"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261112-0124",
+      "title": "Matchライブ記録のNuxt初期化・終了処理を整合",
+      "status": "working",
+      "statusLabel": "P2 実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P2",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "正規Nuxt entrypointで既存の初期化・記録操作・閲覧と終了時の資源解放を検証する",
+      "acceptance": [
+        "正規Nuxt entrypointで既存の初期化・記録操作・閲覧と終了時の資源解放を検証する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "[親Issue #4022](https://github.com/kenta-0420/mannschaft/issues/4022)",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "[親Issue #4022](https://github.com/kenta-0420/mannschaft/issues/4022)"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "Match",
+        "Nuxt",
+        "Nuxt",
+        "entrypoint"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [
+        4022
+      ],
+      "github": [
+        {
+          "number": 4022,
+          "kind": "issue",
+          "state": "open",
+          "title": "CMP-261021-0017 境界負債の返済（レーン管理）",
+          "url": "https://github.com/kenta-0420/mannschaft/issues/4022",
+          "updatedAt": "2026-10-27T05:08:11Z",
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-261113-1506",
+      "title": "会員証 API の存在秘匿の不整合（詳細取得・チェックイン履歴・QR表示・QR再生成で、他人のカードと存在しないカードの応答が一致していない）",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "詳細取得・チェックイン履歴・QR表示・QR再生成の4経路とも、他人のカードと存在しないカードで同一ステータス・同一エラーコードで応答し、番人テストで固定する",
+      "acceptance": [
+        "詳細取得・チェックイン履歴・QR表示・QR再生成の4経路とも、他人のカードと存在しないカードで同一ステータス・同一エラーコードで応答し、番人テストで固定する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261113-0209 のアリシゼーションで観測。再現の詳細は公開リポのため記載しない",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261113-0209 のアリシゼーションで観測。再現の詳細は公開リポのため記載しない"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "API",
+        "QR",
+        "QR",
+        "QR",
+        "QR"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261113-1507",
+      "title": "BE のエラーメッセージが UI 言語に関係なく日本語で表示される（en/de UI でエラートーストの本文に日本語。登録の AUTH_004・AUTH_044、GDPR_003 等で観測）",
+      "status": "not-started",
+      "statusLabel": "P3 未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "taskPriority": "P3",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "API のエラー本文が利用者の言語（Accept-Language またはプロフィール言語）で返り、en/de の UI で日本語のエラートーストが出ない・エラーコード体系の多言語化方針を決めて横断的に適用する",
+      "acceptance": [
+        "API のエラー本文が利用者の言語（Accept-Language またはプロフィール言語）で返り、en/de の UI で日本語のエラートーストが出ない・エラーコード体系の多言語化方針を決めて横断的に適用する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "CMP-261112-2225・CMP-261113-0210 のアリシゼーションで観測。同趣旨の既存行は無し（通知本文の CMP-055 とは別）",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-261112-2225・CMP-261113-0210 のアリシゼーションで観測。同趣旨の既存行は無し（通知本文の CMP-055 とは別）"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "BE",
+        "UI",
+        "en",
+        "de",
+        "UI",
+        "AUTH_004",
+        "AUTH_044",
+        "GDPR_003",
+        "API",
+        "Accept-Language",
+        "en",
+        "de",
+        "UI"
+      ],
+      "tags": [
+        "未着手"
       ],
       "githubRefs": [],
       "github": []

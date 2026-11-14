@@ -2,11 +2,11 @@ import { computed, ref, watch, type Ref } from 'vue'
 import type { DinosaurSummary, MotionMode, RenderStyle } from '~/types/ranch'
 import {
   resolveRanchDevelopmentClip,
-  type BoundRanchDevelopmentClip,
   type RanchDevelopmentClipContext,
 } from '~/utils/ranch-development-clips'
 import { useRanchClipPlayback } from './useRanchClipPlayback'
 import { useRanchClipAtlas } from './useRanchClipAtlas'
+import { resolveRanchProductionClip, type BoundRanchClip, type RanchAssetContext } from '~/utils/ranch-assets'
 
 // Sceneのv3接続だけをまとめる。legacy atlas/finite reactionの契約を混在させない。
 export function useRanchSceneClips(
@@ -16,15 +16,16 @@ export function useRanchSceneClips(
     renderStyle: () => RenderStyle
     motion: () => MotionMode
     context: () => RanchDevelopmentClipContext
+    assetContext?: () => RanchAssetContext
     enabled: () => boolean
     ambient: () => boolean
     reduced: () => boolean
     legacyReaction: () => string | null
   },
 ) {
-  let previous: BoundRanchDevelopmentClip | null = null
+  let previous: BoundRanchClip | null = null
   const clipAsset = computed(() => {
-    const next = resolveRanchDevelopmentClip(
+    const next = (options.assetContext ? resolveRanchProductionClip(options.dinosaur(), options.renderStyle(), options.assetContext()) : null) ?? resolveRanchDevelopmentClip(
       options.dinosaur(),
       options.renderStyle(),
       options.context(),

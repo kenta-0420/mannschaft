@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "kind": "AUTOMATED_ACTUAL_VUE_DOM_ASSERTION_GREEN",
+  "finding": "RANCH-RECALL-ENTRY-001",
+  "test": "牧場から振り返りへの入口 > entry未選択の想起リンクは個別想起画面ではなく振り返り入口へ進む",
+  "testPath": "frontend/app/components/ranch/RanchPageContent.navigation.spec.ts",
+  "repairCommit": "5325a5e3a3fd4de398fdcd90f0a05628328af97c",
+  "repairAncestorOfCurrentSource": true,
+  "reportedOriginalWorkingTestSha256": "4cab74703976c4fc8160d576b0720a2717b5093b3bcdd7e43635646bf4bea400",
+  "initialGitTestBytesSha256": "4cab74703976c4fc8160d576b0720a2717b5093b3bcdd7e43635646bf4bea400",
+  "currentGitTestBytesSha256": "f780780d20f9c246bf30b55acd50dcd165842a1233ecbe467661f392ab6380ee",
+  "lineage": "same href assertion; later F14 locale typing/F15 real Nuxt mount plumbing adopted; current bytes differ from initial isolated runner",
+  "exitCode": 0,
+  "signal": null,
+  "rawStdoutSha256": "4a72973ac7f1b7c70311ff69c017ec1551838887e67bc2b28a2a45795e15320d",
+  "rawStderrSha256": "29f14469a25bba41c398f291d92f0b86c781f668b6657adaad936e01d437546a",
+  "rawOriginArtifactName": "green.stdout",
+  "assertionExpected": "/reflections",
+  "assertionActualBefore": "/reflections/recall",
+  "newAssertionFailures": 0,
+  "existingPassedOrTotalPassed": 5,
+  "unhandledErrors": 0,
+  "excerpt": [
+    "Test Files  2 passed (2)",
+    "Tests  5 passed (5)"
+  ],
+  "h14ActualRecall": {
+    "runId": "ranchmapping-0d2a31d6460538a875260c6c",
+    "status": "PASS",
+    "navigationPath": "/reflections",
+    "todayHttpStatus": 200,
+    "beforeAfterIndividualUnchanged": true,
+    "beforeAfterResultUnchanged": true
+  },
+  "notCopyRegressionEvidence": true
+}
