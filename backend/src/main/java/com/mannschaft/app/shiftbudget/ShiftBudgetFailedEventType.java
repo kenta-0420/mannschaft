@@ -19,5 +19,10 @@ public enum ShiftBudgetFailedEventType {
     CONSUMPTION_CANCEL,
     THRESHOLD_ALERT,
     WORKFLOW_START,
-    NOTIFICATION_SEND
+    NOTIFICATION_SEND;
+
+    /** 再実行アダプタが存在する種別だけを許可する。追加種別は明示対応まで許可しない。 */
+    public boolean supportsRetry() {
+        return this == THRESHOLD_ALERT || this == WORKFLOW_START || this == NOTIFICATION_SEND;
+    }
 }

@@ -160,6 +160,7 @@
       "statusValue": {
         "PENDING": "未処理",
         "RETRYING": "再試行中",
+        "SUCCEEDED": "再実行成功",
         "EXHAUSTED": "再試行上限到達",
         "MANUAL_RESOLVED": "手動補正済"
       }

@@ -160,6 +160,7 @@
       "statusValue": {
         "PENDING": "Pending",
         "RETRYING": "Retrying",
+        "SUCCEEDED": "Retry succeeded",
         "EXHAUSTED": "Retry limit reached",
         "MANUAL_RESOLVED": "Manually resolved"
       }

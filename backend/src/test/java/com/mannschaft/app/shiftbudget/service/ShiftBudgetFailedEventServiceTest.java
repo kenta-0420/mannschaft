@@ -71,14 +71,38 @@ class ShiftBudgetFailedEventServiceTest {
     private AuditLogService auditLogService;
     @Mock
     private ShiftBudgetRetryExecutor retryExecutor;
+    @Mock
+    private jakarta.persistence.EntityManager entityManager;
 
     private ShiftBudgetFailedEventService service;
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(value = ShiftBudgetFailedEventType.class,
+            names = {"CONSUMPTION_RECORD", "CONSUMPTION_CANCEL"})
+    @org.junit.jupiter.params.provider.NullSource
+    void 非対応または不明種別は実行前に拒否し全フィールドを保持する(ShiftBudgetFailedEventType type) {
+        ShiftBudgetFailedEventEntity entity = sample(ShiftBudgetFailedEventStatus.PENDING)
+                .toBuilder().eventType(type).id(EVENT_ID)
+                .updatedAt(java.time.LocalDateTime.of(2026, 1, 1, 0, 0)).build();
+        ShiftBudgetFailedEventEntity before = entity.toBuilder().build();
+        given(accessControlService.isMember(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(true);
+        given(repository.findById(EVENT_ID)).willReturn(Optional.of(entity));
+
+        assertThatThrownBy(() -> service.retry(ORG_ID, EVENT_ID))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(ShiftBudgetErrorCode.FAILED_EVENT_NOT_RETRIABLE));
+
+        assertThat(entity).usingRecursiveComparison().isEqualTo(before);
+        verify(retryExecutor, never()).execute(any());
+        org.mockito.Mockito.verifyNoInteractions(auditLogService);
+        verify(repository, never()).save(any());
+    }
 
     @BeforeEach
     void setUp() {
         service = new ShiftBudgetFailedEventService(
                 repository, featureService, accessControlService, auditLogService,
-                retryExecutor, new ObjectMapper());
+                retryExecutor, new ObjectMapper(), entityManager);
 
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(USER_ID.toString(), null, List.of()));

@@ -160,6 +160,7 @@
       "statusValue": {
         "PENDING": "Ausstehend",
         "RETRYING": "Wird wiederholt",
+        "SUCCEEDED": "Wiederholung erfolgreich",
         "EXHAUSTED": "Wiederholungslimit erreicht",
         "MANUAL_RESOLVED": "Manuell gelöst"
       }
