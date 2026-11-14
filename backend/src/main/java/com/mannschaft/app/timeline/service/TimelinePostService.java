@@ -538,8 +538,8 @@ public class TimelinePostService {
         TimelinePostEntity repostOriginal = null;
         if (req.getRepostOfId() != null) {
             repostOriginal = postRepository.findById(req.getRepostOfId()).orElse(null);
-            if (enforceScopeAuthorization && repostOriginal != null
-                    && !postVisibilityGuard.isVisible(repostOriginal, userId)) {
+            if (enforceScopeAuthorization
+                    && (repostOriginal == null || !postVisibilityGuard.isVisible(repostOriginal, userId))) {
                 throw new BusinessException(TimelineErrorCode.POST_NOT_FOUND);
             }
         }
@@ -919,7 +919,7 @@ public class TimelinePostService {
      * {@link TimelinePostVisibilityAccessGuard#isVisible} を用い、到達できない場合は読取経路と
      * 同一の {@link TimelineErrorCode#POST_NOT_FOUND} に倒して対象 ID の実在を秘匿する。</p>
      *
-     * <p>VILLAGE スコープだけは本メソッドで判定しない。村への投稿権限は下流の
+     * <p>公開状態は VILLAGE でも必ず検証する。VILLAGE のスコープ認可だけは下流の
      * {@link PostingIdentityService#validatePostingIdentity} が
      * <b>投稿主体（USER / TEAM / ORGANIZATION）単位</b>で検証しており、ここで呼び出し元
      * {@code userId} 単位の村メンバー判定を重ねると、チーム／組織としての正当な代理投稿の
@@ -930,6 +930,9 @@ public class TimelinePostService {
      * @param userId     呼び出し元ユーザー ID
      */
     private void requireReplyableParent(TimelinePostEntity parentPost, Long userId) {
+        if (!TimelinePostVisibilityAccessGuard.isStatusVisible(parentPost, userId)) {
+            throw new BusinessException(TimelineErrorCode.POST_NOT_FOUND);
+        }
         if (parentPost.getScopeType() == PostScopeType.VILLAGE) {
             return;
         }

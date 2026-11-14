@@ -21,7 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
  * ブックマーク）が独自の可視性判定を書く」事故を防ぐ。</p>
  *
  * <ul>
- *   <li>PUBLIC: 常に可視</li>
+ *   <li>公開状態: PUBLISHED は下記スコープで判定し、DRAFT/SCHEDULED/HIDDEN は作成者本人に限定する</li>
+ *   <li>PUBLIC: 公開状態の条件を満たせば可視</li>
  *   <li>TEAM/ORGANIZATION: 呼び出し元がそのスコープのメンバーであること</li>
  *   <li>VILLAGE: 呼び出し元がその村の現役 USER メンバーであること</li>
  *   <li>PERSONAL: 呼び出し元が投稿者本人であること</li>
@@ -57,6 +58,9 @@ public class TimelinePostVisibilityAccessGuard {
      */
     @Transactional(readOnly = true)
     public boolean isVisible(TimelinePostEntity post, Long userId) {
+        if (!isStatusVisible(post, userId) || post.getScopeType() == null) {
+            return false;
+        }
         return switch (post.getScopeType()) {
             case PUBLIC -> true;
             case TEAM -> accessControlService.isMember(userId, post.getScopeId(), "TEAM");
@@ -70,6 +74,26 @@ public class TimelinePostVisibilityAccessGuard {
             case PERSONAL -> userId != null && userId.equals(post.getUserId());
             case FRIEND_FORWARD -> accessControlService.isMember(userId, post.getScopeId(), "TEAM");
             case FRIEND_TEAM, FRIEND_ARCHIVE -> false;
+        };
+    }
+
+    /**
+     * 対象投稿自身の公開状態だけを判定する。スコープ認可の代わりにはならない。
+     * 村への返信では、この判定の後に既存の投稿主体資格検証を通す。
+     * 予約時刻では公開せず、PUBLISHED への状態遷移を公開の条件とする。
+     *
+     * @param post 判定対象の投稿
+     * @param userId 呼び出し元ユーザー ID
+     * @return 公開状態の条件を満たす場合だけ true
+     */
+    static boolean isStatusVisible(TimelinePostEntity post, Long userId) {
+        if (post == null || post.getDeletedAt() != null || post.getStatus() == null) {
+            return false;
+        }
+        return switch (post.getStatus()) {
+            case PUBLISHED -> true;
+            case DRAFT, SCHEDULED, HIDDEN -> userId != null && userId.equals(post.getUserId());
+            default -> false;
         };
     }
 
