@@ -143,7 +143,7 @@ public class BillingContractService {
 
         billingOperationAuthorizer.requireCanManage(operatorUserId, scopeKind, scopeId);
         return createContractInternal(scopeKind, scopeId, organizationId,
-                contractKind, planKey, featureKey, operatorUserId);
+                contractKind, planKey, featureKey, operatorUserId, true);
     }
 
     /** SYSTEM_ADMIN専用入口。Controller側のSYSTEM_ADMIN認可を経た手動付与だけが利用する。 */
@@ -152,18 +152,27 @@ public class BillingContractService {
             EntitlementScopeKind scopeKind, Long scopeId, Long organizationId,
             ContractKind contractKind, String planKey, String featureKey, Long operatorUserId) {
         return createContractInternal(scopeKind, scopeId, organizationId,
-                contractKind, planKey, featureKey, operatorUserId);
+                contractKind, planKey, featureKey, operatorUserId, false);
     }
 
     private ContractResult createContractInternal(
             EntitlementScopeKind scopeKind, Long scopeId, Long organizationId,
-            ContractKind contractKind, String planKey, String featureKey, Long operatorUserId) {
+            ContractKind contractKind, String planKey, String featureKey, Long operatorUserId, boolean requireFree) {
         LocalDateTime now = LocalDateTime.now(clock);
         List<String> grantedKeys;
         String slotAddonKey;
+        BillingPriceResolver.ResolvedPlanPrice resolvedPrice = null;
 
         if (contractKind == ContractKind.PLAN) {
-            grantedKeys = validatePlanAndResolveFeatures(planKey);
+            ValidatedPlan validated = validatePlanAndResolveFeatures(planKey);
+            planKey = validated.plan().getPlanKey();
+            grantedKeys = validated.featureKeys();
+            if (requireFree) {
+                resolvedPrice = billingPriceResolver.resolvePlanPrice(validated.plan(), scopeKind, scopeId);
+                if (resolvedPrice.priceJpy() != 0) {
+                    throw new BusinessException(EntitlementErrorCode.CONTRACT_CHANGE_REQUIRES_PAYMENT);
+                }
+            }
             slotAddonKey = "";
             featureKey = null;
         } else if (contractKind == ContractKind.ADDON) {
@@ -178,7 +187,10 @@ public class BillingContractService {
 
         Integer memberCountSnapshot = null;
         Short bandNoSnapshot = null;
-        if (scopeKind != EntitlementScopeKind.USER) {
+        if (resolvedPrice != null) {
+            memberCountSnapshot = resolvedPrice.memberCount();
+            bandNoSnapshot = resolvedPrice.bandNo();
+        } else if (scopeKind != EntitlementScopeKind.USER) {
             memberCountSnapshot = scopeMemberCountService.countActiveMembers(scopeKind, scopeId);
             if (contractKind == ContractKind.PLAN) {
                 bandNoSnapshot = resolveBandNo(planKey, scopeKind, memberCountSnapshot);
@@ -327,19 +339,14 @@ public class BillingContractService {
         if (oldContract.getPspSubscriptionRef() != null) {
             throw new BusinessException(EntitlementErrorCode.CONTRACT_CHANGE_REQUIRES_PAYMENT);
         }
-        // (b) 変更先プランが有償（価格設定済み）: Checkout を経ず priceJpySnapshot=NULL で即 ACTIVE になると
-        //     有料機能の無償付与（D-4 の抜け穴）になるため拒否。
-        //     早馬・課金事故対応（2026-09-22）: 変更先プランの価格がマスタ未設定（NULL）の場合、resolver は
-        //     もはや null を返さず PLAN_PRICE_NOT_CONFIGURED を投げて拒否する（従来は null→無償扱いで
-        //     ここを素通りしてしまっていた）。newPlanKey がマスタ不在の場合のみ null が返り、その場合は
-        //     下の validatePlanAndResolveFeatures が PLAN_NOT_FOUND を検証する。
-        Integer newPlanPrice = billingPriceResolver.resolveMonthlyPriceJpy(
-                scopeKind, scopeId, ContractKind.PLAN, newPlanKey, null);
-        if (newPlanPrice != null && newPlanPrice > 0) {
+        ValidatedPlan validated = validatePlanAndResolveFeatures(newPlanKey);
+        newPlanKey = validated.plan().getPlanKey();
+        BillingPriceResolver.ResolvedPlanPrice resolvedPrice =
+                billingPriceResolver.resolvePlanPrice(validated.plan(), scopeKind, scopeId);
+        if (resolvedPrice.priceJpy() != 0) {
             throw new BusinessException(EntitlementErrorCode.CONTRACT_CHANGE_REQUIRES_PAYMENT);
         }
-
-        List<String> newKeys = validatePlanAndResolveFeatures(newPlanKey);
+        List<String> newKeys = validated.featureKeys();
 
         // 旧契約 CANCELLED＋由来 entitlements revoke。
         oldContract.setStatus(ContractStatus.CANCELLED);
@@ -348,12 +355,8 @@ public class BillingContractService {
         List<String> oldKeys = revokeEntitlementsOfContract(oldContract, operatorUserId, now);
 
         // 新契約 ACTIVE＋新 entitlements 発行。
-        Integer memberCountSnapshot = null;
-        Short bandNoSnapshot = null;
-        if (scopeKind != EntitlementScopeKind.USER) {
-            memberCountSnapshot = scopeMemberCountService.countActiveMembers(scopeKind, scopeId);
-            bandNoSnapshot = resolveBandNo(newPlanKey, scopeKind, memberCountSnapshot);
-        }
+        Integer memberCountSnapshot = resolvedPrice.memberCount();
+        Short bandNoSnapshot = resolvedPrice.bandNo();
         BillingContractEntity newContract = BillingContractEntity.builder()
                 .scopeKind(scopeKind)
                 .scopeId(scopeId)
@@ -413,8 +416,14 @@ public class BillingContractService {
         billingOperationAuthorizer.requireCanManage(operatorUserId, scopeKind, scopeId);
         LocalDateTime now = LocalDateTime.now(clock);
         String slotAddonKey;
+        BillingPriceResolver.ResolvedPlanPrice resolvedPrice = null;
         if (contractKind == ContractKind.PLAN) {
-            validatePlanAndResolveFeatures(planKey); // 存在/enabled 検証（発行は入金時）
+            ValidatedPlan validated = validatePlanAndResolveFeatures(planKey);
+            planKey = validated.plan().getPlanKey();
+            resolvedPrice = billingPriceResolver.resolvePlanPrice(validated.plan(), scopeKind, scopeId);
+            if (resolvedPrice.priceJpy() != priceJpy) {
+                throw new BusinessException(EntitlementErrorCode.PRICE_NOT_SELLABLE);
+            }
             slotAddonKey = "";
             featureKey = null;
         } else if (contractKind == ContractKind.ADDON) {
@@ -427,7 +436,10 @@ public class BillingContractService {
 
         Integer memberCountSnapshot = null;
         Short bandNoSnapshot = null;
-        if (scopeKind != EntitlementScopeKind.USER) {
+        if (resolvedPrice != null) {
+            memberCountSnapshot = resolvedPrice.memberCount();
+            bandNoSnapshot = resolvedPrice.bandNo();
+        } else if (scopeKind != EntitlementScopeKind.USER) {
             memberCountSnapshot = scopeMemberCountService.countActiveMembers(scopeKind, scopeId);
             if (contractKind == ContractKind.PLAN) {
                 bandNoSnapshot = resolveBandNo(planKey, scopeKind, memberCountSnapshot);
@@ -930,20 +942,22 @@ public class BillingContractService {
         return contract;
     }
 
-    private List<String> validatePlanAndResolveFeatures(String planKey) {
+    private ValidatedPlan validatePlanAndResolveFeatures(String planKey) {
         if (planKey == null || planKey.isBlank()) {
             throw new BusinessException(EntitlementErrorCode.PLAN_NOT_FOUND);
         }
-        PlanEntity plan = planRepository.findById(planKey).orElse(null);
+        PlanEntity plan = planRepository.findAllById(List.of(planKey)).stream().findFirst().orElse(null);
         if (plan == null || !Boolean.TRUE.equals(plan.getEnabled())) {
             throw new BusinessException(EntitlementErrorCode.PLAN_NOT_FOUND);
         }
         List<String> keys = new ArrayList<>();
-        for (PlanFeatureEntity pf : planFeatureRepository.findByPlanKey(planKey)) {
+        for (PlanFeatureEntity pf : planFeatureRepository.findByPlanKey(plan.getPlanKey())) {
             keys.add(pf.getFeatureKey());
         }
-        return keys;
+        return new ValidatedPlan(plan, keys);
     }
+
+    private record ValidatedPlan(PlanEntity plan, List<String> featureKeys) { }
 
     private void validateAddonFeature(String featureKey) {
         if (featureKey == null || featureKey.isBlank()) {

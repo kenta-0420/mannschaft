@@ -21,12 +21,12 @@ public class BillingPricePromotionService {
             String productKey,
             EntitlementScopeKind scopeKind,
             Instant now) {
-        if (priceVersionRepository.findEffectiveCandidates(
+        if (priceVersionRepository.countEffectiveCandidates(
                 productKind,
                 productKey,
                 scopeKind,
                 List.of(BillingPriceVersionStatus.SCHEDULED),
-                now).isEmpty()) {
+                now) == 0L) {
             return false;
         }
 

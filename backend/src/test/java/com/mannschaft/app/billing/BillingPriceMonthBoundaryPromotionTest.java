@@ -40,6 +40,7 @@ class BillingPriceMonthBoundaryPromotionTest {
 
     @Mock private BillingPriceVersionRepository priceVersionRepository;
     @Mock private BillingPriceBandVersionRepository bandRepository;
+    @Mock private LegacyPlanPriceSnapshotReader legacySnapshotReader;
 
     private BillingPriceVersionEntity revisionA;
     private BillingPriceVersionEntity revisionB;
@@ -64,6 +65,14 @@ class BillingPriceMonthBoundaryPromotionTest {
                     .filter(v -> statuses.contains(v.getStatus()))
                     .filter(v -> isEffectiveAt(v.getEffectiveFrom(), v.getEffectiveUntil(), at))
                     .toList();
+        });
+        lenient().when(priceVersionRepository.countEffectiveCandidates(
+                any(), any(), any(), any(), any())).thenAnswer(invocation -> {
+            List<BillingPriceVersionStatus> statuses = invocation.getArgument(3);
+            Instant at = invocation.getArgument(4);
+            return List.of(revisionA, revisionB).stream()
+                    .filter(v -> statuses.contains(v.getStatus()))
+                    .filter(v -> isEffectiveAt(v.getEffectiveFrom(), v.getEffectiveUntil(), at)).count();
         });
         lenient().when(priceVersionRepository.findAllForUpdate(any(), any(), any()))
                 .thenReturn(List.of(revisionA, revisionB));
@@ -119,7 +128,7 @@ class BillingPriceMonthBoundaryPromotionTest {
                 new BillingPricePromotionService(priceVersionRepository, bandRepository);
         BillingPriceSnapshotReader snapshotReader =
                 new BillingPriceSnapshotReader(priceVersionRepository, bandRepository);
-        return new BillingPriceSelector(promotionService, snapshotReader, clock);
+        return new BillingPriceSelector(promotionService, snapshotReader, clock, legacySnapshotReader);
     }
 
     private static boolean isEffectiveAt(Instant from, Instant until, Instant at) {
