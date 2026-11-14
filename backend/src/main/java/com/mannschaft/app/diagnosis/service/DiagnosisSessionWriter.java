@@ -21,6 +21,7 @@ import com.mannschaft.app.diagnosis.entity.DiagnosisSessionEntity;
 import com.mannschaft.app.diagnosis.repository.DiagnosisCommandRepository;
 import com.mannschaft.app.diagnosis.repository.DiagnosisResultRepository;
 import com.mannschaft.app.diagnosis.repository.DiagnosisSessionRepository;
+import com.mannschaft.app.ranch.service.RanchResultMappingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -55,6 +56,8 @@ public class DiagnosisSessionWriter {
     private final DiagnosisSessionSnapshotCodec codec;
     private final ObjectMapper mapper;
     private final Clock clock;
+    // 起動時固定mapを読む公開serviceだけを越境する。RanchのDB/TXには入らない。
+    private final RanchResultMappingService resultMapping;
 
     public DiagnosisSessionResponse start(Long userId, UUID key) {
         String hash = hash(List.of("session:start:v1"));
@@ -126,6 +129,7 @@ public class DiagnosisSessionWriter {
                     definition.questionnaireVersion(),definition.scoringVersion(),null,null,null,score.typeCode(),score.axes(),null,
                     definition.descriptionSnapshot(),definition.axisDescriptions(),
                     DiagnosisAxisSelectionSnapshot.create(score.typeCode(),score.axes(),definition.ties()));
+            result = resultMapping.freeze(result);
             results.saveAndFlush(DiagnosisResultEntity.builder().id(resultId).userId(userId).method(DiagnosisMethod.DIAGNOSIS)
                     .sourceProfileRevision(null).summarySnapshot(encode(result)).completedAt(now).createdAt(now).updatedAt(now).build());
             session.complete(encoded,resultId,now);

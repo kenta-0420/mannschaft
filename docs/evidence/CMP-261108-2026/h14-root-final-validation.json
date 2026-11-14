@@ -1,0 +1,81 @@
+{
+  "scope": "Root postcommit completion checks and scoped static-board adoption; documentation PR merge is a separate event",
+  "docsInitialCommit": "e8e0755d0171ff705cb00557d3e32cc76b51ca1d",
+  "docsHeadAtPreparation": "17b0f298af12de6e742aaf6190f2b652e7197984",
+  "historicalInitialWorkingValidation": "h14-docs-validation.json remains unchanged, including original unit21/1 and then-pending fields",
+  "postcommitUnit": {
+    "tests": 22,
+    "passed": 22,
+    "failed": 0,
+    "rootReportedActualExit": 0,
+    "stdoutSha256": "748a1026402f9a78be3e4e039bc2c6e6219d424e1dea31f0a0bbfe090e86b46e",
+    "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "providedApiInputTrustedValidation": {
+    "actualExit": 0,
+    "implementationPr": 4418,
+    "implementationHead": "6ffc203e22b1e509be81819241747504ecb3c53b",
+    "files": 1952,
+    "checks": 29,
+    "sameHeadCiRuns": 2,
+    "inputSha256": "d872aa4a1f052e5d748e3f35b45d6ea54438fe3a024aa5b3cf994f2d2eebad6b",
+    "stdoutSha256": "0c110f24a697ecbada65b6a816e19a939edeb3e9dd98f29180da1763c2b27c7b",
+    "exitRecordSha256": "aee2852bc7437f0f3c4520af11fdedc27526d227a57f67e0983defc39f61d917"
+  },
+  "fullHistoryStructuralCli": {
+    "status": "PASS",
+    "actualExit": 0,
+    "reaped": true,
+    "base": "32e4777aec54d5de324f22948099e8a4789fc1a4",
+    "head": "e8e0755d0171ff705cb00557d3e32cc76b51ca1d",
+    "scope": "Committed task-list/JSON/reference structure; actual API identity verified separately",
+    "stdoutSha256": "2d514e5dc743e2d557fe1cb302b9fb0ab2b240932ef024af4b9e2f3ece26b150",
+    "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "exitRecordSha256": "796c2ad434bb05720271f4e305d5771b4c4956ecea57f31d1b18b5463330eb2d"
+  },
+  "staticBoard": {
+    "at": "2026-11-13T22:26:37.870Z",
+    "scope": "STATIC_BOARD_UI_ASSERTIONS_AND_SEPARATE_POST_EXIT_ABSENCE_OBSERVATIONS",
+    "decision": "ACCEPTED_WITH_ORIGINAL_SCRIPT_FAILURE_PRESERVED",
+    "originalOverallStatus": "FAIL",
+    "originalExitCode": 1,
+    "reaped": true,
+    "reason": "All UI assertions completed; whole-system CIM cleanup snapshot timed out. Separate bounded name/PID/child/profile and root loopback refusal observations accepted.",
+    "uiAssertionsPassed": true,
+    "counts": {
+      "personas": 79,
+      "journeys": 79,
+      "insights": 150
+    },
+    "initialCount": 150,
+    "reloadCount": 150,
+    "duplicateCount": 0,
+    "representativeCardsAndDrawers": 3,
+    "privateScreenshotsRootViewed": 6,
+    "newPublicPngCount": 0,
+    "sourceBytesUnchanged": true,
+    "globalB0L46PassClaim": false,
+    "productAppStarted": false,
+    "publication": false,
+    "independentCleanupAbsent": true,
+    "port": 63788,
+    "negativeHistoryPreserved": [
+      "initial B0/B4 stage selector timeout",
+      "r2 whole-system CIM ETIMEDOUT",
+      "independent Get-NetTCPConnection timeout",
+      "initial Python connect UNKNOWN"
+    ],
+    "bindings": {
+      "board-ui-safe.json": "ff928f26fd02a575582b37ced8e37f8c51791df292716c9c6f8c43232d6f2de0",
+      "independent-cleanup-observation.json": "22a7538022050f1b9a0f0e8de5393212979b8fc434e3d7462c87ea28ebaa9e9a",
+      "independent-port-listener-observation.json": "8c7ecaa5036f422996ea8a91a0a762afa8064720863a0277a00b9f8eaae0d71f",
+      "root-port-probe.json": "63ebc86866178efbe231990536541e86dff7a5f00d81aafb2bfd0828576fdce9",
+      "run-board-ui.mjs": "cbd70ba42a90b4f9794a54e0000a6bb47f4a476857aa294e12e263873cf5093d"
+    },
+    "rootAdoptionSha256": "a3ac108ea85672a0f615104b6f83a01831b55315a0525c358d49f4c77d809cf9"
+  },
+  "globalB0L46": "existing FAIL retained; no blanket global/static script PASS claim",
+  "sourceRuntimeTestsImagesRemoteChanges": false,
+  "newPublicPngCount": 0,
+  "commitPushPrMergeExecutedByThisStep": false
+}

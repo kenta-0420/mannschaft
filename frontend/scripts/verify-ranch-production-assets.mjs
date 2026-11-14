@@ -4,6 +4,7 @@ import { inflateSync } from 'node:zlib'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
+import { V2_ENTRY_FIELDS, verifyClipEntry } from './ranch-production-clip-contract.mjs'
 
 const stages = ['EGG', 'BABY', 'JUVENILE', 'ADULT']
 const styles = ['PIXEL', 'PAINT_2D']
@@ -19,9 +20,16 @@ function exact(value, keys) {
 }
 function positive(value) { return Number.isSafeInteger(value) && value > 0 && value <= 2147483647 }
 const verifiedInputs = new WeakMap()
+export function accountProductionImageBytes(total, nextLength, schemaVersion) {
+  const limit = (schemaVersion === 2 ? 320 : 256) * 1024 * 1024
+  const next = total + nextLength
+  if (!Number.isSafeInteger(total) || total < 0 || !Number.isSafeInteger(nextLength) || nextLength < 0 || next > limit) fail('pack exceeds verification memory bound')
+  return next
+}
 function parsePack(bytes) {
+  const version = JSON.parse(bytes.toString('utf8')).schemaVersion
   return JSON.parse(bytes.toString('utf8'), (_key, value, context) => {
-    if (typeof value === 'number' && (!context?.source || !/^(0|[1-9][0-9]*)$/.test(context.source))) fail('integer JSON literal required')
+    if (typeof value === 'number' && (!Number.isFinite(value) || version !== 2 && (!context?.source || !/^(0|[1-9][0-9]*)$/.test(context.source)))) fail('integer JSON literal required')
     return value
   })
 }
@@ -40,12 +48,14 @@ function readPackFile(root, name, expected) {
   if (bytes.length > 20 * 1024 * 1024) fail('asset exceeds verification bound')
   return bytes
 }
+const crcTable = Uint32Array.from({ length: 256 }, (_, value) => {
+  let crc = value
+  for (let bit = 0; bit < 8; bit++) crc = crc >>> 1 ^ (crc & 1 ? 0xedb88320 : 0)
+  return crc >>> 0
+})
 function crc32(bytes) {
   let crc = 0xffffffff
-  for (const byte of bytes) {
-    crc ^= byte
-    for (let bit = 0; bit < 8; bit++) crc = crc >>> 1 ^ (crc & 1 ? 0xedb88320 : 0)
-  }
+  for (const byte of bytes) crc = crc >>> 8 ^ crcTable[(crc ^ byte) & 255]
   return (crc ^ 0xffffffff) >>> 0
 }
 // 現在は静的8bit RGB/RGBA・非interlace PNGのみ。CRC、zlib、各scanlineを検証する。
@@ -92,11 +102,12 @@ export function verifyProductionPack({ packDirectory, manifestSha256, masterFile
   const manifestBytes = hashFile(path.join(root, 'manifest.json'), manifestSha256)
   const manifest = parsePack(manifestBytes)
   exact(manifest, ['schemaVersion', 'catalogVersion', 'packVersion', 'approvalStatus', 'environment', 'entries'])
-  if (manifest.schemaVersion !== 1 || !Number.isSafeInteger(manifest.catalogVersion) || manifest.catalogVersion < 1
+  if (![1, 2].includes(manifest.schemaVersion) || !Number.isSafeInteger(manifest.catalogVersion) || manifest.catalogVersion < 1
     || !token.test(manifest.packVersion) || manifest.packVersion.includes('..')
     || manifest.approvalStatus !== 'APPROVED' || manifest.environment !== 'PRODUCTION'
     || !Array.isArray(manifest.entries) || manifest.entries.length !== 512) fail('unapproved or incomplete manifest')
-  const master = JSON.parse(hashFile(masterFile, masterSha256).toString('utf8'))
+  const masterBytes = hashFile(masterFile, masterSha256)
+  const master = JSON.parse(masterBytes.toString('utf8'))
   if (master.approved !== true || master.catalogVersion !== manifest.catalogVersion
     || !Array.isArray(master.assets) || master.assets.length !== 512) fail('master version or coverage')
   const masterTuples = new Map()
@@ -107,6 +118,8 @@ export function verifyProductionPack({ packDirectory, manifestSha256, masterFile
   }
   const keys = new Set(), tuples = new Set(), pairs = new Map(), files = new Map()
   const images = new Map()
+  // 原本1922PNGのv2実測280355204bytes。v1の256MiBを維持し、v2だけ320MiBに境界を定める。
+  let totalImageBytes = 0
   const image = (name, expected) => {
     if (!digest.test(expected)) fail('explicit SHA256 is required')
     const previous = images.get(name)
@@ -115,13 +128,14 @@ export function verifyProductionPack({ packDirectory, manifestSha256, masterFile
       return previous
     }
     const bytes = readPackFile(root, name, expected)
+    totalImageBytes = accountProductionImageBytes(totalImageBytes, bytes.length, manifest.schemaVersion)
     const verified = { bytes, size: pngSize(bytes), sha256: expected.toLowerCase() }
     images.set(name, verified)
     return verified
   }
   const entries = manifest.entries.map(item => {
     exact(item, ['speciesKey', 'variantKey', 'stage', 'renderStyle', 'assetKey', 'filePath', 'sourceSha256',
-      'frameWidth', 'frameHeight', 'frameCount', 'fallbackPath', 'fallbackSha256'])
+      'frameWidth', 'frameHeight', 'frameCount', 'fallbackPath', 'fallbackSha256', ...(manifest.schemaVersion === 2 ? V2_ENTRY_FIELDS : [])])
     if (![item.speciesKey, item.variantKey, item.assetKey].every(key => typeof key === 'string' && token.test(key)
       && !key.startsWith('DEV_')) || !stages.includes(item.stage) || !styles.includes(item.renderStyle)
       || !positive(item.frameWidth) || !positive(item.frameHeight) || !positive(item.frameCount)
@@ -141,11 +155,12 @@ export function verifyProductionPack({ packDirectory, manifestSha256, masterFile
     if (size.width % item.frameWidth || size.height % item.frameHeight
       || size.width / item.frameWidth * (size.height / item.frameHeight) !== item.frameCount
       || fallbackSize.width !== item.frameWidth || fallbackSize.height !== item.frameHeight) fail('atlas/fallback geometry mismatch')
+    const clipEntry = manifest.schemaVersion === 2 ? verifyClipEntry(item, manifest.packVersion, { exact, fail, image, files }) : null
+    if (clipEntry) clipEntry.catalogVersion = String(manifest.catalogVersion)
     for (const [name, bytes] of [[item.filePath, source], [item.fallbackPath, fallback]]) {
       if (files.has(name) && !files.get(name).equals(bytes)) fail('conflicting file path')
       files.set(name, bytes)
     }
-    if ([...files.values()].reduce((total, bytes) => total + bytes.length, 0) > 256 * 1024 * 1024) fail('pack exceeds verification memory bound')
     return { assetKey: item.assetKey, speciesKey: item.speciesKey, variantKey: item.variantKey,
       stage: item.stage, renderStyle: item.renderStyle, catalogVersion: String(manifest.catalogVersion),
       approval: 'APPROVED', origin: 'PRODUCTION', src: `/ranch/approved/${manifest.packVersion}/${item.filePath}`,
@@ -153,7 +168,7 @@ export function verifyProductionPack({ packDirectory, manifestSha256, masterFile
       sourceWidth: size.width, sourceHeight: size.height,
       columnBoundaries: Array.from({ length: size.width / item.frameWidth + 1 }, (_, index) => index * item.frameWidth),
       rowBoundaries: Array.from({ length: size.height / item.frameHeight + 1 }, (_, index) => index * item.frameHeight),
-      frames: item.frameCount, sourceSha256: item.sourceSha256.toLowerCase() }
+      frames: item.frameCount, sourceSha256: item.sourceSha256.toLowerCase(), ...(clipEntry ? { clipEntry } : {}) }
   })
   if (pairs.size !== 16 || [...pairs.values()].some(variants => variants.size !== 4)) fail('16 species × 4 variants required')
   for (const [species, variants] of pairs) for (const variant of variants) for (const stage of stages) for (const style of styles) {
@@ -167,19 +182,27 @@ export function verifyProductionPack({ packDirectory, manifestSha256, masterFile
     packVersion: manifest.packVersion, catalogVersion: String(manifest.catalogVersion),
     manifestSha256: sha256(manifestBytes), masterSha256: masterSha256.toLowerCase() })
   // 出力関数に未検証objectを渡したり、検証後bytesを差し替えたりできないよう私有する。
-  verifiedInputs.set(verified, files)
+  verifiedInputs.set(verified, { files, masterBytes })
   return verified
 }
 
+// Artifact検査の例外は検証済みobjectだけから作る。path/hash手製allowlistを受け取らない。
+export function verifiedProductionArtifactHashes(verified) {
+  const input = verifiedInputs.get(verified)
+  if (!input) fail('unverified artifact input')
+  return new Map([...input.files].map(([name, bytes]) => [`public/ranch/approved/${verified.packVersion}/${name}`, sha256(bytes)]))
+}
+
 /** 検証済みbytesを両アプリへ配置する。異なる既存packの上書きは拒否する。 */
-export function installVerifiedPack(verified, repository) {
-  const files = verifiedInputs.get(verified)
-  if (!files) fail('unverified installation input')
+export function installVerifiedPack(verified, repository, { frontendOnly = false } = {}) {
+  const input = verifiedInputs.get(verified)
+  if (!input) fail('unverified installation input')
+  const { files, masterBytes } = input
   const root = realpathSync(repository)
   if (!token.test(verified.packVersion) || verified.packVersion.includes('..')) fail('output pack version')
   const frontend = path.join(root, 'frontend/public/ranch/approved', verified.packVersion)
   const backend = path.join(root, 'backend/src/main/resources/ranch/approved/asset-packs', verified.packVersion)
-  const destinations = [frontend, backend]
+  const destinations = frontendOnly ? [frontend] : [frontend, backend]
   const moduleFile = path.join(root, 'frontend/app/utils/ranch-production-assets.ts')
   requireOutputInside(root, moduleFile)
   for (const output of destinations) for (const [name, bytes] of files) {
@@ -198,8 +221,8 @@ export function installVerifiedPack(verified, repository) {
   const stageParent = path.join(root, 'work')
   requireOutputInside(root, stageParent); mkdirSync(stageParent, { recursive: true })
   const stage = mkdtempSync(path.join(stageParent, 'ranch-approved-pack-'))
-  const stagedPacks = destinations.map((_, index) => path.join(stage, String(index)))
-  for (const output of stagedPacks) for (const [name, bytes] of files) {
+  const stagedPacks = destinations.map((output, index) => existsSync(output) ? null : path.join(stage, String(index)))
+  for (const output of stagedPacks) if (output) for (const [name, bytes] of files) {
     const file = path.join(output, name)
     mkdirSync(path.dirname(file), { recursive: true }); writeFileSync(file, bytes, { flag: 'wx' })
   }
@@ -215,6 +238,12 @@ export function installVerifiedPack(verified, repository) {
     }
   }
   renameSync(stagedModule, moduleFile)
+  const masterFixture = path.join(root, 'frontend/scripts/fixtures/ranch-production-master.json')
+  const registration = path.join(root, 'frontend/app/utils/ranch-production-pack-registration.json')
+  requireOutputInside(root, masterFixture); requireOutputInside(root, registration)
+  mkdirSync(path.dirname(masterFixture), { recursive: true })
+  writeFileSync(masterFixture, masterBytes)
+  writeFileSync(registration, JSON.stringify(metadata, null, 2) + '\n')
 }
 
 function listFiles(root, prefix = '', collected = []) {
@@ -241,11 +270,11 @@ function requireOutputInside(root, file) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   const { values } = parseArgs({ options: { pack: { type: 'string' }, 'manifest-sha256': { type: 'string' },
-    master: { type: 'string' }, 'master-sha256': { type: 'string' }, repository: { type: 'string' } } })
+    master: { type: 'string' }, 'master-sha256': { type: 'string' }, repository: { type: 'string' }, 'frontend-only': { type: 'boolean' } } })
   if (!values.pack || !values['manifest-sha256'] || !values.master || !values['master-sha256']) fail('explicit pack/master inputs required')
   const verified = verifyProductionPack({ packDirectory: values.pack, manifestSha256: values['manifest-sha256'],
     masterFile: values.master, masterSha256: values['master-sha256'] })
-  if (values.repository) installVerifiedPack(verified, values.repository)
+  if (values.repository) installVerifiedPack(verified, values.repository, { frontendOnly: values['frontend-only'] === true })
   process.stdout.write(`${JSON.stringify({ packVersion: verified.packVersion, manifestSha256: verified.manifestSha256,
     catalogVersion: verified.catalogVersion, verifiedTuples: verified.entries.length, installed: Boolean(values.repository) })}\n`)
 }

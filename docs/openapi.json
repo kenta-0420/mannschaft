@@ -207954,6 +207954,10 @@
       "RanchState": {
         "type": "object",
         "properties": {
+          "approvedVisualsAvailable": {
+            "type": "boolean",
+            "description": "明示公開許可と正式master/質問/素材登録が揃う時だけtrue。育成・報酬停止とは独立"
+          },
           "assignment": {
             "anyOf": [
               {
@@ -209044,6 +209048,13 @@
             },
             "description": "保存時の六軸の極ラベルと本人の選択側。旧結果やBIRTH_STYLEではnullを許す"
           },
+          "catalogVersion": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "保存時の種カタログ版。decimal string"
+          },
           "completedAt": {
             "type": "string",
             "format": "date-time"
@@ -209057,6 +209068,16 @@
           "id": {
             "type": "string",
             "format": "uuid"
+          },
+          "mappingDescriptionSnapshot": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "保存時の種・外見名を含む六言語の対応説明"
           },
           "mappingVersion": {
             "type": "string"
@@ -209086,8 +209107,20 @@
           "scoringVersion": {
             "type": "string"
           },
+          "speciesKey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "typeCode": {
             "type": "string"
+          },
+          "variantKey": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },

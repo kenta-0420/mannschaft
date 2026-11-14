@@ -25,6 +25,7 @@ public class RanchExternalProjectionProvider {
         // 選定は実resolverと公開gateの接続後だけ表示する。
         return new RanchStateAssembler.ExternalProjection(reward.deliveryPaused(),
                 reward.rewardsStatus(), shopAvailable, visible,
-                reward.weekBudget(), reward.policyVersion(), assignment.availableMethods());
+                reward.weekBudget(), reward.policyVersion(), assignment.availableMethods(),
+                assignment.isApprovedVisualsAvailable());
     }
 }
