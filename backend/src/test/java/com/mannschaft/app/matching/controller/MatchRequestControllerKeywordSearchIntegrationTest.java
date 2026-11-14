@@ -25,9 +25,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -83,27 +85,53 @@ class MatchRequestControllerKeywordSearchIntegrationTest extends AbstractMySqlIn
 
     private static final String KEYWORD = "practice";
 
+    private final List<Long> ownedMembershipIds = new ArrayList<>();
+    private final List<Long> ownedRequestIds = new ArrayList<>();
+    private final List<Long> ownedNgTeamIds = new ArrayList<>();
+    private SecurityContext previousSecurityContext;
+
     @BeforeEach
     void setUp() {
+        previousSecurityContext = SecurityContextHolder.getContext();
+        SecurityContextHolder.setContext(SecurityContextHolder.createEmptyContext());
         ensureFulltextIndex();
-        // トランザクションを張らず（FULLTEXT 索引は commit 後に検索可能なため）、毎回 native DELETE で掃除する。
-        jdbcTemplate.update("DELETE FROM match_requests");
-        jdbcTemplate.update("DELETE FROM ng_teams");
-        jdbcTemplate.update("DELETE FROM memberships WHERE user_id = ?", SEARCHER);
+        // FULLTEXT は commit 後に検索可能になるため、保存時の所有IDを終了時に回収する。
         // 認可根治後、検索の NG 除外は「閲覧ユーザーの所属チーム群」基準。SEARCHER を SEARCHER_TEAM に所属させる。
-        membershipRepository.saveAndFlush(MembershipEntity.builder()
+        MembershipEntity membership = membershipRepository.saveAndFlush(MembershipEntity.builder()
                 .userId(SEARCHER)
                 .scopeType(ScopeType.TEAM)
                 .scopeId(SEARCHER_TEAM)
                 .roleKind(RoleKind.MEMBER)
                 .joinedAt(LocalDateTime.now())
                 .build());
+        ownedMembershipIds.add(membership.getId());
         authenticateAs(SEARCHER);
     }
 
     @AfterEach
     void tearDown() {
-        SecurityContextHolder.clearContext();
+        try {
+            // この試験は応募を作らない。他の所有者の子行があれば、親の連鎖削除を防ぐ。
+            for (Long id : ownedRequestIds) {
+                Long proposals = jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM match_proposals WHERE request_id = ?", Long.class, id);
+                assertThat(proposals).as("所有募集に未知の応募がないこと: %s", id).isZero();
+            }
+            for (Long id : ownedRequestIds) {
+                jdbcTemplate.update("DELETE FROM match_requests WHERE id = ?", id);
+            }
+            for (Long id : ownedNgTeamIds) {
+                jdbcTemplate.update("DELETE FROM ng_teams WHERE id = ?", id);
+            }
+            for (Long id : ownedMembershipIds) {
+                jdbcTemplate.update("DELETE FROM memberships WHERE id = ?", id);
+            }
+        } finally {
+            // setup途中・本体・cleanupの失敗時も、従前の認証状態を変更しない。
+            if (previousSecurityContext != null) {
+                SecurityContextHolder.setContext(previousSecurityContext);
+            }
+        }
     }
 
     // ============================================================
@@ -236,8 +264,9 @@ class MatchRequestControllerKeywordSearchIntegrationTest extends AbstractMySqlIn
         persistOpen(TEAM_NG, "Blocked practice session", "13", null,
                 MatchCategory.ANY, MatchLevel.ANY, MatchVisibility.PLATFORM);
         // SEARCHER の所属チーム(SEARCHER_TEAM) が TEAM_NG をブロック（双方向ブロックは所属チーム基準で効く）
-        ngTeamRepository.saveAndFlush(NgTeamEntity.builder()
+        NgTeamEntity ngTeam = ngTeamRepository.saveAndFlush(NgTeamEntity.builder()
                 .teamId(SEARCHER_TEAM).blockedTeamId(TEAM_NG).reason("test").build());
+        ownedNgTeamIds.add(ngTeam.getId());
 
         List<MatchRequestResponse> content = search(KEYWORD, null, null, null, null, null, null, 0, 20);
 
@@ -407,7 +436,7 @@ class MatchRequestControllerKeywordSearchIntegrationTest extends AbstractMySqlIn
                 .cityCode(cityCode)
                 .status(MatchRequestStatus.OPEN)
                 .build();
-        return requestRepository.saveAndFlush(e);
+        return saveOwnedRequest(e);
     }
 
     private MatchRequestEntity persistOpen(Long teamId, String title, String prefectureCode, String cityCode,
@@ -436,7 +465,13 @@ class MatchRequestControllerKeywordSearchIntegrationTest extends AbstractMySqlIn
         if (deleted) {
             e.softDelete();
         }
-        return requestRepository.saveAndFlush(e);
+        return saveOwnedRequest(e);
+    }
+
+    private MatchRequestEntity saveOwnedRequest(MatchRequestEntity entity) {
+        MatchRequestEntity saved = requestRepository.saveAndFlush(entity);
+        ownedRequestIds.add(saved.getId());
+        return saved;
     }
 
     private void authenticateAs(Long userId) {
