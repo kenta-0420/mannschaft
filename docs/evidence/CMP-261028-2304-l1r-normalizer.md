@@ -197,7 +197,7 @@ R14正式実機後のWS標的補完を、同じ固定実機source `8afd06e6e06dd
 
 ### 現時点の残務
 
-R14のformal f1作成2＋f2残12の分割資格、元f2 false、normal2等のERR_ABORTEDとtransportClean false、Signageの限定採用と認可残課題は上記履歴のまま保持する。R15の全10cleanup ACK（cancel200が1、DELETE204が9）と各原FINALを親担当が直接照合し、実探索3contextのCLOSED/native0を採用した。既ACKの再送は0。閉鎖前summaryのopen記載とdriver既定のac36Passed falseは原値のまま保持し、後続の閉鎖証拠・親担当のAC-36判定と区別する。closure/通知/加入履歴は専用DB最終破棄まで保持する。回復runtime・専用DB・scratch/Jarの撤去は未完で、完了を先取りしない。
+R14のformal f1作成2＋f2残12の分割資格、元f2 false、normal2等のERR_ABORTEDとtransportClean false、Signageの限定採用と認可残課題は上記履歴のまま保持する。R15の全10cleanup ACK（cancel200が1、DELETE204が9）と各原FINALを親担当が直接照合し、実探索3contextのCLOSED/native0を採用した。既ACKの再送は0。閉鎖前summaryのopen記載とdriver既定のac36Passed falseは原値のまま保持し、後続の閉鎖証拠・親担当のAC-36判定と区別する。最終CI準備時点のsnapshotとして、app・canonical・監督の自然終了0、新scratchの正常removedを親担当が原receiptで照合した。専用MySQL・Valkey・sole volumeは通常のTERMとrm -vによってgoneとなり、closure/通知/加入履歴も専用DB破棄で閉鎖した。旧scratchとJarは別の所有参照確認を継続中で、全残務は未完。最終閉鎖証拠は8PRのmain採用後の通常docs PRで確定する。
 
 最終B0登録・通常同期/generator/全validator/実IDB確認は下記の限定資格で採用した。外closure担当の最終引渡し、最終Core差分の採択・実head CI・ready・main採用は進行中。8PRのmain採用後に支援子CMPの完了証拠と正本状態を通常docs PRで確定する。親戦役・L1-R全164型はP4実装中を維持し、支援CMPの完了・引継ぎ削除・全残務完了を先取りしない。公開文書へprivate操作識別子・資格情報・ローカル能力URL・原画像本体は追加しない。
 
