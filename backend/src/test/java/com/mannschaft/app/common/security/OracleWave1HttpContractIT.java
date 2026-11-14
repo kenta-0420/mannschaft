@@ -1,5 +1,6 @@
 package com.mannschaft.app.common.security;
 
+import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
@@ -633,11 +634,13 @@ class OracleWave1HttpContractIT extends AbstractMySqlIntegrationTest {
             Map<String, String> before = snapshot();
             Logger logger = (Logger)
                     LoggerFactory.getLogger(MemberCardService.class);
+            Level previousLevel = logger.getLevel();
             ListAppender<ILoggingEvent> capture =
                     new ListAppender<>();
             capture.start();
             logger.addAppender(capture);
             try {
+                logger.setLevel(Level.DEBUG);
                 MvcResult missing = checkin(missingToken, locale)
                         .andExpect(status().isOk()).andExpect(jsonPath("$.data.checkedIn").value(false))
                         .andExpect(jsonPath("$.data.reason").value("INVALID_LOCATION")).andReturn();
@@ -653,6 +656,7 @@ class OracleWave1HttpContractIT extends AbstractMySqlIntegrationTest {
             } finally {
                 logger.detachAppender(capture);
                 capture.stop();
+                logger.setLevel(previousLevel);
             }
         }
 
