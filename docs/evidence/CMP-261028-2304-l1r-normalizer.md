@@ -185,3 +185,8 @@ source8afd/run `l1rr15655c` の新3住民を、R14 fresh3と別persona/runとし
 r1 closure201対象1→r2本人userqueue通知2106/source1/scope11→confirm200→管理者confirmation MESSAGE/1of1をrootが裏取り。r2 private10不可視/未選択→自分会話9復帰・投稿2成功はSTOMP拒否としない。r3観戦拒否UI/WS ERRORは本文/購読相関未採取、自身live event1作成後の再入場で履歴残存・timer開始前00:00を観測した。marker混入未観測を全非漏洩証明へ拡張しない。
 
 人工offline切替後のoffline表示継続と試合timer復元を未実証候補2件へ登録する。実回線断/自動再接続単独・永続要件・既存課題重複は未確定。製品修正・新CMP設計・確定不備昇格0。AC-36独立目的探索はroot資格で実施完了だが全動作greenではない。driver既定 `ac36Passed:false` のrawは不変、trusted=false/observed-unverified/coverage=falseを保持する。r1/r2/r3 create/update/deleteは1/0/0、2/6/0、1/0/0、全pending0/unknown false。R15runtime撤去・最終merge・支援CMP完了は先取りしない。再生成用copyは `.b0-local/run-l1rr15655c-fresh3-20261114.json`。
+
+
+R15棚卸更新の通常GitHub読み取り同期は2026-11-14T07:21:17Z・806参照で成功し、既存L46の不足#4418を解消した。通常generator/validator/overlay自己検証は最終bytesで各exit0（不正10例拒否）、44feature/95capability・CORE25/非CORE19・blockers23・720campaign。台帳720一意・全7列を保持し、親/all164 P4・支援CMP完了先取り0・Signage別P1未着手を維持する。task-list commit `942ecd87428f54dde67b07d270fe62bc17abb63d` のraw LF bytesと生成pin SHAが一致する。Windows checkout CRLF由来のhash差はWTを同commit raw bytesへ合わせて通常再生成し、generator自体は変更していない。
+
+最終実ボードは `board-ui-r15-20261114.json`、整合proofは `b0-r15-checks-20261114.json`。fresh実IndexedDBへ旧152をimport→自然clock7017ms後に最終新dataへ更新し154、旧152全field厳密deepEqual・新2のみ・重複0・reload154不変を確認した。B1の予約/大会試合カード2件と詳細を実閲覧し、隔離IDB内だけR1の人間用statusをinbox→plannedへGUI変更→reload保存、sourceStatus=observed-unverified/trusted=false/来歴不変・他153全field不変を確認した。正本overlayのstatus変更0。pageErrors/remote requests0、context/browser正常閉鎖・native exit0、製品app/API/DB操作0。HTML/実生成dataのhashをreceiptへ固定し、住民source8afdと混同しない。旧R14 UI証拠や先行helper失敗は履歴として保持し、今回の最終bytesへ読み替えない。

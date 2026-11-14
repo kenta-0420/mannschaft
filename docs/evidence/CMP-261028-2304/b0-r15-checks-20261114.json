@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS",
+  "sourceTaskListCommit": "942ecd87428f54dde67b07d270fe62bc17abb63d",
+  "sourceTaskListSha256": "4bf365cc0102e6f2e8de992adee5b49d387fab42012fb76b7b9f7fe6ad233986",
+  "sourceTaskListCommitRawBytesMatch": true,
+  "githubSync": {
+    "status": "synced",
+    "error": null,
+    "synchronizedAt": "2026-11-14T07:21:17+00:00",
+    "referenceCount": 806
+  },
+  "generatorExitCode": 0,
+  "validatorExitCode": 0,
+  "overlaySelfTestExitCode": 0,
+  "invalidOverlaysRejected": 10,
+  "oldCounts": [
+    82,
+    82,
+    152,
+    20
+  ],
+  "newCounts": [
+    85,
+    85,
+    154,
+    21
+  ],
+  "oldEveryFieldDeepPreserved": true,
+  "oldInsightStatusChanges": 0,
+  "idCollisions": 0,
+  "sourceCopyGeneratedOverlayDeepEqual": true,
+  "taskListRows": 720,
+  "taskListUnique": 720,
+  "taskListAllSevenColumns": true,
+  "counts": {
+    "features": 44,
+    "capabilities": 95,
+    "core": 25,
+    "noncore": 19,
+    "blockers": 23,
+    "campaigns": 720
+  },
+  "generatedSha256": "5857f5ad55c890b65e20d66436690bac9083e25befeaaa0a8980c72f5d63a189",
+  "htmlSha256": "8c4dff12b553433a6d37660ecfad1dd421af161794dcf41db8881285f911ec5a",
+  "overlaySha256": "d382e1cb43a87308ccdbca48ede0aeecac37eedf51518a181e32503f25555514",
+  "boardUiEvidence": "docs/evidence/CMP-261028-2304/board-ui-r15-20261114.json",
+  "runtimeCleanup": "root後送前。撤去完了を本proofでは主張しない。",
+  "productChanges": 0,
+  "publicResidentImages": 0,
+  "push": 0,
+  "pr": 0
+}

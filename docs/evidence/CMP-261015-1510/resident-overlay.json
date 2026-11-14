@@ -5673,7 +5673,7 @@
     },
     {
       "id": "ALIC-L1R-R15-R1-20261114-I001",
-      "featureKey": "emergency-closure",
+      "featureKey": "reservation",
       "featureDetail": "緊急休止の確認状況・接続表示",
       "personaId": "ALIC-L1R-R15-R1-20261114",
       "journeyId": "ALIC-L1R-R15-R1-20261114-J1",
