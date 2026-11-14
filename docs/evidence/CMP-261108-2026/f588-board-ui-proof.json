@@ -1,0 +1,214 @@
+{
+  "schemaVersion": 1,
+  "status": "STATIC_BOARD_UI_ACCEPTED",
+  "sourceRunId": "ranchmapping-f58861cdcb86324354bcd246",
+  "sourceHead": "f0b37dc6f723b33cc4364143d8230f228b3d6792",
+  "boardInputHead": "fe2a19a28b1e32caa00850b8255388813ab2703c",
+  "rawResultSha256": "0482c5e7c831a55851673da90e3a56ac0ab44eccdc9708d3e80ed04d444bc7dd",
+  "boardOnly": true,
+  "appDbLoginStarted": false,
+  "initialCount": 123,
+  "reloadCount": 123,
+  "duplicateCount": 0,
+  "old120ProjectionPreserved": true,
+  "new3ProjectionAndProvenanceExact": true,
+  "reloadRowsDeepEqual": true,
+  "cards": [
+    {
+      "id": "ALI-october-wave2-login-resident-overlay-20261026-ALIC-CMP261108-F588-R1-I001",
+      "cardIdentityEvidenceSourceShown": true,
+      "drawerRunAndSourceShown": true,
+      "sourceHeadStoredExact": true,
+      "sourceHeadDedicatedUiField": false,
+      "openState": {
+        "classOpen": true,
+        "ariaHidden": "false",
+        "rect": {
+          "left": 988,
+          "top": 12,
+          "right": 1588,
+          "bottom": 1088
+        },
+        "viewport": {
+          "width": 1600,
+          "height": 1100
+        },
+        "drawerAnimations": [],
+        "backdropAnimations": [],
+        "backdropOpen": true,
+        "backdropOpacity": 1
+      },
+      "closeState": {
+        "classOpen": false,
+        "ariaHidden": "true",
+        "rect": {
+          "left": 1618,
+          "top": 12,
+          "right": 2218,
+          "bottom": 1088
+        },
+        "viewport": {
+          "width": 1600,
+          "height": 1100
+        },
+        "drawerAnimations": [],
+        "backdropAnimations": [],
+        "backdropOpen": false,
+        "backdropOpacity": 0
+      },
+      "drawerSha256": "1e98854a3d5478d885bfb15a8544526d7cc604b390fad6ca348834d620c34ddb"
+    },
+    {
+      "id": "ALI-october-wave2-login-resident-overlay-20261026-ALIC-CMP261108-F588-R2-I001",
+      "cardIdentityEvidenceSourceShown": true,
+      "drawerRunAndSourceShown": true,
+      "sourceHeadStoredExact": true,
+      "sourceHeadDedicatedUiField": false,
+      "openState": {
+        "classOpen": true,
+        "ariaHidden": "false",
+        "rect": {
+          "left": 988,
+          "top": 12,
+          "right": 1588,
+          "bottom": 1088
+        },
+        "viewport": {
+          "width": 1600,
+          "height": 1100
+        },
+        "drawerAnimations": [],
+        "backdropAnimations": [],
+        "backdropOpen": true,
+        "backdropOpacity": 1
+      },
+      "closeState": {
+        "classOpen": false,
+        "ariaHidden": "true",
+        "rect": {
+          "left": 1618,
+          "top": 12,
+          "right": 2218,
+          "bottom": 1088
+        },
+        "viewport": {
+          "width": 1600,
+          "height": 1100
+        },
+        "drawerAnimations": [],
+        "backdropAnimations": [],
+        "backdropOpen": false,
+        "backdropOpacity": 0
+      },
+      "drawerSha256": "d1e560b04a9bd60da2da311780e96982caebd5d051ec9cf55c534e39b66bd5ba"
+    },
+    {
+      "id": "ALI-october-wave2-login-resident-overlay-20261026-ALIC-CMP261108-F588-R3-I001",
+      "cardIdentityEvidenceSourceShown": true,
+      "drawerRunAndSourceShown": true,
+      "sourceHeadStoredExact": true,
+      "sourceHeadDedicatedUiField": false,
+      "openState": {
+        "classOpen": true,
+        "ariaHidden": "false",
+        "rect": {
+          "left": 988,
+          "top": 12,
+          "right": 1588,
+          "bottom": 1088
+        },
+        "viewport": {
+          "width": 1600,
+          "height": 1100
+        },
+        "drawerAnimations": [],
+        "backdropAnimations": [],
+        "backdropOpen": true,
+        "backdropOpacity": 1
+      },
+      "closeState": {
+        "classOpen": false,
+        "ariaHidden": "true",
+        "rect": {
+          "left": 1618,
+          "top": 12,
+          "right": 2218,
+          "bottom": 1088
+        },
+        "viewport": {
+          "width": 1600,
+          "height": 1100
+        },
+        "drawerAnimations": [],
+        "backdropAnimations": [],
+        "backdropOpen": false,
+        "backdropOpacity": 0
+      },
+      "drawerSha256": "24ea044dc00fa570fd55ec068d1beb4bb7ab47aabffea4d75edde7e20fcac5b5"
+    }
+  ],
+  "overviewDrawerState": {
+    "classOpen": false,
+    "ariaHidden": "true",
+    "rect": {
+      "left": 1618,
+      "top": 12,
+      "right": 2218,
+      "bottom": 1088
+    },
+    "viewport": {
+      "width": 1600,
+      "height": 1100
+    },
+    "drawerAnimations": [],
+    "backdropAnimations": [],
+    "backdropOpen": false,
+    "backdropOpacity": 0
+  },
+  "cleanupStages": {
+    "contextClose": "ok",
+    "browserServerClose": "ok",
+    "childExit": "ok",
+    "childClose": "ok",
+    "clientDisconnect": "ok",
+    "staticServerClose": "ok",
+    "portReleased": "ok"
+  },
+  "profileAbsent": true,
+  "childExitObserved": true,
+  "childCloseObserved": true,
+  "knownPidStillAliveCount": 0,
+  "knownPidScope": "bounded root and direct children only; not a global browser inventory",
+  "workElapsedMs": 9530,
+  "cleanupElapsedMs": 5619,
+  "totalElapsedMs": 15149,
+  "budgetsMet": true,
+  "externalRequestsSucceeded": 0,
+  "pageErrors": [],
+  "httpErrors": [],
+  "sourceHeadStoredExact": true,
+  "sourceHeadDedicatedUiField": false,
+  "globalValidator": "FAIL_L46_GITHUB_SNAPSHOT_REFERENCE_MISMATCH",
+  "overlayValidation": "PASS_LIMITED",
+  "coveragePassed": false,
+  "formalParentCompletion": false,
+  "images": [
+    {
+      "path": "docs/evidence/CMP-261108-2026/f588-board-new-three.png",
+      "sha256": "d5e24148653bd215e66cd5dcbb8c237d71459571ca6c95dcb3063076591fd700"
+    },
+    {
+      "path": "docs/evidence/CMP-261108-2026/f588-board-drawer-1.png",
+      "sha256": "1e98854a3d5478d885bfb15a8544526d7cc604b390fad6ca348834d620c34ddb"
+    },
+    {
+      "path": "docs/evidence/CMP-261108-2026/f588-board-drawer-2.png",
+      "sha256": "d1e560b04a9bd60da2da311780e96982caebd5d051ec9cf55c534e39b66bd5ba"
+    },
+    {
+      "path": "docs/evidence/CMP-261108-2026/f588-board-drawer-3.png",
+      "sha256": "24ea044dc00fa570fd55ec068d1beb4bb7ab47aabffea4d75edde7e20fcac5b5"
+    }
+  ],
+  "previousAttempt": "v1 raw/PNG retained externally; drawer and overview captures during transitions are not visual evidence and are not a product defect."
+}
