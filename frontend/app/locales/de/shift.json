@@ -165,7 +165,9 @@
       "saveSuccess": "Slot gespeichert",
       "deleteSuccess": "Slot gelöscht",
       "assignmentMasked": "In Abstimmung",
-      "assignmentMaskedHint": "Zuweisungen werden bis zur Veröffentlichung ausgeblendet"
+      "assignmentMaskedHint": "Zuweisungen werden bis zur Veröffentlichung ausgeblendet",
+      "deleteTitle": "Schichtzeit löschen",
+      "deleteConfirm": "Diese Schichtzeit löschen? Dafür eingereichte Wünsche werden nicht mehr in der Wunschliste und im persönlichen Verlauf angezeigt. Dies kann über die üblichen Funktionen nicht rückgängig gemacht werden."
     },
     "requests": {
       "submissionRate": "Einreichungsquote",

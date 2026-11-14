@@ -179,7 +179,9 @@
       "saveSuccess": "Slot saved",
       "deleteSuccess": "Slot deleted",
       "assignmentMasked": "In adjustment",
-      "assignmentMaskedHint": "Assignments are hidden until the shift is published"
+      "assignmentMaskedHint": "Assignments are hidden until the shift is published",
+      "deleteTitle": "Delete shift slot",
+      "deleteConfirm": "Delete this slot? Requests submitted for this slot will no longer appear in the request list or personal history. This cannot be undone through normal operations."
     },
     "requests": {
       "submissionRate": "Submission rate",

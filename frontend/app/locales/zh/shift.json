@@ -165,7 +165,9 @@
       "saveSuccess": "时段已保存",
       "deleteSuccess": "时段已删除",
       "assignmentMasked": "调整中",
-      "assignmentMaskedHint": "公开前不显示排班分配"
+      "assignmentMaskedHint": "公开前不显示排班分配",
+      "deleteTitle": "删除排班时段",
+      "deleteConfirm": "确定删除此时段吗？为此时段提交的意愿将不再显示在意愿列表和本人的提交记录中。此操作无法通过常规操作撤销。"
     },
     "requests": {
       "submissionRate": "提交率",
