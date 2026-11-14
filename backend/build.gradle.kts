@@ -3,7 +3,7 @@ plugins {
     jacoco
     id("org.springframework.boot") version "3.5.13"
     id("io.spring.dependency-management") version "1.1.7"
-    id("org.springdoc.openapi-gradle-plugin") version "1.9.0"
+    id("org.springdoc.openapi-gradle-plugin") version "2.1.0"
     // OWASP Dependency-Check: 依存ライブラリの既知 CVE をスキャンする（週次 CI で使用）
     id("org.owasp.dependencycheck") version "12.1.3"
     id("mannschaft.backend-conventions")
