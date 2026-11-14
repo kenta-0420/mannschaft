@@ -2958,6 +2958,7 @@
       "empty": "No pages yet",
       "titleLabel": "Title",
       "slugLabel": "URL slug",
+      "slugHint": "A URL slug is required to save this page.",
       "yearLabel": "Year",
       "visibilityLabel": "Visibility",
       "visibilityPublic": "Public",

@@ -419,8 +419,11 @@ onMounted(loadData)
           <InputText v-model="pageForm.title" class="w-full" />
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium">{{ t('memberProfile.pages.slugLabel') }} *</label>
-          <InputText v-model="pageForm.slug" class="w-full" placeholder="members-2026" />
+          <label for="team-member-page-slug" class="mb-1 block text-sm font-medium">{{ t('memberProfile.pages.slugLabel') }} *</label>
+          <InputText id="team-member-page-slug" v-model="pageForm.slug" class="w-full" placeholder="members-2026" aria-describedby="team-member-page-slug-hint" />
+          <p id="team-member-page-slug-hint" data-testid="member-page-slug-hint" class="mt-1 text-sm text-surface-600 dark:text-surface-300">
+            {{ t('memberProfile.pages.slugHint') }}
+          </p>
         </div>
         <div>
           <label class="mb-1 block text-sm font-medium">{{ t('memberProfile.pages.yearLabel') }}</label>
