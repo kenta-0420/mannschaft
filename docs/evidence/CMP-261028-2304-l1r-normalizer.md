@@ -233,3 +233,11 @@ weightsは、採択済みの成功Nightly run43093835182 attempt2由来・3218�
 残存資産撤去の初回自動審査拒否時はOS実行0だった。既承認の対象・目的・範囲を根拠と照合し、同一source・同一対象の再審査承認後にOS実行1回で完了した。拒否時の未実行を実行済みと数えず、撤去の再送も行っていない。
 
 これはR15所有環境の後始末完了であり、製品認可全体の合格・Signage別P1の解消・最終CI成功・main採用・全残務完了・引継ぎ削除を意味しない。8PRのmain採用後に通常docs PRで最終閉鎖証拠を確定する方針を維持する。
+
+
+### 2026-11-14 DCF2・E011再追従の資格
+
+Core head `29e6cffe1ff89d6a49ecc827f77b2425c183f0c6` の全13CI（[Backend run43576174896](https://github.com/kenta-0420/mannschaft/actions/runs/43576174896)を含む）は成功したが、これは旧headの履歴資格である。その後、main E0の検索IT所有fixture回収（14試験・既存検索assert維持、44行追加/9行削除）と、main `dcf2fd07e8df7ddea77eb1b8d6d28095b61846e8` の別CMP完了文書だけの前進を通常取り込んだ。foreign最新head `e011aa01973251df02e26ef181eb4b1476e5942c` も通常mergeで祖先に含めた。MFAはowner exact blob6327427、正式weightsはblob1e3262を保持し、R14/R15で検証した製品sourceは不変である。新しいCore実headの全CI・current-main/strict・foreign最新headの最終引渡し・main採用は未完で、旧29eや旧ABBの成功を新headへ転用しない。
+
+
+この台帳変更に合わせ、2026-11-14T10:19:16Zに通常GitHub同期806参照を成功させ、正本commit `20fe9166ba635d7e5169c4eee01abf802b48ccea` のraw LF入力からgenerator・validator・overlay自己検証を各1回実行し、全てexit0・不正10例拒否を確認した。台帳は720一意・全7列、raw LF SHA256 `4ee5d37b340f93ee62504b3042f76447ed2f08234733d3827081087f393edbe9` と生成pinが一致する。生成dataはWindows作業木CRLF bytesのSHA256 `202ffe6378ef9ddac2aa6fad213fda1c8ecedcb30dde0c9b7db8d7d0a8ff9c79`、Git正規LF bytesのSHA256 `68a13082c33e2140925583f0a0b3a527e9d88b4279d8c76efea8fdda9cef9e4e` を区別する。変更は生成時刻・source/sync metadataと、CoreのGitHub状態・別CMP0618の完了表示である。累積overlay85/85/154/21の全fieldとHTMLは不変。新bytesの実ボード再実行は行わず、旧自然clock実保存の資格を不変のoverlay/importerへ限定して保持する。親/all164 P4・支援子CMPの未完・Signage別P1を維持する。

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "repository": "kenta-0420/mannschaft",
-  "synchronizedAt": "2026-11-14T08:07:54+00:00",
+  "synchronizedAt": "2026-11-14T10:19:16+00:00",
   "status": "synced",
   "error": null,
   "references": {
@@ -2250,8 +2250,8 @@
     "CMP-261113-1506": [],
     "CMP-261113-1507": [],
     "CMP-261114-0618": [
-      2134,
-      4308
+      4308,
+      4503
     ],
     "CMP-261114-0713": []
   },
@@ -2807,20 +2807,6 @@
       "title": "機能追加: 個人ダッシュボード集約タイムライン（所属team/org横断・/api/v1/timeline/my 新設）",
       "url": "https://github.com/kenta-0420/mannschaft/pull/2041",
       "updatedAt": "2026-06-30T23:13:07Z",
-      "ci": {
-        "status": "unavailable",
-        "reason": "終了済みPRのCIは同期対象外",
-        "checks": [],
-        "source": "GraphQL statusCheckRollup"
-      }
-    },
-    "2134": {
-      "number": 2134,
-      "kind": "pull_request",
-      "state": "merged",
-      "title": "修正(マッチング認可): 募集・応募・NGの認可漏れ/IDOR/所有権誤比較を一括根治",
-      "url": "https://github.com/kenta-0420/mannschaft/pull/2134",
-      "updatedAt": "2026-07-05T05:11:09Z",
       "ci": {
         "status": "unavailable",
         "reason": "終了済みPRのCIは同期対象外",
@@ -12590,7 +12576,7 @@
       "state": "open",
       "title": "L1-R初回名称正規化と支援修復の統合",
       "url": "https://github.com/kenta-0420/mannschaft/pull/4352",
-      "updatedAt": "2026-11-14T07:50:58Z",
+      "updatedAt": "2026-11-14T08:39:13Z",
       "ci": {
         "status": "success",
         "checks": [],
@@ -13133,6 +13119,20 @@
       "title": "修正: 会員証のQR再生成後にQRが消えたままになる（CMP-261112-2225）",
       "url": "https://github.com/kenta-0420/mannschaft/pull/4499",
       "updatedAt": "2026-11-13T05:59:48Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "4503": {
+      "number": 4503,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "修正: キーワード検索ITの所有fixtureを回収（CMP-261114-0618）",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/4503",
+      "updatedAt": "2026-11-14T09:52:18Z",
       "ci": {
         "status": "unavailable",
         "reason": "終了済みPRのCIは同期対象外",

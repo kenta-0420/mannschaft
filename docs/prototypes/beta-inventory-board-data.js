@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-11-14T08:12:03+00:00",
+  "generatedAt": "2026-11-14T10:20:56+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,13 +8,13 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "d61097a49227386d8b4044a2a6ced72fade5b50a",
-    "taskListCommit": "81070cd79e636d57b4fe56c1675efd44be725ab9",
+    "taskListCommit": "20fe9166ba635d7e5169c4eee01abf802b48ccea",
     "inventorySha256": "b0a1f97197840c865756a40f12f577cfeb10aa8083dc95f2932f7b3a7f90528a",
-    "taskListSha256": "8f67c394b35b6030a0c455e56c6fda26606bea34fa0638957df3f79be653cb5d",
+    "taskListSha256": "4ee5d37b340f93ee62504b3042f76447ed2f08234733d3827081087f393edbe9",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
-    "githubSnapshotSha256": "0b2aa7b1116d2ab118b8a3728845e7d256fbb2ea4a7ebb7680c92846ad4ac1a8"
+    "githubSnapshotSha256": "096fd8b9d19ae8bcbb692b2d3d8aed03b6bc9e3e55c4235b62c344a9cdd66234"
   },
   "sourceCounts": {
     "features": 44,
@@ -60395,7 +60395,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "L1-R初回名称正規化と支援修復の統合",
           "url": "https://github.com/kenta-0420/mannschaft/pull/4352",
-          "updatedAt": "2026-11-14T07:50:58Z",
+          "updatedAt": "2026-11-14T08:39:13Z",
           "ci": {
             "status": "success",
             "checks": [],
@@ -67521,8 +67521,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261114-0618",
       "title": "キーワード検索ITのcommit済みfixture残留を根治",
-      "status": "working",
-      "statusLabel": "P2 実装中",
+      "status": "done",
+      "statusLabel": "P2 完了（2026-11-14）",
       "stage": "未設定",
       "priority": "未設定",
       "taskPriority": "P2",
@@ -67537,16 +67537,16 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "PR #4308 のCI run43352034582 shard2で整合性IT5失敗。検索ITは導入PR #2134のfixture後始末の追補。原因候補はsourceで確認、CI実加算行とローカルred/greenは未実証。実機/探索はtest-onlyで製品導線変更がないため対象外",
+          "label": "PR #4503 / [完了証拠](evidence/CMP-261114-0618.json)。controlled red検索14成功→整合性5失敗、v3正常20成功・故障3意図失敗・所有残留0。同一実装headのBackend CI run43571979399成功（通常33,310件、成功33,293・skip17）",
           "state": "unknown"
         }
       ],
       "prs": [
-        "PR #4308 のCI run43352034582 shard2で整合性IT5失敗。検索ITは導入PR #2134のfixture後始末の追補。原因候補はsourceで確認、CI実加算行とローカルred/greenは未実証。実機/探索はtest-onlyで製品導線変更がないため対象外"
+        "PR #4503 / [完了証拠](evidence/CMP-261114-0618.json)。controlled red検索14成功→整合性5失敗、v3正常20成功・故障3意図失敗・所有残留0。同一実装headのBackend CI run43571979399成功（通常33,310件、成功33,293・skip17）"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "正式親の限定探索で該当行なし。採用済み戦役を再開せず独立追跡。red実証不成立なら修正へ進めない。本番作成・変更・deploy禁止"
+        "所有IDだけ回収し他fixture保護5行不変・SecurityContext復元17件。test-onlyのため実機/探索はN/A（理由は完了証拠）。PR #4308のCI当初の実加算row IDは未特定。製品挙動の実機・探索を代替しない。本番操作なし"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -67581,27 +67581,13 @@ window.BETA_INVENTORY_DATA = {
         "deadline"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
       "githubRefs": [
-        2134,
-        4308
+        4308,
+        4503
       ],
       "github": [
-        {
-          "number": 2134,
-          "kind": "pull_request",
-          "state": "merged",
-          "title": "修正(マッチング認可): 募集・応募・NGの認可漏れ/IDOR/所有権誤比較を一括根治",
-          "url": "https://github.com/kenta-0420/mannschaft/pull/2134",
-          "updatedAt": "2026-07-05T05:11:09Z",
-          "ci": {
-            "status": "unavailable",
-            "reason": "終了済みPRのCIは同期対象外",
-            "checks": [],
-            "source": "GraphQL statusCheckRollup"
-          }
-        },
         {
           "number": 4308,
           "kind": "pull_request",
@@ -67611,6 +67597,20 @@ window.BETA_INVENTORY_DATA = {
           "updatedAt": "2026-11-14T03:55:02Z",
           "ci": {
             "status": "failure",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 4503,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: キーワード検索ITの所有fixtureを回収（CMP-261114-0618）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4503",
+          "updatedAt": "2026-11-14T09:52:18Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
@@ -67666,7 +67666,7 @@ window.BETA_INVENTORY_DATA = {
   "githubSync": {
     "schemaVersion": 1,
     "repository": "kenta-0420/mannschaft",
-    "synchronizedAt": "2026-11-14T08:07:54+00:00",
+    "synchronizedAt": "2026-11-14T10:19:16+00:00",
     "status": "synced",
     "error": null,
     "references": {
@@ -69915,8 +69915,8 @@ window.BETA_INVENTORY_DATA = {
       "CMP-261113-1506": [],
       "CMP-261113-1507": [],
       "CMP-261114-0618": [
-        2134,
-        4308
+        4308,
+        4503
       ],
       "CMP-261114-0713": []
     },
@@ -70472,20 +70472,6 @@ window.BETA_INVENTORY_DATA = {
         "title": "機能追加: 個人ダッシュボード集約タイムライン（所属team/org横断・/api/v1/timeline/my 新設）",
         "url": "https://github.com/kenta-0420/mannschaft/pull/2041",
         "updatedAt": "2026-06-30T23:13:07Z",
-        "ci": {
-          "status": "unavailable",
-          "reason": "終了済みPRのCIは同期対象外",
-          "checks": [],
-          "source": "GraphQL statusCheckRollup"
-        }
-      },
-      "2134": {
-        "number": 2134,
-        "kind": "pull_request",
-        "state": "merged",
-        "title": "修正(マッチング認可): 募集・応募・NGの認可漏れ/IDOR/所有権誤比較を一括根治",
-        "url": "https://github.com/kenta-0420/mannschaft/pull/2134",
-        "updatedAt": "2026-07-05T05:11:09Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -80255,7 +80241,7 @@ window.BETA_INVENTORY_DATA = {
         "state": "open",
         "title": "L1-R初回名称正規化と支援修復の統合",
         "url": "https://github.com/kenta-0420/mannschaft/pull/4352",
-        "updatedAt": "2026-11-14T07:50:58Z",
+        "updatedAt": "2026-11-14T08:39:13Z",
         "ci": {
           "status": "success",
           "checks": [],
@@ -80804,12 +80790,26 @@ window.BETA_INVENTORY_DATA = {
           "checks": [],
           "source": "GraphQL statusCheckRollup"
         }
+      },
+      "4503": {
+        "number": 4503,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: キーワード検索ITの所有fixtureを回収（CMP-261114-0618）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4503",
+        "updatedAt": "2026-11-14T09:52:18Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
       }
     },
     "lastAttempt": {
       "status": "synced",
       "error": null,
-      "synchronizedAt": "2026-11-14T08:07:54+00:00",
+      "synchronizedAt": "2026-11-14T10:19:16+00:00",
       "referenceCount": 806
     }
   }
