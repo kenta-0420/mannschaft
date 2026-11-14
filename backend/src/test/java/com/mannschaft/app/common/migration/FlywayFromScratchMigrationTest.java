@@ -1,10 +1,14 @@
 package com.mannschaft.app.common.migration;
 
+import com.mannschaft.app.common.EncryptionService;
+import com.mannschaft.app.common.EncryptionServiceHolder;
 import com.mannschaft.app.common.UuidV7;
 import com.mannschaft.app.common.entity.UuidV7Entity;
 import com.mannschaft.app.gdpr.entity.AccountPurgeCompletionStatusEntity;
 import com.mannschaft.app.circulation.RecipientStatus;
 import com.mannschaft.app.circulation.entity.CirculationRecipientEntity;
+import com.mannschaft.app.school.entity.FamilyAttendanceNoticeEntity;
+import com.mannschaft.app.school.entity.FamilyNoticeType;
 import com.mannschaft.app.committee.entity.CommitteeDistributionLogEntity;
 import com.mannschaft.app.committee.entity.ConfirmationMode;
 import com.mannschaft.app.committee.entity.DistributionScope;
@@ -18,6 +22,7 @@ import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.output.MigrateResult;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
 import org.hibernate.boot.Metadata;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy;
@@ -52,9 +57,11 @@ import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.MySQLContainer;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -67,6 +74,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -129,6 +138,10 @@ class FlywayFromScratchMigrationTest {
 
     /** Entity 走査の起点パッケージ。 */
     private static final String ENTITY_BASE_PACKAGE = "com.mannschaft.app";
+    private static final Pattern MYSQL_VARCHAR_COLUMN_TYPE =
+            Pattern.compile("^varchar\\s*\\(\\s*(\\d+)\\s*\\)$");
+    private static final Pattern MAPPED_VARCHAR_SQL_TYPE =
+            Pattern.compile("^varchar\\s*\\(\\s*(\\d+)\\s*\\)", Pattern.CASE_INSENSITIVE);
 
     /**
      * <b>既知の未返済ドリフト台帳 — 空であること（2026-09-29 全額返済・CMP-260924-0010）</b>
@@ -270,9 +283,13 @@ class FlywayFromScratchMigrationTest {
      * <p>本テストはそこで、Hibernate 自身が構築した {@link Metadata}
      * （＝ Spring Boot と同じ {@link CamelCaseToUnderscoresNamingStrategy} /
      * {@link SpringImplicitNamingStrategy} を適用した、権威ある物理名）を使い、
-     * <b>テーブル・列の「存在」だけ</b>を全件突き合わせる。
-     * これは本番を壊す事故（{@code Unknown column}）を過不足なく捕らえつつ、
-     * 型ノイズを持ち込まず、違反を一度に全件列挙できる。</p>
+     * <b>テーブル・列の存在と、実スキーマで VARCHAR と判明した列の長さ</b>を全件突き合わせる。
+     * VARCHAR 長は Entity の {@link Column#getLength()} が実 VARCHAR 長を超える場合だけ違反とする。
+     * CHAR / TEXT / ENUM 等は長さ比較の対象外だが、型が未取得・解釈不能な場合は診断する。</p>
+     *
+     * <p>CMP-260930-2313 の長さ照合は、既存の {@code Namespace → Table → Column} 物理表巡回が持つ
+     * effective metadata の範囲に限る。将来の複数宣言の最大長保証や別の Value walker は行わない。
+     * 同一物理列の宣言集約等、現在の巡回で表現できない範囲はこの番人の保証外である。</p>
      *
      * <h2>Spring コンテキストは起動しない</h2>
      * <p>{@code MetadataSources} を直接組み立てるため {@code @SpringBootTest} は不要。
@@ -282,11 +299,12 @@ class FlywayFromScratchMigrationTest {
      */
     @Test
     @Order(2)
-    @DisplayName("全Entityのマッピング列がFlyway実スキーマに存在する（Unknown column 事故の番人）")
+    @DisplayName("全Entityのマッピング列の存在とVARCHAR長がFlyway実スキーマと一致する")
     void 全Entityのマッピング列がFlywayスキーマに存在する() throws Exception {
         // given: Flyway 実スキーマ（単独実行にも耐えるよう冪等に再適用。適用済みなら no-op）
         migrateFromScratch();
         Map<String, Set<String>> actualSchema = readActualSchema();
+        Map<String, Map<String, String>> actualTypes = readActualColumnTypes();
 
         StandardServiceRegistry registry = buildServiceRegistry();
         try {
@@ -294,35 +312,61 @@ class FlywayFromScratchMigrationTest {
 
             // when: Entity 由来の物理テーブル / 列を実スキーマと突き合わせる
             List<String> violations = new ArrayList<>();
+            int entityCount = metadata.getEntityBindings().size();
+            int physicalTableCount = 0;
+            int mappedColumnCount = 0;
+            int actualVarcharColumnCount = 0;
             for (Namespace namespace : metadata.getDatabase().getNamespaces()) {
                 for (org.hibernate.mapping.Table table : namespace.getTables()) {
                     // @Subselect / ビューマッピング（例: RepairFundBalanceView）は実テーブルではない
                     if (!table.isPhysicalTable()) {
                         continue;
                     }
+                    physicalTableCount++;
                     String tableName = table.getName().toLowerCase(Locale.ROOT);
                     Set<String> actualColumns = actualSchema.get(tableName);
                     if (actualColumns == null) {
                         violations.add(tableName + " … テーブルが Flyway スキーマに存在しない");
-                        continue;
                     }
                     for (Column column : table.getColumns()) {
+                        mappedColumnCount++;
                         String key = tableName + "." + column.getName().toLowerCase(Locale.ROOT);
-                        if (!actualColumns.contains(column.getName().toLowerCase(Locale.ROOT))
+                        if (actualColumns != null
+                                && !actualColumns.contains(column.getName().toLowerCase(Locale.ROOT))
                                 && !KNOWN_UNPAID_DRIFT.contains(key)) {
                             violations.add(key);
+                        }
+                        String actualType = actualTypes.getOrDefault(tableName, Map.of()).get(
+                                column.getName().toLowerCase(Locale.ROOT));
+                        if (actualType != null && actualType.trim().toLowerCase(Locale.ROOT).startsWith("varchar")) {
+                            actualVarcharColumnCount++;
+                        }
+                        String varcharViolation = varcharLengthViolation(key, column, actualType, metadata);
+                        if (varcharViolation != null) {
+                            violations.add(varcharViolation);
                         }
                     }
                 }
             }
 
+            System.out.println("[CMP2313] effective metadata inventory: entities=" + entityCount
+                    + ", physicalTables=" + physicalTableCount
+                    + ", mappedColumns=" + mappedColumnCount
+                    + ", actualVarcharColumns=" + actualVarcharColumnCount);
+
             // then: 凍結済みの既知ドリフト以外は 1 件も存在しない
             if (!violations.isEmpty()) {
                 violations.sort(String::compareTo);
                 StringBuilder sb = new StringBuilder();
-                sb.append("Entity がマップしている列 / テーブルが Flyway スキーマに存在しません。\n")
+                sb.append("Entity metadata と Flyway 実スキーマの存在 / VARCHAR 長が一致しません。\n")
                   .append("Flyway で構築した環境（本番・staging・新規開発環境）では Hibernate が\n")
-                  .append("存在しない列を含む SQL を発行し、Unknown column で当該ドメインの API が全滅します。\n")
+                  .append("存在しない列による Unknown column や VARCHAR 長不足による Data too long で\n")
+                  .append("当該ドメインの API が失敗します。\n")
+                  .append("VARCHAR 長違反は Entity 宣言長が実 DB 長を超えた列、または長さを解釈できない列です。\n")
+                  .append("CMP-260930-2313 effective metadata 棚卸し: entities=").append(entityCount)
+                  .append(", physicalTables=").append(physicalTableCount)
+                  .append(", mappedColumns=").append(mappedColumnCount)
+                  .append(", actualVarcharColumns=").append(actualVarcharColumnCount).append("\n")
                   .append("対処は次のいずれか（ドメインの設計判断）:\n")
                   .append("  (a) Flyway に ALTER TABLE ... ADD COLUMN の migration を追加する\n")
                   .append("      （採番規約は CLAUDE.md / backend/.claudecode.md §18）\n")
@@ -334,6 +378,10 @@ class FlywayFromScratchMigrationTest {
                 }
                 fail(sb.toString());
             }
+            assertThat(entityCount).as("CMP-260930-2313: Entity metadata を走査している").isPositive();
+            assertThat(physicalTableCount).as("CMP-260930-2313: 物理 Table metadata を走査している").isPositive();
+            assertThat(mappedColumnCount).as("CMP-260930-2313: Column metadata を走査している").isPositive();
+            assertThat(actualVarcharColumnCount).as("CMP-260930-2313: 実VARCHAR列を比較している").isPositive();
         } finally {
             StandardServiceRegistryBuilder.destroy(registry);
         }
@@ -610,6 +658,283 @@ class FlywayFromScratchMigrationTest {
     }
 
     // ==================================================================
+    // CMP-260930-2313: VARCHAR 長 guard の比較単位テスト
+    // ==================================================================
+    @Test
+    @DisplayName("CMP-260930-2313: 宣言長より短い実VARCHARを検出する")
+    void varcharLengthGuardは宣言長より短い実DB長を違反にする() {
+        Column column = new Column("fixture_column");
+        column.setLength(10L);
+
+        assertThat(varcharLengthViolation("fixture_table.fixture_column", column, "varchar(9)"))
+                .as("Entity宣言長10より短い実VARCHAR長9は違反")
+                .isEqualTo("fixture_table.fixture_column … Entity effective VARCHAR length 10 / DB VARCHAR length 9");
+        assertThat(varcharLengthViolation("fixture_table.fixture_column", column, "varchar(10)"))
+                .as("同じ長さは違反でない")
+                .isNull();
+        assertThat(varcharLengthViolation("fixture_table.fixture_column", column, "varchar(11)"))
+                .as("DB側が長い場合は違反でない")
+                .isNull();
+        assertThat(varcharLengthViolation("fixture_table.fixture_column", column, "char(10)"))
+                .as("実DBがVARCHARでない列は対象外")
+                .isNull();
+        assertThat(varcharLengthViolation("fixture_table.fixture_column", column, "text"))
+                .as("TEXT列は対象外")
+                .isNull();
+        assertThat(varcharLengthViolation("fixture_table.fixture_column", column, "enum('a','b')"))
+                .as("ENUM列は対象外")
+                .isNull();
+        Column unknownLength = new Column("fixture_column");
+        unknownLength.setLength((Long) null);
+        assertThat(varcharLengthViolation("fixture_table.fixture_column", unknownLength, "varchar(10)"))
+                .as("VARCHAR列のEntity length nullはkey付き診断")
+                .isEqualTo("fixture_table.fixture_column … Entity effective VARCHAR length が未解決 (null)");
+        Column nonPositiveLength = new Column("fixture_column");
+        nonPositiveLength.setLength(0L);
+        assertThat(varcharLengthViolation("fixture_table.fixture_column", nonPositiveLength, "varchar(10)"))
+                .as("VARCHAR列のEntity長0はkey付き診断")
+                .isEqualTo("fixture_table.fixture_column … Entity effective VARCHAR length が未解決 (0)");
+        assertThat(varcharLengthViolation("fixture_table.fixture_column", column, "varchar(?)"))
+                .as("不正なVARCHAR表記はkey付き診断")
+                .isEqualTo("fixture_table.fixture_column … DB COLUMN_TYPE を解釈できない (varchar(?))");
+        assertThat(varcharLengthViolation("fixture_table.fixture_column", column, "varchar(0)"))
+                .as("0長のVARCHARはkey付き診断")
+                .isEqualTo("fixture_table.fixture_column … DB VARCHAR 長が不正 (0)");
+        assertThat(varcharLengthViolation("fixture_table.fixture_column", column, null))
+                .as("型未取得はkey付き診断")
+                .isEqualTo("fixture_table.fixture_column … DB COLUMN_TYPE が未取得");
+        assertThat(varcharLengthViolation("fixture_table.fixture_column", column, "  "))
+                .as("空の型はkey付き診断")
+                .isEqualTo("fixture_table.fixture_column … DB COLUMN_TYPE が未取得");
+    }
+
+    @Test
+    @DisplayName("CMP-260930-2313: 実bootの暗黙String長はMySQL実効255で比較する")
+    void varcharLengthGuardは実bootの暗黙Stringを実効長で比較する() {
+        StandardServiceRegistry registry = varcharLengthFixtureRegistry();
+        try {
+            Metadata metadata = varcharLengthFixtureMetadata(registry);
+            Column column = varcharLengthFixtureColumn(metadata, "implicit_value");
+            assertThat(column.getLength()).as("暗黙Stringのraw lengthは未設定").isNull();
+            assertThat(column.getColumnSize(new MySQLDialect(), metadata).getLength())
+                    .as("Hibernateの型とMySQL方言が解決する暗黙長").isEqualTo(255L);
+            org.assertj.core.api.SoftAssertions.assertSoftly(softly -> {
+                softly.assertThat(varcharLengthViolation("varchar_length_fixture.implicit_value", column, "varchar(255)", metadata))
+                        .as("実効長と同じDB255は正常").isNull();
+                softly.assertThat(varcharLengthViolation("varchar_length_fixture.implicit_value", column, "varchar(254)", metadata))
+                        .as("実効長より1短いDB254はkey付き違反")
+                        .isEqualTo("varchar_length_fixture.implicit_value … Entity effective VARCHAR length 255 / DB VARCHAR length 254");
+            });
+        } finally {
+            StandardServiceRegistryBuilder.destroy(registry);
+        }
+    }
+
+    @Test
+    @DisplayName("CMP-260930-2313: 実bootの明示VARCHAR宣言幅をraw既定長より優先する")
+    void varcharLengthGuardは実bootの明示VARCHAR宣言幅を比較する() {
+        StandardServiceRegistry registry = varcharLengthFixtureRegistry();
+        try {
+            Metadata metadata = varcharLengthFixtureMetadata(registry);
+            Column column = varcharLengthFixtureColumn(metadata, "explicit_value");
+            assertThat(column.getLength()).as("明示DDLでもraw lengthはJPA既定値").isEqualTo(255L);
+            assertThat(column.getSqlType()).as("実bootが保持した明示DDL").isEqualTo("VARCHAR(10)");
+            org.assertj.core.api.SoftAssertions.assertSoftly(softly -> {
+                softly.assertThat(varcharLengthViolation("varchar_length_fixture.explicit_value", column, "varchar(10)", metadata))
+                        .as("宣言したDB10は正常").isNull();
+                softly.assertThat(varcharLengthViolation("varchar_length_fixture.explicit_value", column, "varchar(9)", metadata))
+                        .as("宣言幅より1短いDB9はkey付き違反")
+                        .isEqualTo("varchar_length_fixture.explicit_value … Entity effective VARCHAR length 10 / DB VARCHAR length 9");
+            });
+        } finally {
+            StandardServiceRegistryBuilder.destroy(registry);
+        }
+    }
+
+    @Test
+    @DisplayName("CMP-260930-2313: 実bootのreadonly生成列も明示VARCHAR幅で比較する")
+    void varcharLengthGuardは実bootのreadonly生成列を明示幅で比較する() {
+        StandardServiceRegistry registry = varcharLengthFixtureRegistry();
+        try {
+            Metadata metadata = varcharLengthFixtureMetadata(registry);
+            Column column = varcharLengthFixtureColumn(metadata, "generated_value");
+            Property property = metadata.getEntityBinding(VarcharLengthFixture.class.getName())
+                    .getProperty("generatedValue");
+            assertThat(property.isInsertable()).isFalse();
+            assertThat(property.isUpdateable()).isFalse();
+            assertThat(column.getLength()).as("readonly生成列もraw lengthはJPA既定値").isEqualTo(255L);
+            assertThat(column.getSqlType()).as("生成式を含む実bootの明示DDL")
+                    .isEqualTo("VARCHAR(100) GENERATED ALWAYS AS (trim(explicit_value)) STORED");
+            org.assertj.core.api.SoftAssertions.assertSoftly(softly -> {
+                softly.assertThat(varcharLengthViolation("varchar_length_fixture.generated_value", column, "varchar(100)", metadata))
+                        .as("readonlyでも宣言したDB100は正常").isNull();
+                softly.assertThat(varcharLengthViolation("varchar_length_fixture.generated_value", column, "varchar(99)", metadata))
+                        .as("readonlyを一律skipせずDB99の不足を検出する")
+                        .isEqualTo("varchar_length_fixture.generated_value … Entity effective VARCHAR length 100 / DB VARCHAR length 99");
+            });
+        } finally {
+            StandardServiceRegistryBuilder.destroy(registry);
+        }
+    }
+
+    @Test
+    @DisplayName("CMP-260930-2313: family attendanceのreason_detailは最大1000文字を暗号化保存して復号できる")
+    void familyAttendanceReasonDetailは最大1000文字を暗号化保存して復号できる() throws Exception {
+        migrateFromScratch();
+
+        EncryptionService previousHolderValue = EncryptionServiceHolder.peek();
+        EncryptionServiceHolder.set(new EncryptionService(
+                "0123456789abcdef0123456789abcdef".getBytes(StandardCharsets.UTF_8),
+                "fedcba9876543210fedcba9876543210".getBytes(StandardCharsets.UTF_8)));
+        try {
+            try (SessionFactory sf = sessionFactory(FamilyAttendanceNoticeEntity.class)) {
+                String shortValue = "欠席連絡";
+                Long shortId = persistFamilyAttendanceNotice(sf, shortValue);
+                String shortCiphertext = readFamilyAttendanceReasonCiphertext(shortId);
+                assertThat(shortCiphertext)
+                        .as("短いreason_detailも暗号文で保存される")
+                        .isNotNull()
+                        .isNotEqualTo(shortValue);
+                assertThat(shortCiphertext.length())
+                        .as("短い値は暗号形式の長さで保存される")
+                        .isEqualTo(encryptedBase64Length(shortValue));
+                assertThat(loadFamilyAttendanceReasonDetail(sf, shortId)).isEqualTo(shortValue);
+
+                String maximumValue = "あ".repeat(1000);
+                assertThat(maximumValue.length()).as("BMP文字数は1000").isEqualTo(1000);
+                int maximumUtf8Bytes = maximumValue.getBytes(StandardCharsets.UTF_8).length;
+                assertThat(maximumUtf8Bytes).as("UTF-8では3000 bytes").isEqualTo(3000);
+
+                Long maximumId = persistFamilyAttendanceNotice(sf, maximumValue);
+                String maximumCiphertext = readFamilyAttendanceReasonCiphertext(maximumId);
+                assertThat(maximumCiphertext)
+                        .as("保存値は暗号文であり平文ではない")
+                        .isNotNull()
+                        .isNotEqualTo(maximumValue);
+                assertThat(maximumCiphertext.length())
+                        .as("IV 12 bytes + GCM tag 16 bytes + UTF-8 3000 bytesをBase64化した4040文字")
+                        .isEqualTo(4040);
+                assertThat(maximumCiphertext.length()).isEqualTo(encryptedBase64Length(maximumValue));
+                assertThat(loadFamilyAttendanceReasonDetail(sf, maximumId)).isEqualTo(maximumValue);
+            }
+        } finally {
+            EncryptionServiceHolder.set(previousHolderValue);
+        }
+    }
+
+    private static Long persistFamilyAttendanceNotice(SessionFactory sf, String reasonDetail) {
+        try (Session session = sf.openSession()) {
+            Transaction transaction = session.beginTransaction();
+            FamilyAttendanceNoticeEntity notice = FamilyAttendanceNoticeEntity.builder()
+                    .teamId(1L)
+                    .studentUserId(1L)
+                    .submitterUserId(1L)
+                    .attendanceDate(java.time.LocalDate.of(2026, 11, 10))
+                    .noticeType(FamilyNoticeType.ABSENCE)
+                    .reasonDetail(reasonDetail)
+                    .build();
+            try {
+                session.persist(notice);
+                transaction.commit();
+                return notice.getId();
+            } catch (RuntimeException failure) {
+                if (transaction.isActive()) {
+                    try {
+                        transaction.rollback();
+                    } catch (RuntimeException rollbackFailure) {
+                        failure.addSuppressed(rollbackFailure);
+                    }
+                }
+                throw failure;
+            }
+        }
+    }
+
+    private static String readFamilyAttendanceReasonCiphertext(Long id) throws SQLException {
+        try (Connection connection = connect();
+             PreparedStatement statement = connection.prepareStatement(
+                     "SELECT reason_detail FROM family_attendance_notices WHERE id = ?")) {
+            statement.setLong(1, id);
+            try (ResultSet result = statement.executeQuery()) {
+                assertThat(result.next()).as("保存済みfamily noticeが1件").isTrue();
+                String ciphertext = result.getString(1);
+                assertThat(result.next()).as("同じIDの行は1件").isFalse();
+                return ciphertext;
+            }
+        }
+    }
+
+    private static String loadFamilyAttendanceReasonDetail(SessionFactory sf, Long id) {
+        try (Session session = sf.openSession()) {
+            FamilyAttendanceNoticeEntity notice = session.find(FamilyAttendanceNoticeEntity.class, id);
+            assertThat(notice).as("別Sessionからfamily noticeを読み出せる").isNotNull();
+            return notice.getReasonDetail();
+        }
+    }
+
+    private static int encryptedBase64Length(String plainText) {
+        int plainTextBytes = plainText.getBytes(StandardCharsets.UTF_8).length;
+        return 4 * ((plainTextBytes + 12 + 16 + 2) / 3);
+    }
+
+    /** 接続先を設定せず、JDBC metadata取得も無効にしてMySQL方言だけを明示する。 */
+    private static StandardServiceRegistry varcharLengthFixtureRegistry() {
+        return new StandardServiceRegistryBuilder()
+                .applySetting(AvailableSettings.DIALECT, MySQLDialect.class.getName())
+                .applySetting(AvailableSettings.ALLOW_METADATA_ON_BOOT, false)
+                .build();
+    }
+
+    /** 手製Columnではなく、検体だけを明示登録した実Hibernate bootのmetadataを用いる。 */
+    private static Metadata varcharLengthFixtureMetadata(StandardServiceRegistry registry) {
+        assertThat(isFromTestSourceSet(VarcharLengthFixture.class))
+                .as("検体は本番全Entity走査から除外されるテストソースセットに置く").isTrue();
+        return new MetadataSources(registry)
+                .addAnnotatedClass(VarcharLengthFixture.class)
+                .getMetadataBuilder()
+                .applyPhysicalNamingStrategy(new CamelCaseToUnderscoresNamingStrategy())
+                .applyImplicitNamingStrategy(new SpringImplicitNamingStrategy())
+                .build();
+    }
+
+    /** 本番番人と同じNamespace→Table→Columnから検体列を取得する（別Value walkerは作らない）。 */
+    private static Column varcharLengthFixtureColumn(Metadata metadata, String columnName) {
+        List<Column> matches = new ArrayList<>();
+        for (Namespace namespace : metadata.getDatabase().getNamespaces()) {
+            for (org.hibernate.mapping.Table table : namespace.getTables()) {
+                if (!table.isPhysicalTable() || !"varchar_length_fixture".equals(table.getName())) {
+                    continue;
+                }
+                for (Column column : table.getColumns()) {
+                    if (columnName.equals(column.getName())) {
+                        matches.add(column);
+                    }
+                }
+            }
+        }
+        assertThat(matches).as("実bootの検体列 %s が一意に存在する", columnName).hasSize(1);
+        return matches.getFirst();
+    }
+
+    /** 本番scanには登録せず、上のmetadata構築だけに明示登録する検体。DDL実行や永続化はしない。 */
+    @Entity
+    @jakarta.persistence.Table(name = "varchar_length_fixture")
+    private static class VarcharLengthFixture {
+        @jakarta.persistence.Id
+        Long id;
+
+        String implicitValue;
+
+        @jakarta.persistence.Column(columnDefinition = "VARCHAR(10)")
+        String explicitValue;
+
+        @jakarta.persistence.Column(
+                columnDefinition = "VARCHAR(100) GENERATED ALWAYS AS (trim(explicit_value)) STORED",
+                insertable = false, updatable = false)
+        String generatedValue;
+    }
+
+    // ==================================================================
     // AC-7（CMP-260929-0654）: Entity の UUID 列の型と Flyway 実スキーマの列型の一致
     // ==================================================================
 
@@ -882,6 +1207,71 @@ class FlywayFromScratchMigrationTest {
         return copy;
     }
 
+    private static String varcharLengthViolation(String key, Column column, String actualColumnType) {
+        return varcharLengthViolation(key, column, actualColumnType, null);
+    }
+
+    private static String varcharLengthViolation(String key, Column column, String actualColumnType,
+                                                 Metadata metadata) {
+        if (actualColumnType == null || actualColumnType.isBlank()) {
+            return key + " … DB COLUMN_TYPE が未取得";
+        }
+        String normalizedType = actualColumnType.trim().toLowerCase(Locale.ROOT);
+        if (!normalizedType.startsWith("varchar")) {
+            return null;
+        }
+
+        Matcher matcher = MYSQL_VARCHAR_COLUMN_TYPE.matcher(normalizedType);
+        if (!matcher.matches()) {
+            return key + " … DB COLUMN_TYPE を解釈できない (" + normalizedType + ")";
+        }
+        long actualLength;
+        try {
+            actualLength = Long.parseLong(matcher.group(1));
+        } catch (NumberFormatException e) {
+            return key + " … DB COLUMN_TYPE を解釈できない (" + normalizedType + ")";
+        }
+        if (actualLength <= 0) {
+            return key + " … DB VARCHAR 長が不正 (" + actualLength + ")";
+        }
+        if (column == null) {
+            return key + " … Entity column が未取得";
+        }
+        Long entityLength = effectiveVarcharLength(column, metadata);
+        if (entityLength == null || entityLength <= 0) {
+            return key + " … Entity effective VARCHAR length が未解決 (" + entityLength + ")";
+        }
+        if (entityLength > actualLength) {
+            return key + " … Entity effective VARCHAR length " + entityLength
+                    + " / DB VARCHAR length " + actualLength;
+        }
+        return null;
+    }
+
+    /** 明示SQL型を優先し、その他はHibernate 6.6のDialect-aware Size解決値を使う。 */
+    private static Long effectiveVarcharLength(Column column, Metadata metadata) {
+        String sqlType = column.getSqlType();
+        if (sqlType != null && !sqlType.isBlank()
+                && sqlType.trim().toLowerCase(Locale.ROOT).startsWith("varchar")) {
+            Matcher matcher = MAPPED_VARCHAR_SQL_TYPE.matcher(sqlType.trim());
+            if (!matcher.find()) {
+                return null;
+            }
+            try {
+                return Long.parseLong(matcher.group(1));
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        if (metadata != null) {
+            try {
+                return column.getColumnSize(metadata.getDatabase().getDialect(), metadata).getLength();
+            } catch (RuntimeException e) {
+                return null;
+            }
+        }
+        return column.getLength();
+    }
     /** テーブル名（小文字）→ 列名（小文字）→ COLUMN_TYPE（小文字。例: binary(16) / char(36)）。 */
     private static Map<String, Map<String, String>> readActualColumnTypes() throws SQLException {
         Map<String, Map<String, String>> types = new HashMap<>();

@@ -39,7 +39,7 @@ public class DataExportEntity extends BaseEntity {
     private Integer progressPercent = 0;
 
     /** 処理ステップ（DBカラム名: current_step） */
-    @Column(name = "current_step", length = 100)
+    @Column(name = "current_step", length = 50)
     private String progressStep;
 
     /** S3オブジェクトキー（COMPLETED後に設定） */
