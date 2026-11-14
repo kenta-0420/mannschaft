@@ -85,9 +85,26 @@ const nextStatus = computed(() =>
 
 async function handleTransition() {
   if (!schedule.value || !nextStatus.value) return
+  const id = schedule.value.id
+  const status = nextStatus.value
+  if (status === 'PUBLISHED') {
+    confirm.require({
+      message: t('shift.detail.publishConfirm'),
+      header: t('shift.detail.publishConfirmTitle'),
+      icon: 'pi pi-send',
+      acceptLabel: t('shift.detail.publishAccept'),
+      rejectLabel: t('common.cancel'),
+      accept: () => performTransition(id, status),
+    })
+    return
+  }
+  await performTransition(id, status)
+}
+
+async function performTransition(id: number, status: ShiftScheduleStatus) {
   transitioning.value = true
   try {
-    schedule.value = await transitionStatus(scheduleId.value, nextStatus.value)
+    schedule.value = await transitionStatus(id, status)
     success(t('shift.detail.transitionSuccess'))
   } catch (error) {
     handleApiError(error)
