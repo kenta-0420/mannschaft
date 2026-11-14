@@ -162,10 +162,8 @@ public class CommitteeService {
             throw new BusinessException(CommitteeErrorCode.NOT_FOUND);
         }
 
-        // 非HIDDEN委員会: 組織メンバーなら閲覧可
-        if (!isMember && !isAdmin) {
-            accessControlService.checkMembership(currentUserId, committee.getOrganizationId(), "ORGANIZATION");
-        }
+        // 委員会所属・管理権限にかかわらず、親組織への所属を確認する。
+        accessControlService.checkMembership(currentUserId, committee.getOrganizationId(), "ORGANIZATION");
 
         return committee;
     }
