@@ -227,6 +227,22 @@ public class ReservationSlotEntity extends BaseEntity {
     }
 
     /**
+     * 通知文などに埋め込む枠の表示名を返す。
+     *
+     * <p>title は nullable のため、null・空・空白のみのときは枠の日時（yyyy/MM/dd HH:mm）を返す。
+     * 通知文で「null」と表示される不具合の根治として、表示名のフォールバックをここに集約する。</p>
+     *
+     * @return 表示名（title があれば trim 済み title、無ければ枠の日時）
+     */
+    public String resolveDisplayTitle() {
+        if (title != null && !title.isBlank()) {
+            return title.trim();
+        }
+        return java.time.LocalDateTime.of(slotDate, startTime)
+                .format(java.time.format.DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm"));
+    }
+
+    /**
      * タイトルを変更する（部分更新）。
      *
      * @param title タイトル

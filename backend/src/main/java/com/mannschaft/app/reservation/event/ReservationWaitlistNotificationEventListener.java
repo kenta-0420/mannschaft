@@ -182,7 +182,7 @@ public class ReservationWaitlistNotificationEventListener {
         // UserLocaleCache は TTL 5分・件数上限つき LRU（D-5: 予約ドメインから auth リポジトリへ
         // 直接依存しない・common.i18n 配下の共有サービス経由に限定する）。
         Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(target.userId()));
-        String slotTitle = found.slotTitle() != null ? found.slotTitle()
+        String slotTitle = found.slotTitle() != null && !found.slotTitle().isBlank() ? found.slotTitle().trim()
                 : messageSource.getMessage("notification.reservation.common.defaultSlotTitle", null, "ご予約", locale);
         String title = messageSource.getMessage(
                 "notification.reservation.waitlistOpening.title", null, "キャンセルが出ました", locale);

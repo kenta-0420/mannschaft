@@ -129,8 +129,8 @@ public class ReservationForceCancelNotificationEventListener {
                 ? slot.slotStartAt().format(resolveSlotAtFormatter(locale))
                 : messageSource.getMessage(
                         "notification.reservation.forceCancelled.defaultSlotAt", null, "お申し込み", locale);
-        String title = slot.slotTitle() != null
-                ? slot.slotTitle()
+        String title = slot.slotTitle() != null && !slot.slotTitle().isBlank()
+                ? slot.slotTitle().trim()
                 : messageSource.getMessage(
                         "notification.reservation.common.defaultSlotTitle", null, "ご予約", locale);
         return messageSource.getMessage(

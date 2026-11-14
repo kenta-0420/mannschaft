@@ -292,7 +292,7 @@ public class ReservationService {
                 saved.getId(),
                 userId,
                 mode,
-                slot.getTitle(),
+                slot.resolveDisplayTitle(),
                 bookedAtFormatted
         ));
 
@@ -482,7 +482,7 @@ public class ReservationService {
     private void publishMemberCancelledEvent(
             ReservationEntity saved, ReservationSlotEntity slot, Long actorUserId) {
         eventPublisher.publishEvent(new ReservationCancelledByMemberEvent(
-                saved.getTeamId(), saved.getId(), actorUserId, slot.getTitle()));
+                saved.getTeamId(), saved.getId(), actorUserId, slot.resolveDisplayTitle()));
     }
 
     /**
@@ -923,7 +923,7 @@ public class ReservationService {
                 reservation.getId(),
                 actorUserId,
                 slotStartAt,
-                slot.getTitle()
+                slot.resolveDisplayTitle()
         ));
     }
 

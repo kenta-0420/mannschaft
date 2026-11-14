@@ -727,6 +727,41 @@ class ReservationServiceTest {
         }
 
         @Test
+        @DisplayName("タイトル未設定の枠: ReservationCreatedEvent / ReservationConfirmedEvent の枠名に null を含まず枠の日時になる")
+        void 予約作成_タイトル未設定は枠日時をイベントに載せる() {
+            for (String blank : new String[]{null, "", "   "}) {
+                org.mockito.Mockito.clearInvocations(eventPublisher);
+                CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null, null);
+                ReservationSlotEntity slot = ReservationSlotEntity.builder()
+                        .teamId(TEAM_ID)
+                        .title(blank)
+                        .slotDate(java.time.LocalDate.of(2026, 4, 1))
+                        .startTime(java.time.LocalTime.of(10, 0))
+                        .endTime(java.time.LocalTime.of(11, 0))
+                        .build();
+                given(slotService.getSlotEntity(TEAM_ID, SLOT_ID)).willReturn(slot);
+                given(reservationRepository.existsByReservationSlotIdAndUserIdAndStatusIn(
+                        eq(SLOT_ID), eq(USER_ID), any())).willReturn(false);
+                given(reservationRepository.save(any(ReservationEntity.class))).willReturn(createReservationEntity());
+                given(reservationPolicyService.resolveApprovalMode(eq(TEAM_ID), eq(slot)))
+                        .willReturn(ApprovalMode.AUTO);
+
+                service.createReservation(TEAM_ID, USER_ID, request);
+
+                org.mockito.ArgumentCaptor<Object> captor = org.mockito.ArgumentCaptor.forClass(Object.class);
+                verify(eventPublisher, org.mockito.Mockito.atLeast(2)).publishEvent(captor.capture());
+                ReservationCreatedEvent created = captor.getAllValues().stream()
+                        .filter(ReservationCreatedEvent.class::isInstance)
+                        .map(ReservationCreatedEvent.class::cast).findFirst().orElseThrow();
+                ReservationConfirmedEvent confirmed = captor.getAllValues().stream()
+                        .filter(ReservationConfirmedEvent.class::isInstance)
+                        .map(ReservationConfirmedEvent.class::cast).findFirst().orElseThrow();
+                assertThat(created.getSlotTitle()).as("created title=[%s]", blank).isEqualTo("2026/04/01 10:00");
+                assertThat(confirmed.getSlotTitle()).as("confirmed title=[%s]", blank).isEqualTo("2026/04/01 10:00");
+            }
+        }
+
+        @Test
         @DisplayName("結線: 承認モード解決を ReservationPolicyService に委譲する（枠値優先は同サービスの責務）")
         void 予約作成_承認モード解決をポリシーサービスに委譲() {
             // Given: 枠に MANUAL を持つスロット。resolveApprovalMode が枠値優先で MANUAL を返すことを結線で確認する。
@@ -974,6 +1009,35 @@ class ReservationServiceTest {
     @Nested
     @DisplayName("cancelByUser")
     class CancelByUser {
+
+        @Test
+        @DisplayName("タイトル未設定の枠: メンバーキャンセルイベントの枠名に null を含まず枠の日時になる")
+        void ユーザーキャンセル_タイトル未設定は枠日時() {
+            for (String blank : new String[]{null, "", "   "}) {
+                org.mockito.Mockito.clearInvocations(eventPublisher);
+                CancelReservationRequest request = new CancelReservationRequest("ユーザー都合", null);
+                ReservationEntity entity = createReservationEntity();
+                ReservationSlotEntity slot = createAvailableSlotEntity();
+                slot.changeTitle(blank);
+
+                given(reservationRepository.findByIdAndUserIdForUpdate(RESERVATION_ID, USER_ID))
+                        .willReturn(Optional.of(entity));
+                given(reservationRepository.save(entity)).willReturn(entity);
+                given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
+                given(reservationMapper.toReservationResponse(entity)).willReturn(createReservationResponse());
+
+                service.cancelByUser(USER_ID, RESERVATION_ID, request);
+
+                org.mockito.ArgumentCaptor<Object> captor = org.mockito.ArgumentCaptor.forClass(Object.class);
+                verify(eventPublisher, org.mockito.Mockito.atLeastOnce()).publishEvent(captor.capture());
+                com.mannschaft.app.reservation.event.ReservationCancelledByMemberEvent cancelled =
+                        captor.getAllValues().stream()
+                                .filter(com.mannschaft.app.reservation.event.ReservationCancelledByMemberEvent.class::isInstance)
+                                .map(com.mannschaft.app.reservation.event.ReservationCancelledByMemberEvent.class::cast)
+                                .findFirst().orElseThrow();
+                assertThat(cancelled.getSlotTitle()).as("title=[%s]", blank).isEqualTo("2026/04/01 10:00");
+            }
+        }
 
         @Test
         @DisplayName("正常系: ユーザーが予約をキャンセルする")

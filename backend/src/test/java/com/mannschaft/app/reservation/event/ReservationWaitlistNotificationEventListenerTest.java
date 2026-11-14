@@ -127,6 +127,26 @@ class ReservationWaitlistNotificationEventListenerTest {
     }
 
     @Test
+    @DisplayName("枠タイトルが null/空/空白のとき、本文は既定名「ご予約」になり null や空の「」を含まない")
+    void タイトル未設定は既定名() {
+        given(notifyRunner.claim(any(), any(), any())).willReturn(true);
+        given(deliveryRunner.sendOne(any())).willReturn(NotificationDeliveryResult.DELIVERED);
+        for (String blank : new String[]{null, "", "   "}) {
+            org.mockito.Mockito.clearInvocations(deliveryRunner);
+            given(notifyRunner.findTargets(eq(SLOT_ID), any()))
+                    .willReturn(new Targets(blank, List.of(target(901L, null))));
+
+            fire();
+
+            ArgumentCaptor<NotificationDeliveryRequest> captor =
+                    ArgumentCaptor.forClass(NotificationDeliveryRequest.class);
+            verify(deliveryRunner).sendOne(captor.capture());
+            assertThat(captor.getValue().body()).as("title=[%s]", blank)
+                    .contains("ご予約").doesNotContain("null").doesNotContain("「」");
+        }
+    }
+
+    @Test
     @DisplayName("AC3: 宛先が 5 人でも getSlugById は 1 回だけ呼ばれる")
     void 宛先がN人でもslug解決は1回() {
         givenTargets(target(901L, null), target(902L, null), target(903L, null), target(904L, null), target(905L, null));
