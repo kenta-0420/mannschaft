@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import org.hibernate.annotations.Check;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -23,13 +24,16 @@ import java.time.LocalDateTime;
  * チーム−組織所属エンティティ。チームと組織の関連付けを管理する。
  */
 @Entity
-@Table(name = "team_org_memberships", indexes = {
-        @Index(name = "idx_team_org_memberships_org_status_dir",
-                columnList = "organization_id, status, direction, invited_at"),
-        @Index(name = "idx_team_org_memberships_team_status_dir", columnList = "team_id, status, direction"),
-        @Index(name = "idx_team_org_memberships_org_group_status", columnList = "organization_id, group_id, status"),
-        @Index(name = "idx_team_org_memberships_status_invited", columnList = "status, invited_at")
-})
+@Table(name = "team_org_memberships",
+        uniqueConstraints = @UniqueConstraint(name = "uq_team_org",
+                columnNames = {"team_id", "organization_id"}),
+        indexes = {
+                @Index(name = "idx_team_org_memberships_org_status_dir",
+                        columnList = "organization_id, status, direction, invited_at"),
+                @Index(name = "idx_team_org_memberships_team_status_dir", columnList = "team_id, status, direction"),
+                @Index(name = "idx_team_org_memberships_org_group_status", columnList = "organization_id, group_id, status"),
+                @Index(name = "idx_team_org_memberships_status_invited", columnList = "status, invited_at")
+        })
 @Check(name = "chk_team_org_memberships_direction", constraints = "direction IN ('ORG_INVITE','TEAM_APPLY')")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
