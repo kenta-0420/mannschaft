@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261114-0618",
+  "scope": "test-only",
+  "implementation": {
+    "pr": 4503,
+    "sha": "beb62201ba183d64e5ff469ea3d2e18c1ac9ee0c"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "同一JVM・共有MySQLで検索14件後の所有membership残留0→1と整合性6件中5失敗を修正前に実証",
+      "tests": [
+        {
+          "name": "検索14件→MembershipUserRoleConsistencyRepositoryIntegrationTest 6件のcontrolled red",
+          "evidence": "docs/evidence/CMP-261114-0618/controlled-validation.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "元の検索14件と整合性6件が成功し所有行残留0",
+      "tests": [
+        {
+          "name": "v3 controlled normal search14+consistency6",
+          "evidence": "docs/evidence/CMP-261114-0618/controlled-validation.md"
+        },
+        {
+          "name": "MatchRequestControllerKeywordSearchIntegrationTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/matching/controller/MatchRequestControllerKeywordSearchIntegrationTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "setup・部分保存・本体失敗でも取得済みIDだけ回収し元失敗を保持",
+      "tests": [
+        {
+          "name": "fault-setup-after-membership / fault-partial-save / fault-test-body",
+          "evidence": "docs/evidence/CMP-261114-0618/controlled-validation.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "他fixture保護5行不変・未知子行の連鎖削除を防止",
+      "tests": [
+        {
+          "name": "v3 controlled protected-before/after comparison とRoot source review",
+          "evidence": "docs/evidence/CMP-261114-0618/controlled-validation.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "内部TXと独立observer接続のcommit観測、正常・故障時のSecurityContext復元",
+      "tests": [
+        {
+          "name": "v3 controlled 保存62件の独立接続9によるcommit観測 / context復元17件",
+          "evidence": "docs/evidence/CMP-261114-0618/controlled-validation.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-6",
+      "description": "製品・共通基底・build/CI・DDL・query・Clock/locks/generation/history/weights/deadlineを変更しない",
+      "tests": [
+        {
+          "name": "Root source review と固定mainとの差分1file/source bridge",
+          "evidence": "docs/evidence/CMP-261114-0618/controlled-validation.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 43571979399
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/4503"
+    },
+    "real": {
+      "status": "not-applicable",
+      "scope": "test-only",
+      "reason": "変更はbackend/src/test配下の既存検索ITのfixture後始末1ファイルのみで、製品コード・画面・APIの挙動を変更しない。DB/commit観測はcontrolled結合試験で検証し、アプリの実機証拠へ流用しない。"
+    },
+    "exploratory": {
+      "status": "not-applicable",
+      "scope": "test-only",
+      "reason": "テストコードのみの変更で製品の画面・導線を変更しないため。アプリ戦役の新住民探索の代替ではない。"
+    }
+  },
+  "regressions": [
+    {
+      "description": "commit済み検索fixtureのmembership残留により同一MySQLの後続整合性ITが5件失敗する回帰を所有ID cleanupで是正。CI当初の実加算row IDは未特定で、controlled再現による原因実証とは区別する。",
+      "test": "MatchRequestControllerKeywordSearchIntegrationTest → MembershipUserRoleConsistencyRepositoryIntegrationTest",
+      "redEvidence": "docs/evidence/CMP-261114-0618/controlled-validation.md",
+      "greenEvidence": "docs/evidence/CMP-261114-0618/controlled-validation.md"
+    }
+  ]
+}
