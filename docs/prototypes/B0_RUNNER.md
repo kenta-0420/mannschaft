@@ -156,3 +156,12 @@ rootは3住民の原session正常終了、cleanup=removed、専用scratchと内�
 固定main `69afe179b70dfc6c72806471d52bac24e2502814` の79 persona / 79 journey / 150 insightと既存R14の3/3/2を、共通ID全field一致を確認して統合し82/82/152・20 runEnvironmentsとした。旧top runId/environmentと両側全fieldを保持する。台帳はmainのCMP-261108-2026完了記録とL1-R更新・別件CMP-261114-0713を保持し720一意・全行7列。通常generatorは統合正本のlocal copyからexit0、generated overlayは正本とdeepEqual、campaign集合は台帳720件と一致した。
 
 GitHub再同期は実施していない。通常validatorと `--self-test-overlay` 全体は各exit1、GitHub参照集合不一致（L46）で停止した。既存validatorのoverlay関数・自己検証部分の限定実行は別判定でexit0、不正10例拒否。R15新住民の報告・登録、静的board/UI/IDB再試験、製品app/API/DB操作、公開送信はいずれも0。旧R14の67/67/122 UI証拠は当時の履歴であり、今回82/82/152や将来R15追加後のUI合格証拠へ読み替えない。R15実観測追加後の最終bytesで必要な検証を行う。
+
+
+## L1-R R15新独立3住民の実観測登録（2026-11-14）
+
+source8afd/run `l1rr15655c` の新3住民を、R14 fresh3と別persona/runとして登録した。旧82/82/152・20runの全field・top run/environmentをdeep保持し85persona/85journey/154insight・21runとする。選別正本は `docs/evidence/CMP-261028-2304/resident-observations-r15-20261114.json`。profile3/5/6・systemRole null、各GUI login1、desktop2/mobile390x844 touch1。原未認証2context閉鎖・browser前identity2拒否・既知未送信WRITE_BLOCKEDは別歴史として保持する。
+
+r1 closure201対象1→r2本人userqueue通知2106/source1/scope11→confirm200→管理者confirmation MESSAGE/1of1をrootが裏取り。r2 private10不可視/未選択→自分会話9復帰・投稿2成功はSTOMP拒否としない。r3観戦拒否UI/WS ERRORは本文/購読相関未採取、自身live event1作成後の再入場で履歴残存・timer開始前00:00を観測した。marker混入未観測を全非漏洩証明へ拡張しない。
+
+人工offline切替後のoffline表示継続と試合timer復元を未実証候補2件へ登録する。実回線断/自動再接続単独・永続要件・既存課題重複は未確定。製品修正・新CMP設計・確定不備昇格0。AC-36独立目的探索はroot資格で実施完了だが全動作greenではない。driver既定 `ac36Passed:false` のrawは不変、trusted=false/observed-unverified/coverage=falseを保持する。r1/r2/r3 create/update/deleteは1/0/0、2/6/0、1/0/0、全pending0/unknown false。R15runtime撤去・最終merge・支援CMP完了は先取りしない。再生成用copyは `.b0-local/run-l1rr15655c-fresh3-20261114.json`。

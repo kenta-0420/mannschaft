@@ -176,3 +176,12 @@ B0担当への引渡しは累積67persona/67journey/122insightと旧64/64/120の
 private正本 `r14-final-cleanup-20261114-01/teardown-final-qualification.json` SHA256 `5be8c43ebdfba5d019073b55fbcde7ae614c10f8ac083e3a2f7b0f29184c7401` を親が採用。runner receiptはexit0/signal null/cleanup removed/error null。所有BE/FE・barrier2・container2・専用volume1の計7対象、scratch/cache、監督/child・writerの閉鎖、Windows/Linuxの要求4port非LISTENを確認した。EC/SG履歴も専用DB破棄で閉鎖。共通 `--check` の全体exit1は他の旧3行によるものでR14行0、全体cleanとはしない。元scenario summaryは保持する。raw lifecycleは必要なstartup/shutdown範囲の原bytes・hash・lineageを選別保全してから全量と外部Jarを撤去する別作業が進行中で、撤去完了を本節では先取りしない。引継ぎは最終残務後に削除予定。
 
 新main `32e4777aec54d5de324f22948099e8a4789fc1a4` はRanchのBE/FE・生成型・Nuxt PWA設定等が進み、whole BE/FE同値ではない。支援6PRの通常main追従では対象source51pathを保持したが、新headのCIと最終採用は進行中で、旧CIを新main統合資格へ読み替えない。CoreはB0成果・支援最新headの統合後に最終CIが必要。初回1型の実機/探索/撤去完了と、初回1型の出荷・親/all164の完了を明確に分け、他支援CMPの完了状態・完了JSONを先取り更新しない。
+
+
+## L1-R R15新独立3住民の実観測登録（2026-11-14）
+
+source8afd/run `l1rr15655c` の新3住民を、R14 fresh3と別persona/runとして登録した。旧82/82/152・20runの全field・top run/environmentをdeep保持し85persona/85journey/154insight・21runとする。選別正本は `docs/evidence/CMP-261028-2304/resident-observations-r15-20261114.json`。profile3/5/6・systemRole null、各GUI login1、desktop2/mobile390x844 touch1。原未認証2context閉鎖・browser前identity2拒否・既知未送信WRITE_BLOCKEDは別歴史として保持する。
+
+r1 closure201対象1→r2本人userqueue通知2106/source1/scope11→confirm200→管理者confirmation MESSAGE/1of1をrootが裏取り。r2 private10不可視/未選択→自分会話9復帰・投稿2成功はSTOMP拒否としない。r3観戦拒否UI/WS ERRORは本文/購読相関未採取、自身live event1作成後の再入場で履歴残存・timer開始前00:00を観測した。marker混入未観測を全非漏洩証明へ拡張しない。
+
+人工offline切替後のoffline表示継続と試合timer復元を未実証候補2件へ登録する。実回線断/自動再接続単独・永続要件・既存課題重複は未確定。製品修正・新CMP設計・確定不備昇格0。AC-36独立目的探索はroot資格で実施完了だが全動作greenではない。driver既定 `ac36Passed:false` のrawは不変、trusted=false/observed-unverified/coverage=falseを保持する。r1/r2/r3 create/update/deleteは1/0/0、2/6/0、1/0/0、全pending0/unknown false。R15runtime撤去・最終merge・支援CMP完了は先取りしない。再生成用copyは `.b0-local/run-l1rr15655c-fresh3-20261114.json`。
