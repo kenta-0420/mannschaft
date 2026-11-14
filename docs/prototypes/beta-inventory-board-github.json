@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "repository": "kenta-0420/mannschaft",
-  "synchronizedAt": "2026-11-13T22:42:13+00:00",
+  "synchronizedAt": "2026-11-14T07:21:17+00:00",
   "status": "synced",
   "error": null,
   "references": {
@@ -2179,7 +2179,9 @@
     "CMP-261108-2000": [
       4022
     ],
-    "CMP-261108-2026": [],
+    "CMP-261108-2026": [
+      4418
+    ],
     "CMP-261110-0931": [],
     "CMP-261110-0932": [],
     "CMP-261110-0933": [],
@@ -8879,9 +8881,9 @@
       "state": "open",
       "title": "お気に入りのTEAM・ORGANIZATION同ID混線と詳細URLを修正",
       "url": "https://github.com/kenta-0420/mannschaft/pull/3644",
-      "updatedAt": "2026-11-13T22:12:35Z",
+      "updatedAt": "2026-11-13T23:10:28Z",
       "ci": {
-        "status": "pending",
+        "status": "success",
         "checks": [],
         "source": "GraphQL statusCheckRollup"
       }
@@ -12435,7 +12437,7 @@
       "state": "open",
       "title": "修正: 公開世代で再公開後のシフト予算消化を保護",
       "url": "https://github.com/kenta-0420/mannschaft/pull/4308",
-      "updatedAt": "2026-11-13T03:37:38Z",
+      "updatedAt": "2026-11-14T03:55:02Z",
       "ci": {
         "status": "failure",
         "checks": [],
@@ -12586,9 +12588,9 @@
       "number": 4352,
       "kind": "pull_request",
       "state": "open",
-      "title": "リファクタ: L1-R 初回の名称正規化を組織ドメインへ返却",
+      "title": "L1-R初回名称正規化と支援修復の統合",
       "url": "https://github.com/kenta-0420/mannschaft/pull/4352",
-      "updatedAt": "2026-11-13T02:21:38Z",
+      "updatedAt": "2026-11-13T23:12:45Z",
       "ci": {
         "status": "success",
         "checks": [],
@@ -12798,6 +12800,20 @@
       "title": "文書: アリシゼーション run-20261108 の確定不備と判断保留16行を台帳に起票",
       "url": "https://github.com/kenta-0420/mannschaft/pull/4406",
       "updatedAt": "2026-11-08T11:03:48Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "4418": {
+      "number": 4418,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "機能追加: CMP-261108-2026 正式対応BEと結果snapshotを接続",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/4418",
+      "updatedAt": "2026-11-13T21:39:12Z",
       "ci": {
         "status": "unavailable",
         "reason": "終了済みPRのCIは同期対象外",

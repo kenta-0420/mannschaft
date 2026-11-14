@@ -193,10 +193,23 @@ R14正式実機後のWS標的補完を、同じ固定実機source `8afd06e6e06dd
 
 [WS PR #4459](https://github.com/kenta-0420/mannschaft/pull/4459) head `870bd9829e8fd96e5ea33ad1c2881a9ef0275d65` の[Backend run 43543300356](https://github.com/kenta-0420/mannschaft/actions/runs/43543300356)は全12job成功。6shardのtest taskはskipped/upToDate/noSource/failedが全てfalse、test taskのFROM-CACHE観測0で、通常テスト6本の直接実行成功を採用した。依存・compile cacheの使用はありcold-cacheではない。JUnit artifact全量・case総数は今回未回収。compiled coverageの4profile guard成功も公式ログで確認した。旧85分timeout run 43521977171は失敗履歴を維持し、新weights・新head成功を旧障害原因の証明やflake認定へ拡張しない。
 
-最終Coreは従来の8PR内容を保持し、最新main `1f0ac7b1054651c053cc47a22aa6ba607c4412f7` と[closure PR #4410](https://github.com/kenta-0420/mannschaft/pull/4410)最新head `bcd80bb0f9278f9608084bf2829a423dca5de502` を通常mergeした。main増分は招待受諾の並行性試験3ファイルと証拠文書1ファイルで、文書のみの前進とは扱わない。最終B0成果の通常merge後、最終Coreの実headで全CIとstrict/current-main資格を確認する。旧Core・各支援のCI成功を最終Coreの成功へ読み替えない。force/squash/rebase/admin/bypassは使用しない。
+最終Coreは従来の8PR内容を保持し、最新main `1f0ac7b1054651c053cc47a22aa6ba607c4412f7` と[closure PR #4410](https://github.com/kenta-0420/mannschaft/pull/4410)最新head `bcd80bb0f9278f9608084bf2829a423dca5de502` を通常mergeした。main増分は招待受諾の並行性試験3ファイルと証拠文書1ファイルで、文書のみの前進とは扱わない。最終B0成果 `c91380253a53099a5ae6e3141b4fd245f37d31fc` も通常mergeし、最終Coreの実headで全CIとstrict/current-main資格を確認する。旧Core・各支援のCI成功を最終Coreの成功へ読み替えない。force/squash/rebase/admin/bypassは使用しない。
 
 ### 現時点の残務
 
 R14のformal f1作成2＋f2残12の分割資格、元f2 false、normal2等のERR_ABORTEDとtransportClean false、Signageの限定採用と認可残課題は上記履歴のまま保持する。R15の全10cleanup ACK（cancel200が1、DELETE204が9）と各原FINALを親担当が直接照合し、実探索3contextのCLOSED/native0を採用した。既ACKの再送は0。閉鎖前summaryのopen記載とdriver既定のac36Passed falseは原値のまま保持し、後続の閉鎖証拠・親担当のAC-36判定と区別する。closure/通知/加入履歴は専用DB最終破棄まで保持する。回復runtime・専用DB・scratch/Jarの撤去は未完で、完了を先取りしない。
 
-最終B0登録・通常同期/generator/全validator/実IDB確認、外closure担当の最終引渡し、最終Core差分の採択・実head CI・ready・main採用は進行中。8PRのmain採用後に支援子CMPの完了証拠と正本状態を通常docs PRで確定する。親戦役・L1-R全164型はP4実装中を維持し、支援CMPの完了・引継ぎ削除・全残務完了を先取りしない。公開文書へprivate操作識別子・資格情報・ローカル能力URL・原画像本体は追加しない。
+最終B0登録・通常同期/generator/全validator/実IDB確認は下記の限定資格で採用した。外closure担当の最終引渡し、最終Core差分の採択・実head CI・ready・main採用は進行中。8PRのmain採用後に支援子CMPの完了証拠と正本状態を通常docs PRで確定する。親戦役・L1-R全164型はP4実装中を維持し、支援CMPの完了・引継ぎ削除・全残務完了を先取りしない。公開文書へprivate操作識別子・資格情報・ローカル能力URL・原画像本体は追加しない。
+
+### L1-R R15新独立3住民の実観測登録（2026-11-14）
+
+source8afd/run `l1rr15655c` の新3住民を、R14 fresh3と別persona/runとして登録した。旧82/82/152・20runの全field・top run/environmentをdeep保持し85persona/85journey/154insight・21runとする。選別正本は `docs/evidence/CMP-261028-2304/resident-observations-r15-20261114.json`。profile3/5/6・systemRole null、各GUI login1、desktop2/mobile390x844 touch1。原未認証2context閉鎖・browser前identity2拒否・既知未送信WRITE_BLOCKEDは別歴史として保持する。
+
+r1 closure201対象1→r2本人userqueue通知2106/source1/scope11→confirm200→管理者confirmation MESSAGE/1of1をrootが裏取り。r2 private10不可視/未選択→自分会話9復帰・投稿2成功はSTOMP拒否としない。r3観戦拒否UI/WS ERRORは本文/購読相関未採取、自身live event1作成後の再入場で履歴残存・timer開始前00:00を観測した。marker混入未観測を全非漏洩証明へ拡張しない。
+
+人工offline切替後のoffline表示継続と試合timer復元を未実証候補2件へ登録する。実回線断/自動再接続単独・永続要件・既存課題重複は未確定。製品修正・新CMP設計・確定不備昇格0。AC-36独立目的探索はroot資格で実施完了だが全動作greenではない。driver既定 `ac36Passed:false` のrawは不変、trusted=false/observed-unverified/coverage=falseを保持する。r1/r2/r3 create/update/deleteは1/0/0、2/6/0、1/0/0、全pending0/unknown false。R15runtime撤去・最終merge・支援CMP完了は先取りしない。再生成用copyは `.b0-local/run-l1rr15655c-fresh3-20261114.json`。
+
+
+R15棚卸更新の通常GitHub読み取り同期は2026-11-14T07:21:17Z・806参照で成功し、既存L46の不足#4418を解消した。通常generator/validator/overlay自己検証は最終bytesで各exit0（不正10例拒否）、44feature/95capability・CORE25/非CORE19・blockers23・720campaign。台帳720一意・全7列を保持し、親/all164 P4・支援CMP完了先取り0・Signage別P1未着手を維持する。task-list commit `942ecd87428f54dde67b07d270fe62bc17abb63d` のraw LF bytesと生成pin SHAが一致する。Windows checkout CRLF由来のhash差はWTを同commit raw bytesへ合わせて通常再生成し、generator自体は変更していない。
+
+最終実ボードは `board-ui-r15-20261114.json`、整合proofは `b0-r15-checks-20261114.json`。fresh実IndexedDBへ旧152をimport→自然clock7017ms後に最終新dataへ更新し154、旧152全field厳密deepEqual・新2のみ・重複0・reload154不変を確認した。B1の予約/大会試合カード2件と詳細を実閲覧し、隔離IDB内だけR1の人間用statusをinbox→plannedへGUI変更→reload保存、sourceStatus=observed-unverified/trusted=false/来歴不変・他153全field不変を確認した。正本overlayのstatus変更0。pageErrors/remote requests0、context/browser正常閉鎖・native exit0、製品app/API/DB操作0。HTML/実生成dataのhashをreceiptへ固定し、住民source8afdと混同しない。旧R14 UI証拠や先行helper失敗は履歴として保持し、今回の最終bytesへ読み替えない。

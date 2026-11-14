@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-11-14T02:17:40+00:00",
+  "generatedAt": "2026-11-14T07:27:42+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,13 +8,13 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "d61097a49227386d8b4044a2a6ced72fade5b50a",
-    "taskListCommit": "9bb2703fb7910e435ef5401462a67c789dbea32d",
+    "taskListCommit": "942ecd87428f54dde67b07d270fe62bc17abb63d",
     "inventorySha256": "b0a1f97197840c865756a40f12f577cfeb10aa8083dc95f2932f7b3a7f90528a",
-    "taskListSha256": "ed088b2c61dd747d6a9996b294269b15f5ce9f143bfc6ea385a6230b7c0a0010",
+    "taskListSha256": "4bf365cc0102e6f2e8de992adee5b49d387fab42012fb76b7b9f7fe6ad233986",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
-    "githubSnapshotSha256": "bcc6a4f4cedc1d6cdb92ba7726e16d5815dc7e1c501aadb7cc3d6dc75de0733e"
+    "githubSnapshotSha256": "5604c019010e694a4264a1f8f585720da9eb630197ef5e8a4969b6734ffe906d"
   },
   "sourceCounts": {
     "features": 44,
@@ -9264,6 +9264,48 @@ window.BETA_INVENTORY_DATA = {
           ],
           "note": "補足値を原reportの記載とみなさない。"
         }
+      },
+      {
+        "id": "ALIC-L1R-R15-R1-20261114",
+        "personaArchetype": "一般（慎重な管理者）×中断・再訪",
+        "runId": "l1rr15655c",
+        "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r15-20261114.json",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false,
+        "sourceEvidencePath": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/prelogin-recovery02/l1rr15655c-r1/actor-summary.json",
+        "sourceEvidenceSha256": "d8697ad7ed33ac18ecbc1016851cbdd82834dfd79aa6aa3145cfd97b69ce34f9",
+        "idAssignment": "persona/journey/insight IDは登録時付与。固定P01-P20変換なし。"
+      },
+      {
+        "id": "ALIC-L1R-R15-R2-20261114",
+        "personaArchetype": "スマホ片手操作×素直",
+        "runId": "l1rr15655c",
+        "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r15-20261114.json",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false,
+        "sourceEvidencePath": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/prelogin-recovery02/l1rr15655c-r2/actor-summary.json",
+        "sourceEvidenceSha256": "22ad1b9cbc47538213b8998a515763e36d1e4525e877e179d37dff02af7f97a8",
+        "idAssignment": "persona/journey/insight IDは登録時付与。固定P01-P20変換なし。"
+      },
+      {
+        "id": "ALIC-L1R-R15-R3-20261114",
+        "personaArchetype": "一般（別所属）×中断・再訪",
+        "runId": "l1rr15655c",
+        "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r15-20261114.json",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false,
+        "sourceEvidencePath": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/l1rr15655c-r3/actor-summary.json",
+        "sourceEvidenceSha256": "a33d71767585e911a38413fd9de1451ee75c16731a987bb5eb650f20be20d2a6",
+        "idAssignment": "persona/journey/insight IDは登録時付与。固定P01-P20変換なし。"
       }
     ],
     "journeys": [
@@ -10524,6 +10566,107 @@ window.BETA_INVENTORY_DATA = {
           "試合を記録するリンクのDOM読取でdisplay flex/visibility visible、矩形x468.046875 y779 width143.21875 height32、中心hit自身、dialog0。主要CTA高さ32pxは客観値として記録するが単独で不具合確定しない"
         ],
         "goalScope": "各住民に示した自然な導線探索。R3の試合作成は対象外で未実施。"
+      },
+      {
+        "id": "ALIC-L1R-R15-R1-20261114-J1",
+        "personaId": "ALIC-L1R-R15-R1-20261114",
+        "purpose": "予約と緊急休止・本人確認状況を確認し、中断から戻る",
+        "runId": "l1rr15655c",
+        "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r15-20261114.json",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false,
+        "executionCompleted": true,
+        "allGoalsReached": false,
+        "goalScope": "独立目的探索実施。全製品動作/全5機能×3役の網羅とはしない。",
+        "observedOutcome": "GUIでclosure1 POST201・対象1。member5の本人通知2106/source1/scope11→confirm200と管理者confirmation MESSAGE/userId5・1/1確認済みをroot照合。人工offline→online直後はnavigator.onLine=trueでもoffline表示。通常GET→戻りで新CONNECTED10/11とリアルタイム表示に復帰。既socketを閉じない人工切替であり実回線断・自動再接続単独成功/不良は未証明。",
+        "profile": {
+          "id": 3,
+          "systemRole": null
+        },
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "guiLoginCount": 1,
+        "counts": {
+          "create": 1,
+          "update": 0,
+          "delete": 0
+        },
+        "pending": 0,
+        "unknown": false,
+        "driverAc36Passed": false,
+        "rootAc36PurposeExplorationCompleted": true
+      },
+      {
+        "id": "ALIC-L1R-R15-R2-20261114-J1",
+        "personaId": "ALIC-L1R-R15-R2-20261114",
+        "purpose": "本人の会話を続け、別private会話の不可視と本人通知の確認を探索する",
+        "runId": "l1rr15655c",
+        "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r15-20261114.json",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false,
+        "executionCompleted": true,
+        "allGoalsReached": false,
+        "goalScope": "独立目的探索実施。全製品動作/全5機能×3役の網羅とはしない。",
+        "observedOutcome": "本人会話9で投稿2件201。other private channel10は不可視/未選択から本人会話へ復帰し継続。STOMP拒否を主張しない。本人user queueのrunMarker一致通知を受信しGUI confirm200→本人通知read200。無関係通知の一括既読0。",
+        "profile": {
+          "id": 5,
+          "systemRole": null
+        },
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "isMobile": true,
+          "hasTouch": true
+        },
+        "guiLoginCount": 1,
+        "counts": {
+          "create": 2,
+          "update": 6,
+          "delete": 0
+        },
+        "pending": 0,
+        "unknown": false,
+        "driverAc36Passed": false,
+        "rootAc36PurposeExplorationCompleted": true
+      },
+      {
+        "id": "ALIC-L1R-R15-R3-20261114-J1",
+        "personaId": "ALIC-L1R-R15-R3-20261114",
+        "purpose": "別所属の試合観戦境界と自身の試合操作・再入場・通知を探索する",
+        "runId": "l1rr15655c",
+        "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r15-20261114.json",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false,
+        "executionCompleted": true,
+        "allGoalsReached": false,
+        "goalScope": "独立目的探索実施。全製品動作/全5機能×3役の網羅とはしない。",
+        "observedOutcome": "primary live観戦拒否UIとWS ERROR→CLOSEを観測。本文/購読相関未採取につき特定拒否server receiptとはしない。自身other liveでPERIOD_START event1 POST201、戻り/再読込で履歴は残存し状態は開始前00:00へ戻った。他人向けmarker混入未観測は全非漏洩証明ではない。",
+        "profile": {
+          "id": 6,
+          "systemRole": null
+        },
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "guiLoginCount": 1,
+        "counts": {
+          "create": 1,
+          "update": 0,
+          "delete": 0
+        },
+        "pending": 0,
+        "unknown": false,
+        "driverAc36Passed": false,
+        "rootAc36PurposeExplorationCompleted": true
       }
     ],
     "insights": [
@@ -13914,6 +14057,52 @@ window.BETA_INVENTORY_DATA = {
         "trusted": false,
         "status": "observed-unverified",
         "coveragePassed": false
+      },
+      {
+        "id": "ALIC-L1R-R15-R1-20261114-I001",
+        "featureKey": "reservation",
+        "featureDetail": "緊急休止の確認状況・接続表示",
+        "personaId": "ALIC-L1R-R15-R1-20261114",
+        "journeyId": "ALIC-L1R-R15-R1-20261114-J1",
+        "personaArchetype": "一般（慎重な管理者）×中断・再訪",
+        "originalRunId": "l1rr15655c",
+        "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r15-20261114.json",
+        "sourceEvidencePath": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/prelogin-recovery02/l1rr15655c-r1/actor-summary.json",
+        "originalObservationId": "r1-candidate-1",
+        "title": "人工offline切替後も確認状況にoffline表示が続いた",
+        "detail": "GUIでclosure1 POST201・対象1。member5の本人通知2106/source1/scope11→confirm200と管理者confirmation MESSAGE/userId5・1/1確認済みをroot照合。人工offline→online直後はnavigator.onLine=trueでもoffline表示。通常GET→戻りで新CONNECTED10/11とリアルタイム表示に復帰。既socketを閉じない人工切替であり実回線断・自動再接続単独成功/不良は未証明。 裏取りが必要。永続要件・実回線断との同等性・既存課題重複は未確定。",
+        "page": "",
+        "screenshotPath": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/prelogin-recovery02/l1rr15655c-r1/confirmation-open.png",
+        "urgency": "normal",
+        "priority": "should",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
+      },
+      {
+        "id": "ALIC-L1R-R15-R3-20261114-I001",
+        "featureKey": "tournament",
+        "featureDetail": "試合live再入場・timer状態復元",
+        "personaId": "ALIC-L1R-R15-R3-20261114",
+        "journeyId": "ALIC-L1R-R15-R3-20261114-J1",
+        "personaArchetype": "一般（別所属）×中断・再訪",
+        "originalRunId": "l1rr15655c",
+        "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r15-20261114.json",
+        "sourceEvidencePath": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/l1rr15655c-r3/actor-summary.json",
+        "originalObservationId": "r3-candidate-1",
+        "title": "試合へ戻ると履歴を残したままtimerが開始前00:00へ戻った",
+        "detail": "primary live観戦拒否UIとWS ERROR→CLOSEを観測。本文/購読相関未採取につき特定拒否server receiptとはしない。自身other liveでPERIOD_START event1 POST201、戻り/再読込で履歴は残存し状態は開始前00:00へ戻った。他人向けmarker混入未観測は全非漏洩証明ではない。 source8afdのtimer初期WAITING/elapsed0、live再生成とevents再読込をroot限定照合。restore関数はあるが当該onMountedで呼出なし。全経路網羅・永続要件・既存課題重複は未確定。裏取りが必要。",
+        "page": "",
+        "screenshotPath": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/l1rr15655c-r3/10_own_reloaded.png",
+        "urgency": "normal",
+        "priority": "should",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false
       }
     ],
     "runEnvironments": {
@@ -14389,6 +14578,28 @@ window.BETA_INVENTORY_DATA = {
           "r3Http403": "他公開チームmodules403×2。正常権限か原因未確定。bug認定なし。",
           "r3Favorite": "TEAM14 POST201→DELETE204、残ID0。業務データcreate/update/deleteは0。",
           "limitations": "R1記録保存未検証、R2実記録詳細未確認。exact locator timeoutは通常href操作で到達し製品不備としない。探索実施と全目的達成・B0 coverage合格を分離する。"
+        }
+      },
+      "l1rr15655c": {
+        "runId": "l1rr15655c",
+        "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+        "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r15-20261114.json",
+        "sourceEvidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r15-20261114.json",
+        "registrationSource": "actual-resident-artifacts",
+        "trusted": false,
+        "status": "observed-unverified",
+        "coveragePassed": false,
+        "executionCompleted": true,
+        "allGoalsReached": false,
+        "rootAc36PurposeExplorationCompleted": true,
+        "driverAc36Passed": false,
+        "rootTriage": {
+          "confirmedBugs": 0,
+          "blockerPromotion": 0,
+          "taskListPromotion": 0,
+          "insightCandidates": 2,
+          "existingInsightSameSubjectSearch": "旧152 insightのtitle/detailをオフライン/タイマー/timer/00:00で検索し該当0。既存課題全般の重複は未確定。",
+          "limitations": "自動再接続単独/全通知非漏洩/全機能役割網羅を保証しない。cleanup/runtime撤去は後段root資格で補う。"
         }
       }
     }
@@ -26312,9 +26523,9 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "お気に入りのTEAM・ORGANIZATION同ID混線と詳細URLを修正",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3644",
-          "updatedAt": "2026-11-13T22:12:35Z",
+          "updatedAt": "2026-11-13T23:10:28Z",
           "ci": {
-            "status": "pending",
+            "status": "success",
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
@@ -60117,12 +60328,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-261021-0017、CMP-261021-2158（L1-K完了）。登録時claim `cc2c5a146211d4b97f29760ffb324e01ae03c23d` は履歴として保持。現common-core引継ぎは[親宣言](https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6695483881)。TransitionalBridgeはPR #4214でmain提供済み（L1-M全完了待ちではない）",
       "issues": [
         {
-          "label": "[登録PR #4211](https://github.com/kenta-0420/mannschaft/pull/4211)はmain反映済みの履歴。[実装PR #4352](https://github.com/kenta-0420/mannschaft/pull/4352)はDraft・未merge。初回1型は旧static互換委譲、旧19green→全40の21 assertion red→40green。Core公開a309のCI v3はMySQL直接XML6件、API40はsource/class成功の推移資格、六shard a1/a2分割採用。DN9は対象blob同等性で継承。R14 source8afdのformalは2+12分割、Card全後段/復元/empty・EC・同既知試合のMatch m2+resumeを採用、SG s4は搬送限定で既存購読認可欠落をCMP-261114-0713へ分離。元失敗/unknown・204後ERR_ABORTED原因不明/clean falseは保持。正式実機後の新独立3住民は通常profile/systemRole null・全員CLOSED/native0、未実証insight2件。専用runtime/DB履歴は撤去済み。B0依存成果の統合・新main32e統合後のCore最終CI・支援PR採用/main反映は未完。[進捗・証拠](evidence/CMP-261028-2304-l1r-normalizer.md)",
+          "label": "[登録PR #4211](https://github.com/kenta-0420/mannschaft/pull/4211)はmain反映済みの履歴。[実装PR #4352](https://github.com/kenta-0420/mannschaft/pull/4352)はDraft・未merge。初回1型は旧static互換委譲、旧19green→全40の21 assertion red→40green。Core公開a309のCI v3はMySQL直接XML6件、API40はsource/class成功の推移資格、六shard a1/a2分割採用。DN9は対象blob同等性で継承。R14 source8afdのformalは2+12分割、Card全後段/復元/empty・EC・同既知試合のMatch m2+resumeを採用、SG s4は搬送限定で既存購読認可欠落をCMP-261114-0713へ分離。元失敗/unknown・204後ERR_ABORTED原因不明/clean falseは保持。正式実機後の新独立3住民は通常profile/systemRole null・全員CLOSED/native0、未実証insight2件。専用runtime/DB履歴は撤去済み。R15新3住民の独立目的探索をroot採択、人工offline表示/試合timer復元の未実証候補2をB0へ追加。driver既定ac36Passed false・全動作green非保証・R15撤去未完は保持。B0依存成果の統合・新main32e統合後のCore最終CI・支援PR採用/main反映は未完。[進捗・証拠](evidence/CMP-261028-2304-l1r-normalizer.md)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "[登録PR #4211](https://github.com/kenta-0420/mannschaft/pull/4211)はmain反映済みの履歴。[実装PR #4352](https://github.com/kenta-0420/mannschaft/pull/4352)はDraft・未merge。初回1型は旧static互換委譲、旧19green→全40の21 assertion red→40green。Core公開a309のCI v3はMySQL直接XML6件、API40はsource/class成功の推移資格、六shard a1/a2分割採用。DN9は対象blob同等性で継承。R14 source8afdのformalは2+12分割、Card全後段/復元/empty・EC・同既知試合のMatch m2+resumeを採用、SG s4は搬送限定で既存購読認可欠落をCMP-261114-0713へ分離。元失敗/unknown・204後ERR_ABORTED原因不明/clean falseは保持。正式実機後の新独立3住民は通常profile/systemRole null・全員CLOSED/native0、未実証insight2件。専用runtime/DB履歴は撤去済み。B0依存成果の統合・新main32e統合後のCore最終CI・支援PR採用/main反映は未完。[進捗・証拠](evidence/CMP-261028-2304-l1r-normalizer.md)"
+        "[登録PR #4211](https://github.com/kenta-0420/mannschaft/pull/4211)はmain反映済みの履歴。[実装PR #4352](https://github.com/kenta-0420/mannschaft/pull/4352)はDraft・未merge。初回1型は旧static互換委譲、旧19green→全40の21 assertion red→40green。Core公開a309のCI v3はMySQL直接XML6件、API40はsource/class成功の推移資格、六shard a1/a2分割採用。DN9は対象blob同等性で継承。R14 source8afdのformalは2+12分割、Card全後段/復元/empty・EC・同既知試合のMatch m2+resumeを採用、SG s4は搬送限定で既存購読認可欠落をCMP-261114-0713へ分離。元失敗/unknown・204後ERR_ABORTED原因不明/clean falseは保持。正式実機後の新独立3住民は通常profile/systemRole null・全員CLOSED/native0、未実証insight2件。専用runtime/DB履歴は撤去済み。R15新3住民の独立目的探索をroot採択、人工offline表示/試合timer復元の未実証候補2をB0へ追加。driver既定ac36Passed false・全動作green非保証・R15撤去未完は保持。B0依存成果の統合・新main32e統合後のCore最終CI・支援PR採用/main反映は未完。[進捗・証拠](evidence/CMP-261028-2304-l1r-normalizer.md)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -60182,9 +60393,9 @@ window.BETA_INVENTORY_DATA = {
           "number": 4352,
           "kind": "pull_request",
           "state": "open",
-          "title": "リファクタ: L1-R 初回の名称正規化を組織ドメインへ返却",
+          "title": "L1-R初回名称正規化と支援修復の統合",
           "url": "https://github.com/kenta-0420/mannschaft/pull/4352",
-          "updatedAt": "2026-11-13T02:21:38Z",
+          "updatedAt": "2026-11-13T23:12:45Z",
           "ci": {
             "status": "success",
             "checks": [],
@@ -63509,9 +63720,9 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "お気に入りのTEAM・ORGANIZATION同ID混線と詳細URLを修正",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3644",
-          "updatedAt": "2026-11-13T22:12:35Z",
+          "updatedAt": "2026-11-13T23:10:28Z",
           "ci": {
-            "status": "pending",
+            "status": "success",
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
@@ -65085,12 +65296,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 4418,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: CMP-261108-2026 正式対応BEと結果snapshotを接続",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/4418",
+          "updatedAt": "2026-11-13T21:39:12Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -67392,7 +67608,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "修正: 公開世代で再公開後のシフト予算消化を保護",
           "url": "https://github.com/kenta-0420/mannschaft/pull/4308",
-          "updatedAt": "2026-11-13T03:37:38Z",
+          "updatedAt": "2026-11-14T03:55:02Z",
           "ci": {
             "status": "failure",
             "checks": [],
@@ -67450,7 +67666,7 @@ window.BETA_INVENTORY_DATA = {
   "githubSync": {
     "schemaVersion": 1,
     "repository": "kenta-0420/mannschaft",
-    "synchronizedAt": "2026-11-13T22:42:13+00:00",
+    "synchronizedAt": "2026-11-14T07:21:17+00:00",
     "status": "synced",
     "error": null,
     "references": {
@@ -69628,7 +69844,9 @@ window.BETA_INVENTORY_DATA = {
       "CMP-261108-2000": [
         4022
       ],
-      "CMP-261108-2026": [],
+      "CMP-261108-2026": [
+        4418
+      ],
       "CMP-261110-0931": [],
       "CMP-261110-0932": [],
       "CMP-261110-0933": [],
@@ -76328,9 +76546,9 @@ window.BETA_INVENTORY_DATA = {
         "state": "open",
         "title": "お気に入りのTEAM・ORGANIZATION同ID混線と詳細URLを修正",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3644",
-        "updatedAt": "2026-11-13T22:12:35Z",
+        "updatedAt": "2026-11-13T23:10:28Z",
         "ci": {
-          "status": "pending",
+          "status": "success",
           "checks": [],
           "source": "GraphQL statusCheckRollup"
         }
@@ -79884,7 +80102,7 @@ window.BETA_INVENTORY_DATA = {
         "state": "open",
         "title": "修正: 公開世代で再公開後のシフト予算消化を保護",
         "url": "https://github.com/kenta-0420/mannschaft/pull/4308",
-        "updatedAt": "2026-11-13T03:37:38Z",
+        "updatedAt": "2026-11-14T03:55:02Z",
         "ci": {
           "status": "failure",
           "checks": [],
@@ -80035,9 +80253,9 @@ window.BETA_INVENTORY_DATA = {
         "number": 4352,
         "kind": "pull_request",
         "state": "open",
-        "title": "リファクタ: L1-R 初回の名称正規化を組織ドメインへ返却",
+        "title": "L1-R初回名称正規化と支援修復の統合",
         "url": "https://github.com/kenta-0420/mannschaft/pull/4352",
-        "updatedAt": "2026-11-13T02:21:38Z",
+        "updatedAt": "2026-11-13T23:12:45Z",
         "ci": {
           "status": "success",
           "checks": [],
@@ -80247,6 +80465,20 @@ window.BETA_INVENTORY_DATA = {
         "title": "文書: アリシゼーション run-20261108 の確定不備と判断保留16行を台帳に起票",
         "url": "https://github.com/kenta-0420/mannschaft/pull/4406",
         "updatedAt": "2026-11-08T11:03:48Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "4418": {
+        "number": 4418,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "機能追加: CMP-261108-2026 正式対応BEと結果snapshotを接続",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/4418",
+        "updatedAt": "2026-11-13T21:39:12Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -80577,8 +80809,8 @@ window.BETA_INVENTORY_DATA = {
     "lastAttempt": {
       "status": "synced",
       "error": null,
-      "synchronizedAt": "2026-11-13T22:42:13+00:00",
-      "referenceCount": 805
+      "synchronizedAt": "2026-11-14T07:21:17+00:00",
+      "referenceCount": 806
     }
   }
 };

@@ -877,6 +877,48 @@
         ],
         "note": "補足値を原reportの記載とみなさない。"
       }
+    },
+    {
+      "id": "ALIC-L1R-R15-R1-20261114",
+      "personaArchetype": "一般（慎重な管理者）×中断・再訪",
+      "runId": "l1rr15655c",
+      "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+      "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r15-20261114.json",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false,
+      "sourceEvidencePath": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/prelogin-recovery02/l1rr15655c-r1/actor-summary.json",
+      "sourceEvidenceSha256": "d8697ad7ed33ac18ecbc1016851cbdd82834dfd79aa6aa3145cfd97b69ce34f9",
+      "idAssignment": "persona/journey/insight IDは登録時付与。固定P01-P20変換なし。"
+    },
+    {
+      "id": "ALIC-L1R-R15-R2-20261114",
+      "personaArchetype": "スマホ片手操作×素直",
+      "runId": "l1rr15655c",
+      "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+      "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r15-20261114.json",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false,
+      "sourceEvidencePath": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/prelogin-recovery02/l1rr15655c-r2/actor-summary.json",
+      "sourceEvidenceSha256": "22ad1b9cbc47538213b8998a515763e36d1e4525e877e179d37dff02af7f97a8",
+      "idAssignment": "persona/journey/insight IDは登録時付与。固定P01-P20変換なし。"
+    },
+    {
+      "id": "ALIC-L1R-R15-R3-20261114",
+      "personaArchetype": "一般（別所属）×中断・再訪",
+      "runId": "l1rr15655c",
+      "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+      "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r15-20261114.json",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false,
+      "sourceEvidencePath": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/l1rr15655c-r3/actor-summary.json",
+      "sourceEvidenceSha256": "a33d71767585e911a38413fd9de1451ee75c16731a987bb5eb650f20be20d2a6",
+      "idAssignment": "persona/journey/insight IDは登録時付与。固定P01-P20変換なし。"
     }
   ],
   "journeys": [
@@ -2137,6 +2179,107 @@
         "試合を記録するリンクのDOM読取でdisplay flex/visibility visible、矩形x468.046875 y779 width143.21875 height32、中心hit自身、dialog0。主要CTA高さ32pxは客観値として記録するが単独で不具合確定しない"
       ],
       "goalScope": "各住民に示した自然な導線探索。R3の試合作成は対象外で未実施。"
+    },
+    {
+      "id": "ALIC-L1R-R15-R1-20261114-J1",
+      "personaId": "ALIC-L1R-R15-R1-20261114",
+      "purpose": "予約と緊急休止・本人確認状況を確認し、中断から戻る",
+      "runId": "l1rr15655c",
+      "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+      "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r15-20261114.json",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false,
+      "executionCompleted": true,
+      "allGoalsReached": false,
+      "goalScope": "独立目的探索実施。全製品動作/全5機能×3役の網羅とはしない。",
+      "observedOutcome": "GUIでclosure1 POST201・対象1。member5の本人通知2106/source1/scope11→confirm200と管理者confirmation MESSAGE/userId5・1/1確認済みをroot照合。人工offline→online直後はnavigator.onLine=trueでもoffline表示。通常GET→戻りで新CONNECTED10/11とリアルタイム表示に復帰。既socketを閉じない人工切替であり実回線断・自動再接続単独成功/不良は未証明。",
+      "profile": {
+        "id": 3,
+        "systemRole": null
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "guiLoginCount": 1,
+      "counts": {
+        "create": 1,
+        "update": 0,
+        "delete": 0
+      },
+      "pending": 0,
+      "unknown": false,
+      "driverAc36Passed": false,
+      "rootAc36PurposeExplorationCompleted": true
+    },
+    {
+      "id": "ALIC-L1R-R15-R2-20261114-J1",
+      "personaId": "ALIC-L1R-R15-R2-20261114",
+      "purpose": "本人の会話を続け、別private会話の不可視と本人通知の確認を探索する",
+      "runId": "l1rr15655c",
+      "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+      "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r15-20261114.json",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false,
+      "executionCompleted": true,
+      "allGoalsReached": false,
+      "goalScope": "独立目的探索実施。全製品動作/全5機能×3役の網羅とはしない。",
+      "observedOutcome": "本人会話9で投稿2件201。other private channel10は不可視/未選択から本人会話へ復帰し継続。STOMP拒否を主張しない。本人user queueのrunMarker一致通知を受信しGUI confirm200→本人通知read200。無関係通知の一括既読0。",
+      "profile": {
+        "id": 5,
+        "systemRole": null
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "guiLoginCount": 1,
+      "counts": {
+        "create": 2,
+        "update": 6,
+        "delete": 0
+      },
+      "pending": 0,
+      "unknown": false,
+      "driverAc36Passed": false,
+      "rootAc36PurposeExplorationCompleted": true
+    },
+    {
+      "id": "ALIC-L1R-R15-R3-20261114-J1",
+      "personaId": "ALIC-L1R-R15-R3-20261114",
+      "purpose": "別所属の試合観戦境界と自身の試合操作・再入場・通知を探索する",
+      "runId": "l1rr15655c",
+      "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+      "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r15-20261114.json",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false,
+      "executionCompleted": true,
+      "allGoalsReached": false,
+      "goalScope": "独立目的探索実施。全製品動作/全5機能×3役の網羅とはしない。",
+      "observedOutcome": "primary live観戦拒否UIとWS ERROR→CLOSEを観測。本文/購読相関未採取につき特定拒否server receiptとはしない。自身other liveでPERIOD_START event1 POST201、戻り/再読込で履歴は残存し状態は開始前00:00へ戻った。他人向けmarker混入未観測は全非漏洩証明ではない。",
+      "profile": {
+        "id": 6,
+        "systemRole": null
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "guiLoginCount": 1,
+      "counts": {
+        "create": 1,
+        "update": 0,
+        "delete": 0
+      },
+      "pending": 0,
+      "unknown": false,
+      "driverAc36Passed": false,
+      "rootAc36PurposeExplorationCompleted": true
     }
   ],
   "insights": [
@@ -5527,6 +5670,52 @@
       "trusted": false,
       "status": "observed-unverified",
       "coveragePassed": false
+    },
+    {
+      "id": "ALIC-L1R-R15-R1-20261114-I001",
+      "featureKey": "reservation",
+      "featureDetail": "緊急休止の確認状況・接続表示",
+      "personaId": "ALIC-L1R-R15-R1-20261114",
+      "journeyId": "ALIC-L1R-R15-R1-20261114-J1",
+      "personaArchetype": "一般（慎重な管理者）×中断・再訪",
+      "originalRunId": "l1rr15655c",
+      "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+      "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r15-20261114.json",
+      "sourceEvidencePath": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/prelogin-recovery02/l1rr15655c-r1/actor-summary.json",
+      "originalObservationId": "r1-candidate-1",
+      "title": "人工offline切替後も確認状況にoffline表示が続いた",
+      "detail": "GUIでclosure1 POST201・対象1。member5の本人通知2106/source1/scope11→confirm200と管理者confirmation MESSAGE/userId5・1/1確認済みをroot照合。人工offline→online直後はnavigator.onLine=trueでもoffline表示。通常GET→戻りで新CONNECTED10/11とリアルタイム表示に復帰。既socketを閉じない人工切替であり実回線断・自動再接続単独成功/不良は未証明。 裏取りが必要。永続要件・実回線断との同等性・既存課題重複は未確定。",
+      "page": "",
+      "screenshotPath": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/prelogin-recovery02/l1rr15655c-r1/confirmation-open.png",
+      "urgency": "normal",
+      "priority": "should",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false
+    },
+    {
+      "id": "ALIC-L1R-R15-R3-20261114-I001",
+      "featureKey": "tournament",
+      "featureDetail": "試合live再入場・timer状態復元",
+      "personaId": "ALIC-L1R-R15-R3-20261114",
+      "journeyId": "ALIC-L1R-R15-R3-20261114-J1",
+      "personaArchetype": "一般（別所属）×中断・再訪",
+      "originalRunId": "l1rr15655c",
+      "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+      "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r15-20261114.json",
+      "sourceEvidencePath": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/l1rr15655c-r3/actor-summary.json",
+      "originalObservationId": "r3-candidate-1",
+      "title": "試合へ戻ると履歴を残したままtimerが開始前00:00へ戻った",
+      "detail": "primary live観戦拒否UIとWS ERROR→CLOSEを観測。本文/購読相関未採取につき特定拒否server receiptとはしない。自身other liveでPERIOD_START event1 POST201、戻り/再読込で履歴は残存し状態は開始前00:00へ戻った。他人向けmarker混入未観測は全非漏洩証明ではない。 source8afdのtimer初期WAITING/elapsed0、live再生成とevents再読込をroot限定照合。restore関数はあるが当該onMountedで呼出なし。全経路網羅・永続要件・既存課題重複は未確定。裏取りが必要。",
+      "page": "",
+      "screenshotPath": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/l1rr15655c-r3/10_own_reloaded.png",
+      "urgency": "normal",
+      "priority": "should",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false
     }
   ],
   "runEnvironments": {
@@ -6002,6 +6191,28 @@
         "r3Http403": "他公開チームmodules403×2。正常権限か原因未確定。bug認定なし。",
         "r3Favorite": "TEAM14 POST201→DELETE204、残ID0。業務データcreate/update/deleteは0。",
         "limitations": "R1記録保存未検証、R2実記録詳細未確認。exact locator timeoutは通常href操作で到達し製品不備としない。探索実施と全目的達成・B0 coverage合格を分離する。"
+      }
+    },
+    "l1rr15655c": {
+      "runId": "l1rr15655c",
+      "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+      "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r15-20261114.json",
+      "sourceEvidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r15-20261114.json",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false,
+      "executionCompleted": true,
+      "allGoalsReached": false,
+      "rootAc36PurposeExplorationCompleted": true,
+      "driverAc36Passed": false,
+      "rootTriage": {
+        "confirmedBugs": 0,
+        "blockerPromotion": 0,
+        "taskListPromotion": 0,
+        "insightCandidates": 2,
+        "existingInsightSameSubjectSearch": "旧152 insightのtitle/detailをオフライン/タイマー/timer/00:00で検索し該当0。既存課題全般の重複は未確定。",
+        "limitations": "自動再接続単独/全通知非漏洩/全機能役割網羅を保証しない。cleanup/runtime撤去は後段root資格で補う。"
       }
     }
   }

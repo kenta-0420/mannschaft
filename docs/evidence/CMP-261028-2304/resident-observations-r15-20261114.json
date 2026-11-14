@@ -1,0 +1,218 @@
+{
+  "schemaVersion": 1,
+  "registrationSource": "actual-resident-artifacts",
+  "trusted": false,
+  "status": "observed-unverified",
+  "coveragePassed": false,
+  "runId": "l1rr15655c",
+  "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+  "rootQualification": {
+    "path": ".claude/l1r-recovery-20261108/r15-recovery-01/root-resident-results-finalization-01.md",
+    "sha256": "239a2ced3ba3bdd1c3ca4328d62ea744474c184957d300a08b47272abb5b11f6",
+    "ac36PurposeExplorationCompleted": true,
+    "productAllGreen": false
+  },
+  "history": "原未認証2context閉鎖・browser前identity2拒否・既知未送信slug WRITE_BLOCKEDを保持。R14 fresh3とは別persona/run。",
+  "residents": [
+    {
+      "resident": "r1",
+      "personaId": "ALIC-L1R-R15-R1-20261114",
+      "journeyId": "ALIC-L1R-R15-R1-20261114-J1",
+      "profile": {
+        "id": 3,
+        "systemRole": null
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "guiLoginCount": 1,
+      "counts": {
+        "create": 1,
+        "update": 0,
+        "delete": 0
+      },
+      "pending": 0,
+      "unknown": false,
+      "executionCompleted": true,
+      "allGoalsReached": false,
+      "goalScope": "独立目的探索実施。全製品動作/全5機能×3役の網羅とはしない。",
+      "observedOutcome": "GUIでclosure1 POST201・対象1。member5の本人通知2106/source1/scope11→confirm200と管理者confirmation MESSAGE/userId5・1/1確認済みをroot照合。人工offline→online直後はnavigator.onLine=trueでもoffline表示。通常GET→戻りで新CONNECTED10/11とリアルタイム表示に復帰。既socketを閉じない人工切替であり実回線断・自動再接続単独成功/不良は未証明。",
+      "sourceArtifacts": [
+        {
+          "path": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/prelogin-recovery02/l1rr15655c-r1/actor-summary.json",
+          "sha256": "d8697ad7ed33ac18ecbc1016851cbdd82834dfd79aa6aa3145cfd97b69ce34f9"
+        },
+        {
+          "path": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/prelogin-recovery02/l1rr15655c-r1/mutation-journal.jsonl",
+          "sha256": "e0725fd905062e7855cfc437fe2b5466a42a831ec2a80ed42419e584b246659e"
+        },
+        {
+          "path": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/prelogin-recovery02/l1rr15655c-r1/mutation-final.json",
+          "sha256": "0d2aff0fe3042086073d055ad9788acbd50aea67623ef0ea499639f31b437168"
+        },
+        {
+          "path": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/prelogin-recovery02/l1rr15655c-r1/websocket-snapshot.json",
+          "sha256": "254420d3df2d7f1156b6f76c4456e4b9d7da0946a7bf7ba76d8fddda9164b945"
+        }
+      ],
+      "selectedPngs": [
+        {
+          "path": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/prelogin-recovery02/l1rr15655c-r1/closure-preview.png",
+          "sha256": "6c650c3ed6a7f6b1c15ca5b4e7df89e74375288130cba69629f03de5f8b7b248"
+        },
+        {
+          "path": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/prelogin-recovery02/l1rr15655c-r1/confirmation-open.png",
+          "sha256": "fa052c35b8a9e4b64dd057cb7bfb7e3b934c0b25d4e3d1c6062b10bc6e0bc757"
+        },
+        {
+          "path": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/prelogin-recovery02/l1rr15655c-r1/confirmation-reconnected.png",
+          "sha256": "f2602cda49539153844e923375619d52e6444a138724172125858888919718c1"
+        }
+      ],
+      "driverAc36Passed": false,
+      "driverQualification": "raw mutation-final ac36Passed:falseは既定値として不変。root AC-36資格と分離。"
+    },
+    {
+      "resident": "r2",
+      "personaId": "ALIC-L1R-R15-R2-20261114",
+      "journeyId": "ALIC-L1R-R15-R2-20261114-J1",
+      "profile": {
+        "id": 5,
+        "systemRole": null
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "guiLoginCount": 1,
+      "counts": {
+        "create": 2,
+        "update": 6,
+        "delete": 0
+      },
+      "pending": 0,
+      "unknown": false,
+      "executionCompleted": true,
+      "allGoalsReached": false,
+      "goalScope": "独立目的探索実施。全製品動作/全5機能×3役の網羅とはしない。",
+      "observedOutcome": "本人会話9で投稿2件201。other private channel10は不可視/未選択から本人会話へ復帰し継続。STOMP拒否を主張しない。本人user queueのrunMarker一致通知を受信しGUI confirm200→本人通知read200。無関係通知の一括既読0。",
+      "sourceArtifacts": [
+        {
+          "path": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/prelogin-recovery02/l1rr15655c-r2/actor-summary.json",
+          "sha256": "22ad1b9cbc47538213b8998a515763e36d1e4525e877e179d37dff02af7f97a8"
+        },
+        {
+          "path": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/prelogin-recovery02/l1rr15655c-r2/mutation-final.json",
+          "sha256": "35c12aeb2613ecb2d63dd0c5b1b7632ee35b5d016c19445cbc4cf631331b1eec"
+        },
+        {
+          "path": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/prelogin-recovery02/l1rr15655c-r2/mutation-journal.jsonl",
+          "sha256": "4cd8bde9cb9ecb9ba589bf684c717dff2be16e217f1b4389f94600e4422ca8d7"
+        },
+        {
+          "path": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/prelogin-recovery02/l1rr15655c-r2/websocket-observation-snapshot.json",
+          "sha256": "2f36ae658972436f8e3cd2ae3bdbb138f898eb9c9bbf94de3f8a489cb4e1c65c"
+        },
+        {
+          "path": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/prelogin-recovery02/l1rr15655c-r2/websocket-safe.json",
+          "sha256": "2f36ae658972436f8e3cd2ae3bdbb138f898eb9c9bbf94de3f8a489cb4e1c65c"
+        }
+      ],
+      "selectedPngs": [
+        {
+          "path": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/prelogin-recovery02/l1rr15655c-r2/09_sent.png",
+          "sha256": "4283dec5f2f0f9b2683f51d4e59790ea54a220e129dac0a4d37f8c8eb4707977"
+        },
+        {
+          "path": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/prelogin-recovery02/l1rr15655c-r2/13_other_private_loading.png",
+          "sha256": "f091e46ae2cbe4d36a9fec18770c49465d5a94858eecc4ad0a07111463e644c7"
+        },
+        {
+          "path": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/prelogin-recovery02/l1rr15655c-r2/16_new_notifications.png",
+          "sha256": "d9b689ee6e9c370e32726910674999a9901f1f862d1617cbf60de3d8c3c83339"
+        },
+        {
+          "path": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/prelogin-recovery02/l1rr15655c-r2/17_notice_destination.png",
+          "sha256": "6758849761085962d726e37a83b7593967c598b485cdec2cf3082cb030489e65"
+        }
+      ],
+      "driverAc36Passed": false,
+      "driverQualification": "raw mutation-final ac36Passed:falseは既定値として不変。root AC-36資格と分離。"
+    },
+    {
+      "resident": "r3",
+      "personaId": "ALIC-L1R-R15-R3-20261114",
+      "journeyId": "ALIC-L1R-R15-R3-20261114-J1",
+      "profile": {
+        "id": 6,
+        "systemRole": null
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "guiLoginCount": 1,
+      "counts": {
+        "create": 1,
+        "update": 0,
+        "delete": 0
+      },
+      "pending": 0,
+      "unknown": false,
+      "executionCompleted": true,
+      "allGoalsReached": false,
+      "goalScope": "独立目的探索実施。全製品動作/全5機能×3役の網羅とはしない。",
+      "observedOutcome": "primary live観戦拒否UIとWS ERROR→CLOSEを観測。本文/購読相関未採取につき特定拒否server receiptとはしない。自身other liveでPERIOD_START event1 POST201、戻り/再読込で履歴は残存し状態は開始前00:00へ戻った。他人向けmarker混入未観測は全非漏洩証明ではない。",
+      "sourceArtifacts": [
+        {
+          "path": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/l1rr15655c-r3/actor-summary.json",
+          "sha256": "a33d71767585e911a38413fd9de1451ee75c16731a987bb5eb650f20be20d2a6"
+        },
+        {
+          "path": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/l1rr15655c-r3/mutation-final.json",
+          "sha256": "0d2aff0fe3042086073d055ad9788acbd50aea67623ef0ea499639f31b437168"
+        },
+        {
+          "path": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/l1rr15655c-r3/mutation-journal.jsonl",
+          "sha256": "f652375292426ad5fcbb9d420fed0b82c677beb0275ee2f37f566db8b384d425"
+        },
+        {
+          "path": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/l1rr15655c-r3/websocket-safe.json",
+          "sha256": "cb19311183c990081ea7348dcc026970247764909b406733b8621b8910477804"
+        }
+      ],
+      "selectedPngs": [
+        {
+          "path": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/l1rr15655c-r3/08_own_first_half.png",
+          "sha256": "56f5d8de0d0c6249d477445d1c854cb7ede2fd9c9d667bdea5902aed4e767ea1"
+        },
+        {
+          "path": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/l1rr15655c-r3/09_own_return_after_start.png",
+          "sha256": "3d694ebc122eb2d2f915fa163d991772be056cc7e1b5ace2f3cb0d6b9368235d"
+        },
+        {
+          "path": ".claude/l1r-recovery-20261108/r15-recovery-01/activation-actual-01/windows-W03/bound-02/l1rr15655c-r3/10_own_reloaded.png",
+          "sha256": "3d694ebc122eb2d2f915fa163d991772be056cc7e1b5ace2f3cb0d6b9368235d"
+        }
+      ],
+      "driverAc36Passed": false,
+      "driverQualification": "raw mutation-final ac36Passed:falseは既定値として不変。root AC-36資格と分離。"
+    }
+  ],
+  "rootClosureQualification": {
+    "path": ".claude/l1r-recovery-20261108/r15-recovery-01/root-three-contexts-closed-final-01.md",
+    "sha256": "3efc2bc714d38388773e6551a2dea901584eb216fd2a0912cf9276fb08fd2c80",
+    "actualExplorationContextsClosed": 3,
+    "nativeExitCodes": [
+      0,
+      0,
+      0
+    ],
+    "pending": 0,
+    "unknown": false,
+    "qualification": "後続FINAL/閉鎖資格。各actor-summaryは閉鎖前snapshotの原値を保持。原未認証context閉鎖とidentity前拒否も別歴史として保持。app停止・DB/scratch/Jar撤去・main採用の完了は意味しない。"
+  }
+}
