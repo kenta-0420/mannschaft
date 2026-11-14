@@ -6,6 +6,8 @@
 
 ### シフトスケジュール作成・運用フロー
 
+作成時は既存のSYSTEM_ADMIN/対象チーム管理者認可を先に行い、Facadeから公開窓口`TeamService.findTeamSummary`で未削除チームの存在を1回確認してから書込Serviceへ進む。不在・論理削除済みならSYSTEM_ADMINでも`403 COMMON_002`で作成しない。認可拒否時には親存在照会をしない。ACTIVE/PROVISIONEDやアーカイブの新条件は加えない。親確認後の同時削除保証は別課題1821の範囲とする。
+
 ```
 1. 管理者がシフトスケジュールを作成（DRAFT）
    a. 期間（start_date / end_date）、期間種別（WEEKLY / MONTHLY / CUSTOM）を設定
