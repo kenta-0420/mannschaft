@@ -15,6 +15,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.common.util.SessionHashUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -337,13 +338,15 @@ public class AuthSessionService {
                 if (revoked >= excess) {
                     break;
                 }
-                if (refreshTokenRepository.revokeActiveSessionCandidate(candidate.getId(), userId, LocalDateTime.now()) == 0) {
+                if (refreshTokenRepository.revokeActiveSessionCandidate(candidate.getId(), userId,
+                        LocalDateTime.now(UserZoneLocalDateTimeParser.SERVER_ZONE)) == 0) {
                     // 選定後にrefresh/logout/expiryが変化した。古い集合で次の行を余計に失効させない。
                     break;
                 }
                 revoked++;
             }
-            if (refreshTokenRepository.countByUserIdAndRevokedAtIsNullAndExpiresAtAfter(userId, LocalDateTime.now())
+            if (refreshTokenRepository.countByUserIdAndRevokedAtIsNullAndExpiresAtAfter(userId,
+                    LocalDateTime.now(UserZoneLocalDateTimeParser.SERVER_ZONE))
                     <= MAX_ACTIVE_SESSIONS) {
                 return;
             }
