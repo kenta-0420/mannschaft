@@ -101,6 +101,21 @@ describe('useScopeRouteSync', () => {
     expect(scopeStore.current).toEqual({ type: 'organization', id: '7', name: 'ベータ連盟' })
   })
 
+  // CMP-260909-0545: 既存URL同期のcharacterization。新しい切替処理は追加しない。
+  it('個人から所属組織を選んだ利用者はneutralなシフト予算3画面で数値組織スコープを保持する', async () => {
+    const orgStore = useOrganizationStore()
+    orgStore.myOrganizations = [org(7, 'beta', 'ベータ連盟')]
+    const scopeStore = useScopeStore()
+    const sync = useScopeRouteSync()
+    expect(scopeStore.current.type).toBe('personal')
+
+    expect(await sync.syncFromPath('/organizations/beta')).toBe(true)
+    for (const path of ['/admin/shift-budget/dashboard', '/admin/shift-budget/allocations', '/admin/shift-budget/failed-events']) {
+      expect(await sync.syncFromPath(path)).toBe(false)
+      expect(scopeStore.current).toEqual({ type: 'organization', id: '7', name: 'ベータ連盟' })
+    }
+  })
+
   it('所属していない slug では現在スコープを変えない', async () => {
     const teamStore = useTeamStore()
     const fetchSpy = vi.spyOn(teamStore, 'fetchMyTeams').mockResolvedValue(undefined)

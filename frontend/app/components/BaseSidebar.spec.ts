@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
 import { markRaw } from 'vue'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
+import { useFeatureFlagStore } from '~/stores/featureFlags'
 
 const { apiMock, policyMock } = vi.hoisted(() => ({ apiMock: vi.fn(), policyMock: vi.fn() }))
 vi.mock('~/composables/useApi', () => ({ useApi: () => (url: string, ...args: unknown[]) => url.endsWith('/feature-display-policies') ? policyMock(url, ...args) : apiMock(url, ...args) }))
@@ -217,5 +218,185 @@ describe('BaseSidebar の取得状態', () => {
     expect(apiMock).toHaveBeenCalledWith('/api/v1/organizations/org-b/modules')
     expect(wrapper.get('a[href="/admin/vendors?scope=organizations&scopeId=org-b"]').isVisible()).toBe(true)
     expect(wrapper.find('a[href="/admin/vendors?scope=organizations&scopeId=org-a"]').exists()).toBe(false)
+  })
+})
+
+/** CMP-260909-0545: 実Sidebar・実権限composableを通し、API応答境界だけを差し替える。 */
+describe('組織Sidebarのシフト予算入口', () => {
+  const href = 'a[href="/admin/shift-budget/dashboard"]'
+  const mounted: Array<{ unmount: () => void }> = []
+
+  function budgetPermissions(roleName: string, granted: readonly string[] = ['BUDGET_VIEW']) {
+    return { data: { roleName, permissions: [...granted] } }
+  }
+
+  function deferredPermissions() {
+    let resolve!: (value: ReturnType<typeof budgetPermissions>) => void
+    const promise = new Promise<ReturnType<typeof budgetPermissions>>(done => { resolve = done })
+    return { promise, resolve }
+  }
+
+  async function mountBudgetSidebar(memberLensActive = false) {
+    const wrapper = await mountSuspended(OrganizationSidebar, {
+      props: { orgId: 'org-a', memberLensActive },
+    })
+    mounted.push(wrapper)
+    await flushPromises()
+    return wrapper
+  }
+
+  beforeEach(() => {
+    localStorage.clear()
+    clearNuxtState('scope-feature-display-policies')
+    policyMock.mockReset().mockResolvedValue({ data: { features: [] } })
+    apiMock.mockReset().mockImplementation((url: string) => Promise.resolve(
+      url.endsWith('/me/permissions') ? budgetPermissions('ADMIN') : { data: [] },
+    ))
+    useFeatureFlagStore().flags = { FEATURE_SHIFT_ENABLED: true }
+  })
+
+  afterEach(() => {
+    for (const wrapper of mounted.splice(0)) wrapper.unmount()
+    useFeatureFlagStore().flags = {}
+  })
+
+  it.each(['ADMIN', 'DEPUTY_ADMIN', 'MEMBER', 'SYSTEM_ADMIN'])('%sは通常表示で読取可能なシフト予算へ一意に到達できる', async role => {
+    apiMock.mockImplementation((url: string) => Promise.resolve(url.endsWith('/me/permissions')
+      ? budgetPermissions(role, role === 'SYSTEM_ADMIN' ? [] : ['BUDGET_VIEW'])
+      : { data: [] }))
+    const wrapper = await mountBudgetSidebar()
+
+    // budgetモジュールは無効（一覧空）でも、既存読取APIにない追加制約を課さない。
+    expect(wrapper.findAll(href)).toHaveLength(1)
+    await wrapper.get('button:has(i.pi-database)').trigger('click')
+    expect(wrapper.get(href).isVisible()).toBe(true)
+    expect(apiMock.mock.calls.filter(([url]) => String(url).endsWith('/me/permissions'))).toHaveLength(1)
+    expect(apiMock.mock.calls.filter(([url]) => String(url).endsWith('/modules'))).toHaveLength(role === 'SYSTEM_ADMIN' ? 0 : 1)
+  })
+
+  it.each([
+    ['ADMIN', []],
+    ['DEPUTY_ADMIN', ['BUDGET_ADMIN']],
+    ['MEMBER', ['BUDGET_ADMIN']],
+  ] as const)('%sでもBUDGET_VIEWがなければ読取入口を出さない', async (role, granted) => {
+    apiMock.mockImplementation((url: string) => Promise.resolve(url.endsWith('/me/permissions')
+      ? budgetPermissions(role, granted) : { data: [] }))
+    const wrapper = await mountBudgetSidebar()
+
+    expect(wrapper.find(href).exists()).toBe(false)
+  })
+
+  it('権限取得が正常に未所属を返した場合は入口もナビも表示しない', async () => {
+    apiMock.mockImplementation((url: string) => Promise.resolve(url.endsWith('/me/permissions')
+      ? { data: { roleName: null, permissions: [] } } : { data: [] }))
+    const wrapper = await mountBudgetSidebar()
+
+    expect(wrapper.find(href).exists()).toBe(false)
+    expect(wrapper.find('nav').exists()).toBe(false)
+    expect(wrapper.find('[role="status"]').exists()).toBe(false)
+    expect(wrapper.findComponent({ name: 'DashboardErrorState' }).exists()).toBe(false)
+  })
+
+  it.each(['ADMIN', 'SYSTEM_ADMIN'])('%sもSHIFTフラグ未取得・OFFでは入口がなくONに追従する', async role => {
+    apiMock.mockImplementation((url: string) => Promise.resolve(url.endsWith('/me/permissions')
+      ? budgetPermissions(role, role === 'SYSTEM_ADMIN' ? [] : ['BUDGET_VIEW']) : { data: [] }))
+    const flags = useFeatureFlagStore()
+    flags.flags = {}
+    const wrapper = await mountBudgetSidebar()
+    expect(wrapper.find(href).exists()).toBe(false)
+
+    flags.flags = { FEATURE_SHIFT_ENABLED: true }
+    await flushPromises()
+    expect(wrapper.findAll(href)).toHaveLength(1)
+
+    flags.flags = { FEATURE_SHIFT_ENABLED: false }
+    await flushPromises()
+    expect(wrapper.find(href).exists()).toBe(false)
+  })
+
+  it.each(['ADMIN', 'SYSTEM_ADMIN'])('%sのメンバープレビューから管理画面へ抜けず通常表示に戻すと入口が復元する', async role => {
+    apiMock.mockImplementation((url: string) => Promise.resolve(url.endsWith('/me/permissions')
+      ? budgetPermissions(role, role === 'SYSTEM_ADMIN' ? [] : ['BUDGET_VIEW']) : { data: [] }))
+    const wrapper = await mountBudgetSidebar(true)
+    expect(wrapper.find(href).exists()).toBe(false)
+
+    await wrapper.setProps({ memberLensActive: false })
+    await flushPromises()
+    expect(wrapper.findAll(href)).toHaveLength(1)
+
+    await wrapper.setProps({ memberLensActive: true })
+    await flushPromises()
+    expect(wrapper.find(href).exists()).toBe(false)
+  })
+
+  it('権限取得中・取得失敗では入口を出さず正規の再試行で復元する', async () => {
+    const pending = deferredPermissions()
+    apiMock.mockImplementation((url: string) => url.endsWith('/me/permissions')
+      ? pending.promise.then(() => { throw new Error('permissions unavailable') })
+      : Promise.resolve({ data: [] }))
+    const wrapper = await mountBudgetSidebar()
+    expect(wrapper.find('[role="status"]').exists()).toBe(true)
+    expect(wrapper.find(href).exists()).toBe(false)
+
+    pending.resolve(budgetPermissions('ADMIN'))
+    await flushPromises()
+    expect(wrapper.findComponent({ name: 'DashboardErrorState' }).exists()).toBe(true)
+    expect(wrapper.find(href).exists()).toBe(false)
+
+    apiMock.mockImplementation((url: string) => Promise.resolve(url.endsWith('/me/permissions')
+      ? budgetPermissions('ADMIN') : { data: [] }))
+    wrapper.findComponent({ name: 'DashboardErrorState' }).vm.$emit('retry')
+    await flushPromises()
+    expect(wrapper.findAll(href)).toHaveLength(1)
+  })
+
+  it('組織Aの閲覧許可を組織Bへ持ち越さずBの読取結果で表示を決める', async () => {
+    const pendingB = deferredPermissions()
+    apiMock.mockImplementation((url: string) => {
+      if (url === '/api/v1/organizations/org-b/me/permissions') return pendingB.promise
+      return Promise.resolve(url.endsWith('/me/permissions') ? budgetPermissions('ADMIN') : { data: [] })
+    })
+    const wrapper = await mountBudgetSidebar()
+    expect(wrapper.findAll(href)).toHaveLength(1)
+
+    await wrapper.setProps({ orgId: 'org-b' })
+    await flushPromises()
+    expect(wrapper.find(href).exists()).toBe(false)
+    expect(apiMock).toHaveBeenCalledWith('/api/v1/organizations/org-b/me/permissions')
+    pendingB.resolve(budgetPermissions('MEMBER', []))
+    await flushPromises()
+    expect(wrapper.find(href).exists()).toBe(false)
+  })
+
+  it('組織Aの遅い拒否応答で読取可能な組織Bの入口を消さない', async () => {
+    const pendingA = deferredPermissions()
+    apiMock.mockImplementation((url: string) => {
+      if (url === '/api/v1/organizations/org-a/me/permissions') return pendingA.promise
+      return Promise.resolve(url.endsWith('/me/permissions') ? budgetPermissions('MEMBER') : { data: [] })
+    })
+    const wrapper = await mountBudgetSidebar()
+    await wrapper.setProps({ orgId: 'org-b' })
+    await flushPromises()
+    expect(wrapper.findAll(href)).toHaveLength(1)
+
+    pendingA.resolve(budgetPermissions('MEMBER', []))
+    await flushPromises()
+    expect(wrapper.findAll(href)).toHaveLength(1)
+  })
+
+  it('組織Aの遅い許可応答で権限のない組織Bへ入口を復活させない', async () => {
+    const pendingA = deferredPermissions()
+    apiMock.mockImplementation((url: string) => {
+      if (url === '/api/v1/organizations/org-a/me/permissions') return pendingA.promise
+      return Promise.resolve(url.endsWith('/me/permissions') ? budgetPermissions('MEMBER', []) : { data: [] })
+    })
+    const wrapper = await mountBudgetSidebar()
+    await wrapper.setProps({ orgId: 'org-b' })
+    await flushPromises()
+    expect(wrapper.find(href).exists()).toBe(false)
+
+    pendingA.resolve(budgetPermissions('ADMIN'))
+    await flushPromises()
+    expect(wrapper.find(href).exists()).toBe(false)
   })
 })

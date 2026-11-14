@@ -100,6 +100,7 @@ const categories = computed<SidebarCategory[]>(() => [
       { labelKey: 'orgSidebar.kb', icon: 'pi pi-book', path: 'kb', moduleSlug: null, requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.analytics', icon: 'pi pi-chart-line', path: 'analytics', moduleSlug: 'analytics', requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.budget', icon: 'pi pi-wallet', path: 'budget', moduleSlug: 'budget', requiredRole: 'ADMIN' },
+      { labelKey: 'admin.quickLinks.shiftBudget', icon: 'pi pi-wallet', path: '', absolutePath: '/admin/shift-budget/dashboard', moduleSlug: null, requiredRole: 'MEMBER', gateKey: 'FEATURE_SHIFT_ENABLED', access: 'shift-budget-view' },
       { labelKey: 'orgSidebar.auditLogs', icon: 'pi pi-list', path: 'audit-logs', moduleSlug: 'audit_log', requiredRole: 'ADMIN' },
     ],
   },
