@@ -74,7 +74,7 @@ function confirmReview(): void {
       class="text-sm"
     >
       <!-- 依頼者 -->
-      <Column :header="$t('common.member')" field="requestInfo.requestedBy" style="min-width: 100px">
+      <Column :header="$t('member.columns.name')" field="requestInfo.requestedBy" style="min-width: 100px">
         <template #body="{ data }">
           <span class="font-medium">{{ data.requestInfo.requestedBy }}</span>
         </template>
@@ -95,14 +95,14 @@ function confirmReview(): void {
       </Column>
 
       <!-- ステータス -->
-      <Column :header="$t('common.status')" field="reviewInfo.status" style="min-width: 100px">
+      <Column :header="$t('label.status')" field="reviewInfo.status" style="min-width: 100px">
         <template #body="{ data }">
           <Tag :value="statusLabel(data.reviewInfo.status)" :severity="statusSeverity(data.reviewInfo.status)" />
         </template>
       </Column>
 
       <!-- 操作 -->
-      <Column :header="$t('common.action')" style="min-width: 180px">
+      <Column :header="$t('label.actions')" style="min-width: 180px">
         <template #body="{ data }">
           <div class="flex gap-2">
             <!-- ADMIN: 承認・却下 -->
