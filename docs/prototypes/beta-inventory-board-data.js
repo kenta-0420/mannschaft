@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-11-14T10:20:56+00:00",
+  "generatedAt": "2026-11-14T12:54:55+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,13 +8,13 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "d61097a49227386d8b4044a2a6ced72fade5b50a",
-    "taskListCommit": "20fe9166ba635d7e5169c4eee01abf802b48ccea",
+    "taskListCommit": "75e81405d9c2a8c50c091700575b690a3a9e513e",
     "inventorySha256": "b0a1f97197840c865756a40f12f577cfeb10aa8083dc95f2932f7b3a7f90528a",
-    "taskListSha256": "4ee5d37b340f93ee62504b3042f76447ed2f08234733d3827081087f393edbe9",
+    "taskListSha256": "f661214488a3f8a3c36e1774220280001623a26584dae1527e3bc4c3e7084a5d",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
-    "githubSnapshotSha256": "096fd8b9d19ae8bcbb692b2d3d8aed03b6bc9e3e55c4235b62c344a9cdd66234"
+    "githubSnapshotSha256": "97df3f0c66213f271371f61d7575f814b87edc488dc5a7e94dd07ffa14be4c7c"
   },
   "sourceCounts": {
     "features": 44,
@@ -60395,7 +60395,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "L1-R初回名称正規化と支援修復の統合",
           "url": "https://github.com/kenta-0420/mannschaft/pull/4352",
-          "updatedAt": "2026-11-14T08:39:13Z",
+          "updatedAt": "2026-11-14T12:16:10Z",
           "ci": {
             "status": "success",
             "checks": [],
@@ -67425,8 +67425,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261113-1506",
       "title": "会員証 API の存在秘匿の不整合（詳細取得・チェックイン履歴・QR表示・QR再生成で、他人のカードと存在しないカードの応答が一致していない）",
-      "status": "not-started",
-      "statusLabel": "P3 未着手",
+      "status": "working",
+      "statusLabel": "P3 実装中",
       "stage": "未設定",
       "priority": "未設定",
       "taskPriority": "P3",
@@ -67461,7 +67461,7 @@ window.BETA_INVENTORY_DATA = {
         "QR"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -67594,7 +67594,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "修正: 公開世代で再公開後のシフト予算消化を保護",
           "url": "https://github.com/kenta-0420/mannschaft/pull/4308",
-          "updatedAt": "2026-11-14T03:55:02Z",
+          "updatedAt": "2026-11-14T10:24:59Z",
           "ci": {
             "status": "failure",
             "checks": [],
@@ -67666,7 +67666,7 @@ window.BETA_INVENTORY_DATA = {
   "githubSync": {
     "schemaVersion": 1,
     "repository": "kenta-0420/mannschaft",
-    "synchronizedAt": "2026-11-14T10:19:16+00:00",
+    "synchronizedAt": "2026-11-14T12:51:45+00:00",
     "status": "synced",
     "error": null,
     "references": {
@@ -80088,7 +80088,7 @@ window.BETA_INVENTORY_DATA = {
         "state": "open",
         "title": "修正: 公開世代で再公開後のシフト予算消化を保護",
         "url": "https://github.com/kenta-0420/mannschaft/pull/4308",
-        "updatedAt": "2026-11-14T03:55:02Z",
+        "updatedAt": "2026-11-14T10:24:59Z",
         "ci": {
           "status": "failure",
           "checks": [],
@@ -80241,7 +80241,7 @@ window.BETA_INVENTORY_DATA = {
         "state": "open",
         "title": "L1-R初回名称正規化と支援修復の統合",
         "url": "https://github.com/kenta-0420/mannschaft/pull/4352",
-        "updatedAt": "2026-11-14T08:39:13Z",
+        "updatedAt": "2026-11-14T12:16:10Z",
         "ci": {
           "status": "success",
           "checks": [],
@@ -80809,7 +80809,7 @@ window.BETA_INVENTORY_DATA = {
     "lastAttempt": {
       "status": "synced",
       "error": null,
-      "synchronizedAt": "2026-11-14T10:19:16+00:00",
+      "synchronizedAt": "2026-11-14T12:51:45+00:00",
       "referenceCount": 806
     }
   }
