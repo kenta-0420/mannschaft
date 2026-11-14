@@ -41,7 +41,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleLoginSuccess(LoginSuccessEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.LOGIN_SUCCESS.name(),
             event.getUserId(),
             null,
@@ -59,7 +59,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleLoginFailed(LoginFailedEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.LOGIN_FAILED.name(),
             null,
             null,
@@ -87,7 +87,7 @@ public class AuditLogEventListener {
                 metadata = toJson(Map.of("session_id", event.getSessionId()));
             }
         }
-        auditLogService.record(
+        auditLogService.recordSync(
             type.name(),
             event.getUserId(),
             null,
@@ -109,7 +109,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleUserRegistered(UserRegisteredEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.USER_REGISTERED.name(),
             event.getUserId(),
             null,
@@ -127,7 +127,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleEmailVerified(EmailVerifiedEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.EMAIL_VERIFIED.name(),
             event.getUserId(),
             null,
@@ -145,7 +145,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handlePasswordResetRequested(PasswordResetRequestedEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.PASSWORD_RESET_REQUESTED.name(),
             event.getUserId(),
             null,
@@ -163,7 +163,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handlePasswordResetCompleted(PasswordResetCompletedEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.PASSWORD_RESET_COMPLETED.name(),
             event.getUserId(),
             null,
@@ -181,7 +181,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handlePasswordChanged(PasswordChangedEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.PASSWORD_CHANGED.name(),
             event.getUserId(),
             null,
@@ -199,7 +199,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleEmailChangeRequested(EmailChangeRequestedEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.EMAIL_CHANGE_REQUESTED.name(),
             event.getUserId(),
             null,
@@ -217,7 +217,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleEmailChanged(EmailChangedEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.EMAIL_CHANGED.name(),
             event.getUserId(),
             null,
@@ -235,7 +235,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleWithdrawalRequested(WithdrawalRequestedEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.WITHDRAWAL_REQUESTED.name(),
             event.getUserId(),
             null,
@@ -253,7 +253,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleWithdrawalCancelled(WithdrawalCancelledEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.WITHDRAWAL_CANCELLED.name(),
             event.getUserId(),
             null,
@@ -271,7 +271,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleAccountLocked(AccountLockedEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.ACCOUNT_LOCKED.name(),
             event.getUserId(),
             null,
@@ -296,7 +296,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleOAuthLinked(OAuthLinkedEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.OAUTH_LINKED.name(),
             event.getUserId(),
             null,
@@ -314,7 +314,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleOAuthUnlinked(OAuthUnlinkedEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.OAUTH_UNLINKED.name(),
             event.getUserId(),
             null,
@@ -336,7 +336,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleMfaEnabled(MfaEnabledEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.MFA_ENABLED.name(),
             event.getUserId(),
             null,
@@ -354,7 +354,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleMfaDisabled(MfaDisabledEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.MFA_DISABLED.name(),
             event.getUserId(),
             null,
@@ -376,7 +376,7 @@ public class AuditLogEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleMfaBackupCodeUsed(MfaBackupCodeUsedEvent event) {
         // ログイン完了直前（セッション確立前）のため session_hash は null のまま
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.MFA_BACKUP_CODE_USED.name(),
             event.getUserId(),
             null,
@@ -407,7 +407,7 @@ public class AuditLogEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleMfaRecoveryRequested(MfaRecoveryRequestedEvent event) {
         // 未認証フロー（MFA リカバリーはセッション外で発生）: session_hash は null のまま
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.MFA_RECOVERY_REQUESTED.name(),
             event.getUserId(),
             null,
@@ -425,7 +425,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleMfaBackupCodesRegenerated(MfaBackupCodesRegeneratedEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.MFA_BACKUP_CODES_REGENERATED.name(),
             event.getUserId(),
             null,
@@ -444,7 +444,7 @@ public class AuditLogEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleMfaRecoveryCompleted(MfaRecoveryCompletedEvent event) {
         // 未認証フロー（MFA リカバリー完了はセッション確立前）: session_hash は null のまま
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.MFA_RECOVERY_COMPLETED.name(),
             event.getUserId(),
             null,
@@ -466,7 +466,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleWebAuthnRegistered(WebAuthnRegisteredEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.WEBAUTHN_CREDENTIAL_REGISTERED.name(),
             event.getUserId(),
             null,
@@ -488,7 +488,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleAccountUnlocked(AccountUnlockedEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.ACCOUNT_UNLOCKED.name(),
             event.getAdminId(),
             event.getTargetUserId(),
@@ -506,7 +506,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleUserFrozen(UserFrozenEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.USER_FROZEN.name(),
             event.getAdminId(),
             event.getTargetUserId(),
@@ -524,7 +524,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleUserUnfrozen(UserUnfrozenEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.USER_UNFROZEN.name(),
             event.getAdminId(),
             event.getTargetUserId(),
@@ -559,7 +559,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleWebAuthnLogin(WebAuthnLoginEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.WEBAUTHN_LOGIN.name(),
             event.getUserId(),
             null,
@@ -579,7 +579,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleWebAuthnLoginFailed(WebAuthnLoginFailedEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.WEBAUTHN_LOGIN_FAILED.name(),
             event.getUserId(),
             null,
@@ -599,7 +599,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleWebAuthnCredentialRemoved(WebAuthnCredentialRemovedEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.WEBAUTHN_CREDENTIAL_REMOVED.name(),
             event.getUserId(),
             null,
@@ -623,7 +623,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleTokenReuseDetected(TokenReuseDetectedEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.TOKEN_REUSE_DETECTED.name(),
             event.getUserId(),
             null,
@@ -656,7 +656,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleTokenReplaySameDeviceRescued(TokenReplaySameDeviceRescuedEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.TOKEN_REPLAY_RESCUED_SAME_DEVICE.name(),
             event.getUserId(),
             null,
@@ -677,7 +677,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleDeviceFingerprintMismatch(DeviceFingerprintMismatchEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.DEVICE_FINGERPRINT_MISMATCH.name(),
             event.getUserId(),
             null,
@@ -697,7 +697,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleNewDeviceLogin(NewDeviceLoginEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.NEW_DEVICE_LOGIN.name(),
             event.getUserId(),
             null,
@@ -722,7 +722,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handlePasswordSetup(PasswordSetupEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.PASSWORD_SETUP.name(),
             event.getUserId(),
             null,
@@ -740,7 +740,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleOAuthUserRegistered(OAuthUserRegisteredEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.OAUTH_USER_REGISTERED.name(),
             event.getUserId(),
             null,
@@ -764,7 +764,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleOAuthLinkRequested(OAuthLinkRequestedEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.OAUTH_LINK_REQUESTED.name(),
             event.getUserId(),
             null,
@@ -788,7 +788,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleCirculationExportRequested(CirculationExportRequestedEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.CIRCULATION_EXPORT_REQUESTED.name(),
             event.getActorId(),
             null,
@@ -806,7 +806,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleCirculationExportGenerated(CirculationExportGeneratedEvent event) {
-        auditLogService.record(
+        auditLogService.recordSync(
             AuditEventType.CIRCULATION_EXPORT_GENERATED.name(),
             event.getActorId(),
             null,

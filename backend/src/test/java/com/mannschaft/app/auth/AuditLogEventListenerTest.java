@@ -56,7 +56,7 @@ class AuditLogEventListenerTest {
 
             listener.handleLoginSuccess(event);
 
-            verify(auditLogService).record(
+            verify(auditLogService).recordSync(
                     eq("LOGIN_SUCCESS"), eq(1L), isNull(),
                     isNull(), isNull(),
                     eq("192.168.0.1"), eq("Mozilla/5.0"), isNull(), isNull()
@@ -71,7 +71,7 @@ class AuditLogEventListenerTest {
             listener.handleLoginFailed(event);
 
             ArgumentCaptor<String> metadataCaptor = ArgumentCaptor.forClass(String.class);
-            verify(auditLogService).record(
+            verify(auditLogService).recordSync(
                     eq("LOGIN_FAILED"), isNull(), isNull(),
                     isNull(), isNull(),
                     eq("192.168.0.1"), eq("Mozilla/5.0"), isNull(),
@@ -88,7 +88,7 @@ class AuditLogEventListenerTest {
             listener.handleLogout(event);
 
             ArgumentCaptor<String> metadataCaptor = ArgumentCaptor.forClass(String.class);
-            verify(auditLogService).record(
+            verify(auditLogService).recordSync(
                     eq("LOGOUT_SESSION"), eq(1L), isNull(),
                     isNull(), isNull(), isNull(), isNull(), isNull(),
                     metadataCaptor.capture()
@@ -103,7 +103,7 @@ class AuditLogEventListenerTest {
 
             listener.handleLogout(event);
 
-            verify(auditLogService).record(
+            verify(auditLogService).recordSync(
                     eq("LOGOUT_ALL_SESSIONS"), eq(1L), isNull(),
                     isNull(), isNull(), isNull(), isNull(), isNull(), isNull()
             );
@@ -116,7 +116,7 @@ class AuditLogEventListenerTest {
 
             listener.handleLogout(event);
 
-            verify(auditLogService).record(
+            verify(auditLogService).recordSync(
                     eq("LOGOUT_SESSION"), eq(1L), isNull(),
                     isNull(), isNull(), isNull(), isNull(), isNull(), isNull()
             );
@@ -132,7 +132,7 @@ class AuditLogEventListenerTest {
             listener.handleTokenReplaySameDeviceRescued(event);
 
             ArgumentCaptor<String> metadataCaptor = ArgumentCaptor.forClass(String.class);
-            verify(auditLogService).record(
+            verify(auditLogService).recordSync(
                     eq("TOKEN_REPLAY_RESCUED_SAME_DEVICE"), eq(1L), isNull(),
                     isNull(), isNull(), isNull(), isNull(), isNull(),
                     metadataCaptor.capture()
@@ -152,7 +152,7 @@ class AuditLogEventListenerTest {
 
             listener.handleUserRegistered(event);
 
-            verify(auditLogService).record(
+            verify(auditLogService).recordSync(
                     eq("USER_REGISTERED"), eq(1L), isNull(),
                     isNull(), isNull(), isNull(), isNull(), isNull(), isNull()
             );
@@ -167,7 +167,7 @@ class AuditLogEventListenerTest {
             listener.handleAccountLocked(event);
 
             ArgumentCaptor<String> metadataCaptor = ArgumentCaptor.forClass(String.class);
-            verify(auditLogService).record(
+            verify(auditLogService).recordSync(
                     eq("ACCOUNT_LOCKED"), eq(1L), isNull(),
                     isNull(), isNull(), isNull(), isNull(), isNull(),
                     metadataCaptor.capture()
@@ -185,7 +185,7 @@ class AuditLogEventListenerTest {
             listener.handleEmailChanged(event);
 
             ArgumentCaptor<String> metadataCaptor = ArgumentCaptor.forClass(String.class);
-            verify(auditLogService).record(
+            verify(auditLogService).recordSync(
                     eq("EMAIL_CHANGED"), eq(1L), isNull(),
                     isNull(), isNull(), isNull(), isNull(), isNull(),
                     metadataCaptor.capture()
@@ -208,7 +208,7 @@ class AuditLogEventListenerTest {
             listener.handleOAuthLinked(event);
 
             ArgumentCaptor<String> metadataCaptor = ArgumentCaptor.forClass(String.class);
-            verify(auditLogService).record(
+            verify(auditLogService).recordSync(
                     eq("OAUTH_LINKED"), eq(1L), isNull(),
                     isNull(), isNull(), isNull(), isNull(), isNull(),
                     metadataCaptor.capture()
@@ -228,7 +228,7 @@ class AuditLogEventListenerTest {
 
             listener.handleMfaEnabled(event);
 
-            verify(auditLogService).record(
+            verify(auditLogService).recordSync(
                     eq("MFA_ENABLED"), eq(1L), isNull(),
                     // CMP-261012-0910 AC-35: MFA_ENABLED は method を metadata に持つ（旧コンストラクタは TOTP）
                     isNull(), isNull(), isNull(), isNull(), isNull(), eq("{\"method\":\"TOTP\"}")
@@ -248,7 +248,7 @@ class AuditLogEventListenerTest {
             listener.handleAccountUnlocked(event);
 
             ArgumentCaptor<String> metadataCaptor = ArgumentCaptor.forClass(String.class);
-            verify(auditLogService).record(
+            verify(auditLogService).recordSync(
                     eq("ACCOUNT_UNLOCKED"), eq(99L), eq(1L),
                     isNull(), isNull(), isNull(), isNull(), isNull(),
                     metadataCaptor.capture()
@@ -264,7 +264,7 @@ class AuditLogEventListenerTest {
             listener.handleUserFrozen(event);
 
             ArgumentCaptor<String> metadataCaptor = ArgumentCaptor.forClass(String.class);
-            verify(auditLogService).record(
+            verify(auditLogService).recordSync(
                     eq("USER_FROZEN"), eq(99L), eq(1L),
                     isNull(), isNull(), isNull(), isNull(), isNull(),
                     metadataCaptor.capture()
