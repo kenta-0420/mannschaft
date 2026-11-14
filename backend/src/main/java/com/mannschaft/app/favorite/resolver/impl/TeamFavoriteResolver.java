@@ -8,8 +8,8 @@ import com.mannschaft.app.favorite.FavoriteEntityType;
 import com.mannschaft.app.favorite.dto.FavoriteEntityMetaDto;
 import com.mannschaft.app.favorite.dto.FavoriteEntityStatus;
 import com.mannschaft.app.favorite.resolver.FavoriteEntityResolver;
-import com.mannschaft.app.team.entity.TeamEntity;
-import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.dto.TeamNameIconView;
+import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -17,12 +17,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * チームお気に入りのResolver実装。
  *
- * <p>TeamRepositoryでバッチ取得し、存在しないIDはUNAVAILABLEとして返す。
+ * <p>公開Serviceで名前・アイコンとslugをバッチ取得し、存在しないIDはUNAVAILABLEとして返す。
  * @SQLRestrictionにより論理削除済みチームは自動的に除外される。</p>
  *
  * <p><b>可視性（認可根治戦役 第1波）</b>: 表示メタ（チーム名・アイコン）を返す対象は、
@@ -36,7 +35,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class TeamFavoriteResolver implements FavoriteEntityResolver {
 
-    private final TeamRepository teamRepository;
+    private final TeamService teamService;
     private final AccessControlService accessControlService;
     private final MediaUrlResolver mediaUrlResolver;
     private final ContentVisibilityChecker contentVisibilityChecker;
@@ -61,34 +60,33 @@ public class TeamFavoriteResolver implements FavoriteEntityResolver {
         }
 
         if (!idMapping.isEmpty()) {
-            // バッチ取得（@SQLRestrictionで論理削除済みは自動除外）
-            List<TeamEntity> teams = teamRepository.findAllById(idMapping.keySet());
-            // F00 可視性ラダーで閲覧可能なチームに絞る（閲覧不可は下の UNAVAILABLE 処理に落ちる）
+            // F00可視性ラダーを先に適用し、公開Serviceには閲覧可能なIDだけを渡す。
             Set<Long> visibleIds = contentVisibilityChecker.filterAccessible(
                     ReferenceType.TEAM, idMapping.keySet(), currentUserId);
-            teams = teams.stream().filter(t -> visibleIds.contains(t.getId())).toList();
-            Set<Long> foundIds = teams.stream().map(TeamEntity::getId).collect(Collectors.toSet());
+            Map<Long, TeamNameIconView> nameIcons = teamService.getNameIconsByIds(visibleIds);
+            Map<Long, String> slugs = teamService.getSlugsByIds(visibleIds);
 
-            for (TeamEntity team : teams) {
-                String entityId = idMapping.get(team.getId());
-                boolean canEdit = accessControlService.isAdminOrAbove(currentUserId, team.getId(), "TEAM");
+            for (Map.Entry<Long, String> entry : idMapping.entrySet()) {
+                Long id = entry.getKey();
+                String entityId = entry.getValue();
+                TeamNameIconView nameIcon = nameIcons.get(id);
+                String slug = slugs.get(id);
+                // 閲覧不可・一括取得の欠落時は名前やURLを公開しない。
+                if (!visibleIds.contains(id) || nameIcon == null || slug == null) {
+                    result.put(entityId, FavoriteEntityMetaDto.unavailable(entityId, FavoriteEntityType.TEAM));
+                    continue;
+                }
+                boolean canEdit = accessControlService.isAdminOrAbove(currentUserId, id, "TEAM");
                 result.put(entityId, new FavoriteEntityMetaDto(
                         entityId,
                         FavoriteEntityType.TEAM,
-                        team.getName(),
+                        nameIcon.name(),
                         // DB には生の R2 キーが入る。表示用署名付き URL へ解決して返す（生キーは 404）。
-                        mediaUrlResolver.resolve(team.getIconUrl()),
-                        "/teams/" + team.getId(),
+                        mediaUrlResolver.resolve(nameIcon.iconUrl()),
+                        "/teams/" + slug,
                         canEdit,
                         FavoriteEntityStatus.AVAILABLE
                 ));
-            }
-
-            // 存在しないID（論理削除済み含む）はUNAVAILABLE
-            for (Map.Entry<Long, String> entry : idMapping.entrySet()) {
-                if (!foundIds.contains(entry.getKey())) {
-                    result.put(entry.getValue(), FavoriteEntityMetaDto.unavailable(entry.getValue(), FavoriteEntityType.TEAM));
-                }
             }
         }
 

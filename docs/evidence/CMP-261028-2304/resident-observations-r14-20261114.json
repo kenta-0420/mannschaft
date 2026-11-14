@@ -1,0 +1,411 @@
+{
+  "schemaVersion": 1,
+  "registrationSource": "actual-resident-artifacts",
+  "trusted": false,
+  "status": "observed-unverified",
+  "runId": "l1rr14dfb6",
+  "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+  "coveragePassed": false,
+  "registrationNote": "独立3住民の原reportを選別した観測記録。原本・private画像は変更も公開もしない。run/head欠落はroot bindingで補足し明記。肯定観測はjourneyへ記録し気づきを水増ししない。",
+  "rootBinding": {
+    "path": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/resident-binding.private.json",
+    "sha256": "205f586ad2cccae00a98533d44517128859f9bc84beaedd7ce2d1f61b8538938"
+  },
+  "residents": [
+    {
+      "resident": "r1",
+      "personaId": "ALIC-L1R-R14-R1-20261114",
+      "journeyId": "ALIC-L1R-R14-R1-20261114-J1",
+      "sourceEvidencePath": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/l1rr14dfb6-r1/resident-report.json",
+      "sourceEvidenceSha256": "5bbbbcb5cc43f278b4d62633cb0f5b1fe6ad755ef7912a458fd658db70dc44e6",
+      "profile": {
+        "id": 3,
+        "systemRole": null
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "executionCompleted": true,
+      "allGoalsReached": false,
+      "goalAchievement": {
+        "favoriteTeamReturn": true,
+        "teamScheduleReachable": true,
+        "favoriteOrgReturn": true,
+        "orgMembersManagementReachable": true,
+        "similarNamesDistinguished": "一部。同名2件の直接ジャンプは表示名のみ。一覧では片方に「その他」分類を表示。特定同名対象の業務操作は未実施。",
+        "dailyRecordSaved": false,
+        "explorationPerformed": true
+      },
+      "observations": [
+        {
+          "id": "R1-OBS-1",
+          "status": "未実証・導線上の迷い",
+          "text": "直接ジャンプにl1rr14dfb6 Duplicate Team 1が2件同じ表示で並ぶ。一覧では片方にその他分類があり完全同一表示ではない。誤操作や誤遷移は確認していない。",
+          "evidence": [
+            "02-team-list.png",
+            "04-team-directory.png"
+          ]
+        },
+        {
+          "id": "R1-OBS-2",
+          "status": "到達成功",
+          "text": "お気に入りカードに組織/チームの種別表示がある。両方の開くから正しいslugの管理者画面へ戻れた。",
+          "evidence": [
+            "09-favorites-card.png",
+            "10-favorite-team-return.png",
+            "15-organization.png",
+            "17-org-member-management.png"
+          ]
+        }
+      ],
+      "insightCount": 1,
+      "httpErrors": [],
+      "writes": {
+        "create": 0,
+        "update": 0,
+        "delete": 0,
+        "favoriteMutations": 0,
+        "newDataIds": [],
+        "remainingDataIds": [],
+        "unknownResults": []
+      },
+      "remainingIds": [],
+      "limitations": [
+        "1440x900のみ。全desktop条件の視覚検査ではない。",
+        "活動記録の保存や業務データ書込の成否は未検証。",
+        "role/name locatorで何度かTimeoutError。DOMで見えたhrefに対する通常clickで到達。これらを製品の操作不能とは認定しない。"
+      ],
+      "registrationAssignedFromRootBinding": {
+        "path": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/resident-binding.private.json",
+        "sha256": "205f586ad2cccae00a98533d44517128859f9bc84beaedd7ce2d1f61b8538938",
+        "fields": [
+          "runId"
+        ],
+        "note": "補足値を原reportの記載とみなさない。"
+      }
+    },
+    {
+      "resident": "r2",
+      "personaId": "ALIC-L1R-R14-R2-20261114",
+      "journeyId": "ALIC-L1R-R14-R2-20261114-J1",
+      "sourceEvidencePath": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/l1rr14dfb6-r2/resident-observations.json",
+      "sourceEvidenceSha256": "5aa559431f95b113e0781345ae9813692c3add2d91f96d446cce29a3086dc618",
+      "profile": {
+        "id": 5,
+        "systemRole": null
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "isMobile": true,
+        "hasTouch": true,
+        "locale": "ja-JP"
+      },
+      "executionCompleted": true,
+      "allGoalsReached": false,
+      "goalAchievement": {
+        "memberships": {
+          "achieved": true,
+          "evidence": [
+            "06-team",
+            "13-team-list-visible",
+            "15-favorites-visible"
+          ],
+          "detail": "チームメニュー、マイチーム所属チーム、dashboardのLinksで所属を確認"
+        },
+        "favorites": {
+          "achieved": true,
+          "evidence": [
+            "15-favorites-visible",
+            "16-favorite-opened"
+          ],
+          "detail": "個人dashboardでマイコンテンツ・所属を展開、下方にお気に入り。開くからチーム詳細へ遷移"
+        },
+        "records": {
+          "listReached": true,
+          "existingRecordRead": false,
+          "evidence": [
+            "04-records",
+            "07-team-records"
+          ],
+          "detail": "マイカルテと活動記録の空一覧へ到達。実データ詳細は未検証"
+        },
+        "viewEditBoundary": {
+          "partiallyUnderstood": true,
+          "detail": "チーム詳細にメンバー表示、その他操作にはチーム設定編集なし。活動記録の追加からテンプレート作成案内を辿ると作成操作のない空管理一覧へ到達し先へ進めなかった"
+        }
+      },
+      "observations": [
+        {
+          "id": "r2-o1",
+          "status": "未実証・観測",
+          "summary": "テンプレート未作成の一般メンバーに、活動記録追加モーダルがテンプレートを作成するよう案内するが、遷移先に作成操作が見つからない",
+          "steps": [
+            "チーム詳細で予定・活動を展開",
+            "活動記録を開く",
+            "記録を追加を押す",
+            "テンプレートがありません/先にテンプレートを作成してくださいの案内",
+            "テンプレートを作成リンクを押す",
+            "活動テンプレート管理に到達、テンプレートがありません。表示操作はヘッダー2ボタンとナビゲーションを開くのみ"
+          ],
+          "url": "/teams/l1rr14dfb6-team/activity-templates",
+          "evidence": [
+            "07-team-records",
+            "08-add-form",
+            "09-template-destination",
+            "10-template-nav"
+          ],
+          "metrics": {
+            "documentClientWidth": 390,
+            "documentScrollWidth": 390,
+            "addDialog": {
+              "x": 19.5,
+              "y": 245,
+              "width": 351,
+              "height": 354
+            },
+            "templateDestinationVisibleControls": [
+              {
+                "name": "メニューを開く",
+                "width": 44,
+                "height": 44
+              },
+              {
+                "name": "通知",
+                "width": 44,
+                "height": 44
+              },
+              {
+                "name": "ナビゲーションを開く",
+                "width": 44,
+                "height": 44
+              }
+            ]
+          },
+          "interpretation": "権限仕様や原因は調査していない。管理者への依頼案内は表示されなかった。裏取りが必要"
+        }
+      ],
+      "insightCount": 1,
+      "httpErrors": [],
+      "httpTotal": 178,
+      "writes": {
+        "domainCreate": [],
+        "domainUpdate": [],
+        "domainDelete": [],
+        "favoritesChanged": [],
+        "automaticNonGet": [
+          {
+            "method": "POST",
+            "path": "/api/v1/auth/login",
+            "status": 200
+          },
+          {
+            "method": "POST",
+            "path": "/api/v1/security/csp-reports",
+            "status": 204
+          }
+        ],
+        "remainingCreatedIds": []
+      },
+      "remainingIds": [],
+      "limitations": [
+        "390x844のみ。タブ列とお気に入り内部スクロールの切れをページ横パンと判定しない。全要素の視覚監査はしていない。",
+        "実記録詳細は未確認。権限仕様・原因は未調査。"
+      ],
+      "registrationAssignedFromRootBinding": {
+        "path": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/resident-binding.private.json",
+        "sha256": "205f586ad2cccae00a98533d44517128859f9bc84beaedd7ce2d1f61b8538938",
+        "fields": [],
+        "note": "補足値を原reportの記載とみなさない。"
+      }
+    },
+    {
+      "resident": "r3",
+      "personaId": "ALIC-L1R-R14-R3-20261114",
+      "journeyId": "ALIC-L1R-R14-R3-20261114-J1",
+      "sourceEvidencePath": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/l1rr14dfb6-r3/resident-observations.json",
+      "sourceEvidenceSha256": "0eb6f8e5d9f1e059d85d71c83775d60007b78185b3497c704603a46cdf79d005",
+      "profile": {
+        "id": 6,
+        "systemRole": null
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "executionCompleted": true,
+      "allGoalsReached": true,
+      "goalAchievement": {
+        "ownManagedTeam": true,
+        "otherTeamDifference": true,
+        "affiliationsReached": true,
+        "favoriteRoundTrip": true,
+        "matchesReached": true,
+        "reload": true,
+        "relogin": true,
+        "targetSwitchBack": true,
+        "matchCreation": "未実施（目的は導線探索）"
+      },
+      "observations": [
+        {
+          "id": "R3-O1",
+          "fact": "ヘッダーのチーム→直接ジャンプでOther Teamへ到達。管理者表示、招待・参加申請・機能設定・所属組織等の管理メニューあり",
+          "png": "02-own-team.png"
+        },
+        {
+          "id": "R3-O2",
+          "fact": "成績・メンバーの展開→試合サマリ内の試合を記録する→matchesへ通常GUI遷移。まだ試合記録がありませんを表示。reload後も同じURL、id6/null",
+          "png": [
+            "04-match-scroll.png",
+            "05-matches.png"
+          ]
+        },
+        {
+          "id": "R3-O3",
+          "fact": "所属組織タブから管理ページに到達。このチームはどの組織にも加盟していませんを表示",
+          "png": "06-affiliations.png"
+        },
+        {
+          "id": "R3-O4",
+          "fact": "TEAM14にお気に入り登録 POST201。ログアウトPOST200→ログインPOST200で自身のチームへ戻りお気に入り済み表示。解除DELETE204、最終aria-pressed=false",
+          "png": [
+            "07-favorite.png",
+            "09-return-own.png"
+          ]
+        },
+        {
+          "id": "R3-O5",
+          "fact": "個人ダッシュボード→チームを探す→マイチーム→チームを検索→FC東京U-18へ到達。管理者表示なし。非メンバーの説明、サポーターになる・参加申請、基本情報・メンバーのみのタブを表示。reloadでも維持。ヘッダーチームからOther Teamへ戻ると管理メニュー再表示",
+          "png": [
+            "08-other-team.png",
+            "09-return-own.png"
+          ]
+        }
+      ],
+      "insightCount": 0,
+      "httpErrors": [
+        {
+          "method": "GET",
+          "path": "/api/v1/teams/fc-u-18/modules",
+          "status": 403
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/teams/fc-u-18/modules",
+          "status": 403
+        }
+      ],
+      "writes": {
+        "domainCreate": 0,
+        "domainUpdate": 0,
+        "domainDelete": 0,
+        "favorite": [
+          {
+            "action": "create",
+            "entityType": "TEAM",
+            "entityId": 14,
+            "status": 201
+          },
+          {
+            "action": "delete",
+            "entityType": "TEAM",
+            "entityId": 14,
+            "status": 204
+          }
+        ],
+        "authLogin": 2,
+        "authLogout": 1,
+        "onboarding": "あとで決める押下。API書込なし"
+      },
+      "remainingIds": [],
+      "limitations": [
+        "1440x900のみ。全desktop viewport検査ではない",
+        "一部getByRole exactセレクタはTimeoutError。driverは詳細を伏せるためvisible/enabled/stable/intercepted等の分類は不明。通常href/text locatorで到達でき製品不備とは認定しない",
+        "試合を記録するリンクのDOM読取でdisplay flex/visibility visible、矩形x468.046875 y779 width143.21875 height32、中心hit自身、dialog0。主要CTA高さ32pxは客観値として記録するが単独で不具合確定しない"
+      ],
+      "registrationAssignedFromRootBinding": {
+        "path": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/resident-binding.private.json",
+        "sha256": "205f586ad2cccae00a98533d44517128859f9bc84beaedd7ce2d1f61b8538938",
+        "fields": [
+          "runId",
+          "sourceHead"
+        ],
+        "note": "補足値を原reportの記載とみなさない。"
+      }
+    }
+  ],
+  "insights": [
+    {
+      "id": "ALIC-L1R-R14-R1-20261114-I001",
+      "featureKey": "team-admin",
+      "featureDetail": "チームの直接ジャンプ・同名対象の識別",
+      "personaId": "ALIC-L1R-R14-R1-20261114",
+      "journeyId": "ALIC-L1R-R14-R1-20261114-J1",
+      "personaArchetype": "一般（慎重な管理者）×素直",
+      "originalRunId": "l1rr14dfb6",
+      "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+      "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r14-20261114.json",
+      "sourceEvidencePath": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/l1rr14dfb6-r1/resident-report.json",
+      "originalObservationId": "R1-OBS-1",
+      "title": "直接ジャンプで同名チーム2件を見分けにくい",
+      "detail": "直接ジャンプにl1rr14dfb6 Duplicate Team 1が2件同じ表示で並ぶ。一覧では片方にその他分類があり完全同一表示ではない。誤操作や誤遷移は確認していない。",
+      "page": "",
+      "screenshotPath": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/l1rr14dfb6-r1/02-team-list.png",
+      "urgency": "normal",
+      "priority": "should",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false
+    },
+    {
+      "id": "ALIC-L1R-R14-R2-20261114-I001",
+      "featureKey": "team-admin",
+      "featureDetail": "一般メンバーの活動記録追加・テンプレート案内",
+      "personaId": "ALIC-L1R-R14-R2-20261114",
+      "journeyId": "ALIC-L1R-R14-R2-20261114-J1",
+      "personaArchetype": "スマホ片手操作×素直",
+      "originalRunId": "l1rr14dfb6",
+      "sourceHead": "8afd06e6e06dddcd65f769be5e796baf0e83e28f",
+      "evidencePath": "docs/evidence/CMP-261028-2304/resident-observations-r14-20261114.json",
+      "sourceEvidencePath": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/l1rr14dfb6-r2/resident-observations.json",
+      "originalObservationId": "r2-o1",
+      "title": "テンプレート作成案内の遷移先で作成操作が見つからない",
+      "detail": "テンプレート未作成の一般メンバーに、活動記録追加モーダルがテンプレートを作成するよう案内するが、遷移先に作成操作が見つからない。権限仕様や原因は調査していない。管理者への依頼案内は表示されなかった。裏取りが必要",
+      "page": "/teams/l1rr14dfb6-team/activity-templates",
+      "screenshotPath": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/residents-r14-l1rr14dfb6/l1rr14dfb6-r2/09-template-destination.png",
+      "urgency": "normal",
+      "priority": "should",
+      "registrationSource": "actual-resident-artifacts",
+      "trusted": false,
+      "status": "observed-unverified",
+      "coveragePassed": false
+    }
+  ],
+  "triage": {
+    "disposition": "未実証の気づきとして2件登録。原原因・権限仕様の確認前に不具合確定しない。",
+    "confirmedBugs": 0,
+    "blockerPromotion": 0,
+    "taskListPromotion": 0,
+    "r3Http403": "他公開チームmodules403×2。正常権限か原因未確定。bug認定なし。",
+    "r3Favorite": "TEAM14 POST201→DELETE204、残ID0。業務データcreate/update/deleteは0。",
+    "limitations": "R1記録保存未検証、R2実記録詳細未確認。exact locator timeoutは通常href操作で到達し製品不備としない。探索実施と全目的達成・B0 coverage合格を分離する。"
+  },
+  "rootProvenance": {
+    "approvedDriver": {
+      "path": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-independent-residents-261113-01/resident-driver.r14.approved01.cjs",
+      "sha256": "60fc2914df6d8d4e6f963e975ff6dc7937f82a7b73ed0b3b042b7f96b4f1fb64"
+    },
+    "windowsActualContext": {
+      "path": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/postformal-input-r1/windows-context.actual.json",
+      "sha256": "8ab7201ad2dff2013a9ec5a315e45d85a31a54454fe01ba3e2580ed394eb348b"
+    },
+    "precedingGuardSummary": {
+      "path": ".claude/worktrees/agent-4022-l1r-recovery-7a9502a2-261108/.claude/campaigns/r14-runtime-preparation-261113-01/windows-master-bound01/ws-signage-s4/summary.json",
+      "sha256": "0f02f6ba68d15cd670790f8279b8864f520c64abebaca32e49294452346a25aa"
+    },
+    "note": "private binding/context/driverの内容・認証情報は公開しない。8abはwindows actual contextのhashでありguardのhashではない。"
+  },
+  "featureMappingNote": "2件ともチーム管理UIの導線として既存team-adminへ登録時対応付け。原reportにfeatureKey指定はない。R1は原reportにURLなしのためpageを未記録とする。"
+}

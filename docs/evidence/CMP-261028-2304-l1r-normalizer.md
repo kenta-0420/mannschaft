@@ -1,5 +1,7 @@
 # L1-R 初回ロット: DuplicateNameNormalizer の検証記録
 
+最新資格は末尾の「2026-11-14 R15標的探索と最終Core統合準備」に集約する。各日付節のhead・「現在」・未完項目は当時の履歴であり、最新状態へ読み替えない。
+
 - 子CMP: `CMP-261028-2304`。scope: `app`。L1-R全体・親CMPは実装中を維持する。
 - 実装基準: `977c3df5fd2ab5af79fa34db66c4121294634eff`。記録対象は[実装PR #4352](https://github.com/kenta-0420/mannschaft/pull/4352) のhead `7a3c076a69754044209e86747097e622ae9b1ab9`。記録時点でDraft・未マージであり、実装内容がmainへ反映されたことを示さない。
 - 対象は名称正規化1型だけ。実体は `organization.service.DuplicateNameNormalizer`、公開窓口は `organization.api.DuplicateNameNormalizerApi`。旧common型は既存static契約を保つ委譲だけとした。
@@ -34,7 +36,9 @@ DN-1はnull・空・1個/複数のU+0020、DN-2は両端/内部U+0020・大小�
 - 同一UTソースのSHA-256: `9DD02F51D978F451161749BE1D0BA23215BD3F2CD4C2C935D5EAE4078814559B`。
 - red/greenのUT class双方のSHA-256: `F86CD1F513BD33D288231075EA68AFA8FF384FFEB4A354B69FEF16C940FB830A`。
 
-## ACの到達点と未完ゲート
+## 2026-11-12までのAC到達点と未完ゲート（履歴）
+
+以下は旧source39a3・旧住民login0時点の表である。最新R14の到達点は末尾「2026-11-14 R14の採用結果と残務」を参照する。
 
 | 条件 | 現段階の証拠・状態 |
 |---|---|
@@ -43,10 +47,10 @@ DN-1はnull・空・1個/複数のU+0020、DN-2は両端/内部U+0020・大小�
 | DN-7 | 本番3callerと既存DuplicateNameCollationGuardRedITは差分0。head 7a3cの実MySQL既存6ケースは成功、失敗/error/skip 0。実物採取・照合完了 |
 | DN-8 | head 7a3cの全6shard・aggregate成功。archTest 58suite/447件、別engine 18suite/37件、本番Integrity 6runner/12件が失敗/error/skip 0。期待18suiteの欠落・重複0。7store＋stored.rules（計8ファイル）・番人・build/CI・weightsのロット差分0（下記） |
 | DN-9 | Controller/HTTP DTO/認可/DDL変更0。同一経路の変更前後の実生成・Drift成功と生成結果bytes一致を根拠に親が合格判定（下記） |
-| DN-10 | source 7a3cの正式R8は9ケース中6pass/3fail。作成2ケースは同sourceの正式追試でpass、チーム名称更新は未合格。単一run9greenではなく、条件全体は未合格 |
-| DN-11 | 独立探索3/3実施・各正常閉鎖、目的達成2/3。未実証観測登録済み。DN10未充足・管理住民の目的未達を保持し、最終判定保留。coverage合格ではない |
+| DN-10 | 旧R8の失敗履歴は保持。固定実機source 39a3のformal14は13pass/1failで、重複Org updateの誤期待409を契約200へ修正した別実行o1（native exit 0）との13+1分割証拠を親が採用。create409は維持。実preview・保存・逆復元等の局所結果と残務は下記 |
+| DN-11 | 旧3住民の目的達成2/3・未実証観測は履歴として保持。新3住民は別actor・forkなしで並列起動後、全login0・全員の認証後の目的達成未確認で全停止。公開mobileは部分観測として保持し、具体人確認・画像/viewport補完と最終判定は未完 |
 
-単体greenやOpenAPI同一性は出荷判断の代替としない。実DB・全量Archの実物照合は完了し、名称更新の実機と独立探索の最終判定を親担当が継続する。
+単体greenやOpenAPI同一性は出荷判断の代替としない。実DB・全量Archの実物照合と下記の局所実機結果を分離し、独立探索・teardown・最新main追従後の最終CIと出荷判定を親担当が継続する。
 
 ## DN-8の初期部分証拠と最新実物照合
 
@@ -83,6 +87,18 @@ DN-1はnull・空・1個/複数のU+0020、DN-2は両端/内部U+0020・大小�
 - R8 runtimeは正本receiptでcleanup removed/exit0、所有BE/FE 2process・専用2container・knownvolume1と自scratch不存在を親担当が直接照合済み。全体check exit1は他owner entries5に由来し、全体cleanとはしない。他資産操作0。fixtureは履歴のみでDB撤去済み・再利用不可。名称修正の次回実機には新source・新run・新DB/fixtureが必要。
 - 実装PR #4352は記録時点でDraft・未マージ。子CMPと全164型のL1-R・親戦役はP4実装中を維持する。
 
+## 2026-11-12時点の局所結果と残務
+
+旧履歴へ初回1型の採用結果を追記した。実機の固定sourceはローカル統合commit `39a3e96fdc78bd8c2058d3eb9c4b24c4a7a66d98`、Core CIは下記57b7への確認で、source別の局所結果として記録する。最新main追従・最終CIと出荷判定は未完。
+
+- formal14のf2は13pass/1fail。唯一の失敗は重複Org updateを409とした誤期待で、正規契約は200。期待を修正したo1を別実行しnative exit 0を確認した13+1分割証拠を採用する。createの重複409契約は維持する。
+- Cardの1440/768/390px、90文字の長名2種×3幅、normal2の実preview・PATCH204・GET逆復元、same-IDのOrg/Team権限差を採用済み。unavailableはheld-pointerによるclip/autoscroll・実preview・PATCH・GET・UI削除を確認した。復元A→視覚A→empty UIの3件削除→復元B→positive Bの連鎖も採用済みで、名前とPUBLICは復元済み。
+- normal2・unavailable等のPATCH204後の `ERR_ABORTED` は、機能成功とtransport警告を分けて保持する。loopback204対照では再現0、原因未確定。
+- 親担当が追加したseed3再作成条件は撤回し、追加seed3再作成は実施0。復元B3を継続利用し、作成前不存在へ戻す最終owned専用runtime teardownは未完。before5と復元B3は別スナップショットとして記録する。
+- Core Backend CIは6normalとaggregate・Arch・coverage・NonJST・Lintが成功。actual direct checkoutは `57b7e7b354c69b1abd8c7f8fad1e78a1a3304440`、treeは `4a220306b6347fe0c6e174e1661ff35ee59a47b9`。UT40件（19 parameterizedケースを各2入口＋通常2件）・MySQL collation6件は全pass。6normalは実行・cache0、auxは42 FROM-CACHE / 96 UP-TO-DATEの資格で区別する。Frontend・E2Eもgreen。最新main追従後の最終CIと出荷判定は未完。[Backend run 42992882425](https://github.com/kenta-0420/mannschaft/actions/runs/42992882425)、[Frontend run 42992882548](https://github.com/kenta-0420/mannschaft/actions/runs/42992882548)、[E2E run 42992882378](https://github.com/kenta-0420/mannschaft/actions/runs/42992882378)。
+- 新3住民は別actor・forkなしの並列起動後、全login0・全員の認証後の目的達成未確認で全停止した。source生成の自動審査による拒否と技術的な初期起動失敗は履歴として記録する。公開mobileは部分観測として保持し、DN-11の最終判定は未完。現在は通常ログインの具体人確認待ちで、画像・viewport不足の補完も未実施。
+- 支援WS5機能はChat・通知だけ採用済みで、残りは準備中。全AC35・全支援PR・main採用・全残務は未完。L1-R全164型・親戦役はP4実装中を維持する。
+
 ## 今回の登録検証と制約
 
 既存生成器を使用し、正本・専用WTのignored copy・生成b0RunOverlayの構造一致と、旧55/55/111の全フィールドdeep保持を確認した。生成器が出した日付・sources・集計・検算・campaignsの無関係差分は採用せず、生成boardのb0RunOverlay以外の全top keyはbaseと構造一致を確認した。通常validatorと--self-test-overlay全体はCMP正本行数と参照抽出数の不一致で不合格。初期base1255と、#4365採用後のmain d7717711619ae3724a395d5670d8f723cc9a7395の双方で、各baseの元boardと同じTaskListを使用したA/B検証は同じ診断で停止した。最新比較ではTaskListと旧55/55/111正本をmain d771と照合し、Git改行変換を正規化して一致を確認した。独立したoverlay限定検査では既存validatorのvalidateRunOverlayと自己検証ブロックをそのまま実行し、正規・空insight・複数head/runを受理、不正10種を拒否した。これは通常validator全体やボードUIの合格を意味しない。
@@ -90,3 +106,138 @@ DN-1はnull・空・1個/複数のU+0020、DN-2は両端/内部U+0020・大小�
 実B0ボードの初回確認では111→114件・旧111件の全record hash不変・reload後114件・3カード表示を確認したが、新3件のIndexedDB rowで出所metadataが欠落したため検証全体は失敗した。原因は既存HTML importerの固定projection。新規import rowに限りindividual runId、originalRunId、sourceHead、trusted、sourceStatus、sourceEvidencePathを保持する局所修正を追加した。人間用triageのstatusはinboxのまま、原観測のobserved-unverifiedはsourceStatusに保存する。既存import ID、表示、重複排除、既存111件や人間編集の保存は変更せず、既存legacy recordのmetadata欠落を自動backfillしない。固定commit f2ace7cc02c6225ec088887e2ed89f6a4871c009のgreen-assertion-03はPASS・native exit0。旧1255の実111→114件、旧111件の全record hash不変、3カード表示、元9propsのdeepEqual、初期inbox、新ADMINへの実triage1回後planned・出典保持・他113件不変、triage後reload114件をすべて確認した。green-assertion-01はrealm配列helper、02は文字化けした????期待値helperの失敗として原本を保持した。元redは同じ正規化後も赤であり、期待値を変更してgreenへ合わせていない。親がgreen03の全12checks=true/exit0、verification-chainの元red ERR_ASSERTION・期待値SHA同一・全5PID不在・全port非LISTENを直接照合し、3カードとtriage後PNGも実見済み。
 
 実B0 UI証拠は固定f2aceの公開Git blobを配信した結果であり、後続文書HEADではHTML/data blob不変を条件に継承する。HTML blobは591816a9d3cdbf673c00df9aa9ee15c6ad04c582（SHA-256:7708e0a5ab9466df5fb174f1d0f280333470f913c5db64dc0678bf8f63eea8a6）、data blobはe1afaa7c3b6496539305309657ad616139aeab1a（SHA-256:85e8355e861a2d44829f0c8577558f9d541c09b48e716a58fe86ed8e5bef644a）。Git checkoutの改行変換によるraw bytes差は実配信blobの差と混同しない。
+
+
+## 2026-11-13の資格（履歴：追加9枠の直接許可時点・初回1型は未完）
+
+上記の7a3c・A9 source39a3・Core57b7と11月7日/12日の結果は歴史として保持する。本節は固定R14 source `8afd06e6e06dddcd65f769be5e796baf0e83e28f` と公開Core head `a309666653de96b8b173e5ea2c8961078f822b3b` の採用済み資格を分けて記録する。文書準備中のlocal `b040e7e06eca0380e87d2796a0a461294f2122ee` はmain8aaの通常mergeのみで、a309とbackend tree `04e46b9dad39a0b82f8c4acf8b36c6b31b0f3e06` が同一。local mergeを公開済みCI headやmain採用と扱わない。支援PRの最終採用・残実機・新独立3住民は未完で、全164型のL1-Rと親戦役は完了していない。
+
+### Core CI v3：直接XMLと推移資格の区別
+
+[Backend run 43348593781](https://github.com/kenta-0420/mannschaft/actions/runs/43348593781) のlatest attempt2は全12job成功。採用rawはa1のshard0/2/4/5とa2のshard1/3であり、全jobをa2で新規実行したとは主張しない。actual checkout `4d4f2a0d413262529a38904387b50410c3438ff6` は公開a309とtree `df99b1548c53c57405da981c56d74c0dd5bbd4ee` が一致。旧a1失敗・取得失敗・回収の形式差を履歴から削除しない。
+
+親採用のprivate正本 `core-ac-source-raw-qualification-v3.json`（2026-11-13T08:18:04Z、SHA256 `931bfb92940c339e6727172175d58ea4d030e8d712a520821376f6d4ad0e0791`）は次を区別する。
+
+- 六shardのtest合計33356、成功33339、失敗0、skip17。各採用rawの`:test`・`:archUnitTest`・`:archUnitFreezeStoreIntegrityTest`は実行状態で、UP-TO-DATE/cacheによる省略ではない。この資格を補助task全体のcache不使用へ広げない。
+- DN-7の`DuplicateNameCollationGuardRedIT`はartifact14007351712の対象JUnit XMLを直接照合し、6 testcase成功・failure/error/skip0。XML SHA256 `fd427906b100e0d0005270a06507bf2b2759c74dba11dbc71e58b6ab401705fe`、対象receipt SHA256 `5b165433c3c4276bc9aedd46a405a7185b7a1d248d0cc20a1d16c90f498034ed`。集計skipからDocker条件有効を推測した旧説明を現在の受入根拠にはしない。
+- 正規化APIの40 invocationは、不変sourceの19引数×2入口＋通常2と対象classのraw SUCCESSによる推移資格。**直接per-class XML40件を採取したとは主張しない。**
+- DN-8のArchUnit engineはraw37成功/18 class、別`archTest` jobは465成功・失敗/skip0。本番Integrityは同じ2件が六runnerで各2/2成功（計12実行）であり、XML内のself-testや12種類の異なる試験と混同しない。`verifyShardCoverage`成功はprofile期待を束縛するsource guardで、raw中に4profile名を列挙した証拠ではない。
+
+### DN-9の対象限定の継承
+
+旧paired generationの実生成・Drift成功と生成bytes一致は保持する。現在のnormalizer対象3型・既存caller・生成設定のblob同等性を根拠に、対象移設によるHTTP/schema契約不変の判定を親が継承した。現在のglobal OpenAPIはmain側の別変更で旧生成時と異なるため、whole backend tree/全API bytes不変や、source8afd全体を新たに実生成・Drift検証したとは主張しない。これはDN-9対象の推移資格であり、他機能の新API変更の資格ではない。
+
+### R14 formal・postformal・支援実機の分離
+
+- formalはf1の作成2件とf2の残12件を別原summaryから選ぶ**2+12の分割資格**を親が採用。f2 summary SHA256 `e05255000c77c8c0b9b2e79ec0012bbae426394c02d66fa99fd625356a6b6082`、split qualification receipt SHA256 `23a3fecdfb5dc4da59a9ef40b8b440c0940c457fe1e670f9eb02a35b0a5e2abb`。f1の初回案内maskによる停止は履歴として保持し、単一実行14greenや元f2の`dn10Complete=false`書換えによる合格とはしない。
+- postformalのresponsive/long・same-IDは親が対象範囲を採用。normal2は実pointer順序変更/逆復元・各reorder204とfresh GET一致を機能採用したが、204 no-content後のERR_ABORTEDは原因未確定のtransport警告として保持し、`transportClean=false`/`overallCleanPass=false`を維持する。unavailable u1は内部DIV scroll未達・release no-op PATCHの失敗。ownerによる元名/PUBLIC/version2/元UUID順の復旧確認と、原summaryの保守的復元flagは別に保持する。残Card復元/empty等は未完。
+- 緊急休業EC e2はphase passを親が採用（summary SHA256 `89c13471f65f0c8b2b5afd7a2bc6cc74a82c90f92350ed6aed13e8f5574a39df`）。実UI作成・member確認・管理画面件数/実配送・制御断後再接続を対象範囲で確認した。非adminのGUI拒否/RO403を実STOMP拒否frameの代用にはしない。予約cancel/slot/line削除は成功、closure履歴は最終専用DB撤去待ちで`fullyCleaned=false`/`ac35Passed=false`。
+- Signage s1（summary SHA256 `8fd16acbf4d1557978838ac3755a673679bc34ebdec86c50c5970dea397fa8c0`）とMatch m1（同 `fd0759837f52a4f2a5bc179b034e415ed3c34921890a4dd5050d65304e77c8f8`）は失敗として保持。元例外情報不足のため原因未確定で、診断candidateを製品修正成功とは呼ばない。SGはtrigger intent0・既知token失効/screen削除、Matchはevent intent0・既知試合DELETE204→404、各3context閉鎖/unknown=false。新試行の結果は本節では未採用。
+- Chat/通知はA9 source39a3の採用済みsubsetを歴史証拠として保持する。対象protocol/auth/notification blob同等性に基づく継承であり、R14で5機能をfresh実施したとは表記しない。AC35全体・AC36独立探索・最終採用は未完。
+
+追加操作の具体案SHA256 `020da9e4e62dbcd372e2654e50b735c8f0be3044271e1bf470ebab9412a28e72` に対し、ユーザーはu2追加3PATCH・SG追加4・Match追加2の最大9 domain writesを直接許可した。承認記録 `r14-additional9-direct-approval-20261113.json` SHA256 `7cdcfa40320cd27b00d5c43c552fae65957e43a76c5d4fd5befce400b379ef83`。各工程1回・未知再送禁止、新DB/runtime/seed0。既承認の未消費emergency2/events2・残Card・新独立3住民・所有cleanupは別の枠として継続する。これは全network requestが9件という意味でも、追加実機・探索・cleanupが成功済みという意味でもない。新独立3住民と最終実機/採用結果はpendingで、旧login0の住民試行は旧履歴のまま残す。
+
+## 2026-11-14 R14の採用結果と残務
+
+固定実機sourceは `8afd06e6e06dddcd65f769be5e796baf0e83e28f`。初回1型に必要な正式実機・Card後段・新独立3住民探索・専用runtime撤去の採用結果を以下に記録する。Core公開head a309のCI v3と、旧sourceのChat/通知の継承資格は11月13日節のままであり、全機能を一つのrunでfresh実施したとはしない。初回1型の最終CI・支援PR採用・main反映は未完で、全164型のL1-R・親戦役はP4実装中を維持する。
+
+| 条件 | R14での到達点・資格 |
+|---|---|
+| DN-1〜6 | 既存red→green・40 invocationを維持。Core CI v3のAPI40はsourceとclass成功の推移資格で、直接per-class XML40件ではない |
+| DN-7〜8 | v3の直接MySQL XML6件、ArchUnit engine37件/18class、別archTest465件、本番Integrity同じ2件×6runnerを採用。六shardのrawはa1/a2混在で33356件/33339成功/17skip。新main統合後の最終CIは未完 |
+| DN-9 | 対象Normalizer/caller/生成設定のblob同等性による限定継承。global API/whole backend tree不変やR14新生成とはしない |
+| DN-10 | formalはf1作成2＋f2残12の分割資格。responsive/long・same-ID・normal2・unavailable u2・復元A/視覚A・empty・復元B/positive Bを機能採用。204後のERR_ABORTEDは原因不明のtransport警告として原clean falseを保持 |
+| DN-11・独立探索 | 正式実機後に新たな独立3住民が通常profile・systemRole nullで探索し、全員native0/CLOSED。下記の部分達成・未実証観測を含む結果として採用。旧login0試行は履歴保持 |
+| 支援WS | Chat/通知は旧sourceから対象blob同等性で継承。EC・Match・SGは下記の分割/限定資格。Signage購読認可全体は不合格で別修復へ登録 |
+| 後始末・最終採用 | R14所有runtimeと専用DB履歴は撤去済み。Core新CI・支援PRの最終採用・main反映は未完。CI成功や実機完了だけで戦役を閉じない |
+
+### Card・EC・Matchの追加採用
+
+- unavailable u2は実pointerで内部scroll・preview・release・PATCH204→fresh GET一致とUI削除を採用。ledger SHA256 `fec96a5805a10deab09b41ec0fc19707f399211aae4cda17a4c00810af5c8e2b`。復元A receipt `65c5e5813ed0d4bce6b3a027c506ef92b74eb0117bf404adaedea06b55453b8a`、視覚A ledger `024a6adc383cbd2a078e9a45e628cbf97f368efe14fe13d1170cc8941f58e26b`、empty ledger `f37e426258755d11aa6b985010dad3b93f6ce1ebbeb0e0df2d3b0b0d202be9d5`、復元B receipt `e3cdb7d37ebcfd35ea3f16a116afe24fa116dea3e7e113b56321bcf704c102e1`、positive B ledger `6bca5d69cb7f471f74a3ea14ebb66bb07859cf1214d0a3034b20c4ce3a0255fc`を親が原本照合・選別画像実見して採用。emptyは通常UIで3件削除→fresh GET 0、主空表示を実見。補足文全体の可視性まで主張しない。normal3のidentity・順序・元名/PUBLICのsemantic復元であり、初期seed全5件の完全再作成ではない。
+- EC e2の機能採用は11月13日節のphase資格を維持し、残った履歴は最終専用DB撤去で閉鎖した。原summaryの `fullyCleaned=false` / `ac35Passed=false` は変更せず、後段の撤去証拠で補う。
+- Matchはm2作成とremaining-only resumeを分離して採用。resume summary SHA256 `3346fb63e8b5b2419ca6e8f185fb583f81b0f0916e01dc6e8022fb5ac36579d7` はnative0/passed true。同じ既知試合を使用し新規作成0、未送信だった2イベントのPOST201・各実message1・member表示・再接続2→3、非許可利用者の拒否後message0、DELETE204→404を親が照合した。m2の原unknownは変更しない。m2とresumeは別3contextずつで、単一試行ではない。相関はSOLE_LAST_SUBSCRIBEでserver receipt/destinationなし。resumeの新PNGはなく、元m2画像とresumeのGUI assertion/WS/HTTP/journalを分離する。
+
+### Signage搬送の限定採用と別修復
+
+s4 summary SHA256 `0f02f6ba68d15cd670790f8279b8864f520c64abebaca32e49294452346a25aa` とprivate正本 `r14-signage-s4-root-qualification-20261114.json` を親が照合。管理者・memberへの異なる2marker配送、同contextの明示的補助接続reopen、自然不許可Originの拒否、HTTP token失効を範囲採用する。Origin403はブラウザーの固定診断による別資格で、typed HTTP statusは未観測。製品playerの自動復旧・失効後の既存WS停止は実証していない。s1/s2/s3の失敗とs4原summary passed falseを保持し、履歴DB撤去は後段証拠で閉鎖した。
+
+管理RESTで拒否された他scopeの認証済み利用者が、端末token/capabilityを使わず試験markerを2回受信した。変更前後のsource比較では既存購読guardの欠落で、今回の認可方針変更は0。匿名受信・実利用データの漏洩・失効後WS停止は未実証。Signage認可全体の合格や本番リスク受容とはせず、正本残課題 `CMP-261114-0713` として許可契約の判断・別修復を分離する。既存の組織管理GET認可課題 `CMP-260917-1350` とは異なるWS購読境界である。
+
+### 新独立3住民と気づき箱への引渡し
+
+Name/favoriteの導線を対象にした独立探索は3/3終了し、DN-11の部分的な目的達成を採用する。一方、WS修復計画のAC36（対象機能を標的にした通知・拒否後/再接続の探索）は部分充足であり、標的補完は未完。原3報告にはChat・EC・通知の拒否後を目的にした探索がなく、Match空一覧/reloginも部分証拠に限る。正式実機AC35で代用せず、最終採用・引継ぎ削除はHOLDとする。本節記録時点では新しいWS標的補完3役はsource-only案の準備段階だった。その後の承認済み回復・実探索の結果は末尾のR15節を参照する。
+
+管理者desktop・一般memberの390px touch・別所属利用者desktopが、互いに手順/結果を共有しない独立contextで探索した。通常profileとsystemRole nullを確認し、全員native0/CLOSED。管理者はfavoriteからcalendar/組織membersへの到達、memberは所属/favorite/記録空一覧への到達、別所属利用者は自身/他公開teamの差・所属/試合空一覧・reload/relogin/切戻しを確認した。記録保存や実記録詳細は未確認。別所属利用者の自作favoriteは201→204で復元し残存0、他公開teamのmodules403の原因は未断定。初回private ACL停止・空dirによる再起動停止は履歴保持し、domain操作の再送とはしない。
+
+原report SHA256は順に `5bbbbcb5cc43f278b4d62633cb0f5b1fe6ad755ef7912a458fd658db70dc44e6`、`5aa559431f95b113e0781345ae9813692c3add2d91f96d446cce29a3086dc618`、`0eb6f8e5d9f1e059d85d71c83775d60007b78185b3497c704603a46cdf79d005`。親が原本と選別PNGを実見。識別の迷い1件と、一般memberのテンプレ案内から空管理一覧への到達1件を未実証の気づきとして採択し、第三住民のinsightは0。確定不具合や正本残課題へ昇格していない。第一住民のrunId、第三住民のrunId/sourceHeadは原reportに欠け、固定driver/binding/出力namespaceから親が補足した登録情報である。
+
+B0担当への引渡しは累積67persona/67journey/122insightと旧64/64/120の全field・top environment/runId保持を対象とする。B0側の登録・実IDB検証とその依存commitは別成果物で、本節作成時点ではCoreへ未統合。公開画像本体・資格情報を含めない。
+
+### 所有runtime撤去と残る出荷ゲート
+
+private正本 `r14-final-cleanup-20261114-01/teardown-final-qualification.json` SHA256 `5be8c43ebdfba5d019073b55fbcde7ae614c10f8ac083e3a2f7b0f29184c7401` を親が採用。runner receiptはexit0/signal null/cleanup removed/error null。所有BE/FE・barrier2・container2・専用volume1の計7対象、scratch/cache、監督/child・writerの閉鎖、Windows/Linuxの要求4port非LISTENを確認した。EC/SG履歴も専用DB破棄で閉鎖。共通 `--check` の全体exit1は他の旧3行によるものでR14行0、全体cleanとはしない。元scenario summaryは保持する。raw lifecycleは必要なstartup/shutdown範囲の原bytes・hash・lineageを選別保全してから全量と外部Jarを撤去する別作業が進行中で、撤去完了を本節では先取りしない。引継ぎは最終残務後に削除予定。
+
+新main `32e4777aec54d5de324f22948099e8a4789fc1a4` はRanchのBE/FE・生成型・Nuxt PWA設定等が進み、whole BE/FE同値ではない。支援6PRの通常main追従では対象source51pathを保持したが、新headのCIと最終採用は進行中で、旧CIを新main統合資格へ読み替えない。CoreはB0成果・支援最新headの統合後に最終CIが必要。初回1型の実機/探索/撤去完了と、初回1型の出荷・親/all164の完了を明確に分け、他支援CMPの完了状態・完了JSONを先取り更新しない。
+
+## 2026-11-14 R15標的探索と最終Core統合準備
+
+R14正式実機後のWS標的補完を、同じ固定実機source `8afd06e6e06dddcd65f769be5e796baf0e83e28f` の承認済み回復環境で実施した。親担当はAC-36、新独立3担当の原報告・mutation journal・受信WS metadata・選別10画像を照合し、独立目的探索と裏取りの実施条件としてAC-36を完了と判定した。各担当は通常GUIで1回ログインし、別profileのsystemRole null、desktop2名・mobile touch1名で探索した。認証前contextの閉鎖とidentity確認前の拒否履歴を保持し、全試行を計3contextとは表記しない。旧login0試行も成功へ変更しない。
+
+- 管理者は緊急休業をGUIから201作成し、memberの確認POST200と管理者confirmation topicのMESSAGEを照合、対象1件・確認済み1/1を確認した。人工offline→online直後はオフライン表示が続いた。通常GETと戻り後に新CONNECTEDとリアルタイム表示を確認したが、自動再接続単独の成功とはしない。
+- memberは本人のChatへ2投稿し、他private channelへの正規query URLでは不可視・未選択、本人Chatへ戻って投稿継続を確認した。このUI結果をSTOMP拒否とは呼ばない。本人向け通知queueで同じ試験markerの緊急休業通知を受信し、GUI確認200→その通知だけのread200を確認した。無関係通知の一括既読は行っていない。
+- 別所属利用者は他scopeの観戦拒否UIとWS ERROR→CLOSEを観測した。ERROR本文・購読相関がないため特定購読のserver receiptとはしない。自身の試合では開始イベントを201作成し、戻り・再読込後もイベント履歴が残る一方、状態表示は開始前00:00へ戻った。比較中に他人向け試験markerの混入は観測しなかったが、無受信を全通知の非漏洩証明とはしない。
+
+探索中の自己操作は計10件（create4/update6/delete0）、全担当pending0・unknown false。新しい気づきは人工offline切替後の確認状況表示継続と、試合再入場後のtimer/period初期化の2候補である。実回線断との同等性・永続要件・既存課題重複は未確定で、確定不備や製品修復へ昇格せずB0の未実証観測として登録する。製品全動作green、5機能×3役の全網羅、認可全合格、自動再接続保証は主張しない。既存Signage購読認可欠落は別P1 `CMP-261114-0713` のままで、今回の修復・本番リスク受容は行っていない。
+
+### 支援CIと最終統合の資格
+
+[WS PR #4459](https://github.com/kenta-0420/mannschaft/pull/4459) head `870bd9829e8fd96e5ea33ad1c2881a9ef0275d65` の[Backend run 43543300356](https://github.com/kenta-0420/mannschaft/actions/runs/43543300356)は全12job成功。6shardのtest taskはskipped/upToDate/noSource/failedが全てfalse、test taskのFROM-CACHE観測0で、通常テスト6本の直接実行成功を採用した。依存・compile cacheの使用はありcold-cacheではない。JUnit artifact全量・case総数は今回未回収。compiled coverageの4profile guard成功も公式ログで確認した。旧85分timeout run 43521977171は失敗履歴を維持し、新weights・新head成功を旧障害原因の証明やflake認定へ拡張しない。
+
+最終Coreは従来の8PR内容を保持し、最新main `1f0ac7b1054651c053cc47a22aa6ba607c4412f7` と[closure PR #4410](https://github.com/kenta-0420/mannschaft/pull/4410)最新head `bcd80bb0f9278f9608084bf2829a423dca5de502` を通常mergeした。main増分は招待受諾の並行性試験3ファイルと証拠文書1ファイルで、文書のみの前進とは扱わない。最終B0成果 `c91380253a53099a5ae6e3141b4fd245f37d31fc` も通常mergeし、最終Coreの実headで全CIとstrict/current-main資格を確認する。旧Core・各支援のCI成功を最終Coreの成功へ読み替えない。force/squash/rebase/admin/bypassは使用しない。
+
+### 現時点の残務
+
+R14のformal f1作成2＋f2残12の分割資格、元f2 false、normal2等のERR_ABORTEDとtransportClean false、Signageの限定採用と認可残課題は上記履歴のまま保持する。R15の全10cleanup ACK（cancel200が1、DELETE204が9）と各原FINALを親担当が直接照合し、実探索3contextのCLOSED/native0を採用した。既ACKの再送は0。閉鎖前summaryのopen記載とdriver既定のac36Passed falseは原値のまま保持し、後続の閉鎖証拠・親担当のAC-36判定と区別する。最終CI準備時点のsnapshotとして、app・canonical・監督の自然終了0、新scratchの正常removedを親担当が原receiptで照合した。専用MySQL・Valkey・sole volumeは通常のTERMとrm -vによってgoneとなり、closure/通知/加入履歴も専用DB破棄で閉鎖した。このsnapshot時点では旧scratchとJarの所有参照確認を継続していた。その後の所有環境の撤去完了は末尾の追記を参照する。全残務は未完。最終閉鎖証拠は8PRのmain採用後の通常docs PRで確定する。
+
+最終B0登録・通常同期/generator/全validator/実IDB確認は下記の限定資格で採用した。外closure担当の最終引渡し、最終Core差分の採択・実head CI・ready・main採用は進行中。8PRのmain採用後に支援子CMPの完了証拠と正本状態を通常docs PRで確定する。親戦役・L1-R全164型はP4実装中を維持し、支援CMPの完了・引継ぎ削除・全残務完了を先取りしない。公開文書へprivate操作識別子・資格情報・ローカル能力URL・原画像本体は追加しない。
+
+### L1-R R15新独立3住民の実観測登録（2026-11-14）
+
+source8afd/run `l1rr15655c` の新3住民を、R14 fresh3と別persona/runとして登録した。旧82/82/152・20runの全field・top run/environmentをdeep保持し85persona/85journey/154insight・21runとする。選別正本は `docs/evidence/CMP-261028-2304/resident-observations-r15-20261114.json`。profile3/5/6・systemRole null、各GUI login1、desktop2/mobile390x844 touch1。原未認証2context閉鎖・browser前identity2拒否・既知未送信WRITE_BLOCKEDは別歴史として保持する。
+
+r1 closure201対象1→r2本人userqueue通知2106/source1/scope11→confirm200→管理者confirmation MESSAGE/1of1をrootが裏取り。r2 private10不可視/未選択→自分会話9復帰・投稿2成功はSTOMP拒否としない。r3観戦拒否UI/WS ERRORは本文/購読相関未採取、自身live event1作成後の再入場で履歴残存・timer開始前00:00を観測した。marker混入未観測を全非漏洩証明へ拡張しない。
+
+人工offline切替後のoffline表示継続と試合timer復元を未実証候補2件へ登録する。実回線断/自動再接続単独・永続要件・既存課題重複は未確定。製品修正・新CMP設計・確定不備昇格0。AC-36独立目的探索はroot資格で実施完了だが全動作greenではない。driver既定 `ac36Passed:false` のrawは不変、trusted=false/observed-unverified/coverage=falseを保持する。r1/r2/r3 create/update/deleteは1/0/0、2/6/0、1/0/0、全pending0/unknown false。R15runtime撤去・最終merge・支援CMP完了は先取りしない。再生成用copyは `.b0-local/run-l1rr15655c-fresh3-20261114.json`。
+
+
+R15棚卸更新の通常GitHub読み取り同期は2026-11-14T07:21:17Z・806参照で成功し、既存L46の不足#4418を解消した。通常generator/validator/overlay自己検証は最終bytesで各exit0（不正10例拒否）、44feature/95capability・CORE25/非CORE19・blockers23・720campaign。台帳720一意・全7列を保持し、親/all164 P4・支援CMP完了先取り0・Signage別P1未着手を維持する。task-list commit `942ecd87428f54dde67b07d270fe62bc17abb63d` のraw LF bytesと生成pin SHAが一致する。Windows checkout CRLF由来のhash差はWTを同commit raw bytesへ合わせて通常再生成し、generator自体は変更していない。
+
+最終実ボードは `board-ui-r15-20261114.json`、整合proofは `b0-r15-checks-20261114.json`。fresh実IndexedDBへ旧152をimport→自然clock7017ms後に最終新dataへ更新し154、旧152全field厳密deepEqual・新2のみ・重複0・reload154不変を確認した。B1の予約/大会試合カード2件と詳細を実閲覧し、隔離IDB内だけR1の人間用statusをinbox→plannedへGUI変更→reload保存、sourceStatus=observed-unverified/trusted=false/来歴不変・他153全field不変を確認した。正本overlayのstatus変更0。pageErrors/remote requests0、context/browser正常閉鎖・native exit0、製品app/API/DB操作0。HTML/実生成dataのhashをreceiptへ固定し、住民source8afdと混同しない。旧R14 UI証拠や先行helper失敗は履歴として保持し、今回の最終bytesへ読み替えない。
+
+
+### 2026-11-14 最新main再追従の限定資格
+
+最終CI準備の後にmainは `2b40343e8cfb6d452a9f2aaad7238cc3f4356888` へ2commit前進していた。旧PR APIのbase表示だけでcurrent-mainを判定せず、実remote mainを取得し通常mergeした。前進はCI観測・MFA/ログ初期化の試験・shard weightsと、別CMPの台帳状態更新で、製品sourceの変更は0。実機対象58pathとの交差はMFA試験とweightsの2pathであり、旧58blob全一致を新統合へそのまま継承しない。製品機能の実機資格と、変更された試験・CI観測の最終head検証を分離する。
+
+MFA競合は既存の詳細snapshot（採取窓・process CPU・unknown=-1）を保持し、mainのVM/JIT・CodeHeap・warmup結果enumとmfa-resources互換行を同一snapshotへ統合した。診断の採取・出力はnanoTime計測区間の外で、重複snapshotは作らない。4試験・上限1500/3000ms・単発Service呼出し・AUTH_074/token非空のassert・KDF・fixture/reset/timeoutは維持する。計測緩和や旧遅延原因の確定を意味しない。
+
+weightsは、採択済みの成功Nightly run43093835182 attempt2由来・3218キーの正式blob `1e3262d6f7c77fad72288d261d6afd75c8025003` を全体のまま保持した（raw LF SHA256 `6d5bea1188f56bbe293628278923c4172785a6adb1d2d96ead178a5c14d5acf0`）。main側のblob0345796はNightly41934081098 attempt1由来3164値と別main固有5値の混合3169キーで、混合全体を単一run実測・全体greenとは扱わない。mainとの共通3168キーは3143値相違、25値同一、main専有1・正式新表専有50だった。正式表の手編集・1キー補完・新生成は行っておらず、古い混合表の値を新表へ含めたとも記録しない。最終Coreの新CIと4profile guardは未合格である。
+
+台帳入力の変更に合わせ、通常GitHub同期（2026-11-14T08:07:54Z、806参照）・generator・validator・overlay自己検証を正本commit `81070cd79e636d57b4fe56c1675efd44be725ab9` から実施し、全てexit0・不正overlay10例拒否を確認した。台帳720一意・全7列、raw LF SHA256 `8f67c394b35b6030a0c455e56c6fda26606bea34fa0638957df3f79be653cb5d` と生成pinが一致する。再生成data SHA256は `466483906c19bf6a2eaa49174408ebcc6a14acbdf8399d57a1bf8097caab5f1c`、累積overlay85/85/154/21は正本と旧Coreの全fieldに一致する。初回のsparse参照不足とoverlay指定なしの検証失敗は環境・呼出し失敗として保持し、正規入力を揃えた再実行の成功と区別する。R15の累積観測・旧全field保持・実IDB自然clock保存試験は従来資格を維持し、生成bytesの変更を旧実ボード試験の直接実行へ読み替えない。最終head CI・current-main/strict、外closure担当の引渡し、8PR採用後の完了文書は別ゲートとして継続する。旧scratch/Jar整理の後続結果は以下に分けて記録する。
+
+
+### 2026-11-14 R15所有環境の後始末完了
+
+親担当が採択した最終撤去証拠（SHA256 `968d7ee3ef1000cc4eeee1db5b3200ca0a6ab7b3d539e94a425462341dbc74a9`）により、専用MySQL/Valkey・専用volume、新旧scratch/cache、外部Jar、所有プロセスの不存在を確認した。必要な選別証跡80pinは保持し、他所有者の資産は変更していない。R15回復の追加runtimeは1・累積2、業務操作は31件で、撤去工程によるruntime/DB/seed/認証の追加は0。既ACKの再送も0である。
+
+残存資産撤去の初回自動審査拒否時はOS実行0だった。既承認の対象・目的・範囲を根拠と照合し、同一source・同一対象の再審査承認後にOS実行1回で完了した。拒否時の未実行を実行済みと数えず、撤去の再送も行っていない。
+
+これはR15所有環境の後始末完了であり、製品認可全体の合格・Signage別P1の解消・最終CI成功・main採用・全残務完了・引継ぎ削除を意味しない。8PRのmain採用後に通常docs PRで最終閉鎖証拠を確定する方針を維持する。
+
+
+### 2026-11-14 DCF2・E011再追従の資格
+
+Core head `29e6cffe1ff89d6a49ecc827f77b2425c183f0c6` の全13CI（[Backend run43576174896](https://github.com/kenta-0420/mannschaft/actions/runs/43576174896)を含む）は成功したが、これは旧headの履歴資格である。その後、main E0の検索IT所有fixture回収（14試験・既存検索assert維持、44行追加/9行削除）と、main `dcf2fd07e8df7ddea77eb1b8d6d28095b61846e8` の別CMP完了文書だけの前進を通常取り込んだ。foreign最新head `e011aa01973251df02e26ef181eb4b1476e5942c` も通常mergeで祖先に含めた。MFAはowner exact blob6327427、正式weightsはblob1e3262を保持し、R14/R15で検証した製品sourceは不変である。新しいCore実headの全CI・current-main/strict・foreign最新headの最終引渡し・main採用は未完で、旧29eや旧ABBの成功を新headへ転用しない。
+
+
+この台帳変更に合わせ、2026-11-14T10:19:16Zに通常GitHub同期806参照を成功させ、正本commit `20fe9166ba635d7e5169c4eee01abf802b48ccea` のraw LF入力からgenerator・validator・overlay自己検証を各1回実行し、全てexit0・不正10例拒否を確認した。台帳は720一意・全7列、raw LF SHA256 `4ee5d37b340f93ee62504b3042f76447ed2f08234733d3827081087f393edbe9` と生成pinが一致する。生成dataはWindows作業木CRLF bytesのSHA256 `202ffe6378ef9ddac2aa6fad213fda1c8ecedcb30dde0c9b7db8d7d0a8ff9c79`、Git正規LF bytesのSHA256 `68a13082c33e2140925583f0a0b3a527e9d88b4279d8c76efea8fdda9cef9e4e` を区別する。変更は生成時刻・source/sync metadataと、CoreのGitHub状態・別CMP0618の完了表示である。累積overlay85/85/154/21の全fieldとHTMLは不変。新bytesの実ボード再実行は行わず、旧自然clock実保存の資格を不変のoverlay/importerへ限定して保持する。親/all164 P4・支援子CMPの未完・Signage別P1を維持する。

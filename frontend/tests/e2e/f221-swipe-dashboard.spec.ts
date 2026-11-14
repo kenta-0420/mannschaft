@@ -885,21 +885,57 @@ for (const width of [360, 390, 1280]) {
         await expect(all.locator('span')).toHaveText('すべて（一覧）')
         await expect(all).toBeVisible()
         await page.evaluate(() => document.fonts.ready.then(() => true))
-        // Popover の拡大遷移が終わってから、同一フレームの文字行と矩形を比較する。
         await expect(menu.panel).not.toHaveClass(/\bp-anchored-overlay-enter-active\b/)
-        const { lines, foldersBox, jumpBox, documentSize } = await all.evaluate((element, jumpTestId) => {
-          const range = document.createRange()
-          range.selectNodeContents(element.querySelector('span')!)
-          const folders = element.parentElement!.parentElement!.getBoundingClientRect()
-          const jump = element.closest('.p-popover')!.querySelector(`[data-testid="${jumpTestId}"]`)!.parentElement!.getBoundingClientRect()
-          return {
-            lines: [...range.getClientRects()].map(rect => ({ top: rect.top, left: rect.left, right: rect.right })),
-            foldersBox: { x: folders.x, y: folders.y, width: folders.width, height: folders.height },
-            jumpBox: { x: jump.x, y: jump.y, width: jump.width, height: jump.height },
-            documentSize: { width: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth, bodyWidth: document.body.scrollWidth },
+        const labelElement = await all.locator('span').elementHandle()
+        const allElement = await all.elementHandle()
+        const jumpElement = await menu.jump.elementHandle()
+        const panelElement = await menu.panel.elementHandle()
+        if (!labelElement || !allElement || !jumpElement || !panelElement) throw new Error('ナビ計測対象がありません')
+        const elements = { label: labelElement, all: allElement, jump: jumpElement, panel: panelElement }
+        // 合否の幾何条件をpollせず、実animation終了と連続2描画frameの矩形一致だけを待つ。
+        await page.evaluate(async ({ label, all: allItem, jump, panel }) => {
+          let previous = ''
+          let stableFrames = 0
+          while (stableFrames < 2) {
+            await new Promise<number>(resolve => requestAnimationFrame(resolve))
+            const moving = panel.getAnimations({ subtree: true }).some(animation =>
+              Number.isFinite(animation.effect?.getComputedTiming().endTime) &&
+              (animation.pending || (animation.playState !== 'finished' && animation.playState !== 'idle')),
+            )
+            const current = JSON.stringify([panel, label, allItem.parentElement!.parentElement!, jump.parentElement!].map(element => {
+              const { x, y, width, height } = element.getBoundingClientRect()
+              return { x, y, width, height }
+            }))
+            stableFrames = moving ? 0 : current === previous ? stableFrames + 1 : 1
+            previous = current
           }
-        }, `scope-nav-dropdown-scope-${scope.id}`)
-        await testInfo.attach('scope-navigation-geometry', { body: JSON.stringify({ width, scopeType, lines, foldersBox, jumpBox, documentSize }), contentType: 'application/json' })
+        }, elements)
+        // Range・両列・documentは同じ同期evaluateで取得し、frame間の混在を避ける。
+        const { lines, foldersBox, jumpBox, documentSize, measurement } = await page.evaluate(({ label, all: allItem, jump, panel }) => {
+          const folders = allItem.parentElement!.parentElement!
+          const jumpColumn = jump.parentElement!
+          const range = document.createRange()
+          range.selectNodeContents(label)
+          const lines = [...range.getClientRects()].map(rect => ({ top: rect.top, left: rect.left, right: rect.right }))
+          const folderRect = folders.getBoundingClientRect()
+          const jumpRect = jumpColumn.getBoundingClientRect()
+          const foldersBox = { x: folderRect.x, y: folderRect.y, width: folderRect.width, height: folderRect.height }
+          const jumpBox = { x: jumpRect.x, y: jumpRect.y, width: jumpRect.width, height: jumpRect.height }
+          const style = getComputedStyle(panel)
+          const finiteAnimations = panel.getAnimations({ subtree: true })
+            .filter(animation => Number.isFinite(animation.effect?.getComputedTiming().endTime))
+            .map(animation => ({ playState: animation.playState, pending: animation.pending, endTime: animation.effect?.getComputedTiming().endTime }))
+          return {
+            lines, foldersBox, jumpBox,
+            documentSize: { width: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth, bodyWidth: document.body.scrollWidth },
+            measurement: {
+              gapY: jumpBox.y - (foldersBox.y + foldersBox.height),
+              directSiblings: folders.parentElement === jumpColumn.parentElement && folders.nextElementSibling === jumpColumn,
+              popoverTransform: style.transform, popoverTransformOrigin: style.transformOrigin, finiteAnimations,
+            },
+          }
+        }, elements)
+        await testInfo.attach('scope-navigation-geometry', { body: JSON.stringify({ width, scopeType, lines, foldersBox, jumpBox, documentSize, measurement }), contentType: 'application/json' })
         expect(lines, 'ALL_LIST_TEXT_HORIZONTAL: 一覧の文字が複数行に縦折返ししている').toHaveLength(1)
         if (mobile) {
           expect(jumpBox.y).toBeGreaterThanOrEqual(foldersBox.y + foldersBox.height - 1)

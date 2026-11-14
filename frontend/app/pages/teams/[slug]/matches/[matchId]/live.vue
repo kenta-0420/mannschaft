@@ -42,6 +42,7 @@ const notification = useNotification()
 const { resolveContext } = useMatchOrgContext()
 const matchApi = useMatchApi()
 const eventApi = useMatchEventApi()
+const createSession = useMatchLiveSessionFactory()
 const turnApi = useMatchTurnApi()
 const grid = useMatchPlayerGrid()
 const wakeLock = useWakeLockWithFallback()
@@ -137,8 +138,8 @@ async function loadBoards(): Promise<void> {
 }
 
 // セッションは競技モジュールの createTimer を注入して結線する。
-// モジュール解決（動的 import）は非同期＝setup 同期スコープ外で composable を作るため、
-// onScopeDispose 等のスコープ依存 API が確実に効くよう専用の effectScope を管理する。
+// 注入依存は同期 setup の factory で捕捉済み。非同期のモジュール解決後は、
+// timer の onScopeDispose が確実に効くよう専用の effectScope 内で状態を生成する。
 type Session = ReturnType<typeof useMatchLiveSession>
 const session = shallowRef<Session | null>(null)
 let sessionScope: ReturnType<typeof effectScope> | null = null
@@ -278,7 +279,7 @@ onMounted(async () => {
 
   sessionScope = effectScope()
   const s = sessionScope.run(() =>
-    useMatchLiveSession({
+    createSession({
       orgId,
       teamId,
       matchId,

@@ -1,0 +1,476 @@
+{
+  "sourceHead": "70ffd89e19d9618f866d76b75c57d39cdd9c081f",
+  "generatorSha256": "b4f8815711b6e459d4df754e412a8fb0eaac0b95c591a3bd1452479620b30602",
+  "generatorModified": false,
+  "officialFunctions": [
+    "safe_zip",
+    "build_weights",
+    "render",
+    "atomic_write"
+  ],
+  "run": 42416993329,
+  "head": "bf427ea138eaa9e2ff31b85d469f19137fbea51a",
+  "attempt": 1,
+  "guardPassed": true,
+  "candidatePath": "C:\\Claude\\mannschaft\\.claude\\worktrees\\agent-4022-common-admin-7a9502a2\\.claude\\l1r-ci\\pr3644-70ffd-evidence\\nightly-42416993329\\candidate-shard-weights.properties",
+  "candidateSha256": "8707e251c88532e6b7fe436516210cd0a5496a86af59f66b964f15cfc49d5a87",
+  "classCount": 3181,
+  "normalOuterSeconds": 47601.425,
+  "shards": [
+    {
+      "shard": 0,
+      "meta": {
+        "id": 13593484928,
+        "node_id": "MDg6QXJ0aWZhY3QxMzU5MzQ4NDkyOA==",
+        "name": "nightly-runtime-diag-shard-0-attempt-1",
+        "size_in_bytes": 53677,
+        "url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/13593484928",
+        "archive_download_url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/13593484928/zip",
+        "expired": false,
+        "digest": "sha256:c13c5f0c321b9fdc4ed015999ac5c14fbfaee26674f705d1d7f56d56e90b4ae9",
+        "created_at": "2026-11-07T22:52:14Z",
+        "updated_at": "2026-11-07T22:52:14Z",
+        "expires_at": "2026-11-14T22:52:13Z",
+        "workflow_run": {
+          "id": 42416993329,
+          "repository_id": 1201857623,
+          "head_repository_id": 1201857623,
+          "head_branch": "main",
+          "head_sha": "bf427ea138eaa9e2ff31b85d469f19137fbea51a"
+        }
+      },
+      "members": [
+        {
+          "name": "class-progress.log",
+          "bytes": 440919,
+          "sha256": "8fb63582744bd7877ff8bb800bc97dec2c406fdd6c304b1e8908947ca682c897"
+        },
+        {
+          "name": "case-intervals.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "command-exit-code",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+        },
+        {
+          "name": "mfa-intervals.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "result.json",
+          "bytes": 319,
+          "sha256": "1df8b62a09c19baeb78c5f872bafaabf863d97cd9e3388c5f2ba1adf25a87532"
+        },
+        {
+          "name": "started-at-epoch",
+          "bytes": 11,
+          "sha256": "3779fdceae4a6e422f7feae2cec7f76ff5caa4ef332be2e8c92fa3ae2d634d4e"
+        },
+        {
+          "name": "task-state.log",
+          "bytes": 447,
+          "sha256": "7726d4752faffbb7e98cce043f4b356e9f999a01881cd6f31b3656a523acb507"
+        }
+      ],
+      "zipSaved": false,
+      "runtime": {
+        "testStepExitCode": 0,
+        "commandExitCode": 0,
+        "shellExitCode": 0,
+        "completed": true,
+        "cacheHit": false,
+        "testStepOutcome": "success",
+        "startedAtEpoch": 1794087705,
+        "finishedAtEpoch": 1794091933,
+        "finalizedAtEpoch": 1794091933,
+        "jobLimitMinutes": null,
+        "testStepLimitMinutes": null,
+        "artifactRecoveryGuaranteed": false
+      }
+    },
+    {
+      "shard": 1,
+      "meta": {
+        "id": 13593264552,
+        "node_id": "MDg6QXJ0aWZhY3QxMzU5MzI2NDU1Mg==",
+        "name": "nightly-runtime-diag-shard-1-attempt-1",
+        "size_in_bytes": 50731,
+        "url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/13593264552",
+        "archive_download_url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/13593264552/zip",
+        "expired": false,
+        "digest": "sha256:c52b4e8c88ed46ea14a5fdf2798a2f2be4f551f97e2b554f6183c8bb9a31e8e6",
+        "created_at": "2026-11-07T22:51:58Z",
+        "updated_at": "2026-11-07T22:51:58Z",
+        "expires_at": "2026-11-14T22:51:57Z",
+        "workflow_run": {
+          "id": 42416993329,
+          "repository_id": 1201857623,
+          "head_repository_id": 1201857623,
+          "head_branch": "main",
+          "head_sha": "bf427ea138eaa9e2ff31b85d469f19137fbea51a"
+        }
+      },
+      "members": [
+        {
+          "name": "case-intervals.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "class-progress.log",
+          "bytes": 410104,
+          "sha256": "7967c6a27e97b6f0e4704892a859dbe79baab2c2ef9d3f73943fa5c72c268707"
+        },
+        {
+          "name": "command-exit-code",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+        },
+        {
+          "name": "mfa-intervals.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "result.json",
+          "bytes": 319,
+          "sha256": "d73ad2b87963adc8570de5ca5b1946952e2aa33ecc1151a70c5bba3a72abf4ed"
+        },
+        {
+          "name": "started-at-epoch",
+          "bytes": 11,
+          "sha256": "3779fdceae4a6e422f7feae2cec7f76ff5caa4ef332be2e8c92fa3ae2d634d4e"
+        },
+        {
+          "name": "task-state.log",
+          "bytes": 447,
+          "sha256": "b4720eecd922c0bc8de1f831712a5d752a1dd5f8427eb2fa7de09115768a72b6"
+        }
+      ],
+      "zipSaved": false,
+      "runtime": {
+        "testStepExitCode": 0,
+        "commandExitCode": 0,
+        "shellExitCode": 0,
+        "completed": true,
+        "cacheHit": false,
+        "testStepOutcome": "success",
+        "startedAtEpoch": 1794087705,
+        "finishedAtEpoch": 1794091917,
+        "finalizedAtEpoch": 1794091917,
+        "jobLimitMinutes": null,
+        "testStepLimitMinutes": null,
+        "artifactRecoveryGuaranteed": false
+      }
+    },
+    {
+      "shard": 2,
+      "meta": {
+        "id": 13595070827,
+        "node_id": "MDg6QXJ0aWZhY3QxMzU5NTA3MDgyNw==",
+        "name": "nightly-runtime-diag-shard-2-attempt-1",
+        "size_in_bytes": 52929,
+        "url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/13595070827",
+        "archive_download_url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/13595070827/zip",
+        "expired": false,
+        "digest": "sha256:50aed4275a618f4d632a4fd11711422a2032ddec33c2cfa2097f0ef289d67f27",
+        "created_at": "2026-11-07T23:09:05Z",
+        "updated_at": "2026-11-07T23:09:05Z",
+        "expires_at": "2026-11-14T23:09:04Z",
+        "workflow_run": {
+          "id": 42416993329,
+          "repository_id": 1201857623,
+          "head_repository_id": 1201857623,
+          "head_branch": "main",
+          "head_sha": "bf427ea138eaa9e2ff31b85d469f19137fbea51a"
+        }
+      },
+      "members": [
+        {
+          "name": "case-intervals.log",
+          "bytes": 1336,
+          "sha256": "ae31096eeb5479ed42e84b3c75d73781b64b035c6882841f39dde8b56531bd75"
+        },
+        {
+          "name": "command-exit-code",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+        },
+        {
+          "name": "class-progress.log",
+          "bytes": 421505,
+          "sha256": "ec6267d9089c41c7813a22f5152a50468c655da8f00b21c48efca3aeb719a012"
+        },
+        {
+          "name": "mfa-intervals.log",
+          "bytes": 682,
+          "sha256": "4c00cdcb85a744aa005b1cd60d088bd7fed1f1d9486bf37409616c7dc4feb7a6"
+        },
+        {
+          "name": "result.json",
+          "bytes": 319,
+          "sha256": "98d301d8ed07dd92e3369d73860da3aed0b188a3fd97f4bfaba9c5d533728107"
+        },
+        {
+          "name": "started-at-epoch",
+          "bytes": 11,
+          "sha256": "2a8de97b9168f83d5d9c9fd31373ed4db6e07cf2f412987409a57730de7cde20"
+        },
+        {
+          "name": "task-state.log",
+          "bytes": 447,
+          "sha256": "95a9cd4b36c94318a1e29af0cfc14ee9e374d931ead9cad3ede10f9f40d8a7fd"
+        }
+      ],
+      "zipSaved": false,
+      "runtime": {
+        "testStepExitCode": 0,
+        "commandExitCode": 0,
+        "shellExitCode": 0,
+        "completed": true,
+        "cacheHit": false,
+        "testStepOutcome": "success",
+        "startedAtEpoch": 1794087708,
+        "finishedAtEpoch": 1794092944,
+        "finalizedAtEpoch": 1794092944,
+        "jobLimitMinutes": null,
+        "testStepLimitMinutes": null,
+        "artifactRecoveryGuaranteed": false
+      }
+    },
+    {
+      "shard": 3,
+      "meta": {
+        "id": 13594396334,
+        "node_id": "MDg6QXJ0aWZhY3QxMzU5NDM5NjMzNA==",
+        "name": "nightly-runtime-diag-shard-3-attempt-1",
+        "size_in_bytes": 55918,
+        "url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/13594396334",
+        "archive_download_url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/13594396334/zip",
+        "expired": false,
+        "digest": "sha256:6cfeacef0073e51d84bc0dcc92603ee63f06ab15289bc5da736ce298b9686493",
+        "created_at": "2026-11-07T23:03:52Z",
+        "updated_at": "2026-11-07T23:03:52Z",
+        "expires_at": "2026-11-14T23:03:51Z",
+        "workflow_run": {
+          "id": 42416993329,
+          "repository_id": 1201857623,
+          "head_repository_id": 1201857623,
+          "head_branch": "main",
+          "head_sha": "bf427ea138eaa9e2ff31b85d469f19137fbea51a"
+        }
+      },
+      "members": [
+        {
+          "name": "case-intervals.log",
+          "bytes": 2088,
+          "sha256": "3f2731af3f77fca2feb5ef6979930f7ea2d6d4c6d916eb11a80d183794ab0709"
+        },
+        {
+          "name": "command-exit-code",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+        },
+        {
+          "name": "class-progress.log",
+          "bytes": 444961,
+          "sha256": "c3164098d05ec6ff987898bb27bd5ecfcb22fcb2d3cfe3ac43bf1a7d450eb6bb"
+        },
+        {
+          "name": "mfa-intervals.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "result.json",
+          "bytes": 319,
+          "sha256": "3c2b378c444b5ddc6e499dccd3dbbe7de86205e4bead52ae78cb8777f19632e2"
+        },
+        {
+          "name": "started-at-epoch",
+          "bytes": 11,
+          "sha256": "6275c010dae2a740bd50671a5f9d8d67341962b60b8241216578b53fa86725b8"
+        },
+        {
+          "name": "task-state.log",
+          "bytes": 447,
+          "sha256": "9cc9e6dd85c589415bd0203baa791414b8d68bb87e65d9a7938eb845f50fbd09"
+        },
+        {
+          "name": "worker-resources.log",
+          "bytes": 4729,
+          "sha256": "0e3a12d1c9eadf99905b614d14877f2270e229345bac815a5a4dfcda51b5ca9f"
+        }
+      ],
+      "zipSaved": false,
+      "runtime": {
+        "testStepExitCode": 0,
+        "commandExitCode": 0,
+        "shellExitCode": 0,
+        "completed": true,
+        "cacheHit": false,
+        "testStepOutcome": "success",
+        "startedAtEpoch": 1794087754,
+        "finishedAtEpoch": 1794092631,
+        "finalizedAtEpoch": 1794092631,
+        "jobLimitMinutes": null,
+        "testStepLimitMinutes": null,
+        "artifactRecoveryGuaranteed": false
+      }
+    },
+    {
+      "shard": 4,
+      "meta": {
+        "id": 13594122240,
+        "node_id": "MDg6QXJ0aWZhY3QxMzU5NDEyMjI0MA==",
+        "name": "nightly-runtime-diag-shard-4-attempt-1",
+        "size_in_bytes": 51684,
+        "url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/13594122240",
+        "archive_download_url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/13594122240/zip",
+        "expired": false,
+        "digest": "sha256:7992de4bfc8bf018fcf6684276f419c2dbde43f46e947477d9a551f851f58a2d",
+        "created_at": "2026-11-07T22:45:25Z",
+        "updated_at": "2026-11-07T22:45:25Z",
+        "expires_at": "2026-11-14T22:45:24Z",
+        "workflow_run": {
+          "id": 42416993329,
+          "repository_id": 1201857623,
+          "head_repository_id": 1201857623,
+          "head_branch": "main",
+          "head_sha": "bf427ea138eaa9e2ff31b85d469f19137fbea51a"
+        }
+      },
+      "members": [
+        {
+          "name": "case-intervals.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "class-progress.log",
+          "bytes": 422490,
+          "sha256": "1111af86183db6e909412adce5aa058d62625ede3661fb25cde7f37a6cb94292"
+        },
+        {
+          "name": "command-exit-code",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+        },
+        {
+          "name": "mfa-intervals.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "result.json",
+          "bytes": 319,
+          "sha256": "4733e728497434b610a767080156c45b29313cba5fbbd934ff72844233415c8e"
+        },
+        {
+          "name": "started-at-epoch",
+          "bytes": 11,
+          "sha256": "8eb3f9338ce67ff9d8c9c6ff86a5e49ad3b5ed7465364e5849511c761b723df3"
+        },
+        {
+          "name": "task-state.log",
+          "bytes": 447,
+          "sha256": "fccb94bdf36459d48d1cf7516f4888a72815f18ff315d76205fc198abdeea8b1"
+        }
+      ],
+      "zipSaved": false,
+      "runtime": {
+        "testStepExitCode": 0,
+        "commandExitCode": 0,
+        "shellExitCode": 0,
+        "completed": true,
+        "cacheHit": false,
+        "testStepOutcome": "success",
+        "startedAtEpoch": 1794087703,
+        "finishedAtEpoch": 1794091524,
+        "finalizedAtEpoch": 1794091524,
+        "jobLimitMinutes": null,
+        "testStepLimitMinutes": null,
+        "artifactRecoveryGuaranteed": false
+      }
+    },
+    {
+      "shard": 5,
+      "meta": {
+        "id": 13594141812,
+        "node_id": "MDg6QXJ0aWZhY3QxMzU5NDE0MTgxMg==",
+        "name": "nightly-runtime-diag-shard-5-attempt-1",
+        "size_in_bytes": 50448,
+        "url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/13594141812",
+        "archive_download_url": "https://api.github.com/repos/kenta-0420/mannschaft/actions/artifacts/13594141812/zip",
+        "expired": false,
+        "digest": "sha256:22ebf0a7155e0944fab75943b908f03e5d5bd66b35ede46ef437c9d8795ba969",
+        "created_at": "2026-11-07T22:43:09Z",
+        "updated_at": "2026-11-07T22:43:09Z",
+        "expires_at": "2026-11-14T22:43:08Z",
+        "workflow_run": {
+          "id": 42416993329,
+          "repository_id": 1201857623,
+          "head_repository_id": 1201857623,
+          "head_branch": "main",
+          "head_sha": "bf427ea138eaa9e2ff31b85d469f19137fbea51a"
+        }
+      },
+      "members": [
+        {
+          "name": "case-intervals.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "class-progress.log",
+          "bytes": 409682,
+          "sha256": "48558f45c05151e5d5a527a504593174f859587f8fff92b647db5bbe63854958"
+        },
+        {
+          "name": "command-exit-code",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+        },
+        {
+          "name": "mfa-intervals.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "result.json",
+          "bytes": 319,
+          "sha256": "f6a7b7f4ef2303df960d1f7789c511292ee46db888bcbeb66aedc00dde4e745d"
+        },
+        {
+          "name": "started-at-epoch",
+          "bytes": 11,
+          "sha256": "2a8de97b9168f83d5d9c9fd31373ed4db6e07cf2f412987409a57730de7cde20"
+        },
+        {
+          "name": "task-state.log",
+          "bytes": 447,
+          "sha256": "e6dc7ec2b410c9d5968b1e3f0533c48eb9a329cbe0ca30bbb92a1d937df9e537"
+        }
+      ],
+      "zipSaved": false,
+      "runtime": {
+        "testStepExitCode": 0,
+        "commandExitCode": 0,
+        "shellExitCode": 0,
+        "completed": true,
+        "cacheHit": false,
+        "testStepOutcome": "success",
+        "startedAtEpoch": 1794087708,
+        "finishedAtEpoch": 1794091388,
+        "finalizedAtEpoch": 1794091388,
+        "jobLimitMinutes": null,
+        "testStepLimitMinutes": null,
+        "artifactRecoveryGuaranteed": false
+      }
+    }
+  ]
+}

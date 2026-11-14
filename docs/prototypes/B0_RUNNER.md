@@ -141,3 +141,32 @@ rootは3住民の原session正常終了、cleanup=removed、専用scratchと内�
 ## CMP-261108-2026 H14 R2中断・R4正式探索の累積記録（2026-11-14）
 
 旧73/73/136の全fieldとトップrun/environmentを保持し、R2中断の3/3/7とR4の3/3/7を追記して79 persona/79 journey/150 insight。R2は全員PARTIAL・OPERATION_DEADLINE・再訪未達、R4はrootが元目的/同session再訪を採択しfull-after/所有cleanup完了。原run/head/限界とtrusted=false/observed-unverified/coverage=falseを保持し、B4親/子stage未設定や新画像非公開を変えない。選別証拠はdocs/evidence/CMP-261108-2026/h14-r2-partial-resident-observations-20261114.jsonとh14-r4-resident-observations-20261114.json。正式summaryと台帳は本体の採択結果を記録し、docs PRのmergeとは別に扱う。通常generator/global既存L46 FAIL、限定overlay検証、最終bytes静的boardは別判定。新静的board検証はroot後段で行う。
+
+
+2026-11-14のR14 fresh3登録は `docs/evidence/CMP-261028-2304/resident-observations-r14-20261114.json` を選別証拠として、累積正本へ3 persona / 3 journey / 2 insightだけ追加し67/67/122とした。旧64/64/120の全field、トップrunId/environmentと旧runEnvironmentsはdeep保持。原reportにないr1 runIdとr3 runId/sourceHeadはprivate root bindingのSHAで来歴を補足し、その旨を明記した。sourceは8afd06e6e06dddcd65f769be5e796baf0e83e28f、runはl1rr14dfb6。r1同名対象識別とr2テンプレート作成案内の2件だけ未実証の気づきとし、r3気づき0件・成功導線・未検証事項をjourneyへ保持する。trusted=false/observed-unverified/coverage不昇格、task-list/blocker変更0、private住民画像実体の公開0。
+
+再生成用copyは `.b0-local/run-l1rr14dfb6-fresh3-20261114.json`。GitHub同期803参照成功後の通常生成は718 campaign。validatorは生成器と同じ優先度P1〜P5分離文法へ1行修正し、P3保留の誤拒否を解消した。通常generator・通常validator・overlay自己検証は各exit0、不正overlay10件拒否、優先度状態24件受理・誤分類16件拒否。静的boardはbase b040e7e06eca0380e87d2796a0a461294f2122eeの所有WT working filesであり、住民の製品source 8afdとは区別する。実配信HTML/dataは `docs/evidence/CMP-261028-2304/board-ui-r14-20261114.json` のhashで識別する。
+
+最終の実保持境界はclockを固定せず、HEADの旧dataと同bytes HTMLで実IndexedDBへ120件を先にimportしraw snapshotを保存、自然時刻12.072秒経過後に新dataへ更新して122件をimportした。旧120の全field厳密deepEqual・新2のみ追加・重複0・reload全122不変を確認した。さらに隔離IDB内の新R1だけ人間用statusをinbox→plannedへGUI変更し、reload後も保存・sourceStatus=observed-unverified/trusted=false/出典不変・他121全field不変を確認した。これは人間用status保存の契約試験であり、正本overlayや実観測を確認済みへ昇格しない。カードと詳細を実閲覧済み、pageErrors/remote requests 0、context/browser正常閉鎖・native exit0。製品app/API/DB操作0であり、最新mainの製品実機・全coverage合格とは区別する。
+
+予備検証の初回122→reload122・clock固定による期待投影一致・未整理のままの閲覧は、centralに原履歴を保持する。旧実IDB保持と人間用status保存の最終根拠は、上記の120→122自然clock試験（UI証拠staticBrowserBoundary）とする。
+
+## L1-R R15前のmain観測統合（2026-11-14）
+
+固定main `69afe179b70dfc6c72806471d52bac24e2502814` の79 persona / 79 journey / 150 insightと既存R14の3/3/2を、共通ID全field一致を確認して統合し82/82/152・20 runEnvironmentsとした。旧top runId/environmentと両側全fieldを保持する。台帳はmainのCMP-261108-2026完了記録とL1-R更新・別件CMP-261114-0713を保持し720一意・全行7列。通常generatorは統合正本のlocal copyからexit0、generated overlayは正本とdeepEqual、campaign集合は台帳720件と一致した。
+
+GitHub再同期は実施していない。通常validatorと `--self-test-overlay` 全体は各exit1、GitHub参照集合不一致（L46）で停止した。既存validatorのoverlay関数・自己検証部分の限定実行は別判定でexit0、不正10例拒否。R15新住民の報告・登録、静的board/UI/IDB再試験、製品app/API/DB操作、公開送信はいずれも0。旧R14の67/67/122 UI証拠は当時の履歴であり、今回82/82/152や将来R15追加後のUI合格証拠へ読み替えない。R15実観測追加後の最終bytesで必要な検証を行う。
+
+
+## L1-R R15新独立3住民の実観測登録（2026-11-14）
+
+source8afd/run `l1rr15655c` の新3住民を、R14 fresh3と別persona/runとして登録した。旧82/82/152・20runの全field・top run/environmentをdeep保持し85persona/85journey/154insight・21runとする。選別正本は `docs/evidence/CMP-261028-2304/resident-observations-r15-20261114.json`。profile3/5/6・systemRole null、各GUI login1、desktop2/mobile390x844 touch1。原未認証2context閉鎖・browser前identity2拒否・既知未送信WRITE_BLOCKEDは別歴史として保持する。
+
+r1 closure201対象1→r2本人userqueue通知2106/source1/scope11→confirm200→管理者confirmation MESSAGE/1of1をrootが裏取り。r2 private10不可視/未選択→自分会話9復帰・投稿2成功はSTOMP拒否としない。r3観戦拒否UI/WS ERRORは本文/購読相関未採取、自身live event1作成後の再入場で履歴残存・timer開始前00:00を観測した。marker混入未観測を全非漏洩証明へ拡張しない。
+
+人工offline切替後のoffline表示継続と試合timer復元を未実証候補2件へ登録する。実回線断/自動再接続単独・永続要件・既存課題重複は未確定。製品修正・新CMP設計・確定不備昇格0。AC-36独立目的探索はroot資格で実施完了だが全動作greenではない。driver既定 `ac36Passed:false` のrawは不変、trusted=false/observed-unverified/coverage=falseを保持する。r1/r2/r3 create/update/deleteは1/0/0、2/6/0、1/0/0、全pending0/unknown false。R15runtime撤去・最終merge・支援CMP完了は先取りしない。再生成用copyは `.b0-local/run-l1rr15655c-fresh3-20261114.json`。
+
+
+R15棚卸更新の通常GitHub読み取り同期は2026-11-14T07:21:17Z・806参照で成功し、既存L46の不足#4418を解消した。通常generator/validator/overlay自己検証は最終bytesで各exit0（不正10例拒否）、44feature/95capability・CORE25/非CORE19・blockers23・720campaign。台帳720一意・全7列を保持し、親/all164 P4・支援CMP完了先取り0・Signage別P1未着手を維持する。task-list commit `942ecd87428f54dde67b07d270fe62bc17abb63d` のraw LF bytesと生成pin SHAが一致する。Windows checkout CRLF由来のhash差はWTを同commit raw bytesへ合わせて通常再生成し、generator自体は変更していない。
+
+最終実ボードは `board-ui-r15-20261114.json`、整合proofは `b0-r15-checks-20261114.json`。fresh実IndexedDBへ旧152をimport→自然clock7017ms後に最終新dataへ更新し154、旧152全field厳密deepEqual・新2のみ・重複0・reload154不変を確認した。B1の予約/大会試合カード2件と詳細を実閲覧し、隔離IDB内だけR1の人間用statusをinbox→plannedへGUI変更→reload保存、sourceStatus=observed-unverified/trusted=false/来歴不変・他153全field不変を確認した。正本overlayのstatus変更0。pageErrors/remote requests0、context/browser正常閉鎖・native exit0、製品app/API/DB操作0。HTML/実生成dataのhashをreceiptへ固定し、住民source8afdと混同しない。旧R14 UI証拠や先行helper失敗は履歴として保持し、今回の最終bytesへ読み替えない。

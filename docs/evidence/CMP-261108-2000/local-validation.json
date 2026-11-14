@@ -1,0 +1,41 @@
+{
+  "scope": "test-only",
+  "owner": "e8ded143-7eea-4189-a530-7708882e1200",
+  "cmp": "CMP-261108-2000",
+  "registrationPR": 4407,
+  "registrationMain": "a91bc4ccf063a615a54b7e4cf178d03dafc7ce61",
+  "coordinationWorking": "e36378244b8b7c76581c74f9866d9d33adfbf6fc",
+  "declaration": "https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6720882910",
+  "domainReport": "https://github.com/kenta-0420/mannschaft/issues/4022#issuecomment-6720913549",
+  "regenTests": {
+    "command": "python -m unittest scripts/test_regen_shard_weights.py",
+    "tests": 6,
+    "failures": 0,
+    "errors": 0,
+    "seconds": 0.28
+  },
+  "localGradleExecutions": 0,
+  "ciCompiledFourProfiles": "pending",
+  "ciIntegrityAndFull": "pending",
+  "independentReview": "pending",
+  "realE2e": {
+    "status": "not-applicable",
+    "reason": "test-onlyで製品UI/API/DB・認可・画面導線を変更しない"
+  },
+  "exploration": {
+    "status": "not-applicable",
+    "reason": "test-onlyで製品UI/API/DB・認可・画面導線を変更しない"
+  },
+  "parentAndL5Complete": false,
+  "structuralChecks": {
+    "allSevenConstantsEqualMeasured": true,
+    "provenanceRows": 3182,
+    "historicalRows": 2,
+    "storeWorkingDiffFiles": 0,
+    "everyAppliedMeasuredValueMatchesOfficialRender": true,
+    "authoringCopyWeightsSha256": "cc907fedc56c93ee133684fb363064f3660c9070c61939866c2c0d9ebe24d462",
+    "canonicalGitWeightsSha256": "74be9c96f7883cec63ab7f6d8a9a0fd293512296802881104a8074590b024676",
+    "onlyCrlfToLf": true
+  },
+  "sourceEquivalentMain": "0912c83478"
+}
