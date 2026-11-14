@@ -17,11 +17,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
@@ -71,6 +74,44 @@ class ShiftScheduleFacadeTest {
 
     private static ShiftScheduleScope draft() {
         return new ShiftScheduleScope(SCHEDULE_ID, TEAM_ID, ShiftScheduleStatus.DRAFT, false);
+    }
+
+    static Stream<ShiftScheduleScope> hiddenSummaryScopes() {
+        return Stream.of(draft(),
+                new ShiftScheduleScope(SCHEDULE_ID, TEAM_ID, ShiftScheduleStatus.ARCHIVED, false),
+                new ShiftScheduleScope(SCHEDULE_ID, TEAM_ID, null, false),
+                new ShiftScheduleScope(SCHEDULE_ID, TEAM_ID, null, true));
+    }
+
+    @ParameterizedTest
+    @MethodSource("hiddenSummaryScopes")
+    @DisplayName("CMP-260905-1630: 未公開サマリは一般メンバーに404を返し集計を呼ばない（nullもfail-closed）")
+    void 未公開サマリは404で集計しない(ShiftScheduleScope scope) {
+        given(scheduleService.resolveScope(SCHEDULE_ID)).willReturn(scope);
+        // 修正前は管理者ゲートが在籍を問い合わせ、修正後は未公開判定で先に拒否する。
+        org.mockito.Mockito.lenient().when(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM"))
+                .thenReturn(true);
+
+        assertCode(catchThrowable(() -> facade.getScheduleSummary(SCHEDULE_ID, USER_ID)),
+                ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
+        verify(scheduleService).resolveScope(SCHEDULE_ID);
+        verify(scheduleService, never()).getScheduleSummary(anyLong());
+        verifyNoInteractions(reminderService);
+    }
+
+    @Test
+    @DisplayName("未公開サマリでもSUPPORTERは従来どおり403で集計しない")
+    void 未公開サマリでもSUPPORTERは403() {
+        given(scheduleService.resolveScope(SCHEDULE_ID)).willReturn(draft());
+        given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+        // 修正前の管理者ゲートはSUPPORTERを直接調べないが、主体の条件は両版で同じにする。
+        org.mockito.Mockito.lenient().when(accessControlService.isSupporter(USER_ID, TEAM_ID, "TEAM"))
+                .thenReturn(true);
+
+        assertCode(catchThrowable(() -> facade.getScheduleSummary(SCHEDULE_ID, USER_ID)),
+                CommonErrorCode.COMMON_002);
+        verify(scheduleService).resolveScope(SCHEDULE_ID);
+        verify(scheduleService, never()).getScheduleSummary(anyLong());
     }
 
     private static void assertCode(Throwable thrown, ErrorCode expected) {
