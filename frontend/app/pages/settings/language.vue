@@ -68,7 +68,6 @@ onMounted(async () => {
       nickname: d.nickname,
       nickname2: d.nickname2,
       isSearchable: d.isSearchable,
-      avatarUrl: d.avatarUrl ?? undefined,
       phoneNumber: d.phoneNumber,
       locale: d.locale,
       timezone: d.timezone,

@@ -30,6 +30,10 @@ public class UpdateProfileRequest {
     @ValidTimezone
     private final String timezone;
     private final Boolean isSearchable;
+    /**
+     * 【無視される】アバターは ProfileMediaService の commit 経路でのみ変更する。
+     * GET が返す解決済み署名付きURLを往復させても保存キーを壊さないため、updateProfile は本値を採用しない（CMP-261010-1130）。
+     */
     private final String avatarUrl;
     private final String phoneNumber;
     @Size(max = 20)
