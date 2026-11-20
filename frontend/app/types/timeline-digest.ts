@@ -1,3 +1,5 @@
+export type DigestScopeType = 'TEAM' | 'ORGANIZATION'
+
 export interface DigestConfigResponse {
   id: number
   scheduleType: string
@@ -21,8 +23,8 @@ export interface DigestConfigResponse {
 }
 
 export interface DigestConfigRequest {
-  scopeType?: string
-  scopeId: string
+  scopeType: DigestScopeType
+  scopeId: number
   scheduleType?: string
   scheduleTime?: string
   scheduleDayOfWeek?: number
@@ -42,8 +44,8 @@ export interface DigestConfigRequest {
 }
 
 export interface DigestGenerateRequest {
-  scopeType?: string
-  scopeId: string
+  scopeType: DigestScopeType
+  scopeId: number
   periodStart: string
   periodEnd: string
   digestStyle?: string
@@ -61,7 +63,7 @@ export interface DigestGenerateResponse {
 export interface DigestDetailResponse {
   id: number
   scopeType: string
-  scopeId: string
+  scopeId: number
   periodStart: string
   periodEnd: string
   postCount: number

@@ -4,7 +4,7 @@ import type { AiQuotaResponse } from '~/types/timeline-digest'
 const props = defineProps<{
   visible: boolean
   scopeType: 'ORGANIZATION' | 'TEAM'
-  scopeId: string
+  scopeId: number
 }>()
 
 const emit = defineEmits<{
@@ -126,7 +126,9 @@ function onHide() {
       </Message>
 
       <div class="flex flex-col gap-1">
-        <label class="text-sm font-medium">{{ $t('timeline_digest.label_period_start') }} <span class="text-red-500">*</span></label>
+        <label class="text-sm font-medium"
+          >{{ $t('timeline_digest.label_period_start') }} <span class="text-red-500">*</span></label
+        >
         <DatePicker
           v-model="form.periodStart"
           date-format="yy/mm/dd"
@@ -138,7 +140,9 @@ function onHide() {
       </div>
 
       <div class="flex flex-col gap-1">
-        <label class="text-sm font-medium">{{ $t('timeline_digest.label_period_end') }} <span class="text-red-500">*</span></label>
+        <label class="text-sm font-medium"
+          >{{ $t('timeline_digest.label_period_end') }} <span class="text-red-500">*</span></label
+        >
         <DatePicker
           v-model="form.periodEnd"
           date-format="yy/mm/dd"
@@ -150,7 +154,9 @@ function onHide() {
       </div>
 
       <div class="flex flex-col gap-1">
-        <label class="text-sm font-medium">{{ $t('timeline_digest.label_digest_style') }} <span class="text-red-500">*</span></label>
+        <label class="text-sm font-medium"
+          >{{ $t('timeline_digest.label_digest_style') }} <span class="text-red-500">*</span></label
+        >
         <Select
           v-model="form.digestStyle"
           :options="styleOptions"

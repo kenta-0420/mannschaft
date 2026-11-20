@@ -1,4 +1,5 @@
 import type {
+  DigestScopeType,
   DigestConfigResponse,
   DigestConfigRequest,
   DigestGenerateRequest,
@@ -46,8 +47,13 @@ export function useTimelineDigestApi() {
   const api = useApi()
   const base = '/api/v1/timeline-digest'
 
-  async function listDigests(cursor?: string, limit: number = 20) {
-    const query = new URLSearchParams()
+  async function listDigests(
+    scopeType: DigestScopeType,
+    scopeId: number,
+    cursor?: string,
+    limit: number = 20,
+  ) {
+    const query = new URLSearchParams({ scopeType, scopeId: String(scopeId) })
     if (cursor) query.set('cursor', cursor)
     query.set('limit', String(limit))
     return api<{ data: DigestSummaryResponse[]; meta: CursorMeta }>(`${base}?${query}`)
@@ -81,8 +87,9 @@ export function useTimelineDigestApi() {
   }
 
   // === Config ===
-  async function getConfig() {
-    return api<{ data: DigestConfigResponse }>(`${base}/config`)
+  async function getConfig(scopeType: DigestScopeType, scopeId: number) {
+    const query = new URLSearchParams({ scopeType, scopeId: String(scopeId) })
+    return api<{ data: DigestConfigResponse }>(`${base}/config?${query}`)
   }
 
   async function updateConfig(body: DigestConfigRequest) {
