@@ -13,7 +13,7 @@ class BirthProfileRevisionTest {
     }
     private void update(UserEntity u, String firstName, String kana, String displayName) {
         u.applyProfileUpdate(u.getLastName(),firstName,u.getLastNameKana(),kana,displayName,
-                u.getNickname2(),u.getIsSearchable(),u.getAvatarUrl(),u.getPhoneNumber(),
+                u.getNickname2(),u.getIsSearchable(),u.getPhoneNumber(),
                 u.getPostalCode(),u.getLastNameHash(),u.getFirstNameHash(),u.getPhoneNumberHash(),
                 u.getLocale(),u.getCountryCode(),u.getTimezone(),u.getDmReceiveFrom());
     }

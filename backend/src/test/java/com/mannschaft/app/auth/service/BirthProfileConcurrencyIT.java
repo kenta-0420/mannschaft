@@ -37,7 +37,7 @@ class BirthProfileConcurrencyIT extends AbstractMySqlIntegrationTest {
     }
     private void updateName(UserEntity user, String name, String kana) {
         user.applyProfileUpdate(user.getLastName(),name,user.getLastNameKana(),kana,user.getDisplayName(),
-                user.getNickname2(),user.getIsSearchable(),user.getAvatarUrl(),user.getPhoneNumber(),
+                user.getNickname2(),user.getIsSearchable(),user.getPhoneNumber(),
                 user.getPostalCode(),user.getLastNameHash(),user.getFirstNameHash(),user.getPhoneNumberHash(),
                 user.getLocale(),user.getCountryCode(),user.getTimezone(),user.getDmReceiveFrom());
     }
@@ -83,7 +83,7 @@ class BirthProfileConcurrencyIT extends AbstractMySqlIntegrationTest {
             var profile=workers.submit(()->{
                 profileStarted.countDown();
                 return userService.updateProfile(id,new UpdateProfileRequest(null,"太郎",null,"タロウ",null,null,
-                        null,null,null,null,null,null,null,null));
+                        null,null,null,null,null,null,null));
             });
             await(profileStarted);
             BirthProfileLockWaitObserver.awaitUserWait(MYSQL,id,profile);

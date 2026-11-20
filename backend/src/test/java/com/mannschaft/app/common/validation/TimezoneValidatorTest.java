@@ -141,6 +141,6 @@ class TimezoneValidatorTest {
     private static UpdateProfileRequest requestWithTimezone(String timezone) {
         return new UpdateProfileRequest(
                 null, null, null, null, null, null, null, null,
-                timezone, null, null, null, null, null);
+                timezone, null, null, null, null);
     }
 }

@@ -59,4 +59,23 @@ describe('設定 > 言語の保存が users.locale を更新する（AC-16）', 
     expect(mocks.updateProfile).toHaveBeenCalledWith(expect.objectContaining({ locale: 'en' }))
     expect(mocks.applyAccountLocale).toHaveBeenLastCalledWith('en')
   })
+  it('CMP-261120-0200 AC3: 保存で送る内容は locale/timezone/countryCode のみ（avatarUrl・氏名系を送り返さない）', async () => {
+    mocks.getProfile.mockResolvedValue({ data: {
+      lastName: '試練', firstName: '多言語', lastNameKana: 'シレン', firstNameKana: 'タゲンゴ',
+      nickname: 'cmp0200', nickname2: 'n2', isSearchable: true,
+      avatarUrl: 'https://signed.example/bucket/user/1/icon/a.png?X-Amz-Signature=abc', phoneNumber: '090',
+      locale: 'ja', timezone: 'Asia/Tokyo', countryCode: 'JP',
+    } })
+    const wrapper = await mountSuspended(LanguagePage)
+    await flushPromises()
+
+    const saveButton = wrapper.findAll('button').find(b => b.find('.pi-check').exists())
+    expect(saveButton).toBeTruthy()
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    expect(mocks.updateProfile).toHaveBeenCalledTimes(1)
+    const sent = mocks.updateProfile.mock.calls[0]![0] as Record<string, unknown>
+    expect(Object.keys(sent).sort()).toEqual(['countryCode', 'locale', 'timezone'])
+  })
 })

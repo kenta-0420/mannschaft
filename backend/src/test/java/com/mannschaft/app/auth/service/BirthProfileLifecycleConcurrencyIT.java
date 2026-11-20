@@ -78,7 +78,7 @@ class BirthProfileLifecycleConcurrencyIT extends AbstractMySqlIntegrationTest {
     }
     private void updateName(UserEntity user) {
         user.applyProfileUpdate(user.getLastName(),"花子",user.getLastNameKana(),"ハナコ",user.getDisplayName(),
-                user.getNickname2(),user.getIsSearchable(),user.getAvatarUrl(),user.getPhoneNumber(),
+                user.getNickname2(),user.getIsSearchable(),user.getPhoneNumber(),
                 user.getPostalCode(),user.getLastNameHash(),user.getFirstNameHash(),user.getPhoneNumberHash(),
                 user.getLocale(),user.getCountryCode(),user.getTimezone(),user.getDmReceiveFrom());
     }

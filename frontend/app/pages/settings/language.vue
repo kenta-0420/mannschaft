@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import Holidays from 'date-holidays'
-import type { UpdateProfileRequest } from '~/types/user-settings'
 
 definePageMeta({
   middleware: 'auth',
@@ -15,7 +14,6 @@ const loading = ref(true)
 const saving = ref(false)
 
 const form = ref({ locale: 'ja', timezone: 'Asia/Tokyo', countryCode: null as string | null })
-const fullProfile = ref<UpdateProfileRequest>({})
 
 const localeOptions = [
   { code: 'ja', name: '日本語' },
@@ -59,20 +57,6 @@ const countryOptions = computed(() => {
 onMounted(async () => {
   try {
     const res = await getProfile()
-    const d = res.data
-    fullProfile.value = {
-      lastName: d.lastName,
-      firstName: d.firstName,
-      lastNameKana: d.lastNameKana,
-      firstNameKana: d.firstNameKana,
-      nickname: d.nickname,
-      nickname2: d.nickname2,
-      isSearchable: d.isSearchable,
-      avatarUrl: d.avatarUrl ?? undefined,
-      phoneNumber: d.phoneNumber,
-      locale: d.locale,
-      timezone: d.timezone,
-    }
     form.value.locale = res.data.locale || 'ja'
     form.value.timezone = res.data.timezone || 'Asia/Tokyo'
     form.value.countryCode = res.data.countryCode ?? null
@@ -85,14 +69,15 @@ onMounted(async () => {
   // 表示言語欄（アカウント言語）と実際の表示言語・Cookie を一致させる。
   // 別端末で言語を変えた場合など、起動時のキャッシュと食い違っていても
   // ここでアカウントに保存された言語へ揃える（CMP-261007-1243）。
-  await applyAccountLocale(fullProfile.value.locale)
+  await applyAccountLocale(form.value.locale)
 })
 
 async function save() {
   saving.value = true
   try {
+    // 送るのは言語・タイムゾーン・国コードのみ。avatarUrl・氏名などを GET から送り返すと、署名付き URL が
+    // users.avatar_url を上書きする破損の原因になる（CMP-261120-0200）。未送信の項目は BE が既存値を保持する。
     await updateProfile({
-      ...fullProfile.value,
       locale: form.value.locale,
       timezone: form.value.timezone,
       countryCode: form.value.countryCode,

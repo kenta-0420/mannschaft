@@ -30,7 +30,10 @@ public class UpdateProfileRequest {
     @ValidTimezone
     private final String timezone;
     private final Boolean isSearchable;
-    private final String avatarUrl;
+    // avatarUrl は受け付けない（CMP-261120-0200）。プロフィール画像の正規の書込経路は
+    // ProfileMediaService#commit（接頭辞検証あり）のみ。PUT /users/me で受けると、GET の署名付き URL を
+    // 送り返された場合に users.avatar_url が署名付き URL で上書きされ、他人のキーも保存できてしまう。
+    // 古いクライアントが avatarUrl を送っても Jackson は未知項目を無視するため 400 にはならず、既存値が保持される。
     private final String phoneNumber;
     @Size(max = 20)
     private final String postalCode;

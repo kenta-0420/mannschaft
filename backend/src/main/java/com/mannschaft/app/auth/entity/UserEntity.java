@@ -573,7 +573,6 @@ public class UserEntity extends BaseEntity {
      * @param displayName     新表示名
      * @param nickname2       新ニックネーム2
      * @param isSearchable    新検索許可フラグ
-     * @param avatarUrl       新アバターURL
      * @param phoneNumber     新電話番号
      * @param postalCode      新郵便番号
      * @param lastNameHash    新姓 HMAC
@@ -586,7 +585,7 @@ public class UserEntity extends BaseEntity {
      */
     public void applyProfileUpdate(String lastName, String firstName, String lastNameKana,
                                    String firstNameKana, String displayName, String nickname2,
-                                   Boolean isSearchable, String avatarUrl, String phoneNumber,
+                                   Boolean isSearchable, String phoneNumber,
                                    String postalCode, String lastNameHash, String firstNameHash,
                                    String phoneNumberHash, String locale, String countryCode,
                                    String timezone, DmReceiveFrom dmReceiveFrom) {
@@ -598,7 +597,6 @@ public class UserEntity extends BaseEntity {
         this.displayName = displayName;
         this.nickname2 = nickname2;
         this.isSearchable = isSearchable;
-        this.avatarUrl = avatarUrl;
         this.phoneNumber = phoneNumber;
         this.postalCode = postalCode;
         this.lastNameHash = lastNameHash;

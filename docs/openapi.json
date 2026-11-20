@@ -160069,9 +160069,6 @@
       "UpdateProfileRequest": {
         "type": "object",
         "properties": {
-          "avatarUrl": {
-            "type": "string"
-          },
           "countryCode": {
             "type": "string"
           },

@@ -50,7 +50,6 @@ export interface UpdateProfileRequest {
   countryCode?: string | null
   timezone?: string
   isSearchable?: boolean
-  avatarUrl?: string
   phoneNumber?: string
   postalCode?: string
 }

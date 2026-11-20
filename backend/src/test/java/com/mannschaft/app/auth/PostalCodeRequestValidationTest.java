@@ -46,6 +46,6 @@ class PostalCodeRequestValidationTest {
     private UpdateProfileRequest updateProfileRequest(String postalCode) {
         return new UpdateProfileRequest(
                 null, null, null, null, null, null, null, null, null,
-                null, null, null, postalCode, null);
+                null, null, postalCode, null);
     }
 }

@@ -373,7 +373,6 @@ public class UserService {
                 req.getNickname() != null ? req.getNickname() : user.getDisplayName(),
                 req.getNickname2() != null ? req.getNickname2() : user.getNickname2(),
                 req.getIsSearchable() != null ? req.getIsSearchable() : user.getIsSearchable(),
-                req.getAvatarUrl() != null ? req.getAvatarUrl() : user.getAvatarUrl(),
                 newPhoneNumber,
                 req.getPostalCode() != null ? req.getPostalCode() : user.getPostalCode(),
                 encryptionService.hmac(newLastName),

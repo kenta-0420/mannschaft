@@ -51055,7 +51055,6 @@ export interface components {
             variant?: "LAST_NAME" | "FULL_NAME" | "FIRST_NAME";
         };
         UpdateProfileRequest: {
-            avatarUrl?: string;
             countryCode?: string;
             /** @enum {string} */
             dmReceiveFrom?: "ANYONE" | "TEAM_MEMBERS_ONLY" | "CONTACTS_ONLY";
