@@ -81,6 +81,41 @@
       "MINUTE": "分钟",
       "KILOGRAM": "千克",
       "RPE": "RPE"
+    },
+    "templateSettings": {
+      "title": "努力记录指标",
+      "description": "为每个字段设置含义、单位和汇总方式，以便成员将其作为个人努力记录共享。与模板本身分开保存。",
+      "semanticLabel": "含义",
+      "unitLabel": "单位",
+      "aggregationLabel": "汇总方式",
+      "durationField": "用作时长的字段",
+      "subjectField": "用作科目的字段",
+      "none": "无",
+      "noFields": "此模板没有字段。",
+      "loadError": "无法获取指标设置。",
+      "retry": "重试",
+      "conflict": "其他人已先更新。正在加载最新内容。",
+      "reload": "加载最新内容",
+      "saveError": "无法保存指标设置。",
+      "saved": "已保存指标设置。",
+      "save": "保存指标设置",
+      "semantic": {
+        "DURATION": "时长",
+        "WEIGHT": "体重",
+        "INTENSITY": "强度",
+        "SUBJECT": "科目",
+        "MENU": "项目菜单",
+        "NUMBER": "数值",
+        "TEXT": "文本",
+        "DATE": "日期",
+        "DATETIME": "日期时间",
+        "CHECKBOX": "复选框"
+      },
+      "aggregation": {
+        "NONE": "不汇总",
+        "SUM": "合计",
+        "LATEST": "最新值"
+      }
     }
   }
 }

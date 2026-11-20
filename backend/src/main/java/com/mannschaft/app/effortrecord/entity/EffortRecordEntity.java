@@ -96,9 +96,6 @@ public class EffortRecordEntity extends UuidV7Entity {
     @Column(name = "share_id")
     private UUID shareId;
 
-    @Column(name = "share_organization_id")
-    private Long shareOrganizationId;
-
     @Column(name = "share_team_id")
     private Long shareTeamId;
 

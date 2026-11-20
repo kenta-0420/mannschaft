@@ -12,6 +12,8 @@ interface FieldRow {
 const props = defineProps<{
   template?: ActivityTemplate | null
   visible: boolean
+  /** 頑張り記録の指標セクションを出してよいか（ADMIN・委任 DEPUTY）。 */
+  canManageEffortSettings?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -147,7 +149,7 @@ function handleCancel() {
   <Dialog
     :visible="visible"
     modal
-    style="width: 700px"
+    style="width: 700px; max-width: 95vw"
     :header="template ? $t('activity.template.dialog_title_edit') : $t('activity.template.dialog_title_create')"
     @update:visible="emit('update:visible', $event)"
   >
@@ -251,6 +253,13 @@ function handleCancel() {
           </table>
         </div>
       </div>
+
+      <!-- 頑張り記録の指標（保存済みテンプレートのみ・別 API で別保存） -->
+      <EffortTemplateSettingsSection
+        v-if="template && canManageEffortSettings && template.scopeType === 'TEAM'"
+        :team-id="template.scopeId"
+        :template-id="template.id"
+      />
     </div>
 
     <template #footer>

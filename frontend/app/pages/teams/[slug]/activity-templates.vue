@@ -143,6 +143,7 @@ async function handleDuplicate(id: number) {
     <ActivityTemplateForm
       v-model:visible="showForm"
       :template="editingTemplate"
+      :can-manage-effort-settings="isAdminOrDeputy"
       @saved="loadTemplates"
     />
   </div>

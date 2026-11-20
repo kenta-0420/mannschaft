@@ -81,6 +81,41 @@
       "MINUTE": "분",
       "KILOGRAM": "kg",
       "RPE": "RPE"
+    },
+    "templateSettings": {
+      "title": "노력 기록 지표",
+      "description": "멤버가 개인 노력 기록으로 공유할 수 있도록 항목별 의미, 단위, 집계 방법을 설정합니다. 템플릿 자체와는 별도로 저장됩니다.",
+      "semanticLabel": "의미",
+      "unitLabel": "단위",
+      "aggregationLabel": "집계 방법",
+      "durationField": "시간으로 사용할 항목",
+      "subjectField": "과목으로 사용할 항목",
+      "none": "없음",
+      "noFields": "이 템플릿에는 항목이 없습니다.",
+      "loadError": "지표 설정을 불러오지 못했습니다.",
+      "retry": "다시 시도",
+      "conflict": "다른 사람이 먼저 업데이트했습니다. 최신 내용을 불러옵니다.",
+      "reload": "최신 내용 불러오기",
+      "saveError": "지표 설정을 저장하지 못했습니다.",
+      "saved": "지표 설정을 저장했습니다.",
+      "save": "지표 설정 저장",
+      "semantic": {
+        "DURATION": "시간",
+        "WEIGHT": "체중",
+        "INTENSITY": "강도",
+        "SUBJECT": "과목",
+        "MENU": "메뉴",
+        "NUMBER": "숫자",
+        "TEXT": "텍스트",
+        "DATE": "날짜",
+        "DATETIME": "날짜 및 시간",
+        "CHECKBOX": "체크박스"
+      },
+      "aggregation": {
+        "NONE": "집계 안 함",
+        "SUM": "합계",
+        "LATEST": "최신 값"
+      }
     }
   }
 }

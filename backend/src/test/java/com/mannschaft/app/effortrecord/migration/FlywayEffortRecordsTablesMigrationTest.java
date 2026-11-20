@@ -35,6 +35,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * (4) CHECK 制約の拒否、(5) FK は effort 定義内部（revision→definition）だけ、(6) 設計の索引が EXPLAIN で使われる、
  * (7) 再実行で保留 migration なし、を実測する。timeline_posts への FK は PR-3（effort_team_shares / timeline_effort_sources）の範囲。</p>
  *
+ * <p>PR-2（AC-67・2026-11-18 マスター裁定）: チーム側は組織に依存しない。TEAM 定義を組織なしで INSERT でき、
+ * effort 表は組織列を持たず、TEAM 定義の索引は team_id 起点であることを全量適用後に実測する。</p>
+ *
  * <p>migration の版番号はマージ時に付け替わりうるため、対象は説明名 {@code create_effort_records_tables} で探し、
  * その直前の版を事前適用の target にする。</p>
  */
@@ -151,9 +154,10 @@ class FlywayEffortRecordsTablesMigrationTest {
         List<String> rejected = List.of(
                 "INSERT INTO effort_definitions (id, source_type, source_key, current_revision, version, created_at, updated_at) "
                         + "VALUES (" + def + ", 'OTHER', 'x1', 1, 0, NOW(6), NOW(6))",
-                "INSERT INTO effort_definitions (id, source_type, source_key, organization_id, current_revision, version, created_at, updated_at) "
+                // PRESET に team を持たせる / TEAM に team が無い（組織列は 2026-11-18 裁定で使わないため、team 列で検査する）
+                "INSERT INTO effort_definitions (id, source_type, source_key, team_id, current_revision, version, created_at, updated_at) "
                         + "VALUES (" + def + ", 'PRESET', 'x2', 1, 1, 0, NOW(6), NOW(6))",
-                "INSERT INTO effort_definitions (id, source_type, source_key, organization_id, current_revision, version, created_at, updated_at) "
+                "INSERT INTO effort_definitions (id, source_type, source_key, team_template_id, current_revision, version, created_at, updated_at) "
                         + "VALUES (" + def + ", 'TEAM', 'x3', 1, 1, 0, NOW(6), NOW(6))",
                 "INSERT INTO effort_definitions (id, source_type, source_key, current_revision, version, created_at, updated_at) "
                         + "VALUES (" + def + ", 'PRESET', 'x4', 0, 0, NOW(6), NOW(6))",
@@ -161,10 +165,11 @@ class FlywayEffortRecordsTablesMigrationTest {
                         + "VALUES (" + def + ", " + presetDef + ", 0, JSON_OBJECT(), REPEAT('a',64), NOW(6), NOW(6))",
                 record("content_revision", "0", "share_state", "NULL"),
                 record("content_revision", "1", "share_state", "'BOGUS'"),
+                // share 組の片欠け（加入期間 ID なし）
                 "INSERT INTO effort_records (id, owner_user_id, definition_id, definition_revision, definition_snapshot, recorded_on, "
-                        + "record_timezone, values_json, share_id, share_organization_id, share_team_id, share_state, created_at, updated_at) "
+                        + "record_timezone, values_json, share_id, share_team_id, share_state, created_at, updated_at) "
                         + "VALUES (" + def + ", 1, " + presetDef + ", 1, JSON_OBJECT(), '2026-11-01', 'Asia/Tokyo', JSON_OBJECT(), "
-                        + def + ", 1, 1, 'PENDING', NOW(6), NOW(6))",
+                        + def + ", 1, 'PENDING', NOW(6), NOW(6))",
                 "INSERT INTO effort_operation_receipts (id, route_kind, route_id, actor_user_id, operation_key, operation_path, "
                         + "request_hash, created_at, updated_at, expires_at) VALUES (" + def + ", 'OTHER', 1, 1, '"
                         + UUID.randomUUID() + "', 'POST /api/v1/effort-records/me', REPEAT('a',64), NOW(6), NOW(6), NOW(6))");
@@ -175,6 +180,52 @@ class FlywayEffortRecordsTablesMigrationTest {
             // 対照: 妥当な行は入る（CHECK が全拒否になっていないこと）。
             assertThat(s.executeUpdate(record("content_revision", "1", "share_state", "NULL"))).isEqualTo(1);
             s.executeUpdate("DELETE FROM effort_records WHERE owner_user_id = 1");
+        }
+    }
+
+    @Test
+    @DisplayName("AC-67: TEAM 定義は組織なしで INSERT でき、share 組も組織なしで成立する（2026-11-18 マスター裁定）")
+    void AC67_TEAM定義は組織なしでINSERTできる() throws Exception {
+        String def = "UNHEX(REPLACE('01938a00-0000-7000-8000-0000000000a1','-',''))";
+        String presetDef = "UNHEX(REPLACE('01938a00-0000-7000-8000-000000000001','-',''))";
+        try (Connection c = connection(); Statement s = c.createStatement()) {
+            try {
+                assertThat(s.executeUpdate("INSERT INTO effort_definitions (id, source_type, source_key, team_id, team_template_id, "
+                        + "current_revision, version, created_at, updated_at) VALUES (" + def + ", 'TEAM', 'team:7001:template:8001', "
+                        + "7001, 8001, 1, 0, NOW(6), NOW(6))")).as("親組織を持たないチームの TEAM 定義").isEqualTo(1);
+                assertThat(s.executeUpdate("INSERT INTO effort_records (id, owner_user_id, definition_id, definition_revision, "
+                        + "definition_snapshot, recorded_on, record_timezone, values_json, share_id, share_team_id, share_state, "
+                        + "grant_membership_id, created_at, updated_at) VALUES (UNHEX(REPLACE(UUID(),'-','')), 2, " + presetDef
+                        + ", 1, JSON_OBJECT(), '2026-11-01', 'Asia/Tokyo', JSON_OBJECT(), UNHEX(REPLACE(UUID(),'-','')), 7001, "
+                        + "'PENDING', 9001, NOW(6), NOW(6))")).as("組織なしの share 組").isEqualTo(1);
+            } finally {
+                s.executeUpdate("DELETE FROM effort_records WHERE owner_user_id = 2");
+                s.executeUpdate("DELETE FROM effort_definitions WHERE id = " + def);
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("AC-67: チーム側の表は組織列を持たず、TEAM 定義の索引は team_id 起点（データ設計 §2）")
+    void AC67_チーム側は組織列を持たずteam起点の索引() throws Exception {
+        try (Connection c = connection(); Statement s = c.createStatement()) {
+            try (ResultSet rs = s.executeQuery("SELECT TABLE_NAME, COLUMN_NAME FROM information_schema.COLUMNS "
+                    + "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME LIKE 'effort\\_%' AND COLUMN_NAME LIKE '%organization%'")) {
+                List<String> found = new ArrayList<>();
+                while (rs.next()) {
+                    found.add(rs.getString(1) + "." + rs.getString(2));
+                }
+                assertThat(found).as("effort 表に組織列が無い（effort_definitions.organization_id・effort_records.share_organization_id を削除）")
+                        .isEmpty();
+            }
+            List<String> columns = new ArrayList<>();
+            try (ResultSet rs = s.executeQuery("SELECT COLUMN_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() "
+                    + "AND TABLE_NAME = 'effort_definitions' AND INDEX_NAME = 'idx_effort_definition_team' ORDER BY SEQ_IN_INDEX")) {
+                while (rs.next()) {
+                    columns.add(rs.getString(1).toLowerCase());
+                }
+            }
+            assertThat(columns).containsExactly("team_id", "deleted_at");
         }
     }
 

@@ -25,7 +25,8 @@ import java.time.Instant;
 /**
  * F06.4.1 頑張り記録の定義（標準プリセットまたはチーム定義の不変 snapshot 識別用）。
  *
- * <p>PRESET は共通参照データで固定 UUID。TEAM は organization 側。個人所有ではない。
+ * <p>PRESET は共通参照データで固定 UUID。TEAM は team 側（team_id 基準。親組織 0 件・複数件のチームがあり得るため
+ * organization_id では束ねない。2026-11-18 マスター裁定）。個人所有ではない。
  * 時刻は UTC の {@link Instant}（データ設計 §2）。</p>
  */
 @Entity
@@ -47,9 +48,6 @@ public class EffortDefinitionEntity extends UuidV7Entity {
     /** PRESET なら固定コード、TEAM なら {@code team:{teamId}:template:{templateId}}。 */
     @Column(name = "source_key", nullable = false, length = 80)
     private String sourceKey;
-
-    @Column(name = "organization_id")
-    private Long organizationId;
 
     @Column(name = "team_id")
     private Long teamId;

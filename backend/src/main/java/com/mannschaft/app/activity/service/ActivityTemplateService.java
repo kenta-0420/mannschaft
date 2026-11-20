@@ -385,6 +385,19 @@ public class ActivityTemplateService {
         return activityMapper.toTemplateFieldResponseList(fieldRepository.findByTemplateIdOrderBySortOrderAsc(id));
     }
 
+    /**
+     * 指定スコープに属する有効なテンプレートをフィールド定義付きで返す（他ドメイン向けの照会。F06.4.1 個人の頑張り記録）。
+     *
+     * <p>認可は行わない。呼び出し側が自ドメインの認可（所属・テンプレート管理権限）を済ませてから呼ぶこと。
+     * 不在・論理削除済み・別スコープは区別せず empty を返す（存在を呼び出し側の応答で漏らさないため）。
+     * 照会はテンプレート1件＋フィールド一括の2クエリで、フィールド数に比例しない。</p>
+     */
+    public java.util.Optional<ActivityTemplateResponse> findInScope(Long id, ActivityScopeType type, Long scopeId) {
+        return templateRepository.findById(id)
+                .filter(t -> t.getScopeType() == type && java.util.Objects.equals(t.getScopeId(), scopeId))
+                .map(this::toResponseWithFields);
+    }
+
     private ActivityTemplateResponse toResponseWithFields(ActivityTemplateEntity entity) {
         List<ActivityTemplateFieldEntity> fields =
                 fieldRepository.findByTemplateIdOrderBySortOrderAsc(entity.getId());

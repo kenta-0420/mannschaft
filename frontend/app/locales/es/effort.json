@@ -81,6 +81,41 @@
       "MINUTE": "min",
       "KILOGRAM": "kg",
       "RPE": "RPE"
+    },
+    "templateSettings": {
+      "title": "Indicadores del registro de esfuerzo",
+      "description": "Define el significado, la unidad y la agregación de cada campo para que los miembros puedan compartirlos como registros de esfuerzo personales. Se guarda por separado de la plantilla.",
+      "semanticLabel": "Significado",
+      "unitLabel": "Unidad",
+      "aggregationLabel": "Agregación",
+      "durationField": "Campo usado como duración",
+      "subjectField": "Campo usado como materia",
+      "none": "Ninguno",
+      "noFields": "Esta plantilla no tiene campos.",
+      "loadError": "No se pudo cargar la configuración de indicadores.",
+      "retry": "Reintentar",
+      "conflict": "Otra persona lo actualizó primero. Se cargará la versión más reciente.",
+      "reload": "Cargar la más reciente",
+      "saveError": "No se pudo guardar la configuración de indicadores.",
+      "saved": "Configuración de indicadores guardada.",
+      "save": "Guardar indicadores",
+      "semantic": {
+        "DURATION": "Duración",
+        "WEIGHT": "Peso",
+        "INTENSITY": "Intensidad",
+        "SUBJECT": "Materia",
+        "MENU": "Menú",
+        "NUMBER": "Número",
+        "TEXT": "Texto",
+        "DATE": "Fecha",
+        "DATETIME": "Fecha y hora",
+        "CHECKBOX": "Casilla"
+      },
+      "aggregation": {
+        "NONE": "Sin agregar",
+        "SUM": "Suma",
+        "LATEST": "Último valor"
+      }
     }
   }
 }

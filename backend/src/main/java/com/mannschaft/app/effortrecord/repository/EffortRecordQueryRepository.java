@@ -83,6 +83,15 @@ public class EffortRecordQueryRepository {
                 .getResultList();
     }
 
+    /** 本人のその定義の原本が凍結している revision 番号（重複なし）。 */
+    public List<Integer> findRevisionNumbers(Long ownerUserId, UUID definitionUuid) {
+        return entityManager.createQuery("SELECT DISTINCT r.definitionRevision FROM EffortRecordEntity r "
+                        + "WHERE r.ownerUserId = :owner AND r.definitionId = :definition", Integer.class)
+                .setParameter("owner", ownerUserId)
+                .setParameter("definition", definitionUuid)
+                .getResultList();
+    }
+
     /** 本人がその定義の原本を 1 件でも持つか（TEAM 定義のメタ情報を他人へ見せないための判定）。 */
     public boolean existsForOwner(Long ownerUserId, UUID definitionUuid) {
         return !entityManager.createQuery("SELECT r.id FROM EffortRecordEntity r "

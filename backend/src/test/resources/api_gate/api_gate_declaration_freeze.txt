@@ -201,7 +201,8 @@ HTTP|com.mannschaft.app.disclosure.controller.DisclosureExportController|6|6
 HTTP|com.mannschaft.app.disclosure.controller.DisclosureFormDraftController|6|6
 HTTP|com.mannschaft.app.disclosure.controller.DisclosureFormTemplateController|2|2
 HTTP|com.mannschaft.app.disclosure.controller.DisclosureFormTemplateEditController|3|3
-HTTP|com.mannschaft.app.effortrecord.controller.EffortRecordMeController|7|7
+HTTP|com.mannschaft.app.effortrecord.controller.EffortRecordMeController|7|8
+HTTP|com.mannschaft.app.effortrecord.controller.EffortTeamTemplateSettingsController|0|2
 HTTP|com.mannschaft.app.equipment.controller.EquipmentMyAssignmentsController|1|1
 HTTP|com.mannschaft.app.equipment.controller.OrganizationEquipmentController|15|16
 HTTP|com.mannschaft.app.equipment.controller.TeamEquipmentController|16|16

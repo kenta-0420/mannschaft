@@ -33,6 +33,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * F06.4.1 個人集計 Service。グラフ許可表（API 契約 §5.1）に従い BAR/LINE/PIE を集計する。
@@ -40,7 +42,10 @@ import java.util.Optional;
  * <p>集計は {@link BigDecimal} で行い内部では丸めない。出力だけ小数 2 桁の 10 進文字列にする（AC-17）。
  * 記録日は {@code recordedOn}（LocalDate）のまま扱い、TZ・DST・閏日の影響を受けない（AC-14）。
  * series は「定義 UUID × field key × semantic × unit」で、原本が凍結した revision の同 field が
- * 現行の field と semantic・unit とも一致する行だけを同一 series として合算する（異なる series は合算しない）。</p>
+ * 基準 field と semantic・unit とも一致する行だけを同一 series として合算する（異なる series は合算しない）。
+ * 基準 field は現行 revision から引き、現行に key が無い・現行では chart が成立しない（チームが field や科目を
+ * 削除・変更した）ときは本人の原本が凍結した revision から引く（現行 revision だけを見ると field・科目の削除後の
+ * 集計が 400 になる欠陥の是正。AC-23）。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -80,77 +85,142 @@ public class EffortStatsService {
                 .filter(d -> d.definition().getSourceType() == EffortSourceType.PRESET
                         || queries.existsForOwner(ownerUserId, c.definitionUuid()))
                 .orElseThrow(() -> new BusinessException(EffortErrorCode.EFFORT_001));
-        EffortDefinitionSnapshot snapshot = resolved.snapshot();
-        EffortFieldDefinition field = snapshot.fields().stream()
-                .filter(f -> f.fieldKey().equals(c.fieldKey())).findFirst()
-                .orElseThrow(() -> invalid("field_key", "定義にない項目です"));
-        EffortFieldDefinition subjectField = requireChartAllowed(c.chart(), snapshot, field);
+        Map<Integer, EffortDefinitionSnapshot> revisions = new HashMap<>();
+        revisions.put(resolved.revision(), resolved.snapshot());
+        SeriesBasis basis = seriesBasis(ownerUserId, c, resolved, revisions);
+        EffortFieldDefinition field = basis.field();
 
         List<EffortStatsRow> rows = queries.findStatsRows(ownerUserId, c.definitionUuid(), c.dateFrom(), c.dateTo());
-        Map<Integer, EffortDefinitionSnapshot> revisions = new HashMap<>();
-        revisions.put(resolved.revision(), snapshot);
+        // 原本が凍結した revision は 1 回の照会でまとめて引く（行ごとの照会をしない）。
+        Set<Integer> missing = new HashSet<>();
+        rows.forEach(row -> {
+            if (!revisions.containsKey(row.definitionRevision())) {
+                missing.add(row.definitionRevision());
+            }
+        });
+        revisions.putAll(definitions.findRevisions(c.definitionUuid(), missing));
 
         List<Sample> samples = new ArrayList<>();
         for (EffortStatsRow row : rows) {
-            EffortDefinitionSnapshot frozen = revisions.computeIfAbsent(row.definitionRevision(),
-                    revision -> definitions.findRevision(c.definitionUuid(), revision).orElse(null));
+            EffortDefinitionSnapshot frozen = revisions.get(row.definitionRevision());
             if (frozen == null || !sameSeries(frozen, field)) {
                 continue;
             }
             Map<String, String> values = codec.parseValues(row.valuesJson());
             BigDecimal number = parseNumber(values.get(field.fieldKey()));
-            samples.add(new Sample(row, number, subjectField == null ? null : values.get(subjectField.fieldKey()),
-                    subjectField == null ? null : frozen));
+            // 科目の対応先は各原本が凍結した revision から引く（定義変更後も過去の内訳を維持する）。
+            EffortFieldDefinition frozenSubject = c.chart() == EffortChartType.PIE ? subjectOf(frozen) : null;
+            samples.add(new Sample(row, number,
+                    frozenSubject == null ? null : values.get(frozenSubject.fieldKey()), frozenSubject));
         }
 
         return switch (c.chart()) {
             case BAR -> bucketed(c, grain, field, samples, false);
             case LINE -> bucketed(c, grain, field, samples, true);
-            case PIE -> pie(c, grain, field, subjectField, samples);
+            case PIE -> pie(c, grain, field, samples);
         };
+    }
+
+    /**
+     * field_key の series と chart の基準にする snapshot を定める。現行 revision にその key があり、かつ現行 revision で
+     * chart が許可表（§5.1）を満たすなら現行を使う。満たさないとき（チームが field を削除した・科目 field を外して
+     * PIE の前提が現行から消えた・semantic/unit を変えて新 key になった等）は、本人の原本が凍結した revision のうち
+     * その key を持ち chart を満たす最新の版を使う（親設計 §3「チームの定義が改名・変更・廃止されても原本の表示・
+     * グラフを維持する」、AC-23）。数値 field の key が現行に残っているだけで現行を選ぶと、PIE が要する科目定義が
+     * 現行から消えた場合に過去の PIE が 400 になるため、key の有無ではなく chart の成立で判断する。
+     * どの版にも key が無ければ 400（定義にない項目）、key はあるがどの版でも chart が成立しなければ 400（許可表違反）。
+     */
+    private SeriesBasis seriesBasis(Long ownerUserId, EffortStatsCriteria c,
+                                    EffortDefinitionService.ResolvedDefinition resolved,
+                                    Map<Integer, EffortDefinitionSnapshot> revisions) {
+        Optional<SeriesBasis> current = allowedBasis(c, resolved.snapshot());
+        if (current.isPresent()) {
+            return current.get();
+        }
+        Set<Integer> frozenRevisions = new HashSet<>(queries.findRevisionNumbers(ownerUserId, c.definitionUuid()));
+        frozenRevisions.removeAll(revisions.keySet());
+        revisions.putAll(definitions.findRevisions(c.definitionUuid(), frozenRevisions));
+        List<EffortDefinitionSnapshot> candidates = revisions.values().stream()
+                .filter(s -> hasField(s, c.fieldKey()))
+                .sorted(Comparator.comparingInt(EffortDefinitionSnapshot::revision).reversed())
+                .toList();
+        if (candidates.isEmpty()) {
+            throw invalid("field_key", "定義にない項目です");
+        }
+        return candidates.stream()
+                .map(s -> allowedBasis(c, s))
+                .flatMap(Optional::stream)
+                .findFirst()
+                // どの版でも chart が成立しない: 最新の候補で許可表違反を確定する（requireChartAllowed が 400 を投げる）。
+                .orElseGet(() -> basisOf(c, candidates.get(0)));
+    }
+
+    /** snapshot に field_key があり chart が許可表を満たすときだけ基準を返す。 */
+    private Optional<SeriesBasis> allowedBasis(EffortStatsCriteria c, EffortDefinitionSnapshot snapshot) {
+        return snapshot.fields().stream()
+                .filter(f -> f.fieldKey().equals(c.fieldKey())).findFirst()
+                .filter(f -> chartAllowed(c.chart(), snapshot, f))
+                .map(f -> new SeriesBasis(f, requireChartAllowed(c.chart(), snapshot, f)));
+    }
+
+    private SeriesBasis basisOf(EffortStatsCriteria c, EffortDefinitionSnapshot snapshot) {
+        EffortFieldDefinition field = snapshot.fields().stream()
+                .filter(f -> f.fieldKey().equals(c.fieldKey())).findFirst()
+                .orElseThrow(() -> invalid("field_key", "定義にない項目です"));
+        return new SeriesBasis(field, requireChartAllowed(c.chart(), snapshot, field));
+    }
+
+    private record SeriesBasis(EffortFieldDefinition field, EffortFieldDefinition subjectField) {
+    }
+
+    private static boolean hasField(EffortDefinitionSnapshot snapshot, String fieldKey) {
+        return snapshot.fields().stream().anyMatch(f -> f.fieldKey().equals(fieldKey));
     }
 
     // ───────────────────────────── 許可表 §5.1 ─────────────────────────────
 
-    /** chart × semantic の可否を検査する。PIE のとき科目 field を返す（それ以外は null）。 */
-    private EffortFieldDefinition requireChartAllowed(EffortChartType chart, EffortDefinitionSnapshot snapshot,
-                                                      EffortFieldDefinition field) {
-        EffortSemantic semantic = field.semantic();
-        boolean numeric = field.type() == EffortFieldType.NUMBER;
-        switch (chart) {
-            case BAR -> {
-                boolean allowed = numeric && (semantic == EffortSemantic.DURATION
-                        || semantic == EffortSemantic.NUMBER && field.aggregation() == EffortAggregation.SUM);
-                if (!allowed) {
-                    throw notAllowed();
-                }
-                return null;
-            }
-            case LINE -> {
-                if (!(numeric && semantic == EffortSemantic.WEIGHT)) {
-                    throw notAllowed();
-                }
-                return null;
-            }
-            case PIE -> {
-                boolean isDuration = numeric && semantic == EffortSemantic.DURATION
-                        && field.fieldKey().equals(snapshot.durationFieldKey());
-                EffortFieldDefinition subject = snapshot.subjectFieldKey() == null ? null
-                        : snapshot.fields().stream().filter(f -> f.fieldKey().equals(snapshot.subjectFieldKey()))
-                        .findFirst().orElse(null);
-                if (!isDuration || subject == null || subject.semantic() != EffortSemantic.SUBJECT) {
-                    throw notAllowed();
-                }
-                return subject;
-            }
-            default -> throw notAllowed();
+    /** chart × semantic の可否を検査する。PIE のとき科目 field を返す（それ以外は null）。不可は COMMON_001（400）。 */
+    private static EffortFieldDefinition requireChartAllowed(EffortChartType chart, EffortDefinitionSnapshot snapshot,
+                                                             EffortFieldDefinition field) {
+        if (!chartAllowed(chart, snapshot, field)) {
+            throw notAllowed();
         }
+        return chart == EffortChartType.PIE ? subjectOf(snapshot) : null;
     }
 
+    /** chart × semantic がこの snapshot で許可表を満たすか。 */
+    private static boolean chartAllowed(EffortChartType chart, EffortDefinitionSnapshot snapshot,
+                                        EffortFieldDefinition field) {
+        EffortSemantic semantic = field.semantic();
+        boolean numeric = field.type() == EffortFieldType.NUMBER;
+        return switch (chart) {
+            case BAR -> numeric && (semantic == EffortSemantic.DURATION
+                    || semantic == EffortSemantic.NUMBER && field.aggregation() == EffortAggregation.SUM);
+            case LINE -> numeric && semantic == EffortSemantic.WEIGHT;
+            case PIE -> {
+                EffortFieldDefinition subject = subjectOf(snapshot);
+                yield numeric && semantic == EffortSemantic.DURATION
+                        && field.fieldKey().equals(snapshot.durationFieldKey())
+                        && subject != null && subject.semantic() == EffortSemantic.SUBJECT;
+            }
+        };
+    }
+
+    private static EffortFieldDefinition subjectOf(EffortDefinitionSnapshot snapshot) {
+        return snapshot.subjectFieldKey() == null ? null
+                : snapshot.fields().stream().filter(f -> f.fieldKey().equals(snapshot.subjectFieldKey()))
+                .findFirst().orElse(null);
+    }
+
+    /**
+     * 原本の凍結 revision の同 field が基準 field と同一 series か。NUMBER は集計可否（aggregation=SUM、§5.1）も
+     * 凍結 revision で判定する（NONE で保存した原本を、後から SUM に変えた定義の合算へ混ぜない）。
+     */
     private static boolean sameSeries(EffortDefinitionSnapshot frozen, EffortFieldDefinition current) {
         return frozen.fields().stream().anyMatch(f -> f.fieldKey().equals(current.fieldKey())
                 && f.semantic() == current.semantic() && f.type() == current.type()
-                && java.util.Objects.equals(f.unit(), current.unit()));
+                && java.util.Objects.equals(f.unit(), current.unit())
+                && (current.semantic() != EffortSemantic.NUMBER || f.aggregation() == EffortAggregation.SUM));
     }
 
     // ───────────────────────────── BAR / LINE ─────────────────────────────
@@ -194,7 +264,7 @@ public class EffortStatsService {
     // ───────────────────────────── PIE ─────────────────────────────
 
     private EffortStatsResponse pie(EffortStatsCriteria c, EffortGrain grain, EffortFieldDefinition field,
-                                    EffortFieldDefinition subjectField, List<Sample> samples) {
+                                    List<Sample> samples) {
         Map<String, CategoryAccumulator> categories = new LinkedHashMap<>();
         BigDecimal total = null;
         long totalCount = 0;
@@ -205,7 +275,7 @@ public class EffortStatsService {
             String subject = sample.subject() == null || sample.subject().isBlank() ? null : sample.subject();
             String key = subject == null ? UNSPECIFIED_SUBJECT_KEY : SUBJECT_KEY_PREFIX + subject;
             CategoryAccumulator accumulator = categories.computeIfAbsent(key,
-                    k -> new CategoryAccumulator(subject == null ? "" : label(sample.frozen(), subjectField, subject)));
+                    k -> new CategoryAccumulator(subject == null ? "" : label(sample.subjectField(), subject)));
             accumulator.add(sample.number());
             total = total == null ? sample.number() : total.add(sample.number());
             totalCount++;
@@ -222,13 +292,11 @@ public class EffortStatsService {
     }
 
     /** 科目の表示名。SELECT は当時の option label、TEXT は入力値そのもの。 */
-    private static String label(EffortDefinitionSnapshot frozen, EffortFieldDefinition subjectField, String value) {
-        if (frozen == null) {
+    private static String label(EffortFieldDefinition frozenSubject, String value) {
+        if (frozenSubject == null || frozenSubject.options() == null) {
             return value;
         }
-        return frozen.fields().stream().filter(f -> f.fieldKey().equals(subjectField.fieldKey())).findFirst()
-                .flatMap(f -> f.options() == null ? Optional.empty() : f.options().stream()
-                        .filter(o -> o.key().equals(value)).findFirst())
+        return frozenSubject.options().stream().filter(o -> o.key().equals(value)).findFirst()
                 .map(EffortFieldDefinition.Option::label).orElse(value);
     }
 
@@ -283,7 +351,7 @@ public class EffortStatsService {
         return new BusinessException(CommonErrorCode.COMMON_001, List.of(new ErrorResponse.FieldError(field, message)));
     }
 
-    private record Sample(EffortStatsRow row, BigDecimal number, String subject, EffortDefinitionSnapshot frozen) {
+    private record Sample(EffortStatsRow row, BigDecimal number, String subject, EffortFieldDefinition subjectField) {
     }
 
     private static final class CategoryAccumulator {

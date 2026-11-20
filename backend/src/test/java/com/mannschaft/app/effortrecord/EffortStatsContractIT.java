@@ -384,7 +384,85 @@ class EffortStatsContractIT extends EffortRecordItSupport {
         assertThat(stats.path("total").isTextual()).isTrue();
     }
 
+    @Test
+    @DisplayName("AC-23: 定義変更で科目 field を付け替えても、PIE の内訳は各原本の凍結 revision の科目から引く")
+    void AC23_PIEの科目は各原本の凍結revisionから解決する() throws Exception {
+        Long owner = user("凍結科目");
+        String dur = field("duration", "NUMBER", "DURATION", "分", "SUM", 0, "0", "1440");
+        UUID team = seedRevisions(
+                revisionJson("duration", "subj_a", dur, field("subj_a", "TEXT", "SUBJECT", "NONE", "NONE", 0, null, null)),
+                // revision 2: 時間は残し、科目を別 field (subj_b) へ付け替える（旧 subj_a は科目でなくなる）。
+                revisionJson("duration", "subj_b", dur, field("subj_a", "TEXT", "TEXT", "NONE", "NONE", 0, null, null),
+                        field("subj_b", "TEXT", "SUBJECT", "NONE", "NONE", 0, null, null)));
+        seedRevisionRecord(owner, team, 1, LocalDate.of(2026, 11, 2), values("duration", "30", "subj_a", "math"));
+        seedRevisionRecord(owner, team, 2, LocalDate.of(2026, 11, 3), values("duration", "20", "subj_a", null, "subj_b", "eng"));
+
+        JsonNode pie = stats(owner, "2026-11-01", "2026-11-07", team, "duration", "PIE", null);
+        Map<String, String> byKey = new LinkedHashMap<>();
+        pie.path("categories").forEach(c -> byKey.put(c.path("key").asText(), c.path("value").asText()));
+        assertThat(byKey).as(pie.toString()).containsEntry("subject:math", "30.00").containsEntry("subject:eng", "20.00")
+                .doesNotContainKey(com.mannschaft.app.effortrecord.service.EffortStatsService.UNSPECIFIED_SUBJECT_KEY);
+    }
+
+    @Test
+    @DisplayName("AC-16: aggregation を NONE から SUM へ変えても、NONE で凍結された原本は BAR に合算しない")
+    void AC16_SUM可否は各原本の凍結revisionで判定する() throws Exception {
+        Long owner = user("凍結SUM");
+        UUID team = seedRevisions(
+                revisionJson(null, null, field("reps", "NUMBER", "NUMBER", "回", "NONE", 2, "0", "999")),
+                revisionJson(null, null, field("reps", "NUMBER", "NUMBER", "回", "SUM", 2, "0", "999")));
+        seedRevisionRecord(owner, team, 1, LocalDate.of(2026, 11, 2), values("reps", "3"));
+        seedRevisionRecord(owner, team, 2, LocalDate.of(2026, 11, 2), values("reps", "4"));
+
+        JsonNode bar = stats(owner, "2026-11-01", "2026-11-07", team, "reps", "BAR", null);
+        assertThat(bar.path("total").asText()).as("SUM 設定後の 4 だけ（旧版の 3 を混ぜない）").isEqualTo("4.00");
+    }
+
     // ─────────────────────────────────────────────────────────────
+
+    /** 版ごとの定義 JSON を作る（TEAM。revision 番号は seedRevisions が採番して差し込む）。 */
+    private static String revisionJson(String durationKey, String subjectKey, String... fields) {
+        return "{\"definitionUuid\":\"@ID@\",\"revision\":@REV@,\"source\":\"TEAM\",\"presetCode\":null,"
+                + "\"teamTemplateId\":990001,\"templateName\":\"練習記録\","
+                + "\"durationFieldKey\":" + (durationKey == null ? "null" : "\"" + durationKey + "\"")
+                + ",\"subjectFieldKey\":" + (subjectKey == null ? "null" : "\"" + subjectKey + "\"")
+                + ",\"fields\":[" + String.join(",", fields) + "]}";
+    }
+
+    /** 複数 revision を持つ TEAM 定義を直接 seed する（current_revision は最後の版）。 */
+    private UUID seedRevisions(String... templates) {
+        UUID id = com.mannschaft.app.common.UuidV7.generate();
+        tx(() -> {
+            em.createNativeQuery("INSERT INTO effort_definitions (id, source_type, source_key, team_id, "
+                            + "team_template_id, current_revision, retired_at, version, created_at, updated_at, deleted_at) "
+                            + "VALUES (UNHEX(REPLACE(:id,'-','')), 'TEAM', :key, 990001, 990001, :cur, NULL, 0, "
+                            + "UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), NULL)")
+                    .setParameter("id", id.toString()).setParameter("key", "team:990001:template:" + id)
+                    .setParameter("cur", templates.length).executeUpdate();
+            for (int i = 0; i < templates.length; i++) {
+                String json = templates[i].replace("@ID@", id.toString()).replace("@REV@", String.valueOf(i + 1));
+                em.createNativeQuery("INSERT INTO effort_definition_revisions (id, definition_id, revision, definition_json, "
+                                + "definition_hash, created_at, updated_at) VALUES (UNHEX(REPLACE(:rid,'-','')), "
+                                + "UNHEX(REPLACE(:id,'-','')), :rev, :json, SHA2(:json, 256), UTC_TIMESTAMP(6), UTC_TIMESTAMP(6))")
+                        .setParameter("rid", com.mannschaft.app.common.UuidV7.generate().toString())
+                        .setParameter("id", id.toString()).setParameter("rev", i + 1).setParameter("json", json)
+                        .executeUpdate();
+            }
+            return null;
+        });
+        teamDefinitions.add(id);
+        return id;
+    }
+
+    private void seedRevisionRecord(Long owner, UUID definition, int revision, LocalDate recordedOn, Map<String, String> values) {
+        String snapshot = tx(() -> String.valueOf(em.createNativeQuery("SELECT CAST(definition_json AS CHAR) FROM "
+                + "effort_definition_revisions WHERE definition_id = UNHEX(REPLACE(:id,'-','')) AND revision = :rev")
+                .setParameter("id", definition.toString()).setParameter("rev", revision).getSingleResult()));
+        tx(() -> records.saveAndFlush(com.mannschaft.app.effortrecord.entity.EffortRecordEntity.builder()
+                .ownerUserId(owner).definitionId(definition).definitionRevision(revision).definitionSnapshot(snapshot)
+                .recordedOn(recordedOn).recordTimezone(TOKYO).valuesJson(write(values))
+                .createdAt(T0).updatedAt(T0).build()));
+    }
 
     private JsonNode stats(Long owner, String from, String to, UUID definition, String fieldKey, String chart, String grain)
             throws Exception {
@@ -429,9 +507,10 @@ class EffortStatsContractIT extends EffortRecordItSupport {
                 + "," + field("done", "CHECKBOX", "CHECKBOX", "NONE", "NONE", 0, null, null)
                 + "]}";
         tx(() -> {
-            em.createNativeQuery("INSERT INTO effort_definitions (id, source_type, source_key, organization_id, team_id, "
+            // TEAM 定義は組織に依存しない（2026-11-18 マスター裁定。データ設計 §2: organization_id 列を持たない）。
+            em.createNativeQuery("INSERT INTO effort_definitions (id, source_type, source_key, team_id, "
                             + "team_template_id, current_revision, retired_at, version, created_at, updated_at, deleted_at) "
-                            + "VALUES (UNHEX(REPLACE(:id,'-','')), 'TEAM', :key, 990001, 990001, 990001, 1, NULL, 0, "
+                            + "VALUES (UNHEX(REPLACE(:id,'-','')), 'TEAM', :key, 990001, 990001, 1, NULL, 0, "
                             + "UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), NULL)")
                     .setParameter("id", id.toString()).setParameter("key", "team:990001:template:" + id).executeUpdate();
             em.createNativeQuery("INSERT INTO effort_definition_revisions (id, definition_id, revision, definition_json, "

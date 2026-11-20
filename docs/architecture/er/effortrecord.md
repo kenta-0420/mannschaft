@@ -17,7 +17,6 @@ erDiagram
     }
     effort_definitions {
         binary id PK
-        bigint organization_id "ID参照"
         bigint team_id "ID参照"
         bigint team_template_id "ID参照"
     }
@@ -29,22 +28,18 @@ erDiagram
         binary id PK
         bigint owner_user_id "ID参照"
         binary share_id UK
-        bigint share_organization_id "ID参照"
         bigint share_team_id "ID参照"
         bigint grant_membership_id "ID参照"
     }
     memberships
-    organizations
     team_templates
     teams
     users
     effort_definitions ||--o{ effort_definition_revisions : "definition_id"
-    organizations |o..o{ effort_definitions : "ID参照(FKなし) organization_id"
     team_templates |o..o{ effort_definitions : "ID参照(FKなし) team_template_id"
     teams |o..o{ effort_definitions : "ID参照(FKなし) team_id"
     users ||..o{ effort_operation_receipts : "ID参照(FKなし) actor_user_id"
     memberships |o..o{ effort_records : "ID参照(FKなし) grant_membership_id"
-    organizations |o..o{ effort_records : "ID参照(FKなし) share_organization_id"
     teams |o..o{ effort_records : "ID参照(FKなし) share_team_id"
     users ||..o{ effort_records : "ID参照(FKなし) owner_user_id"
 ```
@@ -84,7 +79,6 @@ erDiagram
 | `id` | `binary(16)` | NO | （なし） |  |
 | `source_type` | `varchar(10)` | NO | （なし） |  |
 | `source_key` | `varchar(80)` | NO | （なし） |  |
-| `organization_id` | `bigint unsigned` | YES | NULL |  |
 | `team_id` | `bigint unsigned` | YES | NULL |  |
 | `team_template_id` | `bigint unsigned` | YES | NULL |  |
 | `current_revision` | `int unsigned` | NO | （なし） |  |
@@ -130,7 +124,6 @@ erDiagram
 | `share_definition_snapshot` | `json` | YES | NULL |  |
 | `share_mapping_json` | `json` | YES | NULL |  |
 | `share_id` | `binary(16)` | YES | NULL |  |
-| `share_organization_id` | `bigint unsigned` | YES | NULL |  |
 | `share_team_id` | `bigint unsigned` | YES | NULL |  |
 | `share_state` | `varchar(12)` | YES | NULL |  |
 | `share_version` | `bigint` | NO | `0` |  |

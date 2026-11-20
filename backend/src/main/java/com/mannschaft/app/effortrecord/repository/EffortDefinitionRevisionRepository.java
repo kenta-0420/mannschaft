@@ -14,4 +14,7 @@ public interface EffortDefinitionRevisionRepository extends JpaRepository<Effort
     Optional<EffortDefinitionRevisionEntity> findByDefinitionIdAndRevision(UUID definitionId, Integer revision);
 
     List<EffortDefinitionRevisionEntity> findByDefinitionIdIn(Collection<UUID> definitionIds);
+
+    /** 1 定義の指定 revision 群を一括で取得する（集計で原本が凍結した版をまとめて引く）。 */
+    List<EffortDefinitionRevisionEntity> findByDefinitionIdAndRevisionIn(UUID definitionId, Collection<Integer> revisions);
 }

@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * API の mapped method が feature gate または明示的な常時到達理由を宣言することを監査する番人。
- * HTTP は 3,732 件（既存3,730件＋モジュールイベント管理GET/POST各1本）、
+ * HTTP は 3,744 件（総数の内訳は下記の定数コメント）、
  * STOMP は Chat の 2 件と VillageLobbyPresenceController の 3 件、計 5 件を走査する。
  */
 class ApiGateDeclarationGuardTest {
@@ -42,7 +42,11 @@ class ApiGateDeclarationGuardTest {
         assertThat(scan.entries()).isNotEmpty();
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.HTTP).count())
                 .as("HTTP mapped method の走査総数。parser 退行を台帳比較とは独立に検知する")
-                .isEqualTo(3742);   // 3741 + CMP-261116-0722 PR-1 保存済み検索の個別削除 SearchHistoryController DELETE /saved/{savedQueryId} 1本
+                .isEqualTo(3745);   // 3741 + 本PR(F06.4.1 PR-2)の3本 + CMP-261116-0722 PR-1 の1本。
+                                    //   (F06.4.1 PR-2) CMP-261115-2145 F06.4.1 PR-2 の3本（EffortRecordMeController の definition-snapshots 1本・
+                                    //   EffortTeamTemplateSettingsController の指標設定 GET/PUT 2本）。3本とも @AlwaysReachable(CORE) を
+                                    //   宣言済みで未宣言増加0（7|7 → 7|8、新規 0|2）。
+                                    //   (検索) 3741 + CMP-261116-0722 PR-1 保存済み検索の個別削除 SearchHistoryController DELETE /saved/{savedQueryId} 1本
                                     //   （既存5本と同じく feature gate 未宣言の流儀で 5|5 → 6|6。認可は @AuthorizedInService＋findByIdAndUserId の所有者照合）。
                                     // 3741 = 3734 + CMP-261115-2145 F06.4.1 個人の頑張り記録 EffortRecordMeController 7本（feature gate 未宣言の流儀で 7|7）。
                                     // 3734 = 3732 + L1-M モジュールイベント管理GET/POST各1本。未宣言増加0。

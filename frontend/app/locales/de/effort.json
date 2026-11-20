@@ -81,6 +81,41 @@
       "MINUTE": "Min.",
       "KILOGRAM": "kg",
       "RPE": "RPE"
+    },
+    "templateSettings": {
+      "title": "Kennzahlen der Anstrengungsaufzeichnung",
+      "description": "Legen Sie Bedeutung, Einheit und Aggregation jedes Feldes fest, damit Mitglieder sie als persönliche Aufzeichnungen teilen können. Wird getrennt von der Vorlage gespeichert.",
+      "semanticLabel": "Bedeutung",
+      "unitLabel": "Einheit",
+      "aggregationLabel": "Aggregation",
+      "durationField": "Feld für die Dauer",
+      "subjectField": "Feld für das Fach",
+      "none": "Keine",
+      "noFields": "Diese Vorlage hat keine Felder.",
+      "loadError": "Die Kennzahleneinstellungen konnten nicht geladen werden.",
+      "retry": "Erneut versuchen",
+      "conflict": "Jemand anderes war schneller. Die neueste Version wird geladen.",
+      "reload": "Neueste laden",
+      "saveError": "Die Kennzahleneinstellungen konnten nicht gespeichert werden.",
+      "saved": "Kennzahleneinstellungen gespeichert.",
+      "save": "Kennzahlen speichern",
+      "semantic": {
+        "DURATION": "Dauer",
+        "WEIGHT": "Gewicht",
+        "INTENSITY": "Intensität",
+        "SUBJECT": "Fach",
+        "MENU": "Menü",
+        "NUMBER": "Zahl",
+        "TEXT": "Text",
+        "DATE": "Datum",
+        "DATETIME": "Datum und Uhrzeit",
+        "CHECKBOX": "Kontrollkästchen"
+      },
+      "aggregation": {
+        "NONE": "Nicht aggregiert",
+        "SUM": "Summe",
+        "LATEST": "Letzter Wert"
+      }
     }
   }
 }

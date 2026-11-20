@@ -2035,6 +2035,10 @@
       "description": "F02.5 GDPR音声入力同意管理"
     },
     {
+      "name": "個人の頑張り記録（チーム定義）",
+      "description": "F06.4.1 チームテンプレートの指標設定"
+    },
+    {
       "name": "個人の頑張り記録",
       "description": "F06.4.1 個人の頑張り記録（個人 API）"
     },
@@ -11395,6 +11399,96 @@
         "responses": {
           "204": {
             "description": "削除成功"
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/effort-records/template-settings/{templateId}": {
+      "get": {
+        "tags": [
+          "個人の頑張り記録（チーム定義）"
+        ],
+        "summary": "テンプレートの指標設定を取得",
+        "operationId": "getEffortTemplateSettings",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "templateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseEffortTemplateSettingsResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "個人の頑張り記録（チーム定義）"
+        ],
+        "summary": "テンプレートの指標設定を更新（全置換）",
+        "operationId": "updateEffortTemplateSettings",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "templateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEffortTemplateSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseEffortTemplateSettingsResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -85445,6 +85539,37 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseEffortOwnerRecordResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/effort-records/me/definition-snapshots": {
+      "post": {
+        "tags": [
+          "個人の頑張り記録"
+        ],
+        "summary": "チーム定義 snapshot の登録（10 分有効 token）",
+        "operationId": "registerDefinitionSnapshot",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDefinitionSnapshotRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseEffortDefinitionTokenResponse"
                 }
               }
             }
@@ -166017,6 +166142,228 @@
           }
         }
       },
+      "FieldSetting": {
+        "type": "object",
+        "properties": {
+          "aggregation": {
+            "type": "string",
+            "enum": [
+              "SUM",
+              "LATEST",
+              "NONE"
+            ]
+          },
+          "fieldKey": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 0
+          },
+          "semantic": {
+            "type": "string",
+            "enum": [
+              "DURATION",
+              "WEIGHT",
+              "INTENSITY",
+              "SUBJECT",
+              "MENU",
+              "NUMBER",
+              "TEXT",
+              "DATE",
+              "DATETIME",
+              "CHECKBOX"
+            ]
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "aggregation",
+          "fieldKey",
+          "semantic",
+          "unit"
+        ]
+      },
+      "UpdateEffortTemplateSettingsRequest": {
+        "type": "object",
+        "properties": {
+          "durationFieldKey": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 0
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldSetting"
+            },
+            "maxItems": 15,
+            "minItems": 0
+          },
+          "subjectFieldKey": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 0
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "fields",
+          "version"
+        ]
+      },
+      "ApiResponseEffortTemplateSettingsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/EffortTemplateSettingsResponse"
+          }
+        }
+      },
+      "EffortDefinitionSnapshot": {
+        "type": "object",
+        "properties": {
+          "definitionUuid": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "durationFieldKey": {
+            "type": "string"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EffortFieldDefinition"
+            }
+          },
+          "presetCode": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "PRESET",
+              "TEAM"
+            ]
+          },
+          "subjectFieldKey": {
+            "type": "string"
+          },
+          "teamTemplateId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "templateName": {
+            "type": "string"
+          }
+        }
+      },
+      "EffortFieldDefinition": {
+        "type": "object",
+        "properties": {
+          "aggregation": {
+            "type": "string",
+            "enum": [
+              "SUM",
+              "LATEST",
+              "NONE"
+            ]
+          },
+          "fieldKey": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "labelKey": {
+            "type": "string"
+          },
+          "max": {
+            "type": "string"
+          },
+          "min": {
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Option"
+            }
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "scale": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "semantic": {
+            "type": "string",
+            "enum": [
+              "DURATION",
+              "WEIGHT",
+              "INTENSITY",
+              "SUBJECT",
+              "MENU",
+              "NUMBER",
+              "TEXT",
+              "DATE",
+              "DATETIME",
+              "CHECKBOX"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "NUMBER",
+              "TEXT",
+              "SELECT",
+              "DATE",
+              "DATETIME",
+              "CHECKBOX"
+            ]
+          },
+          "unit": {
+            "type": "string"
+          }
+        }
+      },
+      "EffortTemplateSettingsResponse": {
+        "type": "object",
+        "properties": {
+          "definition": {
+            "$ref": "#/components/schemas/EffortDefinitionSnapshot"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "Option": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "labelKey": {
+            "type": "string"
+          }
+        }
+      },
       "CreateDwellingUnitRequest": {
         "type": "object",
         "properties": {
@@ -176737,118 +177084,6 @@
           }
         }
       },
-      "EffortDefinitionSnapshot": {
-        "type": "object",
-        "properties": {
-          "definitionUuid": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "durationFieldKey": {
-            "type": "string"
-          },
-          "fields": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/EffortFieldDefinition"
-            }
-          },
-          "presetCode": {
-            "type": "string"
-          },
-          "revision": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "source": {
-            "type": "string",
-            "enum": [
-              "PRESET",
-              "TEAM"
-            ]
-          },
-          "subjectFieldKey": {
-            "type": "string"
-          },
-          "teamTemplateId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "templateName": {
-            "type": "string"
-          }
-        }
-      },
-      "EffortFieldDefinition": {
-        "type": "object",
-        "properties": {
-          "aggregation": {
-            "type": "string",
-            "enum": [
-              "SUM",
-              "LATEST",
-              "NONE"
-            ]
-          },
-          "fieldKey": {
-            "type": "string"
-          },
-          "label": {
-            "type": "string"
-          },
-          "labelKey": {
-            "type": "string"
-          },
-          "max": {
-            "type": "string"
-          },
-          "min": {
-            "type": "string"
-          },
-          "options": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Option"
-            }
-          },
-          "required": {
-            "type": "boolean"
-          },
-          "scale": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "semantic": {
-            "type": "string",
-            "enum": [
-              "DURATION",
-              "WEIGHT",
-              "INTENSITY",
-              "SUBJECT",
-              "MENU",
-              "NUMBER",
-              "TEXT",
-              "DATE",
-              "DATETIME",
-              "CHECKBOX"
-            ]
-          },
-          "type": {
-            "type": "string",
-            "enum": [
-              "NUMBER",
-              "TEXT",
-              "SELECT",
-              "DATE",
-              "DATETIME",
-              "CHECKBOX"
-            ]
-          },
-          "unit": {
-            "type": "string"
-          }
-        }
-      },
       "EffortOwnerRecordResponse": {
         "type": "object",
         "properties": {
@@ -176941,20 +177176,6 @@
           "version": {
             "type": "integer",
             "format": "int64"
-          }
-        }
-      },
-      "Option": {
-        "type": "object",
-        "properties": {
-          "key": {
-            "type": "string"
-          },
-          "label": {
-            "type": "string"
-          },
-          "labelKey": {
-            "type": "string"
           }
         }
       },
@@ -212987,6 +213208,46 @@
           "recordedOn",
           "values"
         ]
+      },
+      "CreateDefinitionSnapshotRequest": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "teamTemplateId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "teamId",
+          "teamTemplateId"
+        ]
+      },
+      "ApiResponseEffortDefinitionTokenResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/EffortDefinitionTokenResponse"
+          }
+        }
+      },
+      "EffortDefinitionTokenResponse": {
+        "type": "object",
+        "properties": {
+          "definition": {
+            "$ref": "#/components/schemas/EffortDefinitionSnapshot"
+          },
+          "definitionToken": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
       },
       "CreateCardRequest": {
         "type": "object",

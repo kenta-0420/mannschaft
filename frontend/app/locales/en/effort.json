@@ -81,6 +81,41 @@
       "MINUTE": "min",
       "KILOGRAM": "kg",
       "RPE": "RPE"
+    },
+    "templateSettings": {
+      "title": "Effort record metrics",
+      "description": "Set the meaning, unit and aggregation of each field so members can share them as personal effort records. Saved separately from the template itself.",
+      "semanticLabel": "Meaning",
+      "unitLabel": "Unit",
+      "aggregationLabel": "Aggregation",
+      "durationField": "Field used as duration",
+      "subjectField": "Field used as subject",
+      "none": "None",
+      "noFields": "This template has no fields.",
+      "loadError": "Could not load the metric settings.",
+      "retry": "Retry",
+      "conflict": "Someone else updated this first. Loading the latest version.",
+      "reload": "Load latest",
+      "saveError": "Could not save the metric settings.",
+      "saved": "Metric settings saved.",
+      "save": "Save metric settings",
+      "semantic": {
+        "DURATION": "Duration",
+        "WEIGHT": "Weight",
+        "INTENSITY": "Intensity",
+        "SUBJECT": "Subject",
+        "MENU": "Menu",
+        "NUMBER": "Number",
+        "TEXT": "Text",
+        "DATE": "Date",
+        "DATETIME": "Date and time",
+        "CHECKBOX": "Checkbox"
+      },
+      "aggregation": {
+        "NONE": "Not aggregated",
+        "SUM": "Sum",
+        "LATEST": "Latest value"
+      }
     }
   }
 }

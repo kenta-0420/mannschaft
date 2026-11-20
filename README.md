@@ -37,7 +37,7 @@ Scene は登録された同個体・同段階の静止 fallback を動き抑制�
 
 活動記録の認証付き詳細と予定連携は、[F06.4 §13](docs/features/F06.4_activity_records.md#13-認証付き詳細と予定連携cmp-261007-1510)で設計する。予定から下書きを作成し、予定由来の未編集項目だけを追従させる。公開済み・手動編集済みの項目は差分を選択して反映し、本文・結果・添付・実参加者を保全する。実装・検証の完了状態は[戦役台帳](docs/task-list.md)を正本とする。
 
-個人の頑張り記録（[F06.4.1](docs/features/F06.4.1_personal_effort_records.md)）は、PR-1 として個人 API（標準プリセット・原本の作成/一覧/詳細/更新/削除・期間別集計 BAR/LINE/PIE、Idempotency-Key、暗号化 cursor）の BE を実装した。チーム共有・チーム定義・FE・導線は未実装で、導線は PR-4 まで非表示。完了状態は[戦役台帳](docs/task-list.md)を正本とする。
+個人の頑張り記録（[F06.4.1](docs/features/F06.4.1_personal_effort_records.md)）は、PR-1 として個人 API（標準プリセット・原本の作成/一覧/詳細/更新/削除・期間別集計 BAR/LINE/PIE、Idempotency-Key、暗号化 cursor）の BE を実装した。PR-2 でチーム定義（`POST /effort-records/me/definition-snapshots` の定義 revision 登録と10分有効 token、TEAM 定義での原本作成、`GET/PUT /teams/{teamId}/effort-records/template-settings/{templateId}` の指標設定）を実装し、チーム側は親組織に依存しない（team_id 基準）。チーム共有・FE・導線は未実装で、導線は PR-4 まで非表示。完了状態は[戦役台帳](docs/task-list.md)を正本とする。
 
 チーム・組織の具体予定を保存すると活動記録に「予定・未公開」が自動表示され、終了日時経過後の毎分処理で「予定」が外れる。実績を自動公開せず、一般所属には元予定の閲覧範囲内の予定情報だけを表示する。活動記録の削除は元予定を残す。[F06.4 §14](docs/features/F06.4_activity_records.md#14-予定作成時の自動活動記録cmp-261008-1203)に契約と実証範囲を記載し、追加の認可・取消API・JDBC binder性能試験も照合済みで、PR #3729の最終CI・検分・マージ（a41c06d5）を確認した。2026-10-09の稼働反映では既存期限超過予定846件が0件へ収束し、手動活動59件と内容digestを保持した。FEは匿名実Browserでlogin表示・HTTP200と実import経由のcompiled source 5件のGit blob一致も確認した。
 

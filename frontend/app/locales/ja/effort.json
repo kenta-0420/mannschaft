@@ -81,6 +81,41 @@
       "MINUTE": "分",
       "KILOGRAM": "kg",
       "RPE": "RPE"
+    },
+    "templateSettings": {
+      "title": "頑張り記録の指標",
+      "description": "メンバーが個人の頑張り記録として共有できるよう、項目ごとの意味・単位・集計方法を設定します。テンプレート本体の保存とは別に保存されます。",
+      "semanticLabel": "意味",
+      "unitLabel": "単位",
+      "aggregationLabel": "集計方法",
+      "durationField": "時間として使う項目",
+      "subjectField": "科目として使う項目",
+      "none": "なし",
+      "noFields": "このテンプレートには項目がありません。",
+      "loadError": "指標設定を取得できませんでした。",
+      "retry": "再試行",
+      "conflict": "他の人が先に更新しました。最新を読み込みます。",
+      "reload": "最新を読み込む",
+      "saveError": "指標設定を保存できませんでした。",
+      "saved": "指標設定を保存しました。",
+      "save": "指標設定を保存",
+      "semantic": {
+        "DURATION": "時間",
+        "WEIGHT": "体重",
+        "INTENSITY": "強度",
+        "SUBJECT": "科目",
+        "MENU": "メニュー",
+        "NUMBER": "数値",
+        "TEXT": "テキスト",
+        "DATE": "日付",
+        "DATETIME": "日時",
+        "CHECKBOX": "チェック"
+      },
+      "aggregation": {
+        "NONE": "集計しない",
+        "SUM": "合計",
+        "LATEST": "最新値"
+      }
     }
   }
 }

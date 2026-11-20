@@ -83,7 +83,7 @@ class EffortApiContractArtifactsTest {
         JsonNode paths = document.path("paths");
         String me = "/api/v1/effort-records/me";
         assertThat(paths.has(me + "/presets")).as("presets").isTrue();
-        // definition-snapshots は AC-19（PR-2）で追加する
+        // definition-snapshots（PR-2）は AC19_AC21_OpenAPIとFE生成型にチーム定義APIが載る で検査する
         assertThat(paths.has(me + "/stats")).as("stats").isTrue();
         assertThat(paths.path(me).has("get") && paths.path(me).has("post")).as("一覧と作成").isTrue();
         JsonNode byId = paths.path(me + "/{id}");
@@ -118,6 +118,32 @@ class EffortApiContractArtifactsTest {
         assertThat(generated).contains("\"/api/v1/effort-records/me/presets\"")
                 .contains("\"/api/v1/effort-records/me/{id}\"")
                 .contains("\"/api/v1/effort-records/me/stats\"");
+    }
+
+    @Test
+    @DisplayName("AC-19/21（PR-2）: openapi.json と FE 生成型に definition-snapshots と template-settings が載り、応答は data で包まれる")
+    void AC19_AC21_OpenAPIとFE生成型にチーム定義APIが載る() throws IOException {
+        JsonNode document = new ObjectMapper().readTree(Files.readString(OPENAPI, StandardCharsets.UTF_8));
+        JsonNode paths = document.path("paths");
+        String snapshots = "/api/v1/effort-records/me/definition-snapshots";
+        String settings = "/api/v1/teams/{teamId}/effort-records/template-settings/{templateId}";
+        assertThat(paths.path(snapshots).has("post")).as("definition-snapshots POST").isTrue();
+        assertThat(paths.path(settings).has("get") && paths.path(settings).has("put")).as("template-settings GET/PUT").isTrue();
+
+        JsonNode schemas = document.path("components").path("schemas");
+        JsonNode issued = resolve(schemas, paths.path(snapshots).path("post").path("responses").path("200")
+                .path("content").path("application/json").path("schema"));
+        JsonNode issuedData = resolve(schemas, issued.path("properties").path("data"));
+        assertThat(issuedData.path("properties").has("definitionToken") && issuedData.path("properties").has("expiresAt"))
+                .as("definition / definitionToken / expiresAt（camelCase・data 包み）").isTrue();
+        JsonNode settingsResponse = resolve(schemas, paths.path(settings).path("get").path("responses").path("200")
+                .path("content").path("application/json").path("schema"));
+        JsonNode settingsData = resolve(schemas, settingsResponse.path("properties").path("data"));
+        assertThat(settingsData.path("properties").has("version") && settingsData.path("properties").has("definition"))
+                .as("template-settings は {version, definition} を data で包む").isTrue();
+
+        String generated = Files.readString(GENERATED, StandardCharsets.UTF_8);
+        assertThat(generated).contains("\"" + snapshots + "\"").contains("\"" + settings + "\"");
     }
 
     private static List<String> parameterNames(JsonNode operation) {

@@ -43,7 +43,7 @@ public class EffortOperationReceiptEntity extends UuidV7Entity {
     @Column(name = "route_kind", nullable = false, length = 10)
     private EffortReceiptRouteKind routeKind;
 
-    /** OWNER なら owner user ID、TEAM なら organization ID。 */
+    /** OWNER なら owner user ID、TEAM なら team ID（組織には依存しない。2026-11-18 マスター裁定）。 */
     @Column(name = "route_id", nullable = false)
     private Long routeId;
 

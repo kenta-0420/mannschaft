@@ -126,6 +126,26 @@ public class EffortReceiptService {
         return new Handle(receiptId, null);
     }
 
+    /**
+     * 24 時間以内の同 key の receipt を、TX 外の事前検証（TEAM 定義 token の期限・現在所属など）より前に判定する
+     * （書込なしの先読み）。同 hash で完了済みなら保存済み応答を返し、別 hash なら 409 {@code COMMON_003} を確定する
+     * （API 契約 §4.1。別本文を「未完了」扱いにすると後続の token 失効 400 や脱退 403 が key 衝突を覆い隠す）。
+     * 有効な receipt が無い・同 hash で未完了（別 TX が処理中で未 commit）のときは empty とし、{@link #begin} に委ねる。
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Optional<StoredResponse> findCompleted(Long ownerUserId, String operationPath, UUID key, String requestHash) {
+        Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
+        Optional<EffortOperationReceiptEntity> live = receipts
+                .findByRouteKindAndRouteIdAndActorUserIdAndOperationPathAndOperationKey(
+                        EffortReceiptRouteKind.OWNER, ownerUserId, ownerUserId, operationPath, key.toString())
+                .filter(r -> r.getExpiresAt().isAfter(now));
+        if (live.isPresent() && !live.get().getRequestHash().equals(requestHash)) {
+            throw new BusinessException(CommonErrorCode.COMMON_003);
+        }
+        return live.filter(r -> r.getResponseStatus() != null && r.getResponseJson() != null)
+                .map(r -> new StoredResponse(r.getResponseStatus(), r.getResponseJson()));
+    }
+
     /** 応答を同一 TX で保存して receipt を確定する。 */
     @Transactional(propagation = Propagation.MANDATORY)
     public void complete(UUID receiptId, int status, String responseJson) {

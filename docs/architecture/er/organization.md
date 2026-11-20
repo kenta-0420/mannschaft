@@ -85,8 +85,6 @@ erDiagram
 | [cms](cms.md) | `blog_posts` | `organization_id` | ID参照 | `organizations` |
 | [cms](cms.md) | `blog_tags` | `organization_id` | ID参照 | `organizations` |
 | [committee](committee.md) | `committees` | `organization_id` | ID参照 | `organizations` |
-| [effortrecord](effortrecord.md) | `effort_definitions` | `organization_id` | ID参照 | `organizations` |
-| [effortrecord](effortrecord.md) | `effort_records` | `share_organization_id` | ID参照 | `organizations` |
 | [equipment](equipment.md) | `equipment_items` | `organization_id` | ID参照 | `organizations` |
 | [errorreport](errorreport.md) | `error_reports` | `organization_id` | ID参照 | `organizations` |
 | [event](event.md) | `event_delegations` | `organization_id` | ID参照 | `organizations` |

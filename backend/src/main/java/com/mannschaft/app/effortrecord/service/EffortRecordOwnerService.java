@@ -30,10 +30,30 @@ public class EffortRecordOwnerService {
 
     private final EffortRecordTxService tx;
     private final UserTimezoneCache userTimezones;
+    private final EffortDefinitionTokenCodec tokens;
+    private final EffortTeamAccessGuard teamAccess;
 
-    /** 原本を作成する（Idempotency-Key 必須）。標準プリセットのみ（TEAM 定義は PR-2）。 */
+    /**
+     * 原本を作成する（Idempotency-Key 必須）。
+     *
+     * <p>TEAM 定義（definitionToken あり）は、token の署名・期限・本人・定義 UUID・revision の束縛を検証し
+     * （不正は 400 definitionToken）、token が束縛するチームへの<b>現在所属</b>を再検証してから
+     * （脱退済みは 403 COMMON_002）TX へ渡す。所属照会は TX の外で行う（TX 入口から他ドメインへ到達させない）。
+     * 同じ Idempotency-Key・同じ本文の作成が完了済みなら、token の期限より先に元の応答を返し、同じ key・別の本文なら
+     * token 検証より先に 409 COMMON_003 を返す（API 契約 §4.1）。</p>
+     */
     public EffortOwnerRecordResponse create(Long ownerUserId, String idempotencyKey, CreateEffortRecordRequest request) {
-        return tx.create(ownerUserId, idempotencyKey, request, userZone(ownerUserId));
+        EffortDefinitionTokenCodec.Claims teamToken = null;
+        if (request.definitionToken() != null) {
+            java.util.Optional<EffortOwnerRecordResponse> completed = tx.findCompletedCreate(ownerUserId, idempotencyKey, request);
+            if (completed.isPresent()) {
+                return completed.get();
+            }
+            teamToken = tokens.verify(request.definitionToken(), ownerUserId, request.definitionUuid(),
+                    request.definitionRevision());
+            teamAccess.requireMember(ownerUserId, teamToken.teamId());
+        }
+        return tx.create(ownerUserId, idempotencyKey, request, userZone(ownerUserId), teamToken);
     }
 
     /** 本人の原本一覧（recordedOn DESC, createdAt DESC, id DESC のカーソルページング）。 */
