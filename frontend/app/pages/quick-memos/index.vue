@@ -179,7 +179,7 @@ const showLimitBanner = computed(
             @click="$router.push('/quick-memos/trash')"
           />
           <Button
-            icon="pi pi-feather"
+            icon="pi pi-pencil"
             :label="t('quick_memo.capture_modal.submit')"
             @click="capture.open()"
           />
@@ -242,7 +242,7 @@ const showLimitBanner = computed(
         />
 
         <div v-else-if="displayedMemos.length === 0" class="py-16 text-center text-surface-400">
-          <i class="pi pi-feather mb-3 text-4xl" />
+          <i class="pi pi-pencil mb-3 text-4xl" />
           <p>{{ t('quick_memo.no_memos') }}</p>
         </div>
 

@@ -149,7 +149,7 @@ watch(
         v-if="hasSeal"
         :label="$t('swipeWidgets.actionRequired.circulationModal.confirm')"
         :loading="stamping"
-        icon="pi pi-stamp"
+        icon="pi pi-verified"
         @click="onConfirm"
       />
     </template>

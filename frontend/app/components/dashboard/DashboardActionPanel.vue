@@ -46,7 +46,7 @@ const typeConfig = {
   },
   attendance: {
     label: '出席確認',
-    icon: 'pi pi-calendar-check',
+    icon: 'pi pi-calendar',
     class: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
   },
   todo: {
@@ -56,7 +56,7 @@ const typeConfig = {
   },
   matching: {
     label: 'マッチング提案',
-    icon: 'pi pi-handshake',
+    icon: 'pi pi-users',
     class: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
   },
 }

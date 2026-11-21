@@ -48,7 +48,7 @@ watch(() => route.path, () => {
       </Drawer>
 
       <!-- メインコンテンツ -->
-      <main class="flex-1 min-w-0">
+      <div class="flex-1 min-w-0">
         <!-- サイドバー開閉ボタン（全画面サイズで表示） -->
         <div v-if="canShowSidebar" class="px-4 pt-3">
           <Button
@@ -62,7 +62,7 @@ watch(() => route.path, () => {
           />
         </div>
         <slot />
-      </main>
+      </div>
     </div>
   </NuxtLayout>
 </template>

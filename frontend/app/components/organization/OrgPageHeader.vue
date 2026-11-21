@@ -87,7 +87,7 @@ const overflowMenuItems = computed(() => {
   if (props.roleName && props.roleName !== 'SUPPORTER') {
     items.push({
       label: t('announcement.broadcast_button_org'),
-      icon: 'pi pi-bullhorn',
+      icon: 'pi pi-megaphone',
       command: () => { showBroadcastWizard.value = true },
     })
   }
@@ -317,7 +317,7 @@ const overflowMenuItems = computed(() => {
         <Button
           v-if="roleName && roleName !== 'SUPPORTER'"
           :label="$t('announcement.broadcast_button_org')"
-          icon="pi pi-bullhorn"
+          icon="pi pi-megaphone"
           severity="secondary"
           size="small"
           class="hidden sm:inline-flex"

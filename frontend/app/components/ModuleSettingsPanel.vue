@@ -165,7 +165,7 @@ onMounted(fetchCatalog)
                 : 'bg-surface-100 text-surface-400 dark:bg-surface-700'
             "
           >
-            <i class="pi pi-puzzle text-base" />
+            <i class="pi pi-th-large text-base" />
           </div>
           <div class="min-w-0">
             <p class="font-medium leading-tight">{{ item.name }}</p>

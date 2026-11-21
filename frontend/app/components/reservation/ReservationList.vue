@@ -371,7 +371,7 @@ defineExpose({ refresh: loadReservations })
               <!-- series 一括承認（scope=SERIES・§6.2 W2-5-FE・定期予約所属の PENDING のみ表示） -->
               <Button
                 v-if="data.recurringSeriesId"
-                icon="pi pi-check-double"
+                icon="pi pi-check-circle"
                 severity="success"
                 outlined
                 rounded

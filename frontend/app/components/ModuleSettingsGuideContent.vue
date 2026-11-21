@@ -18,11 +18,11 @@ const restrictionItems = computed<string[]>(() =>
       {{ t('module_settings_guide.description') }}
     </p>
 
-    <!-- カード1: 機能設定とは (blue / pi-puzzle) -->
+    <!-- カード1: 機能設定とは (blue / pi-th-large) -->
     <SectionCard>
       <div class="flex items-start gap-4">
         <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
-          <i class="pi pi-puzzle text-xl" aria-hidden="true" />
+          <i class="pi pi-th-large text-xl" aria-hidden="true" />
         </div>
         <div class="w-full">
           <h2 class="mb-2 text-lg font-semibold">{{ t('module_settings_guide.what.title') }}</h2>

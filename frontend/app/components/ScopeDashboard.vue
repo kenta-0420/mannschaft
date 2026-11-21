@@ -338,7 +338,7 @@ function onDragEnd() {
           >
             <!-- ドラッグハンドル（hover時に表示） -->
             <i
-              class="pi pi-grip-vertical absolute right-3 top-3 cursor-grab text-sm text-surface-300 opacity-0 transition-opacity group-hover:opacity-100 active:cursor-grabbing dark:text-surface-600"
+              class="pi pi-ellipsis-v absolute right-3 top-3 cursor-grab text-sm text-surface-300 opacity-0 transition-opacity group-hover:opacity-100 active:cursor-grabbing dark:text-surface-600"
             />
 
             <div

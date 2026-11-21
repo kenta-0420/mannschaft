@@ -245,7 +245,7 @@ const quickLinks: QuickLink[] = [
   },
   {
     label: t('admin.quickLinks.appeals'),
-    icon: 'pi pi-gavel',
+    icon: 'pi pi-shield',
     to: '/admin/appeals',
     color: 'text-red-500',
     bg: 'bg-red-50 dark:bg-red-900/20',

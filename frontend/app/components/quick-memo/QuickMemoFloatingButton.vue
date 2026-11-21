@@ -10,7 +10,7 @@ onMounted(() => {
 
 <template>
   <Button
-    icon="pi pi-feather"
+    icon="pi pi-pencil"
     rounded
     raised
     class="!fixed bottom-6 right-6 !h-14 !w-14 !shadow-lg z-50"

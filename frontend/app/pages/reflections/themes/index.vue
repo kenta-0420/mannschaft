@@ -113,7 +113,7 @@ function confirmArchive(theme: ReflectionThemeResponse) {
   confirm.require({
     message: t('reflection.archive.confirm.archive'),
     header: t('reflection.archive.action.archive'),
-    icon: 'pi pi-archive',
+    icon: 'pi pi-box',
     rejectLabel: t('reflection.common.cancel'),
     acceptLabel: t('reflection.archive.action.archive'),
     accept: () => doArchive(theme),

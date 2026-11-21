@@ -528,7 +528,7 @@ const ALL_WIDGETS: WidgetDefinition[] = [
     key: 'attendance-results',
     label: '出席確認状況',
     labelKey: 'dashboard.widget_labels.attendance-results',
-    icon: 'pi pi-calendar-check',
+    icon: 'pi pi-calendar',
     description: 'イベントごとの出欠状況と個人別回答',
     descriptionKey: 'dashboard.widget_descriptions.attendance-results',
     scope: ['team', 'organization'],
