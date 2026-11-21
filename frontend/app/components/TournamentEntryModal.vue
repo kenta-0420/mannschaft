@@ -51,7 +51,11 @@ const {
   downloadEntryPdf,
   getEntryTemplates,
   applyEntryTemplate,
+  createEntryTemplate,
 } = useTournamentApi()
+
+/** BE の上限（TournamentEntryTemplateService: チームごと最大5件） */
+const MAX_TEMPLATE_COUNT = 5
 
 // ===== 状態 =====
 
@@ -73,6 +77,13 @@ const entryCount = ref(0)
 const templates = ref<EntryTemplate[]>([])
 const selectedTemplateId = ref<string | null>(null)
 const overwriteExisting = ref(false)
+
+/** テンプレート保存フォーム */
+const savingTemplate = ref(false)
+const newTemplateName = ref('')
+const newTemplateDescription = ref('')
+/** テンプレート一覧の取得に失敗した（件数不明のため上限判定ができない） */
+const templatesLoadFailed = ref(false)
 
 /** 手動編集フォーム（候補ごとの背番号・ポジション） */
 interface MemberForm {
@@ -105,6 +116,15 @@ const countRangeLabel = computed(() => {
 
 const selectedTemplate = computed(() =>
   templates.value.find(t => t.id === selectedTemplateId.value) ?? null,
+)
+
+const templateLimitReached = computed(() => templates.value.length >= MAX_TEMPLATE_COUNT)
+
+const canSaveTemplate = computed(() =>
+  newTemplateName.value.trim() !== ''
+  && entryMembers.value.length > 0
+  && !templateLimitReached.value
+  && !templatesLoadFailed.value,
 )
 
 // ===== データ取得 =====
@@ -142,8 +162,10 @@ async function fetchTemplates() {
   try {
     const { data } = await getEntryTemplates(props.orgId, props.teamId)
     templates.value = data
+    templatesLoadFailed.value = false
   }
   catch (error) {
+    templatesLoadFailed.value = true
     reportEntryError(error)
   }
 }
@@ -208,6 +230,38 @@ async function onApplyTemplate() {
   }
   finally {
     applyingTemplate.value = false
+  }
+}
+
+/** 現在保存済みのエントリー表をチームのテンプレートとして保存する */
+async function onSaveTemplate() {
+  if (!canSaveTemplate.value) return
+  savingTemplate.value = true
+  try {
+    await createEntryTemplate(props.orgId, props.teamId, {
+      name: newTemplateName.value.trim(),
+      description: newTemplateDescription.value.trim() || null,
+      members: entryMembers.value.map(m => ({
+        userId: m.userId,
+        jerseyNumber: m.jerseyNumber,
+        position: m.position,
+        sortOrder: m.sortOrder,
+      })),
+    })
+    toast?.add({
+      severity: 'success',
+      summary: t('tournament.entry.template.createSuccess'),
+      life: 3000,
+    })
+    newTemplateName.value = ''
+    newTemplateDescription.value = ''
+    await fetchTemplates()
+  }
+  catch (error) {
+    reportEntryError(error)
+  }
+  finally {
+    savingTemplate.value = false
   }
 }
 
@@ -317,6 +371,9 @@ watch(
       memberForms.value = []
       templates.value = []
       selectedTemplateId.value = null
+      newTemplateName.value = ''
+      newTemplateDescription.value = ''
+      templatesLoadFailed.value = false
     }
   },
   // 親は v-if でモーダルを生成するため、生成時点で isOpen は既に true。immediate で初回も取得する
@@ -422,6 +479,43 @@ watch(
             <label for="overwrite" class="inline-flex min-h-11 min-w-11 cursor-pointer items-center text-sm">
               {{ t('tournament.entry.overwriteExisting') }}
             </label>
+          </div>
+        </div>
+
+        <!-- テンプレート保存（現在のエントリー表をテンプレート化） -->
+        <div class="mt-4 flex flex-col gap-2 border-t border-surface-200 pt-4 dark:border-surface-700">
+          <h4 class="text-sm font-semibold">
+            {{ t('tournament.entry.template.create') }}
+          </h4>
+          <p class="text-xs text-surface-500">
+            {{ t('tournament.entry.template.saveHint') }}
+          </p>
+          <InputText
+            v-model="newTemplateName"
+            :placeholder="t('tournament.entry.template.name')"
+            maxlength="50"
+            class="min-h-11 w-full"
+          />
+          <InputText
+            v-model="newTemplateDescription"
+            :placeholder="t('tournament.entry.template.description')"
+            maxlength="200"
+            class="min-h-11 w-full"
+          />
+          <p v-if="templatesLoadFailed" class="text-xs text-red-600">
+            {{ t('tournament.entry.template.loadFailed') }}
+          </p>
+          <p v-if="templateLimitReached" class="text-xs text-red-600">
+            {{ t('tournament.entry.template.maxCount') }}
+          </p>
+          <div class="flex justify-end">
+            <Button
+              :label="t('tournament.entry.template.create')"
+              :loading="savingTemplate"
+              :disabled="!canSaveTemplate"
+              class="min-h-11"
+              @click="onSaveTemplate"
+            />
           </div>
         </div>
       </section>
