@@ -112,9 +112,10 @@ describe('シフトボード: シフト表の取得失敗（所属外の直打�
     const errorState = wrapper!.get('[data-testid="load-error-state"]')
     expect(errorState.text()).toContain('loadErrorState.states.notFoundOrForbidden.title')
     expect(wrapper!.find('[data-testid="load-error-state-retry"]').exists()).toBe(false)
-    const back = wrapper!.get('[data-testid="shift-board-load-error"] a')
-    expect(back.attributes('href')).toBe('/teams/team-a/shifts')
-    expect(back.text()).toContain('shift.board.backToList')
+    // 戻る導線はヘッダーの1つだけ（取得失敗表示内に二重に出さない）
+    const backLinks = wrapper!.findAll('a[href="/teams/team-a/shifts"]')
+    expect(backLinks).toHaveLength(1)
+    expect(wrapper!.find('[data-testid="shift-board-load-error"] a').exists()).toBe(false)
     // 操作群（変更依頼・PDF 等）は出さない
     expect(wrapper!.text()).not.toContain('shift.changeRequest.title')
     // 握りつぶさず記録する
@@ -148,5 +149,14 @@ describe('シフトボード: シフト表の取得失敗（所属外の直打�
     expect(wrapper!.findComponent(ShiftMemberPool).exists()).toBe(true)
     expect(wrapper!.find('[data-testid="page-loading"]').exists()).toBe(false)
     expect(wrapper!.text()).toContain('メンバーB')
+  })
+})
+
+describe('シフトボード: 戻る導線', () => {
+  it('正常表示でも戻る導線は一覧への1つだけ', async () => {
+    renderPage()
+    await flushPromises()
+    expect(wrapper!.findAll('a[href="/teams/team-a/shifts"]')).toHaveLength(1)
+    expect(wrapper!.findAll('.pi-arrow-left')).toHaveLength(1)
   })
 })

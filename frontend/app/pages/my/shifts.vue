@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ShiftRequestResponse } from '~/types/shift'
+import { preferenceToColor, preferenceToI18nKey } from '~/utils/shiftPreference'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -19,19 +20,6 @@ async function load() {
     showError(t('shift.myShifts.fetchError'))
   } finally {
     loading.value = false
-  }
-}
-
-function getStatusClass(s: string) {
-  switch (s) {
-    case 'CONFIRMED':
-      return 'bg-green-100 text-green-700'
-    case 'PENDING':
-      return 'bg-yellow-100 text-yellow-700'
-    case 'REJECTED':
-      return 'bg-red-100 text-red-700'
-    default:
-      return 'bg-surface-100'
   }
 }
 
@@ -58,9 +46,9 @@ onMounted(() => load())
         <div class="flex items-center justify-between">
           <h3 class="text-sm font-semibold">{{ s.slotDate }}</h3>
           <span
-            :class="getStatusClass(s.preference)"
-            class="rounded px-2 py-0.5 text-xs font-medium"
-            >{{ s.preference }}</span
+            :class="preferenceToColor(s.preference)"
+            class="rounded border px-2 py-0.5 text-xs font-medium"
+            >{{ $t(preferenceToI18nKey(s.preference)) }}</span
           >
         </div>
         <p v-if="s.note" class="mt-1 text-xs text-surface-400">{{ s.note }}</p>

@@ -6,6 +6,7 @@
         <NuxtLink
           :to="`/teams/${teamSlug}/shifts`"
           class="text-surface-500 hover:text-surface-700"
+          :aria-label="$t('shift.board.backToList')"
         >
           <i class="pi pi-arrow-left" />
         </NuxtLink>
@@ -89,15 +90,6 @@
         :kind="scheduleErrorKind"
         @retry="initialize"
       />
-      <NuxtLink :to="`/teams/${teamSlug}/shifts`">
-        <Button
-          :label="$t('shift.board.backToList')"
-          icon="pi pi-arrow-left"
-          severity="secondary"
-          text
-          size="small"
-        />
-      </NuxtLink>
     </div>
 
     <!-- メインコンテンツ -->

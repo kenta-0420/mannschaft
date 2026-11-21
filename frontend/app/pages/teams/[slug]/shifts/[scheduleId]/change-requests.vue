@@ -30,18 +30,8 @@ async function onWithdraw(id: number): Promise<void> {
 
 <template>
   <div class="mx-auto max-w-4xl space-y-6 px-4 py-6">
-    <!-- ページヘッダー -->
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <NuxtLink
-          :to="`/teams/${teamSlug}/shifts`"
-          class="text-surface-500 hover:text-surface-700"
-        >
-          <i class="pi pi-arrow-left" />
-        </NuxtLink>
-        <PageHeader :title="$t('shift.changeRequest.title')" />
-      </div>
-    </div>
+    <!-- ページヘッダー（戻る導線は PageHeader の back-to に一本化） -->
+    <PageHeader :title="$t('shift.changeRequest.title')" :back-to="`/teams/${teamSlug}/shifts`" />
 
     <!-- 変更依頼作成フォーム -->
     <ShiftChangeRequestForm

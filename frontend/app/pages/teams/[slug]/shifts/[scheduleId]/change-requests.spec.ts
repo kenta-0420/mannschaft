@@ -8,6 +8,7 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Page from './change-requests.vue'
+import PageHeader from '~/components/PageHeader.vue'
 import ShiftChangeRequestList from '~/components/shift/ShiftChangeRequestList.vue'
 import type { ChangeRequest, ChangeRequestStatus } from '~/types/shift'
 
@@ -58,9 +59,9 @@ function renderPage() {
     components: { ShiftChangeRequestList, DataTable, Column, Button },
     mocks: { $t: (key: string) => key },
     stubs: {
-      ShiftChangeRequestForm: true,
+      ShiftChangeRequestForm: true, PageHeader: true,
       SectionCard: { template: '<section><slot /></section>' },
-      PageHeader: true, NuxtLink: { template: '<a><slot /></a>' },
+      NuxtLink: { template: '<a><slot /></a>' },
       Tag: true, Textarea: true, PageLoading: true,
       Dialog: { props: ['visible'], template: '<div v-if="visible" data-testid="review-dialog"><slot /><slot name="footer" /></div>' },
     },
@@ -200,5 +201,16 @@ describe('変更依頼のチーム権限による審査UI（CMP1432-A）', () =>
     await flushPromises()
     expect(mocks.api.mock.calls.filter(([url]) => String(url).endsWith('/me/permissions')))
       .toEqual([['/api/v1/teams/team-a/me/permissions']])
+  })
+})
+
+describe('変更依頼ページ: 戻る導線', () => {
+  it('戻る導線は PageHeader の1つだけで、シフト一覧へ戻る', async () => {
+    renderPage()
+    await flushPromises()
+    // 手書きの矢印リンクは持たない（戻る導線は PageHeader の back-to に一本化）
+    expect(wrapper!.findAll('.pi-arrow-left')).toHaveLength(0)
+    expect(wrapper!.findAll('a')).toHaveLength(0)
+    expect(wrapper!.findComponent(PageHeader).props('backTo')).toBe('/teams/team-a/shifts')
   })
 })
