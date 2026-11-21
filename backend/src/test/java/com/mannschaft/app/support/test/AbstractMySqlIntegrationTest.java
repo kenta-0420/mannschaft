@@ -154,6 +154,7 @@ public abstract class AbstractMySqlIntegrationTest {
         registry.add("spring.datasource.url", MYSQL::getJdbcUrl);
         registry.add("spring.datasource.username", MYSQL::getUsername);
         registry.add("spring.datasource.password", MYSQL::getPassword);
+        FakeOAuthProviders.registerProperties(registry);
     }
 
     /**

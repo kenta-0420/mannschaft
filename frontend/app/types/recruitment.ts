@@ -409,7 +409,7 @@ export interface RecruitmentUserPenaltyResponse {
   expiresAt: string | null
   liftedAt: string | null
   liftReason: string | null
-  isActive: boolean
+  active: boolean
   createdAt: string
 }
 

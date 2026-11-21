@@ -1,11 +1,13 @@
 package com.mannschaft.app.recruitment.repository;
 
+import com.mannschaft.app.recruitment.PenaltyLiftReason;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.entity.RecruitmentUserPenaltyEntity;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -21,6 +23,26 @@ public interface RecruitmentUserPenaltyRepository extends JpaRepository<Recruitm
     /** 異なる発動元の ALL_SCOPES 判定もユーザー単位で直列化する。 */
     @Query(value = "SELECT id FROM users WHERE id = :userId FOR UPDATE", nativeQuery = true)
     Long lockUserForPenalty(@Param("userId") Long userId);
+
+    /** 管理中の Entity やトランザクションのスナップショットを使わず、未解除の対象行をロックする。 */
+    @Query(value = """
+            SELECT id FROM recruitment_user_penalties
+            WHERE id = :id AND lifted_at IS NULL
+            FOR UPDATE
+            """, nativeQuery = true)
+    Optional<Long> lockUnliftedPenalty(@Param("id") Long id);
+
+    /** バッチが候補を読んだ後で別の処理が解除していた場合は 0 件のままにする。 */
+    @Modifying
+    @Query("""
+            UPDATE RecruitmentUserPenaltyEntity p
+            SET p.liftedAt = :liftedAt, p.liftedBy = null, p.liftReason = :reason
+            WHERE p.id = :id AND p.liftedAt IS NULL
+            """)
+    int liftUnliftedPenalty(
+            @Param("id") Long id,
+            @Param("liftedAt") LocalDateTime liftedAt,
+            @Param("reason") PenaltyLiftReason reason);
 
     /** アクティブペナルティの取得（liftedAt IS NULL かつ expiresAt 未来）。 */
     @Query("""
@@ -79,11 +101,12 @@ public interface RecruitmentUserPenaltyRepository extends JpaRepository<Recruitm
             @Param("scopeId") Long scopeId,
             @Param("now") LocalDateTime now);
 
-    /** 期限切れかつ未解除のペナルティ（自動解除バッチ用）。 */
+    /** 期限切れかつ未解除のペナルティを再計算バッチと同じ主キー順で取得する。 */
     @Query("""
             SELECT p FROM RecruitmentUserPenaltyEntity p
             WHERE p.liftedAt IS NULL
               AND p.expiresAt <= :now
+            ORDER BY p.id ASC
             """)
     List<RecruitmentUserPenaltyEntity> findExpiredPenalties(@Param("now") LocalDateTime now);
 

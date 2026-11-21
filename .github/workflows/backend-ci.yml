@@ -575,6 +575,7 @@ jobs:
           path: |
             backend/build/test-results/**/*.xml
             backend/src/test/resources/archunit_store/*
+            backend/build/context-override-census/snapshot.tsv
           retention-days: 7
 
       - name: テスト結果レポートをアップロード

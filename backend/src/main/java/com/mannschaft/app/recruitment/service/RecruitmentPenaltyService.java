@@ -80,11 +80,11 @@ public class RecruitmentPenaltyService {
 
         RecruitmentScopeType effectiveScopeType = allScopes ? RecruitmentScopeType.GLOBAL : scopeType;
         Long effectiveScopeId = allScopes ? null : scopeId;
-        LocalDateTime now = LocalDateTime.now(UserZoneLocalDateTimeParser.SERVER_ZONE);
 
         // 未解除行をロックする。期限切れ行は UNIQUE のスロットを解放してから新規作成する。
         Optional<RecruitmentUserPenaltyEntity> existing = penaltyRepository
                 .findUnliftedPenaltyForUpdate(userId, effectiveScopeType, effectiveScopeId);
+        LocalDateTime now = LocalDateTime.now(UserZoneLocalDateTimeParser.SERVER_ZONE);
 
         if (existing.isPresent()) {
             if (existing.get().getExpiresAt().isAfter(now)) {
@@ -175,17 +175,20 @@ public class RecruitmentPenaltyService {
     public RecruitmentUserPenaltyEntity liftPenalty(Long penaltyId, Long adminUserId) {
         RecruitmentUserPenaltyEntity penalty = penaltyRepository.findById(penaltyId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.PENALTY_NOT_FOUND));
-        settingRepository.findById(penalty.getTriggeredBySettingId())
+        RecruitmentPenaltySettingEntity setting = settingRepository.findById(penalty.getTriggeredBySettingId())
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.PENALTY_NOT_FOUND));
 
-        if (!penalty.isActive()) {
+        // 別処理による解除は DB のロック読み取りで、期限はロックを取得した後の時刻で判定する。
+        if (penaltyRepository.lockUnliftedPenalty(penaltyId).isEmpty() || !penalty.isActive()) {
             throw new BusinessException(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
         }
 
         penalty.lift(adminUserId, PenaltyLiftReason.ADMIN_MANUAL);
-        RecruitmentUserPenaltyEntity saved = penaltyRepository.save(penalty);
+        RecruitmentUserPenaltyEntity saved = penaltyRepository.saveAndFlush(penalty);
 
-        // TODO: F04.9 実装後に RECRUITMENT_PENALTY_LIFTED 通知を送信
+        eventPublisher.publishEvent(new RecruitmentPenaltyLiftedNotificationEvent(
+                saved.getId(), saved.getUserId(), setting.getScopeType(), setting.getScopeId(),
+                PenaltyLiftReason.ADMIN_MANUAL));
         log.info("F03.11 Phase5b ペナルティ手動解除: penaltyId={}, liftedBy={}", penaltyId, adminUserId);
 
         return saved;

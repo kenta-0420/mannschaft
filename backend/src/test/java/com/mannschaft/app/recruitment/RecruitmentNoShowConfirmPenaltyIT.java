@@ -10,12 +10,15 @@ import com.mannschaft.app.recruitment.repository.RecruitmentNoShowRecordReposito
 import com.mannschaft.app.recruitment.repository.RecruitmentPenaltySettingRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentUserPenaltyRepository;
 import com.mannschaft.app.recruitment.service.RecruitmentNoShowConfirmBatch;
+import com.mannschaft.app.recruitment.service.RecruitmentPenaltyLiftBatch;
 import com.mannschaft.app.recruitment.service.RecruitmentPenaltyService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -40,6 +43,7 @@ class RecruitmentNoShowConfirmPenaltyIT extends AbstractMySqlIntegrationTest {
     private static final String SOURCE_TYPE = "RECRUITMENT_PENALTY";
 
     @Autowired private RecruitmentNoShowConfirmBatch batch;
+    @Autowired private RecruitmentPenaltyLiftBatch liftBatch;
     @Autowired private RecruitmentPenaltyService penaltyService;
     @Autowired private RecruitmentNoShowRecordRepository noShowRepository;
     @Autowired private RecruitmentListingRepository listingRepository;
@@ -59,9 +63,15 @@ class RecruitmentNoShowConfirmPenaltyIT extends AbstractMySqlIntegrationTest {
     private Long competingTeamId;
     private Long competingSettingId;
     private Long penaltyId;
+    private Long expiredSlotPenaltyId;
 
     @AfterEach
     void cleanup() {
+        if (expiredSlotPenaltyId != null) {
+            jdbcTemplate.update("DELETE FROM notifications WHERE source_type = ? AND source_id = ?",
+                    SOURCE_TYPE, expiredSlotPenaltyId);
+            penaltyRepository.deleteById(expiredSlotPenaltyId);
+        }
         if (penaltyId != null) {
             jdbcTemplate.update("DELETE FROM notifications WHERE source_type = 'CONFIRMABLE_NOTIFICATION' "
                     + "AND source_id IN (SELECT id FROM confirmable_notifications WHERE source_type = ? AND source_id = ?)",
@@ -190,6 +200,60 @@ class RecruitmentNoShowConfirmPenaltyIT extends AbstractMySqlIntegrationTest {
                 "SELECT confirmed FROM recruitment_no_show_records WHERE id = ?", Boolean.class, recordId)).isFalse();
         assertThat(penaltyRepository.findByUserIdOrderByCreatedAtDesc(userId)).isEmpty();
         assertThat(countConfirmableNotificationsForUser()).isZero();
+    }
+
+    @Test
+    void 期限バッチが古い候補を読んでも新規発動で確定した枠解放を上書きしない() throws Exception {
+        prepareNoShow();
+        jdbcTemplate.update("UPDATE recruitment_no_show_records SET confirmed = TRUE WHERE id = ?", recordId);
+        LocalDateTime now = LocalDateTime.now(UserZoneLocalDateTimeParser.SERVER_ZONE);
+        expiredSlotPenaltyId = penaltyRepository.save(RecruitmentUserPenaltyEntity.builder()
+                .userId(userId).scopeType(RecruitmentScopeType.GLOBAL).triggeredBySettingId(settingId)
+                .triggeredNoShowCount(1).startedAt(now.minusDays(2)).expiresAt(now.minusDays(1)).build()).getId();
+
+        RecruitmentPenaltyLiftBatch target = AopTestUtils.getUltimateTargetObject(liftBatch);
+        CountDownLatch expiryRead = new CountDownLatch(1);
+        CountDownLatch slotCommitted = new CountDownLatch(1);
+        LocalDateTime liftedAt;
+        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            var expiry = executor.submit(() -> transactionTemplate.executeWithoutResult(status -> {
+                assertThat(penaltyRepository.findExpiredPenalties(LocalDateTime.now()))
+                        .extracting(RecruitmentUserPenaltyEntity::getId).contains(expiredSlotPenaltyId);
+                expiryRead.countDown();
+                awaitLatch(slotCommitted);
+                target.liftExpiredPenalties();
+            }));
+            try {
+                awaitLatch(expiryRead);
+                penaltyId = penaltyService.evaluateAndApplyPenalty(userId, RecruitmentScopeType.TEAM, teamId)
+                        .orElseThrow().getId();
+                liftedAt = penaltyRepository.findById(expiredSlotPenaltyId).orElseThrow().getLiftedAt();
+            } finally {
+                slotCommitted.countDown();
+            }
+            expiry.get(10, TimeUnit.SECONDS);
+        }
+
+        assertThat(penaltyId).isNotEqualTo(expiredSlotPenaltyId);
+        RecruitmentUserPenaltyEntity previous = penaltyRepository.findById(expiredSlotPenaltyId).orElseThrow();
+        assertThat(liftedAt).isNotNull();
+        assertThat(previous.getLiftedAt()).isEqualTo(liftedAt);
+        assertThat(previous.getLiftReason()).isEqualTo(PenaltyLiftReason.AUTO_EXPIRED);
+        await().during(Duration.ofMillis(400)).atMost(10, TimeUnit.SECONDS).untilAsserted(() -> {
+            assertThat(jdbcTemplate.queryForObject("""
+                    SELECT COUNT(*) FROM notifications WHERE source_type = ? AND source_id = ? AND user_id = ?
+                    """, Integer.class, SOURCE_TYPE, expiredSlotPenaltyId, userId)).isEqualTo(1);
+            assertThat(countConfirmableNotifications()).isEqualTo(1);
+        });
+    }
+
+    private static void awaitLatch(CountDownLatch latch) {
+        try {
+            assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("期限解除との同期中に割り込まれました", e);
+        }
     }
 
     private void prepareNoShow() {

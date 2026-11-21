@@ -18,6 +18,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -39,10 +40,11 @@ class RecruitmentPenaltyLiftBatchTest {
         RecruitmentUserPenaltyEntity first = expiredPenalty(101L, 201L, RecruitmentScopeType.TEAM, 301L);
         RecruitmentUserPenaltyEntity second = expiredPenalty(102L, 202L, RecruitmentScopeType.ORGANIZATION, 302L);
         given(penaltyRepository.findExpiredPenalties(any())).willReturn(List.of(first, second));
+        given(penaltyRepository.liftUnliftedPenalty(eq(101L), any(), eq(PenaltyLiftReason.AUTO_EXPIRED))).willReturn(1);
+        given(penaltyRepository.liftUnliftedPenalty(eq(102L), any(), eq(PenaltyLiftReason.AUTO_EXPIRED))).willReturn(1);
 
         batch.liftExpiredPenalties();
 
-        verify(penaltyRepository).saveAll(List.of(first, second));
         ArgumentCaptor<RecruitmentPenaltyLiftedNotificationEvent> events =
                 ArgumentCaptor.forClass(RecruitmentPenaltyLiftedNotificationEvent.class);
         verify(eventPublisher, org.mockito.Mockito.times(2)).publishEvent(events.capture());
@@ -51,8 +53,20 @@ class RecruitmentPenaltyLiftBatchTest {
                         PenaltyLiftReason.AUTO_EXPIRED),
                 new RecruitmentPenaltyLiftedNotificationEvent(102L, 202L, RecruitmentScopeType.ORGANIZATION, 302L,
                         PenaltyLiftReason.AUTO_EXPIRED));
-        assertThat(first.getLiftReason()).isEqualTo(com.mannschaft.app.recruitment.PenaltyLiftReason.AUTO_EXPIRED);
-        assertThat(second.getLiftReason()).isEqualTo(com.mannschaft.app.recruitment.PenaltyLiftReason.AUTO_EXPIRED);
+        assertThat(first.getLiftedAt()).isNull();
+        assertThat(second.getLiftedAt()).isNull();
+    }
+
+    @Test
+    void 候補を別処理が解除していたら期限解除を通知しない() {
+        RecruitmentUserPenaltyEntity penalty = expiredPenalty(101L, 201L, RecruitmentScopeType.TEAM, 301L);
+        given(penaltyRepository.findExpiredPenalties(any())).willReturn(List.of(penalty));
+        given(penaltyRepository.liftUnliftedPenalty(eq(101L), any(), eq(PenaltyLiftReason.AUTO_EXPIRED))).willReturn(0);
+
+        batch.liftExpiredPenalties();
+
+        assertThat(penalty.getLiftedAt()).isNull();
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -61,7 +75,7 @@ class RecruitmentPenaltyLiftBatchTest {
 
         batch.liftExpiredPenalties();
 
-        verify(penaltyRepository, never()).saveAll(any());
+        verify(penaltyRepository, never()).liftUnliftedPenalty(any(), any(), any());
         verify(eventPublisher, never()).publishEvent(any());
     }
 

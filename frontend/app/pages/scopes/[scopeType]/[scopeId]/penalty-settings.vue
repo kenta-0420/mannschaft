@@ -109,13 +109,13 @@ async function loadPenalties() {
 
 function penaltyStatusLabel(p: RecruitmentUserPenaltyResponse): string {
   if (p.liftedAt) return t('recruitment.penalty.status.lifted')
-  if (!p.isActive) return t('recruitment.penalty.status.expired')
+  if (!p.active) return t('recruitment.penalty.status.expired')
   return t('recruitment.penalty.status.active')
 }
 
 function penaltyStatusSeverity(p: RecruitmentUserPenaltyResponse): string {
   if (p.liftedAt) return 'secondary'
-  if (!p.isActive) return 'warn'
+  if (!p.active) return 'warn'
   return 'danger'
 }
 
@@ -294,7 +294,7 @@ onMounted(async () => {
               </div>
             </div>
             <Button
-              v-if="penalty.isActive && !penalty.liftedAt"
+              v-if="penalty.active && !penalty.liftedAt"
               :label="t('recruitment.penalty.liftButton')"
               severity="secondary"
               size="small"

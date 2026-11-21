@@ -26,6 +26,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,6 +36,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -81,16 +84,14 @@ class RecruitmentPenaltyRecomputeBatchTest {
             batch.recomputePenalties();
 
             // then
-            verify(penaltyRepository, never()).saveAll(any());
+            verify(penaltyRepository, never()).liftUnliftedPenalty(any(), any(), any());
         }
 
         /**
          * 取りこぼし検出テスト（キーセット化の中核 AC）。
          *
-         * <p>チャンクサイズ(500)を超える件数を用意する余裕は無いためチャンクサイズを
-         * 小さく捉えて検証する代わりに、実運用同様のチャンクサイズ(500)未満で
-         * 「一部の行だけが解除されて絞り込みから外れる」状況をインメモリ Fake
-         * ({@link FakePenaltyStore}) で再現し、全対象行が再判定されることを実証する。</p>
+         * <p>チャンクサイズ(500)を超える件数を用意し、「一部の行だけが解除されて
+         * 絞り込みから外れる」状況をインメモリ Fake ({@link FakePenaltyStore}) で再現する。</p>
          *
          * <p>解除条件: 設定が無効化されている（{@code enabled=false}）→ 即解除。
          * 偶数IDのペナルティは無効化された設定に紐付けており、1回の走査で
@@ -101,9 +102,9 @@ class RecruitmentPenaltyRecomputeBatchTest {
         @Test
         @DisplayName("一部の行が解除されて絞り込みから外れても全件が再判定される（キーセット方式）")
         void recomputePenalties_shrinkingFilter_processesAllPenaltiesWithoutLoss() {
-            // given: 40件のアクティブペナルティ。偶数IDは無効化された設定に紐付け（即解除対象）、
+            // given: 偶数IDは無効化された設定に紐付け（即解除対象）、
             // 奇数IDは有効な設定だが閾値以上のNO_SHOWが残っており解除されない。
-            int totalCount = 40;
+            int totalCount = 600;
 
             RecruitmentPenaltySettingEntity disabledSetting = buildSetting(1L, false);
             RecruitmentPenaltySettingEntity enabledSetting = buildSetting(2L, true);
@@ -127,12 +128,13 @@ class RecruitmentPenaltyRecomputeBatchTest {
                         Pageable pageable = invocation.getArgument(2);
                         return store.findByCursor(cursor, pageable.getPageSize());
                     });
-            given(penaltyRepository.saveAll(any())).willAnswer(invocation -> invocation.getArgument(0));
+            given(penaltyRepository.liftUnliftedPenalty(any(), any(), eq(PenaltyLiftReason.DISPUTE_REVOKED)))
+                    .willAnswer(invocation -> store.lift(invocation.getArgument(0)));
 
             // when
             batch.recomputePenalties();
 
-            // then: 40件全てが最低1回は再判定のため走査されている（取りこぼしゼロ）
+            // then: 全件が再判定のため走査されている（取りこぼしゼロ）
             assertThat(store.scannedIds())
                     .as("全アクティブペナルティが取りこぼしなく再判定されること")
                     .containsExactlyInAnyOrderElementsOf(
@@ -140,8 +142,7 @@ class RecruitmentPenaltyRecomputeBatchTest {
             assertThat(store.scannedIds()).hasSize(totalCount);
 
             // 偶数ID(無効設定紐付け)は全て解除されている
-            long revokedCount = allPenalties.stream().filter(p -> p.getId() % 2 == 0).filter(p -> p.getLiftedAt() != null).count();
-            assertThat(revokedCount).isEqualTo(totalCount / 2);
+            assertThat(store.liftedIds).hasSize(totalCount / 2).allSatisfy(id -> assertThat(id % 2).isZero());
 
             ArgumentCaptor<RecruitmentPenaltyLiftedNotificationEvent> events =
                     ArgumentCaptor.forClass(RecruitmentPenaltyLiftedNotificationEvent.class);
@@ -162,7 +163,7 @@ class RecruitmentPenaltyRecomputeBatchTest {
 
             batch.recomputePenalties();
 
-            verify(penaltyRepository, never()).saveAll(any());
+            verify(penaltyRepository, never()).liftUnliftedPenalty(any(), any(), any());
             verify(eventPublisher, never()).publishEvent(any());
             assertThat(penalty.getLiftedAt()).isNull();
         }
@@ -176,10 +177,12 @@ class RecruitmentPenaltyRecomputeBatchTest {
                     .willReturn(List.of(penalty));
             given(settingRepository.findById(enabledSetting.getId())).willReturn(Optional.of(enabledSetting));
             given(noShowRepository.countConfirmedNoShowsForPenalty(anyLong(), anyInt(), anyBoolean(), anyString(), anyLong())).willReturn(2L);
+            given(penaltyRepository.liftUnliftedPenalty(eq(10L), any(), eq(PenaltyLiftReason.DISPUTE_REVOKED)))
+                    .willReturn(1);
 
             batch.recomputePenalties();
 
-            assertThat(penalty.getLiftReason()).isEqualTo(PenaltyLiftReason.DISPUTE_REVOKED);
+            assertThat(penalty.getLiftedAt()).isNull();
             ArgumentCaptor<RecruitmentPenaltyLiftedNotificationEvent> events =
                     ArgumentCaptor.forClass(RecruitmentPenaltyLiftedNotificationEvent.class);
             verify(eventPublisher).publishEvent(events.capture());
@@ -242,6 +245,7 @@ class RecruitmentPenaltyRecomputeBatchTest {
     private static class FakePenaltyStore {
         private final List<RecruitmentUserPenaltyEntity> penalties;
         private final List<Long> scannedIds = new ArrayList<>();
+        private final Set<Long> liftedIds = new HashSet<>();
 
         FakePenaltyStore(List<RecruitmentUserPenaltyEntity> penalties) {
             this.penalties = penalties;
@@ -250,7 +254,7 @@ class RecruitmentPenaltyRecomputeBatchTest {
         List<RecruitmentUserPenaltyEntity> findByCursor(long cursor, int pageSize) {
             return penalties.stream()
                     .filter(p -> p.getId() > cursor)
-                    .filter(p -> p.getLiftedAt() == null)
+                    .filter(p -> !liftedIds.contains(p.getId()))
                     .sorted((a, b) -> Long.compare(a.getId(), b.getId()))
                     .limit(pageSize)
                     .peek(p -> scannedIds.add(p.getId()))
@@ -259,6 +263,10 @@ class RecruitmentPenaltyRecomputeBatchTest {
 
         List<Long> scannedIds() {
             return scannedIds;
+        }
+
+        int lift(Long id) {
+            return liftedIds.add(id) ? 1 : 0;
         }
     }
 }

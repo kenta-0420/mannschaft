@@ -2,6 +2,7 @@ package com.mannschaft.app.recruitment.service;
 
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.recruitment.PenaltyLiftReason;
 import com.mannschaft.app.recruitment.entity.RecruitmentUserPenaltyEntity;
@@ -53,12 +54,13 @@ public class RecruitmentPenaltyLiftBatch {
 
         int lifted = 0;
         for (RecruitmentUserPenaltyEntity penalty : expired) {
-            penalty.lift(null, PenaltyLiftReason.AUTO_EXPIRED);
-            lifted++;
-        }
-        penaltyRepository.saveAll(expired);
+            if (penaltyRepository.liftUnliftedPenalty(
+                    penalty.getId(), LocalDateTime.now(UserZoneLocalDateTimeParser.SERVER_ZONE),
+                    PenaltyLiftReason.AUTO_EXPIRED) == 0) {
+                continue;
+            }
 
-        for (RecruitmentUserPenaltyEntity penalty : expired) {
+            lifted++;
             eventPublisher.publishEvent(new RecruitmentPenaltyLiftedNotificationEvent(
                     penalty.getId(), penalty.getUserId(), penalty.getScopeType(), penalty.getScopeId(),
                     PenaltyLiftReason.AUTO_EXPIRED));

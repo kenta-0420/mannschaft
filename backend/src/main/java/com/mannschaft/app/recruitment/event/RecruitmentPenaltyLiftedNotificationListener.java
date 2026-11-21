@@ -2,6 +2,7 @@ package com.mannschaft.app.recruitment.event;
 
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.NotificationType;
@@ -14,12 +15,15 @@ import com.mannschaft.app.recruitment.repository.RecruitmentPenaltySettingReposi
 import com.mannschaft.app.recruitment.repository.RecruitmentUserPenaltyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
-/** 期限切れで自動解除された募集ペナルティについて本人へ通知を配送する。 */
+import java.util.Locale;
+
+/** 募集ペナルティの解除が確定した後に本人へ通知を配送する。 */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -28,6 +32,8 @@ public class RecruitmentPenaltyLiftedNotificationListener {
     private final NotificationDeliveryRunner notificationDeliveryRunner;
     private final RecruitmentUserPenaltyRepository penaltyRepository;
     private final RecruitmentPenaltySettingRepository settingRepository;
+    private final UserLocaleCache userLocaleCache;
+    private final MessageSource messageSource;
 
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
             reason = "確定済みのペナルティ解除を本人へ知らせる通知であり、募集機能のgate状態にかかわらず配送する")
@@ -60,20 +66,26 @@ public class RecruitmentPenaltyLiftedNotificationListener {
             return;
         }
 
-        String body = event.liftReason() == PenaltyLiftReason.AUTO_EXPIRED
-                ? "ペナルティ #" + event.penaltyId() + "（"
-                        + sourceScopeType.name() + " #" + sourceScopeId
-                        + "）は、期限到来（AUTO_EXPIRED）により自動解除されました。"
-                : "ペナルティ #" + event.penaltyId() + "（"
-                        + sourceScopeType.name() + " #" + sourceScopeId
-                        + "）は、再計算（" + event.liftReason().name() + "）により解除されました。";
-
         try {
+            String title = "募集ペナルティが解除されました";
+            String scope = sourceScopeType.name() + " #" + sourceScopeId;
+            String body;
+            if (event.liftReason() == PenaltyLiftReason.ADMIN_MANUAL) {
+                Locale locale = resolveLocale(event.recipientUserId());
+                title = messageSource.getMessage("notification.recruitment.penalty.manual-lift.title", null, locale);
+                body = messageSource.getMessage("notification.recruitment.penalty.manual-lift.body",
+                        new Object[]{event.penaltyId().toString(), scope}, locale);
+            } else {
+                String prefix = "ペナルティ #" + event.penaltyId() + "（" + scope + "）は、";
+                body = prefix + (event.liftReason() == PenaltyLiftReason.AUTO_EXPIRED
+                        ? "期限到来（AUTO_EXPIRED）により自動解除されました。"
+                        : "再計算（" + event.liftReason().name() + "）により解除されました。");
+            }
             NotificationDeliveryResult result = notificationDeliveryRunner.sendOne(
                     new NotificationDeliveryRequest(
                             event.recipientUserId(), NotificationType.RECRUITMENT_PENALTY_LIFTED.name(),
                             NotificationPriority.NORMAL,
-                            "募集ペナルティが解除されました",
+                            title,
                             body,
                             "RECRUITMENT_PENALTY", event.penaltyId(),
                             NotificationScopeType.valueOf(sourceScopeType.name()), sourceScopeId,
@@ -85,6 +97,16 @@ public class RecruitmentPenaltyLiftedNotificationListener {
         } catch (Exception e) {
             log.error("募集ペナルティ解除通知の配送失敗: penaltyId={}, recipientUserId={}",
                     event.penaltyId(), event.recipientUserId(), e);
+        }
+    }
+
+    private Locale resolveLocale(Long userId) {
+        try {
+            return Locale.forLanguageTag(userLocaleCache.getLocale(userId));
+        } catch (RuntimeException e) {
+            log.warn("募集ペナルティ解除通知の locale 解決に失敗（既定 locale で継続）: recipientUserId={}",
+                    userId, e);
+            return Locale.JAPANESE;
         }
     }
 }
