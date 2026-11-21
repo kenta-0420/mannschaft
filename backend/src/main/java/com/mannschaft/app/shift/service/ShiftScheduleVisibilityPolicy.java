@@ -26,7 +26,7 @@ import java.time.LocalDateTime;
  * status との整合制約が無く、{@code PUBLISHED} かつ {@code publishedAt IS NULL} の行が実在しうる
  *（{@code ShiftMapperTest} / {@code ShiftSwapScopeContractIT} が実際に作る）。よって PUBLISHED は
  * status だけで公開扱いとする。一方 {@code ARCHIVED} は「PUBLISHED を経たもの」と
- * 「DRAFT から直接アーカイブされたもの」の両方を含みうる（{@code transitionStatus} に遷移元ガードが無い）ため、
+ * 「遷移元ガードの導入前に DRAFT から直接アーカイブされた歴史データ」の両方を含みうるため、
  * 判別できない側を閉じる方向に倒す（fail-closed）。</p>
  *
  * <p><b>閲覧者の判定は本クラスに含めない。</b> 管理者（SYSTEM_ADMIN／当該チームの ADMIN・DEPUTY_ADMIN）判定は

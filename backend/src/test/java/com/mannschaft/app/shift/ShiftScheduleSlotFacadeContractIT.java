@@ -335,6 +335,13 @@ class ShiftScheduleSlotFacadeContractIT extends AbstractMySqlIntegrationTest {
     @DisplayName("EP×主体: status・error.code・error.message が表どおり（K4・AC-1〜AC-5）")
     void EP主体の表どおりの応答(Ep ep, Actor actor) throws Exception {
         Expect expect = expected(ep, actor);
+        if (ep == Ep.S6_TRANSITION && expect.code() == null) {
+            // 公開の認可正常系は合法な開始状態から検証し、他EP・拒否主体の公開済み前提を保持する。
+            em.createNativeQuery("UPDATE shift_schedules SET status = 'ADJUSTING', "
+                            + "published_at = NULL, published_by = NULL WHERE id = :id")
+                    .setParameter("id", scheduleAId).executeUpdate();
+            em.clear();
+        }
         MvcResult result = perform(actor, ep, targetId(ep));
         assertResponse(result, ep, expect, ep + " × " + actor);
     }

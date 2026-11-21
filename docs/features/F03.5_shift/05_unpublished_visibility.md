@@ -155,9 +155,11 @@ DRAFT は「管理者が作りかけて、まだメンバーに知らせるつ�
 **既存データに `ARCHIVED + publishedAt IS NULL` は存在しうる。**
 自動アーカイブバッチ（`ShiftAutoArchiveBatchService`:55-63）は
 `findPublishedExpiredBefore` で **PUBLISHED のみ**を拾うためこの組み合わせを作らないが、
-管理者が画面から DRAFT のシフト表に対して `transitionStatus(ARCHIVED)` を叩けば作れる
-（`transitionStatus`:227 に遷移元ガードが無い）。よって「理論上のみ」ではなく実運用で起こりうる。
-fail-closed により、そうした行は非管理者から見えなくなる。**この挙動変化は意図したものである**
+過去には管理者が画面から DRAFT のシフト表に対して `transitionStatus(ARCHIVED)` を叩けば作れた
+（当時は `transitionStatus` に遷移元ガードが無かった）。現行は許可5遷移（DRAFT→COLLECTING、COLLECTING→ADJUSTING、
+ADJUSTING→COLLECTING/PUBLISHED、PUBLISHED→ARCHIVED）以外を 409 `SHIFT_012` で拒否するため、DRAFT からの直接アーカイブは新規には作れない。
+ただし過去に作られた既存行は残りうるので、fail-closed の扱いは変えない。
+fail-closed により、そうした既存行は非管理者から見えなくなる。**この挙動変化は意図したものである**
 （作りかけを畳んだシフト表がメンバーに見えていたほうが異常）。
 
 なお DB 制約（`CHECK (status <> 'PUBLISHED' OR published_at IS NOT NULL)` 等）の追加は

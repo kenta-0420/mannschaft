@@ -184,10 +184,12 @@ class ShiftSwapApprovalAtomicityConcurrencyIT extends ShiftSwapApprovalTestSuppo
         try (var executor = Executors.newFixedThreadPool(2)) {
             var writer = executor.submit(() -> inTx(() -> {
                 // status APIは通常読込→save。flushが取る行ロックを保持し、架空のFOR UPDATEを仮定しない。
+                // 公開取消（PUBLISHED→ADJUSTING）は手動遷移APIの許可5遷移に無いため、
+                // 先commitの親枠変更はエンティティ経由の fixture で再現する（行ロックの保持は同じ）。
+                var parent = schedules.findByIdForUpdate(schedule).orElseThrow();
                 if (change == Change.UNPUBLISH) {
-                    scheduleService.transitionStatus(schedule, "ADJUSTING", admin);
+                    parent.startAdjusting();
                 } else {
-                    schedules.findByIdForUpdate(schedule).orElseThrow();
                     applyChange(change, slot, extra);
                 }
                 em.flush();
