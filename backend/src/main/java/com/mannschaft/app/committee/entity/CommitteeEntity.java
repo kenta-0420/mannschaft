@@ -64,7 +64,7 @@ public class CommitteeEntity extends BaseEntity {
 
     /** デフォルト確認モード */
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 10)
     @Builder.Default
     private ConfirmationMode defaultConfirmationMode = ConfirmationMode.OPTIONAL;
 

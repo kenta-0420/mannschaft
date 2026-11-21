@@ -39,7 +39,7 @@ public class UserRoleEntity {
 
     private Long organizationId;
 
-    @Column(insertable = false, updatable = false)
+    @Column(insertable = false, updatable = false, length = 100)
     private String scopeKey;
 
     private Long grantedBy;

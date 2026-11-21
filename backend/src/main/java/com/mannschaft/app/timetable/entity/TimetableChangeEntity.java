@@ -35,7 +35,7 @@ public class TimetableChangeEntity extends BaseEntity {
     private Integer periodNumber;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 10)
     private TimetableChangeType changeType;
 
     @Column(length = 100)

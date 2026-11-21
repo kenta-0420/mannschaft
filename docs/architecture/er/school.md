@@ -284,7 +284,7 @@ erDiagram
 | `attendance_date` | `date` | NO | （なし） | 対象日 |
 | `notice_type` | `enum('ABSENCE','LATE','EARLY_LEAVE','OTHER')` | NO | （なし） | 連絡種別 |
 | `reason` | `enum('SICK','INJURY','FAMILY_REASON','BEREAVEMENT','INFECTIOUS_DISEASE','MENTAL_HEALTH','OFFICIAL_BUSINESS','OTHER')` | YES | NULL | 欠席理由 |
-| `reason_detail` | `varchar(1000)` | YES | NULL | 詳細（健康情報配慮） |
+| `reason_detail` | `varchar(4040)` | YES | NULL | 詳細（健康情報配慮） |
 | `expected_arrival_time` | `time` | YES | NULL | 遅刻時の到着予定 |
 | `expected_leave_time` | `time` | YES | NULL | 早退時の早退予定 |
 | `attached_file_keys` | `json` | YES | NULL | 診断書等の添付ファイルキー配列 |

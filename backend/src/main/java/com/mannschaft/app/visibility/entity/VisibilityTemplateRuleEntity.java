@@ -49,7 +49,7 @@ public class VisibilityTemplateRuleEntity {
      * どの条件でマッチングするかを示す。
      */
     @Enumerated(EnumType.STRING)
-    @Column(name = "rule_type", nullable = false, length = 50)
+    @Column(name = "rule_type", nullable = false, length = 40)
     private VisibilityTemplateRuleType ruleType;
 
     /**

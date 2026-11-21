@@ -49,7 +49,7 @@ public class FamilyAttendanceNoticeEntity extends BaseEntity {
 
     /** 詳細（健康情報配慮）— AES-256-GCM で暗号化して保存。 */
     @Convert(converter = EncryptedStringConverter.class)
-    @Column(length = 2000)
+    @Column(length = 4040)
     private String reasonDetail;
 
     /** 遅刻時の到着予定 */
