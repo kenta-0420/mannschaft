@@ -3,6 +3,7 @@ import type {
   JobPagedMeta,
   JobPostingSummaryResponse,
 } from '~/types/jobmatching'
+import { createLatestGuard } from '~/utils/latestRequest'
 
 /**
  * F13.1 Worker 向け求人検索ページ。
@@ -21,6 +22,13 @@ const { error } = useNotification()
 const teamStore = useTeamStore()
 
 const showGuide = ref(false)
+
+/** チーム切替・ページ送りで取得が重なっても、最後に発行した要求の応答だけを反映する。 */
+const loadGuard = createLatestGuard()
+onBeforeUnmount(() => {
+  // アンマウント後に届く応答で状態を更新しない。
+  loadGuard.next()
+})
 
 const PAGE_SIZE = 20
 
@@ -41,10 +49,14 @@ const teamOptions = computed(() =>
 
 async function load(page = 0) {
   if (selectedTeamId.value == null) {
+    // 進行中の要求の応答を無効化してから空表示にする（loading も解く）。
+    loadGuard.next()
+    loading.value = false
     jobs.value = []
     meta.value = { total: 0, page: 0, size: PAGE_SIZE, totalPages: 0 }
     return
   }
+  const isLatest = loadGuard.next()
   loading.value = true
   loadFailed.value = false
   currentPage.value = page
@@ -55,17 +67,19 @@ async function load(page = 0) {
       page,
       size: PAGE_SIZE,
     })
+    if (!isLatest()) return
     jobs.value = res.data
     meta.value = res.meta
   }
   catch (e) {
+    if (!isLatest()) return
     error(t('jobmatching.error.loadFailed'), String(e))
     jobs.value = []
     meta.value = { total: 0, page: 0, size: PAGE_SIZE, totalPages: 0 }
     loadFailed.value = true
   }
   finally {
-    loading.value = false
+    if (isLatest()) loading.value = false
   }
 }
 

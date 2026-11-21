@@ -4,6 +4,7 @@ import type {
   RecruitmentListingSummaryResponse,
   RecruitmentSearchParams,
 } from '~/types/recruitment'
+import { createLatestGuard } from '~/utils/latestRequest'
 
 const api = useRecruitmentApi()
 const { error: showError } = useNotification()
@@ -57,8 +58,16 @@ async function loadCategories() {
   }
 }
 
+/** 絞り込み・ページ送りが連続しても、最後に発行した検索の応答だけを反映する。 */
+const searchGuard = createLatestGuard()
+onBeforeUnmount(() => {
+  // アンマウント後に届く応答で状態を更新しない。
+  searchGuard.next()
+})
+
 // 検索実行
 async function search(page = 0) {
+  const isLatest = searchGuard.next()
   loading.value = true
   searchFailed.value = false
   currentPage.value = page
@@ -74,11 +83,13 @@ async function search(page = 0) {
       size: pageSize,
     }
     const res = await api.searchListings(params)
+    if (!isLatest()) return
     listings.value = res.data
     totalCount.value = res.meta.total
     totalPages.value = res.meta.totalPages
   }
   catch (e) {
+    if (!isLatest()) return
     showError(t('recruitment.search.loadError'), String(e))
     listings.value = []
     totalCount.value = 0
@@ -86,7 +97,7 @@ async function search(page = 0) {
     searchFailed.value = true
   }
   finally {
-    loading.value = false
+    if (isLatest()) loading.value = false
   }
 }
 

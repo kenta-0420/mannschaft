@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // TODO: i18n キーへの移行が必要
 import type { ContactResult, MonitoringVisitResponse } from '~/types/residenceStatus'
+import { createLatestGuard } from '~/utils/latestRequest'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -58,8 +59,16 @@ function truncateMemo(memo: string | null): string {
   return memo.length > 20 ? memo.slice(0, 20) + '...' : memo
 }
 
+/** 検索の連続実行・モード切替で応答が前後しても、最後の要求の応答だけを反映する。 */
+const searchGuard = createLatestGuard()
+onBeforeUnmount(() => {
+  // アンマウント後に届く応答で状態を更新しない。
+  searchGuard.next()
+})
+
 // 検索実行
 async function handleSearch() {
+  const isLatest = searchGuard.next()
   loading.value = true
   searched.value = true
   loadFailed.value = false
@@ -67,26 +76,32 @@ async function handleSearch() {
     if (filterMode.value === 'committee') {
       if (!committeeIdInput.value) return
       const res = await listVisitsByCommittee(orgSlug.value, Number(committeeIdInput.value))
+      if (!isLatest()) return
       visits.value = res.data
     }
     else {
       if (!residentRegistryIdInput.value) return
       const res = await listVisitsByResident(orgSlug.value, Number(residentRegistryIdInput.value))
+      if (!isLatest()) return
       visits.value = res.data
     }
   }
   catch (e) {
+    if (!isLatest()) return
     console.error('訪問履歴取得エラー:', e)
     visits.value = []
     loadFailed.value = true
   }
   finally {
-    loading.value = false
+    if (isLatest()) loading.value = false
   }
 }
 
 // フィルターモード切替時にリセット
 function handleFilterModeChange(mode: FilterMode) {
+  // 切替前の検索の応答を無効化し、読み込み中表示も解く。
+  searchGuard.next()
+  loading.value = false
   filterMode.value = mode
   committeeIdInput.value = ''
   residentRegistryIdInput.value = ''

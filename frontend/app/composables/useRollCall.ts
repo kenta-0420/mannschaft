@@ -9,6 +9,7 @@ import type {
   RollCallStatus,
 } from '~/types/care'
 import { useOfflineCareQueue } from '~/composables/jobs/useOfflineCareQueue'
+import { createLatestGuard } from '~/utils/latestRequest'
 
 /**
  * F03.12 §14 主催者点呼の上位 composable。
@@ -32,23 +33,44 @@ export function useRollCall(teamId: Ref<string>, eventId: Ref<number>) {
 
   const candidates = ref<RollCallCandidate[]>([])
   const sessionIds = ref<string[]>([])
-  const loading = ref(false)
+  const candidatesLoading = ref(false)
+  const sessionsLoading = ref(false)
+  /** 候補取得・履歴取得のどちらかが進行中か。 */
+  const loading = computed(() => candidatesLoading.value || sessionsLoading.value)
   const submitting = ref(false)
   const error = ref<string | null>(null)
   /** 直近の submit がオフラインキュー行きになったかどうか。 */
   const offlineQueued = ref(false)
 
-  /** 点呼候補者を読み込み {@link candidates} を更新する。 */
+  // 取得の種類ごとに世代を持つ（候補と履歴は互いの応答を捨てない）。
+  const candidatesGuard = createLatestGuard()
+  const sessionsGuard = createLatestGuard()
+  onBeforeUnmount(() => {
+    // アンマウント後に届く応答で状態を更新しない。
+    candidatesGuard.next()
+    sessionsGuard.next()
+  })
+
+  /**
+   * 点呼候補者を読み込み {@link candidates} を更新する。
+   *
+   * <p>要求が重なったときは最後に発行した要求の応答だけを反映する。
+   * 古い要求の成功・失敗は表示にも {@link error} にも影響させない（失敗の再送出もしない）。</p>
+   */
   async function loadCandidates(): Promise<void> {
-    loading.value = true
+    const isLatest = candidatesGuard.next()
+    candidatesLoading.value = true
     error.value = null
     try {
-      candidates.value = await api.getCandidates(teamId.value, eventId.value)
+      const result = await api.getCandidates(teamId.value, eventId.value)
+      if (!isLatest()) return
+      candidates.value = result
     } catch (e) {
+      if (!isLatest()) return
       error.value = e instanceof Error ? e.message : String(e)
       throw e
     } finally {
-      loading.value = false
+      if (isLatest()) candidatesLoading.value = false
     }
   }
 
@@ -105,15 +127,19 @@ export function useRollCall(teamId: Ref<string>, eventId: Ref<number>) {
 
   /** 過去の点呼セッション ID 一覧を読み込む（履歴ドロワー用）。 */
   async function loadSessions(): Promise<void> {
-    loading.value = true
+    const isLatest = sessionsGuard.next()
+    sessionsLoading.value = true
     error.value = null
     try {
-      sessionIds.value = await api.getSessions(teamId.value, eventId.value)
+      const result = await api.getSessions(teamId.value, eventId.value)
+      if (!isLatest()) return
+      sessionIds.value = result
     } catch (e) {
+      if (!isLatest()) return
       error.value = e instanceof Error ? e.message : String(e)
       throw e
     } finally {
-      loading.value = false
+      if (isLatest()) sessionsLoading.value = false
     }
   }
 
