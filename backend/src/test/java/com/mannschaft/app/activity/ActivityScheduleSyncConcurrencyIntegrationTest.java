@@ -46,6 +46,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class ActivityScheduleSyncConcurrencyIntegrationTest extends AbstractMySqlIntegrationTest {
     private static final long AUTHOR = 940200101L;
+    private static final long OPERATOR = 940200103L;
     @Autowired private MockMvc mvc;
     @Autowired private ObjectMapper json;
     @Autowired private ScheduleRepository schedules;
@@ -82,6 +83,12 @@ class ActivityScheduleSyncConcurrencyIntegrationTest extends AbstractMySqlIntegr
             em.createNativeQuery("DELETE FROM memberships WHERE scope_type='TEAM' AND scope_id=:id").setParameter("id", teamId).executeUpdate();
             em.createNativeQuery("DELETE FROM user_roles WHERE team_id=:id").setParameter("id", teamId).executeUpdate();
             em.createNativeQuery("DELETE FROM teams WHERE id=:id").setParameter("id", teamId).executeUpdate();
+            // 独立TXでcommit済みの固定IDユーザー（team_id=NULLのSYSTEM_ADMIN含む）も消す。
+            // 残すと同一JVMの後続試験（SYSTEM_ADMIN人数を数える試験等）の前提が崩れる。
+            List<Long> owned = List.of(AUTHOR, OPERATOR);
+            em.createNativeQuery("DELETE FROM memberships WHERE user_id IN (:ids)").setParameter("ids", owned).executeUpdate();
+            em.createNativeQuery("DELETE FROM user_roles WHERE user_id IN (:ids)").setParameter("ids", owned).executeUpdate();
+            em.createNativeQuery("DELETE FROM users WHERE id IN (:ids)").setParameter("ids", owned).executeUpdate();
         });
     }
 
@@ -218,14 +225,31 @@ class ActivityScheduleSyncConcurrencyIntegrationTest extends AbstractMySqlIntegr
                 .andExpect(status().isOk());
     }
 
+    /** 汚染元の回帰: 独立TXでcommitしたSYSTEM_ADMINとusersを後始末が残すと、後続の全体件数前提の試験が崩れる。 */
+    @Test
+    void 後始末は独立TXで作ったSYSTEM_ADMINとusersを残さない() {
+        long operator = createSystemAdminOperator();
+        cleanup();
+        Number roles = tx.execute(status -> (Number) em.createNativeQuery("SELECT COUNT(*) FROM user_roles WHERE user_id IN (:ids)")
+                .setParameter("ids", List.of(AUTHOR, operator)).getSingleResult());
+        Number users = tx.execute(status -> (Number) em.createNativeQuery("SELECT COUNT(*) FROM users WHERE id IN (:ids)")
+                .setParameter("ids", List.of(AUTHOR, operator)).getSingleResult());
+        assertThat(roles.longValue()).as("user_rolesの残骸").isZero();
+        assertThat(users.longValue()).as("usersの残骸").isZero();
+    }
+
+    private long createSystemAdminOperator() {
+        tx.executeWithoutResult(status -> {
+            MembershipTestHelper.insertActiveUser(em, OPERATOR);
+            MembershipTestHelper.insertUserRole(em, OPERATOR, "SYSTEM_ADMIN", null, null);
+        });
+        return OPERATOR;
+    }
+
     @Test
     void 活動スコープ非所属のSYSTEM_ADMINも独立TXで予定だけcommitする() throws Exception {
         JsonNode activity = create();
-        long operator = 940200103L;
-        tx.executeWithoutResult(status -> {
-            MembershipTestHelper.insertActiveUser(em, operator);
-            MembershipTestHelper.insertUserRole(em, operator, "SYSTEM_ADMIN", null, null);
-        });
+        long operator = createSystemAdminOperator();
         var update = Map.of("title", "運営の予定保存");
         var preview = mvc.perform(post("/api/v1/teams/{team}/schedules/{schedule}/activity-sync-preview", teamId, scheduleId)
                 .with(user(Long.toString(operator))).contentType(MediaType.APPLICATION_JSON)

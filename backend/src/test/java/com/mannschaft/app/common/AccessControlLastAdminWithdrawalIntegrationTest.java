@@ -34,7 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * L1-A AC8: 実MySQLのSYSTEM_ADMIN人数境界と、本番退会APIの実Security/例外写像を固定する。
- * 所有user/roleだけを追加し、各テストの@Transactional rollbackで戻す。既存adminは変更しない。
+ * 所有user/roleだけを追加し、各テストの@Transactional rollbackで戻す。既存adminはtx内でのみ除外し、rollbackで復元する。
  * 認証は既存実filter試験と同じuser(Long文字列)を使い、JWT検証自体は本試験の対象に含めない。
  */
 @AutoConfigureMockMvc
@@ -112,9 +112,13 @@ class AccessControlLastAdminWithdrawalIntegrationTest extends AbstractMySqlInteg
     }
 
     private void prepareAdmins(int count) {
-        assertThat(roles.countSystemAdmins())
-                .as("他試験のSYSTEM_ADMINを変更せず、空の初期状態から所有fixtureだけを追加する")
-                .isZero();
+        // 他試験が commit 済みの SYSTEM_ADMIN が居ても「最後の1人」境界を決定的に検証できるよう、
+        // このテストの @Transactional 内でだけ既存の SYSTEM_ADMIN 付与を除外する（終了時に rollback され、他へ影響しない）。
+        em.createNativeQuery("DELETE FROM user_roles WHERE role_id IN (SELECT id FROM roles WHERE name = 'SYSTEM_ADMIN')")
+                .executeUpdate();
+        em.flush();
+        em.clear();
+        assertThat(roles.countSystemAdmins()).as("tx内で既存SYSTEM_ADMINを除外した空の初期状態").isZero();
         MembershipTestHelper.insertActiveUser(em, ACTOR);
         MembershipTestHelper.insertActiveUser(em, SECOND_ADMIN);
         MembershipTestHelper.insertActiveUser(em, NON_ADMIN);
