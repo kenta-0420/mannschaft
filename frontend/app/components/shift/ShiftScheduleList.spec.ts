@@ -10,6 +10,7 @@ const mockRemindUnsubmitted = vi.fn()
 const mockNotifySuccess = vi.fn()
 const mockNotifyInfo = vi.fn()
 const mockNotifyError = vi.fn()
+const mockNavigateTo = vi.hoisted(() => vi.fn())
 let confirmAcceptCallback: (() => void | Promise<void>) | null = null
 
 mockNuxtImport('useShiftApi', () => () => ({
@@ -26,6 +27,7 @@ mockNuxtImport('useConfirm', () => () => ({
     confirmAcceptCallback = options.accept
   },
 }))
+mockNuxtImport('navigateTo', () => mockNavigateTo)
 mockNuxtImport('useErrorHandler', () => () => ({ handleApiError: vi.fn() }))
 
 function schedule(status = 'COLLECTING'): ShiftScheduleResponse {
@@ -171,5 +173,27 @@ describe('CMP-260910-1609 AC7: 希望受付の案内と入力導線', () => {
     // 案内の見た目だけでなく、実際に希望ダイアログを開くイベントも照合する。
     await wrapper.get('.space-y-2 > div').trigger('click')
     expect(wrapper.emitted('select')).toEqual(accepting ? [[399]] : undefined)
+  })
+})
+
+describe('CMP-260910-1605: チーム画面の一覧から枠編集への導線', () => {
+  beforeEach(() => mockNavigateTo.mockReset())
+
+  it('編集権限ありなら全ステータスで編集導線を表示し /shift/{id}/edit へ遷移する', async () => {
+    for (const status of ['DRAFT', 'COLLECTING', 'ADJUSTING', 'PUBLISHED', 'ARCHIVED']) {
+      const wrapper = await mountList(true, [schedule(status)])
+      const link = wrapper.find('[data-testid="shift-edit-399"]')
+      expect(link.exists(), status).toBe(true)
+      await link.trigger('click')
+      expect(mockNavigateTo).toHaveBeenLastCalledWith('/shift/399/edit')
+      // 行クリック（希望ダイアログ）へ伝播しない。
+      expect(wrapper.emitted('select')).toBeUndefined()
+      wrapper.unmount()
+    }
+  })
+
+  it('編集権限なしでは編集導線を表示しない', async () => {
+    const wrapper = await mountList(false)
+    expect(wrapper.find('[data-testid="shift-edit-399"]').exists()).toBe(false)
   })
 })

@@ -114,6 +114,11 @@ function goToBulkRequest() {
   navigateTo('/my/shift-request')
 }
 
+/** 枠編集画面（シフト枠の作成・編集の唯一の画面）へ。表示は canManage（ADMIN / DEPUTY_ADMIN）のみ。 */
+function goToEdit(scheduleId: number) {
+  navigateTo(`/shift/${scheduleId}/edit`)
+}
+
 function goToBoard(scheduleId: number) {
   navigateTo(`/teams/${props.teamSlug}/shifts/${scheduleId}/board`)
 }
@@ -211,6 +216,16 @@ onMounted(load)
           <span v-else class="text-xs text-surface-500">
             {{ t('shift.entry.closed') }}
           </span>
+          <Button
+            v-if="canManage"
+            :data-testid="`shift-edit-${s.id}`"
+            :label="t('shift.entry.edit')"
+            icon="pi pi-pencil"
+            size="small"
+            severity="secondary"
+            outlined
+            @click="goToEdit(s.id)"
+          />
           <Button
             v-if="canManageBoard"
             :label="t('shift.entry.board')"

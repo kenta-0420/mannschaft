@@ -422,6 +422,7 @@
       "sectionTitle": "Submit requests / Shift board",
       "bulkRequest": "Submit requests in bulk",
       "board": "Shift board",
+      "edit": "Edit slots",
       "weeklyDefault": "Set weekly defaults",
       "closed": "Request submission has closed"
     },

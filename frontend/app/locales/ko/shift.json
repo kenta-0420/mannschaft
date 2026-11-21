@@ -422,6 +422,7 @@
       "sectionTitle": "희망 제출 / 시프트 보드",
       "bulkRequest": "한꺼번에 희망 제출",
       "board": "시프트 보드",
+      "edit": "근무 칸 편집",
       "weeklyDefault": "요일별 기본값 설정",
       "closed": "희망 접수가 종료되었습니다"
     },

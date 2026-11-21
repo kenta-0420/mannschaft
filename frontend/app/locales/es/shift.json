@@ -422,6 +422,7 @@
       "sectionTitle": "Enviar preferencias / Tablero de turnos",
       "bulkRequest": "Enviar preferencias en bloque",
       "board": "Tablero de turnos",
+      "edit": "Editar turnos",
       "weeklyDefault": "Configurar valores por día de la semana",
       "closed": "El plazo de preferencias ha terminado"
     },

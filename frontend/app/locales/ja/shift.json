@@ -422,6 +422,7 @@
       "sectionTitle": "希望の提出・シフトボード",
       "bulkRequest": "まとめて希望を出す",
       "board": "シフトボード",
+      "edit": "枠を編集",
       "weeklyDefault": "曜日ごとの既定を設定",
       "closed": "希望の受付は終了しました"
     },
