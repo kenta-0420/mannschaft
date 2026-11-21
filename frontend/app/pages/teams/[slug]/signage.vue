@@ -2,12 +2,12 @@
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamSlug = String(route.params.slug)
+const teamSlug = computed(() => String(route.params.slug))
 </script>
 
 <template>
   <div>
     <!-- pageTransition(out-in) は単一要素ルートを要求するため、コンポーネント単体ルートを <div> で包む。 -->
-    <SignageManager scope-type="TEAM" :scope-id="teamSlug" />
+    <SignageScopePage scope-type="TEAM" :slug="teamSlug" />
   </div>
 </template>

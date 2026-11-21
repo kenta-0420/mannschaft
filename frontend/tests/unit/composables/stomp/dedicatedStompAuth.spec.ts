@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { ref } from 'vue'
+import { ref, reactive } from 'vue'
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 
 /**
@@ -57,7 +57,10 @@ vi.mock('@stomp/stompjs', () => {
     connected = false
     active = false
     connectHeaders: Record<string, string>
-    subscribe = vi.fn((_d: string, _cb: unknown, _headers?: Record<string, string>) => ({ id: 's', unsubscribe: vi.fn() }))
+    subscribe = vi.fn((_d: string, _cb: unknown, _headers?: Record<string, string>) => ({
+      id: 's',
+      unsubscribe: vi.fn(),
+    }))
     deactivate = vi.fn(async () => {
       this.active = false
       this.connected = false
@@ -84,6 +87,7 @@ vi.mock('~/composables/useApi', async (importOriginal) => {
   }
 })
 
+h.authStore = reactive(h.authStore)
 mockNuxtImport('useAuthStore', () => () => h.authStore)
 
 // 回復手順が使う authStore をテストの偽ストアに固定する（回復ロジック自体は本物の createStompAuthRecovery）。
@@ -94,10 +98,11 @@ vi.mock('~/composables/stomp/stompAuth', async (importOriginal) => {
   type Deps = Parameters<typeof original.createStompAuthRecovery>[0]
   return {
     ...original,
-    useStompAuthRecovery: () => original.createStompAuthRecovery({
-      config: { public: { apiBase: '' } } as unknown as Deps['config'],
-      authStore: h.authStore as unknown as Deps['authStore'],
-    }),
+    useStompAuthRecovery: () =>
+      original.createStompAuthRecovery({
+        config: { public: { apiBase: '' } } as unknown as Deps['config'],
+        authStore: h.authStore as unknown as Deps['authStore'],
+      }),
   }
 })
 mockNuxtImport('useEmergencyClosureApi', () => () => ({
@@ -131,12 +136,22 @@ const targets: Array<{ name: string; destination: string; create: () => Promise<
   {
     name: 'emergency',
     destination: '/topic/teams/42/emergency-closures/100/confirmations',
-    create: async () => (await freshComposables()).useEmergencyClosureLive({ teamId: ref(42), apiTeamRef: ref('42'), closureId: 100 }),
+    create: async () =>
+      (await freshComposables()).useEmergencyClosureLive({
+        teamId: ref(42),
+        apiTeamRef: ref('42'),
+        closureId: 100,
+      }),
   },
   {
     name: 'match',
     destination: '/topic/matches/m-1/live',
-    create: async () => (await freshComposables()).useMatchLiveSpectator({ orgId: ref(1), teamId: ref(2), matchId: 'm-1' }),
+    create: async () =>
+      (await freshComposables()).useMatchLiveSpectator({
+        orgId: ref(1),
+        teamId: ref(2),
+        matchId: 'm-1',
+      }),
   },
 ]
 
@@ -276,7 +291,10 @@ describe('match — 匿名の閲覧者', () => {
     expect(lastClient().connectHeaders).toEqual({})
     // 匿名 CONNECT は成立する（公開試合の匿名購読は従来どおり試みる）。
     await simulateConnect()
-    expect(lastClient().subscribe).toHaveBeenCalledWith('/topic/matches/m-1/live', expect.any(Function))
+    expect(lastClient().subscribe).toHaveBeenCalledWith(
+      '/topic/matches/m-1/live',
+      expect.any(Function),
+    )
     simulateError({ 'x-error-code': 'UNAUTHENTICATED' })
     await flush()
     expect(h.refresh).not.toHaveBeenCalled()

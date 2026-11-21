@@ -184,7 +184,9 @@ boolean isParticipant(Long userId, MatchEntity match);      // TURN_BASED個人�
 
 ### C.7 監査ログ【拡充】
 
-- スコア確定（メタ更新）・status 遷移（COMPLETED/CANCELLED/POSTPONED）・モード切替・**記録係変更**を監査ログに残す。
+- スコア確定（メタ更新）・status 遷移（IN_PROGRESS/COMPLETED/CANCELLED/POSTPONED）・モード切替・**記録係変更**を監査ログに残す。
+- `PERIOD_START` の新規記録を受理した時、`SCHEDULED` の試合だけを同じ transaction で `IN_PROGRESS` へ移す。認可は既存のタイムライン記録権限を維持し、メタ編集権限を追加要求しない。既に進行中なら再遷移せず、COMPLETED/CANCELLED/POSTPONED を開始記録で巻き戻さない。イベントの更新・削除・GETによる過去データの補正は行わない。
+- 自動開始の監査は、認可済みactor・保存対象scope・before/afterのimmutableイベントを `AFTER_COMMIT` で受け、既存の非同期監査へ1回委譲する。競合・入力拒否・rollbackでは発行せず、成功commit後の監査は既存同様best-effortとする。観戦用の `STATUS_CHANGED` にactor等の監査情報を載せない。最終 `PERIOD_END` からのCOMPLETED自動化は行わず、既存のスコア確定・終了条件・順位連携を維持する。
 - `AuditEventType` に以下を追加する想定（既存 tournament 系の監査追加と同パターン）:
   - `MATCH_SCORE_FINALIZED`（スコア確定）
   - `MATCH_STATUS_CHANGED`（status 遷移）

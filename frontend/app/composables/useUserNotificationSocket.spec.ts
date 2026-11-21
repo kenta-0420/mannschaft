@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { useAuthStore } from '~/stores/useAuthStore'
 import { setActivePinia, createPinia } from 'pinia'
 import { useNotificationStore } from '~/stores/useNotificationStore'
 import {
@@ -21,9 +22,20 @@ import {
  */
 
 type SubscribeCallback = (body: string) => void
+const sockets: ReturnType<typeof useUserNotificationSocket>[] = []
+function createSocket() {
+  const socket = useUserNotificationSocket()
+  sockets.push(socket)
+  return socket
+}
+afterEach(() => {
+  sockets.splice(0).forEach((socket) => socket.stop())
+})
 
 const mockUnsubscribeFn = vi.fn()
-const mockSubscribeRawFn = vi.fn((_topic: string, _callback: SubscribeCallback) => mockUnsubscribeFn)
+const mockSubscribeRawFn = vi.fn(
+  (_topic: string, _callback: SubscribeCallback) => mockUnsubscribeFn,
+)
 
 vi.mock('~/composables/chat/useChatWebSocket', () => ({
   useChatWebSocket: () => ({ subscribeRaw: mockSubscribeRawFn }),
@@ -60,10 +72,16 @@ describe('useUserNotificationSocket — /user/queue/notifications 購読', () =>
     useUserNotificationSocket().stop()
     mockSubscribeRawFn.mockClear()
     mockUnsubscribeFn.mockClear()
+    useAuthStore().user = {
+      id: 42,
+      email: 'fixture@example.invalid',
+      fullName: '試験',
+      profileImageUrl: null,
+    }
   })
 
   it('SPEC-001: start() で共有チャット接続の subscribeRaw を通じて所定トピックを購読する', () => {
-    const socket = useUserNotificationSocket()
+    const socket = createSocket()
     socket.start()
 
     expect(mockSubscribeRawFn).toHaveBeenCalledTimes(1)
@@ -74,7 +92,7 @@ describe('useUserNotificationSocket — /user/queue/notifications 購読', () =>
   })
 
   it('SPEC-002: 受信ペイロードを useNotificationStore.setLatestNotification へ反映する', () => {
-    const socket = useUserNotificationSocket()
+    const socket = createSocket()
     socket.start()
 
     const store = useNotificationStore()
@@ -88,7 +106,7 @@ describe('useUserNotificationSocket — /user/queue/notifications 購読', () =>
   })
 
   it('SPEC-003: start() を複数回呼んでも SUBSCRIBE は1回のみ実行される（多重接続防止）', () => {
-    const socket = useUserNotificationSocket()
+    const socket = createSocket()
     socket.start()
     socket.start()
     socket.start()
@@ -97,7 +115,7 @@ describe('useUserNotificationSocket — /user/queue/notifications 購読', () =>
   })
 
   it('SPEC-004: stop() で購読解除され、以後 start() すると再購読される', () => {
-    const socket = useUserNotificationSocket()
+    const socket = createSocket()
     socket.start()
     expect(mockSubscribeRawFn).toHaveBeenCalledTimes(1)
 
@@ -109,7 +127,7 @@ describe('useUserNotificationSocket — /user/queue/notifications 購読', () =>
   })
 
   it('SPEC-005: 不正フレーム（非 JSON / id 欠落）は store に反映しない', () => {
-    const socket = useUserNotificationSocket()
+    const socket = createSocket()
     socket.start()
 
     const store = useNotificationStore()
@@ -120,6 +138,76 @@ describe('useUserNotificationSocket — /user/queue/notifications 購読', () =>
 
     callback(JSON.stringify({ title: 'idなし' }))
     expect(store.latestNotification).toBeNull()
+  })
+
+  it('N1: 新consumer開始後の旧consumer停止でも購読を維持し、最後の所有者だけ解除する', () => {
+    const old = createSocket()
+    const next = createSocket()
+    old.start()
+    next.start()
+    old.stop()
+    old.stop()
+    expect(mockUnsubscribeFn).not.toHaveBeenCalled()
+    const callback = mockSubscribeRawFn.mock.calls[0]![1]
+    callback(JSON.stringify(notificationPayload()))
+    expect(useNotificationStore().latestNotification?.id).toBe(1)
+    next.stop()
+    expect(mockUnsubscribeFn).toHaveBeenCalledTimes(1)
+  })
+
+  it('N1: 旧consumer停止後の新consumer開始では購読を再確立する', () => {
+    const old = createSocket()
+    old.start()
+    old.stop()
+    createSocket().start()
+    expect(mockSubscribeRawFn).toHaveBeenCalledTimes(2)
+  })
+
+  it('N2: 匿名では購読しない', () => {
+    useAuthStore().user = null
+    createSocket().start()
+    expect(mockSubscribeRawFn).not.toHaveBeenCalled()
+  })
+
+  it('N2: 停止済み取得回の遅着フレームを同userでの再購読へ流さない', () => {
+    const socket = createSocket()
+    socket.start()
+    const oldCallback = mockSubscribeRawFn.mock.calls[0]![1]
+    socket.stop()
+    socket.start()
+    oldCallback(JSON.stringify(notificationPayload()))
+    expect(useNotificationStore().latestNotification).toBeNull()
+  })
+
+  it('N2: user切替で旧世代・別user宛を遮断し、新user宛を反映する', () => {
+    const socket = createSocket()
+    socket.start()
+    const oldCallback = mockSubscribeRawFn.mock.calls[0]![1]
+    useAuthStore().user = {
+      id: 43,
+      email: 'other@example.invalid',
+      fullName: '次の試験',
+      profileImageUrl: null,
+    }
+    socket.stop()
+    socket.start()
+    oldCallback(JSON.stringify(notificationPayload()))
+    const callback = mockSubscribeRawFn.mock.calls[1]![1]
+    callback(JSON.stringify(notificationPayload()))
+    expect(useNotificationStore().latestNotification).toBeNull()
+    callback(JSON.stringify(notificationPayload({ id: 2, userId: 43 })))
+    expect(useNotificationStore().latestNotification?.id).toBe(2)
+  })
+
+  it('N2: 同idで再loginしても旧世代フレームを反映しない', () => {
+    const socket = createSocket()
+    socket.start()
+    const callback = mockSubscribeRawFn.mock.calls[0]![1]
+    const user = useAuthStore().user
+    useAuthStore().user = null
+    useAuthStore().user = user
+    callback(JSON.stringify(notificationPayload()))
+    expect(useNotificationStore().latestNotification).toBeNull()
   })
 })
 

@@ -1,3 +1,5 @@
+import { getAuthSessionContext, type AuthSessionSnapshot } from '~/composables/authSessionContext'
+import { useNotificationStore } from '~/stores/useNotificationStore'
 import { useChatWebSocket } from '~/composables/chat/useChatWebSocket'
 import type { WebSocketNotificationPayload } from '~/stores/useNotificationStore'
 
@@ -20,40 +22,84 @@ import type { WebSocketNotificationPayload } from '~/stores/useNotificationStore
  * と全く同じ流儀。
  *
  * ## グローバルに1本（多重接続防止）
- * `start()` はモジュールレベルの購読解除ハンドルで冪等化してあり、認証済み
+ * `start()` は認証世代ごとの共有購読とconsumer所有で冪等化してあり、認証済み
  * セッション中に複数回呼ばれても STOMP SUBSCRIBE は1回のみ実行される
  * （呼び出し元は `app/layouts/default.vue`・認証済みの間だけ・ログアウトで `stop()`）。
  */
 
-let _unsubscribe: (() => void) | null = null
+interface NotificationLease {
+  unsubscribe: (() => void) | null
+  owners: number
+  session: ReturnType<typeof getAuthSessionContext>
+  snapshot: AuthSessionSnapshot
+  store: ReturnType<typeof useNotificationStore>
+}
+let activeLease: NotificationLease | null = null
 
+/** 同じ認証世代の購読だけを共有し、consumerごとに取得・解除を所有する。 */
 export function useUserNotificationSocket() {
   const { subscribeRaw } = useChatWebSocket()
+  const authStore = useAuthStore()
+  const notificationStore = useNotificationStore()
+  const session = getAuthSessionContext(authStore)
+  let ownedLease: NotificationLease | null = null
 
-  /**
-   * ユーザー宛通知トピックの購読を開始する。
-   * 既に購読中（`start` 呼び出し済み）の場合は何もしない（多重接続防止）。
-   */
-  function start(): void {
-    if (_unsubscribe !== null) return
-    const notificationStore = useNotificationStore()
-    _unsubscribe = subscribeRaw('/user/queue/notifications', (body: string) => {
-      const payload = parseUserNotificationPayload(body)
-      if (payload) {
-        notificationStore.setLatestNotification(payload)
-      }
-    })
+  function release(lease: NotificationLease): void {
+    if (activeLease === lease) {
+      activeLease = null
+      lease.store.$reset()
+    }
+    const unsubscribe = lease.unsubscribe
+    lease.unsubscribe = null
+    unsubscribe?.()
   }
 
-  /** 購読を解除する（ログアウト時に呼ぶこと）。 */
+  function start(): void {
+    if (import.meta.server) return
+    const snapshot = session.capture()
+    if (snapshot.accountId === null) {
+      stop()
+      return
+    }
+    if (ownedLease === activeLease && ownedLease !== null && session.current(ownedLease.snapshot))
+      return
+    stop()
+    if (
+      activeLease !== null &&
+      (activeLease.session !== session || !session.current(activeLease.snapshot))
+    ) {
+      release(activeLease)
+    }
+    if (activeLease === null) {
+      const lease: NotificationLease = {
+        unsubscribe: null,
+        owners: 0,
+        session,
+        snapshot,
+        store: notificationStore,
+      }
+      activeLease = lease
+      lease.unsubscribe = subscribeRaw('/user/queue/notifications', (body: string) => {
+        if (activeLease !== lease || !session.current(snapshot)) return
+        const payload = parseUserNotificationPayload(body)
+        if (payload && payload.userId === snapshot.accountId)
+          notificationStore.setLatestNotification(payload)
+      })
+    }
+    ownedLease = activeLease
+    ownedLease.owners += 1
+  }
+
   function stop(): void {
-    _unsubscribe?.()
-    _unsubscribe = null
+    const lease = ownedLease
+    ownedLease = null
+    if (lease === null) return
+    lease.owners -= 1
+    if (lease.owners === 0) release(lease)
   }
 
   return { start, stop }
 }
-
 /**
  * STOMP 受信本文（JSON 文字列）→ {@link WebSocketNotificationPayload}。
  *
@@ -67,8 +113,7 @@ export function parseUserNotificationPayload(body: string): WebSocketNotificatio
     const obj = raw as Record<string, unknown>
     if (typeof obj.id !== 'number') return null
     return raw as WebSocketNotificationPayload
-  }
-  catch {
+  } catch {
     // eslint-disable-next-line no-restricted-syntax -- 壊れた通知フレーム（JSON パース不能）を破棄する防御。null=不正フレームは購読側で無視
     return null
   }

@@ -1,5 +1,8 @@
 package com.mannschaft.app.signage.config;
 
+import com.mannschaft.app.signage.websocket.SignagePeerHandshakeInterceptor;
+import lombok.RequiredArgsConstructor;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
@@ -26,7 +29,9 @@ import java.util.Arrays;
  * <p>SimpMessagingTemplate は Spring が自動で Bean 登録するため @Bean 宣言不要。</p>
  */
 @Configuration
+@RequiredArgsConstructor
 public class SignageWebSocketConfig implements WebSocketMessageBrokerConfigurer {
+    private final SignagePeerHandshakeInterceptor peerHandshakeInterceptor;
 
     /**
      * WebSocket ハンドシェイクで許可するオリジン。{@code WebSocketConfig} / {@code CorsConfig} と
@@ -48,6 +53,7 @@ public class SignageWebSocketConfig implements WebSocketMessageBrokerConfigurer 
                 .filter(s -> !s.isEmpty())
                 .toArray(String[]::new);
         registry.addEndpoint("/ws/signage")
+                .addInterceptors(peerHandshakeInterceptor)
                 .setAllowedOriginPatterns(origins)
                 .withSockJS();
     }

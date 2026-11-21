@@ -4,6 +4,9 @@ import com.mannschaft.app.chat.ws.ChatChannelSubscriptionInterceptor;
 import com.mannschaft.app.common.websocket.StompErrorCodeErrorHandler;
 import com.mannschaft.app.match.live.MatchLiveSubscriptionInterceptor;
 import com.mannschaft.app.reservation.ws.EmergencyClosureSubscriptionInterceptor;
+import com.mannschaft.app.signage.websocket.SignageDeliveryInterceptor;
+import com.mannschaft.app.signage.websocket.SignageSubscriptionInterceptor;
+import com.mannschaft.app.signage.websocket.SignagePeerHandshakeInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
@@ -55,6 +58,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final MatchLiveSubscriptionInterceptor matchLiveSubscriptionInterceptor;
     private final EmergencyClosureSubscriptionInterceptor emergencyClosureSubscriptionInterceptor;
     private final ChatChannelSubscriptionInterceptor chatChannelSubscriptionInterceptor;
+    private final SignageSubscriptionInterceptor signageSubscriptionInterceptor;
+    private final SignageDeliveryInterceptor signageDeliveryInterceptor;
+    private final SignagePeerHandshakeInterceptor signagePeerHandshakeInterceptor;
 
     /**
      * WebSocket ハンドシェイクで許可するオリジン。{@code CorsConfig} と同じプロパティを使用し、
@@ -84,6 +90,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .filter(s -> !s.isEmpty())
                 .toArray(String[]::new);
         registry.addEndpoint("/ws")
+                .addInterceptors(signagePeerHandshakeInterceptor)
                 .setAllowedOriginPatterns(origins)
                 .withSockJS();
         // 拒否理由を ERROR フレームの x-error-code に載せる共通エラーハンドラ（設計書 §2.3.2・CMP-261104-0337）。
@@ -99,6 +106,12 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 authChannelInterceptor,
                 matchLiveSubscriptionInterceptor,
                 emergencyClosureSubscriptionInterceptor,
-                chatChannelSubscriptionInterceptor);
+                chatChannelSubscriptionInterceptor,
+                signageSubscriptionInterceptor);
+    }
+
+    @Override
+    public void configureClientOutboundChannel(ChannelRegistration registration) {
+        registration.interceptors(signageDeliveryInterceptor);
     }
 }

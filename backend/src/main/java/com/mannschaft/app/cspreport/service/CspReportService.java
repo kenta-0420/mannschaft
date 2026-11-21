@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -26,6 +27,9 @@ import java.util.Optional;
 @Slf4j
 public class CspReportService {
 
+    private static final int MAX_URI_LENGTH = 1000;
+    private static final String INVALID_URI = "/invalid-uri";
+
     private final CspReportRepository cspReportRepository;
 
     /**
@@ -37,7 +41,9 @@ public class CspReportService {
      */
     @Transactional
     public void receive(CspReportRequest report, String ipAddress, String userAgent) {
-        String hash = computeHash(report);
+        String documentUri = normalizeUri(report.getDocumentUri());
+        String blockedUri = normalizeUri(report.getBlockedUri());
+        String hash = computeHash(report.getViolatedDirective(), documentUri, blockedUri);
 
         Optional<CspReportEntity> existing = cspReportRepository.findByReportHash(hash);
         if (existing.isPresent()) {
@@ -48,10 +54,10 @@ public class CspReportService {
             log.debug("CSP違反レポート重複集約: hash={}, count={}", hash, entity.getOccurrenceCount());
         } else {
             // 新規レコードを作成
-            CspReportEntity entity = buildEntity(report, hash, ipAddress, userAgent);
+            CspReportEntity entity = buildEntity(report, documentUri, blockedUri, hash, ipAddress, userAgent);
             cspReportRepository.save(entity);
             log.info("CSP違反レポート新規記録: violatedDirective={}, documentUri={}, blockedUri={}",
-                    report.getViolatedDirective(), report.getDocumentUri(), report.getBlockedUri());
+                    report.getViolatedDirective(), documentUri, blockedUri);
         }
     }
 
@@ -59,23 +65,67 @@ public class CspReportService {
      * SHA-256(violatedDirective + "|" + documentUri + "|" + blockedUri) でハッシュを計算する。
      * null フィールドは空文字列として扱う。
      */
-    private String computeHash(CspReportRequest report) {
-        String directive = nullToEmpty(report.getViolatedDirective());
-        String documentUri = nullToEmpty(report.getDocumentUri());
-        String blockedUri = nullToEmpty(report.getBlockedUri());
-        return sha256(directive + "|" + documentUri + "|" + blockedUri);
+    private String computeHash(String directive, String documentUri, String blockedUri) {
+        return sha256(nullToEmpty(directive) + "|" + nullToEmpty(documentUri) + "|" + nullToEmpty(blockedUri));
+    }
+
+    /**
+     * 保存・集約・ログに渡す前にURLの秘密部分を除く。pathはdecodeしない。
+     * CSPのinline/eval等の分類は維持し、data/blobは埋込み内容を保持しない。
+     */
+    private String normalizeUri(String value) {
+        if (value == null) {
+            return null;
+        }
+        if (value.regionMatches(true, 0, "data:", 0, "data:".length())) {
+            return "data:";
+        }
+        if (value.regionMatches(true, 0, "blob:", 0, "blob:".length())) {
+            return "blob:";
+        }
+        try {
+            URI uri = URI.create(value);
+            String scheme = uri.getScheme();
+            String authority = uri.getRawAuthority();
+            String canonical;
+            if (authority != null) {
+                String hostAndPort = authority.substring(authority.lastIndexOf('@') + 1);
+                canonical = (scheme == null ? "" : scheme + ":") + "//" + hostAndPort
+                        + nullToEmpty(uri.getRawPath());
+            } else if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) {
+                return INVALID_URI;
+            } else {
+                // about:blankや分類値も保持しつつ、相対path等のquery/fragmentを除く。
+                int end = value.length();
+                int query = value.indexOf('?');
+                int fragment = value.indexOf('#');
+                if (query >= 0) {
+                    end = Math.min(end, query);
+                }
+                if (fragment >= 0) {
+                    end = Math.min(end, fragment);
+                }
+                canonical = value.substring(0, end);
+            }
+            // 切り詰めはpercent escapeやsurrogateを分断するため、超過は固定値にする。
+            return canonical.length() <= MAX_URI_LENGTH ? canonical : INVALID_URI;
+        } catch (IllegalArgumentException exception) {
+            return INVALID_URI;
+        }
     }
 
     /**
      * リクエスト情報から Entity を構築する。
      */
     private CspReportEntity buildEntity(CspReportRequest report,
+                                        String documentUri,
+                                        String blockedUri,
                                         String hash,
                                         String ipAddress,
                                         String userAgent) {
         return CspReportEntity.builder()
-                .documentUri(truncate(report.getDocumentUri(), 1000))
-                .blockedUri(truncate(report.getBlockedUri(), 1000))
+                .documentUri(documentUri)
+                .blockedUri(blockedUri)
                 .violatedDirective(truncate(report.getViolatedDirective(), 200))
                 .effectiveDirective(truncate(report.getEffectiveDirective(), 200))
                 .originalPolicy(report.getOriginalPolicy())

@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { execFile, spawn } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, writeFile, rm, stat, symlink, chmod } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import test from 'node:test';
@@ -133,6 +133,116 @@ async function waitFile(path) {
   }
   throw new Error(`fixture準備timeout: ${path}`);
 }
+// 新規の同UID・非dumpableな脱走fixtureだけを作る。既存プロセスは変更しない。
+async function inaccessibleFixture(t, readOwner = waitFile) {
+  const cleanups = [];
+  const f = await fixture({ after: cleanup => cleanups.push(cleanup) });
+  let running, owner;
+  // spawn/owner読取より先に登録する。準備失敗でも固定の専用Eだけへ解放を通知する。
+  t.after(async () => {
+    if (!running) {
+      for (const cleanup of cleanups) await cleanup();
+      return;
+    }
+    let finished = false;
+    running.then(() => { finished = true; });
+    const finishDeadline = Date.now() + 15000;
+    do {
+      for (const name of ['release', 'finish-command']) {
+        try { await writeFile(join(f.evidence, name), ''); }
+        catch (e) { if (e.code !== 'ENOENT') throw e; }
+      }
+      if (!finished) await Promise.race([running, new Promise(resolve => setTimeout(resolve, 25))]);
+    } while (!finished && Date.now() < finishDeadline);
+    assert.ok(finished, 'fixture runnerの有界終了未確認ではcopyを撤去しない');
+    await running;
+    if (owner) {
+      const deadline = Date.now() + 10000;
+      let gone = false;
+      while (Date.now() < deadline) {
+        try {
+          const raw = await readFile(`/proc/${owner.pid}/stat`, 'utf8');
+          const fields = raw.slice(raw.lastIndexOf(')') + 2).split(' ');
+          if (fields[19] !== owner.start || ['Z', 'X'].includes(fields[0])) { gone = true; break; }
+        } catch (e) { if (e.code === 'ENOENT' || e.code === 'ESRCH') { gone = true; break; } throw e; }
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+      assert.ok(gone, '非dumpable fixtureの停止未確認ではcopyを撤去しない');
+    }
+    const r = await receipt(f);
+    if (r.cleanup === 'retained') {
+      assert.ok(owner, `owner未確定のcopyは安全保持する: ${r.scratch}`);
+      const marker = JSON.parse(await readFile(join(r.scratch, '.verification-owner.json'), 'utf8'));
+      assert.equal(marker.evidence, f.evidence);
+      assert.equal(marker.scratch, r.scratch);
+      assert.equal(marker.uid, process.getuid());
+      assert.ok(marker.token);
+      await rm(r.scratch, { recursive: true });
+    }
+    for (const cleanup of cleanups) await cleanup();
+    return { ownerConfirmed: Boolean(owner), cleanup: r.cleanup, scratch: r.scratch };
+  });
+  const python = `import ctypes,os,time,json
+assert ctypes.CDLL(None).prctl(4,0,0,0,0)==0
+e=os.environ['VERIFICATION_EVIDENCE_DIR']
+start=open('/proc/self/stat').read().rsplit(')',1)[1].split()[19]
+with open(e+'/inaccessible.tmp','x') as out: out.write(json.dumps({'pid':os.getpid(),'start':start}))
+os.rename(e+'/inaccessible.tmp',e+'/inaccessible')
+while not os.path.exists(e+'/release'): time.sleep(.01)
+`;
+  const code = `const fs=require('fs'),{spawn}=require('child_process');const p=spawn('/usr/bin/python3',['-I','-B','-c',${JSON.stringify(python)}],{detached:true,stdio:'ignore'});p.unref();const e=process.env.VERIFICATION_EVIDENCE_DIR;const timer=setInterval(()=>{if(fs.existsSync(e+'/finish-command'))clearInterval(timer)},10)`;
+  running = run(f, [process.execPath, '-e', code], { timeout: 12000 });
+  const parsed = JSON.parse(await readOwner(join(f.evidence, 'inaccessible')));
+  assert.ok(Number.isSafeInteger(parsed.pid) && parsed.pid > 1 && typeof parsed.start === 'string' && /^\d+$/.test(parsed.start));
+  owner = parsed;
+  // namespace内UID0でもptrace権限を落とした実参照監査で拒否されることを確認する。
+  await assert.rejects(readFile(`/proc/${owner.pid}/maps`), { code: 'EACCES' });
+  return { f, running, owner };
+}
+for (const failure of ['owner読取timeout', 'ownerJSON不正']) {
+  test(`${failure}でも非dumpable fixtureを解放しrunnerがcopyを撤去する`, { skip: !linux }, async () => {
+    const hooks = [];
+    let processOwner, evidence;
+    await assert.rejects(inaccessibleFixture({ after: hook => hooks.push(hook) }, async path => {
+      // 実際にdetached fixtureが生存した後、owner準備の例外を注入する。
+      evidence = dirname(path);
+      processOwner = JSON.parse(await waitFile(path));
+      if (failure === 'owner読取timeout') throw new Error('fixture owner読取timeout');
+      return '{';
+    }), failure === 'owner読取timeout' ? /owner読取timeout/ : SyntaxError);
+    assert.equal(hooks.length, 1);
+    const result = await hooks[0]();
+    assert.equal(result.ownerConfirmed, false);
+    assert.equal(result.cleanup, 'removed');
+    await absent(result.scratch);
+    await absent(evidence);
+    try {
+      const raw = await readFile(`/proc/${processOwner.pid}/stat`, 'utf8');
+      const fields = raw.slice(raw.lastIndexOf(')') + 2).split(' ');
+      assert.ok(fields[19] !== processOwner.start || ['Z', 'X'].includes(fields[0]));
+    } catch (e) { if (e.code !== 'ENOENT' && e.code !== 'ESRCH') throw e; }
+  });
+}
+test('一過性の新規EACCESは有界内の再監査で終了を確認して撤去する', { skip: !linux }, async t => {
+  const { f, running } = await inaccessibleFixture(t);
+  await writeFile(join(f.evidence, 'finish-command'), '');
+  const release = new Promise(resolve => setTimeout(resolve, 200)).then(() => writeFile(join(f.evidence, 'release'), ''));
+  const [result] = await Promise.all([running, release]);
+  assert.equal(result.code, 0, result.stderr);
+  const r = await receipt(f);
+  assert.equal(r.cleanup, 'removed');
+  await absent(r.scratch);
+});
+test('持続EACCESの新規生存プロセスは有界待機後も保持して非0にする', { skip: !linux }, async t => {
+  const { f, running, owner } = await inaccessibleFixture(t);
+  await writeFile(join(f.evidence, 'finish-command'), '');
+  const result = await Promise.race([running, new Promise((_, reject) => setTimeout(() => reject(new Error('参照監査timeout')), 8000).unref())]);
+  assert.notEqual(result.code, 0);
+  const r = await receipt(f);
+  assert.equal(r.cleanup, 'retained');
+  assert.match(r.cleanupReason, new RegExp(`PID ${owner.pid}:.*EACCES`));
+  await stat(r.scratch);
+});
 test('SIGTERMでは子孫groupを停止してから撤去する', { skip: !linux }, async t => {
   const f = await fixture(t);
   const code = `const {spawn}=require('child_process');const fs=require('fs');const child=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'ignore'});fs.writeFileSync(process.env.VERIFICATION_EVIDENCE_DIR+'/ready',String(child.pid));setInterval(()=>{},1000)`;
@@ -212,9 +322,21 @@ test('SIGTERM停止不能は有界待機で保持し終了、動作中checkは�
   const done = new Promise(resolve => p.once('exit', code => resolve(code)));
   const pid = Number(await waitFile(join(f.evidence, 'ready')));
   t.after(() => { try { process.kill(pid, 'SIGKILL'); } catch (e) { if (e.code !== 'ESRCH') throw e; } });
+  const initial = await receipt(f);
+  const attention = await mkdtemp(join(dirname(initial.scratch), 'run-'));
+  const token = randomUUID();
+  await writeFile(join(attention, '.verification-owner.json'), JSON.stringify({ uid: process.getuid(), pid: process.pid, start: '0', scratch: attention, evidence: f.evidence, token }), { mode: 0o600 });
+  t.after(async () => {
+    assert.equal(JSON.parse(await readFile(join(attention, '.verification-owner.json'), 'utf8')).token, token);
+    await rm(attention, { recursive: true });
+  });
   const check = await exec(process.execPath, [script, '--check']).catch(e => e);
-  assert.equal(check.code, undefined);
-  assert.match(check.stdout, /稼働中:/);
+  // --checkの終了値は管理親全体の要処置を表す。自身が稼働中でも別の保持copyがあれば1。
+  assert.equal(check.code, 1);
+  assert.match(check.stdout, new RegExp(`^稼働中: ${initial.scratch} baseline除外=\\d+$`, 'm'));
+  assert.match(check.stdout, new RegExp(`^要処置: ${attention} `, 'm'));
+  await stat(initial.scratch);
+  await stat(attention);
   p.kill('SIGTERM');
   assert.notEqual(await Promise.race([done, new Promise((_, reject) => setTimeout(() => reject(new Error('停止処理timeout')), 8000).unref())]), 0);
   const r = await receipt(f);

@@ -127,7 +127,17 @@ CSP 違反を収集できるよう、`report-uri` ディレクティブを追加
   `{"csp-report":{...}}` ラッパーあり・なし両形式をパースして `csp_reports` テーブルに記録する。
   受信処理は空ボディ・JSON `null` を保存せず204、不正JSON・未対応のReporting API配列もWARNを記録して204を返す。
   MIME型の受理はReporting API配列の保存や `report-to` の導入を意味しない。前段の公開APIレート制限による429等は維持する。
-  Content-TypeごとのHTTP・実DB回帰は `CspReportContentTypeContractIT` で検証する（CMP-261001-0839）。
+  Content-TypeごとのMockMvc・実DB回帰は `CspReportContentTypeContractIT` で検証する（CMP-261001-0839）。
+
+#### 受信URLの秘密情報を二次保持しない（CMP-261117-0408）
+
+- `CspReportService` の入口で `document-uri` と `blocked-uri` をcanonical化し、その同一値をSHA-256の集約入力・DB保存・INFOログへ渡す。HTTP(S) URLのuserinfo・query全体・fragmentを除去し、通常のhost/port/pathとpercent-encoded pathをdecodeせず保持する。originだけのURLに末尾slashを足さない。
+- `inline`・`eval`・`wasm-eval`・`about:blank`・null・空文字は維持する。`data:`・`blob:` は埋込み内容を保存せずschemeだけを記録する。相対pathのquery/fragmentも除去する。
+- 不正URI、authorityのないHTTP(S) URI、秘密部分を除去した後でも既存保存上限の1000文字を超えるURIは固定値 `/invalid-uri` にする。percent escapeやsurrogateを途中で切るtruncateは行わない。秘密部分の違いだけで別の集約hashを作らない。
+- Controllerのnullパース結果・解析/保存失敗は固定理由とbody長だけをWARNに記録する。raw JSON・例外メッセージ・Throwableをログへ渡さず、既存の204応答・公開範囲・MIME型・前段レート制限を維持する。
+- 回帰は `CspReportPrivacyTest`（保存/検索hash/ログ境界・CSP分類・1000文字境界）と `CspReportPrivacyHttpIT`（未認証の実TCP POSTから実MySQL保存・重複集約まで）で検証する。後者はMockMvcではなくRANDOM_PORTの実HTTPクライアントを使う。
+
+対象は新たに受信するURL2項目とControllerの失敗ログである。既存保存履歴の書換え、pathに埋め込まれたcapability、`script-sample`・`original-policy` 等の任意free-text全体のscrubはこの対策に含めない。
 
 #### report-uri の値は「相対パス固定」とし、dev は devProxy で根治（2026-06-03）
 

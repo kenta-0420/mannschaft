@@ -66,6 +66,7 @@ on MatchEvent change (create/update/delete) for matchId:
 #### 楽観ロック競合の回避
 
 - **フル再計算 upsert は `matches.version` に一切触れない**。`player_appearances` のみを更新する。これにより共同記録で両チームが同時にイベントを積んでも `matches` 行を奪い合わず、`matches.version` の 409 が発生しない。
+  - 例外は、予定試合への `PERIOD_START` 新規記録に伴う `SCHEDULED → IN_PROGRESS` のメタ状態遷移。開始イベントと同じ transaction で既存の `matches.version` を更新する。並行開始や他のメタ更新との競合では既存の楽観ロック 409 を返し、失敗側のイベントと状態遷移をともに巻き戻す。再計算自体・進行中の通常イベントは引き続き version 非依存。
 - 楽観ロックの粒度は**イベント行単位（`match_events` 個別行）**を優先する（[03](./03_permissions_and_recording_modes.md) §C 共同記録）。
 - **スコアキャッシュ（home/away_score）の更新は `matches.version` 非依存のアトミック増減**、または**読み取り時に GOAL 集計から導出**する方式とし、共同記録での `matches` 行奪い合いを避ける。記録係による最終スコア確定（メタ更新）は `matches.version` を用いる（[03](./03_permissions_and_recording_modes.md) §C.2）。
 - この再計算は `@Transactional`（match ドメイン内に閉じる・原則 5）。

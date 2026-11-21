@@ -377,9 +377,7 @@ function onOnline() {
   void activeLive?.resync()
 }
 function onOffline() {
-  if (liveConnectionState.value !== 'DENIED' && liveConnectionState.value !== 'UNAUTHENTICATED') {
-    liveConnectionState.value = 'OFFLINE'
-  }
+  activeLive?.markOffline()
 }
 
 /** 指定 closure のリアルタイム購読を開始し、composable の状態を画面 ref へ橋渡しする。 */

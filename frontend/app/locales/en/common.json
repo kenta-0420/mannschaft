@@ -3352,6 +3352,20 @@
       "used_count": "Times used"
     }
   },
+  "signage": {
+    "layout": {
+      "landscape": "Landscape",
+      "portrait": "Portrait",
+      "standard": "Standard"
+    },
+    "slotType": {
+      "activityHighlight": "Activity highlights",
+      "ranking": "Ranking",
+      "freeText": "Free text",
+      "freeImage": "Free image",
+      "clock": "Clock"
+    }
+  },
   "globalSearch": {
     "header": {
       "placeholder": "Search everything",

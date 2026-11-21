@@ -6,6 +6,7 @@ import com.mannschaft.app.recruitment.dto.CreateRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.dto.RecruitmentListingResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentListingSummaryResponse;
 import com.mannschaft.app.recruitment.service.RecruitmentListingService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -46,6 +47,11 @@ class OrganizationRecruitmentListingControllerTest {
 
     @InjectMocks
     private OrganizationRecruitmentListingController controller;
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
 
     private void setUpSecurityContext() {
         UsernamePasswordAuthenticationToken auth =

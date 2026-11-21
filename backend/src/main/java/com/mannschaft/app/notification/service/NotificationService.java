@@ -72,21 +72,34 @@ public class NotificationService {
      */
     @Timed(value = "mannschaft.repository.query", extraTags = {"operation", "NotificationService.listNotifications"})
     public Page<NotificationResponse> listNotifications(Long userId, Pageable pageable) {
-        Page<NotificationEntity> page = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
+        return listNotifications(userId, null, pageable);
+    }
+
+    /**
+     * ユーザーの通知一覧を既読状態で絞り込んでページング取得する。
+     *
+     * @param userId   ユーザーID
+     * @param isRead   既読状態（null なら両方）
+     * @param pageable ページング情報
+     * @return 通知レスポンスのページ
+     */
+    @Timed(value = "mannschaft.repository.query", extraTags = {"operation", "NotificationService.listNotifications"})
+    public Page<NotificationResponse> listNotifications(Long userId, Boolean isRead, Pageable pageable) {
+        Page<NotificationEntity> page = isRead == null
+                ? notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
+                : notificationRepository.findByUserIdAndIsReadOrderByCreatedAtDesc(userId, isRead, pageable);
         return enrichConfirmationStates(userId, page.map(notificationMapper::toNotificationResponse), pageable);
     }
 
     /**
-     * フォルダ単位での通知一覧を取得する（F15.3 §5.2.4）。
+     * 既存のサービス呼び出し向けに、既読条件なしでフォルダ単位の通知一覧を取得する。
      *
      * <p>{@code folderId} と {@code scopeType} の両方が指定されたときのみフォルダフィルタを適用する。
      * folderId の所有検証は {@link MyScopeFolderQueryService#getScopeIdsInFolder} 内で行われ、
      * 他人 folderId の場合は {@code SCOPE_FOLDER_NOT_FOUND} が投げられる（設計書 §9.7）。</p>
      *
-     * <p>folderId 未指定時は {@link #listNotifications} と同等の挙動（後方互換）。</p>
-     *
      * @param userId    ユーザーID
-     * @param folderId  フォルダID（任意。null なら全件）
+     * @param folderId  フォルダID（任意。null ならフォルダで絞り込まない）
      * @param scopeType スコープタイプ（folderId と共に指定）
      * @param pageable  ページング
      * @return フィルタ済みの通知ページ
@@ -97,20 +110,31 @@ public class NotificationService {
             return listNotifications(userId, pageable);
         }
 
-        // 1) folder の所有 + アイテム scope_id 集合を取得（IDOR 防止込み）
         List<Long> scopeIds = myScopeFolderQueryService.getScopeIdsInFolder(userId, folderId);
+        return listNotificationsInScopes(userId, toNotificationScopeType(scopeType), scopeIds, null, pageable);
+    }
+
+    /**
+     * 本人の通知を、解決済みのスコープ ID 集合と既読状態で絞り込む。
+     *
+     * @param userId ユーザーID
+     * @param scopeType 通知ドメインのスコープ種別
+     * @param scopeIds 解決済みのスコープID一覧
+     * @param isRead 既読状態（null なら両方）
+     * @param pageable ページング情報
+     * @return フィルタ済みの通知ページ
+     */
+    public Page<NotificationResponse> listNotificationsInScopes(
+            Long userId, NotificationScopeType scopeType, List<Long> scopeIds, Boolean isRead, Pageable pageable) {
         if (scopeIds.isEmpty()) {
-            // フォルダにアイテムが無い → 結果空
             return Page.empty(pageable);
         }
 
-        // 2) scope_type + scope_id IN (...) で絞り込み
-        // NotificationEntity.scopeType は @Enumerated(EnumType.STRING) の enum 属性であり、
-        // scopeType.name() の String を渡すと Hibernate のパラメータ束縛で型不一致になる（実行時 500）。
-        // 必ず NotificationScopeType へ写像してから渡すこと。
-        Page<NotificationEntity> page = notificationRepository
-                .findByUserIdAndScopeTypeAndScopeIdInOrderByCreatedAtDesc(
-                        userId, toNotificationScopeType(scopeType), scopeIds, pageable);
+        Page<NotificationEntity> page = isRead == null
+                ? notificationRepository.findByUserIdAndScopeTypeAndScopeIdInOrderByCreatedAtDesc(
+                        userId, scopeType, scopeIds, pageable)
+                : notificationRepository.findByUserIdAndScopeTypeAndScopeIdInAndIsReadOrderByCreatedAtDesc(
+                        userId, scopeType, scopeIds, isRead, pageable);
         return enrichConfirmationStates(userId, page.map(notificationMapper::toNotificationResponse), pageable);
     }
 

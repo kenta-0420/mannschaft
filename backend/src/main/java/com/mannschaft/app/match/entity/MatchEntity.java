@@ -184,7 +184,7 @@ public class MatchEntity extends UuidV7Entity {
     @Column(name = "created_by", nullable = false)
     private Long createdBy;
 
-    /** 楽観ロック（メタ更新専用。イベント/appearances 再計算では触れない・02 §E.2） */
+    /** 楽観ロック（メタ更新と開始時status遷移。通常イベント/appearances再計算では触れない・02 §E.2） */
     @Version
     @Column(name = "version", nullable = false)
     private Long version;

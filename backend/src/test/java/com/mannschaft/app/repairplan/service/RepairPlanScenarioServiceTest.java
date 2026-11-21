@@ -23,6 +23,7 @@ import com.mannschaft.app.repairplan.repository.RepairFundBalanceRepository;
 import com.mannschaft.app.repairplan.repository.RepairPlanItemRepository;
 import com.mannschaft.app.repairplan.repository.RepairSimulationScenarioRepository;
 import com.mannschaft.app.repairplan.repository.RepairSimulationScenarioVersionRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -102,6 +103,12 @@ class RepairPlanScenarioServiceTest {
 
     private SimulateRepairPlanRequest baseRequest;
     private SimulationResult baseResult;
+
+    @AfterEach
+    void tearDown() {
+        // 同じテストワーカーの後続クラスへ認証状態を残さない。
+        SecurityContextHolder.clearContext();
+    }
 
     @BeforeEach
     void setUp() {

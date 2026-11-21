@@ -8,6 +8,9 @@ import com.mannschaft.app.config.WebSocketAuthChannelInterceptor;
 import com.mannschaft.app.config.WebSocketConfig;
 import com.mannschaft.app.match.service.MatchAccessService;
 import com.mannschaft.app.reservation.ws.EmergencyClosureSubscriptionInterceptor;
+import com.mannschaft.app.signage.websocket.SignageSubscriptionInterceptor;
+import com.mannschaft.app.signage.websocket.SignageDeliveryInterceptor;
+import com.mannschaft.app.signage.websocket.SignagePeerHandshakeInterceptor;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -36,6 +39,8 @@ import static org.assertj.core.api.Assertions.assertThatCode;
  *
  * <p>重い {@code @SpringBootTest} を持ち込まず、{@code WebSocketConfig} と依存 Bean のみの最小 context で
  * 実際に起動して確証する。</p>
+ * <p>掲示の追加依存はこの構成スライスでは代替する。認可の実証には使わず、
+ * 掲示の実DB/実TCP契約はSignageWebSocketAuthorizationIT/SignageSocketDatabaseITが担う。</p>
  */
 @DisplayName("WebSocketConfig + MatchLiveSubscriptionInterceptor ApplicationContext ロード検証 (F08.10 / 07 §J.3)")
 class MatchLiveSubscriptionInterceptorContextTest {
@@ -66,11 +71,29 @@ class MatchLiveSubscriptionInterceptorContextTest {
         }
 
         @Bean
+        SignageSubscriptionInterceptor signageSubscriptionInterceptor() {
+            return Mockito.mock(SignageSubscriptionInterceptor.class);
+        }
+
+        @Bean
+        SignageDeliveryInterceptor signageDeliveryInterceptor() {
+            return Mockito.mock(SignageDeliveryInterceptor.class);
+        }
+
+        @Bean
+        SignagePeerHandshakeInterceptor signagePeerHandshakeInterceptor() {
+            return Mockito.mock(SignagePeerHandshakeInterceptor.class);
+        }
+
+        @Bean
         WebSocketConfig webSocketConfig(WebSocketAuthChannelInterceptor auth,
                                         MatchLiveSubscriptionInterceptor sub,
                                         EmergencyClosureSubscriptionInterceptor closureSub,
-                                        ChatChannelSubscriptionInterceptor chatSub) {
-            return new WebSocketConfig(auth, sub, closureSub, chatSub);
+                                        ChatChannelSubscriptionInterceptor chatSub,
+                                        SignageSubscriptionInterceptor signageSub,
+                                        SignageDeliveryInterceptor signageDelivery,
+                                        SignagePeerHandshakeInterceptor signagePeer) {
+            return new WebSocketConfig(auth, sub, closureSub, chatSub, signageSub, signageDelivery, signagePeer);
         }
     }
 
@@ -89,7 +112,7 @@ class MatchLiveSubscriptionInterceptorContextTest {
     }
 
     @Test
-    @DisplayName("inbound channel に認証 → match live認可 → 臨時休業認可 → チャット購読認可 の順で 4 つのインターセプタが登録される（CONNECT 既存は不変・併存）")
+    @DisplayName("inbound channel に認証 → match live認可 → 臨時休業認可 → チャット → 掲示認可の順で5つが登録される")
     void inboundChannelに認証の後段で購読認可が登録される() {
         WebSocketAuthChannelInterceptor auth = Mockito.mock(WebSocketAuthChannelInterceptor.class);
         MatchLiveSubscriptionInterceptor sub =
@@ -100,18 +123,21 @@ class MatchLiveSubscriptionInterceptorContextTest {
                 new ChatChannelSubscriptionInterceptor(
                         Mockito.mock(ChatChannelRepository.class),
                         Mockito.mock(ChatChannelMemberRepository.class));
-        WebSocketConfig config = new WebSocketConfig(auth, sub, closureSub, chatSub);
+        SignageSubscriptionInterceptor signageSub = Mockito.mock(SignageSubscriptionInterceptor.class);
+        WebSocketConfig config = new WebSocketConfig(auth, sub, closureSub, chatSub, signageSub,
+                Mockito.mock(SignageDeliveryInterceptor.class), Mockito.mock(SignagePeerHandshakeInterceptor.class));
 
         ChannelRegistration registration = new ChannelRegistration();
         config.configureClientInboundChannel(registration);
 
         List<ChannelInterceptor> interceptors = extractInterceptors(registration);
-        assertThat(interceptors).hasSize(4);
+        assertThat(interceptors).hasSize(5);
         // 認証（CONNECT で userId 確定）が先、購読認可（SUBSCRIBE）が後段に並ぶ。
         assertThat(interceptors.get(0)).isSameAs(auth);
         assertThat(interceptors.get(1)).isSameAs(sub);
         assertThat(interceptors.get(2)).isSameAs(closureSub);
         assertThat(interceptors.get(3)).isSameAs(chatSub);
+        assertThat(interceptors.get(4)).isSameAs(signageSub);
     }
 
     /** {@link ChannelRegistration#getInterceptors()}（protected）を反射で呼び出して登録済み一覧を取り出す。 */

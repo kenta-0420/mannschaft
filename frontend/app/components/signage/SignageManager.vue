@@ -31,6 +31,7 @@ const {
 } = useSignageApi()
 const { success, error: showError } = useNotification()
 const { formatDateTime } = useDatetime()
+const { t } = useI18n()
 
 // --- スコープごとの表示差分 ---
 const screenNamePlaceholder = computed(() =>
@@ -40,11 +41,14 @@ const screenNamePlaceholder = computed(() =>
 // --- State ---
 const screens = ref<SignageScreen[]>([])
 const loadingScreens = ref(false)
+const screensError = shallowRef<unknown>(null)
 const selectedScreen = ref<SignageScreen | null>(null)
 const slots = ref<SignageSlot[]>([])
 const loadingSlots = ref(false)
+const slotsError = shallowRef<unknown>(null)
 const tokens = ref<SignageToken[]>([])
 const loadingTokens = ref(false)
+const tokensError = shallowRef<unknown>(null)
 const showDetailPanel = ref(false)
 
 // Dialog state
@@ -60,40 +64,40 @@ const emergencyMessage = ref('')
 const sendingEmergency = ref(false)
 
 // --- Constants ---
-const LAYOUT_OPTIONS: { label: string; value: SignageLayout }[] = [
-  { label: 'フルスクリーン', value: 'FULLSCREEN' },
-  { label: '水平分割', value: 'SPLIT_HORIZONTAL' },
-  { label: '垂直分割', value: 'SPLIT_VERTICAL' },
-  { label: '4分割', value: 'QUAD' },
-]
+const LAYOUT_OPTIONS = computed<{ label: string; value: SignageLayout }[]>(() => [
+  { label: t('signage.layout.landscape'), value: 'LANDSCAPE' },
+  { label: t('signage.layout.portrait'), value: 'PORTRAIT' },
+  { label: t('signage.layout.standard'), value: 'STANDARD' },
+])
 
 const TRANSITION_OPTIONS: { label: string; value: SignageTransition }[] = [
   { label: 'なし', value: 'NONE' },
   { label: 'フェード', value: 'FADE' },
   { label: 'スライド', value: 'SLIDE' },
-  { label: 'ズーム', value: 'ZOOM' },
 ]
 
-const SLOT_TYPE_OPTIONS: { label: string; value: SignageSlotType }[] = [
-  { label: '画像', value: 'IMAGE' },
-  { label: '動画', value: 'VIDEO' },
-  { label: 'URL', value: 'URL' },
+const SLOT_TYPE_OPTIONS = computed<{ label: string; value: SignageSlotType }[]>(() => [
   { label: 'お知らせ', value: 'ANNOUNCEMENT' },
   { label: 'スケジュール', value: 'SCHEDULE' },
+  { label: t('signage.slotType.activityHighlight'), value: 'ACTIVITY_HIGHLIGHT' },
+  { label: t('signage.slotType.ranking'), value: 'RANKING' },
+  { label: t('signage.slotType.freeText'), value: 'FREE_TEXT' },
+  { label: t('signage.slotType.freeImage'), value: 'FREE_IMAGE' },
   { label: '天気', value: 'WEATHER' },
-]
+  { label: t('signage.slotType.clock'), value: 'CLOCK' },
+])
 
 // --- Zod schemas ---
 const screenSchema = z.object({
   name: z.string().min(1, '画面名は必須です').max(100, '100文字以内で入力してください'),
   description: z.string().max(500, '500文字以内').optional(),
-  layout: z.enum(['FULLSCREEN', 'SPLIT_HORIZONTAL', 'SPLIT_VERTICAL', 'QUAD']),
+  layout: z.enum(['LANDSCAPE', 'PORTRAIT', 'STANDARD']),
   defaultSlideDuration: z
     .number({ error: (issue) => issue.input === undefined ? undefined : '数値を入力してください' })
     .int()
     .min(1, '1秒以上を指定してください')
     .max(3600, '3600秒以内で指定してください'),
-  transitionEffect: z.enum(['NONE', 'FADE', 'SLIDE', 'ZOOM']),
+  transitionEffect: z.enum(['NONE', 'FADE', 'SLIDE']),
 })
 
 type ScreenForm = z.infer<typeof screenSchema>
@@ -109,7 +113,7 @@ const {
   initialValues: {
     name: '',
     description: '',
-    layout: 'FULLSCREEN',
+    layout: 'LANDSCAPE',
     defaultSlideDuration: 10,
     transitionEffect: 'FADE',
   },
@@ -122,7 +126,10 @@ const [screenDuration, screenDurationAttrs] = defineScreenField('defaultSlideDur
 const [screenTransition, screenTransitionAttrs] = defineScreenField('transitionEffect')
 
 const slotSchema = z.object({
-  slotType: z.enum(['IMAGE', 'VIDEO', 'URL', 'ANNOUNCEMENT', 'SCHEDULE', 'WEATHER']),
+  slotType: z.enum([
+    'ANNOUNCEMENT', 'SCHEDULE', 'ACTIVITY_HIGHLIGHT', 'RANKING',
+    'FREE_TEXT', 'FREE_IMAGE', 'WEATHER', 'CLOCK',
+  ]),
   contentSourceId: z.string().optional(),
   durationSeconds: z
     .number({ error: (issue) => issue.input === undefined ? undefined : '数値を入力してください' })
@@ -157,10 +164,12 @@ const [slotDisplayCondition, slotDisplayConditionAttrs] = defineSlotField('displ
 // --- Data loading ---
 async function loadScreens() {
   loadingScreens.value = true
+  screensError.value = null
   try {
     const res = await getScreens(props.scopeType, props.scopeId)
     screens.value = res.data
-  } catch {
+  } catch (error) {
+    screensError.value = error
     showError('サイネージ画面一覧の取得に失敗しました')
   } finally {
     loadingScreens.value = false
@@ -169,10 +178,12 @@ async function loadScreens() {
 
 async function loadSlots(screenId: number) {
   loadingSlots.value = true
+  slotsError.value = null
   try {
     const res = await getSlots(screenId)
     slots.value = res.data
-  } catch {
+  } catch (error) {
+    slotsError.value = error
     showError('スロット一覧の取得に失敗しました')
   } finally {
     loadingSlots.value = false
@@ -181,10 +192,12 @@ async function loadSlots(screenId: number) {
 
 async function loadTokens(screenId: number) {
   loadingTokens.value = true
+  tokensError.value = null
   try {
     const res = await getTokens(screenId)
     tokens.value = res.data
-  } catch {
+  } catch (error) {
+    tokensError.value = error
     showError('トークン一覧の取得に失敗しました')
   } finally {
     loadingTokens.value = false
@@ -313,7 +326,7 @@ async function handleDeleteSlot(slot: SignageSlot) {
 async function handleIssueToken() {
   if (!selectedScreen.value) return
   try {
-    await issueToken(selectedScreen.value.id)
+    await issueToken(selectedScreen.value.id, selectedScreen.value.name)
     success('トークンを発行しました')
     await loadTokens(selectedScreen.value.id)
   } catch {
@@ -365,11 +378,11 @@ async function handleSendEmergency() {
 
 // --- Helpers ---
 function getLayoutLabel(layout: string): string {
-  return LAYOUT_OPTIONS.find((o) => o.value === layout)?.label ?? layout
+  return LAYOUT_OPTIONS.value.find((o) => o.value === layout)?.label ?? layout
 }
 
 function getSlotTypeLabel(type: string): string {
-  return SLOT_TYPE_OPTIONS.find((o) => o.value === type)?.label ?? type
+  return SLOT_TYPE_OPTIONS.value.find((o) => o.value === type)?.label ?? type
 }
 
 onMounted(loadScreens)
@@ -383,6 +396,13 @@ onMounted(loadScreens)
     <div v-if="loadingScreens" class="flex justify-center py-10">
       <LoadingBounce />
     </div>
+
+    <DashboardErrorState
+      v-else-if="screensError"
+      :error="screensError"
+      :show-retry="true"
+      @retry="loadScreens"
+    />
 
     <div v-else>
       <div class="mb-4 flex justify-end">
@@ -499,6 +519,13 @@ onMounted(loadScreens)
             <LoadingBounce />
           </div>
 
+          <DashboardErrorState
+            v-else-if="slotsError"
+            :error="slotsError"
+            :show-retry="true"
+            @retry="loadSlots(selectedScreen.id)"
+          />
+
           <DataTable
             v-else
             :value="slots"
@@ -558,6 +585,13 @@ onMounted(loadScreens)
             <LoadingBounce />
           </div>
 
+          <DashboardErrorState
+            v-else-if="tokensError"
+            :error="tokensError"
+            :show-retry="true"
+            @retry="loadTokens(selectedScreen.id)"
+          />
+
           <div v-else-if="tokens.length === 0" class="py-4 text-center text-sm text-surface-400">
             トークンがありません
           </div>
@@ -569,7 +603,7 @@ onMounted(loadScreens)
               class="flex items-center gap-2 rounded-lg border border-surface-200 p-3 dark:border-surface-700"
             >
               <div class="min-w-0 flex-1">
-                <p v-if="token.label" class="text-sm font-medium">{{ token.label }}</p>
+                <p v-if="token.name" class="text-sm font-medium">{{ token.name }}</p>
                 <p class="truncate font-mono text-xs text-surface-500">{{ token.token }}</p>
                 <p v-if="token.lastSeenAt" class="mt-0.5 text-xs text-surface-400">
                   最終接続: {{ formatDateTime(token.lastSeenAt) }}

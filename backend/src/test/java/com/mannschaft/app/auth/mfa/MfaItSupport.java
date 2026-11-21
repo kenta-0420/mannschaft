@@ -17,6 +17,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -65,6 +67,18 @@ public abstract class MfaItSupport extends AbstractMySqlIntegrationTest {
     protected static final String MFA_SESSION_KEY_PREFIX = "mannschaft:auth:mfa_session_token:";
     /** 現行実装・設計書（F01.1 §TOTP コード検証フロー）の TOTP 使用済み印キー接頭辞。 */
     protected static final String TOTP_USED_KEY_PREFIX = "mannschaft:auth:totp_used:";
+
+    /**
+     * 偽 OAuth プロバイダへ向ける。OAuth ログインの MFA 試験（{@code OAuthMfaLoginIT}）が使う。個別クラスで宣言すると
+     * 構成キーが増えるため、MFA 系 IT 共通の基底で 1 度だけ宣言する（{@link MfaFakeOAuthProviders}）。
+     */
+    @DynamicPropertySource
+    static void configureFakeOAuthProviders(DynamicPropertyRegistry registry) {
+        registry.add("mannschaft.google.token-uri", () -> MfaFakeOAuthProviders.baseUrl() + "/google/token");
+        registry.add("mannschaft.google.userinfo-uri", () -> MfaFakeOAuthProviders.baseUrl() + "/google/userinfo");
+        registry.add("mannschaft.line.token-uri", () -> MfaFakeOAuthProviders.baseUrl() + "/line/token");
+        registry.add("mannschaft.apple.token-uri", () -> MfaFakeOAuthProviders.baseUrl() + "/apple/token");
+    }
 
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final String BASE32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";

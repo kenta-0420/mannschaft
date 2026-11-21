@@ -1,19 +1,19 @@
 package com.mannschaft.app.billing;
 
 import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
-import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.role.dto.PermissionGroupRequest;
 import com.mannschaft.app.role.dto.UserPermissionGroupAssignRequest;
 import com.mannschaft.app.role.entity.PermissionEntity;
 import com.mannschaft.app.role.entity.PermissionGroupEntity;
 import com.mannschaft.app.role.entity.PermissionGroupPermissionEntity;
 import com.mannschaft.app.role.entity.UserPermissionGroupEntity;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.service.PermissionGroupService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.AfterEach;
@@ -24,7 +24,6 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -46,6 +45,7 @@ class BillingOperationAuthorizerConcurrencyIT extends AbstractMySqlIntegrationTe
     private static final String BILLING_PERMISSION = "MANAGE_TEAM_BILLING";
 
     @Autowired private BillingOperationAuthorizer authorizer;
+    @Autowired private AccessControlService accessControlService;
     @Autowired private PermissionGroupService permissionGroupService;
     @Autowired private TransactionTemplate transactionTemplate;
     @PersistenceContext private EntityManager entityManager;
@@ -60,10 +60,13 @@ class BillingOperationAuthorizerConcurrencyIT extends AbstractMySqlIntegrationTe
         transactionTemplate.executeWithoutResult(tx -> {
             adminId = insertUser("admin");
             deputyId = insertUser("deputy");
-            grantTeamRole(adminId, "ADMIN");
-            grantTeamRole(deputyId, "DEPUTY_ADMIN");
-            enroll(adminId);
-            enroll(deputyId);
+            MembershipTestHelper.insertUserRole(entityManager, adminId, "ADMIN", TEAM_ID, null);
+            MembershipTestHelper.insertUserRole(entityManager, deputyId, "DEPUTY_ADMIN", TEAM_ID, null);
+            MembershipTestHelper.insertMembership(entityManager, adminId, ScopeType.TEAM, TEAM_ID, RoleKind.MEMBER);
+            MembershipTestHelper.insertMembership(entityManager, deputyId, ScopeType.TEAM, TEAM_ID, RoleKind.MEMBER);
+            assertThat(accessControlService.getRoleName(adminId, TEAM_ID, ScopeType.TEAM.name())).isEqualTo("ADMIN");
+            assertThat(accessControlService.getRoleName(deputyId, TEAM_ID, ScopeType.TEAM.name()))
+                    .isEqualTo("DEPUTY_ADMIN");
 
             Long billingPermissionId = permissionId(BILLING_PERMISSION);
             harmlessPermissionId = insertHarmlessPermission();
@@ -199,34 +202,6 @@ class BillingOperationAuthorizerConcurrencyIT extends AbstractMySqlIntegrationTe
         entityManager.persist(user);
         entityManager.flush();
         return user.getId();
-    }
-
-    private void grantTeamRole(Long userId, String roleName) {
-        ensureRole(roleName);
-        Number roleId = (Number) entityManager.createNativeQuery("SELECT id FROM roles WHERE name = :name")
-                .setParameter("name", roleName).getSingleResult();
-        entityManager.persist(UserRoleEntity.builder().userId(userId).roleId(roleId.longValue())
-                .teamId(TEAM_ID).build());
-    }
-
-    private void ensureRole(String roleName) {
-        int priority = "ADMIN".equals(roleName) ? 100 : 80;
-        entityManager.createNativeQuery("""
-                        INSERT IGNORE INTO roles
-                            (name, display_name, priority, is_system, created_at, updated_at)
-                        VALUES (:name, :displayName, :priority, false, NOW(6), NOW(6))
-                        """)
-                .setParameter("name", roleName)
-                .setParameter("displayName", "ADMIN".equals(roleName) ? "管理者" : "副管理者")
-                .setParameter("priority", priority)
-                .executeUpdate();
-        entityManager.flush();
-    }
-
-    private void enroll(Long userId) {
-        entityManager.persist(MembershipEntity.builder()
-                .userId(userId).scopeType(ScopeType.TEAM).scopeId(TEAM_ID)
-                .roleKind(RoleKind.MEMBER).joinedAt(LocalDateTime.now()).build());
     }
 
     private Long permissionId(String name) {

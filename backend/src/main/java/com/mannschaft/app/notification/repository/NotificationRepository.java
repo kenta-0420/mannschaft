@@ -24,6 +24,12 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
     Page<NotificationEntity> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 
     /**
+     * ユーザーの通知一覧を既読状態で絞り込んでページング取得する。
+     */
+    Page<NotificationEntity> findByUserIdAndIsReadOrderByCreatedAtDesc(
+            Long userId, Boolean isRead, Pageable pageable);
+
+    /**
      * ユーザーの未読通知一覧をページング取得する。
      */
     Page<NotificationEntity> findByUserIdAndIsReadFalseOrderByCreatedAtDesc(Long userId, Pageable pageable);
@@ -116,6 +122,12 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
      */
     Page<NotificationEntity> findByUserIdAndScopeTypeAndScopeIdInOrderByCreatedAtDesc(
             Long userId, NotificationScopeType scopeType, List<Long> scopeIds, Pageable pageable);
+
+    /**
+     * 指定ユーザーのフォルダ内通知を既読状態でも絞り込んでページング取得する。
+     */
+    Page<NotificationEntity> findByUserIdAndScopeTypeAndScopeIdInAndIsReadOrderByCreatedAtDesc(
+            Long userId, NotificationScopeType scopeType, List<Long> scopeIds, Boolean isRead, Pageable pageable);
 
     /**
      * 指定ユーザー向けに、同一の notification_type / source_type / source_id の通知が

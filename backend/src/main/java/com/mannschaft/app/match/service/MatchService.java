@@ -6,6 +6,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.match.MatchCompletedEvent;
+import com.mannschaft.app.match.MatchRecordingStartedEvent;
 import com.mannschaft.app.match.MatchErrorCode;
 import com.mannschaft.app.match.catalog.VolleyballSetRules;
 import com.mannschaft.app.match.catalog.WinMethodCatalog;
@@ -446,6 +447,23 @@ public class MatchService {
     // ─────────────────────────────────────────────
     // status 遷移（COMPLETED で MatchCompletedEvent 発火・監査）
     // ─────────────────────────────────────────────
+
+    /**
+     * 認可・検証済みの開始記録と同じTXで、予定試合だけを進行中へ移す。
+     * 記録権限とメタ編集権限は異なるため、公開changeStatusの追加認可は課さない。
+     * 監査はAFTER_COMMITへ委譲し、競合で巻き戻された開始の監査を残さない。
+     */
+    @Transactional
+    void startFromTimeline(MatchEntity match, Long actorUserId) {
+        if (match.getStatus() != MatchStatus.SCHEDULED) {
+            return;
+        }
+        match.setStatus(MatchStatus.IN_PROGRESS);
+        matchRepository.save(match);
+        eventPublisher.publishEvent(new MatchRecordingStartedEvent(match.getId(), match.getTeamId(),
+                match.getOrganizationId(), actorUserId, MatchStatus.SCHEDULED, MatchStatus.IN_PROGRESS));
+        eventPublisher.publishEvent(MatchLiveUpdateEvent.statusChanged(match.getId(), MatchStatus.IN_PROGRESS));
+    }
 
     /**
      * status を遷移する（作成者/記録係/主体チーム ADMIN のみ・03 §C.2）。

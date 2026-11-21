@@ -519,8 +519,12 @@ Spring のテストコンテキストを使わない。通常の `test` はタ�
   1 回だけ全クラス分を実行する。
 - `archUnitTest`（archunit エンジン・`@AnalyzeClasses`）は専用ジョブではなく、通常の `test` タスクの
   依存タスク（`tasks.named<Test>("test") { dependsOn(archUnitTest, ...) }`）として、各 shard の
-  `test` 実行の一部として shard の絞り込み（タグ/クラスフィルタ）を継承したまま、Spring とは別の
-  `Test` タスク＝別 JVM で実行される。
+  `test` 実行の一部として shard 分割せず全ルールを、Spring とは別の `Test` タスク＝別 JVM で実解析する。
+  各 runner の XML を `scripts/verify_archunit_execution.py` で現 Java source の行頭 `@ArchTest` から
+  導出したクラス別件数に照合する。件数欠落、重複 case、failure/error/skip は失敗となる。
+  store のバイト同値だけを実行の証明とせず、実行後の Integrity 2 case と合わせて確認する。
+  `archUnitTest` は heap 4g・forkEvery=0・maxParallelForks=1 とし、全 compiled class の選別を
+  1 JVM にまとめる。通常 `test` の180 class毎のfork・parallelは維持し、mainと同じ8 shardに割り当てる。
 
 - `@Tag(ArchUnitTestTag.ARCHUNIT)` を付けた **junit-jupiter** のテストクラスは `archTest`（heap 3g・
   1 JVM）が走らせる。

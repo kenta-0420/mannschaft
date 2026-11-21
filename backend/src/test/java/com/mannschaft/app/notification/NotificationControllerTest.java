@@ -1,13 +1,13 @@
 package com.mannschaft.app.notification;
 
 import com.mannschaft.app.common.ApiResponse;
-import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.notification.controller.NotificationAdminController;
 import com.mannschaft.app.notification.controller.NotificationController;
 import com.mannschaft.app.notification.dto.NotificationResponse;
 import com.mannschaft.app.notification.dto.NotificationStatsResponse;
 import com.mannschaft.app.notification.dto.SnoozeRequest;
 import com.mannschaft.app.notification.dto.UnreadCountResponse;
+import com.mannschaft.app.notification.service.NotificationListQueryService;
 import com.mannschaft.app.notification.service.NotificationService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,10 +23,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -37,6 +40,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.mannschaft.app.common.SecurityUtils;
 
@@ -49,6 +55,9 @@ class NotificationControllerTest {
 
     @Mock
     private NotificationService notificationService;
+
+    @Mock
+    private NotificationListQueryService notificationListQueryService;
 
     @InjectMocks
     private NotificationController notificationController;
@@ -87,26 +96,36 @@ class NotificationControllerTest {
     class ListNotifications {
 
         @Test
-        @DisplayName("通知一覧取得_正常_200返却")
-        void 通知一覧取得_正常_200返却() {
+        @DisplayName("通知一覧取得_未読条件を適用し不正値を拒否する")
+        void 通知一覧取得_未読条件を適用し不正値を拒否する() throws Exception {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
-                // Given
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
                 Pageable pageable = PageRequest.of(0, 10);
-                NotificationResponse resp = createNotificationResponse();
-                Page<NotificationResponse> page = new PageImpl<>(List.of(resp), pageable, 1);
+                NotificationResponse response = createNotificationResponse().toBuilder().isRead(true).build();
+                given(notificationListQueryService.listNotifications(USER_ID, null, null, null, pageable))
+                        .willReturn(new PageImpl<>(List.of(response), pageable, 1));
+                given(notificationListQueryService.listNotifications(USER_ID, null, null, false, pageable))
+                        .willReturn(Page.empty(pageable));
+                MockMvc mockMvc = MockMvcBuilders.standaloneSetup(notificationController)
+                        .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
+                        .build();
 
-                given(notificationService.listNotifications(USER_ID, pageable)).willReturn(page);
+                mockMvc.perform(get("/api/v1/notifications").param("size", "10"))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.data[0].isRead").value(true));
 
-                // When（F15.3: folderId/scopeType は未指定→従来の全件取得）
-                ResponseEntity<PagedResponse<NotificationResponse>> result =
-                        notificationController.listNotifications(null, null, pageable);
+                mockMvc.perform(get("/api/v1/notifications")
+                                .param("size", "10")
+                                .param("is_read", "false"))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.data").isEmpty());
 
-                // Then
-                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-                assertThat(result.getBody()).isNotNull();
-                assertThat(result.getBody().getData()).hasSize(1);
-                verify(notificationService).listNotifications(USER_ID, pageable);
+                mockMvc.perform(get("/api/v1/notifications")
+                                .param("size", "10")
+                                .param("is_read", "invalid"))
+                        .andExpect(status().isBadRequest());
+                verify(notificationListQueryService).listNotifications(USER_ID, null, null, null, pageable);
+                verify(notificationListQueryService).listNotifications(USER_ID, null, null, false, pageable);
             }
         }
     }

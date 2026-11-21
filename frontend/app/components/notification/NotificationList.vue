@@ -2,6 +2,8 @@
 import type { NotificationResponse } from '~/types/notification'
 import type { SnoozePreset } from '~/utils/snoozePreset'
 import { computeSnoozeUntil } from '~/utils/snoozePreset'
+import { getAuthSessionContext, type AuthSessionSnapshot } from '~/composables/authSessionContext'
+import { useNotificationStore } from '~/stores/useNotificationStore'
 
 const { getNotifications, markAsRead, markAsUnread, markAllAsRead, snooze } = useNotificationApi()
 const { confirmNotification, confirmPersonalNotification, getNotificationDetail } =
@@ -13,6 +15,8 @@ const { t } = useI18n()
 const router = useRouter()
 const { relativeTime } = useRelativeTime()
 const authStore = useAuthStore()
+const session = getAuthSessionContext(authStore)
+const notificationStore = useNotificationStore()
 const toast = useToast()
 
 const notifications = ref<NotificationResponse[]>([])
@@ -21,6 +25,27 @@ const loading = ref(false)
 const nextPage = ref(0)
 const hasNext = ref(false)
 const filter = ref<'all' | 'unread'>('all')
+let disposed = false
+let viewRevision = 0
+let mutationRevision = 0
+let pendingPage: number | null = null
+let refreshPending = false
+let loadFlight: Promise<void> | null = null
+function current(snapshot: AuthSessionSnapshot): boolean {
+  return !disposed && session.current(snapshot)
+}
+function mutationSucceeded(): void {
+  mutationRevision += 1
+  if (loadFlight) refreshPending = true
+}
+function patchNotification(
+  notif: NotificationResponse,
+  patch: Partial<NotificationResponse>,
+): void {
+  Object.assign(notif, patch)
+  const displayed = notifications.value.find((row) => row.id === notif.id)
+  if (displayed && displayed !== notif) Object.assign(displayed, patch)
+}
 
 /** 確認通知の sourceId をキーとした未確認サマリのキャッシュ */
 interface UnconfirmedSummary {
@@ -57,6 +82,8 @@ function toggleSnoozeMenu(event: MouseEvent, notif: NotificationResponse) {
 
 /** スヌーズ実行（楽観更新）*/
 async function onSnooze(notif: NotificationResponse, preset: SnoozePreset) {
+  const snapshot = session.capture()
+  const revision = viewRevision
   const tz = authStore.user?.timezone ?? 'Asia/Tokyo'
   const snoozedUntil = computeSnoozeUntil(preset, tz)
 
@@ -68,15 +95,25 @@ async function onSnooze(notif: NotificationResponse, preset: SnoozePreset) {
 
   try {
     await snooze(notif.id, snoozedUntil)
+    if (!current(snapshot)) return
+    mutationSucceeded()
+    notifications.value = notifications.value.filter((row) => row.id !== notif.id)
     toast.add({
       severity: 'success',
       summary: t('inbox.action.snoozed'),
       life: 3000,
     })
   } catch {
+    if (!current(snapshot)) return
     // ロールバック: 除去した通知を元の位置に戻す
-    if (idx >= 0) {
+    if (
+      revision === viewRevision &&
+      idx >= 0 &&
+      !notifications.value.some((row) => row.id === notif.id)
+    ) {
       notifications.value.splice(idx, 0, notif)
+    } else if (revision !== viewRevision) {
+      requestRefresh()
     }
     showError(t('inbox.action.snoozeFailed'))
   }
@@ -84,62 +121,121 @@ async function onSnooze(notif: NotificationResponse, preset: SnoozePreset) {
 
 // ─── 通知読み込み ──────────────────────────────
 
-async function loadNotifications(page = 0) {
+function loadNotifications(page = 0): Promise<void> {
+  pendingPage = page
+  return drainLoads()
+}
+
+function requestRefresh(): void {
+  refreshPending = true
+  void drainLoads()
+}
+
+function drainLoads(): Promise<void> {
+  if (loadFlight) return loadFlight
+  if (disposed || session.accountId === null) return Promise.resolve()
+  loadFlight = (async () => {
+    while (!disposed && session.accountId !== null && (pendingPage !== null || refreshPending)) {
+      const page = pendingPage
+      pendingPage = null
+      if (page === 0 || page === null) refreshPending = false
+      await fetchNotifications(page)
+    }
+  })().finally(() => {
+    loadFlight = null
+    if (!disposed && session.accountId !== null && (pendingPage !== null || refreshPending))
+      void drainLoads()
+  })
+  return loadFlight
+}
+
+/** refreshは現在filterの取得済みpage深さをREST正本から再取得する。旧rowは継ぎ足さない。 */
+async function fetchNotifications(page: number | null) {
+  const snapshot = session.capture()
+  const revision = viewRevision
+  const mutation = mutationRevision
+  const selectedFilter = filter.value
+  const depth = Math.max(1, nextPage.value)
+  const valid = () =>
+    current(snapshot) && revision === viewRevision && selectedFilter === filter.value
   loading.value = true
   try {
-    const res = await getNotifications({
-      page,
-      size: 20,
-      isRead: filter.value === 'unread' ? false : undefined,
-    })
-    if (page === 0) {
-      notifications.value = res.data
-    } else {
-      notifications.value.push(...res.data)
+    const pages = page === null ? Array.from({ length: depth }, (_, index) => index) : [page]
+    const rows: NotificationResponse[] = []
+    let totalPages = 0
+    for (const requestedPage of pages) {
+      const res = await getNotifications({
+        page: requestedPage,
+        size: 20,
+        isRead: selectedFilter === 'unread' ? false : undefined,
+      })
+      if (!valid()) return
+      if (mutation !== mutationRevision) {
+        refreshPending = true
+        return
+      }
+      rows.push(...res.data)
+      totalPages = res.meta.totalPages
     }
-    nextPage.value = res.meta.page + 1
-    hasNext.value = nextPage.value < res.meta.totalPages
+    const combined = page !== null && page > 0 ? [...notifications.value, ...rows] : rows
+    notifications.value = [...new Map(combined.map((row) => [row.id, row])).values()]
+    nextPage.value = page === null ? depth : page + 1
+    hasNext.value = nextPage.value < totalPages
     // 確認通知のサマリ（未確認件数等）を並列取得（権限が無いものは静かにスキップ）
     await loadConfirmableSummariesForList()
   } catch {
-    showError(t('notification.list.loadError'))
+    if (valid()) showError(t('notification.list.loadError'))
   } finally {
-    loading.value = false
+    if (!disposed) loading.value = false
   }
 }
 
 async function onToggleRead(notif: NotificationResponse) {
+  const snapshot = session.capture()
   try {
     if (notif.isRead) {
       await markAsUnread(notif.id)
-      notif.isRead = false
+      if (!current(snapshot)) return
+      mutationSucceeded()
+      patchNotification(notif, { isRead: false })
     } else {
       await markAsRead(notif.id)
-      notif.isRead = true
+      if (!current(snapshot)) return
+      mutationSucceeded()
+      patchNotification(notif, { isRead: true })
     }
   } catch {
+    if (!current(snapshot)) return
     showError(t('notification.list.actionError'))
   }
 }
 
 async function onMarkAllRead() {
+  const snapshot = session.capture()
   try {
     await markAllAsRead()
+    if (!current(snapshot)) return
+    mutationSucceeded()
     notifications.value.forEach((n) => (n.isRead = true))
     notifBadgeCount.value = 0 // ベルバッジを即時リセット
   } catch {
+    if (!current(snapshot)) return
     showError(t('notification.list.markAllReadError'))
   }
 }
 
 function onClickNotification(notif: NotificationResponse) {
+  const snapshot = session.capture()
   if (!notif.isRead) {
     // 遷移は待たない。既読化の失敗は静かに記録し、未読のまま残す（再クリックで再試行できる）。
     markAsRead(notif.id)
       .then(() => {
-        notif.isRead = true
+        if (!current(snapshot)) return
+        mutationSucceeded()
+        patchNotification(notif, { isRead: true })
       })
       .catch((error: unknown) => {
+        if (!current(snapshot)) return
         captureQuiet(error, { context: 'NotificationList: 通知クリックの既読化' })
       })
   }
@@ -196,17 +292,23 @@ function isEmergencyClosureNotification(notif: NotificationResponse): boolean {
  * useEmergencyClosureApi().confirmClosure(teamId, closureId) を呼ぶ。
  */
 async function onConfirmEmergencyClosure(notif: NotificationResponse) {
+  const snapshot = session.capture()
   if (!notif.scopeId || !notif.sourceId) {
     showError(t('emergency_closure.error.info_missing'))
     return
   }
   try {
     await confirmClosure(notif.scopeId, notif.sourceId)
+    if (!current(snapshot)) return
+    mutationSucceeded()
     // 確認は成功済み。既読化の失敗で「確認失敗」と表示しない。
     try {
       await markAsRead(notif.id)
-      notif.isRead = true
+      if (!current(snapshot)) return
+      mutationSucceeded()
+      patchNotification(notif, { isRead: true })
     } catch (error) {
+      if (!current(snapshot)) return
       captureQuiet(error, { context: 'NotificationList: 緊急休業確認後の既読化' })
     }
     toast.add({
@@ -217,6 +319,7 @@ async function onConfirmEmergencyClosure(notif: NotificationResponse) {
     // 一覧を再取得して確認状態を反映
     await loadNotifications()
   } catch {
+    if (!current(snapshot)) return
     showError(t('emergency_closure.confirm_failed'))
   }
 }
@@ -235,11 +338,14 @@ function getConfirmableDeadlineFromBody(_notif: NotificationResponse): string | 
  * その場合はキャッシュに保存しない（無視して通常表示にフォールバック）。
  */
 async function loadConfirmableSummary(notif: NotificationResponse) {
+  const snapshot = session.capture()
+  const revision = viewRevision
   if (!notif.sourceId || notif.sourceId in confirmableSummaries.value) return
   const scopeType = notif.scopeType
   if (!notif.scopeId || (scopeType !== 'TEAM' && scopeType !== 'ORGANIZATION')) return
   try {
     const res = await getNotificationDetail(scopeType, notif.scopeId, notif.sourceId)
+    if (!current(snapshot) || revision !== viewRevision) return
     const detail = res.data
     confirmableSummaries.value[notif.sourceId] = {
       unconfirmedCount: detail.totalRecipientCount - detail.confirmedCount,
@@ -265,6 +371,7 @@ function getConfirmableSummary(notif: NotificationResponse): UnconfirmedSummary 
 
 /** 確認通知の「確認する」ボタンをクリックした時の処理 */
 async function onConfirmNotification(notif: NotificationResponse) {
+  const snapshot = session.capture()
   if (!notif.scopeType || !notif.sourceId) {
     showError(t('notification.list.confirmInfoMissing'))
     return
@@ -284,12 +391,17 @@ async function onConfirmNotification(notif: NotificationResponse) {
       }
       await confirmNotification(scopeType, notif.scopeId, notif.sourceId)
     }
-    notif.isConfirmed = true
+    if (!current(snapshot)) return
+    mutationSucceeded()
+    patchNotification(notif, { isConfirmed: true })
     if (!notif.isRead) {
       try {
         await markAsRead(notif.id)
-        notif.isRead = true
+        if (!current(snapshot)) return
+        mutationSucceeded()
+        patchNotification(notif, { isRead: true })
       } catch {
+        if (!current(snapshot)) return
         showError(t('inbox.action.readFailed'))
       }
     }
@@ -302,12 +414,41 @@ async function onConfirmNotification(notif: NotificationResponse) {
     )
     await loadConfirmableSummary(notif)
   } catch {
+    if (!current(snapshot)) return
     showError(t('notification.list.confirmError'))
   }
 }
 
-watch(filter, () => loadNotifications())
+watch(filter, () => {
+  viewRevision += 1
+  void loadNotifications()
+})
+watch(
+  () => notificationStore.latestNotification,
+  (payload) => {
+    if (payload) requestRefresh()
+  },
+)
+watch(
+  () => authStore.user?.id ?? null,
+  () => {
+    viewRevision += 1
+    notifications.value = []
+    confirmableSummaries.value = {}
+    nextPage.value = 0
+    hasNext.value = false
+    refreshPending = false
+    pendingPage = null
+    if (session.accountId !== null) void loadNotifications()
+  },
+  { flush: 'sync' },
+)
 onMounted(() => loadNotifications())
+onUnmounted(() => {
+  disposed = true
+  pendingPage = null
+  refreshPending = false
+})
 
 defineExpose({ refresh: () => loadNotifications() })
 </script>

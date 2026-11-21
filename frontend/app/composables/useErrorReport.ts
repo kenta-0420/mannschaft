@@ -1,4 +1,4 @@
-import { safeLoyaltyReportUrl } from '~/utils/loyaltyReceptionToken'
+import { safeDiagnosticUrl } from '~/utils/diagnostic-url'
 
 export interface ErrorReportState {
   visible: boolean
@@ -44,16 +44,17 @@ export const useErrorReport = () => {
   ): void => {
     // 既に表示中、またはクールダウン中は無視
     if (state.value.visible) return
+    const safeMeta = meta?.apiUrl ? { ...meta, apiUrl: safeDiagnosticUrl(meta.apiUrl) } : meta
     if (Date.now() - _lastReportShownAt < ERROR_REPORT_COOLDOWN_MS) {
-      console.error('[ErrorReport] (suppressed by cooldown)', error, meta)
+      console.error('[ErrorReport] (suppressed by cooldown)', error, safeMeta)
       return
     }
 
     const err = error instanceof Error ? error : new Error(String(error))
 
     let errorMessage = err.message.slice(0, 1000)
-    if (meta?.statusCode && meta?.apiUrl) {
-      errorMessage = `[${meta.statusCode}] ${meta.apiUrl}: ${errorMessage}`.slice(0, 1000)
+    if (safeMeta?.statusCode && safeMeta?.apiUrl) {
+      errorMessage = `[${safeMeta.statusCode}] ${safeMeta.apiUrl}: ${errorMessage}`.slice(0, 1000)
     }
 
     _lastReportShownAt = Date.now()
@@ -66,13 +67,13 @@ export const useErrorReport = () => {
       commentSent: false,
       errorMessage,
       stackTrace: (err.stack ?? '').slice(0, 2000),
-      pageUrl: typeof window !== 'undefined' ? safeLoyaltyReportUrl(window.location.href) : '',
+      pageUrl: safeDiagnosticUrl(typeof window !== 'undefined' ? window.location.href : undefined),
       userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
       requestId: meta?.requestId ?? '',
       context: meta?.context ?? '',
     }
 
-    console.error('[ErrorReport]', err, meta)
+    console.error('[ErrorReport]', err, safeMeta)
 
     // Auto-submit immediately (fire & forget)
     _sendReport()
@@ -81,6 +82,7 @@ export const useErrorReport = () => {
   const _sendReport = async (userComment?: string): Promise<void> => {
     if (state.value.submitting) return
 
+    state.value.pageUrl = safeDiagnosticUrl(state.value.pageUrl)
     state.value.submitting = true
 
     try {
@@ -146,7 +148,9 @@ export const useErrorReport = () => {
       body: {
         errorMessage: err.message.slice(0, 1000),
         stackTrace: err.stack?.slice(0, 2000) || undefined,
-        pageUrl: typeof window !== 'undefined' ? safeLoyaltyReportUrl(window.location.href) : '',
+        pageUrl: safeDiagnosticUrl(
+          typeof window !== 'undefined' ? window.location.href : undefined,
+        ),
         userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
         userId: authStore.currentUser?.id ?? undefined,
         occurredAt: new Date().toISOString(),

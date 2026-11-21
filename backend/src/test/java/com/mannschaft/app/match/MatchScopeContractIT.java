@@ -20,6 +20,7 @@ import com.mannschaft.app.match.entity.MatchEventEntity;
 import com.mannschaft.app.match.repository.MatchAttachmentRepository;
 import com.mannschaft.app.match.repository.MatchEventRepository;
 import com.mannschaft.app.match.repository.MatchRepository;
+import com.mannschaft.app.match.service.MatchAccessService;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -139,6 +140,9 @@ class MatchScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private MatchRepository matchRepository;
+
+    @Autowired
+    private MatchAccessService matchAccessService;
 
     @Autowired
     private MatchEventRepository matchEventRepository;
@@ -651,6 +655,52 @@ class MatchScopeContractIT extends AbstractMySqlIntegrationTest {
             assertThat(matchEventRepository.findByMatchIdOrderByPeriodAscMinuteAscSortSeqAsc(matchA1Id))
                     .as("正当な記録者のイベント記録は従来どおり保存されること")
                     .hasSize(2);
+        }
+
+        @Test
+        @DisplayName("開始記録はメタ編集不可の相手ADMINにも許可し、進行中statusを保存する")
+        void timelineOnlyActorCanStart() throws Exception {
+            MatchEntity match = matchRepository.findById(matchA1Id).orElseThrow();
+            match.setOpponentTeamId(teamA2Id);
+            match.setStatus(MatchStatus.SCHEDULED);
+            matchRepository.saveAndFlush(match);
+            assertThat(matchAccessService.canRecordTimeline(adminA2Id, match)).isTrue();
+            assertThat(matchAccessService.canEditMeta(adminA2Id, match)).isFalse();
+            setAuth(adminA2Id);
+            Map<String, Object> body = eventBody("相手チームによる開始", null);
+            body.put("eventType", MatchEventType.PERIOD_START.name());
+            body.put("minute", 0);
+            body.put("teamSide", TeamSide.AWAY.name());
+            mockMvc.perform(post("/api/v1/organizations/{orgId}/matches/{matchId}/events", orgAId, matchA1Id)
+                            .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isCreated());
+            em.flush();
+            em.clear();
+            assertThat(matchRepository.findById(matchA1Id).orElseThrow().getStatus()).isEqualTo(MatchStatus.IN_PROGRESS);
+        }
+
+        @Test
+        @DisplayName("メンバー・部外者・他テナントのSTART拒否ではevent/statusを変更しない")
+        void unauthorizedStartsLeaveStatusUnchanged() throws Exception {
+            MatchEntity match = matchRepository.findById(matchA1Id).orElseThrow();
+            match.setStatus(MatchStatus.SCHEDULED);
+            matchRepository.saveAndFlush(match);
+            Map<String, Object> body = eventBody("不許可の開始", null);
+            body.put("eventType", MatchEventType.PERIOD_START.name());
+            for (Long actor : List.of(memberA1Id, outsiderId)) {
+                setAuth(actor);
+                mockMvc.perform(post("/api/v1/organizations/{orgId}/matches/{matchId}/events", orgAId, matchA1Id)
+                                .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(body)))
+                        .andExpect(status().isForbidden());
+            }
+            setAuth(adminBId);
+            mockMvc.perform(post("/api/v1/organizations/{orgId}/matches/{matchId}/events", orgBId, matchA1Id)
+                            .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isNotFound());
+            em.flush();
+            em.clear();
+            assertThat(matchRepository.findById(matchA1Id).orElseThrow().getStatus()).isEqualTo(MatchStatus.SCHEDULED);
+            assertThat(matchEventRepository.findByMatchIdOrderByPeriodAscMinuteAscSortSeqAsc(matchA1Id)).hasSize(1);
         }
 
         /**

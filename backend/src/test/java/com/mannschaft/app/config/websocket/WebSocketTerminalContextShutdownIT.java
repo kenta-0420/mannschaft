@@ -115,10 +115,11 @@ class WebSocketTerminalContextShutdownIT extends AbstractMySqlIntegrationTest {
                 assertThat(transport.commands).contains("CONNECTED");
                 assertThat(users.getUser(String.valueOf(userId))).isNotNull();
             });
+            String internalSessionId = users.getUser(String.valueOf(userId)).getSessions().iterator().next().getId();
             handler.handleMessage(transport.delegate, frame("SUBSCRIBE\nid:context-stop\ndestination:" + topic + "\n\n"));
             await().atMost(BOUND_SECONDS, TimeUnit.SECONDS).untilAsserted(() ->
                     assertThat(broker.getSubscriptionRegistry().findSubscriptions(publication(topic)))
-                            .containsKey(transport.id));
+                            .containsKey(internalSessionId));
 
             transport.blockMessages.set(true);
             messaging.convertAndSend(topic, "controlled-outbound");

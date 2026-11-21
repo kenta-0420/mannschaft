@@ -321,7 +321,9 @@ tasks.withType<Test> {
     // perfTask は単一クラスの重量級 IT ゆえ forkEvery=0（1 JVM 共有）で無駄な再 fork を避ける。
     // archTest は取り込み結果を JVM 内で共有することが目的のため forkEvery=0・並列 fork なし（1 JVM）。
     // fork し直すと取り込みが JVM の数だけ繰り返され、並列 fork すると取り込みの複製がワーカー数だけ増える。
-    setForkEvery(if (isPerfTask || isArchTask || isErDiagramTask) 0L else ((project.findProperty("fork.every") as String?)?.toLong() ?: 180L))
+    // ArchUnit engine も全 compiled class を選別する。通常の180 class毎の再起動では
+    // 毎runnerで多数JVMを作るため、全ルールの取り込みを1 JVMにまとめる。
+    setForkEvery(if (isPerfTask || isArchTask || isArchUnitTask || isErDiagramTask) 0L else ((project.findProperty("fork.every") as String?)?.toLong() ?: 180L))
     // ローカル（WSL2 Docker）環境では Testcontainers の並列コンテナ起動が WSL2 ポートミラーリングの
     // タイミング問題を引き起こすため、-Pmax.parallel.forks=1 で上書きできるようにする。
     // CI 環境ではデフォルト 2 のまま動作する。
@@ -527,7 +529,7 @@ tasks.withType<Test> {
         // 取り込みが shard 数だけ繰り返されるだけで速くならない）。CI では専用ジョブで 1 回だけ走らせる。
         logger.lifecycle("[archTest] -Pshard.* は archTest には適用しない（全 ArchUnit テストを 1 JVM で実行する）")
     }
-    if (!isArchTask && !isErDiagramTask && !isFreezeIntegrityTask && shardTotal != null && shardIndex != null && shardTotal > 1) {
+    if (!isArchTask && !isArchUnitTask && !isErDiagramTask && !isFreezeIntegrityTask && shardTotal != null && shardIndex != null && shardTotal > 1) {
         require(shardIndex in 0 until shardTotal) {
             "shard.index ($shardIndex) は 0..${shardTotal - 1} の範囲でなければならない（shard.total=$shardTotal）"
         }
@@ -634,7 +636,7 @@ tasks.withType<Test> {
 }
 
 // 全 ArchUnit engine の番人を新しい JVM で実行する。クラス名で選別しない。
-// withType<Test> の同じ heap・タグ・シャード/profile フィルタを継承する。
+// withType<Test> の heap・タグ・profile 設定を継承する。shard 分割はせず各 runner で全件実解析する。
 // 通常 test の必須依存なので、番人の失敗は既存の CI ゲートを失敗させる。
 val archUnitTest = tasks.register<Test>("archUnitTest") {
     group = "verification"

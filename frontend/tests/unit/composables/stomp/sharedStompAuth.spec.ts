@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
+import { reactive } from 'vue'
 
 /**
  * CMP-261104-0337 共有 STOMP 接続（chat＋ユーザー宛通知 / corkboard）の認証・拒否の扱い。
@@ -92,6 +93,7 @@ vi.mock('~/composables/useApi', async (importOriginal) => {
   }
 })
 
+h.authStore = reactive(h.authStore)
 mockNuxtImport('useAuthStore', () => () => h.authStore)
 
 // 回復手順が使う authStore をテストの偽ストアに固定する（回復ロジック自体は本物の createStompAuthRecovery）。
@@ -100,10 +102,11 @@ vi.mock('~/composables/stomp/stompAuth', async (importOriginal) => {
   type Deps = Parameters<typeof original.createStompAuthRecovery>[0]
   return {
     ...original,
-    useStompAuthRecovery: () => original.createStompAuthRecovery({
-      config: { public: { apiBase: '' } } as unknown as Deps['config'],
-      authStore: h.authStore as unknown as Deps['authStore'],
-    }),
+    useStompAuthRecovery: () =>
+      original.createStompAuthRecovery({
+        config: { public: { apiBase: '' } } as unknown as Deps['config'],
+        authStore: h.authStore as unknown as Deps['authStore'],
+      }),
   }
 })
 
@@ -130,11 +133,19 @@ function simulateError(headers: Record<string, string>): void {
 }
 
 /** 直近の接続以降に購読された宛先と receipt。 */
-function subscribedSince(index: number): Array<{ destination: string; receipt?: string; callback: FrameCallback }> {
-  return lastClient().subscribe.mock.calls.slice(index).map((call) => {
-    const [destination, callback, headers] = call as [string, FrameCallback, Record<string, string> | undefined]
-    return { destination, callback, receipt: headers?.receipt }
-  })
+function subscribedSince(
+  index: number,
+): Array<{ destination: string; receipt?: string; callback: FrameCallback }> {
+  return lastClient()
+    .subscribe.mock.calls.slice(index)
+    .map((call) => {
+      const [destination, callback, headers] = call as [
+        string,
+        FrameCallback,
+        Record<string, string> | undefined,
+      ]
+      return { destination, callback, receipt: headers?.receipt }
+    })
 }
 
 async function flush(rounds = 10): Promise<void> {
@@ -184,8 +195,11 @@ describe('chat 共有接続 — 認証・拒否', () => {
     ws.subscribeRaw('/user/queue/notifications', vi.fn())
     await simulateConnect()
     const subs = subscribedSince(0)
-    expect(subs.map(s => s.destination).sort()).toEqual(['/topic/channels/5', '/user/queue/notifications'])
-    expect(subs.every(s => typeof s.receipt === 'string' && s.receipt.length > 0)).toBe(true)
+    expect(subs.map((s) => s.destination).sort()).toEqual([
+      '/topic/channels/5',
+      '/user/queue/notifications',
+    ])
+    expect(subs.every((s) => typeof s.receipt === 'string' && s.receipt.length > 0)).toBe(true)
   })
 
   it('WSCHAT-003: チャンネルが FORBIDDEN でも通知購読は止まらず、拒否されたチャンネルだけ外れる', async () => {
@@ -196,7 +210,7 @@ describe('chat 共有接続 — 認証・拒否', () => {
     ws.subscribeChannelEvents(5)
     ws.subscribeChannel(6)
     await simulateConnect()
-    const denied = subscribedSince(0).find(s => s.destination === '/topic/channels/5')
+    const denied = subscribedSince(0).find((s) => s.destination === '/topic/channels/5')
     expect(denied?.receipt).toBeDefined()
 
     // サーバは拒否した SUBSCRIBE の receipt を ERROR の receipt-id に載せて接続を閉じる。
@@ -210,7 +224,9 @@ describe('chat 共有接続 — 認証・拒否', () => {
     // stompjs の自動再接続 → 拒否された宛先以外を張り直す。
     const before = lastClient().subscribe.mock.calls.length
     expect(await simulateConnect()).toBe(true)
-    const resubscribed = subscribedSince(before).map(s => s.destination).sort()
+    const resubscribed = subscribedSince(before)
+      .map((s) => s.destination)
+      .sort()
     expect(resubscribed).toEqual(['/topic/channels/6', '/user/queue/notifications'])
     expect(h.refresh).not.toHaveBeenCalled()
   })
@@ -230,10 +246,11 @@ describe('chat 共有接続 — 認証・拒否', () => {
     expect(h.refresh).toHaveBeenCalledTimes(1)
     expect(h.logout).not.toHaveBeenCalled()
     expect(lastClient().connectHeaders).toEqual({ Authorization: 'Bearer fresh-token' })
-    expect(subscribedSince(before).map(s => s.destination).sort()).toEqual([
-      '/topic/channels/5',
-      '/user/queue/notifications',
-    ])
+    expect(
+      subscribedSince(before)
+        .map((s) => s.destination)
+        .sort(),
+    ).toEqual(['/topic/channels/5', '/user/queue/notifications'])
     expect(ws.wsUnauthenticated.value).toBe(false)
   })
 
@@ -277,11 +294,13 @@ describe('chat 共有接続 — 認証・拒否', () => {
     ws.subscribeRaw('/user/queue/notifications', onNotification)
     ws.subscribeChannel(9)
     await simulateConnect()
-    const denied = subscribedSince(0).find(s => s.destination === '/topic/channels/9')
+    const denied = subscribedSince(0).find((s) => s.destination === '/topic/channels/9')
     simulateError({ 'x-error-code': 'FORBIDDEN', 'receipt-id': denied?.receipt ?? '' })
     const before = lastClient().subscribe.mock.calls.length
     await simulateConnect()
-    const notification = subscribedSince(before).find(s => s.destination === '/user/queue/notifications')
+    const notification = subscribedSince(before).find(
+      (s) => s.destination === '/user/queue/notifications',
+    )
     notification?.callback({ body: '{"id":1}' })
     expect(onNotification).toHaveBeenCalledWith('{"id":1}')
   })
@@ -306,7 +325,9 @@ describe('chat 共有接続 — receipt の寿命と二重購読', () => {
     }
 
     // 拒否: 拒否された宛先の receipt は消え、再接続後は残りの購読分だけ。
-    const denied = subscribedSince(0).reverse().find(s => s.destination === '/topic/channels/2')
+    const denied = subscribedSince(0)
+      .reverse()
+      .find((s) => s.destination === '/topic/channels/2')
     simulateError({ 'x-error-code': 'FORBIDDEN', 'receipt-id': denied?.receipt ?? '' })
     await simulateConnect()
     expect(diagnostics()).toEqual({ routes: 3, activeSubscriptions: 2, receipts: 2 })
@@ -328,7 +349,9 @@ describe('chat 共有接続 — receipt の寿命と二重購読', () => {
       lastClient().config.onWebSocketClose?.({})
       const before = lastClient().subscribe.mock.calls.length
       await simulateConnect()
-      const destinations = subscribedSince(before).map(s => s.destination).sort()
+      const destinations = subscribedSince(before)
+        .map((s) => s.destination)
+        .sort()
       expect(destinations).toEqual([
         '/topic/channels/5',
         '/topic/channels/5/events',
@@ -359,7 +382,7 @@ describe('corkboard 共有接続 — 認証・拒否', () => {
     expect(second.connectionState.value).toBe('OK')
     const before = lastClient().subscribe.mock.calls.length
     expect(await simulateConnect()).toBe(true)
-    expect(subscribedSince(before).map(s => s.destination)).toEqual(['/topic/corkboard/2'])
+    expect(subscribedSince(before).map((s) => s.destination)).toEqual(['/topic/corkboard/2'])
   })
 
   it('WSCORK-007: UNAUTHENTICATED で止まった後も、新しいセッションでの購読で再開できる', async () => {
@@ -380,7 +403,7 @@ describe('corkboard 共有接続 — 認証・拒否', () => {
     const before = lastClient().subscribe.mock.calls.length
     expect(await simulateConnect()).toBe(true)
     expect(lastClient().connectHeaders).toEqual({ Authorization: 'Bearer new-session-token' })
-    expect(subscribedSince(before).map(s => s.destination)).toEqual(['/topic/corkboard/3'])
+    expect(subscribedSince(before).map((s) => s.destination)).toEqual(['/topic/corkboard/3'])
   })
 
   it('WSCORK-001: トークンが無いときは Authorization を送らない', async () => {
@@ -415,7 +438,7 @@ describe('corkboard 共有接続 — 認証・拒否', () => {
     expect(await simulateConnect()).toBe(true)
     expect(h.refresh).toHaveBeenCalledTimes(1)
     expect(lastClient().connectHeaders).toEqual({ Authorization: 'Bearer fresh-token' })
-    expect(subscribedSince(before).map(s => s.destination)).toEqual(['/topic/corkboard/3'])
+    expect(subscribedSince(before).map((s) => s.destination)).toEqual(['/topic/corkboard/3'])
     expect(listener.connectionState.value).toBe('OK')
   })
 
@@ -442,7 +465,7 @@ describe('corkboard 共有接続 — 認証・拒否', () => {
     expect(lastClient().deactivate).not.toHaveBeenCalled()
     const before = lastClient().subscribe.mock.calls.length
     expect(await simulateConnect()).toBe(true)
-    expect(subscribedSince(before).map(s => s.destination)).toEqual(['/topic/corkboard/4'])
+    expect(subscribedSince(before).map((s) => s.destination)).toEqual(['/topic/corkboard/4'])
     errorSpy.mockRestore()
   })
 })

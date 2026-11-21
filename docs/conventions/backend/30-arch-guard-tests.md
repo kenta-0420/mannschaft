@@ -272,8 +272,10 @@ MAT 実測で、shard 5 の OOM は ArchUnit の本番取り込み（`@AnalyzeCl
   - `@AnalyzeClasses` のクラス（`@ArchTag(ArchUnitTestTag.ARCHUNIT)` 付与。ArchUnit 専用の **archunit
     エンジン**で実行され、Jupiter の `@Tag` は読まない）は専用 CI ジョブを持たない。`archunit` エンジン
     だけを含める別の `Test` タスク **`archUnitTest`** が走らせ、`tasks.named<Test>("test") {
-    dependsOn(archUnitTest, ...) }` により通常の `test`（各 shard）の依存タスクとして、その shard の
-    クラス/タグ絞り込みを継承したまま Spring とは別 JVM で実行される。CI の専用ジョブ `arch-test` では
+    dependsOn(archUnitTest, ...) }` により通常の `test`（各 shard）の依存タスクとして、shard 分割を
+    適用せず全ルールを Spring とは別 JVM で実解析する。heap 4g・forkEvery=0・maxParallelForks=1
+    とし、全 compiled class の選別で多数の JVM を再起動しない。通常 `test` の180 class毎のfork・
+    parallelは維持し、mainと同じ8 shardに割り当てる。CI の専用ジョブ `arch-test` では
     `archTest` しか起動しないため **`@AnalyzeClasses` 側はここでは走らない**（各 shard の `test` 実行
     に埋め込まれて走る）。
 - タグ付きクラスは `shard-weights.properties` に載せない（通常 `test` の shard 貪欲割当が、走らない
@@ -357,13 +359,20 @@ per-user REQUIRES_NEW修正でgdpr→auth責務を維持したまま、旧D3の3
 
 **診断原本とstore更新の分離**: backend CIの既存XML artifactは各runnerのtest終了後の
 `src/test/resources/archunit_store` 8file（UUID7＋stored.rules）も収録する。固定正式HEADのgit blobを
-before、同runner ZIPをafterとして8SHA・UUID対応・7counterを確認する。全17ArchUnit suites/31casesの
-欠落・重複0は別ゲート。各ルールが実際に解析されたrunnerのafterを対応付け、未実行storeの
+before、同runner ZIPをafterとして8SHA・UUID対応・7counterを確認する。各runnerの `archUnitTest` XMLは
+`backend/scripts/verify_archunit_execution.py` が現Java sourceの行頭 `@ArchTest` から導出した
+クラス別件数と照合し、全クラス一致・unique case・failure/error/skip 0を要求する。
+固定件数を永続hardcodeせず、0件・部分実行・重複を失敗にしてJSONをCI診断成果物へ残す。
+各ルールが実際に解析されたrunnerのafterを対応付け、未実行storeの
 未変化をruntime解析成功へ転用しない。timeout等でartifactが無ければ未検証とする。
 旧130の真の原因是正とscope50（D3 38＋D3T 12）の注釈入口変化を分け、合計180を越境180解消とは扱わない。
 正式1e8の担当runner原本と原因検分に基づくstore/期待数更新を、新HEADの実解析GREENへ転用しない。
 fresh原本の原因検分後にだけstore/期待数を
 別の承認で更新する。収録パス追加でZIPの共通親rootが変わり得るためXMLはexact suiteを照合する。
+
+ローカルのshard指定付き全解析確認は `./scripts/gradle-turnstile.sh ./gradlew -Pshard.total=6 -Pshard.index=3 archUnitTest archUnitFreezeStoreIntegrityTest`、
+続いてbackendで `python3 scripts/verify_archunit_execution.py --output build/ci-diagnostics/archunit-execution.json` を実行する。
+`--tests` は指定せず、全解析と後段Integrity 2 caseを確認してからstore 8fileの差分を照合する。
 
 専用task導入時のGradle8.14.4実証には、通常6runnerのArch→guard→業務順序、直接Arch入口、
 cache/up-to-date再実行、CLI選択、欠損class/NO-SOURCE、ArchFAIL＋guardPASSでも全体exit非0を含める。

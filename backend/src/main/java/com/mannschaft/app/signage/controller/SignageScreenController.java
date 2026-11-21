@@ -12,6 +12,7 @@ import com.mannschaft.app.signage.service.SignageScreenService;
 import com.mannschaft.app.signage.service.SignageScreenService.CreateSignageScreenRequest;
 import com.mannschaft.app.signage.service.SignageScreenService.SignageScreenResponse;
 import com.mannschaft.app.signage.service.SignageScreenService.UpdateSignageScreenRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -118,7 +119,7 @@ public class SignageScreenController {
     @PostMapping("/{id}/tokens")
     public ResponseEntity<ApiResponse<SignageAccessTokenResponse>> issueToken(
             @PathVariable Long id,
-            @RequestBody IssueSignageTokenRequest request) {
+            @Valid @RequestBody IssueSignageTokenRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
         SignageAccessTokenResponse response = tokenService.issueToken(id, userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));

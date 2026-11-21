@@ -25,6 +25,7 @@ import type { Component } from 'vue'
 import type { LiveSport, MatchPeriod, Sport } from '~/types/match'
 import type {
   TimerState,
+  TimerRestoreInput,
   UseMatchTimerCoreOptions,
 } from '~/composables/match/sport/useMatchTimerCore'
 import type { MatchSetTrackerReturn } from '~/composables/match/sport/useMatchSetTracker'
@@ -52,7 +53,7 @@ export interface SportTimer {
   advance: () => Promise<void>
   complete: () => Promise<void>
   overrideMinute: (minute: number | null) => void
-  restore: (r: { state?: TimerState; elapsedSeconds?: number }) => void
+  restore: (r: TimerRestoreInput) => void
   // 前後半系（サッカー/フットサル）
   goExtra?: () => Promise<void>
   goPenaltyShootout?: () => Promise<void>

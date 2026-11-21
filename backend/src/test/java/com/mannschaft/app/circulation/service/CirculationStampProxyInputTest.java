@@ -12,6 +12,7 @@ import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -73,6 +74,11 @@ class CirculationStampProxyInputTest {
     private static final Long CONSENT_ID = 50L;
     private static final Long SUBJECT_USER_ID = 101L;
     private static final Long PROXY_RECORD_ID = 999L;
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
 
     @BeforeEach
     void setUp() {

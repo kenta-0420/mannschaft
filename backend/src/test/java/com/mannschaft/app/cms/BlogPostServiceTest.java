@@ -402,11 +402,20 @@ class BlogPostServiceTest {
             given(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), isNull(), any(ContentGateTarget.class)))
                     .willReturn(new GateCheckResponse(true, false, List.of()));
 
-            // When
-            BlogPostResponse result = service.getBySlug(TEAM_ID, null, null, "test-slug");
+            // フルシャードの先行テストが残した認証状態に依存せず、匿名閲覧を検証する。
+            try (MockedStatic<SecurityUtils> securityUtils = Mockito.mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(null);
 
-            // Then
-            assertThat(result).isNotNull();
+                // When
+                BlogPostResponse result = service.getBySlug(TEAM_ID, null, null, "test-slug");
+
+                // Then
+                assertThat(result).isNotNull();
+                assertThat(result.getAccessState()).isEqualTo(ContentAccessState.FULL.name());
+                verify(contentVisibilityChecker).assertCanView(ReferenceType.BLOG_POST, POST_ID, null);
+                verify(paymentGateService).checkAccess(eq(ContentGateType.POST), eq(POST_ID),
+                        isNull(), any(ContentGateTarget.class));
+            }
         }
 
         @Test

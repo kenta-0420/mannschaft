@@ -7,6 +7,11 @@
 `backend-nightly-full.yml` と `backend-deploy.yml` も同じ 8 shard で、3 workflow の `SHARD_TOTAL` と matrix は必ず揃える（2026-11-18・CMP-261111-0508 で 6 → 8。BE テスト CI の時間切れの是正。**step 上限 85/105 分・job 上限 100/120 分・nightly の step 105・job 120・deploy の現行値は変えていない**）。分割は（`build-logic/src/main/kotlin/mannschaft.backend-conventions.gradle.kts` の
 `-Pshard.total` / `-Pshard.index` フィルタ）。
 
+CMP-261114-0713 の全 ArchUnit 解析・後段 Integrity を各 runner で必須化する変更を統合した現在は、
+PR Check の上限だけを通常 step 95 分・job 110 分、migration 込み step 110 分・job 120 分とする。
+上記の 8 shard 導入時の上限維持は当時の変更範囲を表し、この採択済み予算を撤回しない。
+nightly と deploy の上限は上記の既存値を維持する。
+
 ### 振り分けアルゴリズム
 
 - `backend/src/test/resources/shard-weights.properties`（クラス単位の実測秒数）が存在する場合:
@@ -95,7 +100,7 @@
 未実行・timeout・terminal欠損は `completed=false` / `testStepExitCode=null` として扱う。
 Gradleのreturn値だけでなく実際のstep outcomeも記録し、EXIT trapの0だけで成功と判定しない。
 既存のFROM-CACHE/UP-TO-DATEはGradleのexit 0を維持するが、freshな採取完了とは扱わない。
-採取欠損をgreenや高速化の証拠にせず、既存cap（step 85/105 分・job 100/120 分。nightly は step 105・job 120）・全テスト集合・必須集約gateを維持する（shard 数は 2026-11-18 に 6 から 8 へ変更した。上限値は変えていない）。
+採取欠損をgreenや高速化の証拠にせず、各 workflow の採択済み cap（PR Check は step 95/110 分・job 110/120 分。nightly は step 105・job 120、deploy は step 85/105・job 100/120）・全テスト集合・必須集約gateを維持する（shard 数は 2026-11-18 に 6 から 8 へ変更した）。
 MFAの固定prefix数値ログとMFA/billingのcase窓のみ追加採取し、テスト出力全量や秘密値は収録しない。
 
 ### 重み表の再生成タイミング
@@ -198,4 +203,4 @@ LRU で追い出されて同じ構成が再ロードされる。これを減ら�
   それ以外の派生は true）、`MockMvcFilterAppliedIT` / `MockMvcFilterNotAppliedIT`（AC-2(b) フィルタでしか起きない応答: 本文なしの 401・X-Frame-Options）、
   `MockMvcContextUnificationTest` / `MockMvcContextUnificationIT`（AC-2(c) 旧「基底のみ」と旧「MockMvc=true」の MCC 統合・context 共有・MockMvc と builder の構築）、
   `ContextKeyTestExecutionListenerTest` の AC-5（共有キーの起動失敗は両クラスの失敗として残り、`[ci-ctx]` の error にしない）、
-  build-logic の `CiTestRuntimeConfigPinTest`（AC-4: 既定 maxSize 10・CI の `-Pspring.test.context.cache.maxSize=5`・forkEvery 180・maxParallelForks 2・shard 8・timeout 85/105・100/120 を変えない）。
+  build-logic の `CiTestRuntimeConfigPinTest`（AC-4: 既定 maxSize 10・CI の `-Pspring.test.context.cache.maxSize=5`・forkEvery 180・maxParallelForks 2・shard 8・timeout は PR Check の test 95/110・job 110/120、deploy の test 85/105・job 100/120、nightly の test 105・job 120 を変えない（条件付きの値は通常/migration ありの順））。

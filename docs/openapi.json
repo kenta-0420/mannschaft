@@ -142868,7 +142868,7 @@
           "通知"
         ],
         "summary": "通知一覧",
-        "description": "folderId と scopeType を両方指定するとフォルダ内通知のみ取得。未指定時は全件",
+        "description": "folderId と scopeType を両方指定するとフォルダ内通知に絞り込む。is_read は総件数とページ内容の両方に適用する",
         "operationId": "listNotifications",
         "parameters": [
           {
@@ -142893,6 +142893,15 @@
             }
           },
           {
+            "name": "is_read",
+            "in": "query",
+            "description": "false は未読のみ、true は既読のみ。省略時は両方",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
             "name": "pageable",
             "in": "query",
             "required": true,
@@ -142908,6 +142917,16 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/PagedResponseNotificationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "クエリパラメータの型が不正",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -200447,9 +200466,14 @@
             "format": "date-time"
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1
           }
-        }
+        },
+        "required": [
+          "name"
+        ]
       },
       "ApiResponseSignageAccessTokenResponse": {
         "type": "object",

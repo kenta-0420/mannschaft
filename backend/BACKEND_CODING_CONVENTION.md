@@ -335,10 +335,10 @@ CI/CD パイプラインの詳細設定（ワークフロー YAML、JaCoCo 集�
 - デバイスバインディング（推奨）: Refresh Token 使用時に発行時の IP アドレスと User-Agent の一致を検証し、不一致ならトークンを無効化して再ログインを要求する。
 
 **WebSocket (STOMP) 認証**
-- REST と同様に JWT を使うが、**クエリパラメータでのトークン送付は禁止**。
-- STOMP の `CONNECT` フレーム送信時にカスタムヘッダー（`Authorization`）で Bearer トークンを付与する。
-- サーバー側は `ChannelInterceptor` の `preSend` で `CONNECT` 受信時のヘッダーを検証し、有効なトークンが確認できなければ接続を拒否（例外をスロー）する。
-- 初期の HTTP Handshake 時は認証をスキップし、その後の STOMP プロトコルレベルで認証を強制する構成とする。
+- 利用者の JWT と掲示端末 capability を区別し、WebSocket URL の query を資格情報として受け付けない。
+- JWT は STOMP `CONNECT` の `Authorization`、掲示端末 token は専用 native header `X-Signage-Token` で渡す。Bearer/Cookie/匿名の優先順位は `docs/security/01_authorization_baseline.md` §5 に従う。
+- 明示した無効資格は拒否し、資格なし CONNECT は匿名として各 topic の購読・配送境界で認可する。掲示端末は購読時と recipient ごとの配送時に token・画面の現在状態を検証する。
+- 詳細なヘッダー処理・保持情報・HTTP upgrade の契約は [§8 詳細](../docs/conventions/backend/08-security.md#websocket-stomp-認証規約) を正本とする。
 
 **レートリミット**
 - 必須適用箇所: ログイン API（認証試行）、パスワードリセット・メール送信 API、公開 API 全般（認証不要エンドポイントは特に厳格に）。

@@ -112,8 +112,8 @@ onBeforeUnmount(() => {
         class="mb-3"
       />
 
-      <!-- タイムライン（read-only＝select/delete は配線しない＝記録者の編集導線を出さない） -->
-      <MatchTimeline :events="snapshot.events" :own-team-side="ownTeamSide" />
+      <!-- 閲覧専用モードで編集・削除の操作要素自体を描画しない。 -->
+      <MatchTimeline :events="snapshot.events" :own-team-side="ownTeamSide" read-only />
     </template>
   </div>
 </template>

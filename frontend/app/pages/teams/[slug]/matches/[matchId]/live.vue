@@ -143,6 +143,8 @@ async function loadBoards(): Promise<void> {
 type Session = ReturnType<typeof useMatchLiveSession>
 const session = shallowRef<Session | null>(null)
 let sessionScope: ReturnType<typeof effectScope> | null = null
+let loadGeneration = 0
+let disposed = false
 
 const timerState = computed(() => session.value?.timer.state.value ?? 'WAITING')
 const isCompleted = computed(
@@ -154,6 +156,8 @@ const sheetVisible = ref(false)
 const starterSetupVisible = ref(false)
 const opponentNoticeVisible = ref(false)
 const loading = ref(true)
+const loadError = shallowRef<unknown>(null)
+const loadErrorMessage = ref('')
 
 // === undo / 削除 / 編集試行 ===
 async function undo(): Promise<void> {
@@ -199,20 +203,36 @@ function addManualPlayer(p: { name: string; jerseyNumber: number | null }): void
 }
 
 // === 初期ロード ===
-onMounted(async () => {
+async function loadPage(): Promise<void> {
+  if (disposed) return
+  const generation = ++loadGeneration
+  const isCurrentLoad = () => !disposed && generation === loadGeneration
+  loading.value = true
+  loadError.value = null
+  sessionScope?.stop()
+  sessionScope = null
+  session.value = null
   // 試合は作成時の組織の下に保存されている。遷移元（一覧・作成・大会対戦表）が URL クエリ org で引き継ぐ
   const ctx = await resolveContext(teamSlug, { orgId: parseOrgQuery(route.query.org) })
+  if (!isCurrentLoad()) return
   orgId.value = ctx?.orgId ?? null
   teamId.value = ctx?.teamId ?? null
   orgInvalid.value = ctx?.orgInvalid ?? false
   organizations.value = ctx?.organizations ?? []
-  if (ctx === null || teamId.value === null || ctx.orgInvalid) {
+  if (ctx?.orgInvalid) {
+    loading.value = false
+    return
+  }
+  if (ctx === null || teamId.value === null) {
+    loadErrorMessage.value = t('match.live.error.load_match_failed')
+    loadError.value = new Error(loadErrorMessage.value)
     loading.value = false
     return
   }
   let sport: string | null = null
   try {
     const match = await matchApi.getMatch(orgId.value, teamId.value, matchId)
+    if (!isCurrentLoad()) return
     matchStatus.value = match.status ?? null
     canRecord.value = match.canRecordTimeline ?? false
     ownTeamSide.value = match.homeAway === 'AWAY' ? 'AWAY' : 'HOME'
@@ -220,8 +240,13 @@ onMounted(async () => {
     homePenaltyScore.value = match.homePenaltyScore ?? 0
     awayPenaltyScore.value = match.awayPenaltyScore ?? 0
     sport = match.sport ?? null
-  } catch {
+  } catch (error) {
+    if (!isCurrentLoad()) return
     notification.error(t('match.live.error.load_match_failed'))
+    loadError.value = error
+    loadErrorMessage.value = t('match.live.error.load_match_failed')
+    loading.value = false
+    return
   }
 
   // 記録権限がなければ観戦ビュー（read-only）へ。記録セッション（タイマー/グリッド/wakeLock）は
@@ -233,6 +258,7 @@ onMounted(async () => {
 
   // 競技モジュールを動的 import（lazy-load）で解決し、その createTimer をセッションへ注入。
   const mod = await resolveSportModule(sport)
+  if (!isCurrentLoad()) return
   sportModule.value = mod
 
   // セット制: セットトラッカーを初期化（SET_BASED 競技時のみ）。
@@ -245,6 +271,7 @@ onMounted(async () => {
     turnTracker.value = mod.createTurnTracker()
     // 団体戦の子ボード進捗を読み込む（個人戦なら空配列・6-④c）。
     await loadBoards()
+    if (!isCurrentLoad()) return
   }
 
   // 採点制: 採点入力トラッカーを初期化（SCORED 競技時のみ・07_scored.md §9）。
@@ -265,20 +292,26 @@ onMounted(async () => {
       try {
         await componentsTracker.load(orgId.value, matchId)
       } catch {
+        if (!isCurrentLoad()) return
         scoreLoadFailed.value = true
         console.error('[live] 採点内訳（scored-components）の読み込みに失敗しました。確定を禁止します。')
       }
+      if (!isCurrentLoad()) return
       try {
         await rankingTracker.load(orgId.value, matchId)
       } catch {
+        if (!isCurrentLoad()) return
         scoreLoadFailed.value = true
         console.error('[live] 多人数順位エントリ（score-entries）の読み込みに失敗しました。確定を禁止します。')
       }
+      if (!isCurrentLoad()) return
     }
   }
 
-  sessionScope = effectScope()
-  const s = sessionScope.run(() =>
+  // 各ロードは自身のscopeだけを所有する。遅れた旧応答で新セッションを停止しない。
+  const scope = effectScope()
+  sessionScope = scope
+  const s = scope.run(() =>
     createSession({
       orgId,
       teamId,
@@ -292,30 +325,52 @@ onMounted(async () => {
     return
   }
   s.setMatchStatus(matchStatus.value)
-  session.value = s
-
   try {
     const res = await eventApi.listEvents(orgId.value, teamId.value, matchId)
+    if (!isCurrentLoad()) {
+      scope.stop()
+      return
+    }
+    if (mod !== null && isContinuousModule(mod)) {
+      s.timer.restore({ events: res.events ?? [], matchStatus: matchStatus.value })
+    }
     s.recorder.setEvents(res.events ?? [])
     s.applyDerivedScore(res)
-  } catch {
-    // 通知済み
+    session.value = s
+  } catch (error) {
+    scope.stop()
+    if (!isCurrentLoad()) return
+    loadError.value = error
+    loadErrorMessage.value = t('match.live.error.load_events_failed')
+    if (sessionScope === scope) sessionScope = null
+    loading.value = false
+    return
   }
   // 選手名簿の読み込み。失敗を沈黙させると空名簿になり記録できないため通知する
   // （データ破壊はないので確定ブロックまでは不要・通知＋ログで表面化させる）。
   try {
     await grid.loadPlayers(teamSlug)
   } catch {
+    if (!isCurrentLoad()) return
     notification.error(t('match.live.error.load_players_failed'))
   }
+  if (!isCurrentLoad()) return
   // wakeLock 取得はブラウザに拒否されうる（想定内・データ影響なし）。取得失敗は無視してよい。
   // eslint-disable-next-line no-restricted-syntax -- wakeLock はブラウザ拒否が想定内（データ影響なし）。取得失敗を無視するのが正しい
   await wakeLock.acquireWakeLock().catch(() => undefined)
+  if (!isCurrentLoad()) {
+    wakeLock.releaseWakeLock()
+    return
+  }
   window.addEventListener('online', flushOffline)
   loading.value = false
-})
+}
+
+onMounted(loadPage)
 
 onBeforeUnmount(() => {
+  disposed = true
+  loadGeneration += 1
   wakeLock.releaseWakeLock()
   window.removeEventListener('online', flushOffline)
   sessionScope?.stop()
@@ -567,6 +622,13 @@ function goOvertime(): void {
     </div>
 
     <PageLoading v-if="loading" size="40px" />
+
+    <DashboardErrorState
+      v-else-if="loadError"
+      :error="loadError"
+      :message="loadErrorMessage"
+      @retry="loadPage"
+    />
 
     <!-- org クエリが無効: 試合を読み込まず、組織を選び直させる（選択後は再読込して読み直す） -->
     <MatchOrgSelect

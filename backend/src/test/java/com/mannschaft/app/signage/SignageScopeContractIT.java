@@ -13,6 +13,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
@@ -221,6 +224,48 @@ class SignageScopeContractIT extends AbstractMySqlIntegrationTest {
     @Nested
     @DisplayName("アクセストークン管理(issueToken/listTokens/revokeToken)")
     class TokenManagement {
+
+        @ParameterizedTest
+        @NullAndEmptySource
+        @ValueSource(strings = {" ", "\t"})
+        @DisplayName("トークン名のnull・空・空白は400で保存しない")
+        void 不正なトークン名は保存前に拒否する(String name) throws Exception {
+            setAuthentication(adminAId);
+            mockMvc.perform(post("/api/v1/signage/screens/{id}/tokens", screenId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(tokenRequestJson(name, null)))
+                    .andExpect(status().isBadRequest());
+            assertThat(tokenCountForScreen()).isZero();
+        }
+
+        @Test
+        @DisplayName("トークン名101文字は400で保存しない")
+        void トークン名の上限超過は保存前に拒否する() throws Exception {
+            setAuthentication(adminAId);
+            mockMvc.perform(post("/api/v1/signage/screens/{id}/tokens", screenId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(tokenRequestJson("名".repeat(101), null)))
+                    .andExpect(status().isBadRequest());
+            assertThat(tokenCountForScreen()).isZero();
+        }
+
+        @ParameterizedTest
+        @ValueSource(ints = {1, 100})
+        @DisplayName("GUIが送る画面名1から100文字は201で永続化する")
+        void 画面名をトークン名として発行できる(int length) throws Exception {
+            String name = "画".repeat(length);
+            JsonNode token = issueTokenAsAdminA(name, null);
+            em.flush();
+            em.clear();
+
+            assertThat(token.path("name").asText()).isEqualTo(name);
+            assertThat(token.path("isActive").asBoolean()).isTrue();
+            assertThat(token.path("expiredAt").isNull()).isTrue();
+            assertThat(token.path("allowedIps").isEmpty()).isTrue();
+            assertThat(tokenCountForScreen()).isEqualTo(1);
+            assertThat(em.createNativeQuery("SELECT name FROM signage_access_tokens WHERE id = :id")
+                    .setParameter("id", token.path("id").asLong()).getSingleResult()).isEqualTo(name);
+        }
 
         @Test
         @DisplayName("スコープADMINのトークン発行は201")
@@ -448,6 +493,11 @@ class SignageScopeContractIT extends AbstractMySqlIntegrationTest {
     // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
+
+    private long tokenCountForScreen() {
+        return ((Number) em.createNativeQuery("SELECT COUNT(*) FROM signage_access_tokens WHERE screen_id = :id")
+                .setParameter("id", screenId).getSingleResult()).longValue();
+    }
 
     /** トークン発行リクエストの JSON を組み立てる（expiredAt が null なら無期限）。 */
     private String tokenRequestJson(String name, LocalDateTime expiredAt) throws Exception {

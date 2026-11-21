@@ -65,7 +65,7 @@ export interface EmergencyClosureConfirmationUpdate {
  * - CONNECTING:   初期接続中
  * - LIVE:         WS 接続済み・差分追従中
  * - RECONNECTING: 切断 → 自動再接続中
- * - OFFLINE:      WS・HTTP ともに不通（最後の確認状況を保持）
+ * - OFFLINE:      ブラウザの offline 通知、または再同期 HTTP の失敗（最後の確認状況を保持）
  * - DENIED:       購読拒否（非 ADMIN/DEPUTY＝可視性なし・`x-error-code: FORBIDDEN`）。再接続しない
  * - UNAUTHENTICATED: 未認証（`x-error-code: UNAUTHENTICATED`）で、トークン更新でも回復しなかった。再接続しない
  */
@@ -314,6 +314,12 @@ export function useEmergencyClosureLive(ctx: EmergencyClosureLiveContext) {
     client = null
   }
 
+  /** 接続状態の所有者で offline を反映する（画面側の投影だけを書き換えない）。 */
+  function markOffline(): void {
+    if (disposed || isTerminalState()) return
+    connectionState.value = 'OFFLINE'
+  }
+
   /**
    * オンライン復帰（`window 'online'`）時の再同期。
    * OFFLINE/RECONNECTING から復帰したらスナップショットを取り直し、接続を再活性化する。
@@ -321,12 +327,14 @@ export function useEmergencyClosureLive(ctx: EmergencyClosureLiveContext) {
   async function resync(): Promise<void> {
     if (disposed) return
     const ok = await fetchSnapshot()
-    // DENIED / UNAUTHENTICATED は再接続で解消しない確定状態。オンライン復帰でも再接続しない。
-    if (isTerminalState()) return
-    if (ok && client !== null && !client.active) client.activate()
-    if (ok && connectionState.value === 'OFFLINE') {
-      connectionState.value = client?.connected ? 'LIVE' : 'RECONNECTING'
+    // stop 後の応答と確定した拒否状態では、再接続・状態の書き換えをしない。
+    if (disposed || isTerminalState()) return
+    if (!ok) {
+      markOffline()
+      return
     }
+    if (client !== null && !client.active) client.activate()
+    connectionState.value = client?.connected ? 'LIVE' : 'RECONNECTING'
   }
 
   return {
@@ -337,6 +345,7 @@ export function useEmergencyClosureLive(ctx: EmergencyClosureLiveContext) {
     hasSnapshot,
     start,
     stop,
+    markOffline,
     resync,
     /** テスト/特殊用途: スナップショット再取得（通常は内部で呼ばれる）。 */
     fetchSnapshot,

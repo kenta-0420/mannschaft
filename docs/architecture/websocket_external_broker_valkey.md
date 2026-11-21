@@ -19,15 +19,15 @@ Mannschaft は現在、WebSocket（STOMP over SockJS）のリアルタイム配�
 
 ### 目標
 
-| 目標 | 内容 |
-|---|---|
-| マルチノード配信 | ノード A 接続の購読者が、ノード B 発の配信を受信できる（`/topic`・`/queue` 全配信先）|
-| 無停止デプロイ解禁 | `deployment_minimum_healthy_percent 0→100` / `maximum 100→200` を可能にし、ローリングアップデート中の断をなくす |
-| ユーザー宛配信の根治 | `convertAndSendToUser`（`/user/{userId}/queue/...`）を、接続ノードに関わらず正しく到達させる |
-| 非回帰 | feature flag OFF 時は現行と完全同一挙動 |
-| フェイルオープン | Valkey 断でもアプリは落ちず、ローカル配信を継続。復旧後に中継自動再開 |
-| リアルタイム通知の実配信 | FE に存在しない `/user` 通知の受け口（購読 composable）を新設し、**実ブラウザ到達まで**担保（§2.5・隊 5）|
-| コスト据え置き | 既存 ElastiCache Valkey（単一ノード）を流用し、追加インフラ費ゼロ |
+| 目標                     | 内容                                                                                                            |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| マルチノード配信         | ノード A 接続の購読者が、ノード B 発の配信を受信できる（`/topic`・`/queue` 全配信先）                           |
+| 無停止デプロイ解禁       | `deployment_minimum_healthy_percent 0→100` / `maximum 100→200` を可能にし、ローリングアップデート中の断をなくす |
+| ユーザー宛配信の根治     | `convertAndSendToUser`（`/user/{userId}/queue/...`）を、接続ノードに関わらず正しく到達させる                    |
+| 非回帰                   | feature flag OFF 時は現行と完全同一挙動                                                                         |
+| フェイルオープン         | Valkey 断でもアプリは落ちず、ローカル配信を継続。復旧後に中継自動再開                                           |
+| リアルタイム通知の実配信 | FE に存在しない `/user` 通知の受け口（購読 composable）を新設し、**実ブラウザ到達まで**担保（§2.5・隊 5）       |
+| コスト据え置き           | 既存 ElastiCache Valkey（単一ノード）を流用し、追加インフラ費ゼロ                                               |
 
 ---
 
@@ -43,10 +43,10 @@ Mannschaft は現在、WebSocket（STOMP over SockJS）のリアルタイム配�
 
 ### 1.2 却下案と理由
 
-| 案 | 概要 | 却下理由 |
-|---|---|---|
-| **B 案: セッションレジストリ方式** | 全ノードの STOMP セッション（userId→nodeId→sessionId）を Valkey に集中登録し、送信側が宛先ノードを引いて直接転送する | **複雑度過剰**。セッションのライフサイクル（接続/切断/障害）を分散状態として厳密管理する必要があり、整合性バグの温床。SimpleBroker の宛先解決を自前再実装することになり保守コストが高い |
-| **C 案: RabbitMQ StompBrokerRelay** | `enableStompBrokerRelay()` で外部 STOMP ブローカー（RabbitMQ 等）に委譲する Spring 標準構成 | **新規インフラ費がコスト削減方針と矛盾**。RabbitMQ クラスタの新規構築・運用（HA・監視・パッチ）が発生する。既存 Valkey で足りる規模で新ミドルウェアを増やさない |
+| 案                                  | 概要                                                                                                                 | 却下理由                                                                                                                                                                                |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **B 案: セッションレジストリ方式**  | 全ノードの STOMP セッション（userId→nodeId→sessionId）を Valkey に集中登録し、送信側が宛先ノードを引いて直接転送する | **複雑度過剰**。セッションのライフサイクル（接続/切断/障害）を分散状態として厳密管理する必要があり、整合性バグの温床。SimpleBroker の宛先解決を自前再実装することになり保守コストが高い |
+| **C 案: RabbitMQ StompBrokerRelay** | `enableStompBrokerRelay()` で外部 STOMP ブローカー（RabbitMQ 等）に委譲する Spring 標準構成                          | **新規インフラ費がコスト削減方針と矛盾**。RabbitMQ クラスタの新規構築・運用（HA・監視・パッチ）が発生する。既存 Valkey で足りる規模で新ミドルウェアを増やさない                         |
 
 > A 案は「既存資産（SimpleBroker + Valkey）の最小拡張で最大効果」を狙う中庸解であり、B/C の将来移行余地も残す（後述 §8 の移行パス）。
 
@@ -69,10 +69,10 @@ flag OFF 時は `@ConditionalOnProperty` で relay 部品（`WebSocketRelayPubli
 
 現行構成では、`/ws` と `/ws/signage` の両エンドポイントが単一の brokerChannel・SimpleBroker・clientOutboundChannel を共有する。過去に両設定クラスがブローカー設定を宣言していた状態は解消済みであり、現在は `WebSocketConfig` のみがブローカーと宛先プレフィックスを宣言する。CMP-261110-2011 の変更は両 Configurer の `@EnableWebSocketMessageBroker` 除去と単一 `DelegatingWebSocketMessageBrokerConfiguration` 派生による終端 ERROR・fatal gate の組み込みであり、既存のブローカー宣言と許可オリジン統一は維持している。
 
-| Config クラス | エンドポイント | ブローカー宣言 | インバウンド処理 |
-|---|---|---|---|
-| `config/WebSocketConfig` | `/ws`（SockJS）| `enableSimpleBroker("/topic", "/queue")`・`/app`・`/user` | 認証 → MatchLive・EmergencyClosure・Chat の購読認可 |
-| `signage/config/SignageWebSocketConfig` | `/ws/signage`（SockJS）| なし | 共通 inbound channel の認証・購読認可を適用 |
+| Config クラス                           | エンドポイント          | ブローカー宣言                                            | インバウンド処理                                    |
+| --------------------------------------- | ----------------------- | --------------------------------------------------------- | --------------------------------------------------- |
+| `config/WebSocketConfig`                | `/ws`（SockJS）         | `enableSimpleBroker("/topic", "/queue")`・`/app`・`/user` | 認証 → MatchLive・EmergencyClosure・Chat の購読認可 |
+| `signage/config/SignageWebSocketConfig` | `/ws/signage`（SockJS） | なし                                                      | 共通 inbound channel の認証・購読認可を適用         |
 
 `TerminalCloseWebSocketBrokerConfig` は `DelegatingWebSocketMessageBrokerConfiguration` を継承し、全既存 `WebSocketMessageBrokerConfigurer` の設定を委譲する。fatal session gate を inbound interceptor の先頭に加え、その後 `super.configureClientInboundChannel` で既存の認証・購読認可を登録する。このため両エンドポイントに同じ gate と認証・購読認可順が適用される。
 
@@ -84,18 +84,18 @@ relay は単一の brokerChannel／SimpleBroker を対象とするため、サ�
 
 全配信は `SimpMessagingTemplate`（Spring 自動登録の単一 Bean）経由。`convertAndSend`（ブロードキャスト）・`convertAndSendToUser`（ユーザー個別）を全文検索して列挙。
 
-| # | 発信元クラス | destination | ペイロードの性質 | at-most-once 許容根拠 |
-|---|---|---|---|---|
-| 1 | `chat/service/ChatMessagePublisher`（81 行）| `/topic/channels/{channelId}` | DB 永続済み（chat_messages）| 再取得可能（メッセージ履歴 API）|
-| 2 | `chat/service/ChatChannelEventPublisher`（66 行）| `/topic/channels/{channelId}/events` | 状態変化イベント（kicked/deleted/archived 等）= DB 状態反映 | 再取得可能 |
-| 3 | `chat/controller/ChatTypingController`（69 行）| `/topic/channels/{channelId}`（タイピング）| 揮発（`TypingPayload`・非永続）| 揮発許容（表示の一時状態）|
-| 4 | `match/live/MatchLiveBroadcastListener`（76 行）| `/topic/matches/{matchId}/live` | DB 永続済みの差分（HTTP 正本・07 §J.1）。`serverSeq` は**ノードローカル `AtomicLong`（52 行）— マルチノードで単調性破綻・§4.6 で根治** | 再取得可能（スナップショット再取得・07 §J.4）|
-| 5 | `village/service/VillageLobbyPresenceService`（123 行）| `/topic/villages/{villageId}/lobby/presence` | 揮発（在席 = Valkey TTL キー由来・DB 非永続）| 揮発許容・REST `getPresence` で再取得可 |
-| 6 | `corkboard/event/CorkboardEventListener`（62 行）| `/topic/corkboard/{boardId}` | DB 永続済み（AFTER_COMMIT）| 再取得可能 |
-| 7 | `reservation/EmergencyClosureBroadcastListener`（78 行）| `/topic/teams/{teamId}/emergency-closures/{closureId}/confirmations` | DB 永続済みの確認サマリ（AFTER_COMMIT）| 再取得可能 |
-| 8 | `notification/service/NotificationDispatchService`（141 行）| `/user/{userId}/queue/notifications`（`convertAndSendToUser`・唯一のユーザー宛）| DB 永続済み（notifications 行）| 再取得可能（通知一覧 API）|
-| 9a | `signage/websocket/SignageWebSocketPublisher`（33 行）| `/topic/signage/{screenId}/emergency` | 緊急メッセージ（`SignageEmergencyMessageEntity` は DB 永続・timestamp は揮発）| 再描画可能 |
-| 9b | 同上（48 行）| `/topic/signage/{screenId}/update` | 揮発シグナル（`type=SLIDE_UPDATE`＝クライアント再取得トリガ・データ本体なし）| 揮発許容・再取得可能 |
+| #   | 発信元クラス                                                 | destination                                                                      | ペイロードの性質                                                                                                                       | at-most-once 許容根拠                         |
+| --- | ------------------------------------------------------------ | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| 1   | `chat/service/ChatMessagePublisher`（81 行）                 | `/topic/channels/{channelId}`                                                    | DB 永続済み（chat_messages）                                                                                                           | 再取得可能（メッセージ履歴 API）              |
+| 2   | `chat/service/ChatChannelEventPublisher`（66 行）            | `/topic/channels/{channelId}/events`                                             | 状態変化イベント（kicked/deleted/archived 等）= DB 状態反映                                                                            | 再取得可能                                    |
+| 3   | `chat/controller/ChatTypingController`（69 行）              | `/topic/channels/{channelId}`（タイピング）                                      | 揮発（`TypingPayload`・非永続）                                                                                                        | 揮発許容（表示の一時状態）                    |
+| 4   | `match/live/MatchLiveBroadcastListener`（76 行）             | `/topic/matches/{matchId}/live`                                                  | DB 永続済みの差分（HTTP 正本・07 §J.1）。`serverSeq` は**ノードローカル `AtomicLong`（52 行）— マルチノードで単調性破綻・§4.6 で根治** | 再取得可能（スナップショット再取得・07 §J.4） |
+| 5   | `village/service/VillageLobbyPresenceService`（123 行）      | `/topic/villages/{villageId}/lobby/presence`                                     | 揮発（在席 = Valkey TTL キー由来・DB 非永続）                                                                                          | 揮発許容・REST `getPresence` で再取得可       |
+| 6   | `corkboard/event/CorkboardEventListener`（62 行）            | `/topic/corkboard/{boardId}`                                                     | DB 永続済み（AFTER_COMMIT）                                                                                                            | 再取得可能                                    |
+| 7   | `reservation/EmergencyClosureBroadcastListener`（78 行）     | `/topic/teams/{teamId}/emergency-closures/{closureId}/confirmations`             | DB 永続済みの確認サマリ（AFTER_COMMIT）                                                                                                | 再取得可能                                    |
+| 8   | `notification/service/NotificationDispatchService`（141 行） | `/user/{userId}/queue/notifications`（`convertAndSendToUser`・唯一のユーザー宛） | DB 永続済み（notifications 行）                                                                                                        | 再取得可能（通知一覧 API）                    |
+| 9a  | `signage/websocket/SignageWebSocketPublisher`（33 行）       | `/topic/signage/{screenId}/emergency`                                            | 緊急メッセージ（`SignageEmergencyMessageEntity` は DB 永続・timestamp は揮発）                                                         | 再描画可能                                    |
+| 9b  | 同上（48 行）                                                | `/topic/signage/{screenId}/update`                                               | 揮発シグナル（`type=SLIDE_UPDATE`＝クライアント再取得トリガ・データ本体なし）                                                          | 揮発許容・再取得可能                          |
 
 > **配信保証**: 中継は **at-most-once（fire-and-forget）**。全配信先が「DB 永続済み・再取得可能」または「揮発許容」のいずれかであることを上表で確認済み。WebSocket は best-effort 配信であり、正本は HTTP（07 §J.1）という既存原則と整合する。
 >
@@ -120,6 +120,7 @@ messagingTemplate.convertAndSendToUser(
 > **家訓遵守（憶測修正禁止 / `feedback_empirical_bug_detection_over_speculation`）**: 上記は**仮説**であり、**先に失敗するテスト（red）で実証してから直す**。実証方法は §7.2 の「2 セッションテスト」。
 
 **是正設計:**
+
 1. CONNECT 時に `WebSocketAuthChannelInterceptor` で **Principal を確立**する。JWT から得た `userId` を名前に持つ軽量 Principal（`StompPrincipal implements java.security.Principal`・`getName()` = userId 文字列の新規クラス）を `accessor.setUser(...)` で設定する。**実装上の地雷（必読・Y-1）**: 現行コードは `StompHeaderAccessor.wrap(message)` で**コピー**を作って操作し、元の message をそのまま return している。ここに素朴に `setUser` を足しても**元メッセージに反映されず Principal は確立しない**。`MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class)` で**実アクセサ（可変）**を取得して `setUser` するか、それが不可（アクセサが不変）の場合は `MessageBuilder.createMessage(message.getPayload(), accessor.getMessageHeaders())` で**組み直したメッセージを return** する。
 2. これにより **`SimpUserRegistry` に接続ユーザーが登録**され、`convertAndSendToUser` が `/user/{userId}/queue/...` を当該ユーザーの全セッションへ解決できるようになる。
 3. 既存の `sessionAttributes` の userId は購読認可インターセプタ（`MatchLiveSubscriptionInterceptor` 等・07 §J.3）が参照しているため**併存を維持**（後方互換）。Principal 追加は副作用なく上乗せできる。
@@ -133,13 +134,13 @@ messagingTemplate.convertAndSendToUser(
 
 **認証ソースの選択（CONNECT と、その同義の STOMP コマンドの両方に適用）:**
 
-| CONNECT の Authorization | ハンドシェイク（Cookie）| 結果 |
-|---|---|---|
-| `Bearer <値>` で有効 | 任意 | **Bearer を採用**。Cookie と別ユーザーでも Bearer 優先（HTTP の `JwtAuthenticationFilter` と同じ優先順位）。不一致はログに記録し、Principal・session userId とも Bearer のユーザーへ置き換える |
-| `Bearer <値>` で無効（期限切れ・改ざん・失効）| 任意 | **CONNECT を拒否**（`x-error-code: UNAUTHENTICATED`）。Cookie へ黙って切り替えない |
-| なし／空の `Bearer `（空白のみ含む）| 認証済み Authentication | **ハンドシェイクの Authentication を採用**し、その名前（userId）から `StompPrincipal` と session userId を同時に設定する |
-| なし／空の `Bearer ` | 匿名 Authentication／なし | 匿名（Principal・session userId とも設定しない）。接続は許可 |
-| なし／空の `Bearer ` | 名前が userId でない／未認証状態の Authentication | CONNECT を拒否（`UNAUTHENTICATED`）。同一ソースで設定できない Principal をセッションに残さないため |
+| CONNECT の Authorization                       | ハンドシェイク（Cookie）                          | 結果                                                                                                                                                                                           |
+| ---------------------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Bearer <値>` で有効                           | 任意                                              | **Bearer を採用**。Cookie と別ユーザーでも Bearer 優先（HTTP の `JwtAuthenticationFilter` と同じ優先順位）。不一致はログに記録し、Principal・session userId とも Bearer のユーザーへ置き換える |
+| `Bearer <値>` で無効（期限切れ・改ざん・失効） | 任意                                              | **CONNECT を拒否**（`x-error-code: UNAUTHENTICATED`）。Cookie へ黙って切り替えない                                                                                                             |
+| なし／空の `Bearer `（空白のみ含む）           | 認証済み Authentication                           | **ハンドシェイクの Authentication を採用**し、その名前（userId）から `StompPrincipal` と session userId を同時に設定する                                                                       |
+| なし／空の `Bearer `                           | 匿名 Authentication／なし                         | 匿名（Principal・session userId とも設定しない）。接続は許可                                                                                                                                   |
+| なし／空の `Bearer `                           | 名前が userId でない／未認証状態の Authentication | CONNECT を拒否（`UNAUTHENTICATED`）。同一ソースで設定できない Principal をセッションに残さないため                                                                                             |
 
 - **無効 Bearer を拒否とする理由**: クライアントが明示した資格情報が無効なのに別経路（Cookie）の身元へ黙って差し替えると、タブが保持するトークンと別アカウントのセッションが確立しうる（別タブでのアカウント切替後など）。HTTP 側も無効 Bearer は Cookie へフォールバックしない（`JwtAuthenticationFilter` は Bearer があれば Cookie を見ない）。ハンドシェイクの Principal は Spring の仕様上 CONNECT 後に外せないため「無効 Bearer → 匿名」は Principal と userId の食い違いを再発させる。よって拒否が唯一安全側で、FE は `UNAUTHENTICATED` を受けてトークン更新を 1 回試みてから再接続する（FE 側は別 PR）。
 - **匿名 Authentication は採用しない**: `AnonymousAuthenticationToken` は userId を持たないため。Spring Security の `getUserPrincipal()` は通常匿名を返さないが、多層防御として明示的に除外する。
@@ -156,13 +157,12 @@ CONNECT／SUBSCRIBE をインターセプタで拒否するときは `StompRejec
 - 正の`sendTimeLimit`では既存`messageBrokerTaskScheduler`に同limitの期限を最大1件予約し、期限でもcloseを試みる。0/負値は従来どおり即時とする。予約時刻は無条件の壁時計発火・物理close完了上限ではない。schedulerの単独`stop()`はpauseであり、shutdown/破棄後の予約拒否とは異なる。
 - `NORMAL`・`GOING_AWAY`等の他statusは即時優先し、保留期限を取消す。送信が復帰しない場合の期限closeや、アプリ停止・破棄による`GOING_AWAY`は通常のERROR送信完了経路と分けて扱い、ERROR実受信を保証する終了経路とはしない。追加poolや共有の静的session mapは作らない。アプリ全体のstop・closeでは、停止済みbrokerの内部購読簿が直ちに空になることを保証せず、稼働中のDISCONNECTによる購読解除と区別する。
 
-
-| `x-error-code` | 意味 | 再接続で解消するか |
-|---|---|---|
-| `UNAUTHENTICATED` | 認証なし、または提示された資格情報が無効 | トークン更新・ログイン後の再接続で解消しうる |
-| `FORBIDDEN` | 認証済みだが購読権限なし（対象の不在・削除済みも同じコードで返し存在を漏らさない）| 解消しない（再接続を止める）|
-| `INVALID_DESTINATION` | 宛先の識別子が解釈できない（数値範囲外・UUID 不正など）| 解消しない |
-| （ヘッダなし）| 想定外の失敗 | クライアントは未知のエラーとして扱う |
+| `x-error-code`        | 意味                                                                               | 再接続で解消するか                           |
+| --------------------- | ---------------------------------------------------------------------------------- | -------------------------------------------- |
+| `UNAUTHENTICATED`     | 認証なし、または提示された資格情報が無効                                           | トークン更新・ログイン後の再接続で解消しうる |
+| `FORBIDDEN`           | 認証済みだが購読権限なし（対象の不在・削除済みも同じコードで返し存在を漏らさない） | 解消しない（再接続を止める）                 |
+| `INVALID_DESTINATION` | 宛先の識別子が解釈できない（数値範囲外・UUID 不正など）                            | 解消しない                                   |
+| （ヘッダなし）        | 想定外の失敗                                                                       | クライアントは未知のエラーとして扱う         |
 
 適用している購読 Interceptor: 臨時休業確認状況（未認証→`UNAUTHENTICATED`／ADMIN・DEPUTY_ADMIN 以外→`FORBIDDEN`）、match ライブ観戦（購読可否は `MatchAccessService.canView` → F00 `MatchVisibilityResolver` に委譲し、Interceptor は匿名を事前拒否しない。`canView=false` のとき未認証なら `UNAUTHENTICATED`・認証済みなら `FORBIDDEN`。**現状の `MatchVisibilityResolver` は閲覧者 null を常に不可とするため、匿名の match 購読は常に `UNAUTHENTICATED` で拒否される**＝匿名で観戦できる公開試合は現状存在しない。匿名 CONNECT 自体は従来どおり成立する）、チャットチャネル（未認証→`UNAUTHENTICATED`／不在・削除済み・非メンバー→`FORBIDDEN`）。いずれも宛先不正は `INVALID_DESTINATION`。
 
@@ -173,11 +173,11 @@ STOMP を使う 4 composable（`useChatWebSocket`〔ユーザー宛通知 `useUs
 - **接続ヘッダ**: `buildStompConnectHeaders(accessToken)` で組み立てる。トークンが無い（null・空・空白）ときは **Authorization ヘッダを付けない**（空の `Bearer ` を送らない）。リロード直後はこれでハンドシェイク Cookie の身元が採用される（§2.3.1）。`beforeConnect` で再接続ごとに最新トークンへ組み直す。
 - **拒否理由の読み分け**（`x-error-code`・§2.3.2）:
 
-| コード | FE の動き | 画面の状態 |
-|---|---|---|
-| `FORBIDDEN` / `INVALID_DESTINATION` | 専用接続（match・emergency・corkboard）は `client.deactivate()` で再接続を止める。共有接続（chat）は拒否された宛先だけを外す（下記） | `DENIED`（閲覧権限なし）|
-| `UNAUTHENTICATED` | ログイン中なら既存の `performTokenRefresh` でトークン更新を 1 回 → `beforeConnect` が更新完了を待って新トークンで再接続。更新が 401/403 なら既存の `handleAuthFailureLogout` でログアウト。**未ログイン（匿名の閲覧者）は更新もログアウトもしない** | 回復できなければ `UNAUTHENTICATED`（DENIED と区別）|
-| なし（未知）・通信断 | 従来どおり stompjs の自動再接続 | `RECONNECTING` 等（従来どおり）|
+| コード                              | FE の動き                                                                                                                                                                                                                                           | 画面の状態                                          |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `FORBIDDEN` / `INVALID_DESTINATION` | 専用接続（match・emergency・corkboard）は `client.deactivate()` で再接続を止める。共有接続（chat）は拒否された宛先だけを外す（下記）                                                                                                                | `DENIED`（閲覧権限なし）                            |
+| `UNAUTHENTICATED`                   | ログイン中なら既存の `performTokenRefresh` でトークン更新を 1 回 → `beforeConnect` が更新完了を待って新トークンで再接続。更新が 401/403 なら既存の `handleAuthFailureLogout` でログアウト。**未ログイン（匿名の閲覧者）は更新もログアウトもしない** | 回復できなければ `UNAUTHENTICATED`（DENIED と区別） |
+| なし（未知）・通信断                | 従来どおり stompjs の自動再接続                                                                                                                                                                                                                     | `RECONNECTING` 等（従来どおり）                     |
 
 - **更新の集約（single-flight）**: 更新は `performTokenRefresh` の同一セッション flight に乗るため、複数接続から同時に `UNAUTHENTICATED` が来ても refresh API は 1 回で済む。更新後 30 秒以内に同じ接続へ再び `UNAUTHENTICATED` が来たら、更新を繰り返さず `UNAUTHENTICATED` で止める（更新しても直らない状態での無限ループ防止）。通信断で更新できなかった場合（transient）は 1 回に数えない。
 - **共有接続での部分拒否（chat）**: ERROR を受けるとサーバが接続ごと閉じるため、1 宛先の拒否で通知購読まで止まらないよう次のようにする。(1) SUBSCRIBE ごとに `receipt` ヘッダを付ける（Spring の `StompSubProtocolErrorHandler` は拒否した SUBSCRIBE の receipt を ERROR の `receipt-id` に載せる）。(2) `receipt-id` から拒否された宛先を特定し、拒否済みとして記録する（チャンネルはメッセージ・イベントの両トピックをまとめて外す）。(3) 購読の定義は接続をまたいで保持し、stompjs の自動再接続後の `onConnect` で拒否済み以外をすべて張り直す。宛先を特定できない `FORBIDDEN` だけは接続ごと止める。チャンネルを開き直す（購読を新たに始める）と拒否記録は消え、再試行される。receipt→宛先の対応表は「現在の接続上の購読」と同じ寿命で管理する（張り直し・購読解除・拒否で該当分を消し、切断で全消去。ERROR の処理は切断より先なので特定に支障はない）。張り直しは既存の購読を外してから行い、二重購読しない。
@@ -192,14 +192,34 @@ STOMP を使う 4 composable（`useChatWebSocket`〔ユーザー宛通知 `useUs
 
 ElastiCache は `aws_elasticache_replication_group.valkey`（`engine = "valkey"`・`num_cache_clusters = 1`・`automatic_failover_enabled = false`・port 6379・at-rest 暗号化 ON / **transit 暗号化 OFF**）。**単一ノードを維持**（ノード数の構成変更なし。ただし transit 暗号化は **relay 有効化の前提として ON 化**する — PII 平文経路の遮断・§8.6）。接続は Spring `spring.data.redis`（Lettuce）・`SPRING_REDIS_HOST/PORT` 環境変数（terraform 供給）。
 
-### 2.5 FE 側の購読実装の現状 — `/user` 通知は受け口が存在しない（🔴・実コード裏取り済み）
+### 2.5 FE 側の通知購読 — 当初調査と実装後の契約
 
-origin/main の FE 実コードを裏取りした結果:
+以下は隊5の実装（PR #2229）より前の FE 実コード調査である:
 
 - WS 購読の composable は **4 つ**で、いずれも `/topic` 系のみ: `useChatWebSocket` / `useMatchLiveSpectator` / `useCorkboardEventListener` / `useEmergencyClosureLive`（すべて生 `new WebSocket()` で `/ws` に直結・sockjs-client 不使用）。
 - **`/user/queue/notifications` を購読するコードは FE 全体に存在しない**。`useNotificationStore.setLatestNotification` は**定義のみで呼び出し元ゼロ**（doc コメントに destination 名が書かれているだけ）。通知の唯一の読者 `WidgetAdminBusinessAlert.vue` は **60 秒ポーリング**で動いている。
 
 → BE の Principal 根治（§2.3）で配信が成立しても、**FE に受け口が無ければ実ユーザーには何も届かない**。本設計に **FE 通知購読隊（隊 5）** を含める: ログイン後にグローバル WS 接続を確立して `/user/queue/notifications` を SUBSCRIBE し、受信ペイロードを `useNotificationStore.setLatestNotification` へ流す composable を新設する。**既存 store / widget が受け皿になるため新 UI は不要の最小結線**である（AC-9）。
+
+#### 2.5.1 SPA・認証世代・通知一覧の契約（CMP-261116-1624）
+
+隊5で新設した `useUserNotificationSocket` は共有 `useChatWebSocket` に相乗りする。SPAで新しいlayoutが開始してから旧layoutが解除する順序でも、旧consumerの解除で新consumerの購読を消してはならない。通知購読は認証世代ごとに1本を共有し、各consumerが取得・解除を所有する。最後の所有者だけが解除する。
+
+共有接続のidentityは既存 `authSessionContext` のstore実体・accountId・generationで判定する。監視は最初のcomponentより長いapp寿命に置き、user切替・logoutで旧Client、route、receipt、channel参照数、cursor、待機送信、認証回復を同期失効させる。遅着したCONNECT・close・ERROR・MESSAGE・REST応答は旧世代から現在の状態を変更できない。同userのtoken更新では接続を作り直さない。
+
+publisherの所有はchannel購読とは独立する。認証済みsetup時の所有世代を保ち、旧APIハンドルの遅いtyping・presence/leaveを新userとして送らない。匿名setupでは最初の認証済みsendまで取得を遅らせる。受信の明示的な再購読でpublisher所有を変更しないため、同instanceでの通知再購読と、別APIinstanceからの正当なtypingを保てる。回復の30秒窓も同じ認証世代に限る。旧回復の遅着で新userをlogoutしたり、新世代の窓を消したりしない。
+
+通知一覧は受信を契機に既存RESTを再取得し、APIの正本を表示する。現在のall/unread filterと取得済みpageの深さを維持し、idを重複表示しない。新着による末尾の押出しはpage窓の変化として扱い、削除・可視性・既読変更を無視して旧rowを永久に継ぎ足さない。取得中の連続通知は1つの取得jobと次のdirty取得に集約する。既読・確認・スヌーズの成功revision以前のGET、旧filter・旧user・unmount後の応答を適用しない。確認の各await後にも認証世代を確認し、旧操作を新userの資格で追送しない。
+
+| AC  | 実装境界                                                             | 回帰試験                                                                                              |
+| --- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| N1  | notification consumer所有・開始/解除の両順序・冪等                   | `app/composables/useUserNotificationSocket.spec.ts`                                                   |
+| N2  | 匿名0・旧世代/旧route拒否・新user受信・channel/publisher所有・回復窓 | 上記および `app/composables/chat/useChatWebSocket.spec.ts`、`app/composables/stomp/stompAuth.spec.ts` |
+| N3  | 受信後の一覧反映・filter・重複・確認/既読の巻戻し防止                | `app/components/notification/NotificationList.spec.ts`                                                |
+| N4  | 取得済みpage深さ・再取得後のloadMore                                 | 同上                                                                                                  |
+| N5  | 連続受信集約・旧応答破棄・unmount後の追加API抑止・取得失敗           | 同上                                                                                                  |
+
+これらのunitはSTOMP/RESTの外部境界をfixtureにした回帰であり、実配送合格の代用ではない。正式E8では共有WSの復帰、同Matchの自動更新、同ブラウザでのlogout→別user login、購読成立後に発行した新user宛通知の同接続受信と一覧自動反映、filter・page保持を確認する。page2の実機確認には本人の正規一覧が20件を超える前提を要し、不足時の未到達をunit成功へ読み替えない。実機・独立探索の完了資格は統合後の同一sourceで別途確定する。
 
 ### 2.6 既存 IDOR: チャット SUBSCRIBE 認可の欠落（マスター御裁可済みスコープ追加・S7）
 
@@ -227,14 +247,14 @@ SUBSCRIBE 認可インターセプタが存在するのは現状 **2 destination
 
 ### 4.1 コンポーネント構成（クラス名は英語）
 
-| コンポーネント | 責務 |
-|---|---|
-| `WebSocketRelayProperties` | `mannschaft.websocket.relay.enabled` の束ね（**プロパティは `enabled` のみ**。チャネル名はコード内定数・nodeId は起動時生成のためプロパティ化しない・§4.2/§4.4）|
-| `WebSocketRelayPublisher` | 自ノードの brokerChannel（アウトバウンド配信）に流れたメッセージを捕捉し、`RelayEnvelope` にラップして Valkey チャネルへ publish（捕捉規則は §4.2.1 — (iii) 解決済みユーザー宛は対象外）|
-| `WebSocketRelaySubscriber` | `RedisMessageListenerContainer` で Valkey チャネルを購読し、受信 `RelayEnvelope` を自ノードの SimpleBroker に再注入 |
-| `RelayEnvelope` | 中継メッセージの封筒（後述フィールド）。ループ防止用の発信ノード ID を含む |
-| `StompPrincipal` | `java.security.Principal` 実装（`getName()` = userId 文字列）。§2.3 の Principal 配線用 |
-| `RedisMessageListenerContainer`（Bean 新設）| Lettuce の購読専用接続。`WebSocketRelaySubscriber` を購読者として登録 |
+| コンポーネント                               | 責務                                                                                                                                                                                     |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `WebSocketRelayProperties`                   | `mannschaft.websocket.relay.enabled` の束ね（**プロパティは `enabled` のみ**。チャネル名はコード内定数・nodeId は起動時生成のためプロパティ化しない・§4.2/§4.4）                         |
+| `WebSocketRelayPublisher`                    | 自ノードの brokerChannel（アウトバウンド配信）に流れたメッセージを捕捉し、`RelayEnvelope` にラップして Valkey チャネルへ publish（捕捉規則は §4.2.1 — (iii) 解決済みユーザー宛は対象外） |
+| `WebSocketRelaySubscriber`                   | `RedisMessageListenerContainer` で Valkey チャネルを購読し、受信 `RelayEnvelope` を自ノードの SimpleBroker に再注入                                                                      |
+| `RelayEnvelope`                              | 中継メッセージの封筒（後述フィールド）。ループ防止用の発信ノード ID を含む                                                                                                               |
+| `StompPrincipal`                             | `java.security.Principal` 実装（`getName()` = userId 文字列）。§2.3 の Principal 配線用                                                                                                  |
+| `RedisMessageListenerContainer`（Bean 新設） | Lettuce の購読専用接続。`WebSocketRelaySubscriber` を購読者として登録                                                                                                                    |
 
 配置は **`com.mannschaft.app.websocket.relay` 新規パッケージ**とする（`config` パッケージの肥大回避）。`StompPrincipal` は Principal 配線の一部として `com.mannschaft.app.websocket` に置き、`WebSocketAuthChannelInterceptor` から参照する。relay 部品（Publisher / Subscriber / ListenerContainer）は `@ConditionalOnProperty(prefix = "mannschaft.websocket.relay", name = "enabled", havingValue = "true")` で **flag OFF 時は Bean 不生成**（§1.3）。
 
@@ -261,10 +281,10 @@ SUBSCRIBE 認可インターセプタが存在するのは現状 **2 destination
 
 チャネル設計（キー規約 `mannschaft:ws:relay:*`）:
 
-| チャネル | 用途 |
-|---|---|
-| `mannschaft:ws:relay:broadcast` | `/topic/...` ブロードキャスト中継（単一チャネルに集約し、destination は封筒内で判別）|
-| `mannschaft:ws:relay:user` | `/user/.../queue/...` ユーザー宛中継（§4.3）|
+| チャネル                        | 用途                                                                                  |
+| ------------------------------- | ------------------------------------------------------------------------------------- |
+| `mannschaft:ws:relay:broadcast` | `/topic/...` ブロードキャスト中継（単一チャネルに集約し、destination は封筒内で判別） |
+| `mannschaft:ws:relay:user`      | `/user/.../queue/...` ユーザー宛中継（§4.3）                                          |
 
 > チャネルは上記 **2 チャネルに確定**し、チャネル名は**コード内定数（`static final String`）で固定**する（プロパティ化しない — 全ノードが同一値であることを設定ミスの余地なく担保する）。destination 別のさらなるチャネル分割は将来最適化（§8.3 の実測後）であり、**本設計スコープでは行わない**。
 
@@ -272,12 +292,13 @@ SUBSCRIBE 認可インターセプタが存在するのは現状 **2 destination
 
 brokerChannel には **3 種のメッセージ**が流れる。素朴に「brokerChannel を全部捕捉」すると (ii)(iii) を二重に拾い、**二重配信＋他ノードへのセッション固有 destination のばら撒き**になる:
 
-| 種別 | destination 例 | 発生元 | relay 対象 |
-|---|---|---|---|
-| (i) broadcast | `/topic/channels/42` | `convertAndSend` | **中継する**（BROADCAST）|
-| (ii) ユーザー宛・未解決 | `/user/123/queue/notifications` | `convertAndSendToUser` 直後 | **中継する**（USER）|
-| (iii) ユーザー宛・解決済み | `/queue/notifications-user{sessionId}` | `UserDestinationMessageHandler` が `SimpUserRegistry` で解決し brokerChannel へ**再送**したもの | **中継しない（無視）** |
+| 種別                       | destination 例                         | 発生元                                                                                          | relay 対象                |
+| -------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------- |
+| (i) broadcast              | `/topic/channels/42`                   | `convertAndSend`                                                                                | **中継する**（BROADCAST） |
+| (ii) ユーザー宛・未解決    | `/user/123/queue/notifications`        | `convertAndSendToUser` 直後                                                                     | **中継する**（USER）      |
+| (iii) ユーザー宛・解決済み | `/queue/notifications-user{sessionId}` | `UserDestinationMessageHandler` が `SimpUserRegistry` で解決し brokerChannel へ**再送**したもの | **中継しない（無視）**    |
 
+- 共通 WebSocket handler は transport の ID を broker のキーに使わず、接続ごとにサーバー生成 UUID を割り当てる。同一 transport ID の別接続も独立し、受信・切断まで同じ内部 ID を使う。元の transport と属性は decorator の委譲先として維持する。
 - (iii) の sessionId は**発信ノードローカル**であり、他ノードでは無意味。中継すると (ii) と (iii) の両方が飛んで二重配信になる。
 - **判定規則（固定）**: destination が `/topic/` 始まり → BROADCAST 中継。`/user/` 始まり（未解決）→ USER 中継。**それ以外（解決済み `/queue/...-user*` を含む）→ 中継しない**。
 - **実装点と登録順（Y-2）**: 捕捉は brokerChannel の `ChannelInterceptor`（`preSend`・メッセージ非改変）で行う。**注意: brokerChannel への interceptor 登録に `@Order` は効かない**（`WebSocketMessageBrokerConfigurer` に brokerChannel 用の configure コールバックは存在しない）。**brokerChannel Bean を `@Qualifier("brokerChannel")` 付きで `AbstractMessageChannel` として注入し、初期化フック（`SmartInitializingSingleton` / `@PostConstruct`）で `addInterceptor(...)` を明示呼び出し**して登録する。順序は**挿入順**（既存登録の後尾に追加＝最終段）であり、アノテーション順序に依存しない。
@@ -287,6 +308,7 @@ brokerChannel には **3 種のメッセージ**が流れる。素朴に「broke
 ユーザー宛は destination 解決の性質が異なる。`convertAndSendToUser(userId, "/queue/notifications", payload)` は、発信ノードで `SimpUserRegistry`（そのノードに接続中のセッションのみ）を引いてセッション固有 destination に解決する。**ユーザーが別ノードに接続している場合、発信ノードの registry には存在せず解決先 0 件**になる。
 
 中継設計:
+
 - `WebSocketRelayPublisher` は、ユーザー宛の**論理 destination（`/user/{userId}/queue/...` 相当の userId + サブ destination）** を `RelayEnvelope` に載せて `mannschaft:ws:relay:user` へ publish。
 - 各ノードの `WebSocketRelaySubscriber` は受信後、自ノードで `convertAndSendToUser` を**再実行**する。ただし**素の再実行は禁止** — 新規メッセージが生成されて relay マーカーが載らず、そのノードの Publisher が (ii) 未解決メッセージとして再捕捉→再 publish する**ループ**になる。**必ず `convertAndSendToUser(userId, subDestination, body, headersWithRelayMarker)` のヘッダ付きオーバーロードで relay マーカーを明示的に載せて再実行**する（§4.4）。自ノードにそのユーザーのセッションがあれば解決・配信され、なければ 0 件（無害）。
 - 発信ノードは originNodeId 一致で二重配信を防ぐ（発信ノードでは既に §4.2 の SimpleBroker 経路で配信済みのため）。
@@ -306,14 +328,14 @@ brokerChannel には **3 種のメッセージ**が流れる。素朴に「broke
 
 キー名は **camelCase 固定**。シリアライズは relay 専用 `ObjectMapper`（命名戦略は Jackson デフォルト = camelCase・`FAIL_ON_UNKNOWN_PROPERTIES=false` で**未知フィールドは無視**＝封筒の前方互換）。キャッシュ用の `activateDefaultTyping` は**使わない**（デシリアライズ型は `RelayEnvelope` に固定）。
 
-| キー | 型 | 内容 |
-|---|---|---|
-| `originNodeId` | String（UUID）| 発信ノード ID（起動時生成 UUID・ループ防止）|
-| `messageType` | String（`"BROADCAST"` / `"USER"`）| 中継種別 |
-| `destination` | String | BROADCAST: `/topic/...` 全体。USER: サブ destination（`/queue/notifications` 等）|
-| `userId` | String / null | USER のみ。宛先ユーザー ID（`convertAndSendToUser` の第 1 引数）。BROADCAST では null |
-| `contentType` | String | ペイロードの MIME（実質 `application/json` 固定）|
-| `body` | String（Base64）| ペイロードのバイト列（Base64 エンコード）|
+| キー           | 型                                 | 内容                                                                                  |
+| -------------- | ---------------------------------- | ------------------------------------------------------------------------------------- |
+| `originNodeId` | String（UUID）                     | 発信ノード ID（起動時生成 UUID・ループ防止）                                          |
+| `messageType`  | String（`"BROADCAST"` / `"USER"`） | 中継種別                                                                              |
+| `destination`  | String                             | BROADCAST: `/topic/...` 全体。USER: サブ destination（`/queue/notifications` 等）     |
+| `userId`       | String / null                      | USER のみ。宛先ユーザー ID（`convertAndSendToUser` の第 1 引数）。BROADCAST では null |
+| `contentType`  | String                             | ペイロードの MIME（実質 `application/json` 固定）                                     |
+| `body`         | String（Base64）                   | ペイロードのバイト列（Base64 エンコード）                                             |
 
 実例（BROADCAST）:
 
@@ -332,12 +354,12 @@ brokerChannel には **3 種のメッセージ**が流れる。素朴に「broke
 
 受信ノードの再注入で設定するヘッダは以下で**全部**である（sessionId / subscriptionId は SimpleBroker が購読者ごとに付与するため封筒に含めない）:
 
-| ヘッダ | 値 | 設定方法 |
-|---|---|---|
-| `simpMessageType` | `SimpMessageType.MESSAGE`（固定）| `SimpMessageHeaderAccessor.create(SimpMessageType.MESSAGE)` で生成 |
-| destination（`simpDestination`）| 封筒の `destination` | `accessor.setDestination(...)` |
-| `contentType` | 封筒の `contentType` | `accessor.setContentType(MimeType.valueOf(...))` |
-| `X-Relay-Injected` | `true` | リレーマーカー（§4.4）。`accessor.setHeader(...)` |
+| ヘッダ                           | 値                                | 設定方法                                                           |
+| -------------------------------- | --------------------------------- | ------------------------------------------------------------------ |
+| `simpMessageType`                | `SimpMessageType.MESSAGE`（固定） | `SimpMessageHeaderAccessor.create(SimpMessageType.MESSAGE)` で生成 |
+| destination（`simpDestination`） | 封筒の `destination`              | `accessor.setDestination(...)`                                     |
+| `contentType`                    | 封筒の `contentType`              | `accessor.setContentType(MimeType.valueOf(...))`                   |
+| `X-Relay-Injected`               | `true`                            | リレーマーカー（§4.4）。`accessor.setHeader(...)`                  |
 
 ### 4.6 MatchLive `serverSeq` のノード横断採番（根治・R-1）
 
@@ -418,6 +440,7 @@ brokerChannel には **3 種のメッセージ**が流れる。素朴に「broke
 ### 7.2 Principal 欠陥の実証（red 先行）
 
 §2.3 の欠陥は**先に red テストで実証**する（憶測修正禁止）:
+
 - **原因切り分けの独立アサート**: 同テスト内で、まず「`/queue` プレフィックスがブローカーに登録済みであること」を独立に確認する（§2.1 の `configureMessageBroker` 順序依存が原因でないことの切り分け）。その上で配信をアサートし、red の原因を **Principal 未配線単独**に固定する。
 - **2 セッションテスト**: 実 STOMP クライアント 2 本で CONNECT し、一方の userId 宛に `convertAndSendToUser` を送る。**修正前は届かない（red）**ことを確認 → Principal 配線後に**届く（green）**。
 - `SimpUserRegistry` に接続ユーザーが登録されることを直接アサート（`SimpUserRegistry.getUser(userId)` 非 null）。
@@ -469,14 +492,14 @@ LB を使わずローカルで 2 ノードを決定論的に再現する（ポ�
 
 ### 8.4 監視メトリクス（型・タグ・公開方法・合否クエリつき・S4）
 
-| メトリクス | 型 | タグ | 意味 |
-|---|---|---|---|
-| `relay.publish.count` | Counter | `nodeId`, `destinationType`（`broadcast` / `user`）| Valkey へ publish した件数 |
-| `relay.publish.failure` | Counter | `nodeId`, `destinationType` | publish 失敗（Valkey 断等）|
-| `relay.receive.count` | Counter | `nodeId`, `destinationType` | Valkey から受信した件数（自ノード発の破棄前段を含む）|
-| `relay.receive.dropped` | Counter | `nodeId` | originNodeId 一致で破棄した件数 |
-| `relay.reinject.count` / `relay.reinject.failure` | Counter | `nodeId`, `destinationType` | SimpleBroker 再注入の成功 / 失敗 |
-| `relay.valkey.rtt` | Timer | `nodeId` | Valkey PING レイテンシ（遅延の代替指標）|
+| メトリクス                                        | 型      | タグ                                                | 意味                                                  |
+| ------------------------------------------------- | ------- | --------------------------------------------------- | ----------------------------------------------------- |
+| `relay.publish.count`                             | Counter | `nodeId`, `destinationType`（`broadcast` / `user`） | Valkey へ publish した件数                            |
+| `relay.publish.failure`                           | Counter | `nodeId`, `destinationType`                         | publish 失敗（Valkey 断等）                           |
+| `relay.receive.count`                             | Counter | `nodeId`, `destinationType`                         | Valkey から受信した件数（自ノード発の破棄前段を含む） |
+| `relay.receive.dropped`                           | Counter | `nodeId`                                            | originNodeId 一致で破棄した件数                       |
+| `relay.reinject.count` / `relay.reinject.failure` | Counter | `nodeId`, `destinationType`                         | SimpleBroker 再注入の成功 / 失敗                      |
+| `relay.valkey.rtt`                                | Timer   | `nodeId`                                            | Valkey PING レイテンシ（遅延の代替指標）              |
 
 - 遅延の片道直接計測（publish→他ノード再注入）は**ノード間クロックスキューで不正確なため採用しない**。件数突合＋RTT で代替（補助: 同一ノード self-roundtrip を同一クロックで計測可）。
 - **公開方法**: Micrometer で登録し、`/actuator/metrics/relay.publish.count` 等から確認する（既存 actuator 基盤・確認手順は `curl <node>/actuator/metrics/relay.publish.count`）。
@@ -486,7 +509,7 @@ LB を使わずローカルで 2 ノードを決定論的に再現する（ポ�
 
 ### 8.5 Cloudflare Tunnel 経由の WebSocket
 
-- ALB → Cloudflare Tunnel 化は軍議前提として並行進行中とされる。**ただし現時点の IaC（`infra/terraform/**`）・docs には `cloudflared` / Tunnel の記述は皆無**（偵察で検索網羅・ヒットゼロ）。現状の Cloudflare は「ALB を公開オリジンとするプロキシ構成」（ACM 検証・Always Use HTTPS 等）に留まり、Tunnel（オリジン非公開化）への移行は未文書化。本設計はこの移行の有無に**依存しない**。
+- ALB → Cloudflare Tunnel 化は軍議前提として並行進行中とされる。**ただし現時点の IaC（`infra/terraform/**`）・docs には `cloudflared` / Tunnel の記述は皆無**（偵察で検索網羅・ヒットゼロ）。現状の Cloudflare は「ALB を公開オリジンとするプロキシ構成」（ACM 検証・Always Use HTTPS 等）に留まり、Tunnel（オリジン非公開化）への移行は未文書化。本設計はこの移行の有無に**依存しない\*\*。
 - A 案は**セッションアフィニティに非依存**（どのノードに振られても全配信が揃う）ため、ALB プロキシでも Tunnel でも**相性が良い**。sticky session を前提にしない分、将来 Tunnel 移行のルーティング自由度を損なわない。
 - **フォールバックは存在しない（S6・FE 実コード裏取り済み）**: FE は sockjs-client を**使っておらず**、全 composable が生 `new WebSocket()` で `/ws` に直結している（BE の `.withSockJS()` が用意する HTTP フォールバック経路は実際には未使用）。したがって**経路（ALB / Tunnel いずれでも）の WebSocket アップグレード（`Upgrade: websocket`）透過は必須前提**であり、Tunnel 移行時は WS 透過の確認を導入条件とする。
 
@@ -494,12 +517,12 @@ LB を使わずローカルで 2 ノードを決定論的に再現する（ポ�
 
 `infra/terraform/modules/app/main.tf` の ECS サービス設定を、無停止ローリング対応へ変更する（現状 → 変更後）:
 
-| 項目 | 現状 | 変更後 | 備考 |
-|---|---|---|---|
-| `deployment_minimum_healthy_percent` | `0` | `100` | ローリング中も稼働タスクを維持（断ゼロ）|
-| `deployment_maximum_percent` | `100` | `200` | 新旧タスク並走を許可（relay で配信が揃うため安全）|
-| deployment circuit breaker | なし | **追加**（`deployment_circuit_breaker { enable = true, rollback = true }`）| デプロイ失敗時の自動ロールバック |
-| コメント（460-463 行の「WebSocket インメモリブローカーのため 2 タスク不可」）| — | **全面書き換え** | relay 導入で 2 タスク並走が可能になった旨に更新 |
+| 項目                                                                          | 現状  | 変更後                                                                      | 備考                                               |
+| ----------------------------------------------------------------------------- | ----- | --------------------------------------------------------------------------- | -------------------------------------------------- |
+| `deployment_minimum_healthy_percent`                                          | `0`   | `100`                                                                       | ローリング中も稼働タスクを維持（断ゼロ）           |
+| `deployment_maximum_percent`                                                  | `100` | `200`                                                                       | 新旧タスク並走を許可（relay で配信が揃うため安全） |
+| deployment circuit breaker                                                    | なし  | **追加**（`deployment_circuit_breaker { enable = true, rollback = true }`） | デプロイ失敗時の自動ロールバック                   |
+| コメント（460-463 行の「WebSocket インメモリブローカーのため 2 タスク不可」） | —     | **全面書き換え**                                                            | relay 導入で 2 タスク並走が可能になった旨に更新    |
 
 - `desired_count` は段階移行に従い、段階 1 では `1` のまま（relay ON 検証）、段階 2 で `2` 以上へ。
 - **relay 有効化の前提条件（セキュリティ・必須）**: 現状 `transit_encryption_enabled = false`（`modules/data/main.tf` 198 行）。relay を有効化すると**チャット本文・通知本文（PII）が平文で Valkey を流れる新経路**が生まれるため、**relay ON より前に転送時暗号化を有効化**する（隊 3 スコープに含める）:
@@ -522,14 +545,14 @@ LB を使わずローカルで 2 ノードを決定論的に再現する（ポ�
 
 ## 9. 実装隊の分割案
 
-| 隊 | 担当 | 主な成果物 |
-|---|---|---|
-| **隊 1: BE 中核** | relay 部品 + Principal 配線 + WebSocketConfig 是正 + **serverSeq 根治** | `WebSocketRelayPublisher` / `WebSocketRelaySubscriber` / `RelayEnvelope` / `WebSocketRelayProperties` / `RedisMessageListenerContainer` Bean / `StompPrincipal` / `WebSocketAuthChannelInterceptor` への `setUser` 追加（§2.3 の Y-1 地雷注意）/ feature flag / §2.1 の順序依存是正（Config 集約）/ **`serverSeq` の Valkey INCR 化（§4.6）** / node-id の `/actuator/info` 公開＋CONNECT ログ（§7.4.2）|
-| **隊 2: 試練（テスト先行）** | 受け入れ条件 → red テスト | §7.2 の Principal red（`/queue` 登録済みの切り分けアサート含む）/ §7.1.1 手組み結合（broadcast・ループ防止）/ §7.1.2 2 コンテキスト実スタック（AC-1 実到達・user 宛・Principal・サイネージ・**serverSeq 単調 red**・**チャット認可 red**）/ §7.1.3 Valkey 断（pause/unpause）/ 非回帰確認 |
-| **隊 3: IaC** | ECS deployment 設定 + Valkey TLS 化 | §8.6 の `deployment_*` 変更 + circuit breaker + コメント書き換え + **`transit_encryption_enabled=true` 化と `spring.data.redis.ssl` 有効化（relay ON の前提条件・適用可否確定は段階 1 着手前のゲート）** + relay flag の task definition 環境変数追加（§1.3）。Graviton #2219 先行の上に積む・Cloudflare Tunnel 隊と協調 |
-| **隊 4: サイネージ系統の確定対応** | §2.1 の実挙動確定 | 起動時 Configurer 順序の実測確定 → 単一ブローカーマージ前提の妥当性確認。設定集約が隊 1 に吸収できるなら隊 1 に統合（調査結果次第）|
-| **隊 5: FE 通知購読** | `/user/queue/notifications` の FE 受け口新設（§2.5・🔴）| ログイン後グローバル WS 接続の composable（SUBSCRIBE → `useNotificationStore.setLatestNotification` へ結線・**新 UI 不要の最小結線**）＋ AC-9 実機 E2E |
-| **隊 6: チャット SUBSCRIBE 認可** | §2.6 の既存 IDOR 閉塞（御裁可済み）| `ChatChannelSubscriptionInterceptor`（チャネルメンバーシップ検査・既存 2 インターセプタと同パターン・`WebSocketConfig` の認証後段に登録）＋ AC-11 red 先行 |
+| 隊                                 | 担当                                                                    | 主な成果物                                                                                                                                                                                                                                                                                                                                                                                               |
+| ---------------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **隊 1: BE 中核**                  | relay 部品 + Principal 配線 + WebSocketConfig 是正 + **serverSeq 根治** | `WebSocketRelayPublisher` / `WebSocketRelaySubscriber` / `RelayEnvelope` / `WebSocketRelayProperties` / `RedisMessageListenerContainer` Bean / `StompPrincipal` / `WebSocketAuthChannelInterceptor` への `setUser` 追加（§2.3 の Y-1 地雷注意）/ feature flag / §2.1 の順序依存是正（Config 集約）/ **`serverSeq` の Valkey INCR 化（§4.6）** / node-id の `/actuator/info` 公開＋CONNECT ログ（§7.4.2） |
+| **隊 2: 試練（テスト先行）**       | 受け入れ条件 → red テスト                                               | §7.2 の Principal red（`/queue` 登録済みの切り分けアサート含む）/ §7.1.1 手組み結合（broadcast・ループ防止）/ §7.1.2 2 コンテキスト実スタック（AC-1 実到達・user 宛・Principal・サイネージ・**serverSeq 単調 red**・**チャット認可 red**）/ §7.1.3 Valkey 断（pause/unpause）/ 非回帰確認                                                                                                                |
+| **隊 3: IaC**                      | ECS deployment 設定 + Valkey TLS 化                                     | §8.6 の `deployment_*` 変更 + circuit breaker + コメント書き換え + **`transit_encryption_enabled=true` 化と `spring.data.redis.ssl` 有効化（relay ON の前提条件・適用可否確定は段階 1 着手前のゲート）** + relay flag の task definition 環境変数追加（§1.3）。Graviton #2219 先行の上に積む・Cloudflare Tunnel 隊と協調                                                                                 |
+| **隊 4: サイネージ系統の確定対応** | §2.1 の実挙動確定                                                       | 起動時 Configurer 順序の実測確定 → 単一ブローカーマージ前提の妥当性確認。設定集約が隊 1 に吸収できるなら隊 1 に統合（調査結果次第）                                                                                                                                                                                                                                                                      |
+| **隊 5: FE 通知購読**              | `/user/queue/notifications` の FE 受け口新設（§2.5・🔴）                | ログイン後グローバル WS 接続の composable（SUBSCRIBE → `useNotificationStore.setLatestNotification` へ結線・**新 UI 不要の最小結線**）＋ AC-9 実機 E2E                                                                                                                                                                                                                                                   |
+| **隊 6: チャット SUBSCRIBE 認可**  | §2.6 の既存 IDOR 閉塞（御裁可済み）                                     | `ChatChannelSubscriptionInterceptor`（チャネルメンバーシップ検査・既存 2 インターセプタと同パターン・`WebSocketConfig` の認証後段に登録）＋ AC-11 red 先行                                                                                                                                                                                                                                               |
 
 > 順序: **隊 2（試練 red）→ 隊 1・隊 5・隊 6（green）→ 隊 3（IaC・TLS ゲートは段階 1 着手前に確定）**。Principal 根治は隊 1 の中核であり、隊 2 の red 実証が前提（BE/API テスト先行・`feedback_test_first_be_api`）。隊 5（FE）は BE の Principal 根治とセットで AC-9 が閉じる。
 

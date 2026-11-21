@@ -62,7 +62,8 @@ public class ErrorReportService {
      * @return 作成または更新されたエラーレポートエンティティ
      */
     public ErrorReportEntity createOrAggregate(ErrorReportRequest request, String ipAddress) {
-        String pagePath = extractPath(request.getPageUrl());
+        String pageUrl = DiagnosticUrl.normalize(request.getPageUrl());
+        String pagePath = extractPath(pageUrl);
         String normalized = normalizeForHash(request.getErrorMessage());
         String errorHash = sha256(normalized + "|" + pagePath);
 
@@ -79,7 +80,7 @@ public class ErrorReportService {
         ErrorReportEntity newReport = ErrorReportEntity.builder()
                 .errorMessage(request.getErrorMessage())
                 .stackTrace(stackTrace)
-                .pageUrl(request.getPageUrl())
+                .pageUrl(pageUrl)
                 .userAgent(request.getUserAgent())
                 .userComment(request.getUserComment())
                 .userId(request.getUserId())
@@ -310,16 +311,16 @@ public class ErrorReportService {
 
 
     /**
-     * URL からパス部分を抽出する。
-     * 不透明URI（"health:backend" 等）は getPath() が null を返すため、その場合は元の url をそのまま返す。
+     * FEのcanonical URLから既存hash用のパスを抽出し、解析失敗は固定markerへ倒す。
+     * HEALTH/BACKENDは別入口で処理し、本メソッドへ不透明URIやtemplateを渡さない。
      */
     private String extractPath(String url) {
         try {
             String path = URI.create(url).getPath();
-            return path != null ? path : url;
+            return path != null ? path : "/invalid-url";
         } catch (Exception e) {
-            // URL パースに失敗した場合はそのまま返す
-            return url;
+            // FE取込で正規化済みの値だけを扱い、予期しない解析失敗でも生値へ戻さない。
+            return "/invalid-url";
         }
     }
 

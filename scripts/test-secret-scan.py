@@ -6,7 +6,6 @@ import math
 import os
 from pathlib import Path
 import re
-import secrets
 import shlex
 import subprocess
 import sys
@@ -101,10 +100,8 @@ class SecretScanRegression(unittest.TestCase):
         path.write_text(contents, encoding='utf-8')
 
     def token(self):
-        # 16進各文字を3個ずつ含め、検出閾値3.5を超えるentropy 4を保証する。
-        characters = list('0123456789abcdef' * 3)
-        secrets.SystemRandom().shuffle(characters)
-        value = ''.join(characters)
+        # 各16進文字3個でentropy 4を保証し、英字を数字で区切って既定stopwordsとの衝突を避ける。
+        value = '0a1b2c3d4e5f6789' * 3
         self.values.append(value)
         return value
 
@@ -154,12 +151,26 @@ class SecretScanRegression(unittest.TestCase):
         self.assertEqual(count, expected_count, 'scanner finding count must match fixture contract')
 
     def test_generated_token_always_exceeds_detection_entropy_threshold(self):
-        with patch('secrets.token_hex', return_value='0' * 48):
-            value = self.token()
+        value = self.token()
 
         entropy = -sum((count / len(value)) * math.log2(count / len(value))
                        for count in Counter(value).values())
         self.assertGreater(entropy, 3.5, 'synthetic detection value must exceed scanner entropy threshold')
+
+    def test_merge_only_detection_fixture_avoids_stopword_collision(self):
+        def stopword_first(characters):
+            # entropy 4を維持しても、deadを含む検体は固定版のstopwordsで除外される。
+            remaining = characters.copy()
+            for character in 'dead':
+                remaining.remove(character)
+            characters[:] = list('dead') + remaining
+
+        with patch('secrets.SystemRandom.shuffle', side_effect=stopword_first):
+            self.make_merge()
+
+        self.assertEqual(Counter(self.values[0]), Counter('0123456789abcdef' * 3),
+                         'synthetic fixture must retain the high-entropy character counts')
+        self.scan()
 
     def test_merge_only_addition_in_pr_and_push_range(self):
         self.make_merge()

@@ -75,9 +75,11 @@ onUnmounted(() => {
 // （レイアウト自体は unmount せずに済むセッション途中の状態変化にも対応）。
 // これが無いと、ログイン後にレイアウトが再マウントされない限りバッジが永久に更新されない。
 watch(
-  () => authStore.isAuthenticated,
-  (authenticated) => {
-    if (authenticated) {
+  () => authStore.user?.id ?? null,
+  (userId) => {
+    stopInboxPolling()
+    userNotificationSocket.stop()
+    if (userId !== null) {
       startInboxPolling()
       userNotificationSocket.start()
     } else {
@@ -85,6 +87,7 @@ watch(
       userNotificationSocket.stop()
     }
   },
+  { flush: 'sync' },
 )
 
 const guardianshipSwitchStore = useGuardianshipSwitchStore()
@@ -113,7 +116,11 @@ async function handleEndSwitch() {
     <LoadingBounce />
   </div>
 
-  <div v-else class="min-h-screen dark:bg-surface-ground" style="background-color: var(--bg-color, #f3efe0)">
+  <div
+    v-else
+    class="min-h-screen dark:bg-surface-ground"
+    style="background-color: var(--bg-color, #f3efe0)"
+  >
     <AppShell
       @open-quick-memo="quickMemoModalVisible = true"
       @open-feedback="feedbackModalVisible = true"
@@ -130,7 +137,11 @@ async function handleEndSwitch() {
             v-if="guardianshipSwitchStore.isActingAs"
             class="bg-orange-100 border-b border-orange-300 text-orange-800 text-sm py-1 px-4 flex items-center justify-between dark:bg-orange-900/30 dark:border-orange-700 dark:text-orange-300"
           >
-            <span>{{ $t('proxy.guardianship.switch.actingAs', { name: guardianshipSwitchStore.activeChild?.displayName ?? '' }) }}</span>
+            <span>{{
+              $t('proxy.guardianship.switch.actingAs', {
+                name: guardianshipSwitchStore.activeChild?.displayName ?? '',
+              })
+            }}</span>
             <button class="text-xs underline hover:no-underline" @click="handleEndSwitch">
               {{ $t('proxy.guardianship.switch.end') }}
             </button>

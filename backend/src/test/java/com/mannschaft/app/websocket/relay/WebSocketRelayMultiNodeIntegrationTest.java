@@ -2,6 +2,14 @@ package com.mannschaft.app.websocket.relay;
 
 import com.mannschaft.app.MannschaftApplication;
 import com.mannschaft.app.auth.service.AuthTokenService;
+import com.mannschaft.app.signage.entity.SignageAccessTokenEntity;
+import com.mannschaft.app.signage.entity.SignageScreenEntity;
+import com.mannschaft.app.signage.repository.SignageAccessTokenRepository;
+import com.mannschaft.app.signage.repository.SignageScreenRepository;
+import com.mannschaft.app.support.test.MembershipTestHelper;
+import com.mannschaft.app.support.test.TeamOrgFixtureHelper;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -17,6 +25,10 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.lang.NonNull;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
+import org.springframework.messaging.simp.SimpMessageType;
+import org.springframework.messaging.simp.broker.SimpleBrokerMessageHandler;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
@@ -25,6 +37,8 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
@@ -42,11 +56,13 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 /**
  * §7.1.2 2 コンテキスト @SpringBootTest — 実 STOMP スタックでのマルチノード relay 到達を検証する
@@ -128,6 +144,17 @@ class WebSocketRelayMultiNodeIntegrationTest {
     @Autowired
     AuthTokenService authTokenService;
 
+    @Autowired SignageScreenRepository signageScreens;
+    @Autowired SignageAccessTokenRepository signageTokens;
+    @Autowired PlatformTransactionManager transactions;
+    @Autowired SimpleBrokerMessageHandler broker;
+    @PersistenceContext EntityManager em;
+
+    private Long signageScreenId;
+    private Long signageTokenId;
+    private Long signageTeamId;
+    private static final long SIGNAGE_ACTOR = 90301L;
+
     private final List<WebSocketStompClient> clients = new ArrayList<>();
 
     public static boolean isDockerAvailable() {
@@ -171,10 +198,27 @@ class WebSocketRelayMultiNodeIntegrationTest {
 
     @AfterEach
     void stopClients() {
+        List<RuntimeException> cleanupFailures = new ArrayList<>();
         for (WebSocketStompClient c : clients) {
-            c.stop();
+            try { c.stop(); } catch (RuntimeException failure) { cleanupFailures.add(failure); }
         }
         clients.clear();
+        if (signageTeamId != null) {
+            try {
+                new TransactionTemplate(transactions).executeWithoutResult(status -> {
+                    if (signageTokenId != null) em.createQuery("delete from SignageAccessTokenEntity where id = :id")
+                            .setParameter("id", signageTokenId).executeUpdate();
+                    if (signageScreenId != null) em.createQuery("delete from SignageScreenEntity where id = :id")
+                            .setParameter("id", signageScreenId).executeUpdate();
+                    em.createNativeQuery("DELETE FROM teams WHERE id = :id").setParameter("id", signageTeamId).executeUpdate();
+                    em.createNativeQuery("DELETE FROM users WHERE id = :id").setParameter("id", SIGNAGE_ACTOR).executeUpdate();
+                });
+            } catch (RuntimeException failure) { cleanupFailures.add(failure); }
+            signageTokenId = null;
+            signageScreenId = null;
+            signageTeamId = null;
+        }
+        assertThat(cleanupFailures).as("全clientを停止してから所有Signage fixtureを回収する").isEmpty();
     }
 
     @Test
@@ -213,13 +257,36 @@ class WebSocketRelayMultiNodeIntegrationTest {
     @Test
     @DisplayName("AC-7: ノード B 発の /topic/signage/.../update がノード A 接続クライアントに到達する（red）")
     void signageBroadcast_crossNode_reaches() throws Exception {
+        SignageAccessTokenEntity capability = new TransactionTemplate(transactions).execute(status -> {
+            MembershipTestHelper.insertActiveUser(em, SIGNAGE_ACTOR);
+            signageTeamId = TeamOrgFixtureHelper.insertTeam(em, "relay掲示専用", "relay-" + UUID.randomUUID().toString().substring(0, 24));
+            var screen = signageScreens.saveAndFlush(SignageScreenEntity.builder().scopeType("TEAM")
+                    .scopeId(signageTeamId).name("relay掲示専用").createdBy(SIGNAGE_ACTOR).build());
+            signageScreenId = screen.getId();
+            var token = signageTokens.saveAndFlush(SignageAccessTokenEntity.builder().screenId(signageScreenId)
+                    .name("relay専用資格").token(UUID.randomUUID().toString()).createdBy(SIGNAGE_ACTOR).build());
+            signageTokenId = token.getId();
+            return token;
+        });
+        // 両ノードのRepositoryが同じ永続資格を参照することを、実際の独立DB照合で確かめる。
+        assertThat(nodeBContext.getBean(SignageAccessTokenRepository.class)
+                .findSocketAccessById(signageTokenId, signageScreenId)).isPresent();
         BlockingQueue<Object> inbox = new LinkedBlockingQueue<>();
-        StompSession sessionA = connect(nodeAPort, null);
-        sessionA.subscribe("/topic/signage/screen-1/update", frameHandler(inbox));
-        Thread.sleep(300);
+        StompSession sessionA = connect(nodeAPort, null, capability.getToken());
+        String destination = "/topic/signage/" + signageScreenId + "/update";
+        String subscriptionId = UUID.randomUUID().toString();
+        StompHeaders subscriptionHeaders = new StompHeaders();
+        subscriptionHeaders.setId(subscriptionId);
+        subscriptionHeaders.setDestination(destination);
+        sessionA.subscribe(subscriptionHeaders, frameHandler(inbox));
+        var message = MessageBuilder.withPayload(new byte[0])
+                .setHeader(SimpMessageHeaderAccessor.MESSAGE_TYPE_HEADER, SimpMessageType.MESSAGE)
+                .setHeader(SimpMessageHeaderAccessor.DESTINATION_HEADER, destination).build();
+        await().atMost(Duration.ofSeconds(10)).until(() -> broker.getSubscriptionRegistry().findSubscriptions(message)
+                .values().stream().anyMatch(ids -> ids.contains(subscriptionId)));
 
         SimpMessagingTemplate templateB = nodeBContext.getBean(SimpMessagingTemplate.class);
-        templateB.convertAndSend("/topic/signage/screen-1/update", Map.of("type", "SLIDE_UPDATE"));
+        templateB.convertAndSend(destination, Map.of("type", "SLIDE_UPDATE"));
 
         assertThat(inbox.poll(4, TimeUnit.SECONDS))
                 .as("サイネージ topic も単一ブローカーマージにより relay 対象となり跨ノード到達すること（§2.1 / AC-7）")
@@ -272,6 +339,10 @@ class WebSocketRelayMultiNodeIntegrationTest {
     }
 
     private StompSession connect(int port, String jwtOrNull) throws Exception {
+        return connect(port, jwtOrNull, null);
+    }
+
+    private StompSession connect(int port, String jwtOrNull, String signageToken) throws Exception {
         List<Transport> transports = List.of(new WebSocketTransport(new StandardWebSocketClient()));
         WebSocketStompClient client = new WebSocketStompClient(new SockJsClient(transports));
         client.setMessageConverter(new MappingJackson2MessageConverter());
@@ -283,6 +354,9 @@ class WebSocketRelayMultiNodeIntegrationTest {
         StompHeaders connectHeaders = new StompHeaders();
         if (jwtOrNull != null) {
             connectHeaders.add("Authorization", "Bearer " + jwtOrNull);
+        }
+        if (signageToken != null) {
+            connectHeaders.add("X-Signage-Token", signageToken);
         }
 
         String url = "http://localhost:" + port + "/ws";

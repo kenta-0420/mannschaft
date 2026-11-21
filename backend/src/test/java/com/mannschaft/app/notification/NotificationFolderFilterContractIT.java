@@ -14,6 +14,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.data.domain.Page;
@@ -21,10 +23,12 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -165,6 +169,88 @@ class NotificationFolderFilterContractIT extends AbstractMySqlIntegrationTest {
                 .isEqualTo(NotificationScopeType.ORGANIZATION.name());
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    @WithMockUser(username = "915301")
+    @DisplayName("既読条件は通常一覧とフォルダ一覧でページング・総件数の計算前に適用する")
+    void 既読条件はページング前に適用する(boolean folderSpecified) throws Exception {
+        saveReadNotification(USER_ID, "本人の既読通知");
+        saveReadNotification(OTHER_USER_ID, "他人の既読通知");
+        int unreadCount = folderSpecified ? 2 : 5;
+
+        mockMvc.perform(listRequest(folderSpecified, "false", 0))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.total").value(unreadCount))
+                .andExpect(jsonPath("$.meta.totalPages").value(unreadCount))
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].isRead").value(false));
+
+        mockMvc.perform(listRequest(folderSpecified, "false", unreadCount - 1))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.total").value(unreadCount))
+                .andExpect(jsonPath("$.meta.totalPages").value(unreadCount))
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].isRead").value(false));
+
+        mockMvc.perform(listRequest(folderSpecified, "true", 0))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.total").value(1))
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].title").value("本人の既読通知"))
+                .andExpect(jsonPath("$.data[0].isRead").value(true));
+
+        mockMvc.perform(listRequest(folderSpecified, null, 0))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.total").value(unreadCount + 1));
+    }
+
+    @Test
+    @WithMockUser(username = "915301")
+    @DisplayName("全件が既読なら未読ページは空になる")
+    void 全件既読の未読ページは空になる() throws Exception {
+        var notifications = notificationRepository
+                .findByUserIdOrderByCreatedAtDesc(USER_ID, Pageable.unpaged()).getContent();
+        notifications.forEach(NotificationEntity::markAsRead);
+        notificationRepository.saveAllAndFlush(notifications);
+
+        mockMvc.perform(listRequest(false, "false", 0))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.total").value(0))
+                .andExpect(jsonPath("$.data").isEmpty());
+
+        mockMvc.perform(listRequest(true, "false", 0))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.total").value(0))
+                .andExpect(jsonPath("$.data").isEmpty());
+    }
+
+    @Test
+    @DisplayName("未読条件を指定しても他人のフォルダは404になる")
+    void 未読条件を指定しても他人のフォルダは取得できない() throws Exception {
+        mockMvc.perform(listRequest(true, "false", 0).with(user(OTHER_USER_ID.toString())))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("SCOPE_FOLDER_NOT_FOUND"));
+    }
+
+    private MockHttpServletRequestBuilder listRequest(boolean folderSpecified, String isRead, int page) {
+        MockHttpServletRequestBuilder request = get("/api/v1/notifications")
+                .param("page", Integer.toString(page))
+                .param("size", "1");
+        if (folderSpecified) {
+            request.param("folderId", teamFolderId.toString()).param("scopeType", "TEAM");
+        }
+        if (isRead != null) {
+            request.param("is_read", isRead);
+        }
+        return request;
+    }
+
+    private void saveReadNotification(Long userId, String title) {
+        NotificationEntity notification = saveNotification(userId, NotificationScopeType.TEAM, TEAM_IN_FOLDER_A, title);
+        notification.markAsRead();
+        notificationRepository.saveAndFlush(notification);
+    }
+
     // ---------- フィクスチャ補助 ----------
 
     private Long createFolder(Long userId, ScopeType scopeType, String name) {
@@ -185,8 +271,8 @@ class NotificationFolderFilterContractIT extends AbstractMySqlIntegrationTest {
                 .build());
     }
 
-    private void saveNotification(Long userId, NotificationScopeType scopeType, Long scopeId, String title) {
-        notificationRepository.saveAndFlush(NotificationEntity.builder()
+    private NotificationEntity saveNotification(Long userId, NotificationScopeType scopeType, Long scopeId, String title) {
+        return notificationRepository.saveAndFlush(NotificationEntity.builder()
                 .userId(userId)
                 .notificationType("SYSTEM_ANNOUNCEMENT")
                 .title(title)

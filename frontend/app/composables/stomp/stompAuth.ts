@@ -17,6 +17,7 @@
  */
 import type { IFrame, StompHeaders } from '@stomp/stompjs'
 import { handleAuthFailureLogout, performTokenRefresh } from '~/composables/useApi'
+import { getAuthSessionContext, type AuthSessionSnapshot } from '~/composables/authSessionContext'
 
 /** BE `StompErrorCode.HEADER` と一致させる ERROR フレームのネイティブヘッダ名。 */
 export const STOMP_ERROR_CODE_HEADER = 'x-error-code'
@@ -93,18 +94,29 @@ export interface StompAuthRecoveryDeps {
  */
 export function createStompAuthRecovery(deps: StompAuthRecoveryDeps) {
   const now = deps.now ?? Date.now
+  const session = getAuthSessionContext(deps.authStore)
   let lastRefreshAt: number | null = null
+  let lastRefreshSnapshot: AuthSessionSnapshot | null = null
 
   async function recover(): Promise<StompAuthRecoveryOutcome> {
     if (!deps.authStore.isAuthenticated) return 'ANONYMOUS'
+    const snapshot = session.capture()
     const at = now()
-    if (lastRefreshAt !== null && at - lastRefreshAt < STOMP_AUTH_RETRY_WINDOW_MS) return 'EXHAUSTED'
+    if (
+      lastRefreshSnapshot !== null &&
+      session.current(lastRefreshSnapshot) &&
+      lastRefreshAt !== null &&
+      at - lastRefreshAt < STOMP_AUTH_RETRY_WINDOW_MS
+    )
+      return 'EXHAUSTED'
     lastRefreshAt = at
+    lastRefreshSnapshot = snapshot
     const result = await performTokenRefresh(deps.config, deps.authStore)
+    if (!session.current(snapshot)) return 'SESSION_CHANGED'
     if (result === 'refreshed') return 'RETRY'
     if (result === 'transient') {
       // 一時的失敗は「1 回」に数えない（回線が戻れば次の拒否で再び更新を試みる）。
-      lastRefreshAt = null
+      if (lastRefreshSnapshot === snapshot) lastRefreshAt = null
       return 'TRANSIENT'
     }
     if (result === 'session_changed') return 'SESSION_CHANGED'

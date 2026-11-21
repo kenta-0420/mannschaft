@@ -1,13 +1,18 @@
 package com.mannschaft.app.notification.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.ErrorResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.notification.dto.NotificationResponse;
 import com.mannschaft.app.notification.dto.SnoozeRequest;
 import com.mannschaft.app.notification.dto.UnreadCountResponse;
+import com.mannschaft.app.notification.service.NotificationListQueryService;
 import com.mannschaft.app.notification.service.NotificationService;
 import com.mannschaft.app.scopefolder.entity.enums.ScopeType;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -35,31 +40,36 @@ import com.mannschaft.app.common.security.SelfScopedEndpoint;
 public class NotificationController {
 
     private final NotificationService notificationService;
+    private final NotificationListQueryService notificationListQueryService;
 
 
     /**
      * 通知一覧を取得する。
      *
      * <p>F15.3: {@code folderId} + {@code scopeType} 両方指定時はマイスコープフォルダによる
-     * フィルタを適用する。未指定時は従来通り全件取得（後方互換）。</p>
+     * フィルタを適用する。既読条件はフォルダ指定の有無に関わらず適用する。</p>
      */
     // 認可根治戦役 Wave4 ロットD: userId は常に SecurityUtils.getCurrentUserId()。
-    // folderId 指定時も notificationService.listNotificationsByFolder が
+    // フォルダ条件を適用する場合は notificationListQueryService が
     // myScopeFolderQueryService.getScopeIdsInFolder(userId, folderId)（IDOR防止込み・所有者検証あり）を
-    // 通してから絞り込む（NotificationService.java:96）。
+    // 通してから絞り込む。
     @AuthorizedInService
     @GetMapping
     @Operation(summary = "通知一覧",
-            description = "folderId と scopeType を両方指定するとフォルダ内通知のみ取得。未指定時は全件")
+            description = "folderId と scopeType を両方指定するとフォルダ内通知に絞り込む。"
+                    + "is_read は総件数とページ内容の両方に適用する")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "クエリパラメータの型が不正",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     public ResponseEntity<PagedResponse<NotificationResponse>> listNotifications(
             @RequestParam(required = false) Long folderId,
             @RequestParam(required = false) ScopeType scopeType,
+            @Parameter(description = "false は未読のみ、true は既読のみ。省略時は両方")
+            @RequestParam(name = "is_read", required = false) Boolean isRead,
             Pageable pageable) {
         Long userId = SecurityUtils.getCurrentUserId();
-        Page<NotificationResponse> page = (folderId != null && scopeType != null)
-                ? notificationService.listNotificationsByFolder(userId, folderId, scopeType, pageable)
-                : notificationService.listNotifications(userId, pageable);
+        Page<NotificationResponse> page =
+                notificationListQueryService.listNotifications(userId, folderId, scopeType, isRead, pageable);
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 page.getTotalElements(), page.getNumber(), page.getSize(), page.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(page.getContent(), meta));

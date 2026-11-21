@@ -227,7 +227,7 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 
 ### セキュリティ・認証
 
-- **CSP違反レポート受信**: `POST /api/v1/security/csp-reports` は未認証で `application/csp-report`・`application/reports+json`・`application/json` を受理し、受信処理は204を返す。Reporting API配列の保存は未対応。公開APIレート制限は維持する（[受信契約](docs/security/03_security_headers_and_csp.md)）。
+- **CSP違反レポート受信**: `POST /api/v1/security/csp-reports` は未認証で `application/csp-report`・`application/reports+json`・`application/json` を受理し、受信処理は204を返す。URL2項目のuserinfo・query・fragmentは集約・保存・ログ出力前に除去し、不正JSONの本文・例外本文もログへ残さない。Reporting API配列の保存は未対応。公開APIレート制限は維持する（[受信契約](docs/security/03_security_headers_and_csp.md)）。
 
 フレンドチーム申請は管理画面の申請元固定と両プロフィールの申請元選択、受信/フォロー返しを実装済み（PR #4106）。実機44件・3住民探索・最終CIを確認。[完了証拠](docs/evidence/CMP-261024-2051.json)に検証範囲と制限を記録しています。
 
@@ -540,6 +540,7 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 - 出欠督促、お知らせ配信
 - LINE連携による自動通知
 - WebSocketによるリアルタイムポップアップ通知
+- **通知一覧の絞り込み**: `GET /api/v1/notifications` は `is_read=false` で本人の未読通知、`is_read=true` で既読通知を取得する。マイスコープフォルダ内の通知一覧でも同じ条件を適用する
 - 重要度に応じた通知チャネル自動選択
 - **通知受信設定**: 個人アカウントが所属する組織・チームごとに通知の受け取り ON/OFF を設定可能
 - **募集の無断欠席異議**: 参加者の異議理由を保存して主催者へアプリ内通知し、TEAM/ORGANIZATION の管理者または PERSONAL 募集の作成者が裁定可能
@@ -895,6 +896,7 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 
 - **消費税設定**: 税名称・税率・表示方式（税込/税抜）の設定
 - **エラーレポート管理（F12.5 Phase 2）**: ユーザーから送信されたエラーレポートの一覧・Kanban・詳細確認（スタックトレース・発生ページ・ユーザーエージェント・任意コメント）。ステータス管理（未対応 / 対応中 / 解決済み）に加え、ワークフロー段階管理（INVESTIGATION_STARTED → ROOT_CAUSE_IDENTIFIED → FIX_IN_PROGRESS → TEST_COMPLETED → RELEASED）、担当者アサイン、操作履歴・コメント、タイムライン（occurrences + activities）、AI 自動分析（Claude Haiku 4.5、月次予算 5,000 円）、GitHub Issue 自動作成（PII 除去 + 内部 URL 付与）に対応。詳細: `docs/features/F12.5_frontend_error_tracking.md` §12
+- 診断URLはFE送信時・BEのFE取込保存前にquery/fragment/userinfoを除去し、capabilityリンク本体と内部HEALTH/BACKENDのpathを維持する。保証範囲は[F12.5の診断URL保存境界](docs/features/F12.5_frontend_error_tracking.md#診断urlの保存境界cmp-261116-1416)を参照。
 - **アフィリエイト設定**: AmazonアソシエイトのタグIDと表示配置（サイドバー右・バナーフッター等）を管理画面から設定・切り替え。将来は楽天アフィリエイト等の追加も対応できる設計とする
 - **広告管理（将来）**: プラットフォーム全体の広告クリエイティブ（画像・タイトル・リンク先・リンク種別）の登録・審査・公開管理。キャンペーン（掲載期間・表示対象プランスコープ・ターゲティング条件）の作成・一覧確認。インプレッション・クリック数の統計確認
 - ユーザーBAN・通報管理
@@ -1008,6 +1010,7 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 - レスポンス形式: `ApiResponse<T>`（単一）/ `PagedResponse<T>`（リスト+meta）/ `ErrorResponse`（error+fieldErrors）
 - スコープ付きリソース: `/teams/{teamId}/...` または `/organizations/{orgId}/...`
 - WebSocket: STOMP over SockJS（`/ws`）
+- サイネージWS（`/ws`・`/ws/signage`）: 端末capabilityはCONNECT専用header `X-Signage-Token` で提示し、tokenが許可する画面のemergency/updateだけを購読する。購読時と各配送時に失効・期限・画面/IPを再確認する（[F09.10](docs/features/F09.10_digital_signage.md#6-セキュリティ考慮事項)）。
 
 ### Phase 別 API 概要
 

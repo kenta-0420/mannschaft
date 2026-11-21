@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { createI18n } from 'vue-i18n'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import type { NotificationResponse } from '~/types/notification'
@@ -10,6 +10,10 @@ import NotificationList from '~/components/notification/NotificationList.vue'
 type ConfirmableNotificationFixture = NotificationResponse & { isConfirmed?: boolean | null }
 
 const mocks = vi.hoisted(() => ({
+  authStore: {
+    user: { id: 42, timezone: 'Asia/Tokyo' } as { id: number; timezone: string } | null,
+  },
+  notificationStore: { latestNotification: null as { id: number; userId: number } | null },
   notificationApi: {
     getNotifications: vi.fn(),
     markAsRead: vi.fn(),
@@ -48,7 +52,10 @@ vi.mock('~/composables/useRelativeTime', () => ({
   useRelativeTime: () => ({ relativeTime: () => '今' }),
 }))
 vi.mock('~/stores/useAuthStore', () => ({
-  useAuthStore: () => ({ user: { timezone: 'Asia/Tokyo' } }),
+  useAuthStore: () => mocks.authStore,
+}))
+vi.mock('~/stores/useNotificationStore', () => ({
+  useNotificationStore: () => mocks.notificationStore,
 }))
 vi.mock('nuxt/app', async () => {
   const actual = await vi.importActual<typeof import('nuxt/app')>('nuxt/app')
@@ -74,6 +81,7 @@ vi.mock('#imports', () => ({
   ref,
   watch,
   onMounted,
+  onUnmounted,
   useState: (_key: string, init: () => unknown) => ref(init()),
   useNotificationApi: () => mocks.notificationApi,
   useConfirmableNotificationApi: () => mocks.confirmableApi,
@@ -83,7 +91,8 @@ vi.mock('#imports', () => ({
   useI18n: () => ({ t: (key: string) => key }),
   useRouter: () => ({ push: mocks.routerPush }),
   useRelativeTime: () => ({ relativeTime: () => '今' }),
-  useAuthStore: () => ({ user: { timezone: 'Asia/Tokyo' } }),
+  useAuthStore: () => mocks.authStore,
+  useNotificationStore: () => mocks.notificationStore,
   useToast: () => ({ add: mocks.toastAdd }),
 }))
 
@@ -120,8 +129,8 @@ const stubs = {
     template:
       '<button type="button" :data-label="label" :data-testid="label === \'notification.list.markAllRead\' ? \'mark-all-read\' : undefined" @click="$emit(\'click\', $event)">{{ label }}</button>',
   },
-  SelectButton: { template: '<div />' },
-  Menu: { template: '<div />' },
+  SelectButton: { props: ['modelValue'], emits: ['update:modelValue'], template: '<div />' },
+  Menu: { props: ['model'], template: '<div />' },
   LoadingBounce: { template: '<div />' },
 }
 
@@ -152,6 +161,8 @@ async function mountList(row: ConfirmableNotificationFixture) {
 describe('通知の既読と確認状態', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.authStore = reactive({ user: { id: 42, timezone: 'Asia/Tokyo' } })
+    mocks.notificationStore = reactive({ latestNotification: null })
     mocks.notificationApi.markAsRead.mockResolvedValue(undefined)
     mocks.notificationApi.markAsUnread.mockResolvedValue(undefined)
     mocks.notificationApi.markAllAsRead.mockResolvedValue(undefined)

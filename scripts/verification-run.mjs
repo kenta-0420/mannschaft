@@ -110,7 +110,7 @@ async function references(scratch, groups = [], baseline = new Map()) {
         catch (gone) { if (['ENOENT', 'ESRCH'].includes(gone.code)) continue; throw gone; }
         if (current.state === 'Z' || current.state === 'X' || baselineExclusion(e, pid, current.start, baseline)) continue;
       }
-      if (!['ENOENT', 'ESRCH'].includes(e.code)) throw new Error(`停止/参照確認不能 PID ${pid}: ${e.message}`);
+      if (!['ENOENT', 'ESRCH'].includes(e.code)) throw Object.assign(new Error(`停止/参照確認不能 PID ${pid}: ${e.message}`), { code: e.code });
     }
   }
   return found;
@@ -227,8 +227,19 @@ async function run(options) {
         // commandが孫を残して終了した場合も、自分のgroupだけを停止する。
         for (const pid of groups) signalGroup(pid, 'SIGTERM');
         const deadline = Date.now() + 2000;
-        let refs;
-        do { refs = await references(scratch, groups, baseline); if (!refs.some(r => r.startsWith('group'))) break; await delay(50); } while (Date.now() < deadline);
+        let refs, inspectionError;
+        do {
+          inspectionError = null;
+          try { refs = await references(scratch, groups, baseline); }
+          catch (e) {
+            if (e.code !== 'EACCES') throw e;
+            inspectionError = e;
+          }
+          // 終了途中の検査不能も同じ猶予内で全件再監査する。baselineへ昇格しない。
+          if (!inspectionError && !refs.some(r => r.startsWith('group'))) break;
+          await delay(Math.min(50, Math.max(0, deadline - Date.now())));
+        } while (Date.now() < deadline);
+        if (inspectionError) throw inspectionError;
         if (refs.length) throw new Error(`停止/参照確認: ${refs.join(', ')}`);
         await verify(parent, parentId);
         await verify(scratch, scratchId);

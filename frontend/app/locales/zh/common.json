@@ -3352,6 +3352,20 @@
       "used_count": "使用次数"
     }
   },
+  "signage": {
+    "layout": {
+      "landscape": "横向",
+      "portrait": "纵向",
+      "standard": "标准"
+    },
+    "slotType": {
+      "activityHighlight": "活动精选",
+      "ranking": "排行榜",
+      "freeText": "自由文本",
+      "freeImage": "自由图片",
+      "clock": "时钟"
+    }
+  },
   "globalSearch": {
     "header": {
       "placeholder": "全站搜索",

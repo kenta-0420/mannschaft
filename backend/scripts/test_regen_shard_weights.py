@@ -460,10 +460,11 @@ def job_block(workflow, job):
 
 class CiShardWorkflowStaticTest(unittest.TestCase):
     # (workflow, shard ジョブ名, ジョブ上限, テスト step 上限) — 上限は現状値から変えない（AC-9）
+    # PR Check は CMP-261114-0713 で採択した実行上限を維持し、8 shard 化で巻き戻さない。
     TARGETS = [
         ("backend-ci.yml", "shard",
-         "timeout-minutes: ${{ needs.detect.outputs.migrations_changed == 'true' && 120 || 100 }}",
-         "timeout-minutes: ${{ needs.detect.outputs.migrations_changed == 'true' && 105 || 85 }}"),
+         "timeout-minutes: ${{ needs.detect.outputs.migrations_changed == 'true' && 120 || 110 }}",
+         "timeout-minutes: ${{ needs.detect.outputs.migrations_changed == 'true' && 110 || 95 }}"),
         ("backend-nightly-full.yml", "full-test", "timeout-minutes: 120", "timeout-minutes: 105"),
         ("backend-deploy.yml", "test",
          "timeout-minutes: ${{ needs.detect.outputs.migrations_changed == 'true' && 120 || 100 }}",

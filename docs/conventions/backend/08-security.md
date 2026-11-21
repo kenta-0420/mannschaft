@@ -28,12 +28,14 @@
 * **デバイスバインディング（推奨）**: Refresh Token 使用時に、発行時のIPアドレスおよびUser-Agentとの一致を検証することを推奨する。不一致の場合はトークンを無効化し、再ログインを要求する。これにより、XSSで Refresh Token が漏洩した場合でも、異なるデバイスからの悪用を防止できる。
 
 ### WebSocket (STOMP) 認証規約
-* **認証方式**: REST API と同様に JWT を使用するが、セキュリティ確保のためクエリパラメータでのトークン送付は禁止する。
-* **トークン送付タイミング**: STOMP の `CONNECT` フレーム送信時に、カスタムヘッダー（`Authorization`）として Bearer トークンを付与する。
+* **認証方式**: 利用者のJWTと端末capabilityを区別する。いずれもWebSocket URLのqueryを資格情報として受け付けない。
+* **JWT送付タイミング**: STOMP の `CONNECT` フレームで `Authorization: Bearer ...` を渡す。Bearer/Cookie/匿名の優先順位は `docs/security/01_authorization_baseline.md` §5を正本とし、端末capabilityでJWT Principal/userIdを置き換えない。
+* **掲示端末capability**: `CONNECT` の専用native header `X-Signage-Token` だけで渡す（F09.10 §6）。HTTP header・URL query・SUBSCRIBE/SEND headerから取得しない。CONNECT検証後はraw tokenをnative headerから除去し、server registryにはtoken ID・screen ID・直接peer IP・購読IDとexact宛先だけを保持する。匿名のtoken所持端末を許可し、所属/管理権限によるtokenlessバイパスは設けない。
 * **サーバー側検証**:
     * `ChannelInterceptor` を実装し、`preSend` メソッドにて `CONNECT` コマンド受信時のヘッダー検証を行う。
-    * 有効なトークンが確認できない場合は、接続を拒否（例外をスロー）する。
-* **ハンドシェイク時**: 初期接続（HTTP Handshake）時は認証をスキップし、その後の STOMP プロトコルレベルで認証を強制する構成とする。
+    * 明示した資格が無効なら接続を拒否する。資格なしの共通CONNECTは匿名として通し、各topicのSUBSCRIBEと配送境界で認可する。
+    * 掲示topicはSUBSCRIBE時とrecipientごとの配送時にtoken・画面の現在状態を検証する。購読時だけの検証で失効後の配送を許してはならない。
+* **ハンドシェイク時**: HTTP upgradeは許可Originで受け付ける。共通CONNECTでJWTの認証ソースを確定し、匿名を含む接続の各topicのSUBSCRIBE/配送境界で、そのtopicの許可契約を強制する。
 
 ### レートリミット（リクエスト制限）規約
 * **必須適用箇所**:

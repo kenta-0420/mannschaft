@@ -3352,6 +3352,20 @@
       "used_count": "Anzahl der Nutzungen"
     }
   },
+  "signage": {
+    "layout": {
+      "landscape": "Querformat",
+      "portrait": "Hochformat",
+      "standard": "Standard"
+    },
+    "slotType": {
+      "activityHighlight": "Aktivitätshöhepunkte",
+      "ranking": "Rangliste",
+      "freeText": "Freitext",
+      "freeImage": "Freies Bild",
+      "clock": "Uhr"
+    }
+  },
   "globalSearch": {
     "header": {
       "placeholder": "Alles durchsuchen",

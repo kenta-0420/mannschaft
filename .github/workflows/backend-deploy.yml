@@ -282,6 +282,7 @@ jobs:
       # まで短縮する。判定不能時は detect 側が既に true（フル実行）に倒して
       # いるため、ここでは受け取った値をそのまま使うだけでよい。
       - name: Run tests (shard ${{ matrix.shard }} / ${{ env.SHARD_TOTAL }})
+        id: run-tests
         timeout-minutes: ${{ needs.detect.outputs.migrations_changed == 'true' && 105 || 85 }}
         run: >-
           ./gradlew test --no-daemon --continue --build-cache
@@ -292,6 +293,18 @@ jobs:
         env:
           # Testcontainers host resolution inside GitHub Actions
           TESTCONTAINERS_RYUK_DISABLED: "false"
+
+      - name: 各runnerの全ArchUnit実行inventoryを検証
+        if: ${{ steps.run-tests.outcome == 'success' }}
+        run: python3 scripts/verify_archunit_execution.py --output build/ci-diagnostics/archunit-execution.json
+
+      - name: ArchUnit実行inventoryの検証結果をアップロード
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: archunit-execution-main-${{ github.run_id }}-shard-${{ matrix.shard }}
+          path: backend/build/ci-diagnostics/archunit-execution.json
+          retention-days: 7
 
       # OOM (OutOfMemoryError) 発生時のみ、-XX:HeapDumpOnOutOfMemoryError で
       # backend/build/heap-dumps/java_pid<PID>.hprof に書き出されるヒープダンプを

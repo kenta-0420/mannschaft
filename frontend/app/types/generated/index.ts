@@ -43360,7 +43360,7 @@ export interface paths {
         };
         /**
          * 通知一覧
-         * @description folderId と scopeType を両方指定するとフォルダ内通知のみ取得。未指定時は全件
+         * @description folderId と scopeType を両方指定するとフォルダ内通知に絞り込む。is_read は総件数とページ内容の両方に適用する
          */
         get: operations["listNotifications"];
         put?: never;
@@ -65957,7 +65957,7 @@ export interface components {
             allowedIps?: string[];
             /** Format: date-time */
             expiredAt?: string;
-            name?: string;
+            name: string;
         };
         ApiResponseSignageAccessTokenResponse: {
             data?: components["schemas"]["SignageAccessTokenResponse"];
@@ -170582,6 +170582,8 @@ export interface operations {
             query: {
                 folderId?: number;
                 scopeType?: "TEAM" | "ORGANIZATION";
+                /** @description false は未読のみ、true は既読のみ。省略時は両方 */
+                is_read?: boolean;
                 pageable: components["schemas"]["Pageable"];
             };
             header?: never;
@@ -170597,6 +170599,15 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PagedResponseNotificationResponse"];
+                };
+            };
+            /** @description クエリパラメータの型が不正 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ErrorResponse"];
                 };
             };
         };

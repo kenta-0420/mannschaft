@@ -1,6 +1,14 @@
-export type SignageLayout = 'FULLSCREEN' | 'SPLIT_HORIZONTAL' | 'SPLIT_VERTICAL' | 'QUAD'
-export type SignageTransition = 'NONE' | 'FADE' | 'SLIDE' | 'ZOOM'
-export type SignageSlotType = 'IMAGE' | 'VIDEO' | 'URL' | 'ANNOUNCEMENT' | 'SCHEDULE' | 'WEATHER'
+import type { components } from './generated'
+
+export type SignageLayout = NonNullable<
+  components['schemas']['CreateSignageScreenRequest']['layout']
+>
+export type SignageTransition = NonNullable<
+  components['schemas']['CreateSignageScreenRequest']['transitionEffect']
+>
+export type SignageSlotType = NonNullable<
+  components['schemas']['AddSignageSlotRequest']['slotType']
+>
 
 export interface SignageScreen {
   id: number
@@ -29,7 +37,7 @@ export interface SignageToken {
   id: number
   screenId: number
   token: string
-  label: string | null
+  name: string
   lastSeenAt: string | null
   createdAt: string
 }

@@ -90,7 +90,7 @@ public class CspReportController {
         try {
             CspReportRequest reportRequest = parseReport(rawBody);
             if (reportRequest == null) {
-                log.warn("CSP違反レポートのパース結果がnull（無視）: body={}", truncateForLog(rawBody));
+                log.warn("CSP違反レポートを無視: reason=null_report, bodyLength={}", rawBody.length());
                 return;
             }
 
@@ -98,9 +98,9 @@ public class CspReportController {
             String userAgent = request.getHeader("User-Agent");
             cspReportService.receive(reportRequest, ipAddress, userAgent);
 
-        } catch (Exception e) {
-            log.warn("CSP違反レポートのパース失敗（無視）: error={}, body={}",
-                    e.getMessage(), truncateForLog(rawBody));
+        } catch (Exception exception) {
+            // 解析・保存例外の本文にも入力URLが混ざり得るため、固定理由と長さだけを記録する。
+            log.warn("CSP違反レポートを無視: reason=processing_failed, bodyLength={}", rawBody.length());
         }
     }
 
@@ -132,11 +132,4 @@ public class CspReportController {
         return request.getRemoteAddr();
     }
 
-    /**
-     * ログ出力用にボディを切り詰める（PII 漏洩防止）。
-     */
-    private String truncateForLog(String body) {
-        if (body == null) return null;
-        return body.length() <= 200 ? body : body.substring(0, 200) + "...";
-    }
 }

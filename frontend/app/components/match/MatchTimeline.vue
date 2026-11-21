@@ -4,11 +4,13 @@
 // タップで編集/削除。色＋形状＋ラベル併用（色覚多様性）。
 import type { MatchEventResponse, MatchEventType } from '~/types/match'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   events: MatchEventResponse[]
   /** 自チーム側（HOME/AWAY）。これと teamSide 不一致なら相手記録扱い。 */
   ownTeamSide: 'HOME' | 'AWAY'
-}>()
+  /** 観戦では記録内容だけを表示し、編集・削除の操作要素を持たない。 */
+  readOnly?: boolean
+}>(), { readOnly: false })
 
 const emit = defineEmits<{
   select: [event: MatchEventResponse]
@@ -98,10 +100,11 @@ function minuteLabel(e: MatchEventResponse): string {
             {{ isOpponent(row.primary) ? t('match.live.timeline.opponent') : t('match.live.timeline.self') }}
           </span>
 
-          <button
-            type="button"
+          <component
+            :is="readOnly ? 'div' : 'button'"
+            :type="readOnly ? undefined : 'button'"
             class="flex-1 text-left"
-            @click="emit('select', row.primary)"
+            v-on="readOnly ? {} : { click: () => emit('select', row.primary) }"
           >
             <!-- minute -->
             <span class="mr-2 font-mono text-xs text-surface-400">{{ minuteLabel(row.primary) }}</span>
@@ -143,10 +146,10 @@ function minuteLabel(e: MatchEventResponse): string {
               <span v-if="playerLabel(row.linked)">（{{ playerLabel(row.linked) }}）</span>
               <span v-if="row.linked.note">— {{ row.linked.note }}</span>
             </div>
-          </button>
+          </component>
 
           <button
-            v-if="!isOpponent(row.primary)"
+            v-if="!readOnly && !isOpponent(row.primary)"
             type="button"
             class="shrink-0 rounded p-1 text-surface-400 transition hover:text-red-500"
             :aria-label="t('match.live.timeline.delete')"

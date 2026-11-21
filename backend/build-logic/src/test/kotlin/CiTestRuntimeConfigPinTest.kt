@@ -45,14 +45,20 @@ class CiTestRuntimeConfigPinTest {
     }
 
     @Test
-    fun `AC-4 テストの timeout は step 105 と job 120（migration 込み）のまま`() {
-        val conditional = listOf(
-            "timeout-minutes: \${{ needs.detect.outputs.migrations_changed == 'true' && 120 || 100 }}",
-            "timeout-minutes: \${{ needs.detect.outputs.migrations_changed == 'true' && 105 || 85 }}",
+    fun `AC-4 workflow ごとのテスト timeout を維持する`() {
+        val conditional = mapOf(
+            "backend-ci.yml" to listOf(
+                "timeout-minutes: \${{ needs.detect.outputs.migrations_changed == 'true' && 120 || 110 }}",
+                "timeout-minutes: \${{ needs.detect.outputs.migrations_changed == 'true' && 110 || 95 }}",
+            ),
+            "backend-deploy.yml" to listOf(
+                "timeout-minutes: \${{ needs.detect.outputs.migrations_changed == 'true' && 120 || 100 }}",
+                "timeout-minutes: \${{ needs.detect.outputs.migrations_changed == 'true' && 105 || 85 }}",
+            ),
         )
-        for (name in listOf("backend-ci.yml", "backend-deploy.yml")) {
+        for ((name, expected) in conditional) {
             val text = workflow(name)
-            conditional.forEach { assertTrue(text.contains(it), "$name に $it が残っていること") }
+            expected.forEach { assertTrue(text.contains(it), "$name に $it が残っていること") }
         }
         val nightly = workflow("backend-nightly-full.yml")
         assertTrue(nightly.contains("    timeout-minutes: 120"), "nightly の job 上限は 120")

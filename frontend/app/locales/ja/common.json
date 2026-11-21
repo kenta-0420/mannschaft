@@ -3352,6 +3352,20 @@
       "used_count": "利用回数"
     }
   },
+  "signage": {
+    "layout": {
+      "landscape": "横向き",
+      "portrait": "縦向き",
+      "standard": "標準"
+    },
+    "slotType": {
+      "activityHighlight": "活動ハイライト",
+      "ranking": "ランキング",
+      "freeText": "フリーテキスト",
+      "freeImage": "フリー画像",
+      "clock": "時計"
+    }
+  },
   "globalSearch": {
     "header": {
       "placeholder": "全体を検索",

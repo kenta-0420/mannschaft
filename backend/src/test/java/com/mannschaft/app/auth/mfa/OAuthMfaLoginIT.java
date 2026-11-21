@@ -12,10 +12,7 @@ import com.mannschaft.app.auth.repository.OAuthLinkTokenRepository;
 import com.mannschaft.app.auth.repository.RefreshTokenRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.util.SessionHashUtil;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpServer;
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,22 +21,13 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.test.web.servlet.MvcResult;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.InetSocketAddress;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -59,17 +47,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * CMP-261012-0911 試練: OAuth ログインが 2FA を迂回する欠陥の是正（HTTP 境界の受け入れテスト）。
  *
  * <p><b>構成</b>: 実 Controller → 実 Service → 実 MySQL（Testcontainers）・実 Security フィルタ（{@link MfaItSupport}）。
- * 外部境界のみ代役: Valkey は {@link MfaValkeyFake}、OAuth プロバイダ（Google / LINE / Apple）は JDK 標準の
- * {@link HttpServer} で偽装し {@code @DynamicPropertySource} で向ける（{@code AuthOAuthLoginAuditContractIT} と同じ方式）。
+ * 外部境界のみ代役: Valkey は {@link MfaValkeyFake}、OAuth プロバイダ（Google / LINE / Apple）は {@link MfaFakeOAuthProviders}
+ * （JDK 標準の HttpServer。{@code MfaItSupport} の {@code @DynamicPropertySource} で向ける）。
  * 偽プロバイダは認可コードに {@code <sub>~<email>} を埋めて返すため、テストごとに別の OAuth 利用者を作れる。</p>
  *
- * <p><b>context 分割</b>: 偽サーバのポートを設定へ注入するため ApplicationContext が 1 つ増える。
- * {@code @DirtiesContext(AFTER_CLASS)} で閉じる。本テストは {@code @Transactional} にしない（AFTER_COMMIT 監査を観測するため）。</p>
+ * <p>本テストは {@code @Transactional} にしない（AFTER_COMMIT 監査を観測するため）。</p>
  *
  * <p>対象 AC: AC-1〜7・AC-12・AC-14〜17（AC-13 は FE 単体、AC-8〜11 は実機）。判断①（method=入口方式）・②（監査 metadata）。</p>
  */
 @RecordApplicationEvents
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("CMP-261012-0911 OAuth ログインの 2FA ゲート（HTTP 境界）")
 class OAuthMfaLoginIT extends MfaEmailOtpItSupport {
@@ -79,8 +65,6 @@ class OAuthMfaLoginIT extends MfaEmailOtpItSupport {
     private static final String UA_LOGIN = "OAuthMfaIT/1.0 (login)";
     private static final String UA_VALIDATE = "OAuthMfaIT/1.0 (validate)";
     private static final String MFA_METHOD_KEY_PREFIX = "mannschaft:auth:mfa_session_method:";
-
-    private static final HttpServer FAKE_PROVIDERS = startFakeProviders();
 
     @Autowired
     private ApplicationEvents events;
@@ -92,78 +76,6 @@ class OAuthMfaLoginIT extends MfaEmailOtpItSupport {
     private RefreshTokenRepository refreshTokenRepository;
 
     private final List<Long> oauthUserIds = new CopyOnWriteArrayList<>();
-
-    // ─────────────────────────────────────────────────────────────
-    // 偽 OAuth プロバイダ
-    // ─────────────────────────────────────────────────────────────
-
-    private static HttpServer startFakeProviders() {
-        try {
-            HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-            server.createContext("/google/token", ex -> respond(ex,
-                    "{\"access_token\":\"" + codeOf(ex) + "\"}"));
-            server.createContext("/google/userinfo", ex -> {
-                String[] subEmail = splitCode(ex.getRequestHeaders().getFirst("Authorization").substring("Bearer ".length()));
-                respond(ex, "{\"sub\":\"" + subEmail[0] + "\",\"email\":\"" + subEmail[1]
-                        + "\",\"given_name\":\"Taro\",\"family_name\":\"Yamada\",\"name\":\"oauth-mfa-it\"}");
-            });
-            server.createContext("/line/token", ex -> respond(ex,
-                    "{\"access_token\":\"fake-at\",\"id_token\":\"" + idToken(codeOf(ex)) + "\"}"));
-            server.createContext("/apple/token", ex -> respond(ex,
-                    "{\"id_token\":\"" + idToken(codeOf(ex)) + "\"}"));
-            server.start();
-            return server;
-        } catch (IOException e) {
-            throw new IllegalStateException("偽 OAuth プロバイダの起動に失敗しました", e);
-        }
-    }
-
-    /** token エンドポイントへ送られた form の code（= {@code <sub>~<email>}）。 */
-    private static String codeOf(HttpExchange ex) throws IOException {
-        String form = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-        for (String pair : form.split("&")) {
-            if (pair.startsWith("code=")) {
-                return URLDecoder.decode(pair.substring("code=".length()), StandardCharsets.UTF_8);
-            }
-        }
-        throw new IllegalStateException("code が送られていない: " + form);
-    }
-
-    private static String[] splitCode(String code) {
-        return code.split("~", 2);
-    }
-
-    private static String idToken(String code) {
-        String[] subEmail = splitCode(code);
-        String payload = "{\"sub\":\"" + subEmail[0] + "\",\"email\":\"" + subEmail[1] + "\",\"name\":\"oauth-mfa-it\"}";
-        return Base64.getUrlEncoder().withoutPadding().encodeToString("{\"alg\":\"none\"}".getBytes(StandardCharsets.UTF_8))
-                + "."
-                + Base64.getUrlEncoder().withoutPadding().encodeToString(payload.getBytes(StandardCharsets.UTF_8))
-                + ".sig";
-    }
-
-    private static void respond(HttpExchange ex, String json) throws IOException {
-        byte[] body = json.getBytes(StandardCharsets.UTF_8);
-        ex.getResponseHeaders().add("Content-Type", "application/json");
-        ex.sendResponseHeaders(200, body.length);
-        try (OutputStream os = ex.getResponseBody()) {
-            os.write(body);
-        }
-    }
-
-    @DynamicPropertySource
-    static void configureFakeProviders(DynamicPropertyRegistry registry) {
-        String base = "http://127.0.0.1:" + FAKE_PROVIDERS.getAddress().getPort();
-        registry.add("mannschaft.google.token-uri", () -> base + "/google/token");
-        registry.add("mannschaft.google.userinfo-uri", () -> base + "/google/userinfo");
-        registry.add("mannschaft.line.token-uri", () -> base + "/line/token");
-        registry.add("mannschaft.apple.token-uri", () -> base + "/apple/token");
-    }
-
-    @AfterAll
-    static void stopFakeProviders() {
-        FAKE_PROVIDERS.stop(0);
-    }
 
     @AfterEach
     void cleanUpOAuthRows() {

@@ -139,6 +139,9 @@ public class MatchEventService {
 
         MatchEventEntity saved = matchEventRepository.save(event);
         triggerRecalculation(match, actorUserId);
+        if (command.getEventType() == MatchEventType.PERIOD_START) {
+            matchService.startFromTimeline(match, actorUserId);
+        }
         // 07 §J.2: コミット後に観戦者へ差分配信する（publish のみ・配信は AFTER_COMMIT リスナーが担う）。
         eventPublisher.publishEvent(MatchLiveUpdateEvent.eventAdded(matchId, saved));
         return saved;
