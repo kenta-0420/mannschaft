@@ -139,7 +139,7 @@
       "id": "ID",
       "eventType": "种别",
       "sourceId": "对象ID",
-      "errorMessage": "错误内容",
+      "summary": "概要",
       "retryCount": "重试次数",
       "lastRetriedAt": "最后重试",
       "status": "状态",
@@ -163,6 +163,22 @@
         "SUCCEEDED": "重试成功",
         "EXHAUSTED": "已达重试上限",
         "MANUAL_RESOLVED": "手动补正完成"
+      },
+      "eventTypeValue": {
+        "CONSUMPTION_RECORD": "消耗记录",
+        "CONSUMPTION_CANCEL": "消耗撤销",
+        "THRESHOLD_ALERT": "阈值警报",
+        "WORKFLOW_START": "审批流程启动",
+        "NOTIFICATION_SEND": "通知发送",
+        "UNKNOWN": "未知类型"
+      },
+      "summaryValue": {
+        "CONSUMPTION_RECORD": "班次消耗记录失败。联系时请提供 ID。",
+        "CONSUMPTION_CANCEL": "班次消耗撤销失败。联系时请提供 ID。",
+        "THRESHOLD_ALERT": "阈值警报处理失败。可以重新执行；若仍未解决，请附上 ID 联系我们。",
+        "WORKFLOW_START": "审批流程启动失败。可以重新执行；若仍未解决，请附上 ID 联系我们。",
+        "NOTIFICATION_SEND": "通知发送失败。可以重新执行；若仍未解决，请附上 ID 联系我们。",
+        "UNKNOWN": "处理失败。联系时请提供 ID。"
       }
     }
   }

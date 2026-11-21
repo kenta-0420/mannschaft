@@ -139,7 +139,7 @@
       "id": "ID",
       "eventType": "種別",
       "sourceId": "対象 ID",
-      "errorMessage": "エラー内容",
+      "summary": "概要",
       "retryCount": "再試行回数",
       "lastRetriedAt": "最終再試行",
       "status": "状態",
@@ -163,6 +163,22 @@
         "SUCCEEDED": "再実行成功",
         "EXHAUSTED": "再試行上限到達",
         "MANUAL_RESOLVED": "手動補正済"
+      },
+      "eventTypeValue": {
+        "CONSUMPTION_RECORD": "消費実績の記録",
+        "CONSUMPTION_CANCEL": "消費実績の取消",
+        "THRESHOLD_ALERT": "しきい値アラート",
+        "WORKFLOW_START": "承認フローの開始",
+        "NOTIFICATION_SEND": "通知の送信",
+        "UNKNOWN": "不明な種別"
+      },
+      "summaryValue": {
+        "CONSUMPTION_RECORD": "シフト消費実績の記録に失敗しました。お問い合わせの際は ID をお伝えください。",
+        "CONSUMPTION_CANCEL": "シフト消費実績の取消に失敗しました。お問い合わせの際は ID をお伝えください。",
+        "THRESHOLD_ALERT": "しきい値アラートの処理に失敗しました。再実行できます。解消しない場合は ID を添えてお問い合わせください。",
+        "WORKFLOW_START": "承認フローの開始に失敗しました。再実行できます。解消しない場合は ID を添えてお問い合わせください。",
+        "NOTIFICATION_SEND": "通知の送信に失敗しました。再実行できます。解消しない場合は ID を添えてお問い合わせください。",
+        "UNKNOWN": "処理に失敗しました。お問い合わせの際は ID をお伝えください。"
       }
     }
   }

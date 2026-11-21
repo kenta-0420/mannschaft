@@ -36,20 +36,20 @@ test.describe('F08.7 Phase 11-α: shift-budget/failed-events', () => {
     const events = [
       buildFailedEvent({
         id: 3001,
-        event_type: 'NOTIFICATION_FAILED',
+        event_type: 'NOTIFICATION_SEND',
         status: 'PENDING',
         error_message: '通知送信に失敗',
       }),
       buildFailedEvent({
         id: 3002,
-        event_type: 'WORKFLOW_START_FAILED',
+        event_type: 'WORKFLOW_START',
         status: 'EXHAUSTED',
         retry_count: 3,
         error_message: 'ワークフロー起動失敗',
       }),
       buildFailedEvent({
         id: 3003,
-        event_type: 'CONSUMPTION_RECORD_FAILED',
+        event_type: 'CONSUMPTION_RECORD',
         status: 'MANUAL_RESOLVED',
         error_message: '消化記録に失敗',
       }),
@@ -62,10 +62,14 @@ test.describe('F08.7 Phase 11-α: shift-budget/failed-events', () => {
     // i18n "shiftBudget.failedEvent.title" = "失敗イベント管理"
     await expect(page.getByText('失敗イベント管理').first()).toBeVisible({ timeout: 10_000 })
 
-    // 3 行分の event_type
-    await expect(page.getByText('NOTIFICATION_FAILED')).toBeVisible()
-    await expect(page.getByText('WORKFLOW_START_FAILED')).toBeVisible()
-    await expect(page.getByText('CONSUMPTION_RECORD_FAILED')).toBeVisible()
+    // 3 行分の種別は利用者向けの名称で出る（生の種別コードは出さない）。CMP-260909-0544
+    await expect(page.getByText('通知の送信', { exact: true })).toBeVisible()
+    await expect(page.getByText('承認フローの開始', { exact: true })).toBeVisible()
+    await expect(page.getByText('消費実績の記録', { exact: true })).toBeVisible()
+    await expect(page.getByText('NOTIFICATION_SEND')).toHaveCount(0)
+    // BE の error_message（例外クラス名・SQL を含み得る）は画面に出さない
+    await expect(page.getByText('通知送信に失敗')).toHaveCount(0)
+    await expect(page.getByText('消化記録に失敗')).toHaveCount(0)
 
     // ステータスバッジの日本語ラベル（exact:true で subtitle 文中の "手動補正済" と区別）
     // "未処理" / "再試行上限到達" / "手動補正済"

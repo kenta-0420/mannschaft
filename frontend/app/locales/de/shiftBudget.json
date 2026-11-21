@@ -139,7 +139,7 @@
       "id": "ID",
       "eventType": "Ereignistyp",
       "sourceId": "Quell-ID",
-      "errorMessage": "Fehlermeldung",
+      "summary": "Zusammenfassung",
       "retryCount": "Wiederholungsanzahl",
       "lastRetriedAt": "Letzter Wiederholungsversuch",
       "status": "Status",
@@ -163,6 +163,22 @@
         "SUCCEEDED": "Wiederholung erfolgreich",
         "EXHAUSTED": "Wiederholungslimit erreicht",
         "MANUAL_RESOLVED": "Manuell gelöst"
+      },
+      "eventTypeValue": {
+        "CONSUMPTION_RECORD": "Verbrauchserfassung",
+        "CONSUMPTION_CANCEL": "Verbrauchsstornierung",
+        "THRESHOLD_ALERT": "Schwellenwert-Alarm",
+        "WORKFLOW_START": "Start des Freigabeablaufs",
+        "NOTIFICATION_SEND": "Benachrichtigungsversand",
+        "UNKNOWN": "Unbekannter Typ"
+      },
+      "summaryValue": {
+        "CONSUMPTION_RECORD": "Die Erfassung des Schichtverbrauchs ist fehlgeschlagen. Nennen Sie bei Rückfragen die ID.",
+        "CONSUMPTION_CANCEL": "Die Stornierung des Schichtverbrauchs ist fehlgeschlagen. Nennen Sie bei Rückfragen die ID.",
+        "THRESHOLD_ALERT": "Die Verarbeitung des Schwellenwert-Alarms ist fehlgeschlagen. Sie können es erneut ausführen; bei anhaltendem Problem kontaktieren Sie uns mit der ID.",
+        "WORKFLOW_START": "Der Start des Freigabeablaufs ist fehlgeschlagen. Sie können es erneut ausführen; bei anhaltendem Problem kontaktieren Sie uns mit der ID.",
+        "NOTIFICATION_SEND": "Der Versand der Benachrichtigung ist fehlgeschlagen. Sie können es erneut ausführen; bei anhaltendem Problem kontaktieren Sie uns mit der ID.",
+        "UNKNOWN": "Die Verarbeitung ist fehlgeschlagen. Nennen Sie bei Rückfragen die ID."
       }
     }
   }

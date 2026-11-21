@@ -139,7 +139,7 @@
       "id": "ID",
       "eventType": "Tipo de evento",
       "sourceId": "ID de origen",
-      "errorMessage": "Mensaje de error",
+      "summary": "Resumen",
       "retryCount": "Número de reintentos",
       "lastRetriedAt": "Último reintento",
       "status": "Estado",
@@ -163,6 +163,22 @@
         "SUCCEEDED": "Reintento correcto",
         "EXHAUSTED": "Límite de reintentos alcanzado",
         "MANUAL_RESOLVED": "Resuelto manualmente"
+      },
+      "eventTypeValue": {
+        "CONSUMPTION_RECORD": "Registro de consumo",
+        "CONSUMPTION_CANCEL": "Cancelación de consumo",
+        "THRESHOLD_ALERT": "Alerta de umbral",
+        "WORKFLOW_START": "Inicio de flujo de aprobación",
+        "NOTIFICATION_SEND": "Envío de notificación",
+        "UNKNOWN": "Tipo desconocido"
+      },
+      "summaryValue": {
+        "CONSUMPTION_RECORD": "Falló el registro del consumo del turno. Indique el ID al contactarnos.",
+        "CONSUMPTION_CANCEL": "Falló la cancelación del consumo del turno. Indique el ID al contactarnos.",
+        "THRESHOLD_ALERT": "Falló el procesamiento de la alerta de umbral. Puede reintentarlo; si persiste, contáctenos con el ID.",
+        "WORKFLOW_START": "Falló el inicio del flujo de aprobación. Puede reintentarlo; si persiste, contáctenos con el ID.",
+        "NOTIFICATION_SEND": "Falló el envío de la notificación. Puede reintentarlo; si persiste, contáctenos con el ID.",
+        "UNKNOWN": "Falló el procesamiento. Indique el ID al contactarnos."
       }
     }
   }

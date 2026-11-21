@@ -98,6 +98,23 @@ function statusLabel(status: string): string {
   return t(key, status)
 }
 
+/**
+ * 種別コード（BE の enum 名）を利用者向けの名称に変換する。未知の種別は生コードを出さず汎用名にする。
+ * CMP-260909-0544: 生コードや生の error_message は内部情報の混入経路になるため画面へ出さない。
+ */
+const KNOWN_EVENT_TYPES = [
+  'CONSUMPTION_RECORD', 'CONSUMPTION_CANCEL', 'THRESHOLD_ALERT', 'WORKFLOW_START', 'NOTIFICATION_SEND',
+]
+function knownEventType(type: string): string {
+  return KNOWN_EVENT_TYPES.includes(type) ? type : 'UNKNOWN'
+}
+function eventTypeLabel(type: string): string {
+  return t(`shiftBudget.failedEvent.eventTypeValue.${knownEventType(type)}`)
+}
+/** 種別に応じた分かりやすい説明。BE の error_message（例外クラス名・SQL を含み得る）は使わない。 */
+function eventSummary(type: string): string {
+  return t(`shiftBudget.failedEvent.summaryValue.${knownEventType(type)}`)
+}
 
 function openRetry(event: FailedEventResponse) {
   if (!canRetry(event)) return
@@ -184,15 +201,19 @@ onMounted(() => {
         <div class="py-8 text-center text-surface-500">{{ t('shiftBudget.failedEvent.empty') }}</div>
       </template>
       <Column field="id" :header="t('shiftBudget.failedEvent.id')" style="width: 80px" />
-      <Column field="event_type" :header="t('shiftBudget.failedEvent.eventType')" style="width: 200px" />
+      <Column :header="t('shiftBudget.failedEvent.eventType')" style="width: 200px">
+        <template #body="{ data }: { data: FailedEventResponse }">
+          <span>{{ eventTypeLabel(data.event_type) }}</span>
+        </template>
+      </Column>
       <Column :header="t('shiftBudget.failedEvent.sourceId')" style="width: 100px">
         <template #body="{ data }: { data: FailedEventResponse }">
           <span>{{ data.source_id ?? '-' }}</span>
         </template>
       </Column>
-      <Column :header="t('shiftBudget.failedEvent.errorMessage')">
+      <Column :header="t('shiftBudget.failedEvent.summary')">
         <template #body="{ data }: { data: FailedEventResponse }">
-          <span class="line-clamp-2 text-sm">{{ data.error_message ?? '-' }}</span>
+          <span class="text-sm">{{ eventSummary(data.event_type) }}</span>
         </template>
       </Column>
       <Column :header="t('shiftBudget.failedEvent.retryCount')" style="width: 100px">

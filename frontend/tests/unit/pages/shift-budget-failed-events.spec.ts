@@ -62,7 +62,10 @@ describe('CMP-260910-1606 失敗イベントの操作導線', () => {
         expect(row.find('.p-tag').classes()).toContain('p-tag-success')
       }
       if (id === 1004 || id === 1005) {
-        expect(row.text()).toContain('元の診断')
+        // CMP-260909-0544: error_message は画面に出さず、種別ごとの説明を出す。
+        // 元の診断情報は API 応答・DB に保持されており（本画面は描画しないだけ）、CMP-260910-1606 の意図は損なわない。
+        expect(row.text()).not.toContain('元の診断')
+        expect(row.text()).toContain(`shiftBudget.failedEvent.summaryValue.${id === 1004 ? 'CONSUMPTION_RECORD' : 'CONSUMPTION_CANCEL'}`)
         expect(row.findAll('button').some(button => button.text() === 'shiftBudget.failedEvent.resolve')).toBe(true)
       }
     }
