@@ -117,6 +117,18 @@ class SearchDomainBoundaryTest {
     }
 
     @Test
+    @DisplayName("CMP-261116-0722 PR-7: ACTIVITY 種別の SearchContributor が activity ドメイン内に実装されている")
+    void PR7_ACTIVITYのContributorはactivityドメインにある() {
+        List<String> activityContributors = contributorImplementations().stream()
+                .filter(c -> c.getPackageName().startsWith("com.mannschaft.app.activity"))
+                .map(JavaClass::getName)
+                .toList();
+        assertThat(activityContributors)
+                .as("activity ドメインに ACTIVITY 用 SearchContributor が 1 つあること（search 側に実装しない）")
+                .hasSize(1);
+    }
+
+    @Test
     @DisplayName("D3: 各 SearchContributor 実装は自ドメイン外の repository パッケージに直接依存しない")
     void D3_Contributorは自ドメイン外のRepositoryに依存しない() {
         List<String> violations = new ArrayList<>();

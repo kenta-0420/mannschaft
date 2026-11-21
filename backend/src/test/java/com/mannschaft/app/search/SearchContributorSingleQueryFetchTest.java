@@ -82,14 +82,15 @@ class SearchContributorSingleQueryFetchTest {
     }
 
     @Test
-    @DisplayName("前提: FULLTEXT 系 5 種別を含む検索 Repository を検出できる（空振りで緑にしない）")
+    @DisplayName("前提: FULLTEXT 系 5 種別と ACTIVITY を含む検索 Repository を検出できる（空振りで緑にしない）")
     void 前提_検索Repositoryを検出できる() {
         assertThat(keywordSearchRepositories().keySet()).contains(
                 "com.mannschaft.app.filesharing.repository.SharedFileKeywordSearchRepository",
                 "com.mannschaft.app.bulletin.repository.BulletinThreadKeywordSearchRepository",
                 "com.mannschaft.app.chat.repository.ChatMessageKeywordSearchRepository",
                 "com.mannschaft.app.cms.repository.BlogPostKeywordSearchRepository",
-                "com.mannschaft.app.timeline.repository.TimelinePostKeywordSearchRepository");
+                "com.mannschaft.app.timeline.repository.TimelinePostKeywordSearchRepository",
+                "com.mannschaft.app.activity.repository.ActivityResultKeywordSearchRepository");
     }
 
     @Test
