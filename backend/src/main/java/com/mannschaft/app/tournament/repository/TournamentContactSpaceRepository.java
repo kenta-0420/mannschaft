@@ -4,7 +4,10 @@ import com.mannschaft.app.tournament.ContactSpaceKind;
 import com.mannschaft.app.tournament.ContactSpaceScopeType;
 import com.mannschaft.app.tournament.entity.TournamentContactSpaceEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,4 +37,16 @@ public interface TournamentContactSpaceRepository extends JpaRepository<Tourname
      */
     Optional<TournamentContactSpaceEntity> findBySpaceKindAndRefId(
             ContactSpaceKind spaceKind, Long refId);
+
+    /**
+     * 大会全体スペースと、指定部門群のスペースを 1 本で取得する（CMP-261118-0900 §10.3.5 (c)）。
+     * 論理削除済みは {@code @SQLRestriction} で除外される。
+     */
+    @Query("SELECT s FROM TournamentContactSpaceEntity s "
+            + "WHERE (s.scopeType = com.mannschaft.app.tournament.ContactSpaceScopeType.TOURNAMENT AND s.scopeId = :tournamentId) "
+            + "   OR (s.scopeType = com.mannschaft.app.tournament.ContactSpaceScopeType.TOURNAMENT_DIVISION "
+            + "       AND s.scopeId IN :divisionIds)")
+    List<TournamentContactSpaceEntity> findForTournamentAndDivisions(
+            @Param("tournamentId") Long tournamentId,
+            @Param("divisionIds") Collection<Long> divisionIds);
 }

@@ -494,4 +494,315 @@ class TournamentContactSpaceAccessGateTest {
             verify(participantRepository, never()).countActiveMemberOfAnyParticipantTeam(any(), any());
         }
     }
+
+    // ====================================================================
+    // resolveLevelsForSpaces（CMP-261118-0900 §10.3.5・試練 red）
+    // ====================================================================
+
+    /**
+     * 一括解決の単体テスト。
+     *
+     * <p>利用者の所属（どの部門の参加チームの代表／有効メンバーか・どの組織の ADMIN か・SYSTEM_ADMIN か）を
+     * 1 つの「世界」として持ち、既存 Gate が使う単発クエリと、一括解決が使う集約クエリ
+     * （{@code findDivisionIdsWhereTeamAdmin}／{@code findDivisionIdsWhereActiveMember}）を同じ世界から
+     * 矛盾なく答えさせる（lenient）。そのうえで、全 (scope, kind) について一括解決の結果が
+     * {@link TournamentContactSpaceAccessGate#requireViewResolvingLevel} と一致すること（AC-P34。例外＝マップ不在）を
+     * 突き合わせる。大会配下でない部門のスペース（X1）・大会不在（X3）・主催者（AC-P33）・種別ごとの公開（P34 修正）も固定する。</p>
+     *
+     * <p>部門→大会の帰属は {@code divisionRepository} の {@code findById}／{@code findAllById}／
+     * {@code findByIdAndTournamentId}／{@code findByTournamentIdOrderByLevelAscSortOrderAsc} のどれで引いても
+     * 同じ答えになるよう用意した。別の手段（新クエリ）で引く実装にした場合は、この世界にその答えを足すこと。</p>
+     */
+    @Nested
+    @DisplayName("resolveLevelsForSpaces（CMP-261118-0900）")
+    class ResolveLevelsForSpaces {
+
+        private static final Long D1 = 201L;
+        private static final Long D2 = 202L;
+        private static final Long OTHER_TOURNAMENT_ID = 101L;
+        private static final Long OTHER_ORG_ID = 6L;
+        private static final Long OTHER_DIVISION_ID = 299L;
+
+        /** 利用者の所属の世界。 */
+        private record World(java.util.Set<Long> adminDivisions, java.util.Set<Long> memberDivisions,
+                             java.util.Set<Long> adminOrgs, boolean systemAdmin, boolean tournamentExists) {
+
+            static World of(java.util.Set<Long> adminDivisions, java.util.Set<Long> memberOnlyDivisions,
+                            java.util.Set<Long> adminOrgs, boolean systemAdmin) {
+                java.util.Set<Long> members = new java.util.HashSet<>(memberOnlyDivisions);
+                members.addAll(adminDivisions); // 代表は有効メンバーでもある
+                return new World(adminDivisions, members, adminOrgs, systemAdmin, true);
+            }
+
+            World withoutTournament() {
+                return new World(adminDivisions, memberDivisions, adminOrgs, systemAdmin, false);
+            }
+        }
+
+        private Long tournamentOf(Long divisionId) {
+            if (divisionId.equals(D1) || divisionId.equals(D2)) {
+                return TOURNAMENT_ID;
+            }
+            return divisionId.equals(OTHER_DIVISION_ID) ? OTHER_TOURNAMENT_ID : null;
+        }
+
+        private TournamentDivisionEntity divisionEntity(Long id) {
+            return TournamentDivisionEntity.builder().id(id).tournamentId(tournamentOf(id)).name("部門" + id).build();
+        }
+
+        private TournamentContactSpaceEntity spaceWithId(ContactSpaceScopeType scopeType, Long scopeId,
+                                                         ContactSpaceKind kind, boolean isPublic) {
+            TournamentContactSpaceEntity s = space(scopeType, scopeId, kind, isPublic);
+            s.setId(java.util.UUID.randomUUID());
+            return s;
+        }
+
+        /** 世界とスペース群から、Gate が引きうる全クエリの答えを lenient に用意する。 */
+        private void install(World w, List<TournamentContactSpaceEntity> spaces) {
+            org.mockito.Mockito.reset(contactSpaceRepository, participantRepository, tournamentRepository,
+                    divisionRepository, accessControlService);
+            org.mockito.Mockito.lenient().when(contactSpaceRepository.findByScopeTypeAndScopeIdAndSpaceKind(
+                    any(), any(), any())).thenAnswer(inv -> spaces.stream()
+                    .filter(s -> s.getScopeType() == inv.getArgument(0) && s.getScopeId().equals(inv.getArgument(1))
+                            && s.getSpaceKind() == inv.getArgument(2))
+                    .findFirst());
+            org.mockito.Mockito.lenient().when(contactSpaceRepository.findByScopeTypeAndScopeId(any(), any()))
+                    .thenAnswer(inv -> spaces.stream()
+                            .filter(s -> s.getScopeType() == inv.getArgument(0)
+                                    && s.getScopeId().equals(inv.getArgument(1)))
+                            .toList());
+
+            org.mockito.Mockito.lenient().when(participantRepository.countTeamAdminOfAnyParticipantTeam(any(), any()))
+                    .thenAnswer(inv -> w.adminDivisions().stream()
+                            .anyMatch(d -> inv.getArgument(0).equals(tournamentOf(d))) ? 1 : 0);
+            org.mockito.Mockito.lenient().when(participantRepository.countActiveMemberOfAnyParticipantTeam(any(), any()))
+                    .thenAnswer(inv -> w.memberDivisions().stream()
+                            .anyMatch(d -> inv.getArgument(0).equals(tournamentOf(d))) ? 1 : 0);
+            org.mockito.Mockito.lenient().when(participantRepository.countTeamAdminOfDivisionParticipantTeam(any(), any()))
+                    .thenAnswer(inv -> w.adminDivisions().contains(inv.<Long>getArgument(0)) ? 1 : 0);
+            org.mockito.Mockito.lenient().when(participantRepository.countActiveMemberOfDivisionParticipantTeam(any(), any()))
+                    .thenAnswer(inv -> w.memberDivisions().contains(inv.<Long>getArgument(0)) ? 1 : 0);
+            // 集約クエリは骨格の SQL どおり大会で絞らない（部門 ID 群 ∩ 所属）
+            org.mockito.Mockito.lenient().when(participantRepository.findDivisionIdsWhereTeamAdmin(any(), any()))
+                    .thenAnswer(inv -> inv.<java.util.Collection<Long>>getArgument(0).stream()
+                            .filter(w.adminDivisions()::contains).distinct().toList());
+            org.mockito.Mockito.lenient().when(participantRepository.findDivisionIdsWhereActiveMember(any(), any()))
+                    .thenAnswer(inv -> inv.<java.util.Collection<Long>>getArgument(0).stream()
+                            .filter(w.memberDivisions()::contains).distinct().toList());
+
+            org.mockito.Mockito.lenient().when(tournamentRepository.findById(any())).thenAnswer(inv -> {
+                Long id = inv.getArgument(0);
+                if (id.equals(TOURNAMENT_ID) && w.tournamentExists()) {
+                    return Optional.of(TournamentEntity.builder().id(TOURNAMENT_ID).organizationId(ORG_ID)
+                            .name("大会").createdBy(1L).build());
+                }
+                if (id.equals(OTHER_TOURNAMENT_ID)) {
+                    return Optional.of(TournamentEntity.builder().id(OTHER_TOURNAMENT_ID).organizationId(OTHER_ORG_ID)
+                            .name("別大会").createdBy(1L).build());
+                }
+                return Optional.empty();
+            });
+            org.mockito.Mockito.lenient().when(divisionRepository.findById(any())).thenAnswer(inv -> {
+                Long id = inv.getArgument(0);
+                return tournamentOf(id) == null ? Optional.empty() : Optional.of(divisionEntity(id));
+            });
+            org.mockito.Mockito.lenient().when(divisionRepository.findAllById(any())).thenAnswer(inv -> {
+                List<TournamentDivisionEntity> found = new java.util.ArrayList<>();
+                for (Long id : inv.<Iterable<Long>>getArgument(0)) {
+                    if (tournamentOf(id) != null) {
+                        found.add(divisionEntity(id));
+                    }
+                }
+                return found;
+            });
+            org.mockito.Mockito.lenient().when(divisionRepository.findByIdAndTournamentId(any(), any()))
+                    .thenAnswer(inv -> inv.getArgument(1).equals(tournamentOf(inv.getArgument(0)))
+                            ? Optional.of(divisionEntity(inv.getArgument(0))) : Optional.empty());
+            org.mockito.Mockito.lenient().when(divisionRepository.findByTournamentIdOrderByLevelAscSortOrderAsc(any()))
+                    .thenAnswer(inv -> java.util.stream.Stream.of(D1, D2, OTHER_DIVISION_ID)
+                            .filter(d -> inv.getArgument(0).equals(tournamentOf(d)))
+                            .map(this::divisionEntity).toList());
+
+            org.mockito.Mockito.lenient().when(accessControlService.isAdmin(any(), any(), any()))
+                    .thenAnswer(inv -> "ORGANIZATION".equals(inv.getArgument(2))
+                            && w.adminOrgs().contains(inv.<Long>getArgument(1)));
+            org.mockito.Mockito.lenient().when(accessControlService.isSystemAdmin(any()))
+                    .thenAnswer(inv -> w.systemAdmin());
+        }
+
+        /** 既存 Gate の単発判定で期待値を作る（例外＝閲覧不可＝マップ不在）。 */
+        private java.util.Map<java.util.UUID, ContactAccessLevel> expectedBySingleCalls(
+                List<TournamentContactSpaceEntity> spaces) {
+            java.util.Map<java.util.UUID, ContactAccessLevel> expected = new java.util.HashMap<>();
+            for (TournamentContactSpaceEntity s : spaces) {
+                try {
+                    expected.put(s.getId(), gate.requireViewResolvingLevel(
+                            s.getScopeType(), s.getScopeId(), s.getSpaceKind(), USER_ID, NOT_FOUND));
+                } catch (BusinessException notViewable) {
+                    // 閲覧不可はマップに含めない
+                }
+            }
+            return expected;
+        }
+
+        private List<TournamentContactSpaceEntity> allPrivate() {
+            return List.of(
+                    spaceWithId(T, TOURNAMENT_ID, BULLETIN, false), spaceWithId(T, TOURNAMENT_ID, CHAT, false),
+                    spaceWithId(D, D1, BULLETIN, false), spaceWithId(D, D1, CHAT, false),
+                    spaceWithId(D, D2, BULLETIN, false), spaceWithId(D, D2, CHAT, false));
+        }
+
+        private List<TournamentContactSpaceEntity> mixedPublic() {
+            return List.of(
+                    spaceWithId(T, TOURNAMENT_ID, BULLETIN, true), spaceWithId(T, TOURNAMENT_ID, CHAT, false),
+                    spaceWithId(D, D1, BULLETIN, false), spaceWithId(D, D1, CHAT, true),
+                    spaceWithId(D, D2, BULLETIN, true), spaceWithId(D, D2, CHAT, false));
+        }
+
+        private java.util.Map<String, World> profiles() {
+            java.util.Map<String, World> p = new java.util.LinkedHashMap<>();
+            p.put("a1（D1 代表）", World.of(java.util.Set.of(D1), java.util.Set.of(), java.util.Set.of(), false));
+            p.put("a3（D1 一般）", World.of(java.util.Set.of(), java.util.Set.of(D1), java.util.Set.of(), false));
+            p.put("x（D1・D2 一般）", World.of(java.util.Set.of(), java.util.Set.of(D1, D2), java.util.Set.of(), false));
+            p.put("xa（D1 代表・D2 一般）", World.of(java.util.Set.of(D1), java.util.Set.of(D2), java.util.Set.of(), false));
+            p.put("b1（D2 代表）", World.of(java.util.Set.of(D2), java.util.Set.of(), java.util.Set.of(), false));
+            p.put("z（部外者）", World.of(java.util.Set.of(), java.util.Set.of(), java.util.Set.of(), false));
+            p.put("o1（主催組織 ADMIN・非所属）", World.of(java.util.Set.of(), java.util.Set.of(), java.util.Set.of(ORG_ID), false));
+            p.put("oMemberA（主催 ADMIN 兼 D1 一般）",
+                    World.of(java.util.Set.of(), java.util.Set.of(D1), java.util.Set.of(ORG_ID), false));
+            p.put("fAdminA（別組織 ADMIN 兼 D1 一般・X9）",
+                    World.of(java.util.Set.of(), java.util.Set.of(D1), java.util.Set.of(OTHER_ORG_ID), false));
+            p.put("sysAdmin（非所属）", World.of(java.util.Set.of(), java.util.Set.of(), java.util.Set.of(), true));
+            p.put("他大会の部門 D9 の代表", World.of(java.util.Set.of(OTHER_DIVISION_ID), java.util.Set.of(),
+                    java.util.Set.of(), false));
+            return p;
+        }
+
+        @Test
+        @DisplayName("P34: 全利用者×全 (scope, kind)（全非公開・種別ごとに公開が混在）で、一括解決は requireViewResolvingLevel と一致する（例外＝マップ不在）")
+        void P34_単発判定と等価() {
+            for (List<TournamentContactSpaceEntity> spaces : List.of(allPrivate(), mixedPublic())) {
+                for (java.util.Map.Entry<String, World> p : profiles().entrySet()) {
+                    install(p.getValue(), spaces);
+                    java.util.Map<java.util.UUID, ContactAccessLevel> expected = expectedBySingleCalls(spaces);
+
+                    java.util.Map<java.util.UUID, ContactAccessLevel> actual =
+                            gate.resolveLevelsForSpaces(USER_ID, TOURNAMENT_ID, spaces);
+
+                    assertThat(actual).as("利用者=%s スペース=%s", p.getKey(), spaces).isEqualTo(expected);
+                }
+            }
+        }
+
+        @Test
+        @DisplayName("P34: 非所属部門（a3 に対する D2）の非公開スペースと、部外者 z の大会全体の非公開スペースはマップに含まれない")
+        void P34_非所属は不在() {
+            List<TournamentContactSpaceEntity> spaces = allPrivate();
+            install(World.of(java.util.Set.of(), java.util.Set.of(D1), java.util.Set.of(), false), spaces);
+
+            java.util.Map<java.util.UUID, ContactAccessLevel> a3 = gate.resolveLevelsForSpaces(USER_ID, TOURNAMENT_ID, spaces);
+
+            assertThat(a3).containsOnlyKeys(spaces.get(0).getId(), spaces.get(1).getId(),
+                    spaces.get(2).getId(), spaces.get(3).getId());
+            assertThat(a3.values()).containsOnly(ContactAccessLevel.VIEW);
+
+            install(World.of(java.util.Set.of(), java.util.Set.of(), java.util.Set.of(), false), spaces);
+            assertThat(gate.resolveLevelsForSpaces(USER_ID, TOURNAMENT_ID, spaces)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("P34 修正: 種別ごとに公開状態で分かれる（部外者 z に大会全体の掲示板だけ公開→掲示板 VIEW・チャット不在）")
+        void P34_種別ごとの公開() {
+            TournamentContactSpaceEntity bulletin = spaceWithId(T, TOURNAMENT_ID, BULLETIN, true);
+            TournamentContactSpaceEntity chat = spaceWithId(T, TOURNAMENT_ID, CHAT, false);
+            install(World.of(java.util.Set.of(), java.util.Set.of(), java.util.Set.of(), false), List.of(bulletin, chat));
+
+            java.util.Map<java.util.UUID, ContactAccessLevel> z =
+                    gate.resolveLevelsForSpaces(USER_ID, TOURNAMENT_ID, List.of(bulletin, chat));
+
+            assertThat(z).containsExactlyEntriesOf(java.util.Map.of(bulletin.getId(), ContactAccessLevel.VIEW));
+        }
+
+        @Test
+        @DisplayName("P33: 主催組織 ADMIN・SYSTEM_ADMIN は、チームに属さなくても大会配下の全スペースが POST（404 にするのは Facade の参加判定）")
+        void P33_主催者は全POST() {
+            for (World w : List.of(
+                    World.of(java.util.Set.of(), java.util.Set.of(), java.util.Set.of(ORG_ID), false),
+                    World.of(java.util.Set.of(), java.util.Set.of(), java.util.Set.of(), true))) {
+                List<TournamentContactSpaceEntity> spaces = allPrivate();
+                install(w, spaces);
+
+                java.util.Map<java.util.UUID, ContactAccessLevel> actual =
+                        gate.resolveLevelsForSpaces(USER_ID, TOURNAMENT_ID, spaces);
+
+                assertThat(actual).hasSize(spaces.size());
+                assertThat(actual.values()).containsOnly(ContactAccessLevel.POST);
+            }
+        }
+
+        @Test
+        @DisplayName("X1: 大会配下でない部門・別大会の大会全体スペースが渡されたら、代表でも SYSTEM_ADMIN でもマップに含めない")
+        void X1_大会配下でないスペースは含めない() {
+            TournamentContactSpaceEntity own = spaceWithId(T, TOURNAMENT_ID, BULLETIN, false);
+            TournamentContactSpaceEntity foreignDivision = spaceWithId(D, OTHER_DIVISION_ID, BULLETIN, true);
+            TournamentContactSpaceEntity foreignTournament = spaceWithId(T, OTHER_TOURNAMENT_ID, CHAT, true);
+            TournamentContactSpaceEntity unknownDivision = spaceWithId(D, 98765L, CHAT, true);
+            List<TournamentContactSpaceEntity> spaces = List.of(own, foreignDivision, foreignTournament, unknownDivision);
+
+            for (World w : List.of(
+                    World.of(java.util.Set.of(OTHER_DIVISION_ID), java.util.Set.of(), java.util.Set.of(), false),
+                    World.of(java.util.Set.of(), java.util.Set.of(), java.util.Set.of(), true))) {
+                install(w, spaces);
+
+                java.util.Map<java.util.UUID, ContactAccessLevel> actual =
+                        gate.resolveLevelsForSpaces(USER_ID, TOURNAMENT_ID, spaces);
+
+                assertThat(actual).doesNotContainKeys(foreignDivision.getId(), foreignTournament.getId(),
+                        unknownDivision.getId());
+            }
+        }
+
+        @Test
+        @DisplayName("X3: 大会が見つからない（論理削除・レース）なら例外を投げず空マップ（代表・公開スペースでも）")
+        void X3_大会不在は空マップ() {
+            List<TournamentContactSpaceEntity> spaces = mixedPublic();
+            install(World.of(java.util.Set.of(D1), java.util.Set.of(D2), java.util.Set.of(ORG_ID), true)
+                    .withoutTournament(), spaces);
+
+            java.util.Map<java.util.UUID, ContactAccessLevel> actual =
+                    gate.resolveLevelsForSpaces(USER_ID, TOURNAMENT_ID, spaces);
+
+            assertThat(actual).isNotNull().isEmpty();
+        }
+
+        @Test
+        @DisplayName("空のスペース群には空マップを返す")
+        void 空入力は空マップ() {
+            install(World.of(java.util.Set.of(D1), java.util.Set.of(), java.util.Set.of(), false), List.of());
+
+            assertThat(gate.resolveLevelsForSpaces(USER_ID, TOURNAMENT_ID, List.of())).isEmpty();
+        }
+
+        @Test
+        @DisplayName("P20/§10.3.5: 部門ごとの単発クエリ・スペースの再取得をせず、集約クエリと主催者判定は高々 1 回ずつ")
+        void P20_クエリはDに比例しない() {
+            List<TournamentContactSpaceEntity> spaces = allPrivate();
+            install(World.of(java.util.Set.of(D1), java.util.Set.of(D2), java.util.Set.of(), false), spaces);
+
+            gate.resolveLevelsForSpaces(USER_ID, TOURNAMENT_ID, spaces);
+
+            verify(participantRepository, never()).countTeamAdminOfDivisionParticipantTeam(any(), any());
+            verify(participantRepository, never()).countActiveMemberOfDivisionParticipantTeam(any(), any());
+            verify(participantRepository, org.mockito.Mockito.atMost(1)).findDivisionIdsWhereTeamAdmin(any(), any());
+            verify(participantRepository, org.mockito.Mockito.atMost(1)).findDivisionIdsWhereActiveMember(any(), any());
+            verify(participantRepository, org.mockito.Mockito.atMost(1)).countTeamAdminOfAnyParticipantTeam(any(), any());
+            verify(participantRepository, org.mockito.Mockito.atMost(1)).countActiveMemberOfAnyParticipantTeam(any(), any());
+            verify(contactSpaceRepository, never()).findByScopeTypeAndScopeIdAndSpaceKind(any(), any(), any());
+            verify(contactSpaceRepository, never()).findByScopeTypeAndScopeId(any(), any());
+            verify(divisionRepository, never()).findById(any());
+            verify(tournamentRepository, org.mockito.Mockito.atMost(1)).findById(any());
+            verify(accessControlService, org.mockito.Mockito.atMost(1)).isAdmin(any(), any(), any());
+            verify(accessControlService, org.mockito.Mockito.atMost(1)).isSystemAdmin(any());
+        }
+    }
 }

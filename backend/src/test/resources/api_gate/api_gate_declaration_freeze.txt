@@ -719,6 +719,7 @@ HTTP|com.mannschaft.app.tournament.controller.DivisionController|8|8
 HTTP|com.mannschaft.app.tournament.controller.EmbedController|3|3
 HTTP|com.mannschaft.app.tournament.controller.FixtureController|12|12
 HTTP|com.mannschaft.app.tournament.controller.OrganizationTournamentSummaryController|1|1
+HTTP|com.mannschaft.app.tournament.controller.ParticipantContactSpaceController|1|1
 HTTP|com.mannschaft.app.tournament.controller.PromotionController|3|3
 HTTP|com.mannschaft.app.tournament.controller.PublicTournamentController|6|6
 HTTP|com.mannschaft.app.tournament.controller.StandingsController|7|7

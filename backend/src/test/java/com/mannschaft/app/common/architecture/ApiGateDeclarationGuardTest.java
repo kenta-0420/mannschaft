@@ -42,7 +42,8 @@ class ApiGateDeclarationGuardTest {
         assertThat(scan.entries()).isNotEmpty();
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.HTTP).count())
                 .as("HTTP mapped method の走査総数。parser 退行を台帳比較とは独立に検知する")
-                .isEqualTo(3742);   // 3741 + CMP-261116-0722 PR-1 保存済み検索の個別削除 SearchHistoryController DELETE /saved/{savedQueryId} 1本
+                .isEqualTo(3743);   // 3743 = 3742 + CMP-261118-0900 参加者向け連絡スペース一覧 ParticipantContactSpaceController GET 1本（tournament 系の流儀で feature gate 未宣言 1|1）。
+                                    // 3742 = 3741 + CMP-261116-0722 PR-1 保存済み検索の個別削除 SearchHistoryController DELETE /saved/{savedQueryId} 1本
                                     //   （既存5本と同じく feature gate 未宣言の流儀で 5|5 → 6|6。認可は @AuthorizedInService＋findByIdAndUserId の所有者照合）。
                                     // 3741 = 3734 + CMP-261115-2145 F06.4.1 個人の頑張り記録 EffortRecordMeController 7本（feature gate 未宣言の流儀で 7|7）。
                                     // 3734 = 3732 + L1-M モジュールイベント管理GET/POST各1本。未宣言増加0。

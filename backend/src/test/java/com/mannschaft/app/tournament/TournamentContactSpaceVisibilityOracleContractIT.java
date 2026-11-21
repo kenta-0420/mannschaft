@@ -217,6 +217,24 @@ class TournamentContactSpaceVisibilityOracleContractIT extends AbstractMySqlInte
     }
 
     // ========================================================================
+    // CMP-261118-0900 AC-P22: 参加者向け一覧の新設後も、主催者向け一覧の認可は緩めない（回帰の柵）
+    // ========================================================================
+
+    @Test
+    @DisplayName("P22: 主催者向け一覧 GET /tournaments/{t}/contact-spaces は、閲覧できる参加チーム代表に 403 TOUR_032、閲覧できない部外者に不在と同一の 404 TOUR_029、主催組織 ADMIN に 200（大会・ディビジョンとも）")
+    void P22_主催者向け一覧の認可は不変() throws Exception {
+        assertRejected(listTournament(f.t1), f.pAdminId, 403, "TOUR_032");
+        assertRejected(listDivision(f.t1, f.d1), f.pAdminId, 403, "TOUR_032");
+        assertSameAsMissing(listTournament(f.t1), listTournament(ABSENT_ID), f.outsiderId, "TOUR_029");
+        assertSameAsMissing(listDivision(f.t1, f.d1), listDivision(f.t1, ABSENT_ID), f.outsiderId, "TOUR_029");
+
+        MvcResult t = http(listTournament(f.t1), f.orgAdminId);
+        assertThat(t.getResponse().getStatus()).as(body(t)).isEqualTo(200);
+        MvcResult d = http(listDivision(f.t1, f.d1), f.orgAdminId);
+        assertThat(d.getResponse().getStatus()).as(body(d)).isEqualTo(200);
+    }
+
+    // ========================================================================
     // AC-13: 未認証は実在・不在とも同一 401
     // ========================================================================
 

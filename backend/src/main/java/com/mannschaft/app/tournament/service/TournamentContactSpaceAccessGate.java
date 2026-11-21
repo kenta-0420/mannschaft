@@ -7,6 +7,7 @@ import com.mannschaft.app.tournament.ContactSpaceKind;
 import com.mannschaft.app.tournament.ContactSpaceScopeType;
 import com.mannschaft.app.tournament.TournamentErrorCode;
 import com.mannschaft.app.tournament.entity.TournamentContactSpaceEntity;
+import com.mannschaft.app.tournament.entity.TournamentDivisionEntity;
 import com.mannschaft.app.tournament.entity.TournamentEntity;
 import com.mannschaft.app.tournament.repository.TournamentContactSpaceRepository;
 import com.mannschaft.app.tournament.repository.TournamentDivisionRepository;
@@ -15,8 +16,15 @@ import com.mannschaft.app.tournament.repository.TournamentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * 大会・ディビジョン連絡スペースの存在秘匿つき認可ゲート（CMP-261116-0726）。
@@ -220,5 +228,107 @@ public class TournamentContactSpaceAccessGate {
                 ? Optional.of(scopeId)
                 : divisionRepository.findById(scopeId).map(d -> d.getTournamentId());
         return tournamentId.flatMap(tournamentRepository::findById).map(TournamentEntity::getOrganizationId);
+    }
+
+    /**
+     * スペース群の閲覧水準を例外なしで一括解決する（CMP-261118-0900 §10.3.5・§10.2 御裁可）。
+     *
+     * <p>閲覧できない行はマップに含めない（NONE は返さない）。全 (scope, kind) について
+     * {@link #requireViewResolvingLevel} の戻り値（例外になるものは不在）と一致する不変条件を持つ（AC-P34）。</p>
+     *
+     * <ul>
+     *   <li>{@code tournamentId} 配下でないスペース（別大会の大会全体スペース・別大会／不在の部門のスペース）は
+     *       含めない（X1）。</li>
+     *   <li>大会が見つからない（論理削除・レース）なら例外を投げず空マップ（X3）。</li>
+     *   <li>クエリ本数は部門数・参加チーム数・スペース数に比例しない定数（AC-P20）。部門ごとの単発 count や
+     *       スペースの再取得をせず、部門の帰属確認・代表部門・会員部門をそれぞれ IN の 1 本で引く。
+     *       データによって本数が揺れないよう、利用者がいれば主催者判定と集約クエリは結果によらず一度ずつ引く。</li>
+     * </ul>
+     *
+     * @param userId       ユーザー ID（未ログインは null。公開スペースのみ VIEW になる）
+     * @param tournamentId 大会 ID
+     * @param spaces       判定対象のスペース群（呼び出し側が取得済みのもの）
+     * @return スペース ID から水準への写像（閲覧不可は含めない）
+     */
+    public Map<UUID, ContactAccessLevel> resolveLevelsForSpaces(
+            Long userId, Long tournamentId, Collection<TournamentContactSpaceEntity> spaces) {
+        if (spaces == null || spaces.isEmpty()) {
+            return Map.of();
+        }
+        Optional<TournamentEntity> tournament = tournamentRepository.findById(tournamentId);
+        if (tournament.isEmpty()) {
+            return Map.of(); // X3
+        }
+
+        // X1: 大会配下の部門だけを判定対象にする（帰属確認は IN の 1 本）
+        Set<Long> requestedDivisionIds = spaces.stream()
+                .filter(s -> s.getScopeType() == ContactSpaceScopeType.TOURNAMENT_DIVISION)
+                .map(TournamentContactSpaceEntity::getScopeId)
+                .collect(Collectors.toSet());
+        Set<Long> ownedDivisionIds = requestedDivisionIds.isEmpty() ? Set.of()
+                : divisionRepository.findAllById(requestedDivisionIds).stream()
+                        .filter(d -> tournamentId.equals(d.getTournamentId()))
+                        .map(TournamentDivisionEntity::getId)
+                        .collect(Collectors.toSet());
+        boolean hasTournamentScope = spaces.stream().anyMatch(s -> isTournamentScopeOf(s, tournamentId));
+
+        ParticipationSnapshot snapshot = userId == null
+                ? ParticipationSnapshot.ANONYMOUS
+                : loadParticipation(userId, tournamentId, tournament.get().getOrganizationId(),
+                        ownedDivisionIds, hasTournamentScope);
+
+        Map<UUID, ContactAccessLevel> levels = new HashMap<>();
+        for (TournamentContactSpaceEntity space : spaces) {
+            boolean tournamentScope = isTournamentScopeOf(space, tournamentId);
+            boolean divisionScope = space.getScopeType() == ContactSpaceScopeType.TOURNAMENT_DIVISION
+                    && ownedDivisionIds.contains(space.getScopeId());
+            if (!tournamentScope && !divisionScope) {
+                continue; // X1
+            }
+            // 以下は requireViewResolvingLevel と同じ順（投稿者 → 公開 → 参加チームの有効メンバー）
+            boolean teamAdmin = tournamentScope
+                    ? snapshot.teamAdminOfAny()
+                    : snapshot.adminDivisionIds().contains(space.getScopeId());
+            if (teamAdmin || snapshot.organizerAdminOrSystemAdmin()) {
+                levels.put(space.getId(), ContactAccessLevel.POST);
+            } else if (isPublic(space)) {
+                levels.put(space.getId(), ContactAccessLevel.VIEW);
+            } else if (tournamentScope
+                    ? snapshot.activeMemberOfAny()
+                    : snapshot.memberDivisionIds().contains(space.getScopeId())) {
+                levels.put(space.getId(), ContactAccessLevel.VIEW);
+            }
+        }
+        return levels;
+    }
+
+    private static boolean isTournamentScopeOf(TournamentContactSpaceEntity space, Long tournamentId) {
+        return space.getScopeType() == ContactSpaceScopeType.TOURNAMENT && tournamentId.equals(space.getScopeId());
+    }
+
+    /** 利用者の所属を集約クエリで一度ずつ引く（条件は単発の {@code count*} と同一）。 */
+    private ParticipationSnapshot loadParticipation(Long userId, Long tournamentId, Long organizationId,
+                                                    Set<Long> ownedDivisionIds, boolean hasTournamentScope) {
+        boolean organizerOrSystemAdmin = accessControlService.isAdmin(userId, organizationId, ORGANIZATION_SCOPE)
+                || accessControlService.isSystemAdmin(userId);
+        Set<Long> adminDivisionIds = ownedDivisionIds.isEmpty() ? Set.of()
+                : new HashSet<>(participantRepository.findDivisionIdsWhereTeamAdmin(ownedDivisionIds, userId));
+        Set<Long> memberDivisionIds = ownedDivisionIds.isEmpty() ? Set.of()
+                : new HashSet<>(participantRepository.findDivisionIdsWhereActiveMember(ownedDivisionIds, userId));
+        boolean teamAdminOfAny = hasTournamentScope
+                && participantRepository.countTeamAdminOfAnyParticipantTeam(tournamentId, userId) > 0;
+        boolean activeMemberOfAny = hasTournamentScope
+                && participantRepository.countActiveMemberOfAnyParticipantTeam(tournamentId, userId) > 0;
+        return new ParticipationSnapshot(organizerOrSystemAdmin, teamAdminOfAny, activeMemberOfAny,
+                adminDivisionIds, memberDivisionIds);
+    }
+
+    /** 一括解決に用いる利用者の所属の写し。 */
+    private record ParticipationSnapshot(boolean organizerAdminOrSystemAdmin, boolean teamAdminOfAny,
+                                         boolean activeMemberOfAny, Set<Long> adminDivisionIds,
+                                         Set<Long> memberDivisionIds) {
+
+        static final ParticipationSnapshot ANONYMOUS =
+                new ParticipationSnapshot(false, false, false, Set.of(), Set.of());
     }
 }

@@ -2,6 +2,7 @@ package com.mannschaft.app.tournament.repository;
 
 import com.mannschaft.app.tournament.ParticipantStatus;
 import com.mannschaft.app.tournament.dto.DivisionParticipantCountProjection;
+import com.mannschaft.app.tournament.dto.ParticipantContactDivisionRow;
 import com.mannschaft.app.tournament.entity.TournamentDivisionEntity;
 import com.mannschaft.app.tournament.entity.TournamentEntity;
 import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
@@ -217,4 +218,59 @@ public interface TournamentParticipantRepository extends JpaRepository<Tournamen
     default boolean existsTeamAdminOfDivisionParticipantTeam(Long divisionId, Long userId) {
         return countTeamAdminOfDivisionParticipantTeam(divisionId, userId) > 0;
     }
+
+    /**
+     * 参加者向け連絡スペース一覧の参加判定（CMP-261118-0900 §10.3.4 手順3）。
+     *
+     * <p>チーム・大会・ユーザーから「自チームが REGISTERED/ACTIVE で出ている部門」と大会名を 1 本で引く。
+     * 条件は {@code countActiveMemberOf*} と同一（ロールでは絞らない）。0 行なら呼び出し側が 404 TOUR_029。
+     * boolean を native で返すと ClassCastException になるため行の射影で返す。</p>
+     */
+    @Query(value = "SELECT d.id AS divisionId, d.name AS divisionName, t.name AS tournamentName " +
+            "FROM tournament_participants p " +
+            "JOIN tournament_divisions d ON p.division_id = d.id " +
+            "JOIN tournaments t ON t.id = d.tournament_id " +
+            "JOIN memberships m ON m.scope_type = 'TEAM' AND m.scope_id = p.team_id " +
+            "WHERE p.team_id = :teamId " +
+            "  AND d.tournament_id = :tournamentId " +
+            "  AND t.deleted_at IS NULL " +
+            "  AND p.status IN ('REGISTERED', 'ACTIVE') " +
+            "  AND m.user_id = :userId AND m.left_at IS NULL " +
+            "ORDER BY d.id",
+            nativeQuery = true)
+    List<ParticipantContactDivisionRow> findParticipantContactDivisions(
+            @Param("teamId") Long teamId,
+            @Param("tournamentId") Long tournamentId,
+            @Param("userId") Long userId);
+
+    /**
+     * 指定部門群のうち、当該ユーザーが参加チームの ADMIN/DEPUTY_ADMIN である部門 ID を返す（集約 1 本）。
+     * 条件は {@link #countTeamAdminOfDivisionParticipantTeam} と同一。
+     * 大会では絞らないため、大会への帰属は呼び出し側が確かめた部門 ID だけを渡すこと。
+     * native の {@code IN ()} は MySQL で構文エラーになるため、空のコレクションを渡さないこと。
+     */
+    @Query(value = "SELECT DISTINCT p.division_id FROM tournament_participants p " +
+            "JOIN user_roles ur ON ur.team_id = p.team_id AND ur.user_id = :userId " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "WHERE p.division_id IN (:divisionIds) " +
+            "  AND p.status IN ('REGISTERED', 'ACTIVE') " +
+            "  AND r.name IN ('ADMIN', 'DEPUTY_ADMIN')",
+            nativeQuery = true)
+    List<Long> findDivisionIdsWhereTeamAdmin(@Param("divisionIds") Collection<Long> divisionIds,
+                                             @Param("userId") Long userId);
+
+    /**
+     * 指定部門群のうち、当該ユーザーが参加チームの有効メンバーである部門 ID を返す（集約 1 本）。
+     * 条件は {@link #countActiveMemberOfDivisionParticipantTeam} と同一。
+     * 大会では絞らないため、大会への帰属は呼び出し側が確かめた部門 ID だけを渡すこと。
+     * native の {@code IN ()} は MySQL で構文エラーになるため、空のコレクションを渡さないこと。
+     */
+    @Query(value = "SELECT DISTINCT p.division_id FROM tournament_participants p " +
+            "JOIN memberships m ON m.scope_type = 'TEAM' AND m.scope_id = p.team_id " +
+            "WHERE p.division_id IN (:divisionIds) " +
+            "  AND p.status IN ('REGISTERED', 'ACTIVE') " +
+            "  AND m.user_id = :userId AND m.left_at IS NULL",
+            nativeQuery = true)
+    List<Long> findDivisionIdsWhereActiveMember(@Param("divisionIds") Collection<Long> divisionIds,
+                                                @Param("userId") Long userId);
 }
