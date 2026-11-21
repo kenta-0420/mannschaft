@@ -65,7 +65,7 @@ ResponseCookie.from("access_token", "")
 | **access_token** | HttpOnly Cookie（本書の属性） | 15 分。ログイン成功・リフレッシュ成功で発行、ログアウトで削除 |
 | **refresh_token** | サーバーが HttpOnly+Secure+SameSite Cookie として明示発行（`Set-Cookie`）。body にも返却（モバイル互換）。サーバーは DB に **SHA-256 ハッシュ** を保存 | 7 日（604800 秒、`mannschaft.jwt.refresh-token-expiration`）。リプレイ検出は `AuthTokenRotationService` |
 
-> **整合に関する注記（2026-05-26 更新・実装済み）**: refresh_token も access_token と同様、サーバーが `ResponseCookie` として明示発行・削除する一元管理に移行した（`AuthLoginController#buildRefreshTokenCookie` / `#clearRefreshTokenCookie`）。F01.1 §203 のデュアルモード設計に合わせ、**login/refresh 成功時は Set-Cookie とレスポンスボディの両方**で返し（Web は Cookie・モバイルは body を使用）、**logout で maxAge=0 のクリア Cookie** を返す。Cookie の maxAge は DB トークンの有効期限（`getRefreshTokenExpirationSeconds()`）と一致させる。属性は access_token と統一（HttpOnly / Secure=`mannschaft.cookie.secure` / SameSite=Strict / Path=/）。
+> **整合に関する注記（2026-05-26 更新・実装済み）**: refresh_token も access_token と同様、サーバーが `ResponseCookie` として明示発行・削除する一元管理に移行した（`AuthLoginController#buildRefreshTokenCookie` / `#clearRefreshTokenCookie`）。F01.1 §203 のデュアルモード設計に合わせ、**login/refresh 成功時は Set-Cookie とレスポンスボディの両方**で返し（Web は Cookie・モバイルは body を使用）、**logout で maxAge=0 のクリア Cookie** を返す。Cookie の maxAge は DB トークンの有効期限（`getRefreshTokenExpirationSeconds()`）と一致させる。属性は access_token と統一（HttpOnly / Secure=`mannschaft.cookie.secure` / SameSite=Strict / Path=/）。OAuth ログイン（`POST /api/v1/auth/oauth/{provider}`）と連携確認（`/link/confirm`）も、実トークン（`TokenResponse`）が発行された応答に限り `AuthTokenCookies` で両 Cookie を発行する（MFA 要求・連携競合の応答には付けない。本文のトークンは残す）。
 
 ### 3.1 access_token の roles claim（実装済み）
 

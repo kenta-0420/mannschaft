@@ -1,7 +1,9 @@
 package com.mannschaft.app.auth.controller;
 
 import com.mannschaft.app.auth.service.AuthOAuthLinkageConfirmService;
+import com.mannschaft.app.auth.dto.TokenResponse;
 import com.mannschaft.app.auth.service.AuthOAuthService;
+import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.featuregate.AlwaysReachable;
 import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
@@ -10,6 +12,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -50,6 +54,10 @@ public class AuthOAuthController {
     private final AuthOAuthService authOAuthService;
     /** 連携確認（TX を持たない入口。roles 解決を TX の外へ出す）。 */
     private final AuthOAuthLinkageConfirmService authOAuthLinkageConfirmService;
+    private final AuthTokenService authTokenService;
+
+    @Value("${mannschaft.cookie.secure:false}")
+    private boolean cookieSecure;
 
     /**
      * Google OAuth 認証 URL を取得する。
@@ -80,7 +88,7 @@ public class AuthOAuthController {
 
         String ipAddress = com.mannschaft.app.common.IpAddressUtils.getClientIp(request);
         String userAgent = request.getHeader("User-Agent");
-        return ResponseEntity.ok(authOAuthService.loginWithOAuth(
+        return withTokenCookies(authOAuthService.loginWithOAuth(
                 provider, code, ipAddress, userAgent));
     }
 
@@ -98,6 +106,24 @@ public class AuthOAuthController {
 
         String ipAddress = com.mannschaft.app.common.IpAddressUtils.getClientIp(request);
         String userAgent = request.getHeader("User-Agent");
-        return ResponseEntity.ok(authOAuthLinkageConfirmService.confirmOAuthLinkage(token, ipAddress, userAgent));
+        return withTokenCookies(authOAuthLinkageConfirmService.confirmOAuthLinkage(token, ipAddress, userAgent));
+    }
+
+    /**
+     * 実トークン（{@link TokenResponse}）が発行された応答にだけ access_token / refresh_token Cookie を付ける。
+     * MFA 要求・連携競合の応答には付けない（HTTP ステータスではなくデータ型で判断）。本文のトークンは残す。
+     */
+    private ResponseEntity<ApiResponse<?>> withTokenCookies(ApiResponse<?> apiResponse) {
+        if (apiResponse.getData() instanceof TokenResponse tokens
+                && tokens.getAccessToken() != null && tokens.getRefreshToken() != null) {
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE,
+                            AuthTokenCookies.accessToken(tokens.getAccessToken(), cookieSecure,
+                                    authTokenService.getAccessTokenExpirationSeconds()).toString(),
+                            AuthTokenCookies.refreshToken(tokens.getRefreshToken(), cookieSecure,
+                                    authTokenService.getRefreshTokenExpirationSeconds()).toString())
+                    .body(apiResponse);
+        }
+        return ResponseEntity.ok(apiResponse);
     }
 }

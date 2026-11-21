@@ -412,6 +412,9 @@ class AuthControllerTest {
         @Mock
         private com.mannschaft.app.auth.service.AuthOAuthLinkageConfirmService authOAuthLinkageConfirmService;
 
+        @Mock
+        private com.mannschaft.app.auth.service.AuthTokenService authTokenService;
+
         @InjectMocks
         private AuthOAuthController authOAuthController;
 
@@ -425,6 +428,8 @@ class AuthControllerTest {
             given(httpRequest.getHeader("X-Real-IP")).willReturn(null);
             given(httpRequest.getRemoteAddr()).willReturn("127.0.0.1");
             given(httpRequest.getHeader("User-Agent")).willReturn("Mozilla/5.0");
+            given(authTokenService.getAccessTokenExpirationSeconds()).willReturn(900L);
+            given(authTokenService.getRefreshTokenExpirationSeconds()).willReturn(604800L);
             org.mockito.Mockito.doReturn(ApiResponse.of(token))
                     .when(authOAuthService).loginWithOAuth(anyString(), anyString(), anyString(), anyString());
 
@@ -434,6 +439,10 @@ class AuthControllerTest {
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getHeaders().get(org.springframework.http.HttpHeaders.SET_COOKIE))
+                    .hasSize(2)
+                    .anyMatch(c -> c.startsWith("access_token=oauth-access") && c.contains("Max-Age=900"))
+                    .anyMatch(c -> c.startsWith("refresh_token=refresh-token") && c.contains("Max-Age=604800"));
             verify(authOAuthService).loginWithOAuth(eq("GOOGLE"), eq("auth-code"), anyString(), anyString());
         }
 
@@ -445,6 +454,8 @@ class AuthControllerTest {
             HttpServletRequest httpRequest = mock(HttpServletRequest.class, withSettings().strictness(org.mockito.quality.Strictness.LENIENT));
             given(httpRequest.getRemoteAddr()).willReturn("127.0.0.1");
             given(httpRequest.getHeader("User-Agent")).willReturn("Mozilla/5.0");
+            given(authTokenService.getAccessTokenExpirationSeconds()).willReturn(900L);
+            given(authTokenService.getRefreshTokenExpirationSeconds()).willReturn(604800L);
             org.mockito.Mockito.doReturn(ApiResponse.of(token))
                     .when(authOAuthLinkageConfirmService).confirmOAuthLinkage(eq("link-token"), anyString(), anyString());
 
@@ -454,6 +465,7 @@ class AuthControllerTest {
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getHeaders().get(org.springframework.http.HttpHeaders.SET_COOKIE)).hasSize(2);
             verify(authOAuthLinkageConfirmService).confirmOAuthLinkage(eq("link-token"), anyString(), anyString());
         }
     }
