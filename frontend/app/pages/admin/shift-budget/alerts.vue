@@ -34,6 +34,9 @@ const { canManageBudget, ensureLoaded: ensureBudgetAdminAccess } = useShiftBudge
 
 const alerts = ref<AlertResponse[]>([])
 const loading = ref(false)
+/** 取得の失敗。空配列のまま空状態・KPI 0 件に化けさせないために保持する。 */
+const loadError = ref<unknown>(null)
+const loadFailed = ref(false)
 const page = ref(0)
 const pageSize = ref(20)
 
@@ -47,10 +50,15 @@ async function load() {
     return
   }
   loading.value = true
+  loadFailed.value = false
+  loadError.value = null
   try {
     alerts.value = await api.listAlerts(organizationId.value, page.value, pageSize.value)
   }
-  catch {
+  catch (error) {
+    alerts.value = []
+    loadError.value = error
+    loadFailed.value = true
     notification.error(t('shiftBudget.alert.loadError'))
   }
   finally {
@@ -99,6 +107,13 @@ onMounted(() => {
     </Message>
 
     <PageLoading v-else-if="loading" />
+
+    <DashboardErrorState
+      v-else-if="loadFailed"
+      :error="loadError"
+      testid="shift-budget-alerts-error-state"
+      @retry="load"
+    />
 
     <ThresholdAlertList v-else :alerts="alerts" :can-acknowledge="canManageBudget" @acknowledge="openAcknowledge" />
 

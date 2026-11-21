@@ -35,6 +35,9 @@ const { canManageBudget, ensureLoaded: ensureBudgetAdminAccess } = useShiftBudge
 
 const allocations = ref<AllocationResponse[]>([])
 const loading = ref(false)
+/** 取得の失敗。空配列のまま空状態・KPI 0 件に化けさせないために保持する。 */
+const loadError = ref<unknown>(null)
+const loadFailed = ref(false)
 
 const monthlyCloseVisible = ref(false)
 const monthlyCloseForm = ref<{ yearMonth: string }>({ yearMonth: '' })
@@ -50,12 +53,17 @@ async function load() {
     return
   }
   loading.value = true
+  loadFailed.value = false
+  loadError.value = null
   try {
     // ページサイズ大きめで一括取得（ダッシュボード用途）
     const res = await api.listAllocations(organizationId.value, 0, 100)
     allocations.value = res.items
   }
-  catch {
+  catch (error) {
+    allocations.value = []
+    loadError.value = error
+    loadFailed.value = true
     notification.error(t('shiftBudget.dashboard.loadError'))
   }
   finally {
@@ -161,6 +169,13 @@ onMounted(() => {
     </Message>
 
     <PageLoading v-else-if="loading" />
+
+    <DashboardErrorState
+      v-else-if="loadFailed"
+      :error="loadError"
+      testid="shift-budget-dashboard-error-state"
+      @retry="load"
+    />
 
     <template v-else>
       <!-- KPI 4 カラムグリッド (PC), 2 カラム (タブレット), 1 カラム (モバイル) -->

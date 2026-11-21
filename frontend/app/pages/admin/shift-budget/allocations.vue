@@ -43,6 +43,9 @@ const total = ref(0)
 const page = ref(0)
 const pageSize = ref(20)
 const loading = ref(false)
+/** 一覧取得の失敗。空配列のまま「割当が登録されていません」に化けさせないために保持する。 */
+const loadError = ref<unknown>(null)
+const loadFailed = ref(false)
 
 const formVisible = ref(false)
 const editingAllocation = ref<AllocationResponse | null>(null)
@@ -57,12 +60,18 @@ async function load() {
     return
   }
   loading.value = true
+  loadFailed.value = false
+  loadError.value = null
   try {
     const res = await api.listAllocations(organizationId.value, page.value, pageSize.value)
     allocations.value = res.items
     total.value = res.total
   }
-  catch {
+  catch (error) {
+    allocations.value = []
+    total.value = 0
+    loadError.value = error
+    loadFailed.value = true
     notification.error(t('shiftBudget.allocation.loadError'))
   }
   finally {
@@ -165,6 +174,13 @@ onMounted(() => {
     </Message>
 
     <PageLoading v-else-if="loading" />
+
+    <DashboardErrorState
+      v-else-if="loadFailed"
+      :error="loadError"
+      testid="shift-budget-allocations-error-state"
+      @retry="load"
+    />
 
     <DataTable
       v-else
