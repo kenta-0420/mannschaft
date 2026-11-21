@@ -137,6 +137,8 @@ const submitting = ref(false)
  */
 const myPendingRequest = ref<JoinRequestResponse | null>(null)
 const myRequestLoading = ref(false)
+/** 取得失敗は「申請なし」ではない。フォームを出すと審査待ちの申請が既にあっても二重申請しうるため、エラー状態を出す。 */
+const myRequestLoadFailed = ref(false)
 
 const messageError = computed<string | null>(() => {
   if (formMessage.value.length > MESSAGE_MAX) return t('village.error.VILLAGE_029')
@@ -160,11 +162,14 @@ async function loadMyRequest() {
   // FREE 村は申請の概念が無い。村人・審査者はこのパネルを使わないので呼ばない。
   if (isFreeVillage.value || perms.value.isMember) return
   myRequestLoading.value = true
+  myRequestLoadFailed.value = false
   try {
     const mine = await listMyJoinRequests(villageId.value)
     myPendingRequest.value = mine.find(r => r.status === 'PENDING') ?? null
   }
   catch (err) {
+    myPendingRequest.value = null
+    myRequestLoadFailed.value = true
     const { code, status } = extractApiError(err)
     showError(translateApiError(code, status))
   }
@@ -540,6 +545,13 @@ watch(village, (v) => {
       <div v-if="myRequestLoading" class="py-12 text-center text-surface-500">
         <i class="pi pi-spin pi-spinner text-2xl" aria-hidden="true" />
       </div>
+
+      <!-- 3-0'. 自分の申請の取得失敗（「申請なし」と区別し、フォームを出さない） -->
+      <DashboardErrorState
+        v-else-if="myRequestLoadFailed"
+        testid="join-request-mine-error-state"
+        @retry="loadMyRequest"
+      />
 
       <!-- 3-b. 審査待ち（GET /join-requests/me から復元するためリロードしても残る） -->
       <SectionCard

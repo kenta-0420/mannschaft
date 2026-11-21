@@ -15,6 +15,7 @@ const router = useRouter()
 const scheduleApi = useScheduleApi()
 const ganttApi = useTodoGantt()
 const notification = useNotification()
+const errorReport = useErrorReport()
 
 type CalendarTab = 'calendar' | 'gantt'
 const route = useRoute()
@@ -137,11 +138,13 @@ const ganttTodos = ref<GanttTodo[]>([])
 const ganttFromDate = ref('')
 const ganttToDate = ref('')
 const ganttLoading = ref(false)
+/** 取得失敗は「TODO なし」ではない。空のガントに化けさせずエラー状態を出す。 */
+const ganttLoadFailed = ref(false)
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
 const {
-  currentYear, currentMonth, loading, calendarLoading, refresh,
+  currentYear, currentMonth, loading, calendarLoading, loadError, refresh,
   onPrevMonth: calPrevMonth, onNextMonth: calNextMonth, goToToday, navigateTo,
   extendedEvents, todosFailed, layersFailed, layers, availableScopes, allScopeOptions, selectedScopes,
   filteredEvents, toggleScope, initialize, view,
@@ -524,6 +527,7 @@ async function loadGantt() {
   const { from, to } = getMonthRange(year, month)
   ganttFromDate.value = from
   ganttToDate.value = to
+  ganttLoadFailed.value = false
 
   if (ganttCache.has(ganttCacheKey(year, month))) {
     // キャッシュヒット: ローディングなしで即表示
@@ -532,8 +536,10 @@ async function loadGantt() {
     ganttLoading.value = true
     try {
       ganttTodos.value = await fetchGanttMonth(year, month)
-    } catch {
+    } catch (error) {
       ganttTodos.value = []
+      ganttLoadFailed.value = true
+      errorReport.captureQuiet(error, { context: 'calendar.loadGantt' })
     } finally {
       ganttLoading.value = false
     }
@@ -803,7 +809,21 @@ onMounted(async () => {
     </div>
 
     <!-- カレンダービュー -->
-    <div v-show="activeTab === 'calendar'">
+    <!-- 予定の取得失敗は「予定なし」ではない。空のカレンダーに見せず、再試行を出す -->
+    <div
+      v-if="activeTab === 'calendar' && loadError && !loading && calendarLoading"
+      class="space-y-3"
+      data-testid="calendar-retrying"
+    >
+      <Skeleton v-for="i in 5" :key="i" height="2rem" />
+    </div>
+    <DashboardErrorState
+      v-else-if="activeTab === 'calendar' && loadError && !loading"
+      testid="calendar-load-error-state"
+      @retry="refresh"
+    />
+
+    <div v-show="activeTab === 'calendar' && !loadError" data-testid="calendar-body">
       <!-- ===== モバイル（<768px）: リストビュー（F03.19 §6.8・Wave 3-c） =====
            狭幅では月グリッドが読めないため、共通コンポーネント ScheduleMobileListView を使う。
            週／アジェンダビュー本体（CalendarWeekGrid・CalendarAgendaList）は別戦役（W3-a/W3-b）の
@@ -1043,6 +1063,11 @@ onMounted(async () => {
         <div v-if="ganttLoading" class="space-y-3">
           <Skeleton v-for="i in 5" :key="i" height="2rem" />
         </div>
+        <DashboardErrorState
+          v-else-if="ganttLoadFailed"
+          testid="calendar-gantt-error-state"
+          @retry="loadGantt"
+        />
         <Transition v-else name="fade">
           <TodoGanttView
             :key="ganttKey"
