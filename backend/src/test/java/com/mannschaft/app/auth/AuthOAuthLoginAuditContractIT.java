@@ -1,9 +1,8 @@
 package com.mannschaft.app.auth;
 
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
-import com.sun.net.httpserver.HttpServer;
+import com.mannschaft.app.support.test.FakeOAuthProviders;
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -11,15 +10,8 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -38,16 +30,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * ip_address に "OAUTH_GOOGLE"、user_agent に IP が入っていた不具合の回帰固定）。新規ユーザー登録経路と
  * 既存連携経路の両方を通す。</p>
  *
- * <p><b>外部プロバイダ</b>: Google の token / userinfo エンドポイントを JDK 標準の {@link HttpServer} で偽装し、
- * {@code @DynamicPropertySource} で向ける（Google は userinfo 方式で署名付き id_token を要しないため偽装できる）。
- * 新規依存は追加しない。</p>
+ * <p><b>外部プロバイダ</b>: Google の token / userinfo エンドポイントは共通の偽プロバイダ {@link FakeOAuthProviders}
+ * （基底 {@link AbstractMySqlIntegrationTest} の {@code @DynamicPropertySource} で向ける）。認可コードに利用者
+ * （{@code SUB} / {@code EMAIL}）を埋めて送る。本クラスで {@code @DynamicPropertySource} を宣言すると構成キーが
+ * 1 つ増えるため宣言しない（CMP-261121-1217）。</p>
  *
- * <p><b>context 分割について</b>: 偽サーバのポートを設定へ注入するため、基底クラスと別の
- * ApplicationContext が 1 つ増える。本テストは {@code @Transactional} にしない
- * （AFTER_COMMIT リスナーはコミットされないと動かないため）。作成した行は {@code @AfterEach} で自分の分だけ削除する。</p>
+ * <p>本テストは {@code @Transactional} にしない（AFTER_COMMIT リスナーはコミットされないと動かないため）。
+ * 作成した行は {@code @AfterEach} で自分の分だけ削除する。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("OAuth ログイン監査ログ契約テスト")
 class AuthOAuthLoginAuditContractIT extends AbstractMySqlIntegrationTest {
@@ -58,42 +49,6 @@ class AuthOAuthLoginAuditContractIT extends AbstractMySqlIntegrationTest {
 
     private static final String SUB = "it-sub-" + UUID.randomUUID();
     private static final String EMAIL = "oauth-audit-it-" + UUID.randomUUID() + "@example.com";
-    private static final HttpServer FAKE_GOOGLE = startFakeGoogle();
-
-    private static HttpServer startFakeGoogle() {
-        try {
-            HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-            server.createContext("/token", ex -> respond(ex, "{\"access_token\":\"fake-at\"}"));
-            server.createContext("/userinfo", ex -> respond(ex, "{\"sub\":\"" + SUB + "\",\"email\":\"" + EMAIL
-                    + "\",\"given_name\":\"Taro\",\"family_name\":\"Yamada\",\"name\":\"oauth-audit-it\"}"));
-            server.start();
-            return server;
-        } catch (IOException e) {
-            throw new IllegalStateException("偽 Google サーバの起動に失敗しました", e);
-        }
-    }
-
-    private static void respond(com.sun.net.httpserver.HttpExchange ex, String json) throws IOException {
-        byte[] body = json.getBytes(StandardCharsets.UTF_8);
-        ex.getResponseHeaders().add("Content-Type", "application/json");
-        ex.sendResponseHeaders(200, body.length);
-        try (OutputStream os = ex.getResponseBody()) {
-            os.write(body);
-        }
-    }
-
-    @DynamicPropertySource
-    static void configureFakeGoogle(DynamicPropertyRegistry registry) {
-        String base = "http://127.0.0.1:" + FAKE_GOOGLE.getAddress().getPort();
-        registry.add("mannschaft.google.token-uri", () -> base + "/token");
-        registry.add("mannschaft.google.userinfo-uri", () -> base + "/userinfo");
-    }
-
-    @AfterAll
-    static void stopFakeGoogle() {
-        FAKE_GOOGLE.stop(0);
-    }
-
     @Autowired private MockMvc mockMvc;
     @Autowired private JdbcTemplate jdbc;
 
@@ -110,7 +65,7 @@ class AuthOAuthLoginAuditContractIT extends AbstractMySqlIntegrationTest {
 
     private void loginWith(String userAgent) throws Exception {
         mockMvc.perform(post("/api/v1/auth/oauth/google")
-                        .param("code", "fake-code")
+                        .param("code", FakeOAuthProviders.code(SUB, EMAIL))
                         .header("User-Agent", userAgent)
                         .with(req -> {
                             req.setRemoteAddr(SEND_IP);

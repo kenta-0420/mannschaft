@@ -154,6 +154,12 @@ public abstract class AbstractMySqlIntegrationTest {
         registry.add("spring.datasource.url", MYSQL::getJdbcUrl);
         registry.add("spring.datasource.username", MYSQL::getUsername);
         registry.add("spring.datasource.password", MYSQL::getPassword);
+        // 外部 OAuth プロバイダは共通の偽サーバへ向ける（CMP-261121-1217）。派生クラスで @DynamicPropertySource を
+        // 宣言すると構成キーが分かれるため、偽プロバイダを要する試験もここで共有する。詳細は FakeOAuthProviders。
+        registry.add("mannschaft.google.token-uri", () -> FakeOAuthProviders.baseUrl() + "/google/token");
+        registry.add("mannschaft.google.userinfo-uri", () -> FakeOAuthProviders.baseUrl() + "/google/userinfo");
+        registry.add("mannschaft.line.token-uri", () -> FakeOAuthProviders.baseUrl() + "/line/token");
+        registry.add("mannschaft.apple.token-uri", () -> FakeOAuthProviders.baseUrl() + "/apple/token");
     }
 
     /**
