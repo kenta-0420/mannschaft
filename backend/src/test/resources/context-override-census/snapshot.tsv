@@ -1,7 +1,7 @@
 # CMP-261111-0508 追撃①: テストコンテキストの BeanOverride 棚卸し（凍結スナップショット）。手で編集しない。
 # 再生成: docs/conventions/backend/31-ci-shard-weighting.md の「構成キーの棚卸しと認可 override の番人」節。
-# summary classes=8732 nonSpring=5991 zero=25 overrides=2716 failed=0 distinctKeys=338 authzOverrides=1124
-!distinctKeysBaseline=338
+# summary classes=8756 nonSpring=5996 zero=25 overrides=2735 failed=0 distinctKeys=339 authzOverrides=1124
+!distinctKeysBaseline=339
 !authzOverrideBaseline=1124
 com.mannschaft.app.MannschaftApplicationTests	SPRING
 com.mannschaft.app.actionmemo.ActionMemoIntegrationTest	SPRING
@@ -173,6 +173,7 @@ com.mannschaft.app.auth.mfa.MfaRecoveryFlowIT$TokenInvalidation	SPRING
 com.mannschaft.app.auth.mfa.MfaRegenerateReauthIT	SPRING
 com.mannschaft.app.auth.mfa.MfaSecurityNoticeIT	SPRING
 com.mannschaft.app.auth.mfa.MfaSessionAttemptIT	SPRING
+com.mannschaft.app.auth.mfa.OAuthMfaLoginIT	SPRING
 com.mannschaft.app.auth.mfa.TotpResetupAndRecoverySessionIT	SPRING
 com.mannschaft.app.auth.mfa.TotpResetupAndRecoverySessionIT$RecoveryInvalidSession	SPRING
 com.mannschaft.app.auth.mfa.TotpResetupAndRecoverySessionIT$Resetup	SPRING
@@ -601,6 +602,7 @@ com.mannschaft.app.cspreport.CspReportUuidV7PersistenceTest	SPRING
 com.mannschaft.app.dashboard.ActivityFeedCleanupBatchRepositoryIT	SPRING
 com.mannschaft.app.dashboard.ActivityFeedDetailRepositoryIT	SPRING
 com.mannschaft.app.dashboard.ActivityFeedVisibilityIT	SPRING
+com.mannschaft.app.dashboard.AdminActionRequiredEmptyQueryCountIT	SPRING
 com.mannschaft.app.dashboard.ChatFolderItemEvictionScopeContractIT	SPRING
 com.mannschaft.app.dashboard.ChatFolderItemEvictionScopeContractIT$AssignItem	SPRING
 com.mannschaft.app.dashboard.ChatFolderItemEvictionScopeContractIT$BulkAssignItems	SPRING
@@ -1935,6 +1937,21 @@ com.mannschaft.app.search.GlobalSearchApiContractIT$Escaping	SPRING
 com.mannschaft.app.search.GlobalSearchApiContractIT$Validation	SPRING
 com.mannschaft.app.search.GlobalSearchApiContractIT$Views	SPRING
 com.mannschaft.app.search.GlobalSearchContributorFailureIT	SPRING
+com.mannschaft.app.search.GlobalSearchDateTimeZoneIT	SPRING
+com.mannschaft.app.search.GlobalSearchDateTimeZoneIT$CreatedAtInstant	SPRING
+com.mannschaft.app.search.GlobalSearchDateTimeZoneIT$DateRangeInViewerZone	SPRING
+com.mannschaft.app.search.GlobalSearchMessageVisibilityIT	SPRING
+com.mannschaft.app.search.GlobalSearchMessageVisibilityIT$Counts	SPRING
+com.mannschaft.app.search.GlobalSearchMessageVisibilityIT$Deleted	SPRING
+com.mannschaft.app.search.GlobalSearchMessageVisibilityIT$EscapingUrlAndTime	SPRING
+com.mannschaft.app.search.GlobalSearchMessageVisibilityIT$MessageSpecific	SPRING
+com.mannschaft.app.search.GlobalSearchMessageVisibilityIT$ScopeBoundary	SPRING
+com.mannschaft.app.search.GlobalSearchPostVisibilityIT	SPRING
+com.mannschaft.app.search.GlobalSearchPostVisibilityIT$Counts	SPRING
+com.mannschaft.app.search.GlobalSearchPostVisibilityIT$Deleted	SPRING
+com.mannschaft.app.search.GlobalSearchPostVisibilityIT$EscapingAndUrl	SPRING
+com.mannschaft.app.search.GlobalSearchPostVisibilityIT$PostSpecific	SPRING
+com.mannschaft.app.search.GlobalSearchPostVisibilityIT$ScopeBoundary	SPRING
 com.mannschaft.app.search.GlobalSearchRateLimitIT	SPRING
 com.mannschaft.app.search.GlobalSearchScopeVisibilityIT	SPRING
 com.mannschaft.app.search.GlobalSearchScopeVisibilityIT$Organizations	SPRING
@@ -2056,6 +2073,7 @@ com.mannschaft.app.shift.ShiftScheduleScopeContractIT$UserRolesOnlyAdmin	SPRING
 com.mannschaft.app.shift.ShiftScheduleSlotFacadeContractIT	SPRING
 com.mannschaft.app.shift.ShiftScheduleSlotFacadeRaceAndQueryIT	SPRING	spy:com.mannschaft.app.common.AccessControlService	spy:com.mannschaft.app.common.ScopeConcealingAccessGate
 com.mannschaft.app.shift.ShiftScheduleSummaryVisibilitySecurityContractIT	SPRING
+com.mannschaft.app.shift.ShiftSlotDateMoveContractIT	SPRING
 com.mannschaft.app.shift.ShiftSlotMoveConcurrentOverlapIT	SPRING
 com.mannschaft.app.shift.ShiftSlotScopeContractIT	SPRING
 com.mannschaft.app.shift.ShiftSlotScopeContractIT$BulkCreateSlots	SPRING
@@ -2100,6 +2118,7 @@ com.mannschaft.app.shift.controller.ShiftSchedulePhase11ControllerTest	SPRING	mo
 com.mannschaft.app.shiftbudget.MonthlyShiftBudgetCloseTransactionIT	SPRING
 com.mannschaft.app.shiftbudget.ShiftBudgetConsumptionCancelRaceIT	SPRING
 com.mannschaft.app.shiftbudget.ShiftBudgetConsumptionReconcileBatchIT	SPRING
+com.mannschaft.app.shiftbudget.ShiftBudgetFailedEventRetryContractIT	SPRING
 com.mannschaft.app.shiftbudget.ShiftBudgetMultiParentIT	SPRING
 com.mannschaft.app.shiftbudget.ShiftBudgetPositiveRateContractIT	SPRING
 com.mannschaft.app.shiftbudget.ShiftBudgetThresholdAlertNotificationBoundaryIT	SPRING
