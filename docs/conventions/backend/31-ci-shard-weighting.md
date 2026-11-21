@@ -51,9 +51,12 @@
      （グルーピングは `ShardAssignment` を経由しない独立した文字列操作で行い、正規化バグの
      自己採点を防ぐ）
   の3点を、重み表あり/なし × migration除外あり/なしの**4プロファイル**（通常 `:test` の集合）と、`archUnitTest` の集合による 2 プロファイルで assert する）。
-- CI では `backend-ci.yml` の `shard-coverage-guard` ジョブが 1 回だけ `verifyShardCoverage` を
-  実行し、`gate`（必須チェック「Compile & Test」）の needs に含まれる。shard それぞれで
-  重複実行はしない。同ジョブは `gradlew -p build-logic test`（`ShardAssignment` / `ShardBalanceGuard` / `CompiledTestClassScanner` の単体テスト）と
+- CI では `backend-ci.yml` の `detect` ジョブ（Detect changes）の step が 1 回だけ `verifyShardCoverage` を
+  実行する（CMP-261120-1301 PR-B: 旧 `shard-coverage-guard` 独立ジョブを、ランナー待ち行列を減らすため detect へ同居。
+  D-5 @Builder lint も同様）。結果は detect の outputs（`d5_lint` / `regen_test` / `build_logic_test` / `shard_coverage` の outcome）で
+  `gate`（必須チェック「Compile & Test」）へ渡り、backend 変更時はすべて `success` でないと gate は赤（skipped・空文字も不合格）。
+  step の失敗・timeout は detect ジョブ failure となり gate の「detect が success でない」判定でも赤になる。shard それぞれで
+  重複実行はしない。同 step 群は `gradlew -p build-logic test`（`ShardAssignment` / `ShardBalanceGuard` / `CompiledTestClassScanner` の単体テスト）と
   `python3 -m unittest scripts/test_regen_shard_weights.py` も実行する。
 
 ### 番人（重み表の鮮度と shard 偏り）

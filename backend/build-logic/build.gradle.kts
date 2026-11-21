@@ -8,7 +8,7 @@ repositories {
 }
 
 // CMP-261111-0508: ShardAssignment / ShardBalanceGuard の単体テスト基盤。
-// CI では backend-ci.yml の shard-coverage-guard ジョブで実行する。
+// CI では backend-ci.yml の detect ジョブ（旧 shard-coverage-guard を同居した step）で実行する。
 dependencies {
     testImplementation(kotlin("test"))
     testImplementation(platform("org.junit:junit-bom:5.11.4"))

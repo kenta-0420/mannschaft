@@ -26,7 +26,7 @@
 # 2026-06-20: D-5 番人 grep ガード追加 — @Builder(toBuilder=true) は @Retention(SOURCE)
 #   のため ArchUnit（バイトコード解析）では検知不能。ソースレベルの bash grep で
 #   BaseEntity 継承クラスへの @Builder(toBuilder=true) 残存を CI で検出する。
-#   lint ジョブは detect ジョブと並列に shard ジョブと並走し、gate の needs に追加。
+#   （2026-11-21 以降は lint ジョブを detect ジョブの step へ同居。下記 CMP-261120-1301 PR-B 参照）
 # 2026-07-20: shard を 4 → 6 分割へ拡張（timeout 逼迫の根治）。テスト総量の増加で
 #   各 shard の実測が 43〜55 分に達し、timeout-minutes: 60 に対する余裕が 1 割を
 #   切っていた。その結果 shard が 1h0m 台で cancelled となり、集約ゲートを道連れに
@@ -41,6 +41,13 @@
 # 重み表の中央値）付きで LPT に参加させ、未掲載数と予測偏り比を verifyShardCoverage の番人で
 # 検査する。詳細は docs/conventions/backend/31-ci-shard-weighting.md
 # 。
+# 2026-11-21 CMP-261120-1301 PR-B: 実行 0〜2 分の lint（D-5 @Builder guard）と shard-coverage-guard が
+#   GitHub ランナーの順番待ち（30〜100 分）で CI の壁時計を延ばしていたため、独立ジョブをやめて
+#   detect ジョブ（Detect changes）の step へ同居させ、行列に並ぶジョブを 2 本減らした。
+#   gate の needs から両ジョブを外し、代わりに detect の outputs（各同居 step の outcome）を検査する:
+#   backend 変更ありなら全 outcome が success であること（skipped・空文字・欠落は不合格）。
+#   同居 step の失敗・timeout は detect ジョブ failure となり、gate の「detect が success でない」判定でも赤になる。
+#   あわせて detect.backend_changed が true/false 以外（出力欠落）の場合も赤とした。
 # =============================================================================
 
 name: Backend — CI (PR Check)
@@ -73,10 +80,16 @@ jobs:
   detect:
     name: Detect changes
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # 5 → 20（CMP-261120-1301 PR-B）: 旧 shard-coverage-guard（15 分上限）の Gradle 検査を同居したため
+    timeout-minutes: 20
     outputs:
       backend_changed: ${{ steps.changes.outputs.backend_changed }}
       migrations_changed: ${{ steps.changes.outputs.migrations_changed }}
+      # 同居した検査の outcome（backend 無変更なら step は skip され 'skipped'）。gate が検査する。
+      d5_lint: ${{ steps.d5_lint.outcome }}
+      regen_test: ${{ steps.regen_test.outcome }}
+      build_logic_test: ${{ steps.build_logic_test.outcome }}
+      shard_coverage: ${{ steps.shard_coverage.outcome }}
     steps:
       # 変更検出のため PR の base...head 差分を見られるよう全履歴を取得する
       - name: Checkout source
@@ -166,27 +179,19 @@ jobs:
               ;;
           esac
 
-  # ---------------------------------------------------------------------------
-  # lint: ソースレベル静的チェック（D-5 @Builder guard）
-  #
-  # @Builder(toBuilder=true) は @Retention(SOURCE) のため ArchUnit（バイトコード解析）
-  # では検知不能。bash grep でソースを直接走査し、BaseEntity 継承クラスへの
-  # @Builder(toBuilder=true) 残存を検出する。
-  #
-  # detect.backend_changed が true のときだけ起動する（docs-only PR では skip）。
-  # checkout のみで動作するため Gradle キャッシュ不要・5 分以内に完了する。
-  # ---------------------------------------------------------------------------
-  lint:
-    name: Lint (D-5 @Builder guard)
-    needs: detect
-    if: needs.detect.outputs.backend_changed == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@v7
 
+      # ---------------------------------------------------------------------------
+      # 同居した検査（CMP-261120-1301 PR-B）。旧 lint ジョブ（D-5 @Builder guard）と
+      # 旧 shard-coverage-guard ジョブを、行列に並ぶジョブ数を減らすため本ジョブの step へ移した
+      # （どちらも実行 1〜数分なのに GitHub ランナーの順番待ちが数十分に達していた）。
+      # backend 変更時のみ走る（旧ジョブの if と同条件）。失敗すれば本ジョブが failure になり、
+      # shard 等は skip・gate は「detect が success でない」判定で赤になる。
+      # 各検査の結果は outputs（steps.<id>.outcome）で gate にも渡し、gate は skipped・空文字も不合格とする。
+      # 失敗を許容する指定は付けない（失敗を緑に化かさないため。番人テストが禁止を検査する）。
+      # ---------------------------------------------------------------------------
       - name: BaseEntity継承クラスの @Builder(toBuilder=true) 禁止チェック（D-5）
+        id: d5_lint
+        if: steps.changes.outputs.backend_changed == 'true'
         run: |
           set -e
           # 1. @Builder(toBuilder= を含み、かつ Super が直前にないファイルを抽出
@@ -216,41 +221,21 @@ jobs:
           fi
           echo "[OK] @Builder(toBuilder=true) 違反なし（BaseEntity継承クラス）"
 
-  # ---------------------------------------------------------------------------
-  # shard-coverage-guard: CI テストシャード重み付け振り分けの取りこぼし番人
-  #
-  # build.gradle.kts の verifyShardCoverage タスクを 1 回だけ実行する。
-  # 全 shard それぞれで重複実行すると無駄なため、gate 系の軽量ジョブとして独立させる
-  # （Testcontainers 不要・コンパイルのみで完結するため Docker 不要・数分で終わる）。
-  # 「重み表あり／なし双方で全テストクラスがちょうど1つの shard にのみ割り当たる」
-  # ことを、実際の Test.exclude フィルタと同一の判定関数（ShardAssignment.isIncluded）
-  # を通して検証する。壊れれば本ジョブが fail し、gate 経由で PR が赤くなる。
-  #
-  # detect.backend_changed が true のときだけ起動する（docs-only PR では skip）。
-  # ---------------------------------------------------------------------------
-  shard-coverage-guard:
-    name: Shard coverage guard
-    needs: detect
-    if: needs.detect.outputs.backend_changed == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: ./backend
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-
       - name: 重み表再生成の XML 集計対象を検証
+        id: regen_test
+        if: steps.changes.outputs.backend_changed == 'true'
+        working-directory: ./backend
         run: python3 -m unittest scripts/test_regen_shard_weights.py
 
       - name: Set up Java ${{ env.JAVA_VERSION }}
+        if: steps.changes.outputs.backend_changed == 'true'
         uses: actions/setup-java@v6
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
 
       - name: Set up Gradle（依存＋ビルドキャッシュ。shard ジョブと同じキーを共有）
+        if: steps.changes.outputs.backend_changed == 'true'
         uses: gradle/actions/setup-gradle@v4
         with:
           # 書き込みは shard 0 だけに限る（CMP-261120-1042）。複数ジョブが同じ依存キャッシュへ使用範囲の違う状態を
@@ -263,17 +248,30 @@ jobs:
             notifications
 
       - name: Grant Gradle wrapper execute permission
+        if: steps.changes.outputs.backend_changed == 'true'
+        working-directory: ./backend
         run: chmod +x gradlew
 
       # 復元した依存キャッシュの整合性を検証し、jar 欠落があれば破棄して再取得する（CMP-261120-1042）。
       - name: Gradle 依存キャッシュの整合性検証
+        if: steps.changes.outputs.backend_changed == 'true'
+        working-directory: ./backend
         run: bash ../.github/scripts/verify-gradle-dependency-cache.sh
 
       # build-logic（ShardAssignment / ShardBalanceGuard）の単体テスト。割り当て・番人の仕様をここで守る。
       - name: build-logic 単体テスト（割り当て・番人）
+        id: build_logic_test
+        if: steps.changes.outputs.backend_changed == 'true'
+        working-directory: ./backend
         run: ./gradlew -p build-logic test --no-daemon --build-cache
 
+      # build.gradle.kts の verifyShardCoverage を 1 回だけ実行する。「重み表あり／なし双方で全テストクラスが
+      # ちょうど 1 つの shard にのみ割り当たる」ことを、実際の Test.exclude と同一の判定関数
+      # （ShardAssignment.isIncluded）で検証する。壊れれば本ジョブが fail し、gate 経由で PR が赤くなる。
       - name: verifyShardCoverage（全shard.total値で取りこぼし・重複割当を検証）
+        id: shard_coverage
+        if: steps.changes.outputs.backend_changed == 'true'
+        working-directory: ./backend
         run: >-
           ./gradlew verifyShardCoverage --no-daemon --build-cache
           -Pshard.total=${{ env.SHARD_TOTAL }}
@@ -631,58 +629,75 @@ jobs:
   # ---------------------------------------------------------------------------
   gate:
     name: Compile & Test
-    needs: [detect, shard, lint, shard-coverage-guard, non-jst-timezone, arch-test]
+    # lint / shard-coverage-guard は detect の step へ同居した（CMP-261120-1301 PR-B）ため needs に無い。
+    # 同居検査の結果は needs.detect.outputs.<id> の outcome で受け取る。
+    needs: [detect, shard, non-jst-timezone, arch-test]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: 集約結果を判定
+        env:
+          DETECT_RESULT: ${{ needs.detect.result }}
+          CHANGED: ${{ needs.detect.outputs.backend_changed }}
+          SHARD_RESULT: ${{ needs.shard.result }}
+          NON_JST_RESULT: ${{ needs.non-jst-timezone.result }}
+          ARCH_TEST_RESULT: ${{ needs.arch-test.result }}
+          # detect に同居した検査の outcome（success / failure / cancelled / skipped。欠落時は空文字）
+          D5_LINT_OUTCOME: ${{ needs.detect.outputs.d5_lint }}
+          REGEN_TEST_OUTCOME: ${{ needs.detect.outputs.regen_test }}
+          BUILD_LOGIC_TEST_OUTCOME: ${{ needs.detect.outputs.build_logic_test }}
+          SHARD_COVERAGE_OUTCOME: ${{ needs.detect.outputs.shard_coverage }}
         run: |
           set -e
-          DETECT_RESULT="${{ needs.detect.result }}"
-          CHANGED="${{ needs.detect.outputs.backend_changed }}"
-          SHARD_RESULT="${{ needs.shard.result }}"
-          LINT_RESULT="${{ needs.lint.result }}"
-          COVERAGE_GUARD_RESULT="${{ needs.shard-coverage-guard.result }}"
-          NON_JST_RESULT="${{ needs.non-jst-timezone.result }}"
-          ARCH_TEST_RESULT="${{ needs.arch-test.result }}"
-          echo "[INFO] needs.detect.result            = ${DETECT_RESULT}"
-          echo "[INFO] detect.backend_changed          = ${CHANGED}"
-          echo "[INFO] needs.shard.result              = ${SHARD_RESULT}"
-          echo "[INFO] needs.lint.result               = ${LINT_RESULT}"
-          echo "[INFO] needs.shard-coverage-guard.result = ${COVERAGE_GUARD_RESULT}"
-          echo "[INFO] needs.non-jst-timezone.result    = ${NON_JST_RESULT}"
-          echo "[INFO] needs.arch-test.result           = ${ARCH_TEST_RESULT}"
+          echo "[INFO] needs.detect.result              = ${DETECT_RESULT}"
+          echo "[INFO] detect.backend_changed            = ${CHANGED}"
+          echo "[INFO] needs.shard.result                = ${SHARD_RESULT}"
+          echo "[INFO] needs.non-jst-timezone.result     = ${NON_JST_RESULT}"
+          echo "[INFO] needs.arch-test.result            = ${ARCH_TEST_RESULT}"
+          echo "[INFO] detect 同居 d5_lint                = ${D5_LINT_OUTCOME}"
+          echo "[INFO] detect 同居 regen_test             = ${REGEN_TEST_OUTCOME}"
+          echo "[INFO] detect 同居 build_logic_test       = ${BUILD_LOGIC_TEST_OUTCOME}"
+          echo "[INFO] detect 同居 shard_coverage         = ${SHARD_COVERAGE_OUTCOME}"
 
           # (0) detect 自体が success でない（failure/cancelled/skipped）→ 判定不能につき fail。
+          #     同居した検査（D-5 lint / 重み表試験 / build-logic 試験 / verifyShardCoverage）の step が
+          #     失敗・timeout した場合もここで落ちる（step 失敗 → detect ジョブ failure）。
           #     ここを通さないと、detect 失敗時に outputs.backend_changed が空文字になり
-          #     「backend 無変更」と誤認して shard 系が全て skip のまま緑になってしまう
-          #     （新設した shard-coverage-guard を含む全検証が走らずに Compile & Test が
-          #      success になる偽 green 穴。今回まとめて是正）。
+          #     「backend 無変更」と誤認して shard 系が全て skip のまま緑になってしまう。
           if [ "${DETECT_RESULT}" != "success" ]; then
-            echo "[NG] detect が success ではない（結果: ${DETECT_RESULT}）。backend_changed の値は" \
-                 "信頼できず、shard/lint/shard-coverage-guard/non-jst-timezone の要否も判定不能。CI を再実行せよ。"
+            echo "[NG] detect が success ではない（結果: ${DETECT_RESULT}）。backend_changed の値と同居検査の結果は" \
+                 "信頼できず、shard/non-jst-timezone/arch-test の要否も判定不能。CI を再実行せよ。"
             exit 1
           fi
 
-          # (1) detect success かつ backend 無変更（docs-only 等）: shard / lint / shard-coverage-guard / non-jst-timezone は
+          # (0b) detect success なのに backend_changed が true/false のどちらでもない（出力欠落）→ 判定不能につき fail。
+          if [ "${CHANGED}" != "true" ] && [ "${CHANGED}" != "false" ]; then
+            echo "[NG] detect.backend_changed が true/false ではない（値: '${CHANGED}'）。判定不能につき失敗とする。"
+            exit 1
+          fi
+
+          # (1) backend 無変更（docs-only 等）: shard / non-jst-timezone / arch-test と同居検査は
           #     意図的に skip 済み → テスト不要で success
-          if [ "${CHANGED}" != "true" ]; then
-            echo "[OK] backend に変更なし（docs-only 等）。shard / lint / shard-coverage-guard / non-jst-timezone をスキップし success とする。"
+          if [ "${CHANGED}" = "false" ]; then
+            echo "[OK] backend に変更なし（docs-only 等）。shard 系と同居検査をスキップし success とする。"
             exit 0
           fi
 
-          # (2) backend_changed == 'true' の経路: 全 shard + lint + shard-coverage-guard + non-jst-timezone が
-          #     厳密に success（arch-test を含む）（skipped/failure/cancelled のいずれでもない）→ success
-          if [ "${SHARD_RESULT}" = "success" ] && [ "${LINT_RESULT}" = "success" ] && [ "${COVERAGE_GUARD_RESULT}" = "success" ] && [ "${NON_JST_RESULT}" = "success" ] && [ "${ARCH_TEST_RESULT}" = "success" ]; then
-            echo "[OK] 全 shard + lint + shard-coverage-guard + non-jst-timezone + arch-test が success。Compile & Test は success。"
+          # (2) backend_changed == 'true' の経路: 全 shard + non-jst-timezone + arch-test に加え、
+          #     同居検査 4 つの outcome がすべて厳密に success であること。
+          #     skipped・空文字・欠落は不合格（走らない番人は無意味なため）。
+          if [ "${SHARD_RESULT}" = "success" ] && [ "${NON_JST_RESULT}" = "success" ] && [ "${ARCH_TEST_RESULT}" = "success" ] \
+             && [ "${D5_LINT_OUTCOME}" = "success" ] && [ "${REGEN_TEST_OUTCOME}" = "success" ] \
+             && [ "${BUILD_LOGIC_TEST_OUTCOME}" = "success" ] && [ "${SHARD_COVERAGE_OUTCOME}" = "success" ]; then
+            echo "[OK] 全 shard + non-jst-timezone + arch-test + 同居検査（d5_lint / regen_test / build_logic_test / shard_coverage）が success。Compile & Test は success。"
             exit 0
           fi
 
-          # (3) それ以外（failure / cancelled / 走るべきなのに skipped 等の異常） → fail
-          #     shard-coverage-guard / non-jst-timezone が skipped のまま緑にはならない
-          #     （走らない番人は無意味なため）。
-          echo "[NG] shard=${SHARD_RESULT}, lint=${LINT_RESULT}, shard-coverage-guard=${COVERAGE_GUARD_RESULT}, non-jst-timezone=${NON_JST_RESULT}, arch-test=${ARCH_TEST_RESULT} — いずれかが success ではない。Compile & Test を失敗とする。"
+          # (3) それ以外（failure / cancelled / 走るべきなのに skipped・空文字 等の異常） → fail
+          echo "[NG] shard=${SHARD_RESULT}, non-jst-timezone=${NON_JST_RESULT}, arch-test=${ARCH_TEST_RESULT}," \
+               "d5_lint=${D5_LINT_OUTCOME}, regen_test=${REGEN_TEST_OUTCOME}, build_logic_test=${BUILD_LOGIC_TEST_OUTCOME}," \
+               "shard_coverage=${SHARD_COVERAGE_OUTCOME} — いずれかが success ではない。Compile & Test を失敗とする。"
           exit 1
 
 # =============================================================================
