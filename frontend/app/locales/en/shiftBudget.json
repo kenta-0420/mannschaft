@@ -28,7 +28,12 @@
         "periodStart": "Start date",
         "periodEnd": "End date",
         "save": "Save",
-        "cancel": "Cancel"
+        "cancel": "Cancel",
+        "fiscalYearRequired": "Enter a fiscal year ID",
+        "categoryRequired": "Enter a category ID",
+        "periodStartRequired": "Enter a start date",
+        "periodEndRequired": "Enter an end date",
+        "periodEndBeforeStart": "The end date must be on or after the start date"
       },
       "empty": "No allocations registered",
       "loadError": "Failed to load allocations",

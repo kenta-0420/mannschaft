@@ -28,7 +28,12 @@
         "periodStart": "시작일",
         "periodEnd": "종료일",
         "save": "저장",
-        "cancel": "취소"
+        "cancel": "취소",
+        "fiscalYearRequired": "회계연도 ID를 입력하세요",
+        "categoryRequired": "비목 ID를 입력하세요",
+        "periodStartRequired": "시작일을 입력하세요",
+        "periodEndRequired": "종료일을 입력하세요",
+        "periodEndBeforeStart": "종료일은 시작일 이후여야 합니다"
       },
       "empty": "등록된 할당이 없습니다",
       "loadError": "할당 목록 불러오기 실패",

@@ -28,7 +28,12 @@
         "periodStart": "开始日期",
         "periodEnd": "结束日期",
         "save": "保存",
-        "cancel": "取消"
+        "cancel": "取消",
+        "fiscalYearRequired": "请输入会计年度ID",
+        "categoryRequired": "请输入费用类别ID",
+        "periodStartRequired": "请输入开始日期",
+        "periodEndRequired": "请输入结束日期",
+        "periodEndBeforeStart": "结束日期不得早于开始日期"
       },
       "empty": "没有注册的分配",
       "loadError": "获取分配列表失败",

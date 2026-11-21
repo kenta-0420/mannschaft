@@ -28,7 +28,12 @@
         "periodStart": "Fecha de inicio",
         "periodEnd": "Fecha de fin",
         "save": "Guardar",
-        "cancel": "Cancelar"
+        "cancel": "Cancelar",
+        "fiscalYearRequired": "Introduzca el ID del ejercicio fiscal",
+        "categoryRequired": "Introduzca el ID de la categoría",
+        "periodStartRequired": "Introduzca la fecha de inicio",
+        "periodEndRequired": "Introduzca la fecha de fin",
+        "periodEndBeforeStart": "La fecha de fin debe ser igual o posterior a la de inicio"
       },
       "empty": "No hay asignaciones registradas",
       "loadError": "Error al cargar las asignaciones",

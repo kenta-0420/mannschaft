@@ -2,6 +2,8 @@
 export interface ApiErrorInfo {
   status?: number
   code?: string
+  /** BE が返したエラー理由（error.message）。無ければ undefined。 */
+  message?: string
   /** 400 の fieldErrors を「項目名 → メッセージ」に直したもの（同じ項目は最初の1件）。 */
   fieldErrors: Record<string, string>
 }
@@ -11,7 +13,7 @@ export function parseApiError(error: unknown): ApiErrorInfo {
     status?: number
     statusCode?: number
     response?: { status?: number }
-    data?: { error?: { code?: string; fieldErrors?: { field: string; message: string }[] } }
+    data?: { error?: { code?: string; message?: string; fieldErrors?: { field: string; message: string }[] } }
   }
   const body = e?.data?.error
   const fieldErrors: Record<string, string> = {}
@@ -21,6 +23,7 @@ export function parseApiError(error: unknown): ApiErrorInfo {
   return {
     status: e?.response?.status ?? e?.statusCode ?? e?.status,
     code: body?.code,
+    message: body?.message || undefined,
     fieldErrors,
   }
 }

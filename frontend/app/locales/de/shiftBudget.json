@@ -28,7 +28,12 @@
         "periodStart": "Startdatum",
         "periodEnd": "Enddatum",
         "save": "Speichern",
-        "cancel": "Abbrechen"
+        "cancel": "Abbrechen",
+        "fiscalYearRequired": "Geben Sie die Geschäftsjahr-ID ein",
+        "categoryRequired": "Geben Sie die Kategorie-ID ein",
+        "periodStartRequired": "Geben Sie ein Startdatum ein",
+        "periodEndRequired": "Geben Sie ein Enddatum ein",
+        "periodEndBeforeStart": "Das Enddatum darf nicht vor dem Startdatum liegen"
       },
       "empty": "Keine Zuweisungen registriert",
       "loadError": "Zuweisungen konnten nicht geladen werden",

@@ -38,7 +38,12 @@
         "periodStart": "開始日",
         "periodEnd": "終了日",
         "save": "保存",
-        "cancel": "キャンセル"
+        "cancel": "キャンセル",
+        "fiscalYearRequired": "年度IDを入力してください",
+        "categoryRequired": "費目IDを入力してください",
+        "periodStartRequired": "開始日を入力してください",
+        "periodEndRequired": "終了日を入力してください",
+        "periodEndBeforeStart": "終了日は開始日以降にしてください"
       },
       "empty": "割当が登録されていません",
       "loadError": "割当一覧の取得に失敗しました",
