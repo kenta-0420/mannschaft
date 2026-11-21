@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261111-0508",
+  "scope": "app",
+  "implementation": {
+    "pr": 4678,
+    "sha": "cceebeaea668a475be03e5942661852ab59cde1a"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "テストコンテキスト構成キーを削減し、認可型 override の増加を番人が検出する",
+      "tests": [
+        {
+          "name": "ContextOverrideCensusGuardTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/testing/ContextOverrideCensusGuardTest.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "基底への MockMvc 追加で addFilters の実効値とフィルタ適用の有無が保たれ、context が共有される",
+      "tests": [
+        {
+          "name": "MockMvcAddFiltersEffectiveValueTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/testing/MockMvcAddFiltersEffectiveValueTest.java"
+        },
+        {
+          "name": "MockMvcContextUnificationIT",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/testing/MockMvcContextUnificationIT.java"
+        },
+        {
+          "name": "MockMvcFilterAppliedIT",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/testing/MockMvcFilterAppliedIT.java"
+        },
+        {
+          "name": "MockMvcFilterNotAppliedIT",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/testing/MockMvcFilterNotAppliedIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "distinct key 数のラチェットと CI 構成値の固定",
+      "tests": [
+        {
+          "name": "CiTestRuntimeConfigPinTest",
+          "evidence": "backend/build-logic/src/test/kotlin/CiTestRuntimeConfigPinTest.kt"
+        }
+      ]
+    },
+    {
+      "id": "AC-6",
+      "description": "migration 込み PR CI で全 shard の Run tests が 78 分以下を2回連続で達成する（run1 最大 75.0 分、run2 最大 64.9 分）",
+      "tests": [
+        {
+          "name": "Backend CI run 44719267579",
+          "evidence": "https://github.com/Mannschaft2026/mannschaft/actions/runs/44719267579"
+        },
+        {
+          "name": "Backend CI run 44688121241",
+          "evidence": "https://github.com/Mannschaft2026/mannschaft/actions/runs/44688121241"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 44719267579
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/Mannschaft2026/mannschaft/pull/4678"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "https://github.com/Mannschaft2026/mannschaft/actions/runs/44688121241",
+      "note": "画面のない CI 基盤・テスト構成の変更のため、実機＝本番相当の実行環境である GitHub Actions 実行機で migration 込み CI を2回実測。全 8 shard の Run tests ≤78分（最大 75.0 / 64.9 分）。マスター裁可（2026-11-21）により実機をCI実行機と読み替え"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "https://github.com/Mannschaft2026/mannschaft/actions/runs/44835312495",
+      "note": "#4678 マージ後の main を base にした筋書きなしの他 PR の BE CI を観測。run 44835312495（全shard 45.5〜61.6分）、44831900048（45.5〜75.8分）、PR #4706 の run 44874500577（36.0〜52.9分）。いずれも78分以内。観測中に構成キー番人の基準値ずれ（PR #4677 の OAuthMfaLoginIT 由来）を発見し PR #4706 で再生成済み。マスター裁可（2026-11-21）によりアリシゼーションを本観測で読み替え"
+    }
+  },
+  "regressions": []
+}

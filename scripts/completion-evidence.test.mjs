@@ -321,6 +321,9 @@ test('AC-2: 同居spec・frontend/testsだけはtest-only、scriptsとテスト�
   assert.equal(infer(['scripts/check.mjs', '.github/workflows/x.yml']), 'tooling');
 });
 
+// 現行のリポジトリ名と、移管前（2026-11-21 に kenta-0420/mannschaft から移管）に記録された旧名。
+const REPOSITORY_NAMES = ['Mannschaft2026/mannschaft', 'kenta-0420/mannschaft'];
+
 test('AC-3: test-onlyのPRはapp申告なら通り、tooling申告は拒否、既存docs/evidence全件は新validatorを通る', () => {
   const appPassed = { ...evidence, scope: 'app', stages: { review: passed, real: passed, exploratory: passed } };
   assert.doesNotThrow(() => validateEvidence(appPassed, 'CMP-260101-0101', withFiles(TEST_ONLY_3841)));
@@ -336,10 +339,19 @@ test('AC-3: test-onlyのPRはapp申告なら通り、tooling申告は拒否、�
   const headFiles = new Set(tree.stdout.split('\n').filter(Boolean));
   for (const name of jsonFiles) {
     const item = JSON.parse(readFileSync(new URL(name, evidenceDir), 'utf8'));
-    assert.doesNotThrow(() => validateEvidence(item, name.replace(/\.json$/, ''), {
-      repository: 'kenta-0420/mannschaft',
-      fileExists: ref => headFiles.has(ref),
-    }), name);
+    const cmpId = name.replace(/\.json$/, '');
+    // 移管前に記録された証拠は旧リポジトリ名の URL を持つため、どちらかの名前で通れば合格とする。
+    let lastError;
+    const passed = REPOSITORY_NAMES.some(repository => {
+      try {
+        validateEvidence(item, cmpId, { repository, fileExists: ref => headFiles.has(ref) });
+        return true;
+      } catch (error) {
+        lastError = error;
+        return false;
+      }
+    });
+    if (!passed) throw lastError;
   }
 });
 
