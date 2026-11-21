@@ -16,7 +16,7 @@
  *
  * 既存のサッカー実装（useMatchTimer.ts）はこの核に薄く委譲する形へ移行した（挙動不変）。
  */
-import type { MatchPeriod } from '~/types/match'
+import type { MatchEventResponse, MatchPeriod } from '~/types/match'
 
 /**
  * UI タイマー状態（全連続時間制競技の状態を保持する器）。
@@ -78,6 +78,73 @@ export interface TimerSportConfig {
 export interface UseMatchTimerCoreOptions {
   /** ピリオド切替時に PERIOD_START/PERIOD_END を記録するためのフック。 */
   onPeriodTransition?: (t: PeriodTransition) => void | Promise<void>
+}
+
+/** 永続イベントからの再開入力。秒時計自体は永続化されていない。 */
+export type TimerRestoreInput =
+  | { state?: TimerState; elapsedSeconds?: number }
+  | { events: readonly MatchEventResponse[]; matchStatus: string | null }
+
+/** 保存済み境界と記録分数だけを使う純粋な復元計算（壁時計・POSTに依存しない）。 */
+function deriveTimerRestoration(
+  config: TimerSportConfig,
+  events: readonly MatchEventResponse[],
+  matchStatus: string | null,
+) {
+  const periods = new Map<MatchPeriod, TimerState>()
+  for (const state of Object.keys(config.nextState) as TimerState[]) {
+    const period = config.stateToPeriod(state)
+    if (period !== null) periods.set(period, state)
+  }
+  const ordered = [...events].sort((a, b) => (a.sortSeq ?? 0) - (b.sortSeq ?? 0))
+  const applicable = ordered.filter((event) => event.period != null && periods.has(event.period))
+  const boundary = applicable.findLast(
+    (event) => event.eventType === 'PERIOD_START' || event.eventType === 'PERIOD_END',
+  )
+  const latest = boundary ?? applicable.at(-1)
+  const period = latest?.period ?? null
+  let state = period !== null ? periods.get(period)! : config.initialState
+
+  if (matchStatus === 'COMPLETED') {
+    state = 'COMPLETED'
+  } else if (events.length > 0 && !latest) {
+    throw new Error('保存済みイベントに競技の進行ピリオドがありません')
+  } else if (boundary?.eventType === 'PERIOD_END') {
+    const next = config.nextState[state]
+    // 連続する進行ピリオド間のSTARTだけが欠けた場合、開始済みとは推測しない。
+    if (!next || config.stateToPeriod(next) !== null) {
+      throw new Error('終了境界に対応する次の開始境界がありません')
+    }
+    state = next
+  }
+
+  const boundaryIndex = boundary ? ordered.indexOf(boundary) : -1
+  const candidates =
+    boundary?.eventType === 'PERIOD_START'
+      ? ordered.slice(boundaryIndex + 1)
+      : boundary?.eventType === 'PERIOD_END'
+        ? ordered.slice(0, boundaryIndex + 1)
+        : ordered
+  // STARTのminuteは遷移前の状態由来。新periodの経過分の根拠には使わない。
+  const recorded = candidates.findLast(
+    (event) =>
+      event.period === period &&
+      event.eventType !== 'PERIOD_START' &&
+      typeof event.minute === 'number' &&
+      Number.isFinite(event.minute) &&
+      event.minute >= 0,
+  )
+  const minute = recorded?.minute ?? null
+  const offset = config.periodMinuteOffset[state] ?? 0
+  const running = config.isRunningState(state)
+  const minuteless = config.isMinuteless?.(state) ?? state === 'WAITING'
+  return {
+    state,
+    lastActivePeriod: period,
+    elapsedSeconds: running && minute !== null ? Math.max(0, minute - offset) * 60 : 0,
+    manualMinute: !minuteless && minute !== null && (!running || minute < offset) ? minute : null,
+    stoppageMinute: minuteless ? null : (recorded?.stoppageMinute ?? null),
+  }
 }
 
 /**
@@ -165,7 +232,11 @@ export function useMatchTimerCore(
     syncTick()
 
     if (options.onPeriodTransition && (endingPeriod !== null || startingPeriod !== null)) {
-      await options.onPeriodTransition({ endingPeriod, startingPeriod, minute: atMinute })
+      await options.onPeriodTransition({
+        endingPeriod,
+        startingPeriod,
+        minute: atMinute,
+      })
     }
   }
 
@@ -209,7 +280,17 @@ export function useMatchTimerCore(
   }
 
   /** 既存試合（中断→再開）から状態を復元する。 */
-  function restore(restored: { state?: TimerState; elapsedSeconds?: number }): void {
+  function restore(restored: TimerRestoreInput): void {
+    if ('events' in restored) {
+      const snapshot = deriveTimerRestoration(config, restored.events, restored.matchStatus)
+      state.value = snapshot.state
+      elapsedSeconds.value = snapshot.elapsedSeconds
+      lastActivePeriod.value = snapshot.lastActivePeriod
+      manualMinute.value = snapshot.manualMinute
+      stoppageMinute.value = snapshot.stoppageMinute
+      syncTick()
+      return
+    }
     if (restored.state) {
       state.value = restored.state
       const restoredPeriod = config.stateToPeriod(restored.state)
