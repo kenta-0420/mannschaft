@@ -2,13 +2,13 @@
 import dayjs from 'dayjs'
 import type {
   AvailabilityDefaultResponse,
-  CreateShiftRequestRequest,
   ShiftPreference,
   ShiftRequestResponse,
   ShiftScheduleResponse,
   ShiftSlotResponse,
 } from '~/types/shift'
 import { preferenceToI18nKey } from '~/utils/shiftPreference'
+import { planShiftRequestWrites } from '~/utils/shiftRequestPlan'
 import { isAcceptingShiftRequests } from '~/utils/shiftStatus'
 import { runWithRequestTimeout } from '~/utils/requestTimeout'
 
@@ -329,24 +329,19 @@ async function submitAll() {
   if (!selectedSchedule.value) return
   submitting.value = true
   try {
-    const tasks: Promise<ShiftRequestResponse>[] = []
-    for (const slot of slots.value) {
-      const pref = preferences.value.get(slot.id) ?? UNTOUCHED_PREFERENCE
-      const note = notes.value.get(slot.id)
-      const existing = existingRequests.value.find((r) => r.slotId === slot.id)
-      if (existing) {
-        tasks.push(updateRequest(existing.id, { preference: pref, note }))
-      } else {
-        const payload: CreateShiftRequestRequest = {
-          scheduleId: selectedSchedule.value.id,
-          slotId: slot.id,
-          slotDate: slot.time.slotDate,
-          preference: pref,
-          note,
-        }
-        tasks.push(submitRequest(payload))
-      }
-    }
+    // 変更のない既存希望は送信しない（CMP-261120-1051）
+    const plan = planShiftRequestWrites({
+      scheduleId: selectedSchedule.value.id,
+      slots: slots.value,
+      existingRequests: existingRequests.value,
+      preferences: preferences.value,
+      notes: notes.value,
+      untouchedPreference: UNTOUCHED_PREFERENCE,
+    })
+    const tasks: Promise<ShiftRequestResponse>[] = [
+      ...plan.updates.map((u) => updateRequest(u.requestId, u.payload)),
+      ...plan.creates.map((c) => submitRequest(c)),
+    ]
     await Promise.all(tasks)
     showSuccess(t('shift.notification.submitSuccess'))
     // リセット
