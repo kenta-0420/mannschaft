@@ -133,7 +133,9 @@ class BillingContractServicePaymentTest {
     @DisplayName("AC-32: createPendingPaidContract は PENDING＋価格焼付＋pointer 確保・entitlements を発行しない")
     void ac32_createPendingPaidContract_pendingWithoutEntitlements() {
         stubSaveAssignsId();
-        given(planRepository.findById("FULL")).willReturn(Optional.of(plan("FULL")));
+        given(planRepository.findAllById(List.of("FULL"))).willReturn(List.of(plan("FULL")));
+        given(billingPriceResolver.resolvePlanPrice(any(PlanEntity.class), eq(EntitlementScopeKind.USER), eq(9L)))
+                .willReturn(new BillingPriceResolver.ResolvedPlanPrice(2000, null, null));
         given(planFeatureRepository.findByPlanKey("FULL")).willReturn(List.of(pf("FULL", "ads.hide")));
 
         BillingContractService.ContractResult result = service.createPendingPaidContract(
@@ -161,7 +163,9 @@ class BillingContractServicePaymentTest {
     @DisplayName("AC-32: PENDING スロット占有中の再契約は ENTITLEMENT_016（CONTRACT_PENDING_PAYMENT・409）")
     void ac32_pendingSlotConflict_throws016() {
         stubSaveAssignsId();
-        given(planRepository.findById("FULL")).willReturn(Optional.of(plan("FULL")));
+        given(planRepository.findAllById(List.of("FULL"))).willReturn(List.of(plan("FULL")));
+        given(billingPriceResolver.resolvePlanPrice(any(PlanEntity.class), eq(EntitlementScopeKind.USER), eq(9L)))
+                .willReturn(new BillingPriceResolver.ResolvedPlanPrice(2000, null, null));
         given(planFeatureRepository.findByPlanKey("FULL")).willReturn(List.of(pf("FULL", "ads.hide")));
         given(activeContractPointerRepository.saveAndFlush(any()))
                 .willThrow(new DataIntegrityViolationException("uk_acp_slot"));
@@ -188,7 +192,9 @@ class BillingContractServicePaymentTest {
     @DisplayName("AC-32: ACTIVE スロット占有中の再契約は従来どおり ENTITLEMENT_006（CONTRACT_ALREADY_ACTIVE・409）")
     void ac32_activeSlotConflict_throws006() {
         stubSaveAssignsId();
-        given(planRepository.findById("FULL")).willReturn(Optional.of(plan("FULL")));
+        given(planRepository.findAllById(List.of("FULL"))).willReturn(List.of(plan("FULL")));
+        given(billingPriceResolver.resolvePlanPrice(any(PlanEntity.class), eq(EntitlementScopeKind.USER), eq(9L)))
+                .willReturn(new BillingPriceResolver.ResolvedPlanPrice(2000, null, null));
         given(planFeatureRepository.findByPlanKey("FULL")).willReturn(List.of(pf("FULL", "ads.hide")));
         given(activeContractPointerRepository.saveAndFlush(any()))
                 .willThrow(new DataIntegrityViolationException("uk_acp_slot"));
@@ -512,8 +518,9 @@ class BillingContractServicePaymentTest {
         UUID id = UUID.randomUUID();
         BillingContractEntity free = contract(id, ContractStatus.ACTIVE, null, null);
         given(billingContractRepository.findByIdAndDeletedAtIsNull(id)).willReturn(Optional.of(free));
-        given(billingPriceResolver.resolveMonthlyPriceJpy(
-                EntitlementScopeKind.USER, 9L, ContractKind.PLAN, "PREMIUM", null)).willReturn(3000);
+        given(planRepository.findAllById(List.of("PREMIUM"))).willReturn(List.of(plan("PREMIUM")));
+        given(billingPriceResolver.resolvePlanPrice(any(PlanEntity.class), eq(EntitlementScopeKind.USER), eq(9L)))
+                .willReturn(new BillingPriceResolver.ResolvedPlanPrice(3000, null, null));
 
         assertThatThrownBy(() -> service.changePlan(EntitlementScopeKind.USER, 9L, id, "PREMIUM", 9L))
                 .isInstanceOf(BusinessException.class)
@@ -530,9 +537,9 @@ class BillingContractServicePaymentTest {
         UUID oldId = UUID.randomUUID();
         BillingContractEntity free = contract(oldId, ContractStatus.ACTIVE, null, null); // plan FULL
         given(billingContractRepository.findByIdAndDeletedAtIsNull(oldId)).willReturn(Optional.of(free));
-        given(billingPriceResolver.resolveMonthlyPriceJpy(
-                EntitlementScopeKind.USER, 9L, ContractKind.PLAN, "BASIC", null)).willReturn(null);
-        given(planRepository.findById("BASIC")).willReturn(Optional.of(plan("BASIC")));
+        given(billingPriceResolver.resolvePlanPrice(any(PlanEntity.class), eq(EntitlementScopeKind.USER), eq(9L)))
+                .willReturn(new BillingPriceResolver.ResolvedPlanPrice(0, null, null));
+        given(planRepository.findAllById(List.of("BASIC"))).willReturn(List.of(plan("BASIC")));
         given(planFeatureRepository.findByPlanKey("BASIC")).willReturn(List.of(pf("BASIC", "ads.hide")));
         given(entitlementRepository.findBySourceKindAndSourceRefIdAndRevokedAtIsNull(
                 EntitlementSourceKind.PLAN, oldId)).willReturn(List.of(ent("old.feature")));

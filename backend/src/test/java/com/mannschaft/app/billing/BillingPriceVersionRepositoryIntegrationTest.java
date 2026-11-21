@@ -74,6 +74,33 @@ class BillingPriceVersionRepositoryIntegrationTest extends AbstractMySqlIntegrat
                 .extracting(BillingPriceVersionEntity::getId).contains(revision.getId());
         assertThat(priceBandVersionRepository.findAllByPriceVersionIdForUpdate(revision.getId()))
                 .extracting(BillingPriceBandVersionEntity::getBandNo).containsExactly(1, 2);
+        // 既存実DB caseへ同述語の時点/identity/状態/削除対照を加える。
+        List<BillingPriceVersionStatus> active = List.of(BillingPriceVersionStatus.ACTIVE);
+        assertScalarPredicate(0, BillingProductKind.PLAN, "standard", EntitlementScopeKind.TEAM, active, effectiveFrom.minusSeconds(1));
+        assertScalarPredicate(1, BillingProductKind.PLAN, "standard", EntitlementScopeKind.TEAM, active, effectiveFrom);
+        assertScalarPredicate(0, BillingProductKind.ADDON, "standard", EntitlementScopeKind.TEAM, active, effectiveFrom);
+        assertScalarPredicate(0, BillingProductKind.PLAN, "other", EntitlementScopeKind.TEAM, active, effectiveFrom);
+        assertScalarPredicate(0, BillingProductKind.PLAN, "standard", EntitlementScopeKind.ORG, active, effectiveFrom);
+        assertScalarPredicate(0, BillingProductKind.PLAN, "standard", EntitlementScopeKind.TEAM,
+                List.of(BillingPriceVersionStatus.SCHEDULED), effectiveFrom);
+        Instant end = effectiveFrom.plusSeconds(60);
+        revision.setEffectiveUntil(end);
+        assertScalarPredicate(1, BillingProductKind.PLAN, "standard", EntitlementScopeKind.TEAM, active, end.minusSeconds(1));
+        assertScalarPredicate(0, BillingProductKind.PLAN, "standard", EntitlementScopeKind.TEAM, active, end);
+        revision.setEffectiveUntil(null);
+        assertScalarPredicate(1, BillingProductKind.PLAN, "standard", EntitlementScopeKind.TEAM, active, end);
+        revision.setDeletedAt(Instant.now().plusSeconds(1));
+        assertScalarPredicate(0, BillingProductKind.PLAN, "standard", EntitlementScopeKind.TEAM, active, end);
+        revision.setDeletedAt(null);
+        revision.setStatus(BillingPriceVersionStatus.SCHEDULED);
+        assertScalarPredicate(1, BillingProductKind.PLAN, "standard", EntitlementScopeKind.TEAM,
+                List.of(BillingPriceVersionStatus.SCHEDULED), end);
+    }
+
+    private void assertScalarPredicate(int expected, BillingProductKind kind, String key,
+            EntitlementScopeKind scope, List<BillingPriceVersionStatus> statuses, Instant at) {
+        assertThat(priceVersionRepository.findEffectiveCandidates(kind, key, scope, statuses, at)).hasSize(expected);
+        assertThat(priceVersionRepository.countEffectiveCandidates(kind, key, scope, statuses, at)).isEqualTo(expected);
     }
 
     private BillingPriceVersionEntity newRevision(String catalogRevision, Long revisionNo, Instant effectiveFrom) {

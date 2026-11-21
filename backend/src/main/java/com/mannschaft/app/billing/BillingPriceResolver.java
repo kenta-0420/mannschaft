@@ -2,20 +2,15 @@ package com.mannschaft.app.billing;
 
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
+
+import java.util.List;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 
 /**
- * F20.1 実決済（D-4・2026-07-10 御裁可）: 契約の月額（円）をマスタから解決する。
- *
- * <p><b>NULL＝無償ワンクリック契約（既存 P1 フロー）／非 NULL＝Checkout 決済フロー</b>の分岐に用いる。
- * 価格はマスタデータ（{@code plans} / {@code plan_price_bands} / {@code feature_catalog}）。既存無償契約に
- * 遡及しない（D-4）ため、価格は「契約作成時点」に解決してスナップショット（{@code price_jpy_snapshot}）へ焼き付ける。</p>
- *
- * <ul>
- *   <li>PLAN・USER: {@code plans.base_monthly_price_jpy}。</li>
- *   <li>PLAN・TEAM/ORG: 人数バンド（{@code plan_price_bands}）の {@code monthly_price_jpy} を優先。バンド未定義/価格 NULL は base。</li>
- *   <li>ADDON: {@code feature_catalog.addon_price_jpy}。</li>
- * </ul>
+ * 契約時点の PLAN 価格と人数帯を解決する。
+ * 新価格は適格な ACTIVE の税込額を優先し、未公開時だけ旧最終額0を維持する。
+ * literal FREE と ADDON は既存の分類を維持する。
  */
 @Service
 @RequiredArgsConstructor
@@ -23,8 +18,9 @@ public class BillingPriceResolver {
 
     private final PlanRepository planRepository;
     private final FeatureCatalogRepository featureCatalogRepository;
-    private final PlanPriceBandRepository planPriceBandRepository;
     private final ScopeMemberCountService scopeMemberCountService;
+    private final BillingPriceSelector billingPriceSelector;
+    private final LegacyPlanPriceMapper legacyPlanPriceMapper;
 
     /**
      * 契約の月額（円）を解決する。
@@ -46,39 +42,70 @@ public class BillingPriceResolver {
                     .map(FeatureCatalogEntity::getAddonPriceJpy)
                     .orElse(null);
         }
-        // PLAN
-        PlanEntity plan = planRepository.findById(planKey).orElse(null);
-        if (plan == null) {
-            // プラン自体が不在 → 呼び出し元の PLAN_NOT_FOUND 検証に委ねる（無償扱いにしない）。
-            return null;
-        }
-        Integer base = plan.getBaseMonthlyPriceJpy();
-        if (scopeKind == EntitlementScopeKind.USER) {
-            return requireConfigured(base);
-        }
-        // TEAM / ORG: バンド価格を優先（バンド未定義/価格 NULL は base へフォールバック）。
-        PlanPriceBandScopeKind bandScope = scopeKind == EntitlementScopeKind.TEAM
-                ? PlanPriceBandScopeKind.TEAM : PlanPriceBandScopeKind.ORG;
-        int memberCount = scopeMemberCountService.countActiveMembers(scopeKind, scopeId);
-        for (PlanPriceBandEntity band
-                : planPriceBandRepository.findByPlanKeyAndScopeKindOrderByBandNoAsc(planKey, bandScope)) {
-            boolean lowerOk = band.getMinMembers() != null && memberCount >= band.getMinMembers();
-            boolean upperOk = band.getMaxMembers() == null || memberCount <= band.getMaxMembers();
-            if (lowerOk && upperOk) {
-                return requireConfigured(band.getMonthlyPriceJpy() != null ? band.getMonthlyPriceJpy() : base);
-            }
-        }
-        return requireConfigured(base);
+        // 単一IDでも検索結果から保存済みの綴りを取得し、DB照合規則を維持する。
+        PlanEntity plan = planRepository.findAllById(List.of(planKey)).stream().findFirst().orElse(null);
+        return plan == null ? null : resolvePlanPrice(plan, scopeKind, scopeId).priceJpy();
     }
 
-    /**
-     * 「0 円と明示された無償プラン」（base=0）はそのまま通し、「価格未設定（NULL）」のみ拒否する。
-     * プランがマスタに存在すると確定した後の最終価格にのみ適用する（プラン不在時は呼ばない）。
-     */
-    private Integer requireConfigured(Integer priceJpy) {
-        if (priceJpy == null) {
-            throw new BusinessException(EntitlementErrorCode.PLAN_PRICE_NOT_CONFIGURED);
+    /** 同じ選択結果から契約の価格・人数・帯を確定する。 */
+    ResolvedPlanPrice resolvePlanPrice(PlanEntity plan, EntitlementScopeKind scopeKind, Long scopeId) {
+        Integer members = scopeKind == EntitlementScopeKind.USER ? null
+                : scopeMemberCountService.countActiveMembers(scopeKind, scopeId);
+        BillingPriceSelector.PlanScopeKey key = new BillingPriceSelector.PlanScopeKey(plan.getPlanKey(), scopeKind);
+        BillingPriceSelector.LegacyPlanSelection selection = billingPriceSelector.selectLegacyPlans(Set.of(key)).get(key);
+        if ("FREE".equals(plan.getPlanKey())) {
+            return legacyFreePrice(selection == null ? null : selection.oldPrice(), scopeKind, members, false);
         }
-        return priceJpy;
+        if (selection == null || selection.state() == BillingPriceSelector.LegacyPlanSelectionState.NOT_SELLABLE) {
+            throw notConfigured();
+        }
+        if (selection.state() == BillingPriceSelector.LegacyPlanSelectionState.NO_PUBLISHED_PRICE) {
+            return legacyFreePrice(selection.oldPrice(), scopeKind, members, true);
+        }
+        int target = members == null ? 1 : members;
+        List<BillingPriceSelector.LegacyPlanBandSnapshot> bands = selection.snapshot().bands().stream()
+                .filter(band -> band.minMembers() != null && target >= band.minMembers()
+                        && (band.maxMembers() == null || target <= band.maxMembers()))
+                .toList();
+        if (bands.size() != 1) {
+            throw notConfigured();
+        }
+        BillingPriceSelector.LegacyPlanBandSnapshot band = bands.getFirst();
+        return new ResolvedPlanPrice(legacyPlanPriceMapper.requireContractPriceJpy(band.amountIncludingTax()),
+                members, members == null ? null : legacyPlanPriceMapper.requireContractBandNo(band.bandNo()));
     }
+
+    private ResolvedPlanPrice legacyFreePrice(
+            BillingPriceSelector.LegacyPlanOldPriceSnapshot oldPrice,
+            EntitlementScopeKind scopeKind, Integer members, boolean explicitFreeOnly) {
+        if (oldPrice == null) {
+            throw notConfigured();
+        }
+        Integer price = oldPrice.baseMonthlyPriceJpy();
+        Short bandNo = null;
+        if (members != null) {
+            PlanPriceBandScopeKind bandScope = scopeKind == EntitlementScopeKind.TEAM
+                    ? PlanPriceBandScopeKind.TEAM : PlanPriceBandScopeKind.ORG;
+            for (BillingPriceSelector.LegacyPlanOldBandSnapshot band : oldPrice.bands().stream()
+                    .filter(candidate -> candidate.scopeKind() == bandScope)
+                    .sorted(java.util.Comparator.comparing(BillingPriceSelector.LegacyPlanOldBandSnapshot::bandNo)).toList()) {
+                if (band.minMembers() != null && members >= band.minMembers()
+                        && (band.maxMembers() == null || members <= band.maxMembers())) {
+                    price = band.monthlyPriceJpy() == null ? price : band.monthlyPriceJpy();
+                    bandNo = band.bandNo();
+                    break;
+                }
+            }
+        }
+        if (price == null || price < 0 || (explicitFreeOnly && price != 0)) {
+            throw notConfigured();
+        }
+        return new ResolvedPlanPrice(price, members, bandNo);
+    }
+
+    private BusinessException notConfigured() {
+        return new BusinessException(EntitlementErrorCode.PLAN_PRICE_NOT_CONFIGURED);
+    }
+
+    record ResolvedPlanPrice(Integer priceJpy, Integer memberCount, Short bandNo) { }
 }

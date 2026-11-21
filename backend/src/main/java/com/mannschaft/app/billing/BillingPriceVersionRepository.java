@@ -35,6 +35,19 @@ public interface BillingPriceVersionRepository
             @Param("statuses") Collection<BillingPriceVersionStatus> statuses,
             @Param("at") Instant at);
 
+    /** 同一述語の存在確認。lock前に価格Entityをmanaged状態で先読みしない。 */
+    @Query("SELECT COUNT(p) FROM BillingPriceVersionEntity p "
+            + "WHERE p.productKind = :productKind AND p.productKey = :productKey "
+            + "AND p.scopeKind = :scopeKind AND p.status IN :statuses AND p.deletedAt IS NULL "
+            + "AND p.effectiveFrom <= :at "
+            + "AND (p.effectiveUntil IS NULL OR :at < p.effectiveUntil)")
+    long countEffectiveCandidates(
+            @Param("productKind") BillingProductKind productKind,
+            @Param("productKey") String productKey,
+            @Param("scopeKind") EntitlementScopeKind scopeKind,
+            @Param("statuses") Collection<BillingPriceVersionStatus> statuses,
+            @Param("at") Instant at);
+
     /** 同じ商品・スコープの revision を直列化するために悲観ロックして取得する。 */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM BillingPriceVersionEntity p "
@@ -45,4 +58,77 @@ public interface BillingPriceVersionRepository
             @Param("productKind") BillingProductKind productKind,
             @Param("productKey") String productKey,
             @Param("scopeKind") EntitlementScopeKind scopeKind);
+
+    /** DB照合規則でPlanへ結び、保存canonical keyだけをdue候補として投影する。 */
+    @Query("""
+            SELECT DISTINCT plan.planKey AS planKey, price.scopeKind AS scopeKind
+            FROM PlanEntity plan
+            JOIN BillingPriceVersionEntity price ON price.productKey = plan.planKey
+            WHERE plan.planKey IN :planKeys AND price.scopeKind IN :scopeKinds
+              AND price.productKind = :productKind AND price.status = :scheduledStatus
+              AND price.deletedAt IS NULL AND price.effectiveFrom <= :at
+              AND (price.effectiveUntil IS NULL OR :at < price.effectiveUntil)
+            """)
+    List<LegacyPlanDueKey> findLegacyPlanDueKeys(
+            @Param("planKeys") Collection<String> planKeys,
+            @Param("scopeKinds") Collection<EntitlementScopeKind> scopeKinds,
+            @Param("productKind") BillingProductKind productKind,
+            @Param("scheduledStatus") BillingPriceVersionStatus scheduledStatus,
+            @Param("at") Instant at);
+
+    /**
+     * Plan anchorを保ち、全ACTIVEと非ACTIVE公開履歴marker最大1件/keyを同SQLで読む。
+     * 親が無いPlanも返すため、価格条件はWHEREではなくLEFT JOINのONへ置く。
+     */
+    @Query("""
+            SELECT plan.planKey AS planKey, price AS revision,
+                   plan.baseMonthlyPriceJpy AS legacyBaseMonthlyPriceJpy,
+                   legacyBand.scopeKind AS legacyScopeKind, legacyBand.bandNo AS legacyBandNo,
+                   legacyBand.minMembers AS legacyMinMembers, legacyBand.maxMembers AS legacyMaxMembers,
+                   legacyBand.monthlyPriceJpy AS legacyMonthlyPriceJpy
+            FROM PlanEntity plan
+            LEFT JOIN BillingPriceVersionEntity price ON price.productKey = plan.planKey
+              AND price.productKind = :productKind AND price.scopeKind IN :scopeKinds
+              AND price.deletedAt IS NULL
+              AND (price.status = :activeStatus OR (
+                (price.status = :retiredStatus OR
+                  (price.status = :scheduledStatus AND price.effectiveFrom <= :at))
+                AND price.revisionNo = (
+                  SELECT MAX(marker.revisionNo) FROM BillingPriceVersionEntity marker
+                  WHERE marker.productKind = price.productKind AND marker.productKey = price.productKey
+                    AND marker.scopeKind = price.scopeKind AND marker.deletedAt IS NULL
+                    AND (marker.status = :retiredStatus OR
+                      (marker.status = :scheduledStatus AND marker.effectiveFrom <= :at))
+                )
+              ))
+            LEFT JOIN PlanPriceBandEntity legacyBand ON legacyBand.planKey = plan.planKey
+            WHERE plan.planKey IN :planKeys
+            """)
+    List<LegacyPlanParentRow> findLegacyPlanParents(
+            @Param("planKeys") Collection<String> planKeys,
+            @Param("scopeKinds") Collection<EntitlementScopeKind> scopeKinds,
+            @Param("productKind") BillingProductKind productKind,
+            @Param("activeStatus") BillingPriceVersionStatus activeStatus,
+            @Param("retiredStatus") BillingPriceVersionStatus retiredStatus,
+            @Param("scheduledStatus") BillingPriceVersionStatus scheduledStatus,
+            @Param("at") Instant at);
+
+    /** planKeyはpriceのraw値ではなく、DB JOINから得たPlan保存値。 */
+    interface LegacyPlanDueKey {
+        String getPlanKey();
+        EntitlementScopeKind getScopeKind();
+    }
+
+    /** revisionはLEFT JOINで価格が無い時だけnull。価格Entityのraw keyは変更しない。 */
+    interface LegacyPlanParentRow {
+        String getPlanKey();
+        BillingPriceVersionEntity getRevision();
+        Integer getLegacyBaseMonthlyPriceJpy();
+        PlanPriceBandScopeKind getLegacyScopeKind();
+        Short getLegacyBandNo();
+        Integer getLegacyMinMembers();
+        Integer getLegacyMaxMembers();
+        Integer getLegacyMonthlyPriceJpy();
+    }
+
 }

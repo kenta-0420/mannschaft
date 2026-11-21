@@ -31,9 +31,9 @@ class BillingPricePromotionServiceTest {
         BillingPriceVersionEntity next = version("next", BillingPriceVersionStatus.SCHEDULED, now, null);
         BillingPriceBandVersionEntity currentBand = band(current, BillingPriceVersionStatus.ACTIVE);
         BillingPriceBandVersionEntity nextBand = band(next, BillingPriceVersionStatus.SCHEDULED);
-        given(versionRepository.findEffectiveCandidates(BillingProductKind.PLAN, "FULL",
+        given(versionRepository.countEffectiveCandidates(BillingProductKind.PLAN, "FULL",
                 EntitlementScopeKind.USER, List.of(BillingPriceVersionStatus.SCHEDULED), now))
-                .willReturn(List.of(next), List.of());
+                .willReturn(1L, 0L);
         given(versionRepository.findAllForUpdate(BillingProductKind.PLAN, "FULL", EntitlementScopeKind.USER))
                 .willReturn(List.of(current, next));
         given(bandRepository.findAllByPriceVersionIdForUpdate(next.getId())).willReturn(List.of(nextBand));
@@ -55,9 +55,9 @@ class BillingPricePromotionServiceTest {
         Instant now = Instant.parse("2026-09-01T00:00:00Z");
         BillingPriceVersionEntity first = version("first", BillingPriceVersionStatus.SCHEDULED, now, null);
         BillingPriceVersionEntity second = version("second", BillingPriceVersionStatus.SCHEDULED, now, null);
-        given(versionRepository.findEffectiveCandidates(BillingProductKind.PLAN, "FULL",
+        given(versionRepository.countEffectiveCandidates(BillingProductKind.PLAN, "FULL",
                 EntitlementScopeKind.USER, List.of(BillingPriceVersionStatus.SCHEDULED), now))
-                .willReturn(List.of(first, second));
+                .willReturn(2L);
         given(versionRepository.findAllForUpdate(BillingProductKind.PLAN, "FULL", EntitlementScopeKind.USER))
                 .willReturn(List.of(first, second));
         BillingPricePromotionService service = new BillingPricePromotionService(versionRepository, bandRepository);
@@ -77,9 +77,9 @@ class BillingPricePromotionServiceTest {
         BillingPriceVersionEntity next = version("next", BillingPriceVersionStatus.SCHEDULED, now, null);
         BillingPriceBandVersionEntity inconsistentBand = band(next, BillingPriceVersionStatus.SCHEDULED);
         inconsistentBand.setEffectiveFrom(now.plusSeconds(1));
-        given(versionRepository.findEffectiveCandidates(BillingProductKind.PLAN, "FULL",
+        given(versionRepository.countEffectiveCandidates(BillingProductKind.PLAN, "FULL",
                 EntitlementScopeKind.USER, List.of(BillingPriceVersionStatus.SCHEDULED), now))
-                .willReturn(List.of(next));
+                .willReturn(1L);
         given(versionRepository.findAllForUpdate(BillingProductKind.PLAN, "FULL", EntitlementScopeKind.USER))
                 .willReturn(List.of(current, next));
         given(bandRepository.findAllByPriceVersionIdForUpdate(next.getId()))

@@ -21,6 +21,7 @@ class BillingPriceSelectorTest {
 
     @Mock private BillingPricePromotionService promotionService;
     @Mock private BillingPriceSnapshotReader snapshotReader;
+    @Mock private LegacyPlanPriceSnapshotReader legacySnapshotReader;
 
     private final Clock clock = Clock.fixed(Instant.parse("2026-09-01T00:00:00Z"), ZoneOffset.UTC);
 
@@ -32,7 +33,7 @@ class BillingPriceSelectorTest {
         Instant now = clock.instant();
         given(snapshotReader.readActive(BillingProductKind.PLAN, "FULL", EntitlementScopeKind.USER, now))
                 .willReturn(java.util.Optional.of(new BillingPriceSnapshotReader.Candidate(version, List.of(band))));
-        BillingPriceSelector selector = new BillingPriceSelector(promotionService, snapshotReader, clock);
+        BillingPriceSelector selector = new BillingPriceSelector(promotionService, snapshotReader, clock, legacySnapshotReader);
 
         assertThat(selector.selectNow(BillingProductKind.PLAN, "FULL", EntitlementScopeKind.USER))
                 .get().extracting(selected -> selected.bands().getFirst().getAmountIncludingTax())
@@ -47,7 +48,7 @@ class BillingPriceSelectorTest {
         Instant now = clock.instant();
         given(snapshotReader.readActive(BillingProductKind.PLAN, "FULL", EntitlementScopeKind.USER, now))
                 .willReturn(java.util.Optional.of(new BillingPriceSnapshotReader.Candidate(version, List.of(band))));
-        BillingPriceSelector selector = new BillingPriceSelector(promotionService, snapshotReader, clock);
+        BillingPriceSelector selector = new BillingPriceSelector(promotionService, snapshotReader, clock, legacySnapshotReader);
 
         assertThat(selector.selectNow(BillingProductKind.PLAN, "FULL", EntitlementScopeKind.USER)).isEmpty();
     }
@@ -63,7 +64,7 @@ class BillingPriceSelectorTest {
         Instant now = clock.instant();
         given(snapshotReader.readActive(BillingProductKind.PLAN, "FULL", EntitlementScopeKind.USER, now))
                 .willReturn(java.util.Optional.of(new BillingPriceSnapshotReader.Candidate(version, bands)));
-        BillingPriceSelector selector = new BillingPriceSelector(promotionService, snapshotReader, clock);
+        BillingPriceSelector selector = new BillingPriceSelector(promotionService, snapshotReader, clock, legacySnapshotReader);
 
         assertThat(selector.selectNow(BillingProductKind.PLAN, "FULL", EntitlementScopeKind.USER))
                 .get().extracting(selected -> selected.bands().size()).isEqualTo(3);
@@ -79,7 +80,7 @@ class BillingPriceSelectorTest {
         Instant now = clock.instant();
         given(snapshotReader.readActive(BillingProductKind.PLAN, "FULL", EntitlementScopeKind.USER, now))
                 .willReturn(java.util.Optional.of(new BillingPriceSnapshotReader.Candidate(version, bands)));
-        BillingPriceSelector selector = new BillingPriceSelector(promotionService, snapshotReader, clock);
+        BillingPriceSelector selector = new BillingPriceSelector(promotionService, snapshotReader, clock, legacySnapshotReader);
 
         assertThat(selector.selectNow(BillingProductKind.PLAN, "FULL", EntitlementScopeKind.USER)).isEmpty();
     }
@@ -94,7 +95,7 @@ class BillingPriceSelectorTest {
         given(snapshotReader.readActive(BillingProductKind.PLAN, "FULL", EntitlementScopeKind.USER, now))
                 .willReturn(java.util.Optional.of(new BillingPriceSnapshotReader.Candidate(
                         version, List.of(missingMinimum))));
-        BillingPriceSelector selector = new BillingPriceSelector(promotionService, snapshotReader, clock);
+        BillingPriceSelector selector = new BillingPriceSelector(promotionService, snapshotReader, clock, legacySnapshotReader);
 
         assertThat(selector.selectNow(BillingProductKind.PLAN, "FULL", EntitlementScopeKind.USER)).isEmpty();
 
