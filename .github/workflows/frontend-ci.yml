@@ -83,7 +83,7 @@ jobs:
       # 設計書 docs/security/04_dependency_and_supply_chain.md §4/§6 に基づく。
       # high レベルの脆弱性が 0 件のためブロッキング化（2026-06-02）。
       - name: Audit gate regression tests
-        run: node --test scripts/audit-with-exemption.test.mjs scripts/patch-nuxt-devtools-simple-git.test.mjs
+        run: node --test scripts/audit-with-exemption.test.mjs scripts/patch-nuxt-devtools-simple-git.test.mjs scripts/patch-nitro-module-resolution.test.mjs
 
       - name: npm audit (依存脆弱性スキャン)
       # 個別除外は picomatch GHSA-fc5q-39xc-vjpf の1件のみ（修正版なし・2026-12-02T00:00:00Z に失効、2026-12-01 UTC 末日まで有効）。

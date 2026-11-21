@@ -2,6 +2,7 @@ package com.mannschaft.app.proxyvote.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.proxyvote.ProxyVoteErrorCode;
 import com.mannschaft.app.proxyvote.ProxyVoteMapper;
 import com.mannschaft.app.proxyvote.ProxyVoteScopeType;
@@ -18,6 +19,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -28,6 +31,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * {@link ProxyVoteSessionService} の単体テスト。
@@ -189,6 +194,26 @@ class ProxyVoteSessionServiceTest {
     @Nested
     @DisplayName("createSession")
     class CreateSession {
+
+        @ParameterizedTest
+        @EnumSource(ProxyVoteScopeType.class)
+        @DisplayName("対象スコープの作成権限がなければ保存前に拒否する")
+        void 作成権限がなければ保存しない(ProxyVoteScopeType scopeType) {
+            Long teamId = scopeType == ProxyVoteScopeType.TEAM ? 1L : null;
+            Long organizationId = scopeType == ProxyVoteScopeType.ORGANIZATION ? 2L : null;
+            Long scopeId = teamId != null ? teamId : organizationId;
+            CreateSessionRequest request = new CreateSessionRequest(
+                    scopeType.name(), teamId, organizationId, "WRITTEN", "書面決議", null,
+                    null, null, null, null, null, null, null, null, null);
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002)).when(accessControlService)
+                    .checkAdminOrHasPermissionInScope(USER_ID, scopeId, scopeType.name(), "MANAGE_VOTES");
+
+            assertThatThrownBy(() -> service.createSession(request, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+            verifyNoInteractions(sessionRepository, motionRepository, userRoleRepository);
+        }
 
         @Test
         @DisplayName("異常系: MEETINGモードでmeeting_date未指定はエラー")

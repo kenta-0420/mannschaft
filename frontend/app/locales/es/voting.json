@@ -1,0 +1,29 @@
+{
+    "voting":  {
+                   "title":  "Derechos de voto",
+                   "create":  "Crear sesión de votación",
+                   "empty":  "No hay sesiones de votación",
+                   "created":  "Sesión de votación creada",
+                   "sessionTitle":  "Título",
+                   "titlePlaceholder":  "Ejemplo: Asamblea anual",
+                   "description":  "Descripción",
+                   "mode":  "Tipo de resolución",
+                   "meetingDate":  "Fecha de la asamblea",
+                   "anonymous":  "Voto anónimo",
+                   "motions":  "{count} propuestas",
+                   "eligible":  "{count} votantes habilitados",
+                   "cancel":  "Cancelar",
+                   "submit":  "Crear",
+                   "requirements":  "Introduzca un título de 1 a 200 caracteres. Las resoluciones en asamblea requieren una fecha.",
+                   "modes":  {
+                                 "MEETING":  "Resolución en asamblea",
+                                 "WRITTEN":  "Resolución por escrito"
+                             },
+                   "status":  {
+                                  "DRAFT":  "Borrador",
+                                  "OPEN":  "Abierta",
+                                  "CLOSED":  "Cerrada",
+                                  "FINALIZED":  "Finalizada"
+                              }
+               }
+}

@@ -592,8 +592,11 @@ public class TeamController {
         String roleName = accessControlService.getRoleName(userId, id, SCOPE_TYPE);
         boolean scopeAdmin = accessControlService.isAdmin(userId, id, SCOPE_TYPE);
         boolean canGrantAdminOnly = accessControlService.canActAsScopeAdminOnly(userId, id, SCOPE_TYPE);
+        boolean canCreateVoteSession = accessControlService.hasAdminOrPermissionInScope(
+                userId, id, SCOPE_TYPE, "MANAGE_VOTES");
         return ResponseEntity.ok(ApiResponse.of(
-                new EffectivePermissionsResponse(roleName, permissions, scopeAdmin, canGrantAdminOnly)));
+                new EffectivePermissionsResponse(roleName, permissions, scopeAdmin, canGrantAdminOnly,
+                        canCreateVoteSession)));
     }
 
     /**

@@ -30,4 +30,7 @@ public class EffectivePermissionsResponse {
      * SYSTEM_ADMIN とスコープ ADMIN の兼任者は {@code scopeAdmin=true} でもここが false（付与・剥奪とも 403）。
      */
     private final boolean canGrantAdminOnlyPermissions;
+
+    /** 対象スコープの ADMIN、または MANAGE_VOTES を持つ DEPUTY_ADMIN が投票を作成できるか。 */
+    private final boolean canCreateVoteSession;
 }

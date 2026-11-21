@@ -8,6 +8,7 @@ WORKDIR /app
 # Install only production + build-time deps via ci for reproducibility
 COPY package.json package-lock.json ./
 COPY scripts/patch-nuxt-devtools-simple-git.mjs ./scripts/patch-nuxt-devtools-simple-git.mjs
+COPY scripts/patch-nitro-module-resolution.mjs ./scripts/patch-nitro-module-resolution.mjs
 RUN npm ci
 
 # ============================================================

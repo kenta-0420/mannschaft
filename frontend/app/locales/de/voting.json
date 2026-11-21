@@ -1,0 +1,29 @@
+{
+    "voting":  {
+                   "title":  "Stimmrechte",
+                   "create":  "Abstimmung erstellen",
+                   "empty":  "Keine Abstimmungen vorhanden",
+                   "created":  "Abstimmung erstellt",
+                   "sessionTitle":  "Titel",
+                   "titlePlaceholder":  "Beispiel: Jahresversammlung",
+                   "description":  "Beschreibung",
+                   "mode":  "Beschlussart",
+                   "meetingDate":  "Versammlungsdatum",
+                   "anonymous":  "Anonyme Abstimmung",
+                   "motions":  "{count} Anträge",
+                   "eligible":  "{count} Stimmberechtigte",
+                   "cancel":  "Abbrechen",
+                   "submit":  "Erstellen",
+                   "requirements":  "Geben Sie einen Titel mit 1–200 Zeichen ein. Versammlungsbeschlüsse benötigen ein Datum.",
+                   "modes":  {
+                                 "MEETING":  "Versammlungsbeschluss",
+                                 "WRITTEN":  "Schriftlicher Beschluss"
+                             },
+                   "status":  {
+                                  "DRAFT":  "Entwurf",
+                                  "OPEN":  "Offen",
+                                  "CLOSED":  "Geschlossen",
+                                  "FINALIZED":  "Festgestellt"
+                              }
+               }
+}

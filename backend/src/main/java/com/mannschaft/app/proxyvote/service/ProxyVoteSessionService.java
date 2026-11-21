@@ -116,9 +116,10 @@ public class ProxyVoteSessionService {
 
         validateScopeIds(scopeType, request.getTeamId(), request.getOrganizationId());
 
-        // 認可: 作成先スコープの管理者（ADMIN/DEPUTY_ADMIN）のみセッションを作成可
+        // 対象スコープの ADMIN、または MANAGE_VOTES を付与された DEPUTY_ADMIN に作成を許可する。
         Long requestScopeId = scopeType == ProxyVoteScopeType.TEAM ? request.getTeamId() : request.getOrganizationId();
-        accessControlService.checkAdminOrAbove(currentUserId, requestScopeId, scopeType.name());
+        accessControlService.checkAdminOrHasPermissionInScope(
+                currentUserId, requestScopeId, scopeType.name(), "MANAGE_VOTES");
 
         if (resolutionMode == ResolutionMode.MEETING && request.getMeetingDate() == null) {
             throw new BusinessException(ProxyVoteErrorCode.MEETING_DATE_REQUIRED);

@@ -1,0 +1,29 @@
+{
+    "voting":  {
+                   "title":  "表决权行使",
+                   "create":  "创建投票会议",
+                   "empty":  "暂无投票会议",
+                   "created":  "投票会议已创建",
+                   "sessionTitle":  "标题",
+                   "titlePlaceholder":  "例如：年度大会",
+                   "description":  "说明",
+                   "mode":  "决议方式",
+                   "meetingDate":  "会议日期",
+                   "anonymous":  "匿名投票",
+                   "motions":  "{count}项议案",
+                   "eligible":  "{count}名有表决权者",
+                   "cancel":  "取消",
+                   "submit":  "创建",
+                   "requirements":  "标题须为1至200个字符。会议决议必须指定会议日期。",
+                   "modes":  {
+                                 "MEETING":  "会议决议",
+                                 "WRITTEN":  "书面决议"
+                             },
+                   "status":  {
+                                  "DRAFT":  "草稿",
+                                  "OPEN":  "开放中",
+                                  "CLOSED":  "已截止",
+                                  "FINALIZED":  "已确定"
+                              }
+               }
+}

@@ -1,4 +1,7 @@
-import type { VoteSessionResponse } from '~/types/voting'
+import type { VoteSessionResponse, VoteSessionStatus } from '~/types/voting'
+import type { components } from '~/types/generated'
+
+type SessionListQuery = ({ scope_type: 'TEAM'; team_id: number } | { scope_type: 'ORGANIZATION'; organization_id: number }) & { status?: VoteSessionStatus }
 
 export function useVotingApi() {
   const api = useApi()
@@ -12,14 +15,14 @@ export function useVotingApi() {
   }
 
   // === Sessions ===
-  async function getSessions(params?: Record<string, unknown>) {
-    return api<{ data: VoteSessionResponse[] }>(`/api/v1/proxy-votes?${qs(params || {})}`)
+  async function getSessions(params: SessionListQuery) {
+    return api<components['schemas']['PagedResponseSessionListResponse']>(`/api/v1/proxy-votes?${qs(params)}`)
   }
   async function getSession(id: number) {
     return api<{ data: VoteSessionResponse }>(`/api/v1/proxy-votes/${id}`)
   }
-  async function createSession(body: Record<string, unknown>) {
-    return api<{ data: VoteSessionResponse }>('/api/v1/proxy-votes', { method: 'POST', body })
+  async function createSession(body: components['schemas']['CreateSessionRequest']) {
+    return api<components['schemas']['ApiResponseSessionResponse']>('/api/v1/proxy-votes', { method: 'POST', body })
   }
   async function updateSession(id: number, body: Record<string, unknown>) {
     return api(`/api/v1/proxy-votes/${id}`, { method: 'PUT', body })

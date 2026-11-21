@@ -24,8 +24,8 @@ function deferred<T = unknown>() {
   return { promise, resolve, reject }
 }
 
-function perms(roleName: string) {
-  return { data: { roleName, permissions: [`perm.${roleName}`] } }
+function perms(roleName: string, flags: { scopeAdmin?: boolean; canCreateVoteSession?: boolean } = {}) {
+  return { data: { roleName, permissions: [`perm.${roleName}`], ...flags } }
 }
 
 /**
@@ -50,32 +50,74 @@ describe('useRoleAccess.loadPermissions（最後の要求が勝つ）', () => {
     expect(apiMock).toHaveBeenCalledWith('/api/v1/teams/team-a/me/permissions')
   })
 
+  it.each([
+    ['ADMIN', true, true, true],
+    ['DEPUTY_ADMIN', false, true, true],
+    ['DEPUTY_ADMIN', false, false, false],
+    ['SYSTEM_ADMIN', false, true, true],
+    ['SYSTEM_ADMIN', false, false, false],
+    ['MEMBER', false, false, false],
+    ['ADMIN', true, undefined, true],
+    ['DEPUTY_ADMIN', false, undefined, false],
+    ['SYSTEM_ADMIN', false, undefined, false],
+    ['ADMIN', true, false, false],
+  ] as const)('投票作成の表示ロール%s、scopeAdmin=%s、API判定=%sは%sになる', async (role, scopeAdmin, capability, expected) => {
+    apiMock.mockResolvedValue(perms(role, { scopeAdmin, canCreateVoteSession: capability }))
+    const access = useRoleAccess('team', 'team-a')
+
+    expect(access.canCreateVoteSession.value).toBe(false)
+    await access.loadPermissions()
+
+    expect(access.canCreateVoteSession.value).toBe(expected)
+  })
+
+  it('同じscopeの資格再取得中と失敗後は以前の投票作成許可を使わない', async () => {
+    const refresh = deferred<ReturnType<typeof perms>>()
+    apiMock.mockResolvedValueOnce(perms('SYSTEM_ADMIN', { canCreateVoteSession: true }))
+      .mockReturnValueOnce(refresh.promise)
+    const access = useRoleAccess('organization', 'org-a')
+    await access.loadPermissions()
+    expect(access.canCreateVoteSession.value).toBe(true)
+
+    const pending = access.loadPermissions()
+    expect(access.canCreateVoteSession.value).toBe(false)
+    refresh.reject(new Error('refresh failed'))
+    await expect(pending).resolves.toMatchObject({ ok: false })
+    expect(access.canCreateVoteSession.value).toBe(false)
+  })
+
   it('一連取得を呼び出し元で管理するときはスコープ変更による自動取得を止められる', async () => {
     apiMock.mockResolvedValue(perms('ADMIN'))
     const slug = ref('team-a')
-    const { loadPermissions } = useRoleAccess('team', slug, { watchScope: false })
+    const { loadPermissions, canCreateVoteSession } = useRoleAccess('team', slug, { watchScope: false })
     await loadPermissions()
+    expect(canCreateVoteSession.value).toBe(true)
     slug.value = 'team-b'
+    expect(canCreateVoteSession.value).toBe(false)
     await nextTick()
     expect(apiMock).toHaveBeenCalledTimes(1)
     await loadPermissions()
     expect(apiMock).toHaveBeenLastCalledWith('/api/v1/teams/team-b/me/permissions')
+    expect(canCreateVoteSession.value).toBe(true)
   })
 
   it('scope切替直後に旧ADMIN権限を消し、新scope取得失敗でも復活しない', async () => {
     const next = deferred<ReturnType<typeof perms>>()
-    apiMock.mockResolvedValueOnce(perms('ADMIN')).mockReturnValueOnce(next.promise)
+    apiMock.mockResolvedValueOnce(perms('ADMIN', { canCreateVoteSession: true })).mockReturnValueOnce(next.promise)
     const slug = ref('team-a')
     const access = useRoleAccess('team', slug)
     await access.loadPermissions()
     expect(access.isAdmin.value).toBe(true)
+    expect(access.canCreateVoteSession.value).toBe(true)
     slug.value = 'team-b'
     expect(access.roleName.value).toBeNull()
     expect(access.permissions.value).toEqual([])
     expect(access.roleResolved.value).toBe(false)
+    expect(access.canCreateVoteSession.value).toBe(false)
     next.reject(new Error('new scope failed'))
     await vi.waitFor(() => expect(access.roleLoadFailed.value).toBe(true))
     expect(access.isAdmin.value).toBe(false)
+    expect(access.canCreateVoteSession.value).toBe(false)
   })
 
   it('本人切替で旧応答と権限を破棄しログアウト時は再取得しない', async () => {
@@ -87,13 +129,15 @@ describe('useRoleAccess.loadPermissions（最後の要求が勝つ）', () => {
     const first = access.loadPermissions()
     auth.user = { id: 'viewer-b' }
     expect(access.roleName.value).toBeNull()
-    current.resolve(perms('SUPPORTER'))
+    current.resolve(perms('SUPPORTER', { canCreateVoteSession: false }))
     await vi.waitFor(() => expect(access.roleName.value).toBe('SUPPORTER'))
-    old.resolve(perms('ADMIN'))
+    old.resolve(perms('ADMIN', { canCreateVoteSession: true }))
     await first
     expect(access.roleName.value).toBe('SUPPORTER')
+    expect(access.canCreateVoteSession.value).toBe(false)
     auth.user = null
     expect(access.roleName.value).toBeNull()
+    expect(access.canCreateVoteSession.value).toBe(false)
     expect(apiMock).toHaveBeenCalledTimes(2)
   })
 
