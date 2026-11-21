@@ -3329,6 +3329,10 @@
     "save_success": "表示設定を保存しました",
     "nav": "ナビ"
   },
+  "integrationSettings": {
+    "lineSubtitle": "LINE Messaging API との連携設定",
+    "snsSubtitle": "Instagram・X のフィード連携を管理します"
+  },
   "secret_token": {
     "issued_dialog": {
       "title": "リンクを発行しました",

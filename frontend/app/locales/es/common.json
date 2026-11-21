@@ -3329,6 +3329,10 @@
     "save_success": "Visibilidad guardada",
     "nav": "Navegación"
   },
+  "integrationSettings": {
+    "lineSubtitle": "Configura la integración con LINE Messaging API",
+    "snsSubtitle": "Gestiona las integraciones de los feeds de Instagram y X"
+  },
   "secret_token": {
     "issued_dialog": {
       "title": "Enlace emitido",

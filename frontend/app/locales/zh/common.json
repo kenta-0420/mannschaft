@@ -3329,6 +3329,10 @@
     "save_success": "显示设置已保存",
     "nav": "导航"
   },
+  "integrationSettings": {
+    "lineSubtitle": "配置 LINE Messaging API 集成",
+    "snsSubtitle": "管理 Instagram 和 X 动态集成"
+  },
   "secret_token": {
     "issued_dialog": {
       "title": "链接已生成",
