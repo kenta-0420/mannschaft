@@ -5,7 +5,7 @@ import type {
   TeamStorageUsageResponse,
 } from '~/types/storage-plan'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const {
   getStoragePlans,

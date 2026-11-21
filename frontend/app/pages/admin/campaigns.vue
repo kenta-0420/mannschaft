@@ -4,7 +4,7 @@ import type {
   DiscountType, CampaignTarget, CouponUsageResponse,
 } from '~/types/campaign'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const campaignApi = useCampaignApi()
 const { success, error: showError } = useNotification()

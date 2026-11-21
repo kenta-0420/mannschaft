@@ -15,7 +15,7 @@ import type {
   VillageRequestStatus,
 } from '~/types/village'
 
-definePageMeta({ layout: 'default', middleware: 'auth' })
+definePageMeta({ layout: 'default', middleware: ['auth', 'system-admin'] })
 
 const { t } = useI18n()
 const authStore = useAuthStore()

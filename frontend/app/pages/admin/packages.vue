@@ -2,7 +2,7 @@
 import type { PackageResponse } from '~/types/package'
 import type { ModuleResponse } from '~/types/system-admin'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const packageApi = usePackageApi()
 const systemAdminApi = useSystemAdminApi()

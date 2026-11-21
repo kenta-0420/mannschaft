@@ -4,7 +4,7 @@ import type {
   ModulePricingHistoryResponse,
 } from '~/types/module-pricing'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const modulePricingApi = useModulePricingApi()
 const { success, error: showError } = useNotification()

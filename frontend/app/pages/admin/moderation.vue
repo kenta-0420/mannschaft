@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ContentReportResponse } from '~/types/moderation'
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 const { getReports } = useModerationApi()
 const { showError } = useNotification()
 const { relativeTime } = useRelativeTime()

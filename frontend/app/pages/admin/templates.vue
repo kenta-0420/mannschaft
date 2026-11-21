@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { SystemTemplateResponse, CreateTemplateRequest } from '~/types/system-admin'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const systemAdminApi = useSystemAdminApi()
 const { success, error: showError } = useNotification()

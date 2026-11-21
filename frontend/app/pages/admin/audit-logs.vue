@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AuditLog, AuditLogParams, EventCategory } from '~/types/audit-log'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const auditLogApi = useAuditLogApi()
 const notification = useNotification()

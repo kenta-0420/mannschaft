@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AdRateCardResponse, PricingModel } from '~/types/advertiser'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 const advertiserApi = useAdvertiserApi()
 const { success, error: showError } = useNotification()
 

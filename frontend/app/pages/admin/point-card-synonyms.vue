@@ -10,7 +10,7 @@
 import type { PointCardProvider } from '~/types/pointCard'
 import type { SynonymItem } from '~/composables/useAdminWalletApi'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const { t } = useI18n()
 const { success, error: showError } = useNotification()

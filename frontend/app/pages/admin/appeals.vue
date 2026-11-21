@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ModerationAppeal } from '~/types/moderation'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const { getAppeals, reviewAppeal } = useModerationApi()
 const { error: showError, success: showSuccess } = useNotification()

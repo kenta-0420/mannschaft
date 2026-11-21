@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AffiliateConfigResponse, CreateAffiliateConfigRequest } from '~/types/system-admin'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const systemAdminApi = useSystemAdminApi()
 const { t } = useI18n()

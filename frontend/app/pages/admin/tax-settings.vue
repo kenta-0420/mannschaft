@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { TaxSettingResponse, CreateTaxSettingRequest, UpdateTaxSettingRequest } from '~/types/tax-setting'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const { getTaxSettings, createTaxSetting, updateTaxSetting, deleteTaxSetting } = useTaxSettingApi()
 const { success, error: showError } = useNotification()
