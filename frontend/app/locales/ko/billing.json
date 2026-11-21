@@ -492,7 +492,16 @@
       "stripeTaxCodeUnset": "미설정",
       "stripeTaxCodePlaceholder": "Stripe 세금 코드(선택, 예 txcd_10000000)",
       "taxCodeDisplayName": "표시 이름",
-      "taxCodeRate": "세율(베이시스 포인트)",
+      "taxCodeRate": "세율(%)",
+      "selectProductKey": "상품 키 선택",
+      "noProductOptions": "선택할 수 있는 상품이 없습니다",
+      "selectTaxCode": "세금 코드 선택",
+      "taxCodeOption": "{code} ({rate}%)",
+      "taxPreviewNeedsTaxCode": "세금 코드를 선택하면 미리보기가 표시됩니다",
+      "noTaxCodeOptions": "적용 시작일에 유효한 세금 코드가 없습니다",
+      "taxCodeNeedsEffectiveFrom": "먼저 적용 시작일을 입력하세요",
+      "loadOptionsFailed": "상품 키와 세금 코드 선택지를 불러오지 못했습니다",
+      "errorInvalidTaxRate": "세율은 0~100% 범위에서 소수점 둘째 자리까지 입력하세요",
       "taxCodeEnabled": "사용"
     }
   }

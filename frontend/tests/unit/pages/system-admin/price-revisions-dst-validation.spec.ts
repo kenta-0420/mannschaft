@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
+import { flushPromises } from '@vue/test-utils'
 import { defineComponent, h, nextTick } from 'vue'
 
 /**
@@ -15,8 +16,12 @@ const createPriceRevision = vi.fn()
 const createTaxCode = vi.fn()
 const listPriceRevisions = vi.fn()
 const listTaxCodes = vi.fn()
+const listPlansAdmin = vi.fn()
+const listFeaturesAdmin = vi.fn()
 
 mockNuxtImport('useBillingApi', () => () => ({
+  listPlansAdmin,
+  listFeaturesAdmin,
   createPriceRevision,
   createTaxCode,
   listPriceRevisions,
@@ -37,6 +42,8 @@ interface PageVm {
   taxMode: 'EXCLUSIVE' | 'INCLUSIVE' | null
   bandForm: { inputAmount: number | null; taxCode: string }
   canCreate: boolean
+  effectiveFromDstInvalid: boolean
+  openCreateDialog: () => void
   createPriceRevision: () => Promise<void>
   taxCodeForm: { code: string; displayName: string; validFrom: string }
   taxCodeCreateDisabled: boolean
@@ -47,7 +54,13 @@ beforeEach(() => {
   createPriceRevision.mockReset().mockResolvedValue({ data: { id: 'rev-1', status: 'DRAFT' } })
   createTaxCode.mockReset().mockResolvedValue({})
   listPriceRevisions.mockReset().mockResolvedValue({ data: { items: [], totalElements: 0 } })
-  listTaxCodes.mockReset().mockResolvedValue([])
+  // 税コードは適用開始日時に有効なものだけが選択肢になる（validFrom は両テストの日時より前）。
+  listTaxCodes.mockReset().mockResolvedValue([{
+    id: 't1', code: 'JP_STANDARD_10', displayName: '標準', rateBasisPoints: 1000,
+    stripeTaxCode: null, validFrom: '2026-01-01T00:00:00Z', validUntil: null, enabled: true,
+  }])
+  listPlansAdmin.mockReset().mockResolvedValue({ data: [{ planKey: 'FULL', enabled: true }] })
+  listFeaturesAdmin.mockReset().mockResolvedValue({ data: [] })
 })
 
 async function mountPage() {
@@ -68,16 +81,30 @@ async function mountPage() {
 }
 
 describe('/system-admin/price-revisions DST で存在しない時刻のバリデーション', () => {
-  it('effectiveFrom が存在しない壁時計のとき canCreate は false になり送信しない', async () => {
-    const wrapper = await mountPage()
-    const vm = wrapper.vm as unknown as PageVm
+  /** 商品キー・税コード・金額・税表示方式を有効な値で埋めた状態（適用開始日時だけが検証対象）にする。 */
+  async function fillValidExceptDate(vm: PageVm) {
+    vm.openCreateDialog()
+    await flushPromises()
     vm.form.productKey = 'FULL'
-    vm.form.effectiveFrom = '2026-03-08T02:30'
+    vm.form.effectiveFrom = '2026-03-09T12:00'
+    await flushPromises()
     vm.taxMode = 'EXCLUSIVE'
     vm.bandForm.inputAmount = 1000
     vm.bandForm.taxCode = 'JP_STANDARD_10'
-    await nextTick()
+    await flushPromises()
+  }
 
+  it('effectiveFrom が存在しない壁時計のとき canCreate は false になり送信しない', async () => {
+    const wrapper = await mountPage()
+    const vm = wrapper.vm as unknown as PageVm
+    await fillValidExceptDate(vm)
+    // 対照: 他の項目がすべて有効なら、通常の時刻では作成できる。
+    expect(vm.canCreate).toBe(true)
+
+    vm.form.effectiveFrom = '2026-03-08T02:30'
+    await flushPromises()
+
+    expect(vm.effectiveFromDstInvalid).toBe(true)
     expect(vm.canCreate).toBe(false)
 
     await vm.createPriceRevision()
@@ -88,17 +115,19 @@ describe('/system-admin/price-revisions DST で存在しない時刻のバリデ
   it('effectiveFrom を通常の時刻に戻せば canCreate は true になる', async () => {
     const wrapper = await mountPage()
     const vm = wrapper.vm as unknown as PageVm
-    vm.form.productKey = 'FULL'
+    await fillValidExceptDate(vm)
     vm.form.effectiveFrom = '2026-03-08T02:30'
-    vm.taxMode = 'EXCLUSIVE'
-    vm.bandForm.inputAmount = 1000
-    vm.bandForm.taxCode = 'JP_STANDARD_10'
-    await nextTick()
+    await flushPromises()
+    expect(vm.effectiveFromDstInvalid).toBe(true)
     expect(vm.canCreate).toBe(false)
 
     vm.form.effectiveFrom = '2026-09-24T12:00'
-    await nextTick()
+    await flushPromises()
+    // 存在しない日時の間は税コードの選択肢が空になり選択が解除されるため、選び直す。
+    vm.bandForm.taxCode = 'JP_STANDARD_10'
+    await flushPromises()
 
+    expect(vm.effectiveFromDstInvalid).toBe(false)
     expect(vm.canCreate).toBe(true)
   })
 

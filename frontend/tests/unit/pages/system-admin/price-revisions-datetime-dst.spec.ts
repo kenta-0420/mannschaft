@@ -1,5 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
+import { flushPromises } from '@vue/test-utils'
 import { defineComponent, h } from 'vue'
 
 /**
@@ -20,7 +21,13 @@ mockNuxtImport('useBillingApi', () => () => ({
   createPriceRevision,
   createTaxCode,
   listPriceRevisions: vi.fn().mockResolvedValue({ data: { items: [], totalElements: 0 } }),
-  listTaxCodes: vi.fn().mockResolvedValue([]),
+  // 税コードは適用開始日時に有効なものだけが選択肢になる。
+  listTaxCodes: vi.fn().mockResolvedValue([{
+    id: 't1', code: 'JP_STANDARD_10', displayName: '標準', rateBasisPoints: 1000,
+    stripeTaxCode: null, validFrom: '2026-01-01T00:00:00Z', validUntil: null, enabled: true,
+  }]),
+  listPlansAdmin: vi.fn().mockResolvedValue({ data: [{ planKey: 'FULL', enabled: true }] }),
+  listFeaturesAdmin: vi.fn().mockResolvedValue({ data: [] }),
   updateTaxCode: vi.fn(),
 }))
 mockNuxtImport('useAuthStore', () => () => ({ isSystemAdmin: true, user: { timezone: 'Asia/Tokyo' }, loadFromStorage: vi.fn() }))
@@ -32,6 +39,7 @@ interface PageVm {
   taxMode: 'EXCLUSIVE' | 'INCLUSIVE' | null
   bandForm: { inputAmount: number | null; taxCode: string }
   createPriceRevision: () => Promise<void>
+  openCreateDialog: () => void
   taxCodeForm: { code: string; displayName: string; validFrom: string }
   submitCreateTaxCode: () => Promise<void>
 }
@@ -65,8 +73,11 @@ async function mountPage() {
 describe('/system-admin/price-revisions DST 境界の日時送信値', () => {
   it('effectiveFrom の DST 開始時刻（ブラウザTZで存在しない）を1時間ずらさずユーザーTZで送る', async () => {
     const vm = (await mountPage()).vm as unknown as PageVm
+    vm.openCreateDialog()
+    await flushPromises()
     vm.form.productKey = 'FULL'
     vm.form.effectiveFrom = '2026-03-08T02:30'
+    await flushPromises()
     vm.taxMode = 'EXCLUSIVE'
     vm.bandForm.inputAmount = 1000
     vm.bandForm.taxCode = 'JP_STANDARD_10'

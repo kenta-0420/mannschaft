@@ -492,7 +492,16 @@
       "stripeTaxCodeUnset": "Sin configurar",
       "stripeTaxCodePlaceholder": "Código fiscal de Stripe (opcional, p. ej. txcd_10000000)",
       "taxCodeDisplayName": "Nombre visible",
-      "taxCodeRate": "Tasa (puntos básicos)",
+      "taxCodeRate": "Tasa impositiva (%)",
+      "selectProductKey": "Seleccione una clave de producto",
+      "noProductOptions": "No hay productos disponibles",
+      "selectTaxCode": "Seleccione un código fiscal",
+      "taxCodeOption": "{code} ({rate} %)",
+      "taxPreviewNeedsTaxCode": "Seleccione un código fiscal para ver la vista previa",
+      "noTaxCodeOptions": "Ningún código fiscal es válido en la fecha de entrada en vigor",
+      "taxCodeNeedsEffectiveFrom": "Introduzca primero la fecha de entrada en vigor",
+      "loadOptionsFailed": "No se pudieron cargar las opciones de clave de producto y código fiscal",
+      "errorInvalidTaxRate": "Introduzca una tasa entre 0 y 100 % con un máximo de 2 decimales",
       "taxCodeEnabled": "Activo"
     }
   }

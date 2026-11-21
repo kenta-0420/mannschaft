@@ -492,7 +492,16 @@
       "stripeTaxCodeUnset": "Not set",
       "stripeTaxCodePlaceholder": "Stripe tax code (optional, e.g. txcd_10000000)",
       "taxCodeDisplayName": "Display name",
-      "taxCodeRate": "Rate (basis points)",
+      "taxCodeRate": "Tax rate (%)",
+      "selectProductKey": "Select a product key",
+      "noProductOptions": "No products available",
+      "selectTaxCode": "Select a tax code",
+      "taxCodeOption": "{code} ({rate}%)",
+      "taxPreviewNeedsTaxCode": "Select a tax code to see the preview",
+      "noTaxCodeOptions": "No tax code is valid at the effective date",
+      "taxCodeNeedsEffectiveFrom": "Enter the effective date first",
+      "loadOptionsFailed": "Could not load the product key and tax code options",
+      "errorInvalidTaxRate": "Enter a tax rate between 0 and 100 percent with at most 2 decimal places",
       "taxCodeEnabled": "Enabled"
     }
   }

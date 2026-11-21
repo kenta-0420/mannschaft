@@ -492,7 +492,16 @@
       "stripeTaxCodeUnset": "Nicht festgelegt",
       "stripeTaxCodePlaceholder": "Stripe-Steuercode (optional, z. B. txcd_10000000)",
       "taxCodeDisplayName": "Anzeigename",
-      "taxCodeRate": "Steuersatz (Basispunkte)",
+      "taxCodeRate": "Steuersatz (%)",
+      "selectProductKey": "Produktschlüssel auswählen",
+      "noProductOptions": "Keine Produkte verfügbar",
+      "selectTaxCode": "Steuercode auswählen",
+      "taxCodeOption": "{code} ({rate} %)",
+      "taxPreviewNeedsTaxCode": "Wählen Sie einen Steuercode, um die Vorschau zu sehen",
+      "noTaxCodeOptions": "Zum Gültigkeitsbeginn ist kein Steuercode gültig",
+      "taxCodeNeedsEffectiveFrom": "Geben Sie zuerst den Gültigkeitsbeginn ein",
+      "loadOptionsFailed": "Die Auswahl für Produktschlüssel und Steuercode konnte nicht geladen werden",
+      "errorInvalidTaxRate": "Geben Sie einen Steuersatz zwischen 0 und 100 Prozent mit höchstens 2 Nachkommastellen ein",
       "taxCodeEnabled": "Aktiv"
     }
   }

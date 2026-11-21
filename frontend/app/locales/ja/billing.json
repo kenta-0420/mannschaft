@@ -492,7 +492,16 @@
       "stripeTaxCodeUnset": "未設定",
       "stripeTaxCodePlaceholder": "Stripe税コード（任意・例 txcd_10000000）",
       "taxCodeDisplayName": "表示名",
-      "taxCodeRate": "税率（basis points）",
+      "taxCodeRate": "税率（％）",
+      "selectProductKey": "商品キーを選択",
+      "noProductOptions": "選択できる商品がありません",
+      "selectTaxCode": "税コードを選択",
+      "taxCodeOption": "{code}（{rate}%）",
+      "taxPreviewNeedsTaxCode": "税コードを選ぶとプレビューが表示されます",
+      "noTaxCodeOptions": "適用開始日時に有効な税コードがありません",
+      "taxCodeNeedsEffectiveFrom": "先に適用開始日時を入力してください",
+      "loadOptionsFailed": "商品キー・税コードの選択肢を読み込めませんでした",
+      "errorInvalidTaxRate": "税率は0〜100％の範囲で、小数は2桁までで入力してください",
       "taxCodeEnabled": "有効"
     }
   }
