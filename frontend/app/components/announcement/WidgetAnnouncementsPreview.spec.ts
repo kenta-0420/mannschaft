@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import { defineComponent, ref } from 'vue'
 import Widget from './WidgetAnnouncements.vue'
 import { toAnnouncementItem } from '~/utils/announcementAdapter'
@@ -20,7 +21,10 @@ vi.mock('~/composables/useAnnouncementPreview', () => ({ useAnnouncementPreview:
 const Card = defineComponent({ template: '<div><slot name="header"/><slot /></div>' })
 const Item = defineComponent({ props: ['item'], emits: ['click'], template: '<button @click="$emit(\'click\', item, $event.currentTarget)">{{ item.title }}</button>' })
 let wrapper: VueWrapper | undefined
-beforeEach(() => vi.resetAllMocks())
+beforeEach(() => {
+  vi.resetAllMocks()
+  setActivePinia(createPinia())
+})
 afterEach(() => { wrapper?.unmount(); wrapper = undefined })
 function render() {
   wrapper = mount(Widget, { props: { scopeType: 'TEAM', scopeId: '2', initialItems: [toAnnouncementItem({

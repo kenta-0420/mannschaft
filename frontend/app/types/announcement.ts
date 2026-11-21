@@ -26,10 +26,11 @@ export type AnnouncementPriority = 'URGENT' | 'IMPORTANT' | 'NORMAL'
 
 export type AnnouncementVisibility = 'PUBLIC' | 'MEMBERS_AND_ABOVE' | 'SUPPORTERS_AND_ABOVE'
 
+/** BE の一覧 API は authorId（数値）しか返さないため、id 以外は任意。 */
 export interface AnnouncementAuthor {
   id: number
-  displayName: string
-  avatarUrl: string | null
+  displayName?: string
+  avatarUrl?: string | null
 }
 
 export interface AnnouncementSourceMeta {

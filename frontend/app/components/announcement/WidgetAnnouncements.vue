@@ -52,6 +52,11 @@ const { isAdmin } = useRoleAccess(
   props.scopeSlug ?? props.scopeId,
 )
 
+/** 操作対象のスコープ（このウィジェットのチーム/組織）の項目か */
+function isInScope(item: AnnouncementFeedItem): boolean {
+  return item.scopeType === props.scopeType && String(item.scopeId) === props.scopeId
+}
+
 const displayLimit = computed(() => props.limit ?? 5)
 
 /** ピン留めアイテムを先頭 + 残りを最大 displayLimit 件表示 */
@@ -203,7 +208,8 @@ async function onMarkAllRead() {
         v-for="item in displayItems"
         :key="item.id"
         :item="item"
-        :show-pin-control="isAdmin && item.scopeType === scopeType && String(item.scopeId) === scopeId"
+        :show-pin-control="isAdmin && isInScope(item)"
+        :can-remove="isAdmin && isInScope(item)"
         @click="onItemClick"
         @pin="onTogglePin"
         @delete="onDelete"

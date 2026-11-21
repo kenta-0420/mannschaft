@@ -73,3 +73,20 @@ describe('本文プレビューの一覧・元リンク契約', () => {
     expect(locked.targetAudience).toBeNull()
   })
 })
+
+describe('一覧 API の著者表現（実 BE 応答: authorId のみ）', () => {
+  const base = { id: 5, scopeType: 'TEAM', scopeId: 8, sourceType: 'BLOG_POST', sourceId: 3 }
+
+  it('authorId から author.id を組み立てる', () => {
+    expect(toAnnouncementItem({ ...base, authorId: 7 }).author?.id).toBe(7)
+  })
+
+  it('author が既にあればそれを優先する', () => {
+    const author = { id: 9, displayName: '著者', avatarUrl: null }
+    expect(toAnnouncementItem({ ...base, authorId: 7, author }).author).toEqual(author)
+  })
+
+  it('authorId も author も無ければ null', () => {
+    expect(toAnnouncementItem(base).author).toBeNull()
+  })
+})

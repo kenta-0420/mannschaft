@@ -3,7 +3,7 @@
  * F02.6 チームお知らせ一覧ページ。
  *
  * チームのお知らせを全件表示する。カーソルページング対応。
- * ADMIN の場合: ピン留め・削除・お知らせ追加ボタンを表示。
+ * ADMIN の場合: ピン留め・解除を全項目に表示。著者本人は自分の項目の解除(×)のみ表示。
  *
  * F08.9 P4b: アイテムクリック時にペイウォール判定を行い、
  * ロックされている場合は PaywallLock UI を表示する（モーダル）。
@@ -11,6 +11,7 @@
  * 権限: チームメンバー以上（middleware: auth で保護）
  */
 import type { GateCheckResponse } from '~/types/payment'
+import { canRemoveAnnouncement } from '~/utils/announcementPermissions'
 import type { SpotlightItem } from '~/composables/useSpotlightApi'
 
 definePageMeta({ layout: 'team', middleware: 'auth' })
@@ -21,6 +22,12 @@ const teamSlug = String(route.params.slug)
 const { handleApiError } = useErrorHandler()
 
 const { isAdmin, loadPermissions } = useRoleAccess('team', teamSlug)
+const authStore = useAuthStore()
+
+/** 解除(×)は ADMIN または著者本人のみ。ピン留めは ADMIN のみ。 */
+function canRemove(item: { author: { id: number } | null }): boolean {
+  return canRemoveAnnouncement(item, isAdmin.value, authStore.user?.id)
+}
 
 const {
   feed,
@@ -253,6 +260,7 @@ function onDeleteConfirm(id: number) {
             <AnnouncementItem
               :item="item"
               :show-pin-control="isAdmin"
+              :can-remove="canRemove(item)"
               @click="onItemClick"
               @pin="onTogglePin"
               @delete="onDeleteConfirm"

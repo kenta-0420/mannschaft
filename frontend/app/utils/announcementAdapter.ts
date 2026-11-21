@@ -26,7 +26,8 @@ export function toAnnouncementItem(input: FeedInput): AnnouncementFeedItem {
     isRead: input.isRead === true,
     pinnedAt: input.pinnedAt ?? null,
     visibility: (input.visibility ?? 'PUBLIC') as AnnouncementFeedItem['visibility'],
-    author: input.author ?? null,
+    // BE の一覧 API は author を持たず authorId のみ返す。既存の author があれば優先
+    author: input.author ?? (input.authorId != null ? { id: input.authorId } : null),
     sourceMeta: locked ? null : input.sourceMeta ?? null,
     targetAudience: locked ? null : input.targetAudience ?? null,
     startsAt: input.startsAt ?? null,

@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import { defineComponent, ref } from 'vue'
 import Widget from './WidgetAnnouncements.vue'
 import DashboardWidgetCard from '../DashboardWidgetCard.vue'
@@ -32,7 +33,10 @@ const stubs = { DashboardWidgetCard, Button, NuxtLink: Link, AnnouncementItem: t
   DashboardErrorState: true, DashboardEmptyState: true, AnnouncementDetailModal: true, Skeleton: true }
 
 let wrapper: VueWrapper | undefined
-beforeEach(() => vi.resetAllMocks())
+beforeEach(() => {
+  vi.resetAllMocks()
+  setActivePinia(createPinia())
+})
 afterEach(() => { wrapper?.unmount(); wrapper = undefined })
 
 const item = (id: number) => toAnnouncementItem({ id, scopeType: 'TEAM', scopeId: 2, sourceType: 'BLOG_POST' as const,

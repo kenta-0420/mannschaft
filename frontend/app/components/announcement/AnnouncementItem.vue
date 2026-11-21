@@ -3,7 +3,10 @@ import type { AnnouncementFeedItem } from '~/types/announcement'
 
 const props = defineProps<{
   item: AnnouncementFeedItem
+  /** ピン留め操作を表示するか（ADMIN のみ） */
   showPinControl?: boolean
+  /** 解除(×)操作を表示するか（ADMIN または著者本人）。showPinControl が true の場合も表示する */
+  canRemove?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -34,6 +37,7 @@ const priorityColorMap: Record<string, string> = {
 
 const sourceIcon = computed(() => props.item.sourceType ? sourceTypeIconMap[props.item.sourceType] ?? 'pi pi-info-circle' : 'pi pi-lock')
 const priorityClass = computed(() => priorityColorMap[props.item.priority] ?? '')
+const showActions = computed(() => props.showPinControl === true || props.canRemove === true)
 const showPriorityBadge = computed(() => props.item.priority !== 'NORMAL')
 
 /** F09.17: 広告フィードかどうか */
@@ -97,7 +101,7 @@ function handleClick(event: MouseEvent | KeyboardEvent) {
   >
     <!-- ピン留めインジケーター -->
     <div class="mt-0.5 flex-shrink-0">
-      <i v-if="item.isPinned" class="pi pi-map-marker text-sm text-primary" />
+      <i v-if="item.isPinned" class="pi pi-bookmark-fill text-sm text-primary" aria-hidden="true" />
       <span v-else class="inline-block w-4" />
     </div>
 
@@ -163,12 +167,19 @@ function handleClick(event: MouseEvent | KeyboardEvent) {
       <Menu ref="menuRef" :model="menuItems" :popup="true" />
     </div>
 
-    <!-- 管理者アクション -->
-    <div v-if="showPinControl" class="flex-shrink-0 opacity-0 transition-opacity group-hover:opacity-100">
+    <!-- 管理者・著者アクション（キーボードフォーカス時も表示する） -->
+    <div
+      v-if="showActions"
+      data-testid="announcement-actions"
+      class="flex-shrink-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+    >
       <Button
-        :icon="item.isPinned ? 'pi pi-map-marker' : 'pi pi-map-marker'"
+        v-if="showPinControl"
+        data-testid="announcement-pin"
+        :icon="item.isPinned ? 'pi pi-bookmark-fill' : 'pi pi-bookmark'"
         :title="item.isPinned ? t('announcement.unpin') : t('announcement.pin')"
-        :class="item.isPinned ? 'text-primary' : 'text-surface-400'"
+        :aria-label="item.isPinned ? t('announcement.unpin') : t('announcement.pin')"
+        :class="[item.isPinned ? 'text-primary' : 'text-surface-400', 'focus-visible:opacity-100']"
         text
         rounded
         size="small"
@@ -176,9 +187,11 @@ function handleClick(event: MouseEvent | KeyboardEvent) {
         @keydown.stop
       />
       <Button
+        data-testid="announcement-remove"
         icon="pi pi-times"
         :title="t('announcement.remove_from_announcements')"
-        class="text-surface-400 hover:text-red-500"
+        :aria-label="t('announcement.remove_from_announcements')"
+        class="text-surface-400 hover:text-red-500 focus-visible:opacity-100"
         text
         rounded
         size="small"
