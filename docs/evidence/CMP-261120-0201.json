@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261120-0201",
+  "scope": "app",
+  "implementation": {
+    "pr": 4712,
+    "sha": "f6767b8daf94e87e1e954e1fa088363e5e9eed5b"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "画面で選んだカテゴリ・所要時間・進捗率・TODO 完了・チーム投稿先が作成 API に反映される",
+      "tests": [
+        {
+          "name": "action-memo-selection-wiring",
+          "evidence": "frontend/tests/unit/pages/action-memo-selection-wiring.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "選択値が下書き・オフライン同期・公開再試行でも失われず、公開失敗は保存失敗として扱わない",
+      "tests": [
+        {
+          "name": "action-memo-draft-extras",
+          "evidence": "frontend/tests/unit/pages/action-memo-draft-extras.spec.ts"
+        },
+        {
+          "name": "action-memo-offline-queue-atomic",
+          "evidence": "frontend/tests/unit/pages/action-memo-offline-queue-atomic.spec.ts"
+        },
+        {
+          "name": "action-memo-publish-hardening",
+          "evidence": "frontend/tests/unit/pages/action-memo-publish-hardening.spec.ts"
+        },
+        {
+          "name": "action-memo-flush-persist-failure",
+          "evidence": "frontend/tests/unit/pages/action-memo-flush-persist-failure.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 44890121660
+    },
+    {
+      "runId": 44890121747
+    },
+    {
+      "runId": 44890121456
+    },
+    {
+      "runId": 44890121555
+    },
+    {
+      "runId": 44890121501
+    },
+    {
+      "runId": 44890121441
+    },
+    {
+      "runId": 44890121462
+    },
+    {
+      "runId": 44890121593
+    },
+    {
+      "runId": 44890117821
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/Mannschaft2026/mannschaft/pull/4712"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "https://github.com/Mannschaft2026/mannschaft/pull/4712"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "https://github.com/Mannschaft2026/mannschaft/pull/4712"
+    }
+  },
+  "regressions": [
+    {
+      "description": "アリシゼーションで発覚した、再読み込みで下書きのカテゴリ・投稿先・所要時間が失われる不具合",
+      "test": "frontend/tests/unit/pages/action-memo-draft-extras.spec.ts",
+      "redEvidence": "https://github.com/Mannschaft2026/mannschaft/commit/22f8ad2f5d901d72a2b9d9b46827044096c08bd6",
+      "greenEvidence": "https://github.com/Mannschaft2026/mannschaft/commit/c8dfcccf7f167f35e74f9637461b7b8da1e70750"
+    }
+  ]
+}
