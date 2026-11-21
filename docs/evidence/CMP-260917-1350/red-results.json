@@ -1,0 +1,23 @@
+{
+  "sourceHead": "ad33268316ae1c9273f1d9682ce6fd2bb80464fb",
+  "tests": 38,
+  "failures": 3,
+  "errors": 0,
+  "skipped": 0,
+  "failedCases": [
+    {
+      "name": "red_組織会員は他人の管理領収書PDFを取得できない()",
+      "message": "java.lang.AssertionError: Status expected:<403> but was:<200>"
+    },
+    {
+      "name": "red_組織会員は管理画面詳細を閲覧できない()",
+      "message": "java.lang.AssertionError: Status expected:<403> but was:<200>"
+    },
+    {
+      "name": "red_組織会員は他人の管理領収書詳細を閲覧できない()",
+      "message": "java.lang.AssertionError: Status expected:<403> but was:<200>"
+    }
+  ],
+  "xmlSha256": "d0a1e1afc3ad802c58e1754a707dfbfcf9e18afd5acd069ef8a3523317d13bf9",
+  "cleanup": "removed"
+}

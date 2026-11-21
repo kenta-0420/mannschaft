@@ -13,7 +13,7 @@ import type {
 
 const props = defineProps<{
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: string
+  scopeId: number
 }>()
 
 const {

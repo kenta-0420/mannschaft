@@ -1,0 +1,243 @@
+{
+  "campaign": "CMP-260917-1350",
+  "sourceHead": "57381479b7db7b6fba69028c4ed55cb20f32a166",
+  "mainBase": "977c3df5fd2ab5af79fa34db66c4121294634eff",
+  "verification": "公式verification-run/gradle-turnstile、clean Git archive、実JWT/Security/MySQL（外部R2だけstub）",
+  "totals": {
+    "archUnitTest": {
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "archUnitFreezeStoreIntegrityTest": {
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "test": {
+      "tests": 114,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "suites": [
+    {
+      "task": "archUnitTest",
+      "xml": "TEST-com.mannschaft.app.common.architecture.AuthzControllerGuardArchTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "f450304dc7dd3c44eb5aba282290bc2f121f35613395df82ba8b0bacddda4aa3"
+    },
+    {
+      "task": "archUnitTest",
+      "xml": "TEST-com.mannschaft.app.common.architecture.CrossDomainTransactionalTransitiveArchTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "6b5bce1dead3a38260dcfc943aa92adb770c0e486644f35d511332a40283f21c"
+    },
+    {
+      "task": "archUnitFreezeStoreIntegrityTest",
+      "xml": "TEST-com.mannschaft.app.common.architecture.ArchUnitFreezeStoreIntegrityTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "54098cc09959003b4f6af98e95215b2efa1d9d00f27698a573d6e62d6f2d48d7"
+    },
+    {
+      "task": "test",
+      "xml": "TEST-com.mannschaft.app.organization.OrganizationAdminReadScopeContractIT.xml",
+      "tests": 38,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "5b8823ebc2845f35bc1c50947459982f7c5f2aed0e27df5c07999d16f3ec4be1"
+    },
+    {
+      "task": "test",
+      "xml": "TEST-com.mannschaft.app.receipt.ReceiptAuthzContractTest.xml",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "7d989235b48c01480959e30872e94d425312c5efa2cbf403e67b45bf0f99b1f7"
+    },
+    {
+      "task": "test",
+      "xml": "TEST-com.mannschaft.app.receipt.ReceiptCreateAmountContractTest.xml",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "1fec6bf8d1859c603aa55c00d67f3a63e61acc3448a91789460efca83106e671"
+    },
+    {
+      "task": "test",
+      "xml": "TEST-com.mannschaft.app.receipt.ReceiptMyScopeContractIT.xml",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "3891fa63b6d58f3f732972b7d4c6a81649e93ed9ce75793bf0eaaed2facb01fe"
+    },
+    {
+      "task": "test",
+      "xml": "TEST-com.mannschaft.app.receipt.ReceiptScopeTypeContractTest.xml",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "d4f813dfa5d3654502697a19693ed7db7117b28567254722cd49515676f60dd9"
+    },
+    {
+      "task": "test",
+      "xml": "TEST-com.mannschaft.app.receipt.ReceiptServiceListReceiptsAuthzTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "4c2b6b90f8b461cb1d6050ab0d0c446997570d46a8c93b137ffe7c5731ce3ae7"
+    },
+    {
+      "task": "test",
+      "xml": "TEST-com.mannschaft.app.receipt.ReceiptServiceTest$ApproveReceipt.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "b47e1819ce883ed5ea203167fcb186d3d627a2de6faf6bcb77ca3a20f7ce1a28"
+    },
+    {
+      "task": "test",
+      "xml": "TEST-com.mannschaft.app.receipt.ReceiptServiceTest$BulkCreateReceipts.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "d0fc95eb2c7cd75e5c446f2844bd27b50404df0aa15ac993b6171e488141c927"
+    },
+    {
+      "task": "test",
+      "xml": "TEST-com.mannschaft.app.receipt.ReceiptServiceTest$BulkVoidReceipts.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "7cd0426b07081412063bf6f93f5819f35a5af43fb66b9a0fb68260b4b3f52d8c"
+    },
+    {
+      "task": "test",
+      "xml": "TEST-com.mannschaft.app.receipt.ReceiptServiceTest$CreateReceipt.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "a155442eb2003793197b32390a6c9df08bb23526a92244a111112e8f0361433d"
+    },
+    {
+      "task": "test",
+      "xml": "TEST-com.mannschaft.app.receipt.ReceiptServiceTest$VoidReceipt.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "0801ae1ce69fa9ff81ea09601690fe1b8737d10e25cfcdf53e2cef650c9361c7"
+    },
+    {
+      "task": "test",
+      "xml": "TEST-com.mannschaft.app.signage.SignageScopeContractIT$DisplayTokenExpiry.xml",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "7a47b9f03bad03bb62fd4d77d2140f7e5e3833c28b1406650b91d33a7b7d0ffb"
+    },
+    {
+      "task": "test",
+      "xml": "TEST-com.mannschaft.app.signage.SignageScopeContractIT$EmergencyRead.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "99917ac35355cd6d69b4e977535c06f7ad5121d0ddce39576e99b01871f819ef"
+    },
+    {
+      "task": "test",
+      "xml": "TEST-com.mannschaft.app.signage.SignageScopeContractIT$ScreenRead.xml",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "db19cc578451b31af3a9e6f83ada09971a4e30346a58c8c2d5f0c47bb6892814"
+    },
+    {
+      "task": "test",
+      "xml": "TEST-com.mannschaft.app.signage.SignageScopeContractIT$SlotRead.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "13cbd4d81f0d807f40a79015f7186afb30f28bc8593a4166a9940c5c61b9b174"
+    },
+    {
+      "task": "test",
+      "xml": "TEST-com.mannschaft.app.signage.SignageScopeContractIT$TokenManagement.xml",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "f02905392194e9ed7fbda7266d9d5c7527f5d29f1dd77336e0dd5d0c42d04dcb"
+    },
+    {
+      "task": "test",
+      "xml": "TEST-com.mannschaft.app.signage.service.SignageScreenServiceListScreensForActorAuthzTest.xml",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "94be259978e0c8e00b144205c15bea1fac4052c099488208c6fbf9b04f0fb1cb"
+    },
+    {
+      "task": "test",
+      "xml": "TEST-com.mannschaft.app.signage.service.SignageScreenServiceTest$CreateScreen.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "52147fbc83ae25254922b3bfaede4eb91fe20490b1d2d6764171bcd3dc9ee4d5"
+    },
+    {
+      "task": "test",
+      "xml": "TEST-com.mannschaft.app.signage.service.SignageScreenServiceTest$DeleteScreen.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "5da0517f8129fec2f688bee0a9d5eb157d0f7f0db2abf9b5995c394f5d32f035"
+    },
+    {
+      "task": "test",
+      "xml": "TEST-com.mannschaft.app.signage.service.SignageScreenServiceTest$UpdateScreen.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "f4499676319a105598e897e5f566779255cf96391852d1787aacb7dda7d31db2"
+    }
+  ],
+  "exitCode": 0,
+  "signal": null,
+  "cleanup": "removed",
+  "limits": [
+    "既存6GETの初回green characterizationと、新規3GETの期待403/実200 redを区別する。",
+    "D-3Tは既存凍結負債を許容する既存番人。新規14違反の解消を同番人で確認、waiver/凍結追加なし。",
+    "正式CI・最終検分・実機・探索は別途未完了。画像/実機観測JSONを含めない。"
+  ]
+}

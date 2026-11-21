@@ -1,0 +1,30 @@
+{
+  "sourceHead": "3eb6e6c54a506051ebbb5178155abc055541a530",
+  "task": "archUnitTest",
+  "selectedClass": "com.mannschaft.app.common.architecture.CrossDomainTransactionalTransitiveArchTest",
+  "tests": 1,
+  "failures": 1,
+  "errors": 0,
+  "skipped": 0,
+  "newViolationCount": 14,
+  "newViolations": [
+    "@Transactional entry com.mannschaft.app.receipt.service.ReceiptService.checkManagementReadAccess(com.mannschaft.app.receipt.entity.ReceiptEntity, java.lang.Long) (domain 'receipt') reaches other-domain repository com.mannschaft.app.membership.repository.MembershipRepository (domain 'membership') [D-3T]",
+    "@Transactional entry com.mannschaft.app.receipt.service.ReceiptService.checkManagementReadAccess(com.mannschaft.app.receipt.entity.ReceiptEntity, java.lang.Long) (domain 'receipt') reaches other-domain repository com.mannschaft.app.role.repository.RoleRepository (domain 'role') [D-3T]",
+    "@Transactional entry com.mannschaft.app.receipt.service.ReceiptService.checkManagementReadAccess(com.mannschaft.app.receipt.entity.ReceiptEntity, java.lang.Long) (domain 'receipt') reaches other-domain repository com.mannschaft.app.role.repository.UserRoleRepository (domain 'role') [D-3T]",
+    "@Transactional entry com.mannschaft.app.receipt.service.ReceiptService.getReceipt(com.mannschaft.app.receipt.ReceiptScopeType, java.lang.Long, java.lang.Long, java.lang.Long) (domain 'receipt') reaches other-domain repository com.mannschaft.app.role.repository.RoleRepository (domain 'role') [D-3T]",
+    "@Transactional entry com.mannschaft.app.receipt.service.ReceiptService.getReceipt(com.mannschaft.app.receipt.ReceiptScopeType, java.lang.Long, java.lang.Long, java.lang.Long) (domain 'receipt') reaches other-domain repository com.mannschaft.app.role.repository.UserRoleRepository (domain 'role') [D-3T]",
+    "@Transactional entry com.mannschaft.app.receipt.service.ReceiptService.getReceiptPdf(com.mannschaft.app.receipt.ReceiptScopeType, java.lang.Long, java.lang.Long, java.lang.Long) (domain 'receipt') reaches other-domain repository com.mannschaft.app.role.repository.RoleRepository (domain 'role') [D-3T]",
+    "@Transactional entry com.mannschaft.app.receipt.service.ReceiptService.getReceiptPdf(com.mannschaft.app.receipt.ReceiptScopeType, java.lang.Long, java.lang.Long, java.lang.Long) (domain 'receipt') reaches other-domain repository com.mannschaft.app.role.repository.UserRoleRepository (domain 'role') [D-3T]",
+    "@Transactional entry com.mannschaft.app.receipt.service.ReceiptService.getReceiptPdf(com.mannschaft.app.receipt.ReceiptScopeType, java.lang.Long, java.lang.Long, java.lang.Long, com.mannschaft.app.receipt.ReceiptArchiveKind) (domain 'receipt') reaches other-domain repository com.mannschaft.app.role.repository.RoleRepository (domain 'role') [D-3T]",
+    "@Transactional entry com.mannschaft.app.receipt.service.ReceiptService.getReceiptPdf(com.mannschaft.app.receipt.ReceiptScopeType, java.lang.Long, java.lang.Long, java.lang.Long, com.mannschaft.app.receipt.ReceiptArchiveKind) (domain 'receipt') reaches other-domain repository com.mannschaft.app.role.repository.UserRoleRepository (domain 'role') [D-3T]",
+    "@Transactional entry com.mannschaft.app.signage.service.SignageScreenService.checkReadAccess(java.lang.String, java.lang.Long, java.lang.Long) (domain 'signage') reaches other-domain repository com.mannschaft.app.membership.repository.MembershipRepository (domain 'membership') [D-3T]",
+    "@Transactional entry com.mannschaft.app.signage.service.SignageScreenService.checkReadAccess(java.lang.String, java.lang.Long, java.lang.Long) (domain 'signage') reaches other-domain repository com.mannschaft.app.role.repository.RoleRepository (domain 'role') [D-3T]",
+    "@Transactional entry com.mannschaft.app.signage.service.SignageScreenService.checkReadAccess(java.lang.String, java.lang.Long, java.lang.Long) (domain 'signage') reaches other-domain repository com.mannschaft.app.role.repository.UserRoleRepository (domain 'role') [D-3T]",
+    "@Transactional entry com.mannschaft.app.signage.service.SignageScreenService.getScreenForActor(java.lang.Long, java.lang.Long) (domain 'signage') reaches other-domain repository com.mannschaft.app.role.repository.RoleRepository (domain 'role') [D-3T]",
+    "@Transactional entry com.mannschaft.app.signage.service.SignageScreenService.getScreenForActor(java.lang.Long, java.lang.Long) (domain 'signage') reaches other-domain repository com.mannschaft.app.role.repository.UserRoleRepository (domain 'role') [D-3T]"
+  ],
+  "xmlSha256": "37328f389c650222c2ae7d369be16f4df1b0797b04d3c5d84748b55e3c16362a",
+  "exitCode": 1,
+  "cleanup": "removed",
+  "signal": null
+}

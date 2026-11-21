@@ -8,6 +8,7 @@ import com.mannschaft.app.receipt.controller.ReceiptAdminController;
 import com.mannschaft.app.receipt.dto.CreateReceiptRequest;
 import com.mannschaft.app.receipt.dto.ReceiptResponse;
 import com.mannschaft.app.receipt.service.ReceiptExportService;
+import com.mannschaft.app.receipt.service.ReceiptManagementReadFacade;
 import com.mannschaft.app.receipt.service.ReceiptService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -65,6 +66,7 @@ class ReceiptCreateAmountContractTest {
     private static final long USER_ID = 920810001L;
 
     @Mock private ReceiptService receiptService;
+    @Mock private ReceiptManagementReadFacade readFacade;
     @Mock private ReceiptExportService exportService;
 
     private MockMvc mvc;
@@ -79,7 +81,7 @@ class ReceiptCreateAmountContractTest {
         // 測りたい @NotNull ではなく別の理由で赤くなってしまう。
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         MessageSource messageSource = new StaticMessageSource();
-        mvc = MockMvcBuilders.standaloneSetup(new ReceiptAdminController(receiptService, exportService))
+        mvc = MockMvcBuilders.standaloneSetup(new ReceiptAdminController(receiptService, readFacade, exportService))
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
                 .setControllerAdvice(new GlobalExceptionHandler(messageSource))
                 .build();
