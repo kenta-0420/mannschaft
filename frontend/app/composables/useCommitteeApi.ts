@@ -3,6 +3,7 @@ import type {
   CommitteeDetail,
   CommitteeMember,
   CommitteeDistributionLog,
+  CommitteeDistributeRequest,
 } from '~/types/committee'
 import type { SpringPage } from '~/types/api'
 import { toPagedResponse } from '~/utils/toPagedResponse'
@@ -64,6 +65,13 @@ export function useCommitteeApi() {
     return toPagedResponse(res.data)
   }
 
+  async function distribute(committeeId: number, body: CommitteeDistributeRequest) {
+    return api<{ data: CommitteeDistributionLog }>(`/api/v1/committees/${committeeId}/distributions`, {
+      method: 'POST',
+      body,
+    })
+  }
+
   return {
     listCommittees,
     createCommittee,
@@ -74,5 +82,6 @@ export function useCommitteeApi() {
     removeMember,
     leaveCommittee,
     listDistributions,
+    distribute,
   }
 }

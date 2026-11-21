@@ -51,7 +51,37 @@
       "target_scope": "Alcance objetivo",
       "created_at": "Creado el",
       "confirmation_mode": "Modo de confirmación",
-      "announced": "Anunciado"
+      "announced": "Anunciado",
+      "open": "Distribuir",
+      "dialog_title": "Distribuir al exterior",
+      "field_custom_title": "Título",
+      "field_custom_body": "Cuerpo",
+      "field_headline": "Titular del anuncio (opcional)",
+      "field_scope": "¿Hasta dónde compartir?",
+      "field_announcement": "Publicar en anuncios",
+      "field_confirmation": "Botón de confirmación",
+      "field_deadline": "Fecha límite de confirmación",
+      "confirm_message": "Se distribuirá con esta configuración. ¿Continuar?",
+      "success": "Distribuido",
+      "submit": "Distribuir",
+      "required_missing": "Complete los campos obligatorios",
+      "content_types": {
+        "SURVEY_RESULT": "Resultado de encuesta",
+        "ACTIVITY_RECORD": "Registro de actividad",
+        "CIRCULATION_RESULT": "Resultado de circulación",
+        "CUSTOM_MESSAGE": "Mensaje personalizado"
+      },
+      "scopes": {
+        "COMMITTEE_ONLY": "Solo el comité",
+        "PARENT_ORG": "Toda la organización",
+        "PARENT_ORG_AND_CHILDREN": "Organización, equipos miembros y suborganizaciones"
+      },
+      "confirmation_modes": {
+        "NONE": "No necesario",
+        "OPTIONAL": "Opcional",
+        "REQUIRED": "Obligatorio"
+      },
+      "deadline_past": "La fecha límite de confirmación no puede estar en el pasado"
     },
     "invitation": {
       "accept": "Unirse",

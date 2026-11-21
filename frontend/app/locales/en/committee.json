@@ -51,7 +51,37 @@
       "target_scope": "Target Scope",
       "created_at": "Created At",
       "confirmation_mode": "Confirmation Mode",
-      "announced": "Announced"
+      "announced": "Announced",
+      "open": "Distribute",
+      "dialog_title": "Distribute externally",
+      "field_custom_title": "Title",
+      "field_custom_body": "Body",
+      "field_headline": "Announcement headline (optional)",
+      "field_scope": "How far to share?",
+      "field_announcement": "Post to announcements",
+      "field_confirmation": "Confirmation button",
+      "field_deadline": "Confirmation deadline",
+      "confirm_message": "Distribute with these settings. Continue?",
+      "success": "Distributed",
+      "submit": "Distribute",
+      "required_missing": "Please fill in the required fields",
+      "content_types": {
+        "SURVEY_RESULT": "Survey result",
+        "ACTIVITY_RECORD": "Activity record",
+        "CIRCULATION_RESULT": "Circulation result",
+        "CUSTOM_MESSAGE": "Custom message"
+      },
+      "scopes": {
+        "COMMITTEE_ONLY": "Committee only",
+        "PARENT_ORG": "Whole organization",
+        "PARENT_ORG_AND_CHILDREN": "Organization, member teams and sub-organizations"
+      },
+      "confirmation_modes": {
+        "NONE": "Not needed",
+        "OPTIONAL": "Optional",
+        "REQUIRED": "Required"
+      },
+      "deadline_past": "The confirmation deadline must not be in the past"
     },
     "invitation": {
       "accept": "Join",

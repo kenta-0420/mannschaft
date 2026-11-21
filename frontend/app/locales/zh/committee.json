@@ -51,7 +51,37 @@
       "target_scope": "目标范围",
       "created_at": "创建时间",
       "confirmation_mode": "确认模式",
-      "announced": "已公告"
+      "announced": "已公告",
+      "open": "传达",
+      "dialog_title": "向外部传达",
+      "field_custom_title": "标题",
+      "field_custom_body": "正文",
+      "field_headline": "公告标题（可选）",
+      "field_scope": "传达到哪个范围？",
+      "field_announcement": "发布到公告",
+      "field_confirmation": "确认按钮",
+      "field_deadline": "确认截止时间",
+      "confirm_message": "将按此内容传达。确定吗？",
+      "success": "已传达",
+      "submit": "传达",
+      "required_missing": "请填写必填项",
+      "content_types": {
+        "SURVEY_RESULT": "问卷结果",
+        "ACTIVITY_RECORD": "活动记录",
+        "CIRCULATION_RESULT": "传阅结果",
+        "CUSTOM_MESSAGE": "联络消息"
+      },
+      "scopes": {
+        "COMMITTEE_ONLY": "仅委员会内",
+        "PARENT_ORG": "整个组织",
+        "PARENT_ORG_AND_CHILDREN": "组织＋加盟团队＋下级组织"
+      },
+      "confirmation_modes": {
+        "NONE": "不需要",
+        "OPTIONAL": "可选",
+        "REQUIRED": "必须"
+      },
+      "deadline_past": "确认截止时间必须晚于当前时间"
     },
     "invitation": {
       "accept": "加入",

@@ -56,3 +56,20 @@ export interface CommitteeDistributionLog {
   customBody: string | null
   createdAt: string
 }
+
+export type CommitteeDistributionContentType = 'SURVEY_RESULT' | 'ACTIVITY_RECORD' | 'CIRCULATION_RESULT' | 'CUSTOM_MESSAGE'
+export type CommitteeDistributionScope = 'COMMITTEE_ONLY' | 'PARENT_ORG' | 'PARENT_ORG_AND_CHILDREN'
+export type CommitteeConfirmationMode = 'NONE' | 'OPTIONAL' | 'REQUIRED'
+
+/** POST /api/v1/committees/{id}/distributions のリクエスト（BE CommitteeDistributeRequest）。 */
+export interface CommitteeDistributeRequest {
+  contentType: CommitteeDistributionContentType
+  contentId?: number | null
+  customTitle?: string | null
+  customBody?: string | null
+  targetScope: CommitteeDistributionScope
+  announcementEnabled: boolean
+  confirmationMode: CommitteeConfirmationMode
+  confirmationDeadlineAt?: string | null
+  customHeadline?: string | null
+}

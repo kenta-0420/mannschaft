@@ -51,7 +51,37 @@
       "target_scope": "Zielbereich",
       "created_at": "Erstellt am",
       "confirmation_mode": "Bestätigungsmodus",
-      "announced": "Angekündigt"
+      "announced": "Angekündigt",
+      "open": "Weiterleiten",
+      "dialog_title": "Nach außen weiterleiten",
+      "field_custom_title": "Titel",
+      "field_custom_body": "Text",
+      "field_headline": "Ankündigungstitel (optional)",
+      "field_scope": "Wie weit weitergeben?",
+      "field_announcement": "In Ankündigungen veröffentlichen",
+      "field_confirmation": "Bestätigungsschaltfläche",
+      "field_deadline": "Bestätigungsfrist",
+      "confirm_message": "Mit diesen Einstellungen weiterleiten. Fortfahren?",
+      "success": "Weitergeleitet",
+      "submit": "Weiterleiten",
+      "required_missing": "Bitte Pflichtfelder ausfüllen",
+      "content_types": {
+        "SURVEY_RESULT": "Umfrageergebnis",
+        "ACTIVITY_RECORD": "Aktivitätsprotokoll",
+        "CIRCULATION_RESULT": "Umlaufergebnis",
+        "CUSTOM_MESSAGE": "Freie Nachricht"
+      },
+      "scopes": {
+        "COMMITTEE_ONLY": "Nur Ausschuss",
+        "PARENT_ORG": "Gesamte Organisation",
+        "PARENT_ORG_AND_CHILDREN": "Organisation, Mitgliedsteams und Unterorganisationen"
+      },
+      "confirmation_modes": {
+        "NONE": "Nicht nötig",
+        "OPTIONAL": "Optional",
+        "REQUIRED": "Pflicht"
+      },
+      "deadline_past": "Die Bestätigungsfrist darf nicht in der Vergangenheit liegen"
     },
     "invitation": {
       "accept": "Beitreten",

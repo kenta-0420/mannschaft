@@ -51,7 +51,37 @@
       "target_scope": "대상 범위",
       "created_at": "생성일시",
       "confirmation_mode": "확인 모드",
-      "announced": "공지됨"
+      "announced": "공지됨",
+      "open": "전달하기",
+      "dialog_title": "외부로 전달",
+      "field_custom_title": "제목",
+      "field_custom_body": "본문",
+      "field_headline": "공지 제목(선택)",
+      "field_scope": "어디까지 전달할까요?",
+      "field_announcement": "공지에 게시",
+      "field_confirmation": "확인 버튼",
+      "field_deadline": "확인 기한",
+      "confirm_message": "이 내용으로 전달합니다. 계속하시겠습니까?",
+      "success": "전달했습니다",
+      "submit": "전달하기",
+      "required_missing": "필수 항목을 입력해 주세요",
+      "content_types": {
+        "SURVEY_RESULT": "설문 결과",
+        "ACTIVITY_RECORD": "활동 기록",
+        "CIRCULATION_RESULT": "회람 결과",
+        "CUSTOM_MESSAGE": "연락 메시지"
+      },
+      "scopes": {
+        "COMMITTEE_ONLY": "위원회 내부만",
+        "PARENT_ORG": "조직 전체",
+        "PARENT_ORG_AND_CHILDREN": "조직＋가맹 팀＋하위 조직"
+      },
+      "confirmation_modes": {
+        "NONE": "불필요",
+        "OPTIONAL": "선택",
+        "REQUIRED": "필수"
+      },
+      "deadline_past": "확인 기한은 현재 이후의 시각이어야 합니다"
     },
     "invitation": {
       "accept": "참여하기",

@@ -51,7 +51,37 @@
       "target_scope": "対象範囲",
       "created_at": "作成日時",
       "confirmation_mode": "確認モード",
-      "announced": "告知済み"
+      "announced": "告知済み",
+      "open": "伝達する",
+      "dialog_title": "外部へ伝達する",
+      "field_custom_title": "件名",
+      "field_custom_body": "本文",
+      "field_headline": "お知らせの見出し（任意）",
+      "field_scope": "どこまで伝える？",
+      "field_announcement": "お知らせに投下する",
+      "field_confirmation": "確認ボタン",
+      "field_deadline": "確認期限",
+      "confirm_message": "この内容で伝達します。よろしいですか？",
+      "success": "伝達しました",
+      "submit": "伝達する",
+      "required_missing": "必須項目を入力してください",
+      "content_types": {
+        "SURVEY_RESULT": "アンケート結果",
+        "ACTIVITY_RECORD": "活動記録",
+        "CIRCULATION_RESULT": "回覧板結果",
+        "CUSTOM_MESSAGE": "連絡メッセージ"
+      },
+      "scopes": {
+        "COMMITTEE_ONLY": "委員会内のみ",
+        "PARENT_ORG": "組織全体",
+        "PARENT_ORG_AND_CHILDREN": "組織＋加盟チーム＋下位組織"
+      },
+      "confirmation_modes": {
+        "NONE": "不要",
+        "OPTIONAL": "任意",
+        "REQUIRED": "必須"
+      },
+      "deadline_past": "確認期限は現在より後の日時を指定してください"
     },
     "invitation": {
       "accept": "参加する",
