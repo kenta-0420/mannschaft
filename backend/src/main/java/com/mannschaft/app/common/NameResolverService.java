@@ -317,6 +317,44 @@ public class NameResolverService {
         };
     }
 
+    /**
+     * チームIDの集合から公開 slug マップを返す（N+1 回避・バッチ）。論理削除済み・slug 未設定のIDは含まれない。
+     *
+     * @param teamIds チームIDの集合
+     * @return Map(teamId → slug)
+     */
+    public Map<Long, String> resolveTeamSlugs(Collection<Long> teamIds) {
+        if (teamIds == null || teamIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<Long, String> result = new java.util.HashMap<>();
+        for (TeamEntity team : teamRepository.findAllById(teamIds)) {
+            if (team.getSlug() != null) {
+                result.put(team.getId(), team.getSlug());
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 組織IDの集合から公開 slug マップを返す（N+1 回避・バッチ）。論理削除済み・slug 未設定のIDは含まれない。
+     *
+     * @param orgIds 組織IDの集合
+     * @return Map(orgId → slug)
+     */
+    public Map<Long, String> resolveOrganizationSlugs(Collection<Long> orgIds) {
+        if (orgIds == null || orgIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<Long, String> result = new java.util.HashMap<>();
+        for (OrganizationEntity org : organizationRepository.findAllById(orgIds)) {
+            if (org.getSlug() != null) {
+                result.put(org.getId(), org.getSlug());
+            }
+        }
+        return result;
+    }
+
     /** 共有予定の詳細API・画面URLで使用する公開slugを内部IDから解決する。 */
     public String resolveScopeSlug(String scopeType, Long scopeId) {
         if (scopeType == null || scopeId == null) {

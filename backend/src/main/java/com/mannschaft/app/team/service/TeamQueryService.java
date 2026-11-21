@@ -52,4 +52,19 @@ public class TeamQueryService {
         }
         return java.util.Set.copyOf(teamRepository.findActiveIdsByIdIn(teamIds));
     }
+
+    /**
+     * 指定 ID のうち、未ログイン公開ページと同じ条件（visibility = PUBLIC・ACTIVE・未アーカイブ・未削除）を
+     * 満たすチーム ID を 1 SQL で返す。空入力は SQL を発行しない
+     * （グローバル検索 ARTICLE の非所属者向け公開経路。CMP-261116-0722 PR-5）。
+     *
+     * @param teamIds 対象チーム ID
+     * @return 公開してよいチーム ID の集合
+     */
+    public java.util.Set<Long> findPublicIds(Collection<Long> teamIds) {
+        if (teamIds == null || teamIds.isEmpty()) {
+            return java.util.Set.of();
+        }
+        return java.util.Set.copyOf(teamRepository.findPublicIdsByIdIn(teamIds));
+    }
 }

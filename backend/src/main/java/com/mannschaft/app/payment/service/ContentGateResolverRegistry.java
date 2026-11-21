@@ -4,6 +4,7 @@ import com.mannschaft.app.payment.constant.ContentGateType;
 import com.mannschaft.app.payment.spi.ContentGateResolver;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -44,5 +45,14 @@ public class ContentGateResolverRegistry {
     public Optional<ContentGateTarget> resolveForAccess(String contentType, Long contentId) {
         ContentGateResolver resolver = resolvers.get(contentType);
         return resolver == null ? Optional.empty() : resolver.resolveForAccess(contentId);
+    }
+
+    /** {@link #resolveForAccess} の一括版。未対応種別は空（課金判定は fail-closed）。 */
+    public Map<Long, ContentGateTarget> resolveForAccessBatch(String contentType, Collection<Long> contentIds) {
+        ContentGateResolver resolver = resolvers.get(contentType);
+        if (resolver == null || contentIds == null || contentIds.isEmpty()) {
+            return Map.of();
+        }
+        return resolver.resolveForAccessBatch(contentIds);
     }
 }

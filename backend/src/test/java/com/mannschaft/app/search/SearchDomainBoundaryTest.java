@@ -81,6 +81,42 @@ class SearchDomainBoundaryTest {
     }
 
     @Test
+    @DisplayName("CMP-261116-0722 PR-4: THREAD 種別の SearchContributor が bulletin ドメイン内に実装されている")
+    void PR4_THREADのContributorはbulletinドメインにある() {
+        List<String> bulletinContributors = contributorImplementations().stream()
+                .filter(c -> c.getPackageName().startsWith("com.mannschaft.app.bulletin"))
+                .map(JavaClass::getName)
+                .toList();
+        assertThat(bulletinContributors)
+                .as("bulletin ドメインに THREAD 用 SearchContributor が 1 つあること（search 側に実装しない）")
+                .hasSize(1);
+    }
+
+    @Test
+    @DisplayName("CMP-261116-0722 PR-5: ARTICLE 種別の SearchContributor が cms ドメイン内に実装されている")
+    void PR5_ARTICLEのContributorはcmsドメインにある() {
+        List<String> cmsContributors = contributorImplementations().stream()
+                .filter(c -> c.getPackageName().startsWith("com.mannschaft.app.cms"))
+                .map(JavaClass::getName)
+                .toList();
+        assertThat(cmsContributors)
+                .as("cms ドメインに ARTICLE 用 SearchContributor が 1 つあること（search 側に実装しない）")
+                .hasSize(1);
+    }
+
+    @Test
+    @DisplayName("CMP-261116-0722 PR-6: FILE 種別の SearchContributor が filesharing ドメイン内に実装されている")
+    void PR6_FILEのContributorはfilesharingドメインにある() {
+        List<String> filesharingContributors = contributorImplementations().stream()
+                .filter(c -> c.getPackageName().startsWith("com.mannschaft.app.filesharing"))
+                .map(JavaClass::getName)
+                .toList();
+        assertThat(filesharingContributors)
+                .as("filesharing ドメインに FILE 用 SearchContributor が 1 つあること（search 側に実装しない）")
+                .hasSize(1);
+    }
+
+    @Test
     @DisplayName("D3: 各 SearchContributor 実装は自ドメイン外の repository パッケージに直接依存しない")
     void D3_Contributorは自ドメイン外のRepositoryに依存しない() {
         List<String> violations = new ArrayList<>();

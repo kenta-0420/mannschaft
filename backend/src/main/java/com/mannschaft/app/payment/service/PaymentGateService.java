@@ -356,6 +356,23 @@ public class PaymentGateService {
     }
 
     /**
+     * 指定種別でペイウォールゲートが 1 件以上設定されているコンテンツ ID の集合を返す（支払い状態は評価しない）。
+     *
+     * <p>グローバル検索（F04.6 ARTICLE）は本メソッドを直接使わず、
+     * {@link ContentGateAccessService#findUnsatisfiedGatedContentIds} が本メソッドの集合を起点に閲覧者ごとの充足を
+     * {@link #checkAccessBatch(String, Collection, Long, Map)} で一括判定し、満たさない ID だけを除外条件にする。</p>
+     *
+     * @param contentType コンテンツ種別（{@link ContentGateType}）
+     * @return ゲート付きコンテンツ ID の集合（無ければ空）
+     */
+    public Set<Long> findGatedContentIds(String contentType) {
+        if (contentType == null) {
+            return Set.of();
+        }
+        return Set.copyOf(contentPaymentGateRepository.findDistinctContentIdsByContentType(contentType));
+    }
+
+    /**
      * 指定コンテンツにペイウォールゲートが 1 件以上設定されているかを返す。
      *
      * <p>{@link #checkAccess} が予期せぬ例外で判定不能に陥った際の <b>fail-closed 判定</b>

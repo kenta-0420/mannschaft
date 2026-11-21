@@ -35,6 +35,19 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
     List<Long> findActiveIdsByIdIn(@Param("ids") Collection<Long> ids);
 
     /**
+     * 指定 ID のうち、未ログイン公開ページと同じ条件（visibility = PUBLIC・ACTIVE・未アーカイブ・未削除。
+     * {@link #findPublicOrganizationById(Long)} と同一）を満たす組織 ID だけを返す
+     * （グローバル検索 ARTICLE の公開経路。CMP-261116-0722 PR-5）。
+     */
+    @Query("""
+            SELECT o.id FROM OrganizationEntity o WHERE o.id IN :ids
+              AND o.visibility = com.mannschaft.app.organization.entity.OrganizationEntity.Visibility.PUBLIC
+              AND o.lifecycleStatus = com.mannschaft.app.organization.entity.OrganizationEntity.LifecycleStatus.ACTIVE
+              AND o.archivedAt IS NULL AND o.deletedAt IS NULL
+            """)
+    List<Long> findPublicIdsByIdIn(@Param("ids") Collection<Long> ids);
+
+    /**
      * カスタムスラッグで組織を取得する（URL識別子）。
      *
      * @param slug URL に使用するカスタムスラッグ

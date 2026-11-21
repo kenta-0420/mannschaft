@@ -17,6 +17,15 @@ public interface ContentPaymentGateRepository extends JpaRepository<ContentPayme
      */
     List<ContentPaymentGateEntity> findByContentTypeAndContentId(String contentType, Long contentId);
 
+    /**
+     * 指定種別で 1 件以上ゲートが設定されているコンテンツ ID を重複なしで返す
+     * （グローバル検索 ARTICLE のゲート付き記事除外。CMP-261116-0722 PR-5）。
+     */
+    @org.springframework.data.jpa.repository.Query(
+            "SELECT DISTINCT g.contentId FROM ContentPaymentGateEntity g WHERE g.contentType = :contentType")
+    List<Long> findDistinctContentIdsByContentType(
+            @org.springframework.data.repository.query.Param("contentType") String contentType);
+
     /** 指定種別・ID集合のゲートを一覧取得する（課金軸のバッチ判定用）。 */
     List<ContentPaymentGateEntity> findByContentTypeAndContentIdIn(
             String contentType, List<Long> contentIds);

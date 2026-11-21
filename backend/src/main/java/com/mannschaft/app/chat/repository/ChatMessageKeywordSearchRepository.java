@@ -1,6 +1,5 @@
 package com.mannschaft.app.chat.repository;
 
-import com.mannschaft.app.chat.entity.ChatMessageEntity;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Query;
@@ -68,16 +67,20 @@ public class ChatMessageKeywordSearchRepository {
     }
 
     /**
-     * 1 件分の取得結果。
+     * 1 件分の取得結果（すべて可視性を判定した同じ SQL の行から取った値）。
      *
-     * @param message        メッセージ
+     * @param id             メッセージ ID
+     * @param body           本文
+     * @param senderId       送信者（null 可）
+     * @param channelId      チャンネル ID
+     * @param createdAtUtc   作成日時の DB 格納値（UTC 壁時計、{@code yyyy-MM-dd HH:mm:ss.SSSSSS}。null 可）
      * @param relevance      FULLTEXT の関連度
      * @param channelType    チャンネル種別名
      * @param teamId         チャンネルのチーム ID（チームチャンネル以外は null）
      * @param organizationId チャンネルの組織 ID（組織チャンネル以外は null）
      */
-    public record ScoredMessage(ChatMessageEntity message, double relevance, String channelType, Long teamId,
-                                Long organizationId) {
+    public record ScoredMessage(Long id, String body, Long senderId, Long channelId, String createdAtUtc,
+                                double relevance, String channelType, Long teamId, Long organizationId) {
     }
 
     /** 可視メッセージの件数（{@link #find} と同一の WHERE 句）。 */
@@ -90,11 +93,18 @@ public class ChatMessageKeywordSearchRepository {
         return ((Number) query.getSingleResult()).longValue();
     }
 
-    /** 可視メッセージを関連度→新しい順に 1 ページ分取得する（{@link #count} と同一の WHERE 句）。 */
+    /**
+     * 可視メッセージを関連度→新しい順に 1 ページ分取得する（{@link #count} と同一の WHERE 句）。
+     *
+     * <p>結果に載せる列は、可視性を判定した<b>同じ SQL の SELECT 列</b>から取る。ID だけを取って別クエリで行を
+     * 読み直すと、その間にスコープ移動等と本文の更新が同時にコミットされた場合に、判定時とは別の状態の本文を返して
+     * しまう（CMP-261116-0722 PR-6 検分 P1 の横展開）。作成日時は DB の UTC 格納値を文字列で返す。</p>
+     */
     public List<ScoredMessage> find(Condition condition, int offset, int limit) {
         Map<String, Object> params = new HashMap<>();
         String where = where(condition, params);
-        Query query = em.createNativeQuery("SELECT m.id, " + MATCH
+        Query query = em.createNativeQuery("SELECT m.id, m.body, m.sender_id, m.channel_id,"
+                + " DATE_FORMAT(m.created_at, '%Y-%m-%d %H:%i:%s.%f') AS created_at_utc, " + MATCH
                 + " AS relevance, c.channel_type, c.team_id, c.organization_id"
                 + " FROM chat_messages m JOIN chat_channels c ON c.id = m.channel_id" + where
                 + " ORDER BY relevance DESC, m.created_at DESC, m.id DESC LIMIT :limit OFFSET :offset");
@@ -103,32 +113,24 @@ public class ChatMessageKeywordSearchRepository {
         query.setParameter("offset", offset);
         @SuppressWarnings("unchecked")
         List<Object[]> rows = query.getResultList();
-        if (rows.isEmpty()) {
-            return List.of();
-        }
-        List<Long> ids = new ArrayList<>(rows.size());
-        for (Object[] row : rows) {
-            ids.add(((Number) row[0]).longValue());
-        }
-        Map<Long, ChatMessageEntity> byId = new HashMap<>();
-        for (ChatMessageEntity message : em.createQuery(
-                "SELECT m FROM ChatMessageEntity m WHERE m.id IN :ids", ChatMessageEntity.class)
-                .setParameter("ids", ids).getResultList()) {
-            byId.put(message.getId(), message);
-        }
         List<ScoredMessage> result = new ArrayList<>(rows.size());
         for (Object[] row : rows) {
-            ChatMessageEntity message = byId.get(((Number) row[0]).longValue());
-            if (message != null) {
-                result.add(new ScoredMessage(message, row[1] == null ? 0d : ((Number) row[1]).doubleValue(),
-                        (String) row[2], toLong(row[3]), toLong(row[4])));
-            }
+            result.add(new ScoredMessage(toLong(row[0]), text(row[1]), toLong(row[2]), toLong(row[3]),
+                    text(row[4]), relevance(row[5]), text(row[6]), toLong(row[7]), toLong(row[8])));
         }
         return result;
     }
 
     private static Long toLong(Object value) {
         return value == null ? null : ((Number) value).longValue();
+    }
+
+    private static String text(Object value) {
+        return value == null ? null : value.toString();
+    }
+
+    private static double relevance(Object value) {
+        return value == null ? 0d : ((Number) value).doubleValue();
     }
 
     private static String where(Condition c, Map<String, Object> params) {

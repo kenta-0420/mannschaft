@@ -1,6 +1,5 @@
 package com.mannschaft.app.chat.service;
 
-import com.mannschaft.app.chat.entity.ChatMessageEntity;
 import com.mannschaft.app.chat.repository.ChatMessageKeywordSearchRepository;
 import com.mannschaft.app.chat.repository.ChatMessageKeywordSearchRepository.Condition;
 import com.mannschaft.app.chat.repository.ChatMessageKeywordSearchRepository.DateBound;
@@ -90,8 +89,8 @@ public class ChatMessageSearchContributor implements SearchContributor {
         Set<Long> teamIds = new HashSet<>();
         Set<Long> orgIds = new HashSet<>();
         for (ScoredMessage s : scored) {
-            if (s.message().getSenderId() != null) {
-                authorIds.add(s.message().getSenderId());
+            if (s.senderId() != null) {
+                authorIds.add(s.senderId());
             }
             if (s.teamId() != null && s.channelType().startsWith("TEAM_")) {
                 teamIds.add(s.teamId());
@@ -106,15 +105,15 @@ public class ChatMessageSearchContributor implements SearchContributor {
 
         List<SearchHit> hits = new ArrayList<>(scored.size());
         for (ScoredMessage s : scored) {
-            ChatMessageEntity message = s.message();
-            Long senderId = message.getSenderId();
+            // 返却列はすべて可視性を判定した同じ SQL の行の値（ID で読み直さない。PR-6 検分 P1 の横展開）
+            Long senderId = s.senderId();
             SearchHit.Author author = senderId == null ? null
                     : new SearchHit.Author(senderId, displayNames.get(senderId), avatarUrls.get(senderId));
-            hits.add(new SearchHit(SearchType.MESSAGE, message.getId(), null,
-                    SearchTextHighlighter.snippet(message.getBody(), criteria.terms()), Map.of(), s.relevance(),
+            hits.add(new SearchHit(SearchType.MESSAGE, s.id(), null,
+                    SearchTextHighlighter.snippet(s.body(), criteria.terms()), Map.of(), s.relevance(),
                     author, scopeRef(s, teamNames, orgNames),
-                    SearchHit.createdAtOf(message.getCreatedAt()),
-                    "/chat?channel=" + message.getChannelId(), List.of()));
+                    SearchHit.createdAtOfStoredUtc(s.createdAtUtc()),
+                    "/chat?channel=" + s.channelId(), List.of()));
         }
         return hits;
     }

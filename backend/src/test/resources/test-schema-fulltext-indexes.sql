@@ -6,3 +6,6 @@
 -- 1 行 1 文で書くこと（既定の SQL 抽出は 1 行を 1 文として扱う）。定義は本番 V4.001 と一致させる。
 ALTER TABLE timeline_posts ADD FULLTEXT INDEX ft_timeline_posts_content (content) WITH PARSER ngram;
 ALTER TABLE chat_messages ADD FULLTEXT INDEX ft_msg_body (body) WITH PARSER ngram;
+ALTER TABLE bulletin_threads ADD FULLTEXT INDEX ft_bulletin_threads_title_body (title, body) WITH PARSER ngram;
+ALTER TABLE blog_posts ADD FULLTEXT INDEX ft_bp_title_body (title, body) WITH PARSER ngram;
+ALTER TABLE shared_files ADD FULLTEXT INDEX ft_shared_files_name_description (name, description) WITH PARSER ngram;

@@ -126,6 +126,17 @@ public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> 
      * @param ids 射影対象 blog_post_id 集合（空でない）
      * @return 実存する BlogPost の Projection リスト
      */
+    /**
+     * 課金ゲート判定用に、未削除記事の {@code id / team_id / organization_id} を生値のまま SQL 1 本で返す
+     * （{@code BlogPostContentGateResolver#resolveForAccessBatch}。グローバル検索 ARTICLE のゲート判定）。
+     *
+     * @param ids 記事 ID 集合（空でない）
+     * @return {@code [id, teamId, organizationId]} の行
+     */
+    @Query("SELECT bp.id, bp.teamId, bp.organizationId FROM BlogPostEntity bp"
+            + " WHERE bp.id IN :ids AND bp.deletedAt IS NULL")
+    List<Object[]> findGateTargetRowsByIdIn(@Param("ids") Collection<Long> ids);
+
     @Query("""
             SELECT new com.mannschaft.app.cms.visibility.BlogPostVisibilityProjection(
                 bp.id,

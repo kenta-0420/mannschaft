@@ -45,6 +45,19 @@ public interface TeamRepository
             """)
     List<Long> findActiveIdsByIdIn(@Param("ids") Collection<Long> ids);
 
+    /**
+     * 指定 ID のうち、未ログイン公開ページと同じ条件（visibility = PUBLIC・ACTIVE・未アーカイブ・未削除。
+     * {@link #findPublicTeamById(Long)} と同一）を満たすチーム ID だけを返す
+     * （グローバル検索 ARTICLE の公開経路。CMP-261116-0722 PR-5）。
+     */
+    @Query("""
+            SELECT t.id FROM TeamEntity t WHERE t.id IN :ids
+              AND t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC
+              AND t.lifecycleStatus = com.mannschaft.app.team.entity.TeamEntity.LifecycleStatus.ACTIVE
+              AND t.archivedAt IS NULL AND t.deletedAt IS NULL
+            """)
+    List<Long> findPublicIdsByIdIn(@Param("ids") Collection<Long> ids);
+
     /** 受付投影に必要なteam scalar状態だけを読む。 */
     interface ActiveStateRow {
         Long getId();

@@ -11,7 +11,6 @@ import com.mannschaft.app.search.SearchType;
 import com.mannschaft.app.search.SearchViewer;
 import com.mannschaft.app.timeline.PostScopeType;
 import com.mannschaft.app.timeline.PostedAsType;
-import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostKeywordSearchRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostKeywordSearchRepository.Condition;
 import com.mannschaft.app.timeline.repository.TimelinePostKeywordSearchRepository.DateBound;
@@ -91,14 +90,13 @@ public class TimelinePostSearchContributor implements SearchContributor {
         Set<Long> teamIds = new HashSet<>();
         Set<Long> orgIds = new HashSet<>();
         for (ScoredPost s : scored) {
-            TimelinePostEntity post = s.post();
-            if (post.getPostedAsType() == PostedAsType.USER && post.getUserId() != null) {
-                authorIds.add(post.getUserId());
+            if (postedAsUser(s) && s.userId() != null) {
+                authorIds.add(s.userId());
             }
-            if (post.getScopeType() == PostScopeType.TEAM) {
-                teamIds.add(post.getScopeId());
-            } else if (post.getScopeType() == PostScopeType.ORGANIZATION) {
-                orgIds.add(post.getScopeId());
+            if (SearchViewer.TEAM.equals(s.scopeType())) {
+                teamIds.add(s.scopeId());
+            } else if (SearchViewer.ORGANIZATION.equals(s.scopeType())) {
+                orgIds.add(s.scopeId());
             }
         }
         Map<Long, String> displayNames = nameResolverService.resolveUserDisplayNames(authorIds);
@@ -108,17 +106,15 @@ public class TimelinePostSearchContributor implements SearchContributor {
 
         List<SearchHit> hits = new ArrayList<>(scored.size());
         for (ScoredPost s : scored) {
-            TimelinePostEntity post = s.post();
-            SearchHit.Author author = authorIds.contains(post.getUserId())
-                    && post.getPostedAsType() == PostedAsType.USER
-                    ? new SearchHit.Author(post.getUserId(), displayNames.get(post.getUserId()),
-                            avatarUrls.get(post.getUserId()))
+            // 返却列はすべて可視性を判定した同じ SQL の行の値（ID で読み直さない。PR-6 検分 P1 の横展開）
+            SearchHit.Author author = postedAsUser(s) && s.userId() != null && authorIds.contains(s.userId())
+                    ? new SearchHit.Author(s.userId(), displayNames.get(s.userId()), avatarUrls.get(s.userId()))
                     : null;
-            hits.add(new SearchHit(SearchType.POST, post.getId(), null,
-                    SearchTextHighlighter.snippet(post.getContent(), criteria.terms()), Map.of(), s.relevance(),
-                    author, scopeRef(post, teamNames, orgNames),
-                    SearchHit.createdAtOf(post.getCreatedAt()),
-                    "/timeline/" + post.getId(), List.of()));
+            hits.add(new SearchHit(SearchType.POST, s.id(), null,
+                    SearchTextHighlighter.snippet(s.content(), criteria.terms()), Map.of(), s.relevance(),
+                    author, scopeRef(s, teamNames, orgNames),
+                    SearchHit.createdAtOfStoredUtc(s.createdAtUtc()),
+                    "/timeline/" + s.id(), List.of()));
         }
         return hits;
     }
@@ -183,14 +179,20 @@ public class TimelinePostSearchContributor implements SearchContributor {
                 String.format("%s%02d:%02d", sign, abs / 60, abs % 60));
     }
 
-    private static SearchHit.ScopeRef scopeRef(TimelinePostEntity post, Map<Long, String> teamNames,
+    /** チーム／組織名義の投稿は個人の投稿として扱わない（投稿者個人を推定させない）。 */
+    private static boolean postedAsUser(ScoredPost s) {
+        return PostedAsType.USER.name().equals(s.postedAsType());
+    }
+
+    private static SearchHit.ScopeRef scopeRef(ScoredPost s, Map<Long, String> teamNames,
                                                Map<Long, String> orgNames) {
-        return switch (post.getScopeType()) {
-            case TEAM -> new SearchHit.ScopeRef(SearchViewer.TEAM, post.getScopeId(), teamNames.get(post.getScopeId()));
-            case ORGANIZATION -> new SearchHit.ScopeRef(SearchViewer.ORGANIZATION, post.getScopeId(),
-                    orgNames.get(post.getScopeId()));
-            // PERSONAL の scope_id は利用者 ID なので返さない
-            default -> new SearchHit.ScopeRef(post.getScopeType().name(), null, null);
-        };
+        if (PostScopeType.TEAM.name().equals(s.scopeType())) {
+            return new SearchHit.ScopeRef(SearchViewer.TEAM, s.scopeId(), teamNames.get(s.scopeId()));
+        }
+        if (PostScopeType.ORGANIZATION.name().equals(s.scopeType())) {
+            return new SearchHit.ScopeRef(SearchViewer.ORGANIZATION, s.scopeId(), orgNames.get(s.scopeId()));
+        }
+        // PERSONAL の scope_id は利用者 ID なので返さない
+        return new SearchHit.ScopeRef(s.scopeType(), null, null);
     }
 }

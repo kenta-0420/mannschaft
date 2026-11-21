@@ -4,6 +4,10 @@ import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.temporal.ChronoField;
 import java.util.List;
 import java.util.Map;
 
@@ -35,6 +39,14 @@ public record SearchHit(
         String url,
         List<String> actions) {
 
+    /** {@link #createdAtOfStoredUtc} が受け取る UTC 格納値の書式（小数秒は 0〜6 桁）。 */
+    private static final DateTimeFormatter STORED_UTC_FORMAT = new DateTimeFormatterBuilder()
+            .appendPattern("yyyy-MM-dd HH:mm:ss")
+            .optionalStart()
+            .appendFraction(ChronoField.NANO_OF_SECOND, 0, 6, true)
+            .optionalEnd()
+            .toFormatter();
+
     /**
      * エンティティの作成日時（アプリ層の {@code LocalDateTime}）を {@code createdAt} の瞬間へ直す。
      *
@@ -49,6 +61,28 @@ public record SearchHit(
     public static OffsetDateTime createdAtOf(LocalDateTime appWallClock) {
         return appWallClock == null ? null
                 : appWallClock.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toOffsetDateTime();
+    }
+
+    /**
+     * 生 SQL が {@code DATE_FORMAT(x.created_at, '%Y-%m-%d %H:%i:%s.%f')} で読んだ DB の格納値（UTC 壁時計）を
+     * {@code createdAt} の瞬間へ直す。
+     *
+     * <p>検索 Contributor は可視性を判定した同じ SQL の行から返却列を取る（ID で行を読み直さない。CMP-261116-0722
+     * PR-6 検分 P1）。DB の時刻列の格納基準は {@code hibernate.jdbc.time_zone: UTC} による UTC 壁時計なので、
+     * UTC として解釈してから {@link UserZoneLocalDateTimeParser#SERVER_ZONE} のオフセットで表す
+     * （エンティティ経由の {@link #createdAtOf} と同じ瞬間・同じオフセットになる）。</p>
+     *
+     * @param storedUtc {@code yyyy-MM-dd HH:mm:ss[.SSSSSS]} 形式の UTC 格納値（null 可）
+     * @return 同一瞬間の {@link OffsetDateTime}（オフセットは SERVER_ZONE のもの）。入力が null なら null
+     */
+    public static OffsetDateTime createdAtOfStoredUtc(String storedUtc) {
+        if (storedUtc == null || storedUtc.isBlank()) {
+            return null;
+        }
+        return LocalDateTime.parse(storedUtc.trim(), STORED_UTC_FORMAT)
+                .atOffset(ZoneOffset.UTC)
+                .atZoneSameInstant(UserZoneLocalDateTimeParser.SERVER_ZONE)
+                .toOffsetDateTime();
     }
 
     /** 作成者。 */

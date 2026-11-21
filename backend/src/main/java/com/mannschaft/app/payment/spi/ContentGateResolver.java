@@ -1,5 +1,7 @@
 package com.mannschaft.app.payment.spi;
 
+import java.util.Collection;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -13,6 +15,19 @@ public interface ContentGateResolver {
     /** 課金判定用の実在実体とscopeを返す。未対応typeや不存在は空を返す。 */
     default Optional<ContentGateTarget> resolveForAccess(Long contentId) {
         return Optional.empty();
+    }
+
+    /**
+     * {@link #resolveForAccess} の一括版（ID 数に比例してクエリを発行しないこと）。
+     *
+     * <p>既定は空（＝どの ID も実在確認できない）で、呼び出し側の課金判定は fail-closed に倒れる
+     * （target 欠落は HIDDEN）。一括で使う種別だけが上書きする。</p>
+     *
+     * @param contentIds コンテンツ ID 集合
+     * @return 実在するコンテンツの ID → 実体と scope（不存在・削除済みは含めない）
+     */
+    default Map<Long, ContentGateTarget> resolveForAccessBatch(Collection<Long> contentIds) {
+        return Map.of();
     }
 
     /**

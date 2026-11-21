@@ -1,6 +1,5 @@
 package com.mannschaft.app.timeline.repository;
 
-import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Query;
@@ -68,8 +67,20 @@ public class TimelinePostKeywordSearchRepository {
     public record DateBound(String localDateTime, String utcOffset) {
     }
 
-    /** 1 件分の取得結果（関連度付き）。 */
-    public record ScoredPost(TimelinePostEntity post, double relevance) {
+    /**
+     * 1 件分の取得結果（すべて可視性を判定した同じ SQL の行から取った値）。
+     *
+     * @param id           投稿 ID
+     * @param content      本文（null 可）
+     * @param userId       投稿者の利用者 ID（null 可）
+     * @param postedAsType 投稿名義（USER / TEAM / ORGANIZATION 等）
+     * @param scopeType    スコープ種別名（TEAM / ORGANIZATION / PUBLIC / PERSONAL）
+     * @param scopeId      スコープ ID（PERSONAL は利用者 ID）
+     * @param createdAtUtc 作成日時の DB 格納値（UTC 壁時計、{@code yyyy-MM-dd HH:mm:ss.SSSSSS}。null 可）
+     * @param relevance    FULLTEXT の関連度
+     */
+    public record ScoredPost(Long id, String content, Long userId, String postedAsType, String scopeType,
+                             Long scopeId, String createdAtUtc, double relevance) {
     }
 
     /** 可視投稿の件数（{@link #find} と同一の WHERE 句）。 */
@@ -81,38 +92,44 @@ public class TimelinePostKeywordSearchRepository {
         return ((Number) query.getSingleResult()).longValue();
     }
 
-    /** 可視投稿を関連度→新しい順に 1 ページ分取得する（{@link #count} と同一の WHERE 句）。 */
+    /**
+     * 可視投稿を関連度→新しい順に 1 ページ分取得する（{@link #count} と同一の WHERE 句）。
+     *
+     * <p>結果に載せる列は、可視性を判定した<b>同じ SQL の SELECT 列</b>から取る。ID だけを取って別クエリで行を
+     * 読み直すと、その間にスコープ移動等と本文の更新が同時にコミットされた場合に、判定時とは別の状態の本文を返して
+     * しまう（CMP-261116-0722 PR-6 検分 P1 の横展開）。作成日時は DB の UTC 格納値を文字列で返す。</p>
+     */
     public List<ScoredPost> find(Condition condition, int offset, int limit) {
         Map<String, Object> params = new HashMap<>();
         String where = where(condition, params);
-        Query query = em.createNativeQuery("SELECT p.id, " + MATCH + " AS relevance FROM timeline_posts p" + where
+        Query query = em.createNativeQuery(
+                "SELECT p.id, p.content, p.user_id, p.posted_as_type, p.scope_type, p.scope_id,"
+                + " DATE_FORMAT(p.created_at, '%Y-%m-%d %H:%i:%s.%f') AS created_at_utc, " + MATCH + " AS relevance"
+                + " FROM timeline_posts p" + where
                 + " ORDER BY relevance DESC, p.created_at DESC, p.id DESC LIMIT :limit OFFSET :offset");
         params.forEach(query::setParameter);
         query.setParameter("limit", limit);
         query.setParameter("offset", offset);
         @SuppressWarnings("unchecked")
         List<Object[]> rows = query.getResultList();
-        if (rows.isEmpty()) {
-            return List.of();
-        }
-        List<Long> ids = new ArrayList<>(rows.size());
-        for (Object[] row : rows) {
-            ids.add(((Number) row[0]).longValue());
-        }
-        Map<Long, TimelinePostEntity> byId = new HashMap<>();
-        for (TimelinePostEntity post : em.createQuery(
-                "SELECT p FROM TimelinePostEntity p WHERE p.id IN :ids", TimelinePostEntity.class)
-                .setParameter("ids", ids).getResultList()) {
-            byId.put(post.getId(), post);
-        }
         List<ScoredPost> result = new ArrayList<>(rows.size());
         for (Object[] row : rows) {
-            TimelinePostEntity post = byId.get(((Number) row[0]).longValue());
-            if (post != null) {
-                result.add(new ScoredPost(post, row[1] == null ? 0d : ((Number) row[1]).doubleValue()));
-            }
+            result.add(new ScoredPost(toLong(row[0]), text(row[1]), toLong(row[2]), text(row[3]), text(row[4]),
+                    toLong(row[5]), text(row[6]), relevance(row[7])));
         }
         return result;
+    }
+
+    private static Long toLong(Object value) {
+        return value == null ? null : ((Number) value).longValue();
+    }
+
+    private static String text(Object value) {
+        return value == null ? null : value.toString();
+    }
+
+    private static double relevance(Object value) {
+        return value == null ? 0d : ((Number) value).doubleValue();
     }
 
     private static String where(Condition c, Map<String, Object> params) {
