@@ -12,7 +12,6 @@ import com.mannschaft.app.shiftbudget.repository.BudgetThresholdAlertRepository;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetAllocationRepository;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetConsumptionRepository;
 import com.mannschaft.app.shiftbudget.repository.TodoBudgetLinkRepository;
-import com.mannschaft.app.shiftbudget.service.MonthlyShiftBudgetCloseService;
 import com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService;
 import com.mannschaft.app.shiftbudget.service.ShiftBudgetSummaryService;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
@@ -24,7 +23,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -104,12 +102,8 @@ class ShiftBudgetEndToEndIntegrationTest {
     private OrganizationRepository organizationRepository;
     @Mock
     private ShiftBudgetFailedEventService failedEventService;
-    /** 自己プロキシのプロバイダ（CMP-260910-1556）。Mockito 構成では被テスト実体を返す。 */
-    @Mock
-    private ObjectProvider<MonthlyShiftBudgetCloseService> closeServiceSelfProvider;
 
     private ShiftBudgetSummaryService summaryService;
-    private MonthlyShiftBudgetCloseService closeService;
 
     private ShiftBudgetAllocationEntity allocation;
     private final List<ShiftBudgetConsumptionEntity> consumptions = new ArrayList<>();
@@ -120,11 +114,6 @@ class ShiftBudgetEndToEndIntegrationTest {
         summaryService = new ShiftBudgetSummaryService(
                 allocationRepository, consumptionRepository, todoBudgetLinkRepository,
                 alertRepository, featureService, accessControlService);
-        closeService = new MonthlyShiftBudgetCloseService(
-                allocationRepository, consumptionRepository, budgetTransactionRepository,
-                featureService, accessControlService, auditLogService,
-                organizationRepository, failedEventService, closeServiceSelfProvider);
-        lenient().when(closeServiceSelfProvider.getObject()).thenReturn(closeService);
 
         allocation = ShiftBudgetAllocationEntity.builder()
                 .organizationId(ORG_ID).teamId(TEAM_ID)
@@ -210,7 +199,7 @@ class ShiftBudgetEndToEndIntegrationTest {
 
     private void addConsumption(Long userId, BigDecimal amount, BigDecimal hours,
                                  ShiftBudgetConsumptionStatus status) {
-        consumptions.add(ShiftBudgetConsumptionEntity.builder()
+        consumptions.add(ShiftBudgetConsumptionEntity.builder().workDate(java.time.LocalDate.of(2026, 6, 15))
                 .allocationId(ALLOCATION_ID)
                 .shiftId(700L)
                 .slotId(800L + consumptions.size())
@@ -299,71 +288,8 @@ class ShiftBudgetEndToEndIntegrationTest {
         assertThat(asViewer.alerts()).hasSize(1);  // alerts は権限によらず実データ
         assertThat(asViewer.consumedAmount()).isEqualByComparingTo("245000");  // 金額は viewer も見える
 
-        // === ステージ 5: 月次締めを実行 → PLANNED→CONFIRMED + 仕訳 INSERT ===
-        loginAsAdmin();
-        // 月次締めは findLiveByOrgAndPeriodRange を使う
-        given(allocationRepository.findLiveByOrgAndPeriodRange(eq(ORG_ID), any(), any()))
-                .willReturn(List.of(allocation));
-        // 既存仕訳なし
-        given(budgetTransactionRepository.existsBySourceTypeAndSourceIdAndTransactionDate(
-                anyString(), eq(ALLOCATION_ID), any()))
-                .willReturn(false);
-        // save は引数をそのまま返す
-        given(consumptionRepository.save(any(ShiftBudgetConsumptionEntity.class)))
-                .willAnswer(inv -> inv.getArgument(0));
-        given(budgetTransactionRepository.save(any(BudgetTransactionEntity.class)))
-                .willAnswer(inv -> inv.getArgument(0));
-
-        MonthlyShiftBudgetCloseService.CloseResult result =
-                closeService.close(ORG_ID, YearMonth.of(2026, 6));
-
-        assertThat(result.closedAllocations()).isEqualTo(1);
-        assertThat(result.closedConsumptions()).isEqualTo(2);
-        assertThat(result.alreadyClosedAllocations()).isEqualTo(0);
-
-        // F08.6 仕訳 INSERT を検証
-        ArgumentCaptor<BudgetTransactionEntity> txCaptor =
-                ArgumentCaptor.forClass(BudgetTransactionEntity.class);
-        verify(budgetTransactionRepository).save(txCaptor.capture());
-        BudgetTransactionEntity tx = txCaptor.getValue();
-        assertThat(tx.getSourceType())
-                .isEqualTo(MonthlyShiftBudgetCloseService.SOURCE_TYPE_SHIFT_BUDGET_MONTHLY);
-        assertThat(tx.getSourceId()).isEqualTo(ALLOCATION_ID);
-        assertThat(tx.getAmount()).isEqualByComparingTo("245000");
-        assertThat(tx.getScopeType()).isEqualTo("TEAM");
-        assertThat(tx.getScopeId()).isEqualTo(TEAM_ID);
-
-        // CONFIRMED 化された consumption を検証 (status は in-place で変わる)
-        assertThat(consumptions).allMatch(c -> c.getStatus() == ShiftBudgetConsumptionStatus.CONFIRMED);
-
-        // 監査ログが SHIFT_BUDGET_MONTHLY_CLOSED で記録されたこと
-        verify(auditLogService).record(
-                eq("SHIFT_BUDGET_MONTHLY_CLOSED"),
-                any(), any(), eq(TEAM_ID), eq(ORG_ID),
-                any(), any(), any(), anyString());
-    }
-
-    @Test
-    @DisplayName("二重月次締め: 既存仕訳ありなら alreadyClosed として skip")
-    void 月次締め冪等性() {
-        loginAsAdmin();
-        addConsumption(5L, new BigDecimal("100000"), new BigDecimal("83.33"),
-                ShiftBudgetConsumptionStatus.PLANNED);
-
-        given(allocationRepository.findLiveByOrgAndPeriodRange(eq(ORG_ID), any(), any()))
-                .willReturn(List.of(allocation));
-        given(budgetTransactionRepository.existsBySourceTypeAndSourceIdAndTransactionDate(
-                anyString(), eq(ALLOCATION_ID), any()))
-                .willReturn(true);  // 既に締め済
-
-        MonthlyShiftBudgetCloseService.CloseResult result =
-                closeService.close(ORG_ID, YearMonth.of(2026, 6));
-
-        assertThat(result.alreadyClosedAllocations()).isEqualTo(1);
-        assertThat(result.closedAllocations()).isEqualTo(0);
-        // 仕訳は INSERT されない
-        verify(budgetTransactionRepository, org.mockito.Mockito.never())
-                .save(any(BudgetTransactionEntity.class));
+        // ステージ 5（月次締め）は CMP-260909-2152 で期間締め（3段・実DB）に作り替えたため、
+        // 実DB・実HTTP の closeperiod パッケージの試験（ClosePeriodCloseIT ほか）で検証する。
     }
 
     @Test

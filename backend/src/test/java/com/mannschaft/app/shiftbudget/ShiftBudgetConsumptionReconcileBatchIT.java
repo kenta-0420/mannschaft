@@ -194,7 +194,7 @@ class ShiftBudgetConsumptionReconcileBatchIT extends AbstractMySqlIntegrationTes
                             .build());
 
             ShiftBudgetConsumptionEntity consumption = consumptionRepository.save(
-                    ShiftBudgetConsumptionEntity.builder()
+                    ShiftBudgetConsumptionEntity.builder().workDate(java.time.LocalDate.of(2026, 6, 15))
                             .allocationId(allocation.getId())
                             .shiftId(scheduleId)
                             .slotId(slot.getId())

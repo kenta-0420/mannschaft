@@ -101,28 +101,33 @@
       "viewFailedEvents": "실패 이벤트 보기",
       "viewAllocations": "할당 목록 보기",
       "loadError": "대시보드 불러오기 실패",
-      "summaryError": "소화 요약 불러오기 실패"
+      "summaryError": "소화 요약 불러오기 실패",
+      "viewClosingSettings": "마감일 설정으로 이동"
     },
     "feature": {
       "disabled": "이 기능은 조직 관리자에 의해 비활성화되었습니다"
     },
     "monthlyClose": {
       "button": "월 마감 실행",
-      "confirm": "{month} 시프트 예산을 확정합니다. 진행하시겠습니까?",
-      "success": "월 마감 완료: {month} (소비 기록 {count} 건 확정)",
+      "confirm": "{period}의 예산을 확정합니다. 계속하시겠습니까?",
+      "success": "월 마감 완료: {period} (소진 레코드 {count}건 확정)",
       "alreadyClosed": "해당 월은 이미 마감되었습니다",
+      "allFailed": "{period} 마감에 실패했습니다(실패 {failed}건). 마감되지 않은 배정이 남아 있습니다. 실패 이벤트를 확인한 후 다시 실행하세요",
+      "partiallyFailed": "{period} 마감이 일부 실패했습니다(마감 {closed}건, 실패 {failed}건). 마감되지 않은 배정이 남아 있습니다. 실패 이벤트를 확인한 후 다시 실행하세요",
       "title": "월차 마감",
-      "yearMonth": "대상 월",
-      "yearMonthHint": "YYYY-MM 형식（예: 2026-04）",
       "execute": "실행",
-      "error": "월차 마감에 실패했습니다"
+      "error": "월차 마감에 실패했습니다",
+      "period": "대상 기간",
+      "periodHint": "종료된 기간만 선택할 수 있습니다",
+      "periodLoadError": "마감 기간을 불러오지 못했습니다"
     },
     "nav": {
       "menuLabel": "시프트 예산",
       "allocations": "예산 할당",
       "dashboard": "예산 대시보드",
       "alerts": "경고 내역",
-      "failedEvents": "실패 이벤트"
+      "failedEvents": "실패 이벤트",
+      "closingSettings": "마감일 설정"
     },
     "scope": {
       "selectOrganization": "시프트 예산 관리는 조직 스코프에서만 이용할 수 있습니다. 스코프 선택기에서 조직을 선택해 주세요."
@@ -164,6 +169,40 @@
         "EXHAUSTED": "재시도 상한 도달",
         "MANUAL_RESOLVED": "수동 보정 완료"
       }
+    },
+    "closingDay": {
+      "title": "마감일 설정",
+      "description": "조직의 월 마감 기간의 마감일을 설정합니다. 변경은 지정한 기간부터 적용되며 과거 기간에는 영향을 주지 않습니다.",
+      "current": "현재 마감일",
+      "endOfMonth": "말일",
+      "dayOption": "{day}일",
+      "dayLabel": "새 마감일",
+      "effectivePeriod": "적용 시작 기간",
+      "reason": "변경 사유",
+      "reasonRequired": "변경 사유는 필수입니다",
+      "previewTitle": "기간 미리보기",
+      "previewBefore": "변경 전",
+      "previewAfter": "변경 후",
+      "submit": "마감일 변경",
+      "success": "마감일을 변경했습니다",
+      "historyTitle": "변경 이력",
+      "historyEmpty": "변경 이력이 없습니다",
+      "readOnly": "마감일은 예산 관리자만 변경할 수 있습니다. 조회만 가능합니다.",
+      "loadError": "마감일 설정을 불러오지 못했습니다",
+      "conflict": "다른 변경과 충돌하여 변경할 수 없습니다. 최신 설정을 불러왔습니다. 입력 내용은 유지되므로 현재 마감일과 이력을 확인한 뒤 다시 제출해 주세요.",
+      "revision": "버전",
+      "appliedFrom": "적용 시작",
+      "previousDay": "변경 전 마감일",
+      "actor": "변경자",
+      "changedAt": "변경 일시",
+      "selectOrganization": "마감일 설정은 조직 범위에서 사용할 수 있습니다. 조직 범위를 선택해 주세요.",
+      "error": "마감일 변경에 실패했습니다"
+    },
+    "closePeriod": {
+      "label": "{start} ~ {end}",
+      "select": "마감할 기간",
+      "empty": "마감할 수 있는 기간이 없습니다",
+      "notEnded": "미종료"
     }
   }
 }

@@ -75,7 +75,10 @@ public enum BudgetErrorCode implements ErrorCode {
     BUDGET_021("BUDGET_021", "指定された添付ファイルが見つかりません", Severity.WARN),
 
     /** 生存する子費目があるため削除不可 */
-    BUDGET_022("BUDGET_022", "子費目が存在するため削除できません", Severity.WARN);
+    BUDGET_022("BUDGET_022", "子費目が存在するため削除できません", Severity.WARN),
+
+    /** 締めが完了していない期間（CMP-260909-2152。未締め＝CLOSED イベントなし。PREPARED を含む）への参照・操作 */
+    BUDGET_024("BUDGET_024", "この期間はまだ締められていないため操作できません", Severity.WARN);
 
     private final String code;
     private final String message;

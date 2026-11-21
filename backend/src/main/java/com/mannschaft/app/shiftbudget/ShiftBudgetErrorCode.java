@@ -189,7 +189,24 @@ public enum ShiftBudgetErrorCode implements ErrorCode {
      * 対応種別のEXHAUSTEDには運用判断による再試行を許容する。
      */
     FAILED_EVENT_NOT_RETRIABLE("SHIFT_BUDGET_031",
-            "対象の失敗イベントは再実行できません", Severity.WARN);
+            "対象の失敗イベントは再実行できません", Severity.WARN),
+
+    // ====================================================================
+    // CMP-260909-2152: 組織の締め日と締め期間（036〜038。035 は β の訂正・ADD、039 は欠番）
+    // ====================================================================
+
+    /** 期間の終了日前の締め（終了日当日以降は締められる）。 (HTTP 409) */
+    CLOSE_PERIOD_NOT_ENDED("SHIFT_BUDGET_036",
+            "この締め期間はまだ終了していないため締められません（終了日当日以降に締めてください）", Severity.WARN),
+
+    /** 締め日が 0〜28（0＝末日）の整数でない（29〜31・-1・null・非数値）。 (HTTP 400) */
+    CLOSING_DAY_INVALID("SHIFT_BUDGET_037",
+            "締め日は 1〜28 の整数、または 0（末日）で指定してください", Severity.WARN),
+
+    /** 締め日変更の競合（古い revision、または適用開始が今日を含む期間・最後の締めより前）。 (HTTP 409) */
+    CLOSING_DAY_CHANGE_CONFLICT("SHIFT_BUDGET_038",
+            "締め日を変更できません（設定が更新されたか、適用開始が下限より前です。最新の設定を取得してやり直してください）",
+            Severity.WARN);
 
     private final String code;
     private final String message;

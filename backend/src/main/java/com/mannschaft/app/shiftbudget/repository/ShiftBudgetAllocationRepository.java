@@ -223,27 +223,6 @@ public interface ShiftBudgetAllocationRepository
                                  @Param("delta") BigDecimal delta);
 
     /**
-     * 指定月（{@code period_start} と {@code period_end} が指定月内に完全包含される）の
-     * 全組織横断の生存割当を取得する（Phase 9-δ 月次締めバッチ用）。
-     *
-     * <p>cron バッチが「全組織を横断して前月分を締める」ユースケースで使用。
-     * 多テナント分離は呼び出し側で考慮不要（バッチは横断的に処理）。</p>
-     */
-    @Query("SELECT a FROM ShiftBudgetAllocationEntity a "
-            + "WHERE a.periodStart >= :monthStart "
-            + "  AND a.periodEnd <= :monthEnd "
-            + "  AND a.deletedAt IS NULL")
-    List<ShiftBudgetAllocationEntity> findLiveByPeriodRange(
-            @Param("monthStart") LocalDate monthStart,
-            @Param("monthEnd") LocalDate monthEnd);
-
-    /**
-     * 指定組織×指定月の生存割当一覧を取得（Phase 9-δ 月次締め API #11 用）。
-     *
-     * <p>{@code period_start ≥ monthStart かつ period_end ≤ monthEnd} の生存レコードを返す。
-     * 多テナント分離のため {@code organization_id} を強制条件に含める。</p>
-     */
-    /**
      * 月次締めのために割当 1 件を<b>排他ロック付きで</b>取得する（CMP-260910-1556）。
      *
      * <p>{@code MonthlyShiftBudgetCloseService#closeOneAllocation} は
@@ -265,13 +244,27 @@ public interface ShiftBudgetAllocationRepository
     @Query("SELECT a FROM ShiftBudgetAllocationEntity a WHERE a.id = :allocationId")
     Optional<ShiftBudgetAllocationEntity> findByIdForUpdate(@Param("allocationId") Long allocationId);
 
-    @Query("SELECT a FROM ShiftBudgetAllocationEntity a "
-            + "WHERE a.organizationId = :organizationId "
-            + "  AND a.periodStart >= :monthStart "
-            + "  AND a.periodEnd <= :monthEnd "
-            + "  AND a.deletedAt IS NULL")
-    List<ShiftBudgetAllocationEntity> findLiveByOrgAndPeriodRange(
-            @Param("organizationId") Long organizationId,
-            @Param("monthStart") LocalDate monthStart,
-            @Param("monthEnd") LocalDate monthEnd);
+    /**
+     * 組織の、開始が指定日以前の生存割当（CMP-260909-2152 締めの追いつき・手動締めの対象）。終了済みキーの絞り込みは呼び出し側が
+     * 期間表で行う。
+     */
+    @Query("SELECT a FROM ShiftBudgetAllocationEntity a WHERE a.organizationId = :organizationId "
+            + "AND a.periodStart <= :date AND a.deletedAt IS NULL ORDER BY a.id")
+    List<ShiftBudgetAllocationEntity> findLiveByOrgStartingOnOrBefore(@Param("organizationId") Long organizationId,
+                                                                      @Param("date") LocalDate date);
+
+    /** 組織の生存割当のうち、期間が [from, to] と重なるもの（締め期間と重なる割当・期間一覧）。 */
+    @Query("SELECT a FROM ShiftBudgetAllocationEntity a WHERE a.organizationId = :organizationId "
+            + "AND a.periodStart <= :to AND a.periodEnd >= :from AND a.deletedAt IS NULL ORDER BY a.id")
+    List<ShiftBudgetAllocationEntity> findLiveByOrgOverlapping(@Param("organizationId") Long organizationId,
+                                                               @Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    /**
+     * CMP-260909-2152: 割当の PREPARED／CLOSED の締めイベントを共有ロック付きで読む（割当の変更・削除の可否判定）。
+     * 通常 SELECT の古いスナップショットで見落とさない。割当ドメインの Repository から自ドメインの表を読むだけ
+     * （Service のコンストラクタを変えない）。
+     */
+    @Query(value = "SELECT e.id FROM shift_budget_monthly_close_events e WHERE e.allocation_id = :allocationId "
+            + "AND e.state IN ('PREPARED', 'CLOSED') FOR SHARE", nativeQuery = true)
+    List<byte[]> lockLiveCloseEventIds(@Param("allocationId") Long allocationId);
 }

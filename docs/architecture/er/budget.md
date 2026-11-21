@@ -2,7 +2,7 @@
 
 > このファイルは自動生成されます。手で編集しないでください。再生成: `cd backend && ./gradlew generateErDiagrams`
 
-- テーブル数: 7
+- テーブル数: 8
 - ビュー数: 0
 
 ## ER 図
@@ -35,6 +35,11 @@ erDiagram
         bigint fiscal_year_id FK
         bigint generated_by "ID参照"
     }
+    budget_shift_close_postings {
+        binary id PK
+        binary close_event_id UK
+        bigint journal_transaction_id FK
+    }
     budget_transaction_attachments {
         bigint id PK
         bigint transaction_id FK
@@ -59,6 +64,7 @@ erDiagram
     users ||..o{ budget_fiscal_years : "ID参照(FKなし) created_by"
     budget_fiscal_years ||--o{ budget_reports : "fiscal_year_id"
     users ||..o{ budget_reports : "ID参照(FKなし) generated_by"
+    budget_transactions |o--o{ budget_shift_close_postings : "journal_transaction_id"
     budget_transactions ||--o{ budget_transaction_attachments : "transaction_id"
     budget_categories ||--o{ budget_transactions : "category_id"
     budget_fiscal_years ||--o{ budget_transactions : "fiscal_year_id"
@@ -100,6 +106,9 @@ mermaid は同一テーブルの自己参照を複数描けず 1 本に畳むた
 | テーブル | 列 | 理由 |
 | --- | --- | --- |
 | `budget_configs` | `over_limit_workflow_id` | 参照先テーブルを特定できない |
+| `budget_shift_close_postings` | `allocation_id` | 参照先テーブルを特定できない |
+| `budget_shift_close_postings` | `close_event_id` | 型が参照先 events.id と不一致（binary ≠ bigint） |
+| `budget_shift_close_postings` | `fiscal_year_id` | 参照先テーブルを特定できない |
 
 ## テーブル定義
 
@@ -188,6 +197,19 @@ mermaid は同一テーブルの自己参照を複数描けず 1 本に畳むた
 | `generated_at` | `datetime` | YES | NULL |  |
 | `created_at` | `datetime` | NO | `CURRENT_TIMESTAMP` （式） |  |
 | `updated_at` | `datetime` | NO | `CURRENT_TIMESTAMP` （式） |  |
+
+### `budget_shift_close_postings`
+
+| 列名 | 型 | NULL | 既定値 | コメント |
+| --- | --- | --- | --- | --- |
+| `id` | `binary(16)` | NO | （なし） |  |
+| `close_event_id` | `binary(16)` | NO | （なし） |  |
+| `allocation_id` | `bigint unsigned` | NO | （なし） |  |
+| `fiscal_year_id` | `bigint unsigned` | NO | （なし） |  |
+| `outcome` | `varchar(16)` | NO | （なし） |  |
+| `journal_transaction_id` | `bigint unsigned` | YES | NULL |  |
+| `reason` | `varchar(40)` | YES | NULL |  |
+| `decided_at` | `datetime(6)` | NO | （なし） |  |
 
 ### `budget_transaction_attachments`
 

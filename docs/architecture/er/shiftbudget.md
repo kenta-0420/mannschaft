@@ -2,7 +2,7 @@
 
 > このファイルは自動生成されます。手で編集しないでください。再生成: `cd backend && ./gradlew generateErDiagrams`
 
-- テーブル数: 5
+- テーブル数: 10
 - ビュー数: 0
 
 ## ER 図
@@ -25,14 +25,38 @@ erDiagram
         bigint budget_category_id "ID参照"
         bigint created_by "ID参照"
     }
+    shift_budget_close_periods {
+        binary id PK
+        bigint organization_id "ID参照"
+    }
+    shift_budget_closing_day_changes {
+        binary id PK
+        binary setting_id FK
+        bigint organization_id "ID参照"
+        bigint actor_user_id "ID参照"
+    }
+    shift_budget_closing_settings {
+        binary id PK
+        bigint organization_id UK "ID参照"
+    }
     shift_budget_consumptions {
         bigint id PK
         bigint allocation_id FK
         bigint user_id "ID参照"
+        binary close_event_id FK
     }
     shift_budget_failed_events {
         bigint id PK
         bigint organization_id "ID参照"
+    }
+    shift_budget_monthly_close_events {
+        binary id PK
+        binary close_period_id FK
+        bigint actor_user_id "ID参照"
+    }
+    shift_budget_record_deferrals {
+        binary id PK
+        binary close_event_id FK
     }
     todo_budget_links {
         bigint id PK
@@ -56,9 +80,18 @@ erDiagram
     projects |o..o{ shift_budget_allocations : "ID参照(FKなし) project_id"
     teams |o..o{ shift_budget_allocations : "ID参照(FKなし) team_id"
     users ||..o{ shift_budget_allocations : "ID参照(FKなし) created_by"
+    organizations ||..o{ shift_budget_close_periods : "ID参照(FKなし) organization_id"
+    organizations ||..o{ shift_budget_closing_day_changes : "ID参照(FKなし) organization_id"
+    shift_budget_closing_settings ||--o{ shift_budget_closing_day_changes : "setting_id"
+    users ||..o{ shift_budget_closing_day_changes : "ID参照(FKなし) actor_user_id"
+    organizations ||..o| shift_budget_closing_settings : "ID参照(FKなし) organization_id"
     shift_budget_allocations ||--o{ shift_budget_consumptions : "allocation_id"
+    shift_budget_monthly_close_events |o--o{ shift_budget_consumptions : "close_event_id"
     users ||..o{ shift_budget_consumptions : "ID参照(FKなし) user_id"
     organizations ||..o{ shift_budget_failed_events : "ID参照(FKなし) organization_id"
+    shift_budget_close_periods ||--o{ shift_budget_monthly_close_events : "close_period_id"
+    users |o..o{ shift_budget_monthly_close_events : "ID参照(FKなし) actor_user_id"
+    shift_budget_monthly_close_events ||--o{ shift_budget_record_deferrals : "close_event_id"
     projects |o..o{ todo_budget_links : "ID参照(FKなし) project_id"
     shift_budget_allocations ||--o{ todo_budget_links : "allocation_id"
     todos |o..o{ todo_budget_links : "ID参照(FKなし) todo_id"
@@ -79,6 +112,9 @@ erDiagram
 | `shift_budget_consumptions` | `shift_id` | 参照先テーブルを特定できない |
 | `shift_budget_consumptions` | `slot_id` | 参照先テーブルを特定できない |
 | `shift_budget_failed_events` | `source_id` | 参照先テーブルを特定できない |
+| `shift_budget_monthly_close_events` | `allocation_id` | 参照先テーブルを特定できない |
+| `shift_budget_monthly_close_events` | `journal_transaction_id` | 参照先テーブルを特定できない |
+| `shift_budget_record_deferrals` | `shift_id` | 参照先テーブルを特定できない |
 
 ## テーブル定義
 
@@ -121,6 +157,43 @@ erDiagram
 | `updated_at` | `datetime` | NO | `CURRENT_TIMESTAMP` （式） |  |
 | `deleted_at` | `datetime` | YES | NULL |  |
 
+### `shift_budget_close_periods`
+
+| 列名 | 型 | NULL | 既定値 | コメント |
+| --- | --- | --- | --- | --- |
+| `id` | `binary(16)` | NO | （なし） |  |
+| `organization_id` | `bigint unsigned` | NO | （なし） |  |
+| `period_key` | `char(7)` | NO | （なし） |  |
+| `period_start` | `date` | NO | （なし） |  |
+| `period_end` | `date` | NO | （なし） |  |
+| `closing_day` | `tinyint unsigned` | NO | （なし） |  |
+| `created_at` | `datetime(6)` | NO | （なし） |  |
+
+### `shift_budget_closing_day_changes`
+
+| 列名 | 型 | NULL | 既定値 | コメント |
+| --- | --- | --- | --- | --- |
+| `id` | `binary(16)` | NO | （なし） |  |
+| `setting_id` | `binary(16)` | NO | （なし） |  |
+| `organization_id` | `bigint unsigned` | NO | （なし） |  |
+| `revision` | `int` | NO | （なし） |  |
+| `effective_period_key` | `char(7)` | NO | （なし） |  |
+| `closing_day` | `tinyint unsigned` | NO | （なし） |  |
+| `previous_closing_day` | `tinyint unsigned` | NO | （なし） |  |
+| `reason` | `varchar(500)` | NO | （なし） |  |
+| `actor_user_id` | `bigint unsigned` | NO | （なし） |  |
+| `created_at` | `datetime(6)` | NO | （なし） |  |
+
+### `shift_budget_closing_settings`
+
+| 列名 | 型 | NULL | 既定値 | コメント |
+| --- | --- | --- | --- | --- |
+| `id` | `binary(16)` | NO | （なし） |  |
+| `organization_id` | `bigint unsigned` | NO | （なし） |  |
+| `revision` | `int` | NO | `0` |  |
+| `created_at` | `datetime(6)` | NO | （なし） |  |
+| `updated_at` | `datetime(6)` | NO | （なし） |  |
+
 ### `shift_budget_consumptions`
 
 | 列名 | 型 | NULL | 既定値 | コメント |
@@ -129,6 +202,7 @@ erDiagram
 | `allocation_id` | `bigint unsigned` | NO | （なし） |  |
 | `shift_id` | `bigint unsigned` | NO | （なし） |  |
 | `slot_id` | `bigint unsigned` | NO | （なし） |  |
+| `work_date` | `date` | NO | （なし） |  |
 | `user_id` | `bigint unsigned` | NO | （なし） |  |
 | `hourly_rate_snapshot` | `decimal(10,2)` | NO | （なし） |  |
 | `hours` | `decimal(5,2)` | NO | （なし） |  |
@@ -143,6 +217,7 @@ erDiagram
 | `updated_at` | `datetime` | NO | `CURRENT_TIMESTAMP` （式） |  |
 | `deleted_at` | `datetime` | YES | NULL |  |
 | `deleted_at_uq` | `datetime` | NO | （なし） |  |
+| `close_event_id` | `binary(16)` | YES | NULL |  |
 
 ### `shift_budget_failed_events`
 
@@ -159,6 +234,44 @@ erDiagram
 | `status` | `varchar(20)` | NO | `PENDING` |  |
 | `created_at` | `datetime` | NO | `CURRENT_TIMESTAMP` （式） |  |
 | `updated_at` | `datetime` | NO | `CURRENT_TIMESTAMP` （式） |  |
+
+### `shift_budget_monthly_close_events`
+
+| 列名 | 型 | NULL | 既定値 | コメント |
+| --- | --- | --- | --- | --- |
+| `id` | `binary(16)` | NO | （なし） |  |
+| `allocation_id` | `bigint unsigned` | NO | （なし） |  |
+| `target_month` | `char(7)` | NO | （なし） |  |
+| `close_period_id` | `binary(16)` | NO | （なし） |  |
+| `journal_date` | `date` | NO | （なし） |  |
+| `state` | `varchar(16)` | NO | （なし） |  |
+| `origin` | `varchar(16)` | NO | `CLOSE` |  |
+| `line_count` | `int` | NO | `0` |  |
+| `planned_total` | `decimal(14,2)` | NO | `0.00` |  |
+| `actor_kind` | `varchar(16)` | NO | （なし） |  |
+| `actor_user_id` | `bigint unsigned` | YES | NULL |  |
+| `prepared_at` | `datetime(6)` | NO | （なし） |  |
+| `closed_at` | `datetime(6)` | YES | NULL |  |
+| `aborted_at` | `datetime(6)` | YES | NULL |  |
+| `journal_transaction_id` | `bigint unsigned` | YES | NULL |  |
+| `active_month` | `char(7)` | YES | NULL |  |
+| `active_journal_date` | `date` | YES | NULL |  |
+
+### `shift_budget_record_deferrals`
+
+| 列名 | 型 | NULL | 既定値 | コメント |
+| --- | --- | --- | --- | --- |
+| `id` | `binary(16)` | NO | （なし） |  |
+| `shift_id` | `bigint unsigned` | NO | （なし） |  |
+| `close_event_id` | `binary(16)` | NO | （なし） |  |
+| `state` | `varchar(16)` | NO | `PENDING` |  |
+| `attempt_count` | `int` | NO | `0` |  |
+| `last_error` | `varchar(500)` | YES | NULL |  |
+| `claimed_by` | `varchar(36)` | YES | NULL |  |
+| `lease_until` | `datetime(6)` | YES | NULL |  |
+| `created_at` | `datetime(6)` | NO | （なし） |  |
+| `resolved_at` | `datetime(6)` | YES | NULL |  |
+| `pending_key` | `binary(16)` | YES | NULL |  |
 
 ### `todo_budget_links`
 

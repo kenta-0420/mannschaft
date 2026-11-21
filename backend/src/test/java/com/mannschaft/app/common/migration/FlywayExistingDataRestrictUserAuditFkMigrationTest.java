@@ -912,13 +912,30 @@ class FlywayExistingDataRestrictUserAuditFkMigrationTest {
      * shift_id/slot_id への FK は 5-B(V115.001) で撤廃済みのため、孤児許容で任意の値（1）を入れる。
      */
     private long insertShiftBudgetConsumption(Connection c, long allocationId, long userId) throws SQLException {
+        // CMP-260909-2152 α（V263）: 消化行の勤務日 work_date を shift_slots.slot_date から復元して NOT NULL 化する。
+        // 枠の無い消化行は推測せず移行エラーにする設計のため、実在する枠を用意する（schedule_id は本試験の関心外。
+        // 親 shift_schedules までは組まず、この1文だけ FK 検査を外して枠行を入れる）。
+        long slotId;
+        try (Statement st = c.createStatement()) {
+            st.execute("SET FOREIGN_KEY_CHECKS = 0");
+            try (PreparedStatement ps = c.prepareStatement("""
+                    INSERT INTO shift_slots (schedule_id, slot_date, start_time, end_time)
+                    VALUES (1, '2026-04-10', '09:00:00', '17:00:00')
+                    """, Statement.RETURN_GENERATED_KEYS)) {
+                ps.executeUpdate();
+                slotId = generatedId(ps);
+            } finally {
+                st.execute("SET FOREIGN_KEY_CHECKS = 1");
+            }
+        }
         try (PreparedStatement ps = c.prepareStatement("""
                 INSERT INTO shift_budget_consumptions
                     (allocation_id, shift_id, slot_id, user_id, hourly_rate_snapshot, hours, amount)
-                VALUES (?, 1, 1, ?, 1200.00, 8.00, 9600.00)
+                VALUES (?, 1, ?, ?, 1200.00, 8.00, 9600.00)
                 """, Statement.RETURN_GENERATED_KEYS)) {
             ps.setLong(1, allocationId);
-            ps.setLong(2, userId);
+            ps.setLong(2, slotId);
+            ps.setLong(3, userId);
             ps.executeUpdate();
             return generatedId(ps);
         }

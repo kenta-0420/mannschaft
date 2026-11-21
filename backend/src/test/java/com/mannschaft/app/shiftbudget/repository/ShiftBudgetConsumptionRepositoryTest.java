@@ -52,7 +52,7 @@ class ShiftBudgetConsumptionRepositoryTest extends AbstractMySqlIntegrationTest 
     private ShiftBudgetConsumptionEntity persistConsumption(
             Long allocationId, Long shiftId, Long slotId, Long userId,
             ShiftBudgetConsumptionStatus status) {
-        ShiftBudgetConsumptionEntity entity = ShiftBudgetConsumptionEntity.builder()
+        ShiftBudgetConsumptionEntity entity = ShiftBudgetConsumptionEntity.builder().workDate(java.time.LocalDate.of(2026, 6, 15))
                 .allocationId(allocationId)
                 .shiftId(shiftId)
                 .slotId(slotId)

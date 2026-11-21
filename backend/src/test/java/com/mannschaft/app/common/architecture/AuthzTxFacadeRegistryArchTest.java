@@ -66,6 +66,11 @@ class AuthzTxFacadeRegistryArchTest {
      * R3 では Facade がここへ届くことを、R4 では tx 本体がここへ届かないことを検査する。
      */
     static final String CHAT_GUARD = "com.mannschaft.app.chat.service.ChatChannelAccessGuard";
+    /**
+     * CMP-260909-2152（シフト予算の締め期間）の認可クラス。組織の実所属＋権限（BUDGET_VIEW／BUDGET_ADMIN）を判定する。
+     * R3 では Facade がここへ届くことを、R4 では tx 本体・段取り役がここへ届かないことを検査する。
+     */
+    static final String SHIFT_BUDGET_POLICY = "com.mannschaft.app.shiftbudget.service.ShiftBudgetScopeAccessPolicy";
 
     private static final String SHIFT = "com.mannschaft.app.shift.";
     private static final String REC = "com.mannschaft.app.recruitment.";
@@ -73,6 +78,8 @@ class AuthzTxFacadeRegistryArchTest {
     private static final String CNF = "com.mannschaft.app.notification.confirmable.";
     private static final String SKL = "com.mannschaft.app.skill.";
     private static final String CHAT = "com.mannschaft.app.chat.";
+    private static final String SBUDGET = "com.mannschaft.app.shiftbudget.";
+    private static final String BUDGET = "com.mannschaft.app.budget.";
 
     /** 登録表の 1 行（Controller#メソッド → 呼ぶべき Facade）。 */
     record Entry(String wave, String controller, String method, String facade) {
@@ -189,6 +196,13 @@ class AuthzTxFacadeRegistryArchTest {
         // WebSocket の投稿（/app/chat.send）も REST と同じ Facade を通す（経路で認可が抜ける非対称を作らない）
         add(list, "W8", CHAT + "controller.ChatWebSocketController", CHAT + "service.ChatMessageFacade",
                 "handleSendMessage");
+        // CMP2152: シフト予算の締め期間（α）。手動締め・締め日設定・締め期間一覧と未計上勤務。認可は ShiftBudgetScopeAccessPolicy
+        add(list, "CMP2152", SBUDGET + "controller.MonthlyShiftBudgetCloseController",
+                SBUDGET + "service.MonthlyShiftBudgetCloseFacade", "close");
+        add(list, "CMP2152", SBUDGET + "controller.ShiftBudgetClosingSettingController",
+                SBUDGET + "service.ShiftBudgetClosingSettingFacade", "get", "change");
+        add(list, "CMP2152", SBUDGET + "controller.ShiftBudgetClosePeriodController",
+                SBUDGET + "service.ShiftBudgetClosePeriodFacade", "listByAllocation", "listByOrganization", "uncountedShifts");
         return List.copyOf(list);
     }
 
@@ -240,6 +254,21 @@ class AuthzTxFacadeRegistryArchTest {
         map.put(CHAT + "service.ChatMessageFacade", List.of(
                 method(CHAT + "service.ChatMessageService"),
                 method(CHAT + "service.ChatChannelService")));
+        // CMP2152（α）: 段取り役と各段の TX は認可を持たない（認可は Facade が Policy で行う）。機能フラグ・監査も TX の外
+        map.put(SBUDGET + "service.MonthlyShiftBudgetCloseFacade", List.of(
+                cls(SBUDGET + "service.MonthlyShiftBudgetCloseCoordinator"),
+                cls(SBUDGET + "service.ShiftBudgetCloseStageService"),
+                cls(BUDGET + "service.ShiftBudgetMonthlyJournalService"),
+                cls(SBUDGET + "service.ShiftBudgetClosePeriodResolver"),
+                cls(SBUDGET + "ShiftBudgetFeatureService")));
+        map.put(SBUDGET + "service.ShiftBudgetClosingSettingFacade", List.of(
+                cls(SBUDGET + "service.ShiftBudgetClosingSettingService"),
+                cls(SBUDGET + "service.ShiftBudgetClosePeriodResolver"),
+                cls(SBUDGET + "ShiftBudgetFeatureService")));
+        map.put(SBUDGET + "service.ShiftBudgetClosePeriodFacade", List.of(
+                cls(SBUDGET + "service.ShiftBudgetClosePeriodResolver"),
+                cls(SBUDGET + "service.ShiftBudgetUncountedShiftService"),
+                cls(SBUDGET + "ShiftBudgetFeatureService")));
         return map;
     }
 
@@ -279,7 +308,7 @@ class AuthzTxFacadeRegistryArchTest {
                     + "findOrThrow・estimateFee は認可を持たない参照。W5 の対象外（試算の作り替えは別課題）で、"
                     + "tx 本体の直呼びが残るため R1 に通せない");
 
-    static final Rules RULES = new Rules(ENTRIES, TX_BODIES, Set.of(ACCESS_CONTROL, GATE, CHAT_GUARD), ACCESS_CONTROL,
+    static final Rules RULES = new Rules(ENTRIES, TX_BODIES, Set.of(ACCESS_CONTROL, GATE, CHAT_GUARD, SHIFT_BUDGET_POLICY), ACCESS_CONTROL,
             THROW_FORM_ALLOWLIST, UNREGISTERED_FACADE_CALLERS);
 
     private final JavaClasses classes = ProductionClasses.get();
@@ -293,11 +322,12 @@ class AuthzTxFacadeRegistryArchTest {
     void 登録表の件数() {
         Map<String, Long> byWave = ENTRIES.stream()
                 .collect(Collectors.groupingBy(Entry::wave, TreeMap::new, Collectors.counting()));
-        assertThat(byWave).containsExactlyInAnyOrderEntriesOf(Map.of(
-                "W1", 9L, "W2", 16L, "W3a", 1L, "W3b", 2L, "W4", 6L, "W5", 11L, "W5周辺", 1L, "W6a", 17L, "W7", 4L,
-                "W8", 22L)); // W6a: CMP-261010-1432 枠間移動で +1 / W8: CMP-261105-1507 chat
-        assertThat(ENTRIES).hasSize(89); // CMP-261010-1432 枠間移動で +1 / CMP-261105-1507 chat で +22
-        assertThat(ENTRIES.stream().map(Entry::key).distinct().count()).as("登録表に重複が無い").isEqualTo(89);
+        assertThat(byWave).containsExactlyInAnyOrderEntriesOf(Map.ofEntries(
+                Map.entry("W1", 9L), Map.entry("W2", 16L), Map.entry("W3a", 1L), Map.entry("W3b", 2L), Map.entry("W4", 6L),
+                Map.entry("W5", 11L), Map.entry("W5周辺", 1L), Map.entry("W6a", 17L), Map.entry("W7", 4L),
+                Map.entry("W8", 22L), Map.entry("CMP2152", 6L))); // W6a: CMP-261010-1432 枠間移動で +1 / W8: CMP-261105-1507 chat / CMP2152: シフト予算の締め期間 α
+        assertThat(ENTRIES).hasSize(95); // CMP-261010-1432 枠間移動で +1 / CMP-261105-1507 chat で +22 / CMP2152 α で +6
+        assertThat(ENTRIES.stream().map(Entry::key).distinct().count()).as("登録表に重複が無い").isEqualTo(95);
         assertThat(ENTRIES.stream().map(Entry::facade).collect(Collectors.toSet()))
                 .as("登録表の Facade と tx 本体の表の Facade が一致する").isEqualTo(TX_BODIES.keySet());
     }

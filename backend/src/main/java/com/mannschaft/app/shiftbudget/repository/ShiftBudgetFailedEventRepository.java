@@ -65,4 +65,13 @@ public interface ShiftBudgetFailedEventRepository extends JpaRepository<ShiftBud
             @Param("orgId") Long organizationId,
             @Param("status") ShiftBudgetFailedEventStatus status,
             Pageable pageable);
+
+    /**
+     * CMP-260909-2152（決定4）: 締めの仕訳衝突（JOURNAL_CONFLICT）が起きた割当×期間キー。日次バッチはこれを自動で締め直さない
+     * （手動の再締めで回収する）。列は {@code source_id（割当ID）, period_key}。
+     */
+    @Query(value = "SELECT f.source_id, JSON_UNQUOTE(JSON_EXTRACT(f.payload, '$.period_key')) FROM shift_budget_failed_events f "
+            + "WHERE f.event_type = 'MONTHLY_CLOSE' AND f.source_id IN (:allocationIds) "
+            + "AND JSON_UNQUOTE(JSON_EXTRACT(f.payload, '$.operation')) = 'JOURNAL_CONFLICT'", nativeQuery = true)
+    List<Object[]> findJournalConflictKeys(@Param("allocationIds") java.util.Collection<Long> allocationIds);
 }

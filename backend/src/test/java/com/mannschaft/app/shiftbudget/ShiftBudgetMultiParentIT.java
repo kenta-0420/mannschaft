@@ -304,7 +304,9 @@ class ShiftBudgetMultiParentIT extends AbstractMySqlIntegrationTest {
     @DisplayName("AC-G125 アーカイブ取消は再解決せず、計上時の割当の組織 X で取り消し・監査記録する（Y のフラグ OFF でも）")
     void 取消は計上時の組織で行う() {
         setShiftBudgetFlag(orgY, false);
-        Fixture f = seedPublishedShift(false);
+        // CMP-260909-2152 α: 取消 TX は消化時点のスケジュール状態を正本として読む（設計 §4.5）。ShiftArchivedEvent を流す以上、
+        // 実際の流れと同じくスケジュール行は ARCHIVED でなければならない（PUBLISHED のままでは整合取消に回り、担当者の消化は残る）。
+        Fixture f = seedPublishedShift(true);
         Long allocX = seedAllocation(orgX, teamT);
         Long consumptionId = seedConsumption(allocX, f);
 
@@ -322,7 +324,8 @@ class ShiftBudgetMultiParentIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("AC-G125 T が X を脱退した後でも、取消は計上時の X で行われる")
     void 脱退後でも計上時の組織で取り消す() {
-        Fixture f = seedPublishedShift(false);
+        // アーカイブイベントを流すので、スケジュール行も ARCHIVED（上の試験と同じ理由。CMP-260909-2152 α §4.5）
+        Fixture f = seedPublishedShift(true);
         Long allocX = seedAllocation(orgX, teamT);
         Long consumptionId = seedConsumption(allocX, f);
         jdbcTemplate.update("DELETE FROM team_org_memberships WHERE team_id = ? AND organization_id = ?",
@@ -475,7 +478,7 @@ class ShiftBudgetMultiParentIT extends AbstractMySqlIntegrationTest {
     private Long seedConsumption(Long allocationId, Fixture f) {
         return transactionTemplate.execute(tx -> {
             ShiftBudgetConsumptionEntity c = consumptionRepository.save(
-                    ShiftBudgetConsumptionEntity.builder()
+                    ShiftBudgetConsumptionEntity.builder().workDate(java.time.LocalDate.of(2026, 6, 15))
                             .allocationId(allocationId)
                             .shiftId(f.scheduleId)
                             .slotId(f.slotId)

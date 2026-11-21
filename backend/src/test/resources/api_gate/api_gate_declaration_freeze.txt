@@ -617,6 +617,8 @@ HTTP|com.mannschaft.app.shiftbudget.controller.BudgetThresholdAlertController|0|
 HTTP|com.mannschaft.app.shiftbudget.controller.MonthlyShiftBudgetCloseController|0|1
 HTTP|com.mannschaft.app.shiftbudget.controller.ShiftBudgetAllocationController|0|5
 HTTP|com.mannschaft.app.shiftbudget.controller.ShiftBudgetCalcController|0|1
+HTTP|com.mannschaft.app.shiftbudget.controller.ShiftBudgetClosePeriodController|0|3
+HTTP|com.mannschaft.app.shiftbudget.controller.ShiftBudgetClosingSettingController|0|2
 HTTP|com.mannschaft.app.shiftbudget.controller.ShiftBudgetFailedEventController|0|3
 HTTP|com.mannschaft.app.shiftbudget.controller.ShiftBudgetSummaryController|0|1
 HTTP|com.mannschaft.app.shiftbudget.controller.TodoBudgetLinkController|0|2

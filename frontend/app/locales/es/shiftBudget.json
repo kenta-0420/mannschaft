@@ -101,28 +101,33 @@
       "viewFailedEvents": "Ver eventos fallidos",
       "viewAllocations": "Ver asignaciones",
       "loadError": "Error al cargar el panel",
-      "summaryError": "Error al cargar el resumen de consumo"
+      "summaryError": "Error al cargar el resumen de consumo",
+      "viewClosingSettings": "Ir a la configuración del día de cierre"
     },
     "feature": {
       "disabled": "Esta función ha sido desactivada por el administrador de la organización"
     },
     "monthlyClose": {
       "button": "Ejecutar Cierre Mensual",
-      "confirm": "Se confirmará el presupuesto de turnos de {month}. ¿Desea continuar?",
-      "success": "Cierre mensual completado: {month} ({count} registros de consumo confirmados)",
+      "confirm": "Se confirmará el presupuesto de {period}. ¿Continuar?",
+      "success": "Cierre mensual completado: {period} ({count} registros de consumo confirmados)",
       "alreadyClosed": "Este mes ya ha sido cerrado",
+      "allFailed": "Error al cerrar {period} ({failed} fallidas). Quedan asignaciones sin cerrar. Revise los eventos fallidos y vuelva a ejecutarlo",
+      "partiallyFailed": "El cierre de {period} falló parcialmente ({closed} cerradas, {failed} fallidas). Quedan asignaciones sin cerrar. Revise los eventos fallidos y vuelva a ejecutarlo",
       "title": "Cierre mensual",
-      "yearMonth": "Mes objetivo",
-      "yearMonthHint": "Formato YYYY-MM (ej.: 2026-04)",
       "execute": "Ejecutar",
-      "error": "Error en el cierre mensual"
+      "error": "Error en el cierre mensual",
+      "period": "Período objetivo",
+      "periodHint": "Solo se pueden seleccionar períodos ya finalizados",
+      "periodLoadError": "No se pudieron obtener los períodos de cierre"
     },
     "nav": {
       "menuLabel": "Presupuesto de turnos",
       "allocations": "Asignaciones de presupuesto",
       "dashboard": "Panel de presupuesto",
       "alerts": "Historial de alertas",
-      "failedEvents": "Eventos fallidos"
+      "failedEvents": "Eventos fallidos",
+      "closingSettings": "Día de cierre"
     },
     "scope": {
       "selectOrganization": "La gestión del presupuesto de turnos solo está disponible en el ámbito organizacional. Seleccione una organización en el selector de ámbito."
@@ -164,6 +169,40 @@
         "EXHAUSTED": "Límite de reintentos alcanzado",
         "MANUAL_RESOLVED": "Resuelto manualmente"
       }
+    },
+    "closingDay": {
+      "title": "Configuración del día de cierre",
+      "description": "Define el día de cierre de los períodos de cierre mensual de la organización. El cambio se aplica desde el período indicado y no afecta a los períodos pasados.",
+      "current": "Día de cierre actual",
+      "endOfMonth": "Fin de mes",
+      "dayOption": "Día {day}",
+      "dayLabel": "Nuevo día de cierre",
+      "effectivePeriod": "Período de inicio de vigencia",
+      "reason": "Motivo del cambio",
+      "reasonRequired": "El motivo es obligatorio",
+      "previewTitle": "Vista previa de períodos",
+      "previewBefore": "Antes",
+      "previewAfter": "Después",
+      "submit": "Cambiar el día de cierre",
+      "success": "Día de cierre cambiado",
+      "historyTitle": "Historial de cambios",
+      "historyEmpty": "No hay cambios",
+      "readOnly": "Solo los administradores de presupuesto pueden cambiar el día de cierre. Solo tienes acceso de lectura.",
+      "loadError": "No se pudo obtener la configuración del día de cierre",
+      "conflict": "El cambio entró en conflicto con otro cambio. Se cargó la configuración más reciente. Tus datos se conservan; revisa el día de cierre actual y el historial y vuelve a enviar.",
+      "revision": "Revisión",
+      "appliedFrom": "Vigente desde",
+      "previousDay": "Día de cierre anterior",
+      "actor": "Cambiado por",
+      "changedAt": "Fecha del cambio",
+      "selectOrganization": "La configuración del día de cierre está disponible en el ámbito de organización. Selecciona un ámbito de organización.",
+      "error": "No se pudo cambiar el día de cierre"
+    },
+    "closePeriod": {
+      "label": "{start} a {end}",
+      "select": "Período a cerrar",
+      "empty": "No hay períodos que se puedan cerrar",
+      "notEnded": "No finalizado"
     }
   }
 }

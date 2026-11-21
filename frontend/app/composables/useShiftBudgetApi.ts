@@ -5,6 +5,9 @@ import type {
   AllocationListResponse,
   AllocationResponse,
   AllocationUpdateRequest,
+  ClosePeriodListResponse,
+  ClosingSettingChangeRequest,
+  ClosingSettingsResponse,
   ConsumptionSummaryResponse,
   FailedEventResponse,
   FailedEventStatus,
@@ -231,6 +234,52 @@ export function useShiftBudgetApi() {
     return res.data
   }
 
+  // ===== 締め日・締め期間（CMP-260909-2152 PR-α） =====
+
+  /**
+   * 組織の締め日設定と変更履歴を取得する（BUDGET_VIEW 以上）。
+   */
+  async function getClosingSettings(organizationId: string): Promise<ClosingSettingsResponse> {
+    const res = await api<{ data: ClosingSettingsResponse }>(`${BASE}/closing-settings`, {
+      headers: orgHeaders(organizationId),
+    })
+    return res.data
+  }
+
+  /**
+   * 締め日を変更する（BUDGET_ADMIN 必須）。最新の設定を返す。
+   * 組織は X-Organization-Id で渡すため、ボディに organization_id を入れない。
+   */
+  async function changeClosingSetting(
+    organizationId: string,
+    request: ClosingSettingChangeRequest,
+  ): Promise<ClosingSettingsResponse> {
+    const res = await api<{ data: ClosingSettingsResponse }>(`${BASE}/closing-settings/changes`, {
+      method: 'POST',
+      headers: orgHeaders(organizationId),
+      body: request,
+    })
+    return res.data
+  }
+
+  /**
+   * 組織の締め期間一覧を取得する。from / to は期間キー（YYYY-MM、範囲は 36 か月以内）。
+   */
+  async function listClosePeriods(
+    organizationId: string,
+    from: string,
+    to: string,
+  ): Promise<ClosePeriodListResponse> {
+    const query = new URLSearchParams()
+    query.set('from', from)
+    query.set('to', to)
+    const res = await api<{ data: ClosePeriodListResponse }>(
+      `${BASE}/close-periods?${query.toString()}`,
+      { headers: orgHeaders(organizationId) },
+    )
+    return res.data
+  }
+
   // ===== 失敗イベント（Phase 10-β） =====
 
   /**
@@ -299,6 +348,10 @@ export function useShiftBudgetApi() {
     acknowledgeAlert,
     // 月次締め
     executeMonthlyClose,
+    // 締め日・締め期間
+    getClosingSettings,
+    changeClosingSetting,
+    listClosePeriods,
     // 失敗イベント
     listFailedEvents,
     retryFailedEvent,

@@ -1081,6 +1081,8 @@ commit して戻った後にだけ SUCCESS を保存する。対象0件でも SU
 | `shared_folders` | `user_id` | 保持 | 共同コンテンツ（既決の除外対象） |
 | `shift_assignments` | `user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
 | `shift_budget_consumptions` | `user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
+| `shift_budget_closing_day_changes` | `actor_user_id` | 保持 | 会計設定の変更履歴（締め日の変更者・理由を追記専用で残す監査記録。会計・契約・決済記録に準ずる保存） |
+| `shift_budget_monthly_close_events` | `actor_user_id` | 保持 | 会計締めの実施記録（締めを起動した利用者。仕訳の根拠として保存。会計・契約・決済記録に準ずる） |
 | `shift_hourly_rates` | `user_id` | 保持 | 会計・契約・決済記録（税法等の保存義務。billing は契約を解約済み） |
 | `shift_requests` | `user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |
 | `shift_swap_requests` | `target_user_id` | 保持 | 業務・契約・申請の記録（相手方・運営が参照する） |

@@ -151,6 +151,9 @@ erDiagram
 | [school](school.md) | `attendance_requirement_rules` | `organization_id` | ID参照 | `organizations` |
 | [service](service.md) | `service_record_templates` | `organization_id` | ID参照 | `organizations` |
 | [shiftbudget](shiftbudget.md) | `shift_budget_allocations` | `organization_id` | ID参照 | `organizations` |
+| [shiftbudget](shiftbudget.md) | `shift_budget_close_periods` | `organization_id` | ID参照 | `organizations` |
+| [shiftbudget](shiftbudget.md) | `shift_budget_closing_day_changes` | `organization_id` | ID参照 | `organizations` |
+| [shiftbudget](shiftbudget.md) | `shift_budget_closing_settings` | `organization_id` | ID参照 | `organizations` |
 | [shiftbudget](shiftbudget.md) | `shift_budget_failed_events` | `organization_id` | ID参照 | `organizations` |
 | [social](social.md) | `social_notification_outbox` | `organization_id` | ID参照 | `organizations` |
 | [succession](succession.md) | `delinquency_escalations` | `organization_id` | ID参照 | `organizations` |

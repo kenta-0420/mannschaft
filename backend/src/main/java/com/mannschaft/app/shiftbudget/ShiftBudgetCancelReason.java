@@ -24,5 +24,11 @@ public enum ShiftBudgetCancelReason {
     RE_PUBLISHED,
 
     /** 月次締め後の遅延キャンセル（取消仕訳パターン） */
-    POST_CLOSE_REVERSE
+    POST_CLOSE_REVERSE,
+
+    /** 勤務枠の日付が締め済み期間へ移動した（CMP-260909-2152。未計上候補として見える） */
+    SLOT_MOVED_TO_CLOSED_PERIOD,
+
+    /** 勤務枠の日付が割当範囲外へ移動した（CMP-260909-2152。失敗イベントを残す） */
+    SLOT_MOVED_OUT_OF_ALLOCATION
 }

@@ -6,7 +6,8 @@
       "allocations": "予算割当",
       "dashboard": "予算ダッシュボード",
       "alerts": "警告履歴",
-      "failedEvents": "失敗イベント"
+      "failedEvents": "失敗イベント",
+      "closingSettings": "締め日設定"
     },
     "scope": {
       "selectOrganization": "シフト予算管理は組織スコープでのみ利用できます。スコープセレクタから組織を選択してください。"
@@ -117,7 +118,8 @@
       "viewFailedEvents": "失敗イベントを見る",
       "viewAllocations": "割当一覧を見る",
       "loadError": "ダッシュボードの取得に失敗しました",
-      "summaryError": "消化サマリの取得に失敗しました"
+      "summaryError": "消化サマリの取得に失敗しました",
+      "viewClosingSettings": "締め日設定へ"
     },
     "feature": {
       "disabled": "この機能は組織管理者によって無効化されています"
@@ -125,13 +127,16 @@
     "monthlyClose": {
       "title": "月次締め",
       "button": "月次締め実行",
-      "yearMonth": "対象月",
-      "yearMonthHint": "YYYY-MM 形式（例: 2026-04）",
-      "confirm": "{month} 分のシフト予算を確定します。よろしいですか？",
+      "confirm": "{period} の予算を確定します。よろしいですか？",
       "execute": "実行",
-      "success": "月次締め完了: {month}（消化レコード {count} 件を確定）",
+      "success": "月次締め完了: {period}（消化レコード {count} 件を確定）",
       "alreadyClosed": "該当月は既に締め済みです",
-      "error": "月次締めに失敗しました"
+      "allFailed": "{period} の締めに失敗しました（失敗 {failed} 件）。未締めの割当が残っています。失敗イベントを確認して再実行してください",
+      "partiallyFailed": "{period} の締めは一部失敗しました（締め {closed} 件・失敗 {failed} 件）。未締めの割当が残っています。失敗イベントを確認して再実行してください",
+      "error": "月次締めに失敗しました",
+      "period": "対象期間",
+      "periodHint": "終了日を迎えた期間のみ選べます",
+      "periodLoadError": "締め期間の取得に失敗しました"
     },
     "failedEvent": {
       "title": "失敗イベント管理",
@@ -164,6 +169,40 @@
         "EXHAUSTED": "再試行上限到達",
         "MANUAL_RESOLVED": "手動補正済"
       }
+    },
+    "closingDay": {
+      "title": "締め日設定",
+      "description": "組織の月次締め期間の締め日を設定します。変更は指定した期間から適用され、過去の期間には影響しません。",
+      "current": "現在の締め日",
+      "endOfMonth": "末日",
+      "dayOption": "{day}日",
+      "dayLabel": "新しい締め日",
+      "effectivePeriod": "適用開始の期間",
+      "reason": "変更理由",
+      "reasonRequired": "変更理由は必須です",
+      "previewTitle": "期間のプレビュー",
+      "previewBefore": "変更前",
+      "previewAfter": "変更後",
+      "submit": "締め日を変更する",
+      "success": "締め日を変更しました",
+      "historyTitle": "変更履歴",
+      "historyEmpty": "変更履歴はありません",
+      "readOnly": "締め日を変更できるのは予算管理者のみです。参照のみ可能です。",
+      "loadError": "締め日設定の取得に失敗しました",
+      "conflict": "他の変更と競合したため、変更できませんでした。最新の設定に更新しました。入力内容は残してあるので、現在の締め日と履歴を確認して、もう一度送信してください",
+      "revision": "版",
+      "appliedFrom": "適用開始",
+      "previousDay": "変更前の締め日",
+      "actor": "変更者",
+      "changedAt": "変更日時",
+      "selectOrganization": "締め日設定は組織スコープで利用できます。組織スコープを選択してください",
+      "error": "締め日の変更に失敗しました"
+    },
+    "closePeriod": {
+      "label": "{start}〜{end}",
+      "select": "締める期間",
+      "empty": "締められる期間がありません",
+      "notEnded": "未終了"
     }
   }
 }

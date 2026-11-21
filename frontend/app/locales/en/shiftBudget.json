@@ -101,28 +101,33 @@
       "viewFailedEvents": "View failed events",
       "viewAllocations": "View allocations",
       "loadError": "Failed to load dashboard",
-      "summaryError": "Failed to load consumption summary"
+      "summaryError": "Failed to load consumption summary",
+      "viewClosingSettings": "Go to closing day settings"
     },
     "feature": {
       "disabled": "This feature has been disabled by the organization administrator"
     },
     "monthlyClose": {
       "button": "Run Monthly Close",
-      "confirm": "Are you sure you want to finalize the shift budget for {month}?",
-      "success": "Monthly close complete: {month} ({count} consumption records finalized)",
+      "confirm": "The budget for {period} will be finalized. Continue?",
+      "success": "Monthly close complete: {period} ({count} consumption records finalized)",
       "alreadyClosed": "This month has already been closed",
+      "allFailed": "Closing {period} failed ({failed} failed). Unclosed allocations remain. Check the failed events and run it again",
+      "partiallyFailed": "Closing {period} partially failed ({closed} closed, {failed} failed). Unclosed allocations remain. Check the failed events and run it again",
       "title": "Monthly closing",
-      "yearMonth": "Target month",
-      "yearMonthHint": "YYYY-MM format (e.g. 2026-04)",
       "execute": "Execute",
-      "error": "Monthly closing failed"
+      "error": "Monthly closing failed",
+      "period": "Target period",
+      "periodHint": "Only periods that have ended can be selected",
+      "periodLoadError": "Failed to load closing periods"
     },
     "nav": {
       "menuLabel": "Shift Budget",
       "allocations": "Budget Allocations",
       "dashboard": "Budget Dashboard",
       "alerts": "Alert History",
-      "failedEvents": "Failed Events"
+      "failedEvents": "Failed Events",
+      "closingSettings": "Closing Day Settings"
     },
     "scope": {
       "selectOrganization": "Shift budget management is only available at organization scope. Please select an organization from the scope selector."
@@ -164,6 +169,40 @@
         "EXHAUSTED": "Retry limit reached",
         "MANUAL_RESOLVED": "Manually resolved"
       }
+    },
+    "closingDay": {
+      "title": "Closing Day Settings",
+      "description": "Set the closing day of the organization's monthly closing periods. A change applies from the period you specify and does not affect past periods.",
+      "current": "Current closing day",
+      "endOfMonth": "End of month",
+      "dayOption": "Day {day}",
+      "dayLabel": "New closing day",
+      "effectivePeriod": "Effective from period",
+      "reason": "Reason for change",
+      "reasonRequired": "A reason is required",
+      "previewTitle": "Period preview",
+      "previewBefore": "Before",
+      "previewAfter": "After",
+      "submit": "Change closing day",
+      "success": "Closing day changed",
+      "historyTitle": "Change history",
+      "historyEmpty": "No changes yet",
+      "readOnly": "Only budget administrators can change the closing day. You have read-only access.",
+      "loadError": "Failed to load closing day settings",
+      "conflict": "The change conflicted with another change. The latest settings have been loaded. Your input is kept; check the current closing day and history, then submit again.",
+      "revision": "Revision",
+      "appliedFrom": "Effective from",
+      "previousDay": "Previous closing day",
+      "actor": "Changed by",
+      "changedAt": "Changed at",
+      "selectOrganization": "Closing day settings are available in an organization scope. Please select an organization scope.",
+      "error": "Failed to change the closing day"
+    },
+    "closePeriod": {
+      "label": "{start} to {end}",
+      "select": "Period to close",
+      "empty": "There are no periods that can be closed",
+      "notEnded": "Not ended"
     }
   }
 }

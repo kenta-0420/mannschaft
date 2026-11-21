@@ -235,6 +235,10 @@
       "description": "Phase 1: 投稿主体一覧（USER + 代表チーム/組織）"
     },
     {
+      "name": "シフト予算 締め期間 (F08.7)",
+      "description": "組織の締め期間一覧と未計上勤務の参照"
+    },
+    {
       "name": "TODO キャッチボール（チーム）",
       "description": "F02.3.1 チームTODO の引き渡し操作と履歴取得"
     },
@@ -591,6 +595,10 @@
       "description": "F03.15 ダッシュボード集約 API"
     },
     {
+      "name": "シフト予算 締め日設定 (F08.7)",
+      "description": "組織ごとの締め日（1〜28・0＝末日）の参照と変更"
+    },
+    {
       "name": "組織コルクボード",
       "description": "F09.8 組織コルクボードCRUD"
     },
@@ -685,6 +693,10 @@
     {
       "name": "組織サブリース",
       "description": "F09.3 組織サブリース管理"
+    },
+    {
+      "name": "シフト予算 月次締め (F08.7)",
+      "description": "期間締めの手動起動 API (組織 BUDGET_ADMIN 必須。SYSTEM_ADMIN 単独は 403)"
     },
     {
       "name": "解散通知",
@@ -1741,10 +1753,6 @@
     {
       "name": "居住者管理（チーム）",
       "description": "F09.1 チーム居住者CRUD"
-    },
-    {
-      "name": "シフト予算 月次締め (F08.7)",
-      "description": "Phase 9-δ 第2段: 月次締めバッチの手動起動 API (BUDGET_ADMIN 必須)"
     },
     {
       "name": "プロモーション管理（組織）",
@@ -61202,7 +61210,7 @@
         "tags": [
           "シフト予算 月次締め (F08.7)"
         ],
-        "summary": "月次締めバッチを手動起動 (PLANNED→CONFIRMED 遷移 + F08.6 仕訳生成)",
+        "summary": "期間締めを手動起動 (PLANNED→CONFIRMED 遷移 + F08.6 仕訳生成)",
         "operationId": "close_1",
         "requestBody": {
           "content": {
@@ -61303,6 +61311,48 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseFailedEventResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shift-budget/closing-settings/changes": {
+      "post": {
+        "tags": [
+          "シフト予算 締め日設定 (F08.7)"
+        ],
+        "summary": "締め日を変更（適用開始は今日を含む期間・最後の締めより後。移行期間を許す）",
+        "operationId": "change",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClosingDayChangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseClosingSettingResponse"
                 }
               }
             }
@@ -81856,7 +81906,7 @@
         ],
         "summary": "PLAN 変更（upgrade）の実行",
         "description": "事前見積りを一回だけ消費して upgrade を予約する。Idempotency-Key 必須。 clientSecret は返さない。",
-        "operationId": "change",
+        "operationId": "change_1",
         "parameters": [
           {
             "name": "contractId",
@@ -132683,6 +132733,135 @@
         }
       }
     },
+    "/api/v1/shift-budget/closing-settings": {
+      "get": {
+        "tags": [
+          "シフト予算 締め日設定 (F08.7)"
+        ],
+        "summary": "締め日設定を取得（設定なしは末日・revision 0）",
+        "operationId": "get_39",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseClosingSettingResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shift-budget/close-periods": {
+      "get": {
+        "tags": [
+          "シフト予算 締め期間 (F08.7)"
+        ],
+        "summary": "組織の締め期間一覧（期間キー from〜to。from\u003eto または36か月超は 400）",
+        "operationId": "listByOrganization_1",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseClosePeriodListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shift-budget/allocations/{id}/monthly-closes/{period}/uncounted-shifts": {
+      "get": {
+        "tags": [
+          "シフト予算 締め期間 (F08.7)"
+        ],
+        "summary": "締め済み期間の未計上勤務（未締めの期間キーは 409）",
+        "operationId": "uncountedShifts",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "period",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseUncountedShiftListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/shift-budget/allocations/{id}/consumption-summary": {
       "get": {
         "tags": [
@@ -132717,6 +132896,47 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/MappingJacksonValue"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shift-budget/allocations/{id}/close-periods": {
+      "get": {
+        "tags": [
+          "シフト予算 締め期間 (F08.7)"
+        ],
+        "summary": "割当と重なる締め期間の一覧",
+        "operationId": "listByAllocation",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseClosePeriodListResponse"
                 }
               }
             }
@@ -144132,7 +144352,7 @@
         "tags": [
           "recall-session-controller"
         ],
-        "operationId": "get_39",
+        "operationId": "get_40",
         "parameters": [
           {
             "name": "sessionId",
@@ -148392,7 +148612,7 @@
         "tags": [
           "disclosure-form-template-controller"
         ],
-        "operationId": "get_40",
+        "operationId": "get_41",
         "parameters": [
           {
             "name": "templateId",
@@ -171050,6 +171270,14 @@
             "type": "string",
             "maxLength": 500,
             "minLength": 0
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date"
+          },
+          "period_start": {
+            "type": "string",
+            "format": "date"
           },
           "version": {
             "type": "integer",
@@ -201659,6 +201887,14 @@
             "type": "integer",
             "format": "int32"
           },
+          "closing_day": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failed_allocations": {
+            "type": "integer",
+            "format": "int32"
+          },
           "failed_organization_ids": {
             "type": "array",
             "items": {
@@ -201669,6 +201905,14 @@
           "organization_id": {
             "type": "integer",
             "format": "int64"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date"
+          },
+          "period_start": {
+            "type": "string",
+            "format": "date"
           },
           "processed_organization_ids": {
             "type": "array",
@@ -201729,6 +201973,92 @@
           "updated_at": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "ClosingDayChangeRequest": {
+        "type": "object",
+        "properties": {
+          "closing_day": {
+            "$ref": "#/components/schemas/JsonNode"
+          },
+          "effective_period_key": {
+            "type": "string",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "effective_period_key",
+          "expected_revision"
+        ]
+      },
+      "ApiResponseClosingSettingResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ClosingSettingResponse"
+          }
+        }
+      },
+      "Change": {
+        "type": "object",
+        "properties": {
+          "actor_user_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "closing_day": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "effective_period_key": {
+            "type": "string"
+          },
+          "previous_closing_day": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ClosingSettingResponse": {
+        "type": "object",
+        "properties": {
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Change"
+            }
+          },
+          "closing_day": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "min_effective_period_key": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -241352,6 +241682,48 @@
           }
         }
       },
+      "ApiResponseClosePeriodListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ClosePeriodListResponse"
+          }
+        }
+      },
+      "ClosePeriodItem": {
+        "type": "object",
+        "properties": {
+          "closing_day": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "ended": {
+            "type": "boolean"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date"
+          },
+          "period_key": {
+            "type": "string"
+          },
+          "period_start": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "ClosePeriodListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClosePeriodItem"
+            }
+          }
+        }
+      },
       "AllocationListResponse": {
         "type": "object",
         "properties": {
@@ -241380,6 +241752,46 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/AllocationListResponse"
+          }
+        }
+      },
+      "ApiResponseUncountedShiftListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/UncountedShiftListResponse"
+          }
+        }
+      },
+      "UncountedShiftItem": {
+        "type": "object",
+        "properties": {
+          "shift_schedule_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "slot_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "user_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "work_date": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "UncountedShiftListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UncountedShiftItem"
+            }
           }
         }
       },

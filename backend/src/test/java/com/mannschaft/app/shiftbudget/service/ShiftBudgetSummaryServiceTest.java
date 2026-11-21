@@ -136,7 +136,7 @@ class ShiftBudgetSummaryServiceTest {
     private ShiftBudgetConsumptionEntity consumptionWith(Long userId, BigDecimal amount,
                                                           BigDecimal hours,
                                                           ShiftBudgetConsumptionStatus status) {
-        return ShiftBudgetConsumptionEntity.builder()
+        return ShiftBudgetConsumptionEntity.builder().workDate(java.time.LocalDate.of(2026, 6, 15))
                 .allocationId(ALLOCATION_ID)
                 .shiftId(700L)
                 .slotId(800L)

@@ -65,7 +65,7 @@
         },
         {
           "name": "初回締め・再締め冪等・部分失敗rollback・同時締め",
-          "evidence": "https://github.com/kenta-0420/mannschaft/blob/588407f98b2b7aecd99897c26bdd3b6129768a82/backend/src/test/java/com/mannschaft/app/shiftbudget/MonthlyShiftBudgetCloseTransactionIT.java"
+          "evidence": "https://github.com/kenta-0420/mannschaft/blob/588407f98b2b7aecd99897c26bdd3b6129768a82/backend/src/test/java/com/mannschaft/app/shiftbudget/closeperiod/ClosePeriodStageIT.java"
         },
         {
           "name": "run11実UI: budget-ui-publish-threshold-80, budget-ui-publish-threshold-100, budget-ui-publish-threshold-120, budget-ui-monthly-close-september",

@@ -6,6 +6,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 /**
  * F08.7 シフト予算割当 更新リクエスト DTO。
@@ -32,6 +33,18 @@ public record AllocationUpdateRequest(
 
         @NotNull
         @JsonProperty("version")
-        Long version
+        Long version,
+
+        /** CMP-260909-2152: 期間の変更は不可。指定されて現在値と異なる場合、締めイベントがあれば 409、なければ 400 で拒否する（変更0）。 */
+        @JsonProperty("period_start")
+        LocalDate periodStart,
+
+        @JsonProperty("period_end")
+        LocalDate periodEnd
 ) {
+
+    /** 期間を指定しない更新（割当額・備考のみ）。 */
+    public AllocationUpdateRequest(BigDecimal allocatedAmount, String note, Long version) {
+        this(allocatedAmount, note, version, null, null);
+    }
 }

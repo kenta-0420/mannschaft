@@ -155,4 +155,69 @@ public interface ShiftBudgetRateQueryRepository
         }
         return new BigDecimal(rows.get(0)[0].toString());
     }
+
+    // ───────────────────────── CMP-260909-2152 公開状態の正本・勤務枠の現在値（read-only ネイティブ） ─────────────────────────
+
+    /**
+     * シフトスケジュールの状態を {@code FOR SHARE} で current read する（CMP-260909-2152 確定設計 r12 §4.5）。
+     * FOR SHARE は TX コミットまで保持され、再公開・アーカイブの UPDATE はこれを待つ。
+     *
+     * <p>列は {@code status, deleted}（deleted は論理削除なら 1）。スケジュールが無ければ空。前例: {@link #lockTeamForUpdate}。</p>
+     */
+    @Query(value = "SELECT s.status AS status, (s.deleted_at IS NOT NULL) AS deleted FROM shift_schedules s "
+            + "WHERE s.id = :scheduleId FOR SHARE", nativeQuery = true)
+    List<Object[]> lockScheduleStatusForShare(@Param("scheduleId") Long scheduleId);
+
+    /** 勤務枠の現在日付（Prepare の勤務枠日付追従。列は {@code id, slot_date}）。 */
+    @Query(value = "SELECT sl.id, sl.slot_date FROM shift_slots sl WHERE sl.id IN (:slotIds)", nativeQuery = true)
+    List<Object[]> findSlotDates(@Param("slotIds") java.util.Collection<Long> slotIds);
+
+    /** 勤務枠の現在日付を1件読む（計上先の解決のやり直し用）。枠が無ければ空。 */
+    default Optional<LocalDate> findSlotDate(Long slotId) {
+        List<Object[]> rows = findSlotDates(java.util.List.of(slotId));
+        if (rows.isEmpty()) {
+            return Optional.empty();
+        }
+        Object v = rows.get(0)[1];
+        if (v instanceof LocalDate d) {
+            return Optional.of(d);
+        }
+        if (v instanceof java.sql.Date d) {
+            return Optional.of(d.toLocalDate());
+        }
+        return Optional.of(LocalDate.parse(String.valueOf(v)));
+    }
+
+    /** シフトの現在の勤務枠と担当（整合取消の「現在の有効な (slot, user) 集合」。列は {@code id, assigned_user_ids}）。 */
+    @Query(value = "SELECT sl.id, sl.assigned_user_ids FROM shift_slots sl WHERE sl.schedule_id = :scheduleId", nativeQuery = true)
+    List<Object[]> findSlotAssignments(@Param("scheduleId") Long scheduleId);
+
+    /** シフトの属するチームと公開状態（再実行がイベントを組み立てるため。列は {@code team_id, status, deleted}）。 */
+    @Query(value = "SELECT s.team_id, s.status, (s.deleted_at IS NOT NULL) FROM shift_schedules s WHERE s.id = :scheduleId",
+            nativeQuery = true)
+    List<Object[]> findScheduleBasics(@Param("scheduleId") Long scheduleId);
+
+    /**
+     * 未計上候補の元になる勤務枠（チーム個別の割当用。公開済み・未削除のスケジュールの枠。列は
+     * {@code slot_id, slot_date, assigned_user_ids, schedule_id}）。
+     */
+    @Query(value = "SELECT sl.id, sl.slot_date, sl.assigned_user_ids, sl.schedule_id FROM shift_slots sl "
+            + "JOIN shift_schedules s ON s.id = sl.schedule_id "
+            + "WHERE s.status = 'PUBLISHED' AND s.deleted_at IS NULL AND s.team_id = :teamId "
+            + "AND sl.slot_date BETWEEN :from AND :to ORDER BY sl.slot_date, sl.id", nativeQuery = true)
+    List<Object[]> findPublishedSlotsForTeam(@Param("teamId") Long teamId, @Param("from") LocalDate from,
+                                             @Param("to") LocalDate to);
+
+    /**
+     * 未計上候補の元になる勤務枠（組織全体の割当用。組織に ACTIVE 加盟するチームの公開済み・未削除のスケジュールの枠）。列は
+     * {@code slot_id, slot_date, assigned_user_ids, schedule_id}。
+     */
+    @Query(value = "SELECT sl.id, sl.slot_date, sl.assigned_user_ids, sl.schedule_id FROM shift_slots sl "
+            + "JOIN shift_schedules s ON s.id = sl.schedule_id "
+            + "WHERE s.status = 'PUBLISHED' AND s.deleted_at IS NULL AND s.team_id IN ("
+            + "     SELECT tom.team_id FROM team_org_memberships tom WHERE tom.organization_id = :organizationId "
+            + "     AND tom.status = 'ACTIVE') "
+            + "AND sl.slot_date BETWEEN :from AND :to ORDER BY sl.slot_date, sl.id", nativeQuery = true)
+    List<Object[]> findPublishedSlotsForOrganization(@Param("organizationId") Long organizationId,
+                                                     @Param("from") LocalDate from, @Param("to") LocalDate to);
 }

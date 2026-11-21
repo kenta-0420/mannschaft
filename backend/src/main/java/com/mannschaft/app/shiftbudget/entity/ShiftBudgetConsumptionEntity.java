@@ -17,7 +17,9 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.GeneratedColumn;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * F08.7 シフト予算消化記録エンティティ。
@@ -48,7 +50,9 @@ import java.time.LocalDateTime;
                 @Index(name = "idx_sbc_allocation_status", columnList = "allocation_id, status"),
                 @Index(name = "idx_sbc_slot", columnList = "slot_id"),
                 @Index(name = "idx_sbc_user_recorded", columnList = "user_id, recorded_at"),
-                @Index(name = "idx_sbc_shift", columnList = "shift_id, status")
+                @Index(name = "idx_sbc_shift", columnList = "shift_id, status"),
+                @Index(name = "idx_sbc_allocation_status_work_date", columnList = "allocation_id, status, work_date"),
+                @Index(name = "idx_sbc_close_event", columnList = "close_event_id")
         }
 )
 @Getter
@@ -67,6 +71,20 @@ public class ShiftBudgetConsumptionEntity extends BaseEntity {
     /** FK → shift_slots。ON DELETE RESTRICT */
     @Column(name = "slot_id", nullable = false)
     private Long slotId;
+
+    /**
+     * 勤務日（CMP-260909-2152）。勤務枠の slot_date（深夜跨ぎは開始日）。締め期間への振り分けの正本。
+     * 枠の日付が変わったら Prepare／再公開で追従する。
+     */
+    @Column(name = "work_date", nullable = false)
+    private LocalDate workDate;
+
+    /**
+     * 締めイベントの印（CMP-260909-2152）。Prepare で付け、Abort で外す。状態は PLANNED のまま。
+     * 旧締めの行には付かない（追加2の合計一致規則）。
+     */
+    @Column(name = "close_event_id")
+    private UUID closeEventId;
 
     /** FK → users。ON DELETE RESTRICT */
     @Column(name = "user_id", nullable = false)
@@ -110,7 +128,11 @@ public class ShiftBudgetConsumptionEntity extends BaseEntity {
     @Column(name = "cancel_reason", length = 40)
     private ShiftBudgetCancelReason cancelReason;
 
-    /** 論理削除タイムスタンプ（運用上は status 遷移を優先するが UNIQUE 制約用に保持） */
+    /**
+     * 論理削除タイムスタンプ（運用上は status 遷移を優先するが UNIQUE 制約用に保持）。
+     * CANCELLED 行では「同じ枠×人で後の取消に置き換えられた取消履歴の退避時刻」として使う
+     * （{@code ShiftBudgetConsumptionRepository#retireLiveCancelledBeforeCancel}。行・内容は残す）。
+     */
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
@@ -139,5 +161,10 @@ public class ShiftBudgetConsumptionEntity extends BaseEntity {
     public void confirm() {
         this.status = ShiftBudgetConsumptionStatus.CONFIRMED;
         this.confirmedAt = LocalDateTime.now();
+    }
+
+    /** 勤務枠の日付変更への追従（CMP-260909-2152。Prepare の勤務枠日付追従）。 */
+    public void moveWorkDate(LocalDate newWorkDate) {
+        this.workDate = newWorkDate;
     }
 }

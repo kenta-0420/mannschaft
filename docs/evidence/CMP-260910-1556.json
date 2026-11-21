@@ -13,7 +13,7 @@
       "tests": [
         {
           "name": "月次締めのトランザクション境界（実DBの統合テスト）",
-          "evidence": "backend/src/test/java/com/mannschaft/app/shiftbudget/MonthlyShiftBudgetCloseTransactionIT.java"
+          "evidence": "backend/src/test/java/com/mannschaft/app/shiftbudget/closeperiod/ClosePeriodStageIT.java"
         },
         {
           "name": "シフト予算の一気通貫の統合テスト",
@@ -31,11 +31,11 @@
       "tests": [
         {
           "name": "月次締めの途中失敗でロールバックされる（実DBの統合テスト）",
-          "evidence": "backend/src/test/java/com/mannschaft/app/shiftbudget/MonthlyShiftBudgetCloseTransactionIT.java"
+          "evidence": "backend/src/test/java/com/mannschaft/app/shiftbudget/closeperiod/ClosePeriodStageIT.java"
         },
         {
           "name": "サービスの単体テスト",
-          "evidence": "backend/src/test/java/com/mannschaft/app/shiftbudget/service/MonthlyShiftBudgetCloseServiceTest.java"
+          "evidence": "backend/src/test/java/com/mannschaft/app/shiftbudget/closeperiod/ClosePeriodCloseIT.java"
         },
         {
           "name": "実機E2E: トリガで失敗を注入しても消化は PLANNED のまま、再実行で二重加算なし",

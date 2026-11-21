@@ -1,0 +1,3 @@
+-- CMP-260909-2152 α: 失敗イベントの種別の CHECK 制約を MONTHLY_CLOSE 込みで作り直す。
+ALTER TABLE shift_budget_failed_events ADD CONSTRAINT chk_sbfe_event_type CHECK (event_type IN
+    ('CONSUMPTION_RECORD', 'CONSUMPTION_CANCEL', 'THRESHOLD_ALERT', 'WORKFLOW_START', 'NOTIFICATION_SEND', 'MONTHLY_CLOSE'));

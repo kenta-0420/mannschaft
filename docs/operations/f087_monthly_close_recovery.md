@@ -12,7 +12,7 @@ Phase 9-δ までは 1 組織失敗で全体停止していたが、Phase 10-β 
 
 ## 2. 対象システム
 
-- バックエンド: `MonthlyShiftBudgetCloseService`、`MonthlyShiftBudgetCloseBatchJob`、`ShiftBudgetFailedEventService`
+- バックエンド: `MonthlyShiftBudgetCloseCoordinator`（段取り役。CMP-260909-2152 で旧 `MonthlyShiftBudgetCloseService` を置換）、`MonthlyShiftBudgetCloseBatchJob`、`ShiftBudgetFailedEventService`
 - DB テーブル: `shift_budget_failed_events`、`shift_budget_allocations`、`shift_budget_consumptions`、`budget_transactions`
 - フィーチャーフラグ: `feature.shift-budget.enabled` / `monthly-close-cron-enabled` / `retry-batch-enabled`
 
@@ -322,9 +322,67 @@ SELECT e.id,
 
 - 設計書: `docs/features/F08.7_shift_budget_integration.md` v1.3 (Phase 10-β 追補)
 - バックエンドコード:
-  - `app/shiftbudget/service/MonthlyShiftBudgetCloseService.java`
+  - `app/shiftbudget/service/MonthlyShiftBudgetCloseCoordinator.java`（3段締めの段取り役）
+  - `app/shiftbudget/service/ShiftBudgetCloseStageService.java`（Prepare／Commit／Abort）
+  - `app/budget/service/ShiftBudgetMonthlyJournalService.java`（段2 Post）
   - `app/shiftbudget/service/ShiftBudgetFailedEventService.java`
   - `app/shiftbudget/batch/MonthlyShiftBudgetCloseBatchJob.java`
   - `app/shiftbudget/batch/ShiftBudgetRetryBatchJob.java`
   - `app/shiftbudget/controller/ShiftBudgetFailedEventController.java`
 - 監査ログイベント: `FAILED_EVENT_RETRIED` / `FAILED_EVENT_RESOLVED` / `SHIFT_BUDGET_MONTHLY_CLOSED`
+
+---
+
+## 9. 期間締め（CMP-260909-2152 PR-α）の運用
+
+締めの単位は暦月から**組織の締め期間**（締め日 `closing_day`、0＝末日）になった。`year_month` は「期間キー（締め日が属する月）」で、
+API #11 の応答に `period_start`／`period_end`／`closing_day` が付く。日次バッチは毎日 02:00 JST（既定 OFF）。
+割当ごとの締めは**先頭の期間から途切れない**: ある期間の締めが失敗（例外・ABORTED・仕訳衝突・割当消滅）したら、同じ割当の後続期間へは進まない（日次バッチも手動の追いつきも同じ）。失敗した期間が締まれば翌日の日次バッチ（または手動締めの追いつき）が古い順に再開する。
+
+### 9.1 3段締めの途中停止からの復旧
+
+締めは割当×期間ごとに Prepare → Post → Commit（または Abort）の3段で、各段は独立 TX。途中で止まっても**同じ API／バッチを再実行すれば**
+次回が PREPARED イベントを見つけて段2 Post から再開し、1回だけ収束する（冪等。仕訳・確定額は増えない）。
+
+```sql
+-- 途中停止（PREPARED のまま）の締めイベントと、印の付いた PLANNED の件数
+SELECT e.allocation_id, e.target_month, e.state, e.line_count, e.planned_total, e.prepared_at,
+       (SELECT COUNT(*) FROM shift_budget_consumptions c WHERE c.close_event_id = e.id) AS marked
+  FROM shift_budget_monthly_close_events e
+ WHERE e.state = 'PREPARED' ORDER BY e.prepared_at;
+```
+
+- **Commit の件数・合計不一致（失敗イベント `COMMIT_MISMATCH`）**: Commit TX はロールバック済みでイベントは PREPARED・投稿判定は POSTED のまま残る（自動再試行の対象外）。
+  印付き PLANNED の金額・件数を手作業で Prepare 時（`line_count`／`planned_total`）へ戻してから、手動締めを再実行して Commit をやり直す。
+- **年度 CLOSED（`POST_FY_CLOSED`）**: 判定 ABORTED・イベント ABORTED・印外れ。年度を reopen したあとの再締めが新しい試行として CLOSED に収束する（ABORTED は履歴に残る）。
+- **仕訳衝突（`JOURNAL_CONFLICT`）**: 同じ割当・同じ仕訳日の生存仕訳が既にある。日次バッチはこの割当×期間を自動で締め直さない。
+  既存仕訳を確認・解消してから**手動で**再締めする。
+- **締め後の取消（`CANCEL_AFTER_CLOSE`）**: 締め済みの CONFIRMED は取消さない。訂正（β）の CANCEL で対応する。
+- **勤務枠の移動（`SLOT_MOVED_OUT_OF_ALLOCATION`／取消理由 `SLOT_MOVED_TO_CLOSED_PERIOD`）**: 移動先が割当範囲外・締め済み期間の PLANNED は取消される。
+  締め済み期間への移動は未計上候補（`GET /allocations/{id}/monthly-closes/{期間キー}/uncounted-shifts`）に出る。
+
+### 9.2 遅延記録（`shift_budget_record_deferrals`）の回収
+
+締めの PREPARED を理由に記録・取消ができなかったシフトは、遅延行（シフト×イベントごとに PENDING 1件）に入り、Commit／Abort 直後に段取り役が再実行する。
+取りこぼし（再実行前の停止・リース切れ）は15分ごとの遅延記録回収バッチ（`ShiftBudgetDeferralRecoveryBatchJob`。日次締め cron・失敗イベント再試行バッチの有効化とは独立に**常時**動く）と、日次バッチ（有効時）が回収する。
+
+```sql
+SELECT shift_id, state, attempt_count, last_error, claimed_by, lease_until, created_at
+  FROM shift_budget_record_deferrals WHERE state = 'PENDING' ORDER BY created_at;
+```
+
+`last_error` が残る PENDING は再実行が失敗している（失敗イベント `DEFERRAL_REPLAY_FAILED`）。原因を除去すれば次の回収で REPLAYED になる。
+
+### 9.3 migration の事前検査と開発DBの作り直し
+
+α の migration（V263 系の複数ファイル。説明に `shift_budget_close_periods` を含む作成ファイルの major）の適用前に、起動時の事前検査（repair より前）が読み取りだけで検査し、
+**異常があれば異常行 ID を示して起動を止める**（スキーマ・データ・Flyway 履歴は変わらない）。
+
+| 異常 | 対応 |
+|---|---|
+| 勤務枠が無く `work_date` を復元できない消化行（`shift_budget_consumptions.id`） | 推測値は入れない。開発DBは該当行を削除するか DB を作り直す |
+| 月末日以外・同割当同月2件以上・割当なしの生存旧月次仕訳（`budget_transactions.id`） | 該当仕訳を確認・是正（V209 が論理削除した行は対象外） |
+| 旧 #4560 の V261 で作られた表（`shift_budget_monthly_close_events` など）が残っている | 旧版の開発DBは作り直す（β は別 major の migration） |
+
+- 適用は**保守停止中**（全インスタンス停止・cron OFF）に行う。途中障害は失敗ファイルが未適用のまま残り、原因を除去して再起動すれば（自動 repair → 再適用）同じ最終状態に収束する。
+- CLI／Gradle で Flyway を直接実行する場合は事前検査が走らないため、上の異常を同じ SELECT で事前に確認する。migration 内の一時表＋CHECK が防御として残り、異常なら失敗する。

@@ -92,6 +92,10 @@ class ShiftBudgetPublishedEventListenerTest {
                 consumptionService, slotRepository, hourlyRateRepository,
                 auditLogService, objectMapper, thresholdAlertEvaluationService, failedEventService,
                 eventPublisher);
+        // CMP-260909-2152: 記録の結果は RecordResult。既定は記録成功（個別のテストが上書きする）
+        org.mockito.Mockito.lenient().when(consumptionService.recordSingleConsumption(
+                        any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(com.mannschaft.app.shiftbudget.service.ShiftBudgetConsumptionService.RecordResult.RECORDED);
     }
 
     private ShiftSlotEntity sampleSlotWithUser(Long slotId, Long userId) {
@@ -145,7 +149,7 @@ class ShiftBudgetPublishedEventListenerTest {
 
         listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
 
-        verify(consumptionService, never()).recordSingleConsumption(any(), any(), any(), any(), any(), any());
+        verify(consumptionService, never()).recordSingleConsumption(any(), any(), any(), any(), any(), any(), any());
         verify(auditLogService, never()).record(any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
@@ -162,7 +166,7 @@ class ShiftBudgetPublishedEventListenerTest {
         listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
 
         verify(featureService, never()).isEnabled(any());
-        verify(consumptionService, never()).recordSingleConsumption(any(), any(), any(), any(), any(), any());
+        verify(consumptionService, never()).recordSingleConsumption(any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -179,7 +183,7 @@ class ShiftBudgetPublishedEventListenerTest {
         listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
 
         // 消化記録は呼ばない（no-op）
-        verify(consumptionService, never()).recordSingleConsumption(any(), any(), any(), any(), any(), any());
+        verify(consumptionService, never()).recordSingleConsumption(any(), any(), any(), any(), any(), any(), any());
         // 監査ログには 0/1 件として記録される（計上先の組織は確定しないので null）
         verify(auditLogService).record(eq("SHIFT_BUDGET_CONSUMPTION_RECORDED"),
                 eq(USER_ID), eq(null), eq(TEAM_ID), eq(null),
@@ -218,7 +222,7 @@ class ShiftBudgetPublishedEventListenerTest {
 
         verify(consumptionService, times(1)).recordSingleConsumption(
                 eq(ALLOCATION_ID), eq(SCHEDULE_ID), eq(7L), eq(USER_ID),
-                eq(new BigDecimal("1200")), any());
+                eq(new BigDecimal("1200")), any(), any());
         verify(auditLogService).record(eq("SHIFT_BUDGET_CONSUMPTION_RECORDED"),
                 eq(USER_ID), eq(null), eq(TEAM_ID), eq(ORG_ID),
                 any(), any(), any(), any());
@@ -255,7 +259,7 @@ class ShiftBudgetPublishedEventListenerTest {
 
         org.mockito.BDDMockito.willThrow(new IllegalStateException("CONFIRMED record exists"))
                 .given(consumptionService).recordSingleConsumption(
-                        any(), any(), any(), any(), any(), any());
+                        any(), any(), any(), any(), any(), any(), any());
 
         // 例外を握って監査ログ完走することを確認
         listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
@@ -305,7 +309,7 @@ class ShiftBudgetPublishedEventListenerTest {
 
         // 是正前は hourlyRate=0 で記録が「成功」していた。0 円の消化行を作ってはならない。
         verify(consumptionService, never()).recordSingleConsumption(
-                any(), any(), any(), any(), any(), any());
+                any(), any(), any(), any(), any(), any(), any());
         // 記録していない以上、閾値判定を呼ぶ意味も無い（0% のまま再評価しても何も起きない）
         verify(thresholdAlertEvaluationService, never()).evaluateAndTrigger(any());
     }
@@ -428,7 +432,7 @@ class ShiftBudgetPublishedEventListenerTest {
 
         listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
 
-        verify(consumptionService, never()).recordSingleConsumption(any(), any(), any(), any(), any(), any());
+        verify(consumptionService, never()).recordSingleConsumption(any(), any(), any(), any(), any(), any(), any());
         verify(eventPublisher).publishEvent(
                 eq(new com.mannschaft.app.shiftbudget.event.ShiftBudgetHourlyRateMissingEvent(
                         ORG_ID, TEAM_ID, "team-alpha", SCHEDULE_ID, List.of(USER_ID))));
@@ -478,12 +482,12 @@ class ShiftBudgetPublishedEventListenerTest {
                         .effectiveFrom(LocalDate.of(2026, 1, 1)).build()));
         org.mockito.BDDMockito.willThrow(new RuntimeException("insert failed"))
                 .given(consumptionService).recordSingleConsumption(
-                        eq(ALLOCATION_ID), eq(SCHEDULE_ID), eq(7L), eq(USER_ID), any(), any());
+                        eq(ALLOCATION_ID), eq(SCHEDULE_ID), eq(7L), eq(USER_ID), any(), any(), any());
 
         listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
 
         verify(consumptionService).recordSingleConsumption(
-                eq(ALLOCATION_ID), eq(SCHEDULE_ID), eq(8L), eq(otherUser), any(), any());
+                eq(ALLOCATION_ID), eq(SCHEDULE_ID), eq(8L), eq(otherUser), any(), any(), any());
         org.assertj.core.api.Assertions.assertThat(capturedFailurePayload())
                 .containsEntry("reason", "RECORD_FAILED")
                 .containsEntry("slot_id", 7L)
@@ -492,6 +496,98 @@ class ShiftBudgetPublishedEventListenerTest {
                 .containsEntry("hours", "4.00");
         verify(auditLogService, never()).record(eq("SHIFT_BUDGET_CONSUMPTION_FAILED"),
                 any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    // ===== CMP-260909-2152 Codex 再検分 [P2-1]: 再試行中の勤務日変更で計上先の組織が A→B に変わる =====
+
+    private static final Long ORG_B = 2L;
+    private static final Long ALLOCATION_B = 43L;
+    private static final LocalDate DATE_A = LocalDate.of(2026, 6, 15);
+    private static final LocalDate DATE_B = LocalDate.of(2026, 7, 15);
+
+    /** 枠は当初 DATE_A（組織 A の割当）。A の割当で記録するとロック集合不一致になり、読み直すと DATE_B（組織 B の割当）へ移っている。 */
+    private void givenSlotMovesFromOrgAToOrgB(boolean orgBEnabled) throws Exception {
+        given(slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(SCHEDULE_ID))
+                .willReturn(List.of(slotOn(7L, USER_ID, DATE_A)));
+        given(allocationRepository.findOrganizationIdsWithTeamAllocationContaining(TEAM_ID, DATE_A))
+                .willReturn(List.of(ORG_ID));
+        given(allocationRepository.findOrganizationIdsWithTeamAllocationContaining(TEAM_ID, DATE_B))
+                .willReturn(List.of(ORG_B));
+        ShiftBudgetAllocationEntity allocA = allocationWithId();
+        ShiftBudgetAllocationEntity allocB = allocationWithId().toBuilder().organizationId(ORG_B)
+                .periodStart(LocalDate.of(2026, 7, 1)).periodEnd(LocalDate.of(2026, 7, 31)).build();
+        java.lang.reflect.Field idField = allocB.getClass().getSuperclass().getDeclaredField("id");
+        idField.setAccessible(true);
+        idField.set(allocB, ALLOCATION_B);
+        given(allocationRepository.findContainingPeriod(ORG_ID, TEAM_ID, DATE_A)).willReturn(Optional.of(allocA));
+        org.mockito.Mockito.lenient().when(allocationRepository.findContainingPeriod(ORG_B, TEAM_ID, DATE_B))
+                .thenReturn(Optional.of(allocB));
+        given(featureService.isEnabled(ORG_ID)).willReturn(true);
+        given(featureService.isEnabled(ORG_B)).willReturn(orgBEnabled);
+        org.mockito.Mockito.lenient().when(hourlyRateRepository.findEffectiveRate(eq(USER_ID), eq(TEAM_ID), any()))
+                .thenReturn(Optional.of(ShiftHourlyRateEntity.builder()
+                        .userId(USER_ID).teamId(TEAM_ID).hourlyRate(new BigDecimal("1200"))
+                        .effectiveFrom(LocalDate.of(2026, 1, 1)).build()));
+        org.mockito.BDDMockito.willThrow(new com.mannschaft.app.shiftbudget.service.ShiftBudgetLockSetChangedException("moved"))
+                .given(consumptionService).recordSingleConsumption(
+                        eq(ALLOCATION_ID), eq(SCHEDULE_ID), eq(7L), eq(USER_ID), any(), any(), eq(DATE_A));
+        given(rateQueryRepository.findSlotDate(7L)).willReturn(Optional.of(DATE_B));
+    }
+
+    @Test
+    @DisplayName("CMP-260909-2152 P2-1: 再解決後の組織 B が機能 OFF なら B の割当へ記録せず、A にも B にも監査を残さない")
+    void 再解決後の組織が機能OFFなら記録しない() throws Exception {
+        givenSlotMovesFromOrgAToOrgB(false);
+
+        listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
+
+        verify(consumptionService, never()).recordSingleConsumption(
+                eq(ALLOCATION_B), any(), any(), any(), any(), any(), any());
+        verify(auditLogService, never()).record(eq("SHIFT_BUDGET_CONSUMPTION_RECORDED"),
+                any(), any(), any(), eq(ORG_ID), any(), any(), any(), any());
+        verify(auditLogService, never()).record(eq("SHIFT_BUDGET_CONSUMPTION_RECORDED"),
+                any(), any(), any(), eq(ORG_B), any(), any(), any(), any());
+        verify(failedEventService, never()).recordFailure(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("CMP-260909-2152 P2-1: 再解決後の組織 B が機能 ON なら B へ記録し、監査・閾値判定は B に帰属する（A に残さない）")
+    void 再解決後の組織へ集計と監査を帰属させる() throws Exception {
+        givenSlotMovesFromOrgAToOrgB(true);
+
+        listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
+
+        verify(consumptionService).recordSingleConsumption(
+                eq(ALLOCATION_B), eq(SCHEDULE_ID), eq(7L), eq(USER_ID), any(), any(), eq(DATE_B));
+        verify(auditLogService).record(eq("SHIFT_BUDGET_CONSUMPTION_RECORDED"),
+                eq(USER_ID), eq(null), eq(TEAM_ID), eq(ORG_B), any(), any(), any(),
+                org.mockito.ArgumentMatchers.contains("\"recorded_count\":1"));
+        verify(auditLogService, never()).record(eq("SHIFT_BUDGET_CONSUMPTION_RECORDED"),
+                any(), any(), any(), eq(ORG_ID), any(), any(), any(), any());
+        verify(thresholdAlertEvaluationService).evaluateAndTrigger(ALLOCATION_B);
+    }
+
+    @Test
+    @DisplayName("CMP-260909-2152 P2-1: 再解決後の組織 B で記録が失敗したら、失敗イベントは B に B の割当・勤務日で残す")
+    void 再解決後の記録失敗は組織Bに帰属する() throws Exception {
+        givenSlotMovesFromOrgAToOrgB(true);
+        org.mockito.BDDMockito.willThrow(new RuntimeException("insert failed"))
+                .given(consumptionService).recordSingleConsumption(
+                        eq(ALLOCATION_B), eq(SCHEDULE_ID), eq(7L), eq(USER_ID), any(), any(), eq(DATE_B));
+
+        listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
+
+        @SuppressWarnings("unchecked")
+        org.mockito.ArgumentCaptor<java.util.Map<String, Object>> payload =
+                org.mockito.ArgumentCaptor.forClass(java.util.Map.class);
+        verify(failedEventService).recordFailure(eq(ORG_B),
+                eq(com.mannschaft.app.shiftbudget.ShiftBudgetFailedEventType.CONSUMPTION_RECORD),
+                eq(SCHEDULE_ID), payload.capture(), any());
+        org.assertj.core.api.Assertions.assertThat(payload.getValue())
+                .containsEntry("organization_id", ORG_B)
+                .containsEntry("allocation_id", ALLOCATION_B)
+                .containsEntry("slot_date", "2026-07-15");
+        verify(failedEventService, never()).recordFailure(eq(ORG_ID), any(), any(), any(), any());
     }
 
     private ShiftSlotEntity slotOn(Long slotId, Long userId, LocalDate date) throws Exception {

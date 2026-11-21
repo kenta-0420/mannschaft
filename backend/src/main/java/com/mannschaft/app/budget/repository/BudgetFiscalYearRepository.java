@@ -2,7 +2,9 @@ package com.mannschaft.app.budget.repository;
 
 import com.mannschaft.app.budget.BudgetFiscalYearStatus;
 import com.mannschaft.app.budget.entity.BudgetFiscalYearEntity;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -55,4 +57,11 @@ public interface BudgetFiscalYearRepository extends JpaRepository<BudgetFiscalYe
             @Param("scopeType") String scopeType,
             @Param("scopeId") Long scopeId,
             @Param("today") LocalDate today);
+
+    /**
+     * CMP-260909-2152: 年度行を {@code FOR UPDATE} で取る（締めの段2 Post。年度クローズとの直列化のため、判定行より先に取る）。
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT fy FROM BudgetFiscalYearEntity fy WHERE fy.id = :id")
+    Optional<BudgetFiscalYearEntity> findByIdForUpdate(@Param("id") Long id);
 }

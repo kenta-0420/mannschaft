@@ -37,7 +37,7 @@ final class ShiftBudgetConsumptionCancelRaceTestFixture {
 
     static ShiftBudgetConsumptionEntity consumption(Long allocationId, Long scheduleId, Long slotId,
                                                      BigDecimal amount, ShiftBudgetConsumptionStatus status) {
-        return ShiftBudgetConsumptionEntity.builder().allocationId(allocationId).shiftId(scheduleId)
+        return ShiftBudgetConsumptionEntity.builder().workDate(java.time.LocalDate.of(2026, 6, 15)).allocationId(allocationId).shiftId(scheduleId)
                 .slotId(slotId).userId(9173L).hourlyRateSnapshot(amount).hours(BigDecimal.ONE)
                 .amount(amount).currency("JPY").status(status).recordedAt(LocalDateTime.now()).build();
     }

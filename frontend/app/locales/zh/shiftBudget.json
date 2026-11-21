@@ -101,28 +101,33 @@
       "viewFailedEvents": "查看失败事件",
       "viewAllocations": "查看分配列表",
       "loadError": "获取仪表盘失败",
-      "summaryError": "获取消化摘要失败"
+      "summaryError": "获取消化摘要失败",
+      "viewClosingSettings": "前往结算日设置"
     },
     "feature": {
       "disabled": "此功能已被组织管理员禁用"
     },
     "monthlyClose": {
       "button": "执行月度结算",
-      "confirm": "将结算 {month} 的班次预算，确定要继续吗？",
-      "success": "月度结算完成：{month}（已确定消耗记录 {count} 条）",
+      "confirm": "将确定 {period} 的预算。确定继续吗？",
+      "success": "月度结算完成：{period}（已确定 {count} 条消耗记录）",
       "alreadyClosed": "该月份已结算",
+      "allFailed": "{period} 的结账失败（失败 {failed} 件）。仍有未结账的分配。请查看失败事件后重新执行",
+      "partiallyFailed": "{period} 的结账部分失败（已结账 {closed} 件、失败 {failed} 件）。仍有未结账的分配。请查看失败事件后重新执行",
       "title": "月度结算",
-      "yearMonth": "目标月份",
-      "yearMonthHint": "YYYY-MM格式（例: 2026-04）",
       "execute": "执行",
-      "error": "月度结算失败"
+      "error": "月度结算失败",
+      "period": "目标期间",
+      "periodHint": "只能选择已结束的期间",
+      "periodLoadError": "获取结算期间失败"
     },
     "nav": {
       "menuLabel": "班次预算",
       "allocations": "预算分配",
       "dashboard": "预算仪表盘",
       "alerts": "警告历史",
-      "failedEvents": "失败事件"
+      "failedEvents": "失败事件",
+      "closingSettings": "结算日设置"
     },
     "scope": {
       "selectOrganization": "班次预算管理仅在组织范围内可用。请从范围选择器中选择一个组织。"
@@ -164,6 +169,40 @@
         "EXHAUSTED": "已达重试上限",
         "MANUAL_RESOLVED": "手动补正完成"
       }
+    },
+    "closingDay": {
+      "title": "结算日设置",
+      "description": "设置组织每月结算期间的结算日。变更从指定期间开始生效，不影响过去的期间。",
+      "current": "当前结算日",
+      "endOfMonth": "月末",
+      "dayOption": "{day}日",
+      "dayLabel": "新的结算日",
+      "effectivePeriod": "生效起始期间",
+      "reason": "变更原因",
+      "reasonRequired": "必须填写变更原因",
+      "previewTitle": "期间预览",
+      "previewBefore": "变更前",
+      "previewAfter": "变更后",
+      "submit": "变更结算日",
+      "success": "结算日已变更",
+      "historyTitle": "变更历史",
+      "historyEmpty": "暂无变更历史",
+      "readOnly": "只有预算管理员可以变更结算日。您只有查看权限。",
+      "loadError": "获取结算日设置失败",
+      "conflict": "与其他变更冲突，无法变更。已加载最新设置。您的输入已保留，请确认当前截止日和历史记录后重新提交。",
+      "revision": "版本",
+      "appliedFrom": "生效起始",
+      "previousDay": "变更前的结算日",
+      "actor": "变更人",
+      "changedAt": "变更时间",
+      "selectOrganization": "结算日设置仅在组织范围内可用。请选择组织范围。",
+      "error": "变更结算日失败"
+    },
+    "closePeriod": {
+      "label": "{start} 至 {end}",
+      "select": "要结算的期间",
+      "empty": "没有可结算的期间",
+      "notEnded": "未结束"
     }
   }
 }

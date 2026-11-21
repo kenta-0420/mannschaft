@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -27,6 +28,22 @@ public record MonthlyCloseResponse(
 
         @JsonProperty("year_month")
         String yearMonth,
+
+        /** CMP-260909-2152: 締めた期間の開始日（year_month は期間キー＝締め日が属する月） */
+        @JsonProperty("period_start")
+        LocalDate periodStart,
+
+        /** CMP-260909-2152: 締めた期間の終了日（締め日） */
+        @JsonProperty("period_end")
+        LocalDate periodEnd,
+
+        /** CMP-260909-2152: この期間の締め日（0＝末日） */
+        @JsonProperty("closing_day")
+        int closingDay,
+
+        /** CMP-260909-2152: 失敗（中止・例外）した割当×期間の件数 */
+        @JsonProperty("failed_allocations")
+        int failedAllocations,
 
         /** 今回新規に締めた allocation 件数（全組織合算） */
         @JsonProperty("closed_allocations")

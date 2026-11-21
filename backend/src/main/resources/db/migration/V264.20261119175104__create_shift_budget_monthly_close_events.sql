@@ -1,0 +1,31 @@
+-- CMP-260909-2152 α: 割当×締め期間の締めイベント（3段締めの状態 PREPARED／CLOSED／ABORTED。ABORTED は履歴として残す）。
+-- active_month／active_journal_date は ABORTED を除いた一意性のための生成列。
+CREATE TABLE shift_budget_monthly_close_events (
+    id BINARY(16) NOT NULL,
+    allocation_id BIGINT UNSIGNED NOT NULL,
+    target_month CHAR(7) NOT NULL,
+    close_period_id BINARY(16) NOT NULL,
+    journal_date DATE NOT NULL,
+    state VARCHAR(16) NOT NULL,
+    origin VARCHAR(16) NOT NULL DEFAULT 'CLOSE',
+    line_count INT NOT NULL DEFAULT 0,
+    planned_total DECIMAL(14,2) NOT NULL DEFAULT 0,
+    actor_kind VARCHAR(16) NOT NULL,
+    actor_user_id BIGINT UNSIGNED NULL,
+    prepared_at DATETIME(6) NOT NULL,
+    closed_at DATETIME(6) NULL,
+    aborted_at DATETIME(6) NULL,
+    journal_transaction_id BIGINT UNSIGNED NULL,
+    active_month CHAR(7) GENERATED ALWAYS AS (CASE WHEN state <> 'ABORTED' THEN target_month END) VIRTUAL,
+    active_journal_date DATE GENERATED ALWAYS AS (CASE WHEN state <> 'ABORTED' THEN journal_date END) VIRTUAL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_sbmce_allocation_active_month (allocation_id, active_month),
+    UNIQUE KEY uq_sbmce_allocation_active_journal (allocation_id, active_journal_date),
+    KEY idx_sbmce_allocation_period (allocation_id, close_period_id),
+    CONSTRAINT chk_sbmce_state CHECK (state IN ('PREPARED', 'CLOSED', 'ABORTED')),
+    CONSTRAINT chk_sbmce_origin CHECK (origin IN ('CLOSE', 'LEGACY_IMPORT')),
+    CONSTRAINT chk_sbmce_actor CHECK (actor_kind IN ('MANUAL', 'BATCH', 'UNKNOWN')),
+    CONSTRAINT chk_sbmce_closed CHECK ((state = 'CLOSED') = (closed_at IS NOT NULL AND journal_transaction_id IS NOT NULL)),
+    CONSTRAINT chk_sbmce_aborted CHECK ((state = 'ABORTED') = (aborted_at IS NOT NULL)),
+    CONSTRAINT fk_sbmce_period FOREIGN KEY (close_period_id) REFERENCES shift_budget_close_periods (id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

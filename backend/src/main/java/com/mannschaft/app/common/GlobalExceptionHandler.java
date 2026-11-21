@@ -698,6 +698,10 @@ public class GlobalExceptionHandler {
             // F08.7 シフト予算 (Phase 10-β: 通知失敗リトライ + 失敗イベント管理)
             Map.entry("SHIFT_BUDGET_030", HttpStatus.NOT_FOUND),            // FAILED_EVENT_NOT_FOUND (IDOR 対策で 404)
             Map.entry("SHIFT_BUDGET_031", HttpStatus.CONFLICT),             // FAILED_EVENT_NOT_RETRIABLE
+            // CMP-260909-2152: 組織の締め日と締め期間
+            Map.entry("SHIFT_BUDGET_036", HttpStatus.CONFLICT),             // CLOSE_PERIOD_NOT_ENDED
+            Map.entry("SHIFT_BUDGET_037", HttpStatus.BAD_REQUEST),          // CLOSING_DAY_INVALID
+            Map.entry("SHIFT_BUDGET_038", HttpStatus.CONFLICT),             // CLOSING_DAY_CHANGE_CONFLICT
             // F03.15 個人時間割（IDOR 対策で 404 統一、上限・遷移エラーは 409）
             Map.entry("PERSONAL_TIMETABLE_001", HttpStatus.NOT_FOUND),       // PERSONAL_TIMETABLE_NOT_FOUND
             Map.entry("PERSONAL_TIMETABLE_010", HttpStatus.CONFLICT),        // LIMIT_EXCEEDED
@@ -1725,6 +1729,7 @@ public class GlobalExceptionHandler {
             Map.entry("BUDGET_009", HttpStatus.NOT_FOUND),               // 取引不在／越境（IDOR 秘匿 → 404）
             Map.entry("BUDGET_010", HttpStatus.NOT_FOUND),               // 報告書不在／越境（IDOR 秘匿 → 404）
             Map.entry("BUDGET_021", HttpStatus.NOT_FOUND),               // 添付ファイル不在／越境（IDOR 秘匿 → 404）
+            Map.entry("BUDGET_024", HttpStatus.CONFLICT),                // CMP-260909-2152: 期間が未締め
             // 認可根治戦役 Wave3-B9: membership 会員証停止/再開・CheckinLocation は entity 由来 scope 認可。
             Map.entry("MEMBERSHIP_001", HttpStatus.NOT_FOUND),           // 会員証不在（IDOR 秘匿 → 404）
             Map.entry("MEMBERSHIP_019", HttpStatus.NOT_FOUND),           // 拠点不在／越境（IDOR 秘匿 → 404）

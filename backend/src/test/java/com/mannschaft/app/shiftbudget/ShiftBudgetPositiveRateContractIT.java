@@ -90,7 +90,7 @@ class ShiftBudgetPositiveRateContractIT extends AbstractMySqlIntegrationTest {
                     .confirmedAmount(BigDecimal.ZERO).currency("JPY").createdBy(userId).version(0L).build()).getId();
         });
         service.recordSingleConsumption(allocationId, scheduleId, slotId, userId,
-                new BigDecimal("1200.00"), HOURS);
+                new BigDecimal("1200.00"), HOURS, WORK_DATE);
         assertThat(amount()).isEqualByComparingTo(ORIGINAL_AMOUNT);
     }
 
@@ -126,7 +126,7 @@ class ShiftBudgetPositiveRateContractIT extends AbstractMySqlIntegrationTest {
         assertThat(before.getFirst().get("status")).isEqualTo("PLANNED");
 
         Throwable failure = catchThrowable(() -> service.recordSingleConsumption(
-                allocationId, scheduleId, slotId, userId, invalidRate, HOURS));
+                allocationId, scheduleId, slotId, userId, invalidRate, HOURS, WORK_DATE));
 
         var after = jdbc.queryForList("SELECT * FROM shift_budget_consumptions WHERE allocation_id = ? ORDER BY id",
                 allocationId);

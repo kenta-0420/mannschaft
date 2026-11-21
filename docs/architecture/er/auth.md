@@ -643,7 +643,9 @@ erDiagram
 | [shift](shift.md) | `shift_swap_requests` | `target_user_id` | ID参照 | `users` |
 | [shiftbudget](shiftbudget.md) | `budget_threshold_alerts` | `acknowledged_by` | ID参照 | `users` |
 | [shiftbudget](shiftbudget.md) | `shift_budget_allocations` | `created_by` | ID参照 | `users` |
+| [shiftbudget](shiftbudget.md) | `shift_budget_closing_day_changes` | `actor_user_id` | ID参照 | `users` |
 | [shiftbudget](shiftbudget.md) | `shift_budget_consumptions` | `user_id` | ID参照 | `users` |
+| [shiftbudget](shiftbudget.md) | `shift_budget_monthly_close_events` | `actor_user_id` | ID参照 | `users` |
 | [shiftbudget](shiftbudget.md) | `todo_budget_links` | `created_by` | ID参照 | `users` |
 | [signage](signage.md) | `signage_access_tokens` | `created_by` | ID参照 | `users` |
 | [signage](signage.md) | `signage_emergency_messages` | `dismissed_by` | ID参照 | `users` |

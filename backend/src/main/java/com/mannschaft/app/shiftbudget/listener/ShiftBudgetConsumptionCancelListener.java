@@ -86,9 +86,9 @@ public class ShiftBudgetConsumptionCancelListener {
         Map<Long, Long> cancelledPlannedByOrg = new LinkedHashMap<>();
         try {
             List<ShiftBudgetConsumptionRepository.PlannedAllocationRow> rows =
-                    consumptionRepository.findPlannedAllocationRowsByShiftId(scheduleId);
+                    consumptionRepository.findLiveAllocationRowsByShiftId(scheduleId);
             if (rows.isEmpty()) {
-                log.debug("F08.7 cancel hook: 取消対象の PLANNED 消化が無いためスキップ: scheduleId={}",
+                log.debug("F08.7 cancel hook: 取消対象の消化（PLANNED／CONFIRMED）が無いためスキップ: scheduleId={}",
                         scheduleId);
                 return;
             }

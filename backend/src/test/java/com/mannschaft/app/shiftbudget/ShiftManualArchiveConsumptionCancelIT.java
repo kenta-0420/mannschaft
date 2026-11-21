@@ -202,7 +202,7 @@ class ShiftManualArchiveConsumptionCancelIT extends AbstractMySqlIntegrationTest
             allocationId = allocation.getId();
 
             ShiftBudgetConsumptionEntity consumption = consumptionRepository.save(
-                    ShiftBudgetConsumptionEntity.builder()
+                    ShiftBudgetConsumptionEntity.builder().workDate(java.time.LocalDate.of(2026, 6, 15))
                             .allocationId(allocationId)
                             .shiftId(scheduleId)
                             .slotId(slotId)
