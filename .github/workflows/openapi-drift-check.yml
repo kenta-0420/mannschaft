@@ -80,11 +80,17 @@ on:
     # required status check「OpenAPI Drift Check」が報告されず永久 pending になり、
     # 無関係な PR まで全て BLOCKED になる（上記 2026-07-28 の項を参照）。
     # 実行対象の絞り込みは下の「関連変更パス検出」ステップ + 各ステップの if で行う。
+  # GitHub merge queue（CMP-261121-1114）。queue の merge group commit にも
+  # 必須チェック「OpenAPI Drift Check」を報告させる（無いと queue が必須チェック待ちで止まる）。
+  merge_group:
+    types: [checks_requested]
   workflow_dispatch:
 
-# 同一 PR の新規 push で前回 run をキャンセル（既存 CI と独立した group）
+# 同一 PR の新規 push で前回 run をキャンセル（既存 CI と独立した group）。
+# merge_group / workflow_dispatch は pull_request.number が無いので github.ref へフォールバックする
+# （merge_group の ref はエントリごとに一意。フォールバックが無いと全 merge group が互いをキャンセルする）。
 concurrency:
-  group: openapi-drift-check-${{ github.event.pull_request.number }}
+  group: openapi-drift-check-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
@@ -120,8 +126,9 @@ jobs:
       #   - 3 ドット（BASE...HEAD = merge-base...head）で「PR が実際に加えた純変更」のみ対象。
       #     2 ドットだと base が分岐後に進めた変更まで拾い、無関係 PR で重い生成が走る。
       #   - 結果は $GITHUB_OUTPUT に書き出し、後続ステップの if で参照する。
-      #   - pull_request 以外のイベント（workflow_dispatch 等）は PR コンテキストが無いため
-      #     安全側（= 検査を実行する）にフォールバックする。
+      #   - merge_group は merge_group.base_sha...head_sha（このエントリ自身の差分。先行エントリは各自の merge group で検証済み）で判定する。
+      #   - pull_request / merge_group 以外のイベント（workflow_dispatch 等）と、SHA 空・
+      #     git diff 失敗で判定不能なときは安全側（= 検査を実行する）にフォールバックする。
       #
       # ⚠️ このジョブは defaults.run.working-directory: ./backend が効くため、
       #    git をリポジトリルート基準で叩けるよう working-directory を明示的に上書きする。
@@ -130,20 +137,31 @@ jobs:
       - name: 関連変更パス検出
         id: changes
         working-directory: ${{ github.workspace }}
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          # pull_request は PR の base/head、merge_group は queue の base/head を渡す。
+          # merge_group の base_sha は queue で先行するエントリの合成コミット（先頭エントリなら対象ブランチ先端）を
+          # 指すため、base_sha...head_sha は「このエントリ自身の差分」になる。先行エントリは各自の merge group で
+          # 検証済みであり、先行が落ちればキューが後続を再構築するので、自身の差分だけで判定してよい（AC-6b）。
+          BASE_SHA: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || github.event.pull_request.head.sha }}
         run: |
           set -e
-          if [ "${{ github.event_name }}" != "pull_request" ]; then
-            echo "[INFO] non-PR event (${{ github.event_name }}) → openapi_related=true（安全側でフル実行）"
+          # 差分の取得は共通スクリプト .github/scripts/detect-changed-files.sh に一本化
+          # （3 ドット・--no-renames で改名の旧パスも拾う。CMP-261121-1114）。
+          # 終了コード 0 以外（対象外イベント=10 / SHA 空=2 / git diff 失敗=3）はすべて
+          # 検査を実行する側に倒す。判定不能を黙って skip にしない。
+          DETECT_STATUS=0
+          CHANGED=$(bash .github/scripts/detect-changed-files.sh "${EVENT_NAME}" "${BASE_SHA}" "${HEAD_SHA}") || DETECT_STATUS=$?
+          if [ "${DETECT_STATUS}" -ne 0 ]; then
+            if [ "${DETECT_STATUS}" -eq 10 ]; then
+              echo "[INFO] 差分判定の対象外イベント (${EVENT_NAME}) → openapi_related=true（安全側でフル実行）"
+            else
+              echo "::warning title=変更判定不能::detect-changed-files.sh exit=${DETECT_STATUS}（${EVENT_NAME}）→ 判定不能につき openapi_related=true（安全側でフル実行へ倒す）"
+            fi
             echo "openapi_related=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          BASE_SHA="${{ github.event.pull_request.base.sha }}"
-          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
-          echo "[INFO] diff range: ${BASE_SHA}...${HEAD_SHA}"
-          CHANGED=$(git diff --name-only "${BASE_SHA}...${HEAD_SHA}")
-          echo "----- changed files -----"
-          echo "${CHANGED}"
-          echo "-------------------------"
           # 旧 on.pull_request.paths の6パターンと、L1-Bで移設したbuild設定の検知:
           #   1. backend/src/main/java/**/controller/**
           #   2. backend/src/main/java/**/dto/**
@@ -152,8 +170,9 @@ jobs:
           #   5. backend/build.gradle.kts
           #   6. .github/workflows/openapi-drift-check.yml
           #   7. backend/build-logic/** および backend/settings.gradle.kts
+          #   8. .github/scripts/detect-changed-files.sh（判定スクリプト自体。CMP-261121-1114）
           # glob の `**` は「0 個以上のパスセグメント」なので `(.*/)?` に対応させる。
-          PATTERN='^(backend/src/main/java/(.*/)?(controller|dto)/|backend/src/main/java/(.*/)?config/OpenApiConfig\.java$|backend/src/main/resources/application-openapi-gen\.yml$|backend/build\.gradle\.kts$|backend/build-logic/|backend/settings\.gradle\.kts$|\.github/workflows/openapi-drift-check\.yml$)'
+          PATTERN='^(backend/src/main/java/(.*/)?(controller|dto)/|backend/src/main/java/(.*/)?config/OpenApiConfig\.java$|backend/src/main/resources/application-openapi-gen\.yml$|backend/build\.gradle\.kts$|backend/build-logic/|backend/settings\.gradle\.kts$|\.github/workflows/openapi-drift-check\.yml$|\.github/scripts/detect-changed-files\.sh$)'
           if echo "${CHANGED}" | grep -E "${PATTERN}" > /dev/null; then
             echo "[INFO] OpenAPI 関連の変更を検出 → openapi_related=true（ドリフト検査を実行）"
             echo "openapi_related=true" >> "$GITHUB_OUTPUT"
@@ -171,7 +190,7 @@ jobs:
           # Gradle キャッシュは下の setup-gradle に一本化するため、ここでは有効化しない。
 
       # backend-ci.yml と同じ作法で Gradle 依存・wrapper・ビルドキャッシュを共有する。
-      # 本 workflow は on: pull_request 主体で main への push では起動しないため、
+      # 本 workflow は on: pull_request / merge_group 主体で main への push では起動しないため、
       # 書き込みは行わない（read-only。CMP-261120-1042）。
       - name: Set up Gradle（依存＋ビルドキャッシュ）
         if: steps.changes.outputs.openapi_related == 'true'

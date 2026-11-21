@@ -90,6 +90,9 @@ jobs:
           scripts/worktree-sparse-paths.test.mjs
           frontend/scripts/lib/sparse-assets.test.mjs
           frontend/scripts/verify-ranch-sparse.test.mjs
+          scripts/detect-changed-files.test.mjs
+          scripts/ci-merge-group-workflows.test.mjs
+          scripts/ci-change-detection-steps.test.mjs
 
       - name: "[Harness] worktree sparse paths の一覧検査"
         if: ${{ !cancelled() && github.base_ref == 'main' }}

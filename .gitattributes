@@ -10,3 +10,6 @@ frontend/app/utils/ranch-production-assets.ts text eol=lf
 frontend/app/utils/ranch-production-pack-registration.json text eol=lf
 backend/src/main/resources/ranch/approved/** -text
 backend/src/main/resources/diagnosis/approved/** -text
+
+# CI の変更判定スクリプトは Windows checkout でも LF 固定（CRLF だと bash が $'\r' で落ち、node --test の試験も落ちる）
+.github/scripts/detect-changed-files.sh text eol=lf

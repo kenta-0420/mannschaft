@@ -5,3 +5,6 @@
 ^backend/settings\.gradle\.kts$
 ^\.github/workflows/backend-ci\.yml$
 ^\.github/workflows/backend-deploy\.yml$
+^\.github/scripts/migration-sensitive-paths\.regex$
+^\.github/scripts/detect-changed-files\.sh$
+^\.github/scripts/detect-migration-changes\.sh$
