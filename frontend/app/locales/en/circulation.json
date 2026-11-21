@@ -92,6 +92,25 @@
         "hybrid_needs_two_or_more": "Hybrid mode requires at least 2 recipients",
         "sequential_count_range": "Sequential count must be at least 1 and less than the recipient count (max {max})"
       }
+    },
+    "list": {
+      "back": "Back",
+      "cancel": {
+        "button": "Cancel circulation",
+        "confirm_title": "Cancel this circulation?",
+        "confirm_message": "\"{title}\" will be cancelled. Recipients will see it as cancelled, and this cannot be undone.",
+        "accept": "Cancel circulation",
+        "success": "The circulation was cancelled",
+        "failed": "Failed to cancel the circulation"
+      },
+      "delete": {
+        "button": "Delete",
+        "confirm_title": "Delete this circulation?",
+        "confirm_message": "\"{title}\" will be deleted. This cannot be undone.",
+        "accept": "Delete",
+        "success": "The circulation was deleted",
+        "failed": "Failed to delete the circulation"
+      }
     }
   }
 }

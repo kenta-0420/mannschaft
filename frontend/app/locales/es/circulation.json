@@ -92,6 +92,25 @@
         "hybrid_needs_two_or_more": "El modo híbrido requiere al menos 2 destinatarios",
         "sequential_count_range": "El número secuencial debe ser al menos 1 y menor que el número de destinatarios (máx. {max})"
       }
+    },
+    "list": {
+      "back": "Volver",
+      "cancel": {
+        "button": "Anular",
+        "confirm_title": "¿Anular esta circular?",
+        "confirm_message": "Se anulará «{title}». Los destinatarios la verán como anulada y no se puede deshacer.",
+        "accept": "Anular",
+        "success": "La circular se ha anulado",
+        "failed": "No se pudo anular la circular"
+      },
+      "delete": {
+        "button": "Eliminar",
+        "confirm_title": "¿Eliminar esta circular?",
+        "confirm_message": "Se eliminará «{title}». Esta acción no se puede deshacer.",
+        "accept": "Eliminar",
+        "success": "La circular se ha eliminado",
+        "failed": "No se pudo eliminar la circular"
+      }
     }
   }
 }

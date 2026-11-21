@@ -92,6 +92,25 @@
         "hybrid_needs_two_or_more": "ハイブリッドモードはあて先を2人以上選択してください",
         "sequential_count_range": "順番で回す人数は1以上かつあて先数未満（最大 {max}）にしてください"
       }
+    },
+    "list": {
+      "back": "戻る",
+      "cancel": {
+        "button": "取消",
+        "confirm_title": "回覧を取り消しますか？",
+        "confirm_message": "「{title}」を取り消します。回覧先には取消として表示され、元に戻せません。",
+        "accept": "取り消す",
+        "success": "回覧を取り消しました",
+        "failed": "回覧の取消に失敗しました"
+      },
+      "delete": {
+        "button": "削除",
+        "confirm_title": "回覧を削除しますか？",
+        "confirm_message": "「{title}」を削除します。この操作は元に戻せません。",
+        "accept": "削除する",
+        "success": "回覧を削除しました",
+        "failed": "回覧の削除に失敗しました"
+      }
     }
   }
 }

@@ -13,7 +13,10 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
-const { listScopedCirculations } = useCirculationApi()
+const { listScopedCirculations, cancelScopedCirculation, deleteScopedCirculation } = useCirculationApi()
+const confirm = useConfirm()
+const { success } = useNotification()
+const { handleApiError } = useErrorHandler()
 const { relativeTime } = useRelativeTime()
 
 const items = ref<CirculationDocumentListItem[]>([])
@@ -47,6 +50,46 @@ async function loadItems() {
   } finally {
     loading.value = false
   }
+}
+
+/** 取消できる状態（BE 設計: DRAFT / ACTIVE → CANCELLED）。 */
+function canCancel(item: CirculationDocumentListItem): boolean {
+  return !!props.canManage && (item.status === 'DRAFT' || item.status === 'ACTIVE')
+}
+
+/** 削除できる状態（BE 設計: DRAFT / CANCELLED のみ）。 */
+function canDelete(item: CirculationDocumentListItem): boolean {
+  return !!props.canManage && (item.status === 'DRAFT' || item.status === 'CANCELLED')
+}
+
+const apiScope = computed(() => (props.scopeType === 'TEAM' ? 'team' : 'organization'))
+
+/** 確認ダイアログ → API → 一覧再取得。失敗は握りつぶさず利用者へ表示する。 */
+function confirmAndRun(
+  item: CirculationDocumentListItem,
+  kind: 'cancel' | 'delete',
+) {
+  confirm.require({
+    header: t(`circulation.list.${kind}.confirm_title`),
+    message: t(`circulation.list.${kind}.confirm_message`, { title: item.title }),
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: t(`circulation.list.${kind}.accept`),
+    rejectLabel: t('circulation.list.back'),
+    acceptProps: { severity: 'danger' },
+    accept: async () => {
+      try {
+        // 詳細 EP と同様、パス変数は数値 ID（item.scopeId）。props.scopeId は slug。
+        const scopeId = String(item.scopeId)
+        if (kind === 'cancel') await cancelScopedCirculation(apiScope.value, scopeId, item.id)
+        else await deleteScopedCirculation(apiScope.value, scopeId, item.id)
+      } catch (err) {
+        handleApiError(err, t(`circulation.list.${kind}.failed`))
+        return
+      }
+      success(t(`circulation.list.${kind}.success`))
+      await loadItems()
+    },
+  })
 }
 
 function getStatusClass(status: string): string {
@@ -96,10 +139,14 @@ defineExpose({ refresh: loadItems })
     </div>
 
     <div v-else class="flex flex-col gap-2">
-      <button
+      <div
         v-for="item in items"
         :key="item.id"
-        class="flex items-center gap-4 rounded-xl border border-surface-300 bg-surface-0 p-4 text-left transition-shadow hover:shadow-sm"
+        class="flex items-center gap-2 rounded-xl border border-surface-300 bg-surface-0 transition-shadow hover:shadow-sm"
+      >
+      <button
+        type="button"
+        class="flex min-w-0 flex-1 items-center gap-4 p-4 text-left"
         @click="emit('select', item)"
       >
         <div class="min-w-0 flex-1">
@@ -120,6 +167,29 @@ defineExpose({ refresh: loadItems })
           <div class="text-xs text-surface-400">押印済み</div>
         </div>
       </button>
+        <div v-if="canCancel(item) || canDelete(item)" class="flex shrink-0 gap-1 pr-3">
+          <Button
+            v-if="canCancel(item)"
+            :data-testid="`circulation-cancel-${item.id}`"
+            :label="t('circulation.list.cancel.button')"
+            icon="pi pi-ban"
+            size="small"
+            severity="secondary"
+            outlined
+            @click="confirmAndRun(item, 'cancel')"
+          />
+          <Button
+            v-if="canDelete(item)"
+            :data-testid="`circulation-delete-${item.id}`"
+            :label="t('circulation.list.delete.button')"
+            icon="pi pi-trash"
+            size="small"
+            severity="danger"
+            outlined
+            @click="confirmAndRun(item, 'delete')"
+          />
+        </div>
+      </div>
 
       <div v-if="items.length === 0" class="py-12 text-center">
         <i class="pi pi-file mb-3 text-4xl text-surface-300" />

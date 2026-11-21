@@ -64,8 +64,15 @@ export function useCirculationApi() {
     )
   }
 
-  async function deleteScopedCirculation(teamId: string, documentId: number) {
-    return api(`/api/v1/teams/${teamId}/circulations/${documentId}`, { method: 'DELETE' })
+  /** 回覧を削除する（BE: DRAFT / CANCELLED のみ・スコープ ADMIN/DEPUTY_ADMIN）。チーム・組織共通。 */
+  async function deleteScopedCirculation(
+    scopeType: 'team' | 'organization',
+    scopeId: string,
+    documentId: number,
+  ) {
+    const base =
+      scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
+    return api(`${base}/circulations/${documentId}`, { method: 'DELETE' })
   }
 
   async function activateCirculation(
@@ -78,8 +85,15 @@ export function useCirculationApi() {
     return api(`${base}/circulations/${documentId}/activate`, { method: 'POST' })
   }
 
-  async function cancelScopedCirculation(teamId: string, documentId: number) {
-    return api(`/api/v1/teams/${teamId}/circulations/${documentId}/cancel`, { method: 'POST' })
+  /** 回覧を取り消す（DRAFT / ACTIVE → CANCELLED・スコープ ADMIN/DEPUTY_ADMIN）。チーム・組織共通。 */
+  async function cancelScopedCirculation(
+    scopeType: 'team' | 'organization',
+    scopeId: string,
+    documentId: number,
+  ) {
+    const base =
+      scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
+    return api(`${base}/circulations/${documentId}/cancel`, { method: 'POST' })
   }
 
   async function getCirculationStats(teamId: string) {

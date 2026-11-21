@@ -92,6 +92,25 @@
         "hybrid_needs_two_or_more": "混合模式请至少选择 2 名收件人",
         "sequential_count_range": "顺序传阅人数须在 1 至收件人数之间（最大 {max}）"
       }
+    },
+    "list": {
+      "back": "返回",
+      "cancel": {
+        "button": "撤销",
+        "confirm_title": "要撤销此传阅吗？",
+        "confirm_message": "将撤销“{title}”。收件人会看到其已被撤销，且无法恢复。",
+        "accept": "撤销",
+        "success": "已撤销传阅",
+        "failed": "撤销传阅失败"
+      },
+      "delete": {
+        "button": "删除",
+        "confirm_title": "要删除此传阅吗？",
+        "confirm_message": "将删除“{title}”。此操作无法撤回。",
+        "accept": "删除",
+        "success": "已删除传阅",
+        "failed": "删除传阅失败"
+      }
     }
   }
 }

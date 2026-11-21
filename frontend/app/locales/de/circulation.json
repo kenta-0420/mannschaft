@@ -92,6 +92,25 @@
         "hybrid_needs_two_or_more": "Der Hybridmodus erfordert mindestens 2 Empfänger",
         "sequential_count_range": "Die sequenzielle Anzahl muss mindestens 1 und kleiner als die Empfängeranzahl sein (max. {max})"
       }
+    },
+    "list": {
+      "back": "Zurück",
+      "cancel": {
+        "button": "Widerrufen",
+        "confirm_title": "Diesen Umlauf widerrufen?",
+        "confirm_message": "„{title}“ wird widerrufen. Empfänger sehen ihn als widerrufen; dies kann nicht rückgängig gemacht werden.",
+        "accept": "Widerrufen",
+        "success": "Der Umlauf wurde widerrufen",
+        "failed": "Der Umlauf konnte nicht widerrufen werden"
+      },
+      "delete": {
+        "button": "Löschen",
+        "confirm_title": "Diesen Umlauf löschen?",
+        "confirm_message": "„{title}“ wird gelöscht. Dies kann nicht rückgängig gemacht werden.",
+        "accept": "Löschen",
+        "success": "Der Umlauf wurde gelöscht",
+        "failed": "Der Umlauf konnte nicht gelöscht werden"
+      }
     }
   }
 }
