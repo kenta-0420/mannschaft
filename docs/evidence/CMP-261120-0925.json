@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261120-0925",
+  "scope": "tooling",
+  "implementation": {
+    "pr": 4686,
+    "sha": "688ab97dd08cd23bcaee3c5ad9fb82f957d6114d"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "全テストの前後で SecurityContextHolder を自動的にクリアし、非 Spring テストの認証漏れが後続の Spring IT に引き継がれない（JUnit 拡張の自動登録）",
+      "tests": [
+        {
+          "name": "SecurityContextAutoClearTest",
+          "evidence": "backend/src/test/java/com/mannschaft/app/common/testing/SecurityContextAutoClearTest.java"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 44737881688
+    },
+    {
+      "runId": 44737881998
+    },
+    {
+      "runId": 44737881691
+    },
+    {
+      "runId": 44737881658
+    },
+    {
+      "runId": 44737881709
+    },
+    {
+      "runId": 44737881590
+    },
+    {
+      "runId": 44737881804
+    },
+    {
+      "runId": 44737881734
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/Mannschaft2026/mannschaft/pull/4686"
+    },
+    "real": {
+      "status": "not-applicable",
+      "scope": "tooling",
+      "reason": "テスト基盤のみの変更で利用者向け画面・API に変化がない"
+    },
+    "exploratory": {
+      "status": "not-applicable",
+      "scope": "tooling",
+      "reason": "テスト基盤のみの変更で利用者向け画面・API に変化がない"
+    }
+  },
+  "regressions": []
+}
