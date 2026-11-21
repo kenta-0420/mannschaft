@@ -83,13 +83,16 @@ async function loadPage() {
   }
 }
 
+// 注意: template のルート直下（v-if/v-else-if/v-else の分岐間を含む）に HTML コメントを置かない。
+// 開発時にコメントが分岐側の子へ紛れ込んでルートが複数（Fragment）になり、page-fade が opacity:0 で固着する。
+// コメントは各分岐の要素の内側に書くこと（CMP-261013-0821）。
 onMounted(loadPage)
 onBeforeUnmount(clearWatchdog)
 </script>
 
 <template>
-  <!-- 読み込み中（15s watchdog で「時間がかかっています」＋再試行を追加表示） -->
   <div v-if="loading">
+    <!-- 読み込み中（15s watchdog で「時間がかかっています」＋再試行を追加表示） -->
     <PageLoading />
     <div v-if="slowLoading" class="flex flex-col items-center gap-3 pb-8 text-center">
       <p class="text-sm text-surface-500">{{ t('common.scopeShell.slow_loading') }}</p>
@@ -103,8 +106,8 @@ onBeforeUnmount(clearWatchdog)
     </div>
   </div>
 
-  <!-- 権限取得失敗のエラー面（無言で権限なしに倒さない・再試行で再フェッチ） -->
   <div v-else-if="permissionsError" class="mx-auto max-w-2xl p-6 text-center">
+    <!-- 権限取得失敗のエラー面（無言で権限なしに倒さない・再試行で再フェッチ） -->
     <i class="pi pi-exclamation-triangle text-4xl text-surface-400" aria-hidden="true" />
     <p class="mt-4 text-lg font-medium text-surface-700 dark:text-surface-200">
       {{ t('common.scopeShell.load_error_title') }}
@@ -120,8 +123,8 @@ onBeforeUnmount(clearWatchdog)
     />
   </div>
 
-  <!-- 成功パス（従来どおり） -->
   <div v-else>
+    <!-- 成功パス（従来どおり） -->
     <div class="mb-4 flex items-center gap-3">
       <PageHeader :title="t('confirmable.guide.circulation.title')" />
     </div>
