@@ -844,6 +844,31 @@
         "rejected_toast": "캠페인을 반려했습니다",
         "action_failed": "작업에 실패했습니다"
       }
+    },
+    "rate_cards": {
+      "title": "광고 요금 카드 관리",
+      "dialog_title": "요금 카드 만들기",
+      "col_prefecture": "도도부현",
+      "col_template": "템플릿",
+      "col_pricing_model": "과금 모델",
+      "col_unit_price": "단가",
+      "col_min_daily_budget": "최소 일 예산",
+      "col_effective_from": "적용 시작",
+      "col_effective_until": "적용 종료",
+      "nationwide": "전국",
+      "common_template": "공통",
+      "unlimited": "무기한",
+      "label_prefecture": "도도부현(비워 두면 전국)",
+      "label_template": "템플릿(비워 두면 공통)",
+      "label_pricing_model": "과금 모델",
+      "label_min_daily_budget": "최소 일 예산(엔)",
+      "label_effective_from": "적용 시작일",
+      "placeholder_prefecture": "예: 도쿄도",
+      "placeholder_template": "예: SPORTS",
+      "created": "요금 카드를 만들었습니다",
+      "create_failed": "만들기에 실패했습니다",
+      "deleted": "삭제했습니다",
+      "delete_failed": "삭제에 실패했습니다(과거 요금은 삭제할 수 없습니다)"
     }
   }
 }

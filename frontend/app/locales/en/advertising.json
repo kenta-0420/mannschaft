@@ -844,6 +844,31 @@
         "rejected_toast": "Campaign rejected",
         "action_failed": "Operation failed"
       }
+    },
+    "rate_cards": {
+      "title": "Ad rate card management",
+      "dialog_title": "Create rate card",
+      "col_prefecture": "Prefecture",
+      "col_template": "Template",
+      "col_pricing_model": "Pricing model",
+      "col_unit_price": "Unit price",
+      "col_min_daily_budget": "Minimum daily budget",
+      "col_effective_from": "Effective from",
+      "col_effective_until": "Effective until",
+      "nationwide": "Nationwide",
+      "common_template": "Common",
+      "unlimited": "No end date",
+      "label_prefecture": "Prefecture (blank = nationwide)",
+      "label_template": "Template (blank = common)",
+      "label_pricing_model": "Pricing model",
+      "label_min_daily_budget": "Minimum daily budget (JPY)",
+      "label_effective_from": "Effective start date",
+      "placeholder_prefecture": "e.g. Tokyo",
+      "placeholder_template": "e.g. SPORTS",
+      "created": "Rate card created",
+      "create_failed": "Failed to create the rate card",
+      "deleted": "Deleted",
+      "delete_failed": "Failed to delete (past rates cannot be deleted)"
     }
   }
 }

@@ -1197,7 +1197,8 @@
           "step3": "읽음 처리하면 벨 배지도 0이 됩니다"
         }
       }
-    }
+    },
+    "settingsTitle": "알림 설정"
   },
   "project": {
     "back_label": "프로젝트 목록",

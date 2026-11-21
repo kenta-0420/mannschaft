@@ -844,6 +844,31 @@
         "rejected_toast": "キャンペーンを差戻しました",
         "action_failed": "操作に失敗しました"
       }
+    },
+    "rate_cards": {
+      "title": "広告料金カード管理",
+      "dialog_title": "料金カード作成",
+      "col_prefecture": "都道府県",
+      "col_template": "テンプレート",
+      "col_pricing_model": "課金モデル",
+      "col_unit_price": "単価",
+      "col_min_daily_budget": "最低日予算",
+      "col_effective_from": "適用開始",
+      "col_effective_until": "適用終了",
+      "nationwide": "全国",
+      "common_template": "共通",
+      "unlimited": "無期限",
+      "label_prefecture": "都道府県（空欄=全国）",
+      "label_template": "テンプレート（空欄=共通）",
+      "label_pricing_model": "課金モデル",
+      "label_min_daily_budget": "最低日予算（円）",
+      "label_effective_from": "適用開始日",
+      "placeholder_prefecture": "例: 東京都",
+      "placeholder_template": "例: SPORTS",
+      "created": "料金カードを作成しました",
+      "create_failed": "作成に失敗しました",
+      "deleted": "削除しました",
+      "delete_failed": "削除に失敗しました（過去の料金は削除できません）"
     }
   }
 }

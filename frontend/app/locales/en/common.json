@@ -1197,7 +1197,8 @@
           "step3": "Once everything is read, the bell badge also goes back to 0"
         }
       }
-    }
+    },
+    "settingsTitle": "Notification settings"
   },
   "project": {
     "back_label": "Projects",

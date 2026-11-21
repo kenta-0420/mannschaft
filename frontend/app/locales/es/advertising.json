@@ -844,6 +844,31 @@
         "rejected_toast": "Campaña rechazada",
         "action_failed": "La operación falló"
       }
+    },
+    "rate_cards": {
+      "title": "Gestión de tarifas publicitarias",
+      "dialog_title": "Crear tarifa",
+      "col_prefecture": "Prefectura",
+      "col_template": "Plantilla",
+      "col_pricing_model": "Modelo de facturación",
+      "col_unit_price": "Precio unitario",
+      "col_min_daily_budget": "Presupuesto diario mínimo",
+      "col_effective_from": "Vigente desde",
+      "col_effective_until": "Vigente hasta",
+      "nationwide": "Todo el país",
+      "common_template": "Común",
+      "unlimited": "Sin vencimiento",
+      "label_prefecture": "Prefectura (vacío = todo el país)",
+      "label_template": "Plantilla (vacío = común)",
+      "label_pricing_model": "Modelo de facturación",
+      "label_min_daily_budget": "Presupuesto diario mínimo (JPY)",
+      "label_effective_from": "Fecha de inicio de vigencia",
+      "placeholder_prefecture": "Ej.: Tokio",
+      "placeholder_template": "Ej.: SPORTS",
+      "created": "Tarifa creada",
+      "create_failed": "No se pudo crear la tarifa",
+      "deleted": "Eliminado",
+      "delete_failed": "No se pudo eliminar (las tarifas pasadas no se pueden eliminar)"
     }
   }
 }

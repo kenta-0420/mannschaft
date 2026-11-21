@@ -7,7 +7,7 @@ definePageMeta({
 <template>
   <div>
     <div class="mx-auto max-w-2xl p-6">
-      <PageHeader title="通知設定" />
+      <PageHeader :title="$t('notification.settingsTitle')" />
       <NotificationPreferences />
     </div>
   </div>

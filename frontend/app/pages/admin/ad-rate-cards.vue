@@ -4,6 +4,7 @@ import type { AdRateCardResponse, PricingModel } from '~/types/advertiser'
 definePageMeta({ middleware: 'auth' })
 const advertiserApi = useAdvertiserApi()
 const { success, error: showError } = useNotification()
+const { t } = useI18n()
 
 const rateCards = ref<AdRateCardResponse[]>([])
 const loading = ref(true)
@@ -52,21 +53,21 @@ async function create() {
       minDailyBudget: form.value.minDailyBudget,
       effectiveFrom: form.value.effectiveFrom,
     })
-    success('料金カードを作成しました')
+    success(t('advertising.rate_cards.created'))
     showCreate.value = false
     await load()
   }
-  catch { showError('作成に失敗しました') }
+  catch { showError(t('advertising.rate_cards.create_failed')) }
   finally { creating.value = false }
 }
 
 async function remove(id: number) {
   try {
     await advertiserApi.adminDeleteRateCard(id)
-    success('削除しました')
+    success(t('advertising.rate_cards.deleted'))
     await load()
   }
-  catch { showError('削除に失敗しました（過去の料金は削除できません）') }
+  catch { showError(t('advertising.rate_cards.delete_failed')) }
 }
 
 onMounted(load)
@@ -75,8 +76,8 @@ onMounted(load)
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <PageHeader title="広告料金カード管理" />
-      <Button label="新規作成" icon="pi pi-plus" @click="showCreate = true" />
+      <PageHeader :title="$t('advertising.rate_cards.title')" />
+      <Button :label="$t('advertising.actions.create')" icon="pi pi-plus" @click="showCreate = true" />
     </div>
 
     <div v-if="loading" class="flex justify-center py-10"><LoadingBounce /></div>
@@ -89,20 +90,20 @@ onMounted(load)
     />
 
     <DataTable v-else :value="rateCards" striped-rows>
-      <Column field="targetPrefecture" header="都道府県">
-        <template #body="{ data }">{{ data.targetPrefecture || '全国' }}</template>
+      <Column field="targetPrefecture" :header="$t('advertising.rate_cards.col_prefecture')">
+        <template #body="{ data }">{{ data.targetPrefecture || $t('advertising.rate_cards.nationwide') }}</template>
       </Column>
-      <Column field="targetTemplate" header="テンプレート">
-        <template #body="{ data }">{{ data.targetTemplate || '共通' }}</template>
+      <Column field="targetTemplate" :header="$t('advertising.rate_cards.col_template')">
+        <template #body="{ data }">{{ data.targetTemplate || $t('advertising.rate_cards.common_template') }}</template>
       </Column>
-      <Column field="pricingModel" header="課金モデル" />
-      <Column field="unitPrice" header="単価" />
-      <Column field="minDailyBudget" header="最低日予算">
+      <Column field="pricingModel" :header="$t('advertising.rate_cards.col_pricing_model')" />
+      <Column field="unitPrice" :header="$t('advertising.rate_cards.col_unit_price')" />
+      <Column field="minDailyBudget" :header="$t('advertising.rate_cards.col_min_daily_budget')">
         <template #body="{ data }">¥{{ data.minDailyBudget.toLocaleString() }}</template>
       </Column>
-      <Column field="effectiveFrom" header="適用開始" />
-      <Column field="effectiveUntil" header="適用終了">
-        <template #body="{ data }">{{ data.effectiveUntil || '無期限' }}</template>
+      <Column field="effectiveFrom" :header="$t('advertising.rate_cards.col_effective_from')" />
+      <Column field="effectiveUntil" :header="$t('advertising.rate_cards.col_effective_until')">
+        <template #body="{ data }">{{ data.effectiveUntil || $t('advertising.rate_cards.unlimited') }}</template>
       </Column>
       <Column header="">
         <template #body="{ data }">
@@ -111,35 +112,35 @@ onMounted(load)
       </Column>
     </DataTable>
 
-    <Dialog v-model:visible="showCreate" header="料金カード作成" :style="{ width: '500px' }" modal>
+    <Dialog v-model:visible="showCreate" :header="$t('advertising.rate_cards.dialog_title')" :style="{ width: '500px' }" modal>
       <div class="space-y-4">
         <div>
-          <label class="mb-1 block text-sm font-medium">都道府県（空欄=全国）</label>
-          <InputText v-model="form.targetPrefecture" class="w-full" placeholder="例: 東京都" />
+          <label class="mb-1 block text-sm font-medium">{{ $t('advertising.rate_cards.label_prefecture') }}</label>
+          <InputText v-model="form.targetPrefecture" class="w-full" :placeholder="$t('advertising.rate_cards.placeholder_prefecture')" />
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium">テンプレート（空欄=共通）</label>
-          <InputText v-model="form.targetTemplate" class="w-full" placeholder="例: SPORTS" />
+          <label class="mb-1 block text-sm font-medium">{{ $t('advertising.rate_cards.label_template') }}</label>
+          <InputText v-model="form.targetTemplate" class="w-full" :placeholder="$t('advertising.rate_cards.placeholder_template')" />
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium">課金モデル</label>
+          <label class="mb-1 block text-sm font-medium">{{ $t('advertising.rate_cards.label_pricing_model') }}</label>
           <Select v-model="form.pricingModel" :options="pricingOptions" option-label="label" option-value="value" class="w-full" />
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium">単価</label>
+          <label class="mb-1 block text-sm font-medium">{{ $t('advertising.rate_cards.col_unit_price') }}</label>
           <InputNumber v-model="form.unitPrice" :min="0.01" :max-fraction-digits="4" class="w-full" />
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium">最低日予算（円）</label>
+          <label class="mb-1 block text-sm font-medium">{{ $t('advertising.rate_cards.label_min_daily_budget') }}</label>
           <InputNumber v-model="form.minDailyBudget" :min="100" class="w-full" />
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium">適用開始日</label>
+          <label class="mb-1 block text-sm font-medium">{{ $t('advertising.rate_cards.label_effective_from') }}</label>
           <InputText v-model="form.effectiveFrom" type="date" class="w-full" />
         </div>
       </div>
       <div class="mt-4 flex justify-end">
-        <Button label="作成" icon="pi pi-check" :loading="creating" @click="create" />
+        <Button :label="$t('button.create')" icon="pi pi-check" :loading="creating" @click="create" />
       </div>
     </Dialog>
   </div>

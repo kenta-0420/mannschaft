@@ -1197,7 +1197,8 @@
           "step3": "Sobald alles gelesen ist, springt auch das Glockenabzeichen auf 0"
         }
       }
-    }
+    },
+    "settingsTitle": "Benachrichtigungseinstellungen"
   },
   "project": {
     "back_label": "Projektliste",

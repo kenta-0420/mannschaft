@@ -1197,7 +1197,8 @@
           "step3": "Cuando todo está leído, la insignia de la campana también vuelve a 0"
         }
       }
-    }
+    },
+    "settingsTitle": "Configuración de notificaciones"
   },
   "project": {
     "back_label": "Lista de proyectos",

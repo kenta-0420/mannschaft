@@ -844,6 +844,31 @@
         "rejected_toast": "Kampagne abgelehnt",
         "action_failed": "Vorgang fehlgeschlagen"
       }
+    },
+    "rate_cards": {
+      "title": "Verwaltung der Werbetarife",
+      "dialog_title": "Tarif erstellen",
+      "col_prefecture": "Präfektur",
+      "col_template": "Vorlage",
+      "col_pricing_model": "Abrechnungsmodell",
+      "col_unit_price": "Stückpreis",
+      "col_min_daily_budget": "Mindesttagesbudget",
+      "col_effective_from": "Gültig ab",
+      "col_effective_until": "Gültig bis",
+      "nationwide": "Landesweit",
+      "common_template": "Allgemein",
+      "unlimited": "Unbefristet",
+      "label_prefecture": "Präfektur (leer = landesweit)",
+      "label_template": "Vorlage (leer = allgemein)",
+      "label_pricing_model": "Abrechnungsmodell",
+      "label_min_daily_budget": "Mindesttagesbudget (JPY)",
+      "label_effective_from": "Startdatum der Gültigkeit",
+      "placeholder_prefecture": "z. B. Tokio",
+      "placeholder_template": "z. B. SPORTS",
+      "created": "Tarif erstellt",
+      "create_failed": "Tarif konnte nicht erstellt werden",
+      "deleted": "Gelöscht",
+      "delete_failed": "Löschen fehlgeschlagen (vergangene Tarife können nicht gelöscht werden)"
     }
   }
 }

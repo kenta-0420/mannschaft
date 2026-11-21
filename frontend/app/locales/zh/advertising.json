@@ -844,6 +844,31 @@
         "rejected_toast": "活动已退回",
         "action_failed": "操作失败"
       }
+    },
+    "rate_cards": {
+      "title": "广告费率卡管理",
+      "dialog_title": "创建费率卡",
+      "col_prefecture": "都道府县",
+      "col_template": "模板",
+      "col_pricing_model": "计费模式",
+      "col_unit_price": "单价",
+      "col_min_daily_budget": "每日最低预算",
+      "col_effective_from": "生效开始",
+      "col_effective_until": "生效结束",
+      "nationwide": "全国",
+      "common_template": "通用",
+      "unlimited": "无期限",
+      "label_prefecture": "都道府县（留空=全国）",
+      "label_template": "模板（留空=通用）",
+      "label_pricing_model": "计费模式",
+      "label_min_daily_budget": "每日最低预算（日元）",
+      "label_effective_from": "生效开始日期",
+      "placeholder_prefecture": "例如：东京都",
+      "placeholder_template": "例如：SPORTS",
+      "created": "已创建费率卡",
+      "create_failed": "创建失败",
+      "deleted": "已删除",
+      "delete_failed": "删除失败（无法删除过去的费率）"
     }
   }
 }
