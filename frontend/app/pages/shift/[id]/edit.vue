@@ -197,7 +197,7 @@ const positionOptions = computed(() => [
 ])
 
 async function handleBulkCreate() {
-  if (!bulkForm.value.fromDate || !bulkForm.value.toDate) return
+  if (!bulkForm.value.fromDate || !bulkForm.value.toDate || bulkCreating.value) return
   bulkCreating.value = true
   try {
     // 日付範囲を展開してスロット配列を生成

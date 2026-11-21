@@ -152,6 +152,7 @@ async function handleCreate() {
   if (!selectedTeamId.value || !createForm.value.title || !createForm.value.startDate || !createForm.value.endDate) {
     return
   }
+  if (creating.value) return
   creating.value = true
   try {
     const payload: CreateShiftScheduleRequest = {

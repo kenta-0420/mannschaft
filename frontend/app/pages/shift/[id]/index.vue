@@ -91,7 +91,7 @@ const nextStatus = computed(() =>
 )
 
 async function handleTransition() {
-  if (!schedule.value || !nextStatus.value) return
+  if (!schedule.value || !nextStatus.value || transitioning.value) return
   transitioning.value = true
   try {
     schedule.value = await transitionStatus(scheduleId.value, nextStatus.value)
@@ -173,7 +173,7 @@ function openEdit() {
 }
 
 async function saveEdit() {
-  if (!schedule.value) return
+  if (!schedule.value || saving.value) return
   saving.value = true
   try {
     const payload: UpdateShiftScheduleRequest = {

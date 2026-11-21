@@ -61,6 +61,7 @@ watch(
 )
 
 async function save() {
+  if (saving.value) return
   saving.value = true
   try {
     const payload: MemberWorkConstraintRequest = {
@@ -87,6 +88,7 @@ async function save() {
 }
 
 async function remove() {
+  if (deleting.value) return
   deleting.value = true
   try {
     if (props.userId === null) {

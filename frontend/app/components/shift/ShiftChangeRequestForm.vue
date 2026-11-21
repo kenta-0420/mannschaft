@@ -25,6 +25,7 @@ const typeOptions = computed(() => [
 ])
 
 async function onSubmit(): Promise<void> {
+  if (isSubmitting.value) return
   isSubmitting.value = true
   try {
     const payload: CreateChangeRequestPayload = {

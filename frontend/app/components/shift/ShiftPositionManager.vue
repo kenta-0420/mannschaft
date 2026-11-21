@@ -11,6 +11,7 @@ const notification = useNotification()
 const positions = ref<ShiftPositionResponse[]>([])
 const loading = ref(true)
 const showDialog = ref(false)
+const saving = ref(false)
 const editing = ref<ShiftPositionResponse | null>(null)
 const form = ref({ name: '', displayOrder: 1 })
 
@@ -42,7 +43,8 @@ function openEdit(pos: ShiftPositionResponse) {
 }
 
 async function save() {
-  if (!form.value.name.trim()) return
+  if (!form.value.name.trim() || saving.value) return
+  saving.value = true
   try {
     if (editing.value) {
       await shiftApi.updatePosition(editing.value.id, {
@@ -60,6 +62,8 @@ async function save() {
     await load()
   } catch {
     notification.error('保存に失敗しました')
+  } finally {
+    saving.value = false
   }
 }
 
@@ -122,7 +126,7 @@ onMounted(load)
       </div>
       <template #footer>
         <Button label="キャンセル" text @click="showDialog = false" />
-        <Button label="保存" icon="pi pi-check" @click="save" />
+        <Button label="保存" icon="pi pi-check" :loading="saving" @click="save" />
       </template>
     </Dialog>
   </div>
