@@ -64,12 +64,11 @@ const canManage = computed(() => {
 // =====================================================
 // フィルタ
 // =====================================================
-const statusFilter = ref<ShiftScheduleStatus | ''>('')
+const statusFilter = ref<ShiftScheduleStatus | null>(null)
 const fromDate = ref('')
 const toDate = ref('')
 
 const statusOptions = computed(() => [
-  { label: t('shift.status.all'), value: '' },
   { label: t('shift.status.draft'), value: 'DRAFT' as ShiftScheduleStatus },
   { label: t('shift.status.collecting'), value: 'COLLECTING' as ShiftScheduleStatus },
   { label: t('shift.status.adjusting'), value: 'ADJUSTING' as ShiftScheduleStatus },
@@ -98,13 +97,15 @@ async function load() {
       fromDate.value || undefined,
       toDate.value || undefined,
     )
-    // サマリーを並列取得
-    const summaryEntries = await Promise.allSettled(
-      schedules.value.map(async (s) => {
-        const summary = await getRequestSummary(s.id)
-        return { id: s.id, summary }
-      }),
-    )
+    // サマリー（提出状況）は BE が管理者専用のため、管理者のときだけ取得する（会員で 403 を出さない）
+    const summaryEntries = canManage.value
+      ? await Promise.allSettled(
+        schedules.value.map(async (s) => {
+          const summary = await getRequestSummary(s.id)
+          return { id: s.id, summary }
+        }),
+      )
+      : []
     summaryMap.value = new Map(
       summaryEntries
         .filter((r): r is PromiseFulfilledResult<{ id: number; summary: ShiftRequestSummaryResponse }> => r.status === 'fulfilled')
@@ -210,6 +211,9 @@ function openDetail(scheduleId: number) {
         :options="statusOptions"
         option-label="label"
         option-value="value"
+        show-clear
+        :placeholder="t('shift.status.all')"
+        :aria-label="t('shift.index.statusFilterLabel')"
         class="min-w-[140px] field-bordered"
       />
 
@@ -218,14 +222,16 @@ function openDetail(scheduleId: number) {
         v-model="fromDate"
         type="date"
         :placeholder="t('shift.index.fromDate')"
-        class="w-36 field-bordered"
+        :aria-label="t('shift.index.fromDate')"
+        class="w-40 min-w-[9.5rem] field-bordered"
       />
       <span class="text-surface-400">〜</span>
       <InputText
         v-model="toDate"
         type="date"
         :placeholder="t('shift.index.toDate')"
-        class="w-36 field-bordered"
+        :aria-label="t('shift.index.toDate')"
+        class="w-40 min-w-[9.5rem] field-bordered"
       />
       <Button
         icon="pi pi-search"

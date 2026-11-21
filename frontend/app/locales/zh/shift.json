@@ -114,6 +114,7 @@
       "createDialog": "新建班次",
       "createSuccess": "班次已创建",
       "selectTeam": "选择团队",
+      "statusFilterLabel": "状态",
       "fromDate": "开始日期",
       "toDate": "结束日期",
       "noSchedule": "暂无班次",
@@ -145,6 +146,7 @@
       "tabEdit": "编辑",
       "tabRequests": "申请列表",
       "tabConstraints": "工作限制",
+      "changeRequestLink": "变更申请",
       "startCollecting": "开始收集申请",
       "startAdjusting": "开始调整",
       "publish": "发布",
@@ -168,7 +170,7 @@
       "bulkCreateSuccess": "已创建 {count} 个时段",
       "noSlot": "暂无时段",
       "noPosition": "无职位",
-      "assigned": "已分配",
+      "assigned": "分配人数",
       "date": "日期",
       "startTime": "开始时间",
       "endTime": "结束时间",
@@ -202,6 +204,7 @@
       "matrixTitle": "申请矩阵",
       "noRequests": "暂无申请",
       "colUser": "成员",
+      "unknownMember": "未知成员",
       "legend": "图例"
     },
     "preference": {
@@ -550,9 +553,9 @@
     },
     "requests": {
       "title": "收集并查看成员的班次意愿",
-      "body": "进入“收集中”状态后，成员即可提交意愿。在详情页面的“意愿列表”标签页中，可以用矩阵查看所有人的情况。",
+      "body": "进入“收集中”状态后，成员即可提交意愿。管理员可在详情页面的“意愿列表”标签页（仅管理员可见）中用矩阵查看所有人的情况。",
       "steps": {
-        "step1": "点击详情页面的“意愿列表”标签页",
+        "step1": "（仅管理员）点击详情页面的“意愿列表”标签页",
         "step2": "在汇总卡片中查看提交率和未提交人数",
         "step3": "在矩阵表中查看每位成员在各日期的意愿强度",
         "step4": "以五个等级显示：“希望上班・无偏好・勉强可以上班・希望休息・必须休息”"

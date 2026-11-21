@@ -252,35 +252,35 @@ function formatDate(dateStr: string): string {
   <div class="mx-auto max-w-5xl px-4 py-6">
     <!-- ナビゲーション -->
     <div class="mb-4 flex items-center gap-2">
-      <BackButton :to="`/shift/${scheduleId}`" />
+      <BackButton :to="`/shift/${scheduleId}`" class="shrink-0 whitespace-nowrap" />
       <h1 class="text-xl font-bold text-surface-800 dark:text-surface-100">
         {{ schedule?.content.title ?? '...' }}
       </h1>
-      <ShiftStatusBadge v-if="schedule" :status="schedule.status.status" />
+      <ShiftStatusBadge v-if="schedule" :status="schedule.status.status" class="shrink-0 whitespace-nowrap" />
     </div>
 
     <!-- タブ -->
     <nav class="mb-6 flex gap-1 overflow-x-auto border-b border-surface-200 dark:border-surface-700">
       <NuxtLink
         :to="`/shift/${scheduleId}`"
-        class="flex shrink-0 items-center gap-1.5 px-4 py-2 text-sm font-medium text-surface-500 transition-colors hover:text-surface-800 dark:hover:text-surface-200"
+        class="flex min-h-11 shrink-0 items-center gap-1.5 px-4 py-2 text-sm font-medium text-surface-500 transition-colors hover:text-surface-800 dark:hover:text-surface-200"
       >
         <i class="pi pi-calendar" />{{ t('shift.detail.tabOverview') }}
       </NuxtLink>
-      <span class="flex shrink-0 items-center gap-1.5 border-b-2 border-primary px-4 py-2 text-sm font-medium text-primary">
+      <span class="flex min-h-11 shrink-0 items-center gap-1.5 border-b-2 border-primary px-4 py-2 text-sm font-medium text-primary">
         <i class="pi pi-pencil" />{{ t('shift.detail.tabEdit') }}
       </span>
       <NuxtLink
         v-if="canManage"
         :to="`/shift/${scheduleId}/requests`"
-        class="flex shrink-0 items-center gap-1.5 px-4 py-2 text-sm font-medium text-surface-500 transition-colors hover:text-surface-800 dark:hover:text-surface-200"
+        class="flex min-h-11 shrink-0 items-center gap-1.5 px-4 py-2 text-sm font-medium text-surface-500 transition-colors hover:text-surface-800 dark:hover:text-surface-200"
       >
         <i class="pi pi-list" />{{ t('shift.detail.tabRequests') }}
       </NuxtLink>
       <NuxtLink
         v-if="canManage"
         :to="`/shift/${scheduleId}/work-constraints`"
-        class="flex shrink-0 items-center gap-1.5 px-4 py-2 text-sm font-medium text-surface-500 transition-colors hover:text-surface-800 dark:hover:text-surface-200"
+        class="flex min-h-11 shrink-0 items-center gap-1.5 px-4 py-2 text-sm font-medium text-surface-500 transition-colors hover:text-surface-800 dark:hover:text-surface-200"
       >
         <i class="pi pi-shield" />{{ t('shift.detail.tabConstraints') }}
       </NuxtLink>
@@ -338,7 +338,7 @@ function formatDate(dateStr: string): string {
           <div class="shrink-0 text-center">
             <span
               v-if="slot.assignmentMasked"
-              class="rounded-full bg-surface-100 px-2 py-0.5 text-xs font-medium text-surface-600 dark:bg-surface-700 dark:text-surface-300"
+              class="shrink-0 whitespace-nowrap rounded-full bg-surface-100 px-2 py-0.5 text-xs font-medium text-surface-600 dark:bg-surface-700 dark:text-surface-300"
               :title="t('shift.slot.assignmentMaskedHint')"
             >
               {{ t('shift.slot.assignmentMasked') }}

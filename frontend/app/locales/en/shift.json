@@ -128,6 +128,7 @@
       "createDialog": "Create New Shift",
       "createSuccess": "Shift created successfully",
       "selectTeam": "Select team",
+      "statusFilterLabel": "Status",
       "fromDate": "From",
       "toDate": "To",
       "noSchedule": "No shifts found",
@@ -159,6 +160,7 @@
       "tabEdit": "Edit",
       "tabRequests": "Requests",
       "tabConstraints": "Constraints",
+      "changeRequestLink": "Change requests",
       "startCollecting": "Start Collecting",
       "startAdjusting": "Start Adjusting",
       "publish": "Publish",
@@ -182,7 +184,7 @@
       "bulkCreateSuccess": "Created {count} slots",
       "noSlot": "No slots",
       "noPosition": "No position",
-      "assigned": "Assigned",
+      "assigned": "Assigned headcount",
       "date": "Date",
       "startTime": "Start time",
       "endTime": "End time",
@@ -216,6 +218,7 @@
       "matrixTitle": "Preference Matrix",
       "noRequests": "No requests submitted",
       "colUser": "Member",
+      "unknownMember": "Unknown member",
       "legend": "Legend"
     },
     "preference": {
@@ -550,9 +553,9 @@
     },
     "requests": {
       "title": "Collect and review members' shift preferences",
-      "body": "Once the status is \"Collecting\", members can submit their preferences. In the \"Preferences\" tab on the detail page you can see everyone's status in a matrix.",
+      "body": "Once the status is \"Collecting\", members can submit their preferences. Administrators can see, in the \"Preferences\" tab on the detail page (administrators only), everyone's status in a matrix.",
       "steps": {
-        "step1": "Click the \"Preferences\" tab on the detail page",
+        "step1": "(Administrators only) Click the \"Preferences\" tab on the detail page",
         "step2": "Check the submission rate and the number of members who have not submitted on the summary cards",
         "step3": "Check each member's preference level for each date in the matrix table",
         "step4": "Shown in five levels: \"Wants to work / No preference / Can work if needed / Prefers off / Must be off\""

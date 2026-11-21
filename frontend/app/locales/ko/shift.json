@@ -114,6 +114,7 @@
       "createDialog": "근무 새로 만들기",
       "createSuccess": "근무를 생성했습니다",
       "selectTeam": "팀 선택",
+      "statusFilterLabel": "상태",
       "fromDate": "시작일",
       "toDate": "종료일",
       "noSchedule": "근무가 없습니다",
@@ -145,6 +146,7 @@
       "tabEdit": "편집",
       "tabRequests": "신청 목록",
       "tabConstraints": "근무 제약",
+      "changeRequestLink": "변경 요청",
       "startCollecting": "신청 수집 시작",
       "startAdjusting": "조정 시작",
       "publish": "확정 공개",
@@ -168,7 +170,7 @@
       "bulkCreateSuccess": "{count}개의 슬롯을 생성했습니다",
       "noSlot": "슬롯이 없습니다",
       "noPosition": "포지션 없음",
-      "assigned": "배정됨",
+      "assigned": "배정 인원",
       "date": "날짜",
       "startTime": "시작 시간",
       "endTime": "종료 시간",
@@ -202,6 +204,7 @@
       "matrixTitle": "희망 매트릭스",
       "noRequests": "신청이 없습니다",
       "colUser": "멤버",
+      "unknownMember": "알 수 없는 멤버",
       "legend": "범례"
     },
     "preference": {
@@ -550,9 +553,9 @@
     },
     "requests": {
       "title": "멤버의 근무 희망 수집·확인하기",
-      "body": "\"수집 중\" 상태가 되면 멤버가 희망을 제출할 수 있습니다. 상세 페이지의 \"희망 목록\" 탭에서 모든 멤버의 현황을 매트릭스로 확인할 수 있습니다.",
+      "body": "\"수집 중\" 상태가 되면 멤버가 희망을 제출할 수 있습니다. 관리자는 상세 페이지의 \"희망 목록\" 탭(관리자 전용)에서 모든 멤버의 현황을 매트릭스로 확인할 수 있습니다.",
       "steps": {
-        "step1": "상세 페이지의 \"희망 목록\" 탭을 클릭합니다",
+        "step1": "(관리자 전용) 상세 페이지의 \"희망 목록\" 탭을 클릭합니다",
         "step2": "요약 카드에서 제출률과 미제출 인원을 확인합니다",
         "step3": "매트릭스 표에서 멤버별·날짜별 희망 강도를 확인합니다",
         "step4": "\"근무 희망·지정 없음·근무 가능하지만 희망하지 않음·가능하면 휴무·절대 휴무\"의 5단계로 표시됩니다"

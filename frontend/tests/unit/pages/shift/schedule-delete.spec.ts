@@ -30,7 +30,7 @@ mockNuxtImport('useShiftApi', () => () => ({
   deleteSchedule,
 }))
 mockNuxtImport('useShiftSlotApi', () => () => ({ listSlots }))
-mockNuxtImport('useDatetime', () => () => ({ userTimezone: ref('Asia/Tokyo') }))
+mockNuxtImport('useDatetime', () => () => ({ userTimezone: ref('Asia/Tokyo'), formatDate: (iso: string) => iso }))
 mockNuxtImport('useErrorHandler', () => () => ({ handleApiError }))
 mockNuxtImport('useNotification', () => () => ({ success: notifySuccess }))
 mockNuxtImport('useConfirm', () => () => ({

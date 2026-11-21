@@ -18,7 +18,7 @@ const { t } = useI18n()
 const route = useRoute()
 const teamStore = useTeamStore()
 const { getSchedule, updateSchedule, transitionStatus, deleteSchedule } = useShiftApi()
-const { userTimezone } = useDatetime()
+const { userTimezone, formatDate } = useDatetime()
 const { listSlots } = useShiftSlotApi()
 const { handleApiError } = useErrorHandler()
 const { success } = useNotification()
@@ -68,6 +68,12 @@ const transitioning = ref(false)
 const publishError = ref<ShiftPublishErrorInfo | null>(null)
 const publishErrorTeamSlug = computed(
   () => teamStore.myTeams.find(tm => tm.id === schedule.value?.teamId)?.slug ?? null,
+)
+/** 変更依頼画面（会員も申請できる）への導線。チームの slug が引けないときは出さない。 */
+const changeRequestPath = computed(() =>
+  publishErrorTeamSlug.value
+    ? `/teams/${publishErrorTeamSlug.value}/shifts/${scheduleId.value}/change-requests`
+    : null,
 )
 
 const nextStatusMap: Record<ShiftScheduleStatus, ShiftScheduleStatus | null> = {
@@ -140,19 +146,24 @@ const slotsByDate = computed<Map<string, ShiftSlotResponse[]>>(() => {
   return map
 })
 
+// 'YYYY-MM-DD' を new Date() に渡すと UTC 解釈になり、UTC より西の環境で前日表示になる。ローカル日付として解釈する。
+function parseLocalDate(dateStr: string): Date {
+  return dayjs(dateStr).toDate()
+}
+
 function formatDateShort(dateStr: string): string {
-  const d = new Date(dateStr)
+  const d = parseLocalDate(dateStr)
   return `${d.getMonth() + 1}/${d.getDate()}`
 }
 
 function formatDayOfWeek(dateStr: string): string {
   const days = ['日', '月', '火', '水', '木', '金', '土']
-  const d = new Date(dateStr)
+  const d = parseLocalDate(dateStr)
   return days[d.getDay()] ?? ''
 }
 
 function isWeekend(dateStr: string): boolean {
-  const d = new Date(dateStr)
+  const d = parseLocalDate(dateStr)
   return d.getDay() === 0 || d.getDay() === 6
 }
 
@@ -271,9 +282,19 @@ const tabs = computed(() => {
         <PageHeader :title="schedule.content.title" back-to="/shift">
           <ShiftStatusBadge :status="schedule.status.status" />
         </PageHeader>
+        <!-- 注: formatDate は instant を userTimezone で整形する。日付のみ（YYYY-MM-DD）を渡すと
+             ブラウザ TZ と userTimezone の差で 1 日ずれ得る既存パターンの限界がある（一覧カードと同じ扱い） -->
         <p class="mb-3 text-sm text-surface-500">
-          {{ schedule.period.startDate }} 〜 {{ schedule.period.endDate }}
+          {{ formatDate(schedule.period.startDate) }} 〜 {{ formatDate(schedule.period.endDate) }}
         </p>
+        <NuxtLink
+          v-if="changeRequestPath"
+          :to="changeRequestPath"
+          data-testid="shift-change-request-link"
+          class="mb-3 inline-flex min-h-11 items-center gap-1.5 text-sm text-primary hover:underline"
+        >
+          <i class="pi pi-sync" />{{ t('shift.detail.changeRequestLink') }}
+        </NuxtLink>
         <div v-if="canManage" class="flex items-center gap-2">
           <Button
             icon="pi pi-pencil"
@@ -347,7 +368,7 @@ const tabs = computed(() => {
           v-for="tab in tabs"
           :key="tab.to"
           :to="tab.to"
-          class="flex shrink-0 items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors"
+          class="flex min-h-11 shrink-0 items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors"
           :class="
             $route.path === tab.to
               ? 'border-b-2 border-primary text-primary'

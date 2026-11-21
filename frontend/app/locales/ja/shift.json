@@ -35,6 +35,7 @@
       "createDialog": "シフトを新規作成",
       "createSuccess": "シフトを作成しました",
       "selectTeam": "チームを選択",
+      "statusFilterLabel": "ステータス",
       "fromDate": "開始日",
       "toDate": "終了日",
       "noSchedule": "シフトがありません",
@@ -66,6 +67,7 @@
       "tabEdit": "編集",
       "tabRequests": "希望一覧",
       "tabConstraints": "勤務制約",
+      "changeRequestLink": "変更依頼",
       "startCollecting": "希望収集を開始",
       "startAdjusting": "調整を開始",
       "publish": "確定公開",
@@ -89,7 +91,7 @@
       "bulkCreateSuccess": "{count} 件のスロットを作成しました",
       "noSlot": "スロットがありません",
       "noPosition": "ポジションなし",
-      "assigned": "割当済み",
+      "assigned": "割当人数",
       "date": "日付",
       "startTime": "開始時刻",
       "endTime": "終了時刻",
@@ -123,6 +125,7 @@
       "matrixTitle": "希望マトリクス",
       "noRequests": "希望提出がありません",
       "colUser": "メンバー",
+      "unknownMember": "不明なメンバー",
       "legend": "凡例"
     },
     "preference": {
@@ -550,9 +553,9 @@
     },
     "requests": {
       "title": "メンバーのシフト希望を収集・確認する",
-      "body": "「収集中」ステータスになるとメンバーが希望を提出できます。詳細ページの「希望一覧」タブで全員の状況をマトリクスで確認できます。",
+      "body": "「収集中」ステータスになるとメンバーが希望を提出できます。管理者は、詳細ページの「希望一覧」タブ（管理者のみ表示）で全員の状況をマトリクスで確認できます。",
       "steps": {
-        "step1": "詳細ページの「希望一覧」タブをクリックする",
+        "step1": "（管理者のみ）詳細ページの「希望一覧」タブをクリックする",
         "step2": "サマリーカードで提出率・未提出人数を確認する",
         "step3": "マトリクス表で各メンバーの日付ごとの希望強度を確認する",
         "step4": "「出勤希望・指定なし・出れなくはない・できれば休み・絶対休み」の5段階で表示される"

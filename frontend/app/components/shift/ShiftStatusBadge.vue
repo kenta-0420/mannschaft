@@ -21,5 +21,5 @@ const label = computed(() => t(statusToI18nKey(props.status)))
 </script>
 
 <template>
-  <Tag :value="label" :severity="severity" rounded />
+  <Tag :value="label" :severity="severity" rounded class="shrink-0 whitespace-nowrap" />
 </template>
