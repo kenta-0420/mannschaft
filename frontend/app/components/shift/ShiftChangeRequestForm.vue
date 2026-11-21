@@ -25,6 +25,8 @@ const typeOptions = computed(() => [
 ])
 
 async function onSubmit(): Promise<void> {
+  // 送信ボタンの連打で同じ依頼を重ねて作らない
+  if (isSubmitting.value) return
   isSubmitting.value = true
   try {
     const payload: CreateChangeRequestPayload = {
@@ -35,9 +37,11 @@ async function onSubmit(): Promise<void> {
     if (props.slotId !== undefined) {
       payload.slotId = props.slotId
     }
-    await createRequest(payload)
-    reason.value = ''
-    emit('submitted')
+    // 失敗は createRequest 内で通知済み。入力は残し、成功したときだけ初期化して通知する。
+    if (await createRequest(payload)) {
+      reason.value = ''
+      emit('submitted')
+    }
   } finally {
     isSubmitting.value = false
   }
@@ -45,7 +49,7 @@ async function onSubmit(): Promise<void> {
 </script>
 
 <template>
-  <SectionCard>
+  <SectionCard data-testid="change-request-form">
     <h2 class="mb-4 text-base font-semibold text-surface-800">
       {{ $t('shift.changeRequest.title') }}
     </h2>

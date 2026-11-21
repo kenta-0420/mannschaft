@@ -85,6 +85,31 @@ describe('pages/my/shift-availability.vue — 取得失敗時のエラー状態'
   })
 })
 
+describe('pages/my/shift-availability.vue — 保存の再入ガード（CMP-261010-1432 AC-H5）', () => {
+  beforeEach(() => {
+    getAvailabilityDefaults.mockReset()
+    setAvailabilityDefaults.mockReset()
+  })
+
+  it('AC-H5: 保存ボタンを同一ティック内にダブルクリックしても PUT は1回だけ', async () => {
+    getAvailabilityDefaults.mockResolvedValue([])
+    let release!: () => void
+    setAvailabilityDefaults.mockImplementation(
+      () => new Promise<void>((resolve) => { release = resolve }),
+    )
+    const wrapper = await mountSuspended(ShiftAvailabilityPage)
+    await flushMicrotasks()
+
+    const save = wrapper.find('[data-testid="availability-save"]').element as HTMLButtonElement
+    save.click()
+    save.click()
+    release()
+    await flushMicrotasks()
+
+    expect(setAvailabilityDefaults).toHaveBeenCalledTimes(1)
+  })
+})
+
 /** onMounted 内の非同期チェーン（fetchMyTeams → loadForTeam）を捌き切るための待機。 */
 async function flushMicrotasks() {
   for (let i = 0; i < 5; i++) {

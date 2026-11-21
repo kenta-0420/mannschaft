@@ -144,6 +144,8 @@ const invalidDays = computed(() => {
 const hasInvalidInput = computed(() => invalidDays.value.size > 0)
 
 async function save() {
+  // 保存ボタンの連打で同じ PUT を重ねて送らない（空状態の並行 PUT は BE で衝突しうる）
+  if (saving.value) return
   if (!selectedTeamId.value) return
   if (hasInvalidInput.value) {
     showError(t('shift.availability.timeRangeInvalid'))

@@ -19,6 +19,7 @@ mockNuxtImport('useRoute', () => () => ({ params }))
 mockNuxtImport('useAuthStore', () => () => auth)
 mockNuxtImport('useApi', () => () => mocks.api)
 mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
+mockNuxtImport('useErrorHandler', () => () => ({ handleApiError: mocks.error }))
 mockNuxtImport('useNotification', () => () => ({ error: mocks.error, success: mocks.success }))
 
 function request(status: ChangeRequestStatus = 'OPEN', id = 7): ChangeRequest {
@@ -46,6 +47,9 @@ function respond(url: string, options?: { body?: { decision: ChangeRequestStatus
   if (url.endsWith('/me/permissions')) {
     return permissionError ? Promise.reject(new Error('permissions unavailable')) : Promise.resolve(permissions(role, true))
   }
+  // PR 版の page が呼ぶシフト表・チーム取得（チーム一致検証）。teamId と numericId を一致させる。
+  if (/\/shifts\/schedules\/\d+$/.test(url)) return Promise.resolve({ data: { id: 425, teamId: 12, status: { status: 'COLLECTING' } } })
+  if (/\/api\/v1\/teams\/[^/]+$/.test(url)) return Promise.resolve({ data: { numericId: 12 } })
   if (url.includes('/review')) return Promise.resolve({ data: request(options!.body!.decision) })
   if (url.includes('/change-requests?')) {
     return listError ? Promise.reject(new Error('list unavailable')) : Promise.resolve({ data: rows })
@@ -62,6 +66,7 @@ function renderPage() {
       SectionCard: { template: '<section><slot /></section>' },
       PageHeader: true, NuxtLink: { template: '<a><slot /></a>' },
       Tag: true, Textarea: true, PageLoading: true,
+      DashboardErrorState: { template: '<div data-testid="change-request-load-error" />' },
       Dialog: { props: ['visible'], template: '<div v-if="visible" data-testid="review-dialog"><slot /><slot name="footer" /></div>' },
     },
   } })
@@ -186,11 +191,11 @@ describe('変更依頼のチーム権限による審査UI（CMP1432-A）', () =>
     expect(reviewButtons()).toHaveLength(0)
   })
 
-  it('AC6 一覧GET失敗は既存のエラー通知を保ち、審査操作を出さない', async () => {
+  it('AC6 一覧GET失敗は失敗を利用者に見せ（取得エラー表示。旧: 通知）、審査操作を出さない', async () => {
     listError = true
     renderPage()
     await flushPromises()
-    expect(mocks.error).toHaveBeenCalledWith('shift.changeRequest.fetchError')
+    expect(wrapper!.find('[data-testid="change-request-load-error"]').exists()).toBe(true)
     expect(reviewButtons()).toHaveLength(0)
   })
 
