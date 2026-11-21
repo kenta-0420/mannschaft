@@ -1,0 +1,55 @@
+# Task-List PR Gate の merge queue（merge_group）経路（CMP-261121-1114）
+#
+# pull_request_target は merge_group で発火しないため、本 workflow が無いと必須チェック
+# "Task-List PR Gate" が merge queue 上で永久 pending になる。PR 側の検査（task-list-pr-gate.yml）とは
+# 別ファイルに分け、on: merge_group のみで起動する。同一 workflow 内でジョブ単位の if により分けると、
+# skipped の同名チェックが PR 側にも報告され必須チェックの判定に混ざるため、ファイルごと分離した。
+#
+# PR 本文（CMP-ID 登録）と完了証拠の検査は各 PR の pull_request_target で済んでいるため、ここでは行わない。
+# 合成コミット（merge_group.head_sha）の docs/task-list.md の構造（CMP-ID 重複・列数7・未完行の優先度）
+# だけを検査する。検査器は信頼できる merge_group.base_sha からワークスペース直下へ checkout したものだけを
+# 実行し、head_sha からは台帳1ファイルだけを別ディレクトリへ取得する（キュー内 PR が改変した検査器で
+# 自己承認させない）。権限は contents: read のみ。
+
+name: Task-List PR Gate (merge queue)
+
+on:
+  merge_group:
+    types: [checks_requested]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: task-list-pr-gate-merge-group-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  task-list-pr-gate:
+    name: Task-List PR Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout trusted base
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.merge_group.base_sha }}
+          persist-credentials: false
+
+      - name: Fetch task list from merge group head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.merge_group.head_sha }}
+          path: .merge-group-head
+          sparse-checkout: |
+            docs/task-list.md
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Validate task list structure
+        run: |
+          if [ ! -f scripts/task-list-structure-check.mjs ]; then
+            echo "::error::信頼 base（merge_group.base_sha）に scripts/task-list-structure-check.mjs が無い。検査器なしで合格にはしない。"
+            exit 1
+          fi
+          node scripts/task-list-structure-check.mjs .merge-group-head/docs/task-list.md

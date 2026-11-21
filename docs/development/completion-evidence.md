@@ -4,6 +4,14 @@
 
 validatorは `pull_request_target` で動くため、workflowのbase SHAからcheckoutしたtrusted版だけを実行する。PR headから取得するのは台帳とJSONなどのデータだけで、PR由来のソースをcheckout・import・実行しない。証拠JSONだけのdocs PRはコード登録対象から除外する一方、完了遷移と証拠変更は検査する。validatorがbaseにまだ無い初回導入PRはbootstrapとして登録検査だけ行い、このPRがmainへ入った後に完了証拠検査が有効になる。mainからvalidatorを削除・改名するPRはTask-List PR Gateが`pulls.listFiles`の`removed` / `previous_filename`で拒否し、bootstrap経由で検査を無効化できないようにする。
 
+### merge queue（`merge_group`）経路
+
+`pull_request_target` は `merge_group` で発火しないため、merge queue 用に別 workflow `.github/workflows/task-list-pr-gate-merge-group.yml`（`on: merge_group` の `checks_requested` のみ）を置き、同名ジョブ `Task-List PR Gate` を報告させる。PR 側の `task-list-pr-gate.yml` には `merge_group` を入れない。同一 workflow 内でジョブ単位の `if` で分けると skipped の同名チェックが PR 側にも報告され、必須チェックの判定に混ざるためである。
+
+- PR 側（`pull_request_target`）: 従来どおり（CMP-ID 登録・完了証拠の検査。checkout・権限・判定ロジックは不変）。
+- merge_group 側: PR 本文検査・完了証拠検査は各 PR の `pull_request_target` で済んでいるため行わない。合成コミット（`merge_group.head_sha`）の `docs/task-list.md` の構造だけを `scripts/task-list-structure-check.mjs` で検査する。CMP-ID（新旧両形式）の重複、列数≠7、未完行の状態セル先頭の優先度 `P1`〜`P5` 欠落、ファイル不在・空・CMP 行0件・緩い走査と厳密抽出の件数不一致はいずれも理由を出力して fail にする。判定規則は Java 番人 `TaskListCmpIdDuplicateGuardTest` の移植で、行終端（LF・CRLF・CR・NEL・U+2028・U+2029）や空白・trim の扱いも Java に合わせている。規則を変えるときは両方と `scripts/task-list-structure-check.test.mjs` の共通 fixture を同時に直す。
+- 検査器は信頼できる `merge_group.base_sha` からワークスペース直下へ checkout したものだけを実行し、`head_sha` からは台帳1ファイルだけを sparse checkout で別ディレクトリ（`.merge-group-head/`）へ取得する。キュー内の PR が改変した検査器で自己承認することはできない。base に検査器が無い場合は合格にせず fail する（本 workflow を入れた PR が main に入るまでは merge queue を有効化しないこと）。権限は `contents: read` のみ、`persist-credentials: false`。
+
 ## JSON形式
 
 ```json

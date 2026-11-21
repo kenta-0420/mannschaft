@@ -90,6 +90,8 @@ jobs:
           scripts/worktree-sparse-paths.test.mjs
           frontend/scripts/lib/sparse-assets.test.mjs
           frontend/scripts/verify-ranch-sparse.test.mjs
+          scripts/task-list-structure-check.test.mjs
+          scripts/task-list-pr-gate-workflow.test.mjs
 
       - name: "[Harness] worktree sparse paths の一覧検査"
         if: ${{ !cancelled() && github.base_ref == 'main' }}
